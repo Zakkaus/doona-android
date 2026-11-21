@@ -5,11 +5,12 @@ runner but never measures; the results are not a performance gate.
 
 ## What it measures
 
-1. **The netstack alone.** `crates/honk-netstack/examples/tcp_bulk.rs` runs an endpoint-mode client stack
-   and a transparent-mode server stack in one thread and passes packets between them directly.
-   There is no tun and no socket, so the CPU time is the cost of the two stacks per packet and
-   per byte. The `stack` Criterion bench (`crates/honk-netstack/benches/stack.rs`) is
-   cross-built alongside it.
+1. **The netstack alone.** honk-netstack's [`tcp_bulk`][tcp_bulk] example runs an endpoint-mode
+   client stack and a transparent-mode server stack in one thread and passes packets between them
+   directly. There is no tun and no socket, so the CPU time is the cost of the two stacks per
+   packet and per byte. The `stack` Criterion bench ([`benches/stack.rs`][stack]) is cross-built
+   alongside it. Both live in honk, not in this repository; `build-netstack-bench.sh` builds them
+   in a honk checkout (see [Build](#build)).
 2. **The Android VpnService path.** The TunBench app (`android/tunbench/`, package
    `dev.tunbench`) opens a VpnService tun that routes `198.18.0.0/15` and runs one of two engines
    on it:
@@ -46,7 +47,7 @@ runner but never measures; the results are not a performance gate.
 
 ```sh
 (cd android/tunbench && ./gradlew assembleDebug)
-android/scripts/build-netstack-bench.sh       # tcp_bulk, tcp_bulk-native, netstack-criterion -> android/scripts/out/
+HONK_DIR=../honk android/scripts/build-netstack-bench.sh   # tcp_bulk, tcp_bulk-native, netstack-criterion -> android/scripts/out/
 (cd android/scripts && uv sync)               # the analyzer's environment: perfetto, pytest, ruff
 ```
 
@@ -55,12 +56,19 @@ The Gradle build takes the NDK from the Android Gradle plugin and needs no envir
 cargo: set `ANDROID_HOME` (default `$HOME/Android/Sdk`) and, on a non-Linux host, `NDK_HOST_TAG`
 before running it.
 
+`build-netstack-bench.sh` builds in the honk checkout named by `HONK_DIR` and fails when
+`HONK_DIR` is unset. The checkout must contain the `tcp_bulk` example; the known-good revision is
+[Glassyiris/honk](https://github.com/Glassyiris/honk) `5d0a900d` (branch `feat/android-bench`).
+Leave `CARGO_TARGET_DIR` unset or set it to `$HONK_DIR/target`, because the script copies the
+binaries from there.
+
 The Gradle build runs the `buildHonkEngine` task, which runs `cargo ndk` in `crates/honk-android`
 with the Android Gradle plugin's NDK to build `libhonkengine.so`. It builds hev with ndk-build.
 The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`.
 
-`crates/honk-android` is not a workspace member and has its own `Cargo.lock`. Its relay test runs
-on the build host: `cd crates/honk-android && cargo test --release`.
+`crates/honk-android` is a standalone crate with its own `Cargo.lock`. It takes honk-netstack as a
+git dependency pinned to one honk revision. Its relay test runs on the build host:
+`cd crates/honk-android && cargo test --release`.
 
 ## Run
 
@@ -71,7 +79,11 @@ adb push android/scripts/out/tcp_bulk /data/local/tmp/
 adb shell /data/local/tmp/tcp_bulk --mtu 8500 --flows 1 --cpu 7
 ```
 
-`tcp_bulk --help` prints the usage line; the flags are documented at the top of `tcp_bulk.rs`.
+`tcp_bulk --help` prints the usage line; the flags are documented at the top of
+[`tcp_bulk.rs`][tcp_bulk].
+
+[tcp_bulk]: https://github.com/Glassyiris/honk/blob/5d0a900d95f8e23a88f66b0aad7b72b1c2ed3dda/crates/honk-netstack/examples/tcp_bulk.rs
+[stack]: https://github.com/Glassyiris/honk/blob/5d0a900d95f8e23a88f66b0aad7b72b1c2ed3dda/crates/honk-netstack/benches/stack.rs
 
 The VpnService path:
 

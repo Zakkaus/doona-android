@@ -2,7 +2,7 @@
 
 The Android bench harness runs a JSON plan inside the TunBench app and writes one JSON line per measurement. It compares honk's Android engine with the baseline engine hev-socks5-tunnel on one phone under identical conditions. Each line holds the CPU time, context switches, tun counters and payload of every role over one window. Scripts on the computer add the energy and wakeups of the same window from one Perfetto trace. A measurement that breaks a validity rule is written as `rejected` with its reasons; the harness never retries, repairs or zero-fills one.
 
-This is test tooling. Nothing here ships in `honk-core`, the figures are not a CI gate, and `honk-android` stays outside the Cargo workspace with its own `Cargo.lock`. The runner is compiled only with the `bench` feature of `honk-android`, which the TunBench build enables. Build and run steps are in [`android/scripts/README.md`](../../../android/scripts/README.md); this page holds the structure and the rules that make the figures valid.
+This is test tooling. Nothing here ships in `honk-core`, the figures are not a CI gate, and `honk-android` is a standalone crate with its own `Cargo.lock`. The runner is compiled only with the `bench` feature of `honk-android`, which the TunBench build enables. Build and run steps are in [`android/scripts/README.md`](../../../android/scripts/README.md); this page holds the structure and the rules that make the figures valid.
 
 ## What it measures
 
@@ -64,7 +64,7 @@ flowchart LR
 | Perfetto on the phone | Record power rails and scheduler events with the trace clock `CLOCK_BOOTTIME`. | Know about plans or windows. |
 | Android platform | Provide the tun, and the interactive, display and foreground state the runner checks. | Report state unasked; the runner asks at the window ends. |
 | hev-socks5-tunnel | The baseline engine, built from a pinned submodule and started through its JNI. | Name its threads: each inherits the name of the thread that started it. |
-| `honk-netstack` | The stack under the `honk` engine, as a path dependency. | Know about Android or the harness. |
+| `honk-netstack` | The stack under the `honk` engine, a git dependency pinned to one honk revision. | Know about Android or the harness. |
 
 ### Containers
 
@@ -348,6 +348,6 @@ One JSON line per measurement.
 
 ## Related docs
 
-- [Userspace network stack and WireGuard tunnel](./netstack.md)
+- [Userspace network stack and WireGuard tunnel](https://github.com/Glassyiris/honk/blob/c5b36a64d7f3c7d7ba234574e787f93b893a07aa/doc/en/design/netstack.md) (in honk)
 - [Android benchmark harness: build and run](../../../android/scripts/README.md)
-- [Architecture overview](./overview.md)
+- [Architecture overview](https://github.com/Glassyiris/honk/blob/c5b36a64d7f3c7d7ba234574e787f93b893a07aa/doc/en/design/overview.md) (in honk)

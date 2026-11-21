@@ -2,7 +2,7 @@
 
 Android 基准测试工具在 TunBench app 内运行 JSON 测试计划，每次测量写出一行 JSON。它让 honk 的 Android 引擎与基准引擎 hev-socks5-tunnel 在同一部手机、相同条件下比较。每行记录一个窗口内各角色的 CPU 时间、上下文切换、tun 计数器和载荷。电脑端脚本再用一份 Perfetto trace 补上该窗口的能耗和唤醒次数。违反有效性规则的测量写为 `rejected` 并附原因；工具从不重试、修补或补零。
 
-这是测试工具：不随 `honk-core` 发布，数据不作 CI 门禁，`honk-android` 位于 Cargo workspace 之外，有自己的 `Cargo.lock`。运行器只在启用 `honk-android` 的 `bench` feature 时编译，由 TunBench 构建启用。构建和运行步骤见 [`android/scripts/README.md`](../../../android/scripts/README.md)；本页说明结构，以及保证数据有效的规则。
+这是测试工具：不随 `honk-core` 发布，数据不作 CI 门禁，`honk-android` 是独立的 crate，有自己的 `Cargo.lock`。运行器只在启用 `honk-android` 的 `bench` feature 时编译，由 TunBench 构建启用。构建和运行步骤见 [`android/scripts/README.md`](../../../android/scripts/README.md)；本页说明结构，以及保证数据有效的规则。
 
 ## 测量什么
 
@@ -64,7 +64,7 @@ flowchart LR
 | 手机上的 Perfetto | 以 `CLOCK_BOOTTIME` 为 trace 时钟，记录电源轨和调度事件。 | 了解测试计划或窗口。 |
 | Android 平台 | 提供 tun，以及运行器检查的交互、屏幕和前台状态。 | 主动上报状态；运行器在窗口两端询问。 |
 | hev-socks5-tunnel | 基准引擎，由固定版本的 submodule 构建，经其 JNI 启动。 | 给自己的线程命名：每个线程继承启动它的线程的名字。 |
-| `honk-netstack` | `honk` 引擎使用的协议栈，以 path 依赖引入。 | 了解 Android 或测试工具。 |
+| `honk-netstack` | `honk` 引擎使用的协议栈，以 git 依赖引入，固定在 honk 的一个提交。 | 了解 Android 或测试工具。 |
 
 ### 容器
 
@@ -350,6 +350,6 @@ app 在其私有文件下以运行 id 命名的目录中写入计划副本、`re
 
 ## 相关文档
 
-- [用户态网络栈与 WireGuard 隧道](./netstack.md)
+- [用户态网络栈与 WireGuard 隧道](https://github.com/Glassyiris/honk/blob/c5b36a64d7f3c7d7ba234574e787f93b893a07aa/doc/zh/design/netstack.md)（在 honk 仓库）
 - [Android 基准测试工具：构建与运行](../../../android/scripts/README.md)
-- [架构概览](./overview.md)
+- [架构概览](https://github.com/Glassyiris/honk/blob/c5b36a64d7f3c7d7ba234574e787f93b893a07aa/doc/zh/design/overview.md)（在 honk 仓库）
