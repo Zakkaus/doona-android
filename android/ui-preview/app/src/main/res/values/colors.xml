@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Rosé Pine Dawn iris, so the preview's launcher icon stands apart from the real app's. -->
+    <color name="launcher_bg">#FF907AA9</color>
+</resources>
