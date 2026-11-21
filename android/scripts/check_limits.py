@@ -20,6 +20,7 @@ import argparse
 import subprocess
 import sys
 import traceback
+from collections import Counter
 from pathlib import Path
 
 from lizard import analyze_file
@@ -59,16 +60,15 @@ def measure(root):
                 problems += [f"{rel}: banned package name {d}" for d in BANNED_DIRS & set(package)]
             found = analyze_file.analyze_source_code(rel, code).function_list
             functions += len(found)
-            signatures = [" ".join(f.long_name.split()) for f in found]
-            for f, sig in zip(found, signatures, strict=True):
+            named = [(" ".join(f.long_name.split()), f) for f in found]
+            counts = Counter(sig for sig, _ in named)
+            for sig, f in named:
                 values = {"nloc": f.nloc, "ccn": f.cyclomatic_complexity}
                 for kind, value in values.items():
                     if value > LIMITS[kind]:
                         over[kind, rel, sig] = value
-                        if signatures.count(sig) > 1:
-                            problems.append(
-                                f"{rel}: {sig}: ambiguous, {signatures.count(sig)} functions"
-                            )
+                        if counts[sig] > 1:
+                            problems.append(f"{rel}: {sig}: ambiguous, {counts[sig]} functions")
         print(f"{group}: {len(files)} files, {functions} functions")
         if not files or not functions:
             raise CannotRun(f"{group}: nothing to check under {base}")
