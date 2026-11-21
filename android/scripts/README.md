@@ -63,7 +63,9 @@ Leave `CARGO_TARGET_DIR` unset or set it to `$HONK_DIR/target`, because the scri
 binaries from there.
 
 The Gradle build runs the `buildHonkEngine` task, which runs `cargo ndk` in `crates/honk-android`
-with the Android Gradle plugin's NDK to build `libhonkengine.so`. It builds hev with ndk-build.
+with the Android Gradle plugin's NDK to build `libhonkengine.so`: `cargo ndk ... rustc --lib
+--crate-type cdylib --release --locked --features bench`. It overrides the manifest's
+`["cdylib", "rlib"]`, because Cargo applies `lto = "fat"` only when every crate type supports it. It builds hev with ndk-build.
 The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`.
 
 `crates/honk-android` is a standalone crate with its own `Cargo.lock`. It takes honk-netstack as a

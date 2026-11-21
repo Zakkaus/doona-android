@@ -50,7 +50,7 @@ In `android/scripts`: `uv run ruff check`, `uv run ruff format --check`, `uv run
 
 - `crates/honk-android` is its own Cargo workspace root. Gradle runs cargo in that directory, so
   its `rust-toolchain.toml`, release profile (`opt-level = 3`, `codegen-units = 1`, `strip`;
-  `lto = "fat"` is set but Cargo does not apply it while the crate is both `cdylib` and `rlib`), `Cargo.lock` and `.cargo/config.toml` (the 16 KiB page linker flag) all apply. Do not
+  `lto = "fat"`, which applies because Gradle builds the `cdylib` alone with `cargo rustc --crate-type cdylib`), `Cargo.lock` and `.cargo/config.toml` (the 16 KiB page linker flag) all apply. Do not
   add a root workspace or move these files.
 - `rust-toolchain.toml` pins the same compiler as honk. Change it together with honk.
 - Do not run `cargo update` as a side effect. Change a dependency version in its own commit.

@@ -16,7 +16,10 @@ val buildHonkEngine = tasks.register<Exec>("buildHonkEngine") {
     workingDir = honkEngineDir // rustup reads rust-toolchain.toml from the working directory
     commandLine(
         cargo, "ndk", "-t", "arm64-v8a", "--platform", "29",
-        "-o", honkJniLibs.absolutePath, "build", "--release", "--locked", "--features", "bench",
+        "-o", honkJniLibs.absolutePath,
+        // Cargo applies `lto` only when every crate type of the unit supports it; the manifest's
+        // `rlib` (for the host tests) would turn fat LTO off, so build the cdylib alone.
+        "rustc", "--lib", "--crate-type", "cdylib", "--release", "--locked", "--features", "bench",
     )
     environment("PATH", cargoBin + File.pathSeparator + System.getenv("PATH"))
     doFirst { environment("ANDROID_NDK_HOME", ndkDir.get().asFile.absolutePath) }
