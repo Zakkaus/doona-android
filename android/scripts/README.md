@@ -184,6 +184,12 @@ command:
 4. Run `ADB="adb -s <phone ip>:5555" android/scripts/run.sh PLAN.json`.
 5. Afterwards switch back to USB with `adb -s <phone ip>:5555 usb`.
 
+Wireless adb pulls at about 0.2 MB/s, and a full comparison plan writes a trace of about 1 GB, so
+the pull does not finish within `run.sh`'s 600 s limit. `run.sh` then leaves the trace on the phone
+and logs its path. Plug the cable back in and pull it over USB:
+`adb -s <USB serial> pull /data/misc/perfetto-traces/tunbench-<run id>.pftrace <results>/<run id>/trace.pftrace`.
+Delete the phone's copy with `adb -s <USB serial> shell rm` only after checking the pulled size.
+
 ### Analyze
 
 `analyze.py RUN_DIR` writes `RUN_DIR/analysis.jsonl`: each runner record with `joules` (per
