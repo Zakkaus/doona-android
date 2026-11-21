@@ -23,8 +23,8 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-          # check_limits.py compares the ratchet with HEAD^1: the target branch of a pull request's
-          # merge commit, or the previous commit on main.
+          # check_limits.py compares the ratchet with HEAD^1, the target branch of a pull request's
+          # merge commit; a push fetches its own base commit.
           fetch-depth: 2
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - name: Check the harness scripts
@@ -40,7 +40,21 @@ jobs:
         working-directory: android/scripts
         env:
           UV_LOCKED: "1"
-        run: uv run python check_limits.py --base-rev HEAD^1
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          base=HEAD^1
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            # A push may carry several commits: compare with the branch head before it.
+            if [ -z "${BEFORE//0/}" ]; then
+              echo "new branch: no base ratchet to compare with"
+              base=
+            else
+              git fetch --depth=1 origin "$BEFORE"
+              base=$BEFORE
+            fi
+          fi
+          uv run python check_limits.py ${base:+--base-rev "$base"}
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin

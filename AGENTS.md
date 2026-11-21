@@ -53,10 +53,10 @@ complexity of 15, in the app and in `crates/honk-android`, tests included. App s
 must not be named `util`, `common`, `helper` or `misc`. `limits-ratchet.txt` lists the existing
 violations by name, each with exactly its measured value: a change that shrinks the code lowers
 the value to the new measurement, or deletes the line once the item is within the limit. CI
-compares the ratchet with the target branch's, so raising or adding an entry fails: that needs the
-maintainer's ruling, and the pull request is then merged over the red check. When two branches
-change ratcheted code, the one merged second measures again on the final base and updates the
-ratchet in its own pull request.
+compares the ratchet with the base's (a pull request's target branch, or the branch as it was
+before a push), so raising or adding an entry fails: that needs the maintainer's ruling, and the
+pull request is then merged over the red check. When two branches change ratcheted code, the one
+merged second measures again on the final base and updates the ratchet in its own pull request.
 
 ## Build invariants
 
