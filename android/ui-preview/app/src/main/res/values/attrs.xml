@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The vendored Material Symbols files tint with ?attr/colorControlNormal, an AppCompat attribute this app does not
+         pull in; declaring it here lets them link unchanged. Compose tints every icon itself. -->
+    <attr name="colorControlNormal" format="reference|color" />
+</resources>

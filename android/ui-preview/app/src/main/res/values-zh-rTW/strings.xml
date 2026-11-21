@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_control">控制</string>
+    <string name="nav_observe">觀察</string>
+    <string name="nav_bench">測試</string>
+    <string name="action_more">更多選項</string>
+    <string name="action_settings">設定</string>
+    <string name="action_back">返回</string>
+
+    <string name="status_stopped">已停止</string>
+    <string name="workload_bulk_down">大量下載 ×1</string>
+    <string name="label_live">即時</string>
+    <string name="action_start">開始</string>
+    <string name="action_stop">停止</string>
+
+    <string name="metric_cpu">引擎 CPU</string>
+    <string name="metric_wakeups">喚醒次數</string>
+    <string name="metric_energy">上次執行能耗</string>
+    <string name="metric_connections">連線數</string>
+    <string name="value_percent">%1$d%%</string>
+    <string name="value_wakeups">%1$s 次/秒</string>
+
+    <string name="param_upstream">上游 SOCKS5</string>
+    <string name="param_cpu_pin">CPU 綁定</string>
+    <string name="value_core">核心 %1$d</string>
+</resources>
