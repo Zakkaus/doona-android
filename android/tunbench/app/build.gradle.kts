@@ -57,6 +57,8 @@ android {
         versionName = "1.0"
 
         ndk {
+            // The bench measures arm64 phones only.
+            //noinspection ChromeOsAbiSupport
             abiFilters += "arm64-v8a"
         }
 
@@ -82,6 +84,17 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // No baseline file: a warning is fixed, or suppressed where it occurs with the reason.
+    lint {
+        warningsAsErrors = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        allWarningsAsErrors = true
     }
 }
 
