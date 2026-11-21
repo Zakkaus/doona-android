@@ -11,7 +11,7 @@ TunBench benchmark app (`android/tunbench`), the bench scripts and plans (`andro
 .
 ├── crates/honk-android/   # Rust crate -> libhonkengine.so; standalone, own Cargo.lock, toolchain file, release profile
 ├── android/tunbench/      # Gradle app dev.tunbench; hev-socks5-tunnel submodule under app/src/main/jni/
-├── android/scripts/       # run.sh, analyze.py (uv project), build-netstack-bench.sh, android-env.sh, README
+├── android/scripts/       # run.sh, analyze.py (uv project), check_limits.py, build-netstack-bench.sh, android-env.sh, README
 ├── android/plans/         # bench plans: smoke.json, compare.json, compare-v2.json
 ├── doc/en, doc/zh         # design/android-bench.md in both languages
 └── .github/workflows/     # android.yml: CI for the Rust, Android and script checks
@@ -39,12 +39,26 @@ cargo test --locked --release --test relay
 cargo ndk -t arm64-v8a --platform 29 clippy --locked --all-targets --features bench -- -D warnings
 ```
 
-In `android/tunbench`: `./gradlew assembleDebug lint`, then `zipalign -c -P 16 4` on
-`app/build/outputs/apk/debug/app-debug.apk` and `llvm-readelf -lW` on both `.so` files: every
-`LOAD` segment must be aligned to `0x4000`.
+In `android/tunbench`: `./gradlew spotlessCheck assembleDebug lint testDebugUnitTest`, then
+`zipalign -c -P 16 4` on `app/build/outputs/apk/debug/app-debug.apk` and `llvm-readelf -lW` on
+both `.so` files: every `LOAD` segment must be aligned to `0x4000`. The `Java_dev_tunbench_*`
+dynamic symbols of `libhonkengine.so` must match the `external fun`s of `HonkEngine` and `Bench`
+exactly; CI checks this in the same step. Lint and Kotlin compiler warnings are
+errors. Fix a warning, or suppress it where it occurs and say why; there is no lint baseline file.
+`spotlessApply` fixes most format findings.
 
 In `android/scripts`: `uv run ruff check`, `uv run ruff format --check`, `uv run pytest`,
-`shellcheck run.sh` and `shfmt -d run.sh`.
+`uv run python check_limits.py --base-rev origin/main`, `shellcheck run.sh` and `shfmt -d run.sh`.
+
+`check_limits.py` limits a file to 600 lines and a function to 80 lines (NLOC) and a cyclomatic
+complexity of 15, in the app and in `crates/honk-android`, tests included. App source directories
+must not be named `util`, `common`, `helper` or `misc`. `limits-ratchet.txt` lists the existing
+violations by name, each with exactly its measured value: a change that shrinks the code lowers
+the value to the new measurement, or deletes the line once the item is within the limit. CI
+compares the ratchet with the base's (a pull request's target branch, or the branch as it was
+before a push), so raising or adding an entry fails: that needs the maintainer's ruling, and the
+pull request is then merged over the red check. When two branches change ratcheted code, the one
+merged second measures again on the final base and updates the ratchet in its own pull request.
 
 ## Build invariants
 

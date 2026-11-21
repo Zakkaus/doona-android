@@ -259,6 +259,8 @@ public class MainActivity extends Activity {
                 InputType.TYPE_CLASS_TEXT);
 
         toggle = new Button(this);
+        // English-only View UI; M3 replaces it with a Compose UI on string resources.
+        //noinspection SetTextI18n
         toggle.setText("Start");
         toggle.setOnClickListener(v -> {
             if (TunService.running) {

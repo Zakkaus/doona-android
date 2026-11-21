@@ -19,7 +19,7 @@ CI gate.
 | `android/scripts/` | `run.sh` and `analyze.py` for bench runs, `build-netstack-bench.sh`, and the build and run guide. |
 | `android/plans/` | Bench plans: `smoke.json`, `compare.json` (the first round) and `compare-v2.json` (the second, which adds bulk at a 2000 Mbit/s target rate). |
 | `doc/en/design/android-bench.md` | The harness design and the rules that make its figures valid ([Chinese](doc/zh/design/android-bench.md)). |
-| `.github/workflows/android.yml` | CI: script checks, rustfmt, Clippy, tests, the APK build, Android lint and the 16 KiB page alignment check. |
+| `.github/workflows/android.yml` | CI: script checks, file and function limits, rustfmt, Clippy, tests, Kotlin format, the APK build, Android lint, the JVM tests and the 16 KiB page alignment check. |
 
 `crates/honk-android/Cargo.toml` takes honk-netstack from Git, pinned to `c5b36a64` on
 [Glassyiris/honk](https://github.com/Glassyiris/honk), the head of
@@ -29,8 +29,8 @@ CI gate.
 
 Install the prerequisites listed in
 [`android/scripts/README.md`](android/scripts/README.md#prerequisites): JDK 21, the Android SDK
-with NDK `30.0.16248370`, rustup with the `aarch64-linux-android` target, and cargo-ndk 4.1.2.
-Then build the debug APK:
+with the API 37.1 platform and NDK `30.0.16248370`, rustup with the `aarch64-linux-android`
+target, and cargo-ndk 4.1.2. Then build the debug APK:
 
 ```sh
 git clone --recursive https://github.com/Zakkaus/honk-android
@@ -38,10 +38,10 @@ cd honk-android/android/tunbench
 ./gradlew assembleDebug
 ```
 
-The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`. Before the app build,
-Gradle's `buildHonkEngine` task runs `cargo ndk` in `crates/honk-android` with
-`rustc --lib --crate-type cdylib --release --locked --features bench`. It builds the
-`cdylib` alone because Cargo skips `lto = "fat"` for a unit that is also an `rlib`.
+The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`. `assembleDebug` runs
+`:app:buildHonkEngineDebug`, which provides that variant's native library: it runs `cargo ndk` in
+`crates/honk-android` with `rustc --lib --crate-type cdylib --release --locked --features bench`.
+It builds the `cdylib` alone because Cargo skips `lto = "fat"` for a unit that is also an `rlib`.
 
 [`.github/workflows/android.yml`](.github/workflows/android.yml) lists the checks CI runs.
 

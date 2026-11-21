@@ -30,8 +30,8 @@ runner but never measures; the results are not a performance gate.
 - A Linux x86_64 build host. On other hosts, set `NDK_HOST_TAG` to the NDK's prebuilt
   directory name.
 - JDK 21 (`JAVA_HOME`).
-- Android SDK with NDK `30.0.16248370` (`ANDROID_HOME`, or `sdk.dir` in
-  `android/tunbench/local.properties`).
+- Android SDK with the API 37.1 platform (`platforms;android-37.1`) and NDK `30.0.16248370`
+  (`ANDROID_HOME`, or `sdk.dir` in `android/tunbench/local.properties`).
 - rustup with the repository's toolchain and the `aarch64-linux-android` target:
   `rustup target add aarch64-linux-android`.
 - cargo-ndk 4.1.2: `cargo install cargo-ndk --version 4.1.2 --locked`.
@@ -48,7 +48,7 @@ runner but never measures; the results are not a performance gate.
 ```sh
 (cd android/tunbench && ./gradlew assembleDebug)
 HONK_DIR=../honk android/scripts/build-netstack-bench.sh   # tcp_bulk, tcp_bulk-native, netstack-criterion -> android/scripts/out/
-(cd android/scripts && uv sync)               # the analyzer's environment: perfetto, pytest, ruff
+(cd android/scripts && uv sync)               # the analyzer's environment: perfetto, lizard, pytest, ruff
 ```
 
 The Gradle build takes the NDK from the Android Gradle plugin and needs no environment script.
@@ -62,11 +62,12 @@ before running it.
 Leave `CARGO_TARGET_DIR` unset or set it to `$HONK_DIR/target`, because the script copies the
 binaries from there.
 
-The Gradle build runs the `buildHonkEngine` task, which runs `cargo ndk` in `crates/honk-android`
-with the Android Gradle plugin's NDK to build `libhonkengine.so`: `cargo ndk ... rustc --lib
---crate-type cdylib --release --locked --features bench`. It overrides the manifest's
-`["cdylib", "rlib"]`, because Cargo applies `lto = "fat"` only when every crate type supports it. It builds hev with ndk-build.
-The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`.
+`assembleDebug` runs `:app:buildHonkEngineDebug`, which provides that variant's native library: it
+runs `cargo ndk` in `crates/honk-android` with the Android Gradle plugin's NDK to build
+`libhonkengine.so`: `cargo ndk ... rustc --lib --crate-type cdylib --release --locked --features
+bench`. It overrides the manifest's `["cdylib", "rlib"]`, because Cargo applies `lto = "fat"` only
+when every crate type supports it. It builds hev with ndk-build. The APK is
+`android/tunbench/app/build/outputs/apk/debug/app-debug.apk`.
 
 `crates/honk-android` is a standalone crate with its own `Cargo.lock`. It takes honk-netstack as a
 git dependency pinned to one honk revision. Its relay test runs on the build host:
@@ -209,10 +210,11 @@ runner's fields, `scan_start_ns` and `scan_end_ns` among them, pass through unch
 poll interval found. Quick table: `jq -r '[.seq,.engine,.case.kind,.flows,.joules.VSYS_PWR_VBATT]|@tsv'
 RUN_DIR/analysis.jsonl`.
 
-Gates for `run.sh` and `analyze.py`: `shellcheck android/scripts/run.sh`, `shfmt -d
-android/scripts/run.sh` and, in `android/scripts`, `uv run ruff check`, `uv run ruff format
---check`, `uv run pytest`. CI runs all of these but `shfmt`, with `uv run` locked to `uv.lock`, in a
-step before the Gradle step.
+Gates for `run.sh`, `analyze.py` and `check_limits.py`: `shellcheck android/scripts/run.sh`,
+`shfmt -d android/scripts/run.sh` and, in `android/scripts`, `uv run ruff check`, `uv run ruff
+format --check` and `uv run pytest`. CI runs all of these but `shfmt`, with `uv run` locked to
+`uv.lock`, in a step before the Gradle step. `uv run python check_limits.py --base-rev origin/main`
+checks the file and function limits of the app and the crate (see `AGENTS.md`).
 
 ## Known limits
 

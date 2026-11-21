@@ -7,9 +7,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- A bench app: no user data to back up or move, and the system's default icon will do. -->
     <application
         android:allowBackup="false"
-        android:label="TunBench">
+        android:label="TunBench"
+        tools:ignore="DataExtractionRules,MissingApplicationIcon">
 
         <activity
             android:name=".MainActivity"

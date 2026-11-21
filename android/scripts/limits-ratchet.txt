@@ -1,0 +1,12 @@
+# Items over the limits of check_limits.py, measured on 4596ac6. Each value equals the measurement:
+# when the code shrinks, lower it to the new value, or delete the line once the item is within the
+# limit. Raising one, or adding one, needs the maintainer's ruling (AGENTS.md, Gates).
+# Format: kind value path [lizard signature].
+file 613 crates/honk-android/src/engine.rs
+file 771 crates/honk-android/src/harness/load.rs
+file 834 crates/honk-android/tests/harness.rs
+nloc 82 crates/honk-android/src/harness/plan.rs rejects_out_of_range_values
+nloc 104 crates/honk-android/tests/relay.rs relay flows : usize , mtu : u16
+ccn 29 crates/honk-android/src/engine.rs pump stack : & mut Stack , c : & mut Conn
+ccn 21 crates/honk-android/src/harness/relay.rs accept_connect mut c : & TcpStream , upstream : SocketAddr
+ccn 23 crates/honk-android/tests/relay.rs relay flows : usize , mtu : u16
