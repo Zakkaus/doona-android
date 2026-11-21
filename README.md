@@ -29,8 +29,8 @@ CI gate.
 
 Install the prerequisites listed in
 [`android/scripts/README.md`](android/scripts/README.md#prerequisites): JDK 21, the Android SDK
-with NDK `30.0.16248370`, rustup with the `aarch64-linux-android` target, and cargo-ndk 4.1.2.
-Then build the debug APK:
+with the API 37.1 platform and NDK `30.0.16248370`, rustup with the `aarch64-linux-android`
+target, and cargo-ndk 4.1.2. Then build the debug APK:
 
 ```sh
 git clone --recursive https://github.com/Zakkaus/honk-android

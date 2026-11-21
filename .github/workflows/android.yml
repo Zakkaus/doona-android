@@ -50,10 +50,10 @@ jobs:
           workspaces: crates/honk-android
           cache-on-failure: true
           save-if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-      - name: Install the NDK and cargo-ndk
+      - name: Install the NDK, the API 37.1 platform and cargo-ndk
         run: |
           set -euo pipefail
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16248370"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16248370" "platforms;android-37.1"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/30.0.16248370" >> "$GITHUB_ENV"
           cargo install --locked cargo-ndk@4.1.2
       - name: fmt, clippy and tests

@@ -24,7 +24,7 @@ honk-android 是 [honk](https://github.com/daeuniverse/honk) 的 Android 部分�
 
 ## 建置
 
-先安裝 [`android/scripts/README.md`](android/scripts/README.md#prerequisites) 列出的前置需求：JDK 21、含 NDK `30.0.16248370` 的 Android SDK、加上 `aarch64-linux-android` target 的 rustup，以及 cargo-ndk 4.1.2。接著建置 debug APK：
+先安裝 [`android/scripts/README.md`](android/scripts/README.md#prerequisites) 列出的前置需求：JDK 21、含 API 37.1 平台與 NDK `30.0.16248370` 的 Android SDK、加上 `aarch64-linux-android` target 的 rustup，以及 cargo-ndk 4.1.2。接著建置 debug APK：
 
 ```sh
 git clone --recursive https://github.com/Zakkaus/honk-android

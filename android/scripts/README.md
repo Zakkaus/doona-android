@@ -30,8 +30,8 @@ runner but never measures; the results are not a performance gate.
 - A Linux x86_64 build host. On other hosts, set `NDK_HOST_TAG` to the NDK's prebuilt
   directory name.
 - JDK 21 (`JAVA_HOME`).
-- Android SDK with NDK `30.0.16248370` (`ANDROID_HOME`, or `sdk.dir` in
-  `android/tunbench/local.properties`).
+- Android SDK with the API 37.1 platform (`platforms;android-37.1`) and NDK `30.0.16248370`
+  (`ANDROID_HOME`, or `sdk.dir` in `android/tunbench/local.properties`).
 - rustup with the repository's toolchain and the `aarch64-linux-android` target:
   `rustup target add aarch64-linux-android`.
 - cargo-ndk 4.1.2: `cargo install cargo-ndk --version 4.1.2 --locked`.
