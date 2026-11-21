@@ -39,9 +39,9 @@ cargo test --locked --release --test relay
 cargo ndk -t arm64-v8a --platform 29 clippy --locked --all-targets --features bench -- -D warnings
 ```
 
-In `android/tunbench`: `./gradlew assembleDebug lint`, then `zipalign -c -P 16 4` on
-`app/build/outputs/apk/debug/app-debug.apk` and `llvm-readelf -lW` on both `.so` files: every
-`LOAD` segment must be aligned to `0x4000`.
+In `android/tunbench`: `./gradlew spotlessCheck assembleDebug lint`, then `zipalign -c -P 16 4`
+on `app/build/outputs/apk/debug/app-debug.apk` and `llvm-readelf -lW` on both `.so` files: every
+`LOAD` segment must be aligned to `0x4000`. `spotlessApply` fixes most format findings.
 
 In `android/scripts`: `uv run ruff check`, `uv run ruff format --check`, `uv run pytest`,
 `shellcheck run.sh` and `shfmt -d run.sh`.

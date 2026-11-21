@@ -18,7 +18,7 @@ honk-android 是 [honk](https://github.com/daeuniverse/honk) 的 Android 部分�
 | `android/scripts/` | 執行測試的 `run.sh`、分析用的 `analyze.py`、`build-netstack-bench.sh`，以及建置與執行說明。 |
 | `android/plans/` | 測試計畫：`smoke.json`、`compare.json`（第一輪）和 `compare-v2.json`（第二輪，加上目標速率 2000 Mbit/s 的 bulk）。 |
 | `doc/en/design/android-bench.md` | 測試工具的設計，以及保證數據有效的規則（[簡體中文版](doc/zh/design/android-bench.md)）。 |
-| `.github/workflows/android.yml` | CI：腳本檢查、rustfmt、Clippy、測試、APK 建置、Android lint 和 16 KiB 分頁對齊檢查。 |
+| `.github/workflows/android.yml` | CI：腳本檢查、rustfmt、Clippy、測試、Kotlin 格式、APK 建置、Android lint 和 16 KiB 分頁對齊檢查。 |
 
 `crates/honk-android/Cargo.toml` 從 Git 取得 honk-netstack，固定在 [Glassyiris/honk](https://github.com/Glassyiris/honk) 的 `c5b36a64`，也就是 [daeuniverse/honk#483](https://github.com/daeuniverse/honk/pull/483) 的頂端。
 

@@ -100,10 +100,14 @@ class BenchActivity : ComponentActivity() {
         val plan = intent.getStringExtra(EXTRA_PLAN)
         val error = when {
             !TunService.isFileName(run) -> "run id missing or not a file name"
+
             !TunService.isFileName(plan) -> "plan missing or not a file name"
+
             TunService.benchRunning() -> TunService.BENCH_BUSY
+
             // Consent is granted by run.sh (appops ACTIVATE_VPN); never ask with a dialog here.
             VpnService.prepare(this) != null -> "VPN consent missing"
+
             else -> null
         }
         if (error != null) {

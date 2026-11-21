@@ -53,15 +53,24 @@ class TunService : VpnService() {
 
         // ACTION_START, or the system starting us as an always-on VPN: use saved settings.
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-        val host = if (intent.hasExtra(EXTRA_HOST)) intent.getStringExtra(EXTRA_HOST)
-            else prefs.getString(EXTRA_HOST, MainActivity.DEFAULT_HOST)
+        val host = if (intent.hasExtra(EXTRA_HOST)) {
+            intent.getStringExtra(EXTRA_HOST)
+        } else {
+            prefs.getString(EXTRA_HOST, MainActivity.DEFAULT_HOST)
+        }
         val port =
             intent.getIntExtra(EXTRA_PORT, prefs.getInt(EXTRA_PORT, MainActivity.DEFAULT_PORT))
         val mtu = intent.getIntExtra(EXTRA_MTU, prefs.getInt(EXTRA_MTU, MainActivity.DEFAULT_MTU))
-        val eng = if (intent.hasExtra(EXTRA_ENGINE)) intent.getStringExtra(EXTRA_ENGINE)
-            else prefs.getString(EXTRA_ENGINE, ENGINE_HEV)
-        val cpuList = if (intent.hasExtra(EXTRA_CPUS)) intent.getStringExtra(EXTRA_CPUS)
-            else prefs.getString(EXTRA_CPUS, "")
+        val eng = if (intent.hasExtra(EXTRA_ENGINE)) {
+            intent.getStringExtra(EXTRA_ENGINE)
+        } else {
+            prefs.getString(EXTRA_ENGINE, ENGINE_HEV)
+        }
+        val cpuList = if (intent.hasExtra(EXTRA_CPUS)) {
+            intent.getStringExtra(EXTRA_CPUS)
+        } else {
+            prefs.getString(EXTRA_CPUS, "")
+        }
 
         stopTunnel()
         try {
@@ -87,7 +96,10 @@ class TunService : VpnService() {
             NotificationChannel(CHANNEL, "TunBench", NotificationManager.IMPORTANCE_LOW),
         )
         val open = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE,
         )
         val n = Notification.Builder(this, CHANNEL)
             .setContentTitle("TunBench")
@@ -128,8 +140,11 @@ class TunService : VpnService() {
         running = true
         handler.removeCallbacks(telemetryTick)
         handler.post(telemetryTick)
-        Log.i(TAG, "started $name: $host:$port, mtu $mtu, cpus '$cpuList' -> '$affinity', " +
-            "worker tid $engineTid")
+        Log.i(
+            TAG,
+            "started $name: $host:$port, mtu $mtu, cpus '$cpuList' -> '$affinity', " +
+                "worker tid $engineTid",
+        )
     }
 
     /** The VPN both modes build: 198.18.0.2/32 in 198.18.0.0/15. */

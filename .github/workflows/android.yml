@@ -65,9 +65,9 @@ jobs:
           cargo test --locked --features bench
           cargo test --locked --release --test relay
           cargo ndk -t arm64-v8a --platform 29 clippy --locked --all-targets --features bench -- -D warnings
-      - name: Build the APK and lint
+      - name: Check Kotlin format, build the APK and lint
         working-directory: android/tunbench
-        run: ./gradlew assembleDebug lint
+        run: ./gradlew spotlessCheck assembleDebug lint
       - name: Check the 16 KiB page alignment of the native libraries
         run: |
           set -euo pipefail
