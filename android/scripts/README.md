@@ -121,7 +121,8 @@ uv run --project android/scripts android/scripts/analyze.py android/results/<run
 ```
 
 `android/plans/smoke.json` is a short check of every case; `compare.json` is the full matrix
-(five interleaved repeats). A plan lists `engines` (`hev`, `honk`), `mtu`, `cases` (`bulk` with
+(five interleaved repeats) of the first round, and `compare-v2.json` the second round's: the same
+cases plus bulk up and down at a 2000 Mbit/s target rate. A plan lists `engines` (`hev`, `honk`), `mtu`, `cases` (`bulk` with
 `dir`, `flows` and an optional `rate_mbps`, `idle`, `tail`, `sparse`), `pin` (disjoint CPU lists
 for `engine`, `generator`, `sink` and, for hev, `relay`), `repeat`, `cooldown_seconds` and
 `interleave`. The runner rejects a plan with an unknown field or an out-of-range value before it starts.

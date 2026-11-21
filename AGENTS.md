@@ -12,7 +12,7 @@ TunBench benchmark app (`android/tunbench`), the bench scripts and plans (`andro
 ├── crates/honk-android/   # Rust crate -> libhonkengine.so; standalone, own Cargo.lock, toolchain file, release profile
 ├── android/tunbench/      # Gradle app dev.tunbench; hev-socks5-tunnel submodule under app/src/main/jni/
 ├── android/scripts/       # run.sh, analyze.py (uv project), build-netstack-bench.sh, android-env.sh, README
-├── android/plans/         # bench plans: smoke.json, compare.json
+├── android/plans/         # bench plans: smoke.json, compare.json, compare-v2.json
 ├── doc/en, doc/zh         # design/android-bench.md in both languages
 └── .github/workflows/     # android.yml: CI for the Rust, Android and script checks
 ```
@@ -70,7 +70,7 @@ the desktop's `~/.cache/android-dev/env.sh` points `CARGO_TARGET_DIR` elsewhere.
 
 ## Phone rules
 
-- Do not run an engine comparison (`android/plans/compare.json`, or any hev against honk run)
+- Do not run an engine comparison (`android/plans/compare*.json`, or any hev against honk run)
   without the maintainer's approval.
 - When no phone test is running, leave `svc power stayon false` and the screen allowed to sleep.
   A step that sets `stayon` must restore it in a trap on EXIT, INT and TERM (`run.sh` never
