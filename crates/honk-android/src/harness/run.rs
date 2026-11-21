@@ -72,6 +72,8 @@ pub struct Measured {
     pub bytes: Option<u64>,
     /// sparse: application sends in the window.
     pub sends: Option<u64>,
+    /// bulk and sparse: CLOCK_BOOTTIME right before the barrier opened.
+    pub open_ns: Option<u64>,
     /// bulk and sparse: CLOCK_BOOTTIME when the senders stopped; the window ends once the
     /// receivers have read all they sent.
     pub cut_ns: Option<u64>,
@@ -136,10 +138,16 @@ impl Setup<'_> {
 pub fn measure(case: &Case, flows: u32, s: &Setup, stop: &Stop) -> Measured {
     let secs = Duration::from_secs;
     let mut m = match *case {
-        Case::Bulk { dir, seconds, .. } => {
+        Case::Bulk {
+            dir,
+            seconds,
+            rate_mbps,
+            ..
+        } => {
+            let rate = rate_mbps.map(|r| f64::from(r) * 1e6 / f64::from(flows));
             let traffic = match dir {
-                Dir::Up => Traffic::Up,
-                Dir::Down => Traffic::Down,
+                Dir::Up => Traffic::Up { rate },
+                Dir::Down => Traffic::Down { rate },
             };
             with_flows(s, traffic, flows, secs(seconds), stop)
         }
@@ -244,6 +252,7 @@ fn with_flows(s: &Setup, traffic: Traffic, n: u32, d: Duration, stop: &Stop) -> 
         Err(e) => return Measured::rejected(e),
     };
     let window = s.open(Some(&flows));
+    let open_ns = sys::boottime_ns();
     w.open();
     let stopped = stop.wait(d);
     let cut_ns = sys::boottime_ns();
@@ -281,6 +290,7 @@ fn with_flows(s: &Setup, traffic: Traffic, n: u32, d: Duration, stop: &Stop) -> 
         sends: closed
             .sends
             .filter(|_| matches!(traffic, Traffic::Sparse { .. })),
+        open_ns: Some(open_ns),
         cut_ns: Some(cut_ns),
         window: Some(closed),
         reasons,
@@ -298,7 +308,7 @@ fn undelivered(w: &Workload, n: u32) -> Option<String> {
 /// after the sink read the burst's end. A window that opens only after that, once the burst's
 /// teardown is done, observes nothing and is rejected.
 fn tail(s: &Setup, burst: Duration, observe: Duration, stop: &Stop) -> Measured {
-    let (w, mut flows) = match start_flows(s, Traffic::Up, 1, stop) {
+    let (w, mut flows) = match start_flows(s, Traffic::Up { rate: None }, 1, stop) {
         Ok(x) => x,
         Err(e) => return Measured::rejected(e),
     };
@@ -452,6 +462,10 @@ struct Record<'a> {
     /// The thread-sampling scans at the window's start and end (`Closed::scan_start_ns`).
     scan_start_ns: Option<u64>,
     scan_end_ns: Option<u64>,
+    /// bulk and sparse: the flows start, unlike `boottime_start_ns`, which precedes the
+    /// window's thread scan. Left out when no barrier opened.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    boottime_open_ns: Option<u64>,
     boottime_cut_ns: Option<u64>,
     bytes: Option<u64>,
     sends: Option<u64>,
@@ -498,6 +512,7 @@ fn record<'a>(
         elapsed_ns: None,
         scan_start_ns: None,
         scan_end_ns: None,
+        boottime_open_ns: m.open_ns,
         boottime_cut_ns: m.cut_ns,
         bytes: m.bytes,
         sends: m.sends,

@@ -122,9 +122,13 @@ uv run --project android/scripts android/scripts/analyze.py android/results/<run
 
 `android/plans/smoke.json` is a short check of every case; `compare.json` is the full matrix
 (five interleaved repeats). A plan lists `engines` (`hev`, `honk`), `mtu`, `cases` (`bulk` with
-`dir` and `flows`, `idle`, `tail`, `sparse`), `pin` (disjoint CPU lists for `engine`,
-`generator`, `sink` and, for hev, `relay`), `repeat`, `cooldown_seconds` and `interleave`. The
-runner rejects a plan with an unknown field or an out-of-range value before it starts.
+`dir`, `flows` and an optional `rate_mbps`, `idle`, `tail`, `sparse`), `pin` (disjoint CPU lists
+for `engine`, `generator`, `sink` and, for hev, `relay`), `repeat`, `cooldown_seconds` and
+`interleave`. The runner rejects a plan with an unknown field or an out-of-range value before it starts.
+`rate_mbps` (1-100000) is the target rate of all flows of a bulk case together, shared equally;
+without it the flows send at full speed. Each result line whose flows started records
+`boottime_open_ns`, when they started, so the achieved rate is
+`bytes × 8000 ÷ ((boottime_cut_ns − boottime_open_ns) × rate_mbps)`.
 
 `run.sh PLAN.json [RUN_ID]` pushes the plan, starts Perfetto and then `BenchActivity`, waits for
 the app's `done` file within a deadline taken from the plan, and pulls `plan.json`,

@@ -11,6 +11,8 @@ pub const MAX_FLOWS: u32 = 256;
 /// Every duration in a plan is at most this long, so a run always ends.
 pub const MAX_SECONDS: u64 = 3600;
 pub const MAX_REPEAT: u32 = 100;
+/// A bulk case's `rate_mbps`, all flows together.
+pub const MAX_RATE_MBPS: u32 = 100_000;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -48,6 +50,9 @@ pub enum Case {
         dir: Dir,
         flows: Vec<u32>,
         seconds: u64,
+        /// Target rate of all flows together, shared equally; without it they send at full speed.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        rate_mbps: Option<u32>,
     },
     Idle {
         seconds: u64,
@@ -226,10 +231,16 @@ impl Case {
         };
         match *self {
             Case::Bulk {
-                ref flows, seconds, ..
+                ref flows,
+                seconds,
+                rate_mbps,
+                ..
             } => {
                 if flows.is_empty() || !flows.iter().all(|n| (1..=MAX_FLOWS).contains(n)) {
                     return Err(format!("flows: 1-{MAX_FLOWS} each, at least one"));
+                }
+                if rate_mbps.is_some_and(|r| !(1..=MAX_RATE_MBPS).contains(&r)) {
+                    return Err(format!("rate_mbps: 1-{MAX_RATE_MBPS} Mbit/s"));
                 }
                 secs("seconds", seconds)
             }
@@ -291,7 +302,7 @@ mod tests {
       "mtu": [8500],
       "cases": [
         { "kind": "bulk", "dir": "up",   "flows": [1, 4], "seconds": 10 },
-        { "kind": "bulk", "dir": "down", "flows": [1, 4], "seconds": 10 },
+        { "kind": "bulk", "dir": "down", "flows": [1, 4], "seconds": 10, "rate_mbps": 2000 },
         { "kind": "idle", "seconds": 60 },
         { "kind": "tail", "burst_seconds": 5, "observe_seconds": 10 },
         { "kind": "sparse", "interval_ms": 1000, "bytes": 64, "seconds": 60 }
@@ -321,6 +332,11 @@ mod tests {
         assert_eq!(p.engines, vec![Engine::Hev, Engine::Honk]);
         assert_eq!(p.mtu, vec![8500]);
         assert_eq!(p.cases.len(), 5);
+        let rated = serde_json::json!({
+            "kind": "bulk", "dir": "down", "flows": [1, 4], "seconds": 10, "rate_mbps": 2000
+        });
+        assert_eq!(serde_json::to_value(&p.cases[1]).unwrap(), rated);
+        assert!(serde_json::to_value(&p.cases[0]).unwrap()["rate_mbps"].is_null());
         assert_eq!(
             p.cases[3],
             Case::Tail {
@@ -439,6 +455,13 @@ mod tests {
             let e = rejected(from, to);
             assert!(e.contains(field), "{to}: {e}");
         }
+        for to in ["\"rate_mbps\": 0", "\"rate_mbps\": 100001"] {
+            let e = rejected("\"rate_mbps\": 2000", to);
+            assert!(
+                e.contains("cases[1].rate_mbps: 1-100000 Mbit/s"),
+                "{to}: {e}"
+            );
+        }
         // Type errors come from serde, which names the line and column.
         for (from, to) in [
             ("[8500]", "[70000]"),
@@ -485,6 +508,22 @@ mod tests {
             let e = rejected(from, to);
             assert!(e.contains(pair), "{to}: {e}");
         }
+    }
+
+    #[test]
+    fn every_plan_in_the_repository_parses_and_schedules() {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../android/plans");
+        let mut plans = 0;
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().is_some_and(|e| e == "json") {
+                let json = std::fs::read_to_string(&path).unwrap();
+                let plan = Plan::parse(&json).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+                assert!(!plan.schedule().is_empty(), "{}", path.display());
+                plans += 1;
+            }
+        }
+        assert!(plans > 0, "no plan in {dir}");
     }
 
     #[test]

@@ -162,7 +162,7 @@ flowchart LR
 窗口有两个边界时间戳，都取 `CLOCK_BOOTTIME`，即 Perfetto trace 使用的时钟。
 
 - **起点的顺序。** 运行器先读取平台状态、cpuset 和每个线程的掩码，再取起始时间戳、tun 计数器和每个线程的计数器。终点先读每个线程的计数器、tun 计数器和载荷，取结束时间戳，之后才再次读取平台状态、cpuset、引擎的线程和掩码。这些探测会调用 app，可能较慢；它们不会给边界之内增加 CPU 时间或字节。
-- **截止点。** 对 `bulk` 和 `sparse`，flow 在一个屏障处同时开始。屏障在窗口打开之后、接收端接受了全部预期连接之后才放开（hev 的启动在其线程创建后就返回，这并不能证明数据路径可用）。测试计划的秒数是发送时间。到达截止点时发送端停止并半关闭，`boottime_cut_ns` 记录这一时刻。
+- **截止点。** 对 `bulk` 和 `sparse`，flow 在一个屏障处同时开始。屏障在窗口打开之后、接收端接受了全部预期连接之后才放开（hev 的启动在其线程创建后就返回，这并不能证明数据路径可用）。测试计划的秒数是发送时间。`boottime_open_ns` 记录屏障放开前的时刻。到达截止点时发送端停止并半关闭，`boottime_cut_ns` 记录这一时刻。
 - **排空。** 截止之后，接收端把已发送的数据读到末尾，运行器等待全部接收端完成，窗口在所有 flow 线程仍存在时关闭。因此仍在 socket 缓冲区中的字节会被计入；排空之后读取计数器即使较慢，也不会再有新载荷，窗口不会漏掉已计载荷对应的 CPU 时间。从截止到结束的这段时间属于窗口，所以 CPU 时间和能耗包含排空阶段。
 - **交付。** flow 结束时，每个接收端把读到的字节数回复给发送端，发送端与自己写出的字节数比较。读或写在任一端失败（包括被重置）、流提前结束，或回复与发送端写出的不一致，该 flow 即失效。bulk 和 sparse 的 flow 在窗口关闭之后才结束，因此回复不会给窗口内增加 CPU 时间或字节；tail 的突发在窗口打开之前就已结束。任何 flow 失效，bulk、sparse 和 tail 的测量都被拒绝。
 - **同一时段。** CPU 时间、上下文切换、tun 计数器和载荷都覆盖两个时间戳之间的区间。analyze 脚本按同样两个时间戳从 trace 中切出能耗和唤醒次数。
@@ -248,7 +248,7 @@ run 脚本在整次运行内录制一份 Perfetto trace，含电源轨和调度�
   "mtu": [8500],
   "cases": [
     { "kind": "bulk", "dir": "up",   "flows": [1, 4], "seconds": 10 },
-    { "kind": "bulk", "dir": "down", "flows": [1, 4], "seconds": 10 },
+    { "kind": "bulk", "dir": "down", "flows": [1, 4], "seconds": 10, "rate_mbps": 2000 },
     { "kind": "idle", "seconds": 60 },
     { "kind": "tail", "burst_seconds": 5, "observe_seconds": 10 },
     { "kind": "sparse", "interval_ms": 1000, "bytes": 64, "seconds": 60 }
@@ -262,6 +262,7 @@ run 脚本在整次运行内录制一份 Perfetto trace，含电源轨和调度�
 
 - `pin` 给出的 CPU 列表不得重叠；测试计划运行 hev 时必须有 `relay`。被 app 的 cpuset 缩小的绑定会在掩码回读时暴露，并拒绝该窗口，不会被放宽。
 - MTU 至少为 1280，flow 数为 1 到 256，`repeat` 为 1 到 100，每个时长为 1 到 3600 秒（因此运行一定会结束），`bytes` 不超过一个写缓冲区（64 KiB）。
+- `bulk` 的 `rate_mbps` 可选（1 到 100000），是全部 flow 合计的目标速率，各 flow 平分。每个发送端用一个能装下自己 10 ms 份额的令牌桶限速，因此发送量不超过份额乘以已过时间再加一桶；发送端卡住后，补发的量不超过一桶。没有 `rate_mbps` 时 flow 全速发送。`tail` 和 `sparse` 不限速。
 - `mtu` 列出要依次取的值，每一行结果都写明所用的 MTU。
 
 ## 接口
@@ -316,12 +317,14 @@ app 在其私有文件下以运行 id 命名的目录中写入计划副本、`re
 | 组 | 字段 |
 | --- | --- |
 | 标识 | `run`、`seq`、`steps`、`case_index`、`rep`、`engine`、`mtu`、`flows`、`case`、`pin`。 |
-| 窗口 | `boottime_start_ns`、`boottime_end_ns`、`elapsed_ns`、`boottime_cut_ns`、`scan_start_ns`、`scan_end_ns`、`clk_tck`。 |
+| 窗口 | `boottime_start_ns`、`boottime_end_ns`、`elapsed_ns`、`boottime_open_ns`、`boottime_cut_ns`、`scan_start_ns`、`scan_end_ns`、`clk_tck`。 |
 | 负载 | `bytes`（接收端载荷）、`sends`（sparse）、`tail`（突发开始时和接收端读到突发末尾时的 `CLOCK_BOOTTIME` 标记）。 |
 | 角色 | `roles.engine`、`relay`、`generator`、`sink`、`engine_relay`：CPU 时间、user 和 system tick、主动和被动切换次数，以及每个线程的 TID、名字、掩码、最后运行的 CPU 和 CPU 时间。 |
 | 路由 | 窗口内 `tun` 的读次数、读字节、写次数、写字节。 |
 | 状态 | `cpuset_start`、`cpuset_end`、`platform_start`、`platform_end`。 |
 | 结论 | `status`（`ok` 或 `rejected`）、`reason`、`unreadable`。 |
+
+`boottime_open_ns` 与 `rate_mbps` 一起新增，记录 flow 屏障放开前的时刻（见截止点）。屏障放开过的行都带这个字段，不论有没有 `rate_mbps`，因此没有速率的 `bulk` 和 `sparse` 行比此前写出的行多这一个键。`idle`、`tail` 行以及在屏障前被拒绝的测量不写这个键。
 
 ## 未采用的方案
 
