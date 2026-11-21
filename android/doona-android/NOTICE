@@ -1,0 +1,17 @@
+doona-Android sketch: third-party material
+
+Noto Sans TC (app/src/main/res/font/noto_sans_tc_w*.ttf)
+Subset and fixed-weight instances of the variable font in @fontsource-variable/noto-sans-tc 5.3.0, as doona ships
+it, built by tools/fonts.py. Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+SIL Open Font License 1.1: app/src/main/assets/licenses/noto-sans-tc-OFL.txt
+
+Adobe Spectrum 2 icons (app/src/main/res/drawable/ic_*.xml except ic_duck.xml)
+Copyright 2024 Adobe. Adapted from @react-spectrum/s2 through doona src/ui/icons; geometry unchanged, converted to
+vector drawables by tools/icons.py. Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+
+Twemoji flags (app/src/main/res/drawable/flag_*.xml)
+Copyright Twitter, Inc and other contributors, taken from doona's Twemoji Country Flags font
+(src/ui/assets/TwemojiCountryFlags.woff2). CC-BY 4.0: https://creativecommons.org/licenses/by/4.0/
+
+doona duck mark (app/src/main/res/drawable/ic_duck.xml)
+From doona src/logo.svg.

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adobe Spectrum 2 icon from doona src/ui/icons/Clock.tsx, Apache-2.0. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="20"
+    android:viewportHeight="20">
+    <path
+        android:pathData="M10 18.75c-4.825 0-8.75-3.925-8.75-8.75S5.175 1.25 10 1.25s8.75 3.925 8.75 8.75-3.925 8.75-8.75 8.75m0-16c-3.998 0-7.25 3.252-7.25 7.25s3.252 7.25 7.25 7.25 7.25-3.252 7.25-7.25S13.998 2.75 10 2.75"
+        android:fillColor="#FF000000" />
+    <path
+        android:pathData="M13.249 12.645c-.129 0-.26-.034-.379-.104l-3.22-1.895c-.23-.134-.37-.38-.37-.646V5c0-.414.335-.75.75-.75s.75.336.75.75v4.571l2.85 1.677c.357.21.476.67.266 1.026-.14.239-.39.37-.647.37"
+        android:fillColor="#FF000000" />
+</vector>
