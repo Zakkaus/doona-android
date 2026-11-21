@@ -136,7 +136,12 @@ its environment variables. `adb shell` calls reach the phone while it measures, 
 the finish only every 30 s (`POLL`).
 
 The screen stays interactive with the panel black: the app shows a full-screen black Activity
-that keeps the screen on while it is in front. A few seconds after the start `run.sh` checks
+that keeps the screen on while it is in front. `run.sh` wakes the phone before the start and
+reads `mWakefulness` first, recording `woke=1` in `meta.txt` if the phone was not Awake, `woke=0`
+if it was, and `woke=unknown` with a warning if the read failed or named no known state. With
+`woke=1` the exit trap sends `KEYCODE_SLEEP` and logs the wakefulness it reads afterwards; with
+`woke=unknown` it leaves the phone as it is. It does not fail the run on that reading, because the
+key may take effect late. A few seconds after the start `run.sh` checks
 `mWakefulness=Awake` (from `dumpsys power`), the display state (from `dumpsys display`, which
 Android 17 no longer prints in `dumpsys power`) and `BenchActivity` as the resumed top activity, and
 aborts otherwise. `run.sh` never changes `stayon`: it records `stay_on_while_plugged_in` at the
@@ -151,7 +156,8 @@ interrupt it. The stop intent cancels only the run in progress with that id and 
 screen on; Back on the black screen cancels the run in progress. `kill -9` (SIGKILL) cannot run
 the trap: stop the app with
 `adb shell am start -n dev.tunbench/.BenchActivity --ez stop true --es run <run id>`, stop Perfetto,
-and check that `adb shell settings get global stay_on_while_plugged_in` prints 0.
+check that `adb shell settings get global stay_on_while_plugged_in` prints 0, and, if `meta.txt`
+has `woke=1`, put the phone back to sleep with `adb shell input keyevent KEYCODE_SLEEP`.
 
 ### Analyze
 

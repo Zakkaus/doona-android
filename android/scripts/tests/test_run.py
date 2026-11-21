@@ -1,4 +1,8 @@
-"""run.sh against a stub adb on PATH that logs every call and answers the few the script reads."""
+"""run.sh against a stub adb on PATH that logs every call and answers the few the script reads.
+
+The stub keeps the phone's wakefulness in $STUB_DIR/wakefulness; the wake and sleep keys switch it,
+except that the wake key leaves it Asleep with STUB_STAYS_ASLEEP.
+"""
 
 import json
 import os
@@ -24,7 +28,11 @@ case "$*" in
   *"getprop ro.build.version.sdk_full"*) echo 37.2 ;;
   *"pm path"*) echo package:/data/app/base.apk ;;
   *sha256sum*) echo "abc123  /data/app/base.apk" ;;
-  *"dumpsys power"*) printf 'mWakefulness=%s\n' "$STUB_WAKEFULNESS" ;;
+  *"dumpsys power"*)  # with STUB_POWER_UNREAD it fails until the wake key
+    [ -z "$STUB_POWER_UNREAD" ] || grep -q KEYCODE_WAKEUP "$STUB_DIR/log" || exit 1
+    printf 'mWakefulness=%s\n' "$(cat "$STUB_DIR/wakefulness")" ;;
+  *KEYCODE_WAKEUP*) [ -n "$STUB_STAYS_ASLEEP" ] || echo Awake >"$STUB_DIR/wakefulness" ;;
+  *KEYCODE_SLEEP*) echo Asleep >"$STUB_DIR/wakefulness" ;;
   *"dumpsys display"*) printf '  Display State=%s\n' "${STUB_DISPLAY:-ON}" ;;
   *"dumpsys activity"*) echo "topResumedActivity=ActivityRecord{1 u0 $ACTIVITY t1}" ;;
   *pidof*) echo 123 ;;
@@ -63,6 +71,7 @@ def phone(tmp_path):
     def run(done, wakefulness="Awake", plan=PLAN, **extra):
         """Runs with `extra` as more environment (STUB_* switches, POLL, STEP, MARGIN)."""
         (tmp_path / "plan.json").write_text(json.dumps(plan))
+        (tmp_path / "wakefulness").write_text(wakefulness)
         env = {
             **os.environ,
             "PATH": f"{stub.parent}:{os.environ['PATH']}",
@@ -70,7 +79,6 @@ def phone(tmp_path):
         }
         env |= {
             "STUB_DONE": done,
-            "STUB_WAKEFULNESS": wakefulness,
             "RESULTS": str(tmp_path / "out"),
         }
         env |= {"POLL": "0", "GRACE": "0", "SCREEN_WAIT": "0"} | extra
@@ -84,7 +92,7 @@ def phone(tmp_path):
 
 
 def test_a_failed_run_still_stops_the_bench_and_perfetto(phone):
-    result, log, _, _ = phone(done="", wakefulness="Asleep")
+    result, log, _, _ = phone(done="", STUB_DISPLAY="OFF")
     assert result.returncode != 0
     assert "am start -n dev.tunbench/.BenchActivity --ez stop true --es run r1" in log
     assert "kill -TERM 4242" in log
@@ -120,6 +128,35 @@ def test_a_finished_run_is_pulled_and_leaves_no_stayon_behind(phone):
     assert "run-as dev.tunbench cp /data/local/tmp/r1.json files/plans/r1.json" in log
     assert "--es plan r1.json --es run r1" in log
     assert "appops set dev.tunbench ACTIVATE_VPN allow" in log
+
+
+def test_a_run_that_woke_the_phone_puts_it_back_to_sleep(phone):
+    result, log, out, _ = phone(done="ok", wakefulness="Asleep")
+    assert result.returncode == 0, result.stderr
+    assert "KEYCODE_SLEEP" in log
+    assert (out.parent.parent / "wakefulness").read_text().strip() == "Asleep"
+    assert "woke=1" in (out / "meta.txt").read_text().splitlines()
+
+
+def test_a_run_that_found_the_phone_awake_leaves_it_awake(phone):
+    _, log, out, _ = phone(done="ok", wakefulness="Awake")
+    assert "KEYCODE_SLEEP" not in log
+    assert "woke=0" in (out / "meta.txt").read_text().splitlines()
+
+
+def test_an_unreadable_wakefulness_leaves_the_phone_as_it_is(phone):
+    # the phone is Awake, but the read before the wake key fails
+    result, log, out, _ = phone(done="ok", wakefulness="Awake", STUB_POWER_UNREAD="1")
+    assert result.returncode == 0, result.stderr
+    assert "KEYCODE_SLEEP" not in log
+    assert "woke=unknown" in (out / "meta.txt").read_text().splitlines()
+
+
+def test_a_phone_still_asleep_after_the_wake_key_aborts_the_run(phone):
+    result, _, _, _ = phone(done="ok", wakefulness="Asleep", STUB_STAYS_ASLEEP="1")
+    assert result.returncode != 0
+    assert "the phone is not awake with the bench in front" in result.stderr
+    assert "mWakefulness=Asleep" in result.stderr
 
 
 def test_the_trace_config_parses_and_lasts_as_long_as_the_plan(phone):

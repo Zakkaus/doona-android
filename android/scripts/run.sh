@@ -5,8 +5,8 @@
 # Usage: run.sh PLAN.json [RUN_ID]
 #   RUN_ID (A-Z a-z 0-9 . _ -) defaults to <date>-<time>-<plan name>. Prints the results directory,
 #   $RESULTS/RUN_ID: plan.json, results.jsonl and done (written by the app), trace.pftrace,
-#   meta.txt (APK, plan, build, thermal, stay_on_while_plugged_in) and screen.txt (wakefulness,
-#   display, brightness).
+#   meta.txt (APK, plan, build, thermal, stay_on_while_plugged_in, woke) and screen.txt
+#   (wakefulness, display, brightness).
 #   Then: uv run --project android/scripts android/scripts/analyze.py <that directory>
 #
 # Contract with the app (BenchActivity, dev.tunbench):
@@ -18,7 +18,10 @@
 #   pushed there and copied into files/plans/ with run-as; consent is appops ACTIVATE_VPN allow.
 #
 # The phone must stay interactive with the panel black while it measures: BenchActivity keeps the
-# screen on (FLAG_KEEP_SCREEN_ON) only while it is in front. A few seconds after the start,
+# screen on (FLAG_KEEP_SCREEN_ON) only while it is in front. The script wakes the phone before the
+# start and records in meta.txt whether it woke it (woke=1, 0, or unknown when the wakefulness
+# could not be read); with woke=1 the exit trap sends KEYCODE_SLEEP and logs the wakefulness it
+# reads afterwards, without failing the run on it. A few seconds after the start,
 # mWakefulness=Awake, the display ON and BenchActivity the resumed top activity must hold, else the
 # run aborts. The script never changes stay_on_while_plugged_in; it records the setting at the
 # start and the end, refuses to wake the phone if it is not 0 at the start and fails if it is not
@@ -113,6 +116,7 @@ perfetto_pid=""
 traced=0
 started=0
 finished=0
+woke=0
 
 prop() { dev getprop "$1"; }
 thermal() {
@@ -211,6 +215,11 @@ cleanup() {
     log "stay_on_while_plugged_in is '$stay', not 0: the phone will not sleep on USB power"
     fail=1
   }
+  if [ "$woke" = 1 ]; then
+    # Only logged: the key may take effect late, and the data is already complete.
+    dev input keyevent KEYCODE_SLEEP
+    log "sent KEYCODE_SLEEP: $(dev dumpsys power | grep -o 'mWakefulness=[A-Za-z]*')"
+  fi
   if [ "$finished" = 1 ]; then
     result=$(cat "$out/done" 2>/dev/null)
     log "done: $result"
@@ -239,6 +248,18 @@ stay_start=$(dev settings get global stay_on_while_plugged_in)
 [ "$stay_start" = 0 ] || die "stay_on_while_plugged_in is '$stay_start', not 0; not waking the phone"
 
 dev appops set "$pkg" ACTIVATE_VPN allow
+# woke: 1 if the phone was not Awake, unknown if its wakefulness could not be read, which the exit
+# trap leaves alone. Recorded before the wake key, so that a run killed with -9 still tells.
+power=$(dev dumpsys power) || power=""
+case $power in
+*mWakefulness=Awake*) woke=0 ;;
+*mWakefulness=Asleep* | *mWakefulness=Dozing* | *mWakefulness=Dreaming*) woke=1 ;;
+*)
+  woke=unknown
+  log "warning: cannot read the wakefulness; the phone will not be put back to sleep"
+  ;;
+esac
+echo "woke=$woke" >>"$out/meta.txt"
 dev input keyevent KEYCODE_WAKEUP
 adb push "$plan" "/data/local/tmp/$run_id.json" >/dev/null
 as_app mkdir -p files/plans
