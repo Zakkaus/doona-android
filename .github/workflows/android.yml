@@ -2,11 +2,8 @@ name: Android
 
 on:
   push:
-    branches: [main, dev]
-    paths: ["crates/honk-android/**", "crates/honk-netstack/**", "Cargo.toml", "android/**", ".gitmodules", ".github/workflows/android.yml"]
+    branches: [main]
   pull_request:
-    branches: [main, dev]
-    paths: ["crates/honk-android/**", "crates/honk-netstack/**", "Cargo.toml", "android/**", ".gitmodules", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 permissions:
