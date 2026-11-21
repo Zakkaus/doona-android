@@ -1,6 +1,6 @@
 # Agent guide
 
-honk-android holds honk's Android VpnService integration crate (`crates/honk-android`), the
+doona-android holds honk's Android VpnService integration crate (`crates/honk-android`), the
 TunBench benchmark app (`android/tunbench`), the bench scripts and plans (`android/scripts`,
 `android/plans`) and the harness design (`doc/{en,zh}/design/android-bench.md`). Start with
 [`README.md`](README.md) and [`android/scripts/README.md`](android/scripts/README.md).

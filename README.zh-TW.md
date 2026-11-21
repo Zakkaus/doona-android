@@ -1,8 +1,8 @@
-# honk-android
+# doona-android
 
 [English](README.md) | 繁體中文
 
-honk-android 是 [honk](https://github.com/daeuniverse/honk) 的 Android 部分，包含兩項：
+doona-android 是 [honk](https://github.com/daeuniverse/honk) 的 Android 部分，包含兩項：
 
 - `honk-android`：在 Android VpnService 的 tun 上執行 honk-netstack 的 Rust crate；
 - TunBench：在同一部手機上比較它和 [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel) 的 Android app。
@@ -27,8 +27,8 @@ honk-android 是 [honk](https://github.com/daeuniverse/honk) 的 Android 部分�
 先安裝 [`android/scripts/README.md`](android/scripts/README.md#prerequisites) 列出的前置需求：JDK 21、含 API 37.1 平台與 NDK `30.0.16248370` 的 Android SDK、加上 `aarch64-linux-android` target 的 rustup，以及 cargo-ndk 4.1.2。接著建置 debug APK：
 
 ```sh
-git clone --recursive https://github.com/Zakkaus/honk-android
-cd honk-android/android/tunbench
+git clone --recursive https://github.com/Zakkaus/doona-android
+cd doona-android/android/tunbench
 ./gradlew assembleDebug
 ```
 
