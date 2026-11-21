@@ -1,0 +1,223 @@
+package dev.doona.android.ui
+
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import dev.doona.android.R
+import dev.doona.android.theme.DoonaTheme
+
+enum class Hub(@StringRes val label: Int, @DrawableRes val icon: Int) {
+    // Each hub shows its first page's icon (`src/shell/HubBar.tsx:33`, `src/shell/registry.ts`).
+    Activity(R.string.hub_activity, R.drawable.ic_speed_fast),
+    Traffic(R.string.hub_traffic, R.drawable.ic_link),
+    Routing(R.string.hub_routing, R.drawable.ic_share),
+    Settings(R.string.hub_settings, R.drawable.ic_file_text),
+}
+
+/** Icon action with a 48 dp touch target and the 25 dp touch icon (§6). */
+@Composable
+fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit = {}) {
+    Box(
+        Modifier
+            .size(DoonaTheme.size.touch)
+            .clip(DoonaTheme.shape.pill)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        DoonaIcon(icon, DoonaTheme.colors.text)
+    }
+}
+
+/**
+ * Top app bar (§8): 64 high on the base fill, drawn under the status bar. The start holds the duck mark on a hub
+ * page and the back arrow on a pushed page; icon actions sit at the end.
+ */
+@Composable
+fun TopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(DoonaTheme.colors.window)
+            .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Top))
+            .height(DoonaTheme.size.topBar)
+            .padding(horizontal = DoonaTheme.space.s3),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
+            IconAction(R.drawable.ic_arrow_back, stringResource(R.string.ui_back), onBack)
+        } else {
+            Box(Modifier.size(DoonaTheme.size.touch), contentAlignment = Alignment.Center) {
+                Image(painterResource(R.drawable.ic_duck), contentDescription = stringResource(R.string.app_name), modifier = Modifier.size(DoonaTheme.size.logo))
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        actions()
+    }
+}
+
+/**
+ * Bottom hub bar (§8): 64 high plus the gesture bar, base fill, padding 0 × 8, four equal items; each a 56 × 32 pill
+ * holding the 25 px icon over a 12/16 label, gap 4. The current pill takes the selected fill and the accent icon.
+ */
+@Composable
+fun HubBar(current: Hub, onSelect: (Hub) -> Unit) {
+    val c = DoonaTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(c.window)
+            .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Bottom))
+            .height(DoonaTheme.size.bottomBar)
+            .padding(horizontal = DoonaTheme.space.s2)
+            .selectableGroup(),
+    ) {
+        Hub.entries.forEach { hub ->
+            val on = hub == current
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+                    .selectable(on, role = Role.Tab, onClick = { onSelect(hub) }),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(DoonaTheme.space.s1, Alignment.CenterVertically),
+            ) {
+                Box(
+                    Modifier
+                        .size(DoonaTheme.size.hubPillWidth, DoonaTheme.size.hubPillHeight)
+                        .clip(DoonaTheme.shape.pill)
+                        .then(if (on) Modifier.background(c.selected) else Modifier),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    DoonaIcon(hub.icon, if (on) c.accent else c.textSecondary)
+                }
+                Text(
+                    stringResource(hub.label),
+                    style = if (on) DoonaTheme.type.navLabelCurrent else DoonaTheme.type.navLabel,
+                    color = if (on) c.text else c.textSecondary,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The page sheet (§8): surface fill with 16 px top corners under the top bar; padding 20 top and 16 sides; blocks
+ * stacked by the caller.
+ */
+@Composable
+fun PageSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .clip(DoonaTheme.shape.sheet)
+            .background(DoonaTheme.colors.sheet)
+            .verticalScroll(rememberScrollState())
+            .padding(
+                start = DoonaTheme.space.s4,
+                end = DoonaTheme.space.s4,
+                top = DoonaTheme.space.s5,
+                bottom = DoonaTheme.space.s6,
+            ),
+        content = content,
+    )
+}
+
+/** Page title `.rp-h1` 28/36/800 at the top of the sheet: the large title of the top app bar. */
+@Composable
+fun PageTitle(text: String) {
+    Text(text, style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text, maxLines = 1, modifier = Modifier.semantics { heading() })
+}
+
+/**
+ * Tab row: doona's page links (§8) as native tabs. Each tab is 48 high, padding 0 × 12, 14/500; the current one
+ * carries a 2 px pill underline in text colour; tabs 4 apart over a 1 px line.
+ */
+@Composable
+fun PageTabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit = {}) {
+    val c = DoonaTheme.colors
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(DoonaTheme.space.s1)) {
+            tabs.forEachIndexed { i, label ->
+                val on = i == selected
+                Box(
+                    Modifier
+                        .height(DoonaTheme.size.touch)
+                        .selectable(on, role = Role.Tab, onClick = { onSelect(i) }),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(label, style = DoonaTheme.type.label, color = c.text, maxLines = 1, modifier = Modifier.padding(horizontal = DoonaTheme.space.s3))
+                    if (on) {
+                        Box(Modifier.matchParentSize(), contentAlignment = Alignment.BottomCenter) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(DoonaTheme.size.tabUnderline)
+                                    .clip(DoonaTheme.shape.pill)
+                                    .background(c.text),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(DoonaTheme.size.border).background(c.line))
+    }
+}
+
+/** A hub page: top bar, sheet, hub bar; the window's base colour runs under both system bars. */
+@Composable
+fun HubPage(
+    hub: Hub,
+    onHub: (Hub) -> Unit,
+    onBack: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(Modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+        TopBar(onBack, actions)
+        PageSheet(Modifier.weight(1f), content)
+        HubBar(hub, onHub)
+    }
+}
+
+/** Vertical gap between blocks, from the spacing scale. */
+@Composable
+fun Gap(size: androidx.compose.ui.unit.Dp) = Spacer(Modifier.height(size))
+
+@Composable
+fun HGap(size: androidx.compose.ui.unit.Dp) = Spacer(Modifier.width(size))
