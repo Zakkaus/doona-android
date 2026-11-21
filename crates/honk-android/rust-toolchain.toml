@@ -1,4 +1,4 @@
-# Same compiler as the workspace (the root rust-toolchain.toml).
+# Same compiler as honk (its root rust-toolchain.toml at the pinned honk-netstack revision).
 [toolchain]
 channel = "1.99.1"
 components = ["rustfmt", "clippy"]

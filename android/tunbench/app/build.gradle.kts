@@ -21,7 +21,7 @@ val buildHonkEngine = tasks.register<Exec>("buildHonkEngine") {
     environment("PATH", cargoBin + File.pathSeparator + System.getenv("PATH"))
     doFirst { environment("ANDROID_NDK_HOME", ndkDir.get().asFile.absolutePath) }
     outputs.dir(honkJniLibs)
-    // Always runs: Cargo decides what to rebuild (it tracks the honk-netstack path dependency).
+    // Always runs: Cargo decides what to rebuild (it tracks the crate sources and Cargo.lock).
     outputs.upToDateWhen { false }
 }
 tasks.named("preBuild") { dependsOn(buildHonkEngine) }
