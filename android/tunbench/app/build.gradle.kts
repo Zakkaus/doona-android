@@ -34,7 +34,12 @@ androidComponents {
                 )
             }
             environment("PATH", cargoBin + File.pathSeparator + System.getenv("PATH"))
-            doFirst { environment("ANDROID_NDK_HOME", ndkDir.get().asFile.absolutePath) }
+            doFirst {
+                // cargo-ndk 4.1.2 keeps a copy in -o that is newer than Cargo's artifact and never
+                // removes other files, so either would be packaged: start from an empty directory.
+                outputDir.get().asFile.listFiles()?.forEach { it.deleteRecursively() }
+                environment("ANDROID_NDK_HOME", ndkDir.get().asFile.absolutePath)
+            }
             // Always runs: Cargo decides what to rebuild (it tracks the crate sources and Cargo.lock).
             outputs.upToDateWhen { false }
         }
