@@ -1,10 +1,13 @@
 #!/bin/bash
 # Builds the honk-netstack criterion bench and the tcp_bulk example for aarch64-linux-android, and
-# tcp_bulk natively for a sanity run. Outputs land in $OUT (default android/scripts/out/): tcp_bulk,
-# tcp_bulk-native, netstack-criterion and honk-commit (the revision they were built from).
+# tcp_bulk natively for a sanity run, in the honk checkout at $HONK_DIR (required; it must carry the
+# tcp_bulk example). Cargo must write to $HONK_DIR/target, so leave CARGO_TARGET_DIR unset or point
+# it there. Outputs land in $OUT (default android/scripts/out/): tcp_bulk, tcp_bulk-native,
+# netstack-criterion and honk-commit (the revision they were built from).
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-repo="$(cd "$here/../.." && pwd)"
+[ -n "${HONK_DIR:-}" ] || { echo "HONK_DIR must name a honk checkout" >&2; exit 1; }
+repo="$(CDPATH='' cd -- "$HONK_DIR" && pwd)"
 out="${OUT:-$here/out}"
 . "$here/android-env.sh"
 
