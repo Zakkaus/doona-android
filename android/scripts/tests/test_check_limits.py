@@ -8,6 +8,7 @@ import pytest
 import check_limits
 
 KT = "android/tunbench/app/src/main/kotlin/dev/tunbench"
+DOONA = "android/doona-android/app/src/main/kotlin/dev/doona/android"
 RS = "crates/honk-android/src"
 
 
@@ -23,8 +24,9 @@ def kt_branchy(ccn):
 
 @pytest.fixture
 def tree(tmp_path):
-    """A minimal compliant tree: one Kotlin and one Rust function, an empty ratchet, no Java."""
+    """A minimal compliant tree: a Kotlin function per app, a Rust function, an empty ratchet."""
     write(tmp_path, f"{KT}/A.kt", "fun a() = 1\n")
+    write(tmp_path, f"{DOONA}/D.kt", "fun d() = 1\n")
     write(tmp_path, f"{RS}/lib.rs", "fn b() {}\n")
     write(tmp_path, check_limits.RATCHET, "# empty\n")
     return tmp_path
@@ -157,7 +159,7 @@ def test_malformed_base_ratchet_cannot_run(tree, capsys, content):
     assert f"HEAD:{check_limits.RATCHET}" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("empty", ["android/tunbench/app/src", RS])
+@pytest.mark.parametrize("empty", ["android/tunbench/app/src", "android/doona-android/app/src", RS])
 def test_empty_group_cannot_run(tree, empty):
     shutil.rmtree(tree / empty)
     assert run(tree) == 2
