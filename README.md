@@ -1,8 +1,8 @@
-# honk-android
+# doona-android
 
 English | [繁體中文](README.zh-TW.md)
 
-honk-android holds the Android side of [honk](https://github.com/daeuniverse/honk):
+doona-android holds the Android side of [honk](https://github.com/daeuniverse/honk):
 `honk-android`, a Rust crate that runs honk-netstack on an Android VpnService tun, and TunBench,
 an Android app that benchmarks it against
 [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel) on one phone.
@@ -33,8 +33,8 @@ with the API 37.1 platform and NDK `30.0.16248370`, rustup with the `aarch64-lin
 target, and cargo-ndk 4.1.2. Then build the debug APK:
 
 ```sh
-git clone --recursive https://github.com/Zakkaus/honk-android
-cd honk-android/android/tunbench
+git clone --recursive https://github.com/Zakkaus/doona-android
+cd doona-android/android/tunbench
 ./gradlew assembleDebug
 ```
 
