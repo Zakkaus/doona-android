@@ -32,7 +32,7 @@ cd honk-android/android/tunbench
 ./gradlew assembleDebug
 ```
 
-APK 位於 `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`。建置 app 之前，Gradle 的 `buildHonkEngine` 任務會在 `crates/honk-android` 執行 `cargo ndk`，參數是 `rustc --lib --crate-type cdylib --release --locked --features bench`。只建 `cdylib`，因為 Cargo 遇到同時是 `rlib` 的編譯單元就不套用 `lto = "fat"`。
+APK 位於 `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`。`assembleDebug` 會執行 `:app:buildHonkEngineDebug`，由它提供該建置變體的原生函式庫：在 `crates/honk-android` 執行 `cargo ndk`，參數是 `rustc --lib --crate-type cdylib --release --locked --features bench`。只建 `cdylib`，因為 Cargo 遇到同時是 `rlib` 的編譯單元就不套用 `lto = "fat"`。
 
 [`.github/workflows/android.yml`](.github/workflows/android.yml) 列出 CI 執行的檢查。
 

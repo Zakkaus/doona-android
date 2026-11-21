@@ -62,11 +62,12 @@ before running it.
 Leave `CARGO_TARGET_DIR` unset or set it to `$HONK_DIR/target`, because the script copies the
 binaries from there.
 
-The Gradle build runs the `buildHonkEngine` task, which runs `cargo ndk` in `crates/honk-android`
-with the Android Gradle plugin's NDK to build `libhonkengine.so`: `cargo ndk ... rustc --lib
---crate-type cdylib --release --locked --features bench`. It overrides the manifest's
-`["cdylib", "rlib"]`, because Cargo applies `lto = "fat"` only when every crate type supports it. It builds hev with ndk-build.
-The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`.
+`assembleDebug` runs `:app:buildHonkEngineDebug`, which provides that variant's native library: it
+runs `cargo ndk` in `crates/honk-android` with the Android Gradle plugin's NDK to build
+`libhonkengine.so`: `cargo ndk ... rustc --lib --crate-type cdylib --release --locked --features
+bench`. It overrides the manifest's `["cdylib", "rlib"]`, because Cargo applies `lto = "fat"` only
+when every crate type supports it. It builds hev with ndk-build. The APK is
+`android/tunbench/app/build/outputs/apk/debug/app-debug.apk`.
 
 `crates/honk-android` is a standalone crate with its own `Cargo.lock`. It takes honk-netstack as a
 git dependency pinned to one honk revision. Its relay test runs on the build host:

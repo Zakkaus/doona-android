@@ -38,10 +38,10 @@ cd honk-android/android/tunbench
 ./gradlew assembleDebug
 ```
 
-The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`. Before the app build,
-Gradle's `buildHonkEngine` task runs `cargo ndk` in `crates/honk-android` with
-`rustc --lib --crate-type cdylib --release --locked --features bench`. It builds the
-`cdylib` alone because Cargo skips `lto = "fat"` for a unit that is also an `rlib`.
+The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`. `assembleDebug` runs
+`:app:buildHonkEngineDebug`, which provides that variant's native library: it runs `cargo ndk` in
+`crates/honk-android` with `rustc --lib --crate-type cdylib --release --locked --features bench`.
+It builds the `cdylib` alone because Cargo skips `lto = "fat"` for a unit that is also an `rlib`.
 
 [`.github/workflows/android.yml`](.github/workflows/android.yml) lists the checks CI runs.
 
