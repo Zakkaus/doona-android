@@ -19,6 +19,7 @@ Exit status: 0 clean, 1 a violation, 2 the check could not run.
 import argparse
 import subprocess
 import sys
+import traceback
 from pathlib import Path
 
 from lizard import analyze_file
@@ -80,7 +81,7 @@ def parse_ratchet(text, origin):
         if not line.strip() or line.startswith("#"):
             continue
         fields = line.split(maxsplit=3)
-        if len(fields) < 3 or fields[0] not in LIMITS or not fields[1].isdigit():
+        if len(fields) < 3 or fields[0] not in LIMITS or not fields[1].isdecimal():
             raise CannotRun(f"{origin}:{n}: cannot parse {line!r}")
         key = (fields[0], fields[2], fields[3] if len(fields) == 4 else "")
         if key in entries:
@@ -93,15 +94,20 @@ def base_ratchet(root, rev):
     """The ratchet at rev, or None when that revision has none yet (the change that adds it)."""
 
     def git(*args):
-        return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+        return subprocess.run(["git", "-C", str(root), *args], capture_output=True)
 
-    if git("rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}").returncode != 0:
-        raise CannotRun(f"cannot resolve base revision {rev}")
-    shown = git("show", f"{rev}:{RATCHET}")
-    if shown.returncode != 0:
-        print(f"{rev} has no {RATCHET}: first freeze, not compared with the base")
-        return None
-    return parse_ratchet(shown.stdout, f"{rev}:{RATCHET}")
+    origin = f"{rev}:{RATCHET}"
+    try:
+        if git("rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}").returncode != 0:
+            raise CannotRun(f"cannot resolve base revision {rev}")
+        shown = git("show", origin)
+        if shown.returncode != 0:
+            print(f"{rev} has no {RATCHET}: first freeze, not compared with the base")
+            return None
+        text = shown.stdout.decode("utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        raise CannotRun(f"cannot read {origin}: {e}") from e
+    return parse_ratchet(text, origin)
 
 
 def check(root, base_rev):
@@ -145,6 +151,9 @@ def main(argv=None):
         return check(args.root, args.base_rev)
     except CannotRun as e:
         print(f"error: {e}", file=sys.stderr)
+        return 2
+    except Exception:  # a bug in the check is not a violation: report it as "could not run"
+        traceback.print_exc()
         return 2
 
 

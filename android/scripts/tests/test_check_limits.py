@@ -146,6 +146,17 @@ def test_base_without_ratchet_is_a_first_freeze(tree, capsys):
     assert run(tree, "--base-rev", "no-such-rev") == 2
 
 
+@pytest.mark.parametrize("content", [b"ccn 16 \xff\n", "ccn ² B.kt g\n".encode()])
+def test_malformed_base_ratchet_cannot_run(tree, capsys, content):
+    git(tree, "init", "-q")
+    (tree / check_limits.RATCHET).write_bytes(content)
+    git(tree, "add", "-A")
+    git(tree, "commit", "-q", "-m", "base")
+    write(tree, check_limits.RATCHET, "# empty\n")
+    assert run(tree, "--base-rev", "HEAD") == 2
+    assert f"HEAD:{check_limits.RATCHET}" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize("empty", ["android/tunbench/app/src", RS])
 def test_empty_group_cannot_run(tree, empty):
     shutil.rmtree(tree / empty)
