@@ -38,7 +38,7 @@ APK 位於 `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`。建置
 
 ## 執行測試
 
-執行測試需要 `adb`，以及開啟 USB 偵錯的手機。安裝 APK、用 `run.sh` 執行測試計畫、用 `analyze.py` 把 Perfetto trace 換算成能耗和喚醒次數，都寫在 [`android/scripts/README.md`](android/scripts/README.md)。
+執行測試需要 `adb`，以及開啟 USB 偵錯的手機。也可以拔掉傳輸線、改用無線 adb 執行，量測期間手機就不會被 USB 充電。安裝 APK、用 `run.sh` 執行測試計畫、用 `analyze.py` 把 Perfetto trace 換算成能耗和喚醒次數，都寫在 [`android/scripts/README.md`](android/scripts/README.md)。
 
 ## 相關專案
 

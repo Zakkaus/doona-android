@@ -164,10 +164,25 @@ run, and so does any of `plan.json`, a non-empty `results.jsonl`, `done` and the
 the log names the missing files. Every adb call in the trap has a time limit, and Ctrl-C does not
 interrupt it. The stop intent cancels only the run in progress with that id and never turns the
 screen on; Back on the black screen cancels the run in progress. `kill -9` (SIGKILL) cannot run
-the trap: stop the app with
-`adb shell am start -n dev.tunbench/.BenchActivity --ez stop true --es run <run id>`, stop Perfetto,
-check that `adb shell settings get global stay_on_while_plugged_in` prints 0, and, if `meta.txt`
-has `woke=1`, put the phone back to sleep with `adb shell input keyevent KEYCODE_SLEEP`.
+the trap. Naming the run's device in every command, stop the app with
+`adb -s <serial> shell am start -n dev.tunbench/.BenchActivity --ez stop true --es run <run id>`,
+stop Perfetto, check that `adb -s <serial> shell settings get global stay_on_while_plugged_in`
+prints 0, and, if `meta.txt` has `woke=1`, put the phone back to sleep with
+`adb -s <serial> shell input keyevent KEYCODE_SLEEP`.
+
+### Without USB
+
+USB power charges the phone and switches between charging and not charging during a run. To
+measure on battery, run over wireless adb with the cable unplugged, naming the device in every
+command:
+
+1. Check that `adb -s <USB serial> shell settings get global stay_on_while_plugged_in` prints 0;
+   `run.sh` refuses any other value.
+2. With the cable in, run `adb -s <USB serial> tcpip 5555`, then `adb connect <phone ip>:5555`.
+3. Unplug the cable and check with `adb -s <phone ip>:5555 get-state` that the connection
+   reaches this phone (it prints `device`).
+4. Run `ADB="adb -s <phone ip>:5555" android/scripts/run.sh PLAN.json`.
+5. Afterwards switch back to USB with `adb -s <phone ip>:5555 usb`.
 
 ### Analyze
 

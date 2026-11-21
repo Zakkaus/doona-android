@@ -47,7 +47,8 @@ Gradle's `buildHonkEngine` task runs `cargo ndk` in `crates/honk-android` with
 
 ## Run a bench
 
-A bench run needs `adb` and a phone with USB debugging.
+A bench run needs `adb` and a phone with USB debugging. It can also run with the cable unplugged,
+over wireless adb, so USB power does not charge the phone during the measurement.
 [`android/scripts/README.md`](android/scripts/README.md) covers installing the APK, running a plan
 with `run.sh`, and turning the Perfetto trace into energy and wakeup figures with `analyze.py`.
 
