@@ -1,6 +1,6 @@
 #!/bin/bash
-# Runs a TunBench plan on the phone over adb, with a Perfetto trace of the power rails and the
-# scheduler running beside it, and pulls the results.
+# Runs a TunBench plan on the phone over adb, with a Perfetto trace of the power rails, the
+# scheduler and the CPU frequencies running beside it, and pulls the results.
 #
 # Usage: run.sh PLAN.json [RUN_ID]
 #   RUN_ID (A-Z a-z 0-9 . _ -) defaults to <date>-<time>-<plan name>. Prints the results directory,
@@ -308,6 +308,7 @@ data_sources {
     ftrace_config {
       ftrace_events: "sched/sched_switch"
       ftrace_events: "sched/sched_waking"
+      ftrace_events: "power/cpu_frequency"
       compact_sched { enabled: true }
     }
   }
@@ -316,6 +317,12 @@ data_sources {
   config {
     name: "android.power"
     android_power_config { battery_poll_ms: 250 collect_power_rails: true }
+  }
+}
+data_sources {
+  config {
+    name: "linux.sys_stats"
+    sys_stats_config { cpufreq_period_ms: 500 }
   }
 }
 builtin_data_sources { primary_trace_clock: BUILTIN_CLOCK_BOOTTIME }

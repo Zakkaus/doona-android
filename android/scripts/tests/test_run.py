@@ -193,8 +193,12 @@ def test_the_trace_config_parses_and_lasts_as_long_as_the_plan(phone):
     assert config.duration_ms == (772 + 60) * 1000
     assert config.builtin_data_sources.primary_trace_clock == 6  # BOOTTIME
     ftrace = config.data_sources[0].config.ftrace_config
-    assert list(ftrace.ftrace_events) == ["sched/sched_switch", "sched/sched_waking"]
+    events = ["sched/sched_switch", "sched/sched_waking", "power/cpu_frequency"]
+    assert list(ftrace.ftrace_events) == events
     assert ftrace.compact_sched.enabled  # hours of sched events must stay small enough to analyze
+    sys_stats = config.data_sources[2].config  # after the existing two, which keep their order
+    assert sys_stats.name == "linux.sys_stats"
+    assert sys_stats.sys_stats_config.cpufreq_period_ms == 500
 
 
 def test_stay_on_set_at_the_start_refuses_to_wake_the_phone(phone):

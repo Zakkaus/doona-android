@@ -171,7 +171,10 @@ has `woke=1`, put the phone back to sleep with `adb shell input keyevent KEYCODE
 ### Analyze
 
 `analyze.py RUN_DIR` writes `RUN_DIR/analysis.jsonl`: each runner record with `joules` (per
-rail, listed from the trace), `wakeups` (per role and thread, from `thread_state`: runnable after
+rail, listed from the trace), `cpu_freq_khz` (per CPU, the frequency averaged over the window
+and weighted by time, from the `power/cpu_frequency` events and 500 ms `sys_stats` polls; `null`
+for a CPU without samples on both sides of the window, or as a whole when the trace has none),
+`wakeups` (per role and thread, from `thread_state`: runnable after
 a sleep, not a preemption or yield) and `invalid`, the reason each null value is null. The window is
 `[boottime_start_ns, boottime_end_ns]`, the span of the runner's CPU samples and counted bytes
 (the drain after `boottime_cut_ns` included). The rails are every `power_rails` counter track,

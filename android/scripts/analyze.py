@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
-"""Joules per rail and wakeups per role thread for each measurement of a TunBench run.
+"""Joules per rail, mean frequency per CPU and wakeups per role thread for each measurement of a
+TunBench run.
 
 Usage: uv run --project android/scripts android/scripts/analyze.py RUN_DIR [--max-gap-ms N]
 
 RUN_DIR is what run.sh pulled: results.jsonl (one runner record per line) and trace.pftrace (a
-Perfetto trace with android.power rails and sched events, trace clock BOOTTIME). Each record's
-window [boottime_start_ns, boottime_end_ns] is cut out of the trace. That is the span of the
-runner's CPU samples and counted bytes: the runner stops the traffic at boottime_cut_ns, drains
-the bytes in flight and only then takes the end samples, so the drain is inside the window. The
-output keeps boottime_cut_ns, scan_start_ns and scan_end_ns as the runner wrote them.
-RUN_DIR/analysis.jsonl gets every record plus three objects:
+Perfetto trace with android.power rails, sched events and CPU frequencies, trace clock
+BOOTTIME). Each record's window [boottime_start_ns, boottime_end_ns] is cut out of the trace.
+That is the span of the runner's CPU samples and counted bytes: the runner stops the traffic at
+boottime_cut_ns, drains the bytes in flight and only then takes the end samples, so the drain is
+inside the window. The output keeps boottime_cut_ns, scan_start_ns and scan_end_ns as the runner
+wrote them.
+RUN_DIR/analysis.jsonl gets every record plus four objects:
 
   joules   {rail: J or null}: the energy each rail's cumulative counter gained; the rails are
            every counter track of type power_rails (named power.<RAIL>_uws, or power.rails.<name>
            for the rails trace_processor knows); two tracks of one name come out as <name>#<id>
+  cpu_freq_khz  {cpu: kHz or null}: each CPU's frequency averaged over the window, weighted by
+           time; from the power/cpu_frequency events and the 500 ms sys_stats polls. Null as a
+           whole when the trace has none, or for a CPU without samples on both sides of the window
   wakeups  {role: {"total": n, "threads": {tid: n}}}: runner threads made runnable from sleep
-  invalid  {"status" | "window" | "joules.<rail>" | "wakeups" | "wakeups.<role>.<tid>": why that
-           value is null}
+  invalid  {"status" | "window" | "joules.<rail>" | "cpu_freq_khz[.<cpu>]" | "wakeups" |
+           "wakeups.<role>.<tid>": why that value is null}
 
 A value is invalid, never guessed, when the trace cannot support it: the runner rejected the
 measurement (every value is null), the rail has no samples, a window boundary lies outside them,
@@ -31,7 +36,7 @@ import argparse
 import json
 import statistics
 import sys
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from collections import Counter
 from collections.abc import Sequence
 from contextlib import closing
@@ -97,6 +102,20 @@ def window_joules(samples: Samples, start: int, end: int, max_gap: int) -> float
         if e1 < e0:
             raise Invalid("the counter went back (reset)")
     return (_at(samples, j, end) - _at(samples, i, start)) * UWS_TO_J
+
+
+def window_freq(samples: Samples, start: int, end: int) -> float:
+    """Time-weighted mean of one CPU's frequency (kHz) over [start, end] (ns): each sample holds
+    until the next. Raises Invalid unless samples lie at or before start and at or after end."""
+    ts = [t for t, _ in samples]
+    i, j = bisect_right(ts, start) - 1, bisect_left(ts, end)
+    if i < 0 or j == len(samples):
+        raise Invalid("the frequency samples do not cover the window")
+    edges = [start, *ts[i + 1 : j], end]
+    held = [khz for _, khz in samples[i:j]]
+    return sum(khz * (b - a) for khz, (a, b) in zip(held, pairwise(edges), strict=True)) / (
+        end - start
+    )
 
 
 def count_wakeups(rows: Sequence[tuple[int, str]], start: int, end: int) -> int:
@@ -171,6 +190,20 @@ class Trace:
                 return row.lo, row.hi
         return None
 
+    @cached_property
+    def cpu_freq(self) -> dict[int, list[tuple[int, float]]]:
+        """Each CPU's frequency samples (ts, kHz): the cpu_frequency events and the sys_stats
+        polls, which trace_processor puts on one track per CPU."""
+        freq: dict[int, list[tuple[int, float]]] = {}
+        rows = self._tp.query(
+            "SELECT t.cpu AS cpu, c.ts AS ts, c.value AS value FROM cpu_counter_track t "
+            "JOIN counter c ON c.track_id = t.id WHERE t.type = 'cpu_frequency' "
+            "ORDER BY t.cpu, c.ts"
+        )
+        for row in rows:
+            freq.setdefault(row.cpu, []).append((row.ts, row.value))
+        return freq
+
     def thread_states(
         self, tids: set[int], start: int, end: int
     ) -> dict[int, list[tuple[int, str]]]:
@@ -202,9 +235,9 @@ def sched_gap(trace: Any, start: int, end: int) -> str | None:
 def analyze_record(
     rec: dict[str, Any], rails: dict[str, Samples], trace: Any, max_gap: int
 ) -> dict:
-    """The record plus joules, wakeups and invalid; `trace` needs thread_states(), sched_loss
-    and sched_span."""
-    out = {**rec, "joules": {}, "wakeups": {}, "invalid": {}}
+    """The record plus joules, cpu_freq_khz, wakeups and invalid; `trace` needs thread_states(),
+    sched_loss, sched_span and cpu_freq."""
+    out = {**rec, "joules": {}, "cpu_freq_khz": None, "wakeups": {}, "invalid": {}}
     roles = rec.get("roles") or {}
     tids = {role: [t["tid"] for t in roles[role]["threads"]] for role in ROLES if roles.get(role)}
     unknown = {role: {"total": None, "threads": {}} for role in tids}
@@ -224,6 +257,16 @@ def analyze_record(
         except Invalid as e:
             out["joules"][rail] = None
             out["invalid"][f"joules.{rail}"] = str(e)
+    if not trace.cpu_freq:
+        out["invalid"]["cpu_freq_khz"] = "the trace has no CPU frequency data"
+    else:
+        out["cpu_freq_khz"] = {}
+        for cpu, samples in trace.cpu_freq.items():
+            try:
+                out["cpu_freq_khz"][cpu] = window_freq(samples, start, end)
+            except Invalid as e:
+                out["cpu_freq_khz"][cpu] = None
+                out["invalid"][f"cpu_freq_khz.{cpu}"] = str(e)
     gap = sched_gap(trace, start, end)
     if gap:
         out["wakeups"], out["invalid"]["wakeups"] = unknown, gap

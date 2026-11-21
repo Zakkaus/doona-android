@@ -12,6 +12,7 @@ from analyze import (
     analyze_record,
     count_wakeups,
     poll_interval_ns,
+    window_freq,
     window_joules,
 )
 
@@ -102,6 +103,7 @@ class FakeTrace:
         self.states = states
         self.sched_loss = sched_loss or {}
         self.sched_span = sched_span
+        self.cpu_freq = {0: [(0, 1000.0), (10**12, 1000.0)]}
 
     def thread_states(self, tids, start, end):
         return {t: self.states[t] for t in tids if t in self.states}
@@ -139,6 +141,7 @@ def test_rejected_record_gets_only_nulls_and_the_runner_reason():
     assert out["joules"] == {"CPU": None}
     assert out["wakeups"] == {"engine": {"total": None, "threads": {}}}
     assert out["invalid"] == {"status": "rejected: no payload reached the receiver"}
+    assert out["cpu_freq_khz"] is None
     assert out["unreadable"] == ["cpu"]
 
 
@@ -167,6 +170,13 @@ def test_a_thread_run_straight_from_sleep_counts_in_its_role_total():
     assert out["invalid"] == {}
 
 
+def test_frequency_without_samples_on_both_sides_of_the_window_is_invalid():
+    samples = [(100 * MS, 1000.0), (600 * MS, 2000.0)]
+    for start, end in [(50 * MS, 500 * MS), (200 * MS, 700 * MS)]:
+        with pytest.raises(Invalid, match="do not cover"):
+            window_freq(samples, start, end)
+
+
 def test_poll_interval_is_the_median_spacing():
     assert poll_interval_ns({"A": rail((0, 0), (200, 1), (400, 2), (1000, 3))}) == 200 * MS
     assert poll_interval_ns({"A": []}) is None
@@ -193,7 +203,9 @@ def test_tracks_of_one_name_are_separate_rails_told_apart_by_id():
 
 def synthetic_trace(path, overrun):
     """Rail S4M_VDD_CPU with three samples, rail S9_EMPTY declared without any, tid 7 asleep,
-    woken at 1200 ms and asleep again at 1400 ms on CPU 0, and the ftrace overrun counter."""
+    woken at 1200 ms and asleep again at 1400 ms on CPU 0, the ftrace overrun counter, and CPU 0
+    at 1000 kHz from 1000 ms and 2000 kHz from 1250 ms (cpu_frequency events), polled at 2000 ms
+    (sys_stats)."""
     trace = TraceProto()
 
     def packet(seq, ts_ms):
@@ -217,6 +229,12 @@ def synthetic_trace(path, overrun):
         stats = packet(3, ts).ftrace_stats
         stats.phase = phase
         stats.cpu_stats.add(cpu=0, overrun=value)
+    freq = packet(4, 1000).ftrace_events
+    freq.cpu = 0
+    for ts, khz in [(1000, 1000), (1250, 2000)]:
+        e = freq.event.add(timestamp=ts * MS, pid=0).cpu_frequency
+        e.state, e.cpu_id = khz, 0
+    packet(5, 2000).sys_stats.cpufreq_khz.append(2000)
     path.write_bytes(trace.SerializeToString())
     return path
 
@@ -231,5 +249,15 @@ def test_trace_queries_on_a_synthetic_trace(tmp_path, overrun):
         assert [s for _, s in states[7]] == ["S", "R", "Running"]
         assert trace.sched_span == (1100 * MS, 1400 * MS)
         assert trace.sched_loss == ({"ftrace_cpu_overrun_delta": 3} if overrun else {})
+    finally:
+        trace.close()
+
+
+def test_frequency_is_time_weighted_over_the_window(tmp_path):
+    trace = Trace(synthetic_trace(tmp_path / "t.pftrace", 0))
+    try:
+        rec = {"status": "ok", "boottime_start_ns": 1000 * MS, "boottime_end_ns": 2000 * MS}
+        out = analyze_record(rec, {}, trace, GAP)
+        assert out["cpu_freq_khz"] == {0: pytest.approx(1750)}  # 1/4 s at 1000, 3/4 s at 2000
     finally:
         trace.close()
