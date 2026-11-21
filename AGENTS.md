@@ -12,7 +12,7 @@ TunBench benchmark app (`android/tunbench`), the bench scripts and plans (`andro
 ├── crates/honk-android/   # Rust crate -> libhonkengine.so; standalone, own Cargo.lock, toolchain file, release profile
 ├── android/tunbench/      # Gradle app dev.tunbench; hev-socks5-tunnel submodule under app/src/main/jni/
 ├── android/scripts/       # run.sh, analyze.py (uv project), build-netstack-bench.sh, android-env.sh, README
-├── android/plans/         # bench plans: smoke.json, compare.json
+├── android/plans/         # bench plans: smoke.json, compare.json, compare-v2.json
 ├── doc/en, doc/zh         # design/android-bench.md in both languages
 └── .github/workflows/     # android.yml: CI for the Rust, Android and script checks
 ```
@@ -50,7 +50,7 @@ In `android/scripts`: `uv run ruff check`, `uv run ruff format --check`, `uv run
 
 - `crates/honk-android` is its own Cargo workspace root. Gradle runs cargo in that directory, so
   its `rust-toolchain.toml`, release profile (`opt-level = 3`, `codegen-units = 1`, `strip`;
-  `lto = "fat"` is set but Cargo does not apply it while the crate is both `cdylib` and `rlib`), `Cargo.lock` and `.cargo/config.toml` (the 16 KiB page linker flag) all apply. Do not
+  `lto = "fat"`, which applies because Gradle builds the `cdylib` alone with `cargo rustc --crate-type cdylib`), `Cargo.lock` and `.cargo/config.toml` (the 16 KiB page linker flag) all apply. Do not
   add a root workspace or move these files.
 - `rust-toolchain.toml` pins the same compiler as honk. Change it together with honk.
 - Do not run `cargo update` as a side effect. Change a dependency version in its own commit.
@@ -70,7 +70,7 @@ the desktop's `~/.cache/android-dev/env.sh` points `CARGO_TARGET_DIR` elsewhere.
 
 ## Phone rules
 
-- Do not run an engine comparison (`android/plans/compare.json`, or any hev against honk run)
+- Do not run an engine comparison (`android/plans/compare*.json`, or any hev against honk run)
   without the maintainer's approval.
 - When no phone test is running, leave `svc power stayon false` and the screen allowed to sleep.
   A step that sets `stayon` must restore it in a trap on EXIT, INT and TERM (`run.sh` never

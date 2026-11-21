@@ -63,7 +63,9 @@ Leave `CARGO_TARGET_DIR` unset or set it to `$HONK_DIR/target`, because the scri
 binaries from there.
 
 The Gradle build runs the `buildHonkEngine` task, which runs `cargo ndk` in `crates/honk-android`
-with the Android Gradle plugin's NDK to build `libhonkengine.so`. It builds hev with ndk-build.
+with the Android Gradle plugin's NDK to build `libhonkengine.so`: `cargo ndk ... rustc --lib
+--crate-type cdylib --release --locked --features bench`. It overrides the manifest's
+`["cdylib", "rlib"]`, because Cargo applies `lto = "fat"` only when every crate type supports it. It builds hev with ndk-build.
 The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`.
 
 `crates/honk-android` is a standalone crate with its own `Cargo.lock`. It takes honk-netstack as a
@@ -119,22 +121,37 @@ uv run --project android/scripts android/scripts/analyze.py android/results/<run
 ```
 
 `android/plans/smoke.json` is a short check of every case; `compare.json` is the full matrix
-(five interleaved repeats). A plan lists `engines` (`hev`, `honk`), `mtu`, `cases` (`bulk` with
-`dir` and `flows`, `idle`, `tail`, `sparse`), `pin` (disjoint CPU lists for `engine`,
-`generator`, `sink` and, for hev, `relay`), `repeat`, `cooldown_seconds` and `interleave`. The
-runner rejects a plan with an unknown field or an out-of-range value before it starts.
+(five interleaved repeats) of the first round, and `compare-v2.json` the second round's: the same
+cases plus bulk up and down at a 2000 Mbit/s target rate. A plan lists `engines` (`hev`, `honk`), `mtu`, `cases` (`bulk` with
+`dir`, `flows` and an optional `rate_mbps`, `idle`, `tail`, `sparse`), `pin` (disjoint CPU lists
+for `engine`, `generator`, `sink` and, for hev, `relay`), `repeat`, `cooldown_seconds` and
+`interleave`. The runner rejects a plan with an unknown field or an out-of-range value before it starts.
+`rate_mbps` (1-100000) is the target rate of all flows of a bulk case together, shared equally;
+without it the flows send at full speed. Each result line whose flows started records
+`boottime_open_ns`, when they started, so the achieved rate is
+`bytes × 8000 ÷ ((boottime_cut_ns − boottime_open_ns) × rate_mbps)`.
 
 `run.sh PLAN.json [RUN_ID]` pushes the plan, starts Perfetto and then `BenchActivity`, waits for
 the app's `done` file within a deadline taken from the plan, and pulls `plan.json`,
 `results.jsonl`, `done` and `trace.pftrace` into `android/results/<run id>/` with `meta.txt`
-(APK and plan hashes, build id, `sdk_full`, thermal status, `stay_on_while_plugged_in`) and
-`screen.txt` (wakefulness,
-display state, brightness). The header of the script lists the `am start` contract with the app and
+(APK and plan hashes, build id, `sdk_full`, thermal status, `stay_on_while_plugged_in`, and
+`battery_start` and `battery_end`: level, status, charging sources and temperature from `dumpsys
+battery`) and `screen.txt` (wakefulness, display state, brightness). The battery is read only at
+the start and the end, so whether the phone charged in between is unknown. `status` is the
+BatteryManager code (2 charging, 3 discharging, 5 full) and `temperature` is in tenths of a degree
+Celsius. The charging sources are `none` only when every source line reads false and `unknown`
+when there is none; a failed read records `battery_start=unknown` or `battery_end=unknown` and
+warns, without stopping the run. The header of the script lists the `am start` contract with the app and
 its environment variables. `adb shell` calls reach the phone while it measures, so it checks for
 the finish only every 30 s (`POLL`).
 
 The screen stays interactive with the panel black: the app shows a full-screen black Activity
-that keeps the screen on while it is in front. A few seconds after the start `run.sh` checks
+that keeps the screen on while it is in front. `run.sh` wakes the phone before the start and
+reads `mWakefulness` first, recording `woke=1` in `meta.txt` if the phone was not Awake, `woke=0`
+if it was, and `woke=unknown` with a warning if the read failed or named no known state. With
+`woke=1` the exit trap sends `KEYCODE_SLEEP` and logs the wakefulness it reads afterwards; with
+`woke=unknown` it leaves the phone as it is. It does not fail the run on that reading, because the
+key may take effect late. A few seconds after the start `run.sh` checks
 `mWakefulness=Awake` (from `dumpsys power`), the display state (from `dumpsys display`, which
 Android 17 no longer prints in `dumpsys power`) and `BenchActivity` as the resumed top activity, and
 aborts otherwise. `run.sh` never changes `stayon`: it records `stay_on_while_plugged_in` at the
@@ -147,14 +164,39 @@ run, and so does any of `plan.json`, a non-empty `results.jsonl`, `done` and the
 the log names the missing files. Every adb call in the trap has a time limit, and Ctrl-C does not
 interrupt it. The stop intent cancels only the run in progress with that id and never turns the
 screen on; Back on the black screen cancels the run in progress. `kill -9` (SIGKILL) cannot run
-the trap: stop the app with
-`adb shell am start -n dev.tunbench/.BenchActivity --ez stop true --es run <run id>`, stop Perfetto,
-and check that `adb shell settings get global stay_on_while_plugged_in` prints 0.
+the trap. Naming the run's device in every command, stop the app with
+`adb -s <serial> shell am start -n dev.tunbench/.BenchActivity --ez stop true --es run <run id>`,
+stop Perfetto, check that `adb -s <serial> shell settings get global stay_on_while_plugged_in`
+prints 0, and, if `meta.txt` has `woke=1`, put the phone back to sleep with
+`adb -s <serial> shell input keyevent KEYCODE_SLEEP`.
+
+### Without USB
+
+USB power charges the phone and switches between charging and not charging during a run. To
+measure on battery, run over wireless adb with the cable unplugged, naming the device in every
+command:
+
+1. Check that `adb -s <USB serial> shell settings get global stay_on_while_plugged_in` prints 0;
+   `run.sh` refuses any other value.
+2. With the cable in, run `adb -s <USB serial> tcpip 5555`, then `adb connect <phone ip>:5555`.
+3. Unplug the cable and check with `adb -s <phone ip>:5555 get-state` that the connection
+   reaches this phone (it prints `device`).
+4. Run `ADB="adb -s <phone ip>:5555" android/scripts/run.sh PLAN.json`.
+5. Afterwards switch back to USB with `adb -s <phone ip>:5555 usb`.
+
+Wireless adb pulls at about 0.2 MB/s, and a full comparison plan writes a trace of about 1 GB, so
+the pull does not finish within `run.sh`'s 600 s limit. `run.sh` then leaves the trace on the phone
+and logs its path. Plug the cable back in and pull it over USB:
+`adb -s <USB serial> pull /data/misc/perfetto-traces/tunbench-<run id>.pftrace <results>/<run id>/trace.pftrace`.
+Delete the phone's copy with `adb -s <USB serial> shell rm` only after checking the pulled size.
 
 ### Analyze
 
 `analyze.py RUN_DIR` writes `RUN_DIR/analysis.jsonl`: each runner record with `joules` (per
-rail, listed from the trace), `wakeups` (per role and thread, from `thread_state`: runnable after
+rail, listed from the trace), `cpu_freq_khz` (per CPU, the frequency averaged over the window
+and weighted by time, from the `power/cpu_frequency` events and 500 ms `sys_stats` polls; `null`
+for a CPU without samples on both sides of the window, or as a whole when the trace has none),
+`wakeups` (per role and thread, from `thread_state`: runnable after
 a sleep, not a preemption or yield) and `invalid`, the reason each null value is null. The window is
 `[boottime_start_ns, boottime_end_ns]`, the span of the runner's CPU samples and counted bytes
 (the drain after `boottime_cut_ns` included). The rails are every `power_rails` counter track,

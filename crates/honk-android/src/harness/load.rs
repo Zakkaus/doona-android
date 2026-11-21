@@ -323,12 +323,12 @@ impl Server {
 // ---- workload ----
 
 /// What the flows of one measurement do.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Traffic {
-    /// The generator writes, the sink reads.
-    Up,
-    /// The sink writes, the generator reads.
-    Down,
+    /// The generator writes, the sink reads; with `rate`, each flow is paced to that many bit/s.
+    Up { rate: Option<f64> },
+    /// The sink writes, the generator reads; `rate` as for `Up`.
+    Down { rate: Option<f64> },
     /// The generator writes `bytes` every `interval`, the sink reads.
     Sparse { interval: Duration, bytes: usize },
 }
@@ -465,9 +465,10 @@ impl Workload {
         if !self.arrive(side) {
             return;
         }
+        let down = matches!(self.traffic, Traffic::Down { .. });
         let receives = match side {
-            Side::Generator => self.traffic == Traffic::Down,
-            Side::Sink => self.traffic != Traffic::Down,
+            Side::Generator => down,
+            Side::Sink => !down,
         };
         if receives {
             self.receive(&mut s);
@@ -482,14 +483,15 @@ impl Workload {
         }
     }
 
-    /// Writes until stopped (`WRITE_SIZE` chunks, or `bytes` every `interval`), then half-closes;
-    /// what it wrote, None after a write error.
+    /// Writes until stopped (`WRITE_SIZE` chunks, as much as the pacer allows with a rate, or
+    /// `bytes` every `interval`), then half-closes; what it wrote, None after a write error.
     fn send(&self, s: &mut TcpStream) -> Option<u64> {
         let buf = vec![0x5a; WRITE_SIZE];
-        let sparse = match self.traffic {
-            Traffic::Sparse { interval, bytes } => Some((interval, bytes)),
-            Traffic::Up | Traffic::Down => None,
+        let (sparse, rate) = match self.traffic {
+            Traffic::Sparse { interval, bytes } => (Some((interval, bytes)), None),
+            Traffic::Up { rate } | Traffic::Down { rate } => (None, rate),
         };
+        let mut pacer = rate.map(|r| Pacer::new(r, Instant::now()));
         let mut next = Instant::now();
         let mut sent = Some(0);
         while !self.stop.is_set() {
@@ -506,13 +508,30 @@ impl Workload {
                         break;
                     }
                 }
-                None => match s.write(&buf) {
-                    Ok(n @ 1..) => sent = sent.map(|t| t + n as u64),
-                    _ => {
-                        sent = None;
-                        break;
+                None => {
+                    let len = match pacer.as_mut().map(|p| p.next(Instant::now())) {
+                        None => WRITE_SIZE,
+                        Some(Ok(len)) => len,
+                        Some(Err(until)) => {
+                            if self.stop.wait_until(until) {
+                                break;
+                            }
+                            continue;
+                        }
+                    };
+                    match s.write(&buf[..len]) {
+                        Ok(n @ 1..) => {
+                            sent = sent.map(|t| t + n as u64);
+                            if let Some(p) = &mut pacer {
+                                p.sent(n, Instant::now());
+                            }
+                        }
+                        _ => {
+                            sent = None;
+                            break;
+                        }
                     }
-                },
+                }
             }
         }
         let _ = s.shutdown(Shutdown::Write);
@@ -545,6 +564,58 @@ impl Workload {
         if ended.is_ok() {
             let _ = s.write_all(&read.to_le_bytes());
         }
+    }
+}
+
+/// Paces one flow with a token bucket that holds 10 ms of its rate, at least a byte: from its
+/// start to any time t the flow writes at most `rate × t + capacity`. Pure arithmetic over the
+/// instants it is given.
+struct Pacer {
+    /// Bytes per second.
+    rate: f64,
+    capacity: f64,
+    tokens: f64,
+    at: Instant,
+    /// What a write waits for: a full write buffer, or the whole bucket when that is smaller, so
+    /// a slow flow does not wake for every byte.
+    chunk: f64,
+}
+
+impl Pacer {
+    fn new(bits_per_sec: f64, now: Instant) -> Pacer {
+        let rate = bits_per_sec / 8.0;
+        let capacity = (rate / 100.0).max(1.0);
+        Pacer {
+            rate,
+            capacity,
+            tokens: capacity,
+            at: now,
+            chunk: capacity.min(WRITE_SIZE as f64).floor(),
+        }
+    }
+
+    /// How much to write at `now`, at most `WRITE_SIZE`; or, with less than a chunk in the
+    /// bucket, when to ask again.
+    fn next(&mut self, now: Instant) -> Result<usize, Instant> {
+        self.refill(now);
+        if self.tokens >= self.chunk {
+            Ok((self.tokens as usize).min(WRITE_SIZE))
+        } else {
+            Err(now + Duration::from_secs_f64((self.chunk - self.tokens) / self.rate))
+        }
+    }
+
+    /// Takes `n`, what a write that returned at `now` wrote, out of the bucket. It refills to
+    /// `now` first, so the time the write blocked does not pay back the bytes it wrote.
+    fn sent(&mut self, n: usize, now: Instant) {
+        self.refill(now);
+        self.tokens -= n as f64;
+    }
+
+    fn refill(&mut self, now: Instant) {
+        let refill = self.rate * now.duration_since(self.at).as_secs_f64();
+        self.tokens = (self.tokens + refill).min(self.capacity);
+        self.at = now;
     }
 }
 
@@ -606,4 +677,95 @@ fn connect(target: SocketAddr, streams: &Streams) -> io::Result<(TcpStream, Trac
     sys::wait_connected(s.as_raw_fd())?;
     s.set_nonblocking(false)?;
     Ok((s, tracked))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Writes all `p` allows, each write taking 1 µs, from `t0` for `d`: (offset, bytes) per write.
+    fn greedy(p: &mut Pacer, t0: Instant, d: Duration) -> Vec<(Duration, usize)> {
+        let mut t = t0;
+        let mut writes = Vec::new();
+        while t - t0 < d {
+            match p.next(t) {
+                Ok(n) => {
+                    writes.push((t - t0, n));
+                    t += Duration::from_micros(1);
+                    p.sent(n, t);
+                }
+                Err(until) => t = until,
+            }
+        }
+        writes
+    }
+
+    #[test]
+    fn pacer_keeps_every_second_within_the_rate_and_the_bucket() {
+        // 1 Mbit/s over 4 flows: 31 250 B/s per flow, a bucket of 312.5 B.
+        let (rate, bucket) = (31_250.0, 312.5);
+        let t0 = Instant::now();
+        let writes = greedy(&mut Pacer::new(1e6 / 4.0, t0), t0, Duration::from_secs(3));
+        let (mut first, mut in_second) = (0, 0);
+        for &(t, n) in &writes {
+            in_second += n;
+            while writes[first].0 + Duration::from_secs(1) <= t {
+                in_second -= writes[first].1;
+                first += 1;
+            }
+            assert!(
+                in_second as f64 <= rate + bucket,
+                "{in_second} B in the second to {t:?}"
+            );
+        }
+        let total: usize = writes.iter().map(|w| w.1).sum();
+        assert!(total as f64 >= 3.0 * rate - bucket, "{total} B in 3 s");
+    }
+
+    #[test]
+    fn pacer_takes_out_only_what_a_short_write_wrote() {
+        // 8 Mbit/s: 1 MB/s and a bucket of 10 000 B; 2 500 B refill in 2.5 ms.
+        let t0 = Instant::now();
+        let mut p = Pacer::new(8e6, t0);
+        assert_eq!(p.next(t0), Ok(10_000));
+        p.sent(2_500, t0);
+        // 8 500 B after 1 ms, short of the 10 000 B chunk: the 2 500 B are out of the bucket.
+        assert!(p.next(t0 + Duration::from_millis(1)).is_err());
+        assert_eq!(p.next(t0 + Duration::from_millis(3)), Ok(10_000));
+    }
+
+    /// Takes all `p` allows at `t`, in at most 100 writes.
+    fn take_all(p: &mut Pacer, t: Instant) -> usize {
+        (0..100)
+            .map_while(|_| p.next(t).ok().inspect(|&n| p.sent(n, t)))
+            .sum()
+    }
+
+    #[test]
+    fn pacer_sends_at_most_a_bucket_after_a_stall() {
+        // 2000 Mbit/s: a bucket of 2.5 MB, 38 full writes.
+        let t0 = Instant::now();
+        let mut p = Pacer::new(2e9, t0);
+        take_all(&mut p, t0);
+        let burst = take_all(&mut p, t0 + Duration::from_secs(1));
+        assert!(burst as f64 <= 2.5e6, "{burst} B after a 1 s stall");
+    }
+
+    #[test]
+    fn pacer_sends_at_most_a_bucket_when_a_stalled_write_returns() {
+        // 2000 Mbit/s: a bucket of 2.5 MB. The send queue is full: the next 64 KiB write is
+        // accepted only 1 s later, and the writes after it at once.
+        let t0 = Instant::now();
+        let mut p = Pacer::new(2e9, t0);
+        take_all(&mut p, t0);
+        let at = p.next(t0).unwrap_err();
+        let stalled = p.next(at).unwrap();
+        let back = at + Duration::from_secs(1);
+        p.sent(stalled, back);
+        let burst = stalled + take_all(&mut p, back);
+        assert!(
+            burst as f64 <= 2.5e6,
+            "{burst} B when the stalled write returned"
+        );
+    }
 }

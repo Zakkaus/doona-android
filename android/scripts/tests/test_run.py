@@ -1,4 +1,10 @@
-"""run.sh against a stub adb on PATH that logs every call and answers the few the script reads."""
+"""run.sh against a stub adb on PATH that logs every call and answers the few the script reads.
+
+The stub keeps the phone's wakefulness in $STUB_DIR/wakefulness; the wake and sleep keys switch it,
+except that the wake key leaves it Asleep with STUB_STAYS_ASLEEP. Perfetto's /proc entry lives in
+$STUB_DIR/proc, and the stop command runs against it with kill -0 refused, as SELinux does on
+Android 17.
+"""
 
 import json
 import os
@@ -16,15 +22,34 @@ echo "$*" >>"$STUB_DIR/log"
 [ -f "$STUB_DIR/t0" ] || date +%s >"$STUB_DIR/t0"
 age=$(($(date +%s) - $(cat "$STUB_DIR/t0")))
 case "$*" in
-  *"perfetto --background"*) cat >"$STUB_DIR/perfetto.cfg" && echo "${STUB_PERFETTO_PID:-4242}" ;;
-  *"kill -0"*) [ -n "$STUB_PERFETTO_STUCK" ] || echo gone ;;
+  *"perfetto --background"*)
+    mkdir -p "$STUB_DIR/proc/4242"
+    printf 'perfetto\0--background\0' >"$STUB_DIR/proc/4242/cmdline"
+    cat >"$STUB_DIR/perfetto.cfg" && echo "${STUB_PERFETTO_PID:-4242}" ;;
+  *"kill -TERM"*)  # perfetto exits STUB_PERFETTO_POLLS sleeps after the TERM; never if STUCK
+    left=${STUB_PERFETTO_POLLS:-0}
+    exits() {
+      [ -z "$STUB_PERFETTO_STUCK" ] && [ "$left" = 0 ] || return 0
+      rm -rf "$STUB_DIR/proc" && echo "perfetto exited" >>"$STUB_DIR/log"
+    }
+    kill() {
+      [ "$1" != -0 ] || { echo "kill: $2: Operation not permitted" >&2; return 1; }
+      exits
+    }
+    sleep() { left=$((left - 1)) && exits; }
+    cmd=${!#}
+    eval "${cmd//\/proc\//$STUB_DIR/proc/}" ;;
   *pgrep*) echo 4242 ;;
   "push "*) [ -z "$STUB_PUSH_FAILS" ] ;;
   *"getprop ro.build.id"*) echo TEST.1 ;;
   *"getprop ro.build.version.sdk_full"*) echo 37.2 ;;
   *"pm path"*) echo package:/data/app/base.apk ;;
   *sha256sum*) echo "abc123  /data/app/base.apk" ;;
-  *"dumpsys power"*) printf 'mWakefulness=%s\n' "$STUB_WAKEFULNESS" ;;
+  *"dumpsys power"*)  # with STUB_POWER_UNREAD it fails until the wake key
+    [ -z "$STUB_POWER_UNREAD" ] || grep -q KEYCODE_WAKEUP "$STUB_DIR/log" || exit 1
+    printf 'mWakefulness=%s\n' "$(cat "$STUB_DIR/wakefulness")" ;;
+  *KEYCODE_WAKEUP*) [ -n "$STUB_STAYS_ASLEEP" ] || echo Awake >"$STUB_DIR/wakefulness" ;;
+  *KEYCODE_SLEEP*) echo Asleep >"$STUB_DIR/wakefulness" ;;
   *"dumpsys display"*) printf '  Display State=%s\n' "${STUB_DISPLAY:-ON}" ;;
   *"dumpsys activity"*) echo "topResumedActivity=ActivityRecord{1 u0 $ACTIVITY t1}" ;;
   *pidof*) echo 123 ;;
@@ -33,6 +58,12 @@ case "$*" in
   *"cat files/runs/"*"/results.jsonl") [ -n "$STUB_NO_RESULTS" ] || echo '{"seq":0}' ;;
   *"cat files/runs/"*) echo '{"seq":0}' ;;
   "pull "*) [ -z "$STUB_PULL_FAILS" ] && echo trace >"${!#}" ;;
+  *"dumpsys battery"*)  # charging on USB before the start, on battery after it
+    [ -z "$STUB_BATTERY_FAILS" ] || exit 1
+    set -- true 2 80 301
+    ! grep -q -- '--es plan' "$STUB_DIR/log" || set -- false 3 78 315
+    [ -n "$STUB_BATTERY_NO_SOURCES" ] || printf '  AC powered: false\n  USB powered: %s\n' "$1"
+    printf '  status: %s\n  level: %s\n  temperature: %s\n' "$2" "$3" "$4" ;;
   *"get global stay_on"*)  # STUB_STAYON before the start, STUB_STAYON_END after it
     if grep -q -- '--es plan' "$STUB_DIR/log"; then echo "${STUB_STAYON_END:-0}"
     else echo "${STUB_STAYON:-0}"; fi ;;
@@ -63,6 +94,7 @@ def phone(tmp_path):
     def run(done, wakefulness="Awake", plan=PLAN, **extra):
         """Runs with `extra` as more environment (STUB_* switches, POLL, STEP, MARGIN)."""
         (tmp_path / "plan.json").write_text(json.dumps(plan))
+        (tmp_path / "wakefulness").write_text(wakefulness)
         env = {
             **os.environ,
             "PATH": f"{stub.parent}:{os.environ['PATH']}",
@@ -70,7 +102,6 @@ def phone(tmp_path):
         }
         env |= {
             "STUB_DONE": done,
-            "STUB_WAKEFULNESS": wakefulness,
             "RESULTS": str(tmp_path / "out"),
         }
         env |= {"POLL": "0", "GRACE": "0", "SCREEN_WAIT": "0"} | extra
@@ -84,7 +115,7 @@ def phone(tmp_path):
 
 
 def test_a_failed_run_still_stops_the_bench_and_perfetto(phone):
-    result, log, _, _ = phone(done="", wakefulness="Asleep")
+    result, log, _, _ = phone(done="", STUB_DISPLAY="OFF")
     assert result.returncode != 0
     assert "am start -n dev.tunbench/.BenchActivity --ez stop true --es run r1" in log
     assert "kill -TERM 4242" in log
@@ -122,14 +153,69 @@ def test_a_finished_run_is_pulled_and_leaves_no_stayon_behind(phone):
     assert "appops set dev.tunbench ACTIVATE_VPN allow" in log
 
 
+def test_a_run_that_woke_the_phone_puts_it_back_to_sleep(phone):
+    result, log, out, _ = phone(done="ok", wakefulness="Asleep")
+    assert result.returncode == 0, result.stderr
+    assert "KEYCODE_SLEEP" in log
+    assert (out.parent.parent / "wakefulness").read_text().strip() == "Asleep"
+    assert "woke=1" in (out / "meta.txt").read_text().splitlines()
+
+
+def test_a_run_that_found_the_phone_awake_leaves_it_awake(phone):
+    _, log, out, _ = phone(done="ok", wakefulness="Awake")
+    assert "KEYCODE_SLEEP" not in log
+    assert "woke=0" in (out / "meta.txt").read_text().splitlines()
+
+
+def test_an_unreadable_wakefulness_leaves_the_phone_as_it_is(phone):
+    # the phone is Awake, but the read before the wake key fails
+    result, log, out, _ = phone(done="ok", wakefulness="Awake", STUB_POWER_UNREAD="1")
+    assert result.returncode == 0, result.stderr
+    assert "KEYCODE_SLEEP" not in log
+    assert "woke=unknown" in (out / "meta.txt").read_text().splitlines()
+
+
+def test_a_phone_still_asleep_after_the_wake_key_aborts_the_run(phone):
+    result, _, _, _ = phone(done="ok", wakefulness="Asleep", STUB_STAYS_ASLEEP="1")
+    assert result.returncode != 0
+    assert "the phone is not awake with the bench in front" in result.stderr
+    assert "mWakefulness=Asleep" in result.stderr
+
+
+def test_meta_records_the_battery_at_the_start_and_the_end(phone):
+    _, _, out, _ = phone(done="ok")
+    meta = (out / "meta.txt").read_text().splitlines()
+    assert "battery_start=level=80 status=2 plugged=usb temperature=301" in meta
+    assert "battery_end=level=78 status=3 plugged=none temperature=315" in meta
+
+
+def test_a_battery_without_source_lines_is_not_recorded_as_unplugged(phone):
+    _, _, out, _ = phone(done="ok", STUB_BATTERY_NO_SOURCES="1")
+    meta = (out / "meta.txt").read_text().splitlines()
+    assert "battery_start=level=80 status=2 plugged=unknown temperature=301" in meta
+    assert "battery_end=level=78 status=3 plugged=unknown temperature=315" in meta
+
+
+def test_a_failed_battery_read_is_recorded_as_unknown_and_the_run_goes_on(phone):
+    result, _, out, _ = phone(done="ok", STUB_BATTERY_FAILS="1")
+    assert result.returncode == 0, result.stderr
+    meta = (out / "meta.txt").read_text().splitlines()
+    assert "battery_start=unknown" in meta and "battery_end=unknown" in meta
+    assert result.stderr.count("dumpsys battery failed") == 2
+
+
 def test_the_trace_config_parses_and_lasts_as_long_as_the_plan(phone):
     _, _, _, cfg = phone(done="ok")
     config = text_format.Parse(cfg, TraceConfig())  # a field the phone's perfetto lacks fails here
     assert config.duration_ms == (772 + 60) * 1000
     assert config.builtin_data_sources.primary_trace_clock == 6  # BOOTTIME
     ftrace = config.data_sources[0].config.ftrace_config
-    assert list(ftrace.ftrace_events) == ["sched/sched_switch", "sched/sched_waking"]
+    events = ["sched/sched_switch", "sched/sched_waking", "power/cpu_frequency"]
+    assert list(ftrace.ftrace_events) == events
     assert ftrace.compact_sched.enabled  # hours of sched events must stay small enough to analyze
+    sys_stats = config.data_sources[2].config  # after the existing two, which keep their order
+    assert sys_stats.name == "linux.sys_stats"
+    assert sys_stats.sys_stats_config.cpufreq_period_ms == 500
 
 
 def test_stay_on_set_at_the_start_refuses_to_wake_the_phone(phone):
@@ -166,6 +252,14 @@ def test_a_perfetto_that_does_not_exit_is_not_pulled(phone):
     result, log, _, _ = phone(done="ok", STUB_PERFETTO_STUCK="1")
     assert result.returncode != 0
     assert "pull " not in log
+
+
+def test_perfetto_is_pulled_only_after_its_proc_entry_is_gone(phone):
+    # Android 17 refuses kill -0 on perfetto; it finishes the trace three polls after the TERM
+    result, log, _, _ = phone(done="ok", STUB_PERFETTO_POLLS="3")
+    assert result.returncode == 0, result.stderr
+    assert "perfetto exited" in log
+    assert log.index("perfetto exited") < log.index("pull ")
 
 
 def test_a_done_file_after_the_deadline_does_not_count(phone):

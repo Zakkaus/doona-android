@@ -28,7 +28,7 @@ fn receivers_count_every_payload_byte() {
     let payload = vec![1u8; 3 << 20];
     // up: the sink receives what a plain client writes.
     let sink = Sink::start(pin.sink.as_slice()).unwrap();
-    let w = Workload::new(Traffic::Up);
+    let w = Workload::new(Traffic::Up { rate: None });
     sink.set_workload(Some(w.clone()));
     w.open();
     let mut c = TcpStream::connect(sink.server.addr).unwrap();
@@ -41,7 +41,7 @@ fn receivers_count_every_payload_byte() {
     sink.server.stop();
     // down: the generator receives what a plain server writes.
     let l = TcpListener::bind("127.0.0.1:0").unwrap();
-    let w = Workload::new(Traffic::Down);
+    let w = Workload::new(Traffic::Down { rate: None });
     w.open();
     let mut flows = Flows::open(l.local_addr().unwrap(), 1, &w, pin.generator.as_slice());
     let (mut s, _) = l.accept().unwrap();
@@ -155,6 +155,7 @@ fn bulk_window_reads_back_every_role() {
             dir,
             flows: vec![2],
             seconds: 1,
+            rate_mbps: None,
         };
         let (m, sink) = measure_direct(case, 2, &StubHost::default(), &Stop::new());
         assert!(reasons(&m).is_empty(), "{dir:?}: {:?}", m.reasons);
@@ -205,6 +206,7 @@ fn every_byte_counted_has_its_engine_cpu() {
         dir: Dir::Up,
         flows: vec![1],
         seconds: 1,
+        rate_mbps: None,
     };
     let m = measure(&case, 1, &setup, &Stop::new());
     let bytes = m.bytes.unwrap();
@@ -222,6 +224,40 @@ fn every_byte_counted_has_its_engine_cpu() {
         "{scans:?}"
     );
     assert!(reasons(&m).is_empty(), "{:?}", m.reasons);
+    engine.stop();
+    sink.server.stop();
+}
+
+/// A bulk case with a rate sends at that rate over the time from the barrier to the cut.
+#[test]
+fn a_rated_bulk_case_sends_at_its_rate() {
+    let _serial = serial();
+    let pin = pin();
+    let sink = Sink::start(pin.sink.as_slice()).unwrap();
+    let engine = forwarder(sink.server.addr, 0, Fault::None);
+    let host = StubHost::default();
+    let setup = Setup {
+        target: engine.addr,
+        host: &host,
+        engine: &Running::Hev,
+        sink: &sink,
+        relay: None,
+        pin: &pin,
+    };
+    let case = Case::Bulk {
+        dir: Dir::Up,
+        flows: vec![1],
+        seconds: 5,
+        rate_mbps: Some(200),
+    };
+    let m = measure(&case, 1, &setup, &Stop::new());
+    assert!(reasons(&m).is_empty(), "{:?}", m.reasons);
+    let secs = (m.cut_ns.unwrap() - m.open_ns.unwrap()) as f64 / 1e9;
+    let achieved = m.bytes.unwrap() as f64 * 8.0 / (secs * 200e6);
+    assert!(
+        (0.85..=1.10).contains(&achieved),
+        "{achieved:.3} of 200 Mbit/s over {secs:.2} s"
+    );
     engine.stop();
     sink.server.stop();
 }
@@ -247,6 +283,7 @@ fn a_flow_reset_in_transfer_rejects_the_measurement() {
         dir: Dir::Up,
         flows: vec![3],
         seconds: 1,
+        rate_mbps: None,
     };
     let m = measure(&case, 3, &setup, &Stop::new());
     assert_eq!(reasons(&m), ["1 of 3 flows did not deliver all they sent"]);
@@ -295,6 +332,7 @@ fn flows_without_tun_traffic_are_rejected() {
         dir: Dir::Up,
         flows: vec![1],
         seconds: 1,
+        rate_mbps: None,
     };
     let sparse = Case::Sparse {
         interval_ms: 50,
@@ -508,6 +546,7 @@ fn stop_cancels_a_bulk_window_and_tears_it_down() {
                 dir: Dir::Up,
                 flows: vec![2],
                 seconds: 60,
+                rate_mbps: None,
             };
             measure_direct(case, 2, &host, &stop)
         });
@@ -558,6 +597,7 @@ fn stop_cancels_the_wait_for_flows() {
                     dir: Dir::Up,
                     flows: vec![2],
                     seconds: 60,
+                    rate_mbps: None,
                 };
                 measure(&case, 2, &setup, &stop)
             });
@@ -727,6 +767,8 @@ fn run_writes_a_line_per_step_until_stopped() {
             .iter()
             .all(|l| l["status"] == "rejected" && l["reason"] == "open tun: no VpnService here")
     );
+    // No barrier opened: the key is left out, not null.
+    assert!(lines.iter().all(|l| l.get("boottime_open_ns").is_none()));
 }
 
 #[test]

@@ -59,9 +59,9 @@ flowchart LR
 
 | Element | Responsibility | Does not |
 | --- | --- | --- |
-| Scripts on the computer | Prepare the phone, deliver the plan, record the trace over the whole run, pull the results, record the stay-awake setting at both ends, compute joules and wakeups per window. | Judge the runner's measurement: they read `status` and `reason`, and judge only the trace values they compute. |
+| Scripts on the computer | Prepare the phone, deliver the plan, record the trace over the whole run, pull the results, record the stay-awake setting and the battery state at both ends, put the phone back to sleep if they woke it, compute joules and wakeups per window. | Judge the runner's measurement: they read `status` and `reason`, and judge only the trace values they compute. |
 | TunBench app | Own the VPN, the screen and the foreground service; run the plan; write the results, and a reason when it cannot run. | Interpret the figures. |
-| Perfetto on the phone | Record power rails and scheduler events with the trace clock `CLOCK_BOOTTIME`. | Know about plans or windows. |
+| Perfetto on the phone | Record power rails, scheduler events and CPU frequencies with the trace clock `CLOCK_BOOTTIME`. | Know about plans or windows. |
 | Android platform | Provide the tun, and the interactive, display and foreground state the runner checks. | Report state unasked; the runner asks at the window ends. |
 | hev-socks5-tunnel | The baseline engine, built from a pinned submodule and started through its JNI. | Name its threads: each inherits the name of the thread that started it. |
 | `honk-netstack` | The stack under the `honk` engine, a git dependency pinned to one honk revision. | Know about Android or the harness. |
@@ -162,7 +162,7 @@ The warmup and the connecting of flows, the drain, and the teardown of flows eac
 A window has two boundary timestamps, both `CLOCK_BOOTTIME`, the clock of the Perfetto trace.
 
 - **Order at the start.** The runner reads the platform state, the cpuset and every thread's mask first, then takes the start timestamp, the tun counters and every thread's counters. At the end it reads every thread's counters, the tun counters and the payload, takes the end timestamp, and only then reads the platform state, the cpuset, the engine's threads and the masks again. The probes call into the app and may be slow; they add no CPU time or bytes inside the boundaries.
-- **Cut point.** For `bulk` and `sparse` the flows start at a barrier released after the window opened and after the sink accepted every expected connection (hev's start returns once its thread exists, which proves nothing about the data path). The plan's seconds are the sending time. At the cut the senders stop and half-close, and `boottime_cut_ns` records the instant.
+- **Cut point.** For `bulk` and `sparse` the flows start at a barrier released after the window opened and after the sink accepted every expected connection (hev's start returns once its thread exists, which proves nothing about the data path). The plan's seconds are the sending time. `boottime_open_ns` records the instant before the barrier opens. At the cut the senders stop and half-close, and `boottime_cut_ns` records the instant.
 - **Drain.** After the cut, the receivers read to the end of what was sent, the runner waits until all of them have, and the window closes with every flow thread still alive. Bytes still in a socket buffer are therefore counted, and a slow counter read afterwards finds no new payload, so no counted byte lacks its CPU time. The span from cut to end belongs to the window, so CPU time and energy include the drain.
 - **Delivery.** When the flows end, each receiver answers its sender with the number of bytes it read, and the sender compares it with what it wrote. A flow is broken when a read or write fails at either end (a reset included), the stream ends early or the answer differs from what the sender wrote. In bulk and sparse the flows end after the window has closed, so the answer adds no CPU time or bytes inside it; in tail the burst ends before the window opens. Any broken flow rejects the measurement, in bulk, sparse and tail alike.
 - **Same period.** CPU time, context switches, tun counters and payload cover the interval between the two timestamps. The analysis script cuts energy and wakeups from the trace over the same two timestamps.
@@ -228,6 +228,7 @@ The run script records one Perfetto trace over the whole run, with power rails a
 
 - **Joules.** Each rail's cumulative energy counter is interpolated at both boundaries from the samples that bracket them, and the difference is the window's energy. The rails are every counter track of type `power_rails` in the trace (32 on the Pixel 10 Pro), with no names fixed in the code. Tracks are grouped by track id, so two tracks that share a name stay separate rails, keyed `name#id`.
 - **Invalid values.** An invalid value is `null` with the reason beside it. A rejected record gets `null` for every value, with its status and reason. A declared rail with no samples, a boundary outside the samples, a counter that went back, or a gap between samples above a threshold makes that rail's joules invalid. The median poll interval is printed.
+- **CPU frequency.** The trace records the `power/cpu_frequency` events and polls `sys_stats` every 500 ms, as Perfetto recommends, since the events come only when a frequency changes. Both land on one track per CPU. Each CPU's frequency is averaged over the window, weighted by the time each sample holds, into `cpu_freq_khz`. A CPU without a sample at or before the window start and at or after its end is `null`, unknown rather than 0; a trace without frequency data makes `cpu_freq_khz` `null` as a whole.
 - **Wakeups.** For each TID of the record, a wakeup is a thread becoming runnable from a sleeping state. A return from preemption or a yield is not counted. Wakeups are invalid for a record when the trace lost scheduler data anywhere (the loss counters carry no time, so the loss voids every window) or when its scheduler data does not span the window, as after the trace size cap. A sleep that ends straight in running, with no runnable state between, is counted too: the waker ran before the sleeper's switch-out was recorded. A role's total is also invalid when one of its threads has no scheduler data in the trace.
 - The analysis keeps every field of the runner's line as it is, the cut and the scan bounds included.
 - The harness does not claim that USB charging leaves the whole-device rail unaffected.
@@ -246,7 +247,7 @@ The plan is checked once, before anything runs: unknown fields are rejected at e
   "mtu": [8500],
   "cases": [
     { "kind": "bulk", "dir": "up",   "flows": [1, 4], "seconds": 10 },
-    { "kind": "bulk", "dir": "down", "flows": [1, 4], "seconds": 10 },
+    { "kind": "bulk", "dir": "down", "flows": [1, 4], "seconds": 10, "rate_mbps": 2000 },
     { "kind": "idle", "seconds": 60 },
     { "kind": "tail", "burst_seconds": 5, "observe_seconds": 10 },
     { "kind": "sparse", "interval_ms": 1000, "bytes": 64, "seconds": 60 }
@@ -260,6 +261,7 @@ The plan is checked once, before anything runs: unknown fields are rejected at e
 
 - `pin` lists CPU lists that must not overlap; `relay` is required when the plan runs hev. A pin that the app's cpuset narrows shows in the mask read-back and rejects the window instead of being widened.
 - MTU values are at least 1280, flow counts 1 to 256, `repeat` 1 to 100, every duration 1 to 3600 s (so a run always ends), `bytes` at most one write buffer (64 KiB).
+- A `bulk` case's optional `rate_mbps` (1 to 100000) is the target rate of all its flows together, shared equally. Each sender paces itself with a token bucket that holds 10 ms of its share, so it never sends more than its share times the elapsed time plus that bucket, and a stalled sender catches up by at most the bucket. Without `rate_mbps` the flows send at full speed. `tail` and `sparse` are not paced.
 - `mtu` lists the values to sweep, and every line names the MTU it was taken at.
 
 ## Interfaces
@@ -314,12 +316,14 @@ One JSON line per measurement.
 | Group | Fields |
 | --- | --- |
 | Identity | `run`, `seq`, `steps`, `case_index`, `rep`, `engine`, `mtu`, `flows`, `case`, `pin`. |
-| Window | `boottime_start_ns`, `boottime_end_ns`, `elapsed_ns`, `boottime_cut_ns`, `scan_start_ns`, `scan_end_ns`, `clk_tck`. |
+| Window | `boottime_start_ns`, `boottime_end_ns`, `elapsed_ns`, `boottime_open_ns`, `boottime_cut_ns`, `scan_start_ns`, `scan_end_ns`, `clk_tck`. |
 | Load | `bytes` (payload at the receiver), `sends` (sparse), `tail` (`CLOCK_BOOTTIME` marks of the burst's start and of its end at the sink). |
 | Roles | `roles.engine`, `relay`, `generator`, `sink`, `engine_relay`: CPU time, user and system ticks, voluntary and nonvoluntary switches, and per thread the TID, name, mask, last CPU and CPU time. |
 | Route | `tun` reads, read bytes, writes, write bytes over the window. |
 | State | `cpuset_start`, `cpuset_end`, `platform_start`, `platform_end`. |
 | Verdict | `status` (`ok` or `rejected`), `reason`, `unreadable`. |
+
+`boottime_open_ns` was added with `rate_mbps`: the instant before the flow barrier opens (see the cut point). Every row whose barrier opened carries it, with or without `rate_mbps`, so a `bulk` or `sparse` row without a rate now has one key more than the rows written before it. Idle and tail rows, and a measurement rejected before its barrier, leave the key out.
 
 ## Decisions not taken
 

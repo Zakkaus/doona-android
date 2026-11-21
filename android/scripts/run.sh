@@ -1,12 +1,13 @@
 #!/bin/bash
-# Runs a TunBench plan on the phone over adb, with a Perfetto trace of the power rails and the
-# scheduler running beside it, and pulls the results.
+# Runs a TunBench plan on the phone over adb, with a Perfetto trace of the power rails, the
+# scheduler and the CPU frequencies running beside it, and pulls the results.
 #
 # Usage: run.sh PLAN.json [RUN_ID]
 #   RUN_ID (A-Z a-z 0-9 . _ -) defaults to <date>-<time>-<plan name>. Prints the results directory,
 #   $RESULTS/RUN_ID: plan.json, results.jsonl and done (written by the app), trace.pftrace,
-#   meta.txt (APK, plan, build, thermal, stay_on_while_plugged_in) and screen.txt (wakefulness,
-#   display, brightness).
+#   meta.txt (APK, plan, build, thermal, stay_on_while_plugged_in, woke, and the battery's level,
+#   status, charging sources and temperature at the start and the end) and screen.txt
+#   (wakefulness, display, brightness).
 #   Then: uv run --project android/scripts android/scripts/analyze.py <that directory>
 #
 # Contract with the app (BenchActivity, dev.tunbench):
@@ -18,7 +19,10 @@
 #   pushed there and copied into files/plans/ with run-as; consent is appops ACTIVATE_VPN allow.
 #
 # The phone must stay interactive with the panel black while it measures: BenchActivity keeps the
-# screen on (FLAG_KEEP_SCREEN_ON) only while it is in front. A few seconds after the start,
+# screen on (FLAG_KEEP_SCREEN_ON) only while it is in front. The script wakes the phone before the
+# start and records in meta.txt whether it woke it (woke=1, 0, or unknown when the wakefulness
+# could not be read); with woke=1 the exit trap sends KEYCODE_SLEEP and logs the wakefulness it
+# reads afterwards, without failing the run on it. A few seconds after the start,
 # mWakefulness=Awake, the display ON and BenchActivity the resumed top activity must hold, else the
 # run aborts. The script never changes stay_on_while_plugged_in; it records the setting at the
 # start and the end, refuses to wake the phone if it is not 0 at the start and fails if it is not
@@ -113,12 +117,40 @@ perfetto_pid=""
 traced=0
 started=0
 finished=0
+woke=0
 
 prop() { dev getprop "$1"; }
 thermal() {
   local t
   t=$(dev dumpsys thermalservice | grep -m1 'Thermal Status' | cut -d: -f2 | tr -d ' ' || true)
   echo "${t:-unknown}"
+}
+# battery_$1=level=.. status=.. plugged=.. temperature=.. from dumpsys battery; plugged lists the
+# sources whose "<source> powered" line is true (ac, usb, wireless, dock), none when every source
+# line is false, and unknown otherwise. battery_$1=unknown, with a warning, if the read fails.
+battery() {
+  local dump
+  dump=$(dev dumpsys battery) || {
+    log "warning: dumpsys battery failed; battery_$1=unknown"
+    echo "battery_$1=unknown"
+    return 0
+  }
+  awk -F': ' -v at="$1" '
+    $1 == "  level" { level = $2 }
+    $1 == "  status" { status = $2 }
+    $1 == "  temperature" { temp = $2 }
+    $1 ~ / powered$/ {
+      if ($2 == "false") { off++; next }
+      if ($2 != "true") { odd++; next }
+      sub(/^ +/, "", $1)
+      sub(/ powered$/, "", $1)
+      plugged = plugged (plugged == "" ? "" : "+") tolower($1)
+    }
+    END {
+      if (plugged == "") plugged = (off > 0 && odd == 0 ? "none" : "unknown")
+      printf "battery_%s=level=%s status=%s plugged=%s temperature=%s\n", at, level, status,
+        plugged, temp
+    }' <<<"$dump"
 }
 # The lines the screen check reads. The display state comes from dumpsys display: on Android 17
 # dumpsys power no longer prints it.
@@ -159,11 +191,14 @@ wait_done() {
   return 1
 }
 
-# Stops Perfetto and confirms on the phone that it has exited, so that the trace is complete.
+# Stops Perfetto and confirms on the phone that it has exited, so that the trace is complete. It
+# has exited once its /proc entry no longer names perfetto: SELinux on Android 17 refuses kill -0
+# from shell, and the pid may be reused.
 stop_perfetto() {
   [ -n "$perfetto_pid" ] || return 0
   local p=$perfetto_pid
-  local gone="for i in \$(seq 30); do kill -0 $p 2>/dev/null || { echo gone; exit; }; sleep 1; done"
+  local alive="grep -q perfetto /proc/$p/cmdline 2>/dev/null"
+  local gone="for i in \$(seq 30); do $alive || { echo gone; exit; }; sleep 1; done"
   [ "$(limit=40 dev "kill -TERM $p; $gone")" = gone ] || {
     log "perfetto ($p) has not exited; its trace stays on the phone: $trace"
     return 1
@@ -205,12 +240,18 @@ cleanup() {
     { stop_perfetto && collect; } || fail=1
   fi
   echo "thermal_status_end=$(thermal)" >>"$out/meta.txt"
+  battery end >>"$out/meta.txt"
   stay=$(dev settings get global stay_on_while_plugged_in 2>/dev/null)
   echo "stay_on_while_plugged_in_end=$stay" >>"$out/meta.txt"
   [ "$stay" = 0 ] || {
     log "stay_on_while_plugged_in is '$stay', not 0: the phone will not sleep on USB power"
     fail=1
   }
+  if [ "$woke" = 1 ]; then
+    # Only logged: the key may take effect late, and the data is already complete.
+    dev input keyevent KEYCODE_SLEEP
+    log "sent KEYCODE_SLEEP: $(dev dumpsys power | grep -Eo 'mWakefulness=[A-Za-z]+')"
+  fi
   if [ "$finished" = 1 ]; then
     result=$(cat "$out/done" 2>/dev/null)
     log "done: $result"
@@ -233,12 +274,25 @@ stay_start=$(dev settings get global stay_on_while_plugged_in)
   echo "build_id=$(prop ro.build.id)"
   echo "sdk_full=$(prop ro.build.version.sdk_full | grep . || prop ro.build.version.sdk)"
   echo "thermal_status_start=$(thermal)"
+  battery start
   echo "stay_on_while_plugged_in_start=$stay_start"
 } >"$out/meta.txt"
 # With it set, a run that fails before the black screen is up would leave the phone awake.
 [ "$stay_start" = 0 ] || die "stay_on_while_plugged_in is '$stay_start', not 0; not waking the phone"
 
 dev appops set "$pkg" ACTIVATE_VPN allow
+# woke: 1 if the phone was not Awake, unknown if its wakefulness could not be read, which the exit
+# trap leaves alone. Recorded before the wake key, so that a run killed with -9 still tells.
+power=$(dev dumpsys power) || power=""
+case $power in
+*mWakefulness=Awake*) woke=0 ;;
+*mWakefulness=Asleep* | *mWakefulness=Dozing* | *mWakefulness=Dreaming*) woke=1 ;;
+*)
+  woke=unknown
+  log "warning: cannot read the wakefulness; the phone will not be put back to sleep"
+  ;;
+esac
+echo "woke=$woke" >>"$out/meta.txt"
 dev input keyevent KEYCODE_WAKEUP
 adb push "$plan" "/data/local/tmp/$run_id.json" >/dev/null
 as_app mkdir -p files/plans
@@ -257,6 +311,7 @@ data_sources {
     ftrace_config {
       ftrace_events: "sched/sched_switch"
       ftrace_events: "sched/sched_waking"
+      ftrace_events: "power/cpu_frequency"
       compact_sched { enabled: true }
     }
   }
@@ -265,6 +320,12 @@ data_sources {
   config {
     name: "android.power"
     android_power_config { battery_poll_ms: 250 collect_power_rails: true }
+  }
+}
+data_sources {
+  config {
+    name: "linux.sys_stats"
+    sys_stats_config { cpufreq_period_ms: 500 }
   }
 }
 builtin_data_sources { primary_trace_clock: BUILTIN_CLOCK_BOOTTIME }

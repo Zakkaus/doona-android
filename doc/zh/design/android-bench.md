@@ -59,9 +59,9 @@ flowchart LR
 
 | 组成 | 职责 | 不做 |
 | --- | --- | --- |
-| 电脑端脚本 | 准备手机，投送测试计划，在整次运行内录制 trace，拉回结果，在两端记录常亮设置，按窗口计算焦耳数和唤醒次数。 | 评判运行器的测量：只读取 `status` 和 `reason`，只评判自己从 trace 算出的值。 |
+| 电脑端脚本 | 准备手机，投送测试计划，在整次运行内录制 trace，拉回结果，在两端记录常亮设置和电池状态，手机由脚本唤醒时让它重新休眠，按窗口计算焦耳数和唤醒次数。 | 评判运行器的测量：只读取 `status` 和 `reason`，只评判自己从 trace 算出的值。 |
 | TunBench app | 持有 VPN、屏幕和前台服务；运行测试计划；写出结果，无法运行时写出原因。 | 解读数据。 |
-| 手机上的 Perfetto | 以 `CLOCK_BOOTTIME` 为 trace 时钟，记录电源轨和调度事件。 | 了解测试计划或窗口。 |
+| 手机上的 Perfetto | 以 `CLOCK_BOOTTIME` 为 trace 时钟，记录电源轨、调度事件和 CPU 频率。 | 了解测试计划或窗口。 |
 | Android 平台 | 提供 tun，以及运行器检查的交互、屏幕和前台状态。 | 主动上报状态；运行器在窗口两端询问。 |
 | hev-socks5-tunnel | 基准引擎，由固定版本的 submodule 构建，经其 JNI 启动。 | 给自己的线程命名：每个线程继承启动它的线程的名字。 |
 | `honk-netstack` | `honk` 引擎使用的协议栈，以 git 依赖引入，固定在 honk 的一个提交。 | 了解 Android 或测试工具。 |
@@ -162,7 +162,7 @@ flowchart LR
 窗口有两个边界时间戳，都取 `CLOCK_BOOTTIME`，即 Perfetto trace 使用的时钟。
 
 - **起点的顺序。** 运行器先读取平台状态、cpuset 和每个线程的掩码，再取起始时间戳、tun 计数器和每个线程的计数器。终点先读每个线程的计数器、tun 计数器和载荷，取结束时间戳，之后才再次读取平台状态、cpuset、引擎的线程和掩码。这些探测会调用 app，可能较慢；它们不会给边界之内增加 CPU 时间或字节。
-- **截止点。** 对 `bulk` 和 `sparse`，flow 在一个屏障处同时开始。屏障在窗口打开之后、接收端接受了全部预期连接之后才放开（hev 的启动在其线程创建后就返回，这并不能证明数据路径可用）。测试计划的秒数是发送时间。到达截止点时发送端停止并半关闭，`boottime_cut_ns` 记录这一时刻。
+- **截止点。** 对 `bulk` 和 `sparse`，flow 在一个屏障处同时开始。屏障在窗口打开之后、接收端接受了全部预期连接之后才放开（hev 的启动在其线程创建后就返回，这并不能证明数据路径可用）。测试计划的秒数是发送时间。`boottime_open_ns` 记录屏障放开前的时刻。到达截止点时发送端停止并半关闭，`boottime_cut_ns` 记录这一时刻。
 - **排空。** 截止之后，接收端把已发送的数据读到末尾，运行器等待全部接收端完成，窗口在所有 flow 线程仍存在时关闭。因此仍在 socket 缓冲区中的字节会被计入；排空之后读取计数器即使较慢，也不会再有新载荷，窗口不会漏掉已计载荷对应的 CPU 时间。从截止到结束的这段时间属于窗口，所以 CPU 时间和能耗包含排空阶段。
 - **交付。** flow 结束时，每个接收端把读到的字节数回复给发送端，发送端与自己写出的字节数比较。读或写在任一端失败（包括被重置）、流提前结束，或回复与发送端写出的不一致，该 flow 即失效。bulk 和 sparse 的 flow 在窗口关闭之后才结束，因此回复不会给窗口内增加 CPU 时间或字节；tail 的突发在窗口打开之前就已结束。任何 flow 失效，bulk、sparse 和 tail 的测量都被拒绝。
 - **同一时段。** CPU 时间、上下文切换、tun 计数器和载荷都覆盖两个时间戳之间的区间。analyze 脚本按同样两个时间戳从 trace 中切出能耗和唤醒次数。
@@ -230,6 +230,7 @@ run 脚本在整次运行内录制一份 Perfetto trace，含电源轨和调度�
 
 - **焦耳数。** 每条电源轨的累计能量计数器，在两个边界上用前后相邻的采样点插值，两者之差就是窗口内的能耗。电源轨是 trace 中类型为 `power_rails` 的全部计数器 track（Pixel 10 Pro 上为 32 条），代码里不写死名称。电源轨按 track id 分组，名称相同的两条 track 仍是两条电源轨，以 `名称#id` 区分。
 - **无效值。** 无效值为 `null`，旁边写明原因。被运行器拒绝的记录，所有值都为 `null`，并附其状态和原因。已声明的电源轨没有采样、边界落在采样之外、计数器倒退，或相邻采样之间的间隔超过阈值，都会使该电源轨的焦耳数无效。输出中给出采样间隔的中位数。
+- **CPU 频率。** trace 记录 `power/cpu_frequency` 事件，并按 Perfetto 的建议每 500 ms 轮询一次 `sys_stats`，因为事件只在频率改变时产生。两者落在每颗 CPU 的同一条 track 上。每颗 CPU 的频率在窗口内按各采样持续的时间加权平均，写入 `cpu_freq_khz`。窗口起点或之前、终点或之后缺少采样的 CPU 为 `null`，表示未知，不是 0；trace 完全没有频率数据时，整个 `cpu_freq_khz` 为 `null`。
 - **唤醒次数。** 对记录中的每个 TID，唤醒指线程从睡眠状态变为可运行。被抢占后的返回和主动让出不计入。如果 trace 在任何位置丢失了调度数据（丢失计数器不带时间，丢失会使每个窗口都无效），或其调度数据未覆盖该窗口（例如超过 trace 大小上限之后），该记录的唤醒次数无效。睡眠后直接变为运行、中间没有可运行状态的也计入：唤醒方在睡眠线程的切出被记录之前已经执行。如果某个角色的一个线程在 trace 中没有调度数据，该角色的总数同样无效。
 - analyze 原样保留运行器那一行的所有字段，包括截止点和采样边界。
 - 工具不声称 USB 充电不会影响整机电源轨。
@@ -248,7 +249,7 @@ run 脚本在整次运行内录制一份 Perfetto trace，含电源轨和调度�
   "mtu": [8500],
   "cases": [
     { "kind": "bulk", "dir": "up",   "flows": [1, 4], "seconds": 10 },
-    { "kind": "bulk", "dir": "down", "flows": [1, 4], "seconds": 10 },
+    { "kind": "bulk", "dir": "down", "flows": [1, 4], "seconds": 10, "rate_mbps": 2000 },
     { "kind": "idle", "seconds": 60 },
     { "kind": "tail", "burst_seconds": 5, "observe_seconds": 10 },
     { "kind": "sparse", "interval_ms": 1000, "bytes": 64, "seconds": 60 }
@@ -262,6 +263,7 @@ run 脚本在整次运行内录制一份 Perfetto trace，含电源轨和调度�
 
 - `pin` 给出的 CPU 列表不得重叠；测试计划运行 hev 时必须有 `relay`。被 app 的 cpuset 缩小的绑定会在掩码回读时暴露，并拒绝该窗口，不会被放宽。
 - MTU 至少为 1280，flow 数为 1 到 256，`repeat` 为 1 到 100，每个时长为 1 到 3600 秒（因此运行一定会结束），`bytes` 不超过一个写缓冲区（64 KiB）。
+- `bulk` 的 `rate_mbps` 可选（1 到 100000），是全部 flow 合计的目标速率，各 flow 平分。每个发送端用一个能装下自己 10 ms 份额的令牌桶限速，因此发送量不超过份额乘以已过时间再加一桶；发送端卡住后，补发的量不超过一桶。没有 `rate_mbps` 时 flow 全速发送。`tail` 和 `sparse` 不限速。
 - `mtu` 列出要依次取的值，每一行结果都写明所用的 MTU。
 
 ## 接口
@@ -316,12 +318,14 @@ app 在其私有文件下以运行 id 命名的目录中写入计划副本、`re
 | 组 | 字段 |
 | --- | --- |
 | 标识 | `run`、`seq`、`steps`、`case_index`、`rep`、`engine`、`mtu`、`flows`、`case`、`pin`。 |
-| 窗口 | `boottime_start_ns`、`boottime_end_ns`、`elapsed_ns`、`boottime_cut_ns`、`scan_start_ns`、`scan_end_ns`、`clk_tck`。 |
+| 窗口 | `boottime_start_ns`、`boottime_end_ns`、`elapsed_ns`、`boottime_open_ns`、`boottime_cut_ns`、`scan_start_ns`、`scan_end_ns`、`clk_tck`。 |
 | 负载 | `bytes`（接收端载荷）、`sends`（sparse）、`tail`（突发开始时和接收端读到突发末尾时的 `CLOCK_BOOTTIME` 标记）。 |
 | 角色 | `roles.engine`、`relay`、`generator`、`sink`、`engine_relay`：CPU 时间、user 和 system tick、主动和被动切换次数，以及每个线程的 TID、名字、掩码、最后运行的 CPU 和 CPU 时间。 |
 | 路由 | 窗口内 `tun` 的读次数、读字节、写次数、写字节。 |
 | 状态 | `cpuset_start`、`cpuset_end`、`platform_start`、`platform_end`。 |
 | 结论 | `status`（`ok` 或 `rejected`）、`reason`、`unreadable`。 |
+
+`boottime_open_ns` 与 `rate_mbps` 一起新增，记录 flow 屏障放开前的时刻（见截止点）。屏障放开过的行都带这个字段，不论有没有 `rate_mbps`，因此没有速率的 `bulk` 和 `sparse` 行比此前写出的行多这一个键。`idle`、`tail` 行以及在屏障前被拒绝的测量不写这个键。
 
 ## 未采用的方案
 

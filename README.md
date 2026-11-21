@@ -17,7 +17,7 @@ CI gate.
 | `crates/honk-android/` | The Rust crate, built as `libhonkengine.so` with cargo-ndk. It is a standalone crate with its own `Cargo.lock`, `rust-toolchain.toml` and release profile. |
 | `android/tunbench/` | TunBench, the Gradle app (package `dev.tunbench`). hev-socks5-tunnel is a submodule under `app/src/main/jni/`. |
 | `android/scripts/` | `run.sh` and `analyze.py` for bench runs, `build-netstack-bench.sh`, and the build and run guide. |
-| `android/plans/` | Bench plans: `smoke.json` and `compare.json`. |
+| `android/plans/` | Bench plans: `smoke.json`, `compare.json` (the first round) and `compare-v2.json` (the second, which adds bulk at a 2000 Mbit/s target rate). |
 | `doc/en/design/android-bench.md` | The harness design and the rules that make its figures valid ([Chinese](doc/zh/design/android-bench.md)). |
 | `.github/workflows/android.yml` | CI: script checks, rustfmt, Clippy, tests, the APK build, Android lint and the 16 KiB page alignment check. |
 
@@ -40,13 +40,15 @@ cd honk-android/android/tunbench
 
 The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`. Before the app build,
 Gradle's `buildHonkEngine` task runs `cargo ndk` in `crates/honk-android` with
-`build --release --locked --features bench`.
+`rustc --lib --crate-type cdylib --release --locked --features bench`. It builds the
+`cdylib` alone because Cargo skips `lto = "fat"` for a unit that is also an `rlib`.
 
 [`.github/workflows/android.yml`](.github/workflows/android.yml) lists the checks CI runs.
 
 ## Run a bench
 
-A bench run needs `adb` and a phone with USB debugging.
+A bench run needs `adb` and a phone with USB debugging. It can also run with the cable unplugged,
+over wireless adb, so USB power does not charge the phone during the measurement.
 [`android/scripts/README.md`](android/scripts/README.md) covers installing the APK, running a plan
 with `run.sh`, and turning the Perfetto trace into energy and wakeup figures with `analyze.py`.
 
