@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = ["perfetto==0.59.1"]
 
 [dependency-groups]
-dev = ["pytest>=9.2,<10", "ruff>=0.17,<0.18"]
+dev = ["lizard==1.26.1", "pytest>=9.2,<10", "ruff>=0.17,<0.18"]
 
 [tool.uv]
 package = false

@@ -48,7 +48,7 @@ runner but never measures; the results are not a performance gate.
 ```sh
 (cd android/tunbench && ./gradlew assembleDebug)
 HONK_DIR=../honk android/scripts/build-netstack-bench.sh   # tcp_bulk, tcp_bulk-native, netstack-criterion -> android/scripts/out/
-(cd android/scripts && uv sync)               # the analyzer's environment: perfetto, pytest, ruff
+(cd android/scripts && uv sync)               # the analyzer's environment: perfetto, lizard, pytest, ruff
 ```
 
 The Gradle build takes the NDK from the Android Gradle plugin and needs no environment script.
@@ -209,10 +209,11 @@ runner's fields, `scan_start_ns` and `scan_end_ns` among them, pass through unch
 poll interval found. Quick table: `jq -r '[.seq,.engine,.case.kind,.flows,.joules.VSYS_PWR_VBATT]|@tsv'
 RUN_DIR/analysis.jsonl`.
 
-Gates for `run.sh` and `analyze.py`: `shellcheck android/scripts/run.sh`, `shfmt -d
-android/scripts/run.sh` and, in `android/scripts`, `uv run ruff check`, `uv run ruff format
---check`, `uv run pytest`. CI runs all of these but `shfmt`, with `uv run` locked to `uv.lock`, in a
-step before the Gradle step.
+Gates for `run.sh`, `analyze.py` and `check_limits.py`: `shellcheck android/scripts/run.sh`,
+`shfmt -d android/scripts/run.sh` and, in `android/scripts`, `uv run ruff check`, `uv run ruff
+format --check` and `uv run pytest`. CI runs all of these but `shfmt`, with `uv run` locked to
+`uv.lock`, in a step before the Gradle step. `uv run python check_limits.py --base-rev origin/main`
+checks the file and function limits of the app and the crate (see `AGENTS.md`).
 
 ## Known limits
 

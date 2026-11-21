@@ -19,7 +19,7 @@ CI gate.
 | `android/scripts/` | `run.sh` and `analyze.py` for bench runs, `build-netstack-bench.sh`, and the build and run guide. |
 | `android/plans/` | Bench plans: `smoke.json`, `compare.json` (the first round) and `compare-v2.json` (the second, which adds bulk at a 2000 Mbit/s target rate). |
 | `doc/en/design/android-bench.md` | The harness design and the rules that make its figures valid ([Chinese](doc/zh/design/android-bench.md)). |
-| `.github/workflows/android.yml` | CI: script checks, rustfmt, Clippy, tests, Kotlin format, the APK build, Android lint, the JVM tests and the 16 KiB page alignment check. |
+| `.github/workflows/android.yml` | CI: script checks, file and function limits, rustfmt, Clippy, tests, Kotlin format, the APK build, Android lint, the JVM tests and the 16 KiB page alignment check. |
 
 `crates/honk-android/Cargo.toml` takes honk-netstack from Git, pinned to `c5b36a64` on
 [Glassyiris/honk](https://github.com/Glassyiris/honk), the head of

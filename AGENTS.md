@@ -11,7 +11,7 @@ TunBench benchmark app (`android/tunbench`), the bench scripts and plans (`andro
 .
 ├── crates/honk-android/   # Rust crate -> libhonkengine.so; standalone, own Cargo.lock, toolchain file, release profile
 ├── android/tunbench/      # Gradle app dev.tunbench; hev-socks5-tunnel submodule under app/src/main/jni/
-├── android/scripts/       # run.sh, analyze.py (uv project), build-netstack-bench.sh, android-env.sh, README
+├── android/scripts/       # run.sh, analyze.py (uv project), check_limits.py, build-netstack-bench.sh, android-env.sh, README
 ├── android/plans/         # bench plans: smoke.json, compare.json, compare-v2.json
 ├── doc/en, doc/zh         # design/android-bench.md in both languages
 └── .github/workflows/     # android.yml: CI for the Rust, Android and script checks
@@ -46,7 +46,16 @@ warnings are errors. Fix a warning, or suppress it where it occurs and say why; 
 baseline file. `spotlessApply` fixes most format findings.
 
 In `android/scripts`: `uv run ruff check`, `uv run ruff format --check`, `uv run pytest`,
-`shellcheck run.sh` and `shfmt -d run.sh`.
+`uv run python check_limits.py --base-rev origin/main`, `shellcheck run.sh` and `shfmt -d run.sh`.
+
+`check_limits.py` limits a file to 600 lines and a function to 80 lines (NLOC) and a cyclomatic
+complexity of 15, in the app and in `crates/honk-android`, tests included. App source directories
+must not be named `util`, `common`, `helper` or `misc`. `limits-ratchet.txt` lists the existing
+violations by name; a value may only go down, and lowering it is part of the change that shrinks
+the code. CI compares the ratchet with the target branch's, so raising or adding an entry fails:
+that needs the maintainer's ruling, and the pull request is then merged over the red check. When
+two branches change ratcheted code, the one merged second measures again on the final base and
+updates the ratchet in its own pull request.
 
 ## Build invariants
 
