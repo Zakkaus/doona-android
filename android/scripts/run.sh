@@ -5,7 +5,8 @@
 # Usage: run.sh PLAN.json [RUN_ID]
 #   RUN_ID (A-Z a-z 0-9 . _ -) defaults to <date>-<time>-<plan name>. Prints the results directory,
 #   $RESULTS/RUN_ID: plan.json, results.jsonl and done (written by the app), trace.pftrace,
-#   meta.txt (APK, plan, build, thermal, stay_on_while_plugged_in, woke) and screen.txt
+#   meta.txt (APK, plan, build, thermal, stay_on_while_plugged_in, woke, and the battery's level,
+#   status, charging sources and temperature at the start and the end) and screen.txt
 #   (wakefulness, display, brightness).
 #   Then: uv run --project android/scripts android/scripts/analyze.py <that directory>
 #
@@ -124,6 +125,33 @@ thermal() {
   t=$(dev dumpsys thermalservice | grep -m1 'Thermal Status' | cut -d: -f2 | tr -d ' ' || true)
   echo "${t:-unknown}"
 }
+# battery_$1=level=.. status=.. plugged=.. temperature=.. from dumpsys battery; plugged lists the
+# sources whose "<source> powered" line is true (ac, usb, wireless, dock), none when every source
+# line is false, and unknown otherwise. battery_$1=unknown, with a warning, if the read fails.
+battery() {
+  local dump
+  dump=$(dev dumpsys battery) || {
+    log "warning: dumpsys battery failed; battery_$1=unknown"
+    echo "battery_$1=unknown"
+    return 0
+  }
+  awk -F': ' -v at="$1" '
+    $1 == "  level" { level = $2 }
+    $1 == "  status" { status = $2 }
+    $1 == "  temperature" { temp = $2 }
+    $1 ~ / powered$/ {
+      if ($2 == "false") { off++; next }
+      if ($2 != "true") { odd++; next }
+      sub(/^ +/, "", $1)
+      sub(/ powered$/, "", $1)
+      plugged = plugged (plugged == "" ? "" : "+") tolower($1)
+    }
+    END {
+      if (plugged == "") plugged = (off > 0 && odd == 0 ? "none" : "unknown")
+      printf "battery_%s=level=%s status=%s plugged=%s temperature=%s\n", at, level, status,
+        plugged, temp
+    }' <<<"$dump"
+}
 # The lines the screen check reads. The display state comes from dumpsys display: on Android 17
 # dumpsys power no longer prints it.
 screen_state() {
@@ -209,6 +237,7 @@ cleanup() {
     { stop_perfetto && collect; } || fail=1
   fi
   echo "thermal_status_end=$(thermal)" >>"$out/meta.txt"
+  battery end >>"$out/meta.txt"
   stay=$(dev settings get global stay_on_while_plugged_in 2>/dev/null)
   echo "stay_on_while_plugged_in_end=$stay" >>"$out/meta.txt"
   [ "$stay" = 0 ] || {
@@ -242,6 +271,7 @@ stay_start=$(dev settings get global stay_on_while_plugged_in)
   echo "build_id=$(prop ro.build.id)"
   echo "sdk_full=$(prop ro.build.version.sdk_full | grep . || prop ro.build.version.sdk)"
   echo "thermal_status_start=$(thermal)"
+  battery start
   echo "stay_on_while_plugged_in_start=$stay_start"
 } >"$out/meta.txt"
 # With it set, a run that fails before the black screen is up would leave the phone awake.

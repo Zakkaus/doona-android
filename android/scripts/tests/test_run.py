@@ -41,6 +41,12 @@ case "$*" in
   *"cat files/runs/"*"/results.jsonl") [ -n "$STUB_NO_RESULTS" ] || echo '{"seq":0}' ;;
   *"cat files/runs/"*) echo '{"seq":0}' ;;
   "pull "*) [ -z "$STUB_PULL_FAILS" ] && echo trace >"${!#}" ;;
+  *"dumpsys battery"*)  # charging on USB before the start, on battery after it
+    [ -z "$STUB_BATTERY_FAILS" ] || exit 1
+    set -- true 2 80 301
+    ! grep -q -- '--es plan' "$STUB_DIR/log" || set -- false 3 78 315
+    [ -n "$STUB_BATTERY_NO_SOURCES" ] || printf '  AC powered: false\n  USB powered: %s\n' "$1"
+    printf '  status: %s\n  level: %s\n  temperature: %s\n' "$2" "$3" "$4" ;;
   *"get global stay_on"*)  # STUB_STAYON before the start, STUB_STAYON_END after it
     if grep -q -- '--es plan' "$STUB_DIR/log"; then echo "${STUB_STAYON_END:-0}"
     else echo "${STUB_STAYON:-0}"; fi ;;
@@ -157,6 +163,28 @@ def test_a_phone_still_asleep_after_the_wake_key_aborts_the_run(phone):
     assert result.returncode != 0
     assert "the phone is not awake with the bench in front" in result.stderr
     assert "mWakefulness=Asleep" in result.stderr
+
+
+def test_meta_records_the_battery_at_the_start_and_the_end(phone):
+    _, _, out, _ = phone(done="ok")
+    meta = (out / "meta.txt").read_text().splitlines()
+    assert "battery_start=level=80 status=2 plugged=usb temperature=301" in meta
+    assert "battery_end=level=78 status=3 plugged=none temperature=315" in meta
+
+
+def test_a_battery_without_source_lines_is_not_recorded_as_unplugged(phone):
+    _, _, out, _ = phone(done="ok", STUB_BATTERY_NO_SOURCES="1")
+    meta = (out / "meta.txt").read_text().splitlines()
+    assert "battery_start=level=80 status=2 plugged=unknown temperature=301" in meta
+    assert "battery_end=level=78 status=3 plugged=unknown temperature=315" in meta
+
+
+def test_a_failed_battery_read_is_recorded_as_unknown_and_the_run_goes_on(phone):
+    result, _, out, _ = phone(done="ok", STUB_BATTERY_FAILS="1")
+    assert result.returncode == 0, result.stderr
+    meta = (out / "meta.txt").read_text().splitlines()
+    assert "battery_start=unknown" in meta and "battery_end=unknown" in meta
+    assert result.stderr.count("dumpsys battery failed") == 2
 
 
 def test_the_trace_config_parses_and_lasts_as_long_as_the_plan(phone):

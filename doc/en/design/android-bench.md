@@ -59,7 +59,7 @@ flowchart LR
 
 | Element | Responsibility | Does not |
 | --- | --- | --- |
-| Scripts on the computer | Prepare the phone, deliver the plan, record the trace over the whole run, pull the results, record the stay-awake setting at both ends, put the phone back to sleep if they woke it, compute joules and wakeups per window. | Judge the runner's measurement: they read `status` and `reason`, and judge only the trace values they compute. |
+| Scripts on the computer | Prepare the phone, deliver the plan, record the trace over the whole run, pull the results, record the stay-awake setting and the battery state at both ends, put the phone back to sleep if they woke it, compute joules and wakeups per window. | Judge the runner's measurement: they read `status` and `reason`, and judge only the trace values they compute. |
 | TunBench app | Own the VPN, the screen and the foreground service; run the plan; write the results, and a reason when it cannot run. | Interpret the figures. |
 | Perfetto on the phone | Record power rails and scheduler events with the trace clock `CLOCK_BOOTTIME`. | Know about plans or windows. |
 | Android platform | Provide the tun, and the interactive, display and foreground state the runner checks. | Report state unasked; the runner asks at the window ends. |

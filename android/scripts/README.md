@@ -129,9 +129,14 @@ runner rejects a plan with an unknown field or an out-of-range value before it s
 `run.sh PLAN.json [RUN_ID]` pushes the plan, starts Perfetto and then `BenchActivity`, waits for
 the app's `done` file within a deadline taken from the plan, and pulls `plan.json`,
 `results.jsonl`, `done` and `trace.pftrace` into `android/results/<run id>/` with `meta.txt`
-(APK and plan hashes, build id, `sdk_full`, thermal status, `stay_on_while_plugged_in`) and
-`screen.txt` (wakefulness,
-display state, brightness). The header of the script lists the `am start` contract with the app and
+(APK and plan hashes, build id, `sdk_full`, thermal status, `stay_on_while_plugged_in`, and
+`battery_start` and `battery_end`: level, status, charging sources and temperature from `dumpsys
+battery`) and `screen.txt` (wakefulness, display state, brightness). The battery is read only at
+the start and the end, so whether the phone charged in between is unknown. `status` is the
+BatteryManager code (2 charging, 3 discharging, 5 full) and `temperature` is in tenths of a degree
+Celsius. The charging sources are `none` only when every source line reads false and `unknown`
+when there is none; a failed read records `battery_start=unknown` or `battery_end=unknown` and
+warns, without stopping the run. The header of the script lists the `am start` contract with the app and
 its environment variables. `adb shell` calls reach the phone while it measures, so it checks for
 the finish only every 30 s (`POLL`).
 
