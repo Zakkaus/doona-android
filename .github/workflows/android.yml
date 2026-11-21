@@ -90,7 +90,7 @@ jobs:
       - name: Check Kotlin format, build the APK, lint and run the JVM tests
         working-directory: android/tunbench
         run: ./gradlew spotlessCheck assembleDebug lint testDebugUnitTest
-      - name: Check the 16 KiB page alignment of the native libraries
+      - name: Check the 16 KiB page alignment and the JNI exports of the native libraries
         run: |
           set -euo pipefail
           readelf="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
@@ -101,3 +101,8 @@ jobs:
             echo "$so"
             "$readelf" -lW "$RUNNER_TEMP/apk/lib/arm64-v8a/$so" | awk '$1 == "LOAD" { print; if ($NF != "0x4000") bad = 1 } END { exit bad }'
           done
+          # libhonkengine.so exports Java_dev_tunbench_<class>_<name> for exactly the external funs
+          # of the classes it binds by name, the declarations JniNamesTest pins.
+          kt=android/tunbench/app/src/main/kotlin/dev/tunbench
+          diff <(for c in HonkEngine Bench; do grep -oP '\bexternal fun \K\w+' "$kt/$c.kt" | sed "s/^/Java_dev_tunbench_${c}_/"; done | sort) \
+            <("$readelf" --dyn-syms -W "$RUNNER_TEMP/apk/lib/arm64-v8a/libhonkengine.so" | awk '$7 != "UND" && $8 ~ /^Java_dev_tunbench_/ { print $8 }' | sort)

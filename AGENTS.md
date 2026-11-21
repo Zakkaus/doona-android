@@ -41,9 +41,11 @@ cargo ndk -t arm64-v8a --platform 29 clippy --locked --all-targets --features be
 
 In `android/tunbench`: `./gradlew spotlessCheck assembleDebug lint testDebugUnitTest`, then
 `zipalign -c -P 16 4` on `app/build/outputs/apk/debug/app-debug.apk` and `llvm-readelf -lW` on
-both `.so` files: every `LOAD` segment must be aligned to `0x4000`. Lint and Kotlin compiler
-warnings are errors. Fix a warning, or suppress it where it occurs and say why; there is no lint
-baseline file. `spotlessApply` fixes most format findings.
+both `.so` files: every `LOAD` segment must be aligned to `0x4000`. The `Java_dev_tunbench_*`
+dynamic symbols of `libhonkengine.so` must match the `external fun`s of `HonkEngine` and `Bench`
+exactly; CI checks this in the same step. Lint and Kotlin compiler warnings are
+errors. Fix a warning, or suppress it where it occurs and say why; there is no lint baseline file.
+`spotlessApply` fixes most format findings.
 
 In `android/scripts`: `uv run ruff check`, `uv run ruff format --check`, `uv run pytest`,
 `uv run python check_limits.py --base-rev origin/main`, `shellcheck run.sh` and `shfmt -d run.sh`.
