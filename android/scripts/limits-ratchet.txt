@@ -1,6 +1,7 @@
-# Items over the limits of check_limits.py, measured on 4596ac6. A value may only go down: lower
-# it or delete the line when the code shrinks. Raising one, or adding one, needs the maintainer's
-# ruling (AGENTS.md, Gates). Format: kind value path [lizard signature].
+# Items over the limits of check_limits.py, measured on 4596ac6. Each value equals the measurement:
+# when the code shrinks, lower it to the new value, or delete the line once the item is within the
+# limit. Raising one, or adding one, needs the maintainer's ruling (AGENTS.md, Gates).
+# Format: kind value path [lizard signature].
 file 613 crates/honk-android/src/engine.rs
 file 771 crates/honk-android/src/harness/load.rs
 file 834 crates/honk-android/tests/harness.rs

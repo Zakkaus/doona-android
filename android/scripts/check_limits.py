@@ -4,8 +4,10 @@ Limits: a file over 600 lines, a function over 80 non-blank, non-comment lines (
 cyclomatic complexity of 15. Sources: the app's Kotlin and Java, and crates/honk-android's Rust,
 tests included. App source directories must not be named util, common, helper or misc.
 
-Existing violations are listed by name in limits-ratchet.txt and may only shrink. With --base-rev,
-the ratchet is also compared with the one at that revision, so a change cannot raise its own.
+Existing violations are listed by name in limits-ratchet.txt with exactly their measured value: an
+entry above it, or for an item back within the limit, fails, so no entry leaves room to grow back.
+With --base-rev, the ratchet is also compared with the one at that revision, so a change cannot
+raise or add its own.
 
 This is a heuristic: lizard tokenises rather than parses, so syntax errors are left to the
 compilers, Clippy and Spotless. A function's key is lizard's signature (name and parameters, no
@@ -115,7 +117,10 @@ def check(root, base_rev):
         elif value > entries[key]:
             problems.append(f"{name}: {key[0]} {value} grew from {entries[key]}")
         elif value < entries[key]:
-            print(f"note: {name}: {key[0]} {value}, lower the ratchet from {entries[key]}")
+            problems.append(f"{name}: {key[0]} {value}, lower the entry to {value}")
+    for key in sorted(entries.keys() - over.keys()):
+        name = " ".join(filter(None, key[1:]))
+        problems.append(f"{name}: {key[0]} within the limit, delete the line from {RATCHET}")
     if base_rev and (base := base_ratchet(root, base_rev)) is not None:
         for key, value in sorted(entries.items()):
             name = " ".join(filter(None, key[1:]))

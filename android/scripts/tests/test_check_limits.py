@@ -69,7 +69,7 @@ def test_limits(tree, rel, text, expected):
     [
         (f"ccn 16 {KT}/B.kt g x : Int", 0),
         (f"ccn 15 {KT}/B.kt g x : Int", 1),
-        (f"ccn 17 {KT}/B.kt g x : Int", 0),
+        (f"ccn 17 {KT}/B.kt g x : Int", 1),
         (f"ccn 16 {KT}/B.kt g y : Int", 1),
         (f"ccn 16 {KT}/B.kt g x : Int\nccn 16 {KT}/B.kt g x : Int", 2),
         ("ccn sixteen x", 2),
@@ -79,6 +79,21 @@ def test_ratchet(tree, ratchet, expected):
     write(tree, f"{KT}/B.kt", kt_branchy(16))
     write(tree, check_limits.RATCHET, ratchet + "\n")
     assert run(tree) == expected
+
+
+def test_ratchet_above_the_measurement_fails(tree, capsys):
+    # A slack entry would let the code grow back to the old value unnoticed.
+    write(tree, f"{KT}/B.kt", kt_branchy(16))
+    write(tree, check_limits.RATCHET, f"ccn 17 {KT}/B.kt g x : Int\n")
+    assert run(tree) == 1
+    assert "lower the entry to 16" in capsys.readouterr().out
+
+
+def test_ratchet_entry_within_the_limit_fails(tree, capsys):
+    write(tree, f"{KT}/B.kt", kt_branchy(15))
+    write(tree, check_limits.RATCHET, f"ccn 16 {KT}/B.kt g x : Int\n")
+    assert run(tree) == 1
+    assert "delete the line" in capsys.readouterr().out
 
 
 def test_same_signature_is_ambiguous(tree, capsys):
