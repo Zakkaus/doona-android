@@ -90,6 +90,9 @@ android {
     lint {
         warningsAsErrors = true
     }
+
+    // The manifest test reads the merged manifest named in test_config.properties.
+    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 kotlin {
@@ -101,4 +104,5 @@ kotlin {
 dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.core)
+    testImplementation(libs.junit)
 }
