@@ -1,7 +1,9 @@
 """run.sh against a stub adb on PATH that logs every call and answers the few the script reads.
 
 The stub keeps the phone's wakefulness in $STUB_DIR/wakefulness; the wake and sleep keys switch it,
-except that the wake key leaves it Asleep with STUB_STAYS_ASLEEP.
+except that the wake key leaves it Asleep with STUB_STAYS_ASLEEP. Perfetto's /proc entry lives in
+$STUB_DIR/proc, and the stop command runs against it with kill -0 refused, as SELinux does on
+Android 17.
 """
 
 import json
@@ -20,8 +22,23 @@ echo "$*" >>"$STUB_DIR/log"
 [ -f "$STUB_DIR/t0" ] || date +%s >"$STUB_DIR/t0"
 age=$(($(date +%s) - $(cat "$STUB_DIR/t0")))
 case "$*" in
-  *"perfetto --background"*) cat >"$STUB_DIR/perfetto.cfg" && echo "${STUB_PERFETTO_PID:-4242}" ;;
-  *"kill -0"*) [ -n "$STUB_PERFETTO_STUCK" ] || echo gone ;;
+  *"perfetto --background"*)
+    mkdir -p "$STUB_DIR/proc/4242"
+    printf 'perfetto\0--background\0' >"$STUB_DIR/proc/4242/cmdline"
+    cat >"$STUB_DIR/perfetto.cfg" && echo "${STUB_PERFETTO_PID:-4242}" ;;
+  *"kill -TERM"*)  # perfetto exits STUB_PERFETTO_POLLS sleeps after the TERM; never if STUCK
+    left=${STUB_PERFETTO_POLLS:-0}
+    exits() {
+      [ -z "$STUB_PERFETTO_STUCK" ] && [ "$left" = 0 ] || return 0
+      rm -rf "$STUB_DIR/proc" && echo "perfetto exited" >>"$STUB_DIR/log"
+    }
+    kill() {
+      [ "$1" != -0 ] || { echo "kill: $2: Operation not permitted" >&2; return 1; }
+      exits
+    }
+    sleep() { left=$((left - 1)) && exits; }
+    cmd=${!#}
+    eval "${cmd//\/proc\//$STUB_DIR/proc/}" ;;
   *pgrep*) echo 4242 ;;
   "push "*) [ -z "$STUB_PUSH_FAILS" ] ;;
   *"getprop ro.build.id"*) echo TEST.1 ;;
@@ -235,6 +252,14 @@ def test_a_perfetto_that_does_not_exit_is_not_pulled(phone):
     result, log, _, _ = phone(done="ok", STUB_PERFETTO_STUCK="1")
     assert result.returncode != 0
     assert "pull " not in log
+
+
+def test_perfetto_is_pulled_only_after_its_proc_entry_is_gone(phone):
+    # Android 17 refuses kill -0 on perfetto; it finishes the trace three polls after the TERM
+    result, log, _, _ = phone(done="ok", STUB_PERFETTO_POLLS="3")
+    assert result.returncode == 0, result.stderr
+    assert "perfetto exited" in log
+    assert log.index("perfetto exited") < log.index("pull ")
 
 
 def test_a_done_file_after_the_deadline_does_not_count(phone):

@@ -191,11 +191,14 @@ wait_done() {
   return 1
 }
 
-# Stops Perfetto and confirms on the phone that it has exited, so that the trace is complete.
+# Stops Perfetto and confirms on the phone that it has exited, so that the trace is complete. It
+# has exited once its /proc entry no longer names perfetto: SELinux on Android 17 refuses kill -0
+# from shell, and the pid may be reused.
 stop_perfetto() {
   [ -n "$perfetto_pid" ] || return 0
   local p=$perfetto_pid
-  local gone="for i in \$(seq 30); do kill -0 $p 2>/dev/null || { echo gone; exit; }; sleep 1; done"
+  local alive="grep -q perfetto /proc/$p/cmdline 2>/dev/null"
+  local gone="for i in \$(seq 30); do $alive || { echo gone; exit; }; sleep 1; done"
   [ "$(limit=40 dev "kill -TERM $p; $gone")" = gone ] || {
     log "perfetto ($p) has not exited; its trace stays on the phone: $trace"
     return 1
@@ -247,7 +250,7 @@ cleanup() {
   if [ "$woke" = 1 ]; then
     # Only logged: the key may take effect late, and the data is already complete.
     dev input keyevent KEYCODE_SLEEP
-    log "sent KEYCODE_SLEEP: $(dev dumpsys power | grep -o 'mWakefulness=[A-Za-z]*')"
+    log "sent KEYCODE_SLEEP: $(dev dumpsys power | grep -Eo 'mWakefulness=[A-Za-z]+')"
   fi
   if [ "$finished" = 1 ]; then
     result=$(cat "$out/done" 2>/dev/null)
