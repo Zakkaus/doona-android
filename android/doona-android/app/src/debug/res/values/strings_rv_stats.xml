@@ -16,6 +16,7 @@
     <string name="rv_stats_quota_left">%1$s left</string>
     <string name="rv_stats_no_quota">No subscription reports its quota</string>
     <string name="rv_stats_no_expiry">No expiry date</string>
+    <string name="rv_stats_nodes">Node locations</string>
     <string name="rv_stats_latency">Latency</string>
     <string name="rv_stats_ms">ms</string>
     <string name="rv_stats_median">Median · %1$d tested</string>
@@ -31,6 +32,10 @@
     <plurals name="rv_stats_subscriptions">
         <item quantity="one">%1$d subscription</item>
         <item quantity="other">%1$d subscriptions</item>
+    </plurals>
+    <plurals name="rv_stats_countries">
+        <item quantity="one">%1$d country or region</item>
+        <item quantity="other">%1$d countries or regions</item>
     </plurals>
     <plurals name="rv_stats_node_count">
         <item quantity="one">%1$d node</item>

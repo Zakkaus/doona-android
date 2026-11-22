@@ -4,6 +4,7 @@
     <string name="rv_connect">Connect</string>
     <string name="rv_disconnect">Disconnect</string>
     <string name="rv_test_latency">Test latency</string>
+    <string name="rv_more">More</string>
     <string name="rv_expires">Expires %1$s</string>
     <string name="rv_updated">Updated %1$s</string>
     <string name="rv_peak">Peak %1$s</string>
@@ -33,13 +34,9 @@
     <string name="rv_subscription_usage">%1$s / %2$s · ends %3$s</string>
     <string name="rv_fastest_nodes">Fastest nodes</string>
     <string name="rv_preview_label" translatable="false">doona RV sample</string>
-    <string name="rv_switch_node">Switch node</string>
     <string name="rv_mode_rule">Rules</string>
     <string name="rv_main_node">Main node</string>
     <string name="rv_main_node_hint">The node you pick becomes the main node</string>
-    <string name="rv_live_speed">Live speed</string>
-    <string name="rv_legend_peak">%1$s · peak %2$s</string>
-    <string name="rv_legend_rate">%1$s · %2$s</string>
     <string name="rv_direct_note">No node in use: all traffic goes direct</string>
     <string name="rv_rule_streaming">Streaming</string>
     <string name="rv_rule_domestic">Domestic and LAN</string>

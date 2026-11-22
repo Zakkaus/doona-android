@@ -56,17 +56,6 @@ class RvColorsTest {
         }
     }
 
-    /** O5: the duck's ring, success while connected and the outline colour otherwise, at 3:1 on the hero and on the strip. */
-    @Test
-    fun duckRingReadsOnTheHeroAndTheStrip() {
-        for (c in themes) {
-            for ((state, ring) in listOf("connected" to c.good, "disconnected" to c.control)) {
-                assertAtLeast("${c.name} $state ring on the hero", RvContrast.MARK, ring, c.page)
-                assertAtLeast("${c.name} $state ring on the strip over a card", RvContrast.MARK, ring, c.barGlass.over.compositeOver(c.card))
-            }
-        }
-    }
-
     private val RvColors.name get() = if (dark) "dark" else "light"
 
     private fun assertAtLeast(what: String, ratio: Float, a: Color, b: Color) {

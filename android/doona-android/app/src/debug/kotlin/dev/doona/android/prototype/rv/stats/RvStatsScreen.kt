@@ -44,8 +44,7 @@ import java.text.NumberFormat
 /**
  * The 統計 page in the language of Revolut's Analytics page: the back disc and the large title, the subscription
  * and range chips, then the cards: 已用流量 and the paged tiles (the app-side daily history), 訂閱流量 (the
- * subscriptions' quota), 延遲分布 (latency results), 分流比例 and the tools; 統計 is about usage, so the node map is on
- * 節點 only (O4). A card
+ * subscriptions' quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 and the tools. A card
  * whose data v0.1 lacks (連線次數, 分流比例) carries a `v0.2` tag. Where each figure comes from is noted on
  * [RvStatsState], not on the page (N-14). The chips and the tools are not wired in the sample.
  */
@@ -67,6 +66,7 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
         Spacer(Modifier.height(RvSpace.cardGap))
         RvGutter {
             RvQuotaCard(state.subscriptions, state.nowEpochMs)
+            RvNodeMapCard(state)
             RvLatencyCard(state)
             RvSplitCard(state.split)
             RvToolsCard(tools(state), onTool = { NOT_WIRED() })

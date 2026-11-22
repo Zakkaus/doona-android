@@ -75,7 +75,7 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
 /**
  * The screen's one tinted area: the dot map of the world in [dots] on the neutral page behind the header content,
  * centred on [focus] at [focusTop] from the header's top, none above [statusBar], and faint behind the hero's text at
- * [clear]. With [glass], the map alone is recorded for the glass controls over it.
+ * [clear].
  */
 @Composable
 internal fun RvHeader(
@@ -85,14 +85,13 @@ internal fun RvHeader(
     dots: Color,
     clear: Rect?,
     modifier: Modifier = Modifier,
-    glass: RvGlass? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(modifier.fillMaxWidth()) {
-        val source = glass?.let { Modifier.rvGlassSource(it) } ?: Modifier
-        Box(Modifier.matchParentSize().then(source).background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar))
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = content)
-    }
+    Column(
+        modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        content = content,
+    )
 }
 
 /**

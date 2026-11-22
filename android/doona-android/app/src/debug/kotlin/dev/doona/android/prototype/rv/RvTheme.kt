@@ -139,8 +139,9 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val reference = if (dark) s.outline else s.outlineVariant
     val detailReference = textSecondary
 
-    /** The detail chart's hairline grid and the ghost bars: the text colour, very faint. */
+    /** The detail chart's hairline grid, a tile's neutral fill and its ghost bars: the text colour, very faint. */
     val grid = s.onSurface.copy(alpha = if (dark) RvAlpha.GRID_DARK else RvAlpha.GRID_LIGHT)
+    val tileFill = s.onSurface.copy(alpha = RvAlpha.TILE_FILL)
     val ghost = s.onSurface.copy(alpha = RvAlpha.GHOST)
 
     val roundButton = discOnHeader
@@ -153,9 +154,10 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
         Tone.Neutral -> textSecondary
     }
 
-    /** A direction's roles: its line, the detail fill and the band. */
+    /** A direction's roles: its line, its tile's disc (the line at one alpha over the card), the detail fill and the band. */
     private fun series(line: Color) = RvSeries(
         line = line,
+        disc = line.copy(alpha = RvAlpha.SERIES_DISC).compositeOver(card),
         area = line.copy(alpha = if (dark) RvAlpha.AREA_DARK else RvAlpha.AREA_LIGHT),
         band = line.copy(alpha = if (dark) RvAlpha.BAND_DARK else RvAlpha.BAND_LIGHT),
     )
@@ -180,9 +182,9 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     }
 }
 
-/** One traffic direction's colours: its chart line, the detail chart's fill and 今日用量's band. */
+/** One traffic direction's colours: its chart line, its tile's disc, the detail chart's fill and 今日用量's band. */
 @Immutable
-internal class RvSeries(val line: Color, val area: Color, val band: Color)
+internal class RvSeries(val line: Color, val disc: Color, val area: Color, val band: Color)
 
 /** WCAG contrast targets: text with a margin, text at the minimum, and marks that are not text; [STEPS] of a ramp. */
 internal object RvContrast {

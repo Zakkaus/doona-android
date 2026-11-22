@@ -30,6 +30,7 @@ import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvUsageChart
 import dev.doona.android.prototype.rv.RvUsageLegend
 import dev.doona.android.prototype.rv.RvUsageSize
+import dev.doona.android.prototype.rv.RvWorldMap
 import dev.doona.android.prototype.rv.data.RvSplit
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.rvMedian
@@ -160,6 +161,25 @@ private fun QuotaLegend(sub: RvSubscription, nowEpochMs: Long, segment: RvRingSe
         RvStatsSwatch(segment.rest)
         Spacer(Modifier.width(RvSpace.subGap + RvSpace.tight))
         RvText(stringResource(R.string.rv_stats_quota_left, format.bytes(sub.leftBytes).toString()), Rv.type.rowSub, color = Rv.colors.textSecondary)
+    }
+}
+
+/**
+ * 節點分布, Revolut's 'Your trips' card: the world in grey with every country that has a node in the primary colour, and
+ * how many countries and nodes under it.
+ */
+@Composable
+internal fun RvNodeMapCard(state: RvStatsState) {
+    val countries = state.nodes.mapTo(mutableSetOf()) { it.place }
+    RvCard {
+        RvCardHeader(stringResource(R.string.rv_stats_nodes))
+        Column(cardBody) {
+            RvWorldMap(countries)
+            Spacer(Modifier.height(RvStatsSpace.chartGap))
+            val countryCount = pluralStringResource(R.plurals.rv_stats_countries, countries.size, countries.size)
+            val nodeCount = pluralStringResource(R.plurals.rv_stats_node_count, state.nodes.size, state.nodes.size)
+            RvText(countryCount + SEPARATOR + nodeCount, Rv.type.rowTitle)
+        }
     }
 }
 

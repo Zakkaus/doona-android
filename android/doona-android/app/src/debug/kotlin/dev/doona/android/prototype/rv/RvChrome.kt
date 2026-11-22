@@ -91,19 +91,14 @@ internal fun rvShade(scroll: ScrollState): () -> Float {
 /**
  * 活動's top bar (measured §4): the duck mark in a disc, a search pill and two round buttons, 統計 and 訂閱, all 44 dp
  * glass over what scrolls under them, on [RvBar]'s strip. The pill opens [onSearch] and 統計 [onStats]; the duck and
- * 訂閱 open nothing in the sample. The duck's disc carries a 2 dp ring that shows the connection (O5): the success
- * colour while [connected], else the outline colour; each keeps 3:1 against the hero and the strip.
+ * 訂閱 open nothing in the sample.
  */
 @Composable
-internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, connected: Boolean, onSearch: () -> Unit, onStats: () -> Unit, modifier: Modifier = Modifier) {
-    val ring = if (connected) Rv.colors.good else Rv.colors.control
+internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, onSearch: () -> Unit, onStats: () -> Unit, modifier: Modifier = Modifier) {
     RvBar(glass, insets, shade, modifier) {
         // Each control keeps a 48 dp target round its 44 dp disc, so the gaps between targets are 4 dp narrower.
         Row(Modifier.fillMaxSize().padding(horizontal = RvSpace.gutter - RvChrome.touchPad), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.minimumInteractiveComponentSize().size(RvChrome.control).rvControl(glass, CircleShape).border(RvConnect.markRing, ring, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
+            Box(Modifier.minimumInteractiveComponentSize().size(RvChrome.control).rvControl(glass, CircleShape), contentAlignment = Alignment.Center) {
                 Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvChrome.markGlyph))
             }
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
@@ -146,9 +141,9 @@ private fun GlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, o
     ) { RvGlyph(icon, RvChrome.controlGlyph, Rv.colors.text) }
 }
 
-/** A glass control's fill (the top bar's, 活動's connection capsules): a very soft shadow in light, the controls' glass, its rim in dark. */
+/** A top bar control's fill: a very soft shadow in light, then the controls' glass, and its rim in dark. */
 @Composable
-internal fun Modifier.rvControl(glass: RvGlass, shape: Shape): Modifier {
+private fun Modifier.rvControl(glass: RvGlass, shape: Shape): Modifier {
     val rim = Rv.colors.controlRim?.let { Modifier.border(RvChrome.navRim, it, shape) } ?: Modifier
     return rvSoftShadow(shape, RvChrome.controlShadow, RvChrome.controlShadowDrop, RvChrome.CONTROL_SHADOW_ALPHA).rvGlass(glass, shape, Rv.colors.controlGlass).then(rim)
 }

@@ -16,10 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,7 +29,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
@@ -67,43 +62,6 @@ internal fun RvUsageCard(day: RvDay, nowHour: Float, yesterdayByNow: Long) {
                 RvText(stringResource(compare, format.bytes(abs(change)).toString()), type.tileCaption, color = colors.textSecondary)
             }
             RvUsageLegend(day, Modifier.align(Alignment.BottomStart))
-        }
-    }
-}
-
-/**
- * 即時速度 (O3): the last minute's download and upload as two lines on one chart, the same teal and slate as 今日用量,
- * over a legend with each direction's peak in that minute; scrubbing the chart as on 流量詳情 puts that second's rates in
- * the legend instead. The card is no taller than the tile row it replaces, and the whole card opens 流量詳情 ([onOpen]).
- * Disconnected, or with no traffic in the minute, it shows Revolut's empty chart: ghost bars and a line that says so.
- */
-@Composable
-internal fun RvLiveSpeedCard(down: List<Float>, up: List<Float>, quiet: Boolean, onOpen: () -> Unit) {
-    val format = rememberRvFormat()
-    val colors = Rv.colors
-    var scrub by remember { mutableStateOf<Int?>(null) }
-    RvCard(Modifier.height(RvChartSize.liveCard).rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, onOpen)) {
-        RvCardHeader(stringResource(R.string.rv_live_speed))
-        Column(Modifier.weight(1f).padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvUsageSize.pad)) {
-            if (quiet) {
-                Spacer(Modifier.weight(1f))
-                RvGhostBars(RV_GHOST)
-                Spacer(Modifier.height(RvUsageSize.chartAboveLegend))
-                RvText(stringResource(R.string.rv_no_traffic), Rv.type.tileCaption, color = colors.textSecondary)
-                return@Column
-            }
-            RvLiveChart(down, up, scrub, { scrub = it }, Modifier.weight(1f))
-            Spacer(Modifier.height(RvUsageSize.chartAboveLegend))
-            val shown = scrub
-            val figure = { values: List<Float> ->
-                val rate = shown?.let { values.getOrNull(it) } ?: values.filterNot { it.isNaN() }.maxOrNull() ?: 0f
-                format.rate(rate.toDouble()).toString()
-            }
-            val line = if (shown == null) R.string.rv_legend_peak else R.string.rv_legend_rate
-            Row(horizontalArrangement = Arrangement.spacedBy(RvUsageSize.legendItemGap)) {
-                LegendItem(colors.down.line, stringResource(line, stringResource(R.string.ui_download), figure(down)))
-                LegendItem(colors.up.line, stringResource(line, stringResource(R.string.ui_upload), figure(up)))
-            }
         }
     }
 }

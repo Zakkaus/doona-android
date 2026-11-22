@@ -1,8 +1,9 @@
 package dev.doona.android.prototype.rv
 
 import android.content.res.Configuration
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,12 +15,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,16 +26,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
@@ -51,17 +45,15 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.data.RvRuleOutbound
 import dev.doona.android.prototype.rv.data.fastest
-import java.util.Locale
 
 /**
- * The 活動 screen in Revolut's home structure (#11, #15): the download rate as the hero figure and the upload rate under
- * it on a dot map of the world that marks the node's country (#07, #08); under them doona's own connection control, a
- * glass capsule with the connection's state and its one button, over 切換節點 and 測試延遲 (O1). Then the outbound card
- * (item 24: the mode, the main node and the rule groups that sent traffic today), 即時速度 (O3, it opens the traffic
- * page), and three more cards as Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top
- * bar (measured §4), whose duck shows the connection (O5), and the floating glass bottom bar (§9), which shrinks while the
- * content scrolls up. It renders [ActivityUiState]; the engine has no rule mode yet, so [mode] comes from the sample, and
- * the lower cards read [RvData].
+ * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
+ * hero figure and the upload rate under it on a dot map of the world that marks the node's country (#07, #08), four round
+ * actions, then the outbound card (item 24: the mode, the main node and the rule groups that sent traffic today),
+ * download and upload as two of Revolut's square home tiles (either opens the traffic page), and three more cards as
+ * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
+ * floating glass bottom bar (§9), which shrinks while the content scrolls up. It renders [ActivityUiState]; the engine
+ * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData].
  */
 @Composable
 internal fun RvActivityScreen(
@@ -76,25 +68,24 @@ internal fun RvActivityScreen(
     val glass = rememberRvGlass()
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
-            Header(state, mode, onAction, onConnect, routes, insets)
+            Header(state, mode, onAction, onConnect, insets)
             RvGutter {
                 OutboundCard(state, mode, routes)
-                val quiet = state.status !is Status.Running || (state.downHistory.all { it == 0f } && state.upHistory.all { it == 0f })
-                RvLiveSpeedCard(state.downHistory, state.upHistory, quiet, routes.traffic)
+                TrafficTiles(state, routes.traffic)
                 RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
                 RvSubscriptionsCard(RvData.subscriptions)
                 RvFastestCard(RvData.nodes.fastest(FASTEST), RvData.current.id, routes.nodes)
             }
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
-        RvTopBar(glass, insets, rvShade(scroll), state.status is Status.Running, onSearch = routes.nodes, onStats = routes.stats, Modifier.align(Alignment.TopCenter))
+        RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.nodes, onStats = routes.stats, Modifier.align(Alignment.TopCenter))
         RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter))
     }
 }
 
 /**
- * Where 活動 leads: 即時速度, 統計, 節點 (the search pill and 切換節點), the node row, the nav's tabs, the mode picker,
- * a rule row (by its group) and the full list of rules.
+ * Where 活動 leads: a traffic tile, 統計, 節點 (the search pill), the node row, the nav's tabs, the mode picker, a rule
+ * row (by its group) and the full list of rules.
  */
 internal class RvActivityRoutes(
     val traffic: () -> Unit = {},
@@ -108,114 +99,42 @@ internal class RvActivityRoutes(
 )
 
 @Composable
-private fun Header(state: ActivityUiState, mode: RvRouteMode, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, routes: RvActivityRoutes, insets: WindowInsets) {
+private fun Header(state: ActivityUiState, mode: RvRouteMode, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, insets: WindowInsets) {
     val format = rememberRvFormat()
     val running = state.status is Status.Running || state.status is Status.Starting
     // Direct traffic uses no node, so the map marks no place.
     val place = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.place }
     val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
     var heroBounds by remember { mutableStateOf<Rect?>(null) }
-    // The capsules are glass over the map, so the map is recorded on its own: the page's recording holds the capsules.
-    val mapGlass = rememberRvGlass()
     // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected.
-    RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds, glass = mapGlass) {
+    RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
         Spacer(Modifier.height(RvSpace.headerTop))
-        // The capsule states the connection and the outbound card the mode right under it, so the hero carries only the
-        // rates: a lone mode word over the figure would read as the figure's label (O1).
         Column(Modifier.onPlaced { heroBounds = it.boundsInParent() }, horizontalAlignment = Alignment.CenterHorizontally) {
+            RvText("${stringResource(state.status.label)} · ${stringResource(mode.label)}", Rv.type.caption)
+            Spacer(Modifier.height(RvSpace.tight))
             RvHero(format.rate(state.downRate.toDouble()))
             Spacer(Modifier.height(RvSpace.subGap))
             // The hero is the download rate, so the line under it carries the other direction only (N-10).
             RvInline(R.drawable.rv_sym_arrow_upward, format.rate(state.upRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
         }
         Spacer(Modifier.height(RvSpace.heroToActions))
-        ConnectionCapsule(mapGlass, state.status, if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect)
-        Spacer(Modifier.height(RvConnect.gap))
-        Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), horizontalArrangement = Arrangement.spacedBy(RvConnect.gap)) {
-            SecondaryCapsule(mapGlass, stringResource(R.string.rv_switch_node), routes.nodes, Modifier.weight(1f))
-            SecondaryCapsule(mapGlass, stringResource(R.string.rv_test_latency), NOT_WIRED, Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
+            val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
+            val toggle = if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect
+            RvAction(R.drawable.rv_sym_power, stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect), toggle, Modifier.weight(1f))
+            RvAction(R.drawable.rv_sym_directions, stringResource(R.string.act_mode), { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f))
+            RvAction(R.drawable.rv_sym_speed, stringResource(R.string.rv_test_latency), NOT_WIRED, Modifier.weight(1f))
+            RvAction(R.drawable.rv_sym_more_horiz, stringResource(R.string.rv_more), NOT_WIRED, Modifier.weight(1f))
         }
         Spacer(Modifier.height(RvSpace.actionsToCard))
     }
 }
 
 /**
- * The connection capsule (O1): glass across the content width with a status dot, the state and, while connected, how long
- * it has run in tabular figures; at the end the stop disc while running or starting, else a filled 連線 button ([onToggle]).
- */
-@Composable
-private fun ConnectionCapsule(glass: RvGlass, status: Status, onToggle: () -> Unit) {
-    val colors = Rv.colors
-    Row(
-        Modifier
-            .padding(horizontal = RvSpace.gutter)
-            .fillMaxWidth()
-            .height(RvConnect.capsule)
-            .rvControl(glass, CircleShape)
-            .padding(start = RvConnect.start, end = RvConnect.buttonInset),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(RvSize.dot).clip(CircleShape).background(if (status is Status.Running) colors.good else colors.control))
-        Spacer(Modifier.width(RvSpace.trailingGap))
-        RvText(stringResource(status.label), Rv.type.rowTitle)
-        if (status is Status.Running) {
-            Spacer(Modifier.width(RvConnect.gap))
-            RvText(rvClock((RvData.nowEpochMs - status.sinceEpochMs) / MS_PER_SECOND), Rv.type.rowValue, color = colors.textSecondary)
-        }
-        Spacer(Modifier.weight(1f))
-        if (status is Status.Running || status is Status.Starting) StopDisc(onToggle) else ConnectButton(onToggle)
-    }
-}
-
-/**
- * The capsule's stop button: a 40 dp disc with the power glyph in the back control's fill and ring; in dark, where that
- * fill matches the capsule's glass, the glass controls' rim outlines it.
- */
-@Composable
-private fun StopDisc(onClick: () -> Unit) {
-    val colors = Rv.colors
-    val label = stringResource(R.string.rv_disconnect)
-    val ring = (colors.backRing ?: colors.controlRim)?.let { Modifier.border(RvChrome.ring, it, CircleShape) } ?: Modifier
-    Box(
-        Modifier
-            .size(RvConnect.button)
-            .clip(CircleShape)
-            .background(colors.backDisc)
-            .then(ring)
-            .rvPress(CircleShape, Role.Button, onClick)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
-    ) { RvGlyph(R.drawable.rv_sym_power, RvSize.rowGlyph, colors.text) }
-}
-
-/** The capsule's connect button: a filled accent pill as tall as the stop disc. */
-@Composable
-private fun ConnectButton(onClick: () -> Unit) {
-    Box(
-        Modifier
-            .height(RvConnect.button)
-            .clip(CircleShape)
-            .background(Rv.colors.positive)
-            .rvPress(CircleShape, Role.Button, onClick)
-            .padding(horizontal = RvConnect.buttonPadH),
-        contentAlignment = Alignment.Center,
-    ) { RvText(stringResource(R.string.rv_connect), Rv.type.action, color = Rv.colors.onPositive) }
-}
-
-/** A 44 dp glass capsule under the connection capsule, its [label] centred. */
-@Composable
-private fun SecondaryCapsule(glass: RvGlass, label: String, onClick: () -> Unit, modifier: Modifier) {
-    Box(
-        modifier.height(RvConnect.secondary).rvControl(glass, CircleShape).rvPress(CircleShape, Role.Button, onClick),
-        contentAlignment = Alignment.Center,
-    ) { RvText(label, Rv.type.action, align = TextAlign.Center) }
-}
-
-/**
- * The outbound card (item 24), in the 最快節點 card's rows: the mode, which opens the mode picker; then in 規則 the main
- * node and up to three rule groups that sent traffic today, most bytes first, and 查看全部; in 全域 the one node; in
- * 直連 a line that no node is in use.
+ * The outbound card (item 24), in the 最快節點 card's rows, four at most: the mode, which opens the mode picker; then in
+ * 規則 the main node and the two rule groups that sent the most traffic today, and 查看全部 for the rest; in 全域 the one
+ * node; in 直連 a line that no node is in use.
  */
 @Composable
 private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvActivityRoutes) {
@@ -241,28 +160,61 @@ private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvAc
     }
 }
 
-/** A rule group that sent traffic today: the node's flag (or the route disc for 直連), the group, its node, its bytes. */
+/**
+ * A rule group that sent traffic today: the node's flag, or for 直連 its own straight arrow (the diamond is the mode's), the
+ * group, its node, its bytes.
+ */
 @Composable
 private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
     val format = rememberRvFormat()
     val node = rule.nodeId?.let { RvData.node(it) }
     RvRow(
-        { if (node != null) RvFlag(node.place.name, RvSize.rowDisc) else RvIconDisc(R.drawable.rv_sym_directions) },
+        { if (node != null) RvFlag(node.place.name, RvSize.rowDisc) else RvIconDisc(R.drawable.rv_sym_arrow_right_alt) },
         stringResource(rule.group),
         node?.name ?: stringResource(R.string.mode_direct),
         onClick = { onOpen(rule.group) },
     ) { RvText(format.bytes(rule.bytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
 }
 
-/** A duration as a clock, `1:42:05`. */
-private fun rvClock(seconds: Long): String = "%d:%02d:%02d".format(Locale.ROOT, seconds / SECONDS_PER_HOUR, seconds % SECONDS_PER_HOUR / SECONDS_PER_MINUTE, seconds % SECONDS_PER_MINUTE)
+/**
+ * Download and upload as two tiles side by side, each on its own scale: the rate, and the last minute's sparkline with
+ * that minute's peak, so the label and the curve beside it cover the same window (S01; 流量詳情 marks the same peak on
+ * the same minute). The session's peak is shown only where it is labelled 本次. Disconnected, or with no traffic in the
+ * window, both tiles say so over ghost bars instead.
+ */
+@Composable
+private fun TrafficTiles(state: ActivityUiState, onOpenTraffic: () -> Unit) {
+    val quiet = state.status !is Status.Running || (state.downHistory.all { it == 0f } && state.upHistory.all { it == 0f })
+    Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tileGap)) {
+        TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.downRate, minutePeak(state.downHistory), state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
+        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, minutePeak(state.upHistory), state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
+    }
+}
 
-/** The 最快節點 card lists the first three of the 節點 page's fastest; the outbound card, three rule groups. */
+@Composable
+private fun TrafficTile(
+    @StringRes caption: Int,
+    @DrawableRes icon: Int,
+    rate: Long,
+    peak: Float,
+    history: List<Float>,
+    series: RvSeries,
+    quiet: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    ghost: FloatArray = RV_GHOST_DOWN,
+) {
+    val format = rememberRvFormat()
+    val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, format.rate(peak.toDouble()).toString())
+    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier, ghost)
+}
+
+/** The fastest second of a minute's samples; a missing sample (NaN, a gap in the line) is not a rate. */
+private fun minutePeak(history: List<Float>): Float = history.filterNot { it.isNaN() }.maxOrNull() ?: 0f
+
+/** The 最快節點 card lists the first three of the 節點 page's fastest; the outbound card, two rule groups after the main node. */
 private const val FASTEST = 3
-private const val RULE_ROWS = 3
-private const val MS_PER_SECOND = 1_000L
-private const val SECONDS_PER_MINUTE = 60L
-private const val SECONDS_PER_HOUR = 3_600L
+private const val RULE_ROWS = 2
 
 private val Status.label: Int
     get() = when (this) {
