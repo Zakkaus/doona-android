@@ -1,6 +1,6 @@
 //! Nodes of one honk id that dial differently, from two subscriptions.
 
-use super::{Outbounds, Registries};
+use super::{Outbounds, Registries, Routing};
 use crate::catalog::{NodeEntry, entries};
 use crate::subscription::parse::parse;
 use crate::testutil::one_dial_ceiling;
@@ -36,7 +36,8 @@ fn published() -> (Outbounds, Vec<Arc<NodeEntry>>) {
         .iter()
         .map(|n| (n.id.clone(), Arc::clone(&n.node)))
         .collect();
-    outbounds.replace(built, selected);
+    let policy = Arc::default();
+    outbounds.replace(built, Routing { selected, policy });
     (outbounds, nodes)
 }
 

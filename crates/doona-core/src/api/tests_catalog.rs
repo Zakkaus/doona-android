@@ -134,7 +134,7 @@ fn a_subscription_is_added_shown_kept_across_a_restart_and_removed() {
     assert!(added["totalBytes"].is_null() && added["error"].is_null());
     assert!(added["updatedAtEpochMs"].as_i64().unwrap() > 0);
     let shown = catalog(&core);
-    assert_eq!(shown.groups.len(), 8);
+    assert_eq!(shown.groups.len(), 10);
     assert_eq!(
         serde_json::to_value(&shown.subscriptions[0]).unwrap(),
         added
@@ -270,17 +270,17 @@ fn a_refresh_built_before_an_end_shares_no_runtime_with_it() {
     add(&core, &feeds, "/sub").unwrap();
     let outbounds = &core.shared.outbounds;
     let ended = outbounds.registry().unwrap();
-    let (built, selected) = {
+    let (built, routing) = {
         let c = lock(&core.shared.catalog);
-        let selected = c.model.leaves(&c.state.selections);
-        (outbounds.build(&c.model.nodes), selected)
+        let routing = c.model.routing(&c.state.selections);
+        (outbounds.build(&c.model.nodes), routing)
     };
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
     outbounds.claim(7);
     let ended_carriers = outbounds.end(7).unwrap();
     assert!(ended_carriers.finish(core.runtime.handle(), deadline));
     assert!(ended.is_shutdown());
-    outbounds.replace(built, selected);
+    outbounds.replace(built, routing);
     let published = outbounds.registry().unwrap();
     assert_eq!(published.len(), 2);
     assert!(!published.is_shutdown());
@@ -295,7 +295,7 @@ fn selections_pin_and_unpin_and_survive_a_restart() {
     feeds.set("/sub", &fixture("links.txt"));
     let core = Core::new(path(&dir)).unwrap();
     add(&core, &feeds, "/sub").unwrap();
-    let hk = catalog(&core).groups[2].members[1].id.clone();
+    let hk = hk_group(&catalog(&core)).members[1].id.clone();
     let select = |group: &str, member: Value| {
         call(&core, "select", json!({"group": group, "memberId": member}))
     };
@@ -306,17 +306,19 @@ fn selections_pin_and_unpin_and_survive_a_restart() {
     );
     assert_eq!(select("g-DE", Value::Null), Err(ErrorCode::NotFound));
     assert_eq!(select("g-Auto", json!("g-HK")), Err(ErrorCode::NotFound));
-    let group = &catalog(&core).groups[2];
+    let shown = catalog(&core);
+    let group = hk_group(&shown);
     assert!(group.pinned && group.selected_id.as_deref() == Some(hk.as_str()));
     drop(core);
     let core = Core::new(path(&dir)).unwrap();
-    assert!(catalog(&core).groups[2].pinned);
+    assert!(hk_group(&catalog(&core)).pinned);
     let before = catalog(&core);
     assert_eq!(
         call(&core, "select", json!({"group": "g-HK", "memberId": null})),
         Ok(json!({}))
     );
-    let group = &catalog(&core).groups[2];
+    let shown = catalog(&core);
+    let group = hk_group(&shown);
     assert!(!group.pinned && group.selected_id.as_deref() == Some(group.members[0].id.as_str()));
     // Unpinning twice changes nothing more.
     let revision = |c: &Core| {
@@ -330,7 +332,7 @@ fn selections_pin_and_unpin_and_survive_a_restart() {
         Ok(json!({}))
     );
     assert_eq!(revision(&core), r);
-    assert_ne!(before.groups[2], catalog(&core).groups[2]);
+    assert_ne!(hk_group(&before), hk_group(&catalog(&core)));
 }
 
 #[test]
@@ -387,7 +389,7 @@ fn failures_have_their_codes_and_a_failed_update_keeps_the_nodes() {
     let shown = catalog(&core);
     assert_eq!(shown.subscriptions[0].error, Some(ErrorCode::FetchFailed));
     assert_eq!(shown.subscriptions[0].nodes, 9);
-    assert_eq!(shown.groups.len(), 8);
+    assert_eq!(shown.groups.len(), 10);
     feeds.set("/sub", &fixture("links.txt"));
     call(&core, "updateSubscription", json!({"id": "s1"})).unwrap();
     assert_eq!(catalog(&core).subscriptions[0].error, None);
@@ -512,4 +514,9 @@ fn a_command_whose_deadline_passes_while_it_serializes_writes_nothing() {
     assert_eq!(kept.subscriptions.len(), 1);
     assert_eq!(kept.subscriptions[0].nodes, 9);
     assert_eq!(kept.subscriptions[0].error, None);
+}
+
+/// The catalog's HK group.
+fn hk_group(c: &crate::dto::Catalog) -> &crate::dto::Group {
+    c.groups.iter().find(|g| g.id == "g-HK").unwrap()
 }

@@ -93,6 +93,8 @@ fn the_template_follows_the_fixture_names() {
         [
             ("g-Proxy", GroupKind::Selector, 16),
             ("g-Auto", GroupKind::UrlTest, 9),
+            ("g-Streaming", GroupKind::Selector, 17),
+            ("g-AI", GroupKind::Selector, 17),
             ("g-HK", GroupKind::UrlTest, 3),
             ("g-TW", GroupKind::UrlTest, 1),
             ("g-JP", GroupKind::UrlTest, 1),
@@ -155,9 +157,9 @@ fn overlapping_tests_keep_only_the_latest_result_and_test_until_both_end() {
     let node = &late.targets[0].entry.id;
     assert_eq!(latency(&model, &s, node), (Some(20), false));
     model.finish(&early.round());
-    assert!(model.catalog(&s).groups[2].testing);
+    assert!(hk_of(&model.catalog(&s)).testing);
     model.finish(&late.round());
-    assert!(!model.catalog(&s).groups[2].testing);
+    assert!(!hk_of(&model.catalog(&s)).testing);
 }
 
 #[test]
@@ -287,7 +289,7 @@ fn only_a_success_of_the_current_round_replaces_the_choice() {
 fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
     let s = state(&[("s1", "links.txt")]);
     let mut model = load(&s);
-    let hk = |m: &Model, s: &State| m.catalog(s).groups[2].selected_id.clone().unwrap();
+    let hk = |m: &Model, s: &State| hk_of(&m.catalog(s)).selected_id.clone().unwrap();
     let plan = model.plan(Some("g-HK")).unwrap();
     let ids: Vec<_> = plan.targets.iter().map(|t| t.entry.id.clone()).collect();
     assert!(model.record(&plan.targets[0], None, None));
@@ -316,7 +318,7 @@ fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
 fn a_refresh_during_a_round_ranks_survivors_by_their_kept_times() {
     let s = state(&[("s1", "links.txt")]);
     let mut model = load(&s);
-    let hk = |m: &Model, s: &State| m.catalog(s).groups[2].selected_id.clone().unwrap();
+    let hk = |m: &Model, s: &State| hk_of(&m.catalog(s)).selected_id.clone().unwrap();
     let plan = model.plan(Some("g-HK")).unwrap();
     let ids: Vec<_> = plan.targets.iter().map(|t| t.entry.id.clone()).collect();
     assert!(model.record(&plan.targets[0], None, None));
@@ -353,4 +355,9 @@ fn a_structured_subscription_keeps_its_ids_across_a_refetch_and_a_restart() {
         let restarted = load(&state(&[("s1", body)]));
         assert_eq!(ids(&restarted.nodes), fetched, "{body}");
     }
+}
+
+/// The catalog's HK group.
+fn hk_of(c: &crate::dto::Catalog) -> &crate::dto::Group {
+    c.groups.iter().find(|g| g.id == "g-HK").unwrap()
 }

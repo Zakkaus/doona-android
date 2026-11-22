@@ -1,7 +1,8 @@
 //! Where a new flow goes: a function of the inbound it arrived on and the committed mode, never of
 //! an app or a uid (ARCH D24). Direct sends it straight out. Global sends it through the node the
-//! `Proxy` group selects when the flow opens, dialed on that node's carriers (see `outbounds.rs`),
-//! and refuses it while the group has none: a Global flow is never sent direct. A flow keeps the
+//! main group (`mainGroupId`, `g-Proxy` under the template) selects when the flow opens, dialed on
+//! that node's carriers (see `outbounds.rs`), and refuses it while the group has none: a Global
+//! flow is never sent direct. A flow keeps the
 //! route it opened with, so a mode or selection change applies to new flows only. doona excludes
 //! its own package from the VPN, so these sockets need no `protect()`. What a dial through a node
 //! showed on its way to the node goes to the generation's [`Session`] (ARCH D26): one refused at an
@@ -11,7 +12,7 @@ use super::Session;
 use super::udp::UdpUpstream;
 use crate::dto::Mode;
 use crate::localnet::{self, Trace};
-use crate::outbounds::{Dialer, Outbounds};
+use crate::outbounds::{Dialer, Outbounds, View};
 use crate::stats::meter::{DIRECT, Meter};
 use honk_outbound::proxy::AsyncReadWrite;
 use std::io::{self, ErrorKind};
@@ -23,8 +24,6 @@ use tokio::net::{TcpStream, UdpSocket};
 
 /// A dial, through a node or straight out, gives up after this long.
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-/// The group Global sends every flow through.
-pub const PROXY_GROUP: &str = "g-Proxy";
 
 /// The committed mode, read by every new flow.
 #[derive(Debug)]
@@ -68,7 +67,7 @@ pub(crate) enum Route {
     Direct,
     /// Through this node; what each dial showed on its way to the node goes to the session.
     Proxy(Arc<Dialer>, Arc<Session>),
-    /// Global while the `Proxy` group has no node.
+    /// Global while the main group has no node.
     Refuse,
 }
 
@@ -86,11 +85,17 @@ impl Route {
         match (inbound, mode) {
             (Inbound::Tun, Mode::Direct) => Route::Direct,
             (Inbound::Tun, Mode::Global) => {
-                outbounds.dialer(PROXY_GROUP).map_or(Route::Refuse, |d| {
-                    Route::Proxy(Arc::new(d), Arc::clone(session))
-                })
+                let view = outbounds.view();
+                Route::through(&view, view.policy().main(), session)
             }
         }
+    }
+
+    /// Through the node `group` selects in `view`; refused while it has none, never direct.
+    fn through(view: &View<'_>, group: &str, session: &Arc<Session>) -> Route {
+        view.dialer(group).map_or(Route::Refuse, |d| {
+            Route::Proxy(Arc::new(d), Arc::clone(session))
+        })
     }
 
     pub fn refused(&self) -> bool {
@@ -101,7 +106,7 @@ impl Route {
     pub fn meter(&self, session: &Session) -> Option<Arc<Meter>> {
         match self {
             Route::Direct => Some(session.meters().get(DIRECT)),
-            Route::Proxy(..) => Some(session.meters().get(PROXY_GROUP)),
+            Route::Proxy(d, _) => Some(session.meters().get(&d.group)),
             Route::Refuse => None,
         }
     }

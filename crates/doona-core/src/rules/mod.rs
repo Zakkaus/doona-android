@@ -19,7 +19,9 @@ mod geoip;
 mod graph;
 pub(crate) mod limits;
 mod lpm;
+pub(crate) mod policy;
 mod ports;
+pub(crate) mod template;
 
 use crate::dto::ErrorCode;
 use crate::groups::GroupDef;
@@ -203,6 +205,11 @@ impl RuleSet {
         &self.rows
     }
 
+    /// Whether a row matches names: without one, a flow's name changes nothing.
+    pub(crate) fn has_names(&self) -> bool {
+        self.domains.len() > 0
+    }
+
     /// The lines skipped in all rows.
     pub(crate) fn skipped(&self) -> usize {
         self.rows.iter().map(|r| r.skipped as usize).sum()
@@ -217,3 +224,5 @@ pub(crate) mod tests;
 mod tests_limits;
 #[cfg(test)]
 mod tests_mihomo;
+#[cfg(test)]
+mod tests_template;

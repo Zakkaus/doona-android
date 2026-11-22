@@ -146,10 +146,10 @@ fn overlapping_tests_keep_the_latest_results_and_test_until_both_end() {
     wait_started(&stand, 3);
     call(&core, "testLatency", json!({"group": "g-HK"})).unwrap();
     wait_started(&stand, 6);
-    assert!(catalog(&core).groups[2].testing);
+    assert!(hk_group(&catalog(&core)).testing);
     stand.open();
     let after = wait_for(&core, |c| !testing(c));
-    let hk = &after.groups[2];
+    let hk = &hk_group(&after);
     assert!(hk.members.iter().all(|m| m.latency_ms.is_some()));
 }
 
@@ -275,7 +275,7 @@ fn no_test_registers_between_the_probe_token_and_the_lifecycle_change() {
     stand.open();
     let after = wait_for(&core, |c| !testing(c));
     assert!(
-        after.groups[2]
+        hk_group(&after)
             .members
             .iter()
             .all(|m| m.latency_ms.is_none() && !m.failed)
@@ -284,7 +284,7 @@ fn no_test_registers_between_the_probe_token_and_the_lifecycle_change() {
     call(&core, "testLatency", json!({"group": "g-HK"})).unwrap();
     let after = wait_for(&core, |c| !testing(c));
     assert!(
-        after.groups[2]
+        hk_group(&after)
             .members
             .iter()
             .all(|m| m.latency_ms.is_some())
@@ -341,7 +341,7 @@ fn a_test_prepared_before_a_stop_runs_on_new_carriers() {
     core.hooks.on_prepared(|core| core.stop());
     call(&core, "testLatency", json!({"group": "g-HK"})).unwrap();
     let after = wait_for(&core, |c| !testing(c));
-    let members = &after.groups[2].members;
+    let members = &hk_group(&after).members;
     assert!(
         members.iter().all(|m| m.latency_ms.is_some()),
         "{members:?}"
@@ -483,4 +483,9 @@ fn the_tests_of_nodes_that_left_go_with_the_catalog_that_drops_them() {
     drop(core);
     let saved = std::fs::read_to_string(dir.path().join("latency.json")).unwrap();
     assert!(!saved.contains(&id), "{saved}");
+}
+
+/// The catalog's HK group.
+fn hk_group(c: &crate::dto::Catalog) -> &crate::dto::Group {
+    c.groups.iter().find(|g| g.id == "g-HK").unwrap()
 }
