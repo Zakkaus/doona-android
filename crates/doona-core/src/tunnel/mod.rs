@@ -12,6 +12,7 @@ mod udp;
 use crate::dto::{ErrorCode, Traffic};
 use crate::sys;
 use futures_util::FutureExt;
+use futures_util::future::BoxFuture;
 use route::ModeCell;
 use std::future::Future;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -26,8 +27,6 @@ use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 
-/// `start` returns or fails within this bound (core-api.md).
-const START_BOUND: Duration = Duration::from_secs(10);
 /// `stop` returns within 1 s; the rest is left for the locks around it.
 const STOP_WAIT: Duration = Duration::from_millis(900);
 
@@ -41,6 +40,24 @@ pub struct Settings {
     pub dns_upstreams: Vec<SocketAddr>,
     /// The committed mode; each new flow reads it.
     pub mode: Arc<ModeCell>,
+}
+
+/// The tun as the driver holds it.
+pub(crate) type TunHandle = AsyncFd<OwnedFd>;
+
+/// What serves a generation's tun: the netstack driver, or a stand-in in unit tests. It sends on
+/// `ready` once it serves the tun.
+pub(crate) type Launch =
+    fn(TunHandle, Settings, Gen, oneshot::Sender<()>) -> BoxFuture<'static, ()>;
+
+/// The [`Launch`] the app runs.
+pub(crate) fn drive(
+    tun: TunHandle,
+    settings: Settings,
+    gen_: Gen,
+    ready: oneshot::Sender<()>,
+) -> BoxFuture<'static, ()> {
+    Box::pin(driver::run(tun, settings, gen_, ready))
 }
 
 /// What `snapshot` reports about one generation; its tasks update it.
@@ -133,14 +150,15 @@ pub struct Tunnel {
 }
 
 impl Tunnel {
-    /// Takes ownership of `tun` and returns once the driver serves it, at most [`START_BOUND`]
-    /// later. `abort` (a `stop` arriving meanwhile) ends the wait with `busy`. On any failure
-    /// the generation is stopped, which closes `tun`.
-    pub fn start(
+    /// Takes ownership of `tun` and returns once `launch` serves it, at most `bound` later.
+    /// `abort` (a `stop` arriving meanwhile) ends the wait with `busy`. On any failure the
+    /// generation is stopped, which closes `tun`.
+    pub(crate) fn start(
         rt: &Handle,
         tun: OwnedFd,
         settings: Settings,
         generation: i64,
+        (launch, bound): (Launch, Duration),
         abort: &CancellationToken,
     ) -> Result<Tunnel, ErrorCode> {
         sys::set_nonblocking(tun.as_raw_fd()).map_err(|_| ErrorCode::Internal)?;
@@ -160,14 +178,12 @@ impl Tunnel {
         };
         let (ready_tx, ready_rx) = oneshot::channel();
         let gen_ = tunnel.gen_.clone();
-        tunnel
-            .gen_
-            .spawn(driver::run(tun, settings, gen_, ready_tx));
+        tunnel.gen_.spawn(launch(tun, settings, gen_, ready_tx));
         let up = rt.block_on(async {
             tokio::select! {
                 r = ready_rx => r.map_err(|_| ErrorCode::Internal),
                 () = abort.cancelled() => Err(ErrorCode::Busy),
-                () = tokio::time::sleep(START_BOUND) => Err(ErrorCode::Internal),
+                () = tokio::time::sleep(bound) => Err(ErrorCode::Internal),
             }
         });
         match up {

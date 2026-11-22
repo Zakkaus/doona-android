@@ -7,7 +7,7 @@ use crate::dto::{
 };
 use crate::state::{Loaded, State, Store};
 use crate::tunnel::route::ModeCell;
-use crate::tunnel::{Session, Settings, Tunnel};
+use crate::tunnel::{self, Launch, Session, Settings, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::net::SocketAddr;
@@ -15,12 +15,14 @@ use std::os::fd::OwnedFd;
 use std::path::Path;
 use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 use tokio_util::sync::CancellationToken;
 
 /// The tokio runtime's worker threads; flows are I/O bound and the phone has few big cores.
 const WORKERS: usize = 2;
+/// `start` returns or fails within this bound (core-api.md).
+const START_BOUND: Duration = Duration::from_secs(10);
 /// The smallest MTU an IPv4 link may have.
 const MIN_MTU: u16 = 576;
 
@@ -55,6 +57,9 @@ pub struct Core {
     session: Mutex<Option<Arc<Session>>>,
     /// The last generation `start` began; it stays in snapshots after `stop`.
     generation: AtomicI64,
+    /// What serves a generation, and how long `start` may take: the driver and [`START_BOUND`]
+    /// in the app, stand-ins in unit tests.
+    launch: (Launch, Duration),
 }
 
 struct CatalogState {
@@ -71,6 +76,14 @@ impl Core {
     }
 
     pub fn with_options(data_dir: &str, options: Options) -> Result<Core, ErrorCode> {
+        Core::build(data_dir, options, (tunnel::drive, START_BOUND))
+    }
+
+    fn build(
+        data_dir: &str,
+        options: Options,
+        launch: (Launch, Duration),
+    ) -> Result<Core, ErrorCode> {
         let store = Store::new(Path::new(data_dir));
         let (state, loaded) = store.load().map_err(|e| {
             log::error!("init: state unreadable ({:?})", e.kind());
@@ -95,6 +108,7 @@ impl Core {
             starting: Mutex::new(None),
             session: Mutex::new(None),
             generation: AtomicI64::new(0),
+            launch,
         })
     }
 
@@ -137,7 +151,8 @@ impl Core {
             old.stop(self.runtime.handle());
         }
         let generation = self.generation.fetch_add(1, Relaxed) + 1;
-        let tunnel = Tunnel::start(self.runtime.handle(), tun, settings, generation, abort)?;
+        let rt = self.runtime.handle();
+        let tunnel = Tunnel::start(rt, tun, settings, generation, self.launch, abort)?;
         *lock(&self.session) = Some(Arc::clone(tunnel.session()));
         *slot = Some(tunnel);
         Ok(generation)
@@ -248,6 +263,15 @@ impl Core {
     }
 }
 
+#[cfg(test)]
+impl Core {
+    /// A core whose generations run `launch` instead of the driver and must start within
+    /// `bound`.
+    pub(crate) fn with_launch(data_dir: &str, launch: Launch, bound: Duration) -> Core {
+        Core::build(data_dir, Options::default(), (launch, bound)).unwrap()
+    }
+}
+
 impl Drop for Core {
     fn drop(&mut self) {
         self.stop();
@@ -301,3 +325,6 @@ fn to_json<T: Serialize>(value: &T) -> String {
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
+
+#[cfg(test)]
+mod tests;
