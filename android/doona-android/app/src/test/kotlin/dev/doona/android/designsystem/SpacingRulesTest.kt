@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
@@ -23,6 +26,8 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaCard
 import dev.doona.android.designsystem.components.DoonaGap
 import dev.doona.android.designsystem.components.DoonaHGap
+import dev.doona.android.designsystem.components.DoonaHubShell
+import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.designsystem.components.DoonaIcon
 import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaPageTabs
@@ -30,7 +35,10 @@ import dev.doona.android.designsystem.components.DoonaPageTitle
 import dev.doona.android.designsystem.components.DoonaRow
 import dev.doona.android.designsystem.components.DoonaTagChip
 import dev.doona.android.designsystem.components.DoonaText
+import dev.doona.android.designsystem.components.LayoutRole
+import dev.doona.android.designsystem.components.layoutRole
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.testing.Landscape
 import dev.doona.android.testing.SpacingRules
 import dev.doona.android.testing.layoutTree
 import dev.doona.android.testing.readWhileScrolling
@@ -40,6 +48,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -157,6 +166,35 @@ class SpacingRulesTest {
         assertTrue(found.toString(), found.isNotEmpty())
     }
 
+    /** A control is as high as its track exactly; a button is at least that high, so a label that wrapped does not fail it. */
+    @Composable
+    private fun Controls(control: Dp, button: Dp) = Column(Modifier.padding(space.gutter), verticalArrangement = Arrangement.spacedBy(space.section)) {
+        Box(Modifier.layoutRole(LayoutRole.Control).fillMaxWidth().height(control).background(Color.Gray))
+        Box(Modifier.layoutRole(LayoutRole.Button).fillMaxWidth().height(button).background(Color.DarkGray))
+    }
+
+    @Test
+    fun aButtonTallerThanTheControlKeepsTheRule() {
+        compose.setDoonaContent { Controls(DoonaTheme.size.control, DoonaTheme.size.control * 2) }
+        assertEquals(emptyList<String>(), SpacingRules.controls(compose.layoutTree()))
+    }
+
+    @Test
+    fun aButtonShorterThanTheControlFails() {
+        compose.setDoonaContent { Controls(DoonaTheme.size.control, DoonaTheme.size.control - 4.dp) }
+        val found = SpacingRules.controls(compose.layoutTree())
+        assertEquals(found.toString(), 1, found.size)
+        assertTrue(found.single(), found.single().startsWith("button"))
+    }
+
+    @Test
+    fun aControlTallerThanItsTrackFails() {
+        compose.setDoonaContent { Controls(DoonaTheme.size.control + 8.dp, DoonaTheme.size.control) }
+        val found = SpacingRules.controls(compose.layoutTree())
+        assertEquals(found.toString(), 1, found.size)
+        assertTrue(found.single(), found.single().startsWith("control"))
+    }
+
     @Composable
     private fun IconRow(gap: Dp) = DoonaCard(Modifier.fillMaxWidth()) {
         DoonaRow {
@@ -212,5 +250,45 @@ class SpacingRulesTest {
         // A report that saw no action whole, as when a scroll misses a block: the action is named as never checked.
         val blind = listOf(SpacingRules.TouchReport(emptyList(), emptySet(), first.first().actions))
         assertEquals(1, SpacingRules.unseen(blind).size)
+    }
+
+    private val rail = listOf(DoonaHubTab("One", R.drawable.ic_speed_fast), DoonaHubTab("Two", R.drawable.ic_link))
+
+    /** A window shorter than the compact height swaps the bottom bar for a rail, and the page's column starts next to it. */
+    @Test
+    fun aShortWindowStartsTheColumnNextToTheRail() {
+        RuntimeEnvironment.setQualifiers(Landscape.qualifiers)
+        compose.setDoonaContent { DoonaHubShell(rail, selected = 0, onSelect = {}) { DoonaPage { DoonaPageTitle("Title") } } }
+        val tree = compose.layoutTree()
+        assertEquals(emptyList<String>(), SpacingRules.contentColumn(tree))
+        val sheet = tree.descendants().first { it.role == LayoutRole.Sheet }
+        assertEquals("the column starts at the rail's edge, 80 dp in", DoonaTheme.size.railWidth.value, sheet.left, 0.5f)
+    }
+
+    /** The column centred in what the rail leaves, as it was, puts a band of empty sheet before the content: the rule sees it. */
+    @Test
+    fun aCentredColumnInAShortWindowFails() {
+        RuntimeEnvironment.setQualifiers(Landscape.qualifiers)
+        compose.setDoonaContent {
+            Box(Modifier.fillMaxSize().background(Color.Gray), contentAlignment = Alignment.TopCenter) {
+                Column(Modifier.layoutRole(LayoutRole.Sheet).widthIn(max = DoonaTheme.size.contentMax)) { DoonaText("Title", DoonaTheme.type.body) }
+            }
+        }
+        val found = SpacingRules.contentColumn(compose.layoutTree())
+        assertEquals(found.toString(), 1, found.size)
+        assertTrue(found.single(), "short window" in found.single())
+    }
+
+    /** On a window tall enough for a bottom bar the column is still centred: a start-aligned one fails. */
+    @Test
+    fun aStartAlignedColumnInATallWindowFails() {
+        compose.setDoonaContent {
+            Box(Modifier.fillMaxSize().background(Color.Gray), contentAlignment = Alignment.TopStart) {
+                Column(Modifier.layoutRole(LayoutRole.Sheet).widthIn(max = 300.dp)) { DoonaText("Title", DoonaTheme.type.body) }
+            }
+        }
+        val found = SpacingRules.contentColumn(compose.layoutTree())
+        assertEquals(found.toString(), 1, found.size)
+        assertTrue(found.single(), "not centred" in found.single())
     }
 }

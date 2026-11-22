@@ -46,3 +46,6 @@ fun dotSizeFor(style: TextStyle, dot: Dp): Dp = lineHeightOf(style) * (dot.value
 /** Height of one text line of [style] in dp, so a dot or icon can sit on the centre of a first line. */
 @Composable
 fun lineHeightOf(style: TextStyle): Dp = with(LocalDensity.current) { style.lineHeight.toDp() }
+
+/** Lines a label gets before it ends in an ellipsis where one line is too few at a large font: a button's, a row's title. */
+internal const val LABEL_LINES = 2

@@ -35,6 +35,13 @@ object DoonaSize {
     val flagHeight = SizeScale.flagHeight
     val flagEdge = SizeScale.flagEdge
     val chartInset = SizeScale.chartInset
+    val appIcon = SizeScale.appIcon
+    val checkbox = SizeScale.checkbox
+    val meterTrack = SizeScale.meterTrack
+    val spinnerStroke = SizeScale.spinnerStroke
+    val fieldFade = SizeScale.fieldFade
+    val emptyIcon = SizeScale.emptyIcon
+    val dialogMax = SizeScale.dialogMax
     val contentMax = SizeScale.contentMax
     val compactHeight = SizeScale.compactHeight
 }

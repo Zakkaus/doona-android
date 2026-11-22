@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +26,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -70,6 +76,14 @@ private fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Uni
     }
 }
 
+/**
+ * Where the content column of a page sits in the room its parent gives it: centred on a window with a bottom bar, and at
+ * the start next to the rail on a short one. There the rail has already taken 80 dp, and a column centred in what is left
+ * put 133 dp of empty sheet between the rail and the content.
+ */
+@Composable
+private fun columnAlignment(): Alignment = if (DoonaTheme.compactHeight) Alignment.TopStart else Alignment.TopCenter
+
 /** One icon action of the [DoonaTopBar]. */
 @Immutable
 class DoonaBarAction(@DrawableRes val icon: Int, val label: String, val onClick: () -> Unit)
@@ -89,7 +103,7 @@ private class BarEdge(ink: Dp) {
 /**
  * Top app bar (§8): 64 high on the base fill, drawn under the status bar. The start holds the duck mark on a hub
  * page and the back arrow on a pushed page; [actions] sit at the end. The first and last glyph sit on the gutter of
- * the content column, which is at most 600 dp wide and centred, by their drawn shape (see [BarEdge]).
+ * the content column, which is at most 600 dp wide and placed by [columnAlignment], by their drawn shape (see [BarEdge]).
  */
 @Composable
 fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: List<DoonaBarAction> = emptyList()) {
@@ -100,7 +114,7 @@ fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: L
             .fillMaxWidth()
             .background(DoonaTheme.colors.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Top)),
-        contentAlignment = Alignment.TopCenter,
+        contentAlignment = columnAlignment(),
     ) {
         Row(
             Modifier
@@ -232,8 +246,9 @@ private fun HubTab(tab: DoonaHubTab, on: Boolean, modifier: Modifier, onClick: (
 
 /**
  * The page sheet (§8): surface fill with 16 px top corners under the top bar; padding 20 top and 16 sides; blocks
- * stacked by the caller in a column at most 600 dp wide, centred on wider windows (D20). The title, the tabs and every
- * block scroll together. When nothing below the sheet takes the gesture bar's inset, the sheet's end does.
+ * stacked by the caller in a column at most 600 dp wide, centred on wider windows (D20) and at the start beside the
+ * rail on a short one (see [columnAlignment]). The title, the tabs and every block scroll together. When nothing below
+ * the sheet takes the gesture bar's inset, the sheet's end does.
  */
 @Composable
 fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -243,7 +258,7 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
             .clip(DoonaTheme.shape.sheet)
             .background(DoonaTheme.colors.surface)
             .verticalScroll(rememberScrollState()),
-        contentAlignment = Alignment.TopCenter,
+        contentAlignment = columnAlignment(),
     ) {
         Column(
             Modifier
@@ -257,6 +272,40 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
                     top = DoonaTheme.spacing.sheetTop,
                     bottom = DoonaTheme.spacing.sheetBottom,
                 ),
+            content = content,
+        )
+    }
+}
+
+/**
+ * The page sheet for a long list, such as the apps on a device: the same chrome as [DoonaPageSheet] (surface fill, 16 px
+ * top corners, the column at most 600 dp wide and placed by [columnAlignment], padding 20 top, 16 sides and below the
+ * last row, and the gesture bar's inset at the end), with [content] a lazy list that scrolls in it and composes the rows
+ * in view only. [DoonaPageSheet] scrolls its blocks in a vertical scroll, which gives a lazy list unbounded height and
+ * throws, so a list of more than a screenful goes here. Put it under a [DoonaTopBar], as [DoonaPage] does the other.
+ */
+@Composable
+fun DoonaLazyPageSheet(modifier: Modifier = Modifier, state: LazyListState = rememberLazyListState(), content: LazyListScope.() -> Unit) {
+    val bottomBar = DoonaTheme.insets.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
+    Box(
+        modifier
+            .fillMaxSize()
+            .clip(DoonaTheme.shape.sheet)
+            .background(DoonaTheme.colors.surface),
+        contentAlignment = columnAlignment(),
+    ) {
+        LazyColumn(
+            Modifier
+                .layoutRole(LayoutRole.Sheet)
+                .widthIn(max = DoonaTheme.size.contentMax)
+                .fillMaxSize(),
+            state = state,
+            contentPadding = PaddingValues(
+                start = DoonaTheme.spacing.gutter,
+                end = DoonaTheme.spacing.gutter,
+                top = DoonaTheme.spacing.sheetTop,
+                bottom = DoonaTheme.spacing.sheetBottom + bottomBar,
+            ),
             content = content,
         )
     }

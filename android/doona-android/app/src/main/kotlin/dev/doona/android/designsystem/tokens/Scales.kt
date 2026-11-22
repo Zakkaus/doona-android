@@ -98,6 +98,26 @@ object SizeScale {
     val flagEdge = 0.5.dp
     val chartInset = 2.dp
 
+    /** The launcher icon in a list row: the size of Android's list icon. */
+    val appIcon = 40.dp
+
+    /** A checkbox's box: doona's 14 grown to a touch size, like its 20 to 25 icons (§6). */
+    val checkbox = 20.dp
+    val meterTrack = 4.dp
+
+    /** The width of the busy spinner's stroke. */
+    val spinnerStroke = 2.dp
+
+    /**
+     * The edge of a field's text that fades where the text runs on past the box, at the normal font size: more than
+     * twice a glyph, so that the glyph cut at the edge, and the one before it, are already faint. It grows with the text line.
+     */
+    val fieldFade = 32.dp
+    val emptyIcon = 48.dp
+
+    /** Widest dialog; a narrower window leaves the gutter at both sides. */
+    val dialogMax = 560.dp
+
     /** Widest content column: wider windows centre it (D20). */
     val contentMax = 600.dp
 
@@ -105,10 +125,26 @@ object SizeScale {
     val compactHeight = 480.dp
 }
 
+/** Durations of the motion that has no input to follow. */
+object MotionScale {
+    /** The busy spinner's arc turns once in this many milliseconds. */
+    const val SPINNER_TURN_MS = 1000
+}
+
 /** Alpha of the colours doona derives from a palette colour (§2). */
 object AlphaScale {
     /** Light flag edge: black at 35 % (`--rp-node-flag-edge`, `src/ui/flags.css:8-13`). */
     const val FLAG_EDGE = 0.35f
+
+    /** The modal underlay: black at 32 % in light, 55 % in dark (`--rp-underlay`, `foundations.css:6`, `:185`). */
+    const val SCRIM_LIGHT = 0.32f
+    const val SCRIM_DARK = 0.55f
+
+    /**
+     * The outline of a disabled outlined control: a third of an enabled one's strength, so that it is plainly fainter in
+     * both themes, where the strong line is only a step off the fill (at half it was 13 levels of 255 against 26 in dark).
+     */
+    const val DISABLED_LINE = 0.3f
 }
 
 /** Chart style (§7, Charts). */

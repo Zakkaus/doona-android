@@ -31,6 +31,8 @@ ICONS = {
     "ic_edit": ("Edit", 0),
     "ic_more_vertical": ("MoreVertical", 0),
     "ic_search": ("Search", 0),
+    "ic_close": ("Close", 0),
+    "ic_checkmark": ("Checkmark", 0),
 }
 FLAGS = ["HK", "JP", "TW", "SG", "US", "KR"]
 

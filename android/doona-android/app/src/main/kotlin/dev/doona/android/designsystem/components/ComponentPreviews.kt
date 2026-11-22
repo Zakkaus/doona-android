@@ -28,15 +28,15 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
 /*
- * The design system on three pages, every component in every state it has. The preview pane and the screenshot
- * goldens show the same pages, so a component that is added or changed shows up in both. Sample names and numbers are
- * made up.
+ * The design system on several pages (the three here, and `InputsGallery`, `FieldsGallery`, `FeedbackGallery` and `DialogGallery`), every component in every
+ * state it has. The preview pane and the screenshot goldens show the same pages, so a component that is added or changed
+ * shows up in both. Sample names and numbers are made up.
  */
 
 private val SERIES = listOf(3f, 4f, 3.5f, 5f, 6f, 5.5f, 4.5f, 5f, 6.5f, 6f)
 
 @Composable
-private fun GalleryPage(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun GalleryPage(title: String, content: @Composable ColumnScope.() -> Unit) {
     val space = DoonaTheme.spacing
     Column(
         Modifier
@@ -53,7 +53,7 @@ private fun GalleryPage(title: String, content: @Composable ColumnScope.() -> Un
 }
 
 @Composable
-private fun Section(name: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun Section(name: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
         DoonaText(name, DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
         content()
@@ -220,3 +220,23 @@ private fun CardsGalleryPreview() = DoonaTheme { CardsGallery() }
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun StatusGalleryPreview() = DoonaTheme { StatusGallery() }
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 1200)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun InputsGalleryPreview() = DoonaTheme { InputsGallery() }
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 1200)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun FieldsGalleryPreview() = DoonaTheme { FieldsGallery() }
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 1200)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DialogGalleryPreview() = DoonaTheme { DialogGallery() }
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 1200)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun FeedbackGalleryPreview() = DoonaTheme { FeedbackGallery() }

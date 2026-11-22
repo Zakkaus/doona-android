@@ -6,6 +6,8 @@ import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.tokens.Dawn
 import dev.doona.android.designsystem.tokens.DoonaPalette
 import dev.doona.android.designsystem.tokens.Moon
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,10 +37,26 @@ class ContrastTest {
         assertTrue(bad.joinToString("\n"), bad.isEmpty())
     }
 
+    /** A text button sits on the window, the sheet, a card or a control fill, never on the selected one, where Dawn's pine is 4.42:1. */
+    @Test
+    fun accentTextHasFourPointFiveToOneOnTheFillsATextButtonSitsOn() {
+        val bad = themes.flatMap { t ->
+            listOf("window", "surface", "card", "control").map { fill -> Triple("${t.name}: text.accent on $fill", ratio(t.c.text.accent, t.fills.getValue(fill)), 4.5f) }
+        }.filter { it.second < it.third }
+        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    }
+
     @Test
     fun accentTextOnAccentFillHasFourPointFiveToOne() {
         val bad = themes.map { it to ratio(it.c.onAccent, it.c.accent) }.filter { it.second < 4.5f }
         assertTrue(bad.joinToString { "${it.first.name}: onAccent on accent is %.2f:1".format(it.second) }, bad.isEmpty())
+    }
+
+    /** The destructive button's label is the on-accent colour. */
+    @Test
+    fun destructiveTextOnDestructiveFillHasFourPointFiveToOne() {
+        val bad = themes.map { it to ratio(it.c.onAccent, it.c.destructive) }.filter { it.second < 4.5f }
+        assertTrue(bad.joinToString { "${it.first.name}: onAccent on destructive is %.2f:1".format(it.second) }, bad.isEmpty())
     }
 
     @Test
@@ -47,6 +65,39 @@ class ContrastTest {
             listOf("surface", "card").map { fill -> Triple("${t.name}: accent on $fill", ratio(t.c.accent, t.fills.getValue(fill)), 3f) }
         }.filter { it.second < it.third }
         assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    }
+
+    /** The checkbox's outline shows its state, so it is 3:1 against the card and the sheet it sits on. */
+    @Test
+    fun theCheckboxOutlineHasThreeToOneOnSheetAndCard() {
+        val bad = themes.flatMap { t ->
+            listOf("card", "surface").map { fill -> Triple("${t.name}: checkbox outline on $fill", ratio(t.c.boxLine, t.fills.getValue(fill)), 3f) }
+        }.filter { it.second < it.third }
+        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    }
+
+    /**
+     * The meter's track shows on the card, the sheet and the window, and its fill, which shows how much is used, is 3:1
+     * on the track and on the card and the sheet beside it. FeedbackTest holds that the meter draws these two roles.
+     */
+    @Test
+    fun theMeterTrackShowsAndTheFillHasThreeToOne() {
+        val bad = themes.flatMap { t ->
+            listOf("card", "surface", "window").map { fill -> Triple("${t.name}: meter track on $fill", ratio(t.c.track, t.fills.getValue(fill)), 1.4f) } +
+                listOf("card", "surface").map { fill -> Triple("${t.name}: meter fill on $fill", ratio(t.c.meterFill, t.fills.getValue(fill)), 3f) } +
+                Triple("${t.name}: meter fill on its track", ratio(t.c.meterFill, t.c.track), 3f)
+        }.filter { it.second < it.third }
+        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    }
+
+    /** A text button is in the accent's hue in both themes: the role is never body text, and in light it is the accent itself. */
+    @Test
+    fun accentTextIsTheAccentsHueInBothThemes() {
+        themes.forEach { t ->
+            assertNotEquals("${t.name}: text.accent is body text", t.c.text.primary, t.c.text.accent)
+            assertTrue("${t.name}: text.accent is not bluer than red", t.c.text.accent.blue > t.c.text.accent.red)
+        }
+        assertEquals(Dawn.pine, DoonaColors(Dawn).text.accent)
     }
 
     /** WCAG 1.4.11: the parts of a control that show its state are 3:1 against what they sit on. */
@@ -63,12 +114,6 @@ class ContrastTest {
     fun switchOnKnobHasThreeToOneOnTheAccentTrack() {
         val bad = themes.map { it to ratio(it.c.switchKnob, it.c.accent) }.filter { it.second < 3f }
         assertTrue(bad.joinToString { "${it.first.name}: on knob on the accent track is %.2f:1".format(it.second) }, bad.isEmpty())
-    }
-
-    /** The fill the off track had (`hlHigh`) is 1.48:1 on the light card and 2.11:1 on the dark one: this check catches it. */
-    @Test
-    fun theOldOffTrackFailsTheSameCheck() {
-        themes.forEach { t -> assertTrue("${t.name}: hlHigh is ${ratio(t.palette.hlHigh, t.c.card)}:1 on the card", ratio(t.palette.hlHigh, t.c.card) < 3f) }
     }
 
     /** One frame per page: the card is a step off the sheet, lighter than it on Moon and darker on Dawn, and is not the control fill. */

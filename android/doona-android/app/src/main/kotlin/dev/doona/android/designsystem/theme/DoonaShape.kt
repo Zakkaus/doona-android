@@ -12,6 +12,9 @@ object DoonaShape {
     val card = RoundedCornerShape(RadiusScale.xl)
     val pill = RoundedCornerShape(percent = RadiusScale.PILL_PERCENT)
 
+    /** The box of a checkbox: 2 dp corners (§7, S2 Checkbox). */
+    val checkbox = RoundedCornerShape(RadiusScale.xs)
+
     /** Page sheet: 16 on the top corners only. */
     val sheet = RoundedCornerShape(topStart = RadiusScale.xl, topEnd = RadiusScale.xl)
 
