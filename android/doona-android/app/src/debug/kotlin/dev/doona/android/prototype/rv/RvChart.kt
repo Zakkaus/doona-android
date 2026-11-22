@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -42,7 +43,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import dev.doona.android.prototype.rv.data.RvAmount
@@ -85,6 +85,7 @@ internal fun RvSparkTile(
     quiet: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    ghost: FloatArray = RV_GHOST_DOWN,
 ) {
     val type = Rv.type
     RvCard(modifier.aspectRatio(1f).rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, onClick)) {
@@ -92,14 +93,14 @@ internal fun RvSparkTile(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RvText(caption, if (quiet) type.rowSub else type.tileCaption, Modifier.weight(1f), color = Rv.colors.textSecondary)
                 Box(Modifier.size(RvChartSize.tileDisc).clip(CircleShape).background(series.disc), contentAlignment = Alignment.Center) {
-                    RvGlyph(icon, RvChartSize.tileGlyph, series.onDisc)
+                    RvGlyph(icon, RvChartSize.tileGlyph, series.line)
                 }
             }
             Spacer(Modifier.height(RvSpace.tight))
             RvFigureText(figure, if (quiet) type.cardValue else type.tileValue, if (quiet) type.cardUnit else type.tileUnit)
             RvText(note, type.tileCaption, color = Rv.colors.textSecondary)
             Spacer(Modifier.weight(1f))
-            if (quiet) RvGhostBars() else RvSparkline(values, series.line)
+            if (quiet) RvGhostBars(ghost) else RvSparkline(values, series.line)
         }
     }
 }
@@ -127,20 +128,20 @@ internal fun RvSparkline(values: List<Float>, color: Color, modifier: Modifier =
         val stroke = RvChartSize.sparkStroke.toPx()
         val scale = Scale(values.max() * RvChartSize.SPARK_HEADROOM, 0f, size.height - stroke / 2)
         val line = polyline(values, scale, size.width)
-        drawPath(areaUnder(line, size.width), Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), scale.y(values.max()), size.height))
+        drawPath(areaUnder(values, scale, size.width, size.height), Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), scale.y(values.max()), size.height))
         dottedAcross(colors.reference, scale.y(values.first()))
         drawPath(line, color, style = lineStroke(stroke))
     }
 }
 
-/** Revolut's empty 'Income' card: twelve faint bars of made-up heights across the width, each fading out downward. */
+/** Revolut's empty 'Income' card: twelve faint bars of made-up [heights] across the width, each fading out downward. */
 @Composable
-internal fun RvGhostBars(modifier: Modifier = Modifier) {
+internal fun RvGhostBars(heights: FloatArray, modifier: Modifier = Modifier) {
     val ghost = Rv.colors.ghost
     Canvas(modifier.fillMaxWidth().height(RvChartSize.spark)) {
         val bar = RvChartSize.ghostBar.toPx()
         val pitch = (size.width - bar) / (RvChartSize.GHOST_BARS - 1)
-        GHOST_HEIGHTS.forEachIndexed { i, height ->
+        heights.forEachIndexed { i, height ->
             val top = size.height * (1 - height)
             val brush = Brush.verticalGradient(listOf(ghost, Color.Transparent), top, size.height)
             drawRoundRect(brush, Offset(i * pitch, top), Size(bar, size.height - top), CornerRadius(bar / 2))
@@ -149,39 +150,85 @@ internal fun RvGhostBars(modifier: Modifier = Modifier) {
 }
 
 /**
- * Revolut's stock chart, full-bleed: [values] as a line in [series]'s colour on an axis from zero to peak × 1.15, over a
- * tint that fades out well above the bottom, on a hairline grid. A dotted line marks the peak, with its value ([label])
- * in a pill at the right edge; the low has a pill at the bottom right, and the start value a see-through pill at the
- * left edge. The live point at the end carries a soft halo. A finger on the chart moves [scrub] to the second under it
- * and shows a line and a dot there; lifting it calls [onScrub] with null.
+ * Revolut's stock chart (measured §10.1), full-bleed: [values] as a line in [series]'s colour on an axis from zero to
+ * peak × 1.15, over a tint that fades out linearly to the plot's bottom, on a hairline grid that fades at its ends. A
+ * dotted line marks the start value. Opaque pills carry the peak (right), the low (right) and the start (left); each sits
+ * on its value where the line leaves room, else just above or under it, and the strip under the plot keeps room for a
+ * pill under the bottom. The live point at the end carries a soft halo. A missing sample (NaN) breaks the line. A finger
+ * on the chart moves [scrub] to the second under it, shows a line in the series' colour and a dot there and hides the
+ * pills; lifting it calls [onScrub] with null.
  */
 @Composable
 internal fun RvDetailChart(values: List<Float>, series: RvSeries, label: (Float) -> String, scrub: Int?, onScrub: (Int?) -> Unit, modifier: Modifier = Modifier) {
     val colors = Rv.colors
-    val pillStyle = Rv.type.pill.copy(color = colors.onPill)
+    val pillStyle = Rv.type.pill.copy(color = colors.textSecondary)
+    val ink = RvPillInk(colors.pill, colors.raisedShadow)
     val measurer = rememberTextMeasurer()
-    Canvas(modifier.fillMaxWidth().height(RvChartSize.detail).scrubbing(values.size, onScrub)) {
-        hairlineGrid(colors.grid)
-        if (values.size < 2) return@Canvas
+    Canvas(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear).scrubbing(values.size, onScrub)) {
+        val plot = RvChartSize.detail.toPx()
+        hairlineGrid(colors.grid, plot)
+        val known = values.filterNot { it.isNaN() }
+        if (known.size < 2) return@Canvas
         val stroke = RvChartSize.detailStroke.toPx()
-        val peak = values.max()
-        val scale = Scale(peak * RvChartSize.DETAIL_HEADROOM, 0f, size.height - stroke)
+        val peak = known.max()
+        val scale = Scale(peak * RvChartSize.DETAIL_HEADROOM, 0f, plot - stroke)
         val right = size.width - RvChartSize.detailEnd.toPx()
         val line = polyline(values, scale, right)
-        val peakY = scale.y(peak)
-        val fadeEnd = peakY + (size.height - peakY) * RvChartSize.FILL_END
-        drawPath(areaUnder(line, right), Brush.verticalGradient(listOf(series.area, Color.Transparent), peakY, fadeEnd))
-        dottedAcross(colors.reference, peakY)
+        drawPath(areaUnder(values, scale, right, plot), Brush.verticalGradient(listOf(series.area, Color.Transparent), scale.y(peak), plot))
+        dottedAcross(colors.detailReference, scale.y(known.first()))
         drawPath(line, series.line, style = lineStroke(stroke))
-        EdgePill(colors.pill, colors.pillEdge).draw(this, measurer.measure(label(peak), pillStyle), peakY, end = true)
-        // The low and the start sit at the bottom, where bursty traffic's line runs, so it shows through their pills.
-        val overLine = EdgePill(colors.pill.copy(alpha = colors.pill.alpha * RvAlpha.PILL_OVER_LINE), colors.pillEdge)
-        overLine.draw(this, measurer.measure(label(values.min()), pillStyle), scale.y(values.min()), end = true)
-        overLine.draw(this, measurer.measure(label(values.first()), pillStyle), scale.y(values.first()), end = false)
-        val live = Offset(right, scale.y(values.last()))
-        drawCircle(series.line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, live)
-        drawCircle(series.line, RvChartSize.liveDot.toPx() / 2, live)
-        scrub?.takeIf { it in values.indices }?.let { i -> scrubMarker(Offset(right * i / (values.size - 1), scale.y(values[i])), series.line, colors.scrub, colors.page) }
+        val live = values.lastOrNull()?.takeUnless { it.isNaN() }?.let { Offset(right, scale.y(it)) }
+        live?.let {
+            drawCircle(series.line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, it)
+            drawCircle(series.line, RvChartSize.liveDot.toPx() / 2, it)
+        }
+        val i = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
+        if (i != null) {
+            scrubMarker(Offset(right * i / (values.size - 1), scale.y(values[i])), series.line, colors.page, plot)
+        } else {
+            val pills = PillPlacer(this, values, scale, right, live)
+            pills.place(measurer.measure(label(peak), pillStyle), scale.y(peak), end = true, ink)
+            pills.place(measurer.measure(label(known.min()), pillStyle), scale.y(known.min()), end = true, ink)
+            pills.place(measurer.measure(label(known.first()), pillStyle), scale.y(known.first()), end = false, ink)
+        }
+    }
+}
+
+/**
+ * Sets value pills on the detail chart without covering its line, its live point or one another: each tries its value's
+ * height, then just above it, then just under it (down into the strip under the plot), and takes the first that is clear.
+ */
+private class PillPlacer(val scope: DrawScope, val values: List<Float>, val scale: Scale, val right: Float, live: Offset?) {
+    private val taken = mutableListOf<Rect>()
+    private val clear = with(scope) { RvChartSize.pillClear.toPx() }
+
+    init {
+        live?.let { taken += Rect(it, with(scope) { RvChartSize.liveHalo.toPx() / 2 }) }
+    }
+
+    fun place(text: TextLayoutResult, y: Float, end: Boolean, ink: RvPillInk) = with(scope) {
+        val pill = rvPillSize(text)
+        val inset = RvChartSize.pillInset.toPx()
+        val left = if (end) size.width - inset - pill.width else inset
+        val tops = listOf(y - pill.height / 2, y - clear - pill.height, y + clear).map { it.coerceIn(0f, size.height - pill.height) }
+        val top = tops.firstOrNull { free(Rect(Offset(left, it), pill)) } ?: tops.last()
+        val rect = Rect(Offset(left, top), pill)
+        taken += rect
+        rvValuePill(text, rect.topLeft, ink)
+    }
+
+    /** Whether [rect], grown by the clearance, misses the other pills, the live point and every segment of the line. */
+    private fun free(rect: Rect): Boolean {
+        val zone = rect.inflate(clear)
+        if (taken.any { it.overlaps(zone) }) return false
+        val step = right / (values.size - 1)
+        return values.indices.none { i ->
+            val x = i * step
+            val y = values[i].takeUnless { it.isNaN() }?.let(scale::y) ?: return@none false
+            val next = values.getOrNull(i + 1)?.takeUnless { it.isNaN() }?.let(scale::y) ?: y
+            // The segment from this sample to the next crosses the zone's columns somewhere between its two heights.
+            x <= zone.right && x + step >= zone.left && maxOf(y, next) >= zone.top && minOf(y, next) <= zone.bottom
+        }
     }
 }
 
@@ -213,24 +260,30 @@ private fun Modifier.scrubbing(count: Int, onScrub: (Int?) -> Unit): Modifier {
 /** The sample nearest [x] when [count] samples span [0, right]. */
 private fun sampleAt(x: Float, right: Float, count: Int): Int = (x / right * (count - 1)).roundToInt().coerceIn(0, count - 1)
 
-/** Hairlines in [color]: a column every [RvChartSize.gridColumn] from the start, and the edges of four rows. */
-private fun DrawScope.hairlineGrid(color: Color) {
+/**
+ * The detail chart's hairlines in [color] over its [plot] height (measured §10.1): a row every [RvChartSize.gridRow] and a
+ * column every [RvChartSize.gridColumn], the columns fading in and out at the plot's top and bottom, the rows at the
+ * screen's edges.
+ */
+private fun DrawScope.hairlineGrid(color: Color, plot: Float) {
     val hairline = 1f
+    val fade = listOf(Color.Transparent, color, color, Color.Transparent)
     val column = RvChartSize.gridColumn.toPx()
     var x = column
     while (x < size.width) {
-        drawLine(color, Offset(x, 0f), Offset(x, size.height), hairline)
+        drawLine(Brush.verticalGradient(fade, 0f, plot), Offset(x, 0f), Offset(x, plot), hairline)
         x += column
     }
-    for (k in 0..RvChartSize.GRID_ROWS) {
-        val y = (size.height - hairline) * k / RvChartSize.GRID_ROWS + hairline / 2
-        drawLine(color, Offset(0f, y), Offset(size.width, y), hairline)
+    var y = hairline / 2
+    while (y < plot) {
+        drawLine(Brush.horizontalGradient(fade), Offset(0f, y), Offset(size.width, y), hairline)
+        y += RvChartSize.gridRow.toPx()
     }
 }
 
-/** The scrubbed second: a line down the chart in [rule], and a dot in [color] on the curve, ringed in [ring]. */
-private fun DrawScope.scrubMarker(at: Offset, color: Color, rule: Color, ring: Color) {
-    drawLine(rule, Offset(at.x, 0f), Offset(at.x, size.height), RvChartSize.scrubLine.toPx())
+/** The scrubbed second: a 1 dp line down the [plot] in the series' [color], and a dot in it on the curve, ringed in [ring]. */
+private fun DrawScope.scrubMarker(at: Offset, color: Color, ring: Color, plot: Float) {
+    drawLine(color, Offset(at.x, 0f), Offset(at.x, plot), RvChartSize.scrubLine.toPx())
     val dot = RvChartSize.scrubDot.toPx() / 2
     drawCircle(ring, dot + RvChartSize.scrubRing.toPx(), at)
     drawCircle(color, dot, at)
@@ -238,22 +291,37 @@ private fun DrawScope.scrubMarker(at: Offset, color: Color, rule: Color, ring: C
 
 /**
  * [values] spread over [0, right], joined by straight segments: at one sample a second the line stays dense and jagged,
- * as Revolut's are, and a spike keeps its sharp tip.
+ * as Revolut's are, and a spike keeps its sharp tip. A missing sample (NaN) breaks the line; nothing bridges the gap.
  */
 private fun polyline(values: List<Float>, scale: Scale, right: Float): Path {
     val step = right / (values.size - 1)
     return Path().apply {
-        moveTo(0f, scale.y(values[0]))
-        for (i in 1 until values.size) lineTo(i * step, scale.y(values[i]))
+        var drawing = false
+        values.forEachIndexed { i, v ->
+            when {
+                v.isNaN() -> drawing = false
+                drawing -> lineTo(i * step, scale.y(v))
+                else -> moveTo(i * step, scale.y(v)).also { drawing = true }
+            }
+        }
     }
 }
 
-/** The area under [line] from its start to [right], down to the canvas's bottom. */
-private fun DrawScope.areaUnder(line: Path, right: Float) = Path().apply {
-    addPath(line)
-    lineTo(right, size.height)
-    lineTo(0f, size.height)
-    close()
+/** The area under each unbroken run of [values] over [0, right], down to [bottom]. */
+private fun areaUnder(values: List<Float>, scale: Scale, right: Float, bottom: Float) = Path().apply {
+    val step = right / (values.size - 1)
+    var start = -1
+    for (i in 0..values.size) {
+        val known = i < values.size && !values[i].isNaN()
+        if (known && start < 0) start = i
+        if (!known && start >= 0) {
+            moveTo(start * step, bottom)
+            for (j in start until i) lineTo(j * step, scale.y(values[j]))
+            lineTo((i - 1) * step, bottom)
+            close()
+            start = -1
+        }
+    }
 }
 
 private fun lineStroke(width: Float) = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round)
@@ -264,24 +332,9 @@ private fun DrawScope.dots() = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH
 private fun DrawScope.dottedAcross(color: Color, y: Float) =
     drawLine(color, Offset(0f, y), Offset(size.width, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots())
 
-/** A value pill in [fill], with a hairline [edge] in light: only ever at the chart's right edge, or its left for the start. */
-private class EdgePill(val fill: Color, val edge: Color?) {
-    /** [text] in the pill, centred on [y] inside the chart, [RvChartSize.pillInset] in from the [end] or start edge. */
-    fun draw(scope: DrawScope, text: TextLayoutResult, y: Float, end: Boolean) = with(scope) {
-        val padH = RvChartSize.pillPadH.toPx()
-        val padV = RvChartSize.pillPadV.toPx()
-        val pill = Size(text.size.width + 2 * padH, text.size.height + 2 * padV)
-        val inset = RvChartSize.pillInset.toPx()
-        val topLeft = Offset(if (end) size.width - inset - pill.width else inset, (y - pill.height / 2).coerceIn(0f, size.height - pill.height))
-        val radius = CornerRadius(RvChartSize.pillRadius.toPx())
-        drawRoundRect(fill, topLeft, pill, radius)
-        edge?.let { drawRoundRect(it, topLeft, pill, radius, Stroke(1f)) }
-        drawText(text, topLeft = topLeft + Offset(padH, padV))
-    }
-}
-
-/** Ghost bar heights as shares of the chart's height, repeated across the tile. */
-private val GHOST_HEIGHTS = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
+/** Ghost bar heights as shares of the chart's height: download's, and upload's of its own shape (S5-09). */
+internal val RV_GHOST_DOWN = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
+internal val RV_GHOST_UP = floatArrayOf(0.3f, 0.22f, 0.48f, 0.34f, 0.6f, 0.4f, 0.26f, 0.52f, 0.72f, 0.44f, 0.58f, 0.38f)
 
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f

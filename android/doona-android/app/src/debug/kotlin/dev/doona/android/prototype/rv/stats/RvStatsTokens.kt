@@ -12,8 +12,8 @@ internal object RvStatsSpace {
     /** From the chips to the first card. */
     val chipsGap = 16.dp
 
-    /** Between two paged tiles; the third peeks this much less the gutter at the screen's edge. */
-    val tileGap = 8.dp
+    /** Between two paged tiles, as between any side-by-side cards (Addendum A: 16 dp). */
+    val tileGap = 16.dp
 
     /** From a card's figure block to its chart, and between a legend's lines. */
     val chartGap = 16.dp
@@ -24,12 +24,6 @@ internal object RvStatsSpace {
 }
 
 internal object RvStatsSize {
-    /** The filter chips, Revolut's small action buttons: 40 dp pills, a 16 dp chevron after the label. */
-    val chip = 40.dp
-    val chipPad = 14.dp
-    val chipGlyph = 16.dp
-    val chipGlyphGap = 2.dp
-
     /** The 已用流量 card, Revolut's 'Spent' (384 x 188 dp at 423 dp): its chart takes the right part of it. */
     val spent = 188.dp
     const val SPENT_CHART_SHARE = 0.56f
@@ -58,10 +52,6 @@ internal object RvStatsSize {
     val legendSquare = 9.dp
     val legendRadius = 2.dp
 
-    /** A node's country too small for the 1:110m map: a dot ringed in the card's colour. */
-    val placeDot = 7.dp
-    val placeRing = 1.5.dp
-
     /** The latency dot chart, after Revolut's EPS chart: dots, the current node's column and its label chip. */
     val latency = 156.dp
     val latencyDot = 6.dp
@@ -76,16 +66,9 @@ internal object RvStatsSize {
     val ratingBar = 8.dp
     val ratingRow = 28.dp
     val ratingLabel = 72.dp
-
-    /** The v0.2 tag after a card's label. */
-    val tagPadH = 6.dp
-    val tagPadV = 1.dp
 }
 
 internal object RvStatsAlpha {
-    /** The map's land, in the text colour: Revolut's #EBEBEB on white. */
-    const val LAND = 0.09f
-
     /** A subscription's unused share of its ring segment, in the segment's colour. */
     const val RING_REST = 0.24f
 

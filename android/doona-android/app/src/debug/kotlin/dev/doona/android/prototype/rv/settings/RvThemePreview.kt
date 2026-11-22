@@ -1,44 +1,43 @@
 package dev.doona.android.prototype.rv.settings
 
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import dev.doona.android.R
+import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvGlyph
-import dev.doona.android.prototype.rv.RvHero
+import dev.doona.android.prototype.rv.RvActivityScreen
+import dev.doona.android.prototype.rv.RvChrome
 import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.data.RvPlace
-import dev.doona.android.prototype.rv.rvDotMap
+import dev.doona.android.prototype.rv.rvSampleActivity
 
 /** One accent: its name for a screen reader and its primary in the light theme. */
 internal class RvAccent(@StringRes val name: Int, val light: Color)
 
-/** The five colours the theme page offers when the wallpaper's is not followed. */
+/** The four fixed colours the theme page offers after the first swatch, which is the scheme's own primary (S8-10). */
 internal val RV_ACCENTS = listOf(
     RvAccent(R.string.rv_settings_accent_blue, RvAccentColors.blue),
-    RvAccent(R.string.rv_settings_accent_teal, RvAccentColors.teal),
     RvAccent(R.string.rv_settings_accent_purple, RvAccentColors.purple),
     RvAccent(R.string.rv_settings_accent_orange, RvAccentColors.orange),
     RvAccent(R.string.rv_settings_accent_pink, RvAccentColors.pink),
@@ -58,62 +57,65 @@ internal fun ColorScheme.withAccent(accent: RvAccent, dark: Boolean): ColorSchem
     )
 }
 
+/** The swatch the page shows as chosen: the first (the scheme's own primary) while the wallpaper's colour is followed. */
+internal val RvAppearance.shownAccent: Int get() = if (followWallpaper) 0 else accent
+
 /**
- * What the theme choices would look like: a mini 活動 hero, in the page's own card, wearing the chosen theme. 跟隨系統 shows
- * the theme the page is in; with the wallpaper's colour not followed, the hero takes the chosen accent.
+ * The scheme [base] becomes under these choices: itself for the first swatch or the wallpaper's colour, else with the
+ * chosen fixed accent. The theme page wears it too, so its radio, switch and preview agree with the ringed swatch (S07).
+ */
+internal fun RvAppearance.scheme(base: ColorScheme, dark: Boolean): ColorScheme =
+    if (shownAccent == 0) base else base.withAccent(RV_ACCENTS[shownAccent - 1], dark)
+
+/** Whether the preview is dark: the page's own theme for 跟隨系統, else the chosen one. */
+internal fun RvAppearance.previewDark(pageDark: Boolean): Boolean = when (mode) {
+    RvThemeMode.System -> pageDark
+    RvThemeMode.Light -> false
+    RvThemeMode.Dark -> true
+}
+
+/**
+ * What the choices would look like, Revolut's Appearance preview: the top of the real 活動 page (its top bar, hero, dot
+ * map and filled round actions, S8-12), scaled down in a phone-shaped panel in a card and wearing the chosen theme. It is
+ * a picture: the screen reader hears 預覽 and a touch does nothing.
  */
 @Composable
 internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: ColorScheme, modifier: Modifier = Modifier) {
-    val isDark = when (appearance.mode) {
-        RvThemeMode.System -> Rv.colors.dark
-        RvThemeMode.Light -> false
-        RvThemeMode.Dark -> true
-    }
-    val base = if (isDark) dark else light
-    val scheme = if (appearance.followWallpaper) base else base.withAccent(RV_ACCENTS[appearance.accent], isDark)
+    val isDark = appearance.previewDark(Rv.colors.dark)
+    val scheme = appearance.scheme(if (isDark) dark else light, isDark)
     val label = stringResource(R.string.rv_settings_preview)
-    Box(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(RvSettingsSize.cardRadius))
-            .background(Rv.colors.card)
-            .padding(RvSettingsSpace.previewPad)
-            .clearAndSetSemantics { contentDescription = label },
-    ) {
-        RvTheme(scheme, isDark) { MiniHero() }
-    }
-}
-
-/** The 活動 header in small: the dot map with the node's place marked, the state, the rate, and the four round actions. */
-@Composable
-private fun MiniHero() {
-    val colors = Rv.colors
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .height(RvSettingsSize.previewHeight)
-            .clip(RoundedCornerShape(RvSettingsSize.previewRadius))
-            .background(colors.page)
-            .rvDotMap(RvPlace.TW, colors.dots, RvSettingsSize.previewMarkerTop),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Spacer(Modifier.height(RvSettingsSize.previewCaptionTop))
-        RvSettingsText("${stringResource(R.string.backend_connected)} · ${stringResource(R.string.mode_global)}", RvSettingsType.previewCaption)
-        Spacer(Modifier.height(RvSettingsSpace.previewCaptionGap))
-        RvHero(stringResource(R.string.rv_settings_preview_rate), stringResource(R.string.rv_settings_preview_unit))
-        Spacer(Modifier.height(RvSettingsSpace.previewGap))
-        Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.previewActionGap)) {
-            MINI_ACTIONS.forEach { MiniAction(it) }
+    val size = RvSettingsSize
+    val shape = RoundedCornerShape(size.previewRadius)
+    RvSettingsCard(modifier) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(RvSettingsSpace.previewPad)
+                .wrapContentSize(Alignment.TopCenter)
+                .size(size.previewScreen.width * PREVIEW_SCALE, size.previewHeight * PREVIEW_SCALE)
+                .clip(shape)
+                .border(RvChrome.ring, Rv.colors.flagRing, shape)
+                .clearAndSetSemantics { contentDescription = label },
+        ) {
+            Box(
+                Modifier
+                    .wrapContentSize(Alignment.TopCenter, unbounded = true)
+                    .requiredSize(size.previewScreen)
+                    .graphicsLayer {
+                        scaleX = PREVIEW_SCALE
+                        scaleY = PREVIEW_SCALE
+                        transformOrigin = TransformOrigin(0.5f, 0f)
+                    },
+            ) {
+                CompositionLocalProvider(LocalFrameInsets provides WindowInsets(top = size.previewStatus)) {
+                    RvTheme(scheme, isDark) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+                }
+            }
+            // Above the page, so no tap or drag reaches it.
+            Box(Modifier.matchParentSize().pointerInput(Unit) {})
         }
     }
 }
 
-@Composable
-private fun MiniAction(@DrawableRes icon: Int) {
-    Box(
-        Modifier.size(RvSettingsSize.previewDisc).clip(CircleShape).background(Rv.colors.discOnHeader),
-        contentAlignment = Alignment.Center,
-    ) { RvGlyph(icon, RvSettingsSize.previewGlyph, Rv.colors.text) }
-}
-
-private val MINI_ACTIONS = listOf(R.drawable.rv_sym_power, R.drawable.rv_sym_directions, R.drawable.rv_sym_speed, R.drawable.rv_sym_more_horiz)
+/** The preview shows the 活動 page at this share of its size. */
+private const val PREVIEW_SCALE = 0.6f

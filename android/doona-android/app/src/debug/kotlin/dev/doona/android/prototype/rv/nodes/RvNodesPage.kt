@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv.nodes
 
 import android.content.res.Configuration
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,12 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -25,23 +24,29 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvCardHeader
+import dev.doona.android.prototype.rv.RvChevron
+import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFlag
-import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvLatencyChange
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.RvWorldMap
 import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.data.RvRegion
 import dev.doona.android.prototype.rv.rvPress
@@ -49,10 +54,11 @@ import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * The 節點 page, pushed from 活動, in the language of Revolut's Analytics and Crypto pages: the back disc and the large
- * title over two filter chips; 最快節點 as 'Top movers' (fastest or steadiest, eight flags with their latency); 節點分佈
+ * title over two filter chips; 最快節點 as 'Top movers' (fastest or steadiest, eight flags with their latency); 節點分布
  * as 'Your trips' (the world map with every country that has a node filled); then 全部節點 as 'All crypto' rows, one
- * card per part of the world, each node's latency over its change since the test before. The node in use sits on a
- * faint primary tint.
+ * card per part of the world, each node's latency over its change since the test before, five rows and then 查看全部. The
+ * node in use carries the check badge on its flag wherever it is listed; a tap on a node opens its page and never
+ * switches to it (Addendum A).
  */
 @Composable
 internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: () -> Unit, onOpen: (String) -> Unit, onAllNodes: () -> Unit) {
@@ -63,12 +69,10 @@ internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: 
         RvLargeTitle(title, titleBlock, insets)
         Chips(onFilter)
         RvGutter {
-            TopCard(state.top(steadiest), steadiest, { steadiest = it }, onOpen)
+            TopCard(state.top(steadiest), state.currentId, steadiest, { steadiest = it }, onOpen, onAllNodes)
             MapCard(state)
         }
-        Spacer(Modifier.height(RvSpace.sectionGap))
-        Heading(onAllNodes)
-        Spacer(Modifier.height(RvSpace.headingGap))
+        RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
         RvGutter {
             for ((region, nodes) in state.byRegion()) RegionCard(region, nodes, state.currentId, onOpen)
         }
@@ -81,18 +85,18 @@ internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: 
 @Composable
 private fun Chips(onFilter: () -> Unit) {
     Row(Modifier.padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
-        RvFilterChip(stringResource(R.string.rv_nodes_all_subscriptions), menu = true, onFilter)
+        RvFilterChip(stringResource(R.string.rv_nodes_all_subscriptions), onFilter)
         Spacer(Modifier.weight(1f))
-        RvFilterChip(stringResource(R.string.rv_nodes_by_latency), menu = false, onFilter)
+        RvFilterChip(stringResource(R.string.rv_nodes_by_latency), onFilter)
     }
     Spacer(Modifier.height(RvSpace.titleToCard))
 }
 
-/** 'Top movers': the card's header, 最快 | 最穩, then the eight nodes in two rows of four. */
+/** 'Top movers': the card's header (it opens the list, as on 活動), 最快 | 最穩, then the eight nodes in two rows of four. */
 @Composable
-private fun TopCard(top: List<RvNode>, steadiest: Boolean, onSteadiest: (Boolean) -> Unit, onOpen: (String) -> Unit) {
+private fun TopCard(top: List<RvNode>, currentId: String, steadiest: Boolean, onSteadiest: (Boolean) -> Unit, onOpen: (String) -> Unit, onAll: () -> Unit) {
     RvCard {
-        RvCardHeader(stringResource(R.string.rv_nodes_fastest_card))
+        RvCardHeader(stringResource(R.string.rv_nodes_fastest_card), onAll)
         RvSegmented(
             listOf(stringResource(R.string.rv_nodes_fastest), stringResource(R.string.rv_nodes_steadiest)),
             selected = if (steadiest) 1 else 0,
@@ -102,7 +106,7 @@ private fun TopCard(top: List<RvNode>, steadiest: Boolean, onSteadiest: (Boolean
         Spacer(Modifier.height(RvNodesSize.topRowGap))
         for (line in top.chunked(TOP_COLUMNS)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding - RvSpace.tight)) {
-                line.forEach { TopNode(it, onOpen, Modifier.weight(1f)) }
+                line.forEach { TopNode(it, it.id == currentId, onOpen, Modifier.weight(1f)) }
                 repeat(TOP_COLUMNS - line.size) { Spacer(Modifier.weight(1f)) }
             }
         }
@@ -110,9 +114,9 @@ private fun TopCard(top: List<RvNode>, steadiest: Boolean, onSteadiest: (Boolean
     }
 }
 
-/** One of 'Top movers': the flag, the short name and the latency in its quality's hue. */
+/** One of 'Top movers': the flag (badged when [current]), the short name and the latency in its quality's hue. */
 @Composable
-private fun TopNode(node: RvNode, onOpen: (String) -> Unit, modifier: Modifier) {
+private fun TopNode(node: RvNode, current: Boolean, onOpen: (String) -> Unit, modifier: Modifier) {
     Column(
         modifier
             .rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button) { onOpen(node.id) }
@@ -120,7 +124,7 @@ private fun TopNode(node: RvNode, onOpen: (String) -> Unit, modifier: Modifier) 
             .padding(vertical = RvSpace.tight),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        RvFlag(node.place.name, RvNodesSize.topFlag)
+        RvFlag(node.place.name, RvNodesSize.topFlag, current = current)
         Spacer(Modifier.height(RvNodesSize.topLabelGap))
         RvText(node.short, RvNodesType.topName, align = TextAlign.Center)
         RvText(latencyText(node.latencyMs), RvNodesType.topValue, color = latencyColor(node.latencyMs), align = TextAlign.Center)
@@ -132,7 +136,7 @@ private fun TopNode(node: RvNode, onOpen: (String) -> Unit, modifier: Modifier) 
 private fun MapCard(state: RvNodesPageState) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_spread))
-        RvNodesMap(state.places, Modifier.padding(horizontal = RvSpace.rowPadding))
+        RvWorldMap(state.places, Modifier.padding(horizontal = RvSpace.rowPadding))
         Spacer(Modifier.height(RvSpace.barGap))
         val countries = state.places.size
         val nodes = state.nodes.size
@@ -142,39 +146,46 @@ private fun MapCard(state: RvNodesPageState) {
     }
 }
 
-/** 全部節點 as a section title on the page, with the chevron Revolut sets after a title that opens more. */
+/**
+ * One part of the world: its name as the card's header, then its nodes, fastest first: the first [REGION_ROWS], then
+ * Revolut's 56 dp 'See all' row (S7-12), which opens the rest in place.
+ */
 @Composable
-private fun Heading(onAllNodes: () -> Unit) {
-    Row(
-        Modifier.padding(horizontal = RvSpace.gutter).rvPress(RoundedCornerShape(RvSpace.tight), Role.Button, onAllNodes),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RvText(stringResource(R.string.rv_nodes_all), Rv.type.section)
-        Spacer(Modifier.width(RvSpace.tight / 2))
-        RvGlyph(R.drawable.rv_sym_chevron_right, RvSize.navGlyph, Rv.colors.text)
+private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String, onOpen: (String) -> Unit) {
+    var all by rememberSaveable(region) { mutableStateOf(false) }
+    val inUse = stringResource(R.string.rv_nodes_in_use)
+    RvCard {
+        RvCardHeader(stringResource(region.label))
+        for (node in if (all) nodes else nodes.take(REGION_ROWS)) {
+            val current = node.id == currentId
+            RvRow(
+                { RvFlag(node.place.name, RvNodesSize.rowFlag, current = current) },
+                node.name,
+                node.protocol + SEPARATOR + stringResource(node.place.label),
+                if (current) Modifier.semantics { stateDescription = inUse } else Modifier,
+                onClick = { onOpen(node.id) },
+            ) { RvLatencyChange(node.latencyMs, node.changeMs) }
+        }
+        if (!all && nodes.size > REGION_ROWS) SeeAll(nodes.size) { all = true }
     }
 }
 
-/** One part of the world: its name as the card's header, then its nodes, fastest first. */
+/** Revolut's 'See all' row at a list card's foot: the count in the accent, the chevron at the end. */
 @Composable
-private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String, onOpen: (String) -> Unit) {
-    val tint = selectedRowTint()
-    RvCard {
-        RvCardHeader(stringResource(region.label))
-        for (node in nodes) {
-            RvRow(
-                { RvFlag(node.place.name, RvNodesSize.rowFlag) },
-                node.name,
-                node.protocol + SEPARATOR + stringResource(node.place.label),
-                if (node.id == currentId) Modifier.background(tint) else Modifier,
-                onClick = { onOpen(node.id) },
-            ) { RvLatencyChange(node) }
-        }
+private fun SeeAll(count: Int, onClick: () -> Unit) {
+    val shape = remember { RoundedCornerShape(bottomStart = RvSize.cardRadius, bottomEnd = RvSize.cardRadius) }
+    Row(
+        Modifier.fillMaxWidth().height(RvNodesSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RvText(pluralStringResource(R.plurals.rv_nodes_see_all, count, count), Rv.type.rowTitle, Modifier.weight(1f), color = Rv.colors.positive)
+        RvChevron()
     }
 }
 
 internal const val SEPARATOR = " · "
 private const val TOP_COLUMNS = 4
+private const val REGION_ROWS = 5
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)

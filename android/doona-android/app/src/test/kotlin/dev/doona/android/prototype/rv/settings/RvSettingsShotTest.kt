@@ -61,6 +61,6 @@ class RvSettingsShotTest {
         const val PHONE = 915
 
         /** Tall enough that the whole 設定 page shows, down to the bottom navigation. */
-        const val LONG_PAGE = 1460
+        const val LONG_PAGE = 1464
     }
 }

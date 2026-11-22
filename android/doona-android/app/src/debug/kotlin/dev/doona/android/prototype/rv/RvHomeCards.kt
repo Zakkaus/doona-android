@@ -1,6 +1,5 @@
 package dev.doona.android.prototype.rv
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +30,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
@@ -83,29 +81,34 @@ private fun LegendItem(color: Color, text: String) {
 
 /**
  * The day from 00:00 to 24:00 across the canvas and the total × [RvUsageSize.HEADROOM] up it: download's running total as
- * a stepped area, upload's stacked on it, each with a thin line on its top edge, over a hairline grid that fades out
- * toward the start and the bottom. The steps stop at the current time.
+ * a stepped band, upload's stacked on it, both at one alpha in their own hue, each with a thin line on its top edge, over
+ * a hairline grid every 4 hours that the steps share. The steps stop at the current time, where a 5 dp dot on a halo
+ * marks the total so far (S5-14).
  */
 @Composable
 private fun UsageChart(day: RvDay, nowHour: Float, modifier: Modifier) {
     val colors = Rv.colors
     Canvas(modifier) {
-        fadingGrid(colors.grid)
         val high = day.total * RvUsageSize.HEADROOM
         val chart = StepChart(size.width, size.height, high, nowHour)
+        hourGrid(colors.grid, chart)
         val downTop = chart.steps(day.down.runningSum())
         val totalTop = chart.steps(day.down.zip(day.up) { down, up -> down + up }.runningSum())
-        drawPath(chart.band(totalTop, downTop), colors.up.area)
-        drawPath(chart.band(downTop, null), colors.down.area)
-        val stroke = Stroke(RvUsageSize.stroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        drawPath(chart.band(totalTop, downTop), colors.up.band)
+        drawPath(chart.band(downTop, null), colors.down.band)
+        // Butt ends, so the lines stop where the bands do (S5-15).
+        val stroke = Stroke(RvUsageSize.stroke.toPx(), cap = StrokeCap.Butt, join = StrokeJoin.Round)
         drawPath(chart.line(downTop), colors.down.line, style = stroke)
         drawPath(chart.line(totalTop), colors.up.line, style = stroke)
+        val now = totalTop.last()
+        drawCircle(colors.up.line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, now)
+        drawCircle(colors.up.line, RvChartSize.liveDot.toPx() / 2, now)
     }
 }
 
 /** Where an hour and a running total sit on a [width] x [height] canvas whose top is [high] bytes. */
 private class StepChart(val width: Float, val height: Float, val high: Float, val now: Float) {
-    private fun x(hour: Float) = width * hour / RvUsageSize.HOURS
+    fun x(hour: Float) = width * hour / RvUsageSize.HOURS
     private fun y(bytes: Long) = height * (1 - bytes / high)
 
     /** The top edge of a running total: level through each hour, rising at the hour's start, ending now. */
@@ -134,19 +137,19 @@ private class StepChart(val width: Float, val height: Float, val high: Float, va
     }
 }
 
-/** A hairline every [RvUsageSize.GRID_HOURS] hours and in [RvUsageSize.GRID_ROWS] rows, fading out to the start and the bottom. */
-private fun DrawScope.fadingGrid(color: Color) {
+/**
+ * A hairline at every [RvUsageSize.GRID_HOURS] hours, where [chart] puts that hour, so the steps rise on the grid, each
+ * fading out toward the bottom; and [RvUsageSize.GRID_ROWS] rows across the whole width.
+ */
+private fun DrawScope.hourGrid(color: Color, chart: StepChart) {
     val hairline = 1f
-    val columns = RvUsageSize.HOURS / RvUsageSize.GRID_HOURS
-    for (i in 0..columns) {
-        val x = (size.width - hairline) * i / columns + hairline / 2
-        val ink = color.copy(alpha = color.alpha * i / columns)
-        drawLine(Brush.verticalGradient(listOf(ink, Color.Transparent)), Offset(x, 0f), Offset(x, size.height), hairline)
+    for (hour in 0..RvUsageSize.HOURS step RvUsageSize.GRID_HOURS) {
+        val x = chart.x(hour.toFloat()).coerceIn(hairline / 2, size.width - hairline / 2)
+        drawLine(Brush.verticalGradient(listOf(color, Color.Transparent)), Offset(x, 0f), Offset(x, size.height), hairline)
     }
     for (j in 0 until RvUsageSize.GRID_ROWS) {
         val y = size.height * j / RvUsageSize.GRID_ROWS + hairline / 2
-        val ink = color.copy(alpha = color.alpha * (1 - j.toFloat() / RvUsageSize.GRID_ROWS))
-        drawLine(Brush.horizontalGradient(listOf(Color.Transparent, ink)), Offset(0f, y), Offset(size.width, y), hairline)
+        drawLine(color, Offset(0f, y), Offset(size.width, y), hairline)
     }
 }
 
@@ -159,7 +162,7 @@ internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>) {
     val colors = Rv.colors
     val format = rememberRvFormat()
     RvCard {
-        RvCardHeader(R.string.rv_subscriptions)
+        RvCardHeader(stringResource(R.string.rv_subscriptions), NOT_WIRED)
         Row(Modifier.padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.Bottom) {
             RvFigureText(format.bytes(subscriptions.sumOf { it.leftBytes }).figure(), Rv.type.cardValue, Rv.type.cardUnit, Modifier.alignByBaseline())
             Spacer(Modifier.width(RvSpace.tight * 2))
@@ -175,7 +178,6 @@ internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>) {
                 stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
             ) { RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
         }
-        Spacer(Modifier.height(RvSpace.tight * 2))
     }
 }
 
@@ -187,61 +189,18 @@ private fun AccentDisc(disc: Color, glyph: Color) {
 }
 
 /**
- * 最快節點 in the style of Revolut's Watchlist: a row per node with its flag, its name, its protocol and region, and its
- * latency over the change since the test before, a falling latency in the good hue and a rising one in the slow hue.
+ * 最快節點 in the style of Revolut's Watchlist: its header opens 節點 ([onOpen]); a row per node with its flag (the
+ * [currentId] node's with the check), its name, its protocol and region, and its latency over its [RvDelta].
  */
 @Composable
-internal fun RvFastestCard(nodes: List<RvNode>) {
+internal fun RvFastestCard(nodes: List<RvNode>, currentId: String, onOpen: () -> Unit) {
     RvCard {
-        RvCardHeader(R.string.rv_fastest_nodes)
+        RvCardHeader(stringResource(R.string.rv_fastest_nodes), onOpen)
         nodes.forEach { node ->
-            RvRow({ RvFlag(node.place.name, RvSize.rowDisc) }, node.name, node.protocol + " · " + stringResource(node.place.label)) {
-                Column(horizontalAlignment = Alignment.End) {
-                    RvText(node.latencyMs?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
-                    node.changeMs?.let { RvDelta(it) }
-                }
+            RvRow({ RvFlag(node.place.name, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + " · " + stringResource(node.place.label)) {
+                RvLatencyChange(node.latencyMs, node.changeMs)
             }
         }
-        Spacer(Modifier.height(RvSpace.tight * 2))
-    }
-}
-
-/** A change in milliseconds as Revolut writes one: a filled triangle pointing its way, then the amount, in one hue; no change is a dash. */
-@Composable
-private fun RvDelta(changeMs: Int) {
-    // No change is not a measurement, so it shows a dash and no triangle.
-    if (changeMs == 0) return RvText(RV_NO_VALUE, Rv.type.rowSub, color = Rv.colors.textSecondary)
-    val color = if (changeMs <= 0) Rv.colors.good else Rv.colors.slow
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvHomeSize.deltaGap)) {
-        Canvas(Modifier.size(RvHomeSize.delta)) {
-            val low = size.height * (1 - TRIANGLE_INSET)
-            val high = size.height * TRIANGLE_INSET
-            val (base, tip) = if (changeMs <= 0) high to low else low to high
-            val path = Path().apply {
-                moveTo(0f, base)
-                lineTo(size.width, base)
-                lineTo(size.width / 2, tip)
-                close()
-            }
-            drawPath(path, color)
-            drawPath(path, color, style = Stroke(1f, join = StrokeJoin.Round))
-        }
-        RvText(stringResource(R.string.latency_ms, abs(changeMs)), Rv.type.rowSub, color = color)
-    }
-}
-
-/** A home card's own header, as Revolut's `Cards >`: grey semibold text and a chevron; the whole line is one button. */
-@Composable
-private fun RvCardHeader(@StringRes title: Int) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, NOT_WIRED)
-            .padding(horizontal = RvSpace.rowPadding, vertical = RvHomeSize.headerPad),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RvText(stringResource(title), Rv.type.cardTitle, color = Rv.colors.textSecondary)
-        RvGlyph(R.drawable.rv_sym_chevron_right, RvHomeSize.headerChevron, Rv.colors.textSecondary)
     }
 }
 
@@ -249,6 +208,3 @@ private fun List<Long>.runningSum(): List<Long> = runningReduce { sum, bytes -> 
 
 /** The chart takes the card's right half. */
 private const val CHART_SHARE = 0.5f
-
-/** The delta triangle leaves this share of its box free above and below; the outline rounds its corners. */
-private const val TRIANGLE_INSET = 0.1f

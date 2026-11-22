@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,8 +30,6 @@ import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvFormat
 import dev.doona.android.prototype.rv.data.RvSession
-import java.text.DecimalFormatSymbols
-import java.util.Locale
 
 /**
  * The page a traffic tile opens, 流量詳情 on the bar beside the back disc, in the language of Revolut's stock page: 下載
@@ -57,17 +54,17 @@ internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack:
             val options = listOf(stringResource(R.string.ui_download), stringResource(R.string.ui_upload))
             RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 })
             Spacer(Modifier.height(RvSpace.chartGap))
-            val shown = scrub?.takeIf { it in values.indices }
-            Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), shown?.let { values.size - 1 - it } ?: 0, format.locale)
+            val shown = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
+            // A scrubbed second shows its rate and its time; lifting the finger brings back the live rate.
+            val at = shown?.let { format.clock(session.nowEpochMs - (values.lastIndex - it) * MS_PER_SECOND) }
+            Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), at)
         }
         Spacer(Modifier.height(RvSpace.chartGap))
         RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate, scrub, onScrub = { scrub = it })
-        Spacer(Modifier.height(RvSpace.chipGap))
+        Spacer(Modifier.height(RvChartSize.pillClear))
         Ranges()
-        Spacer(Modifier.height(RvSpace.sectionGap))
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-            RvText(stringResource(R.string.rv_this_connection), Rv.type.section)
-            Spacer(Modifier.height(RvSpace.headingGap))
+            RvSectionTitle(stringResource(R.string.rv_this_connection))
             ConnectionCard(session, upload, format)
         }
         Spacer(Modifier.height(RvSpace.cardGap))
@@ -75,26 +72,25 @@ internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack:
     }
 }
 
-/** The rate as the hero, its decimals small, then when it was: now, or [secondsAgo] seconds before now. */
+/**
+ * The rate as the detail figure (measured §10.1: 33 sp with its decimals, the unit 22 sp), then when it was: now, or the
+ * scrubbed second's time [at].
+ */
 @Composable
-private fun Hero(rate: RvAmount, secondsAgo: Int, locale: Locale) {
-    val (whole, decimals) = heroParts(rate.number, locale)
-    RvHero(whole, decimals + rate.unit)
+private fun Hero(rate: RvAmount, at: String?) {
+    RvFigureText(rate.figure(), Rv.type.detailFigure, Rv.type.detailUnit)
     Spacer(Modifier.height(RvSpace.subGap))
-    val line = if (secondsAgo == 0) stringResource(R.string.rv_now) else stringResource(R.string.rv_seconds_ago, secondsAgo)
-    RvText(line, Rv.type.sub, color = Rv.colors.textSecondary)
+    RvText(at ?: stringResource(R.string.rv_now), Rv.type.sub, color = Rv.colors.textSecondary)
 }
 
-/** The range chips, then Revolut's two round buttons at the end of the row. */
+/** The range chips, with no track behind them, then Revolut's two round buttons ending on the margin (measured §8). */
 @Composable
 private fun Ranges() {
-    Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(start = RvSpace.gutter, end = RvSpace.gutter - rvToolOverhang), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-            RANGES.forEach { (label, offered) -> RvRangePill(stringResource(label), selected = offered, enabled = offered, onClick = NOT_WIRED) }
+            RANGES.forEachIndexed { i, label -> RvRangePill(stringResource(label), selected = i == 0, onClick = NOT_WIRED) }
         }
-        RvRoundButton(R.drawable.rv_sym_candlestick_chart, stringResource(R.string.rv_chart_type), NOT_WIRED)
-        Spacer(Modifier.width(RvSpace.tight))
-        RvRoundButton(R.drawable.rv_sym_open_in_full, stringResource(R.string.rv_full_screen), NOT_WIRED)
+        RvChartTools(R.drawable.rv_sym_candlestick_chart to stringResource(R.string.rv_chart_type), R.drawable.rv_sym_open_in_full to stringResource(R.string.rv_full_screen))
     }
 }
 
@@ -114,19 +110,10 @@ private fun ConnectionCard(session: RvSession, upload: Boolean, format: RvFormat
     }
 }
 
-/** A figure split at its decimal separator, so the decimals can be set small as Revolut sets a price. */
-private fun heroParts(figure: String, locale: Locale): Pair<String, String> {
-    val cut = figure.indexOf(DecimalFormatSymbols.getInstance(locale).decimalSeparator)
-    return if (cut < 0) figure to "" else figure.substring(0, cut) to figure.substring(cut)
-}
+/** The ranges under the chart; the live minute, the first, is the one shown. */
+private val RANGES: List<Int> = listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h)
 
-/** The ranges under the chart, and whether v0.1 offers each: only the live minute. */
-private val RANGES: List<Pair<Int, Boolean>> = listOf(
-    R.string.rv_range_1m to true,
-    R.string.rv_range_5m to false,
-    R.string.rv_range_15m to false,
-    R.string.rv_range_1h to false,
-)
+private const val MS_PER_SECOND = 1000L
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)

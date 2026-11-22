@@ -84,6 +84,6 @@ class RvNodesShotTest {
 
     private companion object {
         /** A window as tall as the whole 節點 page, so one capture holds every card. */
-        const val WHOLE_PAGE = "zh-rTW-w412dp-h5252dp-notnight-xhdpi"
+        const val WHOLE_PAGE = "zh-rTW-w412dp-h2868dp-notnight-xhdpi"
     }
 }

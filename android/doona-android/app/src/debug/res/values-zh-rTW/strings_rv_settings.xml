@@ -36,7 +36,7 @@
     <string name="rv_settings_accent">強調色</string>
     <string name="rv_settings_follow_wallpaper">跟隨桌布</string>
     <string name="rv_settings_accent_blue">藍色</string>
-    <string name="rv_settings_accent_teal">青色</string>
+    <string name="rv_settings_accent_current">目前顏色</string>
     <string name="rv_settings_accent_purple">紫色</string>
     <string name="rv_settings_accent_orange">橘色</string>
     <string name="rv_settings_accent_pink">粉紅色</string>

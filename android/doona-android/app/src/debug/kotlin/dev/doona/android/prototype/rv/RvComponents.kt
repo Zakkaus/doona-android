@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,25 +19,28 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -47,7 +51,11 @@ import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.components.latencyTone
+import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvPlace
+import java.text.DecimalFormatSymbols
+import java.util.Locale
+import kotlin.math.abs
 
 /** One line of text in a role; CJK runs in Noto, the rest in Inter. */
 @Composable
@@ -66,19 +74,38 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
 }
 
 /**
- * The screen's one tinted area: the dot map of the world on the neutral page behind the header content, centred on
- * [focus] at [focusTop] from the header's top.
+ * The screen's one tinted area: the dot map of the world in [dots] on the neutral page behind the header content,
+ * centred on [focus] at [focusTop] from the header's top, none above [statusBar], and faint behind the hero's text at
+ * [clear].
  */
 @Composable
-internal fun RvHeader(focus: RvPlace?, focusTop: Dp, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun RvHeader(
+    focus: RvPlace?,
+    focusTop: Dp,
+    statusBar: Dp,
+    dots: Color,
+    clear: Rect?,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(
-        modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, Rv.colors.dots, focusTop),
+        modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar),
         horizontalAlignment = Alignment.CenterHorizontally,
         content = content,
     )
 }
 
-/** The hero figure: [whole] large, [part] (decimals or a unit) small on the same baseline, as Revolut sets a balance. */
+/**
+ * The hero figure as Revolut sets a balance (measured §5): the integer of [amount] at 44 sp, its decimals and unit at
+ * 32 sp on the same baseline.
+ */
+@Composable
+internal fun RvHero(amount: RvAmount, modifier: Modifier = Modifier) {
+    val (whole, decimals) = rvSplitDecimals(amount.number, LocalConfiguration.current.locales[0])
+    RvHero(whole, decimals + amount.unit, modifier)
+}
+
+/** The hero figure: [whole] at 44 sp, [part] (decimals and unit) at 32 sp on the same baseline. */
 @Composable
 internal fun RvHero(whole: String, part: String, modifier: Modifier = Modifier) {
     val type = Rv.type
@@ -87,6 +114,12 @@ internal fun RvHero(whole: String, part: String, modifier: Modifier = Modifier) 
         withStyle(type.heroSmall.toSpanStyle()) { append(part) }
     }
     BasicText(text, modifier, type.hero.copy(color = Rv.colors.text), maxLines = 1)
+}
+
+/** A figure split at its decimal separator: the integer, and the separator with the decimals (or nothing). */
+internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, String> {
+    val cut = figure.indexOf(DecimalFormatSymbols.getInstance(locale).decimalSeparator)
+    return if (cut < 0) figure to "" else figure.substring(0, cut) to figure.substring(cut)
 }
 
 /** A round action: a disc with a glyph and its label under it; only the disc lights up when pressed. */
@@ -170,85 +203,108 @@ internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * A range under a chart, Revolut's chip: the selected one raised off the page, the rest plain secondary text, and one the
- * build does not offer fainter still.
- */
-@Composable
-internal fun RvRangePill(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    val colors = Rv.colors
-    val color = when {
-        selected -> colors.text
-        enabled -> colors.textSecondary
-        else -> colors.textSecondary.copy(alpha = RvAlpha.DISABLED)
-    }
-    Box(
-        Modifier
-            .minimumInteractiveComponentSize()
-            .height(RvChartSize.range)
-            .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
-            .selectable(selected, interactionSource = null, indication = ripple(color = colors.stateLayer), enabled = enabled, role = Role.Tab, onClick = onClick)
-            .padding(horizontal = RvChartSize.rangePad),
-        contentAlignment = Alignment.Center,
-    ) { RvText(label, Rv.type.action, color = color) }
-}
-
-/** A raised control's fill in [shape]: a surface over a soft shadow in light, a lighter container in dark. */
-@Composable
-private fun Modifier.rvRaised(shape: Shape): Modifier {
-    val colors = Rv.colors
-    val lift = if (colors.raisedShadow) Modifier.shadow(RvChartSize.rangeShadow, shape) else Modifier
-    return then(lift).clip(shape).background(colors.raised)
-}
-
-/**
- * Revolut's segmented control (Annual / Quarterly, Stocks / ETFs): a pill track in a container colour across the
- * width, [options] in equal parts, the [selected] one on a raised surface.
- */
-@Composable
-internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .height(RvChartSize.segment)
-            .clip(CircleShape)
-            .background(Rv.colors.segmentTrack)
-            .padding(RvChartSize.segmentInset),
-    ) {
-        options.forEachIndexed { i, label ->
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .then(if (i == selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
-                    .selectable(i == selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.Tab) { onSelect(i) },
-                contentAlignment = Alignment.Center,
-            ) { RvText(label, Rv.type.action, color = if (i == selected) Rv.colors.text else Rv.colors.textSecondary) }
-        }
-    }
-}
-
-/** A round icon button on a container colour, as after Revolut's range chips; [label] is for the screen reader. */
-@Composable
-internal fun RvRoundButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .minimumInteractiveComponentSize()
-            .size(RvChartSize.roundButton)
-            .clip(CircleShape)
-            .background(Rv.colors.roundButton)
-            .rvPress(CircleShape, Role.Button, onClick)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
-    ) { RvGlyph(icon, RvChartSize.roundGlyph, Rv.colors.text) }
-}
-
-/** A row of Revolut's Key stats card: [label] in secondary ink at the start, [value] at the end. */
+/** A row of Revolut's Key stats card (measured §11): [label] 19 sp medium in secondary ink, [value] 19 sp at the end. */
 @Composable
 internal fun RvStatRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth().height(RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.CenterVertically) {
-        RvText(label, Rv.type.caption, Modifier.weight(1f), color = Rv.colors.textSecondary)
+        RvText(label, Rv.type.statLabel, Modifier.weight(1f), color = Rv.colors.textSecondary)
         RvText(value, Rv.type.stat, align = TextAlign.End)
+    }
+}
+
+/** The one chevron (measured §7): 6.7 x 12.2 dp of 2 dp stroke with round ends in a 24 dp box, in [color]. */
+@Composable
+internal fun RvChevron(modifier: Modifier = Modifier, color: Color = Rv.colors.control) {
+    Canvas(modifier.size(RvChevronSize.box)) {
+        val w = RvChevronSize.width.toPx()
+        val h = RvChevronSize.height.toPx()
+        val stroke = RvChevronSize.stroke.toPx()
+        val left = (size.width - w) / 2 + stroke / 2
+        val right = (size.width + w) / 2 - stroke / 2
+        val top = (size.height - h) / 2 + stroke / 2
+        val bottom = (size.height + h) / 2 - stroke / 2
+        val path = Path().apply {
+            moveTo(left, top)
+            lineTo(right, size.height / 2)
+            lineTo(left, bottom)
+        }
+        drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+}
+
+/**
+ * A card's in-card header (measured §7 `listSubheader`), for a card that is a widget on a home or overview page: 19 sp
+ * medium secondary text in a 48 dp row, then an optional [tag] in the value pill, and, only when it opens something, a
+ * chevron in the header's colour; then the whole row is the button.
+ */
+@Composable
+internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: String? = null) {
+    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, it) } ?: Modifier
+    Row(
+        Modifier
+            .padding(top = RvSpace.headerInset)
+            .fillMaxWidth()
+            .height(RvHeaderSize.row)
+            .then(press)
+            .padding(horizontal = RvSpace.rowPadding),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RvText(title, Rv.type.cardTitle, Modifier.weight(1f, fill = false).semantics { heading() }, color = Rv.colors.textSecondary)
+        tag?.let { RvValuePill(it, Modifier.padding(start = RvSpace.subGap)) }
+        if (onClick != null) RvChevron(color = Rv.colors.textSecondary)
+    }
+}
+
+/**
+ * An outside section title (measured §7, §13.4), for a run of list cards on a settings or detail page: 20 sp bold, 24 dp
+ * under what is above it and 12 dp above its card; with [onClick], a chevron in the title's colour, and the title opens it.
+ */
+@Composable
+internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSpace.tight), Role.Button, it) } ?: Modifier
+    Row(modifier.padding(top = RvSpace.sectionAbove, bottom = RvSpace.sectionBelow).then(press), verticalAlignment = Alignment.CenterVertically) {
+        RvText(title, Rv.type.section, Modifier.semantics { heading() })
+        if (onClick != null) RvChevron(color = Rv.colors.text)
+    }
+}
+
+/**
+ * A latency's change since the test before, as Revolut writes a delta (measured §7): a filled 8 dp triangle pointing its
+ * way, then the amount, in one hue: the good hue when it fell, the slow hue when it rose. No change is a dash.
+ */
+@Composable
+internal fun RvDelta(changeMs: Int) {
+    // No change is not a measurement, so it shows a dash and no triangle.
+    if (changeMs == 0) return RvText(RV_NO_VALUE, Rv.type.rowSub, color = Rv.colors.textSecondary)
+    val color = if (changeMs < 0) Rv.colors.good else Rv.colors.slow
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvHomeSize.deltaGap)) {
+        Canvas(Modifier.size(RvHomeSize.delta)) {
+            val h = size.width * TRIANGLE_HEIGHT
+            val top = (size.height - h) / 2
+            val path = Path().apply {
+                if (changeMs > 0) {
+                    moveTo(size.width / 2, top)
+                    lineTo(size.width, top + h)
+                    lineTo(0f, top + h)
+                } else {
+                    moveTo(0f, top)
+                    lineTo(size.width, top)
+                    lineTo(size.width / 2, top + h)
+                }
+                close()
+            }
+            drawPath(path, color)
+        }
+        RvText(stringResource(R.string.latency_ms, abs(changeMs)), Rv.type.rowSub, color = color)
+    }
+}
+
+/** A node's latency as a trailing value (19 sp semibold) over its [RvDelta] (17 sp); a test that timed out is a dash. */
+@Composable
+internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?) {
+    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+        RvText(latencyMs?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
+        changeMs?.let { RvDelta(it) }
     }
 }
 
@@ -276,6 +332,9 @@ internal fun RvGutter(modifier: Modifier = Modifier, content: @Composable Column
 }
 
 internal const val RV_NO_VALUE = "—"
+
+/** An equilateral triangle is this share of its width high. */
+private const val TRIANGLE_HEIGHT = 0.866f
 
 private val Tone.quality: Int
     get() = when (this) {

@@ -57,7 +57,8 @@ import dev.doona.android.feature.NOT_WIRED
 @Composable
 internal fun RvBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     Box(modifier.fillMaxWidth()) {
-        Box(Modifier.matchParentSize().fadeOutBottom(RvChrome.stripFade, shade).rvGlass(glass, RectangleShape, Rv.colors.barGlass))
+        // The tint fades over the strip's last 12 dp while the blur runs on to its edge, which itself softens over a few dp.
+        Box(Modifier.matchParentSize().fadeOutBottom(RvChrome.stripEdge, shade).rvGlass(glass, RectangleShape, Rv.colors.barGlass, RvChrome.stripFade))
         Box(
             Modifier
                 .fillMaxWidth()

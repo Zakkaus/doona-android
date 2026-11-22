@@ -1,12 +1,9 @@
 package dev.doona.android.prototype.rv.stats
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -21,12 +18,14 @@ import dev.doona.android.R
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvCardHeader
+import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvFigure
-import dev.doona.android.prototype.rv.RvGhostBars
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
+import dev.doona.android.prototype.rv.RvWorldMap
 import dev.doona.android.prototype.rv.data.RvSplit
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.figure
@@ -44,10 +43,10 @@ internal fun RvSpentCard(state: RvStatsState) {
     val format = rememberRvFormat()
     val day = state.today
     RvCard(Modifier.height(RvStatsSize.spent)) {
-        Column(Modifier.fillMaxSize().padding(RvStatsSpace.pad)) {
-            Row(Modifier.weight(1f)) {
-                Column(Modifier.weight(1f - RvStatsSize.SPENT_CHART_SHARE)) {
-                    RvStatsLabel(stringResource(R.string.rv_stats_used))
+        Row(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f - RvStatsSize.SPENT_CHART_SHARE)) {
+                RvCardHeader(stringResource(R.string.rv_stats_used))
+                Column(Modifier.padding(horizontal = RvStatsSpace.pad)) {
                     RvStatsFigure(format.bytes(day.total).figure())
                     Spacer(Modifier.height(RvSpace.tight))
                     val yesterday = state.yesterdaySoFar
@@ -61,11 +60,11 @@ internal fun RvSpentCard(state: RvStatsState) {
                         }
                     }
                 }
-                RvSteppedArea(day.hours, nowInHours(state), Modifier.weight(RvStatsSize.SPENT_CHART_SHARE).fillMaxHeight())
             }
-            Spacer(Modifier.height(RvSpace.subGap))
-            RvStatsSource(stringResource(R.string.rv_stats_source, stringResource(R.string.rv_stats_source_history)))
+            RvSteppedArea(day.hours, nowInHours(state), Modifier.weight(RvStatsSize.SPENT_CHART_SHARE).fillMaxHeight().padding(top = RvStatsSpace.pad, end = RvStatsSpace.pad))
         }
+        Spacer(Modifier.height(RvSpace.subGap))
+        RvStatsSource(stringResource(R.string.rv_stats_source, stringResource(R.string.rv_stats_source_history)), cardBody)
     }
 }
 
@@ -79,20 +78,23 @@ private fun nowInHours(state: RvStatsState): Float {
 internal class RvDayTile(val label: String, val figure: RvFigure, val source: String, val hours: List<Long>?, val color: Color, val v02: Boolean)
 
 /**
- * A paged tile, Revolut's 'Income' card: its label, the day's figure, its source, then a bar per hour along the
- * bottom. With no traffic yet it takes the empty card's ghost bars.
+ * A paged tile, Revolut's 'Income' card: its header, the day's figure, its source, then a bar per hour along the
+ * bottom. With no traffic, or no data, it shows the empty grid and a short line, never made-up bars (Addendum A).
  */
 @Composable
 internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier) {
     RvCard(modifier.height(RvStatsSize.tile)) {
-        Column(Modifier.fillMaxSize().padding(RvStatsSpace.pad)) {
-            RvStatsLabel(tile.label, tile.v02)
-            Spacer(Modifier.height(RvSpace.tight))
+        RvCardHeader(tile.label, tag = if (tile.v02) RV_V02 else null)
+        Column(Modifier.weight(1f).then(cardBody)) {
             RvStatsFigure(tile.figure, Rv.type.tileValue, Rv.type.tileUnit)
             RvStatsSource(tile.source)
             Spacer(Modifier.weight(1f))
             val hours = tile.hours
-            if (hours == null || hours.all { it == 0L }) RvGhostBars(Modifier.height(RvStatsSize.bars)) else RvHourBars(hours, tile.color)
+            when {
+                hours == null -> RvEmptyChart(stringResource(R.string.rv_stats_no_data), Modifier.height(RvStatsSize.bars))
+                hours.all { it == 0L } -> RvEmptyChart(stringResource(R.string.rv_stats_nothing_today), Modifier.height(RvStatsSize.bars))
+                else -> RvHourBars(hours, tile.color)
+            }
         }
     }
 }
@@ -108,10 +110,10 @@ internal fun RvQuotaCard(subscriptions: List<RvSubscription>, nowEpochMs: Long) 
     val palette = listOf(Rv.colors.down.line, Rv.colors.up.line, Rv.colors.textSecondary)
     val segments = withQuota.mapIndexed { i, s -> RvRingSegment(palette[i % palette.size], s.usedBytes, s.totalBytes) }
     RvCard {
-        Column(Modifier.padding(RvStatsSpace.pad)) {
+        RvCardHeader(stringResource(R.string.rv_stats_quota))
+        Column(cardBody) {
             Row {
                 Column(Modifier.weight(1f)) {
-                    RvStatsLabel(stringResource(R.string.rv_stats_quota))
                     if (withQuota.isEmpty()) {
                         RvStatsFigure(RvFigure(RV_NO_VALUE, ""))
                         RvText(stringResource(R.string.rv_stats_no_quota), Rv.type.rowSub, color = Rv.colors.textSecondary)
@@ -150,16 +152,15 @@ private fun QuotaLegend(sub: RvSubscription, nowEpochMs: Long, color: Color) {
 }
 
 /**
- * 節點分佈, Revolut's 'Your trips' card: the world in grey with every country that has a node in the primary colour, and
+ * 節點分布, Revolut's 'Your trips' card: the world in grey with every country that has a node in the primary colour, and
  * how many countries and nodes under it. The countries come from the node names and flags the app already reads.
  */
 @Composable
 internal fun RvNodeMapCard(state: RvStatsState) {
-    val countries = state.nodes.mapTo(mutableSetOf()) { it.place.name }
+    val countries = state.nodes.mapTo(mutableSetOf()) { it.place }
     RvCard {
-        Column(Modifier.padding(RvStatsSpace.pad)) {
-            RvStatsLabel(stringResource(R.string.rv_stats_nodes))
-            Spacer(Modifier.height(RvStatsSpace.chartGap))
+        RvCardHeader(stringResource(R.string.rv_stats_nodes))
+        Column(cardBody) {
             RvWorldMap(countries)
             Spacer(Modifier.height(RvStatsSpace.chartGap))
             val countryCount = pluralStringResource(R.plurals.rv_stats_countries, countries.size, countries.size)
@@ -172,7 +173,7 @@ internal fun RvNodeMapCard(state: RvStatsState) {
 }
 
 /**
- * 延遲分佈: the median of the tested nodes as the figure, then Revolut's EPS dot chart of every tested node from the
+ * 延遲分布: the median of the tested nodes as the figure, then Revolut's EPS dot chart of every tested node from the
  * fastest, the current node in its chip column. The latency results back it.
  */
 @Composable
@@ -182,12 +183,14 @@ internal fun RvLatencyCard(state: RvStatsState) {
     val selected = tested.indexOfFirst { it.id == state.selectedId }.takeIf { it >= 0 }
     val unit = stringResource(R.string.rv_stats_ms)
     RvCard {
-        Column(Modifier.padding(RvStatsSpace.pad)) {
-            RvStatsLabel(stringResource(R.string.rv_stats_latency))
+        RvCardHeader(stringResource(R.string.rv_stats_latency))
+        Column(cardBody) {
             RvStatsFigure(RvFigure(values.getOrNull(values.size / 2)?.toString() ?: RV_NO_VALUE, " $unit"))
             RvText(stringResource(R.string.rv_stats_median, values.size), Rv.type.rowSub, color = Rv.colors.textSecondary)
             Spacer(Modifier.height(RvStatsSpace.chartGap))
-            val label = selected?.let { "${tested[it].name}$SEPARATOR${values[it]} $unit" } ?: ""
+            // The current node's chip says so in words, not by its tint alone.
+            val inUse = stringResource(R.string.rv_nodes_in_use)
+            val label = selected?.let { "$inUse$SEPARATOR${tested[it].name}$SEPARATOR${values[it]} $unit" } ?: ""
             RvLatencyDots(values, selected, label)
             Spacer(Modifier.height(RvStatsSpace.chartGap))
             RvStatsSource(stringResource(R.string.rv_stats_source, stringResource(R.string.rv_stats_source_latency)))
@@ -204,8 +207,8 @@ internal fun RvSplitCard(split: RvSplit?) {
     val format = rememberRvFormat()
     val proxy = split?.proxyShare ?: 0f
     RvCard {
-        Column(Modifier.padding(RvStatsSpace.pad)) {
-            RvStatsLabel(stringResource(R.string.rv_stats_split), v02 = true)
+        RvCardHeader(stringResource(R.string.rv_stats_split), tag = RV_V02)
+        Column(cardBody) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     RvStatsFigure(RvFigure(split?.let { format.percent(proxy.toDouble()) } ?: RV_NO_VALUE, ""))
@@ -235,20 +238,21 @@ private fun RatingRow(fraction: Float, percent: String, label: String, color: Co
 @Composable
 internal fun RvToolsCard(tools: List<RvStatsTool>, onTool: (Int) -> Unit) {
     RvCard {
-        Column(Modifier.fillMaxWidth().padding(top = RvStatsSpace.pad), verticalArrangement = Arrangement.Top) {
-            Row(Modifier.padding(horizontal = RvSpace.rowPadding)) { RvStatsLabel(stringResource(R.string.rv_stats_tools)) }
-            tools.forEachIndexed { i, tool ->
-                RvRow(
-                    leading = { RvIconDisc(tool.icon) },
-                    title = tool.title,
-                    subtitle = tool.subtitle,
-                    onClick = { onTool(i) },
-                    trailing = { RvStatsChevron() },
-                )
-            }
+        RvCardHeader(stringResource(R.string.rv_stats_tools))
+        tools.forEachIndexed { i, tool ->
+            RvRow(
+                leading = { RvIconDisc(tool.icon) },
+                title = tool.title,
+                subtitle = tool.subtitle,
+                onClick = { onTool(i) },
+                trailing = { RvChevron() },
+            )
         }
     }
 }
+
+/** A card's body under its header: the card's padding at the sides and the bottom. */
+private val cardBody = Modifier.padding(start = RvStatsSpace.pad, end = RvStatsSpace.pad, bottom = RvStatsSpace.pad)
 
 private const val SEPARATOR = " · "
 private const val MINUTES_PER_HOUR = 60f

@@ -10,7 +10,6 @@
     <string name="rv_stat_peak">峰值</string>
     <string name="rv_stat_average">平均</string>
     <string name="rv_now">現在</string>
-    <string name="rv_seconds_ago">%1$d 秒前</string>
     <string name="rv_no_traffic">目前沒有流量</string>
     <string name="rv_traffic_title">流量詳情</string>
     <string name="rv_this_connection">本次連線</string>

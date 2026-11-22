@@ -11,16 +11,25 @@ import dev.doona.android.R
 
 internal object RvSpace {
     val gutter = 16.dp
-    val cardGap = 18.dp
 
-    /** Start and end padding of a row inside a card, and of the chart card. */
-    val rowPadding = 18.dp
+    /** Between stacked cards (measured §2: 16 dp). */
+    val cardGap = 16.dp
 
-    /** From a row's icon disc to its text. */
-    val rowGap = 18.dp
+    /** Start and end padding of a row inside a card, and of the chart card (measured §7: 16 dp). */
+    val rowPadding = 16.dp
+
+    /** From a row's leading visual to its text (measured §7: 16 dp). */
+    val rowGap = 16.dp
     val trailingGap = 12.dp
-    val discToLabel = 10.dp
-    val headerTop = 72.dp
+
+    /** From a round action's disc to its label (measured §6: 8 dp). */
+    val discToLabel = 8.dp
+
+    /**
+     * From the status bar to the hero's caption: the top bar's row (12 + 44 dp), then 96 dp, as Revolut sets its caption
+     * about 100 dp under the bar; the map's marker sits in that space, clear of the bar's glass.
+     */
+    val headerTop = 152.dp
     val heroToActions = 64.dp
     val actionsToCard = 32.dp
     val subGap = 6.dp
@@ -35,9 +44,12 @@ internal object RvSpace {
     /** From the detail chart to its range chips. */
     val chipGap = 12.dp
 
-    /** From the range chips to the next section, and from a section's heading to its card. */
-    val sectionGap = 32.dp
-    val headingGap = 12.dp
+    /** An outside section title: this far under what is above it, and this far above its card (measured §13.4). */
+    val sectionAbove = 24.dp
+    val sectionBelow = 12.dp
+
+    /** A card's in-card header row sits this far under the card's top, so the card's padding is the same at both ends. */
+    val headerInset = 4.dp
 
     /** From a screen's title block to its first card. */
     val titleToCard = 24.dp
@@ -47,27 +59,47 @@ internal object RvSpace {
 }
 
 internal object RvSize {
-    val actionDisc = 52.dp
+    /** A round action's disc (measured §6: 48 dp). */
+    val actionDisc = 48.dp
 
     /** Material Symbols draw in a 20 dp live area of their 24 dp box, the width of #11's '+'. */
     val actionGlyph = 24.dp
-    val rowDisc = 44.dp
-    val rowGlyph = 20.dp
-    val rowTwoLine = 84.dp
-    val rowOneLine = 56.dp
+
+    /** A row's leading visual, disc or flag, and the glyph in a disc: about 18 dp of ink (measured §7, §12.2). */
+    val rowDisc = 40.dp
+    val rowGlyph = 22.dp
+
+    /** A row with a subtitle, and one without (measured §7: 82 and 58 dp). */
+    val rowTwoLine = 82.dp
+    val rowOneLine = 58.dp
     val inlineGlyph = 16.dp
-    val chevron = 20.dp
     val dot = 8.dp
-    val cardRadius = 18.dp
+
+    /** Every card's corners (measured §2: 20 dp); 設定's group cards alone are rounder (re-measured: 24 dp). */
+    val cardRadius = 20.dp
+    val groupRadius = 24.dp
     val touch = 48.dp
     val navGlyph = 24.dp
     val progress = 5.dp
 
-    /** The check on a selected node's flag, #13's badge: a disc in a ring of the card's colour. */
-    val badge = 20.dp
+    /** The current node's check (measured §7 `avatar_badgeBottom`): a 16 dp disc, its ring in the card's colour. */
+    val badge = 16.dp
     val badgeRing = 2.dp
-    val badgeGlyph = 14.dp
-    val badgeOverhang = 4.dp
+    val badgeCheck = 1.5.dp
+    val badgeOverhang = 2.dp
+}
+
+/** The one chevron (measured §7): 6.7 x 12.2 dp of 2 dp stroke in a 24 dp box. */
+internal object RvChevronSize {
+    val box = 24.dp
+    val width = 6.7.dp
+    val height = 12.2.dp
+    val stroke = 2.dp
+}
+
+/** A card's in-card header (measured §7 `listSubheader`): a 48 dp row. */
+internal object RvHeaderSize {
+    val row = 48.dp
 }
 
 /** The activity header's dot map, after #07 and #08, whose dots sit 7 px (5.3 dp) apart and 2 px (1.5 dp) across. */
@@ -75,12 +107,22 @@ internal object RvDots {
     val pitch = 5.5.dp
     val dot = 2.dp
 
-    /** The selected node's place: centred, this far under the status bar, above the connection state. */
-    val focusTop = 40.dp
+    /**
+     * The selected node's place: centred, this far under the status bar, so its glow (26 dp) ends 14 dp under the top
+     * bar's controls (12 + 44 dp) and 30 dp above the caption ([RvSpace.headerTop]).
+     */
+    val focusTop = 96.dp
     val marker = 6.dp
     val ring = 11.dp
     val ringStroke = 1.5.dp
     val glow = 26.dp
+
+    /** Under the status bar, which has no dots, so the clock never sits on them (S5-03), the dots fade in over this. */
+    val topFade = 24.dp
+
+    /** Round the hero's text, this far out, the dots are at most [CLEAR_ALPHA] (S5-02). */
+    val clearPad = 8.dp
+    const val CLEAR_ALPHA = 0.25f
 
     const val ALPHA = 0.62f
     const val RING_ALPHA = 0.55f
@@ -106,50 +148,57 @@ internal object RvChartSize {
     val ghostBar = 5.dp
     const val GHOST_BARS = 12
 
-    /** The detail chart: full width; its line ends on the gutter, so the live point and its halo stay whole. */
-    val detail = 175.dp
+    /** The detail chart: full width, about 190 dp (measured §10.1); its line ends on the gutter, so the live point stays whole. */
+    val detail = 190.dp
     val detailStroke = 1.5.dp
     val detailEnd = 16.dp
-    val liveDot = 6.dp
-    val liveHalo = 14.dp
+
+    /** The end of a series: a 5 dp dot in the line's colour on a lighter halo (measured §10.1). */
+    val liveDot = 5.dp
+    val liveHalo = 12.dp
 
     /** While a finger is on the detail chart: a line down the chart and a dot on the curve, ringed in the page colour. */
     val scrubLine = 1.dp
     val scrubDot = 6.dp
     val scrubRing = 2.dp
 
-    /** Dotted lines: round dots this wide, this far apart. */
+    /** Dotted lines: round dots this wide, this far apart (measured §10.1: 1 dp at a 6 dp pitch). */
     val dotted = 1.dp
-    val dottedPitch = 4.dp
+    val dottedPitch = 6.dp
 
-    /** A value pill on the chart, this far in from the chart's right edge. */
+    /**
+     * The one value pill (measured §10.1: 28 dp tall, 8 dp round, 15 sp, a soft shadow), on a chart [pillInset] in from
+     * its edge, and [pillClear] off the line it labels.
+     */
+    val pill = 28.dp
     val pillPadH = 8.dp
-    val pillPadV = 3.dp
-    val pillRadius = 6.dp
+    val pillRadius = 8.dp
+    val pillShadow = 2.dp
     val pillInset = 8.dp
+    val pillClear = 6.dp
 
-    /** A range chip under the chart (the selected one raised), and the round buttons after the chips. */
+    /** A range chip under the chart (only the selected one filled and raised), and the round buttons after the chips. */
     val range = 36.dp
     val rangePad = 12.dp
     val rangeGap = 4.dp
     val rangeShadow = 2.dp
-    val roundButton = 40.dp
+
+    /** The chart's tool discs (measured §8: 35 dp, 8 dp apart, ending on the 16 dp margin). */
+    val roundButton = 35.dp
+    val roundGap = 8.dp
     val roundGlyph = 20.dp
 
-    /** The segmented control: a pill track, the selected segment raised inside it. */
-    val segment = 40.dp
+    /** The segmented control (measured §8): a 36 dp pill track, the selected segment raised 2 dp inside it. */
+    val segment = 36.dp
     val segmentInset = 2.dp
 
     /** The tile's curve keeps 10 % of its height free above the peak; the detail chart's axis runs to peak × 1.15. */
     const val SPARK_HEADROOM = 1.1f
     const val DETAIL_HEADROOM = 1.15f
 
-    /** The detail chart's hairline grid: a vertical line every 43 dp from the start, and four rows. */
-    val gridColumn = 43.dp
-    const val GRID_ROWS = 4
-
-    /** The detail fill is gone this far down from the peak's height to the chart's bottom. */
-    const val FILL_END = 0.7f
+    /** The detail chart's hairline grid (measured §10.1): a row every 24.7 dp and a column every 47 dp. */
+    val gridColumn = 47.dp
+    val gridRow = 24.7.dp
 }
 
 internal object RvAlpha {
@@ -163,12 +212,30 @@ internal object RvAlpha {
     /** A tile's fill under its sparkline: neutral, the text colour, fading to nothing at the bottom. */
     const val TILE_FILL = 0.08f
 
-    /** The start and low pills sit over the line, so the line shows through them. */
-    const val PILL_OVER_LINE = 0.8f
-
-    /** The detail chart's fill under its line, the series colour, fading out well above the bottom. */
-    const val AREA_LIGHT = 0.16f
+    /** The detail chart's fill under its line: the series colour at the line, linear to nothing at the plot's bottom. */
+    const val AREA_LIGHT = 0.13f
     const val AREA_DARK = 0.22f
+
+    /** 今日用量's stacked bands: both directions at this one alpha, so only the hue tells them apart (S5-13). */
+    const val BAND_LIGHT = 0.3f
+    const val BAND_DARK = 0.36f
+
+    /** A tile's corner disc: its series' line colour at this alpha over the card, the same tone for both (S5-11). */
+    const val SERIES_DISC = 0.16f
+
+    /** A latency's chip: its hue at this alpha over the card. */
+    const val STATUS_CHIP = 0.14f
+
+    /** A value pill's soft shadow in light: two steps of black under it. */
+    const val PILL_SHADOW_NEAR = 0.08f
+    const val PILL_SHADOW_FAR = 0.04f
+
+    /** The floating call to action's soft shadow in light (S7-16). */
+    const val CTA_SHADOW = 0.2f
+
+    /** The segmented control's track: the text colour at 6 % in light, white at 8 % in dark (S7-02, T02). */
+    const val SEGMENT_LIGHT = 0.06f
+    const val SEGMENT_DARK = 0.08f
 
     /** The ghost bars of a tile with no traffic, in the text colour. */
     const val GHOST = 0.05f
@@ -217,6 +284,9 @@ internal object RvChrome {
     /** The strip behind the row: solid to the controls' bottom plus [stripBelow], then fading out over [stripFade]. */
     val stripBelow = 8.dp
     val stripFade = 12.dp
+
+    /** The blur itself ends over this last bit of the strip, so it has no hard edge either. */
+    val stripEdge = 4.dp
 
     /** The strip is fully in once the content has scrolled this far; a large title hands over to the bar's over this. */
     val shadeAfter = 48.dp
@@ -311,13 +381,25 @@ internal object RvHomeSize {
 internal class RvTypeStep(val size: Int, val line: Int, val weight: FontWeight, val display: Boolean = false)
 
 internal object RvTypeScale {
-    val hero = RvTypeStep(42, 48, FontWeight.Bold, display = true)
-    val heroSmall = RvTypeStep(24, 32, FontWeight.SemiBold, display = true)
-    val caption = RvTypeStep(16, 22, FontWeight.Normal)
-    val sub = RvTypeStep(15, 20, FontWeight.Medium)
-    val rowTitle = RvTypeStep(17, 24, FontWeight.Medium)
-    val rowSub = RvTypeStep(15, 20, FontWeight.Normal)
-    val action = RvTypeStep(15, 20, FontWeight.Medium)
+    /** 活動's hero (measured §5): the integer 44 sp, its decimals and unit 32 sp, one weight, one baseline. */
+    val hero = RvTypeStep(44, 53, FontWeight.Bold, display = true)
+    val heroSmall = RvTypeStep(32, 40, FontWeight.Bold, display = true)
+
+    /** A detail page's figure (measured §10.1, the coin header): 33 sp with its decimals, the unit 22 sp. */
+    val detailFigure = RvTypeStep(33, 40, FontWeight.Bold, display = true)
+    val detailUnit = RvTypeStep(22, 28, FontWeight.SemiBold, display = true)
+
+    /** The hero's caption (measured §5: 17 sp medium), and the line under a figure (17 sp). */
+    val caption = RvTypeStep(17, 24, FontWeight.Medium)
+    val sub = RvTypeStep(17, 24, FontWeight.Normal)
+
+    /** A row's title and subtitle (measured §7: 19 sp semibold, 17 sp regular). */
+    val rowTitle = RvTypeStep(19, 26, FontWeight.SemiBold)
+    val rowSub = RvTypeStep(17, 24, FontWeight.Normal)
+
+    /** A round action's label and a range chip (measured §6, §8: 17 sp semibold); a segment (19 sp semibold). */
+    val action = RvTypeStep(17, 24, FontWeight.SemiBold)
+    val segment = RvTypeStep(19, 26, FontWeight.SemiBold)
     val tileCaption = RvTypeStep(13, 18, FontWeight.Normal)
     val tileValue = RvTypeStep(24, 30, FontWeight.Bold, display = true)
     val tileUnit = RvTypeStep(15, 20, FontWeight.SemiBold, display = true)
@@ -325,9 +407,16 @@ internal object RvTypeScale {
     /** A chart card's figure, after Revolut's Analytics page: the tile's figure when there is no traffic. */
     val cardValue = RvTypeStep(28, 34, FontWeight.Bold, display = true)
     val cardUnit = RvTypeStep(17, 22, FontWeight.SemiBold, display = true)
-    val pill = RvTypeStep(12, 16, FontWeight.Medium)
+
+    /** The one value pill (measured §10.1: 15 sp semibold). */
+    val pill = RvTypeStep(15, 20, FontWeight.SemiBold)
+
+    /** An outside section title (measured §7: 20 sp bold). */
     val section = RvTypeStep(20, 26, FontWeight.Bold, display = true)
-    val stat = RvTypeStep(16, 22, FontWeight.Medium)
+
+    /** A stat row (measured §11): the label 19 sp medium in secondary ink, the value 19 sp regular. */
+    val statLabel = RvTypeStep(19, 26, FontWeight.Medium)
+    val stat = RvTypeStep(19, 26, FontWeight.Normal)
     val navLabel = RvTypeStep(15, 18, FontWeight.SemiBold)
 
     /** A pushed page's large title, and the compact one it collapses to beside the back disc (measured §4). */
@@ -337,9 +426,9 @@ internal object RvTypeScale {
     /** The two letters on a flag's fallback disc. */
     val flagCode = RvTypeStep(13, 16, FontWeight.SemiBold)
 
-    /** The search pill's placeholder (measured §4: 17 sp) and a home card's own header (study §3: 15 pt semibold). */
+    /** The search pill's placeholder (measured §4: 17 sp) and a card's in-card header (measured §7: 19 sp medium). */
     val search = RvTypeStep(17, 22, FontWeight.Normal)
-    val cardTitle = RvTypeStep(15, 20, FontWeight.SemiBold)
+    val cardTitle = RvTypeStep(19, 26, FontWeight.Medium)
     const val TABULAR = "tnum"
 }
 

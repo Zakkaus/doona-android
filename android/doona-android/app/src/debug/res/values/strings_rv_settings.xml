@@ -40,11 +40,9 @@
     <string name="rv_settings_accent">Accent colour</string>
     <string name="rv_settings_follow_wallpaper">Follow wallpaper</string>
     <string name="rv_settings_accent_blue">Blue</string>
-    <string name="rv_settings_accent_teal">Teal</string>
+    <string name="rv_settings_accent_current">Current colour</string>
     <string name="rv_settings_accent_purple">Purple</string>
     <string name="rv_settings_accent_orange">Orange</string>
     <string name="rv_settings_accent_pink">Pink</string>
     <string name="rv_settings_preview">Preview</string>
-    <string name="rv_settings_preview_rate" translatable="false">2.4</string>
-    <string name="rv_settings_preview_unit" translatable="false">" MB/s"</string>
 </resources>

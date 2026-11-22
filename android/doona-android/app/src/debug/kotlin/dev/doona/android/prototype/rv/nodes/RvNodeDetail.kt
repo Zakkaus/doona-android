@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv.nodes
 
 import android.content.res.Configuration
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -33,9 +31,11 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvText
@@ -70,12 +70,10 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
         RvGutter {
             HistoryCard(node, times, picked) { picked = it }
         }
-        Spacer(Modifier.height(RvSpace.sectionGap))
-        RvText(stringResource(R.string.rv_nodes_details), Rv.type.section, Modifier.padding(horizontal = RvSpace.gutter))
-        Spacer(Modifier.height(RvSpace.headingGap))
+        RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { StatsCard(node, times.last()) }
-        // Room under the last card for the floating actions, so it scrolls clear of them.
-        Spacer(Modifier.height(RvNodesSize.ctaFade + RvNodesSize.cta + RvSpace.gutter))
+        // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
+        Spacer(Modifier.height(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter))
         Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
@@ -85,11 +83,11 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
 private fun Top(node: RvNode, current: Boolean) {
     Column(Modifier.padding(horizontal = RvSpace.gutter)) {
         RvFlag(node.place.name, RvNodesSize.detailFlag)
-        Spacer(Modifier.height(RvSpace.headingGap))
+        Spacer(Modifier.height(RvSpace.sectionBelow))
         RvText(node.protocol + SEPARATOR + stringResource(node.place.label), Rv.type.rowSub, color = Rv.colors.textSecondary)
         val high = latencyTone(node.latencyMs).let { it == Tone.Warn || it == Tone.Err }
         if (current || high) {
-            Spacer(Modifier.height(RvSpace.headingGap))
+            Spacer(Modifier.height(RvSpace.sectionBelow))
             Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tight * 2)) {
                 if (current) RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_nodes_in_use), Rv.colors.positive)
                 if (high) RvStatusChip(R.drawable.rv_nodes_ic_warning, stringResource(R.string.rv_nodes_latency_high), latencyColor(node.latencyMs))
@@ -141,23 +139,19 @@ private fun StatsCard(node: RvNode, lastTest: String) {
     }
 }
 
-/** The floating actions over a fade from the page, on the page's colour down through the gesture bar. */
+/** The floating actions, with no scrim: the page reserves their room, so the cards scroll under them (S7-17, N05). */
 @Composable
 private fun Actions(current: Boolean, onUse: () -> Unit, onTest: () -> Unit, insets: WindowInsets, modifier: Modifier) {
-    val page = Rv.colors.page
-    Column(modifier.fillMaxWidth()) {
-        Spacer(Modifier.fillMaxWidth().height(RvNodesSize.ctaFade).background(Brush.verticalGradient(listOf(page.copy(alpha = 0f), page))))
-        Column(Modifier.fillMaxWidth().background(page).padding(horizontal = RvSpace.gutter)) {
-            RvFloatingActions(
-                stringResource(if (current) R.string.rv_nodes_in_use else R.string.rv_nodes_use),
-                onUse,
-                R.drawable.rv_sym_speed,
-                stringResource(R.string.rv_test_latency),
-                onTest,
-            )
-            Spacer(Modifier.height(RvSpace.gutter))
-            Spacer(Modifier.windowInsetsBottomHeight(insets))
-        }
+    Column(modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
+        RvFloatingActions(
+            stringResource(if (current) R.string.rv_nodes_in_use else R.string.rv_nodes_use),
+            onUse,
+            R.drawable.rv_sym_speed,
+            stringResource(R.string.rv_test_latency),
+            onTest,
+        )
+        Spacer(Modifier.height(RvSpace.gutter))
+        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

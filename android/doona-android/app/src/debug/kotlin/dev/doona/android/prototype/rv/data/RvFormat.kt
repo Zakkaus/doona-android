@@ -53,6 +53,9 @@ internal class RvFormat(val locale: Locale) {
 
     fun time(epochMs: Long): String = TIME.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
 
+    /** A second's time of day, for a scrubbed sample: `10:23:31`. */
+    fun clock(epochMs: Long): String = CLOCK.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
+
     /** [value] in the largest unit that keeps it under a thousand once rounded, so 999.6 MB is `1.00 GB`. */
     private fun scaled(value: BigDecimal, suffix: String): RvAmount {
         var unit = 0
@@ -91,6 +94,7 @@ internal class RvFormat(val locale: Locale) {
         const val MS_PER_YEAR = 365L * 24 * 3_600_000
         val UNITS = listOf(" B", " kB", " MB", " GB", " TB")
         val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+        val CLOCK: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
         val THOUSAND: BigDecimal = BigDecimal.valueOf(1_000)
         val HUNDRED: BigDecimal = BigDecimal.valueOf(100)
         val TEN: BigDecimal = BigDecimal.TEN

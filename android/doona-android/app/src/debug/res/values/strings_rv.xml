@@ -11,7 +11,6 @@
     <string name="rv_stat_peak">Peak</string>
     <string name="rv_stat_average">Average</string>
     <string name="rv_now">Now</string>
-    <string name="rv_seconds_ago">%1$d s ago</string>
     <string name="rv_no_traffic">No traffic right now</string>
     <string name="rv_traffic_title">Traffic</string>
     <string name="rv_this_connection">This connection</string>

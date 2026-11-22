@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.nodes
+package dev.doona.android.prototype.rv
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -8,42 +8,47 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.unit.dp
-import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.data.RvPlace
 import kotlin.math.PI
 import kotlin.math.ln
 import kotlin.math.tan
 
-/** Every country of [RvNodesWorld] as one path on its plane, decoded once. */
-private val shapes: Map<String, Path> by lazy { RvNodesWorld.countries.associate { it.code to decode(it.rings) } }
+/** Every country of [RvWorld] as one path on its plane, decoded once. */
+private val shapes: Map<String, Path> by lazy { RvWorld.countries.associate { it.code to decode(it.rings) } }
 
 /**
- * Revolut's 'Your trips' map: the world as one solid light-grey shape across the width, every country in [places]
- * filled in the primary colour. A place too small for the 1:110m shapes (Hong Kong, Singapore) is a primary dot, ringed
- * in the card's colour so it stands off the land around it.
+ * The sample's one world map, Revolut's 'Your trips' (節點 and 統計): the world as one solid light-grey shape across the
+ * width, every country in [places] filled in the primary colour, with a 0.5 dp seam in the card's colour round each so
+ * neighbours stay apart (S7-08). A place the 1:110m shapes leave out or draw in a box under [SMALL_AREA] dp² (Hong
+ * Kong, Singapore, Taiwan) also gets a primary dot, ringed in the card's colour so it stands off the land around it (S7-04).
  */
 @Composable
-internal fun RvNodesMap(places: Set<RvPlace>, modifier: Modifier = Modifier) {
+internal fun RvWorldMap(places: Set<RvPlace>, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val land = colors.text.copy(alpha = if (colors.dark) LAND_DARK else LAND_LIGHT)
     val mark = colors.positive
     val ring = colors.card
     Spacer(
-        modifier.fillMaxWidth().aspectRatio(RvNodesWorld.WIDTH / RvNodesWorld.HEIGHT).drawWithCache {
+        modifier.fillMaxWidth().aspectRatio(RvWorld.WIDTH / RvWorld.HEIGHT).drawWithCache {
             val codes = places.mapTo(mutableSetOf()) { it.name }
             val rest = Path()
-            val marked = Path()
-            for ((code, path) in shapes) (if (code in codes) marked else rest).addPath(path)
-            val k = size.width / RvNodesWorld.WIDTH
-            val dots = places.filter { it.name !in shapes }.map { project(it.lat, it.lon) * k }
+            val marked = places.mapNotNull { shapes[it.name] }
+            for ((code, path) in shapes) if (code !in codes) rest.addPath(path)
+            val k = size.width / RvWorld.WIDTH
+            val small = SMALL_AREA * density * density
+            val tiny = places.filter { place -> shapes[place.name]?.getBounds()?.let { it.width * it.height * k * k < small } ?: true }
+            val dots = tiny.map { project(it.lat, it.lon) * k }
             val dot = DOT.toPx()
             val halo = dot + HALO.toPx()
+            val seam = Stroke(SEAM.toPx() / k)
             onDrawBehind {
                 scale(k, k, pivot = Offset.Zero) {
                     drawPath(rest, land)
-                    drawPath(marked, mark)
+                    for (path in marked) drawPath(path, mark)
+                    for (path in marked) drawPath(path, ring, style = seam)
                 }
                 for (at in dots) {
                     drawCircle(ring, halo, at)
@@ -54,10 +59,10 @@ internal fun RvNodesMap(places: Set<RvPlace>, modifier: Modifier = Modifier) {
     )
 }
 
-/** Where [lat], [lon] falls on the [RvNodesWorld] plane: the Miller projection, as tools/rv_nodes_countries.py draws it. */
+/** Where [lat], [lon] falls on the [RvWorld] plane: the Miller projection, as tools/rv_world.py draws it. */
 private fun project(lat: Float, lon: Float): Offset {
-    val unit = RvNodesWorld.WIDTH / (2 * PI)
-    return Offset((lon + HALF_TURN) / FULL_TURN * RvNodesWorld.WIDTH, ((miller(RvNodesWorld.NORTH) - miller(lat)) * unit).toFloat())
+    val unit = RvWorld.WIDTH / (2 * PI)
+    return Offset((lon + HALF_TURN) / FULL_TURN * RvWorld.WIDTH, ((miller(RvWorld.NORTH) - miller(lat)) * unit).toFloat())
 }
 
 private fun miller(lat: Float): Double = MILLER_K * ln(tan(PI / 4 + MILLER_LAT * Math.toRadians(lat.toDouble())))
@@ -99,6 +104,13 @@ private const val LAND_LIGHT = 0.08f
 private const val LAND_DARK = 0.14f
 private val DOT = 3.dp
 private val HALO = 1.5.dp
+private val SEAM = 0.5.dp
+
+/**
+ * A filled country whose bounding box is under this many dp² is too small to see, so it gets a dot (S7-04: about 16 dp²
+ * of land; the box is about twice the land). Taiwan's box is 6 dp²; the Netherlands', 12 dp², still shows as a shape.
+ */
+private const val SMALL_AREA = 8f
 
 private const val HALF_TURN = 180f
 private const val FULL_TURN = 360f

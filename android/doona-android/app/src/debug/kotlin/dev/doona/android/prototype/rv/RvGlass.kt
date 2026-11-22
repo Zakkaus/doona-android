@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
@@ -25,6 +26,8 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.isSpecified
 
 /**
  * Frosted glass over a screen's content, Revolut's Glass style done with the platform's own blur: [rvGlassSource]
@@ -55,22 +58,30 @@ internal fun Modifier.rvGlassSource(glass: RvGlass): Modifier = onGloballyPositi
 @Immutable
 internal class RvGlassTint(val over: Color, val solid: Color)
 
-/** This element's background in [shape]: the [glass] content behind it blurred under [tint]'s `over`, or its `solid`. */
+/**
+ * This element's background in [shape]: the [glass] content behind it blurred under [tint]'s `over`, or its `solid`.
+ * With [tintFade], the tint fades out over that much of the bottom while the blur goes on to the edge, so what scrolls
+ * under the bottom shows through blurred rather than sharp and cut.
+ */
 @Composable
-internal fun Modifier.rvGlass(glass: RvGlass, shape: Shape, tint: RvGlassTint): Modifier {
+internal fun Modifier.rvGlass(glass: RvGlass, shape: Shape, tint: RvGlassTint, tintFade: Dp = Dp.Unspecified): Modifier {
     val blur = rememberGraphicsLayer()
     val spot = remember { RvGlassSpot() }
     return onGloballyPositioned { spot.origin = it.positionInRoot() }
         .clip(shape)
         .drawBehind {
+            val fadeFrom = if (tintFade.isSpecified) size.height - tintFade.toPx() else size.height
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 drawBackdrop(glass, blur, spot.origin - glass.origin)
-                drawRect(tint.over)
+                drawRect(fadingDown(tint.over, fadeFrom, size.height))
             } else {
-                drawRect(tint.solid)
+                drawRect(fadingDown(tint.solid, fadeFrom, size.height))
             }
         }
 }
+
+/** [color] down to [from], then fading to nothing at [to]. */
+private fun fadingDown(color: Color, from: Float, to: Float) = Brush.verticalGradient(listOf(color, color.copy(alpha = 0f)), from, to)
 
 /** Where a glass surface sits in the window; state, so a surface that moves draws its backdrop again. */
 @Stable

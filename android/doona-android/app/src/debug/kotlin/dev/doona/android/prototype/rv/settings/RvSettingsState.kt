@@ -12,7 +12,10 @@ internal enum class RvThemeMode(@StringRes val label: Int) {
     Dark(R.string.rv_settings_theme_dark),
 }
 
-/** The theme page's choices: the mode, whether the wallpaper's colour is the accent, and the chosen accent's index in [RV_ACCENTS]. */
+/**
+ * The theme page's choices: the mode, whether the wallpaper's colour is the accent, and the chosen swatch: 0 is the
+ * scheme's own primary, 1 to 4 the fixed colours of [RV_ACCENTS].
+ */
 @Immutable
 internal data class RvAppearance(val mode: RvThemeMode, val followWallpaper: Boolean, val accent: Int)
 

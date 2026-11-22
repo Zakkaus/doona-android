@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -22,37 +24,32 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import dev.doona.android.designsystem.components.Tone
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Colour roles of the sample. Every hue but the latency qualities is the dynamic scheme's: the surfaces are its neutral
  * roles, and the one tinted area of a screen, the activity header's dot map, is drawn in [dots] on the neutral page.
- * Dark is Revolut's black page with cards one step up; light is the same steps from white, with light grey cards.
+ * Light is Revolut's flat grey page with white cards (measured §1–2); dark is its black page with cards one step up.
+ * Secondary ink and the marks of controls are computed against the surfaces they sit on, never assumed to pass.
  */
 @Immutable
 internal class RvColors(s: ColorScheme, val dark: Boolean) {
-    val page = s.surfaceContainerLowest
-    val card = if (dark) s.surfaceContainerLow else s.surfaceContainer
+    val page = if (dark) s.surfaceContainerLowest else s.surfaceContainerLow
+    val card = if (dark) s.surfaceContainerLow else s.surfaceContainerLowest
 
     /** The icon disc of a row: one step above the card. */
-    val discOnCard = if (dark) s.surfaceContainerHighest else s.surfaceContainerLowest
+    val discOnCard = if (dark) s.surfaceContainerHighest else s.surfaceContainerHigh
 
-    /** The round action's disc on the header's fade. */
+    /** The round action's disc on the page's header, and the chart's tool discs on the page (measured §1: #ebebf0). */
     val discOnHeader = if (dark) s.surfaceContainerHighest else s.surfaceContainerHigh
     val text = s.onSurface
-    val textSecondary = s.onSurfaceVariant
     val positive = s.primary
     val onPositive = s.onPrimary
 
-    /** The dot map and its marker. */
+    /** The dot map and its marker while connected; neutral while not (S5-10). */
     val dots = s.primary
-
-    /** Latency qualities: the only fixed hues, so good, fair and slow read the same on every wallpaper. */
-    val good = Color(if (dark) 0xFF5BC49A else 0xFF13795B)
-    val fair = Color(if (dark) 0xFFE7B04E else 0xFF94600A)
-    val slow = Color(if (dark) 0xFFFF8A80 else 0xFFB3261E)
-
-    /** A progress bar's empty part. */
-    val track = discOnCard
+    val dotsIdle = s.outlineVariant
 
     /**
      * Glass over the content. The floating capsule: white 65 % over the blur in light, as Revolut's 35 to 65 % white
@@ -79,8 +76,38 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val backDisc = if (dark) s.surfaceContainerHigh else s.surfaceContainerLowest
     val backRing: Color? = if (dark) null else s.onSurface.copy(alpha = RvAlpha.BACK_RING)
 
-    /** Soft shadows under the capsule and the top bar's controls, in light only. */
+    /** Soft shadows under the capsule, the top bar's controls, raised controls and value pills: in light only. */
     val glassShadow = !dark
+    val raisedShadow = !dark
+
+    /** The segmented control's track over whatever it sits on, and the raised segment or range chip on it (measured §8). */
+    val segmentTrack = if (dark) Color.White.copy(alpha = RvAlpha.SEGMENT_DARK) else s.onSurface.copy(alpha = RvAlpha.SEGMENT_LIGHT)
+    val raised = if (dark) s.surfaceContainerHighest else s.surfaceContainerLowest
+
+    /** The one value pill, on charts, the median and 統計's chips: opaque, on a soft shadow in light (S5-26, T04). */
+    val pill = if (dark) s.surfaceContainerHighest else s.surfaceContainerHigh
+
+    /**
+     * Every secondary text: subtitles, stat labels, captions, unselected chips and segments, nav labels, legends, pill
+     * text. The lightest step from outline toward onSurfaceVariant with 4.6:1 on every surface it sits on (X-09).
+     */
+    val textSecondary = firstPassing(s.outline, s.onSurfaceVariant, RvContrast.TEXT, listOf(page, card, navSolid, pill, segmentTrack.compositeOver(page)))
+
+    /** The marks of controls that are not text: chevrons, a switch's off track, a radio's ring; 3:1 on page and card. */
+    val control = firstPassing(s.outlineVariant, s.outline, RvContrast.MARK, listOf(page, card))
+
+    /** Latency qualities: the only fixed hues, darkened (light) or lightened (dark) until they read on the card and their chip. */
+    val good = readableHue(Color(if (dark) 0xFF5BC49A else 0xFF13795B))
+    val fair = readableHue(Color(if (dark) 0xFFE7B04E else 0xFF94600A))
+    val slow = readableHue(Color(if (dark) 0xFFFF8A80 else 0xFFB3261E))
+
+    /** A progress bar's empty part. */
+    val track = discOnCard
+
+    /** The switch (Addendum A): on, an accent thumb over its tint at 3:1 on the card; off, a light thumb over [control]. */
+    val switchOnThumb = s.primary
+    val switchOnTrack = firstPassing(card, s.primary, RvContrast.MARK, listOf(card))
+    val switchOffThumb = Color(if (dark) 0xFF525254 else 0xFFFAFAFA)
 
     /** A subscription's disc and the glyph on it, one dynamic role each, as Revolut colours its Total wealth rows. */
     val accents = listOf(s.primary to s.onPrimary, s.tertiary to s.onTertiary)
@@ -90,32 +117,18 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val flagFallback = s.surfaceContainerHigh
 
     /** Traffic has no good or bad direction, so download and upload take two plain roles of the scheme. */
-    private val area = if (dark) RvAlpha.AREA_DARK else RvAlpha.AREA_LIGHT
-    val down = RvSeries(s.primary, s.primaryContainer, s.onPrimaryContainer, s.primary.copy(alpha = area))
-    val up = RvSeries(s.tertiary, s.tertiaryContainer, s.onTertiaryContainer, s.tertiary.copy(alpha = area))
+    val down = series(s.primary)
+    val up = series(s.tertiary)
 
-    /** A chart's dotted reference line: light grey, as Revolut's, on either page. */
+    /** A sparkline's dotted opening line: light grey on either page. A detail chart's reference line: secondary ink (measured §10.1). */
     val reference = if (dark) s.outline else s.outlineVariant
+    val detailReference = textSecondary
 
     /** The detail chart's hairline grid, a tile's neutral fill and its ghost bars: the text colour, very faint. */
     val grid = s.onSurface.copy(alpha = if (dark) RvAlpha.GRID_DARK else RvAlpha.GRID_LIGHT)
     val tileFill = s.onSurface.copy(alpha = RvAlpha.TILE_FILL)
     val ghost = s.onSurface.copy(alpha = RvAlpha.GHOST)
 
-    /** The line down the detail chart while a finger is on it. */
-    val scrub = s.outline
-
-    /** A value pill on a chart: a surface pill with a hairline edge in light, a raised container in dark. */
-    val pill = if (dark) s.surfaceContainerHighest else s.surfaceContainerLowest
-    val pillEdge: Color? = if (dark) null else s.outlineVariant
-    val onPill = s.onSurfaceVariant
-
-    /** A raised control on the page: the selected range chip and segment, on a shadow in light, a lighter fill in dark. */
-    val raised = if (dark) s.surfaceContainerHighest else s.surfaceContainerLowest
-    val raisedShadow = !dark
-
-    /** The segmented control's track, and the round buttons after the range chips. */
-    val segmentTrack = if (dark) s.surfaceContainerLow else s.surfaceContainer
     val roundButton = discOnHeader
     val stateLayer = s.onSurface
 
@@ -125,16 +138,59 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
         Tone.Err -> slow
         Tone.Neutral -> textSecondary
     }
+
+    /** A direction's roles: its line, its tile's disc (the line at one alpha over the card), the detail fill and the band. */
+    private fun series(line: Color) = RvSeries(
+        line = line,
+        disc = line.copy(alpha = RvAlpha.SERIES_DISC).compositeOver(card),
+        area = line.copy(alpha = if (dark) RvAlpha.AREA_DARK else RvAlpha.AREA_LIGHT),
+        band = line.copy(alpha = if (dark) RvAlpha.BAND_DARK else RvAlpha.BAND_LIGHT),
+    )
+
+    /**
+     * [hue], or the first step from it toward black (light) or white (dark) that reads at 4.5:1 on page, card and its
+     * chip on either (node detail's status chip sits on the page, N02).
+     */
+    private fun readableHue(hue: Color): Color {
+        val toward = if (dark) Color.White else Color.Black
+        return (0..RvContrast.STEPS).map { lerp(hue, toward, it.toFloat() / RvContrast.STEPS) }.first { c ->
+            val chip = c.copy(alpha = RvAlpha.STATUS_CHIP)
+            listOf(page, card, chip.compositeOver(card), chip.compositeOver(page)).all { rvContrast(c, it) >= RvContrast.TEXT_MIN }
+        }
+    }
 }
 
-/** One traffic direction's colours: its chart line, its tile's disc with the glyph on it, and the detail chart's fill. */
+/** One traffic direction's colours: its chart line, its tile's disc, the detail chart's fill and 今日用量's band. */
 @Immutable
-internal class RvSeries(val line: Color, val disc: Color, val onDisc: Color, val area: Color)
+internal class RvSeries(val line: Color, val disc: Color, val area: Color, val band: Color)
+
+/** WCAG contrast targets: text with a margin, text at the minimum, and marks that are not text; [STEPS] of a ramp. */
+internal object RvContrast {
+    const val TEXT = 4.6f
+    const val TEXT_MIN = 4.5f
+    const val MARK = 3f
+    const val STEPS = 20
+}
+
+/** The WCAG contrast ratio of two opaque colours. */
+internal fun rvContrast(a: Color, b: Color): Float {
+    val la = a.luminance()
+    val lb = b.luminance()
+    return (max(la, lb) + LUMINANCE_FLARE) / (min(la, lb) + LUMINANCE_FLARE)
+}
+
+/** The first of [from] to [to] in [RvContrast.STEPS] steps that reaches [ratio] on every one of [on]; [to] when none does. */
+private fun firstPassing(from: Color, to: Color, ratio: Float, on: List<Color>): Color =
+    (0..RvContrast.STEPS).map { lerp(from, to, it.toFloat() / RvContrast.STEPS) }.firstOrNull { c -> on.all { rvContrast(c, it) >= ratio } } ?: to
+
+private const val LUMINANCE_FLARE = 0.05f
 
 @Immutable
 internal class RvType {
     val hero = RvTypeScale.hero.style(tabular = true)
     val heroSmall = RvTypeScale.heroSmall.style(tabular = true)
+    val detailFigure = RvTypeScale.detailFigure.style(tabular = true)
+    val detailUnit = RvTypeScale.detailUnit.style()
     val caption = RvTypeScale.caption.style()
     val sub = RvTypeScale.sub.style(tabular = true)
     val rowTitle = RvTypeScale.rowTitle.style()
@@ -143,6 +199,7 @@ internal class RvType {
     val rowValue = RvTypeScale.rowTitle.style(tabular = true)
     val rowSub = RvTypeScale.rowSub.style()
     val action = RvTypeScale.action.style()
+    val segment = RvTypeScale.segment.style()
     val tileCaption = RvTypeScale.tileCaption.style()
     val tileValue = RvTypeScale.tileValue.style(tabular = true)
     val tileUnit = RvTypeScale.tileUnit.style()
@@ -150,6 +207,7 @@ internal class RvType {
     val cardUnit = RvTypeScale.cardUnit.style()
     val pill = RvTypeScale.pill.style(tabular = true)
     val section = RvTypeScale.section.style()
+    val statLabel = RvTypeScale.statLabel.style()
     val stat = RvTypeScale.stat.style(tabular = true)
     val largeTitle = RvTypeScale.largeTitle.style()
     val barTitle = RvTypeScale.barTitle.style()

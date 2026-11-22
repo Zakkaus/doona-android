@@ -117,8 +117,8 @@ class RvShotTest {
         /** The scrolled golden moves the content this far, past the header, so the bottom bar collapses. */
         const val SCROLLED_DP = 400f
 
-        /** A screen as tall as the whole 活動 page, 915 dp plus the 777.5 dp it scrolls, for the full captures. */
-        const val FULL_PAGE = "+h1693dp"
+        /** A screen as tall as the whole 活動 page, 915 dp plus the 832 dp it scrolls, for the full captures. */
+        const val FULL_PAGE = "+h1747dp"
 
         /** The second the scrubbed golden holds a finger on: inside the sustained download. */
         const val SCRUB = 30

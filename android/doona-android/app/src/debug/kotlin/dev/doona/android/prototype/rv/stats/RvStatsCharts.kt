@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
@@ -25,9 +26,11 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvChartSize
+import dev.doona.android.prototype.rv.RvText
 
 /**
  * Revolut's 'Spent' chart: the day's running total as a grey stepped line over a grey tint, on a hairline grid that fades
@@ -62,6 +65,16 @@ internal fun RvSteppedArea(hours: List<Long>, now: Float, modifier: Modifier = M
         }
         drawPath(area, Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), y(total), size.height))
         drawPath(path, line, style = Stroke(stroke, cap = StrokeCap.Round))
+    }
+}
+
+/** An empty chart (Addendum A): the grid alone, faint, with a short [line] on it; never bars that were not measured. */
+@Composable
+internal fun RvEmptyChart(line: String, modifier: Modifier = Modifier) {
+    val colors = Rv.colors
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.matchParentSize()) { fadingGrid(colors.grid) }
+        RvText(line, Rv.type.tileCaption, color = colors.textSecondary, align = TextAlign.Center)
     }
 }
 

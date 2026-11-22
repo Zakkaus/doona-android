@@ -29,6 +29,7 @@ import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvFigure
+import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -44,7 +45,7 @@ import java.text.NumberFormat
  * The 統計 page in the language of Revolut's Analytics page: the back disc and the large title, the subscription
  * and range chips, then the cards. Each card names its v0.1 source at its foot, and a card whose data v0.1 lacks carries
  * a `v0.2` tag: 已用流量 and the paged tiles (the app-side daily history; 連線次數 is v0.2), 訂閱流量 (the subscriptions'
- * quota), 節點分佈 (node names and flags), 延遲分佈 (latency results), 分流比例 (v0.2) and the tools. The chips and the
+ * quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 (v0.2) and the tools. The chips and the
  * tools are not wired in the sample. [initialTile] is the paged tile the row starts on.
  */
 @Composable
@@ -54,9 +55,9 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, initialTile:
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
-            RvStatsChip(stringResource(R.string.rv_stats_all_subscriptions), NOT_WIRED)
+            RvFilterChip(stringResource(R.string.rv_stats_all_subscriptions), NOT_WIRED)
             Spacer(Modifier.weight(1f))
-            RvStatsChip(stringResource(state.range.label), NOT_WIRED)
+            RvFilterChip(stringResource(state.range.label), NOT_WIRED)
         }
         Spacer(Modifier.height(RvStatsSpace.chipsGap))
         RvGutter { RvSpentCard(state) }

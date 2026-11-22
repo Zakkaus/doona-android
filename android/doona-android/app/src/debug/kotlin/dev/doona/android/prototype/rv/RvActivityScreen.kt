@@ -20,8 +20,15 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -56,7 +63,7 @@ internal fun RvActivityScreen(state: ActivityUiState, onAction: (ActivityAction)
                 TrafficTiles(state, routes.traffic)
                 RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
                 RvSubscriptionsCard(RvData.subscriptions)
-                RvFastestCard(RvData.nodes.fastest(FASTEST))
+                RvFastestCard(RvData.nodes.fastest(FASTEST), RvData.current.id, routes.nodes)
             }
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
@@ -78,21 +85,23 @@ internal class RvActivityRoutes(
 private fun Header(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, insets: WindowInsets) {
     val format = rememberRvFormat()
     val running = state.status is Status.Running || state.status is Status.Starting
-    val hero = format.rate(state.downRate.toDouble())
     // Direct traffic uses no node, so the map marks no place.
     val place = state.node?.takeIf { state.mode != Mode.Direct }?.let { RvData.node(it.id)?.place }
     val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
-    // The dots run up behind the status bar, as Revolut's texture does.
-    RvHeader(place, statusBar + RvDots.focusTop) {
+    var heroBounds by remember { mutableStateOf<Rect?>(null) }
+    // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected.
+    RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
         Spacer(Modifier.height(RvSpace.headerTop))
-        RvText("${stringResource(state.status.label)} · ${stringResource(state.mode.label)}", Rv.type.caption)
-        Spacer(Modifier.height(RvSpace.tight))
-        RvHero(hero.number, hero.unit)
-        Spacer(Modifier.height(RvSpace.subGap))
-        Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.rowPadding)) {
-            RvInline(R.drawable.rv_sym_arrow_downward, format.rate(state.downRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
-            RvInline(R.drawable.rv_sym_arrow_upward, format.rate(state.upRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
+        Column(Modifier.onPlaced { heroBounds = it.boundsInParent() }, horizontalAlignment = Alignment.CenterHorizontally) {
+            RvText("${stringResource(state.status.label)} · ${stringResource(state.mode.label)}", Rv.type.caption)
+            Spacer(Modifier.height(RvSpace.tight))
+            RvHero(format.rate(state.downRate.toDouble()))
+            Spacer(Modifier.height(RvSpace.subGap))
+            Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.rowPadding)) {
+                RvInline(R.drawable.rv_sym_arrow_downward, format.rate(state.downRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
+                RvInline(R.drawable.rv_sym_arrow_upward, format.rate(state.upRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
+            }
         }
         Spacer(Modifier.height(RvSpace.heroToActions))
         Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
@@ -115,12 +124,13 @@ private fun OutboundCard(state: ActivityUiState, routes: RvActivityRoutes) {
             stringResource(R.string.act_global),
             state.outbound ?: RV_NO_VALUE,
             onClick = routes.nodes,
-        ) { RvGlyph(R.drawable.rv_sym_chevron_right, RvSize.chevron, Rv.colors.textSecondary) }
+        ) { RvChevron() }
         // Direct traffic uses no node, so there is no node or latency to show.
         if (state.mode == Mode.Direct) return@RvCard
         val node = state.node
         RvRow(
-            { RvFlag(node?.let { RvData.node(it.id) }?.place?.name, RvSize.rowDisc) },
+            // The node in use: its flag carries the current node's check.
+            { RvFlag(node?.let { RvData.node(it.id) }?.place?.name, RvSize.rowDisc, current = node != null) },
             node?.name ?: RV_NO_VALUE,
             stringResource(R.string.nav_nodes),
             onClick = routes.node,
@@ -137,7 +147,7 @@ private fun TrafficTiles(state: ActivityUiState, onOpenTraffic: () -> Unit) {
     val quiet = state.status !is Status.Running || (state.downHistory.all { it == 0f } && state.upHistory.all { it == 0f })
     Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tileGap)) {
         TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.downRate, state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
-        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f))
+        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
     }
 }
 
@@ -151,11 +161,12 @@ private fun TrafficTile(
     quiet: Boolean,
     onClick: () -> Unit,
     modifier: Modifier,
+    ghost: FloatArray = RV_GHOST_DOWN,
 ) {
     val format = rememberRvFormat()
     val peak = format.rate((history.maxOrNull() ?: 0f).toDouble())
     val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, peak.toString())
-    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier)
+    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier, ghost)
 }
 
 /** The 最快節點 card lists the first three of the 節點 page's fastest. */

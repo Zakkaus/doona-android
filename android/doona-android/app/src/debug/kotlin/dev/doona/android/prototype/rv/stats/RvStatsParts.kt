@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -21,59 +20,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
-import dev.doona.android.R
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvFigure
-import dev.doona.android.prototype.rv.RvGlyph
-import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
-import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.scripted
-
-/**
- * A filter chip on the page, Revolut's small action button (`Personal ▾`, `This year`): a 40 dp pill on the container
- * colour, the label, then a chevron that says it opens a choice.
- */
-@Composable
-internal fun RvStatsChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .height(RvStatsSize.chip)
-            .clip(CircleShape)
-            .background(Rv.colors.segmentTrack)
-            .rvPress(CircleShape, Role.Button, onClick)
-            .padding(start = RvStatsSize.chipPad, end = RvStatsSize.chipPad - RvStatsSize.chipGlyphGap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RvText(label, Rv.type.rowTitle)
-        Spacer(Modifier.width(RvStatsSize.chipGlyphGap))
-        RvGlyph(R.drawable.rv_stats_ic_expand_more, RvStatsSize.chipGlyph, Rv.colors.textSecondary)
-    }
-}
-
-/** A card's own header, Revolut's grey label at the top start; [v02] adds the tag that says v0.1 lacks its data. */
-@Composable
-internal fun RvStatsLabel(text: String, v02: Boolean = false) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.subGap)) {
-        RvText(text, Rv.type.sub, color = Rv.colors.textSecondary)
-        if (v02) RvStatsTag()
-    }
-}
-
-/** The small `v0.2` tag: what the card shows needs data the v0.1 core does not report, so the sample invents it. */
-@Composable
-private fun RvStatsTag() {
-    Box(Modifier.clip(CircleShape).background(Rv.colors.up.disc).padding(horizontal = RvStatsSize.tagPadH, vertical = RvStatsSize.tagPadV)) {
-        RvText(V02, Rv.type.pill, color = Rv.colors.up.onDisc)
-    }
-}
 
 /** The line at a card's foot that names where its data comes from. */
 @Composable
@@ -145,13 +101,8 @@ internal fun RvStatsDots(count: Int, current: Int) {
     }
 }
 
-/** A row's trailing chevron, light grey as Revolut's. */
-@Composable
-internal fun RvStatsChevron() {
-    RvGlyph(R.drawable.rv_sym_chevron_right, RvSize.chevron, Rv.colors.reference)
-}
-
 /** A row of the tools card: its glyph, title and subtitle. */
 internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String)
 
-private const val V02 = "v0.2"
+/** The tag on a card whose data the v0.1 core does not report, so the sample invents it. */
+internal const val RV_V02 = "v0.2"

@@ -35,6 +35,7 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.RV_NAV_SETTINGS
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.RvAction
 import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -78,9 +79,11 @@ internal fun RvSettingsScreen(state: RvSettingsState, onChange: (RvSettingsState
 /** The mark beside the title, centred on a faint dot texture that runs up behind the bar, and the two actions under it. */
 @Composable
 private fun Hero(titleBlock: Modifier, insets: WindowInsets) {
-    val barAndStatus = with(LocalDensity.current) { insets.getTop(this).toDp() } + rvBarHeight()
+    val status = with(LocalDensity.current) { insets.getTop(this).toDp() }
     Box(Modifier.fillMaxWidth()) {
-        Box(Modifier.matchParentSize().graphicsLayer { alpha = RvSettingsAlpha.HERO_DOTS }.rvDotMap(null, Rv.colors.dots, barAndStatus + RvSettingsSpace.mapDrop))
+        // No dot on the status bar's clock (S8-08): the map starts under it, as 活動's does.
+        val dots = Modifier.rvDotMap(null, Rv.colors.dots, status + rvBarHeight() + RvSettingsSpace.mapDrop, fadeTop = status)
+        Box(Modifier.matchParentSize().graphicsLayer { alpha = RvSettingsAlpha.HERO_DOTS }.then(dots))
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             RvBarSpacer(insets)
             Spacer(Modifier.height(RvSettingsSpace.heroTop))
@@ -90,8 +93,8 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets) {
             }
             Spacer(Modifier.height(RvSettingsSpace.titleToActions))
             Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
-                RvSettingsAction(R.drawable.rv_settings_ic_export, stringResource(R.string.rv_settings_export_diagnostics), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
-                RvSettingsAction(R.drawable.rv_settings_ic_update, stringResource(R.string.rv_settings_check_update), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
+                RvAction(R.drawable.rv_settings_ic_export, stringResource(R.string.rv_settings_export_diagnostics), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
+                RvAction(R.drawable.rv_settings_ic_update, stringResource(R.string.rv_settings_check_update), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
             }
             Spacer(Modifier.height(RvSettingsSpace.heroBottom))
         }

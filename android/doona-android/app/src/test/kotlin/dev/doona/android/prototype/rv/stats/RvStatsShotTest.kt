@@ -30,7 +30,7 @@ import java.util.TimeZone
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = "zh-rTW-w412dp-h2100dp-notnight-xhdpi")
+@Config(qualifiers = "zh-rTW-w412dp-h2144dp-notnight-xhdpi")
 class RvStatsShotTest {
     @get:Rule
     val compose = createComposeRule()
