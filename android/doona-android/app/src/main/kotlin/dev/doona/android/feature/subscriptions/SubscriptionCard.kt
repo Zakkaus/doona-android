@@ -4,6 +4,7 @@ import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -12,12 +13,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaButton
 import dev.doona.android.designsystem.components.DoonaButtonStyle
 import dev.doona.android.designsystem.components.DoonaCard
-import dev.doona.android.designsystem.components.DoonaMeter
+import dev.doona.android.designsystem.components.DoonaProgressBar
 import dev.doona.android.designsystem.components.DoonaSmallStatusLight
 import dev.doona.android.designsystem.components.DoonaStatusLight
 import dev.doona.android.designsystem.components.DoonaText
@@ -29,13 +31,17 @@ import java.text.DateFormat
 import java.util.Date
 
 /**
- * One subscription: its name and facts, the traffic meter and the expiry when the provider reports them, the code of
+ * One subscription: its name and facts, the traffic bar and the expiry when the provider reports them, the code of
  * its last failed refresh, and the update and remove actions. The update button shows its own busy state.
  */
 @Composable
 fun SubscriptionCard(item: SubscriptionItem, onUpdate: () -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     val sub = item.subscription
-    DoonaCard(modifier.fillMaxWidth()) {
+    DoonaCard(
+        modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(DoonaTheme.spacing.cardInset),
+        verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block),
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
             DoonaText(sub.name, style = DoonaTheme.type.blockTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Facts(item)
@@ -44,7 +50,11 @@ fun SubscriptionCard(item: SubscriptionItem, onUpdate: () -> Unit, onRemove: () 
             val context = LocalContext.current
             val used = Formatter.formatShortFileSize(context, sub.usedBytes ?: 0)
             val total = Formatter.formatShortFileSize(context, sub.totalBytes ?: 0)
-            DoonaMeter(fraction, stringResource(R.string.sub_traffic, used, total), Modifier.fillMaxWidth())
+            // The used and total figures over the bar: one progress for a screen reader, the text read once with it.
+            Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
+                DoonaText(stringResource(R.string.sub_traffic, used, total), style = DoonaTheme.type.bodyTabular)
+                DoonaProgressBar(fraction)
+            }
         }
         item.problem?.let { DoonaStatusLight(Tone.Err, stringResource(it.messageRes())) }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {

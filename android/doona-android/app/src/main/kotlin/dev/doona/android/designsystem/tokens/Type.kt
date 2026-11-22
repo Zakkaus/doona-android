@@ -67,6 +67,9 @@ object TypeScale {
     /** A list card's 'See all' row (measured §7: centred, 19 sp bold). */
     val seeAll = TypeStep(19, 26, FontWeight.Bold)
 
+    /** A settings row's value before its chevron (the sample's settings page: 15 sp regular). */
+    val settingValue = TypeStep(15, 20, FontWeight.Normal)
+
     /** Font feature setting for tabular figures: only where figures line up or change in place. */
     const val TABULAR = "tnum"
 

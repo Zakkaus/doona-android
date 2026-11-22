@@ -24,9 +24,8 @@ import dev.doona.android.feature.perapp.sampleSearchState
  */
 internal fun perAppCases(): List<ScreenCase> {
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
-    val controls = bars + setOf(LayoutRole.Control, LayoutRole.Button)
+    val controls = bars + setOf(LayoutRole.Segmented, LayoutRole.Button)
     val searched = controls + LayoutRole.Field
-    val listed = searched + LayoutRole.Row
 
     // A page on a settled state sits in the frame of the other pages: the hub bar under it and the gesture bar's inset.
     fun shown(state: PerAppUiState): @Composable () -> Unit = {
@@ -36,9 +35,11 @@ internal fun perAppCases(): List<ScreenCase> {
         ScreenCase("perapp", PageLayout(controls, emptyList())) {
             DoonaApp(sampleEngine(), FakeInstalledApps(), onConnect = {}, listOf(ActivityKey, SettingsKey, PerAppKey))
         },
-        ScreenCase("perapp-checked", PageLayout(listed, emptyList()), shown(sampleCheckedState())),
-        ScreenCase("perapp-busy", PageLayout(listed, emptyList()), shown(sampleBusyState())),
-        ScreenCase("perapp-search", PageLayout(listed, emptyList()), shown(sampleSearchState())),
+        // The segmented control's 48 dp target makes the header taller than a landscape window, so no row is composed at the
+        // first offset there; the rows are still checked wherever they show.
+        ScreenCase("perapp-checked", PageLayout(searched, emptyList()), shown(sampleCheckedState())),
+        ScreenCase("perapp-busy", PageLayout(searched, emptyList()), shown(sampleBusyState())),
+        ScreenCase("perapp-search", PageLayout(searched, emptyList()), shown(sampleSearchState())),
         ScreenCase("perapp-no-match", PageLayout(searched, emptyList()), shown(sampleSearchState("zzz"))),
         // The note and the banner make the header taller than a landscape window, so no row is composed at the first offset.
         ScreenCase("perapp-needs-app", PageLayout(searched, emptyList()), shown(sampleNeedsAppState())),

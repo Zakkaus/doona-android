@@ -15,9 +15,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.designsystem.components.ChevronDirection
-import dev.doona.android.designsystem.components.DoonaChevron
 import dev.doona.android.designsystem.components.DoonaIcon
+import dev.doona.android.designsystem.components.DropDownGlyph
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.components.LayoutRoleKey
 import dev.doona.android.designsystem.theme.DoonaTheme
@@ -67,17 +66,15 @@ class ChevronInkTest {
 
     @Test fun pickerChevronsHaveNoInset() = checkChevrons("activity")
 
-    @Test fun cardChevronsHaveNoInset() = checkChevrons("policies")
-
-    /** The chevron's box and the same glyph drawn whole, as an icon of the chevron's size, for each direction. */
-    private fun render(direction: ChevronDirection, chevron: Modifier = Modifier): Pair<InkInsets, InkInsets> {
+    /** The picker's arrow box and the same glyph drawn whole, as an icon of the arrow's size. */
+    private fun render(chevron: Modifier = Modifier): Pair<InkInsets, InkInsets> {
         compose.setContent {
             SeedTheme {
                 val tint = DoonaTheme.colors.text
-                val size = if (direction == ChevronDirection.Down) DoonaTheme.size.inlineGlyph else DoonaTheme.size.iconSmall
-                val whole = if (direction == ChevronDirection.Down) IconsR.drawable.sym_keyboard_arrow_down else IconsR.drawable.sym_chevron_right
+                val size = DoonaTheme.size.inlineGlyph
+                val whole = IconsR.drawable.sym_keyboard_arrow_down
                 Column(Modifier.background(DoonaTheme.colors.page).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    DoonaChevron(direction, tint, chevron)
+                    DropDownGlyph(tint, chevron)
                     Box(Modifier.testTag("whole")) { DoonaIcon(whole, tint, size = size) }
                 }
             }
@@ -87,20 +84,17 @@ class ChevronInkTest {
         return requireNotNull(chevron.inkInsets(DENSITY)) { "the chevron drew nothing" } to requireNotNull(compose.onNodeWithTag("whole", useUnmergedTree = true).inkInsets(DENSITY)) { "the icon drew nothing" }
     }
 
-    private fun chevronHoldsTheWholeGlyph(direction: ChevronDirection) {
-        val (box, whole) = render(direction)
-        assertTrue("$direction chevron: ${box.describe()}", box.max() <= INK_TOLERANCE)
-        assertFalse("$direction chevron box ${box.inkWidth} x ${box.inkHeight} cuts the glyph, which is ${whole.inkWidth} x ${whole.inkHeight}", box.clippedAgainst(whole, INK_TOLERANCE))
+    @Test
+    fun theDownChevronHoldsTheWholeGlyph() {
+        val (box, whole) = render()
+        assertTrue("down chevron: ${box.describe()}", box.max() <= INK_TOLERANCE)
+        assertFalse("down chevron box ${box.inkWidth} x ${box.inkHeight} cuts the glyph, which is ${whole.inkWidth} x ${whole.inkHeight}", box.clippedAgainst(whole, INK_TOLERANCE))
     }
-
-    @Test fun theDownChevronHoldsTheWholeGlyph() = chevronHoldsTheWholeGlyph(ChevronDirection.Down)
-
-    @Test fun theRightChevronHoldsTheWholeGlyph() = chevronHoldsTheWholeGlyph(ChevronDirection.Right)
 
     /** A glyph cut off at its box edge has no ink inside the box, so only the comparison with the whole glyph sees it. */
     @Test
     fun aChevronInABoxTooSmallIsClipped() {
-        val (box, whole) = render(ChevronDirection.Down, Modifier.size(width = 6.dp, height = 3.dp))
+        val (box, whole) = render(Modifier.size(width = 6.dp, height = 3.dp))
         assertTrue("the clipped box has no ink inside its edges: ${box.describe()}", box.max() <= INK_TOLERANCE)
         assertTrue("a ${box.inkWidth} x ${box.inkHeight} box against ${whole.inkWidth} x ${whole.inkHeight}", box.clippedAgainst(whole, INK_TOLERANCE))
     }

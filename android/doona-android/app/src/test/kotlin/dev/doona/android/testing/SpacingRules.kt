@@ -28,7 +28,8 @@ object SpacingRules {
         val found = root.descendants().mapNotNull { it.role }.toSet()
         val missing = (shows - found).map { "the page shows a $it but the probe found none, so the rules of that role checked nothing" }
         // The segmented control and the chips are filled, so a page with controls has a filled one; none means the fill went unseen.
-        val unfilled = LayoutRole.Control in shows && root.descendants().none { c -> c.role == LayoutRole.Control && c.descendants().any { it.filled } }
+        val filledRoles = setOf(LayoutRole.Control, LayoutRole.Segmented)
+        val unfilled = LayoutRole.Control in shows && root.descendants().none { c -> c.role in filledRoles && c.descendants().any { it.filled } }
         val unread = root.descendants().none { it.text != null }
         return missing + listOfNotNull(
             "the page shows controls but the probe found none filled, so the alike-controls rule checked nothing".takeIf { unfilled },

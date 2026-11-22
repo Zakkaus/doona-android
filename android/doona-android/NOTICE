@@ -27,11 +27,13 @@ theme tint attribute is removed and each file names its source. rv_nodes_ic_*, r
 filled 24 px glyphs from the same set, converted to vector drawables; each file names its glyph and weight.
 Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
 
-Natural Earth land (app/src/debug/kotlin/dev/doona/android/prototype/rv/RvLandMask.kt, the prototype/rv sample only)
+Natural Earth land (app/src/debug/kotlin/dev/doona/android/prototype/rv/RvLandMask.kt in the prototype/rv sample, and its copy
+app/src/main/kotlin/dev/doona/android/designsystem/components/LandMask.kt)
 A 2-degree grid that tools/rv_land_mask.py rasterizes from ne_110m_land.geojson, Natural Earth 1:110m v5.1.2
 (https://github.com/nvkelso/natural-earth-vector). Public domain: https://www.naturalearthdata.com/about/terms-of-use/
 
-Natural Earth countries (app/src/debug/kotlin/dev/doona/android/prototype/rv/RvWorld.kt, the prototype/rv sample only)
+Natural Earth countries (app/src/debug/kotlin/dev/doona/android/prototype/rv/RvWorld.kt in the prototype/rv sample, and its copy
+app/src/main/kotlin/dev/doona/android/designsystem/components/WorldShapes.kt)
 Outlines that tools/rv_world.py simplifies from ne_110m_admin_0_countries.geojson, Natural Earth 1:110m v5.1.2. Public domain: https://www.naturalearthdata.com/about/terms-of-use/
 
 circle-flags (app/src/debug/res/drawable/rv_flag_*.xml, the prototype/rv sample only)

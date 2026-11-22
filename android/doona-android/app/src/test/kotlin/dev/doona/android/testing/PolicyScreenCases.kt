@@ -41,10 +41,10 @@ internal fun policyScreenCases(): List<ScreenCase> {
     val loading = FakeEngine().apply { ready.value = false }
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
-    val list = bars + setOf(LayoutRole.Card, LayoutRole.Control, LayoutRole.Chevron)
+    val list = bars + setOf(LayoutRole.Card, LayoutRole.Segmented, LayoutRole.Mark)
     val listRhythm = listOf(space.afterTitle, space.section, space.section)
     val flatGroup = bars + setOf(LayoutRole.Button, LayoutRole.Dot)
-    val group = flatGroup + LayoutRole.Control
+    val group = flatGroup + LayoutRole.Tag
     val groupRhythm = listOf(space.item, space.section, space.section)
     val subscriptions = bars + setOf(LayoutRole.Card, LayoutRole.Button)
     val form = subscriptions + setOf(LayoutRole.Field, LayoutRole.Dot)

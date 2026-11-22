@@ -15,7 +15,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.DoonaBadge
 import dev.doona.android.designsystem.components.DoonaButton
 import dev.doona.android.designsystem.components.DoonaButtonStyle
 import dev.doona.android.designsystem.components.DoonaErrorBanner
@@ -25,7 +24,7 @@ import dev.doona.android.designsystem.components.DoonaNodeTile
 import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaPageTitle
 import dev.doona.android.designsystem.components.DoonaProgress
-import dev.doona.android.designsystem.components.DoonaTagChip
+import dev.doona.android.designsystem.components.DoonaTag
 import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
@@ -94,7 +93,7 @@ private fun CurrentRow(detail: GroupDetail) {
         CurrentSummary(detail.current, DoonaTheme.type.label, Modifier.weight(1f))
         DoonaHGap(DoonaTheme.spacing.block)
         if (detail.canReturnToAutomatic) {
-            DoonaBadge(stringResource(R.string.policy_pinned))
+            DoonaTag(stringResource(R.string.policy_pinned))
             DoonaHGap(DoonaTheme.spacing.block)
         }
         NodeLatency(detail.currentNode)
@@ -123,7 +122,7 @@ private fun SubGroups(detail: GroupDetail, onOpenGroup: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
         DoonaText(stringResource(R.string.policy_groups_inside), style = DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
-            detail.subGroups.forEach { DoonaTagChip(it.name, onClick = { onOpenGroup(it.id) }) }
+            detail.subGroups.forEach { DoonaTag(it.name, onClick = { onOpenGroup(it.id) }) }
         }
     }
 }

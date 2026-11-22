@@ -35,15 +35,17 @@ class ContrastTest {
     @Test
     fun textHasFourPointFiveToOne() = assertAll { t ->
         t.on("text", t.c.text, TEXT) + t.on("textSecondary", t.c.textSecondary, TEXT) +
-            Check("textSecondary on the selected pill", contrastRatio(t.c.textSecondary, t.c.navPill), TEXT)
+            Check("the node tile's secondary on the selected pill", contrastRatio(t.c.tileInk.secondary, t.c.navPill), TEXT) +
+            t.on("the node tile's secondary", t.c.tileInk.secondary, TEXT)
     }
 
-    /** The latency qualities are text: a latency's value, a status line, a field's error. */
+    /** The latency qualities are text: a latency's value, a status line, a field's error; the node tile's on its fills too. */
     @Test
     fun latencyHuesHaveFourPointFiveToOne() = assertAll { t ->
-        listOf("good" to t.c.good, "fair" to t.c.fair, "slow" to t.c.slow).flatMap { (name, hue) ->
-            t.on(name, hue, TEXT) + Check("$name on the selected pill", contrastRatio(hue, t.c.navPill), TEXT)
-        }
+        listOf("good" to t.c.good, "fair" to t.c.fair, "slow" to t.c.slow).flatMap { (name, hue) -> t.on(name, hue, TEXT, listOf("page", "card")) } +
+            listOf("good" to t.c.tileInk.good, "fair" to t.c.tileInk.fair, "slow" to t.c.tileInk.slow).flatMap { (name, hue) ->
+                t.on("the node tile's $name", hue, TEXT) + Check("the node tile's $name on the selected pill", contrastRatio(hue, t.c.navPill), TEXT)
+            }
     }
 
     /** A text button sits on the page, a card or a disc fill. */

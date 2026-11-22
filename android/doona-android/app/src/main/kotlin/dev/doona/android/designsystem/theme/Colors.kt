@@ -78,15 +78,9 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
 
     /**
      * Every secondary text: subtitles, stat labels, captions, unselected chips and segments, nav labels, legends, pill
-     * text. The lightest step from outline toward onSurfaceVariant with 4.6:1 on every surface it sits on (X-09), the
-     * old components' disc fill and selected pill included.
+     * text. The lightest step from outline toward onSurfaceVariant with 4.6:1 on every surface it sits on (X-09).
      */
-    val textSecondary = firstPassing(
-        s.outline,
-        s.onSurfaceVariant,
-        ContrastScale.TEXT,
-        listOf(page, card, navSolid, pill, discOnCard, navPill, segmentTrack.compositeOver(page)),
-    )
+    val textSecondary = firstPassing(s.outline, s.onSurfaceVariant, ContrastScale.TEXT, listOf(page, card, navSolid, pill, segmentTrack.compositeOver(page)))
 
     /** The marks of controls that are not text: chevrons, a switch's off track, a radio's ring, a checkbox's box; 3:1 on page and card (S05). */
     val control = firstPassing(s.outlineVariant, s.outline, ContrastScale.MARK, listOf(page, card))
@@ -102,6 +96,23 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
     val good = readableHue(if (dark) HueScale.goodDark else HueScale.goodLight)
     val fair = readableHue(if (dark) HueScale.fairDark else HueScale.fairLight)
     val slow = readableHue(if (dark) HueScale.slowDark else HueScale.slowLight)
+
+    /**
+     * The old node tile's ink: its fills ([discOnCard], and [navPill] when current) are surfaces the sample never puts
+     * text on, so its secondary text and latency hues take the first steps that also read at 4.5:1 there. The sample's
+     * own roles above stay exactly the prototype's.
+     */
+    val tileInk = DoonaToneInk(
+        secondary = firstPassing(
+            s.outline,
+            s.onSurfaceVariant,
+            ContrastScale.TEXT,
+            listOf(page, card, navSolid, pill, discOnCard, navPill, segmentTrack.compositeOver(page)),
+        ),
+        good = readableHue(if (dark) HueScale.goodDark else HueScale.goodLight, listOf(discOnCard, navPill)),
+        fair = readableHue(if (dark) HueScale.fairDark else HueScale.fairLight, listOf(discOnCard, navPill)),
+        slow = readableHue(if (dark) HueScale.slowDark else HueScale.slowLight, listOf(discOnCard, navPill)),
+    )
 
     /** A progress bar's empty part. */
     val track = discOnCard
@@ -158,6 +169,12 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
     val destructive = s.error
     val onDestructive = s.onError
 
+    /** A status chip's tint of [hue] (node detail's 'Market closed' chip). */
+    fun statusChip(hue: Color): Color = hue.copy(alpha = AlphaScale.STATUS_CHIP)
+
+    /** A live point's halo round its dot of [color]. */
+    fun halo(color: Color): Color = color.copy(alpha = AlphaScale.HALO)
+
     /** The underlay of a modal: the scheme's scrim at doona's alpha for the theme. */
     val scrim: Color = s.scrim.copy(alpha = if (dark) AlphaScale.SCRIM_DARK else AlphaScale.SCRIM_LIGHT)
 
@@ -178,11 +195,11 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
 
     /**
      * [hue], or the first step from it toward black (light) or white (dark) that reads at 4.5:1 on page, card and its
-     * chip on either (node detail's status chip sits on the page, N02), and on the old node tile's two fills.
+     * chip on either (node detail's status chip sits on the page, N02), and on any [more] fills.
      */
-    private fun readableHue(hue: Color): Color = ramp(hue, if (dark) Color.White else Color.Black).first { c ->
-        val chip = c.copy(alpha = AlphaScale.STATUS_CHIP)
-        listOf(page, card, discOnCard, navPill, chip.compositeOver(card), chip.compositeOver(page)).all { contrastRatio(c, it) >= ContrastScale.TEXT_MIN }
+    private fun readableHue(hue: Color, more: List<Color> = emptyList()): Color = ramp(hue, if (dark) Color.White else Color.Black).first { c ->
+        val chip = statusChip(c)
+        (listOf(page, card, chip.compositeOver(card), chip.compositeOver(page)) + more).all { contrastRatio(c, it) >= ContrastScale.TEXT_MIN }
     }
 
     /** [solid] at the first alpha from [AlphaScale.NAV_GLASS_MIN] to [AlphaScale.GLASS_SOLID] whose labels read at 4.5:1 over [under]. */
@@ -190,6 +207,10 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
         .map { solid.copy(alpha = AlphaScale.NAV_GLASS_MIN + (AlphaScale.GLASS_SOLID - AlphaScale.NAV_GLASS_MIN) * it / ContrastScale.STEPS) }
         .firstOrNull { contrastRatio(textSecondary, it.compositeOver(under)) >= ContrastScale.TEXT_MIN } ?: solid.copy(alpha = AlphaScale.GLASS_SOLID)
 }
+
+/** Secondary text and the latency hues of a component that draws on fills the sample never puts text on. */
+@Immutable
+class DoonaToneInk(val secondary: Color, val good: Color, val fair: Color, val slow: Color)
 
 /** One traffic direction's colours: its chart line, its tile's disc, the detail chart's fill and 今日用量's band. */
 @Immutable

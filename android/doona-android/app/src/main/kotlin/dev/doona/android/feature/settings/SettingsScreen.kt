@@ -5,21 +5,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.ChevronDirection
 import dev.doona.android.designsystem.components.DoonaCard
-import dev.doona.android.designsystem.components.DoonaChevron
 import dev.doona.android.designsystem.components.DoonaGap
-import dev.doona.android.designsystem.components.DoonaHGap
-import dev.doona.android.designsystem.components.DoonaIcon
+import dev.doona.android.designsystem.components.DoonaNavRow
 import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaPageTitle
-import dev.doona.android.designsystem.components.DoonaRow
-import dev.doona.android.designsystem.components.DoonaText
+import dev.doona.android.designsystem.components.DoonaValueRow
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.labelRes
@@ -52,24 +47,10 @@ fun SettingsScreen(state: SettingsUiState, version: String, onOpenPerApp: () -> 
     }
 }
 
-/** An icon, the setting's name, its [value] and, when it opens a page ([onClick]), a chevron. */
+/** A card of one settings row: the setting's [icon] and name, its [value], and, when it opens a page ([onClick]), a chevron. */
 @Composable
 private fun SettingCard(@DrawableRes icon: Int, label: String, value: String?, onClick: (() -> Unit)?) {
-    val c = DoonaTheme.colors
-    val space = DoonaTheme.spacing
-    DoonaCard(onClick = onClick) {
-        DoonaRow {
-            DoonaIcon(icon, c.textSecondary)
-            DoonaHGap(space.item)
-            DoonaText(label, style = DoonaTheme.type.label, color = c.text, maxLines = 1, modifier = Modifier.weight(1f))
-            if (value != null) {
-                DoonaHGap(space.block)
-                DoonaText(value, style = DoonaTheme.type.body, color = c.textSecondary, maxLines = 1)
-            }
-            if (onClick != null) {
-                DoonaHGap(space.block)
-                DoonaChevron(ChevronDirection.Right, c.textSecondary)
-            }
-        }
+    DoonaCard {
+        if (onClick != null) DoonaNavRow(label, onClick, icon = icon, value = value) else DoonaValueRow(label, value ?: NO_VALUE, icon = icon)
     }
 }

@@ -54,10 +54,10 @@ fun DoonaNodeTile(
             DoonaNodeName(name, DoonaTheme.type.bodyStrong, modifier = Modifier.weight(1f))
             if (groupLabel != null) {
                 Spacer(Modifier.width(space.item))
-                DoonaBadge(groupLabel)
+                DoonaTag(groupLabel)
             }
             Spacer(Modifier.width(space.block))
-            DoonaLatency(latencyMs)
+            TileLatency(latencyMs)
         }
         source?.let { Text(scripted(it), style = DoonaTheme.type.footnote, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }

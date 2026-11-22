@@ -106,6 +106,9 @@ private class BarEdge(ink: Dp) {
  * Top app bar (§8): 64 high on the base fill, drawn under the status bar. The start holds the duck mark on a hub
  * page and the back arrow on a pushed page; [actions] sit at the end. The first and last glyph sit on the gutter of
  * the content column, which is at most 600 dp wide and placed by [columnAlignment], by their drawn shape (see [BarEdge]).
+ *
+ * The old screens' bar: a page lane that rebuilds a screen replaces it with [DoonaScrollPage]'s [DoonaBar] (a pushed page's
+ * [DoonaBackDisc] and collapsing title) or [DoonaHomeTopBar] (a tab home).
  */
 @Composable
 fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: List<DoonaBarAction> = emptyList()) {
@@ -150,6 +153,8 @@ fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: L
  * 600 dp wide; each a 56 × 32 pill holding the 25 px icon over a 12/16 label, gap 4, with 6 of air above and below. A
  * larger font makes the tabs, and so the bar, taller; the bar never presses its content on its edges. The current pill
  * takes the selected fill and the accent icon.
+ *
+ * The old screens' hub bar: a page lane that rebuilds a tab home replaces it with [DoonaFloatingNav].
  */
 @Composable
 fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -178,6 +183,8 @@ fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit,
 /**
  * Hub rail: the hub bar for a window too short to give the page a bar (see [DoonaHubShell]): the same tabs in a column
  * at the start edge, as wide as [DoonaSize.railWidth] and as tall as the window, centred between the bars of the system.
+ *
+ * The old screens' rail: a page lane that rebuilds a tab home replaces it with [DoonaFloatingNav].
  */
 @Composable
 fun DoonaHubRail(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -199,6 +206,9 @@ fun DoonaHubRail(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit
  * The frame of every page of the app: [content] over the hub bar, or beside the hub rail in a window shorter than
  * [DoonaSize.compactHeight], where a bar and the top bar would leave a page under a third of the height. The bar takes
  * the gesture bar's inset, so the page above it does not; beside a rail the page takes it, and the end inset of the window.
+ *
+ * The old screens' shell: a page lane that rebuilds the tab homes replaces it with [DoonaScrollPage] (or its own tab
+ * home) under [DoonaFloatingNav], keeping [navClearance] free at the end of each page.
  */
 @Composable
 fun DoonaHubShell(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
@@ -251,6 +261,8 @@ private fun HubTab(tab: DoonaHubTab, on: Boolean, modifier: Modifier, onClick: (
  * stacked by the caller in a column at most 600 dp wide, centred on wider windows (D20) and at the start beside the
  * rail on a short one (see [columnAlignment]). The title, the tabs and every block scroll together. When nothing below
  * the sheet takes the gesture bar's inset, the sheet's end does.
+ *
+ * The old screens' sheet: a page lane that rebuilds a screen replaces it with [DoonaScrollPage] and [DoonaGutter].
  */
 @Composable
 fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -285,6 +297,9 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
  * last row, and the gesture bar's inset at the end), with [content] a lazy list that scrolls in it and composes the rows
  * in view only. [DoonaPageSheet] scrolls its blocks in a vertical scroll, which gives a lazy list unbounded height and
  * throws, so a list of more than a screenful goes here. Put it under a [DoonaTopBar], as [DoonaPage] does the other.
+ *
+ * The old screens' lazy sheet: a page lane that rebuilds a long list replaces it with [DoonaScrollPage]'s scaffold
+ * (the bar over the content, edge to edge) around its own lazy list.
  */
 @Composable
 fun DoonaLazyPageSheet(modifier: Modifier = Modifier, state: LazyListState = rememberLazyListState(), content: LazyListScope.() -> Unit) {
@@ -313,7 +328,10 @@ fun DoonaLazyPageSheet(modifier: Modifier = Modifier, state: LazyListState = rem
     }
 }
 
-/** Page title `.rp-h1` 28/36/800 at the top of the sheet: the large title of the top app bar. */
+/**
+ * Page title `.rp-h1` 28/36/800 at the top of the sheet: the large title of the top app bar. The old screens' title: a
+ * page lane that rebuilds a screen replaces it with [DoonaLargeTitle].
+ */
 @Composable
 fun DoonaPageTitle(text: String, modifier: Modifier = Modifier) {
     Text(scripted(text), style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier.semantics { heading() })
@@ -368,6 +386,8 @@ fun DoonaPageTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifi
 /**
  * A page: top bar over the sheet; the window's base colour runs under the status bar. The [DoonaHubShell] puts the
  * hub bar below every page, or a rail beside it.
+ *
+ * The old screens' page: a page lane that rebuilds a screen replaces it with [DoonaScrollPage].
  */
 @Composable
 fun DoonaPage(

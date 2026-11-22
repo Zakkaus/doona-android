@@ -27,7 +27,11 @@ import org.robolectric.annotation.GraphicsMode
 
 private const val DENSITY = 3f
 
-/** The segmented control's 36 dp track is hit over 48 dp: a tap just above or below an item still selects it. */
+// The segmented control's target and its track (DoonaTheme.size.touch, DoonaTheme.chart.segment).
+private const val TOUCH_DP = 48f
+private const val TRACK_DP = 36f
+
+/** The segmented control's 36 dp track is hit over 48 dp: a tap just above or below the track still selects its item. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w412dp-h915dp-notnight-xxhdpi")
@@ -48,8 +52,10 @@ class ControlTouchTest {
             }
         }
         val item = compose.onAllNodes(isSelectable()).fetchSemanticsNodes()[1].boundsInRoot
+        // The item is the 48 dp target; its 36 dp track sits in the middle of it.
+        val inset = (TOUCH_DP - TRACK_DP) / 2 * DENSITY
         val reach = 5 * DENSITY
-        val y = if (above) item.top - reach else item.bottom + reach
+        val y = if (above) item.top + inset - reach else item.bottom - inset + reach
         compose.onRoot().performTouchInput { click(Offset(item.center.x, y)) }
         compose.waitForIdle()
     }

@@ -15,8 +15,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.designsystem.components.DoonaFilterPicker
 import dev.doona.android.designsystem.components.DoonaIcon
-import dev.doona.android.designsystem.components.DoonaSegmented
 import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.theme.DoonaTheme
@@ -55,7 +55,7 @@ class ProbeDetectionTest {
                     Box(Modifier.size(20.dp).background(Color.Blue))
                 }
                 Spacer(Modifier.height(12.dp))
-                DoonaSegmented(listOf("A", "B"), selected = 0, onSelect = {})
+                DoonaFilterPicker("A", onClick = {})
                 DoonaIcon(IconsR.drawable.sym_search, DoonaTheme.colors.positive)
                 DoonaText("hello", DoonaTheme.type.body)
             }
@@ -73,7 +73,7 @@ class ProbeDetectionTest {
         assertTrue("a spacer is blank", row.children[1].blank)
         assertTrue("a box with a background is filled and painted", row.children[0].let { it.filled && it.painted })
 
-        assertTrue("a segmented control is a filled control", nodes.any { it.role == LayoutRole.Control && it.descendants().any { d -> d.filled } })
+        assertTrue("a filled picker is a filled control", nodes.any { it.role == LayoutRole.Control && it.descendants().any { d -> d.filled } })
         assertTrue("an icon is a glyph", nodes.any { it.glyph })
         assertTrue("text is read", nodes.any { it.text == "hello" })
         assertEquals(emptyList<String>(), SpacingRules.detected(tree, setOf(LayoutRole.Control)))

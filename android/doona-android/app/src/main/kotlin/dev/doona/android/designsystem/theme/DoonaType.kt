@@ -49,6 +49,7 @@ class DoonaType {
     val search = TypeScale.search.style()
     val cardTitle = TypeScale.cardTitle.style()
     val seeAll = TypeScale.seeAll.style()
+    val settingValue = TypeScale.settingValue.style()
 
     // The old components' roles: U1's steps, their line box centred and untrimmed as before, so their layout keeps its size.
 

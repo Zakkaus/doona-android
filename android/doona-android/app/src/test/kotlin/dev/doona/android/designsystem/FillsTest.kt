@@ -3,6 +3,7 @@ package dev.doona.android.designsystem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -89,14 +90,16 @@ class FillsTest(private val variant: Variant, private val colors: DoonaColors) {
         }
         val thumb = compose.onNodeWithText("One").fetchSemanticsNode().boundsInRoot
         val density = compose.density.density
-        // Just inside the thumb's left edge and mid-height, where an outline would be: the fill reaches the edge.
-        assertFill("the thumb's edge", colors.positive, pixel(PAD + 1f, thumb.center.y / density))
+        // Inside the raised pill's left end at mid-height, past where a rim would be: the raised fill reaches there.
+        assertFill("the selected segment's pill", colors.raised, pixel(PAD + SEGMENT_INSET + EDGE_IN, thumb.center.y / density))
     }
 
     @Test
     fun aCardHasNoOutlineAndSitsOneStepOffTheSheet() {
         compose.setVariantContent(variant) {
-            Box(Modifier.fillMaxSize().background(DoonaTheme.colors.page).padding(PAD.dp)) { DoonaCard(Modifier.fillMaxWidth()) { DoonaText("Card", DoonaTheme.type.body) } }
+            Box(Modifier.fillMaxSize().background(DoonaTheme.colors.page).padding(PAD.dp)) {
+                DoonaCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(PAD.dp)) { DoonaText("Card", DoonaTheme.type.body) }
+            }
         }
         val card = compose.onNodeWithText("Card").fetchSemanticsNode().boundsInRoot
         val density = compose.density.density
@@ -107,6 +110,10 @@ class FillsTest(private val variant: Variant, private val colors: DoonaColors) {
 
     companion object {
         private const val PAD = 16f
+
+        /** The segmented control's pill sits this far inside its track; a point this far inside the pill is past any rim. */
+        private const val SEGMENT_INSET = 2f
+        private const val EDGE_IN = 3f
 
         @JvmStatic
         @Parameters(name = "{0}")
