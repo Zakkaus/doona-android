@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Revolut-style sample of the node page and a node's page (prototype/rv/nodes), debug builds only. -->
+<resources>
+    <string name="rv_nodes_title">Nodes</string>
+    <string name="rv_nodes_all_subscriptions">All subscriptions</string>
+    <string name="rv_nodes_by_latency">By latency</string>
+    <string name="rv_nodes_fastest_card">Fastest nodes</string>
+    <string name="rv_nodes_fastest">Fastest</string>
+    <string name="rv_nodes_steadiest">Steadiest</string>
+    <string name="rv_nodes_spread">Where the nodes are</string>
+    <plurals name="rv_nodes_countries">
+        <item quantity="one">%1$d country or region</item>
+        <item quantity="other">%1$d countries or regions</item>
+    </plurals>
+    <plurals name="rv_nodes_nodes">
+        <item quantity="one">%1$d node</item>
+        <item quantity="other">%1$d nodes</item>
+    </plurals>
+    <string name="rv_nodes_all">All nodes</string>
+    <plurals name="rv_nodes_see_all">
+        <item quantity="one">See all %1$d</item>
+        <item quantity="other">See all %1$d</item>
+    </plurals>
+    <string name="rv_nodes_region_asia">Asia</string>
+    <string name="rv_nodes_region_oceania">Oceania</string>
+    <string name="rv_nodes_region_americas">Americas</string>
+    <string name="rv_nodes_region_europe">Europe</string>
+    <string name="rv_nodes_place_hk">Hong Kong</string>
+    <string name="rv_nodes_place_tw">Taiwan</string>
+    <string name="rv_nodes_place_jp">Japan</string>
+    <string name="rv_nodes_place_kr">South Korea</string>
+    <string name="rv_nodes_place_sg">Singapore</string>
+    <string name="rv_nodes_place_us">United States</string>
+    <string name="rv_nodes_place_ca">Canada</string>
+    <string name="rv_nodes_place_gb">United Kingdom</string>
+    <string name="rv_nodes_place_de">Germany</string>
+    <string name="rv_nodes_place_nl">Netherlands</string>
+    <string name="rv_nodes_place_fr">France</string>
+    <string name="rv_nodes_place_au">Australia</string>
+    <string name="rv_nodes_in_use">In use</string>
+    <string name="rv_nodes_latency_high">High latency</string>
+    <string name="rv_nodes_history">Latency history</string>
+    <string name="rv_nodes_median">Median %1$s</string>
+    <string name="rv_nodes_details">Node details</string>
+    <string name="rv_nodes_protocol">Protocol</string>
+    <string name="rv_nodes_server">Server</string>
+    <string name="rv_nodes_port">Port</string>
+    <string name="rv_nodes_transport">Transport</string>
+    <string name="rv_nodes_subscription">From subscription</string>
+    <string name="rv_nodes_last_test">Last tested</string>
+    <string name="rv_nodes_use">Use this node</string>
+</resources>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Revolut-style sample of the 活動, node and traffic screens (prototype/rv), debug builds only. -->
+<resources>
+    <string name="rv_connect">Connect</string>
+    <string name="rv_disconnect">Disconnect</string>
+    <string name="rv_test_latency">Test latency</string>
+    <string name="rv_more">More</string>
+    <string name="rv_expires">Expires %1$s</string>
+    <string name="rv_updated">Updated %1$s</string>
+    <string name="rv_peak">Peak %1$s</string>
+    <string name="rv_stat_peak">Peak</string>
+    <string name="rv_stat_average">Average</string>
+    <string name="rv_now">Now</string>
+    <string name="rv_no_traffic">No traffic right now</string>
+    <string name="rv_traffic_title">Traffic</string>
+    <string name="rv_this_connection">This connection</string>
+    <string name="rv_downloaded">Downloaded</string>
+    <string name="rv_uploaded">Uploaded</string>
+    <string name="rv_connected_for">Connected for</string>
+    <string name="rv_duration">%1$d h %2$d min</string>
+    <string name="rv_chart_type">Chart type</string>
+    <string name="rv_full_screen">Full screen</string>
+    <string name="rv_range_1m">1m</string>
+    <string name="rv_range_5m">5m</string>
+    <string name="rv_range_15m">15m</string>
+    <string name="rv_range_1h">1h</string>
+    <string name="rv_search_nodes">Search nodes</string>
+    <string name="rv_stats">Statistics</string>
+    <string name="rv_subscriptions">Subscriptions</string>
+    <string name="rv_today_usage">Today\'s usage</string>
+    <string name="rv_less_than_yesterday">%1$s less than yesterday by now</string>
+    <string name="rv_more_than_yesterday">%1$s more than yesterday by now</string>
+    <string name="rv_remaining">left</string>
+    <string name="rv_subscription_usage">%1$s / %2$s · ends %3$s</string>
+    <string name="rv_fastest_nodes">Fastest nodes</string>
+    <string name="rv_preview_label" translatable="false">doona RV sample</string>
+    <string name="rv_mode_rule">Rules</string>
+    <string name="rv_main_node">Main node</string>
+    <string name="rv_main_node_hint">The node you pick becomes the main node</string>
+    <string name="rv_direct_note">No node in use: all traffic goes direct</string>
+    <string name="rv_rule_streaming">Streaming</string>
+    <string name="rv_rule_domestic">Domestic and LAN</string>
+    <string name="rv_rule_ai">AI</string>
+    <plurals name="rv_see_all_rules">
+        <item quantity="one">See the %1$d rule</item>
+        <item quantity="other">See all %1$d rules</item>
+    </plurals>
+</resources>

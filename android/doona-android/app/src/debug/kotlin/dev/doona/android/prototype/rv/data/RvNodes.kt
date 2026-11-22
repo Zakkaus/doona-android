@@ -1,0 +1,183 @@
+package dev.doona.android.prototype.rv.data
+
+import androidx.compose.runtime.Immutable
+import java.util.Random
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
+
+/**
+ * One node: what its share link says (protocol, server, port, transport, TLS), the subscription it came from, and the
+ * results of the last [RV_TESTS] latency tests, oldest first; null is a test that timed out. [name] is the one name every
+ * page shows (`Hong Kong 02 IPLC`); [short] is the same node's country code and number for the narrow tiles (`HK 02`).
+ */
+@Immutable
+internal data class RvNode(
+    val id: String,
+    val name: String,
+    val short: String,
+    val place: RvPlace,
+    val protocol: String,
+    val host: String,
+    val port: Int,
+    val transport: String,
+    val tls: Boolean,
+    val subscription: String,
+    val history: List<Int?>,
+) {
+    /** The last test's result. */
+    val latencyMs: Int? get() = history.last()
+
+    /** The change from the test before, when both answered: positive is slower. */
+    val changeMs: Int? get() = history[history.size - 2]?.let { before -> latencyMs?.let { it - before } }
+
+    /** The middle of the answered tests ([rvMedian]). */
+    val medianMs: Int? get() = rvMedian(history.filterNotNull())
+
+    /** How far the answered tests stray from their mean, in ms; a node that ever timed out is the least steady. */
+    val jitterMs: Double
+        get() {
+            if (history.any { it == null }) return Double.MAX_VALUE
+            val values = history.filterNotNull()
+            val mean = values.average()
+            return sqrt(values.sumOf { (it - mean) * (it - mean) } / values.size)
+        }
+
+    /** The same node before any test ran. */
+    fun untested(): RvNode = copy(history = List(history.size) { null })
+}
+
+/** The [count] fastest nodes by their last test, ties in list order; every page's 最快 list is this one. */
+internal fun List<RvNode>.fastest(count: Int): List<RvNode> = filter { it.latencyMs != null }.sortedBy { it.latencyMs }.take(count)
+
+/** The [count] steadiest nodes over all tests. */
+internal fun List<RvNode>.steadiest(count: Int): List<RvNode> = sortedBy { it.jitterMs }.take(count)
+
+/** The middle of [values], the mean of the two middle ones when there are an even number; null when there are none. */
+internal fun rvMedian(values: List<Int>): Int? = values.sorted().takeIf { it.isNotEmpty() }?.let { (it[(it.size - 1) / 2] + it[it.size / 2]) / 2 }
+
+/** How many latency tests each node keeps. */
+internal const val RV_TESTS = 8
+
+/**
+ * The 48 nodes in 12 countries from the two subscriptions. Each node's tests come from its own seed: a base for its
+ * distance, its own spread, a drift up or down over the eight rounds and now and then a spike or a timeout, so no two
+ * histories share a shape. A node is numbered within its country, and the number is in its id, name, short label and
+ * host alike (tw-03, Taichung 03, TW 03, tw3.example.net). One node, sg-03, slows down steadily over the last rounds:
+ * the detail page's sample.
+ */
+internal fun rvNodes(): List<RvNode> {
+    val perPlace = mutableMapOf<RvPlace, Int>()
+    return SPECS.mapIndexed { i, spec ->
+        val n = perPlace.merge(spec.place, 1, Int::plus)!!
+        val number = n.toString().padStart(2, '0')
+        val code = spec.place.name
+        RvNode(
+            id = "${code.lowercase()}-$number",
+            name = "${spec.city} $number${spec.suffix}",
+            short = "$code $number",
+            place = spec.place,
+            protocol = spec.protocol.label,
+            host = "${code.lowercase()}$n.example.net",
+            port = spec.protocol.port,
+            transport = spec.protocol.transport,
+            tls = spec.protocol.tls,
+            subscription = if (i % 3 == 2) RV_LANTERN else RV_HARBOR,
+            history = SLOWING.takeIf { code == "SG" && n == 3 } ?: history(i, spec),
+        )
+    }
+}
+
+/** When the [RV_TESTS] rounds ran, oldest first: every half hour, the last at 10:00 UTC. */
+internal fun rvTestTimes(): List<Long> = List(RV_TESTS) { LAST_TEST - (RV_TESTS - 1 - it) * TEST_EVERY }
+
+private fun history(index: Int, spec: Spec): List<Int?> {
+    val random = Random(SEED + index * SEED_STEP)
+    val drift = (random.nextFloat() - 0.5f) * spec.spread
+    return List(RV_TESTS) { round ->
+        val spike = if (random.nextFloat() < SPIKE_CHANCE) spec.spread * (2 + random.nextInt(3)) else 0
+        val noise = random.nextGaussian() * spec.spread / 2
+        val value = (spec.base + drift * round / RV_TESTS + noise + spike).roundToInt().coerceAtLeast(spec.base / 2)
+        val timedOut = if (round == RV_TESTS - 1) index == TIMED_OUT else random.nextFloat() < TIMEOUT_CHANCE
+        value.takeUnless { timedOut }
+    }
+}
+
+/** A protocol as a share link spells it out: its name, the transport it rides, its usual port and whether it has TLS. */
+private enum class Proto(val label: String, val transport: String, val port: Int, val tls: Boolean) {
+    Trojan("Trojan", "TCP", 443, true),
+    TrojanWs("Trojan", "WebSocket", 443, true),
+    Vless("VLESS", "gRPC", 443, true),
+    Vmess("VMess", "WebSocket", 8443, true),
+    Ss("Shadowsocks", "TCP", 8388, false),
+    Hy2("Hysteria2", "QUIC", 443, true),
+    Tuic("TUIC", "QUIC", 8443, true),
+}
+
+/** A node before its numbers: where it is, its city name and an optional tag, its protocol, its base latency and spread. */
+private class Spec(val place: RvPlace, val city: String, val protocol: Proto, val base: Int, val spread: Int, val suffix: String = "")
+
+private val SPECS = listOf(
+    Spec(RvPlace.HK, "Hong Kong", Proto.Trojan, 38, 10),
+    Spec(RvPlace.HK, "Hong Kong", Proto.Vless, 31, 6, " IPLC"),
+    Spec(RvPlace.HK, "Hong Kong", Proto.Ss, 44, 14),
+    Spec(RvPlace.HK, "Hong Kong", Proto.Hy2, 52, 22),
+    Spec(RvPlace.HK, "Hong Kong", Proto.TrojanWs, 41, 9, " IEPL"),
+    Spec(RvPlace.HK, "Hong Kong", Proto.Vmess, 63, 18),
+    Spec(RvPlace.TW, "Taipei", Proto.Trojan, 24, 5),
+    Spec(RvPlace.TW, "Taipei", Proto.Hy2, 29, 12),
+    Spec(RvPlace.TW, "Taichung", Proto.Ss, 35, 8),
+    Spec(RvPlace.TW, "Taipei", Proto.Vless, 27, 4),
+    Spec(RvPlace.TW, "Kaohsiung", Proto.Tuic, 39, 15),
+    Spec(RvPlace.JP, "Tokyo", Proto.Vless, 58, 9),
+    Spec(RvPlace.JP, "Tokyo", Proto.Trojan, 64, 16),
+    Spec(RvPlace.JP, "Osaka", Proto.Hy2, 71, 25),
+    Spec(RvPlace.JP, "Tokyo", Proto.Ss, 66, 11, " IPLC"),
+    Spec(RvPlace.JP, "Osaka", Proto.Vmess, 79, 13),
+    Spec(RvPlace.JP, "Tokyo", Proto.Tuic, 61, 20),
+    Spec(RvPlace.KR, "Seoul", Proto.Trojan, 74, 12),
+    Spec(RvPlace.KR, "Seoul", Proto.Vless, 82, 18),
+    Spec(RvPlace.KR, "Chuncheon", Proto.Ss, 91, 9),
+    Spec(RvPlace.SG, "Singapore", Proto.Trojan, 86, 14),
+    Spec(RvPlace.SG, "Singapore", Proto.Hy2, 97, 28),
+    Spec(RvPlace.SG, "Singapore", Proto.Vless, 92, 10),
+    Spec(RvPlace.SG, "Singapore", Proto.Ss, 104, 12),
+    Spec(RvPlace.SG, "Singapore", Proto.TrojanWs, 99, 17),
+    Spec(RvPlace.US, "Los Angeles", Proto.Vless, 152, 21),
+    Spec(RvPlace.US, "San Jose", Proto.Trojan, 161, 15),
+    Spec(RvPlace.US, "Seattle", Proto.Hy2, 174, 33),
+    Spec(RvPlace.US, "Los Angeles", Proto.Ss, 158, 12),
+    Spec(RvPlace.US, "New York", Proto.Vmess, 226, 24),
+    Spec(RvPlace.US, "Dallas", Proto.Tuic, 198, 19),
+    Spec(RvPlace.CA, "Vancouver", Proto.Trojan, 171, 14),
+    Spec(RvPlace.CA, "Toronto", Proto.Vless, 234, 27),
+    Spec(RvPlace.GB, "London", Proto.Trojan, 238, 18),
+    Spec(RvPlace.GB, "London", Proto.Hy2, 251, 40),
+    Spec(RvPlace.GB, "Manchester", Proto.Ss, 262, 15),
+    Spec(RvPlace.GB, "London", Proto.Vless, 244, 11),
+    Spec(RvPlace.DE, "Frankfurt", Proto.Vless, 221, 13),
+    Spec(RvPlace.DE, "Frankfurt", Proto.Trojan, 229, 22),
+    Spec(RvPlace.DE, "Berlin", Proto.Tuic, 247, 31),
+    Spec(RvPlace.NL, "Amsterdam", Proto.Trojan, 232, 16),
+    Spec(RvPlace.NL, "Amsterdam", Proto.Ss, 241, 10),
+    Spec(RvPlace.NL, "Rotterdam", Proto.Vmess, 268, 26),
+    Spec(RvPlace.FR, "Paris", Proto.Vless, 236, 14),
+    Spec(RvPlace.FR, "Marseille", Proto.Hy2, 214, 29),
+    Spec(RvPlace.AU, "Sydney", Proto.Trojan, 128, 17),
+    Spec(RvPlace.AU, "Melbourne", Proto.Vless, 141, 12),
+    Spec(RvPlace.AU, "Sydney", Proto.Ss, 136, 23),
+)
+
+/** sg-03's last rounds: fine at first, then slower each time. */
+private val SLOWING = listOf(92, 88, 97, 104, 131, 158, 172, 186)
+
+/** New York's last test timed out, so the list shows a node with no figure. */
+private const val TIMED_OUT = 29
+
+private const val SEED = 20_261_123L
+private const val SEED_STEP = 7_919L
+private const val SPIKE_CHANCE = 0.08f
+private const val TIMEOUT_CHANCE = 0.03f
+
+/** The last round ran at 2026-11-22 10:00 UTC, 24 minutes before [RV_NOW], every half hour before it. */
+private const val LAST_TEST = 1_795_341_600_000L
+private const val TEST_EVERY = 1_800_000L
