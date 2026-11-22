@@ -14,12 +14,24 @@
 //! link-local and unique local. A global IPv6 address in the phone's own /64 is not counted. The
 //! code is reported only after a dial failed, so counting too much costs at most one question.
 //!
-//! Host names are classified by the addresses they resolved to, never by how the name looks:
-//! [`note`] keeps the names whose last lookup gave a local address.
+//! A failure is classified by the address the failing hop dialed, never by a host name or by what
+//! a name resolved to for another dial. The subscription fetch dials its addresses itself; a dial
+//! of the data path carries a [`Trace`] of the node addresses honk chose and of the transport to
+//! the node, if one came up. honk keeps its latency probes out of that reporting, so a probe
+//! carries the [`Lookups`] the core made for it instead, and counts its node as local only when
+//! every address it could have dialed for it is: the literal, or each answer this probe's own
+//! lookup of the node's name gave.
 
-use std::collections::HashSet;
+use honk_outbound::runtime::flow_observation::{
+    FlowContext, FlowEvent, FlowObserver, TransportStatus,
+};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
+
+tokio::task_local! {
+    /// The probe the core's lookups serve, while it runs.
+    static PROBE: Lookups;
+}
 
 /// Whether Android may count `ip` as an address on the local network.
 pub(crate) fn is_local(ip: IpAddr) -> bool {
@@ -32,133 +44,196 @@ pub(crate) fn is_local(ip: IpAddr) -> bool {
 fn v4(a: Ipv4Addr) -> bool {
     let [first, second, ..] = a.octets();
     let cgnat = first == 100 && second & 0xc0 == 64;
-    a.is_private() || a.is_link_local() || cgnat || a.is_multicast() || a.is_broadcast()
+    a.is_private() || a.is_link_local() || cgnat || a.is_multicast() || a.is_broadcast() || lan(a)
 }
 
 fn v6(a: Ipv6Addr) -> bool {
     a.is_unique_local() || a.is_unicast_link_local() || a.is_multicast()
 }
 
-/// Names whose last lookup gave at least one local address. It holds names only, never logged, and
-/// only the names the core looks up itself: proxy servers, subscription hosts and the probe host.
-static LOCAL_HOSTS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
-
-fn hosts() -> MutexGuard<'static, Option<HashSet<String>>> {
-    LOCAL_HOSTS.lock().unwrap_or_else(|e| e.into_inner())
+/// In unit tests `127.77.0.0/16` plays a local network the host reaches: loopback is never local,
+/// and no other range lets a test serve a node on the local network.
+#[cfg(test)]
+fn lan(a: Ipv4Addr) -> bool {
+    matches!(a.octets(), [127, 77, _, _])
 }
 
-fn key(host: &str) -> String {
-    host.trim_end_matches('.').to_ascii_lowercase()
+#[cfg(not(test))]
+fn lan(_: Ipv4Addr) -> bool {
+    false
 }
 
-/// Records what a lookup of `host` gave, so a failed dial to it can be classified later.
-pub(crate) fn note(host: &str, ips: &[IpAddr]) {
-    let mut hosts = hosts();
-    let hosts = hosts.get_or_insert_with(HashSet::new);
-    if ips.iter().any(|&ip| is_local(ip)) {
-        hosts.insert(key(host));
-    } else {
-        hosts.remove(&key(host));
+/// The address `host` names when it is an address literal, bracketed or not.
+pub(crate) fn literal(host: &str) -> Option<IpAddr> {
+    host.trim_start_matches('[')
+        .trim_end_matches(']')
+        .parse()
+        .ok()
+}
+
+/// The node addresses a trace keeps at most; a node has a few.
+const MAX_CHOSEN: usize = 16;
+
+/// What honk reports a traced dial's events under; nothing reads the ids.
+const CONTEXT: FlowContext = FlowContext {
+    flow_id: uuid::Uuid::nil(),
+    generation: 0,
+    attempt_id: None,
+    lookup_id: None,
+    dns_purpose: "node",
+};
+
+/// What one dial through a node did on its way to the node, as honk's flow observation reports
+/// it: each node address it chose (a connect it started, or the address it took from a lookup of
+/// the node's name) and the address a transport to the node came up on, if one did. A lookup's own
+/// connections are the resolver's and are left out.
+#[derive(Clone, Default)]
+pub(crate) struct Trace(Arc<Mutex<Seen>>);
+
+#[derive(Default)]
+struct Seen {
+    chosen: Vec<IpAddr>,
+    /// `Some` once a transport to the node came up (connected, or an existing one reused), with
+    /// its address when honk knows it.
+    reached: Option<Option<IpAddr>>,
+}
+
+impl Trace {
+    /// `dial` with honk reporting to this trace what it tries. Events of a dial cut short still
+    /// count: the trace outlives it.
+    pub fn scope<F: Future>(&self, dial: F) -> impl Future<Output = F::Output> + use<F> {
+        let seen = Arc::clone(&self.0);
+        let observer = FlowObserver::new(
+            CONTEXT,
+            Arc::new(move |context: FlowContext, event: FlowEvent| {
+                // Inside a lookup: the resolver's own TCP connection, not the node's.
+                if context.lookup_id.is_none() {
+                    lock(&seen).record(&event);
+                }
+            }),
+        );
+        observer.scope(dial)
+    }
+
+    /// Whether the dial stopped on its way to the node at an address on the local network: no
+    /// transport to the node came up, and an address it chose for the node is local. A dial that
+    /// failed before it chose one, as when the node's name did not resolve, did not.
+    pub fn refused_locally(&self) -> bool {
+        let seen = lock(&self.0);
+        seen.reached.is_none() && seen.chosen.iter().any(|&ip| is_local(ip))
+    }
+
+    /// Whether a transport to the node came up on an address on the local network.
+    pub fn reached_locally(&self) -> bool {
+        matches!(lock(&self.0).reached, Some(Some(ip)) if is_local(ip))
+    }
+
+    /// The node address the dial's transport sends to: the one it came up on, or else the last
+    /// one chosen, as for a UDP transport that only binds a socket to it.
+    pub fn peer(&self) -> Option<IpAddr> {
+        let seen = lock(&self.0);
+        seen.reached
+            .flatten()
+            .or_else(|| seen.chosen.last().copied())
+    }
+
+    /// Records `event` as honk reports it; for tests that stand in for honk.
+    #[cfg(test)]
+    pub fn record(&self, event: &FlowEvent) {
+        lock(&self.0).record(event);
     }
 }
 
-/// Whether a dial to `host` (an address literal, bracketed or not, or a name) went to the local
-/// network: a literal by its address, a name by its last lookup.
-pub(crate) fn host_is_local(host: &str) -> bool {
-    let bare = host.trim_start_matches('[').trim_end_matches(']');
-    if let Ok(ip) = bare.parse::<IpAddr>() {
-        return is_local(ip);
+impl Seen {
+    fn record(&mut self, event: &FlowEvent) {
+        match event {
+            FlowEvent::Transport {
+                server_addr,
+                status,
+                ..
+            } => {
+                if let Some(a) = server_addr {
+                    self.choose(a.ip());
+                }
+                if *status == TransportStatus::Succeeded {
+                    self.reached = Some(server_addr.map(|a| a.ip()));
+                }
+            }
+            FlowEvent::TransportAttached { server_addr, .. } => {
+                self.reached = Some(server_addr.map(|a| a.ip()));
+            }
+            // The address honk took from a lookup of the node's name.
+            FlowEvent::Dns(lookup) => {
+                if let Some(ip) = lookup.selected_ip {
+                    self.choose(ip);
+                }
+            }
+            _ => {}
+        }
     }
-    hosts().as_ref().is_some_and(|h| h.contains(&key(bare)))
+
+    fn choose(&mut self, ip: IpAddr) {
+        if self.chosen.len() < MAX_CHOSEN && !self.chosen.contains(&ip) {
+            self.chosen.push(ip);
+        }
+    }
+}
+
+/// What the core's own lookups gave one latency probe: whether its target resolved, after which
+/// the probe dials its node, and what the node's name resolved to.
+#[derive(Clone, Default)]
+pub(crate) struct Lookups(Arc<Mutex<Looked>>);
+
+#[derive(Default)]
+struct Looked {
+    target: bool,
+    node: Vec<IpAddr>,
+}
+
+impl Lookups {
+    /// `probe` with the core's lookups for it recorded here; they still count when it is cut short.
+    pub fn scope<F: Future>(&self, probe: F) -> impl Future<Output = F::Output> {
+        PROBE.scope(self.clone(), probe)
+    }
+
+    /// Whether the probe stopped at an address of its node on the local network: it went on to dial
+    /// the node, and whatever address it dialed for the node is local, the literal `host`, or each
+    /// answer the node's name resolved to for this probe. A name that also resolved to a public
+    /// address does not count, as honk may have dialed that one. A probe that failed before, at
+    /// the lookup of its target or of the node's name, did not. Whether the node then came up honk
+    /// does not say; without the permission no node on the local network does, and with it the app
+    /// asks nothing.
+    pub fn refused_locally(&self, host: &str) -> bool {
+        let looked = lock(&self.0);
+        let local = match literal(host) {
+            Some(ip) => is_local(ip),
+            None => !looked.node.is_empty() && looked.node.iter().all(|&ip| is_local(ip)),
+        };
+        looked.target && local
+    }
+}
+
+/// Records what a lookup the core made for a running probe gave: the probe's own `target`, or its
+/// node's name.
+pub(crate) fn looked_up(target: bool, ips: &[IpAddr]) {
+    let _ = PROBE.try_with(|probe| {
+        let mut looked = lock(&probe.0);
+        if target {
+            looked.target = true;
+        } else {
+            for &ip in ips.iter().take(MAX_CHOSEN) {
+                if !looked.node.contains(&ip) {
+                    looked.node.push(ip);
+                }
+            }
+        }
+    });
+}
+
+/// A poisoned lock still holds what was recorded: every update only assigns or appends.
+fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn local(text: &str) -> bool {
-        is_local(text.parse().unwrap())
-    }
-
-    #[test]
-    fn private_link_local_cgnat_and_multicast_ranges_are_local() {
-        let v4 = [
-            "10.0.0.1",
-            "10.255.255.254",
-            "172.16.0.1",
-            "172.31.255.254",
-            "192.168.8.161",
-            "169.254.1.1",
-            "100.64.0.1",
-            "100.127.255.254",
-            "224.0.0.251",
-            "239.255.255.250",
-            "255.255.255.255",
-        ];
-        let v6 = [
-            "fc00::1",
-            "fd12:3456:789a::1",
-            "fe80::1",
-            "febf::1",
-            "ff02::fb",
-            // An IPv4 local address mapped into IPv6 is still that address.
-            "::ffff:192.168.1.1",
-        ];
-        for text in v4.iter().chain(&v6) {
-            assert!(local(text), "{text}");
-        }
-    }
-
-    #[test]
-    fn loopback_unspecified_and_public_addresses_are_not_local() {
-        let not = [
-            "127.0.0.1",
-            "127.1.2.3",
-            "::1",
-            "0.0.0.0",
-            "::",
-            // Just outside the private ranges.
-            "9.255.255.255",
-            "11.0.0.1",
-            "172.15.255.255",
-            "172.32.0.1",
-            "192.167.255.255",
-            "192.169.0.1",
-            "100.63.255.255",
-            "100.128.0.1",
-            "169.253.255.255",
-            "1.1.1.1",
-            "192.0.2.9",
-            "203.0.113.7",
-            "2001:db8::1",
-            "2606:4700:4700::1111",
-            "fec0::1",
-            "::ffff:8.8.8.8",
-        ];
-        for text in not {
-            assert!(!local(text), "{text}");
-        }
-    }
-
-    #[test]
-    fn literals_are_classified_by_address_and_names_by_their_last_lookup() {
-        assert!(host_is_local("192.168.8.161"));
-        assert!(host_is_local("[fd00::2]"));
-        assert!(!host_is_local("[::1]"));
-        assert!(!host_is_local("203.0.113.7"));
-        // The name says nothing: only what it resolved to counts.
-        let name = "192-168-8-161.sslip.localnet.test";
-        assert!(!host_is_local(name));
-        note(name, &["192.168.8.161".parse().unwrap()]);
-        assert!(host_is_local(name));
-        assert!(host_is_local("192-168-8-161.SSLIP.localnet.test."));
-        note(name, &["203.0.113.7".parse().unwrap()]);
-        assert!(!host_is_local(name));
-        let mixed = "nas.localnet.test";
-        note(
-            mixed,
-            &["2001:db8::1".parse().unwrap(), "10.0.0.2".parse().unwrap()],
-        );
-        assert!(host_is_local(mixed));
-    }
-}
+mod tests;

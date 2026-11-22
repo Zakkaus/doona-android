@@ -22,7 +22,12 @@ const CONFIG: &str =
 const HELD: Duration = Duration::from_millis(2500);
 
 /// Ready at once, then idle.
-fn idle(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'static, ()> {
+pub(super) fn idle(
+    tun: TunHandle,
+    _: Settings,
+    _: Gen,
+    ready: StartSignal,
+) -> BoxFuture<'static, ()> {
     Box::pin(async move {
         let _held = tun;
         ready.send();
@@ -88,7 +93,7 @@ fn stop_closes_an_established_quic_connection_while_the_workers_are_held() {
         Inbound::Tun,
         Mode::Global,
         &core.shared.outbounds,
-        &Arc::new(Session::new(0)),
+        &Arc::new(Session::new(0, std::sync::Weak::new())),
     );
     let mut stream = core.runtime.block_on(route.connect(destination)).unwrap();
     assert_eq!(ping(&core, &mut stream, b"kept").unwrap(), b"kept");

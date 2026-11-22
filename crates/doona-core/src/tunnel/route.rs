@@ -3,12 +3,14 @@
 //! `Proxy` group selects when the flow opens, dialed on that node's carriers (see `outbounds.rs`),
 //! and refuses it while the group has none: a Global flow is never sent direct. A flow keeps the
 //! route it opened with, so a mode or selection change applies to new flows only. doona excludes
-//! its own package from the VPN, so these sockets need no `protect()`. A dial that fails through a
-//! node on the local network is noted on the generation's [`Session`] (ARCH D26).
+//! its own package from the VPN, so these sockets need no `protect()`. What a dial through a node
+//! showed on its way to the node goes to the generation's [`Session`] (ARCH D26): one refused at an
+//! address on the local network warns, one that came up there clears the warning.
 
 use super::Session;
 use super::udp::UdpUpstream;
 use crate::dto::Mode;
+use crate::localnet::{self, Trace};
 use crate::outbounds::{Dialer, Outbounds};
 use honk_outbound::proxy::AsyncReadWrite;
 use std::io::{self, ErrorKind};
@@ -63,8 +65,7 @@ pub(crate) enum Inbound {
 #[derive(Clone)]
 pub(crate) enum Route {
     Direct,
-    /// Through this node; a failed dial to it is noted on the session when it is on the local
-    /// network.
+    /// Through this node; what each dial showed on its way to the node goes to the session.
     Proxy(Arc<Dialer>, Arc<Session>),
     /// Global while the `Proxy` group has no node.
     Refuse,
@@ -116,13 +117,15 @@ impl Route {
             Route::Proxy(d, session) => {
                 let (registry, proxies, id) =
                     (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
-                let dial = async move {
+                let (trace, began) = (Trace::default(), session.begin_dial());
+                let dial = trace.scope(async move {
                     proxies
                         .dial_runtime(registry, id, dst, None, CONNECT_TIMEOUT)
                         .await
-                };
+                });
                 let dialed = flatten(within(d.on_carriers(dial)).await).map(|c| c.stream);
-                noted(dialed, d, session)
+                session.dialed(began, &trace, dialed.is_ok());
+                dialed
             }
             Route::Refuse => Err(ErrorKind::PermissionDenied.into()),
         }
@@ -143,13 +146,23 @@ impl Route {
             Route::Proxy(d, session) => {
                 let (registry, proxies, id) =
                     (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
-                let dial = async move {
+                let (trace, began) = (Trace::default(), session.begin_dial());
+                let dial = trace.scope(async move {
                     proxies
                         .dial_udp_transport_runtime(registry, id, dst, None, CONNECT_TIMEOUT)
                         .await
-                };
-                let transport = noted(flatten(within(d.on_carriers(dial)).await), d, session)?;
-                Ok(UdpUpstream::Proxy(transport, dst))
+                });
+                let dialed = flatten(within(d.on_carriers(dial)).await);
+                session.dialed(began, &trace, dialed.is_ok());
+                // A transport that only bound a socket to the node has sent nothing yet: its first
+                // send says whether the node's address is reachable.
+                let peer = trace.peer().or_else(|| localnet::literal(d.node.host()));
+                let local = peer.is_some_and(localnet::is_local);
+                Ok(UdpUpstream::Proxy(
+                    dialed?,
+                    dst,
+                    local.then(|| Arc::clone(session)),
+                ))
             }
             Route::Refuse => Err(ErrorKind::PermissionDenied.into()),
         }
@@ -169,14 +182,6 @@ fn flatten<T>(dialed: io::Result<io::Result<anyhow::Result<T>>>) -> io::Result<T
     dialed?.and_then(|r| r.map_err(|_| ErrorKind::ConnectionRefused.into()))
 }
 
-/// Notes a failed dial to a node on the local network on its generation's session.
-fn noted<T>(dialed: io::Result<T>, d: &Dialer, session: &Session) -> io::Result<T> {
-    if dialed.is_err() && crate::localnet::host_is_local(d.node.host()) {
-        session.note_local_network();
-    }
-    dialed
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -192,7 +197,7 @@ mod tests {
     #[tokio::test]
     async fn global_without_a_node_is_refused_never_sent_direct() {
         let outbounds = Outbounds::new(Arc::default()).unwrap();
-        let session = Arc::new(Session::new(1));
+        let session = Arc::new(Session::new(1, std::sync::Weak::new()));
         let global = Route::of(Inbound::Tun, Mode::Global, &outbounds, &session);
         assert!(global.refused() && !global.carries_udp());
         let direct = Route::of(Inbound::Tun, Mode::Direct, &outbounds, &session);

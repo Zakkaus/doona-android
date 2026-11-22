@@ -206,7 +206,7 @@ fn a_dial_that_reached_nothing_is_local_network_when_it_tried_a_local_address() 
     ];
     for (addrs, want) in cases {
         let tried: Vec<SocketAddr> = addrs.iter().map(|a| a.parse().unwrap()).collect();
-        let got = run(Dials::default().first(tried, |_| async { None::<()> }));
+        let got = run(Dials::new(refused).first(tried, |_| async { None::<()> }));
         assert_eq!(got.err(), Some(want), "{addrs:?}");
     }
 }
@@ -215,7 +215,7 @@ fn a_dial_that_reached_nothing_is_local_network_when_it_tried_a_local_address() 
 /// not the local network's.
 #[test]
 fn a_connection_clears_a_local_address_tried_before_it() {
-    let dials = Dials::default();
+    let dials = Dials::new(refused);
     let addrs = vec![
         "192.168.8.161:80".parse().unwrap(),
         "203.0.113.7:80".parse().unwrap(),
@@ -226,12 +226,31 @@ fn a_connection_clears_a_local_address_tried_before_it() {
     assert_eq!(dials.failure(), ErrorCode::FetchFailed);
 }
 
+/// Stands in for a connection that is refused at once.
+fn refused(_: SocketAddr) -> BoxFuture<'static, Option<TcpStream>> {
+    async { None }.boxed()
+}
+
+/// Stands in for a connection that never answers, as one Android 17 blocks.
+fn unanswered(_: SocketAddr) -> BoxFuture<'static, Option<TcpStream>> {
+    futures_util::future::pending().boxed()
+}
+
 /// A fetch from a local address that is refused or never answers is `local_network`, also when
-/// the bound runs out while the dial waits, as a dial Android 17 blocks does.
+/// the bound runs out while the dial waits, as a dial Android 17 blocks does; the same from a
+/// public address is `fetch_failed`. No connection is made: each stands in for the network.
 #[test]
 fn a_fetch_from_a_local_address_that_never_connects_is_local_network() {
-    for url in ["http://10.255.255.1:9/sub", "http://[fd00::dead]:9/sub"] {
-        let got = run(fetch(parse_url(url).unwrap(), Duration::from_millis(300)));
-        assert_eq!(got.err(), Some(ErrorCode::LocalNetwork), "{url}");
+    let cases = [
+        ("http://10.255.255.1:9/sub", ErrorCode::LocalNetwork),
+        ("http://[fd00::dead]:9/sub", ErrorCode::LocalNetwork),
+        ("http://203.0.113.7:9/sub", ErrorCode::FetchFailed),
+    ];
+    for (url, want) in cases {
+        for connect in [refused as Connect, unanswered] {
+            let bound = Duration::from_millis(300);
+            let got = run(fetch_by(parse_url(url).unwrap(), bound, connect));
+            assert_eq!(got.err(), Some(want), "{url}");
+        }
     }
 }

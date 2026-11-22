@@ -13,6 +13,8 @@ use base64::Engine;
 use boring::ssl::{SslConnector, SslMethod, SslVersion};
 use boring::x509::X509;
 use boring::x509::store::X509StoreBuilder;
+use futures_util::FutureExt;
+use futures_util::future::BoxFuture;
 use std::io::ErrorKind;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::LazyLock;
@@ -65,19 +67,46 @@ pub(crate) fn parse_url(text: &str) -> Result<Url, ErrorCode> {
 /// Downloads `url` within `bound`, redirects included. A failure is `fetch_failed`, or
 /// `local_network` while the dial that failed or ran out of time had a local address to try.
 pub(crate) async fn fetch(url: Url, bound: Duration) -> Result<Fetched, ErrorCode> {
-    let dials = Dials::default();
+    fetch_by(url, bound, tcp).await
+}
+
+/// Makes one TCP connection of a fetch, or none.
+type Connect = fn(SocketAddr) -> BoxFuture<'static, Option<TcpStream>>;
+
+/// [`fetch`] with each connection made by `connect`; tests stand in for the network with it.
+async fn fetch_by(url: Url, bound: Duration, connect: Connect) -> Result<Fetched, ErrorCode> {
+    let dials = Dials::new(connect);
     tokio::time::timeout(bound, follow(url, &dials))
         .await
         .unwrap_or_else(|_| Err(dials.failure()))
 }
 
-/// Whether the fetch's last dial tried an address on the local network without connecting.
-#[derive(Default)]
+/// A direct connection to `addr` within [`CONNECT_TIMEOUT`].
+fn tcp(addr: SocketAddr) -> BoxFuture<'static, Option<TcpStream>> {
+    async move {
+        tokio::time::timeout(CONNECT_TIMEOUT, TcpStream::connect(addr))
+            .await
+            .ok()?
+            .ok()
+    }
+    .boxed()
+}
+
+/// How a fetch connects, and whether its last dial tried an address on the local network without
+/// connecting.
 struct Dials {
     local: AtomicBool,
+    connect: Connect,
 }
 
 impl Dials {
+    fn new(connect: Connect) -> Dials {
+        Dials {
+            local: AtomicBool::new(false),
+            connect,
+        }
+    }
+
     /// Connects to the first of `addrs` that `connect` reaches, in order. When none is reached the
     /// failure is `local_network` if one of them was local, and `fetch_failed` otherwise.
     async fn first<S, F: Future<Output = Option<S>>>(
@@ -225,13 +254,7 @@ async fn connect(url: &Url, port: u16, dials: &Dials) -> Result<TcpStream, Error
             .collect(),
         None => Vec::new(),
     };
-    let connect = |addr| async move {
-        tokio::time::timeout(CONNECT_TIMEOUT, TcpStream::connect(addr))
-            .await
-            .ok()?
-            .ok()
-    };
-    dials.first(addrs, connect).await
+    dials.first(addrs, dials.connect).await
 }
 
 /// BoringSSL with the webpki roots, as honk-outbound's TLS; built once.

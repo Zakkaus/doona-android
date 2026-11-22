@@ -92,6 +92,12 @@ pub struct Core {
     hooks: hooks::Hooks,
 }
 
+/// Whether `life` runs a generation whose snapshot carries a warning; leaving it clears the
+/// warning, which raises the revision like any other change of it.
+fn warned(life: &Life) -> bool {
+    matches!(life, Life::Running(tunnel) if tunnel.session().warning().is_some())
+}
+
 enum Life {
     Stopped,
     /// A `start` is under way; a `stop` cancels it and closes its tun.
@@ -242,6 +248,9 @@ impl Core {
         let old = std::mem::replace(&mut *life, starting);
         if let Some(mut c) = catalog {
             c.end_probes();
+            if warned(&old) {
+                c.revision += 1;
+            }
         }
         let generation = self.generation.fetch_add(1, Relaxed) + 1;
         let old = match old {
@@ -318,6 +327,7 @@ impl Core {
             mode: Arc::clone(&self.mode),
             outbounds: Arc::clone(&self.shared.outbounds),
             panics: Arc::clone(&self.panics),
+            catalog: Arc::downgrade(&self.shared),
         };
         Ok((settings, resolvers))
     }
@@ -337,6 +347,9 @@ impl Core {
             #[cfg(test)]
             self.hooks.teardown(self);
             let old = std::mem::replace(&mut *life, Life::Stopped);
+            if warned(&old) {
+                catalog.revision += 1;
+            }
             drop(catalog);
             match old {
                 Life::Running(tunnel) => {
@@ -570,3 +583,5 @@ mod tests_carriers;
 mod tests_catalog;
 #[cfg(test)]
 mod tests_latency;
+#[cfg(test)]
+mod tests_localnet;

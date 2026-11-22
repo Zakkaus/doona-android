@@ -77,8 +77,9 @@ pub struct Snapshot {
     pub generation: i64,
     pub since_epoch_ms: Option<i64>,
     pub error: Option<ErrorCode>,
-    /// A problem that leaves the data path up: `local_network` once a dial to a node on the local
-    /// network failed in this generation. Cleared by the next `start`; null while stopped.
+    /// A problem that leaves the data path up: `local_network` once a dial through a node was
+    /// refused on its way to an address on the local network, until a dial reaches a node there.
+    /// Null while stopped; each change raises `revision`.
     pub warning: Option<ErrorCode>,
     pub traffic: Traffic,
     pub catalog: Option<Catalog>,
@@ -118,8 +119,8 @@ pub struct Member {
     pub name: String,
     pub latency_ms: Option<u32>,
     pub failed: bool,
-    /// Why the last probe failed, when the core knows: `local_network` for a node whose server is
-    /// on the local network. Null otherwise, and for groups.
+    /// Why the last probe failed, when the core knows: `local_network` when it was refused on its
+    /// way to the node at an address on the local network. Null otherwise, and for groups.
     pub error: Option<ErrorCode>,
     pub is_group: bool,
     pub subscription_id: Option<String>,

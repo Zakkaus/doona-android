@@ -143,7 +143,13 @@ pub fn fixture(name: &str) -> Vec<u8> {
 /// A loopback SOCKS5 server without authentication that relays each CONNECT; counts the
 /// connections it accepted.
 pub fn socks5() -> (std::net::SocketAddr, std::sync::Arc<AtomicU32>) {
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    socks5_on([127, 0, 0, 1])
+}
+
+/// [`socks5`] on `ip`; one on `127.77.0.0/16` is a node on the local network (see `localnet.rs`).
+/// A CONNECT whose destination refuses closes the client's connection without a reply.
+pub fn socks5_on(ip: [u8; 4]) -> (std::net::SocketAddr, std::sync::Arc<AtomicU32>) {
+    let listener = std::net::TcpListener::bind(std::net::SocketAddr::from((ip, 0))).unwrap();
     let addr = listener.local_addr().unwrap();
     let count = std::sync::Arc::new(AtomicU32::new(0));
     let c = std::sync::Arc::clone(&count);

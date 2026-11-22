@@ -485,7 +485,7 @@ fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
             Inbound::Tun,
             Mode::Global,
             &core.shared.outbounds,
-            &Arc::new(Session::new(0)),
+            &Arc::new(Session::new(0, std::sync::Weak::new())),
         );
         let mut s = core.runtime.block_on(route.connect(echo)).unwrap();
         assert_eq!(ping(core, &mut s, b"before").unwrap(), b"before");

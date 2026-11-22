@@ -3,12 +3,14 @@
 //! [`PROBE_TIMEOUT`]. A probe waits on the network with no lock held and commits in a short
 //! section that checks the node still has the incarnation and probe generation it began with
 //! (core-api.md, Commit rule); a test that ends, cancelled or not, clears its groups' `testing`.
-//! A failed probe of a node whose server is on the local network records `local_network`
-//! (ARCH D26).
+//! A probe that failed after it went on to dial its node at an address on the local network
+//! records `local_network` (ARCH D26); one that failed before, at the lookup of its own target or
+//! of the node's name, records no code (see `localnet::Lookups`).
 
 use crate::api::lock;
 use crate::catalog::{Plan, Round, Shared, Target};
 use crate::dto::ErrorCode;
+use crate::localnet::Lookups;
 use crate::outbounds::Carriers;
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
@@ -35,6 +37,8 @@ pub(crate) struct ProbeJob {
     pub registry: Option<Arc<OutboundRuntimeRegistry>>,
     pub proxies: Arc<ProxyRegistry>,
     pub url: Arc<str>,
+    /// What the core's lookups gave the probe; read when it measured nothing.
+    pub lookups: Lookups,
 }
 
 /// Measures one node: the round trip, or `None` when the probe failed. The app uses
@@ -50,9 +54,9 @@ async fn urltest_job(job: ProbeJob) -> Option<Duration> {
     let runtime = job.registry?.get(&job.node.id)?;
     let entry = job.proxies.find(job.node.protocol())?;
     let handler = Arc::clone(&entry.tcp);
-    honk_outbound::urltest::urltest_node(&runtime, handler.as_ref(), &job.url, PROBE_TIMEOUT)
-        .await
-        .ok()
+    let probe =
+        honk_outbound::urltest::urltest_node(&runtime, handler.as_ref(), &job.url, PROBE_TIMEOUT);
+    job.lookups.scope(probe).await.ok()
 }
 
 /// The probing the core does: who measures, against what, and how many at once.
@@ -89,6 +93,7 @@ impl Probes {
                 registry: published.as_ref().map(|(r, _)| Arc::clone(r)),
                 proxies: Arc::clone(&proxies),
                 url: Arc::clone(&self.url),
+                lookups: Lookups::default(),
             };
             let carriers = published.as_ref().map(|(_, c)| Arc::clone(c));
             self.one(Arc::clone(shared), (job, carriers), target, cancel.clone())
@@ -120,6 +125,7 @@ impl Probes {
             let Ok(_permit) = permits.acquire_owned().await else {
                 return;
             };
+            let lookups = job.lookups.clone();
             let probe = prober(job);
             let probe = async {
                 match &carriers {
@@ -136,7 +142,7 @@ impl Probes {
                 .ok()
                 .flatten()
                 .map(|d| u32::try_from(d.as_millis()).unwrap_or(u32::MAX).max(1));
-            let error = failure(ms, &target);
+            let error = failure(ms, &lookups, &target);
             let mut c = lock(&shared.catalog);
             // `cancel` is cancelled under the catalog lock, so a stop that returned is never undone.
             if !cancel.is_cancelled() && c.model.record(&target, ms, error) {
@@ -147,10 +153,10 @@ impl Probes {
     }
 }
 
-/// Why a probe measured nothing, when the core can tell: its node's server is on the local
-/// network, by address or by what its name last resolved to.
-fn failure(ms: Option<u32>, target: &Target) -> Option<ErrorCode> {
-    let local = ms.is_none() && crate::localnet::host_is_local(target.entry.node.host());
+/// Why a probe measured nothing, when the core can tell: it stopped at an address of its node on
+/// the local network. Read also when the probe ran out of time, as a dial Android 17 blocks does.
+fn failure(ms: Option<u32>, lookups: &Lookups, target: &Target) -> Option<ErrorCode> {
+    let local = ms.is_none() && lookups.refused_locally(target.entry.node.host());
     local.then_some(ErrorCode::LocalNetwork)
 }
 

@@ -16,7 +16,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 use std::os::fd::AsRawFd;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Mutex, MutexGuard};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn serial() -> MutexGuard<'static, ()> {
     static SERIAL: Mutex<()> = Mutex::new(());
@@ -184,13 +184,14 @@ fn a_refused_start_keeps_the_running_list() {
 
 /// A subscription host is classified by what it resolves to, never by its name: resolved to an
 /// address on the local network that never connects, the fetch is `local_network`; resolved to a
-/// loopback port with nothing on it, `fetch_failed`.
+/// loopback port with nothing on it, `fetch_failed`. Linux refuses TCP to a multicast address,
+/// which Android counts as local, at once, so no network outcome can change either.
 #[test]
 fn a_subscription_host_on_the_local_network_is_local_network() {
     let _s = serial();
     let closed = servers::closed_port();
     let cases = [
-        (Ipv4Addr::new(10, 255, 255, 1), ErrorCode::LocalNetwork),
+        (Ipv4Addr::new(224, 0, 0, 1), ErrorCode::LocalNetwork),
         (Ipv4Addr::LOCALHOST, ErrorCode::FetchFailed),
     ];
     for (answer, want) in cases {
@@ -230,4 +231,90 @@ fn a_node_name_that_resolves_to_the_local_network_warns_when_its_dial_fails() {
     let id = client.connect(echo);
     assert!(client.until(Duration::from_secs(15), |c| c.read_now(id).is_err()));
     assert_eq!(warning(&core), "local_network");
+}
+
+/// Tests the latency of every group and gives each node's name and error code once it ended.
+fn probed(core: &Core) -> Vec<(String, serde_json::Value)> {
+    let reply = core.call("testLatency", r#"{"group":null}"#);
+    assert_eq!(reply, r#"{"ok":{}}"#);
+    let begun = Instant::now();
+    loop {
+        let snapshot: serde_json::Value = serde_json::from_str(&core.snapshot(-1)).unwrap();
+        let groups = snapshot["catalog"]["groups"].as_array().unwrap();
+        let nodes = groups[1]["members"].as_array().unwrap();
+        let tested = nodes
+            .iter()
+            .all(|m| m["failed"] == true || m["latencyMs"].is_number());
+        if groups.iter().all(|g| g["testing"] == false) && tested {
+            let name = |m: &serde_json::Value| m["name"].as_str().unwrap().to_owned();
+            return nodes
+                .iter()
+                .map(|m| (name(m), m["error"].clone()))
+                .collect();
+        }
+        assert!(begun.elapsed() < Duration::from_secs(20), "{snapshot}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// A probe is classified by the address its dial to the node chose, never by what the node's name
+/// resolved to before (ARCH D26): refused at the local address its name resolves to, it carries
+/// `local_network`; once the name no longer resolves, it fails before it dials the node and
+/// carries no code.
+#[test]
+fn a_probe_counts_the_address_it_dialed_not_an_earlier_lookup() {
+    let _s = serial();
+    let (resolver, _) = servers::udp_resolver_to(Ipv4Addr::new(224, 0, 0, 1));
+    let feed = servers::feed("socks5://nas.lan.doona.test:1080#nas".to_owned());
+    let dir = TempDir::new("boot-lan-probe");
+    let options = Options {
+        bootstrap_port: resolver.port(),
+        bootstrap_fallback: vec![resolver],
+        probe_url: format!("http://{}/generate_204", servers::closed_port()),
+        ..Options::default()
+    };
+    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    subscribe(&core, &format!("http://{feed}/sub")).unwrap();
+    let nas = |code: serde_json::Value| vec![("nas".to_owned(), code)];
+    assert_eq!(probed(&core), nas("local_network".into()));
+    // The resolvers `start` names stay in use after `stop`; nothing answers on 127.0.0.2.
+    drop(start(&core, r#"["127.0.0.2"]"#));
+    core.stop();
+    assert_eq!(probed(&core), nas(serde_json::Value::Null));
+}
+
+/// A probe whose own target does not resolve never dialed its node: it carries no code, although
+/// the node is on the local network.
+#[test]
+fn a_probe_whose_target_does_not_resolve_carries_no_code() {
+    let _s = serial();
+    let dead = dead_resolver();
+    let feed = servers::feed("socks5://224.0.0.1:1080#lan".to_owned());
+    let dir = TempDir::new("boot-probe-target");
+    let options = Options {
+        bootstrap_port: dead.port(),
+        bootstrap_fallback: vec![dead],
+        probe_url: "http://probe.doona.test/generate_204".to_owned(),
+        ..Options::default()
+    };
+    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    subscribe(&core, &format!("http://{feed}/sub")).unwrap();
+    assert_eq!(
+        probed(&core),
+        vec![("lan".to_owned(), serde_json::Value::Null)]
+    );
+}
+
+/// A `.local` name that only mDNS publishes is not resolved in v0.1 (ARCH D26): unicast DNS does
+/// not know it, so the fetch fails before it dials anything and keeps `fetch_failed`.
+#[test]
+fn a_local_name_unicast_dns_cannot_resolve_keeps_fetch_failed() {
+    let _s = serial();
+    let dead = dead_resolver();
+    let dir = TempDir::new("boot-mdns");
+    let core = new_core(&dir, dead.port(), vec![dead]);
+    assert_eq!(
+        subscribe(&core, "http://nas.local:8080/sub"),
+        Err(ErrorCode::FetchFailed)
+    );
 }
