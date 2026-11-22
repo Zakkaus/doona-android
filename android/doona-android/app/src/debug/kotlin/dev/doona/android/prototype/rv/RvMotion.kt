@@ -113,6 +113,12 @@ internal object RvMotion {
     /** A row moving to its new place, a card opening in place, the map panning to a new node: the return's 400 ms. */
     const val MOVE_MS = 400
 
+    /**
+     * Tapping the tab already shown glides its page back to the top, decelerating, as long as the return of a pull:
+     * quick from anywhere, and the page's top settles into place rather than arriving at speed (G6).
+     */
+    const val TOP_MS = 400
+
     /** One section, or one latency result, after another. */
     const val STAGGER_MS = 30
 

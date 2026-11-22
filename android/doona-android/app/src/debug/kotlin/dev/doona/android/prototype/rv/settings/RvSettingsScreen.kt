@@ -41,7 +41,6 @@ import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvBarHeight
-import dev.doona.android.prototype.rv.rvCollapsedOnScroll
 import dev.doona.android.prototype.rv.rvDotMap
 import dev.doona.android.prototype.rv.rvHeroArt
 import dev.doona.android.prototype.rv.rvNavClearance
@@ -62,7 +61,7 @@ internal fun RvSettingsScreen(state: RvSettingsState, onChange: (RvSettingsState
         stringResource(R.string.hub_settings),
         insets,
         scroll = scroll,
-        overlay = { glass -> RvFloatingNav(RV_NAV_SETTINGS, onTab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter)) },
+        overlay = { glass -> RvFloatingNav(RV_NAV_SETTINGS, onTab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter)) },
     ) { titleBlock ->
         Hero(titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
