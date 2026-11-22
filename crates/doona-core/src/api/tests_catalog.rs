@@ -344,3 +344,40 @@ fn a_subscription_command_gives_up_at_its_deadline() {
     });
     assert!(catalog(&core).subscriptions.is_empty());
 }
+
+/// Returns once `deadline` has passed: the work it stands in for ran out of time.
+fn past(deadline: Instant) {
+    while Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+#[test]
+fn a_command_whose_preparation_outlasts_its_deadline_writes_nothing() {
+    let dir = TempDir::new("api-late-write");
+    let feeds = Feeds::new();
+    feeds.set("/sub", &fixture("links.txt"));
+    let options = Options {
+        subscription_bound: Duration::from_secs(2),
+        ..Options::default()
+    };
+    let core = Core::with_options(path(&dir), options.clone()).unwrap();
+    // The registry rebuild of an add runs past the deadline.
+    core.hooks.on_before_write(past);
+    assert_eq!(add(&core, &feeds, "/sub"), Err(ErrorCode::Busy));
+    assert!(catalog(&core).subscriptions.is_empty());
+    // An update whose download failed records nothing once the deadline passed.
+    let id = add(&core, &feeds, "/sub").unwrap()["id"].clone();
+    feeds.set_raw("/sub", response("404 Not Found", &[], b""));
+    core.hooks.on_before_write(past);
+    assert_eq!(
+        call(&core, "updateSubscription", json!({"id": id})),
+        Err(ErrorCode::FetchFailed)
+    );
+    assert_eq!(catalog(&core).subscriptions[0].error, None);
+    drop(core);
+    let again = Core::with_options(path(&dir), options).unwrap();
+    let kept = catalog(&again);
+    assert_eq!(kept.subscriptions.len(), 1);
+    assert_eq!(kept.subscriptions[0].error, None);
+}

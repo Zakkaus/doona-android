@@ -56,7 +56,7 @@ impl Core {
         };
         let fresh = refreshed(&mut stored, parsed, userinfo);
         next.subscriptions.push(stored);
-        let added = self.commit_nodes(next, &id, fresh, "addSubscription")?;
+        let added = self.commit_nodes(next, &id, fresh, "addSubscription", Some(deadline))?;
         log::info!(
             "addSubscription: {} nodes in {} ms",
             added.nodes,
@@ -98,7 +98,10 @@ impl Core {
         let (parsed, userinfo) = match downloaded {
             Ok(downloaded) => downloaded,
             Err(code) => {
-                if stored.error != Some(code) {
+                #[cfg(test)]
+                self.hooks.before_write(deadline);
+                // Out of time: the failure is returned but not recorded.
+                if stored.error != Some(code) && Instant::now() < deadline {
                     stored.error = Some(code);
                     self.commit_state(next, "updateSubscription")?;
                 }
@@ -106,7 +109,7 @@ impl Core {
             }
         };
         let fresh = refreshed(stored, parsed, userinfo);
-        let updated = self.commit_nodes(next, id, fresh, "updateSubscription")?;
+        let updated = self.commit_nodes(next, id, fresh, "updateSubscription", Some(deadline))?;
         log::info!(
             "updateSubscription: {} nodes in {} ms",
             updated.nodes,
@@ -123,7 +126,7 @@ impl Core {
         if next.subscriptions.len() == before {
             return Err(ErrorCode::NotFound);
         }
-        self.commit_nodes(next, id, Vec::new(), "removeSubscription")
+        self.commit_nodes(next, id, Vec::new(), "removeSubscription", None)
             .map(drop)
     }
 
@@ -168,17 +171,26 @@ impl Core {
     /// Commits `next`, in which `changed` has `fresh` nodes or is gone: choices whose member
     /// went are dropped, the data path gets a registry for the new node set, and runtime state
     /// (latencies, automatic choices) carries over for the nodes that stay. Returns `changed`
-    /// as the catalog shows it, or an empty one when it was removed.
+    /// as the catalog shows it, or an empty one when it was removed. Past `deadline`, which the
+    /// registry rebuild may use up, nothing is written and the command is `busy`.
     fn commit_nodes(
         &self,
         mut next: State,
         changed: &str,
         fresh: Vec<Arc<NodeEntry>>,
         command: &str,
+        deadline: Option<Instant>,
     ) -> Result<dto::Subscription, ErrorCode> {
         let mut model = lock(&self.shared.catalog).model.with(&next, changed, fresh);
         groups::prune(&mut next.selections, &model.groups);
         let built = self.shared.outbounds.build(&model.nodes);
+        #[cfg(test)]
+        if let Some(deadline) = deadline {
+            self.hooks.before_write(deadline);
+        }
+        if deadline.is_some_and(|d| Instant::now() >= d) {
+            return Err(ErrorCode::Busy);
+        }
         self.write(&next, command)?;
         let shown = {
             let mut c = lock(&self.shared.catalog);
