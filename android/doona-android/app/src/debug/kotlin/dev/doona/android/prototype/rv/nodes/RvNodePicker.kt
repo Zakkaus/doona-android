@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.nodes
 
 import android.content.res.Configuration
+import android.os.Trace
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
@@ -133,7 +134,9 @@ internal fun RvNodePicker(
         RvFrames.end(SEARCH_GESTURE)
         // One frame later the field is placed and can take the focus.
         withFrameNanos {}
+        Trace.beginSection(TRACE_FOCUS)
         focus.requestFocus()
+        Trace.endSection()
     }
     val bottom = if (searchPage) insets.union(WindowInsets.ime) else insets
     val scroll = rememberScrollState()
@@ -295,6 +298,7 @@ private fun RvNode.matches(query: String, label: String): Boolean =
 
 private const val QUARTER_TURN = 90f
 private const val SEARCH_GESTURE = "search"
+private const val TRACE_FOCUS = "RvSearchFocus"
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)

@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import android.os.Trace
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -139,7 +140,12 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
             val entering = options.tab == RvTabMotion.Cut && shown == transition.targetState && transition.currentState.first() != shown.first()
             holder.SaveableStateProvider(shown.last()) {
                 val shared = RvShared(this@SharedTransitionLayout, this, popMs(options.push))
-                CompositionLocalProvider(LocalRvTabEntry provides entering, LocalRvShared provides shared) { page(shown.last()) }
+                CompositionLocalProvider(LocalRvTabEntry provides entering, LocalRvShared provides shared) {
+                    // A page's composition is a section of its own in a Perfetto trace.
+                    Trace.beginSection(TRACE_PAGE)
+                    page(shown.last())
+                    Trace.endSection()
+                }
             }
         }
     }
@@ -257,3 +263,5 @@ private fun axis(motion: RvMotionScale, shift: Int, forward: Boolean): ContentTr
     val exit = slideOutHorizontally(motion.tween(ms)) { -sign * shift } + fadeOut(motion.tween(out))
     return enter togetherWith exit
 }
+
+private const val TRACE_PAGE = "RvPage"

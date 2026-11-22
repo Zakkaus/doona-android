@@ -1,13 +1,18 @@
 package dev.doona.android.prototype.rv
 
+import android.content.Context
 import android.os.Bundle
+import android.os.Trace
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import kotlinx.coroutines.runBlocking
+import kotlin.concurrent.thread
 
 /**
  * Debug builds only: the Revolut-style sample with its invented state, full screen on a phone, so the glass blur and
@@ -46,6 +51,7 @@ class RvPreviewActivity : ComponentActivity() {
             test = intent.getBooleanExtra(EXTRA_TEST, false),
             launch = launch,
         )
+        preloadFonts(applicationContext)
         // Each gesture's frame times go to logcat (`adb logcat -s RvFrames`).
         RvFrames.attach(window)
         setContent { RvPreviewApp(options, start) }
@@ -54,6 +60,21 @@ class RvPreviewActivity : ComponentActivity() {
     /** The launch's [key] extra as one of [entries], by its name or its [code], any case; null when absent or unknown. */
     private fun <T : Enum<T>> extra(key: String, entries: List<T>, code: (T) -> String): T? = intent.getStringExtra(key)?.let { value ->
         entries.firstOrNull { it.name.equals(value, ignoreCase = true) || code(it).equals(value, ignoreCase = true) }
+    }
+}
+
+/**
+ * Loads every weight of the sample's fonts on a thread of its own as the activity starts, so that no frame waits on a
+ * font file: Compose loads a resource font on the main thread, during the first layout that needs its weight. The
+ * typefaces land in caches every resolver shares. Traced as [FONTS].
+ */
+private fun preloadFonts(context: Context) = thread(name = FONTS, isDaemon = true) {
+    Trace.beginSection(FONTS)
+    try {
+        val resolver = createFontFamilyResolver(context)
+        runBlocking { listOf(RvInter, RvInterDisplay, RvNoto).forEach { resolver.preload(it) } }
+    } finally {
+        Trace.endSection()
     }
 }
 
@@ -74,6 +95,7 @@ internal class RvMotionPreviews : PreviewParameterProvider<RvMotionOptions> {
 @Composable
 private fun RvMotionPreview(@PreviewParameter(RvMotionPreviews::class) options: RvMotionOptions) = RvPreviewApp(options)
 
+private const val FONTS = "RvFontPreload"
 private const val EXTRA_PULL = "pull"
 private const val EXTRA_TAB = "tab"
 private const val EXTRA_PUSH = "push"

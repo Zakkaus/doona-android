@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import android.os.Trace
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
@@ -165,6 +166,8 @@ private fun SearchPill(glass: RvGlass, onClick: () -> Unit, pull: RvPullLook, mo
  */
 @Composable
 internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier, focus: FocusRequester? = null) {
+    // Its composition, the text field's first one included, is a section of its own in a Perfetto trace.
+    Trace.beginSection(TRACE_FIELD)
     val colors = Rv.colors
     val hint = stringResource(R.string.rv_search_nodes)
     Row(
@@ -193,6 +196,7 @@ internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> U
             },
         )
     }
+    Trace.endSection()
 }
 
 /** A round glass button of the top bar: a 44 dp disc in a 48 dp target, with a disc's press ([rvDiscPress]). */
@@ -240,3 +244,5 @@ internal fun RvBackDisc(onBack: () -> Unit, modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
     ) { RvGlyph(R.drawable.rv_sym_arrow_back, RvChrome.controlGlyph, colors.text) }
 }
+
+private const val TRACE_FIELD = "RvSearchField"
