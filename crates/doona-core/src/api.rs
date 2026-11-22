@@ -23,8 +23,9 @@ use tokio_util::sync::CancellationToken;
 const WORKERS: usize = 2;
 /// `start` returns or fails within this bound (core-api.md).
 const START_BOUND: Duration = Duration::from_secs(10);
-/// The smallest MTU an IPv4 link may have.
-const MIN_MTU: u16 = 576;
+/// The smallest MTU `start` takes. honk's transparent stack raises a smaller one to 1280 while
+/// the driver's buffers follow the MTU it was given, so a smaller one is refused.
+const MIN_MTU: u16 = 1280;
 
 /// What a host test may change; the app runs with the defaults.
 #[derive(Clone, Debug)]

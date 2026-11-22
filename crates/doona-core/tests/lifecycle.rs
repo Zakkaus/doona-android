@@ -142,6 +142,8 @@ fn a_bad_config_fails_without_starting() {
         "{}",
         "not json",
         r#"{"mtu":100,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":[]}"#,
+        // honk's transparent stack clamps anything smaller to 1280.
+        r#"{"mtu":1279,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":[]}"#,
         r#"{"mtu":8500,"ipv4":"x","dns":"172.19.0.2","bootstrapDns":[]}"#,
     ] {
         assert_eq!(
