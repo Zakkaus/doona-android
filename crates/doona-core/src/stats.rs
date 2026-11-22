@@ -90,10 +90,8 @@ impl std::fmt::Debug for Stats {
 struct Inner {
     ring: Ring,
     usage: Usage,
-    /// The local day the last fold counted on, and the one before the last change of day: the
-    /// outbound bytes that come late moved on it.
+    /// The local day the last fold counted on.
     day: Option<i64>,
-    previous: Option<i64>,
     usage_writes: Pending,
     latency: Latency,
     latency_writes: Pending,
@@ -145,7 +143,6 @@ impl Stats {
             ring: Ring::new(),
             usage: usage_file.load::<UsageFile>().usage.sane(),
             day: None,
-            previous: None,
             usage_writes: Pending::default(),
             latency: Latency::from_saved(latency_file.load::<LatencyFile>().latency),
             latency_writes: Pending::default(),
@@ -174,25 +171,18 @@ impl Stats {
     fn fold(&self, session: &Session, clock: &Clock, now: bool) -> Writes {
         let mut inner = lock(&self.inner);
         let day = day::local(clock).0;
-        let last = inner.day.replace(day);
-        let turned = last.is_some_and(|d| d != day);
-        if turned {
-            inner.previous = last;
-        }
+        let turned = inner.day.replace(day).is_some_and(|d| d != day);
         let fold = session.fold(clock);
         let (up, down) = (inner.ring).add(fold.from_s, fold.to_s, fold.awake_s, fold.up, fold.down);
         session.note_peak(up, down);
-        let taken = session.meters().take(turned);
         let moved = Moved {
             up: fold.up,
             down: fold.down,
             flows: fold.flows,
-            outbounds: taken.now,
+            outbounds: session.meters().take(),
         };
         inner.usage.add(clock, &moved);
-        let moved_on = inner.previous.unwrap_or(day);
-        inner.usage.add_late(moved_on, day, &taken.late);
-        let changed = turned || moved != Moved::default() || !taken.late.is_empty();
+        let changed = turned || moved != Moved::default();
         inner.usage_writes.changes += u64::from(changed);
         let now_s = clock.boot_s();
         Writes {

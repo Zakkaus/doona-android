@@ -51,7 +51,7 @@ fn stats(dir: &TempDir, rt: &tokio::runtime::Runtime) -> Arc<Stats> {
 /// `outbound` bytes down.
 fn moved(session: &Session, (up, down, opened): (u64, u64, u64), outbound: u64) {
     session.publish(up, down, 0, opened);
-    let mut tally = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    let tally = meter::Tally::new(Some(session.meters().get("g-Proxy")));
     tally.down(usize::try_from(outbound).unwrap());
 }
 
@@ -261,7 +261,7 @@ fn a_flow_across_midnight_counts_each_side_on_its_day() {
             .find(|o| o.id == "g-Proxy")
             .map(|o| (o.up, o.down))
     };
-    let mut flow = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    let flow = meter::Tally::new(Some(session.meters().get("g-Proxy")));
     // 32 KiB in 4 KiB chunks over the last seconds before midnight, folded each second.
     fold(1);
     (0..4).for_each(|_| flow.up(4096));
@@ -278,7 +278,7 @@ fn a_flow_across_midnight_counts_each_side_on_its_day() {
     assert_eq!(proxy(&usage.today), Some((32_768, 0)));
     assert_eq!(proxy(&usage.yesterday.unwrap()), Some((32_768, 0)));
     // A flow that moves a little now and then shows at the next fold, while it is open.
-    let mut push = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    let push = meter::Tally::new(Some(session.meters().get("g-Proxy")));
     push.down(100);
     fold(7);
     assert_eq!(
@@ -327,4 +327,34 @@ fn a_failed_write_is_tried_again() {
     assert_eq!(written(), [true, true]);
     // Written: nothing more is due.
     assert_eq!(stats.fold(&session, &at(130), false), Writes::default());
+}
+
+#[test]
+fn an_open_flow_counts_its_bytes_on_the_day_they_moved() {
+    let (dir, rt) = (TempDir::new("stats-open-flow"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    let today = NOW_MS / 86_400_000;
+    let midnight = (today + 1) * 86_400_000;
+    // `s` seconds after 23:59:58, on every clock.
+    let at = |s: u64| clock(&base, s, midnight - 2000 + 1000 * s as i64);
+    let proxy = |d: i64| {
+        let inner = lock(&stats.inner);
+        (inner.usage.get(d)).and_then(|d| d.outbounds.get("g-Proxy").copied())
+    };
+    let flow = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    stats.fold(&session, &at(0), false);
+    // 1 B and 32 KiB in the same second, then the flow stays open and quiet.
+    flow.up(1);
+    flow.up(32_768);
+    stats.fold(&session, &at(1), false);
+    assert_eq!(proxy(today), Some([32_769, 0]), "the next fold counts all");
+    // Past midnight, and two days on, the flow ends.
+    stats.fold(&session, &at(3), false);
+    let later = 2 * 86_400;
+    stats.fold(&session, &at(later), false);
+    drop(flow);
+    stats.fold(&session, &at(later + 1), false);
+    assert_eq!(proxy(today), Some([32_769, 0]));
+    assert_eq!((proxy(today + 1), proxy(today + 2)), (None, None));
 }

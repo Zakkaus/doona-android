@@ -300,7 +300,7 @@ async fn exchange(o: Opened, upstream: &UdpUpstream, meter: Option<Arc<Meter>>) 
     let moved = || last.store(millis(begun.elapsed()), Relaxed);
     let sent_meter = meter.clone();
     let sending = async {
-        let mut tally = Tally::new(sent_meter);
+        let tally = Tally::new(sent_meter);
         let mut first = upstream.first_send_to();
         while let Some(d) = up.recv().await {
             let began = first.map(Session::begin_dial);
@@ -318,7 +318,7 @@ async fn exchange(o: Opened, upstream: &UdpUpstream, meter: Option<Arc<Meter>>) 
         }
     };
     let receiving = async {
-        let mut tally = Tally::new(meter);
+        let tally = Tally::new(meter);
         let mut own = Vec::new();
         while let Ok(d) = upstream.recv(&mut own, &budget).await {
             // None: over the budget, dropped.
