@@ -17,9 +17,9 @@ object SpacingRules {
     /** Gaps between blocks of a page: the roles `tight`, `item`, `block`, `afterTitle` and `section`. */
     private val pageGaps = listOf(space.tight, space.item, space.block, space.afterTitle, space.section).map { it.value }
 
-    fun check(root: LayoutBox, windowWidth: Float): List<String> =
-        scaleGaps(root) + sheet(root, windowWidth) + cards(root) + controls(root) + alikeControls(root) + rows(root) + touchTargets(root) + touchZones(root) +
-            topBar(root, windowWidth) + hubBar(root) + valueColumns(root)
+    fun check(root: LayoutBox): List<String> =
+        scaleGaps(root) + sheet(root) + cards(root) + controls(root) + alikeControls(root) + rows(root) + touchTargets(root) + touchZones(root) +
+            topBar(root) + hubBar(root) + valueColumns(root) + contentColumn(root)
 
     private fun near(a: Float, b: Float) = abs(a - b) <= TOL
 
@@ -32,13 +32,24 @@ object SpacingRules {
             .toList()
     }
 
+    /** The sheet, the top bar and the hub bar hold a column at most 600 dp wide, centred in the window (D20). */
+    fun contentColumn(root: LayoutBox): List<String> {
+        val roles = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
+        return root.descendants().filter { it.role in roles }.flatMap { column ->
+            buildList {
+                if (column.width > sizes.contentMax.value + TOL) add("${column.role} column $column is %.1f dp wide, over the %.0f dp cap".format(column.width, sizes.contentMax.value))
+                if (!near(column.left - root.left, root.right - column.right)) add("${column.role} column $column is not centred: %.1f dp left, %.1f dp right".format(column.left - root.left, root.right - column.right))
+            }
+        }.toList()
+    }
+
     /** Sheet: blocks start on the gutter, stay inside it, sit 20 below the sheet's top and 4 to 24 apart. */
-    fun sheet(root: LayoutBox, windowWidth: Float): List<String> = root.descendants().filter { it.role == LayoutRole.Sheet }.flatMap { sheet ->
+    fun sheet(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Sheet }.flatMap { sheet ->
         val blocks = sheet.content
         val gutter = space.gutter.value
         buildList {
-            blocks.filter { !near(it.left, gutter) }.forEach { add("sheet block $it starts at %.1f, not on the %.0f dp gutter".format(it.left, gutter)) }
-            blocks.filter { it.right > windowWidth - gutter + TOL }.forEach { add("sheet block $it ends past the gutter") }
+            blocks.filter { !near(it.left - sheet.left, gutter) }.forEach { add("sheet block $it starts at %.1f, not on the %.0f dp gutter".format(it.left - sheet.left, gutter)) }
+            blocks.filter { it.right > sheet.right - gutter + TOL }.forEach { add("sheet block $it ends past the gutter") }
             blocks.firstOrNull()?.takeUnless { near(it.top - sheet.top, space.sheetTop.value) }
                 ?.let { add("sheet starts its first block $it %.1f dp below its top, not %.0f".format(it.top - sheet.top, space.sheetTop.value)) }
             sheet.columnGaps().filter { (_, _, gap) -> pageGaps.none { near(it, gap) } }
@@ -88,22 +99,31 @@ object SpacingRules {
         }
     }.toList()
 
-    /** Every actionable node can be hit over at least 48 × 48 dp. */
-    fun touchTargets(root: LayoutBox): List<String> = root.descendants().filter { it.actionable }.mapNotNull { node ->
-        val (w, h) = node.touchSize ?: return@mapNotNull null
-        "touch target of $node is %.1f × %.1f dp, under %.0f".format(w, h, sizes.touch.value).takeIf { w < sizes.touch.value - TOL || h < sizes.touch.value - TOL }
-    }.toList()
+    /**
+     * What a scrolling sheet does not show whole: the blocks that reach out of its viewport. A pointer reaches only the
+     * visible part of them, so their touch bounds say nothing about the design, and they do not compete for room.
+     */
+    private fun scrolledOut(root: LayoutBox): Set<LayoutBox> = root.descendants().filter { it.role == LayoutRole.Sheet }.flatMap { sheet ->
+        val viewport = root.descendants().first { parent -> parent.children.any { it === sheet } }
+        sheet.descendants().filter { it !== sheet && (it.top < viewport.top - TOL || it.bottom > viewport.bottom + TOL) }
+    }.toSet()
+
+    /** Every actionable node in view can be hit over at least 48 × 48 dp. */
+    fun touchTargets(root: LayoutBox): List<String> {
+        val hidden = scrolledOut(root)
+        return root.descendants().filter { it.actionable && it !in hidden }.mapNotNull { node ->
+            val (w, h) = node.touchSize ?: return@mapNotNull null
+            "touch target of $node is %.1f × %.1f dp, under %.0f".format(w, h, sizes.touch.value).takeIf { w < sizes.touch.value - TOL || h < sizes.touch.value - TOL }
+        }.toList()
+    }
 
     /**
      * A control smaller than 48 dp is still hit over 48 dp, and a screen reader reports that area as its bounds; the
      * area must not reach into text or another control, or the reader trims it below 48.
      */
     fun touchZones(root: LayoutBox): List<String> {
-        // Blocks scrolled partly out of a sheet are not in reach, and so do not compete for it.
-        val scrolledOut = root.descendants().filter { it.role == LayoutRole.Sheet }.flatMap { sheet ->
-            sheet.descendants().filter { it !== sheet && (it.top < sheet.top - TOL || it.bottom > sheet.bottom + TOL) }
-        }.toSet()
-        val nodes = root.descendants().filter { it !in scrolledOut }.toList()
+        val hidden = scrolledOut(root)
+        val nodes = root.descendants().filter { it !in hidden }.toList()
         return nodes.filter { it.actionable }.flatMap { target ->
             val (w, h) = target.touchSize ?: return@flatMap emptyList()
             val skip = target.descendants().toSet() + nodes.filter { n -> n.descendants().any { it === target } }
@@ -116,15 +136,15 @@ object SpacingRules {
     }
 
     /** Top bar: the first and last glyph sit on the content gutter, as the content below does. */
-    fun topBar(root: LayoutBox, windowWidth: Float): List<String> = root.descendants().filter { it.role == LayoutRole.TopBar }.flatMap { bar ->
+    fun topBar(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.TopBar }.flatMap { bar ->
         val gutter = space.gutter.value
         val glyphs = bar.leaves
         buildList {
-            glyphs.minByOrNull { it.left }?.takeUnless { near(it.left, gutter) }
-                ?.let { add("top bar: first glyph $it starts at %.1f, %.1f dp off the gutter".format(it.left, it.left - gutter)) }
+            glyphs.minByOrNull { it.left }?.takeUnless { near(it.left - bar.left, gutter) }
+                ?.let { add("top bar: first glyph $it starts %.1f dp from the bar's start, %.1f dp off the gutter".format(it.left - bar.left, it.left - bar.left - gutter)) }
             // Without actions the bar holds only the mark or the back arrow.
-            glyphs.takeIf { it.size > 1 }?.maxByOrNull { it.right }?.takeUnless { near(it.right, windowWidth - gutter) }
-                ?.let { add("top bar: last glyph $it ends at %.1f, %.1f dp off the gutter".format(it.right, windowWidth - gutter - it.right)) }
+            glyphs.takeIf { it.size > 1 }?.maxByOrNull { it.right }?.takeUnless { near(bar.right - it.right, gutter) }
+                ?.let { add("top bar: last glyph $it ends %.1f dp from the bar's end, %.1f dp off the gutter".format(bar.right - it.right, bar.right - it.right - gutter)) }
         }
     }.toList()
 
