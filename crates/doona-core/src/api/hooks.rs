@@ -13,6 +13,7 @@ pub(super) struct Hooks {
     teardown: Mutex<Option<Teardown>>,
     before_write: Mutex<Option<BeforeWrite>>,
     before_finish: Mutex<Option<Teardown>>,
+    prepared: Mutex<Option<Teardown>>,
 }
 
 impl Hooks {
@@ -37,6 +38,19 @@ impl Hooks {
 
     pub fn before_finish(&self, core: &Core) {
         let f = lock(&self.before_finish).take();
+        if let Some(f) = f {
+            f(core);
+        }
+    }
+
+    /// Runs `f` once in the next `testLatency`, once it prepared the carriers outside the
+    /// lifecycle lock.
+    pub fn on_prepared(&self, f: impl FnOnce(&Core) + Send + 'static) {
+        *lock(&self.prepared) = Some(Box::new(f));
+    }
+
+    pub fn prepared(&self, core: &Core) {
+        let f = lock(&self.prepared).take();
         if let Some(f) = f {
             f(core);
         }

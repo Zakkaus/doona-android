@@ -31,16 +31,25 @@ impl Core {
     /// Starts probing the nodes of `group`, or of every group, and returns at once; the groups
     /// show `testing` until the test ends.
     pub(super) fn test_latency(&self, group: Option<String>) -> Result<(), ErrorCode> {
+        // Any registry to build again is built here, outside the lifecycle lock.
         self.shared.outbounds.prepare()?;
-        let (plan, cancel) = {
+        #[cfg(test)]
+        self.hooks.prepared(self);
+        let (plan, cancel, published) = {
+            // A stop or start ends the probes and the carriers under the lifecycle lock, so the
+            // token, the plan and the registry taken under it go together. Carriers ended since
+            // the `prepare` above are replaced first.
+            let _life = lock(&self.life);
+            self.shared.outbounds.prepare()?;
+            let published = self.shared.outbounds.published();
             let mut c = lock(&self.shared.catalog);
             let plan = c.model.plan(group.as_deref())?;
             c.revision += 1;
-            (plan, c.probes.clone())
+            (plan, c.probes.clone(), published)
         };
         log::info!("testLatency: {} probes", plan.targets.len());
-        self.probes
-            .spawn(self.runtime.handle(), &self.shared, plan, cancel);
+        let rt = self.runtime.handle();
+        self.probes.spawn(rt, &self.shared, plan, cancel, published);
         Ok(())
     }
 }

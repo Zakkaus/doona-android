@@ -293,3 +293,22 @@ fn probes_whose_carriers_end_under_them_record_nothing() {
     let failed: Vec<_> = members.iter().filter(|m| m.failed).collect();
     assert!(failed.is_empty(), "{failed:?}");
 }
+
+/// A test whose carriers were prepared when a `stop` ended them registers after that stop, so the
+/// stop does not drop it: it runs on new carriers and records each probe's result.
+#[test]
+fn a_test_prepared_before_a_stop_runs_on_new_carriers() {
+    let stand = Stand::new(true);
+    let (_dir, _feeds, core) = setup(&stand);
+    let (tun, _probe) = crate::testutil::tun();
+    let config = r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":[]}"#;
+    core.start(tun, config).unwrap();
+    core.hooks.on_prepared(|core| core.stop());
+    call(&core, "testLatency", json!({"group": "g-HK"})).unwrap();
+    let after = wait_for(&core, |c| !testing(c));
+    let members = &after.groups[2].members;
+    assert!(
+        members.iter().all(|m| m.latency_ms.is_some()),
+        "{members:?}"
+    );
+}

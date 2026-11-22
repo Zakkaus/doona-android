@@ -23,6 +23,9 @@ pub const DEFAULT_PROBE_URL: &str = "https://www.gstatic.com/generate_204";
 pub(crate) const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 pub(crate) const MAX_PARALLEL: usize = 32;
 
+/// A published registry and the carriers it dials on.
+pub(crate) type Published = (Arc<OutboundRuntimeRegistry>, Arc<Carriers>);
+
 /// What one probe goes through.
 pub(crate) struct ProbeJob {
     pub node: Arc<Node>,
@@ -65,11 +68,17 @@ impl Probes {
         }
     }
 
-    /// Runs the test `plan` on `rt`, each probe on the carriers of the registry it goes through;
-    /// `cancel` drops it with the tunnel generation it began in.
-    pub fn spawn(&self, rt: &Handle, shared: &Arc<Shared>, plan: Plan, cancel: CancellationToken) {
+    /// Runs the test `plan` on `rt`, each probe through the `published` registry on its
+    /// carriers; `cancel` drops it with the tunnel generation it began in.
+    pub fn spawn(
+        &self,
+        rt: &Handle,
+        shared: &Arc<Shared>,
+        plan: Plan,
+        cancel: CancellationToken,
+        published: Option<Published>,
+    ) {
         let round = plan.round();
-        let published = shared.outbounds.published();
         let proxies = shared.outbounds.proxies();
         let probes = plan.targets.into_iter().map(|target| {
             let job = ProbeJob {
