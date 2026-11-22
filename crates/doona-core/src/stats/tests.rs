@@ -39,6 +39,8 @@ fn session() -> (Session, Clock) {
 
 fn runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_current_thread()
+        .enable_time()
+        .max_blocking_threads(1)
         .build()
         .unwrap()
 }
@@ -219,6 +221,21 @@ fn latency_tests_are_kept_written_at_a_round_end_and_pruned() {
 }
 
 #[test]
+fn keeping_the_same_nodes_defers_latency_writes_to_round_end() {
+    let (dir, rt) = (TempDir::new("stats-keep-nodes"), runtime());
+    let stats = stats(&dir, &rt);
+    stats.record_latency("n-a", 1_000, Some(38));
+    stats.keep_nodes(|_| true);
+    rt.block_on(rt.spawn_blocking(|| {})).unwrap();
+    assert!(!dir.path().join(file::LATENCY).exists());
+
+    stats.end_round();
+    drop(rt);
+    let saved = StatsFile::new(dir.path(), file::LATENCY).load::<LatencyFile>();
+    assert_eq!(saved.latency["n-a"][0], latency::Test(1_000, Some(38)));
+}
+
+#[test]
 fn bytes_after_a_wake_count_in_the_second_they_were_sampled() {
     let (dir, rt) = (TempDir::new("stats-wake"), runtime());
     let stats = stats(&dir, &rt);
@@ -290,44 +307,37 @@ fn a_flow_across_midnight_counts_each_side_on_its_day() {
 }
 
 #[test]
-fn a_failed_write_is_tried_again() {
+fn failed_final_writes_retry_without_another_fold() {
+    use std::time::Duration;
+
     let (dir, rt) = (TempDir::new("stats-enospc"), runtime());
     let stats = stats(&dir, &rt);
     let (session, base) = session();
-    let at = |s| clock(&base, s, NOW_MS);
-    // The temporary files cannot be made, as when the disk is full.
+    let at = clock(&base, 1, NOW_MS);
     let temps = ["stats.json.tmp", "latency.json.tmp"].map(|t| dir.path().join(t));
     temps.iter().for_each(|t| std::fs::create_dir(t).unwrap());
-    moved(&session, (1, 1, 0), 0);
-    assert!(stats.fold(&session, &at(1), true).usage);
-    stats.write_usage();
+    moved(&session, (1, 2, 0), 0);
+    stats.finish(&session, &at);
     stats.record_latency("n-a", 1_000, Some(38));
-    assert!(
-        lock(&stats.inner)
-            .latency_writes
-            .due(base.boot_s() + 1, true)
-    );
-    stats.write_latency();
-    let written = || ["stats.json", "latency.json"].map(|f| dir.path().join(f).exists());
-    assert_eq!(written(), [false, false]);
-    // Space comes free, and no byte moves and no test runs for the rest of the day: both
-    // writes are asked again, a minute after the failed ones.
+    stats.end_round();
+    rt.block_on(rt.spawn_blocking(|| {})).unwrap();
+    let saved = [file::USAGE, file::LATENCY].map(|f| dir.path().join(f));
+    assert!(saved.iter().all(|f| !f.exists()));
+
     temps.iter().for_each(|t| std::fs::remove_dir(t).unwrap());
-    assert_eq!(stats.fold(&session, &at(30), false), Writes::default());
-    let again = stats.fold(&session, &at(62), false);
-    assert_eq!(
-        again,
-        Writes {
-            usage: true,
-            latency: true
-        },
-        "the failed writes are due again"
-    );
-    stats.write_usage();
-    stats.write_latency();
-    assert_eq!(written(), [true, true]);
-    // Written: nothing more is due.
-    assert_eq!(stats.fold(&session, &at(130), false), Writes::default());
+    rt.block_on(async {
+        tokio::time::timeout(Duration::from_secs(4), async {
+            while saved.iter().any(|f| !f.exists()) {
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .expect("the files were not written again after stop");
+    });
+    let usage = StatsFile::new(dir.path(), file::USAGE).load::<UsageFile>();
+    assert_eq!(usage.usage.today(&at).1, 2);
+    let latency = StatsFile::new(dir.path(), file::LATENCY).load::<LatencyFile>();
+    assert_eq!(latency.latency["n-a"][0], latency::Test(1_000, Some(38)));
 }
 
 #[test]

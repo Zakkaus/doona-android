@@ -20,12 +20,15 @@ use latency::Latency;
 use ring::{Ring, Series};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Handle;
 
 /// Changed usage is written at most this often while a generation runs, besides when the local
-/// day changes and when the generation ends; a failed write is asked again this often.
+/// day changes and when the generation ends.
 const WRITE_EVERY_S: u64 = 60;
+/// Retries of a failed write, a minute apart at most: about a quarter hour, so a stop on a full
+/// disk keeps its last bytes once space comes free soon after; later, the next request writes.
+const RETRIES: u32 = 20;
 
 /// Folds in a row that must find the wall clock more than a day ahead of the time the boot clock
 /// carries on from the last wall time believed, before its date is believed: five minutes of a
@@ -130,6 +133,8 @@ struct Pending {
     saved: u64,
     /// The boot second the last write was asked for.
     asked_s: Option<u64>,
+    /// A failed write is being tried again.
+    retrying: bool,
 }
 
 impl Pending {
@@ -145,9 +150,17 @@ impl Pending {
         due
     }
 
-    /// Asks again for a write that was asked for and did not succeed (or still runs) a minute on.
-    fn retry(&mut self, now_s: u64) -> bool {
-        self.saved < self.asked && self.due(now_s, false)
+    /// A write holds the last request.
+    fn written(&self) -> bool {
+        self.saved >= self.asked
+    }
+
+    /// After a failed write: whether a retry should start, as the last request is not written
+    /// and none runs.
+    fn start_retry(&mut self) -> bool {
+        let start = !self.written() && !self.retrying;
+        self.retrying |= start;
+        start
     }
 }
 
@@ -187,7 +200,7 @@ impl Stats {
     }
 
     /// Folds, and answers which writes are due: the usage's once a minute while it changes, at
-    /// once when the day changed or with `now`; a failed one again a minute on.
+    /// once when the day changed or with `now`.
     fn fold(&self, session: &Session, clock: &Clock, now: bool) -> Writes {
         let mut inner = lock(&self.inner);
         let clock = &inner.believe(clock);
@@ -208,7 +221,7 @@ impl Stats {
         let now_s = clock.boot_s();
         Writes {
             usage: inner.usage_writes.due(now_s, now || turned),
-            latency: inner.latency_writes.retry(now_s),
+            latency: false,
         }
     }
 
@@ -216,17 +229,56 @@ impl Stats {
     /// as it is when its turn comes, so the last one written is the newest.
     fn save(self: &Arc<Self>, writes: Writes) {
         if writes.usage {
-            let stats = Arc::clone(self);
-            self.runtime.spawn_blocking(move || stats.write_usage());
+            self.save_file(Self::write_usage, |inner| &mut inner.usage_writes);
         }
         if writes.latency {
-            let stats = Arc::clone(self);
-            self.runtime.spawn_blocking(move || stats.write_latency());
+            self.save_file(Self::write_latency, |inner| &mut inner.latency_writes);
         }
     }
 
+    /// Runs `write` on a blocking thread. When it fails and the file's last request is not
+    /// written, a retry starts unless one runs.
+    fn save_file(
+        self: &Arc<Self>,
+        write: fn(&Self) -> bool,
+        pending: fn(&mut Inner) -> &mut Pending,
+    ) {
+        let stats = Arc::clone(self);
+        self.runtime.spawn_blocking(move || {
+            if write(&stats) || !pending(&mut lock(&stats.inner)).start_retry() {
+                return;
+            }
+            let runtime = stats.runtime.clone();
+            runtime.spawn(stats.retry(write, pending));
+        });
+    }
+
+    /// Tries a failed write again after 1 s, then twice as long each time up to a minute, at most
+    /// [`RETRIES`] times, whether or not a generation runs, until a write of the file holds the
+    /// last request. It goes with the runtime when the core is dropped.
+    async fn retry(
+        self: Arc<Self>,
+        write: fn(&Self) -> bool,
+        pending: fn(&mut Inner) -> &mut Pending,
+    ) {
+        let mut delay = 1;
+        for _ in 0..RETRIES {
+            tokio::time::sleep(Duration::from_secs(delay)).await;
+            delay = (delay * 2).min(60);
+            if pending(&mut lock(&self.inner)).written() {
+                break;
+            }
+            let stats = Arc::clone(&self);
+            let written = tokio::task::spawn_blocking(move || write(&stats)).await;
+            if written.unwrap_or(true) {
+                break;
+            }
+        }
+        pending(&mut lock(&self.inner)).retrying = false;
+    }
+
     /// Copies the usage under the lock, and encodes and writes the copy without it.
-    fn write_usage(&self) {
+    fn write_usage(&self) -> bool {
         let mut changes = 0;
         let written = self.usage_file.save(|| {
             let inner = lock(&self.inner);
@@ -240,10 +292,11 @@ impl Stats {
             let saved = &mut lock(&self.inner).usage_writes.saved;
             *saved = changes.max(*saved);
         }
+        written
     }
 
     /// As [`Stats::write_usage`], for the latency tests.
-    fn write_latency(&self) {
+    fn write_latency(&self) -> bool {
         let mut changes = 0;
         let written = self.latency_file.save(|| {
             let inner = lock(&self.inner);
@@ -257,6 +310,7 @@ impl Stats {
             let saved = &mut lock(&self.inner).latency_writes.saved;
             *saved = changes.max(*saved);
         }
+        written
     }
 
     /// Records a latency test of node `id` in the round begun at `at_ms`: `ms`, or none when the
@@ -287,8 +341,10 @@ impl Stats {
             if inner.latency.retain(keep) {
                 inner.latency_writes.changes += 1;
                 inner.latency_forgot = inner.latency_writes.changes;
+                inner.latency_writes.due(Clock::now().boot_s(), true)
+            } else {
+                false
             }
-            inner.latency_writes.due(Clock::now().boot_s(), true)
         };
         self.save(Writes {
             usage: false,
