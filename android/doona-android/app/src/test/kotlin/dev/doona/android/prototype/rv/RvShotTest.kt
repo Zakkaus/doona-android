@@ -7,7 +7,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.feature.activity.sampleActivityState
 import dev.doona.android.testing.PhoneFrame
 import dev.doona.android.testing.drawFully
 import org.junit.After
@@ -23,8 +22,9 @@ import java.util.TimeZone
 
 /**
  * The Revolut-style samples, light and dark, in the scheme of the owner's wallpaper, for the owner to judge next to
- * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`), the 「Proxy」 group's node
- * screen (`proto-rv-nodes-light` and `-dark`) and the traffic page a tile opens (`proto-rv-traffic-light` and `-dark`).
+ * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`, and disconnected in
+ * `proto-rv-activity-idle-light`), the 「Proxy」 group's node screen (`proto-rv-nodes-light` and `-dark`) and the
+ * traffic page a tile opens (`proto-rv-traffic-light` and `-dark`, and held at one second in `proto-rv-traffic-scrub-dark`).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -45,10 +45,13 @@ class RvShotTest {
     fun restoreZone() = TimeZone.setDefault(zone)
 
     @Test
-    fun activityLight() = shot("activity", dark = false) { RvActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
+    fun activityLight() = shot("activity", dark = false) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
 
     @Test
-    fun activityDark() = shot("activity", dark = true) { RvActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
+    fun activityDark() = shot("activity", dark = true) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
+
+    @Test
+    fun activityIdleLight() = shot("activity-idle", dark = false) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
 
     @Test
     fun nodesLight() = shot("nodes", dark = false) { RvNodesScreen(sampleNodesState(), onBack = {}, onTestAll = {}, onSelect = {}) }
@@ -57,10 +60,15 @@ class RvShotTest {
     fun nodesDark() = shot("nodes", dark = true) { RvNodesScreen(sampleNodesState(), onBack = {}, onTestAll = {}, onSelect = {}) }
 
     @Test
-    fun trafficLight() = shot("traffic", dark = false) { RvTrafficScreen(sampleActivityState(), onBack = {}) }
+    fun trafficLight() = shot("traffic", dark = false) { RvTrafficScreen(rvSampleActivity(), RV_SAMPLE_CONNECTION, onBack = {}) }
 
     @Test
-    fun trafficDark() = shot("traffic", dark = true) { RvTrafficScreen(sampleActivityState(), onBack = {}) }
+    fun trafficDark() = shot("traffic", dark = true) { RvTrafficScreen(rvSampleActivity(), RV_SAMPLE_CONNECTION, onBack = {}) }
+
+    @Test
+    fun trafficScrubDark() = shot("traffic-scrub", dark = true) {
+        RvTrafficScreen(rvSampleActivity(), RV_SAMPLE_CONNECTION, onBack = {}, initialScrub = RV_SAMPLE_SCRUB)
+    }
 
     private fun shot(screen: String, dark: Boolean, content: @Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers(if (dark) "+night" else "+notnight")

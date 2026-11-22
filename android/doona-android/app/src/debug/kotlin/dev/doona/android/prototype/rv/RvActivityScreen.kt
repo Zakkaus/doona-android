@@ -3,6 +3,8 @@ package dev.doona.android.prototype.rv
 import android.content.Context
 import android.content.res.Configuration
 import android.text.format.Formatter
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +33,6 @@ import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
-import dev.doona.android.feature.activity.sampleActivityState
 
 /**
  * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
@@ -112,37 +113,35 @@ private fun OutboundCard(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
     }
 }
 
-/** Download and upload as two tiles side by side: the rate, the window's peak, and the minute's sparkline. */
+/**
+ * Download and upload as two tiles side by side, each on its own scale: the rate, the window's peak, and the minute's
+ * sparkline. Disconnected, or with no traffic in the window, both tiles say so over ghost bars instead.
+ */
 @Composable
 private fun TrafficTiles(state: ActivityUiState, onOpenTraffic: () -> Unit) {
-    val context = LocalContext.current
+    val quiet = state.status !is Status.Running || (state.downHistory.all { it == 0f } && state.upHistory.all { it == 0f })
     Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tileGap)) {
-        RvSparkTile(
-            stringResource(R.string.ui_download),
-            R.drawable.ic_download,
-            rateText(context, state.downRate),
-            peakLine(state.downHistory),
-            state.downHistory,
-            Rv.colors.down,
-            onOpenTraffic,
-            Modifier.weight(1f),
-        )
-        RvSparkTile(
-            stringResource(R.string.ui_upload),
-            R.drawable.ic_upload,
-            rateText(context, state.upRate),
-            peakLine(state.upHistory),
-            state.upHistory,
-            Rv.colors.up,
-            onOpenTraffic,
-            Modifier.weight(1f),
-        )
+        TrafficTile(R.string.ui_download, R.drawable.ic_download, state.downRate, state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
+        TrafficTile(R.string.ui_upload, R.drawable.ic_upload, state.upRate, state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f))
     }
 }
 
-/** The highest rate of the window, after its label: Peak 5.2 MB/s. */
 @Composable
-private fun peakLine(history: List<Float>): String = stringResource(R.string.rv_peak, rateText(LocalContext.current, history.maxOrNull()?.toLong() ?: 0L))
+private fun TrafficTile(
+    @StringRes caption: Int,
+    @DrawableRes icon: Int,
+    rate: Long,
+    history: List<Float>,
+    series: RvSeries,
+    quiet: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+) {
+    val context = LocalContext.current
+    val (whole, unit) = rateParts(context, rate)
+    val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, rateText(context, history.maxOrNull()?.toLong() ?: 0L))
+    RvSparkTile(stringResource(caption), icon, RvFigure(whole, unit), note, history, series, quiet, onClick, modifier)
+}
 
 /** A rate split for the hero: the figure, and its unit with "/s" set small after it. */
 private fun rateParts(context: Context, bytesPerSecond: Long): Pair<String, String> {
@@ -180,5 +179,5 @@ private val Mode.label: Int
 @Composable
 private fun RvActivityScreenPreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
 }

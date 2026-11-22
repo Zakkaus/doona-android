@@ -32,9 +32,15 @@ internal object RvSpace {
     /** From a tile's text to its sparkline. */
     val sparkGap = 14.dp
 
-    /** From the detail page's figures to its chart, and from the chart to its legend and range pills. */
+    /** From the detail page's segmented control to its hero, and from its figures to its chart. */
     val chartGap = 24.dp
-    val pillGap = 8.dp
+
+    /** From the detail chart to its range chips. */
+    val chipGap = 12.dp
+
+    /** From the range chips to the next section, and from a section's heading to its card. */
+    val sectionGap = 32.dp
+    val headingGap = 12.dp
 
     /** From a screen's title block to its first card. */
     val titleToCard = 24.dp
@@ -90,46 +96,90 @@ internal object RvDots {
     const val FADE_END = 0.86f
 }
 
-/** Revolut's charts, from the owner's 2026 screenshots: the home tiles' sparklines and a stock's full-bleed chart. */
+/** Revolut's charts, from the owner's 2026 screenshots: the crypto home tiles and a stock's full-bleed chart. */
 internal object RvChartSize {
-    /** A tile's caption disc, and the glyph in it. */
+    /** A tile's inner padding, its caption disc and the glyph in it. */
+    val tilePad = 14.dp
     val tileDisc = 28.dp
     val tileGlyph = 16.dp
-    val spark = 90.dp
+
+    /** A tile's sparkline, across the tile's inner width at its bottom. */
+    val spark = 84.dp
     val sparkStroke = 2.dp
 
-    /** The detail chart: full width, with room above the peak's line for its pill. */
-    val detail = 300.dp
-    val detailTop = 24.dp
-    val detailBottom = 8.dp
+    /** The ghost bars of a tile with no traffic, after Revolut's empty 'Income' card: twelve across the tile. */
+    val ghostBar = 5.dp
+    const val GHOST_BARS = 12
+
+    /** The detail chart: full width; its line ends on the gutter, so the live point and its halo stay whole. */
+    val detail = 175.dp
     val detailStroke = 1.5.dp
+    val detailEnd = 16.dp
+    val liveDot = 6.dp
+    val liveHalo = 14.dp
+
+    /** While a finger is on the detail chart: a line down the chart and a dot on the curve, ringed in the page colour. */
+    val scrubLine = 1.dp
+    val scrubDot = 6.dp
+    val scrubRing = 2.dp
 
     /** Dotted lines: round dots this wide, this far apart. */
-    val dotted = 1.5.dp
+    val dotted = 1.dp
     val dottedPitch = 4.dp
 
-    /** A value pill on the chart, and its distance from the point it names. */
+    /** A value pill on the chart, this far in from the chart's right edge. */
     val pillPadH = 8.dp
     val pillPadV = 3.dp
-    val pillOffset = 8.dp
+    val pillRadius = 6.dp
+    val pillInset = 8.dp
 
-    /** A range pill under the chart: Revolut's raised chip. */
+    /** A range chip under the chart (the selected one raised), and the round buttons after the chips. */
     val range = 36.dp
-    val rangePad = 14.dp
+    val rangePad = 12.dp
+    val rangeGap = 4.dp
+    val rangeShadow = 2.dp
+    val roundButton = 40.dp
+    val roundGlyph = 20.dp
 
-    /** Vertical grid lines split the minute into this many parts, one every 10 seconds. */
-    const val GRID_PARTS = 6
+    /** The segmented control: a pill track, the selected segment raised inside it. */
+    val segment = 40.dp
+    val segmentInset = 2.dp
+
+    /** The tile's curve keeps 10 % of its height free above the peak; the detail chart's axis runs to peak × 1.15. */
+    const val SPARK_HEADROOM = 1.1f
+    const val DETAIL_HEADROOM = 1.15f
+
+    /** The detail chart's hairline grid: a vertical line every 43 dp from the start, and four rows. */
+    val gridColumn = 43.dp
+    const val GRID_ROWS = 4
+
+    /** The detail fill is gone this far down from the peak's height to the chart's bottom. */
+    const val FILL_END = 0.7f
 }
 
 internal object RvAlpha {
     /** The state layer: the content colour over the visible shape while pressed. */
     const val PRESSED = 0.1f
 
-    /** The detail chart's vertical grid: very faint. */
-    const val GRID = 0.5f
+    /** The detail chart's hairline grid, in the text colour: about 6 % in light, almost invisible in dark. */
+    const val GRID_LIGHT = 0.06f
+    const val GRID_DARK = 0.025f
 
-    /** The top of the area under a line, fading to nothing at the chart's bottom. */
-    const val FILL = 0.25f
+    /** A tile's fill under its sparkline: neutral, the text colour, fading to nothing at the bottom. */
+    const val TILE_FILL = 0.08f
+
+    /** The start and low pills sit over the line, so the line shows through them. */
+    const val PILL_OVER_LINE = 0.8f
+
+    /** The detail chart's fill under its line, the series colour, fading out well above the bottom. */
+    const val AREA_LIGHT = 0.16f
+    const val AREA_DARK = 0.22f
+
+    /** The ghost bars of a tile with no traffic, in the text colour. */
+    const val GHOST = 0.05f
+
+    /** The soft halo round the live point. */
+    const val HALO = 0.22f
 
     /** A range the build does not offer yet. */
     const val DISABLED = 0.38f
@@ -146,8 +196,16 @@ internal object RvTypeScale {
     val rowTitle = RvTypeStep(17, 24, FontWeight.Medium)
     val rowSub = RvTypeStep(15, 20, FontWeight.Normal)
     val action = RvTypeStep(15, 20, FontWeight.Medium)
+    val tileCaption = RvTypeStep(13, 18, FontWeight.Normal)
     val tileValue = RvTypeStep(24, 30, FontWeight.Bold, display = true)
+    val tileUnit = RvTypeStep(15, 20, FontWeight.SemiBold, display = true)
+
+    /** A chart card's figure, after Revolut's Analytics page: the tile's figure when there is no traffic. */
+    val cardValue = RvTypeStep(28, 34, FontWeight.Bold, display = true)
+    val cardUnit = RvTypeStep(17, 22, FontWeight.SemiBold, display = true)
     val pill = RvTypeStep(12, 16, FontWeight.Medium)
+    val section = RvTypeStep(20, 26, FontWeight.Bold, display = true)
+    val stat = RvTypeStep(16, 22, FontWeight.Medium)
     val title = RvTypeStep(34, 40, FontWeight.Bold, display = true)
     val navLabel = RvTypeStep(12, 16, FontWeight.Medium)
     const val TABULAR = "tnum"

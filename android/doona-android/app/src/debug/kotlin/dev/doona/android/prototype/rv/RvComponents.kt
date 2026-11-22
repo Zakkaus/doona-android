@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
@@ -206,20 +207,86 @@ internal fun RvBackBar(onBack: () -> Unit) {
     }
 }
 
-/** A range under a chart, Revolut's pill: the selected one a raised chip, the rest plain text; one not offered is grey. */
+/**
+ * A range under a chart, Revolut's chip: the selected one raised off the page, the rest plain secondary text, and one the
+ * build does not offer fainter still.
+ */
 @Composable
 internal fun RvRangePill(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    val color = if (enabled) Rv.colors.text else Rv.colors.text.copy(alpha = RvAlpha.DISABLED)
+    val colors = Rv.colors
+    val color = when {
+        selected -> colors.text
+        enabled -> colors.textSecondary
+        else -> colors.textSecondary.copy(alpha = RvAlpha.DISABLED)
+    }
     Box(
         Modifier
             .minimumInteractiveComponentSize()
             .height(RvChartSize.range)
-            .clip(CircleShape)
-            .background(if (selected) Rv.colors.chip else Color.Transparent)
-            .selectable(selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), enabled = enabled, role = Role.Tab, onClick = onClick)
+            .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
+            .selectable(selected, interactionSource = null, indication = ripple(color = colors.stateLayer), enabled = enabled, role = Role.Tab, onClick = onClick)
             .padding(horizontal = RvChartSize.rangePad),
         contentAlignment = Alignment.Center,
     ) { RvText(label, Rv.type.action, color = color) }
+}
+
+/** A raised control's fill in [shape]: a surface over a soft shadow in light, a lighter container in dark. */
+@Composable
+private fun Modifier.rvRaised(shape: Shape): Modifier {
+    val colors = Rv.colors
+    val lift = if (colors.raisedShadow) Modifier.shadow(RvChartSize.rangeShadow, shape) else Modifier
+    return then(lift).clip(shape).background(colors.raised)
+}
+
+/**
+ * Revolut's segmented control (Annual / Quarterly, Stocks / ETFs): a pill track in a container colour across the
+ * width, [options] in equal parts, the [selected] one on a raised surface.
+ */
+@Composable
+internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(RvChartSize.segment)
+            .clip(CircleShape)
+            .background(Rv.colors.segmentTrack)
+            .padding(RvChartSize.segmentInset),
+    ) {
+        options.forEachIndexed { i, label ->
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .then(if (i == selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
+                    .selectable(i == selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.Tab) { onSelect(i) },
+                contentAlignment = Alignment.Center,
+            ) { RvText(label, Rv.type.action, color = if (i == selected) Rv.colors.text else Rv.colors.textSecondary) }
+        }
+    }
+}
+
+/** A round icon button on a container colour, as after Revolut's range chips; [label] is for the screen reader. */
+@Composable
+internal fun RvRoundButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .minimumInteractiveComponentSize()
+            .size(RvChartSize.roundButton)
+            .clip(CircleShape)
+            .background(Rv.colors.roundButton)
+            .rvPress(CircleShape, Role.Button, onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) { RvGlyph(icon, RvChartSize.roundGlyph, Rv.colors.text) }
+}
+
+/** A row of Revolut's Key stats card: [label] in secondary ink at the start, [value] at the end. */
+@Composable
+internal fun RvStatRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().height(RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.CenterVertically) {
+        RvText(label, Rv.type.caption, Modifier.weight(1f), color = Rv.colors.textSecondary)
+        RvText(value, Rv.type.stat, align = TextAlign.End)
+    }
 }
 
 /** A destination of the bottom navigation. */

@@ -60,19 +60,33 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val flagEdge: Color? = if (dark) null else s.outlineVariant
 
     /** Traffic has no good or bad direction, so download and upload take two plain roles of the scheme. */
-    val down = RvSeries(s.primary, s.primaryContainer, s.onPrimaryContainer)
-    val up = RvSeries(s.tertiary, s.tertiaryContainer, s.onTertiaryContainer)
+    private val area = if (dark) RvAlpha.AREA_DARK else RvAlpha.AREA_LIGHT
+    val down = RvSeries(s.primary, s.primaryContainer, s.onPrimaryContainer, s.primary.copy(alpha = area))
+    val up = RvSeries(s.tertiary, s.tertiaryContainer, s.onTertiaryContainer, s.tertiary.copy(alpha = area))
 
-    /** A chart's dotted reference lines (light grey, as Revolut's) and its faint vertical grid. */
-    val reference = s.outline
-    val grid = s.outlineVariant
+    /** A chart's dotted reference line: light grey, as Revolut's, on either page. */
+    val reference = if (dark) s.outline else s.outlineVariant
 
-    /** A value pill on a chart: Revolut's small dark chip, the inverse surface in light. */
-    val pill = if (dark) s.surfaceContainerHighest else s.inverseSurface
-    val onPill = if (dark) s.onSurface else s.inverseOnSurface
+    /** The detail chart's hairline grid, a tile's neutral fill and its ghost bars: the text colour, very faint. */
+    val grid = s.onSurface.copy(alpha = if (dark) RvAlpha.GRID_DARK else RvAlpha.GRID_LIGHT)
+    val tileFill = s.onSurface.copy(alpha = RvAlpha.TILE_FILL)
+    val ghost = s.onSurface.copy(alpha = RvAlpha.GHOST)
 
-    /** The selected range under the detail chart: a chip raised off the page. */
-    val chip = if (dark) s.surfaceContainerHighest else s.surfaceContainerHigh
+    /** The line down the detail chart while a finger is on it. */
+    val scrub = s.outline
+
+    /** A value pill on a chart: a surface pill with a hairline edge in light, a raised container in dark. */
+    val pill = if (dark) s.surfaceContainerHighest else s.surfaceContainerLowest
+    val pillEdge: Color? = if (dark) null else s.outlineVariant
+    val onPill = s.onSurfaceVariant
+
+    /** A raised control on the page: the selected range chip and segment, on a shadow in light, a lighter fill in dark. */
+    val raised = if (dark) s.surfaceContainerHighest else s.surfaceContainerLowest
+    val raisedShadow = !dark
+
+    /** The segmented control's track, and the round buttons after the range chips. */
+    val segmentTrack = if (dark) s.surfaceContainerLow else s.surfaceContainer
+    val roundButton = discOnHeader
     val stateLayer = s.onSurface
 
     fun quality(tone: Tone): Color = when (tone) {
@@ -83,9 +97,9 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     }
 }
 
-/** One traffic direction's colours: its chart line and its tile's disc with the glyph on it. */
+/** One traffic direction's colours: its chart line, its tile's disc with the glyph on it, and the detail chart's fill. */
 @Immutable
-internal class RvSeries(val line: Color, val disc: Color, val onDisc: Color)
+internal class RvSeries(val line: Color, val disc: Color, val onDisc: Color, val area: Color)
 
 @Immutable
 internal class RvType {
@@ -99,8 +113,14 @@ internal class RvType {
     val rowValue = RvTypeScale.rowTitle.style(tabular = true)
     val rowSub = RvTypeScale.rowSub.style()
     val action = RvTypeScale.action.style()
+    val tileCaption = RvTypeScale.tileCaption.style()
     val tileValue = RvTypeScale.tileValue.style(tabular = true)
+    val tileUnit = RvTypeScale.tileUnit.style()
+    val cardValue = RvTypeScale.cardValue.style(tabular = true)
+    val cardUnit = RvTypeScale.cardUnit.style()
     val pill = RvTypeScale.pill.style(tabular = true)
+    val section = RvTypeScale.section.style()
+    val stat = RvTypeScale.stat.style(tabular = true)
     val title = RvTypeScale.title.style()
     val navLabel = RvTypeScale.navLabel.style()
 
