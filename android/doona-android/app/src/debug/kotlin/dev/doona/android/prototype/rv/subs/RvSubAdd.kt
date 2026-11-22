@@ -2,9 +2,7 @@ package dev.doona.android.prototype.rv.subs
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.text.KeyboardOptions
@@ -18,11 +16,11 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBanner
-import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
+import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvProgress
 import dev.doona.android.prototype.rv.RvRow
@@ -66,7 +64,7 @@ internal data class RvAddState(
 )
 
 /**
- * 新增訂閱, a compact pushed page. While nothing is typed and the clipboard holds a link, a row offers it (the content
+ * 新增訂閱, a pushed page with the large title, which collapses onto the bar as the page scrolls. While nothing is typed and the clipboard holds a link, a row offers it (the content
  * is read only when the row is tapped). Then the link and an optional name, and 匯入. While importing, the fields rest
  * and a card shows the download over the bar; when done, a card says what came in (nodes, format, protocols) and 完成
  * returns; when it fails, the banner gives the reason and 重試, and the fields keep what was typed. A link on the local
@@ -87,7 +85,6 @@ internal fun RvSubAdd(
         stringResource(R.string.rv_add_subscription),
         insets,
         onBack = onBack,
-        compact = true,
         bottomAction = {
             if (phase is RvAddPhase.Done) {
                 RvPrimaryButton(stringResource(R.string.rv_done), onBack)
@@ -95,9 +92,8 @@ internal fun RvSubAdd(
                 RvPrimaryButton(stringResource(R.string.rv_add_import), onImport, enabled = phase !is RvAddPhase.Importing && state.link.startsWith(HTTP))
             }
         },
-    ) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSpace.gutter))
+    ) { titleBlock ->
+        RvLargeTitle(stringResource(R.string.rv_add_subscription), titleBlock, insets)
         RvGutter {
             when (phase) {
                 is RvAddPhase.Done -> Imported(phase.sub)

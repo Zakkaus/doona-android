@@ -167,7 +167,8 @@ internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, 
     ) {
         items.forEach { item ->
             if (item.separated) {
-                Box(Modifier.padding(vertical = RvSpace.tight, horizontal = RvSpace.rowPadding).fillMaxWidth().height(RvChrome.ring).background(colors.grid))
+                // Only the line's own 1 dp: Revolut's last row starts 2 px (0.8 dp) under the row above (p1-more-sheet).
+                Box(Modifier.padding(horizontal = RvSpace.rowPadding).fillMaxWidth().height(RvChrome.ring).background(colors.grid))
             }
             Row(
                 Modifier

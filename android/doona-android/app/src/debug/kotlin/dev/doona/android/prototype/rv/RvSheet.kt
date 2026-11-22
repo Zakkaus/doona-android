@@ -48,9 +48,10 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 
 /**
  * Revolut's modal sheet (measured §2): 8 dp in from the screen's sides and 10 dp above its bottom edge, about 41 dp round,
- * a 47 x 5 dp handle, over a scrim of black at 80 %. Inside, the gutter, then the title 20 dp under the handle, the body
- * 8 dp under it, and the actions 24 dp under the body; at least 8 dp under the last action, more over a taller system
- * bar.
+ * a 47 x 5 dp handle, over a scrim of black at 80 %. Inside, the title 20 dp under the handle, the body 8 dp under it,
+ * and the actions 24 dp under the body; at least 8 dp under the last action, more over a taller system bar. Its parts
+ * sit on the lines every page uses: buttons and fields on the page's edge line, 16 dp from the screen ([edge] in from
+ * the sheet's side), so the primary button is a page's 380 dp; the title and body on the card-content line, 32 dp in.
  */
 internal object RvSheetSize {
     val inset = 8.dp
@@ -63,6 +64,9 @@ internal object RvSheetSize {
     val titleToBody = 8.dp
     val bodyToActions = RvSpace.chartGap
     val lastPad = 8.dp
+
+    /** From the sheet's side to the page's edge line: the gutter less the sheet's own inset. */
+    val edge = RvSpace.gutter - inset
 
     /** A drag dismisses the sheet past this share of its height, or when it lets go faster than [fling] a second. */
     const val DISMISS_SHARE = 0.33f
@@ -133,7 +137,7 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
     }
 }
 
-/** The sheet's card: the card's fill, its rim in dark, the handle, and [content] on the gutter. */
+/** The sheet's card: the card's fill, its rim in dark, the handle, and [content] on the page's edge line. */
 @Composable
 internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val colors = Rv.colors
@@ -144,7 +148,7 @@ internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable Co
     val bar = with(density) { insets.getBottom(this).toDp() }
     val last = maxOf(RvSheetSize.lastPad, bar - RvSheetSize.bottom)
     val rim = colors.raisedRim?.let { Modifier.border(RvChrome.ring, it, shape) } ?: Modifier
-    Column(modifier.fillMaxWidth().clip(shape).background(colors.card).then(rim).padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = last)) {
+    Column(modifier.fillMaxWidth().clip(shape).background(colors.card).then(rim).padding(start = RvSheetSize.edge, end = RvSheetSize.edge, bottom = last)) {
         Spacer(Modifier.height(RvSheetSize.handleTop))
         Box(Modifier.align(Alignment.CenterHorizontally).size(RvSheetSize.handleWidth, RvSheetSize.handleHeight).clip(CircleShape).background(colors.track))
         content()
@@ -183,9 +187,11 @@ internal fun ColumnScope.RvConfirmContent(
     extra: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     Spacer(Modifier.height(RvSheetSize.titleTop))
-    RvText(title, Rv.type.section, maxLines = TITLE_LINES)
+    // The words on the card-content line, as a card's rows set theirs.
+    val text = Modifier.padding(horizontal = RvSpace.rowPadding)
+    RvText(title, Rv.type.section, text, maxLines = TITLE_LINES)
     Spacer(Modifier.height(RvSheetSize.titleToBody))
-    RvText(body, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BODY_LINES)
+    RvText(body, Rv.type.rowSub, text, color = Rv.colors.textSecondary, maxLines = BODY_LINES)
     extra?.let {
         Spacer(Modifier.height(RvSpace.gutter))
         it()

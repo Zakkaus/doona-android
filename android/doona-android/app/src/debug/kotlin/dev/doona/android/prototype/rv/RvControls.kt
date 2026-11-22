@@ -100,7 +100,7 @@ internal object RvControlSize {
     /**
      * The text field: the search pill's shape (measured §4, full round) at the primary button's 52 dp, its text 16 dp in
      * as a row's is, its label 8 dp above it as a round action's label sits under its disc (§6), and a 1 dp ring for
-     * focus or an error, as the switch's on track is outlined.
+     * focus, as the switch's on track is outlined.
      */
     val field = 52.dp
     val fieldRing = 1.dp
@@ -255,7 +255,8 @@ internal fun RvPrimaryButton(
  * A single-line text field. The [label] sits over the field in secondary ink; the field is the search pill's shape
  * (measured §4) on the segmented control's track, which reads on the page, on a card and in a sheet, holding [value] in
  * 19 sp (the stat value, measured §11) or [placeholder] in secondary ink; under it [supporting] text, or [error] in the
- * error hue, which also rings the field and marks it for a screen reader. Focused, the field is ringed in the accent and
+ * error hue, which also marks it for a screen reader; no approved page outlines an error, so the message alone shows
+ * it. Focused, the field is ringed in the accent and
  * the cursor is the accent. Label, field and message are one target, as Material's field is; [trailing] (a clear or
  * paste button) sits inside the field's end. Disabled, the whole field is at [RvAlpha.DISABLED] and takes no input.
  */
@@ -277,11 +278,7 @@ internal fun RvTextField(
     val size = RvControlSize
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
-    val ring = when {
-        error != null -> colors.error
-        focused && enabled -> colors.positive
-        else -> null
-    }
+    val ring = if (focused && enabled) colors.positive else null
     BasicTextField(
         value,
         onValueChange,
@@ -299,7 +296,7 @@ internal fun RvTextField(
         cursorBrush = SolidColor(colors.positive),
         decorationBox = { field ->
             Column {
-                RvText(label, Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = if (error != null) colors.error else colors.textSecondary)
+                RvText(label, Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = colors.textSecondary)
                 Spacer(Modifier.height(RvSpace.discToLabel))
                 Row(
                     Modifier
