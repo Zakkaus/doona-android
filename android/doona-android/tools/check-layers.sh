@@ -17,7 +17,7 @@ fail=0
 
 # rule <description> <regex> <directory or file filter: grep -v pattern of allowed paths> <search dir>
 rule() {
-    hits=$(grep -rnE "$2" --include='*.kt' "$4" 2>/dev/null | grep -vE "$3" || true)
+    hits=$(grep -rnE "$2" --include='*.kt' --include='*.java' "$4" 2>/dev/null | grep -vE "$3" || true)
     if [ -n "$hits" ]; then
         printf 'check-layers: %s\n%s\n' "$1" "$hits" >&2
         fail=1
@@ -36,7 +36,7 @@ else
     lookups="$root/app/src $root/icons/src $root/flags/src"
 fi
 for dir in $lookups; do
-    rule 'getIdentifier looks a resource up by name, so resource shrinking keeps every icon' 'getIdentifier\(' '^$' "$dir"
+    rule 'getIdentifier looks a resource up by name, so resource shrinking keeps every icon' 'getIdentifier[[:space:]]*\(' '^$' "$dir"
 done
 
 if [ "$fail" -ne 0 ]; then

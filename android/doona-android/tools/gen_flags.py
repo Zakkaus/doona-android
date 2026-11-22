@@ -139,6 +139,8 @@ def ellipse(cx, cy, rx, ry):
 
 
 def rect(x, y, w, h, rx, ry):
+    # SVG 1.1 §9.2 clamps each radius to half its side.
+    rx, ry = min(rx or 0, w / 2), min(ry or 0, h / 2)
     if not rx and not ry:
         return "M%s %sh%sv%sh%sz" % (number(x), number(y), number(w), number(h), number(-w))
     arc = "a%s %s 0 0 1 " % (number(rx), number(ry))
