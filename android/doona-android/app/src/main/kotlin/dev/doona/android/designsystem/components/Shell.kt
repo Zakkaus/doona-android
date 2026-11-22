@@ -225,7 +225,7 @@ fun DoonaPageTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifi
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, style = DoonaTheme.type.label, color = c.text.primary, maxLines = 1, modifier = Modifier.padding(horizontal = DoonaTheme.spacing.block))
+                    Text(label, style = DoonaTheme.type.label, color = c.text.primary, maxLines = 1, modifier = Modifier.padding(horizontal = DoonaTheme.spacing.fillInset))
                     if (on) {
                         Box(Modifier.matchParentSize(), contentAlignment = Alignment.BottomCenter) {
                             Box(

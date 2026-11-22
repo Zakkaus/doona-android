@@ -2,6 +2,7 @@ package dev.doona.android.designsystem.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import dev.doona.android.designsystem.tokens.AlphaScale
 import dev.doona.android.designsystem.tokens.DoonaPalette
 
 /** Text on the surfaces: the body colours, and the tone colours that latency values use. */
@@ -24,7 +25,7 @@ class DoonaColors(p: DoonaPalette) {
     val window = p.base
     val surface = p.surface
     val card = p.base
-    val cardBorder = p.hlMed.copy(alpha = 0.7f)
+    val cardBorder = p.hlMed.copy(alpha = AlphaScale.CARD_BORDER)
     val control = p.overlay
     val line = if (p.dark) p.hlMed else p.hlLow
     val strongLine = p.hlMed
@@ -33,7 +34,15 @@ class DoonaColors(p: DoonaPalette) {
     val onAccent = p.onAccent
     val selected = p.selected
     val badgeBorder = p.hlHigh
-    val switchOff = p.hlHigh
+
+    /**
+     * Switch, off: the track fill, and the outline and knob drawn over it in the secondary text colour. The outline is
+     * 3:1 against the card and the knob against the track, which `hlHigh` was not (1.5:1 and 2.1:1); ContrastTest holds it.
+     */
+    val switchOff = p.overlay
+    val switchOffLine = p.subtleText
+
+    /** Switch, on: the knob over the accent track. */
     val switchKnob = p.surface
     val positive = p.foam
     val notice = p.gold
@@ -41,7 +50,7 @@ class DoonaColors(p: DoonaPalette) {
     val neutral = p.subtle
 
     /** Flag edge: a 0.5 px black 35 % outline in light, none in dark (`--rp-node-flag-edge`, `src/ui/flags.css:8-13`). */
-    val flagEdge: Color? = if (p.dark) null else Color.Black.copy(alpha = 0.35f)
+    val flagEdge: Color? = if (p.dark) null else Color.Black.copy(alpha = AlphaScale.FLAG_EDGE)
 
     /** Chart series c1…c6 (§2, chart series table). */
     val c1 = p.pine

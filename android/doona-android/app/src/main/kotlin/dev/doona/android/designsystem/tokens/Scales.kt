@@ -59,7 +59,6 @@ object TypeScale {
 
     /** Font feature setting for tabular figures (§3, last line). */
     const val TABULAR = "tnum"
-    val sizes = listOf(11, 12, 13, 14, 16, 18, 20, 22, 24, 28).map { it.sp }
 }
 
 /** Radii (§5, `foundations.css:47-53`). */
@@ -89,9 +88,6 @@ object SizeScale {
     val dotSmall = 8.dp
     val badgeHeight = 20.dp
     val nodeTileMin = 56.dp
-    val switchWidth = 32.dp
-    val switchHeight = 16.dp
-    val switchKnob = 12.dp
     val tabUnderline = 2.dp
     val spark = 32.dp
     val sparkStroke = 1.5.dp
@@ -101,6 +97,15 @@ object SizeScale {
 
     /** Widest content column: wider windows centre it (D20). */
     val contentMax = 600.dp
+}
+
+/** Alpha of the colours doona derives from a palette colour (§2). */
+object AlphaScale {
+    /** `--rp-card-border`: the palette's `hlMed` at 70 %. */
+    const val CARD_BORDER = 0.7f
+
+    /** Light flag edge: black at 35 % (`--rp-node-flag-edge`, `src/ui/flags.css:8-13`). */
+    const val FLAG_EDGE = 0.35f
 }
 
 /** Chart style (§7, Charts). */

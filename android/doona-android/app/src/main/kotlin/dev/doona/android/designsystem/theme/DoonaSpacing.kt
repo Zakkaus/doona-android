@@ -28,8 +28,14 @@ object DoonaSpacing {
     /** Between a page title and the tab row under it. */
     val afterTitle = SpaceScale.s4
 
-    /** Between sibling blocks (cards, tiles, controls), inside a card, and the inline padding of rows and fills. */
+    /** Between sibling blocks (cards, tiles, controls), inside a card, and between a label and its trailing control. */
     val block = SpaceScale.s3
+
+    /**
+     * Padding at the sides inside a filled control, a node tile or a page tab. It is the size of [block] but not a gap
+     * between two things, so a change to the one must not move the other.
+     */
+    val fillInset = SpaceScale.s3
 
     /** Between sibling items (node tiles, chips), and an icon or dot and its label. */
     val item = SpaceScale.s2
@@ -40,8 +46,8 @@ object DoonaSpacing {
     /** Between a status dot and its value in a latency. */
     val dotGap = SpaceScale.s1h
 
-    /** Knob inset in a switch; line gap in a tile. */
-    val hairline = SpaceScale.half
+    /** Between the lines of a tile: the name row and its source row. The switch's knob inset is the switch's own. */
+    val lineGap = SpaceScale.half
 
     /** The whole scale, for checks. */
     val scale: List<Dp> = SpaceScale.all

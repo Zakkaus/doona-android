@@ -16,7 +16,7 @@ class ContrastTest {
         return (hi + 0.05f) / (lo + 0.05f)
     }
 
-    private class Theme(val name: String, palette: DoonaPalette) {
+    private class Theme(val name: String, val palette: DoonaPalette) {
         val c = DoonaColors(palette)
         val fills = mapOf("window" to c.window, "surface" to c.surface, "card" to c.card, "control" to c.control, "selected" to c.selected)
     }
@@ -47,5 +47,27 @@ class ContrastTest {
             listOf("surface", "card").map { fill -> Triple("${t.name}: accent on $fill", ratio(t.c.accent, t.fills.getValue(fill)), 3f) }
         }.filter { it.second < it.third }
         assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    }
+
+    /** WCAG 1.4.11: the parts of a control that show its state are 3:1 against what they sit on. */
+    @Test
+    fun switchOffShowsItsStateAtThreeToOne() {
+        val bad = themes.flatMap { t ->
+            listOf("card", "surface").map { fill -> Triple("${t.name}: off outline on $fill", ratio(t.c.switchOffLine, t.fills.getValue(fill)), 3f) } +
+                Triple("${t.name}: off knob on the off track", ratio(t.c.switchOffLine, t.c.switchOff), 3f)
+        }.filter { it.second < it.third }
+        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    }
+
+    @Test
+    fun switchOnKnobHasThreeToOneOnTheAccentTrack() {
+        val bad = themes.map { it to ratio(it.c.switchKnob, it.c.accent) }.filter { it.second < 3f }
+        assertTrue(bad.joinToString { "${it.first.name}: on knob on the accent track is %.2f:1".format(it.second) }, bad.isEmpty())
+    }
+
+    /** The fill the off track had (`hlHigh`) is 1.48:1 on the light card and 2.11:1 on the dark one: this check catches it. */
+    @Test
+    fun theOldOffTrackFailsTheSameCheck() {
+        themes.forEach { t -> assertTrue("${t.name}: hlHigh is ${ratio(t.palette.hlHigh, t.c.card)}:1 on the card", ratio(t.palette.hlHigh, t.c.card) < 3f) }
     }
 }

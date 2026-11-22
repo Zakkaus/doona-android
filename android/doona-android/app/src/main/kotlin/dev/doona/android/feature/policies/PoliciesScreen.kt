@@ -185,7 +185,7 @@ fun GroupScreen(group: Group, onBack: () -> Unit) {
             )
             DoonaText(
                 pluralStringResource(R.plurals.policy_members, members.size, members.size),
-                style = DoonaTheme.type.body.copy(fontFeatureSettings = DoonaTheme.type.tabular),
+                style = DoonaTheme.type.bodyTabular,
                 color = c.text.secondary,
                 maxLines = 1,
             )

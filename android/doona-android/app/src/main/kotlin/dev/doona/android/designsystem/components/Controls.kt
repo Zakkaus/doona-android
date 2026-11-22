@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
@@ -41,7 +42,7 @@ fun DoonaTagChip(text: String, modifier: Modifier = Modifier, onClick: (() -> Un
             .clip(DoonaTheme.shape.control)
             .background(DoonaTheme.colors.control)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
-            .padding(horizontal = DoonaTheme.spacing.block),
+            .padding(horizontal = DoonaTheme.spacing.fillInset),
         contentAlignment = Alignment.Center,
     ) {
         Text(text, style = DoonaTheme.type.body, color = DoonaTheme.colors.text.primary, maxLines = 1)
@@ -78,15 +79,15 @@ fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, 
                     .padding(horizontal = DoonaTheme.spacing.item),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, style = DoonaTheme.type.body.copy(fontFeatureSettings = DoonaTheme.type.tabular), color = c.text.primary, maxLines = 1, softWrap = false)
+                Text(label, style = DoonaTheme.type.bodyTabular, color = c.text.primary, maxLines = 1, softWrap = false)
             }
         }
     }
 }
 
 /**
- * Switch row: [content] at the start, a switch at the end (§7: track 32 × 16, radius 8, hl-high off / accent on; 12 px
- * surface knob inset 2, travels 16). The whole row is the switch: it toggles anywhere, is hit over its full 48 dp
+ * Switch row: [content] at the start, a switch at the end (§7: track 32 × 16, radius 8, see [DoonaSwitchDefaults] and
+ * [SwitchTrack]). The whole row is the switch: it toggles anywhere, is hit over its full 48 dp
  * height, and a screen reader reads [content] as its name followed by On or Off.
  */
 @Composable
@@ -107,23 +108,36 @@ fun DoonaSwitchRow(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modi
     }
 }
 
+/** The switch's own metrics (§7): a 32 × 16 track, a 12 knob inset 2, so the knob travels 16. */
+internal object DoonaSwitchDefaults {
+    val trackWidth = 32.dp
+    val trackHeight = 16.dp
+    val knob = 12.dp
+    val knobInset = 2.dp
+}
+
+/**
+ * On, the track is the accent with the surface knob. Off, the track has the control fill, an outline and the knob in
+ * the secondary text colour: those are the pair that reaches 3:1 against the card, which the old fill did not.
+ */
 @Composable
 private fun SwitchTrack(checked: Boolean) {
     val c = DoonaTheme.colors
-    val s = DoonaTheme.size
+    val shape = DoonaTheme.shape.control
     Box(
         Modifier
-            .size(s.switchWidth, s.switchHeight)
-            .clip(DoonaTheme.shape.control)
+            .size(DoonaSwitchDefaults.trackWidth, DoonaSwitchDefaults.trackHeight)
+            .clip(shape)
             .background(if (checked) c.accent else c.switchOff)
-            .padding(DoonaTheme.spacing.hairline),
+            .then(if (checked) Modifier else Modifier.border(DoonaTheme.size.border, c.switchOffLine, shape))
+            .padding(DoonaSwitchDefaults.knobInset),
         contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         Box(
             Modifier
-                .size(s.switchKnob)
+                .size(DoonaSwitchDefaults.knob)
                 .clip(DoonaTheme.shape.pill)
-                .background(c.switchKnob),
+                .background(if (checked) c.switchKnob else c.switchOffLine),
         )
     }
 }
@@ -149,7 +163,7 @@ private fun PickerRow(value: String, onClick: () -> Unit, modifier: Modifier, fi
             .clip(DoonaTheme.shape.control)
             .then(if (filled) Modifier.background(c.control) else Modifier)
             .clickable(role = Role.Button, onClick = onClick)
-            .then(if (filled) Modifier.padding(horizontal = DoonaTheme.spacing.block) else Modifier),
+            .then(if (filled) Modifier.padding(horizontal = DoonaTheme.spacing.fillInset) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item),
     ) {

@@ -19,8 +19,8 @@ class DoonaType(private val family: FontFamily) {
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
     )
 
-    /** Tabular figures: values that change in place keep their width. Declared first: [tileValue] uses it. */
-    val tabular = TypeScale.TABULAR
+    /** Tabular figures: values that change in place keep their width. Declared first: the roles below use it. */
+    private val tabular = TypeScale.TABULAR
 
     val pageTitle = style(TypeScale.h1)
     val cardTitle = style(TypeScale.h3)

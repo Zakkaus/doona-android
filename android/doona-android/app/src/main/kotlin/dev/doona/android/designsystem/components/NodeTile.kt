@@ -45,8 +45,8 @@ fun DoonaNodeTile(
             .background(if (current) c.selected else c.control)
             .border(DoonaTheme.size.borderStrong, if (current) c.accent else Color.Transparent, shape)
             .selectable(current, role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = space.block, vertical = space.item),
-        verticalArrangement = Arrangement.spacedBy(space.hairline, Alignment.CenterVertically),
+            .padding(horizontal = space.fillInset, vertical = space.item),
+        verticalArrangement = Arrangement.spacedBy(space.lineGap, Alignment.CenterVertically),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             DoonaNodeName(name, DoonaTheme.type.bodyStrong, modifier = Modifier.weight(1f))

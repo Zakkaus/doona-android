@@ -28,9 +28,6 @@ object DoonaSize {
     val dotSmall = SizeScale.dotSmall
     val badgeHeight = SizeScale.badgeHeight
     val nodeTileMin = SizeScale.nodeTileMin
-    val switchWidth = SizeScale.switchWidth
-    val switchHeight = SizeScale.switchHeight
-    val switchKnob = SizeScale.switchKnob
     val tabUnderline = SizeScale.tabUnderline
     val spark = SizeScale.spark
     val sparkStroke = SizeScale.sparkStroke
