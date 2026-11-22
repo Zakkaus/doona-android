@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -174,7 +175,7 @@ fun Latency(ms: Int?, style: TextStyle = DoonaTheme.type.bodyStrong) {
     }
     StatusLight(
         tone = tone,
-        text = ms?.let { "$it ms" } ?: "—",
+        text = ms?.let { stringResource(R.string.latency_ms, it) } ?: "—",
         style = style.copy(fontFeatureSettings = DoonaTheme.type.tabular),
         color = text,
         small = true,

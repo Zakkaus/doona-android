@@ -27,6 +27,7 @@
     <string name="ui_upload">Upload</string>
     <string name="act_active">Active connections</string>
     <string name="act_latency">Latency</string>
+    <string name="latency_ms">%1$d ms</string>
     <string name="act_cpu">CPU usage</string>
     <string name="policy_kind_selector">Manual</string>
     <string name="policy_kind_urltest">Fastest on average</string>

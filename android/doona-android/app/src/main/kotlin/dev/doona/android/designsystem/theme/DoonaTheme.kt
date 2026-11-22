@@ -83,6 +83,9 @@ class DoonaType(private val family: androidx.compose.ui.text.font.FontFamily) {
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
     )
 
+    /** Tabular figures (§3, last line). Declared first: the styles below use it. */
+    val tabular = "tnum"
+
     /** `.rp-h1` 28 / 36 / 800. */
     val pageTitle = style(28, 36, 800)
 
@@ -104,8 +107,8 @@ class DoonaType(private val family: androidx.compose.ui.text.font.FontFamily) {
     /** Badge 12 / 500 (line 1 in a 20 high box). */
     val badge = style(12, 16, 500)
 
-    /** `.rp-big` 22 / 28 / 700. */
-    val tileValue = style(22, 28, 700)
+    /** `.rp-big` 22 / 28 / 700, tabular figures. */
+    val tileValue = style(22, 28, 700).copy(fontFeatureSettings = tabular)
 
     /** Bottom bar label 12 / 16 / 500, current 600. */
     val navLabel = style(12, 16, 500)
@@ -113,9 +116,6 @@ class DoonaType(private val family: androidx.compose.ui.text.font.FontFamily) {
 
     /** Chart axis tick 11. */
     val axis = style(11, 16, 400)
-
-    /** Tabular figures (§3, last line). */
-    val tabular = "tnum"
 }
 
 /** Spacing scale (§4, `foundations.css:67-79`). */
