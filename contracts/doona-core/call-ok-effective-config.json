@@ -1,0 +1,27 @@
+{
+  "ok": {
+    "mode": "Rule",
+    "mainGroupId": "g-Proxy",
+    "dnsVia": "g-Proxy",
+    "dnsUpstreams": [
+      "1.1.1.1:53",
+      "8.8.8.8:53"
+    ],
+    "ruleSource": {
+      "kind": "template",
+      "template": "cn-direct",
+      "version": 2,
+      "subscriptionId": null,
+      "options": {
+        "blockQuic": false
+      },
+      "rules": 5,
+      "lines": 23,
+      "skipped": 0,
+      "rulesRevision": 91044300313602,
+      "error": null
+    },
+    "text": "# mode: Rule\n# rules: template cn-direct version 2, blockQuic false, 5 rows, 23 lines, 0 skipped\n# main group: Proxy\n# dns: via Proxy, upstreams 1.1.1.1:53, 8.8.8.8:53\n# group Proxy (Selector, now Auto): Auto, HK, JP, hk-01, jp-01\n# group Auto (UrlTest, now hk-01): hk-01, jp-01\n# group Streaming (Selector, now Proxy): Proxy, Auto, HK, JP, hk-01, jp-01\n# group AI (Selector, now Proxy): Proxy, Auto, HK, JP, hk-01, jp-01\n# group HK (UrlTest, now hk-01): hk-01\n# group JP (UrlTest, now jp-01): jp-01\nGEOIP,private,DIRECT\nDOMAIN-SUFFIX,netflix.com,Streaming\nDOMAIN-SUFFIX,netflix.net,Streaming\nDOMAIN-SUFFIX,nflxext.com,Streaming\nDOMAIN-SUFFIX,nflximg.net,Streaming\nDOMAIN-SUFFIX,nflxso.net,Streaming\nDOMAIN-SUFFIX,nflxvideo.net,Streaming\nDOMAIN-SUFFIX,youtube.com,Streaming\nDOMAIN-SUFFIX,googlevideo.com,Streaming\nDOMAIN-SUFFIX,ytimg.com,Streaming\nDOMAIN-SUFFIX,disneyplus.com,Streaming\nDOMAIN-SUFFIX,bamgrid.com,Streaming\nDOMAIN-SUFFIX,dssott.com,Streaming\nDOMAIN-SUFFIX,max.com,Streaming\nDOMAIN-SUFFIX,primevideo.com,Streaming\nDOMAIN-SUFFIX,openai.com,AI\nDOMAIN-SUFFIX,chatgpt.com,AI\nDOMAIN-SUFFIX,oaistatic.com,AI\nDOMAIN-SUFFIX,oaiusercontent.com,AI\nDOMAIN-SUFFIX,anthropic.com,AI\nDOMAIN-SUFFIX,claude.ai,AI\nGEOIP,CN,DIRECT\nMATCH,Proxy\n",
+    "truncated": false
+  }
+}

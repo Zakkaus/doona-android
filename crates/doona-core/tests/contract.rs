@@ -2,8 +2,9 @@
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
 use doonacore::dto::{
-    Empty, ErrorCode, Init, Mode, Nodes, NodesArgs, Reply, Rules, RulesArgs, SelectArgs, Snapshot,
-    SourceKind, StartConfig, Subscription, TargetKind, TrafficSeries, Usage,
+    EffectiveConfig, Empty, ErrorCode, Init, Mode, Nodes, NodesArgs, Reply, RuleSourceSpec, Rules,
+    RulesArgs, SelectArgs, Snapshot, SourceKind, StartConfig, Subscription, TargetKind,
+    TrafficSeries, Usage,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -28,9 +29,10 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 15] = [
+const COVERED: [&str; 17] = [
     "call-error.json",
     "call-nodes-args.json",
+    "call-ok-effective-config.json",
     "call-ok-empty.json",
     "call-ok-nodes.json",
     "call-ok-rules.json",
@@ -39,6 +41,7 @@ const COVERED: [&str; 15] = [
     "call-ok-usage.json",
     "call-rules-args.json",
     "call-select-args.json",
+    "call-set-rule-source-args.json",
     "init.json",
     "snapshot-died.json",
     "snapshot-running.json",
@@ -184,4 +187,33 @@ fn rule_replies_and_args() {
     );
     // `offset` and `limit` are both required.
     assert!(serde_json::from_str::<RulesArgs>(r#"{"limit":50}"#).is_err());
+}
+
+#[test]
+fn rule_source_args_and_the_effective_config() {
+    let spec = round_trip::<RuleSourceSpec>("call-set-rule-source-args.json");
+    let RuleSourceSpec::Template { template, options } = spec;
+    assert_eq!(template, "cn-direct");
+    assert!(options.block_quic);
+    // Schema 2 knows the template only, and `options` is required.
+    for other in [
+        r#"{"kind":"subscription","subscriptionId":"s1","options":{"blockQuic":false}}"#,
+        r#"{"kind":"template","template":"cn-direct"}"#,
+    ] {
+        assert!(
+            serde_json::from_str::<RuleSourceSpec>(other).is_err(),
+            "{other}"
+        );
+    }
+    let config = ok(round_trip::<Reply<EffectiveConfig>>(
+        "call-ok-effective-config.json",
+    ));
+    assert_eq!(
+        (config.mode, config.dns_via.as_str()),
+        (Mode::Rule, "g-Proxy")
+    );
+    assert_eq!(config.main_group_id, "g-Proxy");
+    assert!(config.text.ends_with("MATCH,Proxy\n") && !config.truncated);
+    // Nodes by display name only.
+    assert!(config.text.contains("hk-01") && !config.text.contains("192.0.2."));
 }

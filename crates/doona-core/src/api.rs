@@ -409,6 +409,7 @@ impl Core {
             "nodes" => self.nodes(args),
             "rules" => self.rules(args),
             "setRuleSource" => parse(args).and_then(|a| self.set_rule_source(a).map(empty)),
+            "effectiveConfig" => self.effective_config(args),
             #[cfg(feature = "fault-hook")]
             "debugFault" => self.fault().map(empty),
             _ => Err(ErrorCode::InvalidArgument),
@@ -524,7 +525,7 @@ pub fn error_reply(code: ErrorCode) -> String {
 
 /// A command name fit for the log: the closed list, never caller text.
 fn command_name(command: &str) -> &'static str {
-    const KNOWN: [&str; 11] = [
+    const KNOWN: [&str; 12] = [
         "select",
         "testLatency",
         "addSubscription",
@@ -536,6 +537,7 @@ fn command_name(command: &str) -> &'static str {
         "nodes",
         "rules",
         "setRuleSource",
+        "effectiveConfig",
     ];
     KNOWN
         .into_iter()

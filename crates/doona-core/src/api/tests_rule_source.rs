@@ -1,8 +1,10 @@
 //! The rule source through `call`: `rules` pages and ids, `setRuleSource` from the file to new
-//! flows, and the contract fixtures held to what the core answers.
+//! flows, `effectiveConfig` without a node's endpoint, and the contract fixtures held to what the
+//! core answers.
 
-use super::Core;
+use super::rules::effective;
 use super::tests_catalog::{Feeds, add, call, catalog, path};
+use super::{Core, lock};
 use crate::dto::{ErrorCode, Snapshot};
 use crate::rules::policy::Choice;
 use crate::rules::{Flow, Network};
@@ -206,4 +208,86 @@ fn set_rule_source_refuses_another_kind_or_template_and_missing_options() {
     }
     assert!(!dir.path().join("state.json").exists());
     assert!(!catalog(&core).rule_source.options.block_quic);
+}
+
+/// A core in Rule over [`TWO_NODES`].
+fn two_nodes(tag: &str) -> (Core, TempDir, Feeds) {
+    let dir = TempDir::new(tag);
+    let feeds = Feeds::new();
+    feeds.set("/sub", TWO_NODES);
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    assert_eq!(
+        call(&core, "setMode", json!({"mode": "Rule"})),
+        Ok(json!({}))
+    );
+    (core, dir, feeds)
+}
+
+#[test]
+fn the_effective_config_names_nodes_but_never_their_endpoints() {
+    let (core, _dir, _feeds) = two_nodes("rules-effective");
+    let mut reply = call(&core, "effectiveConfig", json!({})).unwrap();
+    let text = reply["text"].as_str().unwrap().to_owned();
+    assert!(text.contains("hk-01") && text.contains("jp-01"), "{text}");
+    assert!(text.contains("\nMATCH,Proxy\n") && reply["truncated"] == false);
+    assert_eq!(
+        (&reply["mode"], &reply["dnsVia"]),
+        (&json!("Rule"), &json!("g-Proxy"))
+    );
+    // The revision is a number whose digits are no endpoint.
+    reply["ruleSource"]["rulesRevision"] = json!(0);
+    let whole = reply.to_string();
+    for secret in ["192.0.2.", "secret", "443"] {
+        assert!(
+            !text.contains(secret) && !whole.contains(secret),
+            "{secret}: {whole}"
+        );
+    }
+    assert_eq!(
+        call(&core, "setMode", json!({"mode": "Direct"})),
+        Ok(json!({}))
+    );
+    let direct = call(&core, "effectiveConfig", json!({})).unwrap();
+    assert_eq!(direct["dnsVia"], "direct");
+    assert_eq!(
+        call(&core, "effectiveConfig", json!(null)),
+        Err(ErrorCode::InvalidArgument)
+    );
+}
+
+#[test]
+fn the_effective_config_text_ends_at_a_line_boundary_past_its_cap() {
+    let (core, _dir, _feeds) = two_nodes("rules-effective-cap");
+    let (catalog, policy) = {
+        let c = lock(&core.shared.catalog);
+        (
+            c.model.catalog(&c.state),
+            std::sync::Arc::clone(&c.model.policy),
+        )
+    };
+    let full = effective(catalog.clone(), &policy, &[], usize::MAX);
+    assert!(!full.truncated);
+    let cap = full.text.len() / 2;
+    let cut = effective(catalog, &policy, &[], cap);
+    assert!(cut.truncated && cut.text.len() <= cap);
+    assert!(cut.text.ends_with('\n') && full.text.starts_with(&cut.text));
+    assert!(full.text.len() > cut.text.len());
+}
+
+#[test]
+fn the_effective_config_fixture_is_what_the_core_answers() {
+    let (core, _dir, _feeds) = two_nodes("rules-effective-fixture");
+    let reply: Value = serde_json::from_str(&core.call("effectiveConfig", "{}")).unwrap();
+    let name = "call-ok-effective-config.json";
+    same(&reply, &contract(name), name);
+}
+
+#[test]
+fn the_set_rule_source_fixture_turns_block_quic_on() {
+    let dir = TempDir::new("rules-set-fixture");
+    let core = Core::new(path(&dir)).unwrap();
+    let args = contract_text("call-set-rule-source-args.json");
+    assert_eq!(core.call("setRuleSource", &args), r#"{"ok":{}}"#);
+    assert_eq!(quic_abroad(&core), "blocked");
 }

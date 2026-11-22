@@ -12,6 +12,7 @@
 
 mod compile;
 mod domain;
+pub(crate) mod export;
 mod geoip;
 mod graph;
 pub(crate) mod limits;

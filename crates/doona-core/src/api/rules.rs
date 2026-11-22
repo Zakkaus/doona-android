@@ -1,15 +1,23 @@
 //! Rule mode's commands (rule-mode.md, R3): `rules` lists the source's rows a page at a time,
-//! and `setRuleSource` changes the source. Reads take the published policy under the catalog
-//! lock and build their reply with no lock held.
+//! `setRuleSource` changes the source, and `effectiveConfig` shows what routes flows and DNS as
+//! text. Reads copy what they need under the catalog lock and build their reply with no lock
+//! held.
 
 use super::{Core, lock, parse, to_json};
-use crate::dto::{ErrorCode, Reply, RuleSourceSpec, RulesArgs};
+use crate::dto::{
+    Catalog, EffectiveConfig, Empty, ErrorCode, Mode, Reply, RuleSourceSpec, RulesArgs,
+};
+use crate::rules::export::Capped;
+use crate::rules::policy::Policy;
 use crate::rules::template;
 use crate::state::State;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 /// The most rows one `rules` call returns.
 const MAX_PAGE: u32 = 500;
+/// `effectiveConfig`'s text ends at a line boundary within this many bytes.
+const MAX_TEXT: usize = 1 << 20;
 
 impl Core {
     /// `rules`: `limit` rows (1 to 500) from `offset`; none past the end.
@@ -50,5 +58,88 @@ impl Core {
         }
         self.store.sync();
         Ok(())
+    }
+
+    /// `effectiveConfig`: the mode, where DNS goes, the rules' provenance and the rules as text.
+    pub(super) fn effective_config(&self, args: &str) -> Result<String, ErrorCode> {
+        let Empty {} = parse(args)?;
+        let (catalog, policy) = {
+            let c = lock(&self.shared.catalog);
+            (c.model.catalog(&c.state), Arc::clone(&c.model.policy))
+        };
+        let upstreams = &self.options.dns_upstreams;
+        let config = effective(catalog, &policy, upstreams, MAX_TEXT);
+        Ok(to_json(&Reply::Ok(config)))
+    }
+}
+
+/// `effectiveConfig`'s reply for `catalog` and its `policy`, the text capped at `cap` bytes: a
+/// comment each for the mode, the source, the main group, DNS and every group with its members
+/// and current choice, then the rules. Nodes appear by display name only (ARCH D21).
+pub(super) fn effective(
+    catalog: Catalog,
+    policy: &Policy,
+    upstreams: &[SocketAddr],
+    cap: usize,
+) -> EffectiveConfig {
+    let name = |id: &str| match catalog.groups.iter().find(|g| g.id == id) {
+        Some(g) => g.name.clone(),
+        None => id.strip_prefix("g-").unwrap_or(id).to_owned(),
+    };
+    let main = catalog.main_group_id.clone();
+    let direct = catalog.mode == Mode::Direct;
+    let upstreams: Vec<String> = upstreams.iter().map(ToString::to_string).collect();
+    let source = &catalog.rule_source;
+    let mut out = Capped::new(cap);
+    out.line(&format!("# mode: {:?}", catalog.mode));
+    out.line(&format!(
+        "# rules: template {} version {}, blockQuic {}, {} rows, {} lines, {} skipped",
+        source.template.as_deref().unwrap_or("none"),
+        source.version.unwrap_or_default(),
+        source.options.block_quic,
+        source.rules,
+        source.lines,
+        source.skipped,
+    ));
+    out.line(&format!("# main group: {}", name(&main)));
+    let via = if direct {
+        "DIRECT".to_owned()
+    } else {
+        name(&main)
+    };
+    out.line(&format!(
+        "# dns: via {via}, upstreams {}",
+        upstreams.join(", ")
+    ));
+    for g in &catalog.groups {
+        let member = |id: &str| {
+            g.members
+                .iter()
+                .find(|m| m.id == id)
+                .map(|m| m.name.as_str())
+        };
+        let now = g.selected_id.as_deref().and_then(member).unwrap_or("none");
+        let members: Vec<&str> = g.members.iter().map(|m| m.name.as_str()).collect();
+        let kind = g.kind;
+        out.line(&format!(
+            "# group {} ({kind:?}, now {now}): {}",
+            g.name,
+            members.join(", ")
+        ));
+    }
+    policy.listing().export(&name, &mut out);
+    let (text, truncated) = out.finish();
+    EffectiveConfig {
+        mode: catalog.mode,
+        dns_via: if direct {
+            "direct".to_owned()
+        } else {
+            main.clone()
+        },
+        main_group_id: main,
+        dns_upstreams: upstreams,
+        rule_source: catalog.rule_source,
+        text,
+        truncated,
     }
 }
