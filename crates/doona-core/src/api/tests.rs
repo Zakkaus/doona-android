@@ -35,6 +35,38 @@ fn stuck(
     })
 }
 
+/// Blocks its worker without ever becoming ready.
+fn stuck_unready(
+    tun: TunHandle,
+    _: Settings,
+    _: Gen,
+    ready: oneshot::Sender<()>,
+) -> BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = (tun, ready);
+        std::thread::sleep(STUCK);
+    })
+}
+
+/// The first generation is stuck; later ones never become ready.
+fn stuck_then_unready(
+    tun: TunHandle,
+    _: Settings,
+    gen_: Gen,
+    ready: oneshot::Sender<()>,
+) -> BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = tun;
+        if gen_.session.generation == 1 {
+            let _ = ready.send(());
+            std::thread::sleep(STUCK);
+        } else {
+            let _ready = ready;
+            std::future::pending::<()>().await;
+        }
+    })
+}
+
 /// Ready after a second, then idle.
 fn slow(tun: TunHandle, _: Settings, _: Gen, ready: oneshot::Sender<()>) -> BoxFuture<'static, ()> {
     Box::pin(async move {
@@ -132,4 +164,53 @@ fn stop_closes_the_tun_while_the_driver_is_stuck() {
     let took = begun.elapsed();
     assert!(closed(&probe), "stop returned with the tun open");
     assert!(took < Duration::from_secs(1), "{took:?}");
+}
+
+#[test]
+fn a_failed_start_closes_the_tun_within_its_deadline() {
+    let dir = TempDir::new("api-stuck-start");
+    let bound = Duration::from_millis(300);
+    let core = core(&dir, stuck_unready, bound);
+    let (dup, probe) = tun();
+    let begun = Instant::now();
+    assert_eq!(core.start(dup, CONFIG), Err(ErrorCode::Internal));
+    let took = begun.elapsed();
+    assert!(closed(&probe), "a failed start returned with the tun open");
+    assert!(took < bound + SLACK, "{took:?}");
+}
+
+#[test]
+fn start_keeps_its_deadline_while_replacing_a_stuck_generation() {
+    let dir = TempDir::new("api-stuck-replace");
+    let bound = Duration::from_secs(1);
+    let core = core(&dir, stuck_then_unready, bound);
+    let (first, old) = tun();
+    core.start(first, CONFIG).unwrap();
+    let (second, new) = tun();
+    let begun = Instant::now();
+    assert_eq!(core.start(second, CONFIG), Err(ErrorCode::Internal));
+    let took = begun.elapsed();
+    assert!(closed(&old) && closed(&new));
+    assert!(took < bound + SLACK, "{took:?}");
+}
+
+#[test]
+fn an_overlapping_start_is_busy() {
+    let dir = TempDir::new("api-overlap");
+    let core = core(&dir, slow, Duration::from_secs(10));
+    let (first, _running) = tun();
+    let starter = {
+        let core = Arc::clone(&core);
+        std::thread::spawn(move || core.start(first, CONFIG))
+    };
+    std::thread::sleep(Duration::from_millis(200));
+    let (second, probe) = tun();
+    let begun = Instant::now();
+    assert_eq!(core.start(second, CONFIG), Err(ErrorCode::Busy));
+    assert!(begun.elapsed() < SLACK, "{:?}", begun.elapsed());
+    assert!(closed(&probe));
+    assert_eq!(starter.join().unwrap(), Ok(()));
+    let begun = Instant::now();
+    core.stop();
+    assert!(begun.elapsed() < Duration::from_secs(1));
 }

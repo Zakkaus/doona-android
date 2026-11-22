@@ -27,8 +27,8 @@ use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 pub(crate) use tun::Tun;
 
-/// `stop` returns within 1 s; the rest is left for the locks around it.
-const STOP_WAIT: Duration = Duration::from_millis(900);
+/// How long `stop` waits for a halted generation's tasks; it returns within 1 s.
+pub(crate) const STOP_WAIT: Duration = Duration::from_millis(900);
 
 /// What a generation runs with: `start`'s config and the core's own settings.
 #[derive(Clone, Debug)]
@@ -151,15 +151,15 @@ pub struct Tunnel {
 }
 
 impl Tunnel {
-    /// Serves `tun` and returns once `launch` does, at most `bound` later. `abort` (a `stop`
-    /// arriving meanwhile) ends the wait with `busy`. On any failure the generation is stopped,
-    /// which closes `tun`.
+    /// Serves `tun` and returns once `launch` does, by `deadline`, cleanup included. `abort` (a
+    /// `stop` arriving meanwhile) ends the wait with `busy`, and wins over a readiness that
+    /// arrives at the same time. On any failure the generation is halted, which closes `tun`.
     pub(crate) fn start(
         rt: &Handle,
         tun: Arc<Tun>,
-        settings: Settings,
-        generation: i64,
-        (launch, bound): (Launch, Duration),
+        (settings, generation): (Settings, i64),
+        launch: Launch,
+        deadline: Instant,
         abort: &CancellationToken,
     ) -> Result<Tunnel, ErrorCode> {
         let tunnel = Tunnel {
@@ -174,17 +174,20 @@ impl Tunnel {
         let (ready_tx, ready_rx) = oneshot::channel();
         let gen_ = tunnel.gen_.clone();
         tunnel.gen_.spawn(launch(tun, settings, gen_, ready_tx));
+        // Timers must be created inside block_on, where the runtime's context is set.
         let up = rt.block_on(async {
             tokio::select! {
-                r = ready_rx => r.map_err(|_| ErrorCode::Internal),
+                biased;
                 () = abort.cancelled() => Err(ErrorCode::Busy),
-                () = tokio::time::sleep(bound) => Err(ErrorCode::Internal),
+                r = ready_rx => r.map_err(|_| ErrorCode::Internal),
+                () = tokio::time::sleep_until(deadline.into()) => Err(ErrorCode::Internal),
             }
         });
         match up {
             Ok(()) => Ok(tunnel),
             Err(code) => {
-                tunnel.stop(rt);
+                tunnel.halt();
+                tunnel.wait(rt, deadline);
                 Err(code)
             }
         }
@@ -194,18 +197,22 @@ impl Tunnel {
         &self.gen_.session
     }
 
-    /// Cancels the generation, closes its tun, and waits up to [`STOP_WAIT`] for its tasks. A
+    /// Cancels every task and closes the tun. Quick: it waits for at most one tun syscall.
+    pub fn halt(&self) {
+        self.gen_.cancel.cancel();
+        self.gen_.tracker.close();
+        self.tun.revoke();
+    }
+
+    /// Waits for the halted generation's tasks until `deadline`, for [`STOP_WAIT`] at most. A
     /// task still running then is left to finish on its own: the tun is closed already, and a
     /// flow owns its socket, so none can reach a descriptor number reused later.
-    pub fn stop(self, rt: &Handle) {
+    pub fn wait(self, rt: &Handle, deadline: Instant) {
         let begun = Instant::now();
+        let until = deadline.min(begun + STOP_WAIT);
         let g = &self.gen_;
-        g.cancel.cancel();
-        g.tracker.close();
-        self.tun.revoke();
-        // The timer must be created inside block_on, where the runtime's context is set.
         let done = rt
-            .block_on(async { tokio::time::timeout(STOP_WAIT, g.tracker.wait()).await })
+            .block_on(async { tokio::time::timeout_at(until.into(), g.tracker.wait()).await })
             .is_ok();
         let ms = begun.elapsed().as_millis();
         let generation = g.session.generation;

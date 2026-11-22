@@ -7,7 +7,7 @@ use crate::dto::{
 };
 use crate::state::{Loaded, State, Store};
 use crate::tunnel::route::ModeCell;
-use crate::tunnel::{self, Launch, Session, Settings, Tun, Tunnel};
+use crate::tunnel::{self, Launch, STOP_WAIT, Settings, Tun, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::net::SocketAddr;
@@ -48,18 +48,24 @@ pub struct Core {
     catalog: Mutex<CatalogState>,
     /// The committed mode, shared with the running generation.
     mode: Arc<ModeCell>,
-    /// The running generation. Held through a whole `start` (at most 10 s) or `stop` (1 s);
-    /// Kotlin runs those one at a time, and `snapshot` and `call` never take it.
-    tunnel: Mutex<Option<Tunnel>>,
-    /// Cancels the `start` in progress, so a `stop` need not wait for it.
-    starting: Mutex<Option<CancellationToken>>,
-    /// What `snapshot` reads about the running generation.
-    session: Mutex<Option<Arc<Session>>>,
+    /// Which generation runs, or that one is starting. Held only to read or swap it, never
+    /// across a wait, so `stop` and `snapshot` never wait for a `start`.
+    life: Mutex<Life>,
     /// The last generation `start` began; it stays in snapshots after `stop`.
     generation: AtomicI64,
     /// What serves a generation, and how long `start` may take: the driver and [`START_BOUND`]
     /// in the app, stand-ins in unit tests.
     launch: (Launch, Duration),
+}
+
+enum Life {
+    Stopped,
+    /// A `start` is under way; a `stop` cancels it and closes its tun.
+    Starting {
+        abort: CancellationToken,
+        tun: Arc<Tun>,
+    },
+    Running(Tunnel),
 }
 
 struct CatalogState {
@@ -104,9 +110,7 @@ impl Core {
             store,
             mode: Arc::new(ModeCell::new(state.mode)),
             catalog: Mutex::new(CatalogState { state, revision: 1 }),
-            tunnel: Mutex::new(None),
-            starting: Mutex::new(None),
-            session: Mutex::new(None),
+            life: Mutex::new(Life::Stopped),
             generation: AtomicI64::new(0),
             launch,
         })
@@ -120,14 +124,15 @@ impl Core {
     }
 
     /// Starts a new generation on `tun`, the duplicate of Kotlin's descriptor, which it owns
-    /// from here on: every failure closes it. A generation still running is stopped first.
+    /// from here on: every failure closes it. A generation still running is stopped first; a
+    /// `start` already under way makes this one `busy`. Returns by one deadline, cleanup
+    /// included.
     pub fn start(&self, tun: OwnedFd, config: &str) -> Result<(), ErrorCode> {
         let begun = Instant::now();
-        let settings = self.settings(config)?;
-        let abort = CancellationToken::new();
-        *lock(&self.starting) = Some(abort.clone());
-        let result = self.start_generation(tun, settings, &abort);
-        *lock(&self.starting) = None;
+        let deadline = begun + self.launch.1;
+        let result = self
+            .settings(config)
+            .and_then(|settings| self.start_generation(tun, settings, deadline));
         let ms = begun.elapsed().as_millis();
         match result {
             Ok(g) => log::info!("start {g}: up in {ms} ms"),
@@ -140,23 +145,82 @@ impl Core {
         &self,
         tun: OwnedFd,
         settings: Settings,
-        abort: &CancellationToken,
+        deadline: Instant,
     ) -> Result<i64, ErrorCode> {
-        let mut slot = lock(&self.tunnel);
-        if abort.is_cancelled() {
+        let rt = self.runtime.handle();
+        let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
+        let abort = CancellationToken::new();
+        let old = self.begin(&abort, &tun)?;
+        let generation = self.generation.fetch_add(1, Relaxed) + 1;
+        if let Some(old) = old {
+            old.wait(rt, deadline);
+        }
+        let started = Tunnel::start(
+            rt,
+            tun,
+            (settings, generation),
+            self.launch.0,
+            deadline,
+            &abort,
+        );
+        self.finish(started, &abort, deadline)?;
+        Ok(generation)
+    }
+
+    /// Marks a start under way, or answers `busy` (closing `tun`) while another is. Halts the
+    /// running generation, if any, and hands it back for the caller to wait for.
+    fn begin(
+        &self,
+        abort: &CancellationToken,
+        tun: &Arc<Tun>,
+    ) -> Result<Option<Tunnel>, ErrorCode> {
+        let mut life = lock(&self.life);
+        if matches!(*life, Life::Starting { .. }) {
+            drop(life);
+            tun.revoke();
             return Err(ErrorCode::Busy);
         }
-        if let Some(old) = slot.take() {
-            *lock(&self.session) = None;
-            old.stop(self.runtime.handle());
+        let starting = Life::Starting {
+            abort: abort.clone(),
+            tun: Arc::clone(tun),
+        };
+        match std::mem::replace(&mut *life, starting) {
+            Life::Running(old) => {
+                old.halt();
+                Ok(Some(old))
+            }
+            _ => Ok(None),
         }
-        let rt = self.runtime.handle();
-        let generation = self.generation.fetch_add(1, Relaxed) + 1;
-        let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
-        let tunnel = Tunnel::start(rt, tun, settings, generation, self.launch, abort)?;
-        *lock(&self.session) = Some(Arc::clone(tunnel.session()));
-        *slot = Some(tunnel);
-        Ok(generation)
+    }
+
+    /// Publishes the started generation, unless a `stop` cancelled the start meanwhile: that
+    /// `stop` closed the tun already and left the core stopped, which a newer `start` may have
+    /// changed since.
+    fn finish(
+        &self,
+        started: Result<Tunnel, ErrorCode>,
+        abort: &CancellationToken,
+        deadline: Instant,
+    ) -> Result<(), ErrorCode> {
+        let mut life = lock(&self.life);
+        if abort.is_cancelled() {
+            drop(life);
+            if let Ok(tunnel) = started {
+                tunnel.halt();
+                tunnel.wait(self.runtime.handle(), deadline);
+            }
+            return Err(ErrorCode::Busy);
+        }
+        match started {
+            Ok(tunnel) => {
+                *life = Life::Running(tunnel);
+                Ok(())
+            }
+            Err(code) => {
+                *life = Life::Stopped;
+                Err(code)
+            }
+        }
     }
 
     fn settings(&self, config: &str) -> Result<Settings, ErrorCode> {
@@ -172,15 +236,26 @@ impl Core {
         })
     }
 
-    /// Ends the running generation, if any, within 1 s. Also cancels a `start` in progress.
+    /// Ends the running generation, if any, within 1 s, and cancels a `start` under way. Every
+    /// tun the core held is closed when it returns.
     pub fn stop(&self) {
-        if let Some(abort) = lock(&self.starting).as_ref() {
-            abort.cancel();
-        }
-        let mut slot = lock(&self.tunnel);
-        *lock(&self.session) = None;
-        if let Some(tunnel) = slot.take() {
-            tunnel.stop(self.runtime.handle());
+        let halted = {
+            let mut life = lock(&self.life);
+            match std::mem::replace(&mut *life, Life::Stopped) {
+                Life::Running(tunnel) => {
+                    tunnel.halt();
+                    Some(tunnel)
+                }
+                Life::Starting { abort, tun } => {
+                    abort.cancel();
+                    tun.revoke();
+                    None
+                }
+                Life::Stopped => None,
+            }
+        };
+        if let Some(tunnel) = halted {
+            tunnel.wait(self.runtime.handle(), Instant::now() + STOP_WAIT);
         }
     }
 
@@ -194,7 +269,10 @@ impl Core {
             });
             (c.revision, catalog)
         };
-        let session = lock(&self.session).clone();
+        let session = match &*lock(&self.life) {
+            Life::Running(tunnel) => Some(Arc::clone(tunnel.session())),
+            _ => None,
+        };
         let snapshot = match session {
             Some(s) => Snapshot {
                 revision,
