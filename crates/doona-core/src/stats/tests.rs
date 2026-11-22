@@ -1,4 +1,5 @@
-//! The stats hub: folds from a session, when it writes `stats.json`, and what a new process reads.
+//! The stats hub: folds from a session, when it writes `stats.json` and `latency.json`, and what a
+//! new process reads.
 
 use super::*;
 use crate::testutil::TempDir;
@@ -62,7 +63,7 @@ fn a_fold_feeds_the_ring_the_day_and_the_peaks() {
     moved(&session, (300, 3000, 2), 2500);
     let at = clock(&base, 3, NOW_MS);
     assert!(
-        stats.fold(&session, &at, false),
+        stats.fold(&session, &at, false).usage,
         "the first change is written at once"
     );
     // Three seconds' bytes, spread: 100 and 1000 a second.
@@ -92,22 +93,31 @@ fn usage_is_written_once_a_minute_at_most_and_at_the_end() {
     let (dir, rt) = (TempDir::new("stats-throttle"), runtime());
     let stats = stats(&dir, &rt);
     let (session, base) = session();
+    // Folds at `clock`, runs the usage's write if one is due, and answers whether it was.
+    let fold = |clock: Clock, now| {
+        let writes = stats.fold(&session, &clock, now);
+        assert!(!writes.latency);
+        if writes.usage {
+            stats.write_usage();
+        }
+        writes.usage
+    };
     let at = |s| clock(&base, s, NOW_MS);
     moved(&session, (1, 1, 0), 0);
-    assert!(stats.fold(&session, &at(1), false));
+    assert!(fold(at(1), false));
     moved(&session, (2, 2, 0), 0);
-    assert!(!stats.fold(&session, &at(30), false));
+    assert!(!fold(at(30), false));
     // Still within the minute, with or without new bytes.
-    assert!(!stats.fold(&session, &at(40), false));
+    assert!(!fold(at(40), false));
     // A minute after the last write, the change from second 30 is written.
-    assert!(stats.fold(&session, &at(61), false));
+    assert!(fold(at(61), false));
     // The generation's end writes what changed since, at once; with nothing new, nothing.
     moved(&session, (3, 3, 0), 0);
-    assert!(stats.fold(&session, &at(62), true));
-    assert!(!stats.fold(&session, &at(63), true));
+    assert!(fold(at(62), true));
+    assert!(!fold(at(63), true));
     // The first fold of a new local day writes, even with no byte.
     let midnight = (NOW_MS / 86_400_000 + 1) * 86_400_000;
-    assert!(stats.fold(&session, &clock(&base, 64, midnight), false));
+    assert!(fold(clock(&base, 64, midnight), false));
 }
 
 #[test]
@@ -177,12 +187,27 @@ fn latency_tests_are_kept_written_at_a_round_end_and_pruned() {
         stats.record_latency("n-a", 1_000, Some(38));
         stats.record_latency("n-b", 1_000, None);
         stats.record_latency("n-a", 2_000, Some(35));
+        // A fold during the round writes the usage, not the tests.
+        let (session, base) = session();
+        moved(&session, (1, 1, 0), 0);
+        stats.finish(&session, &clock(&base, 1, NOW_MS));
+        assert!(!dir.path().join("latency.json").exists());
         stats.end_round(|id| id != "n-b");
         let tests = stats.latency(["n-a", "n-b", "n-c"].into_iter());
         let a: Vec<_> = tests[0].iter().map(|t| (t.at_epoch_ms, t.ms)).collect();
         assert_eq!(a, [(1_000, Some(38)), (2_000, Some(35))]);
         assert!(tests[1].is_empty() && tests[2].is_empty());
     }
+    // The round's end wrote the tests to their own file.
+    let read = |name| {
+        let text = std::fs::read(dir.path().join(name)).unwrap();
+        serde_json::from_slice::<serde_json::Value>(&text).unwrap()
+    };
+    assert_eq!(
+        read("latency.json")["latency"]["n-a"][1],
+        serde_json::json!([2_000, 35])
+    );
+    assert!(read("stats.json").get("latency").is_none());
     let rt = runtime();
     let again = stats(&dir, &rt);
     assert_eq!(again.latency(["n-a"].into_iter())[0].len(), 2);
@@ -259,4 +284,45 @@ fn a_flow_across_midnight_counts_each_side_on_its_day() {
         Some((32_768, 100))
     );
     drop(push);
+}
+
+#[test]
+fn a_failed_write_is_tried_again() {
+    let (dir, rt) = (TempDir::new("stats-enospc"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    let at = |s| clock(&base, s, NOW_MS);
+    // The temporary files cannot be made, as when the disk is full.
+    let temps = ["stats.json.tmp", "latency.json.tmp"].map(|t| dir.path().join(t));
+    temps.iter().for_each(|t| std::fs::create_dir(t).unwrap());
+    moved(&session, (1, 1, 0), 0);
+    assert!(stats.fold(&session, &at(1), true).usage);
+    stats.write_usage();
+    stats.record_latency("n-a", 1_000, Some(38));
+    assert!(
+        lock(&stats.inner)
+            .latency_writes
+            .due(base.boot_s() + 1, true)
+    );
+    stats.write_latency();
+    let written = || ["stats.json", "latency.json"].map(|f| dir.path().join(f).exists());
+    assert_eq!(written(), [false, false]);
+    // Space comes free, and no byte moves and no test runs for the rest of the day: both
+    // writes are asked again, a minute after the failed ones.
+    temps.iter().for_each(|t| std::fs::remove_dir(t).unwrap());
+    assert_eq!(stats.fold(&session, &at(30), false), Writes::default());
+    let again = stats.fold(&session, &at(62), false);
+    assert_eq!(
+        again,
+        Writes {
+            usage: true,
+            latency: true
+        },
+        "the failed writes are due again"
+    );
+    stats.write_usage();
+    stats.write_latency();
+    assert_eq!(written(), [true, true]);
+    // Written: nothing more is due.
+    assert_eq!(stats.fold(&session, &at(130), false), Writes::default());
 }

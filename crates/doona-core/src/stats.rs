@@ -15,7 +15,7 @@ use crate::dto;
 use crate::sys;
 use crate::tunnel::Session;
 use day::{Day, Moved, Usage};
-use file::{STATS_VERSION, SavedRef, StatsFile};
+use file::{LatencyFile, STATS_VERSION, StatsFile, UsageFile};
 use latency::Latency;
 use ring::{Ring, Series};
 use std::path::Path;
@@ -24,7 +24,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::runtime::Handle;
 
 /// Changed usage is written at most this often while a generation runs, besides when the local
-/// day changes and when the generation ends.
+/// day changes and when the generation ends; a failed write is asked again this often.
 const WRITE_EVERY_S: u64 = 60;
 
 /// One moment on the clocks the stores use.
@@ -75,7 +75,8 @@ pub(crate) struct Fold {
 
 pub(crate) struct Stats {
     inner: Mutex<Inner>,
-    file: StatsFile,
+    usage_file: StatsFile,
+    latency_file: StatsFile,
     /// Runs the writes, off the caller's thread.
     runtime: Handle,
 }
@@ -93,33 +94,66 @@ struct Inner {
     /// outbound bytes that come late moved on it.
     day: Option<i64>,
     previous: Option<i64>,
-    /// The usage changed since the last write was asked for.
-    dirty: bool,
-    /// The boot second of the last write asked for.
-    written_s: Option<u64>,
+    usage_writes: Pending,
     latency: Latency,
-    /// A latency test was recorded since the last write.
-    tested: bool,
+    latency_writes: Pending,
+}
+
+/// The writes a fold asks for.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Writes {
+    pub usage: bool,
+    pub latency: bool,
+}
+
+/// What one file has not written yet. A write that fails leaves it so, to be asked again.
+#[derive(Debug, Default)]
+struct Pending {
+    /// Changes so far; the last write asked for held up to `asked`, the last good one `saved`.
+    changes: u64,
+    asked: u64,
+    saved: u64,
+    /// The boot second the last write was asked for.
+    asked_s: Option<u64>,
+}
+
+impl Pending {
+    /// Asks for a write at boot second `now_s` when something is not written yet, and `at_once`
+    /// or a minute passed since the last one was asked for.
+    fn due(&mut self, now_s: u64, at_once: bool) -> bool {
+        let stale = self.asked_s.is_none_or(|a| now_s >= a + WRITE_EVERY_S);
+        let due = self.changes > self.saved && (at_once || stale);
+        if due {
+            self.asked = self.changes;
+            self.asked_s = Some(now_s);
+        }
+        due
+    }
+
+    /// Asks again for a write that was asked for and did not succeed (or still runs) a minute on.
+    fn retry(&mut self, now_s: u64) -> bool {
+        self.saved < self.asked && self.due(now_s, false)
+    }
 }
 
 impl Stats {
-    /// The stats `dir/stats.json` saved, written on `runtime`'s blocking threads.
+    /// The stats saved in `dir`, written on `runtime`'s blocking threads.
     pub fn new(dir: &Path, runtime: Handle) -> Stats {
-        let file = StatsFile::new(dir);
-        let saved = file.load();
+        let usage_file = StatsFile::new(dir, file::USAGE);
+        let latency_file = StatsFile::new(dir, file::LATENCY);
         let inner = Inner {
             ring: Ring::new(),
-            usage: saved.usage.sane(),
+            usage: usage_file.load::<UsageFile>().usage.sane(),
             day: None,
             previous: None,
-            dirty: false,
-            written_s: None,
-            latency: Latency::from_saved(saved.latency),
-            tested: false,
+            usage_writes: Pending::default(),
+            latency: Latency::from_saved(latency_file.load::<LatencyFile>().latency),
+            latency_writes: Pending::default(),
         };
         Stats {
             inner: Mutex::new(inner),
-            file,
+            usage_file,
+            latency_file,
             runtime,
         }
     }
@@ -127,20 +161,17 @@ impl Stats {
     /// Folds what `session` moved since its last fold into the stores, and its fastest second
     /// into its peaks; writes the usage once a minute while it changes, and when the day changes.
     pub fn sample(self: &Arc<Self>, session: &Session, clock: &Clock) {
-        if self.fold(session, clock, false) {
-            self.save();
-        }
+        self.save(self.fold(session, clock, false));
     }
 
     /// The generation of `session` ended: folds its last bytes, and writes what changed.
     pub fn finish(self: &Arc<Self>, session: &Session, clock: &Clock) {
-        if self.fold(session, clock, true) {
-            self.save();
-        }
+        self.save(self.fold(session, clock, true));
     }
 
-    /// Folds, and answers whether a write is due; with `now`, one is whenever the usage changed.
-    fn fold(&self, session: &Session, clock: &Clock, now: bool) -> bool {
+    /// Folds, and answers which writes are due: the usage's once a minute while it changes, at
+    /// once when the day changed or with `now`; a failed one again a minute on.
+    fn fold(&self, session: &Session, clock: &Clock, now: bool) -> Writes {
         let mut inner = lock(&self.inner);
         let day = day::local(clock).0;
         let last = inner.day.replace(day);
@@ -161,33 +192,60 @@ impl Stats {
         inner.usage.add(clock, &moved);
         let moved_on = inner.previous.unwrap_or(day);
         inner.usage.add_late(moved_on, day, &taken.late);
-        inner.dirty |= turned || moved != Moved::default() || !taken.late.is_empty();
-        let stale = (inner.written_s).is_none_or(|w| clock.boot_s() >= w + WRITE_EVERY_S);
-        let due = inner.dirty && (now || turned || stale);
-        if due {
-            inner.dirty = false;
-            inner.written_s = Some(clock.boot_s());
+        let changed = turned || moved != Moved::default() || !taken.late.is_empty();
+        inner.usage_writes.changes += u64::from(changed);
+        let now_s = clock.boot_s();
+        Writes {
+            usage: inner.usage_writes.due(now_s, now || turned),
+            latency: inner.latency_writes.retry(now_s),
         }
-        due
     }
 
-    /// Writes the stats on a blocking thread. Writes run one at a time, each with the data as it
-    /// is when its turn comes, so the last one written is the newest.
-    fn save(self: &Arc<Self>) {
-        let stats = Arc::clone(self);
-        self.runtime.spawn_blocking(move || stats.write());
+    /// Runs `writes` on blocking threads. A file's writes run one at a time, each with the data
+    /// as it is when its turn comes, so the last one written is the newest.
+    fn save(self: &Arc<Self>, writes: Writes) {
+        if writes.usage {
+            let stats = Arc::clone(self);
+            self.runtime.spawn_blocking(move || stats.write_usage());
+        }
+        if writes.latency {
+            let stats = Arc::clone(self);
+            self.runtime.spawn_blocking(move || stats.write_latency());
+        }
     }
 
-    fn write(&self) {
-        self.file.save(|| {
+    /// Copies the usage under the lock, and encodes and writes the copy without it.
+    fn write_usage(&self) {
+        let mut changes = 0;
+        let written = self.usage_file.save(|| {
             let inner = lock(&self.inner);
-            let saved = SavedRef {
+            changes = inner.usage_writes.changes;
+            UsageFile {
                 stats_version: STATS_VERSION,
-                usage: &inner.usage,
-                latency: inner.latency.all(),
-            };
-            serde_json::to_vec(&saved).ok()
+                usage: inner.usage.clone(),
+            }
         });
+        if written {
+            let saved = &mut lock(&self.inner).usage_writes.saved;
+            *saved = changes.max(*saved);
+        }
+    }
+
+    /// As [`Stats::write_usage`], for the latency tests.
+    fn write_latency(&self) {
+        let mut changes = 0;
+        let written = self.latency_file.save(|| {
+            let inner = lock(&self.inner);
+            changes = inner.latency_writes.changes;
+            LatencyFile {
+                stats_version: STATS_VERSION,
+                latency: inner.latency.all().clone(),
+            }
+        });
+        if written {
+            let saved = &mut lock(&self.inner).latency_writes.saved;
+            *saved = changes.max(*saved);
+        }
     }
 
     /// Records a latency test of node `id` in the round begun at `at_ms`: `ms`, or none when the
@@ -195,20 +253,21 @@ impl Stats {
     pub fn record_latency(&self, id: &str, at_ms: i64, ms: Option<u32>) {
         let mut inner = lock(&self.inner);
         inner.latency.record(id, at_ms, ms);
-        inner.tested = true;
+        inner.latency_writes.changes += 1;
     }
 
     /// A latency round ended: forgets the nodes `keep` does not keep (they left the catalog), and
-    /// writes the tests if the round recorded any.
+    /// writes the tests if they changed.
     pub fn end_round(self: &Arc<Self>, keep: impl Fn(&str) -> bool) {
-        let tested = {
+        let latency = {
             let mut inner = lock(&self.inner);
             inner.latency.retain(keep);
-            std::mem::take(&mut inner.tested)
+            inner.latency_writes.due(Clock::now().boot_s(), true)
         };
-        if tested {
-            self.save();
-        }
+        self.save(Writes {
+            usage: false,
+            latency,
+        });
     }
 
     /// Forgets the tests of nodes `keep` does not keep, as a new process loads the catalog.
