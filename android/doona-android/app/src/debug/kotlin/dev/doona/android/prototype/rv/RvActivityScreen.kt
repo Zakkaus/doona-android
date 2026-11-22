@@ -79,16 +79,17 @@ internal fun RvActivityScreen(
     routes: RvActivityRoutes = RvActivityRoutes(),
     mode: RvRouteMode = if (state.mode == Mode.Direct) RvRouteMode.Direct else RvRouteMode.Rule,
     nodes: List<RvNode> = RvData.nodes,
-    stretch: (() -> Float)? = null,
+    pull: RvPullLook = RvPullLook.None,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val glass = rememberRvGlass()
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
-            // P2: the map stretches with the pull, and what lies under it moves down as far.
-            val pushed = stretch?.let { pull -> Modifier.graphicsLayer { translationY = pull() } }
-            Header(state, mode, HeaderMotion(stretch, pushed), insets) { HeroActions(state, onAction, onConnect, routes.test) }
+        // The pull blurs and fades the page; the bars stay sharp, so the search pill, the picker's anchor, can grow.
+        Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
+            // The map stretches with the pull, and what lies under it moves down as far.
+            val pushed = pull.stretch?.let { stretch -> Modifier.graphicsLayer { translationY = stretch() } }
+            Header(state, mode, HeaderMotion(pull.stretch, pushed), insets) { HeroActions(state, onAction, onConnect, routes.test) }
             RvGutter(pushed ?: Modifier) {
                 OutboundCard(state, mode, routes, nodes)
                 TrafficTiles(state, routes.traffic)
@@ -98,7 +99,7 @@ internal fun RvActivityScreen(
             }
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
-        RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.nodes, onStats = routes.stats, Modifier.align(Alignment.TopCenter))
+        RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.nodes, onStats = routes.stats, Modifier.align(Alignment.TopCenter), pull)
         RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter))
     }
 }
@@ -119,7 +120,7 @@ internal class RvActivityRoutes(
     val test: () -> Unit = NOT_WIRED,
 )
 
-/** P2's pull: [stretch] lengthens the map, [pushed] moves the header's text and everything under it down as far. */
+/** The pull: [stretch] lengthens the map, [pushed] moves the header's text and everything under it down as far. */
 private class HeaderMotion(val stretch: (() -> Float)?, val pushed: Modifier?)
 
 @Composable

@@ -9,11 +9,13 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.interaction.InteractionSource
@@ -97,6 +99,9 @@ internal object RvMotion {
     const val REVEAL_MS = 700
     const val RETURN_MS = 400
 
+    /** A pull let go short of its threshold springs back in about 167 ms (measured). */
+    const val SNAP_MS = 167
+
     /** A row moving to its new place, a card opening in place, the map panning to a new node: the return's 400 ms. */
     const val MOVE_MS = 400
 
@@ -116,9 +121,27 @@ internal object RvMotion {
     /** A long press opens after about 500 ms (measured), or later if the user set a longer delay. */
     const val LONG_PRESS_MS = 500L
 
-    /** The pull commits past this distance, or on a downward fling this fast (per second). */
+    /**
+     * The pull commits past [pullCommit], or on a downward fling of [pullFling] per second once past [pullDead], the
+     * travel before anything shows (measured 16 dp). Past the commit distance the pull meets resistance and runs out
+     * [pullGive] further at most, however far the finger goes.
+     */
     val pullCommit = 96.dp
     val pullFling = 1_000.dp
+    val pullDead = 16.dp
+    val pullGive = 96.dp
+
+    /**
+     * Revolut's pull: as the finger travels from [pullDead] to [pullCommit], 活動 blurs (a fixed [pullBlur] cross-faded
+     * in, the radius never animated), fades toward the page by [PULL_FADE] and the search pill, the picker's anchor,
+     * grows by [ANCHOR_GROW] (measured 1.00 to 1.03).
+     */
+    val pullBlur = 12.dp
+    const val PULL_FADE = 0.3f
+    const val ANCHOR_GROW = 0.03f
+
+    /** A critically damped spring is within 1 % of its travel after this many radians (the root of (1 + x)e^-x = 0.01). */
+    const val SETTLED_RADIANS = 6.64f
 
     /** P1: how dark 活動 gets under the open sheet (Material's scrim). P3: how far each section drops from. */
     const val DIM = 0.32f
@@ -137,6 +160,21 @@ internal object RvMotion {
 internal class RvMotionScale(val instant: Boolean) {
     fun <T> tween(ms: Int, easing: Easing = RvMotion.Standard, delay: Int = 0): FiniteAnimationSpec<T> =
         if (instant) snap() else androidx.compose.animation.core.tween(ms, delay, easing)
+
+    /**
+     * A gesture's settling: a spring with damping ratio 1 (no overshoot) stiff enough to come within 1 % of its travel
+     * in about [ms], so it takes the finger's velocity and still lands in the measured time; [threshold] is where it
+     * counts as at rest (half a pixel, or a thousandth of a fraction).
+     */
+    fun settle(ms: Int, threshold: Float): FiniteAnimationSpec<Float> {
+        if (instant) return snap()
+        val omega = RvMotion.SETTLED_RADIANS * MS_PER_SECOND / ms
+        return spring(Spring.DampingRatioNoBouncy, omega * omega, threshold)
+    }
+
+    private companion object {
+        const val MS_PER_SECOND = 1_000f
+    }
 }
 
 /** The scale as the system has it now. */

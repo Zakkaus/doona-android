@@ -41,8 +41,10 @@ import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
@@ -98,7 +100,7 @@ internal fun rvShade(scroll: ScrollState): () -> Float {
  * 訂閱 open nothing in the sample.
  */
 @Composable
-internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, onSearch: () -> Unit, onStats: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, onSearch: () -> Unit, onStats: () -> Unit, modifier: Modifier = Modifier, pull: RvPullLook = RvPullLook.None) {
     RvBar(glass, insets, shade, modifier) {
         // Each control keeps a 48 dp target round its 44 dp disc, so the gaps between targets are 4 dp narrower.
         Row(Modifier.fillMaxSize().padding(horizontal = RvSpace.gutter - RvChrome.touchPad), verticalAlignment = Alignment.CenterVertically) {
@@ -106,7 +108,7 @@ internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, 
                 Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvChrome.markGlyph))
             }
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-            SearchPill(glass, onSearch, Modifier.weight(1f))
+            SearchPill(glass, onSearch, pull, Modifier.weight(1f))
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
             GlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
             Spacer(Modifier.width(RvChrome.buttonGap - RvChrome.touchPad * 2))
@@ -115,10 +117,30 @@ internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, 
     }
 }
 
+/**
+ * The search pill, also the pull-down's anchor: it grows by [RvMotion.ANCHOR_GROW] as the pull's progress runs to 1 (the
+ * picker it opens has the same pill as its field), and offers the pull to TalkBack as an action.
+ */
 @Composable
-private fun SearchPill(glass: RvGlass, onClick: () -> Unit, modifier: Modifier) {
+private fun SearchPill(glass: RvGlass, onClick: () -> Unit, pull: RvPullLook, modifier: Modifier) {
+    val open = pull.open
+    val label = stringResource(R.string.rv_nodes_title)
     Row(
         modifier
+            .graphicsLayer {
+                val grow = 1f + RvMotion.ANCHOR_GROW * pull.progress()
+                scaleX = grow
+                scaleY = grow
+            }
+            .semantics {
+                if (open == null) return@semantics
+                customActions = listOf(
+                    CustomAccessibilityAction(label) {
+                        open()
+                        true
+                    },
+                )
+            }
             .minimumInteractiveComponentSize()
             .height(RvChrome.control)
             .rvControl(glass, CircleShape)

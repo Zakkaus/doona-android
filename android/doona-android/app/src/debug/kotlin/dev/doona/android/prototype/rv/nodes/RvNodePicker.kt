@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -87,7 +88,8 @@ internal const val RV_PICKER = "rv-picker"
  * opens and closes the group) over its nodes in 節點's rows, the [currentId] node's flag checked. A tap on a node picks it
  * ([onPick]: the caller switches and closes); a long press or the row's info mark opens its page ([onDetail]). Typing
  * filters by name, code, protocol or place; rows and groups that stop matching fold away and come back. [section] gives
- * the n-th section (0 the bar, 1 the title, then each group) its modifier, for P3's staggered drop.
+ * the n-th section (0 the bar, 1 the title, then each group) its modifier, for P3's staggered drop; [stretch] moves the
+ * list down by that many pixels while a pull at its top would close the picker.
  */
 @Composable
 internal fun RvNodePicker(
@@ -98,6 +100,7 @@ internal fun RvNodePicker(
     onDetail: (String) -> Unit,
     onClose: () -> Unit,
     section: (Int) -> Modifier = { Modifier },
+    stretch: () -> Float = { 0f },
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -107,7 +110,8 @@ internal fun RvNodePicker(
     val matching = nodes.filter { it.matches(query.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
     RvLongPressTiming {
         Box(Modifier.fillMaxSize().testTag(RV_PICKER)) {
-            Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
+            // A pull down at the top, which closes the picker, moves the list under the bar with the finger.
+            Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll).graphicsLayer { translationY = stretch() }) {
                 Column(section(1)) {
                     RvLargeTitle(stringResource(R.string.rv_nodes_title), Modifier, insets)
                     RvText(stringResource(R.string.rv_main_node_hint), Rv.type.rowSub, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.subGap * 2), color = Rv.colors.textSecondary)

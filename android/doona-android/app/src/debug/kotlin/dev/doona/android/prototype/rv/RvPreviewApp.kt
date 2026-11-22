@@ -124,16 +124,16 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
     RvPullDown(
         options.pull,
         pull,
-        activity = { stretch ->
+        activity = { look ->
             val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) run.disconnect() }
-            RvActivityScreen(run.activity(), onAction, run::connect, routes, nodes = run.nodes, stretch = stretch)
+            RvActivityScreen(run.activity(), onAction, run::connect, routes, nodes = run.nodes, pull = look)
         },
-        picker = { close, section ->
+        picker = { motion ->
             val pick: (String) -> Unit = {
                 run.currentId = it
-                close()
+                motion.close()
             }
-            RvNodePicker(run.nodes, RvData.subscriptions, run.currentId, pick, onDetail = { pages.push("$NODE:$it") }, onClose = close, section = section)
+            RvNodePicker(run.nodes, RvData.subscriptions, run.currentId, pick, onDetail = { pages.push("$NODE:$it") }, onClose = motion.close, section = motion.section, stretch = motion.stretch)
         },
     )
 }

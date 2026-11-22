@@ -1,50 +1,40 @@
 package dev.doona.android.prototype.rv
 
-import android.provider.Settings
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.annotation.StringRes
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.test.SemanticsNodeInteractionCollection
-import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.height
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.nodes.RV_PICKER
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The sample's motion, on a clock the test drives (goldens cannot show motion): 活動's pull-down commits past its
- * threshold and goes back short of it; at animator scale 0 a push, the pull-down and the connect sequence finish at once
- * and the haptic ticks still come; a cancelled predictive back leaves the pushed page as it was, a committed one pops;
+ * The sample's motion, on a clock the test drives (goldens cannot show motion; the pull-down is [RvPullTest]'s): at
+ * animator scale 0 a push, the pull-down and the connect sequence finish at once and the haptic ticks still come; a cancelled predictive back leaves the pushed page as it was, a committed one pops;
  * connecting runs 未連線 → 連線中 → 已連線 → 正在中斷連線 → 未連線 with one tick each way, and a failed connect says why.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -57,41 +47,11 @@ class RvMotionTest {
     @get:Rule
     val utc = Utc()
 
-    private val taps = Taps()
+    private val taps = RvTaps()
     private lateinit var back: OnBackPressedDispatcher
 
     @After
-    fun animatorScaleBack() = animatorScale(1f)
-
-    @Test
-    fun aPullPastTheThresholdOpensThePicker() {
-        app()
-        compose.mainClock.autoAdvance = false
-        pull(PULL_LONG, release = false)
-        compose.mainClock.advanceTimeByFrame()
-        val height = compose.onRoot().getBoundsInRoot().height
-        // The sheet follows the finger: its bottom edge has come down, its top is still above the screen.
-        val following = compose.onNodeWithTag(RV_PICKER).getUnclippedBoundsInRoot()
-        assertTrue("the sheet's top ${following.top} should be above the screen", following.top < 0.dp)
-        assertTrue("the sheet's bottom ${following.bottom} should follow the finger", following.bottom > PULL_LONG / 2 && following.bottom < height)
-        compose.onRoot().performTouchInput { up() }
-        compose.mainClock.advanceTimeBy(RvMotion.REVEAL_MS / 2L)
-        val revealing = compose.onNodeWithTag(RV_PICKER).getUnclippedBoundsInRoot().top
-        assertTrue("half way, the sheet's top $revealing should still be coming down", revealing < 0.dp && revealing > following.top)
-        compose.mainClock.advanceTimeBy(RvMotion.REVEAL_MS.toLong())
-        assertEquals(0f, compose.onNodeWithTag(RV_PICKER).getUnclippedBoundsInRoot().top.value, EDGE)
-    }
-
-    @Test
-    fun aShortPullGoesBack() {
-        app()
-        compose.mainClock.autoAdvance = false
-        pull(PULL_SHORT)
-        compose.mainClock.advanceTimeByFrame()
-        compose.onAllNodesWithTag(RV_PICKER).assertCountIs(1, "the sheet runs back, so it is still drawn just after the release")
-        compose.mainClock.advanceTimeBy(RvMotion.RETURN_MS + FRAMES_MS)
-        compose.onAllNodesWithTag(RV_PICKER).assertCountIs(0, "a pull short of the threshold returns to 活動")
-    }
+    fun animatorScaleBack() = rvAnimatorScale(1f)
 
     @Test
     fun aPushTakesItsTimeAtScaleOne() {
@@ -106,7 +66,7 @@ class RvMotionTest {
 
     @Test
     fun animatorScaleZeroMakesEveryTransitionInstant() {
-        animatorScale(0f)
+        rvAnimatorScale(0f)
         app()
         compose.mainClock.autoAdvance = false
         compose.onNodeWithContentDescription(text(R.string.rv_stats)).performClick()
@@ -122,7 +82,7 @@ class RvMotionTest {
 
     @Test
     fun animatorScaleZeroStillTicks() {
-        animatorScale(0f)
+        rvAnimatorScale(0f)
         app(RvSampleStart(connected = false))
         compose.mainClock.autoAdvance = false
         compose.onNodeWithText(text(R.string.rv_connect)).performClick()
@@ -204,40 +164,23 @@ class RvMotionTest {
         CompositionLocalProvider(LocalHapticFeedback provides taps) { RvPreviewApp(RvMotionOptions(), start) }
     }
 
-    /** Drags 活動 down by [by] in small steps a frame apart (slow, so no fling), and lets go unless [release] is false. */
-    private fun pull(by: Dp, release: Boolean = true) {
+    /** Drags 活動 down by [by] in small steps a frame apart (slow, so no fling), and lets go. */
+    private fun pull(by: Dp) {
         compose.onAllNodes(hasScrollAction()).onFirst().performTouchInput {
             val step = by.toPx() / PULL_STEPS
             down(Offset(centerX, PULL_FROM.toPx()))
             repeat(PULL_STEPS) { moveBy(Offset(0f, step), delayMillis = FRAME_MS) }
-            if (release) up()
+            up()
         }
     }
 
-    private fun animatorScale(scale: Float) {
-        Settings.Global.putFloat(RuntimeEnvironment.getApplication().contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, scale)
-    }
-
-    private fun text(@StringRes id: Int) = RuntimeEnvironment.getApplication().getString(id)
+    private fun text(@StringRes id: Int) = rvText(id)
 
     /** 活動's caption in a state: the state, then the mode (規則). */
     private fun caption(@StringRes state: Int) = "${text(state)} · ${text(R.string.rv_mode_rule)}"
 
-    private fun SemanticsNodeInteractionCollection.assertCountIs(count: Int, why: String) =
-        assertEquals(why, count, fetchSemanticsNodes().size)
-
-    /** Records every haptic tick the screen asks for. */
-    private class Taps : HapticFeedback {
-        val kinds = mutableListOf<HapticFeedbackType>()
-
-        override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
-            kinds += hapticFeedbackType
-        }
-    }
-
     private companion object {
         val PULL_LONG = 300.dp
-        val PULL_SHORT = 48.dp
         val PULL_FROM = 300.dp
         const val PULL_STEPS = 20
         const val FRAME_MS = 16L

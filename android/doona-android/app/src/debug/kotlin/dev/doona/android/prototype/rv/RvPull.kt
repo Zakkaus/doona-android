@@ -1,142 +1,283 @@
 package dev.doona.android.prototype.rv
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.animate
+import android.os.Build
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
- * 活動's pull-down to the node picker (ARCH D30). While 活動 is at its top, a downward drag pulls [pulled] pixels with
- * the finger; letting go past [RvMotion.pullCommit] (or flinging down faster than [RvMotion.pullFling]) commits and
- * [shown] runs to 1 in [RvMotion.REVEAL_MS], anything less runs [pulled] back to 0 in [RvMotion.RETURN_MS]; dragging up
- * again first takes the pull back. [close] runs [shown] back to 0 in the return's time. Both curves decelerate, without
- * overshoot. Whether it is open survives a pushed page and the activity's recreation.
+ * 活動's pull-down to the node picker (ARCH D30), as Revolut's (pass 2), but never deaf to the finger.
+ *
+ * While 活動 is at its top a downward drag is [opening]: the hero stretches with the finger, and Revolut's continuous
+ * progress ([look]) blurs and fades 活動 and grows the search pill. Past the threshold a haptic tick says letting go now
+ * opens; letting go, or a fast enough fling, commits: [shown] springs to 1 carrying the finger's velocity, in about
+ * [RvMotion.REVEAL_MS], with no overshoot. Back (or the system's predictive back, which the picker follows), the back
+ * disc, or [closing], a pull down at the picker's top, run it back in about [RvMotion.RETURN_MS]. A touch while it is on
+ * its way in or out catches it; the finger then moves it, and letting go settles it by the fling or by where it is.
+ * Whether it is open survives a pushed page and the activity's recreation.
  */
 @Stable
-internal class RvPullState(open: Boolean, private val motion: RvMotionScale, private val commitPx: Float, private val flingPx: Float) {
-    var pulled by mutableFloatStateOf(0f)
-        private set
-    var shown by mutableFloatStateOf(if (open) 1f else 0f)
-        private set
+internal class RvPullState(open: Boolean, private val scope: CoroutineScope, private val motion: RvMotionScale, private val px: RvPullPx) {
+    /** How far the picker has come in: 0 on 活動, 1 open. */
+    val shown = Animatable(if (open) 1f else 0f)
 
-    /** From the commit until a close starts: the picker owns the screen. */
+    /** Committed and not on its way back: the picker takes back, and 活動 no pull. */
     var open by mutableStateOf(open)
         private set
 
     /** The screen's height in pixels: a full reveal. */
     var height by mutableFloatStateOf(0f)
 
-    /** How far the picker has come down, in pixels from the top: the finger's pull, then the commit's run to [height]. */
-    val reveal: Float get() = pulled + (height - pulled) * shown
+    /** How the picker comes in; P3 hands the pull's distance to the reveal. */
+    var variant by mutableStateOf(RvPullMotion.Sheet)
 
-    private var settling = false
+    /** 活動's pull: the hero stretches with it; let go past the threshold, the picker opens. */
+    val opening = RvStretch(scope, motion, px, enabled = { !this.open && !moving }, onCommit = ::reveal)
 
-    val connection = object : NestedScrollConnection {
-        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            if (source != NestedScrollSource.UserInput || pulled <= 0f || available.y >= 0f) return Offset.Zero
-            val take = maxOf(available.y, -pulled)
-            pulled += take
-            return Offset(0f, take)
-        }
+    /** The picker's pull down at its top: let go past the threshold, the picker closes. */
+    val closing = RvStretch(scope, motion, px, enabled = { this.open && !moving }, onCommit = { close(-it) })
 
-        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-            if (source != NestedScrollSource.UserInput || available.y <= 0f || open || settling) return Offset.Zero
-            pulled = (pulled + available.y).coerceAtMost(height)
-            return Offset(0f, available.y)
-        }
+    /** A finger (or a back gesture) holds the picker part way; [moved] once it has dragged it. */
+    private var held by mutableStateOf(false)
+    private var moved = false
+    private var backFrom = 1f
 
-        override suspend fun onPreFling(available: Velocity): Velocity {
-            if (pulled <= 0f || open || settling) return Velocity.Zero
-            if (pulled >= commitPx || available.y >= flingPx) commit() else settle { animate(pulled, 0f, animationSpec = it(RvMotion.RETURN_MS)) { v, _ -> pulled = v } }
-            return available
-        }
-    }
+    /** On its way in or out, or held: a touch anywhere catches it. */
+    val moving: Boolean get() = shown.isRunning || held
 
-    private suspend fun commit() {
+    /** Draw the picker. */
+    val drawn: Boolean get() = open || shown.value > 0f
+
+    /** How far 活動 has blurred and faded: the pull's progress, then at least how far the picker has come in. */
+    val look: Float get() = maxOf(opening.progress, shown.value)
+
+    /** Opens the picker, carrying a downward [velocity] in pixels per second. */
+    fun reveal(velocity: Float = 0f) {
         open = true
-        settle { animate(shown, 1f, animationSpec = it(RvMotion.REVEAL_MS)) { v, _ -> shown = v } }
-        pulled = 0f
-    }
-
-    /** Back to 活動: the picker goes the way it came, in the return's time. */
-    suspend fun close() {
-        if (!open) return
-        open = false
-        settle { animate(shown, 0f, animationSpec = it(RvMotion.RETURN_MS)) { v, _ -> shown = v } }
-    }
-
-    private suspend fun settle(run: suspend ((Int) -> FiniteAnimationSpec<Float>) -> Unit) {
-        settling = true
-        try {
-            run { ms -> motion.tween(ms, RvMotion.Decelerate) }
-        } finally {
-            settling = false
+        // P3: 活動 has already moved down with the finger, so the reveal takes over from that distance.
+        val from = if (variant == RvPullMotion.Drop && height > 0f) (opening.pulled / height).coerceIn(0f, 1f) else null
+        if (from != null) opening.clear()
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            from?.let { shown.snapTo(it) }
+            shown.animateTo(1f, motion.settle(RvMotion.REVEAL_MS, FRACTION), velocity / height.coerceAtLeast(1f))
         }
+    }
+
+    /** Back to 活動 the way it came, from wherever it is; [velocity] in pixels per second, downward positive. */
+    fun close(velocity: Float = 0f) {
+        open = false
+        held = false
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            shown.animateTo(0f, motion.settle(RvMotion.RETURN_MS, FRACTION), velocity / height.coerceAtLeast(1f))
+        }
+    }
+
+    fun grab() {
+        held = true
+        moved = false
+        scope.launch(start = CoroutineStart.UNDISPATCHED) { shown.stop() }
+    }
+
+    fun drag(dy: Float) {
+        moved = true
+        scope.launch(start = CoroutineStart.UNDISPATCHED) { shown.snapTo((shown.value + dy / height.coerceAtLeast(1f)).coerceIn(0f, 1f)) }
+    }
+
+    /** Lets the picker go: a touch that did not drag sends it on its way; otherwise a fling decides, or where it is. */
+    fun letGo(velocity: Float) {
+        held = false
+        val opens = when {
+            !moved -> open
+            abs(velocity) >= px.fling -> velocity > 0f
+            else -> shown.value >= HALF
+        }
+        if (opens) reveal(velocity) else close(velocity)
+    }
+
+    /** The system's back gesture started: the picker will follow it back from where it is. */
+    fun backStarted() {
+        held = true
+        backFrom = shown.value
+        scope.launch(start = CoroutineStart.UNDISPATCHED) { shown.stop() }
+    }
+
+    fun backProgress(progress: Float) {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) { shown.snapTo(backFrom * (1f - progress)) }
+    }
+
+    /** A cancelled back gesture: the picker goes back to open. */
+    fun backCancelled() {
+        held = false
+        reveal()
+    }
+
+    private companion object {
+        const val FRACTION = 0.001f
+        const val HALF = 0.5f
     }
 }
 
 @Composable
 internal fun rememberRvPullState(): RvPullState {
     val motion = Rv.motion
-    val (commit, fling) = with(LocalDensity.current) { RvMotion.pullCommit.toPx() to RvMotion.pullFling.toPx() }
-    val saver = Saver<RvPullState, Boolean>({ it.open }, { RvPullState(it, motion, commit, fling) })
-    return rememberSaveable(motion, saver = saver) { RvPullState(false, motion, commit, fling) }
+    val scope = rememberCoroutineScope()
+    val px = with(LocalDensity.current) { RvPullPx(RvMotion.pullCommit.toPx(), RvMotion.pullDead.toPx(), RvMotion.pullGive.toPx(), RvMotion.pullFling.toPx()) }
+    val saver = Saver<RvPullState, Boolean>({ it.open }, { RvPullState(it, scope, motion, px) })
+    return rememberSaveable(motion, saver = saver) { RvPullState(false, scope, motion, px) }
 }
 
 /**
- * 活動 with the node picker it pulls down, moving as [variant] says. [activity] draws 活動, given the hero's stretch in
- * pixels for P2 (null otherwise); [picker] draws the picker, given its close and, for P3, the modifier of its n-th
- * section (each drops in [RvMotion.STAGGER_MS] after the one before).
+ * What 活動 shows of the pull: the hero's [stretch] in pixels (null when 活動 itself moves, P3), the [progress] its blur,
+ * fade and search pill follow, and [open], the pull's action for TalkBack.
+ */
+@Immutable
+internal class RvPullLook(val stretch: (() -> Float)?, val progress: () -> Float, val open: (() -> Unit)?) {
+    companion object {
+        val None = RvPullLook(null, { 0f }, null)
+    }
+}
+
+/** What the picker does with the pull: [close] it, give its n-th [section] a modifier (P3's drop), move its list by [stretch]. */
+@Immutable
+internal class RvPickerMotion(val close: () -> Unit, val section: (Int) -> Modifier, val stretch: () -> Float)
+
+/**
+ * 活動 with the node picker it pulls down, moving as [variant] says: P1 the picker slides down over 活動 as one sheet
+ * and 活動 dims; P2 it cross-fades in; P3 活動 slides down out of view and the picker's sections drop in one after another.
  */
 @Composable
-internal fun RvPullDown(
-    variant: RvPullMotion,
-    state: RvPullState,
-    activity: @Composable (stretch: (() -> Float)?) -> Unit,
-    picker: @Composable (close: () -> Unit, section: (Int) -> Modifier) -> Unit,
-) {
-    val scope = rememberCoroutineScope()
-    val close: () -> Unit = { scope.launch { state.close() } }
-    BackHandler(enabled = state.open, onBack = close)
+internal fun RvPullDown(variant: RvPullMotion, state: RvPullState, activity: @Composable (RvPullLook) -> Unit, picker: @Composable (RvPickerMotion) -> Unit) {
+    SideEffect { state.variant = variant }
+    PullBack(state)
+    ThresholdTick(state.opening)
+    ThresholdTick(state.closing)
     val dropPx = with(LocalDensity.current) { RvMotion.drop.toPx() }
-    val drawPicker = state.pulled > 0f || state.shown > 0f
-    Box(Modifier.fillMaxSize().onSizeChanged { state.height = it.height.toFloat() }.nestedScroll(state.connection)) {
-        if (drawPicker && variant == RvPullMotion.Drop) picker(close) { i -> Modifier.graphicsLayer { dropIn(state.shown, i, dropPx) } }
-        Box(Modifier.fillMaxSize().graphicsLayer { if (variant == RvPullMotion.Drop) translationY = state.reveal }) {
-            activity(if (variant == RvPullMotion.Stretch) ({ state.pulled }) else null)
-            if (variant == RvPullMotion.Sheet && drawPicker) {
-                Canvas(Modifier.fillMaxSize()) { drawRect(Color.Black, alpha = RvMotion.DIM * (state.reveal / size.height).coerceIn(0f, 1f)) }
+    val drop = variant == RvPullMotion.Drop
+    val look = remember(state, drop) { RvPullLook(if (drop) null else ({ state.opening.pulled }), { state.look }, { state.reveal() }) }
+    val hooks: (Boolean) -> RvPickerMotion = { staggered ->
+        RvPickerMotion({ state.close() }, if (staggered) ({ i -> Modifier.graphicsLayer { dropIn(state.shown.value, i, dropPx) } }) else ({ Modifier }), { state.closing.pulled })
+    }
+    Box(Modifier.fillMaxSize().onSizeChanged { state.height = it.height.toFloat() }.then(state.opening.catching).then(state.opening.nested)) {
+        if (drop && state.drawn) PickerBox(state, Modifier) { picker(hooks(true)) }
+        Box(Modifier.fillMaxSize().graphicsLayer { if (drop) translationY = state.opening.pulled + state.shown.value * state.height }) {
+            activity(look)
+            if (variant == RvPullMotion.Sheet && state.drawn) {
+                Canvas(Modifier.fillMaxSize()) { drawRect(Color.Black, alpha = RvMotion.DIM * state.shown.value) }
             }
         }
-        if (!drawPicker) return@Box
-        when (variant) {
-            RvPullMotion.Sheet -> Box(Modifier.graphicsLayer { translationY = state.reveal - state.height }) { picker(close) { Modifier } }
-            RvPullMotion.Stretch -> Box(Modifier.graphicsLayer { alpha = state.shown }) { picker(close) { Modifier } }
-            RvPullMotion.Drop -> Unit
+        if (state.drawn) {
+            when (variant) {
+                RvPullMotion.Sheet -> PickerBox(state, Modifier.graphicsLayer { translationY = (state.shown.value - 1f) * state.height }) { picker(hooks(false)) }
+                RvPullMotion.Stretch -> PickerBox(state, Modifier.graphicsLayer { alpha = state.shown.value }) { picker(hooks(false)) }
+                RvPullMotion.Drop -> Unit
+            }
         }
+        if (state.moving) GrabLayer(state)
+    }
+}
+
+/** The picker, with its own pull down at the top to close it. */
+@Composable
+private fun PickerBox(state: RvPullState, modifier: Modifier, content: @Composable () -> Unit) {
+    Box(modifier.fillMaxSize().then(state.closing.catching).then(state.closing.nested)) { content() }
+}
+
+/** Over everything while the picker moves or is held: a touch catches it, the finger moves it 1:1, letting go settles it. */
+@Composable
+private fun GrabLayer(state: RvPullState) {
+    val drag = rememberDraggableState { state.drag(it) }
+    Box(Modifier.fillMaxSize().draggable(drag, Orientation.Vertical, startDragImmediately = true, onDragStarted = { state.grab() }, onDragStopped = { state.letGo(it) }))
+}
+
+/** Back while the picker is open, or on its way in, takes it back; the system's predictive back moves it with the gesture. */
+@Composable
+private fun PullBack(state: RvPullState) {
+    PredictiveBackHandler(enabled = state.open) { events ->
+        try {
+            var started = false
+            events.collect {
+                if (!started) state.backStarted()
+                started = true
+                state.backProgress(it.progress)
+            }
+            state.close()
+        } catch (e: CancellationException) {
+            state.backCancelled()
+            throw e
+        }
+    }
+}
+
+/** One haptic tick each time [stretch] crosses its threshold on the way out; none on the way back. */
+@Composable
+private fun ThresholdTick(stretch: RvStretch) {
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(stretch) { snapshotFlow { stretch.armed }.collect { if (it) haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) } }
+}
+
+/**
+ * 活動 under the pull as [progress] runs to 1: a blur of a fixed radius cross-fades in (from API 31; the radius is never
+ * animated, only the blurred copy's alpha), then the page colour fades over it by [RvMotion.PULL_FADE].
+ */
+@Composable
+internal fun Modifier.rvPullBlur(progress: () -> Float): Modifier {
+    val sharp = rememberGraphicsLayer()
+    val soft = rememberGraphicsLayer()
+    val radius = with(LocalDensity.current) { RvMotion.pullBlur.toPx() }
+    val page = Rv.colors.page
+    val blurs = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val blur = remember(radius) { BlurEffect(radius, radius, TileMode.Clamp) }
+    return drawWithContent {
+        val p = progress()
+        if (p <= 0f) return@drawWithContent drawContent()
+        if (blurs) {
+            sharp.record { this@drawWithContent.drawContent() }
+            drawLayer(sharp)
+            soft.renderEffect = blur
+            soft.alpha = p
+            soft.record { drawLayer(sharp) }
+            drawLayer(soft)
+        } else {
+            drawContent()
+        }
+        drawRect(page, alpha = RvMotion.PULL_FADE * p)
     }
 }
 
