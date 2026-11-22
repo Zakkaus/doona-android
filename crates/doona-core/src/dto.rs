@@ -167,10 +167,131 @@ pub struct TrafficSeries {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Catalog {
     pub mode: Mode,
     pub groups: Vec<Group>,
     pub subscriptions: Vec<Subscription>,
+    /// The group Global sends every flow through and Rule the flows no rule matched.
+    pub main_group_id: String,
+    pub rule_source: RuleSource,
+}
+
+/// Where Rule mode's rules come from, and what compiled of them. `rules` counts rows, `lines`
+/// values (a row without values, `MATCH`, counts one) and `skipped` the lines not compiled.
+/// `rulesRevision` is derived from the row ids: equal rows give an equal number across rebuilds
+/// and restarts, so it is compared for equality only. `error` is `parse_failed` when the source
+/// did not compile; the template always does.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuleSource {
+    pub kind: SourceKind,
+    /// The template's name and version; null for a source that is no template.
+    pub template: Option<String>,
+    pub version: Option<u32>,
+    /// The subscription a source came from; null for the template.
+    pub subscription_id: Option<String>,
+    pub options: RuleOptions,
+    pub rules: u32,
+    pub lines: u32,
+    pub skipped: u32,
+    pub rules_revision: u64,
+    pub error: Option<ErrorCode>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SourceKind {
+    Template,
+}
+
+/// What a user can change in a template.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuleOptions {
+    /// QUIC (UDP to port 443) a rule sends through a group is refused, so apps fall back to TCP.
+    pub block_quic: bool,
+}
+
+/// `setRuleSource`'s argument, and the source `state.json` keeps. Schema 2 knows the template
+/// only; another kind does not parse (`invalid_argument`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum RuleSourceSpec {
+    Template {
+        template: String,
+        options: RuleOptions,
+    },
+}
+
+impl Default for RuleSourceSpec {
+    /// doona's template, `cn-direct`, with no option on.
+    fn default() -> RuleSourceSpec {
+        RuleSourceSpec::Template {
+            template: "cn-direct".to_owned(),
+            options: RuleOptions::default(),
+        }
+    }
+}
+
+/// `rules`' page: `limit` is 1 to 500, and an `offset` past the end gives no rows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RulesArgs {
+    pub offset: u32,
+    pub limit: u32,
+}
+
+/// `rules`' reply: `total` rows in the source, `rows` the page asked for.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Rules {
+    pub rules_revision: u64,
+    pub total: u32,
+    pub rows: Vec<RuleRow>,
+}
+
+/// One row of rules. `id` is `r-` and 16 hex digits, stable across node changes and restarts;
+/// `kind` is `Domain`, `DomainSuffix`, `DomainKeyword`, `IpCidr`, `GeoIp`, `DstPort`, `Network`,
+/// `Match`, or for a kind not compiled the source's own name (`GEOSITE`). `sample` is the first
+/// value, null for `Match`; `count` the values. `target` is `direct`, `reject` or a group id.
+/// `skipped` says why lines of the row were not compiled (`unsupported_kind`,
+/// `geodata_missing`, `app_rule`), `skippedLines` how many.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuleRow {
+    pub id: String,
+    pub index: u32,
+    pub kind: String,
+    pub sample: Option<String>,
+    pub count: u32,
+    pub target: String,
+    pub target_kind: TargetKind,
+    pub skipped: Option<String>,
+    pub skipped_lines: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TargetKind {
+    Direct,
+    Reject,
+    Group,
+}
+
+/// `effectiveConfig`'s reply: where flows and DNS go, the rules' provenance, and the rules as
+/// Clash-style text, capped at 1 MiB at a line boundary (`truncated`). Nodes appear in it only
+/// by display name, never with a server, a port or a credential.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EffectiveConfig {
+    pub mode: Mode,
+    pub main_group_id: String,
+    /// `direct` in Direct, else the main group's id.
+    pub dns_via: String,
+    pub dns_upstreams: Vec<String>,
+    pub rule_source: RuleSource,
+    pub text: String,
+    pub truncated: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

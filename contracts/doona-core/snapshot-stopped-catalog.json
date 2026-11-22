@@ -135,6 +135,21 @@
         "totalBytes": 107374182400,
         "expiresAtEpochMs": 1798000000000
       }
-    ]
+    ],
+    "mainGroupId": "g-Proxy",
+    "ruleSource": {
+      "kind": "template",
+      "template": "cn-direct",
+      "version": 2,
+      "subscriptionId": null,
+      "options": {
+        "blockQuic": false
+      },
+      "rules": 5,
+      "lines": 23,
+      "skipped": 0,
+      "rulesRevision": 91044300313602,
+      "error": null
+    }
   }
 }

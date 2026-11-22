@@ -1,8 +1,9 @@
-//! `state.json` in the app's data directory: the mode, the subscriptions and the selections. The
-//! core owns this file (Kotlin's DataStore holds only the per-app policy). Writes replace it
-//! atomically: a temp file is written and synced, then renamed over the old one.
+//! `state.json` in the app's data directory: the mode, the rule source, the subscriptions and the
+//! selections. The core owns this file (Kotlin's DataStore holds only the per-app policy).
+//! Writes replace it atomically: a temp file is written and synced, then renamed over the old one.
 
-use crate::dto::{ErrorCode, Mode};
+use crate::dto::{ErrorCode, Mode, RuleSourceSpec};
+use crate::rules::template;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -22,6 +23,9 @@ const SET_ASIDE: &str = "state.json.unreadable";
 pub struct State {
     pub state_version: u32,
     pub mode: Mode,
+    /// Where Rule mode's rules come from; the template when absent or unreadable.
+    #[serde(default, deserialize_with = "rule_source")]
+    pub rule_source: RuleSourceSpec,
     #[serde(default)]
     pub subscriptions: Vec<StoredSubscription>,
     /// Group id to the member id chosen by hand.
@@ -53,11 +57,22 @@ fn quota<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<i64>, D::Error
     Ok(Option::<serde_json::Number>::deserialize(d)?.and_then(|n| n.as_i64()))
 }
 
+/// A stored rule source. One this core cannot use, such as a later core's kind or template, reads
+/// as the default, and the rest of the file stays usable.
+fn rule_source<'de, D: serde::Deserializer<'de>>(d: D) -> Result<RuleSourceSpec, D::Error> {
+    let value = serde_json::Value::deserialize(d)?;
+    let spec = serde_json::from_value(value).ok();
+    Ok(spec
+        .filter(|RuleSourceSpec::Template { template, .. }| template == template::ID)
+        .unwrap_or_default())
+}
+
 impl Default for State {
     fn default() -> State {
         State {
             state_version: STATE_VERSION,
             mode: Mode::Global,
+            rule_source: RuleSourceSpec::default(),
             subscriptions: Vec::new(),
             selections: BTreeMap::new(),
             next_subscription: 1,
@@ -260,6 +275,42 @@ mod tests {
             assert_eq!(fs::read(dir.path().join(SET_ASIDE)).unwrap(), text);
             assert!(!dir.path().join(FILE).exists());
         }
+    }
+
+    #[test]
+    fn a_rule_source_this_core_cannot_use_reads_as_the_template_and_keeps_the_rest() {
+        let sub = r#"{"id":"s1","name":"a","url":"https://a.invalid/","updatedAtEpochMs":null,
+            "usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null}"#;
+        for source in [
+            "",
+            r#""ruleSource":{"kind":"subscription","subscriptionId":"s1","options":{}},"#,
+            r#""ruleSource":{"kind":"template","template":"later","options":{"blockQuic":true}},"#,
+            r#""ruleSource":7,"#,
+        ] {
+            let dir = TempDir::new("state-rule-source");
+            let text =
+                format!(r#"{{"stateVersion":1,"mode":"Rule",{source}"subscriptions":[{sub}]}}"#);
+            fs::write(dir.path().join(FILE), text).unwrap();
+            let (state, how) = Store::new(dir.path()).load().unwrap();
+            assert_eq!(how, Loaded::Read, "{source}");
+            assert_eq!(state.rule_source, RuleSourceSpec::default(), "{source}");
+            assert_eq!((state.mode, state.subscriptions.len()), (Mode::Rule, 1));
+        }
+    }
+
+    #[test]
+    fn a_rule_source_round_trips() {
+        let dir = TempDir::new("state-rule-source-kept");
+        let store = Store::new(dir.path());
+        let state = State {
+            rule_source: RuleSourceSpec::Template {
+                template: template::ID.to_owned(),
+                options: crate::dto::RuleOptions { block_quic: true },
+            },
+            ..State::default()
+        };
+        store.commit(&state, || true).unwrap();
+        assert_eq!(store.load().unwrap(), (state, Loaded::Read));
     }
 
     #[test]

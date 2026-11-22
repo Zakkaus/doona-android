@@ -1,6 +1,6 @@
-//! Rule mode's rules (`plans/v1/rule-mode.md`, slices R1 and R2): the model of a rule source, its
-//! limits, the compiled set a flow is matched against, doona's template and the policy
-//! `Route::of` chooses a group by.
+//! Rule mode's rules (`plans/v1/rule-mode.md`, slices R1 to R3): the model of a rule source, its
+//! limits, the compiled set a flow is matched against, doona's template, the policy `Route::of`
+//! chooses a group by, and the rows as the contract lists them.
 //!
 //! A source is groups ([`GroupDef`]) and rows of rules ([`RuleSpec`]). [`RuleSet::compile`]
 //! checks the whole source before it builds anything ([`limits`]) and refuses it as
@@ -15,6 +15,7 @@ mod domain;
 mod geoip;
 mod graph;
 pub(crate) mod limits;
+pub(crate) mod listing;
 mod lpm;
 pub(crate) mod policy;
 mod ports;
@@ -96,10 +97,6 @@ pub(crate) enum Skip {
 }
 
 impl Skip {
-    #[cfg_attr(
-        not(test),
-        allow(dead_code, reason = "R3's rules call names the reason")
-    )]
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Skip::UnsupportedKind => "unsupported_kind",
@@ -221,7 +218,6 @@ impl RuleSet {
     }
 
     /// The lines skipped in all rows.
-    #[cfg_attr(not(test), allow(dead_code, reason = "R3's ruleSource shows it"))]
     pub(crate) fn skipped(&self) -> usize {
         self.rows.iter().map(|r| r.skipped as usize).sum()
     }

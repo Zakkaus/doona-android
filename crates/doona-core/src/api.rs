@@ -23,6 +23,7 @@ use tokio::runtime::Runtime;
 
 #[cfg(feature = "fault-hook")]
 mod fault;
+mod rules;
 mod selection;
 mod snapshot;
 mod subscriptions;
@@ -406,6 +407,8 @@ impl Core {
             "trafficSeries" => self.traffic_series(args),
             "usage" => self.usage(args),
             "nodes" => self.nodes(args),
+            "rules" => self.rules(args),
+            "setRuleSource" => parse(args).and_then(|a| self.set_rule_source(a).map(empty)),
             #[cfg(feature = "fault-hook")]
             "debugFault" => self.fault().map(empty),
             _ => Err(ErrorCode::InvalidArgument),
@@ -521,7 +524,7 @@ pub fn error_reply(code: ErrorCode) -> String {
 
 /// A command name fit for the log: the closed list, never caller text.
 fn command_name(command: &str) -> &'static str {
-    const KNOWN: [&str; 9] = [
+    const KNOWN: [&str; 11] = [
         "select",
         "testLatency",
         "addSubscription",
@@ -531,6 +534,8 @@ fn command_name(command: &str) -> &'static str {
         "trafficSeries",
         "usage",
         "nodes",
+        "rules",
+        "setRuleSource",
     ];
     KNOWN
         .into_iter()
@@ -564,5 +569,7 @@ mod tests_catalog;
 mod tests_latency;
 #[cfg(test)]
 mod tests_localnet;
+#[cfg(test)]
+mod tests_rule_source;
 #[cfg(test)]
 mod tests_rules;

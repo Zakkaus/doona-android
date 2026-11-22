@@ -2,8 +2,8 @@
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
 use doonacore::dto::{
-    Empty, ErrorCode, Init, Mode, Nodes, NodesArgs, Reply, SelectArgs, Snapshot, StartConfig,
-    Subscription, TrafficSeries, Usage,
+    Empty, ErrorCode, Init, Mode, Nodes, NodesArgs, Reply, Rules, RulesArgs, SelectArgs, Snapshot,
+    SourceKind, StartConfig, Subscription, TargetKind, TrafficSeries, Usage,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -28,14 +28,16 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 13] = [
+const COVERED: [&str; 15] = [
     "call-error.json",
     "call-nodes-args.json",
     "call-ok-empty.json",
     "call-ok-nodes.json",
+    "call-ok-rules.json",
     "call-ok-subscription.json",
     "call-ok-traffic-series.json",
     "call-ok-usage.json",
+    "call-rules-args.json",
     "call-select-args.json",
     "init.json",
     "snapshot-died.json",
@@ -103,6 +105,13 @@ fn snapshots() {
     assert!(lan.failed && lan.latency_ms.is_none());
     assert_eq!(lan.error, Some(ErrorCode::LocalNetwork));
     assert!(proxy.members[..3].iter().all(|m| m.error.is_none()));
+    // The template's rules, all compiled.
+    assert_eq!(catalog.main_group_id, "g-Proxy");
+    let source = catalog.rule_source;
+    assert_eq!(source.kind, SourceKind::Template);
+    assert_eq!(source.template.as_deref(), Some("cn-direct"));
+    assert_eq!((source.rules, source.lines, source.skipped), (5, 23, 0));
+    assert!(source.error.is_none() && source.subscription_id.is_none());
 }
 
 #[test]
@@ -153,4 +162,26 @@ fn stats_replies() {
     assert_eq!(args.ids.unwrap().len(), nodes.len());
     // `ids` is required, as every nullable argument key.
     assert!(serde_json::from_str::<NodesArgs>("{}").is_err());
+}
+
+#[test]
+fn rule_replies_and_args() {
+    let args = round_trip::<RulesArgs>("call-rules-args.json");
+    assert_eq!((args.offset, args.limit), (0, 50));
+    let rules = ok(round_trip::<Reply<Rules>>("call-ok-rules.json"));
+    assert_eq!((rules.total, rules.rows.len()), (5, 5));
+    let r#match = &rules.rows[4];
+    assert_eq!(
+        (r#match.kind.as_str(), r#match.sample.as_ref()),
+        ("Match", None)
+    );
+    assert_eq!((r#match.target_kind, r#match.count), (TargetKind::Group, 0));
+    assert!(
+        rules
+            .rows
+            .iter()
+            .all(|r| r.id.len() == 18 && r.skipped.is_none())
+    );
+    // `offset` and `limit` are both required.
+    assert!(serde_json::from_str::<RulesArgs>(r#"{"limit":50}"#).is_err());
 }

@@ -4,13 +4,12 @@
 //! catalog's template (`groups::template`). A change to them is a new [`VERSION`].
 
 use super::{Kind, RuleSpec, Target};
+use crate::dto::RuleOptions;
 use crate::groups;
 use crate::ids::group_id;
 
-/// The template's name, as the contract will show it (R3).
-#[cfg_attr(not(test), expect(dead_code, reason = "R3's ruleSource shows it"))]
+/// The template's name and version, as `ruleSource` shows them.
 pub(crate) const ID: &str = "cn-direct";
-#[cfg_attr(not(test), expect(dead_code, reason = "R3's ruleSource shows it"))]
 pub(crate) const VERSION: u32 = 2;
 
 /// Netflix, YouTube, Disney+, Max and Prime Video, by suffix: their sites and the names their
@@ -49,6 +48,14 @@ pub(crate) struct Options {
     /// to TCP; QUIC that goes direct is kept. QUIC over a node is often slower than TCP, or not
     /// carried at all.
     pub block_quic: bool,
+}
+
+impl From<RuleOptions> for Options {
+    fn from(options: RuleOptions) -> Options {
+        Options {
+            block_quic: options.block_quic,
+        }
+    }
 }
 
 /// The template's rows, in order.
