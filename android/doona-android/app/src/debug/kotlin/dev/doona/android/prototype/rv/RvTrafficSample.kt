@@ -28,52 +28,68 @@ internal fun rvIdleActivity(): ActivityUiState =
 
 /**
  * An invented minute of traffic, one sample a second, the last one now, drawn from a fixed seed so every render shows
- * the same minute. Download idles at tens of kB/s between three page loads that spike to 3 to 6 MB/s and decay over 2
- * to 4 seconds, and a ten-second download held near 3.5 MB/s. Upload runs at 5 to 10 % of download, with small spikes
- * of its own. Every value is a sum of non-negative terms, so none is below zero.
+ * the same minute. Download idles on a noisy 20 to 80 kB/s floor; three page loads rise to 3 to 6 MB/s within a second
+ * and decay over 3 to 5 (the last one is still decaying now), two of them with a smaller second bump; and one download holds about 3.5 MB/s for eleven
+ * seconds, jittering 15 % from second to second, with a 2 s ramp up and a 3 s ramp down. Upload follows download at 6
+ * to 8 % plus a little noise. No sample stands alone above both neighbours, and every term is non-negative.
  */
 internal object RvTrafficSample {
     // Declared before init, which reads them.
-    private val PAGE_LOADS = listOf(Burst(8, 4_400_000f, 3f), Burst(46, 5_800_000f, 4f), Burst(58, 3_100_000f, 3f))
-    private val UP_SPIKES = listOf(Burst(3, 160_000f, 2f), Burst(40, 420_000f, 3f), Burst(52, 240_000f, 2f))
+    private val PAGE_LOADS = listOf(
+        Burst(start = 7, peak = 4_200_000f, seconds = 4f, echo = 0.35f),
+        Burst(start = 42, peak = 5_600_000f, seconds = 5f, echo = 0.3f),
+        // Still loading at the window's end, so the live point sits clear of the low's pill at the bottom right.
+        Burst(start = 58, peak = 3_400_000f, seconds = 4f),
+    )
+
+    /** The sustained download's share of its level, second by second from its start: a 2 s ramp, the hold, a 3 s ramp. */
+    private val PLATEAU_SHAPE = listOf(0.4f, 0.75f) + List(11) { 1f } + listOf(0.7f, 0.4f, 0.15f)
 
     val down: List<Float>
     val up: List<Float>
 
     init {
         val random = Random(SEED)
-        val downs = List(SECONDS) { t -> IDLE_DOWN + random.nextFloat() * IDLE_DOWN_SPREAD + PAGE_LOADS.sumOf(t) + plateau(t, random) }
-        down = downs
-        up = List(SECONDS) { t -> downs[t] * (UP_SHARE + random.nextFloat() * UP_SHARE) + IDLE_UP * (1 + random.nextFloat()) + UP_SPIKES.sumOf(t) }
+        var floor = random.nextFloat()
+        down = List(SECONDS) { t ->
+            // Each second's floor leans on the last, so the idle line wanders instead of flickering.
+            floor = FLOOR_MEMORY * floor + (1 - FLOOR_MEMORY) * random.nextFloat()
+            IDLE_LOW + IDLE_SPREAD * floor + PAGE_LOADS.sumOf(t) + plateau(t, random)
+        }
+        up = down.map { rate -> rate * (UP_SHARE + UP_SHARE_SPREAD * random.nextFloat()) + UP_NOISE * (1 + random.nextFloat()) }
     }
 
-    /** The sustained download: half speed in its first second, [PLATEAU] wandering by 5 % while it lasts, then a fast fall. */
-    private fun plateau(t: Int, random: Random): Float = when {
-        t < PLATEAU_START -> 0f
-        t == PLATEAU_START -> PLATEAU / 2
-        t <= PLATEAU_END -> PLATEAU * (1 + PLATEAU_WANDER * (2 * random.nextFloat() - 1))
-        else -> PLATEAU * exp(-(t - PLATEAU_END) / PLATEAU_FALL)
+    /** The sustained download at second [t]: its shape times [PLATEAU], each second jittered by up to [JITTER]. */
+    private fun plateau(t: Int, random: Random): Float {
+        val share = PLATEAU_SHAPE.getOrNull(t - PLATEAU_START) ?: return 0f
+        return PLATEAU * share * (1 + JITTER * (2 * random.nextFloat() - 1))
     }
 
     private fun List<Burst>.sumOf(t: Int): Float = fold(0f) { sum, burst -> sum + burst.at(t) }
 
     private const val SEED = 20_261_122
     private const val SECONDS = 60
-    private const val IDLE_DOWN = 18_000f
-    private const val IDLE_DOWN_SPREAD = 52_000f
-    private const val IDLE_UP = 5_000f
-    private const val UP_SHARE = 0.05f
+    private const val IDLE_LOW = 20_000f
+    private const val IDLE_SPREAD = 60_000f
+    private const val FLOOR_MEMORY = 0.5f
+    private const val UP_SHARE = 0.06f
+    private const val UP_SHARE_SPREAD = 0.02f
+    private const val UP_NOISE = 3_000f
     private const val PLATEAU = 3_500_000f
-    private const val PLATEAU_START = 24
-    private const val PLATEAU_END = 34
-    private const val PLATEAU_WANDER = 0.05f
-    private const val PLATEAU_FALL = 1.2f
+    private const val PLATEAU_START = 19
+    private const val JITTER = 0.15f
 }
 
-/** A spike at second [start] of [peak] bytes a second that has mostly died down [seconds] later. */
-private class Burst(val start: Int, val peak: Float, val seconds: Float) {
-    fun at(t: Int): Float = if (t < start) 0f else peak * exp(-(t - start) / (seconds / DECAY_SPAN))
+/**
+ * A page load at second [start]: [peak] bytes a second within that second, decaying to under a tenth of it [seconds]
+ * later. With an [echo], a second bump of that share of [peak] rises two seconds in and decays the same way.
+ */
+private class Burst(val start: Int, val peak: Float, val seconds: Float, val echo: Float = 0f) {
+    fun at(t: Int): Float = decay(t - start) + echo * decay(t - start - ECHO_DELAY)
+
+    private fun decay(elapsed: Int): Float = if (elapsed < 0) 0f else peak * exp(-elapsed * DECAY_SPAN / seconds)
 }
 
-/** A burst falls to under a tenth of its peak in its [Burst.seconds]. */
-private const val DECAY_SPAN = 2.5f
+/** e^-2.3 ≈ 0.1: a burst is under a tenth of its peak after its [Burst.seconds]. */
+private const val DECAY_SPAN = 2.3f
+private const val ECHO_DELAY = 2
