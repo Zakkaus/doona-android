@@ -3,16 +3,21 @@ package dev.doona.android.prototype.rv
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RV_PICKER
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -64,6 +69,21 @@ class RvSearchTest {
         assertEquals("half the page's time: at scale 1 nothing is focused yet", true, focused())
     }
 
+    @Test
+    fun theFirstFrameComposesAWindowOfRowsAndTheRestFollow() {
+        app()
+        compose.onNodeWithText(rvText(R.string.rv_search_nodes)).performClick()
+        // The frame that first composes the page.
+        var first = 0
+        repeat(FIRST_FRAMES) { if (first == 0) compose.mainClock.advanceTimeByFrame().also { first = rows() } }
+        assertTrue("a window's worth at first, not all ${RvData.nodes.size} ($first)", first in 1 until RvData.nodes.size / 2)
+        compose.mainClock.advanceTimeBy(RvMotion.SEARCH_MS * 2L)
+        assertEquals("the rest come in over the next frames", RvData.nodes.size, rows())
+    }
+
+    /** How many node rows the search page has composed. */
+    private fun rows(): Int = RvData.nodes.sumOf { compose.onAllNodes(hasText(it.name) and hasAnyAncestor(hasTestTag(RV_PICKER))).fetchSemanticsNodes().size }
+
     private fun app() {
         compose.setContent {
             back = LocalOnBackPressedDispatcherOwner.current!!.onBackPressedDispatcher
@@ -80,5 +100,6 @@ class RvSearchTest {
 
     private companion object {
         const val FRAMES_MS = 50L
+        const val FIRST_FRAMES = 5
     }
 }

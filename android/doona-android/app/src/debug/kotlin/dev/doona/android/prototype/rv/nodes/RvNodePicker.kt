@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -45,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -144,6 +147,7 @@ internal fun RvNodePicker(
     var query by rememberSaveable { mutableStateOf("") }
     val labels = nodes.associate { it.id to stringResource(it.place.label) }
     val matching = nodes.filter { it.matches(query.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
+    val composed = rememberRowsComposed(subscriptions.size + nodes.size)
     RvLongPressTiming {
         Box(Modifier.fillMaxSize().testTag(RV_PICKER)) {
             // A pull down at the top, which closes the picker, moves the list under the bar with the finger.
@@ -152,9 +156,12 @@ internal fun RvNodePicker(
                     RvLargeTitle(stringResource(R.string.rv_nodes_title), Modifier, insets)
                     RvText(stringResource(R.string.rv_main_node_hint), Rv.type.rowSub, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.subGap * 2), color = Rv.colors.textSecondary)
                 }
+                var first = 0
                 subscriptions.forEachIndexed { i, sub ->
                     val members = nodes.filter { it.subscription == sub.name }
-                    Group(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, section(2 + i))
+                    val rows = RvRowsComposed(first, composed)
+                    Group(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, rows, section(2 + i))
+                    first += 1 + members.size
                 }
                 Spacer(Modifier.windowInsetsBottomHeight(bottom))
             }
@@ -184,8 +191,12 @@ private fun Group(
     searching: Boolean,
     onPick: (String) -> Unit,
     onDetail: (String) -> Unit,
+    rows: RvRowsComposed,
     modifier: Modifier,
 ) {
+    // Read here, so that as more rows are composed this group composes again, not the picker.
+    val limit = rows.composed() - rows.first
+    if (limit <= 0) return
     val motion = Rv.motion
     var open by rememberSaveable(sub.id) { mutableStateOf(true) }
     val fold = motion.tween<Float>(RvMotion.MOVE_MS)
@@ -197,6 +208,8 @@ private fun Group(
                 AnimatedVisibility(open || searching, enter = expandVertically(size), exit = shrinkVertically(size)) {
                     Column {
                         members.forEachIndexed { order, node ->
+                            // The group's 訂閱 row is its first row.
+                            if (1 + order >= limit) return@forEachIndexed
                             key(node.id) {
                                 AnimatedVisibility(node.id in matching, enter = fadeIn(fold) + expandVertically(size), exit = fadeOut(fold) + shrinkVertically(size)) {
                                     NodeRow(node, labels.getValue(node.id), node.id == currentId, order, onPick, onDetail)
@@ -263,7 +276,8 @@ private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean
 private fun NodeRow(node: RvNode, label: String, current: Boolean, order: Int, onPick: (String) -> Unit, onDetail: (String) -> Unit) {
     val inUse = stringResource(R.string.rv_nodes_in_use)
     val details = stringResource(R.string.rv_nodes_details)
-    RvMenuAnchor(rvNodeMenu(node, current, onPick, onDetail)) { menu, actions ->
+    // Each row is a layer of its own: a row composed after the others records itself, not the whole card again.
+    RvMenuAnchor(rvNodeMenu(node, current, onPick, onDetail), Modifier.graphicsLayer {}) { menu, actions ->
         RvRow(
             { RvFlag(node.place.name, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
             node.name,
@@ -296,6 +310,31 @@ private fun NodeTrailing(node: RvNode, order: Int, details: String, onDetail: (S
 private fun RvNode.matches(query: String, label: String): Boolean =
     query.isEmpty() || listOf(name, short, protocol, label).any { it.contains(query, ignoreCase = true) }
 
+/** The picker's rows a group starts at ([first], its 訂閱 row) and how many of them are [composed] so far. */
+private class RvRowsComposed(val first: Int, val composed: () -> Int)
+
+/**
+ * How many of the picker's [total] rows (訂閱 rows and node rows, in order) are composed: at first those that fill the
+ * window, then [ROWS_PER_FRAME] more each frame until all are. On the phone, composing all 50 rows in the page's first
+ * frame took 52 ms of the UI thread in the profile build (23 ms to compose, 10 to measure, 7 to draw); the rows below
+ * the window now come in over the next frames, out of sight, and the first frame holds a window's worth.
+ */
+@Composable
+private fun rememberRowsComposed(total: Int): () -> Int {
+    val window = LocalWindowInfo.current.containerSize.height
+    val row = with(LocalDensity.current) { RvSize.rowTwoLine.roundToPx() }
+    val composed = remember { mutableIntStateOf(window / row.coerceAtLeast(1) + 1) }
+    LaunchedEffect(total) {
+        while (composed.intValue < total) {
+            withFrameNanos {}
+            composed.intValue += ROWS_PER_FRAME
+        }
+    }
+    return { composed.intValue }
+}
+
+/** About 1 ms each to compose and measure on the phone, so a frame takes a few without missing the 120 Hz budget. */
+private const val ROWS_PER_FRAME = 4
 private const val QUARTER_TURN = 90f
 private const val SEARCH_GESTURE = "search"
 private const val TRACE_FOCUS = "RvSearchFocus"
