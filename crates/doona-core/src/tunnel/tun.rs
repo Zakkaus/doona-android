@@ -1,7 +1,8 @@
 //! The generation's tun descriptor, which `stop` can close whatever the driver is doing. The
-//! driver reaches it one non-blocking operation at a time under a lock that `revoke` also takes,
-//! so `revoke` waits for at most one syscall; afterwards every operation fails, and no task of
-//! the generation can reach the descriptor's number, which the kernel may hand out again.
+//! driver reaches it one non-blocking operation at a time under a lock that `revoke` also takes
+//! and keeps until the descriptor is closed, so `revoke` waits for at most one syscall or one
+//! other revoke; afterwards every operation fails, and no task of the generation can reach the
+//! descriptor's number, which the kernel may hand out again.
 
 use crate::sys;
 use std::io::{self, ErrorKind};
@@ -64,9 +65,20 @@ impl Tun {
         .await
     }
 
-    /// Deregisters and closes the descriptor.
+    /// Deregisters and closes the descriptor. The lock is held until the close, so a second
+    /// revoker, such as `stop` racing a failed start's cleanup, returns only once the
+    /// descriptor is closed rather than as soon as it finds it taken.
     pub fn revoke(&self) {
-        let fd = self.lock().take();
+        self.revoke_pausing(|| {});
+    }
+
+    /// [`Tun::revoke`], running `pause` once the descriptor is taken and before it is closed,
+    /// where a unit test stands in for a slow deregistration.
+    fn revoke_pausing(&self, pause: impl FnOnce()) {
+        let mut fd = self.lock();
+        let taken = fd.take();
+        pause();
+        drop(taken);
         drop(fd);
     }
 
@@ -78,4 +90,39 @@ impl Tun {
 
 fn revoked() -> io::Error {
     ErrorKind::NotConnected.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testutil::{closed, tun};
+    use std::time::Duration;
+
+    #[test]
+    fn a_second_revoker_returns_only_once_the_fd_is_closed() {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()
+            .unwrap();
+        let (dup, probe) = tun();
+        let tun = Tun::new(dup, rt.handle()).unwrap();
+        let (taken_tx, taken) = std::sync::mpsc::channel();
+        let first = {
+            let tun = Arc::clone(&tun);
+            std::thread::spawn(move || {
+                tun.revoke_pausing(|| {
+                    taken_tx.send(()).unwrap();
+                    std::thread::sleep(Duration::from_millis(300));
+                });
+            })
+        };
+        taken.recv().unwrap();
+        tun.revoke();
+        assert!(
+            closed(&probe),
+            "the second revoke returned with the fd open"
+        );
+        first.join().unwrap();
+    }
 }
