@@ -239,12 +239,15 @@ impl Model {
             .filter(|(id, _)| self.index.contains_key(*id))
             .map(|(id, l)| (id.clone(), *l))
             .collect();
+        // The members changed: each UrlTest group picks again from the results kept, and keeps a
+        // choice that is still a member when none of them has a result.
         self.auto = old
             .auto
             .iter()
-            .filter(|(g, _)| self.group(g).is_some())
+            .filter(|(g, m)| self.group(g).is_some_and(|g| g.members.contains(m)))
             .map(|(g, m)| (g.clone(), m.clone()))
             .collect();
+        self.choose(None);
         // Every test under way ends with a decrement, whatever happened to its groups.
         self.testing = old.testing.clone();
         self.next_probe = old.next_probe;

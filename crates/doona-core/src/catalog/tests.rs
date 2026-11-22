@@ -285,3 +285,32 @@ fn only_a_success_of_the_current_round_replaces_the_choice() {
     assert!(model.record(&round.targets[6], Some(70)));
     assert_eq!(auto(&model), id(5));
 }
+
+#[test]
+fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
+    let s = state(&[("s1", "links.txt")]);
+    let mut model = load(&s);
+    let hk = |m: &Model, s: &State| m.catalog(s).groups[2].selected_id.clone().unwrap();
+    let plan = model.plan(Some("g-HK")).unwrap();
+    let ids: Vec<_> = plan.targets.iter().map(|t| t.entry.id.clone()).collect();
+    assert!(model.record(&plan.targets[0], None));
+    assert!(model.record(&plan.targets[1], Some(20)));
+    assert!(model.record(&plan.targets[2], Some(10)));
+    assert_eq!(hk(&model, &s), ids[2]);
+    // HK-02 leaves the feed: the measured hk-01 takes over, not the failed first member.
+    let mut next = s.clone();
+    next.subscriptions[0]
+        .links
+        .retain(|l| !l.ends_with("#HK-02"));
+    let mut refreshed = model.with(&next, "s1", fresh(&next.subscriptions[0]));
+    refreshed.carry(&model);
+    assert_eq!(hk(&refreshed, &next), ids[1]);
+    // With nothing measured, a choice that is still a member stays.
+    let round = refreshed.plan(Some("g-HK")).unwrap();
+    for t in &round.targets {
+        assert!(refreshed.record(t, None));
+    }
+    let mut again = refreshed.with(&next, "s1", fresh(&next.subscriptions[0]));
+    again.carry(&refreshed);
+    assert_eq!(hk(&again, &next), ids[1]);
+}
