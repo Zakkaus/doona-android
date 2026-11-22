@@ -53,8 +53,34 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     /** A progress bar's empty part. */
     val track = discOnCard
 
-    /** An unselected destination of the bottom navigation: a step under the secondary text, as Revolut's grey tabs. */
-    val navIdle = s.outline
+    /**
+     * Glass over the content. The floating capsule: the page's lightest surface, half see-through in light as Revolut's
+     * 35 to 65 % white (measured §9), a raised container in dark (not measured; derived); its solid fill is what it
+     * shows collapsed and where the platform cannot blur. The top bar's controls are a step darker, so they read on the
+     * light page.
+     */
+    val navGlass = if (dark) {
+        RvGlassTint(s.surfaceContainerHigh.copy(alpha = RvAlpha.GLASS_DARK), s.surfaceContainerHigh.copy(alpha = RvAlpha.GLASS_SOLID))
+    } else {
+        RvGlassTint(s.surfaceContainerLowest.copy(alpha = RvAlpha.GLASS_LIGHT), s.surfaceContainerLowest.copy(alpha = RvAlpha.GLASS_SOLID))
+    }
+    val controlGlass = if (dark) {
+        RvGlassTint(s.surfaceContainerHighest.copy(alpha = RvAlpha.GLASS_DARK), s.surfaceContainerHighest)
+    } else {
+        RvGlassTint(s.surfaceContainerHigh.copy(alpha = RvAlpha.CONTROL_GLASS), s.surfaceContainerHigh)
+    }
+
+    /** The strip behind 活動's top bar once content scrolls under it: the page, mostly opaque over the blur. */
+    val barGlass = RvGlassTint(page.copy(alpha = RvAlpha.BAR_GLASS), page.copy(alpha = RvAlpha.GLASS_SOLID))
+
+    /** The selected item's inner pill in the capsule: the text colour, faint (measured: about black 7 % in light). */
+    val navPill = s.onSurface.copy(alpha = if (dark) RvAlpha.NAV_PILL_DARK else RvAlpha.NAV_PILL_LIGHT)
+
+    /** Soft shadows under the capsule and the top bar's controls, in light only. */
+    val glassShadow = !dark
+
+    /** A subscription's disc and the glyph on it, one dynamic role each, as Revolut colours its Total wealth rows. */
+    val accents = listOf(s.primary to s.onPrimary, s.tertiary to s.onTertiary)
 
     /** A hairline round a flag in light, where white fields meet the light grey card; dark needs none. */
     val flagEdge: Color? = if (dark) null else s.outlineVariant
@@ -123,6 +149,8 @@ internal class RvType {
     val stat = RvTypeScale.stat.style(tabular = true)
     val title = RvTypeScale.title.style()
     val navLabel = RvTypeScale.navLabel.style()
+    val search = RvTypeScale.search.style()
+    val cardTitle = RvTypeScale.cardTitle.style()
 
     // Tabular figures only where figures line up or change in place: Inter's tnum also widens the hyphen of a name.
     private fun RvTypeStep.style(tabular: Boolean = false) = TextStyle(

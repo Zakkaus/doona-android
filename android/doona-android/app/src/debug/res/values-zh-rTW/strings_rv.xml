@@ -24,4 +24,20 @@
     <string name="rv_range_5m">5 分</string>
     <string name="rv_range_15m">15 分</string>
     <string name="rv_range_1h">1 時</string>
+    <string name="rv_search_nodes">搜尋節點</string>
+    <string name="rv_stats">統計</string>
+    <string name="rv_subscriptions">訂閱</string>
+    <string name="rv_today_usage">今日用量</string>
+    <string name="rv_less_than_yesterday">比昨天同時段少 %1$s</string>
+    <string name="rv_more_than_yesterday">比昨天同時段多 %1$s</string>
+    <string name="rv_remaining">剩餘</string>
+    <string name="rv_subscription_name">機場 %1$s</string>
+    <string name="rv_subscription_usage">已用 %1$d / %2$d GB · %3$s 到期</string>
+    <string name="rv_fastest_nodes">最快節點</string>
+    <string name="rv_region_hk">香港</string>
+    <string name="rv_region_jp">日本</string>
+    <string name="rv_region_kr">韓國</string>
+    <string name="rv_region_sg">新加坡</string>
+    <string name="rv_region_tw">臺灣</string>
+    <string name="rv_region_us">美國</string>
 </resources>

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -52,8 +54,9 @@ private class Scale(val high: Float, val top: Float, val bottom: Float) {
 internal class RvFigure(val whole: String, val unit: String)
 
 /**
- * One of Revolut's crypto home tiles: [caption] at the top start, [icon] in the series' tinted disc at the top end, the
- * [figure] in bold, a secondary [note] under it, then the sparkline of [values] at the bottom. With [quiet] (no
+ * One of Revolut's crypto home tiles, square as they are: [caption] at the top start, [icon] in the series' tinted 20 dp
+ * disc at the top end, the [figure] in bold, a secondary [note] under it, and the sparkline of [values] at the bottom
+ * (measured §10.2: 148 x 60 dp). With [quiet] (no
  * connection, or no traffic) the tile takes Revolut's empty chart card instead: a larger figure over ghost bars, and
  * [note] says why there is no line. The whole tile is one button.
  */
@@ -70,8 +73,8 @@ internal fun RvSparkTile(
     modifier: Modifier = Modifier,
 ) {
     val type = Rv.type
-    RvCard(modifier.rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, onClick)) {
-        Column(Modifier.padding(RvChartSize.tilePad)) {
+    RvCard(modifier.aspectRatio(1f).rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, onClick)) {
+        Column(Modifier.fillMaxSize().padding(RvChartSize.tilePad)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RvText(caption, if (quiet) type.rowSub else type.tileCaption, Modifier.weight(1f), color = Rv.colors.textSecondary)
                 Box(Modifier.size(RvChartSize.tileDisc).clip(CircleShape).background(series.disc), contentAlignment = Alignment.Center) {
@@ -79,21 +82,22 @@ internal fun RvSparkTile(
                 }
             }
             Spacer(Modifier.height(RvSpace.tight))
-            FigureText(figure, if (quiet) type.cardValue else type.tileValue, if (quiet) type.cardUnit else type.tileUnit)
+            RvFigureText(figure, if (quiet) type.cardValue else type.tileValue, if (quiet) type.cardUnit else type.tileUnit)
             RvText(note, type.tileCaption, color = Rv.colors.textSecondary)
-            Spacer(Modifier.height(RvSpace.sparkGap))
+            Spacer(Modifier.weight(1f))
             if (quiet) RvGhostBars() else RvSparkline(values, series.line)
         }
     }
 }
 
+/** A figure in [style], its unit in [unitStyle] on the same baseline; Latin only, as figures and units are. */
 @Composable
-private fun FigureText(figure: RvFigure, style: TextStyle, unitStyle: TextStyle) {
+internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextStyle, modifier: Modifier = Modifier) {
     val text = buildAnnotatedString {
         append(figure.whole)
         withStyle(unitStyle.toSpanStyle()) { append(figure.unit) }
     }
-    BasicText(text, style = style.copy(color = Rv.colors.text), maxLines = 1)
+    BasicText(text, modifier, style = style.copy(color = Rv.colors.text), maxLines = 1)
 }
 
 /**

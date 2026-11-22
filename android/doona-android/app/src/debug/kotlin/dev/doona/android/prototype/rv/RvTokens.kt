@@ -26,11 +26,8 @@ internal object RvSpace {
     val subGap = 6.dp
     val tight = 4.dp
 
-    /** Between two tiles side by side, as between two cards. */
-    val tileGap = 18.dp
-
-    /** From a tile's text to its sparkline. */
-    val sparkGap = 14.dp
+    /** Between two tiles side by side: Revolut's crypto tiles sit 16 dp apart (measured §10.2). */
+    val tileGap = 16.dp
 
     /** From the detail page's segmented control to its hero, and from its figures to its chart. */
     val chartGap = 24.dp
@@ -64,7 +61,6 @@ internal object RvSize {
     val cardRadius = 18.dp
     val touch = 48.dp
     val topBar = 56.dp
-    val navBar = 64.dp
     val navGlyph = 24.dp
     val progress = 5.dp
 
@@ -98,13 +94,13 @@ internal object RvDots {
 
 /** Revolut's charts, from the owner's 2026 screenshots: the crypto home tiles and a stock's full-bleed chart. */
 internal object RvChartSize {
-    /** A tile's inner padding, its caption disc and the glyph in it. */
-    val tilePad = 14.dp
-    val tileDisc = 28.dp
-    val tileGlyph = 16.dp
+    /** A square tile's inner padding, its 20 dp corner disc and the glyph in it (measured §10.2). */
+    val tilePad = 16.dp
+    val tileDisc = 20.dp
+    val tileGlyph = 14.dp
 
-    /** A tile's sparkline, across the tile's inner width at its bottom. */
-    val spark = 84.dp
+    /** A tile's sparkline, across the tile's inner width at its bottom: Revolut's crypto tile plots 148 x 60 dp. */
+    val spark = 60.dp
     val sparkStroke = 2.dp
 
     /** The ghost bars of a tile with no traffic, after Revolut's empty 'Income' card: twelve across the tile. */
@@ -183,6 +179,104 @@ internal object RvAlpha {
 
     /** A range the build does not offer yet. */
     const val DISABLED = 0.38f
+
+    /** Glass tints: over the blur in light and in dark, the solid fill, and the top bar's controls in light. */
+    const val GLASS_LIGHT = 0.5f
+    const val GLASS_DARK = 0.6f
+    const val GLASS_SOLID = 0.94f
+    const val CONTROL_GLASS = 0.7f
+    const val BAR_GLASS = 0.8f
+    const val NAV_PILL_LIGHT = 0.07f
+    const val NAV_PILL_DARK = 0.12f
+}
+
+/**
+ * The chrome over 活動's content, after Revolut's measured top bar (§4) and floating bottom bar (§9): the top bar's
+ * controls 40 dp (the duck's disc 38 dp), and a glass capsule 16 dp in from the sides whose bottom sits 40 dp above the
+ * screen's edge, 60 dp tall, that shrinks to icons only, 336 x 52 dp, while the content scrolls up.
+ */
+internal object RvChrome {
+    /** The top bar's row, this far under the status bar; its strip ends this far under the row, fading out on the way. */
+    val barTop = 12.dp
+    val barBottom = 16.dp
+    val barFade = 16.dp
+
+    /** The strip behind the top bar is fully in once the content has scrolled this far. */
+    val shadeAfter = 48.dp
+    val mark = 38.dp
+    val markGlyph = 26.dp
+    val control = 40.dp
+    val controlGlyph = 22.dp
+
+    /** From the duck to the search pill and from the pill to the buttons; between the two buttons. */
+    val controlGap = 10.dp
+    val buttonGap = 8.dp
+
+    /** The search pill's magnifier, inset from its start, and the gap to the placeholder. */
+    val searchGlyph = 24.dp
+    val searchInset = 8.dp
+
+    val navInset = 16.dp
+    val navBottom = 40.dp
+
+    /** The capsule's bottom stays this far above a taller system bar, so it never sits on the gesture handle. */
+    val navAboveInset = 16.dp
+    val navHeight = 60.dp
+    val navCollapsedHeight = 52.dp
+    val navCollapsedWidth = 336.dp
+
+    /** The selected item's inner pill, inset this far from the capsule's edges: 52 dp tall in the 60 dp capsule. */
+    val navPillInset = 4.dp
+    val navGlyph = 24.dp
+    val navCollapsedGlyph = 20.dp
+    val navLabelGap = 2.dp
+    val navLabel = 15.dp
+
+    /** The glass blur's radius, and the shadows under the capsule and the top bar's controls (light only). */
+    val blur = 20.dp
+    val navShadow = 12.dp
+    val navShadowDrop = 4.dp
+    val controlShadow = 6.dp
+    val controlShadowDrop = 1.dp
+
+    const val NAV_SHADOW_ALPHA = 0.16f
+    const val CONTROL_SHADOW_ALPHA = 0.06f
+    const val COLLAPSE_MS = 220
+}
+
+/**
+ * The 今日用量 card, after Revolut's Analytics 'Spent' tile (measured §10.2: 384 x 188 dp): the text at the start,
+ * the stacked steps in the right half above the legend, and a hairline grid every 4 hours and in four rows.
+ */
+internal object RvUsageSize {
+    val card = 188.dp
+    val pad = 16.dp
+    val legendSquare = 9.dp
+    val legendRadius = 2.dp
+    val legendGap = 6.dp
+    val legendItemGap = 16.dp
+
+    /** The chart stops this far above the legend's row. */
+    val chartAboveLegend = 10.dp
+    val stroke = 1.5.dp
+    const val HOURS = 24
+    const val GRID_HOURS = 4
+    const val GRID_ROWS = 4
+
+    /** The total sits at 80 % of the chart's height, so the day has room to grow. */
+    const val HEADROOM = 1.25f
+}
+
+/** A home card of Revolut's: its own grey header with a chevron, its figure and its rows (study §3). */
+internal object RvHomeSize {
+    val headerPad = 16.dp
+    val headerChevron = 20.dp
+    val disc = 40.dp
+    val discGlyph = 22.dp
+
+    /** The filled triangle before a change, as Revolut's delta (measured §7: 8 dp). */
+    val delta = 8.dp
+    val deltaGap = 4.dp
 }
 
 /** One step of the type scale: size and line height in sp, weight, display or text cut. */
@@ -207,7 +301,11 @@ internal object RvTypeScale {
     val section = RvTypeStep(20, 26, FontWeight.Bold, display = true)
     val stat = RvTypeStep(16, 22, FontWeight.Medium)
     val title = RvTypeStep(34, 40, FontWeight.Bold, display = true)
-    val navLabel = RvTypeStep(12, 16, FontWeight.Medium)
+    val navLabel = RvTypeStep(12, 15, FontWeight.SemiBold)
+
+    /** The search pill's placeholder (measured §4: 17 sp) and a home card's own header (study §3: 15 pt semibold). */
+    val search = RvTypeStep(17, 22, FontWeight.Normal)
+    val cardTitle = RvTypeStep(15, 20, FontWeight.SemiBold)
     const val TABULAR = "tnum"
 }
 

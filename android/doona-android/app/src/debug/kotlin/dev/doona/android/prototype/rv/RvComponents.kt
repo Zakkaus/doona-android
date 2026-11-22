@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +21,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -195,15 +193,18 @@ internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** A screen's top bar: the back glyph's edge sits on the gutter; its touch target reaches past it. */
+/**
+ * A screen's top bar: the back glyph's edge sits on the gutter; its touch target reaches past it. The node screen keeps
+ * sample 2's glyph ([R.drawable.rv_ic_back], weight 600) until it is redone; the traffic page passes weight 500.
+ */
 @Composable
-internal fun RvBackBar(onBack: () -> Unit) {
+internal fun RvBackBar(onBack: () -> Unit, @DrawableRes glyph: Int = R.drawable.rv_ic_back) {
     val back = stringResource(R.string.ui_back)
     Box(Modifier.height(RvSize.topBar).padding(start = RvSpace.gutter - (RvSize.touch - RvSize.navGlyph) / 2), contentAlignment = Alignment.CenterStart) {
         Box(
             Modifier.size(RvSize.touch).rvPress(CircleShape, Role.Button, onBack).semantics { contentDescription = back },
             contentAlignment = Alignment.Center,
-        ) { RvGlyph(R.drawable.rv_ic_back, RvSize.navGlyph, Rv.colors.text) }
+        ) { RvGlyph(glyph, RvSize.navGlyph, Rv.colors.text) }
     }
 }
 
@@ -291,31 +292,6 @@ internal fun RvStatRow(label: String, value: String) {
 
 /** A destination of the bottom navigation. */
 internal class RvNavItem(@DrawableRes val icon: Int, @StringRes val label: Int)
-
-/** The bottom navigation on the page: a glyph over a label each, the current one in the text colour, the rest grey. */
-@Composable
-internal fun RvBottomNav(items: List<RvNavItem>, selected: Int, onSelect: (Int) -> Unit, insets: WindowInsets) {
-    Column(Modifier.fillMaxWidth().background(Rv.colors.page)) {
-        Row(Modifier.fillMaxWidth().height(RvSize.navBar)) {
-            items.forEachIndexed { i, item ->
-                val color = if (i == selected) Rv.colors.text else Rv.colors.navIdle
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .selectable(i == selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.Tab) { onSelect(i) },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    RvGlyph(item.icon, RvSize.navGlyph, color)
-                    Spacer(Modifier.height(RvSpace.tight))
-                    RvText(stringResource(item.label), Rv.type.navLabel, color = color, align = TextAlign.Center)
-                }
-            }
-        }
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
-    }
-}
 
 /** A trailing value over a short line under it, both ending at the row's end, as Revolut's amount and change. */
 @Composable

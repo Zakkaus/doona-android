@@ -56,7 +56,7 @@ internal fun RvTrafficScreen(state: ActivityUiState, connection: RvConnection, o
     val live = if (upload) state.upRate else state.downRate
     Column(Modifier.fillMaxSize().background(Rv.colors.page).verticalScroll(rememberScrollState())) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
-        RvBackBar(onBack)
+        RvBackBar(onBack, R.drawable.rv_sym_arrow_back)
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             val options = listOf(stringResource(R.string.ui_download), stringResource(R.string.ui_upload))
             RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 })
@@ -97,9 +97,9 @@ private fun Ranges() {
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
             RANGES.forEach { (label, offered) -> RvRangePill(stringResource(label), selected = offered, enabled = offered, onClick = NOT_WIRED) }
         }
-        RvRoundButton(R.drawable.rv_ic_bar_chart, stringResource(R.string.rv_chart_type), NOT_WIRED)
+        RvRoundButton(R.drawable.rv_sym_bar_chart, stringResource(R.string.rv_chart_type), NOT_WIRED)
         Spacer(Modifier.width(RvSpace.tight))
-        RvRoundButton(R.drawable.rv_ic_expand, stringResource(R.string.rv_full_screen), NOT_WIRED)
+        RvRoundButton(R.drawable.rv_sym_open_in_full, stringResource(R.string.rv_full_screen), NOT_WIRED)
     }
 }
 
