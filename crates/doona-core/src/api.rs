@@ -5,9 +5,11 @@ use crate::dto::{
     self, AddSubscriptionArgs, Catalog, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply,
     SelectArgs, Snapshot, StartConfig, Traffic,
 };
+use crate::state::{Loaded, State, Store};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::os::fd::OwnedFd;
+use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use tokio::runtime::Runtime;
 
@@ -16,17 +18,28 @@ const WORKERS: usize = 2;
 
 pub struct Core {
     runtime: Runtime,
+    store: Store,
     catalog: Mutex<CatalogState>,
 }
 
 struct CatalogState {
-    mode: Mode,
+    /// What `state.json` holds; changed only after the file is written.
+    state: State,
     /// Rises with every change Kotlin must re-read; starts above Kotlin's initial -1 and 0.
     revision: i64,
 }
 
 impl Core {
-    pub fn new(_data_dir: &str) -> Result<Core, ErrorCode> {
+    /// Reads `data_dir/state.json` and builds the runtime.
+    pub fn new(data_dir: &str) -> Result<Core, ErrorCode> {
+        let store = Store::new(Path::new(data_dir));
+        let (state, loaded) = store.load().map_err(|e| {
+            log::error!("init: state unreadable ({:?})", e.kind());
+            ErrorCode::Internal
+        })?;
+        if loaded == Loaded::SetAside {
+            log::warn!("init: state.json was unusable; set aside, defaults in use");
+        }
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(WORKERS)
             .thread_name("doona-core")
@@ -35,10 +48,8 @@ impl Core {
             .map_err(|_| ErrorCode::Internal)?;
         Ok(Core {
             runtime,
-            catalog: Mutex::new(CatalogState {
-                mode: Mode::default(),
-                revision: 1,
-            }),
+            store,
+            catalog: Mutex::new(CatalogState { state, revision: 1 }),
         })
     }
 
@@ -69,7 +80,7 @@ impl Core {
             error: None,
             traffic: Traffic::default(),
             catalog: (catalog.revision > since_revision).then(|| Catalog {
-                mode: catalog.mode,
+                mode: catalog.state.mode,
                 groups: Vec::new(),
                 subscriptions: Vec::new(),
             }),
@@ -79,7 +90,7 @@ impl Core {
 
     pub fn call(&self, command: &str, args: &str) -> String {
         let reply = match command {
-            "setMode" => parse(args).map(|a: ModeArgs| self.set_mode(a.mode)),
+            "setMode" => parse(args).and_then(|a: ModeArgs| self.set_mode(a.mode)),
             // Groups, members and subscriptions arrive with the subscription lane; until then
             // nothing they address exists.
             "select" => parse::<SelectArgs>(args).and(Err(ErrorCode::NotFound)),
@@ -102,12 +113,23 @@ impl Core {
         }
     }
 
-    fn set_mode(&self, mode: Mode) {
+    /// Commits the mode to `state.json` first; new flows read it from then on.
+    fn set_mode(&self, mode: Mode) -> Result<(), ErrorCode> {
         let mut catalog = lock(&self.catalog);
-        if catalog.mode != mode {
-            catalog.mode = mode;
-            catalog.revision += 1;
+        if catalog.state.mode == mode {
+            return Ok(());
         }
+        let next = State {
+            mode,
+            ..catalog.state.clone()
+        };
+        self.store.save(&next).map_err(|e| {
+            log::error!("setMode: state not written ({:?})", e.kind());
+            ErrorCode::Internal
+        })?;
+        catalog.state = next;
+        catalog.revision += 1;
+        Ok(())
     }
 }
 

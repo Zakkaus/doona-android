@@ -5,4 +5,8 @@
 pub mod api;
 pub mod dto;
 mod jni;
+pub mod state;
 pub mod sys;
+
+#[cfg(test)]
+pub(crate) mod testutil;

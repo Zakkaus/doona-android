@@ -93,3 +93,37 @@ fn commands_of_later_lanes_find_nothing() {
         assert_eq!(code(&core.call(command, args)), Some(expected), "{command}");
     }
 }
+
+#[test]
+fn the_mode_survives_a_restart_through_state_json() {
+    let dir = TempDir::new("api-persist");
+    let path = dir.path().to_str().unwrap();
+    let core = Core::new(path).unwrap();
+    assert_eq!(code(&core.call("setMode", r#"{"mode":"Direct"}"#)), None);
+    drop(core);
+    let text = std::fs::read_to_string(dir.path().join("state.json")).unwrap();
+    let saved: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(saved["stateVersion"], 1);
+    assert_eq!(saved["mode"], "Direct");
+    assert!(!dir.path().join("state.json.tmp").exists());
+    let again = Core::new(path).unwrap();
+    assert_eq!(snapshot(&again, -1).catalog.unwrap().mode, Mode::Direct);
+}
+
+#[test]
+fn a_mode_that_cannot_be_written_is_not_committed() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = TempDir::new("api-readonly");
+    let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    let before = snapshot(&core, -1).revision;
+    let set = |mode: u32| {
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(mode)).unwrap()
+    };
+    set(0o500);
+    let reply = core.call("setMode", r#"{"mode":"Direct"}"#);
+    set(0o700);
+    assert_eq!(code(&reply), Some(ErrorCode::Internal));
+    let after = snapshot(&core, -1);
+    assert_eq!(after.revision, before);
+    assert_eq!(after.catalog.unwrap().mode, Mode::Global);
+}
