@@ -41,6 +41,7 @@ import dev.doona.android.prototype.rv.RvDelta
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
+import dev.doona.android.prototype.rv.RvLatencyText
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRangePill
 import dev.doona.android.prototype.rv.RvRow
@@ -133,7 +134,7 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
         node.name,
         node.protocol + SEPARATOR + stringResource(node.place.label),
         if (current) pick.semantics { stateDescription = inUse } else pick,
-        titleEnd = { RvText(latencyText(node.latencyMs), Rv.type.rowValue, align = TextAlign.End) },
+        titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         subtitleEnd = second,
     )
 }

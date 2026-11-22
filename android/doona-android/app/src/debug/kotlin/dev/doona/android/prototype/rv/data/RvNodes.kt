@@ -37,6 +37,12 @@ internal data class RvNode(
     val answered: Int get() = history.count { it != null }
 
     /**
+     * The last test timed out (every failed test in the sample is a timeout). A node none of whose kept tests answered
+     * reads as never tested, as [untested] makes it: the sample keeps no other trace of a test that ran.
+     */
+    val timedOut: Boolean get() = latencyMs == null && answered > 0
+
+    /**
      * How far the answered tests stray from their mean: their standard deviation in ms. Null with fewer than two answered
      * tests, which say nothing about spread.
      */

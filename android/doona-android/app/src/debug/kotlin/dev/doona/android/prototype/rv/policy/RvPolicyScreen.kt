@@ -143,7 +143,7 @@ private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
             node.name,
             listOf(stringResource(main.kind.label), node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
             onClick = onOpen,
-        ) { RvLatencyChange(node.latencyMs, node.changeMs) }
+        ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
     }
 }
 

@@ -24,7 +24,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
@@ -61,11 +65,45 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-/** One line of text in a role; CJK runs in Noto, the rest in Inter. */
+/**
+ * One line of text in a role; CJK runs in Noto, the rest in Inter. Cut short, it ends in an ellipsis right after the last
+ * word that fits: the platform keeps the space after that word before its ellipsis (`IPLC …`), so the line is laid out
+ * once more without it. The shorter text stays while the width does, and the whole text returns when the line gets more
+ * room.
+ */
 @Composable
 internal fun RvText(text: String, style: TextStyle, modifier: Modifier = Modifier, color: Color = Rv.colors.text, align: TextAlign = TextAlign.Start) {
-    BasicText(scripted(text), modifier, style.copy(color = color, textAlign = align), overflow = TextOverflow.Ellipsis, maxLines = 1)
+    var cut by remember(text) { mutableStateOf<RvCut?>(null) }
+    BasicText(
+        scripted(cut?.text ?: text),
+        modifier,
+        style.copy(color = color, textAlign = align),
+        onTextLayout = { layout ->
+            val kept = cut
+            if (kept == null) {
+                cut = rvCut(text, layout)
+            } else if (layout.layoutInput.constraints.maxWidth > kept.width) {
+                cut = null
+            }
+        },
+        overflow = TextOverflow.Ellipsis,
+        maxLines = 1,
+    )
 }
+
+/** A line cut at a word for [width] px. */
+private class RvCut(val width: Int, val text: String)
+
+/** [text] up to the last word that fits and an ellipsis, when the platform's cut of [layout] left a space before its own. */
+private fun rvCut(text: String, layout: TextLayoutResult): RvCut? {
+    if (!layout.isLineEllipsized(0)) return null
+    val end = layout.getLineEnd(0, visibleEnd = true).coerceAtMost(text.length)
+    val kept = text.substring(0, end).trimEnd()
+    val atSpace = kept.length < end || text.getOrNull(end)?.isWhitespace() == true
+    return if (atSpace && kept.isNotEmpty()) RvCut(layout.layoutInput.constraints.maxWidth, kept + ELLIPSIS) else null
+}
+
+private const val ELLIPSIS = "\u2026"
 
 /** The one press feedback: the content colour's state layer, clipped to the visible [shape]. */
 @Composable
@@ -385,12 +423,25 @@ internal fun RvDelta(changeMs: Int) {
     }
 }
 
-/** A node's latency as a trailing value (19 sp semibold) over its [RvDelta] (17 sp); a test that timed out is a dash. */
+/** A node's latency as a trailing value (19 sp semibold) over its [RvDelta] (17 sp), as [RvLatencyText] writes it. */
 @Composable
-internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?) {
+internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean = false) {
     Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-        RvText(latencyMs?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
+        RvLatencyText(latencyMs, timedOut)
         changeMs?.let { RvDelta(it) }
+    }
+}
+
+/**
+ * A node's last test as a row's trailing value: its latency; 逾時 in the slow colour of a latency that went up, when the
+ * test timed out; a dash when there is nothing to show (never tested, or no node).
+ */
+@Composable
+internal fun RvLatencyText(latencyMs: Int?, timedOut: Boolean) {
+    when {
+        latencyMs != null -> RvText(stringResource(R.string.latency_ms, latencyMs), Rv.type.rowValue, align = TextAlign.End)
+        timedOut -> RvText(stringResource(R.string.rv_nodes_timed_out), Rv.type.rowValue, color = Rv.colors.slow, align = TextAlign.End)
+        else -> RvText(RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
     }
 }
 

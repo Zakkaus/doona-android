@@ -163,7 +163,7 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
                 node.protocol + SEPARATOR + stringResource(node.place.label),
                 if (current) Modifier.semantics { stateDescription = inUse } else Modifier,
                 onClick = { onOpen(node.id) },
-            ) { RvLatencyChange(node.latencyMs, node.changeMs) }
+            ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
         }
         if (!all && nodes.size > REGION_ROWS) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, nodes.size, nodes.size)) { all = true }
     }

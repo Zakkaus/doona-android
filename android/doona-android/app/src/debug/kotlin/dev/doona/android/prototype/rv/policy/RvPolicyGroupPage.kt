@@ -34,6 +34,7 @@ import dev.doona.android.prototype.rv.RvDelta
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvInline
+import dev.doona.android.prototype.rv.RvLatencyText
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
@@ -115,7 +116,7 @@ private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Un
         node.name,
         listOfNotNull(stringResource(R.string.rv_policy_auto).takeIf { chosen && auto }, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
         pick,
-        titleEnd = { RvText(latencyText(node.latencyMs), Rv.type.rowValue, align = TextAlign.End) },
+        titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         subtitleEnd = node.changeMs?.let { { RvDelta(it) } },
     )
 }
