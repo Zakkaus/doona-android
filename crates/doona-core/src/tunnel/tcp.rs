@@ -1,6 +1,7 @@
 //! TCP flows: the driver's side of each accepted connection, and the task that serves it, either
 //! by dialing the original destination through the flow's route or by answering DNS itself.
 
+use super::Session;
 use super::flow::{CHUNK, Ends, Event, Events, FlowIo, Waker};
 use super::route::Route;
 use crate::dns;
@@ -179,17 +180,19 @@ pub(crate) async fn dial(
     }
 }
 
-/// Answers the framed DNS queries of a TCP/53 connection to the virtual resolver.
+/// Answers the framed DNS queries of a TCP/53 connection to the virtual resolver; `session`'s
+/// names learn what the answers map.
 pub(crate) async fn serve_dns(
     mut io: FlowIo,
     id: FlowId,
-    route: Route,
+    (route, session): (Route, Arc<Session>),
     upstreams: Arc<[SocketAddr]>,
     events: Events,
     cancel: CancellationToken,
 ) {
     let work = async {
-        let failed = dns::serve_tcp(&mut io, &upstreams, &route).await.is_err();
+        let via = (&route, session.names());
+        let failed = dns::serve_tcp(&mut io, &upstreams, via).await.is_err();
         drop(io);
         let _ = events.send(Event::Finished { id, failed });
     };

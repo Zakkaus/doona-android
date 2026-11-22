@@ -609,6 +609,7 @@ dependencies = [
  "jni",
  "libc",
  "log",
+ "lru",
  "percent-encoding",
  "quinn",
  "serde",

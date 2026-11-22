@@ -323,8 +323,9 @@ impl Driver {
                 .spawn(tcp::dial(io, id, dst, route, events, cancel)),
             None => {
                 let upstreams = Arc::clone(&self.upstreams);
+                let via = (route, Arc::clone(&self.gen_.session));
                 self.gen_
-                    .spawn(tcp::serve_dns(io, id, route, upstreams, events, cancel));
+                    .spawn(tcp::serve_dns(io, id, via, upstreams, events, cancel));
             }
         }
     }
@@ -377,8 +378,8 @@ impl Driver {
             };
             let (upstreams, events) = (Arc::clone(&self.upstreams), self.events.clone());
             let route = new_route(&self.settings, &self.gen_.session);
-            let task =
-                udp::answer_dns(payload.to_vec(), (src, dst), route, upstreams, events, slot);
+            let via = (route, Arc::clone(&self.gen_.session));
+            let task = udp::answer_dns(payload.to_vec(), (src, dst), via, upstreams, events, slot);
             self.gen_.spawn(task);
         } else if dst.ip() != IpAddr::V4(self.settings.dns) {
             let (settings, session) = (&self.settings, &self.gen_.session);
