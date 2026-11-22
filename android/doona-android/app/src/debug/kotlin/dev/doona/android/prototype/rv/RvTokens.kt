@@ -213,6 +213,12 @@ internal object RvChartSize {
     val rangeGap = 4.dp
     val rangeShadow = 2.dp
 
+    /**
+     * How far the selected chip's shadow shows under its 36 dp pill in light (proto-rv-policy-picker-light: the pill ends
+     * at 299 dp, its shadow at 302.5), so a gap under a row of chips measures from what the eye sees, as under a flat chip.
+     */
+    val rangeShadowReach = 3.5.dp
+
     /** The chart's tool discs (measured §8: 35 dp, 8 dp apart, ending on the 16 dp margin). */
     val roundButton = 35.dp
     val roundGap = 8.dp

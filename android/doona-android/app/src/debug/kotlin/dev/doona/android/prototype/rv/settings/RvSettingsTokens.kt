@@ -50,9 +50,6 @@ internal object RvSettingsSpace {
 }
 
 internal object RvSettingsSize {
-    /** A one-line row; a row with a second line takes its natural height, 82 dp for one line of subtitle (S04). */
-    val rowOneLine = 58.dp
-
     /** The text line of a title; glyphs and trailing controls centre on it, so a wrapped row keeps them on its first line. */
     val titleLine = 26.dp
     val glyph = 24.dp

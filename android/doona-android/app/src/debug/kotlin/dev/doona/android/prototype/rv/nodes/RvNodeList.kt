@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.selection.selectable
@@ -57,6 +58,7 @@ import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvPlace
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.rvNodeGroups
+import dev.doona.android.prototype.rv.rvRaisedReach
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -69,7 +71,8 @@ import dev.doona.android.prototype.rv.rvSystemScheme
 internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(RvSpace.controlStack)) {
         RvSearchPill(NOT_WIRED, Modifier.fillMaxWidth())
-        Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
+        // The control row's gap below measures from the selected chip's shadow, the edge the eye sees.
+        Row(Modifier.padding(bottom = rvRaisedReach).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
             RvNodeSort.entries.forEach { RvRangePill(stringResource(it.label), selected = it == sort) { onSort(it) } }
         }
     }

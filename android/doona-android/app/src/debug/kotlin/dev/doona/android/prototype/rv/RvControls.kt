@@ -51,6 +51,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.doona.android.R
@@ -133,6 +134,10 @@ internal fun RvRangePill(label: String, selected: Boolean, onClick: () -> Unit) 
         contentAlignment = Alignment.Center,
     ) { RvText(label, Rv.type.action, color = if (selected) colors.text else colors.textSecondary) }
 }
+
+/** How far a raised chip's shadow reaches under it in this theme; dark draws no shadow (its pill is a lighter fill). */
+internal val rvRaisedReach: Dp
+    @Composable get() = if (Rv.colors.raisedShadow) RvChartSize.rangeShadowReach else 0.dp
 
 /** A raised control's fill in [shape]: a surface over a soft shadow in light, a lighter container in dark. */
 @Composable

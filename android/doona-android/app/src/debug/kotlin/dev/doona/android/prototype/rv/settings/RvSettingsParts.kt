@@ -74,9 +74,10 @@ internal fun RvSettingsFooter(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * A row of a card: a 24 dp glyph, a title over an optional subtitle, and trailing content. The glyph and the trailing
- * control centre on the first line of text, which is where Revolut's rows keep them when the subtitle wraps. The row's
- * touch behaviour comes in [modifier], outside the padding, so the whole row is the target.
+ * A row of a card: a 24 dp glyph, a title over an optional subtitle, and trailing content, 58 dp tall with one line and
+ * 82 with a subtitle, as [RvRow]; a subtitle that wraps makes it taller. The text block centres in that height, and the
+ * glyph and the trailing control centre on its first line, which is where Revolut's rows keep them when the subtitle
+ * wraps. The row's touch behaviour comes in [modifier], outside the padding, so the whole row is the target.
  */
 @Composable
 internal fun RvSettingsRow(
@@ -86,21 +87,27 @@ internal fun RvSettingsRow(
     subtitle: String? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    Row(
-        modifier.fillMaxWidth().heightIn(min = RvSettingsSize.rowOneLine).padding(horizontal = RvSettingsSpace.rowInset, vertical = RvSettingsSpace.rowPad),
-        verticalAlignment = Alignment.Top,
+    Box(
+        modifier
+            .fillMaxWidth()
+            .testTag(RvPart.ROW)
+            .heightIn(min = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine)
+            .padding(horizontal = RvSettingsSpace.rowInset),
+        contentAlignment = Alignment.CenterStart,
     ) {
-        icon?.let {
-            FirstLine { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
-            Spacer(Modifier.width(RvSettingsSpace.glyphGap))
-        }
-        Column(Modifier.weight(1f)) {
-            RvSettingsText(title, Rv.type.rowTitle, maxLines = TITLE_LINES)
-            subtitle?.let { RvSettingsText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = SUBTITLE_LINES) }
-        }
-        trailing?.let {
-            Spacer(Modifier.width(RvSettingsSpace.trailingGap))
-            FirstLine(it)
+        Row(Modifier.fillMaxWidth().padding(vertical = RvSettingsSpace.rowPad), verticalAlignment = Alignment.Top) {
+            icon?.let {
+                FirstLine { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
+                Spacer(Modifier.width(RvSettingsSpace.glyphGap))
+            }
+            Column(Modifier.weight(1f)) {
+                RvSettingsText(title, Rv.type.rowTitle, maxLines = TITLE_LINES)
+                subtitle?.let { RvSettingsText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = SUBTITLE_LINES) }
+            }
+            trailing?.let {
+                Spacer(Modifier.width(RvSettingsSpace.trailingGap))
+                FirstLine(it)
+            }
         }
     }
 }
