@@ -228,6 +228,86 @@ fn an_alias_loop_ends_the_chain() {
     );
 }
 
+/// A CNAME whose data is not exactly one name, ending where its RDLENGTH does, makes the whole answer
+/// map nothing: with no data, or data that stops inside its name, the alias would be read from the
+/// next record; trailing bytes are no name either.
+#[test]
+fn a_cname_whose_data_is_not_one_name_maps_nothing() {
+    let edge = wire("edge.example");
+    let mut trailing = edge.clone();
+    trailing.push(0);
+    // Data that stops after the label `edge`, so the next record's owner, `example`, would end it.
+    let cut = &edge[..5];
+    let cases: [(&str, Vec<Rr<'_>>); 3] = [
+        (
+            "no data: the next record's owner would be the alias",
+            vec![
+                Rr {
+                    owner: AT_QUESTION.to_vec(),
+                    kind: TYPE_CNAME,
+                    ttl: 300,
+                    data: &[],
+                },
+                Rr {
+                    owner: wire("other.example"),
+                    kind: TYPE_A,
+                    ttl: 300,
+                    data: &[203, 0, 113, 9],
+                },
+            ],
+        ),
+        (
+            "a byte after the name",
+            vec![
+                Rr {
+                    owner: AT_QUESTION.to_vec(),
+                    kind: TYPE_CNAME,
+                    ttl: 300,
+                    data: &trailing,
+                },
+                a(&[203, 0, 113, 10], 300),
+                Rr {
+                    owner: edge.clone(),
+                    kind: TYPE_A,
+                    ttl: 300,
+                    data: &[203, 0, 113, 11],
+                },
+            ],
+        ),
+        (
+            "a name that runs past its data",
+            vec![
+                Rr {
+                    owner: AT_QUESTION.to_vec(),
+                    kind: TYPE_CNAME,
+                    ttl: 300,
+                    data: cut,
+                },
+                Rr {
+                    owner: wire("example"),
+                    kind: TYPE_A,
+                    ttl: 300,
+                    data: &[203, 0, 113, 12],
+                },
+                Rr {
+                    owner: edge.clone(),
+                    kind: TYPE_A,
+                    ttl: 300,
+                    data: &[203, 0, 113, 13],
+                },
+            ],
+        ),
+    ];
+    for (case, records) in &cases {
+        let names = Names::new();
+        names.learn_at(&answer("www.netflix.com", records), 0);
+        let named: Vec<_> = (9..=13)
+            .filter_map(|host| Some((host, name_of(&names, v4(203, 0, 113, host), 1)?)))
+            .collect();
+        assert!(named.is_empty(), "{case}: {named:?}");
+    }
+}
+
 #[test]
 fn a_ttl_is_held_to_one_minute_and_one_hour() {
     let names = Names::new();

@@ -1,7 +1,8 @@
 //! The names DNS answers give addresses (rule-mode.md decision 3, ARCH D33). An answer the core
 //! forwards maps to the question's name the address of each A record that name reaches through its
 //! CNAME chain, so a new flow to that address is matched as that name; an answer to another
-//! question than the one asked maps nothing. A flow is looked up once, when it opens.
+//! question than the one asked maps nothing, as does one with a CNAME whose data is not one name.
+//! A flow is looked up once, when it opens.
 //! Strict Private DNS and an app's own DoH never reach the core's resolver: their flows have no
 //! name, so domain rules miss them and the rules that match by address, or the last one, decide.
 //! The tun carries IPv4 only (`DoonaVpnService.tunBuilder`), so AAAA records name no flow.
@@ -81,10 +82,9 @@ impl Names {
             return;
         };
         // Read before the lock is taken, so a new flow's lookup never waits on a long answer.
-        let found = reached(m, &name, at);
-        if found.is_empty() {
+        let Some(found) = reached(m, &name, at).filter(|f| !f.is_empty()) else {
             return;
-        }
+        };
         let name: Arc<str> = name.into();
         for batch in found.chunks(BATCH) {
             let mut cache = lock(&self.0);
@@ -150,17 +150,22 @@ enum Data {
     Alias(usize),
 }
 
+/// A CNAME record whose data is not one name that ends where the data does: the answer is not
+/// read further.
+struct Malformed;
+
 /// The addresses, with their TTLs, of the A records in the answer section from `at` that `name`
 /// reaches through its CNAME chain: `name`, the name its CNAME gives, and so on. An alias back into
-/// the chain ends it, as does a record that runs past the message; what came before counts.
-fn reached(m: &[u8], name: &str, mut at: usize) -> Vec<(Ipv4Addr, u32)> {
+/// the chain ends it, as does a record that runs past the message; what came before counts. None
+/// when a CNAME's data is not one name: its alias would be read from the bytes around it.
+fn reached(m: &[u8], name: &str, mut at: usize) -> Option<Vec<(Ipv4Addr, u32)>> {
     let mut records = Vec::new();
     for _ in 0..count(m, 6) {
         let Some((end, held)) = record(m, at) else {
             break;
         };
         at = end;
-        records.extend(held);
+        records.extend(held.ok()?);
     }
     let mut chain = vec![name.to_owned()];
     while chain.len() < MAX_CHAIN {
@@ -174,18 +179,22 @@ fn reached(m: &[u8], name: &str, mut at: usize) -> Vec<(Ipv4Addr, u32)> {
             _ => break,
         }
     }
-    records
+    let found = records
         .into_iter()
         .filter_map(|(owner, data)| match data {
             Data::A(addr, ttl) if chain.contains(&owner) => Some((addr, ttl)),
             _ => None,
         })
-        .collect()
+        .collect();
+    Some(found)
 }
 
-/// The record at `at`: the offset past it, and for an A or CNAME record in IN, its owner's name
-/// and what it holds. None when it runs past the message.
-fn record(m: &[u8], at: usize) -> Option<(usize, Option<(String, Data)>)> {
+/// The offset past a record, and for an A or CNAME record in IN, its owner's name and what it
+/// holds; `Malformed` for a CNAME whose name does not end exactly where its data does.
+type Record = (usize, Result<Option<(String, Data)>, Malformed>);
+
+/// The record at `at`; none when it runs past the message.
+fn record(m: &[u8], at: usize) -> Option<Record> {
     let owner = at;
     let at = skip_name(m, at)?;
     let (kind, class, len) = (u16_at(m, at)?, u16_at(m, at + 2)?, u16_at(m, at + 8)?);
@@ -198,10 +207,14 @@ fn record(m: &[u8], at: usize) -> Option<(usize, Option<(String, Data)>)> {
         (TYPE_A, CLASS_IN) => <[u8; 4]>::try_from(data)
             .ok()
             .map(|o| Data::A(Ipv4Addr::from(o), ttl.clamp(MIN_TTL, MAX_TTL))),
+        // With no data, or too little, the name would run on into the next record.
+        (TYPE_CNAME, CLASS_IN) if skip_name(m, at + 10) != Some(end) => {
+            return Some((end, Err(Malformed)));
+        }
         (TYPE_CNAME, CLASS_IN) => Some(Data::Alias(at + 10)),
         _ => None,
     };
-    Some((end, held.and_then(|d| Some((read_name(m, owner)?, d)))))
+    Some((end, Ok(held.and_then(|d| Some((read_name(m, owner)?, d))))))
 }
 
 /// The name at `at`, compressed or not, lower case and dot-separated; none when a label holds
