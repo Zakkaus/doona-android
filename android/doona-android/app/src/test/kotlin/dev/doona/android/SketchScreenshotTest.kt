@@ -31,12 +31,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
-import dev.doona.android.theme.DoonaTheme
-import dev.doona.android.theme.LocalFrameInsets
-import dev.doona.android.ui.DoonaApp
-import dev.doona.android.ui.Screen
+import dev.doona.android.app.ActivityKey
+import dev.doona.android.app.DoonaApp
+import dev.doona.android.app.GroupKey
+import dev.doona.android.app.PoliciesKey
+import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Status
+import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.feature.activity.ActivityScreen
+import dev.doona.android.feature.activity.sampleActivityState
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,9 +54,13 @@ import org.robolectric.annotation.GraphicsMode
 private const val LIGHT = "zh-rTW-w412dp-h915dp-notnight-xxhdpi"
 private const val DARK = "zh-rTW-w412dp-h915dp-night-xxhdpi"
 
+private val ACTIVITY = listOf(ActivityKey)
+private val POLICIES = listOf(ActivityKey, PoliciesKey)
+private val GROUP = listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
+
 /**
- * The 活動 and 策略 screens and the proxy group page at 412 × 915 dp, zh-TW, light and dark, and light at font scale
- * 1.15. Robolectric draws no system bars, so [PhoneFrame] draws a status bar and a gesture bar over the
+ * The 活動 and 策略 screens and the Proxy group page on a connected [FakeEngine] at 412 × 915 dp, zh-TW, light and
+ * dark, and light at font scale 1.15. Robolectric draws no system bars, so [PhoneFrame] draws a status bar and a gesture bar over the
  * edge-to-edge app and hands it their insets.
  */
 @RunWith(AndroidJUnit4::class)
@@ -59,11 +71,16 @@ class SketchScreenshotTest {
 
     private val dir = System.getProperty("doona.shots") ?: "build/outputs/roborazzi"
 
-    private fun shoot(name: String, screen: Screen, fontScale: Float = 1f) {
+    private val engine = FakeEngine(status = Status.Running(sinceEpochMs = 0), traffic = FakeEngine.SAMPLE_TRAFFIC)
+
+    private fun shoot(name: String, start: List<NavKey>, fontScale: Float = 1f) =
+        shootContent(name, fontScale) { DoonaApp(engine, onConnect = {}, start) }
+
+    private fun shootContent(name: String, fontScale: Float = 1f, content: @Composable () -> Unit) {
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
-                DoonaTheme { PhoneFrame { DoonaApp(screen) } }
+                DoonaTheme { PhoneFrame(content) }
             }
         }
         compose.onRoot().captureRoboImage("$dir/$name.png")
@@ -71,39 +88,45 @@ class SketchScreenshotTest {
 
     @Test
     @Config(qualifiers = LIGHT)
-    fun activityLight() = shoot("01-activity-light", Screen.Activity)
+    fun activityLight() = shoot("01-activity-light", ACTIVITY)
 
     @Test
     @Config(qualifiers = DARK)
-    fun activityDark() = shoot("01-activity-dark", Screen.Activity)
+    fun activityDark() = shoot("01-activity-dark", ACTIVITY)
 
     @Test
     @Config(qualifiers = LIGHT)
-    fun activityFontScale() = shoot("01-activity-fs115", Screen.Activity, 1.15f)
+    fun activityFontScale() = shoot("01-activity-fs115", ACTIVITY, 1.15f)
 
     @Test
     @Config(qualifiers = LIGHT)
-    fun policiesLight() = shoot("02-policies-light", Screen.Policies)
+    fun activityError() = shootContent("01-activity-error-light") {
+        ActivityScreen(sampleActivityState(ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {})
+    }
+
+    @Test
+    @Config(qualifiers = LIGHT)
+    fun policiesLight() = shoot("02-policies-light", POLICIES)
 
     @Test
     @Config(qualifiers = DARK)
-    fun policiesDark() = shoot("02-policies-dark", Screen.Policies)
+    fun policiesDark() = shoot("02-policies-dark", POLICIES)
 
     @Test
     @Config(qualifiers = LIGHT)
-    fun policiesFontScale() = shoot("02-policies-fs115", Screen.Policies, 1.15f)
+    fun policiesFontScale() = shoot("02-policies-fs115", POLICIES, 1.15f)
 
     @Test
     @Config(qualifiers = LIGHT)
-    fun groupLight() = shoot("03-policy-group-light", Screen.Group)
+    fun groupLight() = shoot("03-policy-group-light", GROUP)
 
     @Test
     @Config(qualifiers = DARK)
-    fun groupDark() = shoot("03-policy-group-dark", Screen.Group)
+    fun groupDark() = shoot("03-policy-group-dark", GROUP)
 
     @Test
     @Config(qualifiers = LIGHT)
-    fun groupFontScale() = shoot("03-policy-group-fs115", Screen.Group, 1.15f)
+    fun groupFontScale() = shoot("03-policy-group-fs115", GROUP, 1.15f)
 }
 
 private val StatusBar = 40.dp

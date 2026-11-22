@@ -1,4 +1,4 @@
-package dev.doona.android.theme
+package dev.doona.android.designsystem.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
@@ -22,75 +22,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.doona.android.designsystem.tokens.Dawn
+import dev.doona.android.designsystem.tokens.DoonaPalette
+import dev.doona.android.designsystem.tokens.Moon
+import dev.doona.android.designsystem.tokens.NotoSansTc
 
 // Every colour, size, shape and type value of the app, taken from doona's standard edition.
 // Section numbers (§) refer to /scratch/ssd/honk-android/sketch-doona/TOKENS.md; doona CSS px are read 1:1 as dp and sp.
-
-/** Raw Rosé Pine palette (§2): Dawn for light, Moon for dark, doona's default `rose-pine/moon`. */
-@Immutable
-data class DoonaPalette(
-    val base: Color,
-    val surface: Color,
-    val overlay: Color,
-    val muted: Color,
-    val subtle: Color,
-    val text: Color,
-    val love: Color,
-    val gold: Color,
-    val rose: Color,
-    val pine: Color,
-    val foam: Color,
-    val iris: Color,
-    val hlLow: Color,
-    val hlMed: Color,
-    val hlHigh: Color,
-    /** `--rp-selected`: accent 10 % over overlay, measured. */
-    val selected: Color,
-    val onAccent: Color,
-    val dark: Boolean,
-)
-
-val Dawn = DoonaPalette(
-    base = Color(0xFFFAF4ED),
-    surface = Color(0xFFFFFAF3),
-    overlay = Color(0xFFF2E9E1),
-    muted = Color(0xFF9893A5),
-    subtle = Color(0xFF797593),
-    text = Color(0xFF464261),
-    love = Color(0xFFB4637A),
-    gold = Color(0xFFEA9D34),
-    rose = Color(0xFFD7827E),
-    pine = Color(0xFF286983),
-    foam = Color(0xFF56949F),
-    iris = Color(0xFF907AA9),
-    hlLow = Color(0xFFF4EDE8),
-    hlMed = Color(0xFFDFDAD9),
-    hlHigh = Color(0xFFCECACD),
-    selected = Color(0xFFDEDCD8),
-    onAccent = Color(0xFFFFFAF3),
-    dark = false,
-)
-
-val Moon = DoonaPalette(
-    base = Color(0xFF232136),
-    surface = Color(0xFF2A273F),
-    overlay = Color(0xFF393552),
-    muted = Color(0xFF6E6A86),
-    subtle = Color(0xFF908CAA),
-    text = Color(0xFFE0DEF4),
-    love = Color(0xFFEB6F92),
-    gold = Color(0xFFF6C177),
-    rose = Color(0xFFEA9A97),
-    pine = Color(0xFF3E8FB0),
-    foam = Color(0xFF9CCFD8),
-    iris = Color(0xFFC4A7E7),
-    hlLow = Color(0xFF2A283E),
-    hlMed = Color(0xFF44415A),
-    hlHigh = Color(0xFF56526E),
-    selected = Color(0xFF3A3E5B),
-    onAccent = Color(0xFF191724),
-    dark = true,
-)
 
 /** Semantic roles (§2, "Semantic roles and where they are used"). */
 @Immutable
@@ -145,6 +83,9 @@ class DoonaType(private val family: androidx.compose.ui.text.font.FontFamily) {
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
     )
 
+    /** Tabular figures (§3, last line). Declared first: the styles below use it. */
+    val tabular = "tnum"
+
     /** `.rp-h1` 28 / 36 / 800. */
     val pageTitle = style(28, 36, 800)
 
@@ -166,8 +107,8 @@ class DoonaType(private val family: androidx.compose.ui.text.font.FontFamily) {
     /** Badge 12 / 500 (line 1 in a 20 high box). */
     val badge = style(12, 16, 500)
 
-    /** `.rp-big` 22 / 28 / 700. */
-    val tileValue = style(22, 28, 700)
+    /** `.rp-big` 22 / 28 / 700, tabular figures. */
+    val tileValue = style(22, 28, 700).copy(fontFeatureSettings = tabular)
 
     /** Bottom bar label 12 / 16 / 500, current 600. */
     val navLabel = style(12, 16, 500)
@@ -175,9 +116,6 @@ class DoonaType(private val family: androidx.compose.ui.text.font.FontFamily) {
 
     /** Chart axis tick 11. */
     val axis = style(11, 16, 400)
-
-    /** Tabular figures (§3, last line). */
-    val tabular = "tnum"
 }
 
 /** Spacing scale (§4, `foundations.css:67-79`). */

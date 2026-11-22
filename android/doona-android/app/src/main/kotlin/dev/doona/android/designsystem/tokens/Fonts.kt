@@ -1,4 +1,4 @@
-package dev.doona.android.theme
+package dev.doona.android.designsystem.tokens
 
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
