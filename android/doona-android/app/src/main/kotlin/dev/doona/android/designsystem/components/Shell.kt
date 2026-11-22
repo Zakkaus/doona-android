@@ -70,6 +70,14 @@ private fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Uni
     }
 }
 
+/**
+ * Where the content column of a page sits in the room its parent gives it: centred on a window with a bottom bar, and at
+ * the start next to the rail on a short one. There the rail has already taken 80 dp, and a column centred in what is left
+ * put 133 dp of empty sheet between the rail and the content.
+ */
+@Composable
+private fun columnAlignment(): Alignment = if (DoonaTheme.compactHeight) Alignment.TopStart else Alignment.TopCenter
+
 /** One icon action of the [DoonaTopBar]. */
 @Immutable
 class DoonaBarAction(@DrawableRes val icon: Int, val label: String, val onClick: () -> Unit)
@@ -89,7 +97,7 @@ private class BarEdge(ink: Dp) {
 /**
  * Top app bar (§8): 64 high on the base fill, drawn under the status bar. The start holds the duck mark on a hub
  * page and the back arrow on a pushed page; [actions] sit at the end. The first and last glyph sit on the gutter of
- * the content column, which is at most 600 dp wide and centred, by their drawn shape (see [BarEdge]).
+ * the content column, which is at most 600 dp wide and placed by [columnAlignment], by their drawn shape (see [BarEdge]).
  */
 @Composable
 fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: List<DoonaBarAction> = emptyList()) {
@@ -100,7 +108,7 @@ fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: L
             .fillMaxWidth()
             .background(DoonaTheme.colors.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Top)),
-        contentAlignment = Alignment.TopCenter,
+        contentAlignment = columnAlignment(),
     ) {
         Row(
             Modifier
@@ -232,8 +240,9 @@ private fun HubTab(tab: DoonaHubTab, on: Boolean, modifier: Modifier, onClick: (
 
 /**
  * The page sheet (§8): surface fill with 16 px top corners under the top bar; padding 20 top and 16 sides; blocks
- * stacked by the caller in a column at most 600 dp wide, centred on wider windows (D20). The title, the tabs and every
- * block scroll together. When nothing below the sheet takes the gesture bar's inset, the sheet's end does.
+ * stacked by the caller in a column at most 600 dp wide, centred on wider windows (D20) and at the start beside the
+ * rail on a short one (see [columnAlignment]). The title, the tabs and every block scroll together. When nothing below
+ * the sheet takes the gesture bar's inset, the sheet's end does.
  */
 @Composable
 fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -243,7 +252,7 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
             .clip(DoonaTheme.shape.sheet)
             .background(DoonaTheme.colors.surface)
             .verticalScroll(rememberScrollState()),
-        contentAlignment = Alignment.TopCenter,
+        contentAlignment = columnAlignment(),
     ) {
         Column(
             Modifier

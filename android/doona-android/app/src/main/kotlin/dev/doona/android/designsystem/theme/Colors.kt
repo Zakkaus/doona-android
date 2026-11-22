@@ -56,8 +56,10 @@ class DoonaColors(p: DoonaPalette) {
 
     /**
      * The two series of the traffic chart (download, upload). A chart needs a hue to tell lines apart; nothing else on a
-     * page uses one for decoration, so there are no more series than a chart shows.
+     * page uses one for decoration, so there are no more series than a chart shows. A hue carries one meaning: the
+     * upload series is iris, because gold is the notice status and a warning-coloured upload line read as one. Neither
+     * series may sit near a status colour, which SeriesColourTest holds in both themes.
      */
     val series1 = p.pine
-    val series2 = p.gold
+    val series2 = p.iris
 }

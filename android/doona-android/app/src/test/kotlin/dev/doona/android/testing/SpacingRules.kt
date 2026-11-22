@@ -99,17 +99,25 @@ object SpacingRules {
     }
 
     /**
-     * The sheet, the top bar and the hub bar hold a column at most 600 dp wide, centred in the room their parent gives
-     * them: the window, or what a rail leaves of it (D20). A rail is a hub bar that stands on end at the window's edge;
-     * it holds no content column.
+     * The sheet, the top bar and the hub bar hold a column at most 600 dp wide in the room their parent gives them: the
+     * window, or what a rail leaves of it (D20). The column is centred in that room, except in a window short enough for
+     * a rail (under [DoonaSize.compactHeight]), where it starts at the room's start edge, next to the rail, so the rail
+     * does not leave a band of empty sheet before the content. A rail is a hub bar that stands on end at the window's
+     * edge; it holds no content column.
      */
     fun contentColumn(root: LayoutBox): List<String> {
         val roles = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
+        val compact = root.height < sizes.compactHeight.value
         return root.descendants().filter { it.role in roles && !(it.role == LayoutRole.HubBar && it.vertical) }.flatMap { column ->
             val room = root.parentOf(column)
+            val before = column.left - room.left
+            val after = room.right - column.right
             buildList {
                 if (column.width > sizes.contentMax.value + TOL) add("${column.role} column $column is %.1f dp wide, over the %.0f dp cap".format(column.width, sizes.contentMax.value))
-                if (!near(column.left - room.left, room.right - column.right)) add("${column.role} column $column is not centred: %.1f dp left, %.1f dp right".format(column.left - room.left, room.right - column.right))
+                if (compact && column.width < room.width - TOL && !near(before, 0f)) {
+                    add("${column.role} column $column starts %.1f dp inside its room in a short window, where it starts at the rail".format(before))
+                }
+                if (!compact && !near(before, after)) add("${column.role} column $column is not centred: %.1f dp left, %.1f dp right".format(before, after))
             }
         }.toList()
     }
