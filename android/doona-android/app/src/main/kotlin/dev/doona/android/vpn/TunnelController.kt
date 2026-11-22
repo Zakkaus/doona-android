@@ -100,9 +100,12 @@ internal class TunnelController(
     /** The start [requested] never reached the service: ends it, unless the service took it or a newer command replaced it. */
     fun abandon(requested: Long) = close(accept = { requested == generation && host == null }, Status.Stopped)
 
-    /** The core cannot be opened: shows [reason] while nothing runs, so the UI does not wait for it; a start retries. */
+    /**
+     * The core cannot be opened: shows [reason] before any session, so the UI does not wait for it; a start retries. Once
+     * a command took a generation, that session's own terminal status stands.
+     */
     fun unavailable(reason: FailureReason) = synchronized(lock) {
-        if (_status.value == Status.Stopped) show(generation, Status.Failed(reason))
+        if (generation == 0L) show(generation, Status.Failed(reason))
     }
 
     /** Builds the session's tunnel again with the current per-app policy; a start not yet taken reads it anyway. */

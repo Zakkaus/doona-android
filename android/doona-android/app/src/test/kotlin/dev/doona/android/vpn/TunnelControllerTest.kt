@@ -205,6 +205,16 @@ class TunnelControllerTest {
     }
 
     @Test
+    fun aCoreFoundUnusableLateLeavesTheSessionsStatus() {
+        // The session's generation already ended with Stopped; a second terminal status would end it twice.
+        startRunning()
+        controller.stop()
+        awaitStatus { it == Status.Stopped }
+        controller.unavailable(FailureReason.StartFailed)
+        assertEquals(Status.Stopped, controller.status.value)
+    }
+
+    @Test
     fun aDeadDataPathFailsTheSessionItWasSeenIn() {
         val running = startRunning()
         controller.coreStopped(Status.Running(running.sinceEpochMs - 1))
