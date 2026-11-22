@@ -42,29 +42,26 @@ fun DoonaAppIcon(packageName: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * Icons by package and pixel size. A package whose icon cannot be read is kept as a miss, so scrolling past it does not
- * ask the package manager again. The cache holds at most [MAX_BYTES] of bitmaps and drops the least recently used first.
+ * Icons by package and pixel size. The cache holds at most [MAX_BYTES] of bitmaps and drops the least recently used
+ * first. A read that failed is not kept: the package may be installed, or its icon readable, the next time a row asks.
  */
 internal object AppIcons {
     private const val MAX_BYTES = 8 * 1024 * 1024
     private const val BYTES_PER_PIXEL = 4
 
-    /** The icon of an app, or none when it could not be read. */
-    private class Entry(val bitmap: ImageBitmap?, val bytes: Int)
-
-    private val cache = object : LruCache<String, Entry>(MAX_BYTES) {
-        override fun sizeOf(key: String, value: Entry) = maxOf(value.bytes, 1)
+    private val cache = object : LruCache<String, ImageBitmap>(MAX_BYTES) {
+        override fun sizeOf(key: String, value: ImageBitmap) = value.width * value.height * BYTES_PER_PIXEL
     }
 
     private fun key(packageName: String, px: Int) = "$px:$packageName"
 
-    fun cached(packageName: String, px: Int): ImageBitmap? = cache.get(key(packageName, px))?.bitmap
+    fun cached(packageName: String, px: Int): ImageBitmap? = cache.get(key(packageName, px))
 
+    /** The icon of an app, or null when it could not be read. */
     suspend fun load(context: Context, packageName: String, px: Int): ImageBitmap? {
-        val key = key(packageName, px)
-        cache.get(key)?.let { return it.bitmap }
-        val bitmap = withContext(Dispatchers.IO) { read(context, packageName, px) }
-        cache.put(key, Entry(bitmap, px * px * BYTES_PER_PIXEL))
+        cached(packageName, px)?.let { return it }
+        val bitmap = withContext(Dispatchers.IO) { read(context, packageName, px) } ?: return null
+        cache.put(key(packageName, px), bitmap)
         return bitmap
     }
 
