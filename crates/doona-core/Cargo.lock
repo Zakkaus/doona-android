@@ -602,6 +602,9 @@ dependencies = [
  "jni",
  "libc",
  "log",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

@@ -20,11 +20,14 @@ honk-outbound = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6f
 honk-netstack = { git = "https://github.com/Glassyiris/honk", rev = "c5b36a64d7f3c7d7ba234574e787f93b893a07aa" }
 jni = { version = "=0.22.4", default-features = false }
 libc = "0.2"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 # Routes `log` records to logcat.
 android_logger = { version = "0.15", default-features = false }
-log = "0.4"
 
 [profile.release]
 opt-level = 3
