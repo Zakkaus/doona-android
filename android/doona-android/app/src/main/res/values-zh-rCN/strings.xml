@@ -96,11 +96,11 @@
     <string name="ui_off">关闭</string>
     <string name="status_stopped">未连接</string>
     <string name="status_starting">连接中</string>
-    <string name="status_stopping">正在断开连接</string>
-    <string name="status_failed_no_allowed_apps">已安装的应用都没有设置为使用 VPN</string>
+    <string name="status_stopping">断开中</string>
+    <string name="status_failed_no_allowed_apps">已安装的应用均未经过 VPN</string>
     <string name="status_failed_start">VPN 未能启动</string>
     <string name="status_failed_core_stopped">核心已停止</string>
-    <string name="status_failed_incompatible_core">内置核心的版本不兼容</string>
+    <string name="status_failed_incompatible_core">内置核心版本不兼容</string>
     <string name="error_invalid_argument">值无效</string>
     <string name="error_not_found">未找到项目</string>
     <string name="error_fetch_failed">无法下载订阅</string>
@@ -108,7 +108,7 @@
     <string name="error_no_nodes">订阅中没有节点</string>
     <string name="error_busy">另一项更改正在进行，请稍后重试</string>
     <string name="error_internal">发生内部错误</string>
-    <string name="error_local_network">无法连接到局域网中的地址</string>
+    <string name="error_local_network">无法连接局域网中的地址</string>
     <string name="local_network_ask_title">允许访问局域网</string>
     <string name="local_network_ask_body">要连接局域网中的订阅和节点，doona 需要此权限。</string>
     <string name="local_network_ask_continue">继续</string>

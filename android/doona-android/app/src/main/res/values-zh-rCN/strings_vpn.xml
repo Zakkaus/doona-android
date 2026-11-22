@@ -12,5 +12,5 @@
     <string name="vpn_failure_no_allowed_apps">列表中的应用均未安装。</string>
     <string name="vpn_failure_start_failed">无法启动 VPN。</string>
     <string name="vpn_failure_core_stopped">连接意外中断。</string>
-    <string name="vpn_failure_incompatible_core">VPN 核心与此版本的 doona 不匹配。</string>
+    <string name="vpn_failure_incompatible_core">VPN 核心与此版本的 doona 不兼容。</string>
 </resources>

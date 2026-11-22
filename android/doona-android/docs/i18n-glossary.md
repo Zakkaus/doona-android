@@ -115,7 +115,7 @@ Mainland term choice. Grouped:
   `找不到項目`→`未找到项目`, `目前`→`当前`, `依延遲`→`按延迟`, `再試`→`重试`,
   `內含群組`→`内含组`.
 - Sentences where zh-TW's casual phrasing became an explicit platform statement:
-  `已安裝的 App 都不走 VPN`→`已安装的应用都没有设置为使用 VPN`, and
+  `已安裝的 App 都不走 VPN`→`已安装的应用均未经过 VPN`, and
   `清單中的 App 都沒有安裝。`→`列表中的应用均未安装。`.
 - Plurals keep only `<item quantity="other">`, as in zh-TW: Chinese has no singular form, and
   Android requires only `other` for zh-rCN.
