@@ -62,7 +62,7 @@
     <string name="rv_policy_rule_off">已停用</string>
     <string name="rv_policy_rule_skipped">不支援，已略過</string>
     <string name="rv_rules_reorder">調整順序</string>
-    <string name="rv_rules_edit_line">拖動把手調整順序，長按規則可刪除</string>
+    <string name="rv_rules_edit_line">長按規則後拖動，即可調整順序</string>
     <string name="rv_rules_done">完成</string>
     <plurals name="rv_rules_apply_held">
         <item quantity="other">套用 %1$d 條規則</item>

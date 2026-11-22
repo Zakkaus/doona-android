@@ -25,10 +25,8 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
-import dev.doona.android.prototype.rv.RvChevronSize
 import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvGlassButton
-import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
@@ -63,10 +61,9 @@ internal class RvRulesRoutes(
  * All rules (查看全部 on 策略), in the 策略 card's grammar: the large title and one line on how rules are tried; any rules
  * held for a later 套用, with the button that applies them; every rule in order, each with where it sends and today's
  * bytes, an off or skipped rule saying so; how many are in use, off and skipped, as D34 counts them; and the way to the
- * effective config, which shows what the core compiled. The bar's
- * pencil turns on [editing]: each rule but the last shows a drag handle (first match wins, so order matters; the drag
- * itself is the gestures lane's), the line says how, and 完成 ends it. A rule opens its page; a long press its menu.
- * 刪除 asks in the library's confirm sheet.
+ * effective config, which shows what the core compiled. The bar's pencil turns on [editing], for reordering (first
+ * match wins, so order matters): the line says to long-press a rule and drag it, and 完成 ends it. A rule opens its
+ * page; a long press its menu. 刪除 asks in the library's confirm sheet.
  */
 @Composable
 internal fun RvRulesPage(
@@ -93,8 +90,11 @@ internal fun RvRulesPage(
         RvGutter {
             if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
             RulesCard(rules, editing, routes)
-            if (!editing) {
-                CountsCard(rules)
+            if (!editing) CountsCard(rules)
+        }
+        if (!editing) {
+            RvCardNote(stringResource(R.string.rv_rules_skipped_line))
+            RvGutter(Modifier.padding(top = RvSpace.cardGap)) {
                 RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_effective_open), null, onClick = routes.effective) { RvChevron() } }
             }
         }
@@ -123,8 +123,10 @@ private fun PendingCard(pending: List<RvPolicyRule>, onDiscard: () -> Unit) {
 }
 
 /**
- * Every rule in order; in edit mode each but the last carries a drag handle and nothing opens. A tap opens a rule; a long
- * press opens its menu (編輯, 停用 or 啟用, 刪除, which asks first). The last rule only routes the rest, so it has no menu.
+ * Every rule in order. A tap opens a rule; a long press opens its menu (編輯, 停用 or 啟用, 刪除, which asks first). The
+ * last rule only routes the rest, so it has no menu. In edit mode nothing opens and the rows keep their full width; a
+ * long press is to lift a row and drag it (the gestures lane's `Modifier.rvReorder`, adopted here when that lane is
+ * merged; the last rule stays last).
  */
 @Composable
 private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRulesRoutes) {
@@ -133,7 +135,7 @@ private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRul
         rules.forEachIndexed { i, rule ->
             val last = i == rules.lastIndex
             when {
-                editing -> RvRuleRow(rule, trailing = if (last) null else ({ RvGlyph(R.drawable.rv_sym_drag_handle, RvChevronSize.box, Rv.colors.textSecondary) }))
+                editing -> RvRuleRow(rule)
                 last -> RvRuleRow(rule, Modifier.rvPress(RectangleShape, Role.Button) { routes.open(i) })
                 else -> RvLongPressMenu(ruleMenu(rule, { routes.open(i) }, { routes.toggle(i) }, { deleting = i }), { routes.open(i) }) { RvRuleRow(rule, it) }
             }
@@ -165,19 +167,13 @@ private fun ruleMenu(rule: RvPolicyRule, onEdit: () -> Unit, onToggle: () -> Uni
     )
 }
 
-/** How many rules route, how many the user turned off, and how many the core skips, with what skipping means. */
+/** How many rules route, how many the user turned off, and how many the core skips; the note under it says what skipping means. */
 @Composable
 private fun CountsCard(rules: List<RvPolicyRule>) {
     RvCard {
         RvStatRow(stringResource(R.string.rv_rules_in_use), count(rules, RvRuleState.On))
         RvStatRow(stringResource(R.string.rv_rules_off), count(rules, RvRuleState.Off))
         RvStatRow(stringResource(R.string.rv_rules_skipped), count(rules, RvRuleState.Skipped))
-        RvText(
-            stringResource(R.string.rv_rules_skipped_line),
-            Rv.type.rowSub,
-            Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding),
-            color = Rv.colors.textSecondary,
-        )
     }
 }
 

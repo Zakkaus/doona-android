@@ -68,7 +68,7 @@
     <string name="rv_policy_rule_off">Off</string>
     <string name="rv_policy_rule_skipped">Not supported, skipped</string>
     <string name="rv_rules_reorder">Reorder</string>
-    <string name="rv_rules_edit_line">Drag a handle to reorder; long-press to delete</string>
+    <string name="rv_rules_edit_line">Long-press a rule, then drag it to reorder</string>
     <string name="rv_rules_done">Done</string>
     <plurals name="rv_rules_apply_held">
         <item quantity="one">Apply %1$d rule</item>

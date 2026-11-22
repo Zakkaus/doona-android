@@ -67,7 +67,10 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-/** Text in a role, one line unless [maxLines] says more, ending in an ellipsis; CJK runs in Noto, the rest in Inter. */
+/**
+ * Text in a role, one line unless [maxLines] says more, ending in an ellipsis ([overflow] may put it in the middle of a
+ * single line instead); CJK runs in Noto, the rest in Inter.
+ */
 @Composable
 internal fun RvText(
     text: String,
@@ -76,8 +79,9 @@ internal fun RvText(
     color: Color = Rv.colors.text,
     align: TextAlign = TextAlign.Start,
     maxLines: Int = 1,
+    overflow: TextOverflow = TextOverflow.Ellipsis,
 ) {
-    BasicText(scripted(text), modifier, style.copy(color = color, textAlign = align), overflow = TextOverflow.Ellipsis, maxLines = maxLines)
+    BasicText(scripted(text), modifier, style.copy(color = color, textAlign = align), overflow = overflow, maxLines = maxLines)
 }
 
 /** The one press feedback: the content colour's state layer, clipped to the visible [shape]. */
@@ -172,6 +176,9 @@ internal fun RvCard(modifier: Modifier = Modifier, content: @Composable ColumnSc
  * [TITLE_SHARE] of the line, the end takes what it needs of the rest, and the start gets what is left, so a long name
  * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
  * text column to its widest end. [trailing] (a chevron) still follows after both lines.
+ *
+ * The title takes one line and ends in an ellipsis; [titleLines] lets it wrap (a host name on its own page), and
+ * [titleOverflow] can cut it in the middle instead, which keeps both ends of a host:port in view.
  */
 @Composable
 internal fun RvRow(
@@ -182,6 +189,8 @@ internal fun RvRow(
     onClick: (() -> Unit)? = null,
     titleEnd: (@Composable () -> Unit)? = null,
     subtitleEnd: (@Composable () -> Unit)? = null,
+    titleLines: Int = 1,
+    titleOverflow: TextOverflow = TextOverflow.Ellipsis,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     // The card clips the layer of its first and last row to its corners.
@@ -197,12 +206,12 @@ internal fun RvRow(
     ) {
         leading()
         Spacer(Modifier.width(RvSpace.rowGap))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+        Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
             if (lineWise) {
-                RowLine(titleEnd) { RvText(title, Rv.type.rowTitle) }
+                RowLine(titleEnd) { RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow) }
                 subtitle?.let { RowLine(subtitleEnd) { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) } }
             } else {
-                RvText(title, Rv.type.rowTitle)
+                RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow)
                 subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) }
             }
         }

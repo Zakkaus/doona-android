@@ -2,7 +2,6 @@ package dev.doona.android.prototype.rv.connections
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
@@ -31,7 +31,6 @@ import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
-import dev.doona.android.prototype.rv.RvInline
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -40,6 +39,7 @@ import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RV_NOW
+import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.policy.RvConnection
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.targetName
@@ -63,8 +63,8 @@ internal class RvConnectionsRoutes(
 /**
  * 連線, the proposed fourth tab (features-gap Q5, option A), in the language of 節點: the large title with search in the
  * bar; a line counting the open connections and their bytes; the app and order chips; then one card of the connections
- * open now ([connections], newest first), each its app's icon, where it went and how long it has been open, over the
- * rule's group and its bytes down and up. A connection opens its page. While [query] is set, the search field replaces
+ * open now ([connections], newest first), each its app's icon, where it went, and the app and the rule's group over its
+ * bytes and how long it has been open. A connection opens its page. While [query] is set, the search field replaces
  * the line and the chips and the card keeps the connections whose host or app holds it. With the tunnel off
  * ([connected] false), or nothing matching, the library's empty state says so and offers the way on. The bar always
  * has four tabs here. Host names are shown from memory and never logged (D21).
@@ -168,26 +168,23 @@ private fun Summary(connections: List<RvConnection>) {
 }
 
 /**
- * One connection: the app's own icon (the app is shown by it, as the brief asks, and named on its page); host:port over
- * the rule's group (or 直連); how long it has been open at the end of the first line and its bytes down and up at the
- * end of the second, so the host keeps most of its line. The icon's disc carries the app's name for a screen reader.
+ * One connection: the app's own icon; host:port across the whole first line, cut in the middle when it is longer, so
+ * the start of the name and the port both stay; the app's name and the rule's group (or 直連) under it, and at that
+ * line's end the bytes it moved both ways and how long it has been open. Its page splits the bytes and shows the whole
+ * host.
  */
 @Composable
 internal fun RvConnectionRow(connection: RvConnection, nowEpochMs: Long, onClick: () -> Unit) {
     val format = rememberRvFormat()
-    val secondary = Rv.colors.textSecondary
+    val bytes = format.bytes(connection.downBytes + connection.upBytes).toString()
+    val age = rvAge((nowEpochMs - connection.startedAtEpochMs) / MS_PER_SECOND)
     RvRow(
-        { RvAppDisc(connection.packageName, connection.app) },
+        { RvAppDisc(connection.packageName) },
         connection.host + PORT + connection.port,
-        connection.rule.targetName(),
+        connection.app + SEPARATOR + connection.rule.targetName(),
         onClick = onClick,
-        titleEnd = { RvText(rvAge((nowEpochMs - connection.startedAtEpochMs) / MS_PER_SECOND), Rv.type.rowValue, align = TextAlign.End) },
-        subtitleEnd = {
-            Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.subGap)) {
-                RvInline(R.drawable.rv_sym_arrow_downward, format.bytes(connection.downBytes).toString(), secondary, Rv.type.rowSub)
-                RvInline(R.drawable.rv_sym_arrow_upward, format.bytes(connection.upBytes).toString(), secondary, Rv.type.rowSub)
-            }
-        },
+        subtitleEnd = { RvText(bytes + SEPARATOR + age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) },
+        titleOverflow = TextOverflow.MiddleEllipsis,
     )
 }
 

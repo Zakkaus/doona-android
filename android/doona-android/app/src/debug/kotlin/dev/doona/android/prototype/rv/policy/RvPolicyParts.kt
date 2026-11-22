@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv.policy
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -22,6 +23,7 @@ import dev.doona.android.prototype.rv.RvRadio
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvSeeAll
 import dev.doona.android.prototype.rv.RvSize
+import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rememberRvFormat
@@ -60,15 +62,10 @@ internal fun RvRuleMatch.kind(): String = when (this) {
 /**
  * A rule as the 策略 card and the list of all rules draw it, after 活動's rule rows: where the traffic ends, what it
  * matches over its kind, and the target over [end] (today's bytes by default). A rule that is off or skipped says so
- * after its kind and shows no bytes. [trailing] follows both lines (the drag handle in edit mode).
+ * after its kind and shows no bytes.
  */
 @Composable
-internal fun RvRuleRow(
-    rule: RvPolicyRule,
-    modifier: Modifier = Modifier,
-    end: String? = null,
-    trailing: (@Composable () -> Unit)? = null,
-) {
+internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: String? = null) {
     val format = rememberRvFormat()
     val subtitle = when (rule.state) {
         RvRuleState.On -> rule.match.kind()
@@ -83,9 +80,20 @@ internal fun RvRuleRow(
         modifier,
         titleEnd = { RvText(rule.targetName(), Rv.type.rowValue, align = TextAlign.End) },
         subtitleEnd = { RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) },
-        trailing = trailing,
     )
 }
+
+/**
+ * A note under a card in secondary text, 12 dp below it and starting on the card's content line, 32 dp from the
+ * screen's edge, where the settings pages start their footers.
+ */
+@Composable
+internal fun RvCardNote(text: String, modifier: Modifier = Modifier) {
+    val inset = RvSpace.gutter + RvSpace.rowPadding
+    RvText(text, Rv.type.rowSub, modifier.padding(start = inset, end = inset, top = RvSpace.sectionBelow), color = Rv.colors.textSecondary, maxLines = NOTE_LINES)
+}
+
+private const val NOTE_LINES = 3
 
 /** Where a rule sends: its group's name, or 直連. */
 @Composable

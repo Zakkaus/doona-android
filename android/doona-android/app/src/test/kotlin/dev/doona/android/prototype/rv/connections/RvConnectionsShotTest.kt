@@ -62,11 +62,11 @@ class RvConnectionsShotTest {
     fun listDark() = compose.rvShot("connections", dark = true, before = { assertWhole() }) { List() }
 
     @Test
-    @Config(qualifiers = WHOLE_DETAIL)
+    @Config(qualifiers = WHOLE_WRAPPED)
     fun detailLight() = compose.rvShot("connection", dark = false, before = { assertWhole() }) { Detail(YOUTUBE) }
 
     @Test
-    @Config(qualifiers = WHOLE_DETAIL)
+    @Config(qualifiers = WHOLE_WRAPPED)
     fun detailDark() = compose.rvShot("connection", dark = true, before = { assertWhole() }) { Detail(YOUTUBE) }
 
     @Test
@@ -136,5 +136,8 @@ class RvConnectionsShotTest {
         /** Windows as tall as each whole page, so one capture holds it to its end. */
         const val WHOLE_LIST = "+h966dp"
         const val WHOLE_DETAIL = "+h1018dp"
+
+        /** YouTube's page: its host wraps to a second line. */
+        const val WHOLE_WRAPPED = "+h1026dp"
     }
 }

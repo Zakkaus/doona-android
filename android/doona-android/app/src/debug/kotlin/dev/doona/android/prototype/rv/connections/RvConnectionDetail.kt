@@ -73,8 +73,8 @@ internal fun RvConnectionDetail(
 }
 
 /**
- * Where it went, as a row, because a host name does not fit a key-stats value: the host over its port and TCP or UDP,
- * and, for a connection the core had no name for, that only an address rule could match it.
+ * Where it went, as a row, because a host name does not fit a key-stats value: the whole host, wrapped, over its port
+ * and TCP or UDP, and, for a connection the core had no name for, that only an address rule could match it.
  */
 @Composable
 private fun TargetCard(connection: RvConnection) {
@@ -83,7 +83,9 @@ private fun TargetCard(connection: RvConnection) {
         add(if (connection.udp) UDP else TCP)
         if (!connection.hasDomain) add(stringResource(R.string.rv_conn_no_domain))
     }.joinToString(SEPARATOR)
-    RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_dns) }, connection.host, line) }
+    // A break may follow each dot of a domain, so a long one wraps between its labels, not inside one.
+    val host = if (connection.hasDomain) connection.host.replace(DOT, DOT + BREAK) else connection.host
+    RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_dns) }, host, line, titleLines = Int.MAX_VALUE) }
 }
 
 @Composable
@@ -121,6 +123,8 @@ private fun PathCard(connection: RvConnection) {
 }
 
 private const val TCP = "TCP"
+private const val DOT = "."
+private const val BREAK = "\u200B"
 private const val UDP = "UDP"
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

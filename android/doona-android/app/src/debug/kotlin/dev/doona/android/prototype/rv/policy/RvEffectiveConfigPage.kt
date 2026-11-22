@@ -73,9 +73,8 @@ internal fun RvEffectiveConfigPage(
                 RvStatRow(stringResource(R.string.rv_effective_apps_rest), stringResource(R.string.rv_effective_apps_rest_value))
             }
         }
-        Section(R.string.rv_effective_source) { SourceCard() }
-        RvGutter {
-            Spacer(Modifier.height(RvSpace.sectionAbove - RvSpace.cardGap))
+        Section(R.string.rv_effective_source) {
+            SourceCard()
             RvCard {
                 RvRow({ RvIconDisc(R.drawable.rv_sym_content_copy) }, stringResource(R.string.rv_effective_copy), null, onClick = onCopy)
                 RvRow({ RvIconDisc(R.drawable.rv_sym_ios_share) }, stringResource(R.string.rv_effective_export), null, onClick = onExport)

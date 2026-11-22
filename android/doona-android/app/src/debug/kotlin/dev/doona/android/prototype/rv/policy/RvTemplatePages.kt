@@ -35,7 +35,6 @@ import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
-import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rvSystemScheme
@@ -67,12 +66,7 @@ internal fun RvTemplatePage(
         RvGutter {
             RvCard { RvTemplateData.all.forEach { TemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
         }
-        RvText(
-            stringResource(R.string.rv_template_note),
-            Rv.type.rowSub,
-            Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, top = RvSpace.sectionBelow),
-            color = Rv.colors.textSecondary,
-        )
+        RvCardNote(stringResource(R.string.rv_template_note))
     }
 }
 
@@ -111,12 +105,7 @@ internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply:
         RvGutter { RvCard { impact.groups.forEach { ImpactGroupRow(it) } } }
         RvSectionTitle(stringResource(R.string.rv_policy_rules), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { RvCard { impact.rules.forEach { ImpactRuleRow(it) } } }
-        RvText(
-            stringResource(R.string.rv_template_new_flows),
-            Rv.type.rowSub,
-            Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, top = RvSpace.sectionBelow),
-            color = Rv.colors.textSecondary,
-        )
+        RvCardNote(stringResource(R.string.rv_template_new_flows))
     }
 }
 
