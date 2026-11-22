@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Twemoji flag NL (CC-BY 4.0) from doona src/ui/assets/TwemojiCountryFlags.woff2. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16.6dp"
+    android:height="12dp"
+    android:viewportWidth="512"
+    android:viewportHeight="370">
+    <group android:scaleY="-1" android:translateX="0" android:translateY="377">
+        <path
+            android:pathData="M0 249H512V135H0Z"
+            android:fillColor="#FFEEEEEE" />
+        <path
+            android:pathData="M455 377Q479 377 495.5 360.5Q512 344 512 320V249H0V320Q0 344 16.5 360.5Q33 377 57 377Z"
+            android:fillColor="#FFAE1F28" />
+        <path
+            android:pathData="M57 7Q33 7 16.5 23.5Q0 40 0 64V135H512V64Q512 40 495.5 23.5Q479 7 455 7Z"
+            android:fillColor="#FF20478B" />
+    </group>
+</vector>
