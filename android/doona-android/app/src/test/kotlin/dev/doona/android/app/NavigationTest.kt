@@ -30,6 +30,17 @@ class NavigationTest {
     }
 
     @Test
+    fun `pop leaves only the top key and never the root`() {
+        val stack = GROUP.toMutableList()
+        stack.pop(GroupKey("g-Proxy"))
+        stack.pop(GroupKey("g-Proxy"))
+        assertEquals(listOf(ActivityKey, PoliciesKey), stack)
+        stack.pop(PoliciesKey)
+        stack.pop(ActivityKey)
+        assertEquals(listOf<NavKey>(ActivityKey), stack)
+    }
+
+    @Test
     fun `the back stack survives saving and restoring`() {
         val restoration = StateRestorationTester(compose)
         val engine = FakeEngine()
@@ -43,4 +54,29 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("Manual 1").assertExists()
     }
+
+    @Test
+    fun `a second back while the page leaves does not pop the tab underneath`() {
+        compose.setContent { DoonaTheme { DoonaApp(FakeEngine(), onConnect = {}, start = GROUP) } }
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.mainClock.autoAdvance = true
+
+        compose.onNodeWithText("Manual 1").assertExists()
+    }
+
+    @Test
+    fun `a group page leaves when its group is removed`() {
+        val engine = FakeEngine()
+        compose.setContent { DoonaTheme { DoonaApp(engine, onConnect = {}, start = GROUP) } }
+        compose.onNodeWithText("Proxy").assertExists()
+
+        engine.groups.value = engine.groups.value.filter { it.id != "g-Proxy" }
+
+        compose.onNodeWithContentDescription("Back").assertDoesNotExist()
+        compose.onNodeWithText("Manual 0").assertExists()
+    }
 }
+
+private val GROUP = listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))

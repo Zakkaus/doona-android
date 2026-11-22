@@ -32,6 +32,14 @@ enum class Tab(val key: NavKey, @StringRes val label: Int, @DrawableRes val icon
 fun currentTab(backStack: List<NavKey>): Tab = Tab.entries.lastOrNull { it.key in backStack } ?: Tab.Activity
 
 /**
+ * Pops [key] only while it is on top, and never the root: a page that asks to leave twice, such as a second back
+ * while its exit animates, must not pop the page underneath.
+ */
+fun MutableList<NavKey>.pop(key: NavKey) {
+    if (size > 1 && last() == key) removeAt(lastIndex)
+}
+
+/**
  * Exit through home: switching tabs drops every page above 活動, so back from another tab returns to 活動 and back
  * from 活動 leaves the app. Selecting the current tab again returns to its root.
  */

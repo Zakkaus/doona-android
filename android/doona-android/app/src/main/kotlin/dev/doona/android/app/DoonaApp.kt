@@ -29,17 +29,16 @@ import dev.doona.android.feature.settings.SettingsScreen
 @Composable
 fun DoonaApp(engine: Engine, onConnect: () -> Unit, start: List<NavKey> = listOf(ActivityKey)) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
-    val onBack: () -> Unit = { backStack.removeLastOrNull() }
     Column(Modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
         NavDisplay(
             backStack = backStack,
             modifier = Modifier.weight(1f),
-            onBack = onBack,
+            onBack = { backStack.pop(backStack.last()) },
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider = entryProvider {
                 entry<ActivityKey> { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.add(GroupKey(it)) }) }
                 entry<PoliciesKey> { PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }) }
-                entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack) }
+                entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
                 entry<SettingsKey> { SettingsScreen() }
             },
         )

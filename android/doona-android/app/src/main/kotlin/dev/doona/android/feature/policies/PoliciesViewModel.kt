@@ -1,6 +1,7 @@
 package dev.doona.android.feature.policies
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -34,10 +35,11 @@ fun PoliciesRoute(engine: Engine, onOpenGroup: (String) -> Unit) {
     PoliciesScreen(state.groups, onOpenGroup)
 }
 
-/** A group removed while its page is open leaves an empty page; the 策略 lane decides how to leave it. */
+/** A group removed while its page is open, such as by a subscription update, leaves the page. */
 @Composable
 fun GroupRoute(engine: Engine, groupId: String, onBack: () -> Unit) {
     val viewModel: PoliciesViewModel = viewModel(factory = PoliciesViewModel.factory(engine))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    state.groups.firstOrNull { it.id == groupId }?.let { GroupScreen(it, onBack) }
+    val group = state.groups.firstOrNull { it.id == groupId }
+    if (group == null) LaunchedEffect(Unit) { onBack() } else GroupScreen(group, onBack)
 }
