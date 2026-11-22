@@ -158,6 +158,13 @@ internal object RvMotion {
     const val PULL_FADE = 0.3f
     const val ANCHOR_GROW = 0.03f
 
+    /**
+     * A held row (G4's reorder) scrolls the page while the finger is within [reorderEdge] of the viewport's top or
+     * bottom, faster the deeper it goes, up to [reorderScroll] per second at the very edge.
+     */
+    val reorderEdge = 64.dp
+    val reorderScroll = 1_200.dp
+
     /** A critically damped spring is within 1 % of its travel after this many radians (the root of (1 + x)e^-x = 0.01). */
     const val SETTLED_RADIANS = 6.64f
 

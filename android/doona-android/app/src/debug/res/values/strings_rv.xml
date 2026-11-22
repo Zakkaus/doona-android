@@ -55,4 +55,6 @@
     <string name="rv_menu_delete">Delete</string>
     <string name="rv_menu_cancel">Cancel</string>
     <string name="rv_menu_delete_question">Delete %1$s?</string>
+    <string name="rv_reorder_up">Move up</string>
+    <string name="rv_reorder_down">Move down</string>
 </resources>
