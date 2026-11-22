@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,6 +55,8 @@ class ServiceEngine internal constructor(
     /** Starts the service with the generation of a requested start. */
     private val startService: (Long) -> Unit,
     private val io: CoroutineDispatcher,
+    /** Owns the engine's own work: polling, and commands the core has begun. */
+    private val scope: CoroutineScope,
 ) : Engine {
     private val _ready = MutableStateFlow(false)
     override val ready: StateFlow<Boolean> = _ready.asStateFlow()
@@ -70,7 +73,8 @@ class ServiceEngine internal constructor(
     private val reads = Mutex()
     private var revision = -1L // Guarded by reads.
 
-    internal fun launchIn(scope: CoroutineScope, lane: CoroutineDispatcher) {
+    /** [lane] is the controller's single thread. */
+    internal fun launch(lane: CoroutineDispatcher) {
         scope.launch(lane) { controller.run() }
         scope.launch { open() }
         scope.launch { followPerApp() }
@@ -148,9 +152,15 @@ class ServiceEngine internal constructor(
     ): Result<R> {
         // A core whose init failed or speaks another schema takes no call and no snapshot.
         if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
+        val argsJson = CoreJson.encode(argsSerializer, args)
+        // The core commits a command it has begun, so the refresh after it must run even if the caller is cancelled.
+        return scope.async { call(name, argsJson, result).also { poll() } }.await()
+    }
+
+    private suspend fun <R> call(name: String, argsJson: String, result: DeserializationStrategy<R>): Result<R> {
         val begun = System.nanoTime()
         val outcome = try {
-            Result.success(withContext(io) { CoreJson.result(core.call(name, CoreJson.encode(argsSerializer, args)), result) })
+            Result.success(withContext(io) { CoreJson.result(core.call(name, argsJson), result) })
         } catch (e: CancellationException) {
             throw e
         } catch (e: EngineException) {
@@ -161,7 +171,6 @@ class ServiceEngine internal constructor(
         }
         val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
         VpnLog.info("$name: $code after ${(System.nanoTime() - begun) / 1_000_000} ms")
-        poll()
         return outcome
     }
 
@@ -255,8 +264,8 @@ class ServiceEngine internal constructor(
                 scope = scope,
                 killProcess = { Process.killProcess(Process.myPid()) },
             )
-            val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO)
-            engine.launchIn(scope, Dispatchers.IO.limitedParallelism(1))
+            val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO, scope)
+            engine.launch(Dispatchers.IO.limitedParallelism(1))
             return engine
         }
     }

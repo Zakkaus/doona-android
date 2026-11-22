@@ -27,6 +27,8 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
@@ -41,7 +43,7 @@ class ServiceEngineTest {
         val opener = CoreOpener(core, "/data", Dispatchers.IO)
         val settings = PerAppSettings(PreferenceDataStoreFactory.create(scope = scope) { folder.root.resolve("per_app.preferences_pb") })
         val controller = TunnelController(core, opener, { PerApp() }, scope, killProcess = {})
-        ServiceEngine(core, opener, controller, settings, startService = { requested += it }, io = Dispatchers.IO)
+        ServiceEngine(core, opener, controller, settings, startService = { requested += it }, io = Dispatchers.IO, scope = scope)
     }
 
     @After
@@ -82,12 +84,24 @@ class ServiceEngineTest {
     @Test
     fun anIncompatibleCoreIsReadyAndFailedAndNeverCalled() = runBlocking {
         core.schema = CORE_SCHEMA + 1
-        engine.launchIn(scope, Dispatchers.IO.limitedParallelism(1))
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
         withTimeout(5_000) { engine.ready.first { it } }
         assertEquals(Status.Failed(FailureReason.IncompatibleCore), engine.status.value)
         assertEquals(ErrorCode.Internal, (engine.setMode(Mode.Direct).exceptionOrNull() as EngineException).code)
         assertTrue(core.calls.isEmpty())
         assertEquals(0, core.snapshots.get())
+    }
+
+    @Test
+    fun aCommandTheCallerCancelsStillRefreshesTheCatalog() = runBlocking {
+        val release = CountDownLatch(1)
+        core.callGate = release
+        val caller = launch(Dispatchers.IO) { engine.setMode(Mode.Direct) }
+        assertTrue(core.callEntered.await(5, TimeUnit.SECONDS))
+        caller.cancel()
+        release.countDown()
+        withTimeout(5_000) { engine.ready.first { it } }
+        assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), engine.groups.value.map { it.id })
     }
 
     @Test
@@ -122,6 +136,9 @@ class ServiceEngineTest {
         @Volatile var reply = """{"ok":{}}"""
 
         @Volatile var schema = CORE_SCHEMA
+
+        @Volatile var callGate: CountDownLatch? = null
+        val callEntered = CountDownLatch(1)
         val calls = CopyOnWriteArrayList<Pair<String, String>>()
         val snapshots = AtomicInteger()
 
@@ -138,6 +155,8 @@ class ServiceEngineTest {
         }
 
         override fun call(command: String, argsJson: String): String {
+            callEntered.countDown()
+            callGate?.await()
             calls += command to argsJson
             return reply
         }
