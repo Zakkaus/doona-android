@@ -50,7 +50,8 @@ class ServiceEngine internal constructor(
     private val opener: CoreOpener,
     internal val controller: TunnelController,
     private val perAppSettings: PerAppSettings,
-    private val startService: () -> Unit,
+    /** Starts the service with the generation of a requested start. */
+    private val startService: (Long) -> Unit,
     private val io: CoroutineDispatcher,
 ) : Engine {
     private val _ready = MutableStateFlow(false)
@@ -85,7 +86,14 @@ class ServiceEngine internal constructor(
     }
 
     override fun connect() {
-        if (!status.value.active) startService()
+        val generation = controller.requestStart() ?: return
+        try {
+            startService(generation)
+        } catch (e: IllegalStateException) {
+            // The system refused the foreground service, so nothing will take the start.
+            controller.stop()
+            throw e
+        }
     }
 
     override fun disconnect() = controller.stop()
@@ -233,7 +241,7 @@ class ServiceEngine internal constructor(
                 scope = scope,
                 killProcess = { Process.killProcess(Process.myPid()) },
             )
-            val engine = ServiceEngine(NativeCore, opener, controller, perApp, { DoonaVpnService.start(app) }, Dispatchers.IO)
+            val engine = ServiceEngine(NativeCore, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO)
             engine.launchIn(scope, Dispatchers.IO.limitedParallelism(1))
             return engine
         }

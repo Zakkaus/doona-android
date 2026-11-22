@@ -16,7 +16,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -33,6 +32,7 @@ internal class DoonaVpnService :
     private val engine get() = (application as DoonaApplication).container.engine as ServiceEngine
     private val scope = MainScope()
     private lateinit var notifications: VpnNotifications
+    private lateinit var session: ServiceSession
 
     @Volatile
     private var foreground = false
@@ -42,15 +42,9 @@ internal class DoonaVpnService :
         super.onCreate()
         notifications = VpnNotifications(this)
         notifications.createChannel()
-        scope.launch { followStatus() }
+        session = ServiceSession(engine.controller)
+        scope.launch { session.follow(::end) }
         scope.launch { notifications.keepCurrent(engine.status, ratesWhileScreenOn()) }
-    }
-
-    /** Collected on the main thread, after the fact: a status a newer start has replaced is skipped. */
-    private suspend fun followStatus() {
-        engine.status.dropWhile { it.ended }.collect { status ->
-            if (status.ended && engine.status.value == status) end(status)
-        }
     }
 
     /** Rates for the notification, collected only with the screen on, so sampling pauses with the screen off. */
@@ -63,12 +57,13 @@ internal class DoonaVpnService :
         when (intent?.action) {
             ACTION_START -> {
                 goForeground()
-                engine.controller.start(this)
+                session.start(this, intent.getLongExtra(EXTRA_GENERATION, 0))
             }
 
             ACTION_STOP -> engine.controller.stop()
         }
-        if (engine.status.value.ended) stopSelfResult(startId)
+        // Nothing of ours to follow: a stop with no session, or a start that a disconnect replaced on its way here.
+        if (!session.open) stopSelfResult(startId)
         return START_NOT_STICKY
     }
 
@@ -163,10 +158,12 @@ internal class DoonaVpnService :
     companion object {
         private const val ACTION_START = "dev.doona.android.vpn.START"
         private const val ACTION_STOP = "dev.doona.android.vpn.STOP"
+        private const val EXTRA_GENERATION = "generation"
 
-        /** The caller holds VPN consent and may start a foreground service. */
-        fun start(context: Context) {
-            context.startForegroundService(Intent(context, DoonaVpnService::class.java).setAction(ACTION_START))
+        /** Takes the start [TunnelController.requestStart] returned [generation] for. The caller holds VPN consent. */
+        fun start(context: Context, generation: Long) {
+            val intent = Intent(context, DoonaVpnService::class.java).setAction(ACTION_START).putExtra(EXTRA_GENERATION, generation)
+            context.startForegroundService(intent)
         }
 
         internal fun stopIntent(context: Context): Intent = Intent(context, DoonaVpnService::class.java).setAction(ACTION_STOP)

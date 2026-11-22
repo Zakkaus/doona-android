@@ -7,11 +7,15 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.Status
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -29,11 +33,12 @@ class ServiceEngineTest {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val core = FakeCore()
+    private val requested = CopyOnWriteArrayList<Long>()
     private val engine by lazy {
         val opener = CoreOpener(core, "/data", Dispatchers.IO)
         val settings = PerAppSettings(PreferenceDataStoreFactory.create(scope = scope) { folder.root.resolve("per_app.preferences_pb") })
         val controller = TunnelController(core, opener, { PerApp() }, scope, killProcess = {})
-        ServiceEngine(core, opener, controller, settings, startService = {}, io = Dispatchers.IO)
+        ServiceEngine(core, opener, controller, settings, startService = { requested += it }, io = Dispatchers.IO)
     }
 
     @After
@@ -47,6 +52,20 @@ class ServiceEngineTest {
         assertTrue(engine.ready.value)
         assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), engine.groups.value.map { it.id })
         assertEquals(listOf("s1"), engine.subscriptions.value.map { it.id })
+    }
+
+    @Test
+    fun aSecondTapBeforeTheServiceRunsDisconnects() = runBlocking {
+        scope.launch(Dispatchers.IO.limitedParallelism(1)) { engine.controller.run() }
+        engine.connect()
+        assertEquals(Status.Starting, engine.status.value)
+        engine.connect()
+        assertEquals(1, requested.size)
+        engine.disconnect()
+        // The service's start intent arrives after the disconnect.
+        assertFalse(engine.controller.start(NoHost, requested.single()))
+        withTimeout(5_000) { engine.status.first { it == Status.Stopped } }
+        Unit
     }
 
     @Test
@@ -65,6 +84,16 @@ class ServiceEngineTest {
     fun aSubscriptionReplyMapsToTheEngineType() = runBlocking {
         core.reply = ContractFixtures.read("call-ok-subscription.json")
         assertEquals(1073741824L, engine.addSubscription("https://example.invalid/sub").getOrThrow().usedBytes)
+    }
+
+    private object NoHost : TunHost {
+        override val selfPackage = "dev.doona.android"
+
+        override fun installed(packages: Set<String>) = error("unused")
+
+        override fun bootstrapDns() = error("unused")
+
+        override fun establish(routing: AppRouting) = error("unused")
     }
 
     private class FakeCore : CoreBridge {

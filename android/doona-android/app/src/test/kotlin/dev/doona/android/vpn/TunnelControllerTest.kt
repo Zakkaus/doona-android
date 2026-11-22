@@ -8,7 +8,9 @@ import dev.doona.android.engine.Status
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -16,6 +18,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -23,6 +26,7 @@ import org.junit.runner.RunWith
 import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /** Real threads, as on the phone: the core blocks the controller's thread while the test acts from another. */
@@ -61,8 +65,10 @@ class TunnelControllerTest {
     private fun awaitStatus(predicate: (Status) -> Boolean): Status =
         runBlocking { withTimeout(5_000) { controller.status.first(predicate) } }
 
+    private fun start() = assertTrue(controller.start(host, checkNotNull(controller.requestStart())))
+
     private fun startRunning(): Status.Running {
-        controller.start(host)
+        start()
         return awaitStatus { it is Status.Running } as Status.Running
     }
 
@@ -79,7 +85,7 @@ class TunnelControllerTest {
     fun revokeDuringABlockedStartStopsTheLateSuccess() {
         val release = CountDownLatch(1)
         core.startGate = release
-        controller.start(host)
+        start()
         assertTrue(core.startEntered.await(5, TimeUnit.SECONDS))
 
         controller.stop()
@@ -95,7 +101,7 @@ class TunnelControllerTest {
     @Test
     fun startFailureIsReportedOnceAndClosesTheTun() {
         core.startError = IllegalStateException("internal")
-        controller.start(host)
+        start()
         assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
         assertEquals(listOf("start"), core.events)
         assertTrue(host.tuns.single().closed)
@@ -105,7 +111,7 @@ class TunnelControllerTest {
     @Test
     fun aMissingLibraryIsAStartFailure() {
         core.startError = UnsatisfiedLinkError("start")
-        controller.start(host)
+        start()
         assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
         assertTrue(host.tuns.single().closed)
     }
@@ -133,7 +139,7 @@ class TunnelControllerTest {
     fun aStopDuringAStartThatNeverReturnsEndsTheProcess() {
         val release = CountDownLatch(1)
         core.startGate = release
-        controller.start(host)
+        start()
         assertTrue(core.startEntered.await(5, TimeUnit.SECONDS))
         controller.stop()
         assertTrue(killed.await(5, TimeUnit.SECONDS))
@@ -153,7 +159,7 @@ class TunnelControllerTest {
     @Test
     fun onlyListedWithNoInstalledAppIsRefused() {
         perApp = PerApp(AppPolicy.OnlyListed, setOf("gone.app"))
-        controller.start(host)
+        start()
         assertEquals(Status.Failed(FailureReason.NoAllowedApps), awaitStatus { it is Status.Failed })
         assertTrue(host.routings.isEmpty())
         assertTrue(core.events.isEmpty())
@@ -184,7 +190,7 @@ class TunnelControllerTest {
     @Test
     fun anUnreadablePolicyFailsTheStartBeforeTheTunIsBuilt() {
         perAppError = IOException("corrupt")
-        controller.start(host)
+        start()
         assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
         assertTrue(host.routings.isEmpty())
         assertTrue(core.events.isEmpty())
@@ -193,7 +199,7 @@ class TunnelControllerTest {
     @Test
     fun anotherSchemaIsAnIncompatibleCore() {
         core.schema = 2
-        controller.start(host)
+        start()
         assertEquals(Status.Failed(FailureReason.IncompatibleCore), awaitStatus { it is Status.Failed })
         assertTrue(host.routings.isEmpty())
     }
@@ -213,11 +219,51 @@ class TunnelControllerTest {
     fun aSecondStartWhileStartingIsIgnored() {
         val release = CountDownLatch(1)
         core.startGate = release
-        controller.start(host)
-        controller.start(host)
+        val requested = checkNotNull(controller.requestStart())
+        assertTrue(controller.start(host, requested))
+        assertNull(controller.requestStart())
+        assertFalse(controller.start(host, requested))
         release.countDown()
         awaitStatus { it is Status.Running }
         assertEquals(1, host.routings.size)
+    }
+
+    @Test
+    fun aStartThatArrivesAfterADisconnectIsIgnored() {
+        val requested = checkNotNull(controller.requestStart())
+        assertEquals(Status.Starting, controller.status.value)
+        controller.stop()
+        assertFalse(controller.start(host, requested))
+        awaitStatus { it == Status.Stopped }
+        assertTrue(host.routings.isEmpty())
+    }
+
+    @Test
+    fun aRebuildBeforeTheServiceTakesTheStartLeavesTheRequest() {
+        val requested = checkNotNull(controller.requestStart())
+        controller.rebuild()
+        assertTrue(controller.start(host, requested))
+        awaitStatus { it is Status.Running }
+    }
+
+    @Test
+    fun theServiceEndsEachSessionItStartedThoughItLooksLate() {
+        perApp = PerApp(AppPolicy.OnlyListed, setOf("gone.app"))
+        val session = ServiceSession(controller)
+        val ended = CopyOnWriteArrayList<Status>()
+        Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { main ->
+            scope.launch(main) { session.follow { ended += it } }
+            repeat(2) { round ->
+                // The start fails while the main thread is still busy, so the service never sees Starting; the second
+                // failure also equals the first.
+                runBlocking(main) {
+                    session.start(host, checkNotNull(controller.requestStart()))
+                    awaitStatus { it is Status.Failed }
+                }
+                runBlocking { withTimeout(5_000) { while (ended.size <= round) delay(10) } }
+            }
+        }
+        assertEquals(List(2) { Status.Failed(FailureReason.NoAllowedApps) }, ended)
     }
 
     private class FakeCore : CoreBridge {

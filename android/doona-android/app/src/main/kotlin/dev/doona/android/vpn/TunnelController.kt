@@ -19,6 +19,9 @@ internal val Status.active: Boolean get() = this is Status.Starting || this is S
 /** Stopped or failed: no session, and nothing left to stop. */
 internal val Status.ended: Boolean get() = this is Status.Stopped || this is Status.Failed
 
+/** A status and the generation that set it: a later session that repeats a status is still a new value. */
+internal data class Session(val generation: Long, val status: Status)
+
 /**
  * Runs start, stop, rebuild and revoke one at a time (ARCH D15). Every accepted command takes a new generation at
  * once, on the caller's thread, so a stop or revoke invalidates a start that is still blocked in the core; that start
@@ -38,6 +41,10 @@ internal class TunnelController(
 ) {
     private val _status = MutableStateFlow<Status>(Status.Stopped)
     val status: StateFlow<Status> = _status.asStateFlow()
+    private val _session = MutableStateFlow(Session(0, Status.Stopped))
+
+    /** [status] with its generation, for following one session to its end. */
+    val session: StateFlow<Session> = _session.asStateFlow()
 
     private val lock = Any()
     private var generation = 0L // Guarded by lock.
@@ -61,17 +68,31 @@ internal class TunnelController(
         }
     }
 
-    /** Ignored while a session is starting or running. */
-    fun start(host: TunHost) = submit(Status.Starting, accept = { !it.active }) { g ->
+    /**
+     * Shows [Status.Starting] at once, before the service exists, so a second tap or a stop sees the start; null while a
+     * session is starting or running. The service's [start] must carry the returned generation.
+     */
+    fun requestStart(): Long? = synchronized(lock) {
+        if (_status.value.active) return null
+        generation++
+        host = null
+        show(generation, Status.Starting)
+        generation
+    }
+
+    /** Builds the tunnel [requested]; false when a stop or another command replaced the request before it arrived. */
+    fun start(host: TunHost, requested: Long): Boolean = synchronized(lock) {
+        if (requested != generation || _status.value != Status.Starting || this.host != null) return false
         this.host = host
-        Command.Open(g, host)
+        commands.trySend(Command.Open(requested, host))
+        true
     }
 
     /** The user's stop and the system's revoke alike. */
     fun stop() = close(accept = { it.active }, Status.Stopped)
 
-    /** Builds the session's tunnel again with the current per-app policy. */
-    fun rebuild() = submit(Status.Starting, accept = { it.active }) { g -> Command.Open(g, checkNotNull(host)) }
+    /** Builds the session's tunnel again with the current per-app policy; a start not yet taken reads it anyway. */
+    fun rebuild() = submit(Status.Starting, accept = { it.active && host != null }) { g -> Command.Open(g, checkNotNull(host)) }
 
     /** The health check found [observed]'s data path dead; ignored once the status has moved on. */
     fun coreStopped(observed: Status.Running) = close(accept = { it == observed }, Status.Failed(FailureReason.CoreStopped))
@@ -93,7 +114,7 @@ internal class TunnelController(
     private inline fun submit(next: Status, accept: (Status) -> Boolean, command: (Long) -> Command): Long? = synchronized(lock) {
         if (!accept(_status.value)) return null
         generation++
-        _status.value = next
+        show(generation, next)
         // Queued under the lock, so the queue order is the generation order.
         commands.trySend(command(generation))
         generation
@@ -105,10 +126,16 @@ internal class TunnelController(
     private fun publish(g: Long, status: Status): Boolean = synchronized(lock) {
         (g == generation).also { current ->
             if (current) {
-                _status.value = status
+                show(g, status)
                 if (!status.active) host = null
             }
         }
+    }
+
+    /** The caller holds [lock]. */
+    private fun show(g: Long, status: Status) {
+        _status.value = status
+        _session.value = Session(g, status)
     }
 
     private suspend fun open(g: Long, host: TunHost) {
