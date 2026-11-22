@@ -27,6 +27,13 @@ use tokio::runtime::Handle;
 /// day changes and when the generation ends; a failed write is asked again this often.
 const WRITE_EVERY_S: u64 = 60;
 
+/// Folds in a row that must find the wall clock more than a day ahead of the time the boot clock
+/// carries on from the last wall time believed, before its date is believed: five minutes of a
+/// running tunnel. A clock gone wrong through the network or the RTC is set right at the next
+/// network time fix, which Android retries a minute apart; one the user moved stays, and only
+/// its first five minutes count on the day before.
+const JUMP_FOLDS: u32 = 300;
+
 /// One moment on the clocks the stores use.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Clock {
@@ -92,6 +99,10 @@ struct Inner {
     usage: Usage,
     /// The local day the last fold counted on.
     day: Option<i64>,
+    /// The boot and the wall time of the last fold whose clock was believed, and the folds in a
+    /// row since that found the wall clock too far ahead.
+    believed: Option<(u64, i64)>,
+    ahead: u32,
     usage_writes: Pending,
     latency: Latency,
     latency_writes: Pending,
@@ -143,6 +154,8 @@ impl Stats {
             ring: Ring::new(),
             usage: usage_file.load::<UsageFile>().usage.sane(),
             day: None,
+            believed: None,
+            ahead: 0,
             usage_writes: Pending::default(),
             latency: Latency::from_saved(latency_file.load::<LatencyFile>().latency),
             latency_writes: Pending::default(),
@@ -170,6 +183,7 @@ impl Stats {
     /// once when the day changed or with `now`; a failed one again a minute on.
     fn fold(&self, session: &Session, clock: &Clock, now: bool) -> Writes {
         let mut inner = lock(&self.inner);
+        let clock = &inner.believe(clock);
         let day = day::local(clock).0;
         let turned = inner.day.replace(day).is_some_and(|d| d != day);
         let fold = session.fold(clock);
@@ -329,6 +343,30 @@ impl Stats {
         let behind_ms = (clock.boot_ms - end * 1000).saturating_sub(999);
         let end_ms = clock.wall_ms - i64::try_from(behind_ms).unwrap_or(0);
         (inner.ring.series(end, seconds), end_ms)
+    }
+}
+
+impl Inner {
+    /// The clock a fold at `clock` counts on. A wall clock whose local day is more than one past
+    /// that of the last believed wall time, carried on by the boot clock, ran ahead; until it has
+    /// for [`JUMP_FOLDS`] folds, the carried time counts, so a wrong date set right soon never
+    /// moves today and yesterday out of the days kept in full. A clock set back, or one that
+    /// moved no further than the next day, is believed at once.
+    fn believe(&mut self, clock: &Clock) -> Clock {
+        if let Some((boot_ms, wall_ms)) = self.believed {
+            let since = i64::try_from(clock.boot_ms.saturating_sub(boot_ms)).unwrap_or(i64::MAX);
+            let carried = Clock {
+                wall_ms: wall_ms.saturating_add(since),
+                ..*clock
+            };
+            if day::local(clock).0 > day::local(&carried).0 + 1 && self.ahead < JUMP_FOLDS {
+                self.ahead += 1;
+                return carried;
+            }
+        }
+        self.ahead = 0;
+        self.believed = Some((clock.boot_ms, clock.wall_ms));
+        *clock
     }
 }
 

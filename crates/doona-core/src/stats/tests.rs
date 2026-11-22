@@ -358,3 +358,69 @@ fn an_open_flow_counts_its_bytes_on_the_day_they_moved() {
     assert_eq!(proxy(today), Some([32_769, 0]));
     assert_eq!((proxy(today + 1), proxy(today + 2)), (None, None));
 }
+
+#[test]
+fn a_clock_a_year_ahead_for_a_moment_keeps_today_and_yesterday() {
+    let (dir, rt) = (TempDir::new("stats-jump"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    let day_ms = 86_400_000;
+    // A year ahead, a second before midnight there, then past it: two wrong dates.
+    let ahead = (NOW_MS + 365 * day_ms) / day_ms * day_ms + day_ms - 1000;
+    let walls = [
+        NOW_MS - day_ms,
+        NOW_MS,
+        ahead,
+        ahead + 1000,
+        ahead + 2000,
+        // The network corrects the clock.
+        NOW_MS + 5000,
+    ];
+    for (s, wall) in (1..).zip(walls) {
+        session.publish(0, 10 * s, 0, 0);
+        stats.fold(&session, &clock(&base, s, wall), false);
+    }
+    let now = clock(&base, 6, NOW_MS + 5000);
+    let usage = stats.usage(&now);
+    let sum = |d: &dto::DayUsage| d.down.iter().sum::<u64>();
+    assert_eq!(
+        usage.yesterday.as_ref().map(sum),
+        Some(10),
+        "yesterday in full"
+    );
+    assert_eq!(sum(&usage.today), 50);
+    assert!(stats.today(&now).yesterday_by_now.is_some());
+}
+
+#[test]
+fn a_clock_that_stays_ahead_is_believed_and_a_long_sleep_at_once() {
+    let (dir, rt) = (TempDir::new("stats-jump-stays"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    let day_ms = 86_400_000;
+    let counted = || lock(&stats.inner).day;
+    stats.fold(&session, &clock(&base, 1, NOW_MS), false);
+    // Set a week ahead and left there: the boot clock's time counts until the jump has held
+    // for JUMP_FOLDS folds, then the new date.
+    let week_on = |s: u64| clock(&base, s, NOW_MS + 7 * day_ms + 1000 * s as i64);
+    let last = 1 + u64::from(JUMP_FOLDS);
+    for s in 2..=last {
+        stats.fold(&session, &week_on(s), false);
+        assert_eq!(counted(), Some(NOW_MS / day_ms), "fold {s}");
+    }
+    stats.fold(&session, &week_on(last + 1), false);
+    assert_eq!(counted(), Some(NOW_MS / day_ms + 7));
+    // Asleep for three days, which the boot clock counts too: the new date at once.
+    let asleep = 3 * 86_400;
+    let wake = clock(
+        &base,
+        last + 1 + asleep,
+        week_on(last + 1).wall_ms + 1000 * asleep as i64,
+    );
+    stats.fold(&session, &wake, false);
+    assert_eq!(counted(), Some(NOW_MS / day_ms + 10));
+    // A clock set back is believed at once.
+    let back = clock(&base, last + 2 + asleep, NOW_MS);
+    stats.fold(&session, &back, false);
+    assert_eq!(counted(), Some(NOW_MS / day_ms));
+}
