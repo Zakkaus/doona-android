@@ -44,6 +44,8 @@ class RvPreviewActivity : ComponentActivity() {
             test = intent.getBooleanExtra(EXTRA_TEST, false),
             launch = launch,
         )
+        // Each gesture's frame times go to logcat (`adb logcat -s RvFrames`).
+        RvFrames.attach(window)
         setContent { RvPreviewApp(options, start) }
     }
 

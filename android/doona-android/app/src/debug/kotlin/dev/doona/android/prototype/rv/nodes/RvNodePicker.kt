@@ -67,6 +67,7 @@ import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvChrome
 import dev.doona.android.prototype.rv.RvFlag
+import dev.doona.android.prototype.rv.RvFrames
 import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
@@ -127,7 +128,9 @@ internal fun RvNodePicker(
     // The search page (G7): the keyboard comes up once the page has arrived, and the list's end follows it as it rises.
     LaunchedEffect(searchPage) {
         if (!searchPage) return@LaunchedEffect
+        RvFrames.begin(SEARCH_GESTURE)
         snapshotFlow { arrived() }.first { it }
+        RvFrames.end(SEARCH_GESTURE)
         // One frame later the field is placed and can take the focus.
         withFrameNanos {}
         focus.requestFocus()
@@ -291,6 +294,7 @@ private fun RvNode.matches(query: String, label: String): Boolean =
     query.isEmpty() || listOf(name, short, protocol, label).any { it.contains(query, ignoreCase = true) }
 
 private const val QUARTER_TURN = 90f
+private const val SEARCH_GESTURE = "search"
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)

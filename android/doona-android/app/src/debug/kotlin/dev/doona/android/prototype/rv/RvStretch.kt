@@ -30,7 +30,7 @@ internal class RvPullPx(val commit: Float, val dead: Float, val give: Float, val
  * its transition). [pulled] follows the finger 1:1 up to [RvPullPx.commit], then with rising resistance to at most
  * [RvPullPx.give] further. It commits on release past the threshold, or on a downward fling faster than
  * [RvPullPx.fling] once past [RvPullPx.dead]. A spring back can be caught: a touch stops it where it is and the finger
- * carries on from there. It only starts while [enabled].
+ * carries on from there. It only starts while [enabled]. [RvFrames] times the finger's part as [gesture].
  */
 @Stable
 internal class RvStretch(
@@ -39,6 +39,7 @@ internal class RvStretch(
     private val px: RvPullPx,
     private val enabled: () -> Boolean,
     private val onCommit: (velocity: Float) -> Unit,
+    private val gesture: String,
 ) {
     var pulled by mutableFloatStateOf(0f)
         private set
@@ -78,6 +79,7 @@ internal class RvStretch(
 
     /** Lets the finger go: commits or springs back. */
     fun release(velocity: Float) {
+        RvFrames.end(gesture)
         val commit = pulled >= px.commit || (velocity >= px.fling && pulled >= px.dead)
         if (commit) onCommit(velocity)
         springBack(if (commit) RvMotion.RETURN_MS else RvMotion.SNAP_MS, velocity)
@@ -96,6 +98,7 @@ internal class RvStretch(
         back?.cancel()
         travel = unband(pulled)
         dragged = true
+        RvFrames.begin(gesture)
     }
 
     private fun follow(dy: Float) {

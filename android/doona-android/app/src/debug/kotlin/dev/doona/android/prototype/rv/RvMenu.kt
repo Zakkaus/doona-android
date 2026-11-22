@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
@@ -41,6 +43,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import kotlinx.coroutines.flow.first
 
 /** A long-press menu's card, for tests. */
 internal const val RV_MENU = "rv-menu"
@@ -103,6 +106,12 @@ private fun RvMenu(state: RvMenuState, items: List<RvMenuItem>) {
     val motion = Rv.motion
     val shown = remember { MutableTransitionState(false) }
     shown.targetState = state.open
+    LaunchedEffect(state.open) {
+        val gesture = if (state.open) "menu-open" else "menu-close"
+        RvFrames.begin(gesture)
+        snapshotFlow { shown.isIdle }.first { it }
+        RvFrames.end(gesture)
+    }
     if (!shown.currentState && !shown.targetState) return
     val density = LocalDensity.current
     val endSide = if (LocalLayoutDirection.current == LayoutDirection.Ltr) 1f else 0f

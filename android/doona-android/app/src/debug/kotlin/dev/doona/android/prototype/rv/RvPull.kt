@@ -69,10 +69,10 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
     var variant by mutableStateOf(RvPullMotion.Sheet)
 
     /** 活動's pull: the hero stretches with it; let go past the threshold, the picker opens. */
-    val opening = RvStretch(scope, motion, px, enabled = { !this.open && !moving }, onCommit = ::reveal)
+    val opening = RvStretch(scope, motion, px, enabled = { !this.open && !moving }, onCommit = ::reveal, gesture = "pull")
 
     /** The picker's pull down at its top: let go past the threshold, the picker closes. */
-    val closing = RvStretch(scope, motion, px, enabled = { this.open && !moving }, onCommit = { close(-it) })
+    val closing = RvStretch(scope, motion, px, enabled = { this.open && !moving }, onCommit = { close(-it) }, gesture = "pull-close")
 
     /** A finger (or a back gesture) holds the picker part way; [moved] once it has dragged it. */
     private var held by mutableStateOf(false)
@@ -96,7 +96,12 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
         if (from != null) opening.clear()
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             from?.let { shown.snapTo(it) }
-            shown.animateTo(1f, motion.settle(RvMotion.REVEAL_MS, FRACTION), velocity / height.coerceAtLeast(1f))
+            RvFrames.begin(REVEAL)
+            try {
+                shown.animateTo(1f, motion.settle(RvMotion.REVEAL_MS, FRACTION), velocity / height.coerceAtLeast(1f))
+            } finally {
+                RvFrames.end(REVEAL)
+            }
         }
     }
 
@@ -105,11 +110,17 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
         open = false
         held = false
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            shown.animateTo(0f, motion.settle(RvMotion.RETURN_MS, FRACTION), velocity / height.coerceAtLeast(1f))
+            RvFrames.begin(CLOSE)
+            try {
+                shown.animateTo(0f, motion.settle(RvMotion.RETURN_MS, FRACTION), velocity / height.coerceAtLeast(1f))
+            } finally {
+                RvFrames.end(CLOSE)
+            }
         }
     }
 
     fun grab() {
+        RvFrames.begin(GRAB)
         held = true
         moved = false
         scope.launch(start = CoroutineStart.UNDISPATCHED) { shown.stop() }
@@ -122,6 +133,7 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
 
     /** Lets the picker go: a touch that did not drag sends it on its way; otherwise a fling decides, or where it is. */
     fun letGo(velocity: Float) {
+        RvFrames.end(GRAB)
         held = false
         val opens = when {
             !moved -> open
@@ -151,6 +163,9 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
     private companion object {
         const val FRACTION = 0.001f
         const val HALF = 0.5f
+        const val REVEAL = "reveal"
+        const val CLOSE = "close"
+        const val GRAB = "picker-grab"
     }
 }
 
