@@ -1,21 +1,26 @@
 //! `addSubscription`, `updateSubscription` and `removeSubscription`. The download and the parse
 //! run with no lock held; the result commits under the writer lock, and an update commits only
 //! if its subscription still has the incarnation it had when the update began (core-api.md,
-//! Commit rule).
+//! Commit rule). One deadline covers the download, the parse and the wait for the writer; work
+//! that misses it is dropped before it commits.
 
 use super::{Core, lock};
 use crate::catalog::{self, NodeEntry};
 use crate::dto::{self, AddSubscriptionArgs, ErrorCode};
 use crate::groups;
 use crate::state::{State, StoredSubscription};
-use crate::subscription::fetch::{self, FETCH_BOUND, Userinfo};
+use crate::subscription::fetch::{self, Userinfo};
 use crate::subscription::parse::{self, Parsed};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use url::Url;
 
-/// How long the calling thread waits beyond the fetch's own bound before it gives up.
-const WAIT_SLACK: Duration = Duration::from_secs(1);
+/// `addSubscription` and `updateSubscription` return within this, their commit excepted
+/// (core-api.md).
+pub(super) const SUBSCRIPTION_BOUND: Duration = Duration::from_secs(30);
+/// The share of a command's time the fetch leaves for the parse and the wait for the writer: one
+/// part in this many.
+const AFTER_FETCH: u32 = 10;
 
 impl Core {
     pub(super) fn add_subscription(
@@ -23,14 +28,15 @@ impl Core {
         args: AddSubscriptionArgs,
     ) -> Result<dto::Subscription, ErrorCode> {
         let begun = Instant::now();
+        let deadline = begun + self.options.subscription_bound;
         let url = fetch::parse_url(&args.url)?;
         let name = args
             .name
             .map(|n| n.trim().to_owned())
             .filter(|n| !n.is_empty())
             .unwrap_or_else(|| url.host_str().unwrap_or_default().to_owned());
-        let (parsed, userinfo) = self.download(url)?;
-        let _writer = lock(&self.writer);
+        let (parsed, userinfo) = self.download(url, deadline)?;
+        let _writer = self.writer_until(deadline)?;
         let mut next = {
             let c = lock(&self.shared.catalog);
             catalog::within_budget(c.model.nodes.len(), &parsed.nodes)?;
@@ -61,6 +67,7 @@ impl Core {
 
     pub(super) fn update_subscription(&self, id: &str) -> Result<dto::Subscription, ErrorCode> {
         let begun = Instant::now();
+        let deadline = begun + self.options.subscription_bound;
         let (url, incarnation) = {
             let c = lock(&self.shared.catalog);
             let s = c.state.subscriptions.iter().find(|s| s.id == id);
@@ -68,8 +75,12 @@ impl Core {
             (s.url.clone(), c.model.incarnations.get(id).copied())
         };
         let _refreshing = Refreshing::begin(&self.refreshing, id)?;
-        let downloaded = fetch::parse_url(&url).and_then(|url| self.download(url));
-        let _writer = lock(&self.writer);
+        let downloaded = fetch::parse_url(&url).and_then(|url| self.download(url, deadline));
+        // Out of time: the result, or the failure it would record, is dropped.
+        let _writer = match self.writer_until(deadline) {
+            Ok(writer) => writer,
+            Err(busy) => return Err(downloaded.err().unwrap_or(busy)),
+        };
         let (mut next, others) = {
             let c = lock(&self.shared.catalog);
             // Removed meanwhile: the result is dropped. Ids are never reused.
@@ -116,17 +127,42 @@ impl Core {
             .map(drop)
     }
 
-    /// Fetches and parses `url` on the runtime; this thread waits with its own timer, so the
-    /// bound holds even while every worker is busy.
-    fn download(&self, url: Url) -> Result<(Parsed, Userinfo), ErrorCode> {
+    /// Fetches `url` on the runtime, leaving a share of the time to `deadline` for the parse,
+    /// which runs on a blocking thread, and the writer. This thread waits for both with its own
+    /// timer, so the deadline holds even while every worker is busy; a parse still running at it
+    /// is `fetch_failed`, and its result is dropped.
+    fn download(&self, url: Url, deadline: Instant) -> Result<(Parsed, Userinfo), ErrorCode> {
+        let left = deadline.saturating_duration_since(Instant::now());
+        let fetching = left - left / AFTER_FETCH;
         let (tx, rx) = std::sync::mpsc::channel();
         self.runtime.spawn(async move {
-            let _ = tx.send(fetch::fetch(url).await);
+            let downloaded = match fetch::fetch(url, fetching).await {
+                Ok(fetched) => tokio::task::spawn_blocking(move || {
+                    parse::parse(&fetched.body).map(|parsed| (parsed, fetched.userinfo))
+                })
+                .await
+                .unwrap_or(Err(ErrorCode::Internal)),
+                Err(code) => Err(code),
+            };
+            let _ = tx.send(downloaded);
         });
-        let fetched = rx
-            .recv_timeout(FETCH_BOUND + WAIT_SLACK)
-            .map_err(|_| ErrorCode::FetchFailed)??;
-        Ok((parse::parse(&fetched.body)?, fetched.userinfo))
+        rx.recv_timeout(deadline.saturating_duration_since(Instant::now()))
+            .map_err(|_| ErrorCode::FetchFailed)?
+    }
+
+    /// The writer lock if it comes free before `deadline`, else `busy`. std's `Mutex` has no
+    /// timed lock, so this polls; it waits for another command's commit, which is short.
+    fn writer_until(&self, deadline: Instant) -> Result<MutexGuard<'_, ()>, ErrorCode> {
+        loop {
+            if Instant::now() >= deadline {
+                return Err(ErrorCode::Busy);
+            }
+            match self.writer.try_lock() {
+                Ok(writer) => return Ok(writer),
+                Err(TryLockError::Poisoned(e)) => return Ok(e.into_inner()),
+                Err(TryLockError::WouldBlock) => std::thread::sleep(Duration::from_millis(2)),
+            }
+        }
     }
 
     /// Commits `next`, in which `changed` has `fresh` nodes or is gone: choices whose member

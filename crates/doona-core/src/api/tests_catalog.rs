@@ -2,7 +2,7 @@
 //! and shown, the error codes, ids across refreshes and restarts, and an update that finishes
 //! after its subscription was removed.
 
-use super::Core;
+use super::{Core, Options};
 use crate::dto::{Catalog, ErrorCode, Snapshot};
 use crate::testutil::{TempDir, fixture, http, response, target};
 use serde_json::{Value, json};
@@ -317,4 +317,30 @@ fn an_update_over_the_node_budget_fails_and_keeps_the_nodes() {
     assert_eq!(shown.subscriptions[0].nodes, 9);
     assert_eq!(shown.subscriptions[0].error, Some(ErrorCode::ParseFailed));
     assert_eq!(shown.groups[1].members.len(), 9);
+}
+
+#[test]
+fn a_subscription_command_gives_up_at_its_deadline() {
+    let dir = TempDir::new("api-deadline");
+    let feeds = Feeds::new();
+    feeds.set("/sub", &fixture("links.txt"));
+    let options = Options {
+        subscription_bound: Duration::from_millis(600),
+        ..Options::default()
+    };
+    let core = Core::with_options(path(&dir), options).unwrap();
+    std::thread::scope(|scope| {
+        // Another command holds the writer past the deadline.
+        let writer = super::lock(&core.writer);
+        let adding = scope.spawn(|| {
+            let begun = Instant::now();
+            (add(&core, &feeds, "/sub"), begun.elapsed())
+        });
+        std::thread::sleep(Duration::from_millis(1_500));
+        drop(writer);
+        let (result, took) = adding.join().unwrap();
+        assert_eq!(result, Err(ErrorCode::Busy));
+        assert!(took < Duration::from_millis(1_200), "{took:?}");
+    });
+    assert!(catalog(&core).subscriptions.is_empty());
 }

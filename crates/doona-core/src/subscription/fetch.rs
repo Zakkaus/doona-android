@@ -1,5 +1,5 @@
 //! The subscription download: one HTTP/1.1 GET at a time, plain or over BoringSSL with the
-//! webpki roots, following at most five redirects within one 30 s bound. It goes out directly
+//! webpki roots, following at most five redirects within the bound its command gives. It goes out directly
 //! (doona is outside its own VPN) and resolves the host with the platform resolver. The redirect
 //! rules and the `Subscription-Userinfo` reading follow honk-core's `src/subscription.rs`
 //! (`fetch_following`, `subscription_redirect_error`, `parse_subscription_userinfo`) and
@@ -23,8 +23,6 @@ use tokio::io::{
 use tokio::net::TcpStream;
 use url::{Host, Url};
 
-/// A fetch, redirects included, ends within this bound (core-api.md).
-pub(crate) const FETCH_BOUND: Duration = Duration::from_secs(30);
 /// What a hostile or broken origin can make the core buffer (honk's bound).
 const MAX_BODY: usize = 8 << 20;
 const MAX_HEAD: usize = 64 << 10;
@@ -62,9 +60,9 @@ pub(crate) fn parse_url(text: &str) -> Result<Url, ErrorCode> {
     Ok(url)
 }
 
-/// Downloads `url` within [`FETCH_BOUND`]; every failure is `fetch_failed`.
-pub(crate) async fn fetch(url: Url) -> Result<Fetched, ErrorCode> {
-    tokio::time::timeout(FETCH_BOUND, follow(url))
+/// Downloads `url` within `bound`, redirects included; every failure is `fetch_failed`.
+pub(crate) async fn fetch(url: Url, bound: Duration) -> Result<Fetched, ErrorCode> {
+    tokio::time::timeout(bound, follow(url))
         .await
         .map_err(|_| ErrorCode::FetchFailed)?
 }

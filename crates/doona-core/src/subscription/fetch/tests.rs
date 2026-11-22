@@ -14,7 +14,7 @@ fn run<T>(f: impl Future<Output = T>) -> T {
 }
 
 fn get_url(url: &str) -> Result<Fetched, ErrorCode> {
-    run(fetch(parse_url(url).unwrap()))
+    run(fetch(parse_url(url).unwrap(), Duration::from_secs(30)))
 }
 
 #[test]

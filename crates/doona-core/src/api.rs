@@ -40,6 +40,8 @@ pub struct Options {
     pub dns_upstreams: Vec<SocketAddr>,
     /// What a latency probe fetches through each node.
     pub probe_url: String,
+    /// How long `addSubscription` and `updateSubscription` may take up to their commit.
+    pub subscription_bound: Duration,
 }
 
 impl Default for Options {
@@ -47,6 +49,7 @@ impl Default for Options {
         Options {
             dns_upstreams: crate::dns::UPSTREAMS.to_vec(),
             probe_url: probe::DEFAULT_PROBE_URL.to_owned(),
+            subscription_bound: subscriptions::SUBSCRIPTION_BOUND,
         }
     }
 }
