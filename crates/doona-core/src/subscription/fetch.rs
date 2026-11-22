@@ -1,6 +1,6 @@
 //! The subscription download: one HTTP/1.1 GET at a time, plain or over BoringSSL with the
 //! webpki roots, following at most five redirects within the bound its command gives. It goes out directly
-//! (doona is outside its own VPN) and resolves the host with the platform resolver. The redirect
+//! (doona is outside its own VPN) and resolves the host with the bootstrap resolvers. The redirect
 //! rules and the `Subscription-Userinfo` reading follow honk-core's `src/subscription.rs`
 //! (`fetch_following`, `subscription_redirect_error`, `parse_subscription_userinfo`) and
 //! `src/marked_http.rs` (`basic_auth`), daeuniverse/honk 8919784a. Errors carry no detail: the URL
@@ -173,14 +173,16 @@ async fn get(url: &Url, auth: Option<&str>) -> Result<Reply, ErrorCode> {
     }
 }
 
-/// Every address the platform resolver gives, in its order, until one connects.
+/// Every address the bootstrap resolvers give, in their order, until one connects.
 async fn connect(url: &Url, port: u16) -> Result<TcpStream, ErrorCode> {
     let addrs: Vec<SocketAddr> = match url.host() {
         Some(Host::Ipv4(a)) => vec![(a, port).into()],
         Some(Host::Ipv6(a)) => vec![(a, port).into()],
-        Some(Host::Domain(name)) => tokio::net::lookup_host((name, port))
+        Some(Host::Domain(name)) => crate::bootstrap::lookup(name)
             .await
             .map_err(|_| ErrorCode::FetchFailed)?
+            .into_iter()
+            .map(|ip| SocketAddr::new(ip, port))
             .collect(),
         None => Vec::new(),
     };

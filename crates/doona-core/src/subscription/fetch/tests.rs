@@ -152,7 +152,7 @@ fn the_quota_header_reads_like_honk() {
     assert_eq!(parse_userinfo("nonsense"), Userinfo::default());
 }
 
-/// Needs the internet: TLS with the webpki roots and the platform resolver.
+/// Needs the internet: TLS with the webpki roots and the fallback resolvers.
 #[test]
 #[ignore = "needs the internet"]
 fn an_https_fetch_reaches_a_public_server() {

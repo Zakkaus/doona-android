@@ -5,6 +5,16 @@ use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 
+// The integration tests' QUIC node server and the apps behind the tun, shared with the unit
+// tests, which use only a part of the apps' client.
+#[path = "../tests/common/cert.rs"]
+mod cert;
+#[allow(dead_code)]
+#[path = "../tests/common/client.rs"]
+pub mod client;
+#[path = "../tests/common/tuic.rs"]
+pub mod tuic;
+
 /// A fresh directory under the system temp dir, removed on drop.
 pub struct TempDir(PathBuf);
 
@@ -38,6 +48,18 @@ pub struct Probe {
 
 /// A duplicate as jni.rs makes it, and a probe that tells whether it is closed.
 pub fn tun() -> (OwnedFd, Probe) {
+    let (dup, peer) = tun_and_peer();
+    let raw = dup.as_raw_fd();
+    let probe = Probe {
+        identity: identity(raw).unwrap(),
+        raw,
+        _peer: peer,
+    };
+    (dup, probe)
+}
+
+/// A duplicate as jni.rs makes it, and the far end of its socketpair, where the apps are.
+pub fn tun_and_peer() -> (OwnedFd, OwnedFd) {
     let mut fds = [0; 2];
     // SAFETY: `fds` has room for the two descriptors socketpair writes.
     let r = unsafe {
@@ -51,14 +73,7 @@ pub fn tun() -> (OwnedFd, Probe) {
     assert_eq!(r, 0);
     // SAFETY: socketpair returned two open descriptors that nothing else owns.
     let (a, b) = unsafe { (OwnedFd::from_raw_fd(fds[0]), OwnedFd::from_raw_fd(fds[1])) };
-    let dup = sys::dup_cloexec(a.as_raw_fd()).unwrap();
-    let raw = dup.as_raw_fd();
-    let probe = Probe {
-        identity: identity(raw).unwrap(),
-        raw,
-        _peer: b,
-    };
-    (dup, probe)
+    (sys::dup_cloexec(a.as_raw_fd()).unwrap(), b)
 }
 
 fn identity(fd: RawFd) -> Option<(u64, u64)> {

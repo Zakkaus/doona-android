@@ -6,7 +6,7 @@
 use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member};
 use crate::groups::{self, GroupDef};
 use crate::ids::{self, is_group};
-use crate::outbounds::Outbounds;
+use crate::outbounds::{Built, Outbounds};
 use crate::state::{State, StoredSubscription};
 use crate::subscription::parse;
 use honk_config::node::Node;
@@ -105,6 +105,13 @@ impl Shared {
     /// Publishes each group's current node to the data path; called with `c` locked.
     pub fn publish(&self, c: &CatalogState) {
         self.outbounds.select(c.model.leaves(&c.state.selections));
+    }
+
+    /// Publishes `built`, the registry for `c`'s node set, and each group's current node in one
+    /// step, so a new flow never pairs a node with a registry that lacks it; `c` is locked.
+    pub fn publish_nodes(&self, c: &CatalogState, built: Built) {
+        self.outbounds
+            .replace(built, c.model.leaves(&c.state.selections));
     }
 }
 

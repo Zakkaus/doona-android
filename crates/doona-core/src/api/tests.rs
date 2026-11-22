@@ -1,16 +1,21 @@
 //! `start` and `stop` against stand-in drivers that are slow or stuck, which the real driver
 //! never is on a host: the tun must be closed when `stop` (or a failed `start`) returns, and
 //! `start` must keep its deadline and answer `busy` when a `stop` or another `start` overlaps it.
+//! A task of the real driver's generation that panics shows as `internal` in the snapshot, and the
+//! real driver serves a flow queued before `start` only once the generation is committed.
 
+use super::tests_catalog::{Feeds, add, path};
 use super::{Core, Life, lock};
 use crate::dto::{ErrorCode, Mode, Snapshot};
 use crate::state::Store;
+use crate::testutil::client::Client;
 use crate::testutil::{TempDir, closed, tun};
+use crate::tunnel::route::{Inbound, Route, Upstream};
 use crate::tunnel::{Gen, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
 use std::io;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -113,12 +118,25 @@ fn slow(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'s
     })
 }
 
+/// The real driver, with a task of its generation that panics 200 ms in.
+fn panics_later(
+    tun: TunHandle,
+    settings: Settings,
+    gen_: Gen,
+    ready: StartSignal,
+) -> BoxFuture<'static, ()> {
+    gen_.spawn(async {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        panic!("a data-path task failed");
+    });
+    crate::tunnel::drive(tun, settings, gen_, ready)
+}
+
+/// A core in Direct, which starts without nodes, whose generations run `launch`.
 fn core(dir: &TempDir, launch: crate::tunnel::Launch, bound: Duration) -> Arc<Core> {
-    Arc::new(Core::with_launch(
-        dir.path().to_str().unwrap(),
-        launch,
-        bound,
-    ))
+    let core = Core::with_launch(dir.path().to_str().unwrap(), launch, bound);
+    core.set_mode(Mode::Direct).unwrap();
+    Arc::new(core)
 }
 
 #[test]
@@ -357,4 +375,154 @@ fn stop_spends_one_second_on_teardown_and_waiting_together() {
     holder.join().unwrap();
     assert!(closed(&probe));
     assert!(took < Duration::from_secs(1), "{took:?}");
+}
+
+#[test]
+fn a_panicking_data_path_task_fails_the_generation() {
+    let dir = TempDir::new("api-panic");
+    let core = core(&dir, panics_later, Duration::from_secs(10));
+    let (dup, probe) = tun();
+    core.start(dup, CONFIG).unwrap();
+    assert!(!failed_within_10s(&core).running);
+    let begun = Instant::now();
+    core.stop();
+    assert!(begun.elapsed() < Duration::from_secs(1));
+    assert!(closed(&probe));
+}
+
+/// honk spawns its carriers' tasks (a QUIC connection's driver, a session's reader) on the core's
+/// runtime itself, never through the generation: a panic in one fails the generation too.
+#[test]
+fn a_panic_in_a_task_honk_spawned_fails_the_generation() {
+    let dir = TempDir::new("api-worker-panic");
+    let core = core(&dir, crate::tunnel::drive, Duration::from_secs(10));
+    let (dup, probe) = tun();
+    core.start(dup, CONFIG).unwrap();
+    core.runtime
+        .spawn(async { panic!("a carrier's task failed") });
+    assert!(!failed_within_10s(&core).running);
+    core.stop();
+    assert!(closed(&probe));
+}
+
+/// The snapshot once it reports `internal`, which must be within 10 s.
+fn failed_within_10s(core: &Core) -> Snapshot {
+    let begun = Instant::now();
+    loop {
+        let s: Snapshot = serde_json::from_str(&core.snapshot(i64::MAX)).unwrap();
+        if s.error == Some(ErrorCode::Internal) {
+            return s;
+        }
+        assert!(begun.elapsed() < Duration::from_secs(10), "{s:?}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// The first generation never becomes ready; later ones are ready at once, then idle.
+fn unready_then_ready(
+    tun: TunHandle,
+    _: Settings,
+    gen_: Gen,
+    ready: StartSignal,
+) -> BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = tun;
+        let _unsent = if gen_.session.generation == 1 {
+            Some(ready)
+        } else {
+            ready.send();
+            None
+        };
+        std::future::pending::<()>().await;
+    })
+}
+
+/// A loopback server that echoes each connection.
+fn echo() -> std::net::SocketAddr {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for conn in listener.incoming().flatten() {
+            std::thread::spawn(move || {
+                let mut read = conn.try_clone().unwrap();
+                let _ = std::io::copy(&mut read, &mut &conn);
+            });
+        }
+    });
+    addr
+}
+
+/// Sends `msg` on `s` and reads its echo.
+pub(super) fn ping(core: &Core, s: &mut Upstream, msg: &[u8]) -> io::Result<Vec<u8>> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    core.runtime.block_on(async {
+        s.write_all(msg).await?;
+        let mut got = vec![0; msg.len()];
+        s.read_exact(&mut got).await?;
+        Ok(got)
+    })
+}
+
+/// `stop` makes a start under way busy and returns before that start has cleaned up. A start
+/// that comes then claims the carriers, and the first start's late cleanup leaves them alone: a
+/// stream the second generation opened through a node carries on.
+#[test]
+fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
+    let dir = TempDir::new("api-late-cleanup");
+    let (proxy, _) = crate::testutil::socks5();
+    let echo = echo();
+    let feeds = Feeds::new();
+    feeds.set("/sub", format!("socks5://{proxy}#s5\n").as_bytes());
+    let core = Core::with_launch(path(&dir), unready_then_ready, Duration::from_secs(10));
+    let core = Arc::new(core);
+    add(&core, &feeds, "/sub").unwrap();
+    let opened: Arc<Mutex<Option<Upstream>>> = Arc::default();
+    let kept = Arc::clone(&opened);
+    let (second, _second_probe) = tun();
+    core.hooks.on_before_finish(move |core| {
+        core.start(second, CONFIG).unwrap();
+        let route = Route::of(Inbound::Tun, Mode::Global, &core.shared.outbounds);
+        let mut s = core.runtime.block_on(route.connect(echo)).unwrap();
+        assert_eq!(ping(core, &mut s, b"before").unwrap(), b"before");
+        *lock(&kept) = Some(s);
+    });
+    let (first, _first_probe) = tun();
+    let starter = {
+        let core = Arc::clone(&core);
+        std::thread::spawn(move || core.start(first, CONFIG))
+    };
+    while !matches!(*lock(&core.life), Life::Starting { .. }) {
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    core.stop();
+    assert_eq!(starter.join().unwrap(), Err(ErrorCode::Busy));
+    let mut s = lock(&opened).take().expect("a stream on the carriers");
+    assert_eq!(ping(&core, &mut s, b"after").unwrap(), b"after");
+    assert!(matches!(*lock(&core.life), Life::Running(_)));
+}
+
+/// A flow whose SYN waits in the tun before the data path is ready is served only once `start`
+/// commits the generation, with its config's resolvers installed: however long the commit
+/// takes, nothing reaches the flow's node before.
+#[test]
+fn a_queued_flow_waits_for_the_commit() {
+    let dir = TempDir::new("api-queued");
+    let (proxy, dials) = crate::testutil::socks5();
+    let echo = echo();
+    let feeds = Feeds::new();
+    feeds.set("/sub", format!("socks5://{proxy}#s5\n").as_bytes());
+    let core = Core::with_launch(path(&dir), crate::tunnel::drive, Duration::from_secs(10));
+    add(&core, &feeds, "/sub").unwrap();
+    let (tun, peer) = crate::testutil::tun_and_peer();
+    let mut client = Client::new(peer);
+    let id = client.connect(echo);
+    let before_commit = Arc::new(AtomicU32::new(u32::MAX));
+    let seen = Arc::clone(&before_commit);
+    core.hooks.on_before_finish(move |_| {
+        std::thread::sleep(Duration::from_millis(300));
+        seen.store(dials.load(SeqCst), SeqCst);
+    });
+    core.start(tun, CONFIG).unwrap();
+    assert_eq!(before_commit.load(SeqCst), 0, "the node was dialed first");
+    assert_eq!(client.exchange(id, b"queued").unwrap(), b"queued");
 }

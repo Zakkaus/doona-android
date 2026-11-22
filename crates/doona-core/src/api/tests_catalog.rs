@@ -2,12 +2,13 @@
 //! and shown, the error codes, ids across refreshes and restarts, and an update that finishes
 //! after its subscription was removed.
 
-use super::{Core, Options};
+use super::{Core, Options, lock};
 use crate::dto::{Catalog, ErrorCode, Snapshot};
 use crate::testutil::{TempDir, fixture, http, response, target};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -115,7 +116,7 @@ fn node_ids(c: &Catalog) -> Vec<(String, String)> {
     ids
 }
 
-fn path(dir: &TempDir) -> &str {
+pub(super) fn path(dir: &TempDir) -> &str {
     dir.path().to_str().unwrap()
 }
 
@@ -183,6 +184,108 @@ fn an_update_keeps_ids_and_drops_choices_whose_node_went() {
     // "Other" left the feed: Proxy is back to its first member.
     assert!(!after.groups[0].pinned);
     assert_eq!(after.groups[0].selected_id.as_deref(), Some("g-Auto"));
+}
+
+/// A refresh publishes its registry and each group's node in one step: a flow that opens
+/// meanwhile never gets a node its registry lacks. The reader reads before the first refresh and
+/// after each one is published.
+#[test]
+fn a_refresh_publishes_its_registry_and_nodes_together() {
+    let dir = TempDir::new("api-swap");
+    let feeds = Feeds::new();
+    let sets: [&[u8]; 2] = [b"socks5://127.0.0.1:1#a\n", b"socks5://127.0.0.1:2#b\n"];
+    feeds.set("/sub", sets[0]);
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    let outbounds = Arc::clone(&core.shared.outbounds);
+    let done = Arc::new(AtomicBool::new(false));
+    let reads = Arc::new(AtomicUsize::new(0));
+    let reader = {
+        let (done, reads) = (Arc::clone(&done), Arc::clone(&reads));
+        std::thread::spawn(move || {
+            let mut torn = 0usize;
+            while !done.load(Relaxed) {
+                let d = outbounds.dialer("g-Proxy").expect("Proxy has a node");
+                torn += usize::from(d.registry.get(&d.node.id).is_none());
+                reads.fetch_add(1, Relaxed);
+            }
+            torn
+        })
+    };
+    let read_after = |n: usize| {
+        let end = Instant::now() + Duration::from_secs(5);
+        while reads.load(Relaxed) <= n && Instant::now() < end {
+            std::thread::yield_now();
+        }
+        assert!(reads.load(Relaxed) > n, "the reader stopped reading");
+    };
+    read_after(0);
+    for i in 1..=100 {
+        feeds.set("/sub", sets[i % 2]);
+        call(&core, "updateSubscription", json!({"id": "s1"})).unwrap();
+        read_after(reads.load(Relaxed));
+    }
+    done.store(true, Relaxed);
+    assert_eq!(
+        reader.join().unwrap(),
+        0,
+        "flows saw a node without its registry"
+    );
+}
+
+/// Refreshes while no generation runs keep only the registries still in use: after 200 of them
+/// the carriers keep at most three, and the first is freed.
+#[test]
+fn refreshes_keep_only_the_registries_in_use() {
+    let dir = TempDir::new("api-bounded");
+    let feeds = Feeds::new();
+    let sets: [&[u8]; 2] = [b"socks5://127.0.0.1:1#a\n", b"socks5://127.0.0.1:2#b\n"];
+    feeds.set("/sub", sets[0]);
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    let outbounds = &core.shared.outbounds;
+    let first = Arc::downgrade(&outbounds.registry().unwrap());
+    for i in 1..=200 {
+        feeds.set("/sub", sets[i % 2]);
+        call(&core, "updateSubscription", json!({"id": "s1"})).unwrap();
+    }
+    let end = Instant::now() + Duration::from_secs(5);
+    while first.strong_count() > 0 && Instant::now() < end {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert_eq!(first.strong_count(), 0, "the first registry is still held");
+    // The published registry, and those it replaced that were still retiring then.
+    let kept = outbounds.retained();
+    assert!(kept <= 3, "{kept} registries kept");
+}
+
+/// A refresh built while a generation ends would reuse runtimes that the end shuts down: it is
+/// published with runtimes of its own, on new carriers, instead.
+#[test]
+fn a_refresh_built_before_an_end_shares_no_runtime_with_it() {
+    let dir = TempDir::new("api-renew");
+    let feeds = Feeds::new();
+    feeds.set("/sub", b"socks5://127.0.0.1:1#a\nsocks5://127.0.0.1:2#b\n");
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    let outbounds = &core.shared.outbounds;
+    let ended = outbounds.registry().unwrap();
+    let (built, selected) = {
+        let c = lock(&core.shared.catalog);
+        let selected = c.model.leaves(&c.state.selections);
+        (outbounds.build(&c.model.nodes), selected)
+    };
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
+    outbounds.claim(7);
+    let ended_carriers = outbounds.end(7).unwrap();
+    assert!(ended_carriers.finish(core.runtime.handle(), deadline));
+    assert!(ended.is_shutdown());
+    outbounds.replace(built, selected);
+    let published = outbounds.registry().unwrap();
+    assert_eq!(published.len(), 2);
+    assert!(!published.is_shutdown());
+    let shared = |r| ended.values().any(|e| Arc::ptr_eq(e, r));
+    assert!(!published.values().any(shared));
 }
 
 #[test]

@@ -1,15 +1,16 @@
 //! The plain Rust API behind the five JNI functions. Host tests drive it without a JVM; `jni.rs`
 //! only converts arguments, holds the process's one [`Core`] and throws.
 
+use crate::bootstrap;
 use crate::catalog::{self, CatalogState, Shared};
 use crate::dto::{
     self, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply, Snapshot, StartConfig,
     Traffic,
 };
-use crate::outbounds::{self, Outbounds};
+use crate::outbounds::Outbounds;
 use crate::probe::{self, Prober, Probes};
 use crate::state::{Loaded, State, Store};
-use crate::tunnel::route::ModeCell;
+use crate::tunnel::route::{ModeCell, PROXY_GROUP};
 use crate::tunnel::{self, Gate, Launch, STOP_WAIT, Settings, Tun, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -17,7 +18,7 @@ use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::os::fd::OwnedFd;
 use std::path::Path;
-use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
+use std::sync::atomic::{AtomicI64, AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
@@ -42,6 +43,11 @@ pub struct Options {
     pub probe_url: String,
     /// How long `addSubscription` and `updateSubscription` may take up to their commit.
     pub subscription_bound: Duration,
+    /// The port `start`'s `bootstrapDns` resolvers listen on, and the resolvers used without them.
+    pub bootstrap_port: u16,
+    pub bootstrap_fallback: Vec<SocketAddr>,
+    /// How long a UDP association lasts without traffic.
+    pub udp_idle: Duration,
 }
 
 impl Default for Options {
@@ -50,6 +56,9 @@ impl Default for Options {
             dns_upstreams: crate::dns::UPSTREAMS.to_vec(),
             probe_url: probe::DEFAULT_PROBE_URL.to_owned(),
             subscription_bound: subscriptions::SUBSCRIPTION_BOUND,
+            bootstrap_port: 53,
+            bootstrap_fallback: bootstrap::FALLBACK.to_vec(),
+            udp_idle: tunnel::UDP_IDLE,
         }
     }
 }
@@ -77,6 +86,8 @@ pub struct Core {
     probes: Probes,
     /// Subscriptions with an update under way; a second update of one is `busy`.
     refreshing: Mutex<HashSet<String>>,
+    /// The panics on the runtime's threads so far; a generation ends when it rises.
+    panics: Arc<AtomicU64>,
     #[cfg(test)]
     hooks: hooks::Hooks,
 }
@@ -120,23 +131,28 @@ impl Core {
         if loaded == Loaded::SetAside {
             log::warn!("init: state.json was unusable; set aside, defaults in use");
         }
+        let panics = Arc::new(AtomicU64::new(0));
+        crate::panics::install();
+        let counted = Arc::clone(&panics);
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(WORKERS)
             .thread_name("doona-core")
+            .on_thread_start(move || crate::panics::count_on_this_thread(&counted))
             .enable_all()
             .build()
             .map_err(|_| ErrorCode::Internal)?;
-        outbounds::install_resolvers();
+        bootstrap::install();
+        bootstrap::use_servers(options.bootstrap_fallback.clone());
         let model = catalog::load(&state);
-        let outbounds = Arc::new(Outbounds::new(runtime.handle().clone())?);
-        outbounds.replace(outbounds.build(&model.nodes));
+        let outbounds = Arc::new(Outbounds::new(Arc::clone(&panics))?);
+        let built = outbounds.build(&model.nodes);
         let mode = Arc::new(ModeCell::new(state.mode));
         let catalog = CatalogState::new(state, model);
         let shared = Arc::new(Shared {
             catalog: Mutex::new(catalog),
             outbounds,
         });
-        shared.publish(&lock(&shared.catalog));
+        shared.publish_nodes(&lock(&shared.catalog), built);
         let probes = Probes::new(prober, &options.probe_url);
         Ok(Core {
             runtime,
@@ -150,6 +166,7 @@ impl Core {
             launch,
             probes,
             refreshing: Mutex::new(HashSet::new()),
+            panics,
             #[cfg(test)]
             hooks: hooks::Hooks::default(),
         })
@@ -183,14 +200,13 @@ impl Core {
     fn start_generation(
         &self,
         tun: OwnedFd,
-        settings: Settings,
+        (settings, resolvers): (Settings, Vec<SocketAddr>),
         deadline: Instant,
     ) -> Result<i64, ErrorCode> {
         let rt = self.runtime.handle();
         let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
         let gate = Gate::new();
-        let old = self.begin(&gate, &tun)?;
-        let generation = self.generation.fetch_add(1, Relaxed) + 1;
+        let (generation, old) = self.begin(&gate, &tun)?;
         if let Some(old) = old {
             old.wait(rt, deadline);
         }
@@ -202,13 +218,15 @@ impl Core {
             deadline,
             &gate,
         );
-        self.finish(started, &gate, deadline)?;
+        self.finish(started, &gate, deadline, resolvers)?;
         Ok(generation)
     }
 
-    /// Marks a start under way, or answers `busy` (closing `tun`) while another is. Halts the
-    /// running generation, if any, and hands it back for the caller to wait for.
-    fn begin(&self, gate: &Arc<Gate>, tun: &Arc<Tun>) -> Result<Option<Tunnel>, ErrorCode> {
+    /// Marks a start under way and numbers its generation, or answers `busy` (closing `tun`)
+    /// while another is. Halts the running generation, if any, and hands it back for the caller
+    /// to wait for. The new generation claims the carriers here, in the order of the lifecycle:
+    /// a start that `stop` aborted cleans up later, and must not end a newer one's carriers.
+    fn begin(&self, gate: &Arc<Gate>, tun: &Arc<Tun>) -> Result<(i64, Option<Tunnel>), ErrorCode> {
         let mut life = lock(&self.life);
         if matches!(*life, Life::Starting { .. }) {
             drop(life);
@@ -225,65 +243,83 @@ impl Core {
         if let Some(mut c) = catalog {
             c.end_probes();
         }
-        match old {
+        let generation = self.generation.fetch_add(1, Relaxed) + 1;
+        let old = match old {
             Life::Running(old) => {
                 old.halt();
-                Ok(Some(old))
+                Some(old)
             }
-            _ => Ok(None),
-        }
+            _ => None,
+        };
+        self.shared.outbounds.claim(generation);
+        Ok((generation, old))
     }
 
-    /// Publishes the started generation, unless a `stop` aborted the start meanwhile (that
-    /// `stop` closed the tun already and left the core stopped, which a newer `start` may have
-    /// changed since) or the deadline passed as the driver became ready.
+    /// Publishes the started generation with its config's `resolvers`, unless it failed, a
+    /// `stop` aborted the start meanwhile (that `stop` closed the tun already and left the core
+    /// stopped, which a newer `start` may have changed since) or the deadline passed as the
+    /// driver became ready; then it halts and waits for the generation by the deadline. Its
+    /// driver serves the tun only once the resolvers are in use; a refused one never does.
     fn finish(
         &self,
-        started: Result<Tunnel, ErrorCode>,
+        (mut tunnel, ready): (Tunnel, Result<(), ErrorCode>),
         gate: &Gate,
         deadline: Instant,
+        resolvers: Vec<SocketAddr>,
     ) -> Result<(), ErrorCode> {
+        #[cfg(test)]
+        self.hooks.before_finish(self);
         let mut life = lock(&self.life);
         // `stop` aborts under the life lock, which is held here, so this cannot change below.
         let aborted = gate.aborted();
-        let (late, code) = if aborted {
-            (started.ok(), ErrorCode::Busy)
-        } else {
-            match started {
-                Ok(tunnel) if Instant::now() < deadline => {
-                    *life = Life::Running(tunnel);
-                    return Ok(());
-                }
-                Ok(tunnel) => (Some(tunnel), ErrorCode::Internal),
-                Err(code) => (None, code),
+        let code = match ready {
+            _ if aborted => ErrorCode::Busy,
+            Ok(()) if Instant::now() < deadline => {
+                bootstrap::use_servers(resolvers);
+                tunnel.release();
+                *life = Life::Running(tunnel);
+                return Ok(());
             }
+            Ok(()) => ErrorCode::Internal,
+            Err(code) => code,
         };
         // Closed before the core shows stopped: a `stop` that sees `Stopped` returns at once.
-        if let Some(tunnel) = &late {
-            tunnel.halt();
-        }
+        tunnel.halt();
         if !aborted {
             *life = Life::Stopped;
         }
         drop(life);
-        if let Some(tunnel) = late {
-            tunnel.wait(self.runtime.handle(), deadline);
-        }
+        tunnel.wait(self.runtime.handle(), deadline);
         Err(code)
     }
 
-    fn settings(&self, config: &str) -> Result<Settings, ErrorCode> {
+    /// What a generation runs with, and the resolvers that serve host lookups once it is up (also
+    /// after `stop`). A resolver that is not an address is `invalid_argument`; Global with no node
+    /// in the `Proxy` group is `no_nodes`: the tunnel would carry nothing.
+    fn settings(&self, config: &str) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
         let config: StartConfig = parse(config)?;
         if config.mtu < MIN_MTU {
             return Err(ErrorCode::InvalidArgument);
         }
-        Ok(Settings {
+        let (port, fallback) = (
+            self.options.bootstrap_port,
+            &self.options.bootstrap_fallback,
+        );
+        let resolvers = bootstrap::servers(&config.bootstrap_dns, port, fallback)
+            .ok_or(ErrorCode::InvalidArgument)?;
+        if self.mode.get() == Mode::Global && self.shared.outbounds.dialer(PROXY_GROUP).is_none() {
+            return Err(ErrorCode::NoNodes);
+        }
+        let settings = Settings {
             mtu: config.mtu,
             dns: config.dns,
             dns_upstreams: self.options.dns_upstreams.clone(),
+            udp_idle: self.options.udp_idle,
             mode: Arc::clone(&self.mode),
             outbounds: Arc::clone(&self.shared.outbounds),
-        })
+            panics: Arc::clone(&self.panics),
+        };
+        Ok((settings, resolvers))
     }
 
     /// Ends the running generation, if any, within 1 s, and cancels a `start` under way. Every
@@ -525,6 +561,8 @@ pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 mod hooks;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_carriers;
 #[cfg(test)]
 mod tests_catalog;
 #[cfg(test)]

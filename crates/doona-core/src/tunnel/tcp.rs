@@ -147,7 +147,8 @@ impl TcpFlow {
     }
 }
 
-/// Dials `dst` through `route` and splices the two streams until both sides close.
+/// Dials `dst` through `route` and splices the two streams until both sides close, each side's
+/// FIN passed on to the other.
 pub(crate) async fn dial(
     io: FlowIo,
     id: FlowId,
@@ -188,7 +189,7 @@ pub(crate) async fn serve_dns(
     cancel: CancellationToken,
 ) {
     let work = async {
-        let failed = dns::serve_tcp(&mut io, &upstreams, route).await.is_err();
+        let failed = dns::serve_tcp(&mut io, &upstreams, &route).await.is_err();
         drop(io);
         let _ = events.send(Event::Finished { id, failed });
     };

@@ -3,6 +3,7 @@
 //! without a JVM.
 
 pub mod api;
+mod bootstrap;
 mod catalog;
 mod dns;
 pub mod dto;
@@ -10,6 +11,7 @@ mod groups;
 mod ids;
 mod jni;
 pub mod outbounds;
+mod panics;
 mod probe;
 pub mod state;
 mod subscription;

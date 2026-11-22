@@ -255,3 +255,91 @@ fn no_test_registers_between_the_probe_token_and_the_lifecycle_change() {
             .all(|m| m.latency_ms.is_some())
     );
 }
+
+/// Never becomes ready.
+fn never_ready(
+    tun: crate::tunnel::TunHandle,
+    _: crate::tunnel::Settings,
+    _: crate::tunnel::Gen,
+    ready: crate::tunnel::StartSignal,
+) -> futures_util::future::BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = (tun, ready);
+        std::future::pending::<()>().await;
+    })
+}
+
+/// Probes begun while no generation runs go on the carriers the next start claims. When that
+/// start fails, its carriers end under the probes, which measured nothing: no node is shown as
+/// failed.
+#[test]
+fn probes_whose_carriers_end_under_them_record_nothing() {
+    let stand = Stand::new(false);
+    let dir = TempDir::new("api-latency-ended");
+    let feeds = Feeds::new();
+    feeds.set("/sub", &fixture("links.txt"));
+    let store = crate::state::Store::new(dir.path());
+    let bound = Duration::from_millis(300);
+    let launch = (never_ready as crate::tunnel::Launch, bound);
+    let core = Core::build(store, Options::default(), launch, stand.prober()).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    call(&core, "testLatency", json!({"group": null})).unwrap();
+    wait_started(&stand, 9);
+    let (tun, _probe) = crate::testutil::tun();
+    let config = r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":[]}"#;
+    assert_eq!(core.start(tun, config), Err(ErrorCode::Internal));
+    let after = wait_for(&core, |c| !testing(c));
+    let members = &after.groups[1].members;
+    let failed: Vec<_> = members.iter().filter(|m| m.failed).collect();
+    assert!(failed.is_empty(), "{failed:?}");
+}
+
+/// A test whose carriers were prepared when a `stop` ended them registers after that stop, so the
+/// stop does not drop it: it runs on new carriers and records each probe's result.
+#[test]
+fn a_test_prepared_before_a_stop_runs_on_new_carriers() {
+    let stand = Stand::new(true);
+    let (_dir, _feeds, core) = setup(&stand);
+    let (tun, _probe) = crate::testutil::tun();
+    let config = r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":[]}"#;
+    core.start(tun, config).unwrap();
+    core.hooks.on_prepared(|core| core.stop());
+    call(&core, "testLatency", json!({"group": "g-HK"})).unwrap();
+    let after = wait_for(&core, |c| !testing(c));
+    let members = &after.groups[2].members;
+    assert!(
+        members.iter().all(|m| m.latency_ms.is_some()),
+        "{members:?}"
+    );
+}
+
+/// A stand-in probe that, as honk's does, reaches a node only through the registry it is given:
+/// a node that registry lacks fails, any other answers in 7 ms.
+fn through_registry() -> Prober {
+    Arc::new(|job: ProbeJob| {
+        let found = job.registry.as_ref().and_then(|r| r.get(&job.node.id));
+        async move { found.map(|_| Duration::from_millis(7)) }.boxed()
+    })
+}
+
+/// A refresh that replaces node A with B while a test registers: the test probes B through the
+/// registry published with B, so B gets a latency.
+#[test]
+fn a_test_registered_across_a_refresh_probes_the_new_nodes_through_their_registry() {
+    let dir = TempDir::new("api-latency-refresh");
+    let feeds = Feeds::new();
+    feeds.set("/sub", b"trojan://secret@192.0.2.1:443#A\n");
+    let core = Core::with_prober(dir.path().to_str().unwrap(), through_registry());
+    add(&core, &feeds, "/sub").unwrap();
+    feeds.set("/sub", b"trojan://secret@192.0.2.2:443#B\n");
+    core.hooks.on_registering(|core| {
+        call(core, "updateSubscription", json!({"id": "s1"})).unwrap();
+    });
+    call(&core, "testLatency", json!({"group": "g-Auto"})).unwrap();
+    let after = wait_for(&core, |c| !testing(c));
+    let members = &after.groups[1].members;
+    assert_eq!(members.len(), 1, "{members:?}");
+    let b = &members[0];
+    assert_eq!(b.name, "B");
+    assert!(b.latency_ms.is_some() && !b.failed, "{b:?}");
+}

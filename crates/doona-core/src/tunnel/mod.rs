@@ -1,8 +1,10 @@
 //! One tunnel generation: the duplicate tun fd, the tasks that serve it, and the [`Session`] that
 //! `snapshot` reads. Every task of a generation is spawned on its [`TaskTracker`] and stops at its
 //! [`CancellationToken`]; a task that panics, or a driver that fails, marks the session failed
-//! and cancels the rest. Stopping a generation closes its tun at once (see `tun.rs`), so only
-//! tasks without tun access are ever left running.
+//! and cancels the rest. So does a panic in a task honk spawned for a carrier, which never passes
+//! through [`Gen::spawn`]. Stopping a generation closes its tun at once (see `tun.rs`), so only
+//! tasks without tun access are ever left running, and shuts down the carriers it dialed through
+//! within the same deadline (see `outbounds.rs`).
 
 mod driver;
 mod flow;
@@ -11,8 +13,9 @@ mod tcp;
 mod tun;
 mod udp;
 
+use crate::api::lock;
 use crate::dto::{ErrorCode, Traffic};
-use crate::outbounds::Outbounds;
+use crate::outbounds::{Ended, Outbounds};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use route::ModeCell;
@@ -23,12 +26,16 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Handle;
+use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 pub(crate) use tun::Tun;
+pub(crate) use udp::IDLE as UDP_IDLE;
 
 /// How long `stop` waits for a halted generation's tasks; it returns within 1 s.
 pub(crate) const STOP_WAIT: Duration = Duration::from_millis(900);
+/// How often a generation looks for a panic outside its own tasks.
+const WATCH: Duration = Duration::from_secs(1);
 
 /// What a generation runs with: `start`'s config and the core's own settings.
 #[derive(Clone, Debug)]
@@ -38,18 +45,21 @@ pub struct Settings {
     pub dns: Ipv4Addr,
     /// Where DNS the core answers is forwarded, in order.
     pub dns_upstreams: Vec<SocketAddr>,
+    /// A UDP association with no datagram either way for this long ends.
+    pub udp_idle: Duration,
     /// The committed mode; each new flow reads it.
     pub mode: Arc<ModeCell>,
-    /// Each group's current node and what dials it. Flows do not go through groups yet: Global
-    /// refuses them while the data path cannot dial a node.
+    /// Each group's current node and what dials it; a new Global flow goes through `g-Proxy`'s.
     pub outbounds: Arc<Outbounds>,
+    /// The panics on the core's runtime threads so far (see `panics.rs`).
+    pub panics: Arc<AtomicU64>,
 }
 
 /// The tun as the driver holds it.
 pub(crate) type TunHandle = Arc<Tun>;
 
 /// What serves a generation's tun: the netstack driver, or a stand-in in unit tests. It sends on
-/// its [`StartSignal`] once it serves the tun.
+/// its [`StartSignal`] once it can serve the tun.
 pub(crate) type Launch = fn(TunHandle, Settings, Gen, StartSignal) -> BoxFuture<'static, ()>;
 
 /// The [`Launch`] the app runs.
@@ -136,21 +146,36 @@ impl Gate {
     }
 }
 
-/// The driver's side of a [`Gate`]: `send` reports the tun served; dropped unsent, it reports
-/// that the driver gave up.
-pub(crate) struct StartSignal(Option<Arc<Gate>>);
+/// The driver's side of a [`Gate`]: `send` reports the tun ready to serve; dropped unsent, it
+/// reports that the driver gave up.
+pub(crate) struct StartSignal {
+    gate: Option<Arc<Gate>>,
+    /// Fires when `start` commits the generation; dropped unfired when it is refused.
+    commit: Option<oneshot::Receiver<()>>,
+}
 
 impl StartSignal {
     pub fn send(mut self) {
-        if let Some(gate) = self.0.take() {
+        if let Some(gate) = self.gate.take() {
             gate.report(true);
+        }
+    }
+
+    /// Reports the tun ready, then waits until `start` commits the generation with its config's
+    /// resolvers installed. False when `start` refuses it instead, which also cancels it.
+    pub async fn committed(mut self) -> bool {
+        let commit = self.commit.take();
+        self.send();
+        match commit {
+            Some(commit) => commit.await.is_ok(),
+            None => false,
         }
     }
 }
 
 impl Drop for StartSignal {
     fn drop(&mut self) {
-        if let Some(gate) = self.0.take() {
+        if let Some(gate) = self.gate.take() {
             gate.report(false);
         }
     }
@@ -222,6 +247,8 @@ impl Gen {
         let gen_ = self.clone();
         let task = async move {
             tokio::select! {
+                // A cancelled task never polls `fut` again: its carriers may be shut down.
+                biased;
                 () = gen_.cancel.cancelled() => {}
                 r = AssertUnwindSafe(fut).catch_unwind() => {
                     if r.is_err() {
@@ -244,12 +271,17 @@ impl Gen {
 pub struct Tunnel {
     gen_: Gen,
     tun: Arc<Tun>,
+    outbounds: Arc<Outbounds>,
+    /// Lets the driver serve once `start` commits (see [`StartSignal::committed`]).
+    release: Option<oneshot::Sender<()>>,
+    /// The carriers the generation dialed through, taken out of use when it halted.
+    ended: Mutex<Option<Ended>>,
 }
 
 impl Tunnel {
-    /// Serves `tun` and returns once `launch` does, by `deadline`, cleanup included. A `stop`
-    /// arriving meanwhile aborts `gate`, which ends the wait with `busy`. On any failure the
-    /// generation is halted, which closes `tun`.
+    /// Serves `tun` on the current carriers and waits until `launch` can serve it, by
+    /// `deadline`; a `stop` arriving meanwhile aborts `gate`, which ends the wait with `busy`. The
+    /// caller halts the generation after any failure, which closes `tun`.
     pub(crate) fn start(
         rt: &Handle,
         tun: Arc<Tun>,
@@ -257,7 +289,8 @@ impl Tunnel {
         launch: Launch,
         deadline: Instant,
         gate: &Arc<Gate>,
-    ) -> Result<Tunnel, ErrorCode> {
+    ) -> (Tunnel, Result<(), ErrorCode>) {
+        let (release, commit) = oneshot::channel();
         let tunnel = Tunnel {
             gen_: Gen {
                 session: Arc::new(Session::new(generation)),
@@ -266,22 +299,36 @@ impl Tunnel {
                 runtime: rt.clone(),
             },
             tun: Arc::clone(&tun),
+            outbounds: Arc::clone(&settings.outbounds),
+            release: Some(release),
+            ended: Mutex::new(None),
         };
-        let signal = StartSignal(Some(Arc::clone(gate)));
+        // The previous generation's carriers ended with it: this one dials on new ones.
+        if let Err(code) = settings.outbounds.prepare() {
+            return (tunnel, Err(code));
+        }
+        let seen = settings.panics.load(Relaxed);
+        let watch = watch(Arc::clone(&settings.panics), seen, tunnel.gen_.clone());
+        tunnel.gen_.spawn(watch);
+        let signal = StartSignal {
+            gate: Some(Arc::clone(gate)),
+            commit: Some(commit),
+        };
         let gen_ = tunnel.gen_.clone();
         tunnel.gen_.spawn(launch(tun, settings, gen_, signal));
-        match gate.wait(deadline) {
-            Ok(()) => Ok(tunnel),
-            Err(code) => {
-                tunnel.halt();
-                tunnel.wait(rt, deadline);
-                Err(code)
-            }
-        }
+        let ready = gate.wait(deadline);
+        (tunnel, ready)
     }
 
     pub fn session(&self) -> &Arc<Session> {
         &self.gen_.session
+    }
+
+    /// Lets the driver serve the tun: `start` committed the generation.
+    pub fn release(&mut self) {
+        if let Some(release) = self.release.take() {
+            let _ = release.send(());
+        }
     }
 
     #[cfg(test)]
@@ -289,19 +336,28 @@ impl Tunnel {
         &self.tun
     }
 
-    /// Cancels every task and closes the tun. Quick: it waits for at most one tun syscall.
+    /// Cancels every task, closes the tun, and takes the carriers the generation claimed out of
+    /// use, which [`Tunnel::wait`] shuts down, unless a later generation claimed them since.
+    /// Quick: it waits for at most one tun syscall, and builds nothing.
     pub fn halt(&self) {
         self.gen_.cancel.cancel();
-        self.gen_.tracker.close();
         self.tun.revoke();
+        if let Some(ended) = self.outbounds.end(self.gen_.session.generation) {
+            *lock(&self.ended) = Some(ended);
+        }
+        self.gen_.tracker.close();
     }
 
-    /// Waits for the halted generation's tasks until `deadline`, for [`STOP_WAIT`] at most. A
-    /// task still running then is left to finish on its own: the tun is closed already, and a
-    /// flow owns its socket, so none can reach a descriptor number reused later.
+    /// Shuts the halted generation's carriers down, then waits for its tasks, all until
+    /// `deadline` and for [`STOP_WAIT`] at most. The carriers come first: closing them needs no
+    /// worker of the core's runtime, so a task holding one cannot delay it. A task still running
+    /// at the end is left to finish on its own: the tun is closed already, and a flow owns its
+    /// socket, so none can reach a descriptor number reused later.
     pub fn wait(self, rt: &Handle, deadline: Instant) {
         let begun = Instant::now();
         let until = deadline.min(begun + STOP_WAIT);
+        let ended = lock(&self.ended).take();
+        let closed = ended.is_none_or(|e| e.finish(rt, until));
         let g = &self.gen_;
         let done = g.tracker.is_empty() || {
             // A runtime task reports the end, but the wait is timed on this thread, so it ends
@@ -317,13 +373,30 @@ impl Tunnel {
         };
         let ms = begun.elapsed().as_millis();
         let generation = g.session.generation;
-        if done {
+        if done && closed {
             log::info!("generation {generation} stopped in {ms} ms");
         } else {
             log::warn!(
-                "generation {generation}: {} tasks detached after {ms} ms",
+                "generation {generation}: {} tasks detached, carriers closed {closed}, {ms} ms",
                 g.tracker.len()
             );
+        }
+    }
+}
+
+/// Ends the generation once the core's threads have had a panic since `seen`. Its own tasks
+/// report theirs through [`Gen::spawn`] at once; honk's tasks for its carriers run on the
+/// carriers' threads and are spawned by honk, so their panics are only counted.
+async fn watch(panics: Arc<AtomicU64>, seen: u64, gen_: Gen) {
+    loop {
+        tokio::time::sleep(WATCH).await;
+        if panics.load(Relaxed) != seen {
+            log::error!(
+                "generation {}: a task on the core's runtime panicked",
+                gen_.session.generation
+            );
+            gen_.die();
+            return;
         }
     }
 }

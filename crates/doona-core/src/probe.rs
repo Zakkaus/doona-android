@@ -6,6 +6,7 @@
 
 use crate::api::lock;
 use crate::catalog::{Plan, Round, Shared, Target};
+use crate::outbounds::Carriers;
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use honk_config::node::Node;
@@ -21,6 +22,9 @@ use tokio_util::sync::CancellationToken;
 pub const DEFAULT_PROBE_URL: &str = "https://www.gstatic.com/generate_204";
 pub(crate) const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 pub(crate) const MAX_PARALLEL: usize = 32;
+
+/// A published registry and the carriers it dials on.
+pub(crate) type Published = (Arc<OutboundRuntimeRegistry>, Arc<Carriers>);
 
 /// What one probe goes through.
 pub(crate) struct ProbeJob {
@@ -64,19 +68,27 @@ impl Probes {
         }
     }
 
-    /// Runs the test `plan` on `rt`; `cancel` drops it with the tunnel generation it began in.
-    pub fn spawn(&self, rt: &Handle, shared: &Arc<Shared>, plan: Plan, cancel: CancellationToken) {
+    /// Runs the test `plan` on `rt`, each probe through the `published` registry on its
+    /// carriers; `cancel` drops it with the tunnel generation it began in.
+    pub fn spawn(
+        &self,
+        rt: &Handle,
+        shared: &Arc<Shared>,
+        plan: Plan,
+        cancel: CancellationToken,
+        published: Option<Published>,
+    ) {
         let round = plan.round();
-        let registry = shared.outbounds.registry();
         let proxies = shared.outbounds.proxies();
         let probes = plan.targets.into_iter().map(|target| {
             let job = ProbeJob {
                 node: Arc::clone(&target.entry.node),
-                registry: registry.clone(),
+                registry: published.as_ref().map(|(r, _)| Arc::clone(r)),
                 proxies: Arc::clone(&proxies),
                 url: Arc::clone(&self.url),
             };
-            self.one(Arc::clone(shared), job, target, cancel.clone())
+            let carriers = published.as_ref().map(|(_, c)| Arc::clone(c));
+            self.one(Arc::clone(shared), (job, carriers), target, cancel.clone())
         });
         let probes = futures_util::future::join_all(probes);
         let ended = Ended {
@@ -95,7 +107,7 @@ impl Probes {
     fn one(
         &self,
         shared: Arc<Shared>,
-        job: ProbeJob,
+        (job, carriers): (ProbeJob, Option<Arc<Carriers>>),
         target: Target,
         cancel: CancellationToken,
     ) -> impl Future<Output = ()> + Send + 'static {
@@ -105,7 +117,18 @@ impl Probes {
             let Ok(_permit) = permits.acquire_owned().await else {
                 return;
             };
-            let measured = tokio::time::timeout(PROBE_TIMEOUT, prober(job)).await;
+            let probe = prober(job);
+            let probe = async {
+                match &carriers {
+                    Some(carriers) => carriers.run(probe).await.ok().flatten(),
+                    None => probe.await,
+                }
+            };
+            let measured = tokio::time::timeout(PROBE_TIMEOUT, probe).await;
+            // Carriers that ended under the probe cut it short: it measured nothing.
+            if carriers.is_some_and(|c| c.ended()) {
+                return;
+            }
             let ms = measured
                 .ok()
                 .flatten()

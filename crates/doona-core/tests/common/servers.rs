@@ -1,5 +1,5 @@
-//! Loopback upstreams for the data-path tests: a TCP echo, a UDP echo, and a DNS-over-TCP
-//! resolver, each on its own threads.
+//! Loopback upstreams for the data-path tests: a TCP echo, a UDP echo, a DNS-over-TCP resolver,
+//! a UDP resolver and a subscription feed, each on its own threads.
 
 use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, UdpSocket};
@@ -12,6 +12,8 @@ pub struct Seen {
     pub connections: AtomicUsize,
     pub closed: AtomicUsize,
     pub datagrams: AtomicUsize,
+    /// HTTPS-record queries (type 65) a resolver received.
+    pub https: AtomicUsize,
 }
 
 /// Echoes every byte of each connection, then closes it after the client's FIN.
@@ -62,6 +64,27 @@ pub fn half_closer() -> (SocketAddr, mpsc::Receiver<Vec<u8>>) {
     (addr, rx)
 }
 
+/// Accepts connections and reads each until the client closes it, never answering: a dial stalled
+/// at its first reply.
+pub fn stall() -> (SocketAddr, Arc<Seen>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let seen = Arc::new(Seen::default());
+    let s = Arc::clone(&seen);
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(mut conn) = conn else { return };
+            s.connections.fetch_add(1, Relaxed);
+            let s = Arc::clone(&s);
+            std::thread::spawn(move || {
+                let _ = std::io::copy(&mut conn, &mut std::io::sink());
+                s.closed.fetch_add(1, Relaxed);
+            });
+        }
+    });
+    (addr, seen)
+}
+
 /// A loopback port with nothing listening.
 pub fn closed_port() -> SocketAddr {
     let l = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -78,6 +101,21 @@ pub fn udp_echo() -> (SocketAddr, Arc<Seen>) {
         while let Ok((n, from)) = socket.recv_from(&mut buf) {
             s.datagrams.fetch_add(1, Relaxed);
             let _ = socket.send_to(&buf[..n], from);
+        }
+    });
+    (addr, seen)
+}
+
+/// Counts the datagrams it receives and never answers: a QUIC handshake stalls there.
+pub fn udp_sink() -> (SocketAddr, Arc<Seen>) {
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let addr = socket.local_addr().unwrap();
+    let seen = Arc::new(Seen::default());
+    let s = Arc::clone(&seen);
+    std::thread::spawn(move || {
+        let mut buf = vec![0u8; 65535];
+        while socket.recv_from(&mut buf).is_ok() {
+            s.datagrams.fetch_add(1, Relaxed);
         }
     });
     (addr, seen)
@@ -164,4 +202,59 @@ fn serve_dns(mut conn: TcpStream, seen: &Seen) {
             return;
         }
     }
+}
+
+/// An HTTP server that answers every request with `body`, as a subscription feed.
+pub fn feed(body: String) -> SocketAddr {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(mut conn) = conn else { return };
+            let mut head = Vec::new();
+            let mut byte = [0u8; 1];
+            while !head.ends_with(b"\r\n\r\n") && conn.read_exact(&mut byte).is_ok() {
+                head.push(byte[0]);
+            }
+            let reply = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = conn.write_all(reply.as_bytes());
+        }
+    });
+    addr
+}
+
+/// A UDP resolver for one-question queries without other records: A gets 127.0.0.1, any other
+/// type no record. Counts the queries in `datagrams`, those for an HTTPS record also in `https`.
+pub fn udp_resolver() -> (SocketAddr, Arc<Seen>) {
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let addr = socket.local_addr().unwrap();
+    let seen = Arc::new(Seen::default());
+    let s = Arc::clone(&seen);
+    std::thread::spawn(move || {
+        let mut buf = vec![0u8; 512];
+        while let Ok((n, from)) = socket.recv_from(&mut buf) {
+            if n < 17 {
+                continue;
+            }
+            s.datagrams.fetch_add(1, Relaxed);
+            let mut a = buf[..n].to_vec();
+            a[2] |= 0x80;
+            a[3] = 0x80;
+            match u16_at(&a, n - 4) {
+                1 => {
+                    a[7] = 1;
+                    a.extend_from_slice(&[0xc0, 12, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 127, 0, 0, 1]);
+                }
+                65 => {
+                    s.https.fetch_add(1, Relaxed);
+                }
+                _ => {}
+            }
+            let _ = socket.send_to(&a, from);
+        }
+    });
+    (addr, seen)
 }

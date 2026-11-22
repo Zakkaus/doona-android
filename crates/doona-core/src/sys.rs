@@ -47,6 +47,14 @@ pub fn write(fd: RawFd, buf: &[u8]) -> io::Result<usize> {
     }
 }
 
+/// The index of the network interface `name`, as a scope id; none when there is no such one.
+pub fn interface_index(name: &str) -> Option<u32> {
+    let name = std::ffi::CString::new(name).ok()?;
+    // SAFETY: `name` is a valid NUL-terminated string for the call.
+    let index = unsafe { libc::if_nametoindex(name.as_ptr()) };
+    (index != 0).then_some(index)
+}
+
 /// 32 random bytes for the netstack's secret.
 pub fn random_secret() -> io::Result<[u8; 32]> {
     use std::io::Read;

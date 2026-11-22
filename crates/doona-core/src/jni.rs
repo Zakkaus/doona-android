@@ -16,7 +16,7 @@ use jni::objects::{JObject, JString};
 use jni::strings::JNIString;
 use jni::sys::{jint, jlong};
 use jni::{Env, NativeMethod, jni_str, native_method};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Mutex, Once, OnceLock};
 
 static CORE: OnceLock<Core> = OnceLock::new();
 /// Serializes the first `init`, which builds the runtime and reads the state.
@@ -72,12 +72,16 @@ impl<T: Default, E: std::error::Error> ErrorPolicy<T, E> for ThrowInternal {
     }
 }
 
-/// Logs a panic's location only: the payload may quote an address or a URL.
+/// Logs a panic's location only: the payload may quote an address or a URL. Once: the core
+/// installs its own hook over this one (`panics.rs`), which a second call would drop.
 fn install_panic_hook() {
-    std::panic::set_hook(Box::new(|info| match info.location() {
-        Some(at) => log::error!("panic at {}:{}", at.file(), at.line()),
-        None => log::error!("panic"),
-    }));
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        std::panic::set_hook(Box::new(|info| match info.location() {
+            Some(at) => log::error!("panic at {}:{}", at.file(), at.line()),
+            None => log::error!("panic"),
+        }));
+    });
 }
 
 /// Only the core's own records reach logcat. honk's `tracing` events arrive as `log` records

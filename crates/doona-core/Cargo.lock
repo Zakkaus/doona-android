@@ -609,6 +609,7 @@ dependencies = [
  "libc",
  "log",
  "percent-encoding",
+ "quinn",
  "serde",
  "serde_json",
  "tokio",
