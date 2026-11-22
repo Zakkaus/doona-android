@@ -280,6 +280,11 @@ impl Tunnel {
         &self.gen_.session
     }
 
+    #[cfg(test)]
+    pub(crate) fn tun(&self) -> &Arc<Tun> {
+        &self.tun
+    }
+
     /// Cancels every task and closes the tun. Quick: it waits for at most one tun syscall.
     pub fn halt(&self) {
         self.gen_.cancel.cancel();

@@ -247,6 +247,8 @@ impl Core {
     /// Ends the running generation, if any, within 1 s, and cancels a `start` under way. Every
     /// tun the core held is closed when it returns.
     pub fn stop(&self) {
+        // Taken first, so the teardown below spends the same second as the wait after it.
+        let deadline = Instant::now() + STOP_WAIT;
         let halted = {
             let mut life = lock(&self.life);
             match std::mem::replace(&mut *life, Life::Stopped) {
@@ -263,7 +265,7 @@ impl Core {
             }
         };
         if let Some(tunnel) = halted {
-            tunnel.wait(self.runtime.handle(), Instant::now() + STOP_WAIT);
+            tunnel.wait(self.runtime.handle(), deadline);
         }
     }
 

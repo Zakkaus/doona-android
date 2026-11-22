@@ -331,3 +331,30 @@ fn stop_waits_for_a_late_start_to_close_its_tun() {
     assert!(closed(&probe));
     assert_eq!(starter.join().unwrap(), Err(ErrorCode::Internal));
 }
+
+#[test]
+fn stop_spends_one_second_on_teardown_and_waiting_together() {
+    let dir = TempDir::new("api-slow-teardown");
+    let core = core(&dir, stuck, Duration::from_secs(10));
+    let (dup, probe) = tun();
+    core.start(dup, CONFIG).unwrap();
+    let tun = match &*lock(&core.life) {
+        Life::Running(tunnel) => Arc::clone(tunnel.tun()),
+        _ => panic!("not running"),
+    };
+    // The revoke in stop waits 200 ms for the tun's lock; the stuck driver then outlives the
+    // wait for its tasks.
+    let (held_tx, held) = std::sync::mpsc::channel();
+    let holder = std::thread::spawn(move || {
+        let _slow = tun.hold();
+        held_tx.send(()).unwrap();
+        std::thread::sleep(Duration::from_millis(200));
+    });
+    held.recv().unwrap();
+    let begun = Instant::now();
+    core.stop();
+    let took = begun.elapsed();
+    holder.join().unwrap();
+    assert!(closed(&probe));
+    assert!(took < Duration::from_secs(1), "{took:?}");
+}
