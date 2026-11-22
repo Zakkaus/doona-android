@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
@@ -65,7 +66,9 @@ fun DoonaSettingsRow(
 
 @Composable
 private fun FirstLine(content: @Composable () -> Unit) {
-    Box(Modifier.height(DoonaSettingsRowDefaults.titleLine), contentAlignment = Alignment.Center) { content() }
+    // The title's first line: 26 dp, or the line a large font makes of it.
+    val line = max(DoonaSettingsRowDefaults.titleLine, lineHeightOf(DoonaTheme.type.rowTitle))
+    Box(Modifier.height(line), contentAlignment = Alignment.Center) { content() }
 }
 
 /** A settings row that opens something: an optional [value] in secondary text, then the chevron. */

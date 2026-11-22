@@ -1,5 +1,6 @@
 package dev.doona.android.testing
 
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.LayoutInfo
 import androidx.compose.ui.layout.positionInRoot
@@ -36,6 +37,10 @@ class LayoutBox(
     internal val role: LayoutRole? get() = semantics?.config?.getOrNull(LayoutRoleKey)
     val text: String? get() = semantics?.config?.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }
     val actionable get() = semantics?.config?.contains(SemanticsActions.OnClick) == true
+
+    /** The box the node's semantics report, in dp: a merging node's is the box inside the modifiers that come before its click. */
+    val semanticsBounds: Rect?
+        get() = semantics?.boundsInRoot?.let { Rect(it.left / density, it.top / density, it.right / density, it.bottom / density) }
 
     /** The part of the node a pointer reaches: its box grown to Compose's 48 dp minimum, in dp. */
     val touchSize: Pair<Float, Float>?

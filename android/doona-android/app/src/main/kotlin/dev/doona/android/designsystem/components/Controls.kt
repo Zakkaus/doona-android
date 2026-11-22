@@ -5,20 +5,21 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -92,16 +93,17 @@ fun DoonaRadio(selected: Boolean, modifier: Modifier = Modifier) {
 
 /**
  * Revolut's segmented control (measured §8): a 36 dp pill track, visible on any surface, [items] in equal parts, the
- * [selected] one on a raised pill 2 dp inside it. Each part is a 48 dp target; the press lights only its pill.
+ * [selected] one on a raised pill 2 dp inside it. Each part is a 48 dp target; the press lights only its pill. Those are
+ * minimums: a label that a large font makes taller grows the track and the pill with it.
  */
 @Composable
 fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val colors = DoonaTheme.colors
     val chart = DoonaTheme.chart
     val touch = DoonaTheme.size.touch
-    Box(modifier.layoutRole(LayoutRole.Segmented).fillMaxWidth().height(touch), contentAlignment = Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(chart.segment).clip(CircleShape).background(colors.segmentTrack))
-        Row(Modifier.fillMaxSize().selectableGroup()) {
+    Box(modifier.layoutRole(LayoutRole.Segmented).fillMaxWidth().heightIn(min = touch), contentAlignment = Alignment.Center) {
+        Box(Modifier.matchParentSize().padding(vertical = (touch - chart.segment) / 2).clip(CircleShape).background(colors.segmentTrack))
+        Row(Modifier.fillMaxWidth().heightIn(min = touch).height(IntrinsicSize.Min).selectableGroup()) {
             items.forEachIndexed { i, label ->
                 val source = remember { MutableInteractionSource() }
                 Box(
@@ -161,7 +163,7 @@ fun DoonaRangeChip(label: String, selected: Boolean, onClick: () -> Unit, modifi
         modifier
             .layoutRole(LayoutRole.Chip)
             .minimumInteractiveComponentSize()
-            .height(DoonaTheme.chart.range)
+            .heightIn(min = DoonaTheme.chart.range)
             .then(if (selected) Modifier.raised(CircleShape) else Modifier.clip(CircleShape))
             .selectable(selected, interactionSource = null, indication = ripple(color = colors.stateLayer), role = Role.Tab, onClick = onClick)
             .padding(horizontal = DoonaTheme.chart.rangePad),
@@ -186,20 +188,42 @@ fun DoonaToolDisc(@DrawableRes icon: Int, label: String, onClick: () -> Unit, mo
 }
 
 /**
- * A chart's two tool discs at the end of its range row (measured §8): 35 dp, 8 dp apart. Each keeps a 48 dp target, so
- * the two targets overlap by a few dp between the discs and stick out past the outer edge by [toolOverhang].
+ * A chart's two tool discs at the end of its range row (measured §8): 35 dp, 8 dp apart. Each keeps a 48 dp target, and
+ * the two targets meet in the middle of the gap rather than overlap (an overlap leaves each less than 48 dp of its own,
+ * which the accessibility check fails), so each target reaches past the outer edge of its disc by [toolOverhang].
  */
 @Composable
 fun DoonaChartTools(first: DoonaBarAction, second: DoonaBarAction, modifier: Modifier = Modifier) {
-    val chart = DoonaTheme.chart
-    Box(modifier.width(chart.roundButton * 2 + chart.roundGap + toolOverhang() * 2)) {
-        DoonaToolDisc(first.icon, first.label, first.onClick, Modifier.align(Alignment.CenterStart))
-        DoonaToolDisc(second.icon, second.label, second.onClick, Modifier.align(Alignment.CenterEnd))
+    val half = DoonaTheme.chart.roundGap / 2
+    Row(modifier) {
+        ToolTarget(first, PaddingValues(start = toolOverhang(), end = half))
+        ToolTarget(second, PaddingValues(start = half, end = toolOverhang()))
     }
 }
 
-/** How far a 48 dp target reaches past its 35 dp tool disc: a row that ends in [DoonaChartTools] pulls in by this. */
-fun toolOverhang() = (DoonaTheme.size.touch - DoonaTheme.chart.roundButton) / 2
+/** One of [DoonaChartTools]' discs in its 48 dp target, padded by [padding] off the target's sides; only the disc lights up. */
+@Composable
+private fun ToolTarget(action: DoonaBarAction, padding: PaddingValues) {
+    val source = remember { MutableInteractionSource() }
+    val chart = DoonaTheme.chart
+    Box(
+        Modifier
+            .layoutRole(LayoutRole.Button)
+            .size(DoonaTheme.size.touch)
+            .clickable(interactionSource = source, indication = null, role = Role.Button, onClick = action.onClick)
+            .semantics { contentDescription = action.label }
+            .padding(padding),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier.size(chart.roundButton).clip(CircleShape).background(DoonaTheme.colors.roundButton).indication(source, ripple(color = DoonaTheme.colors.stateLayer)),
+            contentAlignment = Alignment.Center,
+        ) { DoonaGlyph(action.icon, chart.roundGlyph, DoonaTheme.colors.text) }
+    }
+}
+
+/** How far a chart tool's 48 dp target reaches past the outer edge of its disc: a row that ends in [DoonaChartTools] pulls in by this. */
+fun toolOverhang() = DoonaTheme.size.touch - DoonaTheme.chart.roundButton - DoonaTheme.chart.roundGap / 2
 
 /**
  * A tag on a card's header or after a name (`v0.2`), Revolut's tag chips (measured §8): full round, the value pill's
@@ -213,7 +237,7 @@ fun DoonaTag(text: String, modifier: Modifier = Modifier, onClick: (() -> Unit)?
         modifier
             .layoutRole(LayoutRole.Tag)
             .then(if (onClick != null) Modifier.minimumInteractiveComponentSize() else Modifier)
-            .height(chart.pill)
+            .heightIn(min = chart.pill)
             .clip(CircleShape)
             .background(DoonaTheme.colors.pill)
             .then(onClick?.let { Modifier.press(CircleShape, Role.Button, it) } ?: Modifier)

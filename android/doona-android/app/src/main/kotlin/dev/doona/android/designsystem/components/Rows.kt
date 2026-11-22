@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -131,7 +130,7 @@ fun DoonaSeeAll(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
         modifier
             .layoutRole(LayoutRole.ListRow)
             .fillMaxWidth()
-            .height(DoonaTheme.size.seeAll)
+            .heightIn(min = DoonaTheme.size.seeAll)
             .press(shape, Role.Button, onClick)
             .padding(horizontal = DoonaTheme.spacing.rowPadding),
         contentAlignment = Alignment.Center,
@@ -147,7 +146,7 @@ fun DoonaStatRow(label: String, value: String, modifier: Modifier = Modifier) {
         modifier
             .layoutRole(LayoutRole.ListRow, mergeDescendants = true)
             .fillMaxWidth()
-            .height(DoonaTheme.size.rowOneLine)
+            .heightIn(min = DoonaTheme.size.rowOneLine)
             .padding(horizontal = DoonaTheme.spacing.rowPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {

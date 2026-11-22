@@ -69,7 +69,7 @@ fun DoonaCardHeader(title: String, modifier: Modifier = Modifier, onClick: (() -
             .layoutRole(LayoutRole.Heading)
             .padding(top = DoonaTheme.spacing.headerInset)
             .fillMaxWidth()
-            .height(DoonaTheme.size.headerRow)
+            .heightIn(min = DoonaTheme.size.headerRow)
             .then(press)
             .padding(horizontal = DoonaTheme.spacing.rowPadding),
         verticalAlignment = Alignment.CenterVertically,

@@ -94,8 +94,12 @@ fun DoonaScrollPage(
 /** Whether the bar's title of a large-title page shows: the large title has scrolled under the bar (for tests). */
 internal val BarTitleShownKey = SemanticsPropertyKey<Boolean>("DoonaBarTitleShown")
 
-/** From the screen's top to the bar's controls' bottom, under the status bar: what the content keeps free above it. */
-fun barHeight() = DoonaTheme.chrome.barTop + DoonaTheme.chrome.control
+/**
+ * From the screen's top to the bar's controls' bottom, under the status bar: what the content keeps free above it. A
+ * title that a large font makes taller than the controls' 48 dp target makes the bar taller by the difference.
+ */
+@Composable
+fun barHeight() = DoonaTheme.chrome.barTop + DoonaTheme.chrome.control + (lineHeightOf(DoonaTheme.type.barTitle) - DoonaTheme.size.touch).coerceAtLeast(DoonaTheme.spacing.none)
 
 /** The room the status bar and the bar's controls take at the top of a scrolling page's content. */
 @Composable

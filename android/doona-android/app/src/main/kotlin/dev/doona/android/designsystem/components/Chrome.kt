@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -66,7 +66,7 @@ fun DoonaBar(glass: GlassBackdrop, shade: () -> Float, modifier: Modifier = Modi
                 .fillMaxWidth()
                 .windowInsetsPadding(insets.only(WindowInsetsSides.Top))
                 .padding(top = chrome.barTop - chrome.touchPad, bottom = chrome.stripBelow - chrome.touchPad + chrome.stripFade)
-                .height(DoonaTheme.size.touch),
+                .heightIn(min = DoonaTheme.size.touch),
             contentAlignment = Alignment.CenterStart,
             content = content,
         )
@@ -108,7 +108,7 @@ fun DoonaHomeTopBar(
     val chrome = DoonaTheme.chrome
     DoonaBar(glass, shade, modifier, insets) {
         // Each control keeps a 48 dp target round its 44 dp disc, so the gaps between targets are 4 dp narrower.
-        Row(Modifier.fillMaxSize().padding(horizontal = DoonaTheme.spacing.gutter - chrome.touchPad), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = DoonaTheme.spacing.gutter - chrome.touchPad), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.minimumInteractiveComponentSize().size(chrome.control).glassControl(glass, CircleShape), contentAlignment = Alignment.Center) {
                 Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(chrome.markGlyph))
             }
@@ -128,7 +128,7 @@ private fun SearchPill(glass: GlassBackdrop, hint: String, onClick: () -> Unit, 
     Row(
         modifier
             .minimumInteractiveComponentSize()
-            .height(chrome.control)
+            .heightIn(min = chrome.control)
             .glassControl(glass, CircleShape)
             .press(CircleShape, Role.Button, onClick)
             .padding(start = chrome.searchInset),

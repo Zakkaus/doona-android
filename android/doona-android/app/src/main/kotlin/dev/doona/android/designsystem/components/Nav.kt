@@ -9,14 +9,16 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -80,7 +82,9 @@ fun DoonaFloatingNav(
         Row(
             Modifier
                 .layoutRole(LayoutRole.Chrome)
-                .size(width, height)
+                .width(width)
+                // Expanded, the capsule is 60 dp at least and grows with a label that a large font makes taller.
+                .then(if (shrink == 0f) Modifier.heightIn(min = height).height(IntrinsicSize.Min) else Modifier.height(height))
                 .softShadow(CircleShape, DoonaTheme.elevation.nav, DoonaTheme.elevation.navDrop, DoonaElevation.NAV_ALPHA)
                 .glass(glass, CircleShape, DoonaGlassTint(lerp(tint.over, tint.solid, shrink), tint.solid))
                 .then(rim)
@@ -119,7 +123,7 @@ private fun NavItem(item: DoonaNavItem, selected: Boolean, shrink: Float, modifi
                 item.label,
                 DoonaTheme.type.navLabel,
                 Modifier
-                    .height(lerp(chrome.navLabel, DoonaNavDefaults.none, shrink))
+                    .then(if (shrink == 0f) Modifier.heightIn(min = chrome.navLabel) else Modifier.height(lerp(chrome.navLabel, DoonaNavDefaults.none, shrink)))
                     .alpha((1 - 2 * shrink).coerceAtLeast(0f))
                     .clearAndSetSemantics {},
                 color = ink,
@@ -141,7 +145,14 @@ fun navBottom(insets: WindowInsets = DoonaTheme.insets): Dp {
  * 28 dp between it and the last card once the page is scrolled to its end.
  */
 @Composable
-fun navClearance(insets: WindowInsets = DoonaTheme.insets): Dp = navBottom(insets) + DoonaTheme.chrome.navHeight + DoonaTheme.chrome.navGap
+fun navClearance(insets: WindowInsets = DoonaTheme.insets): Dp = navBottom(insets) + navHeight() + DoonaTheme.chrome.navGap
+
+/** The expanded capsule's height: 60 dp, or its glyph over a label that a large font makes taller, inside its pill inset. */
+@Composable
+fun navHeight(): Dp {
+    val chrome = DoonaTheme.chrome
+    return max(chrome.navHeight, chrome.navPillInset * 2 + chrome.navGlyph + chrome.navLabelGap + max(chrome.navLabel, lineHeightOf(DoonaTheme.type.navLabel)))
+}
 
 /**
  * Whether the capsule is collapsed for [scroll]: from the moment the content moves up (scrolls down) until it moves back

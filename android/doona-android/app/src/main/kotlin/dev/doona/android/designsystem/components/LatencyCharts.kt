@@ -77,8 +77,9 @@ fun DoonaLatencyHistory(
         val chip = picked?.let { plot.chip(selected, it, look.chip) }
         axis.median(this, frame, median, look.reference, look.pill)
         history.forEachIndexed { i, ms -> plot.dot(i, ms?.let(frame::y), look.dots[i], look.missed) }
+        var shownTo = Float.NEGATIVE_INFINITY
         times.forEachIndexed { i, time ->
-            if (i != selected && i % 2 == times.lastIndex % 2) plot.time(i, measurer.measure(time, look.label), clearOf = chip)
+            if (i != selected && i % 2 == times.lastIndex % 2) shownTo = plot.time(i, measurer.measure(time, look.label), clearOf = chip, after = shownTo)
         }
         picked?.let { plot.time(selected, it, clearOf = null) }
     }
@@ -235,12 +236,18 @@ private class HistoryPlot(private val scope: DrawScope, private val columns: Col
         }
     }
 
-    /** A test's time centred under its dot, unless it would reach into the chip at [clearOf]. */
-    fun time(i: Int, text: TextLayoutResult, clearOf: ClosedFloatingPointRange<Float>?) = with(scope) {
+    /**
+     * A test's time centred under its dot, unless it would reach into the chip at [clearOf] or come closer than a chip's
+     * padding to the time drawn before it, which ends at [after] (a large font widens the times); returns where the last
+     * time drawn ends.
+     */
+    fun time(i: Int, text: TextLayoutResult, clearOf: ClosedFloatingPointRange<Float>?, after: Float = Float.NEGATIVE_INFINITY): Float = with(scope) {
         val start = x(i) - text.size.width / 2
         val end = start + text.size.width
         val top = chipTop + (chipHeight - text.size.height) / 2
-        if (clearOf == null || end < clearOf.start || start > clearOf.endInclusive) drawText(text, topLeft = Offset(start, top))
+        val clear = (clearOf == null || end < clearOf.start || start > clearOf.endInclusive) && start >= after + d.chipPad.toPx()
+        if (clear) drawText(text, topLeft = Offset(start, top))
+        if (clear) end else after
     }
 }
 
