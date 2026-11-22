@@ -228,7 +228,8 @@ fun toolOverhang() = DoonaTheme.size.touch - DoonaTheme.chart.roundButton - Doon
 /**
  * A tag on a card's header or after a name (`v0.2`), Revolut's tag chips (measured §8): full round, the value pill's
  * fill and secondary ink, flat. It is not the floating value pill: tags cast no shadow (N-04). With [onClick] it opens
- * something and keeps a 48 dp target.
+ * something and keeps a 48 dp target with the chip centred in it. A row that holds both kinds centres its items
+ * (`Alignment.CenterVertically`); aligned at the top, the plain tag sits higher than the tappable one.
  */
 @Composable
 fun DoonaTag(text: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {

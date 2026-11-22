@@ -73,7 +73,7 @@ internal fun ControlsGallery() = GalleryPage("Controls") {
         }
     }
     Section("DoonaTag, tappable and plain") {
-        Row(horizontalArrangement = Arrangement.spacedBy(space.item)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(space.item), verticalAlignment = Alignment.CenterVertically) {
             DoonaTag("Auto", onClick = {})
             DoonaTag("HK")
         }

@@ -39,7 +39,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -190,12 +193,22 @@ fun DoonaBackDisc(onBack: () -> Unit, modifier: Modifier = Modifier) {
 
 /**
  * A round action (A03, measured §6): a 48 dp disc with a 24 dp [icon], and its [label] 17 sp semibold 8 dp under it;
- * only the disc lights up when pressed, and a screen reader reads the label as the button's name.
+ * only the disc lights up when pressed. A screen reader hears the disc and its label as one button named by the label:
+ * the disc's click is a node of its own, so merging the column left that button unnamed and the label a separate stop.
  */
 @Composable
 fun DoonaRoundAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val size = DoonaTheme.size
-    Column(modifier.layoutRole(LayoutRole.Button).semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
+    val action = onClick
+    val spoken = Modifier.clearAndSetSemantics {
+        contentDescription = label
+        role = Role.Button
+        onClick(label = null) {
+            action()
+            true
+        }
+    }
+    Column(modifier.layoutRole(LayoutRole.Button).then(spoken), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
                 .size(size.actionDisc)

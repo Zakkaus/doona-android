@@ -9,7 +9,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.github.takahirom.roborazzi.checkRoboAccessibility
 import dev.doona.android.testing.GalleryVariants
 import dev.doona.android.testing.PhoneFrame
 import dev.doona.android.testing.RvGalleryVariants
@@ -17,6 +16,7 @@ import dev.doona.android.testing.ScreenCase
 import dev.doona.android.testing.ScreenVariants
 import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.Variant
+import dev.doona.android.testing.checkAccessibility
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.galleryCases
 import dev.doona.android.testing.rvGalleryScreenCases
@@ -57,7 +57,7 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
         val image = compose.onRoot().captureToImage()
         assertTrue("$name-${variant.name}: the content area shows nothing but fills", image.showsContent(compose.density.density))
         image.asAndroidBitmap().captureRoboImage("$dir/$name-${variant.name}.png")
-        compose.onRoot().checkRoboAccessibility()
+        compose.onRoot().checkAccessibility()
     }
 
     companion object {

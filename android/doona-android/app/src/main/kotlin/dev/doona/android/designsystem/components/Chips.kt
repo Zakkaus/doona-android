@@ -41,7 +41,7 @@ fun DoonaStatusChip(@DrawableRes icon: Int, label: String, color: Color, modifie
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(d.gap),
     ) {
-        DoonaGlyph(icon, d.glyph, color)
+        DoonaGlyph(icon, DoonaTheme.size.inlineGlyph, color)
         LineText(label, DoonaTheme.type.action, color = color)
     }
 }
@@ -77,7 +77,7 @@ internal fun DrawScope.pillSize(text: TextLayoutResult) = Size(text.size.width +
 /** The value pill drawn on a canvas at [topLeft], with [text] centred in it; the shadow is two soft steps under it. */
 internal fun DrawScope.drawValuePill(text: TextLayoutResult, topLeft: Offset, ink: PillInk) {
     val size = pillSize(text)
-    val radius = CornerRadius(DoonaStatusChipDefaults.pillRadius.toPx())
+    val radius = CornerRadius(DoonaTheme.chart.pillRadius.toPx())
     if (ink.shadow) {
         val step = DoonaElevation.pill.toPx() / 2
         drawRoundRect(Color.Black.copy(alpha = DoonaElevation.PILL_FAR_ALPHA), topLeft + Offset(0f, step * 2), size, radius)
@@ -87,11 +87,9 @@ internal fun DrawScope.drawValuePill(text: TextLayoutResult, topLeft: Offset, in
     drawText(text, topLeft = topLeft + Offset((size.width - text.size.width) / 2, (size.height - text.size.height) / 2))
 }
 
-/** The status chip's own metrics (the sample's 'Market closed' chip), and the value pill's corner. */
+/** The status chip's own metrics (the sample's 'Market closed' chip). */
 internal object DoonaStatusChipDefaults {
     val height = 32.dp
     val padH = 12.dp
-    val glyph = 16.dp
     val gap = 6.dp
-    val pillRadius = 8.dp
 }

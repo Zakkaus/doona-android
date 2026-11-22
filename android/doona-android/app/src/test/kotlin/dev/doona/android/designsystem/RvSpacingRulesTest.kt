@@ -32,6 +32,7 @@ import dev.doona.android.designsystem.components.DoonaNavItem
 import dev.doona.android.designsystem.components.DoonaScrollPage
 import dev.doona.android.designsystem.components.DoonaSectionTitle
 import dev.doona.android.designsystem.components.DoonaStatRow
+import dev.doona.android.designsystem.components.DoonaTag
 import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.components.LocalGlassBlur
@@ -182,6 +183,27 @@ class RvSpacingRulesTest {
     fun aBackDiscOffTheGutterFails() {
         compose.setDoonaContent { Column(Modifier.background(Color.White)) { Box(Modifier.fillMaxWidth()) { DoonaBackDisc(onBack = {}, Modifier.offset(x = 4.dp)) } } }
         failsOnce(RvSpacingRules.backDisc(compose.layoutTree(), layout), "back disc")
+    }
+
+    /** A plain tag and a tappable one in a row, centred on one line or aligned at the top. */
+    @Composable
+    private fun Tags(centred: Boolean) = Column(Modifier.background(Color.White).padding(space.gutter)) {
+        Row(verticalAlignment = if (centred) Alignment.CenterVertically else Alignment.Top) {
+            DoonaTag("v0.2")
+            DoonaTag("手動選擇", onClick = {})
+        }
+    }
+
+    @Test
+    fun tagsOnOneCentreLinePass() {
+        compose.setDoonaContent { Tags(centred = true) }
+        assertEquals(emptyList<String>(), RvSpacingRules.chipLines(compose.layoutTree()))
+    }
+
+    @Test
+    fun tagsAlignedAtTheTopFail() {
+        compose.setDoonaContent { Tags(centred = false) }
+        failsOnce(RvSpacingRules.chipLines(compose.layoutTree()), "side by side")
     }
 
     /** A tab home with the nav, its content ending in [end]. */

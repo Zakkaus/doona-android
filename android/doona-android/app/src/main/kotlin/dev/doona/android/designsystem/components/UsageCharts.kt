@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -28,7 +27,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.DoonaUsage
 
@@ -127,62 +125,6 @@ private fun LegendItem(color: Color, text: String) {
         Spacer(Modifier.width(DoonaUsage.legendGap))
         LineText(text, DoonaTheme.type.tileCaption, color = DoonaTheme.colors.textSecondary)
     }
-}
-
-/** One part of a [DoonaDonut]: its [color], the lighter step of it for what is left ([rest]), what it [used] of its [total]. */
-class DoonaDonutSegment(val color: Color, val rest: Color, val used: Long, val total: Long)
-
-/**
- * Revolut's 'Total assets' ring: an 8 dp ring with butt ends and a segment per part of [segments], each as long as its
- * share of all the totals: the used part in the segment's colour, then what is left in its lighter step, every two
- * parts 2 dp apart in the card's colour (S05). With nothing to show it is a full ring on the track, as Revolut draws a
- * single category.
- */
-@Composable
-fun DoonaDonut(segments: List<DoonaDonutSegment>, modifier: Modifier = Modifier) {
-    val track = DoonaTheme.colors.track
-    val d = DoonaDonutDefaults
-    Canvas(modifier.layoutRole(LayoutRole.Chart).size(d.ring)) {
-        val stroke = d.stroke.toPx()
-        val inset = Offset(stroke / 2, stroke / 2)
-        val box = Size(size.width - stroke, size.height - stroke)
-        val sum = segments.sumOf { it.total }.toFloat()
-        if (sum <= 0f) {
-            drawArc(track, 0f, d.FULL_TURN, false, inset, box, style = Stroke(stroke))
-            return@Canvas
-        }
-        val gap = Math.toDegrees(d.gap.toPx() / (box.width / 2).toDouble()).toFloat()
-        val arc = { color: Color, from: Float, sweep: Float -> if (sweep > 0f) drawArc(color, from, sweep, false, inset, box, style = Stroke(stroke)) }
-        var start = d.START_ANGLE
-        segments.forEach { s ->
-            val sweep = d.FULL_TURN * s.total / sum
-            val begin = start + gap / 2
-            val usable = (sweep - gap).coerceAtLeast(0f)
-            val share = (s.used.toFloat() / s.total).coerceIn(0f, 1f)
-            when {
-                share >= 1f -> arc(s.color, begin, usable)
-
-                share <= 0f -> arc(s.rest, begin, usable)
-
-                else -> {
-                    // The used part and the rest each give up half a gap where they meet.
-                    val used = usable * share
-                    arc(s.color, begin, used - gap / 2)
-                    arc(s.rest, begin + used + gap / 2, usable - used - gap / 2)
-                }
-            }
-            start += sweep
-        }
-    }
-}
-
-/** The donut's own metrics (the sample's 統計 quota ring). */
-internal object DoonaDonutDefaults {
-    val ring = 132.dp
-    val stroke = 8.dp
-    val gap = 2.dp
-    const val FULL_TURN = 360f
-    const val START_ANGLE = -90f
 }
 
 /**

@@ -109,6 +109,7 @@ object DoonaChart {
     val dottedPitch = ChartScale.dottedPitch
     val pill = ChartScale.pill
     val pillPadH = ChartScale.pillPadH
+    val pillRadius = ChartScale.pillRadius
     val pillInset = ChartScale.pillInset
     val pillClear = ChartScale.pillClear
     val range = ChartScale.range

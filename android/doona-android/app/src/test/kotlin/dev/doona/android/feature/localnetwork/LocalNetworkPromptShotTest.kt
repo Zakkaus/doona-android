@@ -12,7 +12,6 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.github.takahirom.roborazzi.checkRoboAccessibility
 import dev.doona.android.designsystem.components.DoonaConfirmKind
 import dev.doona.android.designsystem.components.DoonaConfirmPanel
 import dev.doona.android.designsystem.theme.DoonaTheme
@@ -21,6 +20,7 @@ import dev.doona.android.testing.Light
 import dev.doona.android.testing.PhoneFrame
 import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.Variant
+import dev.doona.android.testing.checkAccessibility
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.showsContent
 import org.junit.Assert.assertTrue
@@ -56,7 +56,7 @@ class LocalNetworkPromptShotTest(private val prompt: LocalNetworkPrompt, private
         val image = compose.onRoot().captureToImage()
         assertTrue("$name: the content area shows nothing but fills", image.showsContent(compose.density.density))
         image.asAndroidBitmap().captureRoboImage("$dir/$name.png")
-        compose.onRoot().checkRoboAccessibility()
+        compose.onRoot().checkAccessibility()
     }
 
     companion object {

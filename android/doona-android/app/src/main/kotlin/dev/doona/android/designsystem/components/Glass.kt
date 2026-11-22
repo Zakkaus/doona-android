@@ -118,8 +118,4 @@ private fun DrawScope.drawBackdrop(glass: GlassBackdrop, blur: GraphicsLayer, of
 /** A soft drop shadow of [shape] under a glass surface or a raised control: in light only, as the theme says. */
 @Composable
 fun Modifier.softShadow(shape: Shape, radius: Dp, drop: Dp, opacity: Float): Modifier =
-    if (DoonaTheme.colors.glassShadow) dropShadow(shape, Shadow(radius, Color.Black, offset = DpOffset(DoonaGlassDefaults.noOffset, drop), alpha = opacity)) else this
-
-internal object DoonaGlassDefaults {
-    val noOffset = Dp(0f)
-}
+    if (DoonaTheme.colors.glassShadow) dropShadow(shape, Shadow(radius, Color.Black, offset = DpOffset.Zero.copy(y = drop), alpha = opacity)) else this

@@ -43,7 +43,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.max
 import dev.doona.android.designsystem.theme.DoonaElevation
@@ -118,12 +117,12 @@ private fun NavItem(item: DoonaNavItem, selected: Boolean, shrink: Float, modifi
     ) {
         DoonaGlyph(item.icon, lerp(chrome.navGlyph, chrome.navCollapsedGlyph, shrink), ink)
         if (shrink < 1f) {
-            Spacer(Modifier.height(lerp(chrome.navLabelGap, DoonaNavDefaults.none, shrink)))
+            Spacer(Modifier.height(chrome.navLabelGap * (1f - shrink)))
             LineText(
                 item.label,
                 DoonaTheme.type.navLabel,
                 Modifier
-                    .then(if (shrink == 0f) Modifier.heightIn(min = chrome.navLabel) else Modifier.height(lerp(chrome.navLabel, DoonaNavDefaults.none, shrink)))
+                    .then(if (shrink == 0f) Modifier.heightIn(min = chrome.navLabel) else Modifier.height(chrome.navLabel * (1f - shrink)))
                     .alpha((1 - 2 * shrink).coerceAtLeast(0f))
                     .clearAndSetSemantics {},
                 color = ink,
@@ -173,8 +172,4 @@ fun rememberNavCollapsed(scroll: ScrollState): Boolean {
         }
     }
     return collapsed
-}
-
-internal object DoonaNavDefaults {
-    val none = 0.dp
 }

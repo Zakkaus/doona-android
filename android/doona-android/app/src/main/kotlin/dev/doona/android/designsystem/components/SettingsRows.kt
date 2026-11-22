@@ -58,7 +58,7 @@ fun DoonaSettingsRow(
             subtitle?.let { LineText(it, DoonaTheme.type.rowSub, color = DoonaTheme.colors.textSecondary, maxLines = d.SUBTITLE_LINES) }
         }
         trailing?.let {
-            Spacer(Modifier.width(d.trailingGap))
+            Spacer(Modifier.width(DoonaTheme.spacing.trailingGap))
             FirstLine(it)
         }
     }
@@ -78,7 +78,7 @@ fun DoonaNavRow(title: String, onClick: () -> Unit, modifier: Modifier = Modifie
         Row(verticalAlignment = Alignment.CenterVertically) {
             value?.let {
                 LineText(it, DoonaTheme.type.settingValue, color = DoonaTheme.colors.textSecondary)
-                Spacer(Modifier.width(DoonaSettingsRowDefaults.valueGap))
+                Spacer(Modifier.width(DoonaTheme.spacing.tight))
             }
             DoonaChevron()
         }
@@ -125,8 +125,6 @@ internal object DoonaSettingsRowDefaults {
 
     /** The first line of a row's title: the glyph and the trailing control centre on it. */
     val titleLine = 26.dp
-    val trailingGap = 12.dp
-    val valueGap = 4.dp
     const val TITLE_LINES = 2
     const val SUBTITLE_LINES = 2
 }

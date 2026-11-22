@@ -18,7 +18,7 @@ object RvSpacingRules {
 
     internal fun check(root: LayoutBox, layout: GalleryLayout): List<String> =
         SpacingRules.detected(root, layout.shows) + rowHeights(root) + leading(root, layout) + trailing(root, layout) + cardPadding(root) +
-            sectionTitles(root, layout) + targets(root) + backDisc(root, layout) + navClearance(root, layout)
+            sectionTitles(root, layout) + targets(root) + chipLines(root) + backDisc(root, layout) + navClearance(root, layout)
 
     private fun near(a: Float, b: Float) = abs(a - b) <= TOL
 
@@ -99,6 +99,17 @@ object RvSpacingRules {
         val holder = root.parentOf(action).takeIf { it.role == LayoutRole.Chrome }
         val (w, h) = if (holder != null) sizes.touch.value to holder.height else action.width to action.height
         "action %s lays out %.1f × %.1f dp, under %.0f".format(action, w, h, sizes.touch.value).takeIf { w < sizes.touch.value - TOL || h < sizes.touch.value - TOL }
+    }.toList()
+
+    /**
+     * Tags and chips side by side share a centre line: a tappable tag's 48 dp target is taller than a plain tag, and a row
+     * that aligns them at the top drops the tappable chip below the plain one. Two items are side by side when one starts
+     * after the other within the same parent and their boxes overlap vertically (one line of a row or a flow row).
+     */
+    fun chipLines(root: LayoutBox): List<String> = root.descendants().flatMap { parent ->
+        parent.content.filter { it.role == LayoutRole.Tag || it.role == LayoutRole.Chip }.sortedBy { it.left }.zipWithNext()
+            .filter { (a, b) -> b.top < a.bottom && a.top < b.bottom && !near(a.centerY, b.centerY) }
+            .map { (a, b) -> "%s and %s side by side: centres %.1f dp apart".format(a, b, abs(a.centerY - b.centerY)) }
     }.toList()
 
     /** The back disc (the one action of the chrome role) sits [GalleryLayout.gutter] from the start of what holds it. */

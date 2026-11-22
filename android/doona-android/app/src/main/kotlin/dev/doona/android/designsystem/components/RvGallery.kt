@@ -1,7 +1,6 @@
 package dev.doona.android.designsystem.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -122,13 +121,17 @@ internal fun RvControlsGallery() = GalleryPage("RV controls") {
         }
     }
     Section("DoonaTag plain and tappable, DoonaStatusChip, DoonaValuePill") {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(space.tight), verticalArrangement = Arrangement.spacedBy(space.tight)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(space.tight),
+            verticalArrangement = Arrangement.spacedBy(space.tight),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
             DoonaTag("v0.2")
             DoonaTag("手動選擇", onClick = {})
             DoonaTag("平均最快", onClick = {})
             DoonaStatusChip(IconsR.drawable.sym_bolt, "良好", colors.good)
             DoonaStatusChip(IconsR.drawable.sym_timer, "偏慢", colors.slow)
-            Box(Modifier.align(Alignment.CenterVertically)) { DoonaValuePill("中位數 42 ms") }
+            DoonaValuePill("中位數 42 ms")
         }
     }
 }

@@ -4,12 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import dev.doona.android.designsystem.theme.DoonaDotMap
@@ -31,7 +29,7 @@ private val PLACES = setOf(HONG_KONG, DoonaMapPlace("JP", 35.7f, 139.7f), DoonaM
 
 /**
  * Charts: the sparkline and the chart with no data, the traffic chart idle and scrubbed, the latency history and spread
- * with the median pill, the donut, the usage chart with its legend, the progress bar, and the hero figure.
+ * with the median pill, the usage chart with its legend, the progress bar, and the hero figure.
  */
 @Composable
 internal fun RvChartsGallery() = GalleryPage("Charts") {
@@ -56,17 +54,8 @@ internal fun RvChartsGallery() = GalleryPage("Charts") {
             DoonaLatencySpread(SPREAD, selected = 2, name = "香港 01", median = 47, label = { "$it ms" })
         }
     }
-    Section("DoonaDonut, DoonaUsageChart and DoonaUsageLegend, DoonaProgressBar") {
+    Section("DoonaUsageChart and DoonaUsageLegend, DoonaProgressBar") {
         Column(verticalArrangement = Arrangement.spacedBy(space.cardGap)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(space.cardGap), verticalAlignment = Alignment.CenterVertically) {
-                DoonaDonut(listOf(DoonaDonutSegment(colors.categories[0], colors.track, used = 42, total = 100)))
-                DoonaDonut(
-                    listOf(
-                        DoonaDonutSegment(colors.categories[0], colors.track, used = 30, total = 50),
-                        DoonaDonutSegment(colors.categories[1], colors.track, used = 50, total = 50),
-                    ),
-                )
-            }
             DoonaUsageChart(DOWN, UP, nowHour = 14.5f, Modifier.fillMaxWidth().height(DoonaGalleryDefaults.usage))
             DoonaUsageLegend("下載 1.2 GB", "上傳 310 MB")
             DoonaProgressBar(0.42f)
