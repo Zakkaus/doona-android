@@ -19,6 +19,8 @@ data class DoonaPalette(
     val love: Color,
     /** `love` lightened to 4.5:1 on Moon's fills, for error text; Dawn uses body text for tones, so it keeps `love`. */
     val loveText: Color,
+    /** `love` darkened (Dawn) to 4.5:1 under `onAccent`, for the fill of a destructive button; Moon's `love` already reaches it. */
+    val loveFill: Color,
     val gold: Color,
     val rose: Color,
     val pine: Color,
@@ -52,6 +54,7 @@ val Dawn = DoonaPalette(
     text = Color(0xFF464261),
     love = Color(0xFFB4637A),
     loveText = Color(0xFFB4637A),
+    loveFill = Color(0xFFA65B70),
     gold = Color(0xFFEA9D34),
     rose = Color(0xFFD7827E),
     pine = Color(0xFF286983),
@@ -76,6 +79,7 @@ val Moon = DoonaPalette(
     text = Color(0xFFE0DEF4),
     love = Color(0xFFEB6F92),
     loveText = Color(0xFFE796B4),
+    loveFill = Color(0xFFEB6F92),
     gold = Color(0xFFF6C177),
     rose = Color(0xFFEA9A97),
     pine = Color(0xFF3E8FB0),

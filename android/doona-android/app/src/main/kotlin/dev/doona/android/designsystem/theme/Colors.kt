@@ -12,6 +12,9 @@ class DoonaTextColors(p: DoonaPalette) {
     val secondary = p.subtleText
     val disabled = p.muted
 
+    /** Accent as text, for a text-style button: the accent in light, body text in dark, where the accent reads under 4.5:1 (`--rp-accent-text`). */
+    val accent = if (p.dark) p.text else p.pine
+
     /** Latency text: light keeps body text and shows the tone only in the dot. */
     val positive = if (p.dark) p.foam else p.text
     val notice = if (p.dark) p.gold else p.text
@@ -50,6 +53,15 @@ class DoonaColors(p: DoonaPalette) {
     val notice = p.gold
     val negative = p.love
     val neutral = p.subtle
+
+    /** The fill of a destructive button, under the on-accent text. */
+    val destructive = p.loveFill
+
+    /** An unchecked checkbox's outline, 3:1 on the card and the sheet like the off switch's. */
+    val boxLine = p.subtleText
+
+    /** The underlay of a modal: black at doona's alpha for the theme. */
+    val scrim: Color = Color.Black.copy(alpha = if (p.dark) AlphaScale.SCRIM_DARK else AlphaScale.SCRIM_LIGHT)
 
     /** Flag edge: a 0.5 px black 35 % outline in light, none in dark (`--rp-node-flag-edge`, `src/ui/flags.css:8-13`). */
     val flagEdge: Color? = if (p.dark) null else Color.Black.copy(alpha = AlphaScale.FLAG_EDGE)

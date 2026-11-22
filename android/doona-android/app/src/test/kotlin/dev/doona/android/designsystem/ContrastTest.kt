@@ -35,10 +35,27 @@ class ContrastTest {
         assertTrue(bad.joinToString("\n"), bad.isEmpty())
     }
 
+    /** A text button sits on the window, the sheet, a card or a control fill, never on the selected one, where Dawn's pine is 4.42:1. */
+    @Test
+    fun accentTextHasFourPointFiveToOneOnTheFillsATextButtonSitsOn() {
+        val bad = themes.flatMap { t ->
+            listOf("window", "surface", "card", "control").map { fill -> Triple("${t.name}: text.accent on $fill", ratio(t.c.text.accent, t.fills.getValue(fill)), 4.5f) }
+        }.filter { it.second < it.third }
+        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    }
+
     @Test
     fun accentTextOnAccentFillHasFourPointFiveToOne() {
         val bad = themes.map { it to ratio(it.c.onAccent, it.c.accent) }.filter { it.second < 4.5f }
         assertTrue(bad.joinToString { "${it.first.name}: onAccent on accent is %.2f:1".format(it.second) }, bad.isEmpty())
+    }
+
+    /** The destructive button's label is the on-accent colour: `love` alone gives Dawn 4.04:1. */
+    @Test
+    fun destructiveTextOnDestructiveFillHasFourPointFiveToOne() {
+        val bad = themes.map { it to ratio(it.c.onAccent, it.c.destructive) }.filter { it.second < 4.5f }
+        assertTrue(bad.joinToString { "${it.first.name}: onAccent on destructive is %.2f:1".format(it.second) }, bad.isEmpty())
+        themes.forEach { t -> assertTrue("${t.name}: love itself passed as the fill", t.name != "Dawn" || ratio(t.c.onAccent, t.palette.love) < 4.5f) }
     }
 
     @Test

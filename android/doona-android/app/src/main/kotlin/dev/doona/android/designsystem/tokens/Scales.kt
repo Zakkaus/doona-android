@@ -98,6 +98,17 @@ object SizeScale {
     val flagEdge = 0.5.dp
     val chartInset = 2.dp
 
+    /** The launcher icon in a list row: the size of Android's list icon. */
+    val appIcon = 40.dp
+
+    /** A checkbox's box: doona's 14 grown to a touch size, like its 20 to 25 icons (§6). */
+    val checkbox = 20.dp
+    val meterTrack = 4.dp
+    val emptyIcon = 48.dp
+
+    /** Widest dialog; a narrower window leaves the gutter at both sides. */
+    val dialogMax = 560.dp
+
     /** Widest content column: wider windows centre it (D20). */
     val contentMax = 600.dp
 
@@ -109,6 +120,10 @@ object SizeScale {
 object AlphaScale {
     /** Light flag edge: black at 35 % (`--rp-node-flag-edge`, `src/ui/flags.css:8-13`). */
     const val FLAG_EDGE = 0.35f
+
+    /** The modal underlay: black at 32 % in light, 55 % in dark (`--rp-underlay`, `foundations.css:6`, `:185`). */
+    const val SCRIM_LIGHT = 0.32f
+    const val SCRIM_DARK = 0.55f
 }
 
 /** Chart style (§7, Charts). */

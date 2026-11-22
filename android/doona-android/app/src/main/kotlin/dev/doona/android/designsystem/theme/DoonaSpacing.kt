@@ -52,6 +52,9 @@ object DoonaSpacing {
     /** Between the lines of a tile: the name row and its source row. The switch's knob inset is the switch's own. */
     val lineGap = SpaceScale.half
 
+    /** Padding of a dialog on all sides (`.rp-dialog`, 24 on a phone). */
+    val dialogInset = SpaceScale.s6
+
     /** Above and below the icon and label of a hub tab: the tab keeps its air when a larger font makes it taller than the bar. */
     val navInset = SpaceScale.s1h
 

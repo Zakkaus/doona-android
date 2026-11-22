@@ -150,8 +150,8 @@ object SpacingRules {
         }
     }.toList()
 
-    /** Control (segmented control, picker, chip): exactly as high as its visible track; touch comes from the target size. */
-    fun controls(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Control }
+    /** Control (segmented control, picker, chip) and button: exactly as high as its visible track; touch comes from the target size. */
+    fun controls(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Control || it.role == LayoutRole.Button }
         .filter { !near(it.height, sizes.control.value) }
         .map { "control $it is %.1f dp high, its track is %.0f".format(it.height, sizes.control.value) }
         .toList()
