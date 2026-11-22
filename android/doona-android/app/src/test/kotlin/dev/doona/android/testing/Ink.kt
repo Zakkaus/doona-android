@@ -5,11 +5,18 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.captureToImage
 import kotlin.math.abs
 
-/** How far the drawn pixels of a node sit inside its box on each side, in dp. */
-class InkInsets(val left: Float, val top: Float, val right: Float, val bottom: Float) {
+/** How far the drawn pixels of a node sit inside its box on each side, in dp; [width] and [height] are the box's. */
+class InkInsets(val left: Float, val top: Float, val right: Float, val bottom: Float, val width: Float, val height: Float) {
     fun max() = maxOf(left, top, right, bottom)
 
+    /** The size of the drawn pixels' bounding box. */
+    val inkWidth get() = width - left - right
+    val inkHeight get() = height - top - bottom
+
     fun describe() = "left %.1f, top %.1f, right %.1f, bottom %.1f dp inside its box".format(left, top, right, bottom)
+
+    /** Whether this box cuts ink off: the same glyph drawn whole, [full], has a bigger bounding box on some axis. */
+    fun clippedAgainst(full: InkInsets, tolerance: Float) = inkWidth < full.inkWidth - tolerance || inkHeight < full.inkHeight - tolerance
 }
 
 /**
@@ -30,6 +37,8 @@ fun SemanticsNodeInteraction.inkInsets(density: Float): InkInsets? {
         top = inked.minOf { it.second } / density,
         right = (image.width - 1 - inked.maxOf { it.first }) / density,
         bottom = (image.height - 1 - inked.maxOf { it.second }) / density,
+        width = image.width / density,
+        height = image.height / density,
     )
 }
 

@@ -11,7 +11,7 @@ import dev.doona.android.testing.Light
 import dev.doona.android.testing.SpacingRules
 import dev.doona.android.testing.Variant
 import dev.doona.android.testing.Wide
-import dev.doona.android.testing.layoutTree
+import dev.doona.android.testing.readWhileScrolling
 import dev.doona.android.testing.screenCases
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -25,7 +25,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Renders each screen on [dev.doona.android.engine.fake.FakeEngine] data, on a phone, in a wide window and on its side,
- * and asserts [SpacingRules] on its layout.
+ * and asserts [SpacingRules] on its layout at every scroll offset, so what lies below the fold is checked as well.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -41,7 +41,10 @@ class SpacingCheckTest(private val name: String, private val window: Variant) {
         compose.setContent {
             CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { DoonaTheme { case.content() } }
         }
-        val violations = SpacingRules.check(compose.layoutTree())
+        val page = requireNotNull(case.layout)
+        val reads = compose.readWhileScrolling { tree -> SpacingRules.check(tree, page) to SpacingRules.touch(tree) }
+        val touch = reads.map { it.second }
+        val violations = reads.first().first + touch.flatMap { it.violations }.distinct() + SpacingRules.unseen(touch)
         assertTrue("$name in the ${window.name} window breaks the spacing rules:\n" + violations.joinToString("\n"), violations.isEmpty())
     }
 

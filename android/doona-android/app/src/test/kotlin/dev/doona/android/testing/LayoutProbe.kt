@@ -22,8 +22,10 @@ class LayoutBox(
     val right: Float,
     val bottom: Float,
     private val semantics: SemanticsNode?,
-    private val painted: Boolean,
+    val painted: Boolean,
     val filled: Boolean,
+    /** Whether the node lays its children out top to bottom (a Column), whatever their geometry. */
+    val vertical: Boolean,
     val children: List<LayoutBox>,
     private val density: Float,
 ) {
@@ -54,25 +56,32 @@ class LayoutBox(
     /** The box that clips [scrolling], which is this node's descendant: the viewport a scrolling column moves in. */
     fun viewportOf(scrolling: LayoutBox): LayoutBox = descendants().first { parent -> parent.children.any { it === scrolling } }
 
-    /** Consecutive children stacked top to bottom with their vertical gaps; empty when the node is not a column. */
-    fun columnGaps(): List<Triple<LayoutBox, LayoutBox, Float>> {
-        val items = content
-        val stacked = items.zipWithNext().all { (a, b) -> b.top >= a.bottom - EPS }
-        return if (items.size < 2 || !stacked) emptyList() else items.zipWithNext().map { (a, b) -> Triple(a, b, b.top - a.bottom) }
-    }
+    /** The nodes with no children that draw an image or a glyph: an icon, not a box or a text. */
+    val glyph: Boolean get() = children.isEmpty() && painted && !filled && text == null
+
+    /**
+     * Consecutive children of a column with the signed gap between them, negative when they overlap; empty when the node
+     * is not a column. A column is recognised by its layout, not by where its children ended up, so an overlap is a gap
+     * of less than zero and not the end of the column.
+     */
+    fun columnGaps(): List<Triple<LayoutBox, LayoutBox, Float>> =
+        if (vertical) content.zipWithNext().map { (a, b) -> Triple(a, b, b.top - a.bottom) } else emptyList()
+
+    /** The same for the children of a row: the signed gap from one child's right edge to the next one's left. */
+    fun rowGaps(): List<Triple<LayoutBox, LayoutBox, Float>> =
+        if (vertical) emptyList() else content.sortedBy { it.left }.zipWithNext().map { (a, b) -> Triple(a, b, b.left - a.right) }
 
     override fun toString() = "[%.1f,%.1f %.1fx%.1f %s]".format(left, top, width, height, text ?: role ?: "")
-
-    companion object {
-        const val EPS = 0.01f
-    }
 }
 
 private val PAINTING = setOf("BackgroundElement", "BorderModifierNodeElement", "DrawBehindElement", "PainterElement")
 
 /**
  * Reads the layout tree of [compose]'s content. Compose's public API reaches a layout node's parent but not its
- * children, so the children come from `LayoutNode.getChildrenInfo()`, a public method of an internal interface.
+ * children or its layout policy, so they come from `LayoutNode.getChildrenInfo()` and `getMeasurePolicy()`, public
+ * methods of an internal class, and from the class names of the policy and of the modifiers. Those are Compose
+ * internals: when one of them changes, detection finds nothing, so the tree is checked to hold what every page holds
+ * and the read fails with a message instead of letting every rule pass over an empty tree.
  */
 fun ComposeContentTestRule.layoutTree(): LayoutBox {
     val semantics = HashMap<Int, SemanticsNode>()
@@ -81,11 +90,25 @@ fun ComposeContentTestRule.layoutTree(): LayoutBox {
         node.children.forEach(::collect)
     }
     collect(onRoot(useUnmergedTree = true).fetchSemanticsNode())
-    return box(onRoot().fetchSemanticsNode().layoutInfo, null, semantics)
+    return box(onRoot().fetchSemanticsNode().layoutInfo, null, semantics).also(::requireDetection)
+}
+
+/** What any rendered tree has: nested layout nodes, a column, a painted node and a filled one. */
+private fun requireDetection(root: LayoutBox) {
+    val nodes = root.descendants().toList()
+    val missing = buildList {
+        if (nodes.size < 2) add("no layout node has children (LayoutNode.getChildrenInfo)")
+        if (nodes.none { it.vertical }) add("no node has a ColumnMeasurePolicy (LayoutNode.getMeasurePolicy)")
+        if (nodes.none { it.filled }) add("no node has a BackgroundElement modifier")
+        if (nodes.none { it.painted }) add("no node has a painting modifier ($PAINTING)")
+    }
+    check(missing.isEmpty()) { "The layout probe detects nothing it must find, so Compose's internals changed:\n" + missing.joinToString("\n") }
 }
 
 @Suppress("UNCHECKED_CAST")
 private fun children(info: LayoutInfo): List<LayoutInfo> = info.javaClass.getMethod("getChildrenInfo").invoke(info) as List<LayoutInfo>
+
+private fun isColumn(info: LayoutInfo): Boolean = info.javaClass.getMethod("getMeasurePolicy").invoke(info).javaClass.simpleName == "ColumnMeasurePolicy"
 
 /** The outermost coordinates of a layout node: those just inside its parent's content box. */
 private fun outer(info: LayoutInfo, parent: LayoutInfo?): LayoutCoordinates {
@@ -109,6 +132,7 @@ private fun box(info: LayoutInfo, parent: LayoutInfo?, semantics: Map<Int, Seman
         semantics = semantics[info.semanticsId],
         painted = info.getModifierInfo().any { it.modifier.javaClass.simpleName in PAINTING },
         filled = info.getModifierInfo().any { it.modifier.javaClass.simpleName == "BackgroundElement" },
+        vertical = isColumn(info),
         children = children(info).map { box(it, info, semantics) },
         density = density,
     )

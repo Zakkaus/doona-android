@@ -2,6 +2,7 @@ package dev.doona.android.testing
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.doona.android.app.ActivityKey
 import dev.doona.android.app.DoonaApp
@@ -10,7 +11,9 @@ import dev.doona.android.app.PoliciesKey
 import dev.doona.android.app.SettingsKey
 import dev.doona.android.designsystem.components.CardsGallery
 import dev.doona.android.designsystem.components.ControlsGallery
+import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.components.StatusGallery
+import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
@@ -22,23 +25,48 @@ val StatusBar = 40.dp
 val GestureBar = 24.dp
 val FrameInsets = WindowInsets(top = StatusBar, bottom = GestureBar)
 
-/** A screen as the tests render it: a name for files and messages, and its content. */
-class ScreenCase(val name: String, val content: @Composable () -> Unit)
+/**
+ * What a screen's layout is meant to be, stated in spacing roles so the check does not just read back what was drawn.
+ * [shows] are the layout roles the screen has: the probe must find each, or the rules of that role checked nothing.
+ * [rhythm] is the gap before each block of the page's sheet after the first.
+ */
+class PageLayout(val shows: Set<LayoutRole>, val rhythm: List<Dp>)
+
+/** A screen as the tests render it: a name for files and messages, its [layout] when the spacing rules apply, and its content. */
+class ScreenCase(val name: String, val layout: PageLayout?, val content: @Composable () -> Unit)
 
 /** A connected engine with a minute of traffic: the data every screen test and golden shows. */
 fun sampleEngine() = FakeEngine(status = Status.Running(sinceEpochMs = 0), traffic = FakeEngine.SAMPLE_TRAFFIC)
 
-/** Every screen of the app. A screen lane adds its screens here and so gets the spacing check and the goldens. */
+/**
+ * Every screen of the app. A screen lane adds its screens here and so gets the spacing check and the goldens; it also
+ * states the screen's [PageLayout], which the check holds the rendered page to.
+ */
 fun screenCases(): List<ScreenCase> {
     val engine = sampleEngine()
+    val space = DoonaTheme.spacing
+    val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar)
+    val withHub = bars + LayoutRole.HubBar
+    val activity = setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Control, LayoutRole.Value, LayoutRole.Chevron)
     return listOf(
-        ScreenCase("activity") { DoonaApp(engine, onConnect = {}, listOf(ActivityKey)) },
-        ScreenCase("activity-error") {
+        ScreenCase("activity", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
+            DoonaApp(engine, onConnect = {}, listOf(ActivityKey))
+        },
+        ScreenCase("activity-error", PageLayout(bars + activity, listOf(space.afterTitle, space.section, space.section))) {
             ActivityScreen(sampleActivityState(ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {})
         },
-        ScreenCase("policies") { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, PoliciesKey)) },
-        ScreenCase("group") { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))) },
-        ScreenCase("settings") { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
+        ScreenCase(
+            "policies",
+            PageLayout(withHub + setOf(LayoutRole.Card, LayoutRole.Control, LayoutRole.Chevron), listOf(space.afterTitle, space.section, space.section)),
+        ) { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, PoliciesKey)) },
+        ScreenCase(
+            "group",
+            PageLayout(
+                withHub + setOf(LayoutRole.Control, LayoutRole.Row, LayoutRole.Chevron),
+                listOf(space.item, space.section, space.block, space.item, space.section, space.block, space.block, space.block),
+            ),
+        ) { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))) },
+        ScreenCase("settings", PageLayout(withHub, emptyList())) { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
     )
 }
 
@@ -47,7 +75,7 @@ fun screenCases(): List<ScreenCase> {
  * since a gallery lists components rather than laying out a page.
  */
 fun galleryCases(): List<ScreenCase> = listOf(
-    ScreenCase("gallery-controls") { ControlsGallery() },
-    ScreenCase("gallery-cards") { CardsGallery() },
-    ScreenCase("gallery-status") { StatusGallery() },
+    ScreenCase("gallery-controls", null) { ControlsGallery() },
+    ScreenCase("gallery-cards", null) { CardsGallery() },
+    ScreenCase("gallery-status", null) { StatusGallery() },
 )
