@@ -303,6 +303,7 @@ fn reject_foreign_quic_options(
 fn endpoint(mapping: &Mapping, proxy_type: &str) -> Result<(String, u16, String), &'static str> {
     let server = yaml_text_alias(mapping, &["server"])?
         .filter(|value| !value.trim().is_empty())
+        .map(bracket_ipv6)
         .ok_or("proxy server is missing")?;
     let port = yaml_u64_alias(mapping, &["port"])?
         .and_then(|value| u16::try_from(value).ok())
@@ -311,6 +312,21 @@ fn endpoint(mapping: &Mapping, proxy_type: &str) -> Result<(String, u16, String)
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| format!("{proxy_type}-{server}:{port}"));
     Ok((server, port, name))
+}
+
+/// An IPv6 literal as a share link has it: in brackets and written as the URL parser writes it,
+/// so a node keeps its id whether its subscription comes as links or as a document. honk's share
+/// links take the URL's host (`[2001:db8::1]`), its Clash builder the `server` as written. doona's
+/// change.
+fn bracket_ipv6(server: String) -> String {
+    let bare = server
+        .strip_prefix('[')
+        .and_then(|inner| inner.strip_suffix(']'))
+        .unwrap_or(&server);
+    match bare.parse() {
+        Ok(address) => url::Host::<String>::Ipv6(address).to_string(),
+        Err(_) => server,
+    }
 }
 
 /// `tls` as given, and whether TLS is on: the protocols that require it default to it.

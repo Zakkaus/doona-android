@@ -39,6 +39,8 @@ httparse = "1"
 percent-encoding = "2"
 serde_yaml = "0.9"
 tokio-boring = "5"
+# serde_yaml's libyaml: its scanner measures a document's flow nesting before serde_yaml reads it.
+unsafe-libyaml = "0.2.11"
 url = "2"
 uuid = { version = "1", features = ["v5"] }
 webpki-root-certs = "1"

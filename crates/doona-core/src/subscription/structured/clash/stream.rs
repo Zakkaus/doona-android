@@ -121,6 +121,11 @@ fn reject_foreign_transport_options(mapping: &Mapping, node: &Node) -> Result<()
 fn apply_ws(mapping: &Mapping, transport: &mut StreamTransportOptions) -> Result<(), &'static str> {
     if let Some(options) = yaml_value(mapping, "ws-opts").filter(|value| yaml_active(value)) {
         let options = options.as_mapping().ok_or("ws-opts must be a mapping")?;
+        // Mihomo's HTTPUpgrade, which honk does not dial; as WebSocket it would never connect.
+        // doona skips it as honk skips `network: h2` and sing-box's `httpupgrade`.
+        if yaml_bool_alias(options, &["v2ray-http-upgrade"])? == Some(true) {
+            return Err("HTTPUpgrade transport is unsupported");
+        }
         transport.ws_path = yaml_text_alias(options, &["path"])?;
         if let Some(headers) = yaml_value(options, "headers") {
             apply_ws_headers(headers, transport)?;

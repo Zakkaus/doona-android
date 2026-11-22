@@ -616,6 +616,7 @@ dependencies = [
  "tokio",
  "tokio-boring",
  "tokio-util",
+ "unsafe-libyaml",
  "url",
  "uuid",
  "webpki-root-certs",

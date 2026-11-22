@@ -11,7 +11,7 @@ use crate::api::lock;
 use crate::catalog::{Plan, Round, Shared, Target};
 use crate::dto::ErrorCode;
 use crate::localnet::Lookups;
-use crate::outbounds::Carriers;
+use crate::outbounds::{Carriers, Registries};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use honk_config::node::Node;
@@ -28,8 +28,8 @@ pub const DEFAULT_PROBE_URL: &str = "https://www.gstatic.com/generate_204";
 pub(crate) const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 pub(crate) const MAX_PARALLEL: usize = 32;
 
-/// A published registry and the carriers it dials on.
-pub(crate) type Published = (Arc<OutboundRuntimeRegistry>, Arc<Carriers>);
+/// The published registries and the carriers they dial on.
+pub(crate) type Published = (Registries, Arc<Carriers>);
 
 /// What one probe goes through.
 pub(crate) struct ProbeJob {
@@ -75,8 +75,8 @@ impl Probes {
         }
     }
 
-    /// Runs the test `plan` on `rt`, each probe through the `published` registry on its
-    /// carriers; `cancel` drops it with the tunnel generation it began in.
+    /// Runs the test `plan` on `rt`, each probe through the `published` registry that holds its
+    /// node, on its carriers; `cancel` drops it with the tunnel generation it began in.
     pub fn spawn(
         &self,
         rt: &Handle,
@@ -90,7 +90,9 @@ impl Probes {
         let probes = plan.targets.into_iter().map(|target| {
             let job = ProbeJob {
                 node: Arc::clone(&target.entry.node),
-                registry: published.as_ref().map(|(r, _)| Arc::clone(r)),
+                registry: published
+                    .as_ref()
+                    .and_then(|(r, _)| r.of(&target.entry.node).cloned()),
                 proxies: Arc::clone(&proxies),
                 url: Arc::clone(&self.url),
                 lookups: Lookups::default(),

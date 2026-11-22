@@ -13,6 +13,12 @@
 //! and adopts what dialed while none ran; when it ends, [`Outbounds::end`] takes them out of use
 //! and [`Ended::finish`] shuts them down by `stop`'s deadline. The end of an earlier generation
 //! leaves them alone. New carriers, and a registry for them, are made when next needed.
+//!
+//! A registry holds one runtime per honk id, and honk's id leaves out some of what a node dials
+//! with: a TUIC ALPN, a gRPC service of `""` against none, a pinned certificate. Nodes of two
+//! subscriptions can share an id and dial differently, so a node set is built as [`Registries`]:
+//! each node goes in the first registry that does not hold its id, and a node that dials as one a
+//! registry holds shares that one's runtime. Almost always there is one registry.
 
 use crate::api::lock;
 use crate::catalog::NodeEntry;
@@ -28,6 +34,11 @@ use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 use std::time::Instant;
 use tokio::runtime::{Handle, Runtime};
 use tokio_util::task::AbortOnDropHandle;
+
+mod layers;
+
+pub(crate) use self::layers::Registries;
+use self::layers::layers;
 
 /// Threads of a carriers runtime: the protocol work of every proxied flow (TLS, QUIC, session
 /// framing) runs there.
@@ -66,10 +77,10 @@ struct Table {
     selected: HashMap<String, Arc<Node>>,
 }
 
-/// A registry and the carriers it was built for.
+/// Registries and the carriers they were built for.
 #[derive(Clone)]
 struct Published {
-    registry: Arc<OutboundRuntimeRegistry>,
+    registries: Registries,
     carriers: Arc<Carriers>,
 }
 
@@ -145,25 +156,34 @@ impl Carriers {
         }
     }
 
-    /// A registry for `nodes`, reusing `previous`'s runtimes where the node is the same; none
-    /// once the carriers are shut down. The runtime's handle is cloned under the lock, so a
-    /// shutdown never waits for a build.
+    /// A registry for each of `layers`, reusing the runtimes of `previous`'s registry at the same
+    /// place where the node is the same, and the ids each reused; none once the carriers are shut
+    /// down. The runtime's handle is cloned under the lock, so a shutdown never waits for a build.
     fn build(
         &self,
-        nodes: &[Node],
-        previous: Option<&OutboundRuntimeRegistry>,
-    ) -> Option<(Arc<OutboundRuntimeRegistry>, HashSet<uuid::Uuid>)> {
+        layers: &[Vec<Node>],
+        previous: Option<&Registries>,
+    ) -> Option<(Registries, Vec<HashSet<uuid::Uuid>>)> {
         let handle = read(&self.runtime).as_ref()?.handle().clone();
         let _entered = handle.enter();
         let dials = honk_config::config::GlobalConfig::default().max_concurrent_dials;
-        match OutboundRuntimeRegistry::build_reusing(nodes, dials, previous) {
-            Ok((registry, reused)) => Some((Arc::new(registry), reused)),
-            Err(_) => {
-                // The parser admits only nodes the registry takes, so this is not expected.
-                log::error!("outbounds: registry refused a set of {} nodes", nodes.len());
-                None
+        let mut registries = Vec::with_capacity(layers.len());
+        let mut reused = Vec::with_capacity(layers.len());
+        for (i, nodes) in layers.iter().enumerate() {
+            let previous = previous.and_then(|p| p.0.get(i)).map(Arc::as_ref);
+            match OutboundRuntimeRegistry::build_reusing(nodes, dials, previous) {
+                Ok((registry, kept)) => {
+                    registries.push(Arc::new(registry));
+                    reused.push(kept);
+                }
+                Err(_) => {
+                    // The parser admits only nodes the registry takes, so this is not expected.
+                    log::error!("outbounds: registry refused a set of {} nodes", nodes.len());
+                    return None;
+                }
             }
         }
+        Some((Registries(registries), reused))
     }
 
     /// Records a published registry, to be shut down with the carriers, and forgets those
@@ -253,61 +273,57 @@ impl Outbounds {
     pub fn dialer(&self, group: &str) -> Option<Dialer> {
         let table = self.table();
         let published = table.published.as_ref()?;
+        let node = table.selected.get(group)?;
         Some(Dialer {
-            node: Arc::clone(table.selected.get(group)?),
-            registry: Arc::clone(&published.registry),
+            node: Arc::clone(node),
+            registry: Arc::clone(published.registries.of(node)?),
             proxies: Arc::clone(&self.proxies),
             carriers: Arc::clone(&published.carriers),
         })
     }
 
-    /// The published registry and the carriers it dials on.
-    pub(crate) fn published(&self) -> Option<(Arc<OutboundRuntimeRegistry>, Arc<Carriers>)> {
+    /// The published registries and the carriers they dial on.
+    pub(crate) fn published(&self) -> Option<(Registries, Arc<Carriers>)> {
         let p = self.table().published.clone()?;
-        Some((p.registry, p.carriers))
+        Some((p.registries, p.carriers))
     }
 
+    /// The first published registry, which holds every node but those of an id another holds.
     #[cfg(test)]
     pub(crate) fn registry(&self) -> Option<Arc<OutboundRuntimeRegistry>> {
-        self.published().map(|(registry, _)| registry)
+        self.published().and_then(|(r, _)| r.0.first().cloned())
     }
 
     pub(crate) fn proxies(&self) -> Arc<ProxyRegistry> {
         Arc::clone(&self.proxies)
     }
 
-    /// A registry for `nodes` on the current carriers, reusing the published one's runtimes
-    /// when it is on them too. Nodes of several subscriptions with one endpoint identity share a
-    /// runtime.
+    /// Registries for `nodes` on the current carriers, reusing the published ones' runtimes
+    /// when they are on them too. Nodes of several subscriptions that dial alike share a runtime.
     pub(crate) fn build(&self, nodes: &[Arc<NodeEntry>]) -> Built {
-        let mut seen = HashSet::new();
-        let nodes: Vec<Node> = nodes
-            .iter()
-            .filter(|n| seen.insert(n.node.id))
-            .map(|n| n.node.as_ref().clone())
-            .collect();
+        let layers = layers(nodes.iter().map(|n| n.node.as_ref()));
         let base = self.table().published.clone();
-        let (published, reused) = self.registry_for(&nodes, base.as_ref());
+        let (published, reused) = self.registry_for(&layers, base.as_ref());
         Built {
             published,
             reused,
-            base: base.map(|p| p.registry),
-            nodes,
+            base: base.map(|p| p.registries),
+            layers,
         }
     }
 
-    /// A registry for `nodes` on the current carriers, made if there are none, reusing
+    /// Registries for `layers` on the current carriers, made if there are none, reusing
     /// `previous`'s runtimes if it is on them; none for no nodes.
     fn registry_for(
         &self,
-        nodes: &[Node],
+        layers: &[Vec<Node>],
         previous: Option<&Published>,
-    ) -> (Option<Published>, HashSet<uuid::Uuid>) {
-        if nodes.is_empty() {
-            return (None, HashSet::new());
+    ) -> (Option<Published>, Vec<HashSet<uuid::Uuid>>) {
+        if layers.is_empty() {
+            return (None, Vec::new());
         }
         let Some(carriers) = self.carriers() else {
-            return (None, HashSet::new());
+            return (None, Vec::new());
         };
         #[cfg(test)]
         {
@@ -318,25 +334,31 @@ impl Outbounds {
         }
         let previous = previous
             .filter(|p| Arc::ptr_eq(&p.carriers, &carriers))
-            .map(|p| p.registry.as_ref());
-        match carriers.build(nodes, previous) {
-            Some((registry, reused)) => (Some(Published { registry, carriers }), reused),
-            None => (None, HashSet::new()),
+            .map(|p| &p.registries);
+        match carriers.build(layers, previous) {
+            Some((registries, reused)) => (
+                Some(Published {
+                    registries,
+                    carriers,
+                }),
+                reused,
+            ),
+            None => (None, Vec::new()),
         }
     }
 
-    /// A registry for `nodes` with runtimes of its own, on carriers still current once it is
-    /// built; called with the table locked. A stop that ends the carriers under the first try
+    /// Registries for `layers` with runtimes of their own, on carriers still current once they
+    /// are built; called with the table locked. A stop that ends the carriers under the first try
     /// spoils it; the second goes on carriers made since, which no generation can end before
     /// its `prepare`, and that waits for the table.
-    fn rebuilt(&self, nodes: &[Node]) -> (Option<Published>, HashSet<uuid::Uuid>) {
-        let first = self.registry_for(nodes, None);
+    fn rebuilt(&self, layers: &[Vec<Node>]) -> (Option<Published>, Vec<HashSet<uuid::Uuid>>) {
+        let first = self.registry_for(layers, None);
         let spoiled = match &first.0 {
             Some(p) => !self.is_current(&p.carriers),
-            None => !nodes.is_empty(),
+            None => !layers.is_empty(),
         };
         if spoiled {
-            self.registry_for(nodes, None)
+            self.registry_for(layers, None)
         } else {
             first
         }
@@ -365,24 +387,24 @@ impl Outbounds {
     }
 
     /// Publishes `built` and each group's node for its node set in one swap; the previous
-    /// registry hands over the runtimes it shares and retires. One built on carriers that ended
-    /// since, or from a registry no longer published, is built again with runtimes of its own.
+    /// registries hand over the runtimes they share and retire. One built on carriers that ended
+    /// since, or from registries no longer published, is built again with runtimes of its own.
     pub(crate) fn replace(&self, built: Built, selected: HashMap<String, Arc<Node>>) {
         let (old, reused) = {
             let mut table = self.table.write().unwrap_or_else(|e| e.into_inner());
-            let published = table.published.as_ref().map(|p| &p.registry);
+            let published = table.published.as_ref().map(|p| &p.registries);
             let current = match &built.published {
                 Some(p) => self.is_current(&p.carriers) && same(built.base.as_ref(), published),
                 // No registry for a set of nodes: its carriers may have been shut down under it.
-                None => built.nodes.is_empty(),
+                None => built.layers.is_empty(),
             };
             let (published, reused) = if current {
                 (built.published, built.reused)
             } else {
-                self.rebuilt(&built.nodes)
+                self.rebuilt(&built.layers)
             };
             if let Some(p) = &published {
-                p.carriers.adopt(&p.registry);
+                p.registries.0.iter().for_each(|r| p.carriers.adopt(r));
             }
             let old = table.published.clone();
             *table = Arc::new(Table {
@@ -392,10 +414,12 @@ impl Outbounds {
             (old, reused)
         };
         if let Some(old) = old.filter(|old| !old.carriers.ended()) {
-            old.registry.mark_moved_out(reused);
-            let registry = old.registry;
-            old.carriers
-                .spawn(async move { registry.retire_reusable_state().await });
+            let mut reused = reused.into_iter();
+            for registry in old.registries.0 {
+                registry.mark_moved_out(reused.next().unwrap_or_default());
+                old.carriers
+                    .spawn(async move { registry.retire_reusable_state().await });
+            }
         }
     }
 
@@ -415,14 +439,16 @@ impl Outbounds {
         let Some(stale) = table.published.as_ref().filter(|p| p.carriers.ended()) else {
             return Ok(());
         };
-        let nodes: Vec<Node> = stale
-            .registry
-            .values()
-            .map(|runtime| runtime.node.as_ref().clone())
+        let layers: Vec<Vec<Node>> = (stale.registries.0.iter())
+            .map(|r| {
+                r.values()
+                    .map(|runtime| runtime.node.as_ref().clone())
+                    .collect()
+            })
             .collect();
-        let (published, _) = self.rebuilt(&nodes);
+        let (published, _) = self.rebuilt(&layers);
         let published = published.ok_or(ErrorCode::Internal)?;
-        published.carriers.adopt(&published.registry);
+        (published.registries.0.iter()).for_each(|r| published.carriers.adopt(r));
         *table = Arc::new(Table {
             published: Some(published),
             selected: table.selected.clone(),
@@ -481,25 +507,25 @@ impl Outbounds {
     }
 }
 
-/// A registry for a new node set, not yet published.
+/// Registries for a new node set, not yet published.
 #[derive(Default)]
 pub(crate) struct Built {
     /// None for no nodes, or when none could be made, as when the carriers it was built for
     /// were shut down under it.
     published: Option<Published>,
-    reused: HashSet<uuid::Uuid>,
-    /// The registry whose runtimes it reuses, and its nodes: when that one is no longer
-    /// published by the time this is, the set is built again with runtimes of its own.
-    base: Option<Arc<OutboundRuntimeRegistry>>,
-    nodes: Vec<Node>,
+    /// The ids each registry reused from the previous one at its place.
+    reused: Vec<HashSet<uuid::Uuid>>,
+    /// The registries whose runtimes it reuses, and its nodes in layers: when those are no
+    /// longer published by the time this is, the set is built again with runtimes of its own.
+    base: Option<Registries>,
+    layers: Vec<Vec<Node>>,
 }
 
-fn same(
-    a: Option<&Arc<OutboundRuntimeRegistry>>,
-    b: Option<&Arc<OutboundRuntimeRegistry>>,
-) -> bool {
+fn same(a: Option<&Registries>, b: Option<&Registries>) -> bool {
     match (a, b) {
-        (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+        (Some(a), Some(b)) => {
+            a.0.len() == b.0.len() && a.0.iter().zip(&b.0).all(|(a, b)| Arc::ptr_eq(a, b))
+        }
         (None, None) => true,
         _ => false,
     }
@@ -513,3 +539,6 @@ fn read<T>(l: &RwLock<T>) -> RwLockReadGuard<'_, T> {
 fn write<T>(l: &RwLock<T>) -> RwLockWriteGuard<'_, T> {
     l.write().unwrap_or_else(|e| e.into_inner())
 }
+
+#[cfg(test)]
+mod tests;

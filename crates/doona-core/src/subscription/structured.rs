@@ -14,50 +14,49 @@
 //! ([`Admission`]). doona drops the diagnostics honk reports for skipped entries, so their
 //! plumbing (`IndexedOutcome`, `AdmissionOwner`) is not extracted.
 //!
+//! Which body is a document follows upstream's `parse_structured_subscription`: one that builds a
+//! YAML or JSON mapping or sequence is one; one that does not parse is a malformed document when its
+//! first line opens like one ([`super::parse::opens_like_a_document`]), and is read as links
+//! otherwise. doona adds what [`guard`] refuses before any tree is built, and reads a body whose
+//! first line is a share link as links without trying a tree.
+//!
 //! `state.json` keeps a structured subscription as [`Parsed::document`]: the entries its nodes came
 //! from, under their original key, which [`super::parse::parse`] reads back to the same nodes.
 
 mod bounded;
 mod clash;
+mod guard;
 mod json;
 
 use self::bounded::{Bounded, Budget};
-use super::parse::{Admission, Parsed};
+use super::parse::{Admission, Parsed, opens_like_a_document};
 use crate::dto::ErrorCode;
 use honk_config::node::Node;
 use serde::de::DeserializeSeed;
 use serde_yaml::{Mapping, Value};
 
-/// The most items, YAML events or JSON values, a structured body may describe; past it a body is
-/// `parse_failed` before any tree is built. serde_yaml lists every event of a document before it
-/// builds a value, at about 200 bytes an event: an 8 MiB body of one-digit items peaked at 836 MB,
-/// one at this bound at 84 MB. A Mihomo profile of 2,000 nodes, a group of all of them and 20,000
-/// rules (1.7 MB) counts 226,000 and peaked at 30 MB (release build on the desktop, 2026-11-23).
-/// The tree is held to as many values, and to the body's length in string bytes, aliases
-/// included ([`bounded`]).
-const MAX_ITEMS: usize = 400_000;
-
-/// An upper bound on the items `text` describes: every item after the first follows one of these
-/// bytes, a separator, a collection opening, a block entry, a key, an alias or a line break.
-fn items(text: &str) -> usize {
-    text.bytes()
-        .filter(|b| matches!(b, b',' | b':' | b'-' | b'?' | b'[' | b'{' | b'*' | b'\n'))
-        .count()
-}
-
 /// Takes each entry of a structured body and its node, or `None` for an entry honk skips. An
 /// error ends the parse.
 type Emit<'a> = dyn FnMut(&Value, Option<Node>) -> anyhow::Result<()> + 'a;
 
-/// The nodes of a body that [`super::parse`] took as a structured document: `parse_failed` when
-/// it does not parse, is not a Clash, sing-box or SIP008 document, or holds more than
+/// The nodes of a body that is not a share-link list by its first line; `None` when it is not a
+/// document either, as upstream then reads it as links. `parse_failed` when [`guard`] refuses it,
+/// when it does not parse and opens like a document, when it is a mapping or sequence but not a
+/// Clash, sing-box or SIP008 document, or when it holds more than
 /// [`super::parse::MAX_NODES_PER_SUBSCRIPTION`] nodes. No node is `no_nodes`, which the caller
 /// decides.
-pub(super) fn parse(text: &str) -> Result<Parsed, ErrorCode> {
-    if items(text) > MAX_ITEMS {
-        return Err(ErrorCode::ParseFailed);
+pub(super) fn parse(text: &str) -> Result<Option<Parsed>, ErrorCode> {
+    guard::check(text)?;
+    match parse_structured_value(text) {
+        Some(value @ (Value::Mapping(_) | Value::Sequence(_))) => nodes(value).map(Some),
+        Some(_) => Ok(None),
+        None if opens_like_a_document(text) => Err(ErrorCode::ParseFailed),
+        None => Ok(None),
     }
-    let value = parse_structured_value(text).ok_or(ErrorCode::ParseFailed)?;
+}
+
+/// The admitted nodes of a document, and the entries they came from to store.
+fn nodes(value: Value) -> Result<Parsed, ErrorCode> {
     let mut admission = Admission::default();
     let mut kept = Vec::new();
     let key = emit_structured(value, &mut |entry, node| {
@@ -70,14 +69,20 @@ pub(super) fn parse(text: &str) -> Result<Parsed, ErrorCode> {
         Ok(())
     })
     .map_err(|_| ErrorCode::ParseFailed)?;
-    let mut document = Mapping::new();
-    document.insert(Value::String(key.into()), Value::Sequence(kept));
+    // A bare SIP008 array is stored bare: under a key, every entry would sit one level deeper
+    // than in the body, and one at serde_yaml's depth limit would not read back.
+    let document = match key {
+        Some(key) => {
+            let mut document = Mapping::new();
+            document.insert(Value::String(key.into()), Value::Sequence(kept));
+            Value::Mapping(document)
+        }
+        None => Value::Sequence(kept),
+    };
     let document = serde_yaml::to_string(&document).map_err(|_| ErrorCode::ParseFailed)?;
     // Block style and expanded aliases can count more than the body did; refused now, a document
     // that state.json could not read back is never committed.
-    if items(&document) > MAX_ITEMS {
-        return Err(ErrorCode::ParseFailed);
-    }
+    guard::check(&document)?;
     Ok(Parsed {
         links: Vec::new(),
         nodes: admission.nodes,
@@ -89,7 +94,7 @@ pub(super) fn parse(text: &str) -> Result<Parsed, ErrorCode> {
 /// `serde_yaml::from_str`; here each attempt builds it within a [`Budget`].
 fn parse_structured_value(content: &str) -> Option<Value> {
     let content = content.trim_start().trim_start_matches('\u{feff}');
-    let budget = || Budget::new(MAX_ITEMS, content.len());
+    let budget = || Budget::new(guard::MAX_ITEMS, content.len());
     let json = || {
         let mut json = serde_json::Deserializer::from_str(content);
         let value = Bounded(&budget()).deserialize(&mut json)?;
@@ -100,26 +105,23 @@ fn parse_structured_value(content: &str) -> Option<Value> {
     json().ok().or_else(|| yaml().ok())
 }
 
-/// `parse_structured_subscription` once the body parsed: a mapping with a `proxies` sequence is a
-/// Clash document, any other mapping or sequence a sing-box or SIP008 one. Returns the key the
-/// entries go under in the stored document; a bare SIP008 array goes under `servers`, which reads
-/// the same.
-fn emit_structured(value: Value, emit: &mut Emit<'_>) -> anyhow::Result<&'static str> {
+/// `parse_structured_subscription` once the body parsed to a mapping or sequence: a mapping with a
+/// `proxies` sequence is a Clash document, any other a sing-box or SIP008 one, and a sequence a
+/// bare SIP008 array. Returns the key the entries go under in the stored document, `None` for a
+/// bare array.
+fn emit_structured(value: Value, emit: &mut Emit<'_>) -> anyhow::Result<Option<&'static str>> {
     if let Value::Mapping(root) = &value
         && let Some(proxies) = yaml_value(root, "proxies").and_then(Value::as_sequence)
     {
         emit_clash_proxies(proxies, emit)?;
-        return Ok("proxies");
+        return Ok(Some("proxies"));
     }
     let key = match &value {
-        Value::Mapping(root) if root.contains_key("outbounds") => "outbounds",
-        _ => "servers",
+        Value::Mapping(root) if root.contains_key("outbounds") => Some("outbounds"),
+        Value::Mapping(_) => Some("servers"),
+        _ => None,
     };
-    match value {
-        Value::Mapping(_) | Value::Sequence(_) => json::emit_json_subscription(value, emit)?,
-        // Upstream reads such a body as links or records; doona took it as a document already.
-        _ => anyhow::bail!("not a structured subscription"),
-    }
+    json::emit_json_subscription(value, emit)?;
     Ok(key)
 }
 

@@ -15,6 +15,8 @@ pub mod client;
 #[path = "../tests/common/tuic.rs"]
 pub mod tuic;
 
+pub mod alloc;
+
 /// A fresh directory under the system temp dir, removed on drop.
 pub struct TempDir(PathBuf);
 
