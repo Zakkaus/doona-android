@@ -1,6 +1,5 @@
 package dev.doona.android.data.settings
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import dev.doona.android.engine.AppPolicy
@@ -27,7 +26,7 @@ class PerAppSettingsTest {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val file by lazy { folder.root.resolve("per_app.preferences_pb") }
-    private val store by lazy { PreferenceDataStoreFactory.create(scope = scope) { file } }
+    private val store by lazy { PerAppSettings.store(scope) { file } }
     private val settings by lazy { PerAppSettings(store) }
 
     @After
@@ -42,6 +41,14 @@ class PerAppSettingsTest {
     fun aCorruptFileIsNotReadAsAll() {
         file.writeBytes(ByteArray(8) { -1 })
         assertThrows(IOException::class.java) { runBlocking { settings.perApp.first() } }
+    }
+
+    @Test
+    fun aSaveRepairsACorruptFile() = runBlocking {
+        file.writeBytes(ByteArray(8) { -1 })
+        val saved = PerApp(AppPolicy.OnlyListed, setOf("a"))
+        assertEquals(saved, settings.update { saved })
+        assertEquals(saved, settings.perApp.first())
     }
 
     @Test
