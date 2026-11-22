@@ -568,6 +568,8 @@ mod hooks;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_carriers;
+#[cfg(test)]
 mod tests_catalog;
 #[cfg(test)]
 mod tests_latency;

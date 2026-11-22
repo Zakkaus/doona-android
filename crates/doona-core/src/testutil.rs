@@ -5,6 +5,12 @@ use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 
+// The integration tests' QUIC node server, shared with the unit tests.
+#[path = "../tests/common/cert.rs"]
+mod cert;
+#[path = "../tests/common/tuic.rs"]
+pub mod tuic;
+
 /// A fresh directory under the system temp dir, removed on drop.
 pub struct TempDir(PathBuf);
 

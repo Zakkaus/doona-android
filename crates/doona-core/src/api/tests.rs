@@ -451,7 +451,7 @@ fn echo() -> std::net::SocketAddr {
 }
 
 /// Sends `msg` on `s` and reads its echo.
-fn ping(core: &Core, s: &mut Upstream, msg: &[u8]) -> io::Result<Vec<u8>> {
+pub(super) fn ping(core: &Core, s: &mut Upstream, msg: &[u8]) -> io::Result<Vec<u8>> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     core.runtime.block_on(async {
         s.write_all(msg).await?;

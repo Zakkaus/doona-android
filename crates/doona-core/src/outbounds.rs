@@ -17,6 +17,7 @@
 use crate::api::lock;
 use crate::catalog::NodeEntry;
 use crate::dto::ErrorCode;
+use futures_util::FutureExt;
 use honk_config::node::Node;
 use honk_outbound::proxy::ProxyRegistry;
 use honk_outbound::runtime::OutboundRuntimeRegistry;
@@ -198,8 +199,9 @@ pub(crate) struct Ended {
 impl Ended {
     /// Shuts the carriers down by `deadline`: every task on their runtime is dropped, the
     /// drivers honk spawned and dials under way included, and then each registry lets go of
-    /// what it still holds (a QUIC endpoint, a pooled session) on `rt`. Runs outside any
-    /// runtime. Returns whether both finished in time.
+    /// what it still holds (a cached QUIC connection and its endpoint, a pooled session) on
+    /// this thread, so none of it waits for a worker of the core's runtime `rt`. Runs outside
+    /// any runtime. Returns whether all of it finished in time.
     pub fn finish(self, rt: &Handle, deadline: Instant) -> bool {
         let runtime = write(&self.carriers.runtime).take();
         let mut done = true;
@@ -214,13 +216,18 @@ impl Ended {
             }
         }
         let registries = self.registries;
-        let (tx, rx) = std::sync::mpsc::channel();
-        rt.spawn(async move {
+        let mut shutdown = Box::pin(async move {
             futures_util::future::join_all(registries.iter().map(|r| r.shutdown())).await;
-            let _ = tx.send(());
         });
-        let left = deadline.saturating_duration_since(Instant::now());
-        rx.recv_timeout(left).is_ok() && done
+        // Nothing runs on the carriers any more, so nothing holds what the shutdown locks: it
+        // ends in one poll. In `rt`'s context, which needs none of its workers, anything it
+        // spawns has a runtime; should it not end, `rt` finishes it later.
+        let _entered = rt.enter();
+        if shutdown.as_mut().now_or_never().is_some() {
+            return done;
+        }
+        rt.spawn(shutdown);
+        false
     }
 }
 

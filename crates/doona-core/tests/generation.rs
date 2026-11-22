@@ -1,15 +1,15 @@
 //! A generation with proxied flows open: `traffic` counts every byte through the tun and the
-//! open app flows, and `stop` keeps its 1 s bound with 100 proxied flows open, a carrier waiting
-//! in its pool and dials stalled mid-handshake, closes every socket to a node before it returns,
-//! and leaves no descriptor open that was not open before the first dial. The checks read
-//! /proc/self/fd, so these tests run one at a time.
+//! open app flows, and `stop` keeps its 1 s bound with 100 proxied flows open, carriers kept for
+//! the next stream and dials stalled mid-handshake, closes every socket to a node before it
+//! returns, and leaves no descriptor open that was not open before the first dial. The checks
+//! read /proc/self/fd, so these tests run one at a time.
 
 mod common;
 
 use common::client::Client;
 use common::global::{Global, WAIT, pattern, ping, socks_link};
 use common::servers::{self, Seen};
-use common::{anytls, socks, wait_for};
+use common::{anytls, socks, tuic, wait_for};
 use doonacore::dto::Traffic;
 use std::collections::{BTreeSet, HashMap};
 use std::net::SocketAddr;
@@ -71,12 +71,6 @@ fn client_sockets(
             (!server).then(|| (fd.clone(), port))
         })
         .collect()
-}
-
-/// A TUIC node on `addr`; no handshake gets far enough to check its certificate.
-fn tuic_link(addr: SocketAddr, name: &str) -> String {
-    let user = "b831381d-6324-4d53-ad4f-8cda48b30811:doona-test";
-    format!("tuic://{user}@{addr}?sni=localhost&insecure=1#{name}")
 }
 
 fn traffic(g: &Global) -> Traffic {
@@ -159,26 +153,31 @@ fn stop_ends_100_proxied_flows_within_a_second_and_leaves_no_descriptor() {
 }
 
 /// When `stop` comes, an AnyTLS session outlives the flow that opened it, waiting in its pool
-/// for the next stream, a dial through another node is stuck at the SOCKS5 greeting, and one
-/// through a third waits for a TUIC server that never answers its handshake. None of their
-/// sockets is open when `stop` returns.
+/// for the next stream, and so does a TUIC node's QUIC connection; a dial through another node
+/// is stuck at the SOCKS5 greeting, and one through a fourth waits for a TUIC server that never
+/// answers its handshake. None of their sockets is open when `stop` returns.
 #[test]
 fn stop_closes_every_carrier_before_it_returns() {
     let _s = serial();
     let (at, at_seen) = anytls::anytls();
+    let (quic, quic_clients) = tuic::tuic();
     let (stall, stall_seen) = servers::stall();
     let (sink, sink_seen) = servers::udp_sink();
     let links = [
         anytls::link(at, "at"),
+        tuic::link(quic, "te"),
         socks_link(stall, "stall"),
-        tuic_link(sink, "tq"),
+        tuic::link(sink, "tq"),
     ];
     let g = Global::new(&links, vec![]);
     let before = open_fds();
     let mut c = g.start();
-    // The AnyTLS server echoes any stream; the destination is never dialed.
+    // Both servers echo any stream; the destination is never dialed.
     let id = c.connect(servers::closed_port());
     assert_eq!(c.exchange(id, b"pooled").unwrap(), b"pooled");
+    g.select("te");
+    let id = c.connect(servers::closed_port());
+    assert_eq!(c.exchange(id, b"kept").unwrap(), b"kept");
     assert!(c.until(WAIT, |_| traffic(&g).active_flows == 0));
     g.select("stall");
     let _stalled = c.connect(servers::closed_port());
@@ -192,9 +191,10 @@ fn stop_closes_every_carrier_before_it_returns() {
         0,
         "the session waits in its pool"
     );
-    let nodes = [at, stall, sink];
+    assert_eq!(quic_clients.lock().unwrap().len(), 1);
+    let nodes = [at, quic, stall, sink];
     let open = client_sockets(&before, &nodes);
-    assert!(open.len() >= 3, "a socket to each node: {open:?}");
+    assert!(open.len() >= 4, "a socket to each node: {open:?}");
     stops_within_a_second(&g);
     let open = client_sockets(&before, &nodes);
     assert!(open.is_empty(), "open when stop returned: {open:?}");

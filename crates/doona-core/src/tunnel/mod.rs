@@ -348,13 +348,16 @@ impl Tunnel {
         self.gen_.tracker.close();
     }
 
-    /// Waits for the halted generation's tasks, then shuts its carriers down, all until
-    /// `deadline` and for [`STOP_WAIT`] at most. A task still running then is left to finish on
-    /// its own: the tun is closed already, and a flow owns its socket, so none can reach a
-    /// descriptor number reused later.
+    /// Shuts the halted generation's carriers down, then waits for its tasks, all until
+    /// `deadline` and for [`STOP_WAIT`] at most. The carriers come first: closing them needs no
+    /// worker of the core's runtime, so a task holding one cannot delay it. A task still running
+    /// at the end is left to finish on its own: the tun is closed already, and a flow owns its
+    /// socket, so none can reach a descriptor number reused later.
     pub fn wait(self, rt: &Handle, deadline: Instant) {
         let begun = Instant::now();
         let until = deadline.min(begun + STOP_WAIT);
+        let ended = lock(&self.ended).take();
+        let closed = ended.is_none_or(|e| e.finish(rt, until));
         let g = &self.gen_;
         let done = g.tracker.is_empty() || {
             // A runtime task reports the end, but the wait is timed on this thread, so it ends
@@ -368,8 +371,6 @@ impl Tunnel {
             rx.recv_timeout(until.saturating_duration_since(Instant::now()))
                 .is_ok()
         };
-        let ended = lock(&self.ended).take();
-        let closed = ended.is_none_or(|e| e.finish(rt, until));
         let ms = begun.elapsed().as_millis();
         let generation = g.session.generation;
         if done && closed {
