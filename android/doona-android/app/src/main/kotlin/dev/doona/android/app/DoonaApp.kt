@@ -14,9 +14,11 @@ import dev.doona.android.designsystem.components.DoonaHubShell
 import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.activity.ActivityRoute
+import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
 import dev.doona.android.feature.settings.SettingsScreen
+import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 
 /**
  * The frame every page of the app sits in: the hub bar below it, or the hub rail beside it in a short window (see
@@ -47,9 +49,16 @@ fun DoonaApp(engine: Engine, onConnect: () -> Unit, start: List<NavKey> = listOf
             onBack = { backStack.pop(backStack.last()) },
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider = entryProvider {
-                entry<ActivityKey> { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.add(GroupKey(it)) }) }
-                entry<PoliciesKey> { PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }) }
-                entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
+                entry<ActivityKey> {
+                    FirstRunGate(engine) { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.add(GroupKey(it)) }) }
+                }
+                entry<PoliciesKey> {
+                    PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
+                }
+                entry<GroupKey> { key ->
+                    GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.add(GroupKey(it)) })
+                }
+                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, onBack = { backStack.pop(key) }) }
                 entry<SettingsKey> { SettingsScreen() }
             },
         )

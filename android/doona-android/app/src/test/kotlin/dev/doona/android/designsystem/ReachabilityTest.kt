@@ -4,6 +4,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.theme.DoonaTheme
@@ -41,7 +42,8 @@ class ReachabilityTest(private val name: String) {
         RuntimeEnvironment.setQualifiers(Landscape.qualifiers)
         val case = screenCases().first { it.name == name }
         compose.setContent { CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { DoonaTheme { case.content() } } }
-        compose.onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
+        // The sheet is the outermost scrollable: a text field on the page scrolls on its own too.
+        compose.onAllNodes(hasScrollAction()).onFirst().performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
         compose.waitForIdle()
 
         val tree = compose.layoutTree()

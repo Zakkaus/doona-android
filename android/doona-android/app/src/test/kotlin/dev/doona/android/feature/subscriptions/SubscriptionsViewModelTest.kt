@@ -1,0 +1,244 @@
+package dev.doona.android.feature.subscriptions
+
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.fake.FakeEngine
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class SubscriptionsViewModelTest {
+    @Before
+    fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+
+    @After
+    fun tearDown() = Dispatchers.resetMain()
+
+    private val now = 1_000_000L
+
+    /** `WhileSubscribed` only follows the engine while someone collects, as the screen does. */
+    private fun TestScope.collected(engine: Engine) = SubscriptionsViewModel(engine) { now }.also { vm ->
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+    }
+
+    private fun sub(id: String, error: String? = null, expiresAt: Long? = null) =
+        Subscription(id, "name-$id", "https://example.invalid/$id", nodes = 3, updatedAtEpochMs = 0, error = error, expiresAtEpochMs = expiresAt)
+
+    private fun engineException(code: ErrorCode = ErrorCode.FetchFailed) = EngineException(code)
+
+    private fun SubscriptionsViewModel.type(url: String, name: String = "") {
+        fields.url.setTextAndPlaceCursorAtEnd(url)
+        fields.name.setTextAndPlaceCursorAtEnd(name)
+    }
+
+    @Test
+    fun `lists the subscriptions with their error code and expiry`() = runTest {
+        val subs = listOf(sub("a"), sub("b", error = "FetchFailed", expiresAt = now - 1), sub("c", error = "from-the-future", expiresAt = now + 1))
+        val items = collected(FakeEngine(subscriptions = subs)).uiState.value.items
+        assertEquals(listOf(null, ErrorCode.FetchFailed, ErrorCode.Internal), items.map { it.problem })
+        assertEquals(listOf(false, true, false), items.map { it.expired })
+        assertTrue(items.none { it.updating })
+    }
+
+    @Test
+    fun `is not ready until the engine has loaded`() = runTest {
+        val engine = FakeEngine().apply { ready.value = false }
+        val vm = collected(engine)
+        assertFalse(vm.uiState.value.ready)
+        engine.ready.value = true
+        assertTrue(vm.uiState.value.ready)
+    }
+
+    @Test
+    fun `update shows its busy state until the engine answers`() = runTest {
+        val answer = CompletableDeferred<Result<Subscription>>()
+        val engine = object : Engine by FakeEngine() {
+            override suspend fun updateSubscription(id: String) = answer.await()
+        }
+        val vm = collected(engine)
+        vm.onAction(SubscriptionsAction.Update("s1"))
+        assertTrue(vm.uiState.value.items.single().updating)
+        vm.onAction(SubscriptionsAction.Update("s1"))
+        answer.complete(Result.success(sub("s1")))
+        assertFalse(vm.uiState.value.items.single().updating)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `a failed update shows its code until dismissed and a later success clears it`() = runTest {
+        var fail = true
+        val fake = FakeEngine()
+        val engine = object : Engine by fake {
+            override suspend fun updateSubscription(id: String) =
+                if (fail) Result.failure(engineException(ErrorCode.Busy)) else fake.updateSubscription(id)
+        }
+        val vm = collected(engine)
+        vm.onAction(SubscriptionsAction.Update("s1"))
+        assertEquals(ErrorCode.Busy, vm.uiState.value.error)
+        assertFalse(vm.uiState.value.items.single().updating)
+        vm.onAction(SubscriptionsAction.DismissError)
+        assertNull(vm.uiState.value.error)
+        vm.onAction(SubscriptionsAction.Update("s1"))
+        fail = false
+        vm.onAction(SubscriptionsAction.Update("s1"))
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `remove asks first and only the confirmation removes`() = runTest {
+        val engine = FakeEngine(subscriptions = listOf(sub("a"), sub("b")))
+        val vm = collected(engine)
+        vm.onAction(SubscriptionsAction.AskRemove("a"))
+        assertEquals("a", vm.uiState.value.removing?.id)
+        assertEquals(2, engine.subscriptions.value.size)
+        vm.onAction(SubscriptionsAction.CancelRemove)
+        assertNull(vm.uiState.value.removing)
+        assertEquals(2, engine.subscriptions.value.size)
+        vm.onAction(SubscriptionsAction.AskRemove("a"))
+        vm.onAction(SubscriptionsAction.ConfirmRemove)
+        assertNull(vm.uiState.value.removing)
+        assertEquals(listOf("b"), vm.uiState.value.items.map { it.subscription.id })
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `a failed removal keeps the subscription and shows its code`() = runTest {
+        val engine = object : Engine by FakeEngine() {
+            override suspend fun removeSubscription(id: String) = Result.failure<Unit>(engineException(ErrorCode.NotFound))
+        }
+        val vm = collected(engine)
+        vm.onAction(SubscriptionsAction.AskRemove("s1"))
+        vm.onAction(SubscriptionsAction.ConfirmRemove)
+        assertEquals(ErrorCode.NotFound, vm.uiState.value.error)
+        assertEquals(1, vm.uiState.value.items.size)
+        assertNull(vm.uiState.value.removing)
+    }
+
+    @Test
+    fun `confirming with nothing asked removes nothing`() = runTest {
+        val engine = FakeEngine()
+        collected(engine).onAction(SubscriptionsAction.ConfirmRemove)
+        assertEquals(1, engine.subscriptions.value.size)
+    }
+
+    @Test
+    fun `the form opens and closes, and closing empties it`() = runTest {
+        val vm = collected(FakeEngine())
+        vm.onAction(SubscriptionsAction.OpenForm)
+        assertTrue(vm.uiState.value.adding)
+        vm.type("https://example.invalid/x", "mine")
+        vm.onAction(SubscriptionsAction.CloseForm)
+        assertFalse(vm.uiState.value.adding)
+        assertEquals("", vm.fields.url.text.toString())
+        assertEquals("", vm.fields.name.text.toString())
+    }
+
+    @Test
+    fun `an address that is not http or https is refused before the engine is asked`() = runTest {
+        var asked = false
+        val engine = object : Engine by FakeEngine() {
+            override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+                asked = true
+                return Result.failure(engineException())
+            }
+        }
+        val vm = collected(engine)
+        vm.onAction(SubscriptionsAction.OpenForm)
+        vm.type("ftp://example.invalid/x")
+        vm.onAction(SubscriptionsAction.Add)
+        assertFalse(asked)
+        assertTrue(vm.uiState.value.form.attempted)
+        assertFalse(vm.uiState.value.form.busy)
+        assertEquals("ftp://example.invalid/x", vm.fields.url.text.toString())
+    }
+
+    @Test
+    fun `a good address is added, trimmed and with its name, and the form closes empty`() = runTest {
+        val engine = FakeEngine(subscriptions = emptyList())
+        val vm = collected(engine)
+        vm.onAction(SubscriptionsAction.OpenForm)
+        vm.type("  https://example.invalid/x\n", " mine ")
+        vm.onAction(SubscriptionsAction.Add)
+        val added = engine.subscriptions.value.single()
+        assertEquals("https://example.invalid/x", added.url)
+        assertEquals("mine", added.name)
+        assertFalse(vm.uiState.value.adding)
+        assertEquals(AddFormState(), vm.uiState.value.form)
+        assertEquals("", vm.fields.url.text.toString())
+    }
+
+    @Test
+    fun `a blank name is not sent`() = runTest {
+        var sent: String? = "unset"
+        val fake = FakeEngine()
+        val engine = object : Engine by fake {
+            override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+                sent = name
+                return fake.addSubscription(url, name)
+            }
+        }
+        val vm = collected(engine)
+        vm.type("https://example.invalid/x", "   ")
+        vm.onAction(SubscriptionsAction.Add)
+        assertNull(sent)
+    }
+
+    @Test
+    fun `adding shows its busy state, ignores a second tap, and keeps the form open`() = runTest {
+        val answer = CompletableDeferred<Result<Subscription>>()
+        var calls = 0
+        val engine = object : Engine by FakeEngine() {
+            override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+                calls++
+                return answer.await()
+            }
+        }
+        val vm = collected(engine)
+        vm.onAction(SubscriptionsAction.OpenForm)
+        vm.type("https://example.invalid/x")
+        vm.onAction(SubscriptionsAction.Add)
+        assertTrue(vm.uiState.value.form.busy)
+        vm.onAction(SubscriptionsAction.Add)
+        assertEquals(1, calls)
+        assertTrue(vm.uiState.value.adding)
+        answer.complete(Result.success(sub("new")))
+        assertFalse(vm.uiState.value.form.busy)
+        assertFalse(vm.uiState.value.adding)
+    }
+
+    @Test
+    fun `a failed add keeps what was typed and shows the code until dismissed`() = runTest {
+        val engine = object : Engine by FakeEngine() {
+            override suspend fun addSubscription(url: String, name: String?) = Result.failure<Subscription>(engineException(ErrorCode.ParseFailed))
+        }
+        val vm = collected(engine)
+        vm.onAction(SubscriptionsAction.OpenForm)
+        vm.type("https://example.invalid/x", "mine")
+        vm.onAction(SubscriptionsAction.Add)
+        val form = vm.uiState.value.form
+        assertEquals(ErrorCode.ParseFailed, form.error)
+        assertFalse(form.busy)
+        assertTrue(vm.uiState.value.adding)
+        assertEquals("https://example.invalid/x", vm.fields.url.text.toString())
+        assertEquals("mine", vm.fields.name.text.toString())
+        vm.onAction(SubscriptionsAction.DismissFormError)
+        assertNull(vm.uiState.value.form.error)
+    }
+}
