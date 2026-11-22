@@ -39,6 +39,8 @@ fn session() -> (Session, Clock) {
 
 fn runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_current_thread()
+        .enable_time()
+        .max_blocking_threads(1)
         .build()
         .unwrap()
 }
@@ -51,7 +53,7 @@ fn stats(dir: &TempDir, rt: &tokio::runtime::Runtime) -> Arc<Stats> {
 /// `outbound` bytes down.
 fn moved(session: &Session, (up, down, opened): (u64, u64, u64), outbound: u64) {
     session.publish(up, down, 0, opened);
-    let mut tally = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    let tally = meter::Tally::new(Some(session.meters().get("g-Proxy")));
     tally.down(usize::try_from(outbound).unwrap());
 }
 
@@ -219,27 +221,43 @@ fn latency_tests_are_kept_written_at_a_round_end_and_pruned() {
 }
 
 #[test]
-fn bytes_moved_before_a_suspend_stay_out_of_the_sleep() {
-    let (dir, rt) = (TempDir::new("stats-suspend"), runtime());
+fn keeping_the_same_nodes_defers_latency_writes_to_round_end() {
+    let (dir, rt) = (TempDir::new("stats-keep-nodes"), runtime());
+    let stats = stats(&dir, &rt);
+    stats.record_latency("n-a", 1_000, Some(38));
+    stats.keep_nodes(|_| true);
+    rt.block_on(rt.spawn_blocking(|| {})).unwrap();
+    assert!(!dir.path().join(file::LATENCY).exists());
+
+    stats.end_round();
+    drop(rt);
+    let saved = StatsFile::new(dir.path(), file::LATENCY).load::<LatencyFile>();
+    assert_eq!(saved.latency["n-a"][0], latency::Test(1_000, Some(38)));
+}
+
+#[test]
+fn bytes_after_a_wake_count_in_the_second_they_were_sampled() {
+    let (dir, rt) = (TempDir::new("stats-wake"), runtime());
     let stats = stats(&dir, &rt);
     let (session, base) = session();
-    moved(&session, (600, 6000, 0), 0);
-    // The phone suspends for ten minutes right after; the watch's next round comes on wake, a
-    // second later on the monotonic clock, and the boot clock counted the sleep.
+    // Ten minutes asleep after the fold at `base`; on wake 6 KiB arrive before the watch's next
+    // round, a second after `base` on the monotonic clock.
+    session.publish(0, 6144, 0, 0);
     let wake = Clock {
         mono_ms: base.mono_ms + 1000,
         ..clock(&base, 601, NOW_MS + 601_000)
     };
     stats.fold(&session, &wake, false);
     let (last_minute, _) = stats.series(60, true, &wake);
-    assert!(
-        last_minute.down.iter().all(|&b| b == 0),
-        "the sleep shows no traffic: {:?}",
-        last_minute.down
+    assert_eq!(last_minute.down[59], 6144, "{:?}", last_minute.down);
+    assert!(last_minute.down[..59].iter().all(|&b| b == 0));
+    // Nothing goes back into the sleep or the second before it.
+    let (hour, _) = stats.series(601, true, &wake);
+    assert_eq!(hour.down.iter().sum::<u64>(), 6144 / hour.step);
+    assert_eq!(
+        lock(&stats.inner).ring.series(base.boot_s() + 1, 1).down,
+        [0]
     );
-    let first = base.boot_s() + 1;
-    assert_eq!(lock(&stats.inner).ring.series(first, 1).down, [6000]);
-    assert_eq!(session.traffic().down_peak, 6000);
 }
 
 #[test]
@@ -261,7 +279,7 @@ fn a_flow_across_midnight_counts_each_side_on_its_day() {
             .find(|o| o.id == "g-Proxy")
             .map(|o| (o.up, o.down))
     };
-    let mut flow = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    let flow = meter::Tally::new(Some(session.meters().get("g-Proxy")));
     // 32 KiB in 4 KiB chunks over the last seconds before midnight, folded each second.
     fold(1);
     (0..4).for_each(|_| flow.up(4096));
@@ -278,7 +296,7 @@ fn a_flow_across_midnight_counts_each_side_on_its_day() {
     assert_eq!(proxy(&usage.today), Some((32_768, 0)));
     assert_eq!(proxy(&usage.yesterday.unwrap()), Some((32_768, 0)));
     // A flow that moves a little now and then shows at the next fold, while it is open.
-    let mut push = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    let push = meter::Tally::new(Some(session.meters().get("g-Proxy")));
     push.down(100);
     fold(7);
     assert_eq!(
@@ -289,42 +307,131 @@ fn a_flow_across_midnight_counts_each_side_on_its_day() {
 }
 
 #[test]
-fn a_failed_write_is_tried_again() {
+fn failed_final_writes_retry_without_another_fold() {
+    use std::time::Duration;
+
     let (dir, rt) = (TempDir::new("stats-enospc"), runtime());
     let stats = stats(&dir, &rt);
     let (session, base) = session();
-    let at = |s| clock(&base, s, NOW_MS);
-    // The temporary files cannot be made, as when the disk is full.
+    let at = clock(&base, 1, NOW_MS);
     let temps = ["stats.json.tmp", "latency.json.tmp"].map(|t| dir.path().join(t));
     temps.iter().for_each(|t| std::fs::create_dir(t).unwrap());
-    moved(&session, (1, 1, 0), 0);
-    assert!(stats.fold(&session, &at(1), true).usage);
-    stats.write_usage();
+    moved(&session, (1, 2, 0), 0);
+    stats.finish(&session, &at);
     stats.record_latency("n-a", 1_000, Some(38));
-    assert!(
-        lock(&stats.inner)
-            .latency_writes
-            .due(base.boot_s() + 1, true)
-    );
-    stats.write_latency();
-    let written = || ["stats.json", "latency.json"].map(|f| dir.path().join(f).exists());
-    assert_eq!(written(), [false, false]);
-    // Space comes free, and no byte moves and no test runs for the rest of the day: both
-    // writes are asked again, a minute after the failed ones.
+    stats.end_round();
+    rt.block_on(rt.spawn_blocking(|| {})).unwrap();
+    let saved = [file::USAGE, file::LATENCY].map(|f| dir.path().join(f));
+    assert!(saved.iter().all(|f| !f.exists()));
+
     temps.iter().for_each(|t| std::fs::remove_dir(t).unwrap());
-    assert_eq!(stats.fold(&session, &at(30), false), Writes::default());
-    let again = stats.fold(&session, &at(62), false);
+    rt.block_on(async {
+        tokio::time::timeout(Duration::from_secs(4), async {
+            while saved.iter().any(|f| !f.exists()) {
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .expect("the files were not written again after stop");
+    });
+    let usage = StatsFile::new(dir.path(), file::USAGE).load::<UsageFile>();
+    assert_eq!(usage.usage.today(&at).1, 2);
+    let latency = StatsFile::new(dir.path(), file::LATENCY).load::<LatencyFile>();
+    assert_eq!(latency.latency["n-a"][0], latency::Test(1_000, Some(38)));
+}
+
+#[test]
+fn an_open_flow_counts_its_bytes_on_the_day_they_moved() {
+    let (dir, rt) = (TempDir::new("stats-open-flow"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    let today = NOW_MS / 86_400_000;
+    let midnight = (today + 1) * 86_400_000;
+    // `s` seconds after 23:59:58, on every clock.
+    let at = |s: u64| clock(&base, s, midnight - 2000 + 1000 * s as i64);
+    let proxy = |d: i64| {
+        let inner = lock(&stats.inner);
+        (inner.usage.get(d)).and_then(|d| d.outbounds.get("g-Proxy").copied())
+    };
+    let flow = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    stats.fold(&session, &at(0), false);
+    // 1 B and 32 KiB in the same second, then the flow stays open and quiet.
+    flow.up(1);
+    flow.up(32_768);
+    stats.fold(&session, &at(1), false);
+    assert_eq!(proxy(today), Some([32_769, 0]), "the next fold counts all");
+    // Past midnight, and two days on, the flow ends.
+    stats.fold(&session, &at(3), false);
+    let later = 2 * 86_400;
+    stats.fold(&session, &at(later), false);
+    drop(flow);
+    stats.fold(&session, &at(later + 1), false);
+    assert_eq!(proxy(today), Some([32_769, 0]));
+    assert_eq!((proxy(today + 1), proxy(today + 2)), (None, None));
+}
+
+#[test]
+fn a_clock_a_year_ahead_for_a_moment_keeps_today_and_yesterday() {
+    let (dir, rt) = (TempDir::new("stats-jump"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    let day_ms = 86_400_000;
+    // A year ahead, a second before midnight there, then past it: two wrong dates.
+    let ahead = (NOW_MS + 365 * day_ms) / day_ms * day_ms + day_ms - 1000;
+    let walls = [
+        NOW_MS - day_ms,
+        NOW_MS,
+        ahead,
+        ahead + 1000,
+        ahead + 2000,
+        // The network corrects the clock.
+        NOW_MS + 5000,
+    ];
+    for (s, wall) in (1..).zip(walls) {
+        session.publish(0, 10 * s, 0, 0);
+        stats.fold(&session, &clock(&base, s, wall), false);
+    }
+    let now = clock(&base, 6, NOW_MS + 5000);
+    let usage = stats.usage(&now);
+    let sum = |d: &dto::DayUsage| d.down.iter().sum::<u64>();
     assert_eq!(
-        again,
-        Writes {
-            usage: true,
-            latency: true
-        },
-        "the failed writes are due again"
+        usage.yesterday.as_ref().map(sum),
+        Some(10),
+        "yesterday in full"
     );
-    stats.write_usage();
-    stats.write_latency();
-    assert_eq!(written(), [true, true]);
-    // Written: nothing more is due.
-    assert_eq!(stats.fold(&session, &at(130), false), Writes::default());
+    assert_eq!(sum(&usage.today), 50);
+    assert!(stats.today(&now).yesterday_by_now.is_some());
+}
+
+#[test]
+fn a_clock_that_stays_ahead_is_believed_and_a_long_sleep_at_once() {
+    let (dir, rt) = (TempDir::new("stats-jump-stays"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    let day_ms = 86_400_000;
+    let counted = || lock(&stats.inner).day;
+    stats.fold(&session, &clock(&base, 1, NOW_MS), false);
+    // Set a week ahead and left there: the boot clock's time counts until the jump has held
+    // for JUMP_FOLDS folds, then the new date.
+    let week_on = |s: u64| clock(&base, s, NOW_MS + 7 * day_ms + 1000 * s as i64);
+    let last = 1 + u64::from(JUMP_FOLDS);
+    for s in 2..=last {
+        stats.fold(&session, &week_on(s), false);
+        assert_eq!(counted(), Some(NOW_MS / day_ms), "fold {s}");
+    }
+    stats.fold(&session, &week_on(last + 1), false);
+    assert_eq!(counted(), Some(NOW_MS / day_ms + 7));
+    // Asleep for three days, which the boot clock counts too: the new date at once.
+    let asleep = 3 * 86_400;
+    let wake = clock(
+        &base,
+        last + 1 + asleep,
+        week_on(last + 1).wall_ms + 1000 * asleep as i64,
+    );
+    stats.fold(&session, &wake, false);
+    assert_eq!(counted(), Some(NOW_MS / day_ms + 10));
+    // A clock set back is believed at once.
+    let back = clock(&base, last + 2 + asleep, NOW_MS);
+    stats.fold(&session, &back, false);
+    assert_eq!(counted(), Some(NOW_MS / day_ms));
 }

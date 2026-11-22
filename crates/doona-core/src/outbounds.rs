@@ -54,6 +54,9 @@ pub struct Outbounds {
     panics: Arc<AtomicU64>,
     #[cfg(test)]
     before_build: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    /// The retirements of replaced registries under way, for tests to wait on.
+    #[cfg(test)]
+    retiring: Arc<tests::Retiring>,
 }
 
 impl std::fmt::Debug for Outbounds {
@@ -272,6 +275,8 @@ impl Outbounds {
             panics,
             #[cfg(test)]
             before_build: Mutex::default(),
+            #[cfg(test)]
+            retiring: Arc::default(),
         })
     }
 
@@ -430,8 +435,14 @@ impl Outbounds {
             let mut reused = reused.into_iter();
             for registry in old.registries.0 {
                 registry.mark_moved_out(reused.next().unwrap_or_default());
-                old.carriers
-                    .spawn(async move { registry.retire_reusable_state().await });
+                #[cfg(test)]
+                let retiring = self.retiring.begin();
+                old.carriers.spawn(async move {
+                    registry.retire_reusable_state().await;
+                    drop(registry);
+                    #[cfg(test)]
+                    drop(retiring);
+                });
             }
         }
     }

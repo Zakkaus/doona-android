@@ -484,3 +484,58 @@ fn the_tests_of_nodes_that_left_go_with_the_catalog_that_drops_them() {
     let saved = std::fs::read_to_string(dir.path().join("latency.json")).unwrap();
     assert!(!saved.contains(&id), "{saved}");
 }
+
+/// A → B → A while `latency.json` cannot be written, then the process dies: the next one must
+/// not read A's tests from before B.
+#[test]
+fn a_node_that_comes_back_never_finds_its_old_tests_on_disk() {
+    let stand = Stand::new(true);
+    let dir = TempDir::new("api-latency-back");
+    let feeds = Feeds::new();
+    let a = b"trojan://secret@192.0.2.1:443#A\n";
+    feeds.set("/sub", a);
+    let open = || Core::with_prober(dir.path().to_str().unwrap(), stand.prober());
+    let core = open();
+    add(&core, &feeds, "/sub").unwrap();
+    call(&core, "testLatency", json!({"group": null})).unwrap();
+    wait_for(&core, |c| !testing(c));
+    let id = catalog(&core).groups[1].members[0].id.clone();
+    let file = dir.path().join("latency.json");
+    let begun = std::time::Instant::now();
+    while !std::fs::read_to_string(&file).is_ok_and(|t| t.contains(&id)) {
+        assert!(
+            begun.elapsed() < Duration::from_secs(10),
+            "round not written"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    // The file cannot be written, as when the disk is full: B forgets A's node in memory only.
+    let temp = dir.path().join("latency.json.tmp");
+    std::fs::create_dir(&temp).unwrap();
+    let update = |core: &Core, feed: &[u8]| {
+        feeds.set("/sub", feed);
+        call(core, "updateSubscription", json!({"id": "s1"}))
+    };
+    update(&core, b"trojan://secret@192.0.2.2:443#B\n").unwrap();
+    let back = update(&core, a);
+    // The process dies, and space comes free.
+    drop(core);
+    std::fs::remove_dir(&temp).unwrap();
+    let tests = |core: &Core| -> Vec<serde_json::Value> {
+        (nodes(core, json!([id])).into_iter())
+            .map(|(_, n)| n["tests"].clone())
+            .collect()
+    };
+    let again = open();
+    assert!(
+        tests(&again).iter().all(|t| t == &json!([])),
+        "{:?}",
+        tests(&again)
+    );
+    // A came back only once B's forgetting could be written.
+    assert_eq!(back, Err(ErrorCode::Internal));
+    update(&again, a).unwrap();
+    assert_eq!(tests(&again), [json!([])]);
+    drop(again);
+    assert_eq!(tests(&open()), [json!([])]);
+}

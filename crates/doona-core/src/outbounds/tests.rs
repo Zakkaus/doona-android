@@ -1,11 +1,44 @@
-//! Nodes of one honk id that dial differently, from two subscriptions.
+//! Nodes of one honk id that dial differently, from two subscriptions, and the count of registry
+//! retirements that tests wait on.
 
 use super::{Outbounds, Registries};
+use crate::api::lock;
 use crate::catalog::{NodeEntry, entries};
 use crate::subscription::parse::parse;
 use crate::testutil::one_dial_ceiling;
 use honk_config::node::Node;
-use std::sync::Arc;
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::Duration;
+
+/// Counts the retirements of replaced registries under way; each [`Retirement`] counts one until
+/// dropped.
+#[derive(Default)]
+pub(super) struct Retiring(Mutex<usize>, Condvar);
+
+pub(super) struct Retirement(Arc<Retiring>);
+
+impl Retiring {
+    pub(super) fn begin(self: &Arc<Self>) -> Retirement {
+        *lock(&self.0) += 1;
+        Retirement(Arc::clone(self))
+    }
+}
+
+impl Drop for Retirement {
+    fn drop(&mut self) {
+        *lock(&self.0.0) -= 1;
+        self.0.1.notify_all();
+    }
+}
+
+impl Outbounds {
+    /// Waits until every registry replaced so far has retired and been let go.
+    pub(crate) fn wait_retired(&self) {
+        let (count, done) = (&self.retiring.0, &self.retiring.1);
+        let wait = done.wait_timeout_while(lock(count), Duration::from_secs(10), |n| *n > 0);
+        assert!(!wait.unwrap().1.timed_out(), "registries still retiring");
+    }
+}
 
 /// A Clash TUIC proxy named `name` on `server`, with `extra` fields; it has ALPN h3 unless
 /// `extra` names another.
