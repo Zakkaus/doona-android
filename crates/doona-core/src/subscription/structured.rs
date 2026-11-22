@@ -17,8 +17,9 @@
 //! Which body is a document follows upstream's `parse_structured_subscription`: one that builds a
 //! YAML or JSON mapping or sequence is one; one that does not parse is a malformed document when its
 //! first line opens like one ([`super::parse::opens_like_a_document`]), and is read as links
-//! otherwise. doona adds what [`guard`] refuses before any tree is built, and reads a body whose
-//! first line is a share link as links without trying a tree.
+//! otherwise. doona adds what [`guard`] refuses before any tree is built, checked on exactly the
+//! text the trees are built from ([`content`]), and reads a body whose first line is a share link
+//! as links without trying a tree.
 //!
 //! `state.json` keeps a structured subscription as [`Parsed::document`]: the entries its nodes came
 //! from, under their original key, which [`super::parse::parse`] reads back to the same nodes.
@@ -29,6 +30,7 @@ mod guard;
 mod json;
 
 use self::bounded::{Bounded, Budget};
+use self::guard::Scan;
 use super::parse::{Admission, Parsed, opens_like_a_document};
 use crate::dto::ErrorCode;
 use honk_config::node::Node;
@@ -46,8 +48,9 @@ type Emit<'a> = dyn FnMut(&Value, Option<Node>) -> anyhow::Result<()> + 'a;
 /// [`super::parse::MAX_NODES_PER_SUBSCRIPTION`] nodes. No node is `no_nodes`, which the caller
 /// decides.
 pub(super) fn parse(text: &str) -> Result<Option<Parsed>, ErrorCode> {
-    guard::check(text)?;
-    match parse_structured_value(text) {
+    let content = content(text);
+    let scan = guard::check(content)?;
+    match parse_structured_value(content, scan) {
         Some(value @ (Value::Mapping(_) | Value::Sequence(_))) => nodes(value).map(Some),
         Some(_) => Ok(None),
         None if opens_like_a_document(text) => Err(ErrorCode::ParseFailed),
@@ -80,9 +83,12 @@ fn nodes(value: Value) -> Result<Parsed, ErrorCode> {
         None => Value::Sequence(kept),
     };
     let document = serde_yaml::to_string(&document).map_err(|_| ErrorCode::ParseFailed)?;
-    // Block style and expanded aliases can count more than the body did; refused now, a document
-    // that state.json could not read back is never committed.
-    guard::check(&document)?;
+    // Block style and expanded aliases can count more than the body did, and a document libyaml
+    // cannot scan would be read as YAML no more; refused now, a document that state.json could
+    // not read back is never committed.
+    if guard::check(content(&document))? == Scan::Failed {
+        return Err(ErrorCode::ParseFailed);
+    }
     Ok(Parsed {
         links: Vec::new(),
         nodes: admission.nodes,
@@ -90,19 +96,34 @@ fn nodes(value: Value) -> Result<Parsed, ErrorCode> {
     })
 }
 
-/// Upstream's `parse_structured_value`, which builds the tree with `serde_json::from_str` or else
-/// `serde_yaml::from_str`; here each attempt builds it within a [`Budget`].
-fn parse_structured_value(content: &str) -> Option<Value> {
-    let content = content.trim_start().trim_start_matches('\u{feff}');
+/// The text upstream's `parse_structured_value` builds its trees from: the body from its first
+/// character that is neither whitespace nor a byte order mark. [`guard`] checks this same slice,
+/// so what is trimmed here cannot hide the rest from it: a scan of the untrimmed body would stop
+/// at a leading form feed, which libyaml refuses, and see nothing after it.
+fn content(text: &str) -> &str {
+    text.trim_start().trim_start_matches('\u{feff}')
+}
+
+/// Upstream's `parse_structured_value` on [`content`], which builds the tree with
+/// `serde_json::from_str` or else `serde_yaml::from_str`; here each attempt builds it within a
+/// [`Budget`], and YAML is not tried when libyaml's scanner failed on it.
+fn parse_structured_value(content: &str, scan: Scan) -> Option<Value> {
     let budget = || Budget::new(guard::MAX_ITEMS, content.len());
     let json = || {
         let mut json = serde_json::Deserializer::from_str(content);
         let value = Bounded(&budget()).deserialize(&mut json)?;
         json.end().map(|()| value)
     };
-    let yaml = || Bounded(&budget()).deserialize(serde_yaml::Deserializer::from_str(content));
-    // YAML's quoted-scalar decoder does not accept JSON UTF-16 surrogate pairs.
-    json().ok().or_else(|| yaml().ok())
+    // serde_yaml runs the same scanner over the same bytes, so it would fail where the scan did.
+    let yaml = || match scan {
+        Scan::Read => Bounded(&budget())
+            .deserialize(serde_yaml::Deserializer::from_str(content))
+            .ok(),
+        Scan::Failed => None,
+    };
+    // YAML's quoted-scalar decoder does not accept JSON UTF-16 surrogate pairs. serde_json's
+    // recursion limit holds within `Bounded`, which never disables it.
+    json().ok().or_else(yaml)
 }
 
 /// `parse_structured_subscription` once the body parsed to a mapping or sequence: a mapping with a
@@ -141,3 +162,5 @@ fn yaml_value<'a>(mapping: &'a Mapping, key: &str) -> Option<&'a Value> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_hostile;

@@ -159,6 +159,13 @@ impl Carriers {
     /// A registry for each of `layers`, reusing the runtimes of `previous`'s registry at the same
     /// place where the node is the same, and the ids each reused; none once the carriers are shut
     /// down. The runtime's handle is cloned under the lock, so a shutdown never waits for a build.
+    ///
+    /// Every registry dials within one dial ceiling. honk gives a registry the ceiling of the one
+    /// it is built from, and a new one otherwise; the VLESS carrier limit is honk's own static
+    /// whatever the registry. So a registry with none at its place in `previous` is built from
+    /// the first one built here: its nodes are all of ids the first holds, each of a node that
+    /// dials otherwise, so honk, which reuses a runtime only for an equal node, reuses none of the
+    /// first's.
     fn build(
         &self,
         layers: &[Vec<Node>],
@@ -170,8 +177,8 @@ impl Carriers {
         let mut registries = Vec::with_capacity(layers.len());
         let mut reused = Vec::with_capacity(layers.len());
         for (i, nodes) in layers.iter().enumerate() {
-            let previous = previous.and_then(|p| p.0.get(i)).map(Arc::as_ref);
-            match OutboundRuntimeRegistry::build_reusing(nodes, dials, previous) {
+            let previous = previous.and_then(|p| p.0.get(i)).or(registries.first());
+            match OutboundRuntimeRegistry::build_reusing(nodes, dials, previous.map(Arc::as_ref)) {
                 Ok((registry, kept)) => {
                     registries.push(Arc::new(registry));
                     reused.push(kept);
@@ -292,6 +299,12 @@ impl Outbounds {
     #[cfg(test)]
     pub(crate) fn registry(&self) -> Option<Arc<OutboundRuntimeRegistry>> {
         self.published().and_then(|(r, _)| r.0.first().cloned())
+    }
+
+    /// Every published registry.
+    #[cfg(test)]
+    pub(crate) fn registries(&self) -> Vec<Arc<OutboundRuntimeRegistry>> {
+        self.published().map(|(r, _)| r.0).unwrap_or_default()
     }
 
     pub(crate) fn proxies(&self) -> Arc<ProxyRegistry> {

@@ -11,17 +11,14 @@ use std::sync::Arc;
 pub(crate) struct Registries(pub(super) Vec<Arc<OutboundRuntimeRegistry>>);
 
 impl Registries {
-    /// The registry that holds `node`'s runtime, or the first when none does.
+    /// The registry that holds a runtime of `node`'s id that dials as `node` does; `None` when
+    /// none does, as for a node no registry holds: another registry's runtime of that id would
+    /// dial with another node's settings.
     pub(crate) fn of(&self, node: &Node) -> Option<&Arc<OutboundRuntimeRegistry>> {
-        let first = self.0.first();
-        if self.0.len() == 1 {
-            return first;
-        }
-        let holds = |r: &&Arc<OutboundRuntimeRegistry>| {
+        self.0.iter().find(|r| {
             r.get(&node.id)
                 .is_some_and(|runtime| same_dial(&runtime.node, node))
-        };
-        self.0.iter().find(holds).or(first)
+        })
     }
 }
 

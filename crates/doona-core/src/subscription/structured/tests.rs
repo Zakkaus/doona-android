@@ -1,15 +1,13 @@
 //! Clash, sing-box and SIP008 bodies against the share links of the same nodes; what is skipped;
-//! the node budget; malformed and hostile bodies; the stored document; a BOM, CRLF line ends and
-//! base64.
+//! the node and item budgets and aliases; malformed bodies; the stored document; a BOM, CRLF line
+//! ends and base64. Directives, documents and nesting are in `tests_hostile`.
 
 use super::super::parse::{MAX_NODES_PER_SUBSCRIPTION, Parsed, parse};
 use super::guard::{MAX_ITEMS, items};
 use crate::dto::ErrorCode;
-use crate::testutil::alloc::allocated;
 use crate::testutil::fixture;
 use honk_config::node::Node;
 use honk_config::types::NodeProtocol;
-use std::time::{Duration, Instant};
 
 /// The supported entries of `clash.yaml`, in feed order; `singbox.json` has all but Juicity.
 const NODES: [&str; 10] = [
@@ -26,7 +24,7 @@ const NODES: [&str; 10] = [
 ];
 
 /// Checks that `left` and `right` are the same nodes, but for the times each was made at.
-fn assert_same(left: &[Node], right: &[Node], what: &str) {
+pub(super) fn assert_same(left: &[Node], right: &[Node], what: &str) {
     assert_eq!(left.len(), right.len(), "{what}");
     for (left, right) in left.iter().zip(right) {
         let mut left = left.clone();
@@ -316,58 +314,8 @@ fn a_refetch_of_the_same_body_gives_the_same_nodes() {
     }
 }
 
-#[test]
-fn a_directive_is_refused_before_anything_is_built() {
-    // libyaml copies a %TAG prefix into every node that names its handle: here 64 KiB 400 times.
-    let prefix = "x".repeat(64 << 10);
-    let uses = vec!["!a!b 1"; 400].join(", ");
-    let body = format!("%TAG !a! tag:{prefix}\n---\nproxies: [{uses}]\n");
-    let (result, bytes) = allocated(|| parse(body.as_bytes()));
-    assert_eq!(result.err(), Some(ErrorCode::ParseFailed));
-    assert!(
-        bytes < body.len(),
-        "{bytes} bytes for a body of {}",
-        body.len()
-    );
-    let version = "%YAML 1.1\n---\nproxies: []\n";
-    assert_eq!(
-        parse(version.as_bytes()).err(),
-        Some(ErrorCode::ParseFailed)
-    );
-}
-
-fn nested(n: usize) -> String {
+pub(super) fn nested(n: usize) -> String {
     format!("{}{}", "[".repeat(n), "]".repeat(n))
-}
-
-#[test]
-fn deep_flow_nesting_is_refused_before_libyaml_slows_down() {
-    // JSON that serde_json refuses at its depth limit goes to serde_yaml next.
-    for body in [
-        format!("proxies: {}", nested(20_000)),
-        format!("{{\"outbounds\": {}}}", nested(20_000)),
-    ] {
-        let start = Instant::now();
-        assert_eq!(parse(body.as_bytes()).err(), Some(ErrorCode::ParseFailed));
-        let took = start.elapsed();
-        assert!(took < Duration::from_millis(50), "{took:?}");
-    }
-    // serde_yaml reads 128 levels; the scan takes as many and refuses one more.
-    assert_eq!(
-        parse(nested(128).as_bytes()).err(),
-        Some(ErrorCode::NoNodes)
-    );
-    assert_eq!(
-        parse(nested(129).as_bytes()).err(),
-        Some(ErrorCode::ParseFailed)
-    );
-    // A bracket in a quoted scalar or a comment does not nest.
-    let text = format!(
-        "proxies: []\nname: '{}'\n# {}\n",
-        "[".repeat(200),
-        "{".repeat(200)
-    );
-    assert_eq!(parse(text.as_bytes()).err(), Some(ErrorCode::NoNodes));
 }
 
 #[test]

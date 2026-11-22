@@ -142,6 +142,22 @@ pub fn fixture(name: &str) -> Vec<u8> {
     std::fs::read(dir.join(name)).unwrap()
 }
 
+/// Whether `registries` dial within one ceiling: while the first holds every dial permit it may,
+/// a dial through each other waits, and goes once the first gives one back.
+pub fn one_dial_ceiling(
+    registries: &[std::sync::Arc<honk_outbound::runtime::OutboundRuntimeRegistry>],
+) -> bool {
+    use futures_util::FutureExt;
+    let (first, others) = registries.split_first().unwrap();
+    let mut held: Vec<_> = (0..first.dial_limit())
+        .map(|_| first.acquire_dial_permit().now_or_never().unwrap())
+        .collect();
+    let waits = (others.iter()).all(|r| r.acquire_dial_permit().now_or_never().is_none());
+    held.pop();
+    let goes = (others.iter()).all(|r| r.acquire_dial_permit().now_or_never().is_some());
+    !others.is_empty() && waits && goes
+}
+
 /// A loopback SOCKS5 server without authentication that relays each CONNECT; counts the
 /// connections it accepted.
 pub fn socks5() -> (std::net::SocketAddr, std::sync::Arc<AtomicU32>) {
