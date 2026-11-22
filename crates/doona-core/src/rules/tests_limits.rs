@@ -1,9 +1,10 @@
 //! Each limit at its bound and one past it, as C1d's guard tests: past it the source is
 //! `parse_failed`, refused before anything is built.
 
-use super::limits::{MAX_DEPTH, MAX_GROUPS, MAX_KEYWORDS, MAX_LINES, MAX_MEMBERS, MAX_VALUE};
+use super::limits::{MAX_DEPTH, MAX_GROUPS, MAX_KEYWORDS, MAX_LINES, MAX_VALUE};
 use super::tests::{group, rule};
 use super::*;
+use crate::catalog::MAX_NODES;
 use crate::groups::GroupDef;
 use crate::testutil::alloc::allocated;
 
@@ -11,8 +12,9 @@ fn proxy() -> Vec<GroupDef> {
     vec![group("Proxy", &["n-1"])]
 }
 
+/// Every `n-` member is a node the catalog holds.
 fn compiles(groups: &[GroupDef], rules: &[RuleSpec]) -> Result<(), ErrorCode> {
-    RuleSet::compile(groups, rules).map(|_| ())
+    RuleSet::compile(groups, &|id| id.starts_with("n-"), rules).map(|_| ())
 }
 
 /// `n` suffix lines, one row each.
@@ -50,6 +52,9 @@ fn values_ports_and_skipped_lines_count_toward_the_bound() {
     rules.push(rule("GEOSITE", &["cn"], "DIRECT"));
     assert_eq!(compiles(&proxy(), &rules), Err(ErrorCode::ParseFailed));
     rules.pop();
+    // An empty piece is no port, as Mihomo skips it (`common/utils/ranges.go:36-38`).
+    rules[1] = rule("DST-PORT", &["25/465/587/"], "REJECT");
+    assert_eq!(compiles(&proxy(), &rules), Ok(()));
     rules[1] = rule("DST-PORT", &["25/465/587/2525"], "REJECT");
     assert_eq!(compiles(&proxy(), &rules), Err(ErrorCode::ParseFailed));
 }
@@ -92,13 +97,19 @@ fn groups_at_the_bound_compile_and_one_more_is_refused() {
     assert_eq!(compiles(&groups, &[]), Err(ErrorCode::ParseFailed));
 }
 
+/// rule-mode.md, Safety limits: a group holds at most `MAX_NODES` members, groups included.
 #[test]
-fn members_at_the_bound_compile_and_one_more_is_refused() {
-    let members: Vec<String> = (0..=MAX_MEMBERS).map(|i| format!("n-{i}")).collect();
+fn members_at_the_plans_bound_compile_and_one_more_is_refused() {
+    let members: Vec<String> = (0..=MAX_NODES).map(|i| format!("n-{i}")).collect();
     let members: Vec<&str> = members.iter().map(String::as_str).collect();
-    let at = [group("Proxy", &members[..MAX_MEMBERS])];
+    let at = [group("Proxy", &members[..MAX_NODES])];
     assert_eq!(compiles(&at, &[]), Ok(()));
     let past = [group("Proxy", &members)];
+    assert_eq!(compiles(&past, &[]), Err(ErrorCode::ParseFailed));
+    // Every node and one group is past it too.
+    let mut with_group = members[..MAX_NODES].to_vec();
+    with_group.push("g-Sub");
+    let past = [group("Proxy", &with_group), group("Sub", &["n-1"])];
     assert_eq!(compiles(&past, &[]), Err(ErrorCode::ParseFailed));
 }
 

@@ -74,10 +74,26 @@ fn lines(rows: &mut Vec<RuleSpec>, rng: &mut Rng, kind: &str, values: Vec<String
     }
 }
 
+/// The names a flow can hit: suffixes, which a host under one hits, and exact names.
+struct Hits {
+    suffixes: Vec<String>,
+    exact: Vec<String>,
+}
+
+impl Hits {
+    /// A name the rules hold: a host under a suffix, or an exact name as it is.
+    fn pick(&self, rng: &mut Rng) -> String {
+        let i = rng.below((self.suffixes.len() + self.exact.len()) as u64) as usize;
+        match self.suffixes.get(i) {
+            Some(suffix) => format!("www.{suffix}"),
+            None => self.exact[i - self.suffixes.len()].clone(),
+        }
+    }
+}
+
 /// 20,000 lines, one a row, shaped like a large inline Clash profile: mostly suffixes, then
-/// names, keywords, CIDRs, a few ports and lines skipped, GeoIP and MATCH. Returns the names
-/// (suffixes and exact names) a flow can hit.
-fn profile(rng: &mut Rng) -> (Vec<RuleSpec>, Vec<String>) {
+/// names, keywords, CIDRs, a few ports and lines skipped, GeoIP and MATCH.
+fn profile(rng: &mut Rng) -> (Vec<RuleSpec>, Hits) {
     let mut rows = vec![rule("GEOIP", &["private"], "DIRECT")];
     let suffixes: Vec<String> = (0..17_000).map(|_| name(rng)).collect();
     let exact: Vec<String> = (0..1_200).map(|_| format!("api.{}", name(rng))).collect();
@@ -112,14 +128,12 @@ fn profile(rng: &mut Rng) -> (Vec<RuleSpec>, Vec<String>) {
     lines(&mut rows, rng, "DST-PORT", ports);
     rows.push(rule("GEOIP", &["CN"], "DIRECT"));
     rows.push(rule("MATCH", &[], "Proxy"));
-    let mut hits = suffixes;
-    hits.extend(exact);
-    (rows, hits)
+    (rows, Hits { suffixes, exact })
 }
 
 /// The template's shape in R2 (rule-mode.md, R2): private direct, a streaming list, an AI list,
 /// CN direct, the rest through Proxy.
-fn template() -> (Vec<RuleSpec>, Vec<String>) {
+fn template() -> (Vec<RuleSpec>, Hits) {
     let streaming: Vec<String> = (0..40).map(|i| format!("stream{i}.com")).collect();
     let ai: Vec<String> = (0..15).map(|i| format!("ai{i}.com")).collect();
     let list = |values: &[String], to: &str| RuleSpec {
@@ -134,8 +148,12 @@ fn template() -> (Vec<RuleSpec>, Vec<String>) {
         rule("GEOIP", &["CN"], "DIRECT"),
         rule("MATCH", &[], "Proxy"),
     ];
-    let mut hits = streaming;
-    hits.extend(ai);
+    let mut suffixes = streaming;
+    suffixes.extend(ai);
+    let hits = Hits {
+        suffixes,
+        exact: Vec::new(),
+    };
     (rows, hits)
 }
 
@@ -167,16 +185,13 @@ fn cn_v4(rng: &mut Rng, cn: &[(u32, u32)]) -> IpAddr {
 
 /// Flows: half named, a third of those after a name the rules hold (a host under a suffix, or
 /// an exact name), the rest after none; the other half unnamed, to CN, other IPv4 and IPv6.
-fn samples(rng: &mut Rng, hits: &[String], n: usize) -> Vec<Sample> {
+fn samples(rng: &mut Rng, hits: &Hits, n: usize) -> Vec<Sample> {
     let cn: Vec<(u32, u32)> = geoip::cn_ranges().collect();
     (0..n)
         .map(|_| {
             let roll = rng.below(100);
             let domain = match roll {
-                0..17 => Some(format!(
-                    "www.{}",
-                    hits[rng.below(hits.len() as u64) as usize]
-                )),
+                0..17 => Some(hits.pick(rng)),
                 17..50 => Some(format!("{}.{}", label(rng, 6), name(rng))),
                 _ => None,
             };
@@ -219,15 +234,19 @@ fn per_flow(set: &RuleSet, samples: &[Sample]) -> Duration {
 /// Compiles `rows` five times; prints the median time, the peak and what the set keeps, and the
 /// match time per flow over `samples`.
 fn measure(what: &str, groups: &[GroupDef], rows: &[RuleSpec], samples: &[Sample]) {
+    let node = |id: &str| id.starts_with("n-");
     let mut times: Vec<Duration> = (0..5)
         .map(|_| {
             let start = Instant::now();
-            black_box(RuleSet::compile(groups, rows).unwrap());
-            start.elapsed()
+            let set = black_box(RuleSet::compile(groups, &node, rows).unwrap());
+            // Read the clock before the set is dropped: freeing it is no part of compiling.
+            let took = start.elapsed();
+            drop(set);
+            took
         })
         .collect();
     times.sort();
-    let (set, peak, kept) = peak(|| RuleSet::compile(groups, rows).unwrap());
+    let (set, peak, kept) = peak(|| RuleSet::compile(groups, &node, rows).unwrap());
     let lines: usize = rows.iter().map(|r| r.values.len().max(1)).sum();
     let kib = |b: usize| b as f64 / 1024.0;
     println!(
@@ -249,7 +268,8 @@ fn measure(what: &str, groups: &[GroupDef], rows: &[RuleSpec], samples: &[Sample
 fn measure_profiles() {
     let mut rng = Rng(0x00b0_0c5e);
     let groups = groups();
-    println!("CN table: {} bytes", geoip::cn_ranges().count() * 8);
+    // The data file's size; what the `.so` holds is measured on the library (rules-STATE.md).
+    println!("CN data file: {} bytes", geoip::cn_ranges().count() * 8);
     let (rows, hits) = template();
     let flows = samples(&mut rng, &hits, 100_000);
     measure("template", &groups, &rows, &flows);
@@ -270,7 +290,11 @@ fn measure_profiles() {
 fn measure_worst_sources() {
     let mut rng = Rng(0x0bad_5eed);
     let groups = groups();
-    let flows = samples(&mut rng, &["example.com".to_owned()], 100_000);
+    let hits = Hits {
+        suffixes: vec!["example.com".to_owned()],
+        exact: Vec::new(),
+    };
+    let flows = samples(&mut rng, &hits, 100_000);
     let mut v6 = Vec::new();
     let hosts = (0..20_000)
         .map(|_| format!("{}/128", Ipv6Addr::from(rng.u128())))

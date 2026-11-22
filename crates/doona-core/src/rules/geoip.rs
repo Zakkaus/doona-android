@@ -1,18 +1,20 @@
 //! The GeoIP codes rule mode knows without geodata (rule-mode.md, decision 4): `CN`, from a table
-//! compiled into the core, and `private`, the special-purpose ranges. Any other code is skipped as
-//! `geodata_missing` until geodata is downloaded (`e-geo`).
+//! compiled into the core; `private`, MetaCubeX's list; and Mihomo's `LAN`, which is no list but
+//! a test of the address. Any other code is skipped as `geodata_missing` until geodata is
+//! downloaded (`e-geo`).
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 /// China's IPv4 ranges: APNIC's `delegated-apnic-20261122`, 8,798 records merged into 4,119
-/// ranges, written by `tools/gen_cn_ipv4.py`. Each range is two big-endian u32, its first and
-/// its last address, in ascending order and apart. 32,952 bytes, read in place; nothing is
+/// ranges, written by `tools/gen_geoip.py`. Each range is two big-endian u32, its first and its
+/// last address, in ascending order and apart. A 32,952-byte data file, read in place; nothing is
 /// built from it. No IPv6 address is `CN`.
 static CN_V4: &[u8] = include_bytes!("cn_ipv4.bin");
 
-/// The IPv4 ranges IANA's special-purpose registries (RFC 6890) mark as not globally reachable,
-/// with 192.88.99.0/24 (the retired 6to4 relays) and multicast: address and prefix length.
-const PRIVATE_V4: [(Ipv4Addr, u8); 15] = [
+/// `private`: the IPv4 lines of MetaCubeX's list (meta-rules-dat `meta` at `ca7d9d64`,
+/// `geo/geoip/private.list`), which `tools/gen_geoip.py` copies to `private.list`; a test holds
+/// the two equal. Address and prefix length.
+pub(super) const PRIVATE_V4: [(Ipv4Addr, u8); 16] = [
     (Ipv4Addr::new(0, 0, 0, 0), 8),
     (Ipv4Addr::new(10, 0, 0, 0), 8),
     (Ipv4Addr::new(100, 64, 0, 0), 10),
@@ -21,24 +23,50 @@ const PRIVATE_V4: [(Ipv4Addr, u8); 15] = [
     (Ipv4Addr::new(172, 16, 0, 0), 12),
     (Ipv4Addr::new(192, 0, 0, 0), 24),
     (Ipv4Addr::new(192, 0, 2, 0), 24),
+    (Ipv4Addr::new(192, 31, 196, 0), 24),
+    (Ipv4Addr::new(192, 52, 193, 0), 24),
     (Ipv4Addr::new(192, 88, 99, 0), 24),
     (Ipv4Addr::new(192, 168, 0, 0), 16),
     (Ipv4Addr::new(198, 18, 0, 0), 15),
     (Ipv4Addr::new(198, 51, 100, 0), 24),
     (Ipv4Addr::new(203, 0, 113, 0), 24),
-    (Ipv4Addr::new(224, 0, 0, 0), 4),
-    (Ipv4Addr::new(240, 0, 0, 0), 4),
+    (Ipv4Addr::new(224, 0, 0, 0), 3),
 ];
 
-/// The IPv6 ranges of the same registries, and multicast. IPv4-mapped addresses are matched as
-/// IPv4 (`to_canonical`).
-const PRIVATE_V6: [(Ipv6Addr, u8); 7] = [
-    // Unspecified and loopback.
+/// `private`: the IPv6 lines of the same list.
+pub(super) const PRIVATE_V6: [(Ipv6Addr, u8); 12] = [
     (Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0), 127),
+    (Ipv6Addr::new(0x64, 0xff9b, 0, 0, 0, 0, 0, 0), 96),
     (Ipv6Addr::new(0x64, 0xff9b, 1, 0, 0, 0, 0, 0), 48),
     (Ipv6Addr::new(0x100, 0, 0, 0, 0, 0, 0, 0), 64),
+    (Ipv6Addr::new(0x2001, 0, 0, 0, 0, 0, 0, 0), 23),
     (Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0), 32),
+    (Ipv6Addr::new(0x2620, 0x4f, 0x8000, 0, 0, 0, 0, 0), 48),
+    (Ipv6Addr::new(0x3fff, 0, 0, 0, 0, 0, 0, 0), 20),
+    (Ipv6Addr::new(0x5f00, 0, 0, 0, 0, 0, 0, 0), 16),
     (Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 0), 7),
+    (Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0), 10),
+    (Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0), 8),
+];
+
+/// `LAN`: Mihomo's `isLan` (`rules/common/geoip.go:154-160`, Mihomo `100ff73a`), Go's
+/// `IsUnspecified`, `IsPrivate`, `IsLoopback`, `IsLinkLocalUnicast` and `IsMulticast`
+/// (`net/netip/netip.go:519-672`) as IPv4 prefixes.
+const LAN_V4: [(Ipv4Addr, u8); 7] = [
+    (Ipv4Addr::new(0, 0, 0, 0), 32),
+    (Ipv4Addr::new(10, 0, 0, 0), 8),
+    (Ipv4Addr::new(172, 16, 0, 0), 12),
+    (Ipv4Addr::new(192, 168, 0, 0), 16),
+    (Ipv4Addr::new(127, 0, 0, 0), 8),
+    (Ipv4Addr::new(169, 254, 0, 0), 16),
+    (Ipv4Addr::new(224, 0, 0, 0), 4),
+];
+
+/// `LAN`'s IPv6 prefixes, from the same tests.
+const LAN_V6: [(Ipv6Addr, u8); 5] = [
+    (Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0), 128),
+    (Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 0), 7),
+    (Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 128),
     (Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0), 10),
     (Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0), 8),
 ];
@@ -47,32 +75,47 @@ const PRIVATE_V6: [(Ipv6Addr, u8); 7] = [
 pub(crate) enum Code {
     Cn,
     Private,
+    Lan,
 }
 
 impl Code {
-    /// `CN`, or `private` (Mihomo's `LAN` too), in any case; `None` for a code with no data.
+    /// `CN`, `private` or `LAN`, in any case, as Mihomo lower-cases a code
+    /// (`rules/common/geoip.go:203`); `None` for a code with no data.
     pub(crate) fn parse(value: &str) -> Option<Code> {
-        if value.eq_ignore_ascii_case("cn") {
-            Some(Code::Cn)
-        } else if value.eq_ignore_ascii_case("private") || value.eq_ignore_ascii_case("lan") {
-            Some(Code::Private)
-        } else {
-            None
-        }
+        [
+            ("cn", Code::Cn),
+            ("private", Code::Private),
+            ("lan", Code::Lan),
+        ]
+        .into_iter()
+        .find_map(|(name, code)| value.eq_ignore_ascii_case(name).then_some(code))
     }
 
+    /// Whether `ip` has this code. A mapped IPv6 address is its IPv4 address, as Mihomo unmaps a
+    /// destination before any rule sees it (`tunnel/tunnel.go:282-289`).
     pub(crate) fn contains(self, ip: IpAddr) -> bool {
         match (self, ip.to_canonical()) {
             (Code::Cn, IpAddr::V4(a)) => cn(a),
             (Code::Cn, IpAddr::V6(_)) => false,
-            (Code::Private, IpAddr::V4(a)) => PRIVATE_V4
-                .iter()
-                .any(|&(net, len)| within(u32::from(a).into(), u32::from(net).into(), len, 32)),
-            (Code::Private, IpAddr::V6(a)) => PRIVATE_V6
-                .iter()
-                .any(|&(net, len)| within(a.into(), net.into(), len, 128)),
+            (Code::Private, IpAddr::V4(a)) => in_v4(&PRIVATE_V4, a),
+            (Code::Private, IpAddr::V6(a)) => in_v6(&PRIVATE_V6, a),
+            (Code::Lan, IpAddr::V4(a)) => in_v4(&LAN_V4, a),
+            (Code::Lan, IpAddr::V6(a)) => in_v6(&LAN_V6, a),
         }
     }
+}
+
+fn in_v4(prefixes: &[(Ipv4Addr, u8)], a: Ipv4Addr) -> bool {
+    let a = u32::from(a).into();
+    prefixes
+        .iter()
+        .any(|&(net, len)| within(a, u32::from(net).into(), len, 32))
+}
+
+fn in_v6(prefixes: &[(Ipv6Addr, u8)], a: Ipv6Addr) -> bool {
+    prefixes
+        .iter()
+        .any(|&(net, len)| within(a.into(), net.into(), len, 128))
 }
 
 /// Whether `a` is in `net`/`len`, both `width` bits wide.

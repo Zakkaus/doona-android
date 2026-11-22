@@ -1,9 +1,15 @@
 //! `DST-PORT`: the first row whose ports hold a flow's, by binary search over disjoint runs of
 //! ports, each labelled with the smallest row whose ranges cover it. One sweep over the ranges
 //! builds the runs, so 20,000 ranges cost no more per flow than one does beyond the search.
+//! A value is read as Mihomo reads it ([`parse`]).
 
 use super::NONE;
+use crate::dto::ErrorCode;
 use std::collections::BTreeMap;
+
+/// The most pieces one value may have, as Mihomo counts them, empty ones included
+/// (`common/utils/ranges.go:25-28`, Mihomo `100ff73a`).
+const MAX_PIECES: usize = 28;
 
 #[derive(Clone, Debug, Default)]
 pub(super) struct Index {
@@ -67,6 +73,59 @@ impl Index {
     pub(super) fn runs(&self) -> usize {
         self.runs.len()
     }
+}
+
+/// The pieces of a `DST-PORT` value that are ranges, as `utils.NewUnsignedRanges` splits it
+/// (`common/utils/ranges.go:18-24,36-38`): the value trimmed, cut at `/` and at `,`, and the empty
+/// pieces dropped. The limits count these, and [`parse`] reads them.
+pub(super) fn pieces(value: &str) -> impl Iterator<Item = &str> {
+    value.trim().split(['/', ',']).filter(|p| !p.is_empty())
+}
+
+/// Calls `each` with every range of a `DST-PORT` value; `parse_failed` where Mihomo refuses the
+/// value: no range in it (`rules/common/port.go:42-49`, `*` reads as none at `ranges.go:19-20`),
+/// more than [`MAX_PIECES`], or a piece that does not parse.
+pub(super) fn parse(value: &str, mut each: impl FnMut(u16, u16)) -> Result<(), ErrorCode> {
+    let refused = Err(ErrorCode::ParseFailed);
+    let value = value.trim();
+    if value == "*" || value.split(['/', ',']).count() > MAX_PIECES {
+        return refused;
+    }
+    let mut any = false;
+    for piece in pieces(value) {
+        let (first, last) = range(piece)?;
+        each(first, last);
+        any = true;
+    }
+    if any { Ok(()) } else { refused }
+}
+
+/// One piece (`common/utils/range.go:16-28,65-87`): spaces only are the range 0-0; else one port
+/// or two joined by `-`, a reversed pair turned around.
+fn range(piece: &str) -> Result<(u16, u16), ErrorCode> {
+    let piece = piece.trim();
+    if piece.is_empty() {
+        return Ok((0, 0));
+    }
+    let (a, b) = match piece.split_once('-') {
+        None => (piece, piece),
+        Some((_, b)) if b.contains('-') => return Err(ErrorCode::ParseFailed),
+        Some(ends) => ends,
+    };
+    let (a, b) = (port(a)?, port(b)?);
+    Ok((a.min(b), a.max(b)))
+}
+
+/// A port as `strconv.ParseUint` reads it once `[`, ` ` and `]` are trimmed from its ends
+/// (`range.go:71,79,89-95`): decimal digits, no sign. A number past 65,535 is refused, where
+/// Mihomo keeps its low 16 bits (`T(val)`, `range.go:91`) and so matches a port the profile never
+/// named.
+fn port(s: &str) -> Result<u16, ErrorCode> {
+    let s = s.trim_matches(['[', ' ', ']']);
+    if s.is_empty() || !s.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(ErrorCode::ParseFailed);
+    }
+    s.parse().map_err(|_| ErrorCode::ParseFailed)
 }
 
 #[cfg(test)]

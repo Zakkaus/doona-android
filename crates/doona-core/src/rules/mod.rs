@@ -4,11 +4,11 @@
 //!
 //! A source is groups ([`GroupDef`]) and rows of rules ([`RuleSpec`]). [`RuleSet::compile`]
 //! checks the whole source before it builds anything ([`limits`]) and refuses it as
-//! `parse_failed` past a limit, when a group or a target is missing, when groups form a cycle or
-//! when a value does not parse. A kind or a GeoIP code without data is skipped and counted, never
-//! guessed. The set keeps one index per matcher, each giving the first row it matches; the
-//! smallest of them is the first rule that matches the flow. A flow is matched once, when it
-//! opens, never per packet, in time that does not grow with the number of rules.
+//! `parse_failed` past a limit, when a member, a group or a target is missing, when groups form a
+//! cycle or when a value does not parse. A kind or a GeoIP code without data is skipped and
+//! counted, never guessed. The set keeps one index per matcher, each giving the first row it
+//! matches; the smallest of them is the first rule that matches the flow. A flow is matched once,
+//! when it opens, never per packet, in time that does not grow with the number of rules.
 
 // R2 wires the module into routing; until then only its tests reach it.
 #![cfg_attr(not(test), allow(dead_code))]
@@ -39,9 +39,9 @@ pub(crate) enum Kind {
     DomainKeyword,
     /// `IP-CIDR` and `IP-CIDR6`: the destination address, of either family.
     IpCidr,
-    /// `GEOIP`: `CN` or `private`; another code is skipped as `geodata_missing`.
+    /// `GEOIP`: `CN`, `private` or `LAN`; another code is skipped as `geodata_missing`.
     GeoIp,
-    /// `DST-PORT`: `443`, `8000-9000`, or several joined by `/`.
+    /// `DST-PORT`: `443`, `8000-9000`, or several joined by `/`, read as Mihomo reads them.
     DstPort,
     /// `NETWORK`: `tcp` or `udp`.
     Network,
@@ -159,9 +159,15 @@ pub(crate) struct RuleSet {
 }
 
 impl RuleSet {
-    /// Compiles a source of `groups` and `rules`, or refuses all of it.
-    pub(crate) fn compile(groups: &[GroupDef], rules: &[RuleSpec]) -> Result<RuleSet, ErrorCode> {
-        compile::compile(groups, rules)
+    /// Compiles a source of `groups` and `rules`, or refuses all of it. `is_node` tells whether a
+    /// member that is not a group (`n-…`) is a node the catalog holds; one that is not refuses
+    /// the source, as a missing group does.
+    pub(crate) fn compile(
+        groups: &[GroupDef],
+        is_node: &dyn Fn(&str) -> bool,
+        rules: &[RuleSpec],
+    ) -> Result<RuleSet, ErrorCode> {
+        compile::compile(groups, is_node, rules)
     }
 
     /// The first row that matches `flow`, `None` when no row does: the caller's main group then.
@@ -198,3 +204,5 @@ mod bench;
 pub(crate) mod tests;
 #[cfg(test)]
 mod tests_limits;
+#[cfg(test)]
+mod tests_mihomo;

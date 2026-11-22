@@ -7,9 +7,13 @@ use crate::dto::ErrorCode;
 use crate::groups::GroupDef;
 use std::net::IpAddr;
 
-pub(super) fn compile(groups: &[GroupDef], rules: &[RuleSpec]) -> Result<RuleSet, ErrorCode> {
+pub(super) fn compile(
+    groups: &[GroupDef],
+    is_node: &dyn Fn(&str) -> bool,
+    rules: &[RuleSpec],
+) -> Result<RuleSet, ErrorCode> {
     limits::check(groups, rules)?;
-    let ids = graph::check(groups)?;
+    let ids = graph::check(groups, is_node)?;
     let missing = |t: &Target| matches!(t, Target::Group(id) if !ids.contains_key(id.as_str()));
     if rules.iter().any(|r| missing(&r.target)) {
         return Err(ErrorCode::ParseFailed);
@@ -41,6 +45,11 @@ impl RuleSet {
     /// Adds the values of `rule`, row `row`; returns how many lines it skipped.
     fn add(&mut self, row: u32, rule: &RuleSpec) -> Result<u32, ErrorCode> {
         let values = &rule.values;
+        // A kind not compiled is skipped whole: a line a value, or one for a row without values,
+        // as the limits count it. `limits::check` keeps the count under `MAX_LINES`.
+        if let Kind::Skipped { .. } = rule.kind {
+            return Ok(values.len().max(1) as u32);
+        }
         // A `MATCH` takes no value, any other kind at least one.
         if (rule.kind == Kind::Match) != values.is_empty() {
             return Err(ErrorCode::ParseFailed);
@@ -49,10 +58,8 @@ impl RuleSet {
         for value in values {
             skipped += u32::from(!self.add_value(&rule.kind, value, row)?);
         }
-        match rule.kind {
-            Kind::Match => self.any = self.any.min(row),
-            Kind::Skipped { .. } if values.is_empty() => skipped = 1,
-            _ => {}
+        if rule.kind == Kind::Match {
+            self.any = self.any.min(row);
         }
         Ok(skipped)
     }
@@ -70,8 +77,8 @@ impl RuleSet {
                 let slot = &mut self.networks[n as usize];
                 *slot = (*slot).min(row);
             }),
-            Kind::Match => Ok(()),
-            Kind::Skipped { .. } => return Ok(false),
+            // `add` takes these before any value.
+            Kind::Match | Kind::Skipped { .. } => Ok(()),
         };
         added.map(|()| true)
     }
@@ -89,17 +96,15 @@ impl RuleSet {
     }
 
     fn add_ports(&mut self, value: &str, row: u32) -> Result<(), ErrorCode> {
-        for part in value.split('/') {
-            let (first, last) = port_range(part)?;
-            self.ports.add(first, last, row);
-        }
-        Ok(())
+        ports::parse(value, |first, last| self.ports.add(first, last, row))
     }
 }
 
 /// `addr/len`, either family; bits past `len` are ignored, as Clash masks them. A prefix within
-/// `::ffff:0:0/96` becomes the IPv4 prefix it maps, since flows are matched with mapped
-/// addresses as IPv4.
+/// `::ffff:0:0/96` stays IPv6, as `netip.ParsePrefix` keeps it (`rules/common/ipcidr.go:59`,
+/// Mihomo `100ff73a`). Flows are matched with mapped addresses as IPv4, as Mihomo unmaps them
+/// (`tunnel/tunnel.go:282-289`), and `Prefix.Contains` never matches across families (Go
+/// `net/netip/netip.go:1423`), so such a prefix matches no flow.
 fn cidr(value: &str) -> Result<(IpAddr, u8), ErrorCode> {
     let refused = ErrorCode::ParseFailed;
     let (addr, len) = value.split_once('/').ok_or(refused)?;
@@ -109,27 +114,7 @@ fn cidr(value: &str) -> Result<(IpAddr, u8), ErrorCode> {
     if len > width {
         return Err(refused);
     }
-    if let IpAddr::V6(v6) = addr
-        && let Some(v4) = v6.to_ipv4_mapped()
-        && len >= 96
-    {
-        return Ok((IpAddr::V4(v4), len - 96));
-    }
     Ok((addr, len))
-}
-
-/// `443` or `8000-9000`.
-fn port_range(value: &str) -> Result<(u16, u16), ErrorCode> {
-    let refused = ErrorCode::ParseFailed;
-    let port = |s: &str| s.trim().parse::<u16>().map_err(|_| refused);
-    let (first, last) = match value.split_once('-') {
-        Some((a, b)) => (port(a)?, port(b)?),
-        None => (port(value)?, port(value)?),
-    };
-    if first > last {
-        return Err(refused);
-    }
-    Ok((first, last))
 }
 
 fn network(value: &str) -> Result<Network, ErrorCode> {
