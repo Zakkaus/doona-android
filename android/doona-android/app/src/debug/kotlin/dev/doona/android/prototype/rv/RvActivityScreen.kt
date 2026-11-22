@@ -61,6 +61,7 @@ import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.data.RvRuleOutbound
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.fastest
+import dev.doona.android.prototype.rv.stats.RvStatsDots
 import kotlinx.coroutines.launch
 
 /**
@@ -82,6 +83,7 @@ internal fun RvActivityScreen(
     nodes: List<RvNode> = RvData.nodes,
     subscriptions: List<RvSubscription> = RvData.subscriptions,
     pull: RvPullLook = RvPullLook.None,
+    hero: RvHeroSwipe = RvHeroSwipe.Off,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -91,7 +93,7 @@ internal fun RvActivityScreen(
         Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
             // The map stretches with the pull, and what lies under it moves down as far.
             val pushed = pull.stretch?.let { stretch -> Modifier.graphicsLayer { translationY = stretch() } }
-            Header(state, mode, HeaderMotion(pull.stretch, pushed), insets) { HeroActions(state, onAction, onConnect, routes.test) }
+            Header(state, mode, HeaderMotion(pull.stretch, pushed), insets, HeroLook(hero, nodes)) { HeroActions(state, onAction, onConnect, routes.test) }
             RvGutter(pushed ?: Modifier) {
                 OutboundCard(state, mode, routes, nodes)
                 TrafficTiles(state, routes.traffic)
@@ -126,8 +128,11 @@ internal class RvActivityRoutes(
 /** The pull: [stretch] lengthens the map, [pushed] moves the header's text and everything under it down as far. */
 private class HeaderMotion(val stretch: (() -> Float)?, val pushed: Modifier?)
 
+/** Whether the hero [swipe]s to the main node, one of [nodes] (H1). */
+private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>)
+
 @Composable
-private fun Header(state: ActivityUiState, mode: RvRouteMode, motion: HeaderMotion, insets: WindowInsets, actions: @Composable () -> Unit) {
+private fun Header(state: ActivityUiState, mode: RvRouteMode, motion: HeaderMotion, insets: WindowInsets, hero: HeroLook, actions: @Composable () -> Unit) {
     val running = state.status is Status.Running || state.status is Status.Starting
     // Direct traffic uses no node, so the map marks no place.
     val place = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.place }
@@ -139,11 +144,31 @@ private fun Header(state: ActivityUiState, mode: RvRouteMode, motion: HeaderMoti
     RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds, live = live) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
         Spacer(Modifier.height(RvSpace.headerTop))
-        HeroFigure(state, mode, Modifier.onPlaced { heroBounds = it.boundsInParent() }.then(motion.pushed ?: Modifier))
-        Spacer(Modifier.height(RvSpace.heroToActions))
+        HeroBlock(state, mode, hero, Modifier.onPlaced { heroBounds = it.boundsInParent() }, motion.pushed)
         if (motion.pushed == null) actions() else Box(motion.pushed) { actions() }
         Spacer(Modifier.height(RvSpace.actionsToCard))
     }
+}
+
+/**
+ * The hero ([placed] where the map keeps its dots faint) and the gap under it, both [pushed] by the pull. H0 shows the
+ * traffic. H1 shows it and the main node as two views a horizontal swipe turns between ([RvHeroPages]); 統計's pager dots
+ * at the gap's top mark which one, and a tap on a dot shows its view. The dots take [RvSize.touch] of the gap, so the
+ * actions stay where they are.
+ */
+@Composable
+private fun HeroBlock(state: ActivityUiState, mode: RvRouteMode, hero: HeroLook, placed: Modifier, pushed: Modifier?) {
+    val moved = pushed ?: Modifier
+    if (hero.swipe == RvHeroSwipe.Off) {
+        HeroFigure(state, mode, placed.then(moved))
+        Spacer(Modifier.height(RvSpace.heroToActions))
+        return
+    }
+    val pager = rememberRvHeroPager(HERO_VIEWS)
+    val names = listOf(stringResource(R.string.rv_hero_all_traffic), stringResource(R.string.rv_main_node))
+    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(state, mode, Modifier) else MainNodeFigure(state, mode, hero.nodes) }
+    RvStatsDots(names.size, pager.view, moved, names, pager::show)
+    Spacer(Modifier.height(RvSpace.heroToActions - RvSize.touch))
 }
 
 /** The state and the mode over the download rate, the upload rate under it; a new state or each second's rates cross-fade in. */
@@ -159,6 +184,31 @@ private fun HeroFigure(state: ActivityUiState, mode: RvRouteMode, modifier: Modi
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
         Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") { RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub) }
+    }
+}
+
+/**
+ * H1's second view in the hero's three slots: 主節點 and the node's place, its latency as the figure (the number large,
+ * the unit small, as the rate's), its name and the change since the test before under it. Direct traffic uses no node,
+ * so it shows dashes. A node switch cross-fades, as the outbound card's row does.
+ */
+@Composable
+private fun MainNodeFigure(state: ActivityUiState, mode: RvRouteMode, nodes: List<RvNode>) {
+    Crossfade(state.node?.takeIf { mode != RvRouteMode.Direct }, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "hero node") { node ->
+        val listed = node?.let { at -> nodes.firstOrNull { it.id == at.id } }
+        val latency = node?.latencyMs?.takeUnless { node.failed }
+        val figure = latency?.let { stringResource(R.string.latency_ms, it) }
+        val whole = latency?.toString()?.takeIf { figure.orEmpty().startsWith(it) } ?: figure ?: RV_NO_VALUE
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            RvText("${stringResource(R.string.rv_main_node)} · ${listed?.let { stringResource(it.place.label) } ?: RV_NO_VALUE}", Rv.type.caption)
+            Spacer(Modifier.height(RvSpace.tight))
+            RvHero(whole, figure?.removePrefix(whole).orEmpty())
+            Spacer(Modifier.height(RvSpace.subGap))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.tight)) {
+                RvText(node?.name ?: RV_NO_VALUE, Rv.type.sub, color = Rv.colors.textSecondary)
+                listed?.changeMs?.takeUnless { node.failed }?.let { RvDelta(it) }
+            }
+        }
     }
 }
 
@@ -314,6 +364,9 @@ private const val FASTEST = 3
 private const val HALF_TURN = 180f
 private const val FULL_TURN = 360f
 private const val RULE_ROWS = 2
+
+/** H1's hero: 全部流量, then 主節點. */
+private const val HERO_VIEWS = 2
 
 private val Status.label: Int
     get() = when (this) {

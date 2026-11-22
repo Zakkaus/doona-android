@@ -55,9 +55,20 @@ internal enum class RvPushMotion(val code: String) { Zoom("S1"), Axis("S2") }
  */
 internal enum class RvPullMotion(val code: String) { Sheet("P1"), Stretch("P2"), Drop("P3") }
 
-/** The motion options the owner compares; the defaults are P1, T1 and S1. */
+/**
+ * Whether 活動's hero swipes (brief rv-gestures H1): H0 it shows the traffic only (the default); H1 a horizontal swipe,
+ * or the dots under it, turns it between 全部流量 and 主節點, the same caption, figure and sub line filled with the main node.
+ */
+internal enum class RvHeroSwipe(val code: String) { Off("H0"), On("H1") }
+
+/** The motion options the owner compares; the defaults are P1, T1, S1 and H0. */
 @Immutable
-internal data class RvMotionOptions(val pull: RvPullMotion = RvPullMotion.Sheet, val tab: RvTabMotion = RvTabMotion.Cut, val push: RvPushMotion = RvPushMotion.Zoom)
+internal data class RvMotionOptions(
+    val pull: RvPullMotion = RvPullMotion.Sheet,
+    val tab: RvTabMotion = RvTabMotion.Cut,
+    val push: RvPushMotion = RvPushMotion.Zoom,
+    val hero: RvHeroSwipe = RvHeroSwipe.Off,
+)
 
 /** True on a page a hard-cut tab switch is showing: its hero art fades in ([rvHeroArt]). */
 internal val LocalRvTabEntry = staticCompositionLocalOf { false }

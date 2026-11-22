@@ -17,6 +17,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
  * Start it from the launcher's "doona RV sample", or with
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`, adding any of:
  * `--es pull P2` (P1-P3, [RvPullMotion]), `--es tab T2` ([RvTabMotion]), `--es push S2` ([RvPushMotion]),
+ * `--es hero H1` (活動's hero swipes between 全部流量 and 主節點, [RvHeroSwipe]),
  * `--es start idle` (start disconnected), `--ez fail true` (connecting fails), `--es page nodes` (start on a page:
  * nodes, stats, traffic or settings) and `--ez test true` (a latency test a second after launch). The launcher icon's
  * shortcuts (xml/rv_shortcuts) open it with an action, [RvLaunch]: `-a dev.doona.android.prototype.rv.CONNECT` starts
@@ -31,6 +32,7 @@ class RvPreviewActivity : ComponentActivity() {
             pull = extra(EXTRA_PULL, RvPullMotion.entries) { it.code } ?: RvPullMotion.Sheet,
             tab = extra(EXTRA_TAB, RvTabMotion.entries) { it.code } ?: RvTabMotion.Cut,
             push = extra(EXTRA_PUSH, RvPushMotion.entries) { it.code } ?: RvPushMotion.Zoom,
+            hero = extra(EXTRA_HERO, RvHeroSwipe.entries) { it.code } ?: RvHeroSwipe.Off,
         )
         val launch = RvLaunch.entries.firstOrNull { it.action != null && it.action == intent.action }.takeIf { savedInstanceState == null } ?: RvLaunch.None
         val start = RvSampleStart(
@@ -55,7 +57,7 @@ class RvPreviewActivity : ComponentActivity() {
     }
 }
 
-/** The options to compare, one change from the default each: the default (P1 T1 S1), then P2, P3, T2 and S2. */
+/** The options to compare, one change from the default each: the default (P1 T1 S1 H0), then P2, P3, T2, S2 and H1. */
 internal class RvMotionPreviews : PreviewParameterProvider<RvMotionOptions> {
     override val values = sequenceOf(
         RvMotionOptions(),
@@ -63,6 +65,7 @@ internal class RvMotionPreviews : PreviewParameterProvider<RvMotionOptions> {
         RvMotionOptions(pull = RvPullMotion.Drop),
         RvMotionOptions(tab = RvTabMotion.Fade),
         RvMotionOptions(push = RvPushMotion.Axis),
+        RvMotionOptions(hero = RvHeroSwipe.On),
     )
 }
 
@@ -74,6 +77,7 @@ private fun RvMotionPreview(@PreviewParameter(RvMotionPreviews::class) options: 
 private const val EXTRA_PULL = "pull"
 private const val EXTRA_TAB = "tab"
 private const val EXTRA_PUSH = "push"
+private const val EXTRA_HERO = "hero"
 private const val EXTRA_START = "start"
 private const val START_IDLE = "idle"
 private const val EXTRA_FAIL = "fail"

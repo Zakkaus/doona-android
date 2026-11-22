@@ -181,7 +181,7 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
         pull,
         activity = { look ->
             val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) run.disconnect() }
-            RvActivityScreen(run.activity(), onAction, run::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look)
+            RvActivityScreen(run.activity(), onAction, run::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
         },
         picker = { motion ->
             val pick: (String) -> Unit = {

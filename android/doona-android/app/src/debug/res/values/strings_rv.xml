@@ -37,6 +37,8 @@
     <string name="rv_mode_rule">Rules</string>
     <string name="rv_main_node">Main node</string>
     <string name="rv_main_node_hint">The node you pick becomes the main node</string>
+    <string name="rv_hero_all_traffic">All traffic</string>
+    <string name="rv_hero_show">Show %1$s</string>
     <string name="rv_direct_note">No node in use: all traffic goes direct</string>
     <string name="rv_rule_streaming">Streaming</string>
     <string name="rv_rule_domestic">Domestic and LAN</string>

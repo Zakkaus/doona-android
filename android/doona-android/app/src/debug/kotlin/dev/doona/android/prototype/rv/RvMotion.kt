@@ -84,7 +84,7 @@ internal object RvMotion {
     const val AXIS_FADE = 0.35f
     val axisShift = 30.dp
 
-    /** The segmented control's pill sliding to the chosen segment (as long as S2's shared axis). */
+    /** The segmented control's pill sliding to the chosen segment (as long as S2's shared axis); H1's hero turning to its other view. */
     const val SLIDE_MS = 250
 
     /**
@@ -111,7 +111,7 @@ internal object RvMotion {
     const val REVEAL_MS = 700
     const val RETURN_MS = 400
 
-    /** A pull let go short of its threshold springs back in about 167 ms (measured). */
+    /** A pull let go short of its threshold springs back in about 167 ms (measured); so does H1's hero swipe. */
     const val SNAP_MS = 167
 
     /** A row moving to its new place, a card opening in place, the map panning to a new node: the return's 400 ms. */
@@ -142,7 +142,7 @@ internal object RvMotion {
     /**
      * The pull commits past [pullCommit], or on a downward fling of [pullFling] per second once past [pullDead], the
      * travel before anything shows (measured 16 dp). Past the commit distance the pull meets resistance and runs out
-     * [pullGive] further at most, however far the finger goes.
+     * [pullGive] further at most, however far the finger goes. H1's hero swipe takes the same fling and rubber band sideways.
      */
     val pullCommit = 96.dp
     val pullFling = 1_000.dp
