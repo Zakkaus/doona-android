@@ -3,10 +3,13 @@ package dev.doona.android.engine
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * The UI's only view of the VPN engine. The service-backed implementation lives in `vpn/`; `ui/fake/FakeEngine`
+ * The UI's only view of the VPN engine. The service-backed implementation lives in `vpn/`; `engine/fake/FakeEngine`
  * serves previews and screenshot tests. Every flow holds a complete snapshot: a change replaces the whole value.
+ * Actions fail with [EngineException]; the UI turns its code into localized text.
  */
 interface Engine {
+    /** False until the saved subscriptions and groups are loaded, so an empty list is not mistaken for a first run. */
+    val ready: StateFlow<Boolean>
     val status: StateFlow<Status>
     val traffic: StateFlow<Traffic>
     val groups: StateFlow<List<Group>>
@@ -19,23 +22,31 @@ interface Engine {
     fun disconnect()
 
     /** Pins the member [memberId] in [group]; null hands an automatic group back to its own choice. */
-    suspend fun select(group: String, memberId: String?)
+    suspend fun select(group: String, memberId: String?): Result<Unit>
 
-    /** Probes the members of [group], or of every group when null. Results arrive through [groups]. */
-    suspend fun testLatency(group: String? = null)
+    /**
+     * Starts probing the members of [group], or of every group when null, and returns once started. [Group.testing]
+     * stays true until the last probe ends; results arrive through [groups].
+     */
+    suspend fun testLatency(group: String? = null): Result<Unit>
 
     /** Fetches [url], decodes its nodes and adds them to the group template. */
     suspend fun addSubscription(url: String, name: String? = null): Result<Subscription>
 
     suspend fun updateSubscription(id: String): Result<Subscription>
 
-    suspend fun removeSubscription(id: String)
+    suspend fun removeSubscription(id: String): Result<Unit>
 
-    suspend fun setMode(mode: Mode)
+    suspend fun setMode(mode: Mode): Result<Unit>
 
     /** A running tunnel is rebuilt to apply it, which drops open connections. */
-    suspend fun setPerApp(perApp: PerApp)
+    suspend fun setPerApp(perApp: PerApp): Result<Unit>
 }
+
+/** Codes shared with the core (`plans/v1/core-api.md`). Raw details never reach the UI: they may hold subscription URLs. */
+enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, ParseFailed, NoNodes, Busy, Internal }
+
+class EngineException(val code: ErrorCode) : Exception(code.name)
 
 sealed interface Status {
     data object Stopped : Status
@@ -46,8 +57,21 @@ sealed interface Status {
 
     data object Stopping : Status
 
-    /** [reason] is shown to the user as is. */
-    data class Failed(val reason: String) : Status
+    data class Failed(val reason: FailureReason) : Status
+}
+
+enum class FailureReason {
+    /** `OnlyListed` resolved to no installed app; connecting would capture doona itself. */
+    NoAllowedApps,
+
+    /** The tunnel or the core did not start. */
+    StartFailed,
+
+    /** The core's data path stopped on its own after starting. */
+    CoreStopped,
+
+    /** The bundled core speaks another contract schema. */
+    IncompatibleCore,
 }
 
 /** Rates in bytes per second; totals in bytes since connect; histories hold the last 60 one-second rates, oldest first. */
@@ -86,6 +110,7 @@ data class Group(
     val members: List<Member>,
     val selectedId: String?,
     val pinned: Boolean = false,
+    val testing: Boolean = false,
 )
 
 /** Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. */
