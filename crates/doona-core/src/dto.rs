@@ -82,6 +82,8 @@ pub struct Snapshot {
     /// Null while stopped; each change raises `revision`.
     pub warning: Option<ErrorCode>,
     pub traffic: Traffic,
+    /// The local day's bytes so far, kept across restarts; also while stopped.
+    pub today: Today,
     pub catalog: Option<Catalog>,
 }
 
@@ -94,6 +96,56 @@ pub struct Traffic {
     /// The session's fastest second each way, in bytes, whether or not a screen was open.
     pub up_peak: u64,
     pub down_peak: u64,
+}
+
+/// Today's bytes each way in the device's local time zone, and yesterday's both ways together by
+/// the same local time (exact to the quarter hour, the current quarter pro rata; 0 when the core
+/// kept no yesterday).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Today {
+    pub up_total: u64,
+    pub down_total: u64,
+    pub yesterday_by_now: u64,
+}
+
+/// `usage`'s reply: today and yesterday by the hour of the local day, and the totals of the
+/// finished days of the last 31 that had any bytes, oldest first (today not among them).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Usage {
+    pub today: DayUsage,
+    pub yesterday: Option<DayUsage>,
+    pub days: Vec<DayTotal>,
+}
+
+/// One local day: 24 hours of bytes each way and of flows the apps opened, and the bytes of each
+/// outbound the day's flows went through.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DayUsage {
+    /// `2026-11-22`.
+    pub date: String,
+    pub up: Vec<u64>,
+    pub down: Vec<u64>,
+    pub flows: Vec<u64>,
+    pub outbounds: Vec<OutboundBytes>,
+}
+
+/// The payload one outbound carried: `id` is the route's target, the group a flow went through
+/// (`g-Proxy` in Global) or `direct`; a rule mode adds group and node ids; `other` holds what
+/// went past 64 targets in a day. Payload only, so the sum is under the tun's day total by the
+/// packet headers, and DNS the core answers itself is not in it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OutboundBytes {
+    pub id: String,
+    pub up: u64,
+    pub down: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DayTotal {
+    pub date: String,
+    pub up: u64,
+    pub down: u64,
 }
 
 /// `trafficSeries`' reply: the rate over a window that ends at most a second ago, oldest point

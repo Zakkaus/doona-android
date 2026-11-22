@@ -115,6 +115,11 @@ impl Store {
         }
     }
 
+    /// The app's data directory, which holds the file.
+    pub fn dir(&self) -> &Path {
+        &self.dir
+    }
+
     #[cfg(test)]
     pub(crate) fn with_dir_sync(dir: &Path, sync_dir: fn(&Path) -> io::Result<()>) -> Store {
         Store {
@@ -171,11 +176,11 @@ impl Store {
     }
 }
 
-fn sync_dir(dir: &Path) -> io::Result<()> {
+pub(crate) fn sync_dir(dir: &Path) -> io::Result<()> {
     File::open(dir)?.sync_all()
 }
 
-fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
+pub(crate) fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let mut f = File::create(path)?;
     f.write_all(bytes)?;
     f.sync_all()

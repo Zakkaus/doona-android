@@ -1,7 +1,7 @@
 //! `snapshot` and the reads of the stats: cheap, and served while stopped too.
 
 use super::{Core, Life, lock, parse, to_json};
-use crate::dto::{ErrorCode, SeriesArgs, Snapshot, Traffic, TrafficSeries};
+use crate::dto::{Empty, ErrorCode, Reply, SeriesArgs, Snapshot, Today, Traffic, TrafficSeries};
 use crate::stats::Clock;
 use crate::stats::ring::SPAN;
 use crate::tunnel::Session;
@@ -22,6 +22,7 @@ impl Core {
             let warning = session.as_ref().and_then(|s| s.warning());
             (c.revision, catalog, session, warning)
         };
+        let today = self.stats.today(&Clock::now());
         let snapshot = match session {
             Some(s) => Snapshot {
                 revision,
@@ -31,6 +32,7 @@ impl Core {
                 error: s.failed().then_some(ErrorCode::Internal),
                 warning,
                 traffic: s.traffic(),
+                today,
                 catalog,
             },
             None => Snapshot {
@@ -41,6 +43,7 @@ impl Core {
                 error: None,
                 warning: None,
                 traffic: Traffic::default(),
+                today,
                 catalog,
             },
         };
@@ -56,7 +59,7 @@ impl Core {
         }
         let running = matches!(*lock(&self.life), Life::Running(_));
         let (series, end_epoch_ms) = self.stats.series(seconds, running, &Clock::now());
-        Ok(to_json(&crate::dto::Reply::Ok(TrafficSeries {
+        Ok(to_json(&Reply::Ok(TrafficSeries {
             step_seconds: series.step,
             end_epoch_ms,
             up: series.up,
@@ -66,9 +69,15 @@ impl Core {
         })))
     }
 
-    /// Folds the last bytes of a generation that has ended into the stats.
+    /// `usage`: today and yesterday by the hour, and the days before.
+    pub(super) fn usage(&self, args: &str) -> Result<String, ErrorCode> {
+        let Empty {} = parse(args)?;
+        Ok(to_json(&Reply::Ok(self.stats.usage(&Clock::now()))))
+    }
+
+    /// Folds the last bytes of a generation that has ended into the stats, and writes them.
     pub(super) fn retire(&self, session: &Session) {
-        self.stats.sample(session, &Clock::now());
+        self.stats.finish(session, &Clock::now());
     }
 }
 
@@ -82,6 +91,7 @@ pub fn snapshot_before_init() -> String {
         error: None,
         warning: None,
         traffic: Traffic::default(),
+        today: Today::default(),
         catalog: None,
     })
 }

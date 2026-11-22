@@ -12,6 +12,11 @@
     "upPeak": 0,
     "downPeak": 0
   },
+  "today": {
+    "upTotal": 2097152,
+    "downTotal": 104857600,
+    "yesterdayByNow": 0
+  },
   "catalog": {
     "mode": "Global",
     "groups": [

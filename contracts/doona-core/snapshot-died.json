@@ -12,5 +12,10 @@
     "upPeak": 262144,
     "downPeak": 7836412
   },
+  "today": {
+    "upTotal": 9437184,
+    "downTotal": 1288490188,
+    "yesterdayByNow": 1610612736
+  },
   "catalog": null
 }

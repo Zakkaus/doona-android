@@ -18,6 +18,7 @@ use crate::catalog::Shared;
 use crate::dto::{ErrorCode, Traffic};
 use crate::localnet::Trace;
 use crate::outbounds::{Ended, Outbounds};
+use crate::stats::meter::Meters;
 use crate::stats::{Clock, Fold, Stats};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
@@ -196,6 +197,10 @@ pub struct Session {
     up: AtomicU64,
     down: AtomicU64,
     active: AtomicU32,
+    /// Flows the apps opened since `start`.
+    opened: AtomicU64,
+    /// Bytes per outbound not yet folded into the day.
+    meters: Meters,
     /// The fastest second each way so far, in bytes.
     up_peak: AtomicU64,
     down_peak: AtomicU64,
@@ -229,6 +234,8 @@ impl Session {
             up: AtomicU64::new(0),
             down: AtomicU64::new(0),
             active: AtomicU32::new(0),
+            opened: AtomicU64::new(0),
+            meters: Meters::default(),
             up_peak: AtomicU64::new(0),
             down_peak: AtomicU64::new(0),
             folded: Mutex::new(Fold {
@@ -257,14 +264,26 @@ impl Session {
     pub(crate) fn fold(&self, to_s: u64) -> Fold {
         let mut folded = lock(&self.folded);
         let (up, down) = (self.up.load(Relaxed), self.down.load(Relaxed));
+        let flows = self.opened.load(Relaxed);
         let fold = Fold {
             from_s: folded.to_s,
             to_s: to_s.max(folded.to_s),
             up: up.saturating_sub(folded.up),
             down: down.saturating_sub(folded.down),
+            flows: flows.saturating_sub(folded.flows),
         };
-        *folded = Fold { up, down, ..fold };
+        *folded = Fold {
+            up,
+            down,
+            flows,
+            ..fold
+        };
         fold
+    }
+
+    /// The meters of the outbounds the session's flows use.
+    pub(crate) fn meters(&self) -> &Meters {
+        &self.meters
     }
 
     /// Raises the fastest second each way to `up` and `down` bytes, if they are faster.
@@ -347,11 +366,13 @@ impl Session {
         }
     }
 
-    /// Bytes read from and written to the tun since `start`, and the flows open now.
-    fn publish(&self, up: u64, down: u64, active: u32) {
+    /// Bytes read from and written to the tun since `start`, the flows open now, and the flows
+    /// opened since `start`.
+    pub(crate) fn publish(&self, up: u64, down: u64, active: u32, opened: u64) {
         self.up.store(up, Relaxed);
         self.down.store(down, Relaxed);
         self.active.store(active, Relaxed);
+        self.opened.store(opened, Relaxed);
     }
 }
 

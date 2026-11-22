@@ -163,6 +163,7 @@ impl Core {
         });
         shared.publish_nodes(&lock(&shared.catalog), built);
         let probes = Probes::new(prober, &options.probe_url);
+        let stats = Arc::new(Stats::new(store.dir(), runtime.handle().clone()));
         Ok(Core {
             runtime,
             options,
@@ -176,7 +177,7 @@ impl Core {
             probes,
             refreshing: Mutex::new(HashSet::new()),
             panics,
-            stats: Arc::new(Stats::new()),
+            stats,
             #[cfg(test)]
             hooks: hooks::Hooks::default(),
         })
@@ -393,6 +394,7 @@ impl Core {
                 parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
             "trafficSeries" => self.traffic_series(args),
+            "usage" => self.usage(args),
             _ => Err(ErrorCode::InvalidArgument),
         };
         reply.unwrap_or_else(|code| {
@@ -506,7 +508,7 @@ pub fn error_reply(code: ErrorCode) -> String {
 
 /// A command name fit for the log: the closed list, never caller text.
 fn command_name(command: &str) -> &'static str {
-    const KNOWN: [&str; 7] = [
+    const KNOWN: [&str; 8] = [
         "select",
         "testLatency",
         "addSubscription",
@@ -514,6 +516,7 @@ fn command_name(command: &str) -> &'static str {
         "removeSubscription",
         "setMode",
         "trafficSeries",
+        "usage",
     ];
     KNOWN
         .into_iter()

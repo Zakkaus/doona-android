@@ -1,6 +1,7 @@
 //! The stats end to end on the Direct data path (see `datapath.rs` for the harness): what a flow
-//! moves shows up in the rate series and the session's peaks with no screen asking, and `stop`
-//! folds in the last bytes, so the series adds up to the session's tun totals exactly.
+//! moves shows up in the rate series, the session's peaks and the day's usage with no screen
+//! asking; `stop` folds in the last bytes, so they add up to the session's tun totals exactly, and
+//! a new process reads the day back.
 
 mod common;
 
@@ -8,7 +9,7 @@ use common::client::Client;
 use common::servers;
 use common::{TempDir, seqpacket_pair, wait_for};
 use doonacore::api::Core;
-use doonacore::dto::{Reply, Snapshot, Traffic, TrafficSeries};
+use doonacore::dto::{Reply, Snapshot, Traffic, TrafficSeries, Usage};
 use doonacore::sys;
 use std::os::fd::AsRawFd;
 use std::time::Duration;
@@ -16,15 +17,19 @@ use std::time::Duration;
 const CONFIG: &str =
     r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":["192.168.8.1"]}"#;
 const WAIT: Duration = Duration::from_secs(5);
+const ECHOED: usize = 2 << 20;
 
 struct Setup {
     core: Core,
     client: Client,
-    _dir: TempDir,
+    dir: TempDir,
 }
 
 fn setup() -> Setup {
-    let dir = TempDir::new("stats");
+    setup_in(TempDir::new("stats"))
+}
+
+fn setup_in(dir: TempDir) -> Setup {
     let core = Core::new(dir.path().to_str().unwrap()).unwrap();
     assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
     let (tun, peer) = seqpacket_pair();
@@ -34,12 +39,19 @@ fn setup() -> Setup {
     Setup {
         core,
         client: Client::new(peer),
-        _dir: dir,
+        dir,
     }
 }
 
 fn snapshot(core: &Core) -> Snapshot {
     serde_json::from_str(&core.snapshot(i64::MAX)).unwrap()
+}
+
+fn usage(core: &Core) -> Usage {
+    match serde_json::from_str(&core.call("usage", "{}")).unwrap() {
+        Reply::Ok(usage) => usage,
+        Reply::Error(e) => panic!("usage: {e:?}"),
+    }
 }
 
 fn series(core: &Core, seconds: u64) -> TrafficSeries {
@@ -54,7 +66,7 @@ fn series(core: &Core, seconds: u64) -> TrafficSeries {
 /// not moved for a second (the client's last ACKs included).
 fn echo_and_settle(s: &mut Setup) -> Traffic {
     let (echo, _) = servers::tcp_echo();
-    let data: Vec<u8> = (0..2 << 20).map(|i| (i % 251) as u8).collect();
+    let data: Vec<u8> = (0..ECHOED).map(|i| (i % 251) as u8).collect();
     let id = s.client.connect(echo);
     assert_eq!(s.client.exchange(id, &data).unwrap().len(), data.len());
     let mut last = Traffic::default();
@@ -91,6 +103,39 @@ fn the_series_and_peaks_fill_with_no_screen_and_add_up_after_stop() {
     assert_eq!((hour.step_seconds, hour.down.len()), (12, 300));
     // Stopped, the snapshot shows no session and no peaks.
     assert_eq!(snapshot(&s.core).traffic, Traffic::default());
+}
+
+#[test]
+fn the_day_counts_the_session_its_outbound_and_flows_and_outlives_the_process() {
+    let mut s = setup();
+    let date = usage(&s.core).today.date;
+    let totals = echo_and_settle(&mut s);
+    s.core.stop();
+    let day = usage(&s.core);
+    if day.today.date != date {
+        return; // Local midnight passed during the test: the day split the bytes.
+    }
+    let today = snapshot(&s.core).today;
+    assert_eq!(
+        (today.up_total, today.down_total),
+        (totals.up_total, totals.down_total)
+    );
+    assert_eq!(day.today.up.iter().sum::<u64>(), totals.up_total);
+    // One flow, in Direct: its payload exactly, under the tun's totals by the headers.
+    assert_eq!(day.today.flows.iter().sum::<u64>(), 1);
+    let direct = &day.today.outbounds;
+    assert_eq!(direct.len(), 1, "{direct:?}");
+    assert_eq!(direct[0].id, "direct");
+    assert_eq!(
+        (direct[0].up, direct[0].down),
+        (ECHOED as u64, ECHOED as u64)
+    );
+    assert!(totals.down_total > ECHOED as u64);
+    // A new process on the same directory reads the day back.
+    let Setup { core, dir, .. } = s;
+    drop(core);
+    let again = setup_in(dir);
+    assert_eq!(usage(&again.core).today, day.today);
 }
 
 #[test]
