@@ -28,7 +28,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
 /*
- * The design system on five pages (the three here, and `InputsGallery` and `FeedbackGallery`), every component in every
+ * The design system on several pages (the three here, and `InputsGallery`, `FieldsGallery`, `FeedbackGallery` and `DialogGallery`), every component in every
  * state it has. The preview pane and the screenshot goldens show the same pages, so a component that is added or changed
  * shows up in both. Sample names and numbers are made up.
  */
@@ -225,6 +225,11 @@ private fun StatusGalleryPreview() = DoonaTheme { StatusGallery() }
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun InputsGalleryPreview() = DoonaTheme { InputsGallery() }
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 1200)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun FieldsGalleryPreview() = DoonaTheme { FieldsGallery() }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 1200)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)

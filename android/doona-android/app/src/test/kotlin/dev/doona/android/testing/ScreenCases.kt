@@ -14,6 +14,7 @@ import dev.doona.android.app.Tab
 import dev.doona.android.designsystem.components.CardsGallery
 import dev.doona.android.designsystem.components.ControlsGallery
 import dev.doona.android.designsystem.components.FeedbackGallery
+import dev.doona.android.designsystem.components.FieldsGallery
 import dev.doona.android.designsystem.components.InputsGallery
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.components.StatusGallery
@@ -84,5 +85,6 @@ internal fun galleryCases(): List<ScreenCase> = listOf(
     ScreenCase("gallery-cards", null) { CardsGallery() },
     ScreenCase("gallery-status", null) { StatusGallery() },
     ScreenCase("gallery-inputs", null) { InputsGallery() },
+    ScreenCase("gallery-fields", null) { FieldsGallery() },
     ScreenCase("gallery-feedback", null) { FeedbackGallery() },
 )

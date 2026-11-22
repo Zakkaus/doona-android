@@ -10,7 +10,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
-/** Inputs: the buttons in every style and state, text fields, and check rows. */
+/** Inputs: the buttons in every style and state, and the check rows. */
 @Composable
 internal fun InputsGallery() = GalleryPage("Inputs") {
     val space = DoonaTheme.spacing
