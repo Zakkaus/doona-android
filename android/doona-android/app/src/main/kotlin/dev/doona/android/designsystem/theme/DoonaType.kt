@@ -29,8 +29,14 @@ class DoonaType(private val family: FontFamily) {
     val label = style(TypeScale.label)
     val body = style(TypeScale.body)
 
-    /** Node name and latency. */
+    /** Node name. */
     val bodyStrong = style(TypeScale.bodyStrong)
+
+    /** Body in tabular figures: segment labels and counts that change in place keep their width. */
+    val bodyTabular = body.copy(fontFeatureSettings = tabular)
+
+    /** Latency: the node name's weight in tabular figures. */
+    val latency = bodyStrong.copy(fontFeatureSettings = tabular)
 
     /** Metric heads, field labels, node sub-line. */
     val caption = style(TypeScale.caption)

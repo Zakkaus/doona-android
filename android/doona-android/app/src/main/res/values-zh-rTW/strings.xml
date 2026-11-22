@@ -27,6 +27,10 @@
     <string name="act_active">活動連線</string>
     <string name="act_latency">延遲</string>
     <string name="latency_ms">%1$d 毫秒</string>
+    <string name="latency_good">良好</string>
+    <string name="latency_fair">普通</string>
+    <string name="latency_slow">緩慢</string>
+    <string name="latency_untested">未測試</string>
     <string name="act_cpu">CPU 使用率</string>
     <string name="policy_kind_selector">手動選擇</string>
     <string name="policy_kind_urltest">平均最快</string>

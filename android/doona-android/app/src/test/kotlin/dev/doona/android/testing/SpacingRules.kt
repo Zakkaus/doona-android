@@ -17,14 +17,14 @@ object SpacingRules {
     private val sizes = DoonaTheme.size
 
     /** The rules that hold at any scroll offset: the geometry of the layout, which a scroll only shifts. */
-    fun check(root: LayoutBox, page: PageLayout): List<String> =
+    internal fun check(root: LayoutBox, page: PageLayout): List<String> =
         detected(root, page.shows) + scaleGaps(root) + rhythm(root, page.rhythm) + sheet(root) + stacks(root) + cards(root) + controls(root) +
-            alikeControls(root) + rows(root) + topBar(root) + hubBar(root) + valueColumns(root) + contentColumn(root)
+            alikeControls(root) + contained(root) + rows(root) + topBar(root) + hubBar(root) + valueColumns(root) + contentColumn(root)
 
     private fun near(a: Float, b: Float) = abs(a - b) <= TOL
 
     /** The rules read nodes by role: a role the page is meant to show but the probe did not find is a probe that reads nothing. */
-    fun detected(root: LayoutBox, shows: Set<LayoutRole>): List<String> {
+    internal fun detected(root: LayoutBox, shows: Set<LayoutRole>): List<String> {
         val found = root.descendants().mapNotNull { it.role }.toSet()
         val missing = (shows - found).map { "the page shows a $it but the probe found none, so the rules of that role checked nothing" }
         // The segmented control and the chips are filled, so a page with controls has a filled one; none means the fill went unseen.
@@ -43,6 +43,19 @@ object SpacingRules {
             .filter { (_, _, gap) -> allowed.none { near(it, gap) } }
             .map { (a, b, gap) -> "gap of %.1f dp between %s and %s is not on the scale".format(gap, a, b) }
             .toList()
+    }
+
+    /**
+     * Nothing draws outside the box of the node that holds it: every child lies inside its parent, so a component that
+     * hangs a part of itself in a neighbour's padding, and makes its callers leave room for it, fails. A scrolling sheet
+     * is taller than the viewport that clips it, and a chevron's box clips the glyph it cuts to the ink.
+     */
+    fun contained(root: LayoutBox): List<String> {
+        val viewports = root.descendants().filter { it.role == LayoutRole.Sheet }.map { root.viewportOf(it) }.toList()
+        return root.descendants().filter { it.role != LayoutRole.Chevron && viewports.none { v -> v === it } }.flatMap { parent ->
+            parent.content.filter { it.left < parent.left - TOL || it.right > parent.right + TOL || it.top < parent.top - TOL || it.bottom > parent.bottom + TOL }
+                .map { "$it draws outside its parent $parent" }
+        }.toList()
     }
 
     /**

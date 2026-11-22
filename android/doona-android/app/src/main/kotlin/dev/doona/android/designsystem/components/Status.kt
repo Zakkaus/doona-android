@@ -16,9 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
@@ -42,10 +42,29 @@ fun toneColor(c: DoonaColors, tone: Tone): Color = when (tone) {
     Tone.Neutral -> c.neutral
 }
 
-/**
- * Status light (§7): a dot and a label, the dot centred on the label's first line. 10 px dot, 8 px for small and
- * for latency; gap 8, 6 for latency (§4).
- */
+/** The dot of a status, centred on the first line of text of [style]. */
+@Composable
+private fun LineDot(tone: Tone, style: TextStyle, dot: Dp) {
+    Box(Modifier.height(lineHeightOf(style)), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .size(dot)
+                .clip(DoonaTheme.shape.pill)
+                .background(toneColor(DoonaTheme.colors, tone)),
+        )
+    }
+}
+
+@Composable
+private fun StatusLight(tone: Tone, text: String, modifier: Modifier, style: TextStyle, color: Color, dot: Dp, gap: Dp) {
+    Row(modifier, verticalAlignment = Alignment.Top) {
+        LineDot(tone, style, dot)
+        Spacer(Modifier.width(gap))
+        Text(text, style = style, color = color, maxLines = 1, softWrap = false)
+    }
+}
+
+/** Status light (§7): a dot and a label, the dot centred on the label's first line. 10 px dot, gap 8. */
 @Composable
 fun DoonaStatusLight(
     tone: Tone,
@@ -53,58 +72,85 @@ fun DoonaStatusLight(
     modifier: Modifier = Modifier,
     style: TextStyle = DoonaTheme.type.body,
     color: Color = DoonaTheme.colors.text.primary,
-    small: Boolean = false,
-    gap: Dp = DoonaTheme.spacing.item,
-) {
-    Row(modifier, verticalAlignment = Alignment.Top) {
-        Box(Modifier.height(lineHeightOf(style)), contentAlignment = Alignment.Center) {
-            Box(
-                Modifier
-                    .size(if (small) DoonaTheme.size.dotSmall else DoonaTheme.size.dot)
-                    .clip(DoonaTheme.shape.pill)
-                    .background(toneColor(DoonaTheme.colors, tone)),
-            )
-        }
-        Spacer(Modifier.width(gap))
-        Text(text, style = style, color = color, maxLines = 1, softWrap = false)
-    }
-}
+) = StatusLight(tone, text, modifier, style, color, DoonaTheme.size.dot, DoonaTheme.spacing.item)
 
-/**
- * Latency (§2): bold tabular value coloured by the tone's text role, 8 px dot, gap 6. [alignValue] marks the value of
- * a metric tile: the dot hangs in the tile's padding, so the number starts on the tile's value column, where the
- * tiles' values that have no dot start. The caller must have 12 dp of padding to its left.
- */
+/** The small status light (§7): the same with an 8 px dot, for counts that sit among text. */
 @Composable
-fun DoonaLatency(ms: Int?, style: TextStyle = DoonaTheme.type.bodyStrong, modifier: Modifier = Modifier, alignValue: Boolean = false) {
+fun DoonaSmallStatusLight(
+    tone: Tone,
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = DoonaTheme.type.body,
+    color: Color = DoonaTheme.colors.text.primary,
+) = StatusLight(tone, text, modifier, style, color, DoonaTheme.size.dotSmall, DoonaTheme.spacing.item)
+
+/** The latency text role of a tone: light keeps body text and shows the tone only in the dot. */
+@Composable
+private fun latencyColor(tone: Tone): Color {
     val text = DoonaTheme.colors.text
-    val tone = latencyTone(ms)
-    val color = when (tone) {
+    return when (tone) {
         Tone.Ok -> text.positive
         Tone.Warn -> text.notice
         Tone.Err -> text.negative
         Tone.Neutral -> text.secondary
     }
-    // A hanging dot sits centred in the 16 dp padding to its left: 4 to the edge, 8 wide, 4 to the number.
-    val gap = if (alignValue) DoonaTheme.spacing.tight else DoonaTheme.spacing.dotGap
-    val lead = with(LocalDensity.current) { (DoonaTheme.size.dotSmall + gap).roundToPx() }
-    DoonaStatusLight(
-        modifier = if (alignValue) modifier.layoutRole(LayoutRole.Value).hangLeading(lead) else modifier,
-        tone = tone,
-        text = ms?.let { stringResource(R.string.latency_ms, it) } ?: "—",
-        style = style.copy(fontFeatureSettings = DoonaTheme.type.tabular),
-        color = color,
-        small = true,
-        gap = gap,
+}
+
+/** The word for a latency's tone, so that the quality is said and not only coloured. */
+@Composable
+private fun latencyQuality(tone: Tone): String = stringResource(
+    when (tone) {
+        Tone.Ok -> R.string.latency_good
+        Tone.Warn -> R.string.latency_fair
+        Tone.Err -> R.string.latency_slow
+        Tone.Neutral -> R.string.latency_untested
+    },
+)
+
+@Composable
+private fun latencyText(ms: Int?): String = ms?.let { stringResource(R.string.latency_ms, it) } ?: "—"
+
+/**
+ * Latency (§2): bold tabular value coloured by the tone's text role, 8 px dot before it, gap 6. A screen reader reads
+ * the value with its quality (fast, fair, slow, not tested) as the state.
+ */
+@Composable
+fun DoonaLatency(ms: Int?, modifier: Modifier = Modifier) {
+    val tone = latencyTone(ms)
+    val quality = latencyQuality(tone)
+    StatusLight(
+        tone,
+        latencyText(ms),
+        modifier.semantics(mergeDescendants = true) { stateDescription = quality },
+        DoonaTheme.type.latency,
+        latencyColor(tone),
+        DoonaTheme.size.dotSmall,
+        DoonaTheme.spacing.dotGap,
     )
+}
+
+/**
+ * Latency as the value of a metric tile: the tile's figure (`.rp-big`) with the tone's dot after it. The dot is part of
+ * the component and inside its bounds, so the figure starts where the figure of a tile without a dot starts.
+ */
+@Composable
+fun DoonaMetricLatency(ms: Int?, modifier: Modifier = Modifier) {
+    val tone = latencyTone(ms)
+    val quality = latencyQuality(tone)
+    val style = DoonaTheme.type.tileValue
+    Row(modifier.semantics(mergeDescendants = true) { stateDescription = quality }, verticalAlignment = Alignment.Top) {
+        Text(latencyText(ms), style = style, color = latencyColor(tone), maxLines = 1, softWrap = false, modifier = Modifier.layoutRole(LayoutRole.Value))
+        Spacer(Modifier.width(DoonaTheme.spacing.dotGap))
+        LineDot(tone, style, DoonaTheme.size.dotSmall)
+    }
 }
 
 /** Badge (§7): at least 20 high, growing with the font size, padding 0 × 8, radius 6, 1 px hl-high border, 12/500 subtle. */
 @Composable
-fun DoonaBadge(text: String) {
+fun DoonaBadge(text: String, modifier: Modifier = Modifier) {
     val c = DoonaTheme.colors
     Box(
-        Modifier
+        modifier
             .heightIn(min = DoonaTheme.size.badgeHeight)
             .border(DoonaTheme.size.border, c.badgeBorder, DoonaTheme.shape.badge)
             .padding(horizontal = DoonaTheme.spacing.item),
@@ -112,11 +158,4 @@ fun DoonaBadge(text: String) {
     ) {
         Text(text, style = DoonaTheme.type.badge, color = c.text.secondary, maxLines = 1)
     }
-}
-
-/** Reports the node [lead] px narrower and places it that far left, so its first [lead] px hang outside its bounds. */
-private fun Modifier.hangLeading(lead: Int) = layout { measurable, constraints ->
-    val room = if (constraints.hasBoundedWidth) constraints.maxWidth + lead else constraints.maxWidth
-    val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = room))
-    layout(placeable.width - lead, placeable.height) { placeable.place(-lead, 0) }
 }

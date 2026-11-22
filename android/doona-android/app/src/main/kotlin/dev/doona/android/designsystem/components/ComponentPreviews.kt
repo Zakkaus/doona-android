@@ -79,7 +79,7 @@ internal fun ControlsGallery() = GalleryPage("Controls") {
     Section("DoonaPicker, plain and filled") {
         Row(horizontalArrangement = Arrangement.spacedBy(space.block)) {
             DoonaPicker(stringResource(R.string.policy_all_regions), onClick = {})
-            DoonaPicker(stringResource(R.string.policy_by_latency), onClick = {}, filled = true)
+            DoonaFilterPicker(stringResource(R.string.policy_by_latency), onClick = {})
         }
     }
     Section("DoonaSwitchRow, on and off") {
@@ -91,9 +91,9 @@ internal fun ControlsGallery() = GalleryPage("Controls") {
     }
     Section("DoonaIconAction") {
         Row {
-            DoonaIconAction(R.drawable.ic_search, stringResource(R.string.ui_search))
-            DoonaIconAction(R.drawable.ic_edit, stringResource(R.string.policy_edit))
-            DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options))
+            DoonaIconAction(R.drawable.ic_search, stringResource(R.string.ui_search), onClick = {})
+            DoonaIconAction(R.drawable.ic_edit, stringResource(R.string.policy_edit), onClick = {})
+            DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = {})
         }
     }
     Section("DoonaPageTabs") { DoonaPageTabs(tabs, selected = 1) }
@@ -124,15 +124,15 @@ internal fun CardsGallery() = GalleryPage("Cards") {
             MetricTile(R.drawable.ic_upload, DoonaTheme.colors.c4, stringResource(R.string.ui_upload), "330 kB/s")
         }
         DoonaMetricTile(R.drawable.ic_clock, DoonaTheme.colors.c5, { DoonaNodeName("hk-01", DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) }, Modifier.fillMaxWidth()) {
-            DoonaLatency(42, DoonaTheme.type.tileValue, alignValue = true)
+            DoonaMetricLatency(42)
         }
     }
     Section("DoonaNodeTile: plain, current, group, untested") {
         Column(verticalArrangement = Arrangement.spacedBy(space.item)) {
-            DoonaNodeTile("hk-01", 42, current = false, groupLabel = null)
-            DoonaNodeTile("jp-01", 171, current = true, groupLabel = null, source = "Tokyo 1")
-            DoonaNodeTile("Auto", 88, current = false, groupLabel = stringResource(R.string.ui_group))
-            DoonaNodeTile("us-01", null, current = false, groupLabel = null)
+            DoonaNodeTile("hk-01", 42, current = false, groupLabel = null, onClick = {})
+            DoonaNodeTile("jp-01", 171, current = true, groupLabel = null, onClick = {}, source = "Tokyo 1")
+            DoonaNodeTile("Auto", 88, current = false, groupLabel = stringResource(R.string.ui_group), onClick = {})
+            DoonaNodeTile("us-01", null, current = false, groupLabel = null, onClick = {})
         }
     }
     Section("DoonaErrorBanner") { DoonaErrorBanner(stringResource(R.string.error_busy), stringResource(R.string.ui_dismiss), onDismiss = {}) }
@@ -159,7 +159,7 @@ internal fun StatusGallery() = GalleryPage("Status and text") {
         Row(horizontalArrangement = Arrangement.spacedBy(space.block)) {
             DoonaStatusLight(Tone.Err, stringResource(R.string.status_stopped))
             DoonaStatusLight(Tone.Neutral, stringResource(R.string.policy_current))
-            DoonaStatusLight(Tone.Ok, stringResource(R.string.act_latency), small = true)
+            DoonaSmallStatusLight(Tone.Ok, stringResource(R.string.act_latency))
         }
     }
     Section("DoonaLatency: under 100, under 300, over, untested") {

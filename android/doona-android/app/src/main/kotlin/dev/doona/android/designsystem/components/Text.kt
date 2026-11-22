@@ -26,8 +26,8 @@ fun DoonaText(
 
 /** A tile's value (`.rp-big`, §7): the tabular figure on its own line. */
 @Composable
-fun DoonaMetricValue(text: String) {
-    Text(text, style = DoonaTheme.type.tileValue, color = DoonaTheme.colors.text.primary, maxLines = 1, softWrap = false, modifier = Modifier.layoutRole(LayoutRole.Value))
+fun DoonaMetricValue(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = DoonaTheme.type.tileValue, color = DoonaTheme.colors.text.primary, maxLines = 1, softWrap = false, modifier = modifier.layoutRole(LayoutRole.Value))
 }
 
 /** A node or group name on one line, ellipsized. */

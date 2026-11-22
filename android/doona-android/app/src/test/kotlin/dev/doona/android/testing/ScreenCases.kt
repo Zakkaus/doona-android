@@ -30,10 +30,10 @@ val FrameInsets = WindowInsets(top = StatusBar, bottom = GestureBar)
  * [shows] are the layout roles the screen has: the probe must find each, or the rules of that role checked nothing.
  * [rhythm] is the gap before each block of the page's sheet after the first.
  */
-class PageLayout(val shows: Set<LayoutRole>, val rhythm: List<Dp>)
+internal class PageLayout(val shows: Set<LayoutRole>, val rhythm: List<Dp>)
 
 /** A screen as the tests render it: a name for files and messages, its [layout] when the spacing rules apply, and its content. */
-class ScreenCase(val name: String, val layout: PageLayout?, val content: @Composable () -> Unit)
+internal class ScreenCase(val name: String, val layout: PageLayout?, val content: @Composable () -> Unit)
 
 /** A connected engine with a minute of traffic: the data every screen test and golden shows. */
 fun sampleEngine() = FakeEngine(status = Status.Running(sinceEpochMs = 0), traffic = FakeEngine.SAMPLE_TRAFFIC)
@@ -42,7 +42,7 @@ fun sampleEngine() = FakeEngine(status = Status.Running(sinceEpochMs = 0), traff
  * Every screen of the app. A screen lane adds its screens here and so gets the spacing check and the goldens; it also
  * states the screen's [PageLayout], which the check holds the rendered page to.
  */
-fun screenCases(): List<ScreenCase> {
+internal fun screenCases(): List<ScreenCase> {
     val engine = sampleEngine()
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar)
@@ -74,7 +74,7 @@ fun screenCases(): List<ScreenCase> {
  * The component gallery pages. They get goldens and the accessibility check like a screen, but not the spacing rules,
  * since a gallery lists components rather than laying out a page.
  */
-fun galleryCases(): List<ScreenCase> = listOf(
+internal fun galleryCases(): List<ScreenCase> = listOf(
     ScreenCase("gallery-controls", null) { ControlsGallery() },
     ScreenCase("gallery-cards", null) { CardsGallery() },
     ScreenCase("gallery-status", null) { StatusGallery() },

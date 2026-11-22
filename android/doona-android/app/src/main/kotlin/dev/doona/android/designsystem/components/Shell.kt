@@ -37,6 +37,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
@@ -47,9 +49,9 @@ data class DoonaHubTab(val label: String, @DrawableRes val icon: Int)
 
 /** Icon action with a 48 dp touch target and the 25 dp touch icon (§6). */
 @Composable
-fun DoonaIconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit = {}) {
+fun DoonaIconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        Modifier
+        modifier
             .size(DoonaTheme.size.touch)
             .clip(DoonaTheme.shape.pill)
             .clickable(role = Role.Button, onClick = onClick)
@@ -74,9 +76,9 @@ internal object DoonaTopBarDefaults {
  * the content column, which is at most 600 dp wide and centred.
  */
 @Composable
-fun DoonaTopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit) {
+fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: @Composable RowScope.() -> Unit) {
     Box(
-        Modifier
+        modifier
             .fillMaxWidth()
             .background(DoonaTheme.colors.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Top)),
@@ -109,10 +111,10 @@ fun DoonaTopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -
  * holding the 25 px icon over a 12/16 label, gap 4. The current pill takes the selected fill and the accent icon.
  */
 @Composable
-fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit) {
+fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = DoonaTheme.colors
     Box(
-        Modifier
+        modifier
             .fillMaxWidth()
             .background(c.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Bottom)),
@@ -192,25 +194,35 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
 
 /** Page title `.rp-h1` 28/36/800 at the top of the sheet: the large title of the top app bar. */
 @Composable
-fun DoonaPageTitle(text: String) {
-    Text(text, style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text.primary, maxLines = 1, modifier = Modifier.semantics { heading() })
+fun DoonaPageTitle(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text.primary, maxLines = 1, modifier = modifier.semantics { heading() })
 }
 
 /**
  * Tab row: doona's page links (§8) as native tabs. Each tab is 48 high, padding 0 × 12, 14/500; the current one
- * carries a 2 px pill underline in text colour; tabs 4 apart over a 1 px line.
+ * carries a 2 px pill underline in text colour; tabs 4 apart over a 1 px line. Without [onSelect] the tabs only show
+ * which page this is: they say so to a screen reader but offer no action.
  */
 @Composable
-fun DoonaPageTabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit = {}) {
+fun DoonaPageTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: ((Int) -> Unit)? = null) {
     val c = DoonaTheme.colors
-    Column(Modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxWidth()) {
         Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
             tabs.forEachIndexed { i, label ->
                 val on = i == selected
                 Box(
                     Modifier
                         .height(DoonaTheme.size.touch)
-                        .selectable(on, role = Role.Tab, onClick = { onSelect(i) }),
+                        .then(
+                            if (onSelect != null) {
+                                Modifier.selectable(on, role = Role.Tab, onClick = { onSelect(i) })
+                            } else {
+                                Modifier.semantics(mergeDescendants = true) {
+                                    role = Role.Tab
+                                    this.selected = on
+                                }
+                            },
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, style = DoonaTheme.type.label, color = c.text.primary, maxLines = 1, modifier = Modifier.padding(horizontal = DoonaTheme.spacing.block))
@@ -238,12 +250,13 @@ fun DoonaPageTabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit = {
  */
 @Composable
 fun DoonaPage(
+    modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
-        DoonaTopBar(onBack, actions)
+    Column(modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+        DoonaTopBar(onBack, actions = actions)
         DoonaPageSheet(Modifier.weight(1f), content)
     }
 }

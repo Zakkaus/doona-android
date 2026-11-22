@@ -29,7 +29,7 @@ import dev.doona.android.designsystem.components.DoonaGap
 import dev.doona.android.designsystem.components.DoonaHGap
 import dev.doona.android.designsystem.components.DoonaIcon
 import dev.doona.android.designsystem.components.DoonaIconAction
-import dev.doona.android.designsystem.components.DoonaLatency
+import dev.doona.android.designsystem.components.DoonaMetricLatency
 import dev.doona.android.designsystem.components.DoonaMetricTile
 import dev.doona.android.designsystem.components.DoonaMetricValue
 import dev.doona.android.designsystem.components.DoonaNodeName
@@ -51,6 +51,7 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
+import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.messageRes
 
 /**
@@ -73,8 +74,8 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
     val space = DoonaTheme.spacing
     DoonaPage(
         actions = {
-            DoonaIconAction(R.drawable.ic_search, stringResource(R.string.ui_search))
-            DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options))
+            DoonaIconAction(R.drawable.ic_search, stringResource(R.string.ui_search), onClick = NOT_WIRED)
+            DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = NOT_WIRED)
         },
     ) {
         DoonaPageTitle(stringResource(R.string.hub_activity))
@@ -128,7 +129,7 @@ private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
             modifier = Modifier.fillMaxWidth(),
             onClick = state.outboundGroupId?.let { id -> { onOpenGroup(id) } },
         ) {
-            DoonaLatency(latency, DoonaTheme.type.tileValue, alignValue = true)
+            DoonaMetricLatency(latency)
         }
     }
 }

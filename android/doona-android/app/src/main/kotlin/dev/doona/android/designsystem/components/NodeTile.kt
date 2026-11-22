@@ -30,15 +30,15 @@ fun DoonaNodeTile(
     latencyMs: Int?,
     current: Boolean,
     groupLabel: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     source: String? = null,
-    onClick: () -> Unit = {},
 ) {
     val c = DoonaTheme.colors
     val space = DoonaTheme.spacing
     val shape = DoonaTheme.shape.control
     Column(
-        Modifier
-            .layoutRole(LayoutRole.Tile)
+        modifier
             .fillMaxWidth()
             .heightIn(min = DoonaTheme.size.nodeTileMin)
             .clip(shape)

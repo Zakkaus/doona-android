@@ -28,16 +28,19 @@ import androidx.compose.ui.semantics.stateDescription
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
-/** Tag chip (§7): control height, padding 12, radius 8, overlay fill, 14/400. It is hit over 48 dp, as every control. */
+/**
+ * Tag chip (§7): control height, padding 12, radius 8, overlay fill, 14/400. Without [onClick] it is a label; with it,
+ * it is hit over 48 dp, as every control.
+ */
 @Composable
-fun DoonaTagChip(text: String, onClick: () -> Unit = {}) {
+fun DoonaTagChip(text: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     Box(
-        Modifier
+        modifier
             .layoutRole(LayoutRole.Control)
             .heightIn(min = DoonaTheme.size.control)
             .clip(DoonaTheme.shape.control)
             .background(DoonaTheme.colors.control)
-            .clickable(role = Role.Button, onClick = onClick)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .padding(horizontal = DoonaTheme.spacing.block),
         contentAlignment = Alignment.Center,
     ) {
@@ -126,11 +129,18 @@ private fun SwitchTrack(checked: Boolean) {
 }
 
 /**
- * A picker: value and chevron on a control-height row. Filled, it is a control of the filter bar with the overlay
- * fill and 12 dp of padding; quiet, it has neither, so its text starts on the content edge and its chevron ends on it.
+ * A picker: value and chevron on a control-height row. Quiet, it has no fill and no padding, so its text starts on the
+ * content edge and its chevron ends on it; [DoonaFilterPicker] is the filled one of a filter bar.
  */
 @Composable
-fun DoonaPicker(value: String, onClick: () -> Unit, filled: Boolean = false, modifier: Modifier = Modifier) {
+fun DoonaPicker(value: String, onClick: () -> Unit, modifier: Modifier = Modifier) = PickerRow(value, onClick, modifier, filled = false)
+
+/** The picker of a filter bar: a control with the overlay fill and 12 dp of padding at its sides. */
+@Composable
+fun DoonaFilterPicker(value: String, onClick: () -> Unit, modifier: Modifier = Modifier) = PickerRow(value, onClick, modifier, filled = true)
+
+@Composable
+private fun PickerRow(value: String, onClick: () -> Unit, modifier: Modifier, filled: Boolean) {
     val c = DoonaTheme.colors
     Row(
         modifier

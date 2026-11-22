@@ -63,8 +63,9 @@ fun DoonaCard(
  */
 @Composable
 fun DoonaRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+    // A row reads as one line to a screen reader: its label and its value are spoken together.
     Row(
-        modifier.layoutRole(LayoutRole.Row).heightIn(min = DoonaRowDefaults.minHeight),
+        modifier.layoutRole(LayoutRole.Row, mergeDescendants = true).heightIn(min = DoonaRowDefaults.minHeight),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )
@@ -72,8 +73,14 @@ fun DoonaRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> 
 
 /** Control card (§7): tinted icon and 14/500 label, controls at the end of the same row. */
 @Composable
-fun DoonaControlCard(@DrawableRes icon: Int, iconTint: Color, label: String, trailing: @Composable RowScope.() -> Unit) {
-    DoonaCard(Modifier.fillMaxWidth()) {
+fun DoonaControlCard(
+    @DrawableRes icon: Int,
+    iconTint: Color,
+    label: String,
+    modifier: Modifier = Modifier,
+    trailing: @Composable RowScope.() -> Unit,
+) {
+    DoonaCard(modifier.fillMaxWidth()) {
         DoonaRow {
             DoonaIcon(icon, iconTint)
             Spacer(Modifier.width(DoonaTheme.spacing.item))
@@ -86,9 +93,9 @@ fun DoonaControlCard(@DrawableRes icon: Int, iconTint: Color, label: String, tra
 
 /** Metric tiles side by side, as high as the highest. */
 @Composable
-fun DoonaTileRow(content: @Composable RowScope.() -> Unit) {
+fun DoonaTileRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
     Row(
-        Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        modifier.fillMaxWidth().height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block),
         content = content,
     )
@@ -96,8 +103,8 @@ fun DoonaTileRow(content: @Composable RowScope.() -> Unit) {
 
 /** `.rp-tile-head`: the 12/16 caption of a metric tile, in the secondary colour. */
 @Composable
-fun DoonaTileCaption(text: String) {
-    DoonaText(text, style = DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+fun DoonaTileCaption(text: String, modifier: Modifier = Modifier) {
+    DoonaText(text, modifier = modifier, style = DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 /**
