@@ -17,6 +17,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
@@ -45,6 +47,8 @@ import dev.doona.android.feature.messageRes
 fun PerAppRoute(engine: Engine, installedApps: InstalledApps, onBack: () -> Unit) {
     val viewModel: PerAppViewModel = viewModel(factory = PerAppViewModel.factory(engine, installedApps))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // The first resume reads the device's apps; each later one reads them again, since an app may have come or gone.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onAction(PerAppAction.Resume) }
     PerAppScreen(state, viewModel::onAction, onBack)
 }
 
@@ -70,7 +74,7 @@ fun PerAppScreen(state: PerAppUiState, onAction: (PerAppAction) -> Unit, onBack:
         DoonaTopBar(onBack)
         DoonaLazyPageSheet(Modifier.weight(1f)) {
             item(key = HEADER, contentType = HEADER) { Controls(state, search, onAction) }
-            if (state.policy != AppPolicy.All) appList(state, onAction)
+            if (state.policyLoaded && state.policy != AppPolicy.All) appList(state, onAction)
         }
     }
 }
@@ -85,10 +89,12 @@ private fun Controls(state: PerAppUiState, search: TextFieldState, onAction: (Pe
     Column(Modifier.fillMaxWidth()) {
         DoonaPageTitle(stringResource(R.string.perapp_title))
         DoonaGap(space.afterTitle)
-        state.error?.let { code ->
-            DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(PerAppAction.DismissError) })
-            DoonaGap(space.block)
+        // What the controls would show before the saved policy is read is a placeholder, so they wait for it.
+        if (!state.policyLoaded) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { DoonaProgress() }
+            return
         }
+        Failures(state, onAction)
         DoonaSegmented(
             AppPolicy.entries.map { stringResource(it.labelRes()) },
             selected = state.policy.ordinal,
@@ -109,6 +115,20 @@ private fun Controls(state: PerAppUiState, search: TextFieldState, onAction: (Pe
             DoonaSearchField(search, stringResource(R.string.perapp_search))
             DoonaGap(space.block)
         }
+    }
+}
+
+/** A failed write says so by its code; a save that was stored but whose tunnel did not come up says why, as stored. */
+@Composable
+private fun Failures(state: PerAppUiState, onAction: (PerAppAction) -> Unit) {
+    val dismiss = stringResource(R.string.ui_dismiss)
+    val messages = listOfNotNull(
+        state.error?.let { stringResource(it.messageRes()) },
+        state.rebuildFailure?.let { stringResource(R.string.perapp_rebuild_failed, stringResource(it.labelRes())) },
+    )
+    for (message in messages) {
+        DoonaErrorBanner(message, dismiss, { onAction(PerAppAction.DismissError) })
+        DoonaGap(DoonaTheme.spacing.block)
     }
 }
 

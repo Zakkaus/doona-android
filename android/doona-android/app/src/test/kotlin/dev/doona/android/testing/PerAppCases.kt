@@ -8,7 +8,6 @@ import dev.doona.android.app.PerAppKey
 import dev.doona.android.app.SettingsKey
 import dev.doona.android.app.Tab
 import dev.doona.android.designsystem.components.LayoutRole
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.feature.perapp.PerAppScreen
 import dev.doona.android.feature.perapp.PerAppUiState
@@ -24,7 +23,6 @@ import dev.doona.android.feature.perapp.sampleSearchState
  * in the frame of the app.
  */
 internal fun perAppCases(): List<ScreenCase> {
-    val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
     val controls = bars + setOf(LayoutRole.Control, LayoutRole.Button)
     val searched = controls + LayoutRole.Field

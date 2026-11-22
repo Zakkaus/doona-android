@@ -15,6 +15,7 @@
     <string name="perapp_no_apps_line">No app that opens from the home screen was found on this device.</string>
     <string name="perapp_no_match">No matching apps</string>
     <string name="perapp_no_match_line">Try another keyword, or clear the search.</string>
+    <string name="perapp_rebuild_failed">Saved, but the VPN could not reconnect: %1$s</string>
     <string name="settings_subscriptions">Subscriptions</string>
     <string name="settings_version">Version</string>
 </resources>

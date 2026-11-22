@@ -3,6 +3,7 @@ package dev.doona.android.feature.perapp
 import androidx.compose.runtime.Immutable
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.InstalledApp
 import dev.doona.android.engine.PerApp
 
@@ -26,6 +27,10 @@ data class PerAppUiState(
     val busy: Boolean = false,
     /** The last failure, shown until dismissed or until the next attempt succeeds. */
     val error: ErrorCode? = null,
+    /** False until the saved policy has been read: the controls would show a placeholder, and an edit would start from it. */
+    val policyLoaded: Boolean = true,
+    /** The last save was stored but the tunnel could not be rebuilt with it, for this reason; a failed write is [error]. */
+    val rebuildFailure: FailureReason? = null,
 )
 
 /** What [PerAppViewModel] handles. */
@@ -39,11 +44,15 @@ sealed interface PerAppAction {
     data object Save : PerAppAction
 
     data object DismissError : PerAppAction
+
+    /** The page is shown again: the apps of the device may have changed while it was away. */
+    data object Resume : PerAppAction
 }
 
 /**
- * The state from the saved policy, the edits over it ([draft], null before the first edit), the device's [installed]
- * apps (null while they load) and the search [query]. Pure, so previews and tests build the same state.
+ * The state from the saved policy ([policyLoaded] false while it is still being read), the edits over it ([draft], null
+ * before the first edit), the device's [installed] apps (null while they load) and the search [query]. Pure, so
+ * previews and tests build the same state.
  */
 fun perAppUiState(
     saved: PerApp,
@@ -52,6 +61,8 @@ fun perAppUiState(
     query: String,
     busy: Boolean,
     error: ErrorCode?,
+    policyLoaded: Boolean = true,
+    rebuildFailure: FailureReason? = null,
 ): PerAppUiState {
     val edited = draft ?: saved
     val needle = query.trim()
@@ -66,9 +77,11 @@ fun perAppUiState(
         loaded = installed != null,
         hasApps = apps.isNotEmpty(),
         query = query,
-        canSave = installed != null && edited != saved && !needsApp && !busy,
+        canSave = policyLoaded && installed != null && edited != saved && !needsApp && !busy,
         needsApp = needsApp && installed != null,
         busy = busy,
         error = error,
+        policyLoaded = policyLoaded,
+        rebuildFailure = rebuildFailure,
     )
 }
