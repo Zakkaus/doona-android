@@ -2,6 +2,8 @@ package dev.doona.android.prototype.rv.connections
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -63,8 +65,8 @@ internal class RvConnectionsRoutes(
 /**
  * 連線, the proposed fourth tab (features-gap Q5, option A), in the language of 節點: the large title with search in the
  * bar; a line counting the open connections and their bytes; the app and order chips; then one card of the connections
- * open now ([connections], newest first), each its app's icon, where it went, and the app and the rule's group over its
- * bytes and how long it has been open. A connection opens its page. While [query] is set, the search field replaces
+ * open now ([connections], newest first), each its app's icon, where it went over the app and the rule's group, and its
+ * bytes over how long it has been open. A connection opens its page. While [query] is set, the search field replaces
  * the line and the chips and the card keeps the connections whose host or app holds it. With the tunnel off
  * ([connected] false), or nothing matching, the library's empty state says so and offers the way on. The bar always
  * has four tabs here. Host names are shown from memory and never logged (D21).
@@ -168,10 +170,10 @@ private fun Summary(connections: List<RvConnection>) {
 }
 
 /**
- * One connection: the app's own icon; host:port across the whole first line, cut in the middle when it is longer, so
- * the start of the name and the port both stay; the app's name and the rule's group (or 直連) under it, and at that
- * line's end the bytes it moved both ways and how long it has been open. Its page splits the bytes and shows the whole
- * host.
+ * One connection: the app's own icon; host:port, cut in the middle when it is too long, so the start of the name and
+ * the port both stay; the app's name and the rule's group (or 直連) under it; and at the end, as a node row's latency
+ * over its change, the bytes it moved both ways over how long it has been open. Its page splits the bytes and shows
+ * the whole host.
  */
 @Composable
 internal fun RvConnectionRow(connection: RvConnection, nowEpochMs: Long, onClick: () -> Unit) {
@@ -183,9 +185,13 @@ internal fun RvConnectionRow(connection: RvConnection, nowEpochMs: Long, onClick
         connection.host + PORT + connection.port,
         connection.app + SEPARATOR + connection.rule.targetName(),
         onClick = onClick,
-        subtitleEnd = { RvText(bytes + SEPARATOR + age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) },
         titleOverflow = TextOverflow.MiddleEllipsis,
-    )
+    ) {
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+            RvText(bytes, Rv.type.rowValue, align = TextAlign.End)
+            RvText(age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)
+        }
+    }
 }
 
 /** How long a connection has been open: seconds under a minute, minutes under an hour, then hours and minutes. */
