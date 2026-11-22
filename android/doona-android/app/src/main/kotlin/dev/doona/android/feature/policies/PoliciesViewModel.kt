@@ -10,15 +10,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.Group
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-// Only as far as the shell needs: the 策略 lane adds the UiState, the actions and selection.
+// Only as far as the shell needs: the 策略 lane adds the actions and selection.
 class PoliciesViewModel(engine: Engine) : ViewModel() {
-    val groups: StateFlow<List<Group>> =
-        engine.groups.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), engine.groups.value)
+    val uiState: StateFlow<PoliciesUiState> = engine.groups.map(::PoliciesUiState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PoliciesUiState(engine.groups.value))
 
     companion object {
         fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {
@@ -30,14 +30,14 @@ class PoliciesViewModel(engine: Engine) : ViewModel() {
 @Composable
 fun PoliciesRoute(engine: Engine, onOpenGroup: (String) -> Unit) {
     val viewModel: PoliciesViewModel = viewModel(factory = PoliciesViewModel.factory(engine))
-    val groups by viewModel.groups.collectAsStateWithLifecycle()
-    PoliciesScreen(groups, onOpenGroup)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    PoliciesScreen(state.groups, onOpenGroup)
 }
 
 /** A group removed while its page is open leaves an empty page; the 策略 lane decides how to leave it. */
 @Composable
 fun GroupRoute(engine: Engine, groupId: String, onBack: () -> Unit) {
     val viewModel: PoliciesViewModel = viewModel(factory = PoliciesViewModel.factory(engine))
-    val groups by viewModel.groups.collectAsStateWithLifecycle()
-    groups.firstOrNull { it.id == groupId }?.let { GroupScreen(it, onBack) }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    state.groups.firstOrNull { it.id == groupId }?.let { GroupScreen(it, onBack) }
 }
