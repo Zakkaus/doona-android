@@ -146,21 +146,27 @@ pub struct CallError {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Empty {}
 
+// Nullable argument keys are required (core-api.md writes `"group":null`): serde reads a
+// missing `Option` field as `None` unless it is deserialized as a plain value.
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectArgs {
     pub group: String,
+    #[serde(deserialize_with = "Option::deserialize")]
     pub member_id: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GroupArgs {
+    #[serde(deserialize_with = "Option::deserialize")]
     pub group: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AddSubscriptionArgs {
     pub url: String,
+    #[serde(deserialize_with = "Option::deserialize")]
     pub name: Option<String>,
 }
 

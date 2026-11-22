@@ -57,6 +57,10 @@ fn bad_arguments_and_unknown_commands_are_invalid() {
         ("setMode", "{}"),
         ("setMode", "not json"),
         ("select", r#"{"memberId":"n-1"}"#),
+        // Nullable keys are still required.
+        ("select", r#"{"group":"g-Proxy"}"#),
+        ("testLatency", "{}"),
+        ("addSubscription", r#"{"url":"https://example.org/s"}"#),
         ("addSubscription", r#"{"name":null}"#),
         ("removeSubscription", "{}"),
         ("reboot", "{}"),
