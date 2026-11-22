@@ -110,6 +110,8 @@ struct Inner {
     usage_writes: Pending,
     latency: Latency,
     latency_writes: Pending,
+    /// The latency change that last forgot a node's tests.
+    latency_forgot: u64,
 }
 
 /// The writes a fold asks for.
@@ -163,6 +165,7 @@ impl Stats {
             usage_writes: Pending::default(),
             latency: Latency::from_saved(latency_file.load::<LatencyFile>().latency),
             latency_writes: Pending::default(),
+            latency_forgot: 0,
         };
         Stats {
             inner: Mutex::new(inner),
@@ -283,6 +286,7 @@ impl Stats {
             let mut inner = lock(&self.inner);
             if inner.latency.retain(keep) {
                 inner.latency_writes.changes += 1;
+                inner.latency_forgot = inner.latency_writes.changes;
             }
             inner.latency_writes.due(Clock::now().boot_s(), true)
         };
@@ -290,6 +294,18 @@ impl Stats {
             usage: false,
             latency,
         });
+    }
+
+    /// Writes the latency tests here and now when a node's were forgotten and that is not on
+    /// disk yet, so that after a commit that brings the node back, a crash cannot read back the
+    /// tests it had before it left. Answers whether the disk has the forgetting.
+    pub fn forgetting_written(&self) -> bool {
+        let written = |inner: &Inner| inner.latency_writes.saved >= inner.latency_forgot;
+        if written(&lock(&self.inner)) {
+            return true;
+        }
+        self.write_latency();
+        written(&lock(&self.inner))
     }
 
     /// The tests of each node of `ids`, oldest first.
