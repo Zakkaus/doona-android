@@ -20,3 +20,21 @@ internal object NativeCore : CoreBridge {
 
     external override fun call(command: String, argsJson: String): String
 }
+
+/**
+ * Gets the core from [load] on its first call instead of where it is built. Built with `{ NativeCore }`, that first call
+ * is the opener's `init` on IO, where a missing or broken library becomes a failed open instead of a crash.
+ */
+internal class DeferredCore(load: () -> CoreBridge) : CoreBridge {
+    private val core by lazy(load)
+
+    override fun init(dataDir: String) = core.init(dataDir)
+
+    override fun start(tunFd: Int, configJson: String) = core.start(tunFd, configJson)
+
+    override fun stop() = core.stop()
+
+    override fun snapshot(sinceRevision: Long) = core.snapshot(sinceRevision)
+
+    override fun call(command: String, argsJson: String) = core.call(command, argsJson)
+}

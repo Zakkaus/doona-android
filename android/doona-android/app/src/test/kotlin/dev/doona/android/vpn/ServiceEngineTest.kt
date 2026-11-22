@@ -1,10 +1,12 @@
 package dev.doona.android.vpn
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
@@ -25,6 +27,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class ServiceEngineTest {
@@ -69,6 +72,25 @@ class ServiceEngineTest {
     }
 
     @Test
+    fun aMissingLibraryFailsTheEngineInsteadOfCrashingIt() = runBlocking {
+        // The JVM has no libdoonacore.so, as when packaging dropped it.
+        val engine = ServiceEngine.create(ApplicationProvider.getApplicationContext())
+        withTimeout(5_000) { engine.ready.first { it } }
+        assertEquals(Status.Failed(FailureReason.StartFailed), engine.status.value)
+    }
+
+    @Test
+    fun anIncompatibleCoreIsReadyAndFailedAndNeverCalled() = runBlocking {
+        core.schema = CORE_SCHEMA + 1
+        engine.launchIn(scope, Dispatchers.IO.limitedParallelism(1))
+        withTimeout(5_000) { engine.ready.first { it } }
+        assertEquals(Status.Failed(FailureReason.IncompatibleCore), engine.status.value)
+        assertEquals(ErrorCode.Internal, (engine.setMode(Mode.Direct).exceptionOrNull() as EngineException).code)
+        assertTrue(core.calls.isEmpty())
+        assertEquals(0, core.snapshots.get())
+    }
+
+    @Test
     fun anErrorReplyFailsWithItsCode() = runBlocking {
         core.reply = """{"error":{"code":"busy"}}"""
         assertEquals(ErrorCode.Busy, (engine.select("g-Proxy", null).exceptionOrNull() as EngineException).code)
@@ -98,17 +120,22 @@ class ServiceEngineTest {
 
     private class FakeCore : CoreBridge {
         @Volatile var reply = """{"ok":{}}"""
-        val calls = CopyOnWriteArrayList<Pair<String, String>>()
 
-        override fun init(dataDir: String) = """{"schema":$CORE_SCHEMA}"""
+        @Volatile var schema = CORE_SCHEMA
+        val calls = CopyOnWriteArrayList<Pair<String, String>>()
+        val snapshots = AtomicInteger()
+
+        override fun init(dataDir: String) = """{"schema":$schema}"""
 
         override fun start(tunFd: Int, configJson: String) = Unit
 
         override fun stop() = Unit
 
         // The catalog fixture is revision 7; the running fixture is the same revision without a catalog.
-        override fun snapshot(sinceRevision: Long): String =
-            ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
+        override fun snapshot(sinceRevision: Long): String {
+            snapshots.incrementAndGet()
+            return ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
+        }
 
         override fun call(command: String, argsJson: String): String {
             calls += command to argsJson

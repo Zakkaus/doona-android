@@ -91,6 +91,11 @@ internal class TunnelController(
     /** The user's stop and the system's revoke alike. */
     fun stop() = close(accept = { it.active }, Status.Stopped)
 
+    /** The core cannot be opened: shows [reason] while nothing runs, so the UI does not wait for it; a start retries. */
+    fun unavailable(reason: FailureReason) = synchronized(lock) {
+        if (_status.value == Status.Stopped) show(generation, Status.Failed(reason))
+    }
+
     /** Builds the session's tunnel again with the current per-app policy; a start not yet taken reads it anyway. */
     fun rebuild() = submit(Status.Starting, accept = { it.active && host != null }) { g -> Command.Open(g, checkNotNull(host)) }
 

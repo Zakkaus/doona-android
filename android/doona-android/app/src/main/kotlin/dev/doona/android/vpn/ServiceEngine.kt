@@ -7,6 +7,7 @@ import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
@@ -69,13 +70,27 @@ class ServiceEngine internal constructor(
     private val reads = Mutex()
     private var revision = -1L // Guarded by reads.
 
-    private fun launchIn(scope: CoroutineScope, lane: CoroutineDispatcher) {
+    internal fun launchIn(scope: CoroutineScope, lane: CoroutineDispatcher) {
         scope.launch(lane) { controller.run() }
-        scope.launch { if (opener.schema() == CORE_SCHEMA) poll() }
+        scope.launch { open() }
         scope.launch { followPerApp() }
         scope.launch { checkHealth() }
         scope.launch { sampleTraffic() }
         scope.launch { followProbes() }
+    }
+
+    /** Loads the catalog once the core is open. A core that cannot open is shown failed instead of loading forever. */
+    private suspend fun open() {
+        when (opener.schema()) {
+            CORE_SCHEMA -> poll()
+            null -> unusable(FailureReason.StartFailed)
+            else -> unusable(FailureReason.IncompatibleCore)
+        }
+    }
+
+    private fun unusable(reason: FailureReason) {
+        controller.unavailable(reason)
+        _ready.value = true
     }
 
     /** An unreadable policy fails each start on its own; here it only stops updating the settings shown. */
@@ -131,20 +146,18 @@ class ServiceEngine internal constructor(
         args: A,
         result: DeserializationStrategy<R>,
     ): Result<R> {
+        // A core whose init failed or speaks another schema takes no call and no snapshot.
+        if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
         val begun = System.nanoTime()
-        val outcome = if (opener.schema() != CORE_SCHEMA) {
+        val outcome = try {
+            Result.success(withContext(io) { CoreJson.result(core.call(name, CoreJson.encode(argsSerializer, args)), result) })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: EngineException) {
+            Result.failure(e)
+        } catch (e: Exception) {
+            VpnLog.warn("$name reply unreadable: ${e.javaClass.simpleName}")
             Result.failure(EngineException(ErrorCode.Internal))
-        } else {
-            try {
-                Result.success(withContext(io) { CoreJson.result(core.call(name, CoreJson.encode(argsSerializer, args)), result) })
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: EngineException) {
-                Result.failure(e)
-            } catch (e: Exception) {
-                VpnLog.warn("$name reply unreadable: ${e.javaClass.simpleName}")
-                Result.failure(EngineException(ErrorCode.Internal))
-            }
         }
         val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
         VpnLog.info("$name: $code after ${(System.nanoTime() - begun) / 1_000_000} ms")
@@ -227,21 +240,22 @@ class ServiceEngine internal constructor(
         private const val HEALTH_INTERVAL_MS = 5_000L
         private const val SAMPLE_INTERVAL_MS = 1_000L
 
-        /** The process-wide engine. The app container calls this once; it loads the core library. */
+        /** The process-wide engine. The app container calls this once; the core library loads later, on IO. */
         fun create(context: Context): ServiceEngine {
             val app = context.applicationContext
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val core = DeferredCore { NativeCore }
             // noBackupFilesDir keeps state.json, which holds subscription URLs with tokens, out of every backup.
-            val opener = CoreOpener(NativeCore, app.noBackupFilesDir.path, Dispatchers.IO)
+            val opener = CoreOpener(core, app.noBackupFilesDir.path, Dispatchers.IO)
             val perApp = PerAppSettings.create(app)
             val controller = TunnelController(
-                core = NativeCore,
+                core = core,
                 opener = opener,
                 perApp = { perApp.perApp.first() },
                 scope = scope,
                 killProcess = { Process.killProcess(Process.myPid()) },
             )
-            val engine = ServiceEngine(NativeCore, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO)
+            val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO)
             engine.launchIn(scope, Dispatchers.IO.limitedParallelism(1))
             return engine
         }
