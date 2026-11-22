@@ -1,8 +1,11 @@
-//! The day's usage in the device's local time: today and yesterday each way by the quarter hour,
-//! the flows opened each hour, the bytes of each outbound, and the totals of the days before. A
-//! local day is `floor((wall time + zone offset) / 24 h)`, so a change of zone or of summer time
-//! moves the boundary with it. A later day rolls today over; an earlier one (the clock set back,
-//! or a flight west across midnight) keeps adding to the current day, so no day is ever reopened.
+//! The day's usage in the device's local time: each way by the quarter hour, the flows opened each
+//! hour, and the bytes of each outbound, for the latest days in full and as totals for the month
+//! before. A local day is `floor((wall time + zone offset) / 24 h)`, so a change of zone or of
+//! summer time moves the boundary with it. Days are keyed by their date: bytes go to the date of
+//! the clock that counted them, and today and yesterday are read by the current date, so a clock
+//! set back, or a flight west across midnight, counts on the earlier date again and finds the
+//! later one where it left it. A day dated after tomorrow can only come from a wrong clock: its
+//! bytes move onto today, and such a day's total is dropped, so no future day is ever written.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -14,7 +17,10 @@ pub(crate) const SLOTS: usize = 96;
 pub(crate) const HOURS: usize = 24;
 const SLOT_S: i64 = 900;
 const DAY_S: i64 = 86_400;
-/// Totals of finished days are kept this many days back, for a month's chart.
+/// Days kept in full: today and yesterday, and the later day a zone moved west from.
+pub(crate) const FULL: usize = 3;
+/// The month the totals cover, in days before today; also how many totals are kept, by count and
+/// not by distance from today, so a clock that jumps ahead and back again leaves them in place.
 pub(crate) const KEPT_DAYS: i64 = 31;
 /// Outbounds a day keeps apart; more go to [`OTHER`].
 pub(crate) const MAX_OUTBOUNDS: usize = 64;
@@ -87,6 +93,30 @@ impl Day {
         before + part.saturating_mul(into) / SLOT_S as u64
     }
 
+    /// Adds an outbound's bytes; past [`MAX_OUTBOUNDS`] targets, a new one counts as [`OTHER`].
+    fn count(&mut self, id: &str, up: u64, down: u64) {
+        let full = self.outbounds.len() >= MAX_OUTBOUNDS && !self.outbounds.contains_key(id);
+        let entry = (self.outbounds)
+            .entry(if full { OTHER } else { id }.to_owned())
+            .or_default();
+        entry[0] += up;
+        entry[1] += down;
+    }
+
+    /// Adds every count of `other`, quarter by quarter.
+    fn merge(&mut self, other: &Day) {
+        for (mine, theirs) in [
+            (&mut self.up, &other.up),
+            (&mut self.down, &other.down),
+            (&mut self.flows, &other.flows),
+        ] {
+            mine.iter_mut().zip(theirs).for_each(|(a, b)| *a += b);
+        }
+        for (id, [up, down]) in &other.outbounds {
+            self.count(id, *up, *down);
+        }
+    }
+
     /// A day read from a file: lists of the wrong length are fixed rather than trusted.
     fn sane(mut self) -> Day {
         self.up.resize(SLOTS, 0);
@@ -99,7 +129,7 @@ impl Day {
     }
 }
 
-/// A finished day's totals.
+/// A day's totals.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Total {
     pub day: i64,
@@ -119,85 +149,148 @@ pub(crate) struct Moved {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Usage {
-    pub today: Option<Day>,
-    pub yesterday: Option<Day>,
-    /// Finished days with any bytes, oldest first, within [`KEPT_DAYS`] of today.
+    /// The latest days by date, oldest first, at most [`FULL`].
+    #[serde(default)]
+    pub full: Vec<Day>,
+    /// The totals of days with bytes that are no longer kept in full, oldest first, at most
+    /// [`KEPT_DAYS`].
     #[serde(default)]
     pub days: Vec<Total>,
 }
 
+/// The usage as of one local day.
+pub(crate) struct View<'a> {
+    pub today: Option<&'a Day>,
+    pub yesterday: Option<&'a Day>,
+    /// The days with bytes in the month before today, oldest first.
+    pub days: Vec<Total>,
+}
+
 impl Usage {
-    /// Today, yesterday and the totals of the days before, as of local day `now`: the stored
-    /// today rolls over if `now` is later. Returns whether it rolled.
-    pub fn roll(&mut self, now: i64) -> bool {
-        let Some(today) = self.today.take_if(|t| t.day < now) else {
-            self.today.get_or_insert_with(|| Day::new(now));
-            return false;
+    pub fn get(&self, day: i64) -> Option<&Day> {
+        self.full.iter().find(|d| d.day == day)
+    }
+
+    /// Local day `now`, made ready to count on, and its place in `full`: a day dated after
+    /// tomorrow was counted under a wrong clock, so its bytes move onto `now` and such a total is
+    /// dropped; `now` is added if it is not kept.
+    fn settle(&mut self, now: i64) -> usize {
+        let ahead = now + 1;
+        let mut today = match self.full.iter().position(|d| d.day == now) {
+            Some(at) => self.full.remove(at),
+            None => Day::new(now),
         };
-        let (up, down) = today.total();
-        if up + down > 0 {
-            self.days.push(Total {
-                day: today.day,
+        self.full.retain(|d| {
+            let wrong = d.day > ahead;
+            if wrong {
+                today.merge(d);
+            }
+            !wrong
+        });
+        self.days.retain(|t| t.day <= ahead);
+        let at = self.full.partition_point(|d| d.day < now);
+        self.full.insert(at, today);
+        // At most one kept day is after `now`, so only days before it go over the bound.
+        let over = self.full.len().saturating_sub(FULL);
+        self.retire(over);
+        at.saturating_sub(over)
+    }
+
+    /// Keeps `day` in full, merged with a kept day of its date; the oldest beyond [`FULL`] keep
+    /// only their totals.
+    fn keep(&mut self, day: Day) {
+        match self.full.iter_mut().find(|d| d.day == day.day) {
+            Some(kept) => kept.merge(&day),
+            None => {
+                let at = self.full.partition_point(|d| d.day < day.day);
+                self.full.insert(at, day);
+            }
+        }
+        self.retire(self.full.len().saturating_sub(FULL));
+    }
+
+    /// Keeps only the totals of the `n` oldest days kept in full.
+    fn retire(&mut self, n: usize) {
+        let old: Vec<Day> = self.full.drain(..n).collect();
+        for d in old {
+            let (up, down) = d.total();
+            self.total(Total {
+                day: d.day,
                 up,
                 down,
             });
         }
-        self.days
-            .retain(|t| t.day >= now - KEPT_DAYS && t.day < now);
-        self.yesterday = (today.day == now - 1).then_some(today);
-        self.today = Some(Day::new(now));
-        true
     }
 
-    /// Adds `moved` at `clock`'s quarter hour. Returns whether the day rolled over first.
-    pub fn add(&mut self, clock: &Clock, moved: &Moved) -> bool {
+    /// Keeps a day's totals, added to any kept for its date; past [`KEPT_DAYS`], the oldest go.
+    fn total(&mut self, t: Total) {
+        if t.up + t.down == 0 {
+            return;
+        }
+        match self.days.binary_search_by_key(&t.day, |k| k.day) {
+            Ok(i) => {
+                self.days[i].up += t.up;
+                self.days[i].down += t.down;
+            }
+            Err(i) => self.days.insert(i, t),
+        }
+        let over = self.days.len().saturating_sub(KEPT_DAYS as usize);
+        self.days.drain(..over);
+    }
+
+    /// Adds `moved` at `clock`'s quarter hour of its local day.
+    pub fn add(&mut self, clock: &Clock, moved: &Moved) {
         let (now, slot, _) = local(clock);
-        let rolled = self.roll(now);
-        let Some(day) = self.today.as_mut() else {
-            return rolled;
-        };
+        let at = self.settle(now);
+        let day = &mut self.full[at];
         day.up[slot] += moved.up;
         day.down[slot] += moved.down;
         day.flows[slot / (SLOTS / HOURS)] += moved.flows;
         for (id, up, down) in &moved.outbounds {
-            let full = day.outbounds.len() >= MAX_OUTBOUNDS && !day.outbounds.contains_key(id);
-            let key = if full { OTHER } else { id.as_str() };
-            let entry = day.outbounds.entry(key.to_owned()).or_default();
-            entry[0] += up;
-            entry[1] += down;
+            day.count(id, *up, *down);
         }
-        rolled
     }
 
-    /// Today's bytes each way, and yesterday's both ways together by the same local time, as of
-    /// `clock`: a stored today that is over by then reads as yesterday. Changes nothing.
-    pub fn today(&self, clock: &Clock) -> (u64, u64, u64) {
+    /// Today's bytes each way, and yesterday's both ways together by the same local time when
+    /// yesterday is kept, as of `clock`. Changes nothing.
+    pub fn today(&self, clock: &Clock) -> (u64, u64, Option<u64>) {
         let (now, slot, into) = local(clock);
-        match &self.today {
-            Some(t) if t.day >= now => {
-                let (up, down) = t.total();
-                let yesterday = self.yesterday.as_ref().map_or(0, |y| y.by(slot, into));
-                (up, down, yesterday)
-            }
-            Some(t) if t.day == now - 1 => (0, 0, t.by(slot, into)),
-            _ => (0, 0, 0),
-        }
+        let (up, down) = self.get(now).map_or((0, 0), Day::total);
+        (up, down, self.get(now - 1).map(|y| y.by(slot, into)))
     }
 
-    /// The days as of local day `now`, rolled over if it is later; the store is left as it is.
-    pub fn view(&self, now: i64) -> Usage {
-        let mut view = self.clone();
-        view.roll(now);
-        view
+    /// Today, yesterday and the month before as of local day `now`; a later day is left out.
+    pub fn view(&self, now: i64) -> View<'_> {
+        let month = |day: i64| day >= now - KEPT_DAYS && day < now;
+        let mut days = Usage::default();
+        for d in self.full.iter().filter(|d| month(d.day)) {
+            let (up, down) = d.total();
+            days.total(Total {
+                day: d.day,
+                up,
+                down,
+            });
+        }
+        for t in self.days.iter().filter(|t| month(t.day)) {
+            days.total(*t);
+        }
+        View {
+            today: self.get(now),
+            yesterday: self.get(now - 1),
+            days: days.days,
+        }
     }
 
     /// The days as read from a file, each fixed where it does not fit.
     pub fn sane(self) -> Usage {
-        Usage {
-            today: self.today.map(Day::sane),
-            yesterday: self.yesterday.map(Day::sane),
-            days: self.days,
+        let mut usage = Usage::default();
+        for t in self.days {
+            usage.total(t);
         }
+        for d in self.full {
+            usage.keep(d.sane());
+        }
+        usage
     }
 }
 
@@ -207,6 +300,8 @@ mod tests {
 
     /// 2026-11-22 00:00 UTC, local day 20779 at offset 0.
     const MIDNIGHT_MS: i64 = 20_779 * 86_400_000;
+    const DAY: i64 = 20_779;
+    const DAY_MS: i64 = 86_400_000;
 
     fn at(wall_ms: i64, offset_s: i32) -> Clock {
         Clock {
@@ -226,6 +321,18 @@ mod tests {
         }
     }
 
+    fn total(usage: &Usage, day: i64) -> Option<(u64, u64)> {
+        usage.get(day).map(Day::total)
+    }
+
+    fn kept(usage: &Usage) -> Vec<i64> {
+        usage.full.iter().map(|d| d.day).collect()
+    }
+
+    fn totals(usage: &Usage) -> Vec<i64> {
+        usage.days.iter().map(|t| t.day).collect()
+    }
+
     #[test]
     fn dates_and_local_days() {
         assert_eq!(date(0), "1970-01-01");
@@ -243,9 +350,9 @@ mod tests {
     #[test]
     fn bytes_land_in_their_quarter_and_hour() {
         let mut usage = Usage::default();
-        assert!(!usage.add(&at(MIDNIGHT_MS + 3_600_000 + 60_000, 0), &moved(10, 100)));
+        usage.add(&at(MIDNIGHT_MS + 3_600_000 + 60_000, 0), &moved(10, 100));
         usage.add(&at(MIDNIGHT_MS + 2 * 3_600_000 - 1, 0), &moved(1, 2));
-        let today = usage.today.as_ref().unwrap();
+        let today = usage.get(DAY).unwrap();
         assert_eq!((today.up[4], today.down[4], today.up[7]), (10, 100, 1));
         assert_eq!(today.flows[1], 2);
         assert_eq!(Day::hours(&today.down)[1], 102);
@@ -254,71 +361,124 @@ mod tests {
     }
 
     #[test]
-    fn midnight_rolls_today_into_yesterday_and_the_totals() {
+    fn midnight_starts_a_day_and_old_days_keep_their_totals() {
         let mut usage = Usage::default();
         usage.add(&at(MIDNIGHT_MS + 23 * 3_600_000, 0), &moved(5, 50));
-        // The first byte after midnight starts a new day.
-        assert!(usage.add(&at(MIDNIGHT_MS + 86_400_000, 0), &moved(1, 1)));
-        let yesterday = usage.yesterday.as_ref().unwrap();
-        assert_eq!((yesterday.day, yesterday.total()), (20_779, (5, 50)));
-        assert_eq!(usage.today.as_ref().unwrap().total(), (1, 1));
+        // The first byte after midnight starts a new day; the 22nd is yesterday.
+        usage.add(&at(MIDNIGHT_MS + DAY_MS, 0), &moved(1, 1));
+        assert_eq!(kept(&usage), [DAY, DAY + 1]);
+        assert_eq!(total(&usage, DAY), Some((5, 50)));
+        let view = usage.view(DAY + 1);
+        assert_eq!(view.yesterday.map(|d| d.day), Some(DAY));
         assert_eq!(
-            usage.days,
-            vec![Total {
-                day: 20_779,
+            view.days,
+            [Total {
+                day: DAY,
                 up: 5,
                 down: 50
             }]
         );
-        // Two quiet days later: no yesterday, and the totals keep only days with bytes.
-        usage.add(&at(MIDNIGHT_MS + 3 * 86_400_000, 0), &moved(2, 2));
-        assert!(usage.yesterday.is_none());
-        assert_eq!(
-            usage.days.iter().map(|t| t.day).collect::<Vec<_>>(),
-            [20_779, 20_780]
-        );
-        // 31 days after the 22nd's last total, the totals before it are gone.
-        usage.add(&at(MIDNIGHT_MS + 34 * 86_400_000, 0), &moved(1, 0));
-        assert_eq!(
-            usage.days.iter().map(|t| t.day).collect::<Vec<_>>(),
-            [20_782]
-        );
+        // Two quiet days later: no yesterday; the 22nd goes over the bound and keeps its total.
+        usage.add(&at(MIDNIGHT_MS + 3 * DAY_MS, 0), &moved(2, 2));
+        usage.add(&at(MIDNIGHT_MS + 4 * DAY_MS, 0), &moved(0, 0));
+        assert_eq!(kept(&usage), [DAY + 1, DAY + 3, DAY + 4]);
+        assert_eq!(totals(&usage), [DAY]);
+        let view = usage.view(DAY + 5);
+        assert!(view.today.is_none());
+        assert_eq!(view.yesterday.map(|d| d.day), Some(DAY + 4));
+        // Days with no byte are not listed.
+        let listed: Vec<i64> = view.days.iter().map(|t| t.day).collect();
+        assert_eq!(listed, [DAY, DAY + 1, DAY + 3]);
+        // The month before today only.
+        let late = usage.view(DAY + 33);
+        assert_eq!(late.days.first().map(|t| t.day), Some(DAY + 3));
     }
 
     #[test]
-    fn a_clock_set_back_keeps_the_current_day() {
+    fn totals_are_bounded_by_count() {
         let mut usage = Usage::default();
-        usage.add(&at(MIDNIGHT_MS + 3_600_000, 0), &moved(1, 1));
-        // A day back: nothing rolls, and the bytes stay on today.
-        assert!(!usage.add(&at(MIDNIGHT_MS - 3_600_000, 0), &moved(2, 2)));
-        assert_eq!(usage.today.as_ref().unwrap().day, 20_779);
-        assert_eq!(usage.today.as_ref().unwrap().total(), (3, 3));
-        assert!(usage.yesterday.is_none() && usage.days.is_empty());
-        // Forward again past midnight, it rolls once.
-        assert!(usage.add(&at(MIDNIGHT_MS + 86_400_000 + 1, 0), &moved(0, 0)));
-        assert_eq!(usage.yesterday.as_ref().unwrap().total(), (3, 3));
+        for d in 0..KEPT_DAYS + 10 {
+            usage.add(&at(MIDNIGHT_MS + d * DAY_MS, 0), &moved(1, 0));
+        }
+        assert_eq!(usage.days.len(), KEPT_DAYS as usize);
+        assert_eq!(usage.full.len(), FULL);
+        let last = DAY + KEPT_DAYS + 9;
+        assert_eq!(usage.days.last().unwrap().day, last - FULL as i64);
     }
 
     #[test]
-    fn a_time_zone_change_moves_the_boundary() {
+    fn a_clock_that_jumps_a_year_ahead_and_back_keeps_the_days() {
         let mut usage = Usage::default();
-        // 22:00 UTC on the 22nd at offset 0, then the phone lands in Taipei (+8): 06:00 the 23rd.
+        for d in 0..5 {
+            usage.add(&at(MIDNIGHT_MS + d * DAY_MS + 3_600_000, 0), &moved(1, 1));
+        }
+        let today = DAY + 4;
+        let morning = at(MIDNIGHT_MS + 4 * DAY_MS + 10 * 3_600_000, 0);
+        // A year ahead for a moment: a new day, and the history stays.
+        let ahead = Clock {
+            wall_ms: morning.wall_ms + 365 * DAY_MS,
+            ..morning
+        };
+        usage.add(&ahead, &moved(7, 7));
+        assert_eq!(kept(&usage), [today - 1, today, today + 365]);
+        assert_eq!(totals(&usage), [DAY, DAY + 1, DAY + 2]);
+        // Back to the right date: the day from the wrong clock moves onto today, today and
+        // yesterday are the ones kept before, and the totals are all there.
+        usage.add(&morning, &moved(2, 2));
+        assert_eq!(kept(&usage), [today - 1, today]);
+        assert_eq!(total(&usage, today), Some((1 + 7 + 2, 1 + 7 + 2)));
+        assert_eq!(usage.today(&morning).2, Some(2));
+        let view = usage.view(today);
+        let listed: Vec<i64> = view.days.iter().map(|t| t.day).collect();
+        assert_eq!(listed, [DAY, DAY + 1, DAY + 2, DAY + 3]);
+        // Nothing is ever written ahead of tomorrow.
+        assert!(usage.full.iter().all(|d| d.day <= today + 1));
+    }
+
+    #[test]
+    fn a_zone_that_moves_west_counts_on_the_earlier_date_again() {
+        let mut usage = Usage::default();
+        // 23:00 UTC on the 21st, in Taipei (+8): 07:00 on the 22nd.
+        let taipei = at(MIDNIGHT_MS - 3_600_000, 8 * 3600);
+        usage.add(&at(MIDNIGHT_MS - 20 * 3_600_000, 8 * 3600), &moved(3, 3));
+        usage.add(&taipei, &moved(4, 4));
+        assert_eq!(kept(&usage), [DAY - 1, DAY]);
+        // The phone lands in Los Angeles (−8) at the same instant: 15:00 on the 21st.
+        let west = Clock {
+            offset_s: -8 * 3600,
+            ..taipei
+        };
+        usage.add(&west, &moved(1, 1));
+        assert_eq!(total(&usage, DAY - 1), Some((4, 4)));
+        assert_eq!(total(&usage, DAY), Some((4, 4)));
+        // Today is the 21st again, and the 22nd waits as it was.
+        assert_eq!(usage.today(&west), (4, 4, None));
+        let view = usage.view(DAY - 1);
+        assert_eq!(view.today.map(|d| d.day), Some(DAY - 1));
+        assert!(view.days.is_empty());
+        // Once the clock reaches the 22nd there, it is today with its morning, after the 21st.
+        let next = at(MIDNIGHT_MS + 9 * 3_600_000, -8 * 3600);
+        usage.add(&next, &moved(1, 0));
+        assert_eq!(usage.today(&next).0, 5);
+        assert!(usage.today(&next).2.is_some());
+        assert_eq!(kept(&usage), [DAY - 1, DAY]);
+    }
+
+    #[test]
+    fn a_zone_that_moves_east_starts_the_next_day() {
+        let mut usage = Usage::default();
+        // 22:00 UTC on the 22nd at offset 0, then the phone lands in Taipei: 06:00 the 23rd.
         let clock = at(MIDNIGHT_MS + 22 * 3_600_000, 0);
         usage.add(&clock, &moved(4, 4));
         let east = Clock {
             offset_s: 8 * 3600,
             ..clock
         };
-        assert!(usage.add(&east, &moved(1, 1)));
-        assert_eq!(usage.today.as_ref().unwrap().day, 20_780);
-        assert_eq!(usage.today.as_ref().unwrap().up[24], 1);
-        // Back west to UTC-5 the same instant (17:00 the 22nd): the 23rd stays today.
-        let west = Clock {
-            offset_s: -5 * 3600,
-            ..clock
-        };
-        assert!(!usage.add(&west, &moved(1, 1)));
-        assert_eq!(usage.today.as_ref().unwrap().total(), (2, 2));
+        usage.add(&east, &moved(1, 1));
+        assert_eq!(kept(&usage), [DAY, DAY + 1]);
+        assert_eq!(usage.get(DAY + 1).unwrap().up[24], 1);
+        // By 06:00 yesterday had moved nothing: its bytes came at 22:00.
+        assert_eq!(usage.today(&east), (1, 1, Some(0)));
     }
 
     #[test]
@@ -326,29 +486,22 @@ mod tests {
         let mut usage = Usage::default();
         // Yesterday: 900 bytes in each of 01:00–01:15 and 10:00–10:15, 1 at 23:59.
         for (h, m, b) in [(1, 0, 900), (10, 0, 900), (23, 59, 1)] {
-            let ms = MIDNIGHT_MS - 86_400_000 + (h * 3600 + m * 60) * 1000;
+            let ms = MIDNIGHT_MS - DAY_MS + (h * 3600 + m * 60) * 1000;
             usage.add(&at(ms, 0), &moved(b, 0));
         }
         let ten_oh_five = at(MIDNIGHT_MS + 36_300_000, 0);
+        // Before today's first byte, today is empty and yesterday is there.
+        assert_eq!(usage.today(&ten_oh_five), (0, 0, Some(900 + 300)));
         usage.add(&ten_oh_five, &moved(7, 3));
         // 10:05: all of 01:00 and a third of 10:00's quarter.
-        assert_eq!(usage.today(&ten_oh_five), (7, 3, 900 + 300));
-        // The next day at 10:10, with no byte since midnight: today is empty, and yesterday (the
-        // stored today) counts two thirds of its 10:00 quarter. The store does not change.
-        let next = at(MIDNIGHT_MS + 86_400_000 + 36_600_000, 0);
-        assert_eq!(usage.today(&next), (0, 0, 10 * 600 / 900));
-        assert_eq!(usage.today.as_ref().unwrap().day, 20_779);
-        let view = usage.view(20_780);
-        assert_eq!(view.yesterday.unwrap().total(), (7, 3));
-        assert_eq!(
-            view.days.last().unwrap(),
-            &Total {
-                day: 20_779,
-                up: 7,
-                down: 3
-            }
-        );
-        assert_eq!(usage.today(&at(MIDNIGHT_MS + 3 * 86_400_000, 0)), (0, 0, 0));
+        assert_eq!(usage.today(&ten_oh_five), (7, 3, Some(900 + 300)));
+        // The next day at 10:10, with no byte since midnight: today is empty, and yesterday counts
+        // two thirds of its 10:00 quarter. Nothing changes in the store.
+        let next = at(MIDNIGHT_MS + DAY_MS + 36_600_000, 0);
+        assert_eq!(usage.today(&next), (0, 0, Some(10 * 600 / 900)));
+        assert_eq!(kept(&usage), [DAY - 1, DAY]);
+        // Two days on, no yesterday is kept.
+        assert_eq!(usage.today(&at(MIDNIGHT_MS + 3 * DAY_MS, 0)), (0, 0, None));
     }
 
     #[test]
@@ -362,25 +515,51 @@ mod tests {
             ..Moved::default()
         };
         usage.add(&clock, &many);
-        let outbounds = &usage.today.as_ref().unwrap().outbounds;
+        let outbounds = &usage.get(DAY).unwrap().outbounds;
         assert_eq!(outbounds.len(), MAX_OUTBOUNDS + 1);
         assert_eq!(outbounds[OTHER], [3, 3]);
     }
 
     #[test]
-    fn a_damaged_day_is_fixed() {
+    fn a_damaged_file_is_fixed() {
         let mut day = Day::new(1);
         day.up.truncate(3);
         day.flows.extend([1, 2, 3]);
+        let t = |day| Total {
+            day,
+            up: 1,
+            down: 0,
+        };
+        let read = Usage {
+            // Out of order, a date twice, more than the bound.
+            full: vec![Day::new(9), day.clone(), Day::new(5), day, Day::new(7)],
+            days: vec![t(4), t(0), t(4)],
+        }
+        .sane();
+        assert_eq!(kept(&read), [5, 7, 9]);
+        assert_eq!(
+            read.days,
+            [
+                t(0),
+                Total {
+                    day: 4,
+                    up: 2,
+                    down: 0
+                }
+            ]
+        );
         let fixed = Usage {
-            today: Some(day),
+            full: vec![Day {
+                up: vec![5],
+                ..Day::new(2)
+            }],
             ..Usage::default()
         }
         .sane();
-        let day = fixed.today.unwrap();
+        let day = &fixed.full[0];
         assert_eq!(
-            (day.up.len(), day.down.len(), day.flows.len()),
-            (SLOTS, SLOTS, HOURS)
+            (day.up.len(), day.down.len(), day.flows.len(), day.up[0]),
+            (SLOTS, SLOTS, HOURS, 5)
         );
     }
 }

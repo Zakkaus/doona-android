@@ -134,8 +134,13 @@ fn what_was_written_is_what_the_next_process_reads() {
 }
 
 #[test]
-fn an_unreadable_or_newer_file_is_set_aside() {
-    for text in [&b"{not json"[..], br#"{"statsVersion":2,"usage":{}}"#] {
+fn an_unreadable_older_or_newer_file_is_set_aside() {
+    let texts = [
+        &b"{not json"[..],
+        br#"{"statsVersion":1,"usage":{"today":null}}"#,
+        br#"{"statsVersion":3,"usage":{}}"#,
+    ];
+    for text in texts {
         let dir = TempDir::new("stats-aside");
         std::fs::write(dir.path().join("stats.json"), text).unwrap();
         let rt = runtime();
@@ -154,7 +159,7 @@ fn a_file_with_odd_days_is_fixed_on_load() {
     let dir = TempDir::new("stats-odd");
     let day = NOW_MS / 86_400_000;
     let text = format!(
-        r#"{{"statsVersion":1,"later":true,"usage":{{"today":{{"day":{day},"up":[5],"down":[],"flows":[]}}}}}}"#
+        r#"{{"statsVersion":2,"later":true,"usage":{{"full":[{{"day":{day},"up":[5],"down":[],"flows":[]}}]}}}}"#
     );
     std::fs::write(dir.path().join("stats.json"), text).unwrap();
     let rt = runtime();

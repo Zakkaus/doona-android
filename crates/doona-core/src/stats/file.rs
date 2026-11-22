@@ -15,8 +15,8 @@ use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-/// The layout version this core writes and reads.
-pub(crate) const STATS_VERSION: u32 = 1;
+/// The layout version this core writes and reads; 2 keeps days by date.
+pub(crate) const STATS_VERSION: u32 = 2;
 
 const FILE: &str = "stats.json";
 const TEMP: &str = "stats.json.tmp";

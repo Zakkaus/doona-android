@@ -23,8 +23,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::runtime::Handle;
 
-/// Changed usage is written at most this often while a generation runs, besides at a day's
-/// rollover and when the generation ends.
+/// Changed usage is written at most this often while a generation runs, besides when the local
+/// day changes and when the generation ends.
 const WRITE_EVERY_S: u64 = 60;
 
 /// One moment on the clocks the stores use.
@@ -89,6 +89,8 @@ impl std::fmt::Debug for Stats {
 struct Inner {
     ring: Ring,
     usage: Usage,
+    /// The local day the last fold counted on.
+    day: Option<i64>,
     /// The usage changed since the last write was asked for.
     dirty: bool,
     /// The boot second of the last write asked for.
@@ -106,6 +108,7 @@ impl Stats {
         let inner = Inner {
             ring: Ring::new(),
             usage: saved.usage.sane(),
+            day: None,
             dirty: false,
             written_s: None,
             latency: Latency::from_saved(saved.latency),
@@ -119,7 +122,7 @@ impl Stats {
     }
 
     /// Folds what `session` moved since its last fold into the stores, and its fastest second
-    /// into its peaks; writes the usage once a minute while it changes, and at a new day.
+    /// into its peaks; writes the usage once a minute while it changes, and when the day changes.
     pub fn sample(self: &Arc<Self>, session: &Session, clock: &Clock) {
         if self.fold(session, clock, false) {
             self.save();
@@ -136,6 +139,8 @@ impl Stats {
     /// Folds, and answers whether a write is due; with `now`, one is whenever the usage changed.
     fn fold(&self, session: &Session, clock: &Clock, now: bool) -> bool {
         let mut inner = lock(&self.inner);
+        let day = day::local(clock).0;
+        let turned = inner.day.replace(day).is_some_and(|d| d != day);
         let fold = session.fold(clock);
         let (up, down) = (inner.ring).add(fold.from_s, fold.to_s, fold.awake_s, fold.up, fold.down);
         session.note_peak(up, down);
@@ -145,10 +150,10 @@ impl Stats {
             flows: fold.flows,
             outbounds: session.meters().take(),
         };
-        let rolled = inner.usage.add(clock, &moved);
-        inner.dirty |= rolled || moved != Moved::default();
+        inner.usage.add(clock, &moved);
+        inner.dirty |= turned || moved != Moved::default();
         let stale = (inner.written_s).is_none_or(|w| clock.boot_s() >= w + WRITE_EVERY_S);
-        let due = inner.dirty && (now || rolled || stale);
+        let due = inner.dirty && (now || turned || stale);
         if due {
             inner.dirty = false;
             inner.written_s = Some(clock.boot_s());
@@ -217,22 +222,23 @@ impl Stats {
 
     /// Today's bytes each way and yesterday's by the same local time, for `snapshot`.
     pub fn today(&self, clock: &Clock) -> dto::Today {
-        let (up_total, down_total, yesterday_by_now) = lock(&self.inner).usage.today(clock);
+        let (up_total, down_total, yesterday) = lock(&self.inner).usage.today(clock);
         dto::Today {
             up_total,
             down_total,
-            yesterday_by_now,
+            yesterday_by_now: yesterday.unwrap_or(0),
         }
     }
 
     /// `usage`'s reply: today and yesterday by the hour, and the totals of the days before.
     pub fn usage(&self, clock: &Clock) -> dto::Usage {
         let now = day::local(clock).0;
-        let view = lock(&self.inner).usage.view(now);
+        let inner = lock(&self.inner);
+        let view = inner.usage.view(now);
         let empty = Day::new(now);
         dto::Usage {
-            today: day_usage(view.today.as_ref().unwrap_or(&empty)),
-            yesterday: view.yesterday.as_ref().map(day_usage),
+            today: day_usage(view.today.unwrap_or(&empty)),
+            yesterday: view.yesterday.map(day_usage),
             days: (view.days.iter())
                 .map(|t| dto::DayTotal {
                     date: day::date(t.day),
