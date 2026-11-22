@@ -13,7 +13,8 @@ class LocalNetworkHost(val access: LocalNetworkAccess, val request: () -> Unit, 
 
 /**
  * Shows the prompt [LocalNetworkHost.access] holds, over whatever page is open. The reason's confirm button goes on to
- * the system's question; the refusal's opens the app's settings page, where the user can still allow access.
+ * the system's question, and back or a tap outside it closes it without a refusal; the refusal's confirm button opens
+ * the app's settings page, where the user can still allow access.
  */
 @Composable
 fun LocalNetworkPrompts(host: LocalNetworkHost) {
@@ -28,6 +29,7 @@ fun LocalNetworkPrompts(host: LocalNetworkHost) {
                 host.request()
             },
             onDismiss = host.access::declined,
+            onDismissRequest = host.access::closed,
         )
 
         LocalNetworkPrompt.Denied -> PromptDialog(
@@ -42,8 +44,8 @@ fun LocalNetworkPrompts(host: LocalNetworkHost) {
 }
 
 @Composable
-private fun PromptDialog(text: PromptText, onConfirm: () -> Unit, onDismiss: () -> Unit) =
-    DoonaConfirmDialog(text.title, text.body, text.confirm, text.dismiss, onConfirm, onDismiss)
+private fun PromptDialog(text: PromptText, onConfirm: () -> Unit, onDismiss: () -> Unit, onDismissRequest: () -> Unit = onDismiss) =
+    DoonaConfirmDialog(text.title, text.body, text.confirm, text.dismiss, onConfirm, onDismiss, onDismissRequest = onDismissRequest)
 
 /** A prompt's words, shared by the dialog and its golden. */
 @Immutable

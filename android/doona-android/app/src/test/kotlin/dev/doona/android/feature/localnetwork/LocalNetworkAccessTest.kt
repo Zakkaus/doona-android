@@ -2,6 +2,7 @@ package dev.doona.android.feature.localnetwork
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -10,7 +11,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The question asked once, retried on a yes, and never asked again after a no in the same process. */
+/** The question asked once, retried on a yes, never asked again after a no in the same process, and withdrawn unanswered. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LocalNetworkAccessTest {
     private var granted = false
@@ -60,8 +61,10 @@ class LocalNetworkAccessTest {
         assertFalse(access.ask())
         assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
         access.dismissed()
-        // The tunnel's report after a refusal shows nothing.
-        access.noticed()
+        // The tunnel's report after a refusal shows the way to the settings too, never nothing, until it clears.
+        val report = launch { access.noticed() }
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+        report.cancel()
         assertNull(access.prompt.value)
     }
 
@@ -87,5 +90,53 @@ class LocalNetworkAccessTest {
         assertNull(access.prompt.value)
         access.noticed()
         assertNull(access.prompt.value)
+    }
+
+    @Test
+    fun closingTheReasonIsNoRefusal() = runTest(UnconfinedTestDispatcher()) {
+        val answer = async { access.ask() }
+        access.closed()
+        assertFalse("closed: nothing to retry", answer.await())
+        assertNull(access.prompt.value)
+        // The next failure asks again rather than showing the refusal.
+        val again = async { access.ask() }
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+        again.cancel()
+    }
+
+    @Test
+    fun aReasonNobodyWaitsForIsWithdrawnWithoutARefusal() = runTest(UnconfinedTestDispatcher()) {
+        val asking = launch { access.ask() }
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+        asking.cancel()
+        assertNull(access.prompt.value)
+        val again = async { access.ask() }
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+        access.requesting()
+        access.answered(true)
+        assertTrue(again.await())
+    }
+
+    @Test
+    fun aQuestionAnotherCallerSharesStaysOpen() = runTest(UnconfinedTestDispatcher()) {
+        val tunnel = launch { access.noticed() }
+        val action = async { access.ask() }
+        tunnel.cancel()
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+        access.requesting()
+        access.answered(true)
+        assertTrue(action.await())
+    }
+
+    @Test
+    fun theSystemsAnswerCountsAfterTheCallerLeft() = runTest(UnconfinedTestDispatcher()) {
+        val asking = launch { access.ask() }
+        access.requesting()
+        asking.cancel()
+        access.answered(false)
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+        access.dismissed()
+        assertFalse(access.ask())
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
     }
 }

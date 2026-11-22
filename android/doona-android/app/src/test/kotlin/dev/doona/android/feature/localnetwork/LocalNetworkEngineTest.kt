@@ -3,12 +3,16 @@ package dev.doona.android.feature.localnetwork
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -23,12 +27,17 @@ class LocalNetworkEngineTest {
     private var granted = false
     private val access = LocalNetworkAccess { granted }
 
-    /** Fails each add and update with the next of [failures], then succeeds; counts the calls that reached it. */
+    /**
+     * Fails each add and update with the next of [failures], then succeeds; counts the calls that reached it and records
+     * the groups each latency test asked for. An update answers only once [gate] is open.
+     */
     private class Scripted(private val fake: FakeEngine = FakeEngine()) : Engine by fake {
         val failures = ArrayDeque<ErrorCode>()
         var adds = 0
         var updates = 0
-        var tests = 0
+        val tested = mutableListOf<String?>()
+        val tests get() = tested.size
+        var gate = CompletableDeferred(Unit)
 
         override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
             adds++
@@ -37,11 +46,12 @@ class LocalNetworkEngineTest {
 
         override suspend fun updateSubscription(id: String): Result<Subscription> {
             updates++
+            gate.await()
             return failures.removeFirstOrNull()?.let { Result.failure(EngineException(it)) } ?: fake.updateSubscription(id)
         }
 
         override suspend fun testLatency(groupId: String?): Result<Unit> {
-            tests++
+            tested += groupId
             return Result.success(Unit)
         }
     }
@@ -139,5 +149,84 @@ class LocalNetworkEngineTest {
         answer(allowed = true)
         assertNull(access.prompt.value)
         assertEquals(0, scripted.adds + scripted.updates + scripted.tests)
+    }
+
+    /** A group with one node, which failed with [error] when there is one. */
+    private fun group(id: String, testing: Boolean, error: ErrorCode? = null) = Group(
+        id = id,
+        name = id,
+        kind = GroupKind.UrlTest,
+        members = listOf(Member(id = "n-$id", name = id, failed = error != null, error = error)),
+        selectedId = null,
+        testing = testing,
+    )
+
+    @Test
+    fun aTestOfAllStartedDuringAnotherIsTheOneRunAgain() = runTest(UnconfinedTestDispatcher()) {
+        val fake = FakeEngine(groups = listOf(group("g-HK", testing = true), group("g-JP", testing = false)))
+        val scripted = Scripted(fake)
+        val engine = engine(scripted)
+        assertTrue(engine.testLatency("g-HK").isSuccess)
+        fake.groups.value = listOf(group("g-HK", testing = true), group("g-JP", testing = true))
+        assertTrue(engine.testLatency(null).isSuccess)
+        fake.groups.value = listOf(group("g-HK", testing = false), group("g-JP", testing = false, ErrorCode.LocalNetwork))
+        answer(allowed = true)
+        assertEquals(listOf("g-HK", null, null), scripted.tested)
+    }
+
+    @Test
+    fun onlyTheRequestedGroupThatFailedIsTestedAgain() = runTest(UnconfinedTestDispatcher()) {
+        val fake = FakeEngine(groups = listOf(group("g-HK", testing = true), group("g-JP", testing = false)))
+        val scripted = Scripted(fake)
+        val engine = engine(scripted)
+        assertTrue(engine.testLatency("g-HK").isSuccess)
+        fake.groups.value = listOf(group("g-HK", testing = true), group("g-JP", testing = true))
+        assertTrue(engine.testLatency("g-JP").isSuccess)
+        fake.groups.value = listOf(group("g-HK", testing = false), group("g-JP", testing = false, ErrorCode.LocalNetwork))
+        answer(allowed = true)
+        assertEquals(listOf("g-HK", "g-JP", "g-JP"), scripted.tested)
+    }
+
+    @Test
+    fun aFailureAfterThePageWasLeftStillAsksAndRetries() = runTest(UnconfinedTestDispatcher()) {
+        val scripted = Scripted().apply {
+            failures += ErrorCode.LocalNetwork
+            gate = CompletableDeferred()
+        }
+        val engine = engine(scripted)
+        val page = launch { engine.updateSubscription("s1") }
+        page.cancel()
+        assertNull(access.prompt.value)
+        scripted.gate.complete(Unit)
+        answer(allowed = true)
+        assertEquals(2, scripted.updates)
+    }
+
+    @Test
+    fun aWarningThatClearsBeforeTheAnswerWithdrawsTheReason() = runTest(UnconfinedTestDispatcher()) {
+        val fake = FakeEngine()
+        engine(Scripted(fake)).watch()
+        fake.warning.value = ErrorCode.LocalNetwork
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+        fake.warning.value = null
+        assertNull(access.prompt.value)
+        // Not a refusal: the next report asks again.
+        fake.warning.value = ErrorCode.LocalNetwork
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+    }
+
+    @Test
+    fun aWarningAfterARefusalShowsTheWayToTheSettings() = runTest(UnconfinedTestDispatcher()) {
+        val fake = FakeEngine()
+        engine(Scripted(fake)).watch()
+        fake.warning.value = ErrorCode.LocalNetwork
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+        access.declined()
+        fake.warning.value = null
+        fake.warning.value = ErrorCode.LocalNetwork
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+        // Disconnected before the user saw it: the refusal comes down too.
+        fake.warning.value = null
+        assertNull(access.prompt.value)
     }
 }

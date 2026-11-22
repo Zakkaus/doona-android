@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
         if (result.resultCode == RESULT_OK) engine.connect()
     }
 
+    /** The local network permission's only launcher, a field like the two above, so the answer reaches a recreated activity. */
     private val localNetworkPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { container.localNetwork.answered(it) }
 
