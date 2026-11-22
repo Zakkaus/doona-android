@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_channel_name">VPN 连接</string>
+    <string name="vpn_status_starting">连接中…</string>
+    <string name="vpn_status_running">已连接</string>
+    <string name="vpn_status_stopping">断开中…</string>
+    <string name="vpn_status_stopped">未连接</string>
+    <string name="vpn_status_failed">连接失败</string>
+    <string name="vpn_rates">上传 %1$s/秒，下载 %2$s/秒</string>
+    <string name="vpn_action_disconnect">断开</string>
+    <string name="vpn_failed_title">VPN 已断开</string>
+    <string name="vpn_failure_no_allowed_apps">列表中的应用均未安装。</string>
+    <string name="vpn_failure_start_failed">无法启动 VPN。</string>
+    <string name="vpn_failure_core_stopped">连接意外中断。</string>
+    <string name="vpn_failure_incompatible_core">VPN 核心与此版本的 doona 不匹配。</string>
+</resources>
