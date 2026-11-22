@@ -82,15 +82,21 @@ async fn follow(mut url: Url) -> Result<Fetched, ErrorCode> {
         if hop == MAX_REDIRECTS {
             break;
         }
-        let mut next = url.join(&location).map_err(|_| ErrorCode::FetchFailed)?;
-        let _ = next.set_username("");
-        let _ = next.set_password(None);
-        if refused_redirect(&origin, &next) {
-            return Err(ErrorCode::FetchFailed);
-        }
-        url = next;
+        url = next_hop(&origin, &url, &location)?;
     }
     Err(ErrorCode::FetchFailed)
+}
+
+/// The URL a redirect from `current` to `location` leads to, without credentials, unless the
+/// redirect rules refuse it.
+fn next_hop(origin: &Url, current: &Url, location: &str) -> Result<Url, ErrorCode> {
+    let mut next = current.join(location).map_err(|_| ErrorCode::FetchFailed)?;
+    let _ = next.set_username("");
+    let _ = next.set_password(None);
+    if refused_redirect(origin, current, &next) {
+        return Err(ErrorCode::FetchFailed);
+    }
+    Ok(next)
 }
 
 /// As honk-core's `marked_http::basic_auth`.
@@ -119,9 +125,10 @@ fn same_origin(a: &Url, b: &Url) -> bool {
 }
 
 /// honk's redirect rules: never from https to plain text, never to a private address literal
-/// unless the subscription itself is on one.
-fn refused_redirect(origin: &Url, next: &Url) -> bool {
-    let downgrade = origin.scheme() == "https" && next.scheme() != "https";
+/// unless the subscription itself is on one. A downgrade is judged against the hop being left,
+/// not the first URL as in honk, so http, then https, then http again is refused too.
+fn refused_redirect(origin: &Url, current: &Url, next: &Url) -> bool {
+    let downgrade = current.scheme() == "https" && next.scheme() != "https";
     let web = matches!(next.scheme(), "http" | "https");
     downgrade || !web || (private_literal(next) && !private_literal(origin))
 }

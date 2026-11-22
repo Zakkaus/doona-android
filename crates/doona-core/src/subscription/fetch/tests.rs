@@ -122,21 +122,20 @@ fn only_web_urls_with_a_host_are_taken() {
 #[test]
 fn redirects_never_downgrade_or_reach_into_private_addresses() {
     let url = |u: &str| Url::parse(u).unwrap();
-    let public = url("https://example.org/s");
-    assert!(refused_redirect(&public, &url("http://example.org/s")));
-    assert!(refused_redirect(&public, &url("https://192.168.1.1/s")));
-    assert!(refused_redirect(
-        &public,
-        &url("https://[::ffff:127.0.0.1]/s")
-    ));
-    assert!(refused_redirect(&public, &url("ftp://example.org/s")));
+    let refused = |from: &str, to: &str| refused_redirect(&url(from), &url(from), &url(to));
+    let public = "https://example.org/s";
+    assert!(refused(public, "http://example.org/s"));
+    assert!(refused(public, "https://192.168.1.1/s"));
+    assert!(refused(public, "https://[::ffff:127.0.0.1]/s"));
+    assert!(refused(public, "ftp://example.org/s"));
+    assert!(!refused(public, "https://cdn.example.net/s"));
+    assert!(!refused("http://10.0.0.1/s", "http://10.0.0.2/s"));
+    // A subscription on a private address may move within private addresses after any hop.
+    let private = url("http://10.0.0.1/s");
     assert!(!refused_redirect(
-        &public,
-        &url("https://cdn.example.net/s")
-    ));
-    assert!(!refused_redirect(
-        &url("http://10.0.0.1/s"),
-        &url("http://10.0.0.2/s")
+        &private,
+        &url("https://example.org/s"),
+        &url("https://10.0.0.2/s")
     ));
 }
 
@@ -175,4 +174,18 @@ fn quotas_a_signed_long_cannot_hold_are_left_out() {
     let info = parse_userinfo("upload=9223372036854775806; download=1; total=9223372036854775807");
     assert_eq!(info.used_bytes.map(i128::from), Some(max));
     assert_eq!(info.total_bytes.map(i128::from), Some(max));
+}
+
+#[test]
+fn a_redirect_never_downgrades_from_the_hop_it_leaves() {
+    let url = |s: &str| Url::parse(s).unwrap();
+    let origin = url("http://feed.example/s");
+    let upgraded = url("https://cdn.example/s");
+    let back = next_hop(&origin, &upgraded, "http://cdn.example/t");
+    assert_eq!(back.err(), Some(ErrorCode::FetchFailed));
+    assert!(next_hop(&origin, &origin, "https://cdn.example/s").is_ok());
+    assert!(next_hop(&origin, &origin, "http://other.example/s").is_ok());
+    // Credentials in a Location are dropped.
+    let next = next_hop(&origin, &origin, "http://u:p@feed.example/t").unwrap();
+    assert!(next.username().is_empty() && next.password().is_none());
 }
