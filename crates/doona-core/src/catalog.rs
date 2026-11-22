@@ -90,6 +90,8 @@ struct Latency {
     ms: Option<u32>,
     failed: bool,
     generation: u64,
+    /// A probe of `generation` is under way, so `ms` is from an earlier round.
+    probing: bool,
 }
 
 /// What the core shares with the tasks it spawns.
@@ -153,6 +155,26 @@ pub(crate) struct Model {
 pub(crate) struct Plan {
     pub groups: Vec<String>,
     pub targets: Vec<Target>,
+}
+
+impl Plan {
+    /// What [`Model::finish`] needs once the test ends.
+    pub fn round(&self) -> Round {
+        Round {
+            groups: self.groups.clone(),
+            probes: self
+                .targets
+                .iter()
+                .map(|t| (t.entry.id.clone(), t.generation))
+                .collect(),
+        }
+    }
+}
+
+/// A test's groups, and the node and generation of each of its probes.
+pub(crate) struct Round {
+    groups: Vec<String>,
+    probes: Vec<(String, u64)>,
 }
 
 /// One probe: its result counts only while the node keeps this incarnation and generation.
@@ -320,7 +342,9 @@ impl Model {
         let mut targets = Vec::with_capacity(wanted.len());
         for entry in self.nodes.iter().filter(|n| wanted.contains(&n.id)) {
             self.next_probe += 1;
-            self.latency.entry(entry.id.clone()).or_default().generation = self.next_probe;
+            let latency = self.latency.entry(entry.id.clone()).or_default();
+            latency.generation = self.next_probe;
+            latency.probing = true;
             targets.push(Target {
                 entry: Arc::clone(entry),
                 incarnation: self
@@ -350,7 +374,9 @@ impl Model {
     }
 
     /// Commits a probe result if its node still has the incarnation and probe generation the
-    /// probe began with, and lets every UrlTest group pick its fastest member again.
+    /// probe began with. A success lets the UrlTest groups with the node pick their fastest
+    /// member again; a failure changes no choice, so a round where every probe fails keeps the
+    /// current member whatever order the failures arrive in.
     pub fn record(&mut self, target: &Target, ms: Option<u32>) -> bool {
         let entry = &target.entry;
         let current = self.index.contains_key(&entry.id)
@@ -364,18 +390,40 @@ impl Model {
         };
         latency.ms = ms;
         latency.failed = ms.is_none();
-        let known = &self.latency;
-        for g in self.groups.iter().filter(|g| g.kind == GroupKind::UrlTest) {
-            if let Some(best) = groups::fastest(g, |m| known.get(m).and_then(|l| l.ms)) {
-                self.auto.insert(g.id.clone(), best.clone());
-            }
+        latency.probing = false;
+        if ms.is_some() {
+            self.choose(Some(&entry.id));
         }
         true
     }
 
-    /// A latency test of `groups` ended.
-    pub fn finish(&mut self, groups: &[String]) {
-        for g in groups {
+    /// Lets each UrlTest group, or each one with `member`, pick its fastest member. Only results
+    /// of nodes with no probe under way count: an earlier round's time of a node being probed
+    /// again never wins. A group with no such result keeps its choice.
+    fn choose(&mut self, member: Option<&str>) {
+        let latency = &self.latency;
+        let known = |m: &str| latency.get(m).filter(|l| !l.probing).and_then(|l| l.ms);
+        for g in self.groups.iter().filter(|g| g.kind == GroupKind::UrlTest) {
+            if member.is_some_and(|m| !g.members.iter().any(|x| x == m)) {
+                continue;
+            }
+            if let Some(best) = groups::fastest(g, known) {
+                self.auto.insert(g.id.clone(), best.clone());
+            }
+        }
+    }
+
+    /// A latency test ended, finished or cancelled: its probes that never reported leave their
+    /// nodes with the earlier result.
+    pub fn finish(&mut self, round: &Round) {
+        for (id, generation) in &round.probes {
+            if let Some(l) = self.latency.get_mut(id)
+                && l.generation == *generation
+            {
+                l.probing = false;
+            }
+        }
+        for g in &round.groups {
             if let Some(n) = self.testing.get_mut(g) {
                 *n = n.saturating_sub(1);
                 if *n == 0 {

@@ -135,7 +135,7 @@ fn the_fastest_node_wins_and_a_failed_round_keeps_the_choice() {
     let auto = |m: &Model| m.catalog(&s).groups[1].selected_id.clone();
     assert_eq!(auto(&model).as_deref(), Some(b.entry.id.as_str()));
     assert!(model.catalog(&s).groups[1].testing);
-    model.finish(&plan.groups);
+    model.finish(&plan.round());
     assert!(!model.catalog(&s).groups[1].testing);
     // A round where every probe fails keeps the current member.
     let plan = model.plan(None).unwrap();
@@ -157,9 +157,9 @@ fn overlapping_tests_keep_only_the_latest_result_and_test_until_both_end() {
     assert!(model.record(&late.targets[0], Some(20)));
     let node = &late.targets[0].entry.id;
     assert_eq!(latency(&model, &s, node), (Some(20), false));
-    model.finish(&early.groups);
+    model.finish(&early.round());
     assert!(model.catalog(&s).groups[2].testing);
-    model.finish(&late.groups);
+    model.finish(&late.round());
     assert!(!model.catalog(&s).groups[2].testing);
 }
 
@@ -180,7 +180,7 @@ fn a_probe_of_a_re_created_or_removed_node_is_dropped() {
     }
     // The testing mark survives until the test ends.
     assert!(gone.catalog(&shrunk).groups.iter().all(|g| g.testing));
-    gone.finish(&plan.groups);
+    gone.finish(&plan.round());
     assert!(gone.catalog(&shrunk).groups.iter().all(|g| !g.testing));
 }
 
@@ -252,4 +252,36 @@ fn a_subscription_that_takes_the_catalog_over_its_budget_loads_empty() {
         ),
         Err(ErrorCode::ParseFailed)
     );
+}
+
+#[test]
+fn only_a_success_of_the_current_round_replaces_the_choice() {
+    let s = state(&[("s1", "links.txt")]);
+    let mut model = load(&s);
+    let auto = |m: &Model| m.catalog(&s).groups[1].selected_id.clone().unwrap();
+    let plan = model.plan(Some("g-Auto")).unwrap();
+    let id = |i: usize| plan.targets[i].entry.id.clone();
+    for (i, t) in plan.targets.iter().enumerate() {
+        let ms = match i {
+            3 => 10,
+            6 => 20,
+            5 => 50,
+            _ => 90,
+        };
+        assert!(model.record(t, Some(ms)));
+    }
+    assert_eq!(auto(&model), id(3));
+    // The fastest fails first; the next fastest still has its earlier timing, then fails too.
+    let round = model.plan(Some("g-Auto")).unwrap();
+    for i in [3, 6, 5, 0, 1, 2, 4, 7, 8] {
+        assert!(model.record(&round.targets[i], None));
+        assert_eq!(auto(&model), id(3), "after target {i} failed");
+    }
+    // A success of this round replaces it; an earlier timing of a node still probing does not.
+    let round = model.plan(Some("g-Auto")).unwrap();
+    assert!(model.record(&round.targets[3], None));
+    assert!(model.record(&round.targets[5], Some(60)));
+    assert_eq!(auto(&model), id(5));
+    assert!(model.record(&round.targets[6], Some(70)));
+    assert_eq!(auto(&model), id(5));
 }

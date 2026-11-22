@@ -5,7 +5,7 @@
 //! (core-api.md, Commit rule); a test that ends, cancelled or not, clears its groups' `testing`.
 
 use crate::api::lock;
-use crate::catalog::{Plan, Shared, Target};
+use crate::catalog::{Plan, Round, Shared, Target};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use honk_config::node::Node;
@@ -66,6 +66,7 @@ impl Probes {
 
     /// Runs the test `plan` on `rt`; `cancel` drops it with the tunnel generation it began in.
     pub fn spawn(&self, rt: &Handle, shared: &Arc<Shared>, plan: Plan, cancel: CancellationToken) {
+        let round = plan.round();
         let registry = shared.outbounds.registry();
         let proxies = shared.outbounds.proxies();
         let probes = plan.targets.into_iter().map(|target| {
@@ -80,7 +81,7 @@ impl Probes {
         let probes = futures_util::future::join_all(probes);
         let ended = Ended {
             shared: Arc::clone(shared),
-            groups: plan.groups,
+            round,
         };
         rt.spawn(async move {
             let _ended = ended;
@@ -122,13 +123,13 @@ impl Probes {
 /// Ends a test when its task ends, finished or cancelled.
 struct Ended {
     shared: Arc<Shared>,
-    groups: Vec<String>,
+    round: Round,
 }
 
 impl Drop for Ended {
     fn drop(&mut self) {
         let mut c = lock(&self.shared.catalog);
-        c.model.finish(&self.groups);
+        c.model.finish(&self.round);
         c.revision += 1;
     }
 }
