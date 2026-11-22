@@ -128,36 +128,6 @@ internal object RvHeroSize {
     val quietRadius = 28.dp
 }
 
-/**
- * The outbound card's alternatives (plans/briefs/rv-outbound-variants.md). C2: a 12 dp bar stacked by today's bytes, its
- * parts 2 dp apart, over legend rows with a 10 dp swatch and 32 dp marks. C3: 56 dp chips that scroll sideways. C4: a
- * route map of 56 dp slots, rules on the left in 96 dp, places on the right in 136 dp, joined by bands 3 to 28 dp thick
- * between 4 dp end bars. C5: tiles on the page colour inside the card, 16 dp round and 8 dp apart.
- */
-internal object RvOutboundSize {
-    val bar = 12.dp
-    val barGap = 2.dp
-    val barBelow = 8.dp
-    val swatch = 10.dp
-    val swatchRadius = 2.dp
-    val mark = 32.dp
-    val chip = 56.dp
-    val chipStart = 12.dp
-    val chipEnd = 16.dp
-    val chipGap = 8.dp
-    val routeSlot = 56.dp
-    val routeLabel = 96.dp
-    val routePlace = 136.dp
-    val routeEnd = 4.dp
-    val routeGap = 8.dp
-    val routeThick = 28.dp
-    val routeThin = 3.dp
-    val routeFlag = 24.dp
-    val tileRadius = 16.dp
-    val tileGap = 8.dp
-    val tilePad = 12.dp
-}
-
 /** The one chevron (measured §7): 6.7 x 12.2 dp of 2 dp stroke in a 24 dp box. */
 internal object RvChevronSize {
     val box = 24.dp
@@ -310,19 +280,13 @@ internal object RvAlpha {
     const val GHOST = 0.05f
 
     /**
-     * Outbounds side by side: the accent for the main node, then these steps of it for the next nodes, and the control
-     * grey's step for the folded 其他. V4's tinted hero: its hue at this alpha over the page, or the text colour at the
-     * neutral one while disconnected.
+     * Outbounds side by side: the accent for the main node, then these steps of it for the next nodes. V4's tinted hero:
+     * its hue at this alpha over the page, or the text colour at the neutral one while disconnected.
      */
     const val OUTBOUND_SECOND = 0.55f
     const val OUTBOUND_THIRD = 0.3f
-    const val OUTBOUND_OTHER = 0.45f
     const val HERO_TINT = 0.12f
     const val HERO_NEUTRAL = 0.04f
-
-    /** C4's bands between a rule and its place, so crossings show; the main node's band is drawn on top, stronger. */
-    const val ROUTE_BAND = 0.4f
-    const val ROUTE_MAIN = 0.7f
 
     /** A greyed mark: V3's duck while disconnected. */
     const val GREYED = 0.45f

@@ -45,11 +45,4 @@
         <item quantity="one">See the %1$d rule</item>
         <item quantity="other">See all %1$d rules</item>
     </plurals>
-    <string name="rv_outbound_other">Other</string>
-    <string name="rv_route_rest">Everything else</string>
-    <string name="rv_route_all">All traffic</string>
-    <plurals name="rv_rule_count">
-        <item quantity="one">%1$d rule</item>
-        <item quantity="other">%1$d rules</item>
-    </plurals>
 </resources>

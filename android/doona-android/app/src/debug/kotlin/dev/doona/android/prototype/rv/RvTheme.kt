@@ -112,12 +112,10 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
 
     /**
      * Outbounds side by side (the hero alternatives, 出站's share bar): the main node in the accent, the next nodes in
-     * lighter steps of it, direct in [control], the folded 其他 in a paler step of it. Colour here tells routes apart, never a
-     * direction.
+     * lighter steps of it, direct in [control]. Colour here tells routes apart, never a direction.
      */
     val outbounds = listOf(s.primary, s.primary.copy(alpha = RvAlpha.OUTBOUND_SECOND), s.primary.copy(alpha = RvAlpha.OUTBOUND_THIRD))
     val outboundDirect = control
-    val outboundOther = control.copy(alpha = RvAlpha.OUTBOUND_OTHER)
 
     /** V4's flat hero: the accent while connected, the warning hue while the main node is slow, a neutral step when off. */
     val heroOn = s.primary.copy(alpha = RvAlpha.HERO_TINT).compositeOver(page)

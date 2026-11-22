@@ -120,9 +120,6 @@ internal object RvData {
         RvMinuteShare(R.string.rv_rule_domestic, null, 13),
     )
 
-    /** What the main node carried today: the proxied bytes no rule sent to a node of its own. */
-    val mainBytes: Long = split.proxyBytes - ruleOutbounds.filter { it.nodeId != null }.sumOf { it.bytes }
-
     /** The rules in the profile; 活動 lists the few that sent traffic today. */
     const val RULES = 14
 

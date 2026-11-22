@@ -28,31 +28,27 @@ import dev.doona.android.prototype.rv.stats.rvStatsSample
  * bar), 節點 (the search pill and the outbound row) and the node in use (its row); 節點 pushes a node's page; the nav
  * switches to 設定, which pushes 主題. Back returns. Start it from the launcher's "doona RV sample", or with
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`; add `--es hero Ring` (any
- * [RvHeroVariant] by name) or `--es outbound Tiles` (any [RvOutboundVariant]) to see 活動 with one of the alternatives.
+ * [RvHeroVariant] by name) to see 活動 with one of the hero alternatives.
  */
 class RvPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        val hero = extra(EXTRA_HERO, RvHeroVariant.entries) ?: RvHeroVariant.Map
-        val outbound = extra(EXTRA_OUTBOUND, RvOutboundVariant.entries) ?: RvOutboundVariant.List
+        val hero = intent.getStringExtra(EXTRA_HERO)?.let { name -> RvHeroVariant.entries.firstOrNull { it.name.equals(name, ignoreCase = true) } } ?: RvHeroVariant.Map
         setContent {
             val dark = isSystemInDarkTheme()
             RvTheme(rvSystemScheme(dark), dark) {
                 // The pages pushed over the tab home, last on top: a route's name, and a node's id after a colon.
                 var stack by rememberSaveable { mutableStateOf(listOf(ACTIVITY)) }
                 BackHandler(enabled = stack.size > 1) { stack = stack.dropLast(1) }
-                RvPreviewPage(stack.last(), hero, outbound, push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
+                RvPreviewPage(stack.last(), hero, push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
             }
         }
     }
-
-    /** The launch's [key] extra as one of [entries] by name, any case; null when absent or unknown. */
-    private fun <T : Enum<T>> extra(key: String, entries: List<T>): T? = intent.getStringExtra(key)?.let { name -> entries.firstOrNull { it.name.equals(name, ignoreCase = true) } }
 }
 
 @Composable
-private fun RvPreviewPage(route: String, hero: RvHeroVariant, outbound: RvOutboundVariant, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
+private fun RvPreviewPage(route: String, hero: RvHeroVariant, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
     val nodes = remember { sampleNodesPage() }
     var settings by remember { mutableStateOf(rvSampleSettings()) }
     // 策略 has no sample page yet.
@@ -75,13 +71,12 @@ private fun RvPreviewPage(route: String, hero: RvHeroVariant, outbound: RvOutbou
 
         else -> {
             val routes = RvActivityRoutes({ push(TRAFFIC) }, { push(STATS) }, { push(NODES) }, { push("$NODE:${nodes.currentId}") }, onTab)
-            RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, routes, hero = hero, outbound = outbound)
+            RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, routes, hero = hero)
         }
     }
 }
 
 private const val EXTRA_HERO = "hero"
-private const val EXTRA_OUTBOUND = "outbound"
 private const val ACTIVITY = "activity"
 private const val TRAFFIC = "traffic"
 private const val STATS = "stats"
