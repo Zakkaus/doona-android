@@ -6,8 +6,8 @@
 //! identity wins). Nodes are built by honk-config's `Node::from_share_link`.
 //!
 //! v0.1 takes share-link lists, plain or base64. Structured bodies (Clash YAML, SIP008 and
-//! sing-box JSON) and Surge-style records are refused as `parse_failed`, judged by their first
-//! lines so that refusing one builds no tree.
+//! sing-box JSON) and Surge-style records are refused as `parse_failed`, told by syntax a
+//! share-link list never has, so that refusing one builds no tree.
 
 use crate::dto::ErrorCode;
 use honk_config::node::Node;
@@ -104,40 +104,38 @@ fn usable(node: &Node) -> bool {
         && honk_config::node::validate_node_collection(std::slice::from_ref(node)).is_ok()
 }
 
-/// A JSON or YAML document, which honk reads as a Clash, SIP008 or sing-box body, judged by its
-/// first line that is not blank or a comment, so no tree is built: an object, an array, a quoted
-/// key, a document marker, a list item, or honk's `proxies:`, `outbounds:` and `servers:` keys.
-/// Any other `key:` line is not enough: some providers put one above their share links, and a
-/// mapping such as a whole Clash config has no line that starts with a scheme, so it fails as
-/// records.
+/// honk's top-level keys of a Clash, sing-box or SIP008 body.
+const DOCUMENT_KEYS: [&str; 3] = ["proxies:", "outbounds:", "servers:"];
+
+/// A JSON or YAML document, which honk reads as a Clash, SIP008 or sing-box body, told without
+/// building a tree and only by syntax a share-link list never has: a JSON object or array that
+/// opens (`{"`, `{}`, `[{`, `[]`) after any comment lines, or a line that starts with one of
+/// [`DOCUMENT_KEYS`]. A provider's header line above the links (`[Premium / EU]`,
+/// `updated: …`) is neither. Any other document has no line that starts with a scheme and fails
+/// as records.
 fn structured(text: &str) -> bool {
-    let first = text
+    let mut chars = document_start(text).chars();
+    let open = chars.next();
+    let inner = chars.find(|c| !c.is_whitespace());
+    let json = matches!(
+        (open, inner),
+        (Some('{'), Some('"' | '}')) | (Some('['), Some('{' | ']'))
+    );
+    json || text
         .lines()
-        .map(str::trim)
-        .find(|line| !line.is_empty() && !line.starts_with('#') && !line.starts_with(';'))
-        .unwrap_or_default();
-    first.starts_with(['{', '"', '\''])
-        || (first.starts_with('[') && !ini_header(first))
-        || first == "---"
-        || first == "-"
-        || first.starts_with("- ")
-        || ["proxies:", "outbounds:", "servers:"]
-            .iter()
-            .any(|key| first.starts_with(key))
+        .any(|line| DOCUMENT_KEYS.iter().any(|key| line.starts_with(key)))
 }
 
-/// `[Proxy]`: a section of Surge-style records, not a JSON array.
-fn ini_header(line: &str) -> bool {
-    line.strip_prefix('[')
-        .and_then(|line| line.strip_suffix(']'))
-        .is_some_and(|name| {
-            !name.is_empty()
-                && name.chars().all(|ch| {
-                    ch.is_ascii_alphanumeric()
-                        || ch.is_ascii_whitespace()
-                        || matches!(ch, '_' | '-')
-                })
-        })
+/// `text` from its first line that is not blank or a `#` or `;` comment.
+fn document_start(text: &str) -> &str {
+    let mut rest = text.trim_start();
+    while rest.starts_with(['#', ';']) {
+        rest = rest
+            .split_once('\n')
+            .map_or("", |(_, after)| after)
+            .trim_start();
+    }
+    rest
 }
 
 /// A line starting with a URI scheme; without one honk reads the body as Surge-style records.
@@ -262,14 +260,15 @@ mod tests {
     }
 
     #[test]
-    fn structured_bodies_are_known_by_their_first_lines() {
+    fn structured_bodies_are_known_without_a_tree() {
         for body in [
             "port: 7890\nproxies:\n  - {name: a, server: 192.0.2.1}\nrules:\n  - MATCH,trojan://x@h:1",
             "# exported\n\nproxies:\n- name: a\n  url: trojan://x@h:1",
             "---\nproxies: []\ntrojan://x@h:1",
             "- name: a\n  link: trojan://x@h:1",
             "[{\"server\": \"trojan://x@h:1\"}]",
-            "\"outbounds\": []\ntrojan://x@h:1",
+            "{\"outbounds\": []}\ntrojan://x@h:1",
+            "# exported\n[\n  {\"server\": \"192.0.2.1\"}\n]\ntrojan://x@h:1",
         ] {
             assert_eq!(
                 parse(body.as_bytes()).err(),
@@ -281,6 +280,17 @@ mod tests {
         for links in [
             "STATUS=expires: 2027\ntrojan://secret@192.0.2.1:443#a",
             "updated: 2026-11-01\ntrojan://secret@192.0.2.1:443#a",
+        ] {
+            assert_eq!(parse(links.as_bytes()).unwrap().nodes.len(), 1, "{links}");
+        }
+    }
+
+    #[test]
+    fn a_bracketed_or_braced_header_above_the_links_is_not_json() {
+        for links in [
+            "[Premium / EU]\ntrojan://secret@192.0.2.1:443#a",
+            "[ 2026-11 ]\ntrojan://secret@192.0.2.1:443#a",
+            "{Premium}\ntrojan://secret@192.0.2.1:443#a",
         ] {
             assert_eq!(parse(links.as_bytes()).unwrap().nodes.len(), 1, "{links}");
         }
