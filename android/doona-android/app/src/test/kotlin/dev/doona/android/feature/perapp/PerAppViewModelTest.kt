@@ -299,16 +299,79 @@ class PerAppViewModelTest {
     }
 
     @Test
-    fun `a read that fails on resume keeps the apps the page had and shows the error`() = runTest {
+    fun `a resume during a read is read again once it ends, so the page shows the apps the device has now`() = runTest {
+        val gone = InstalledApp("com.example.gone", "Gone")
+        var device = listOf(gone) + FakeInstalledApps.SAMPLE_APPS
+        val gate = CompletableDeferred<Unit>()
+        var reads = 0
+        val vm = collected(
+            FakeEngine(),
+            object : InstalledApps {
+                override suspend fun launchable(): List<InstalledApp> {
+                    reads++
+                    val seen = device
+                    // Only the first read is slow: it has looked at the device before the app goes away.
+                    if (reads == 1) gate.await()
+                    return seen
+                }
+            },
+        )
+        device = FakeInstalledApps.SAMPLE_APPS
+        vm.onAction(PerAppAction.Resume)
+        assertEquals("the resume does not start a second read beside the first", 1, reads)
+
+        gate.complete(Unit)
+
+        assertEquals("the resume's read ran when the first ended", 2, reads)
+        assertFalse("the page does not keep the app the first read saw", vm.uiState.value.apps.contains(gone))
+        assertEquals(FakeInstalledApps.SAMPLE_APPS, vm.uiState.value.apps)
+    }
+
+    @Test
+    fun `many resumes during a read cost one more read`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        var reads = 0
+        val vm = collected(
+            FakeEngine(),
+            object : InstalledApps {
+                override suspend fun launchable(): List<InstalledApp> {
+                    if (++reads == 1) gate.await()
+                    return FakeInstalledApps.SAMPLE_APPS
+                }
+            },
+        )
+        repeat(3) { vm.onAction(PerAppAction.Resume) }
+        gate.complete(Unit)
+
+        assertEquals(2, reads)
+    }
+
+    @Test
+    fun `a read that fails on resume keeps the apps the page had and shows no new error`() = runTest {
         val apps = ChangingApps(FakeInstalledApps.SAMPLE_APPS)
         val vm = collected(FakeEngine(), apps)
         vm.onAction(PerAppAction.SetPolicy(AppPolicy.ExceptListed))
         apps.failure = IllegalStateException("no package manager")
         vm.onAction(PerAppAction.Resume)
 
+        assertEquals(2, apps.reads)
         assertEquals(FakeInstalledApps.SAMPLE_APPS, vm.uiState.value.apps)
-        assertEquals(ErrorCode.Internal, vm.uiState.value.error)
+        assertNull("the page already has a list, so a failed refresh is not an error", vm.uiState.value.error)
         assertTrue(vm.uiState.value.canSave)
+    }
+
+    @Test
+    fun `a dismissed error does not come back when a later read fails again`() = runTest {
+        val apps = ChangingApps(FakeInstalledApps.SAMPLE_APPS).apply { failure = IllegalStateException("no package manager") }
+        val vm = collected(FakeEngine(), apps)
+        assertEquals(ErrorCode.Internal, vm.uiState.value.error)
+        vm.onAction(PerAppAction.DismissError)
+        assertNull(vm.uiState.value.error)
+
+        vm.onAction(PerAppAction.Resume)
+
+        assertEquals(2, apps.reads)
+        assertNull("the user has seen this failure", vm.uiState.value.error)
     }
 
     @Test

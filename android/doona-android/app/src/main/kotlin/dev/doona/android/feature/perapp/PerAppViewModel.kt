@@ -44,6 +44,7 @@ class PerAppViewModel(private val engine: Engine, private val installedApps: Ins
     /** The device's apps; null until the first read, and kept while a later one runs. */
     private val installed = MutableStateFlow<List<InstalledApp>?>(null)
     private var reading: Job? = null
+    private var readAgain = false
 
     val uiState: StateFlow<PerAppUiState> =
         combine(engine.settings, engine.perAppLoaded, installed, local) { settings, loaded, apps, local ->
@@ -87,19 +88,34 @@ class PerAppViewModel(private val engine: Engine, private val installedApps: Ins
         }
     }
 
-    /** Reads the device's apps unless a read is running: on the page's first resume, and again whenever it is resumed, as an app may have come or gone. */
+    /**
+     * Reads the device's apps on the page's first resume, and again whenever it is resumed, as an app may have come or
+     * gone. A resume during a read does not start a second one beside it; it is remembered, and the read that is running
+     * is followed by one more, since it may have looked at the device before the change.
+     */
     private fun readApps() {
-        if (reading?.isActive == true) return
-        reading = viewModelScope.launch { installed.value = loadApps() }
+        if (reading?.isActive == true) {
+            readAgain = true
+            return
+        }
+        reading = viewModelScope.launch {
+            do {
+                readAgain = false
+                installed.value = loadApps()
+            } while (readAgain)
+        }
     }
 
-    /** A device that cannot list its apps shows the error and keeps the list it had, so the page stays usable for the All policy. */
+    /**
+     * A device that cannot list its apps keeps the list it had, so the page stays usable for the All policy. The error
+     * is shown only while nothing has loaded: after that a failed refresh would bring back a banner the user dismissed.
+     */
     private suspend fun loadApps(): List<InstalledApp> = try {
         installedApps.launchable()
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        local.update { it.copy(error = e.errorCode()) }
+        if (installed.value == null) local.update { it.copy(error = e.errorCode()) }
         installed.value.orEmpty()
     }
 
