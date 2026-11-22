@@ -15,6 +15,7 @@ pub mod outbounds;
 mod panics;
 mod probe;
 pub mod state;
+mod stats;
 mod subscription;
 pub mod sys;
 pub mod tunnel;

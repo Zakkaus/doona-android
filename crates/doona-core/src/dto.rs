@@ -91,6 +91,24 @@ pub struct Traffic {
     pub up_total: u64,
     pub down_total: u64,
     pub active_flows: u32,
+    /// The session's fastest second each way, in bytes, whether or not a screen was open.
+    pub up_peak: u64,
+    pub down_peak: u64,
+}
+
+/// `trafficSeries`' reply: the rate over a window that ends at most a second ago, oldest point
+/// first. Each point is the average bytes per second over `stepSeconds`; the peaks are the
+/// fastest single second of the window. `endEpochMs` is the wall time at the end of the last
+/// point; point `i` of `n` ends `(n - 1 - i) × stepSeconds` seconds before it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrafficSeries {
+    pub step_seconds: u64,
+    pub end_epoch_ms: i64,
+    pub up: Vec<u64>,
+    pub down: Vec<u64>,
+    pub up_peak: u64,
+    pub down_peak: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -189,4 +207,10 @@ pub struct IdArgs {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModeArgs {
     pub mode: Mode,
+}
+
+/// `trafficSeries`' window: 1 to 3600 seconds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SeriesArgs {
+    pub seconds: u64,
 }

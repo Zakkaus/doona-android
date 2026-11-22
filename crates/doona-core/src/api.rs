@@ -3,13 +3,11 @@
 
 use crate::bootstrap;
 use crate::catalog::{self, CatalogState, Shared};
-use crate::dto::{
-    self, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply, Snapshot, StartConfig,
-    Traffic,
-};
+use crate::dto::{self, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply, StartConfig};
 use crate::outbounds::Outbounds;
 use crate::probe::{self, Prober, Probes};
 use crate::state::{Loaded, State, Store};
+use crate::stats::Stats;
 use crate::tunnel::route::{ModeCell, PROXY_GROUP};
 use crate::tunnel::{self, Gate, Launch, STOP_WAIT, Settings, Tun, Tunnel};
 use serde::Serialize;
@@ -24,7 +22,10 @@ use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
 mod selection;
+mod snapshot;
 mod subscriptions;
+
+pub use snapshot::snapshot_before_init;
 
 /// The tokio runtime's worker threads; flows are I/O bound and the phone has few big cores.
 const WORKERS: usize = 2;
@@ -88,6 +89,8 @@ pub struct Core {
     refreshing: Mutex<HashSet<String>>,
     /// The panics on the runtime's threads so far; a generation ends when it rises.
     panics: Arc<AtomicU64>,
+    /// The rate history, the day's usage and the latency history (see `stats.rs`).
+    stats: Arc<Stats>,
     #[cfg(test)]
     hooks: hooks::Hooks,
 }
@@ -173,6 +176,7 @@ impl Core {
             probes,
             refreshing: Mutex::new(HashSet::new()),
             panics,
+            stats: Arc::new(Stats::new()),
             #[cfg(test)]
             hooks: hooks::Hooks::default(),
         })
@@ -214,7 +218,9 @@ impl Core {
         let gate = Gate::new();
         let (generation, old) = self.begin(&gate, &tun)?;
         if let Some(old) = old {
+            let session = Arc::clone(old.session());
             old.wait(rt, deadline);
+            self.retire(&session);
         }
         let started = Tunnel::start(
             rt,
@@ -328,6 +334,7 @@ impl Core {
             outbounds: Arc::clone(&self.shared.outbounds),
             panics: Arc::clone(&self.panics),
             catalog: Arc::downgrade(&self.shared),
+            stats: Arc::clone(&self.stats),
         };
         Ok((settings, resolvers))
     }
@@ -365,47 +372,10 @@ impl Core {
             }
         };
         if let Some(tunnel) = halted {
+            let session = Arc::clone(tunnel.session());
             tunnel.wait(self.runtime.handle(), deadline);
+            self.retire(&session);
         }
-    }
-
-    pub fn snapshot(&self, since_revision: i64) -> String {
-        // One moment of the lifecycle, the catalog and the warning: the locks in the order `stop`
-        // takes them, and the warning read under the catalog lock its changes take.
-        let (revision, catalog, session, warning) = {
-            let life = lock(&self.life);
-            let c = lock(&self.shared.catalog);
-            let catalog = (c.revision > since_revision).then(|| c.model.catalog(&c.state));
-            let session = match &*life {
-                Life::Running(tunnel) => Some(Arc::clone(tunnel.session())),
-                _ => None,
-            };
-            let warning = session.as_ref().and_then(|s| s.warning());
-            (c.revision, catalog, session, warning)
-        };
-        let snapshot = match session {
-            Some(s) => Snapshot {
-                revision,
-                running: !s.failed(),
-                generation: s.generation,
-                since_epoch_ms: Some(s.since_epoch_ms),
-                error: s.failed().then_some(ErrorCode::Internal),
-                warning,
-                traffic: s.traffic(),
-                catalog,
-            },
-            None => Snapshot {
-                revision,
-                running: false,
-                generation: self.generation.load(Relaxed),
-                since_epoch_ms: None,
-                error: None,
-                warning: None,
-                traffic: Traffic::default(),
-                catalog,
-            },
-        };
-        to_json(&snapshot)
     }
 
     pub fn call(&self, command: &str, args: &str) -> String {
@@ -422,6 +392,7 @@ impl Core {
             "removeSubscription" => {
                 parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
+            "trafficSeries" => self.traffic_series(args),
             _ => Err(ErrorCode::InvalidArgument),
         };
         reply.unwrap_or_else(|code| {
@@ -533,29 +504,16 @@ pub fn error_reply(code: ErrorCode) -> String {
     to_json(&Reply::<Empty>::Error(dto::CallError { code }))
 }
 
-/// What `snapshot` answers before `init`: stopped, nothing to show.
-pub fn snapshot_before_init() -> String {
-    to_json(&Snapshot {
-        revision: 0,
-        running: false,
-        generation: 0,
-        since_epoch_ms: None,
-        error: None,
-        warning: None,
-        traffic: Traffic::default(),
-        catalog: None,
-    })
-}
-
 /// A command name fit for the log: the closed list, never caller text.
 fn command_name(command: &str) -> &'static str {
-    const KNOWN: [&str; 6] = [
+    const KNOWN: [&str; 7] = [
         "select",
         "testLatency",
         "addSubscription",
         "updateSubscription",
         "removeSubscription",
         "setMode",
+        "trafficSeries",
     ];
     KNOWN
         .into_iter()

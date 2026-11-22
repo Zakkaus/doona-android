@@ -8,7 +8,9 @@
   "traffic": {
     "upTotal": 0,
     "downTotal": 0,
-    "activeFlows": 0
+    "activeFlows": 0,
+    "upPeak": 0,
+    "downPeak": 0
   },
   "catalog": {
     "mode": "Global",
