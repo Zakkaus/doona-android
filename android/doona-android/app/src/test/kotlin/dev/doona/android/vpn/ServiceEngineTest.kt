@@ -290,9 +290,13 @@ class ServiceEngineTest {
         engine.connect()
         assertTrue(engine.controller.start(StartHost(installed = setOf("a")), requested.single()))
         withTimeout(5_000) { engine.status.first { it is Status.Running } }
+        val before = engine.controller.session.value.generation
 
         assertTrue(engine.setPerApp(PerApp(AppPolicy.OnlyListed, setOf("a"))).isSuccess)
-        assertTrue("the rebuilt tunnel is up when the save returns", engine.status.value is Status.Running)
+        // The tunnel was Running before the save too, so only a newer session that is Running shows the save waited for it.
+        val after = engine.controller.session.value
+        assertTrue("the save rebuilt the session: generation ${after.generation} after $before", after.generation > before)
+        assertTrue("the rebuilt tunnel is up when the save returns, not still ${after.status}", after.status is Status.Running)
     }
 
     @Test
