@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv.policy
 import android.content.res.Configuration
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -34,13 +33,14 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
+import dev.doona.android.prototype.rv.RvControlCard
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
-import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLatencyChange
+import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSeeAll
@@ -98,10 +98,10 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
             RvFloatingNav(RV_NAV_POLICY, routes.tab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter))
         },
     ) { titleBlock ->
-        RvLargeTitle(title, titleBlock, insets)
-        ModePicker(state.mode) { onChange(state.copy(mode = it)) }
+        RvPageHeader(title, titleBlock, insets)
         // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
         RvGutter {
+            ModeCard(state.mode) { onChange(state.copy(mode = it)) }
             if (state.mode != RvRouteMode.Direct) MainCard(state.group(RvPolicyData.main), state.mode, routes.group)
             if (state.mode == RvRouteMode.Rule) {
                 GroupsCard(state, routes.group)
@@ -114,14 +114,12 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
     }
 }
 
-/** 規則 | 全域 | 直連, and one line under it saying what the chosen mode does with the traffic. */
+/** 規則 | 全域 | 直連 in a card, as Revolut sets a segmented control, and one line under it saying what the mode does. */
 @Composable
-private fun ModePicker(mode: RvRouteMode, onMode: (RvRouteMode) -> Unit) {
-    Column(Modifier.padding(horizontal = RvSpace.gutter)) {
+private fun ModeCard(mode: RvRouteMode, onMode: (RvRouteMode) -> Unit) {
+    RvControlCard(stringResource(mode.line)) {
         RvSegmented(MODES.map { stringResource(it.label) }, MODES.indexOf(mode), { onMode(MODES[it]) })
-        RvText(stringResource(mode.line), Rv.type.rowSub, Modifier.padding(top = RvSpace.tight), color = Rv.colors.textSecondary)
     }
-    Spacer(Modifier.height(RvSpace.titleToCard))
 }
 
 /**

@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -125,11 +127,57 @@ internal fun RvBarSpacer(insets: WindowInsets) {
     }
 }
 
-/** A pushed page's large title, 32 sp bold under the bar; [titleBlock] is the modifier [RvScrollPage] hands its content. */
+/**
+ * The head of every large-title page, one layout for all of them (spacing audit 2026-11-23, measured §2, §4): the bar's
+ * room, then [RvChrome.largeTitleTop] under the bar's controls an optional [mark] (a node's flag) [RvSpace.markToTitle]
+ * over the 32 sp title on the gutter, then [caption] (the page's description, [RvCaption] lines) [RvSpace.captionGap] under
+ * the title's line box. An optional [control] row on the page (filter chips, a status chip) sits [RvSpace.controlGap] under
+ * that block and [RvSpace.controlGap] over what follows, as Revolut's Analytics sets its chips; without one, the first card
+ * or section title follows [RvSpace.headerGap] under the block and adds nothing above itself ([RvSectionTitle]'s `first`).
+ * [titleBlock] is the modifier [RvScrollPage] hands its content.
+ */
 @Composable
-internal fun RvLargeTitle(text: String, titleBlock: Modifier, insets: WindowInsets) {
+internal fun RvPageHeader(
+    title: String,
+    titleBlock: Modifier,
+    insets: WindowInsets,
+    mark: (@Composable () -> Unit)? = null,
+    caption: (@Composable ColumnScope.() -> Unit)? = null,
+    control: (@Composable () -> Unit)? = null,
+) {
     RvBarSpacer(insets)
     Spacer(Modifier.height(RvChrome.largeTitleTop))
-    RvText(text, Rv.type.largeTitle, titleBlock.padding(horizontal = RvSpace.gutter).semantics { heading() })
-    Spacer(Modifier.height(RvChrome.largeTitleBottom))
+    mark?.let {
+        Box(Modifier.padding(start = RvSpace.gutter, bottom = RvSpace.markToTitle).testTag(RvPart.MARK)) { it() }
+    }
+    RvText(text = title, style = Rv.type.largeTitle, modifier = titleBlock.padding(horizontal = RvSpace.gutter).testTag(RvPart.TITLE).semantics { heading() })
+    caption?.let {
+        Column(
+            Modifier.padding(start = RvSpace.gutter, top = RvSpace.captionGap, end = RvSpace.gutter).testTag(RvPart.CAPTION),
+            verticalArrangement = Arrangement.spacedBy(RvSpace.tight),
+            content = it,
+        )
+    }
+    control?.let {
+        Box(Modifier.padding(start = RvSpace.gutter, top = RvSpace.controlGap, end = RvSpace.gutter).testTag(RvPart.CONTROL)) { it() }
+    }
+    Spacer(Modifier.height(if (control == null) RvSpace.headerGap else RvSpace.controlGap))
+}
+
+/** A pushed page's large title alone: [RvPageHeader] with no caption and no control. */
+@Composable
+internal fun RvLargeTitle(text: String, titleBlock: Modifier, insets: WindowInsets) = RvPageHeader(text, titleBlock, insets)
+
+/** The top of a compact page (流量詳情, 新增規則), whose title is the bar's: the bar's room, then [RvSpace.headerGap]. */
+@Composable
+internal fun RvPageTop(insets: WindowInsets) {
+    RvBarSpacer(insets)
+    Spacer(Modifier.height(RvSpace.headerGap))
+}
+
+/** One line of a page header's caption, in secondary text, after an optional 16 dp [icon] in the same colour. */
+@Composable
+internal fun RvCaption(text: String, @DrawableRes icon: Int? = null) {
+    val color = Rv.colors.textSecondary
+    if (icon == null) RvText(text, Rv.type.rowSub, color = color) else RvInline(icon, text, color, Rv.type.rowSub)
 }

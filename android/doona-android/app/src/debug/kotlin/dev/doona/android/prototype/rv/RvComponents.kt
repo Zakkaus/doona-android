@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -147,7 +148,38 @@ internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit
 /** A grouped card: rows run edge to edge inside its rounded fill; no border, no shadow. */
 @Composable
 internal fun RvCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
+    Column(modifier.fillMaxWidth().testTag(RvPart.CARD).clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
+}
+
+/**
+ * A control in a card, as Revolut sets its segmented control (measured §8: inset 16 dp in a card): [control] on the row
+ * padding, 16 dp under the card's top, then the optional [caption] saying what the choice does, in secondary text on the
+ * card's grid, and the card's padding at its foot.
+ */
+@Composable
+internal fun RvControlCard(caption: String?, modifier: Modifier = Modifier, control: @Composable () -> Unit) {
+    RvCard(modifier) {
+        Column(Modifier.padding(RvSpace.rowPadding)) {
+            control()
+            caption?.let { RvText(it, Rv.type.rowSub, Modifier.padding(top = RvSpace.controlToCaption), color = Rv.colors.textSecondary) }
+        }
+    }
+}
+
+/** Test tags of the library's layout parts, which `RvLayoutTest` measures on every page against these tokens. */
+internal object RvPart {
+    const val MARK = "rv-mark"
+    const val TITLE = "rv-title"
+    const val CAPTION = "rv-caption"
+    const val CONTROL = "rv-control"
+    const val CARD = "rv-card"
+    const val SECTION = "rv-section"
+    const val FOOTER = "rv-footer"
+
+    /** A composite block of the page's column (a pager of tiles and its dots), measured as one card. */
+    const val BLOCK = "rv-block"
+    const val ROW = "rv-row"
+    const val SEGMENTED = "rv-segmented"
 }
 
 /**
@@ -176,6 +208,7 @@ internal fun RvRow(
     Row(
         modifier
             .fillMaxWidth()
+            .testTag(RvPart.ROW)
             .heightIn(min = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine)
             .then(press)
             .padding(horizontal = RvSpace.rowPadding),
@@ -309,11 +342,13 @@ internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: Str
 /**
  * An outside section title (measured §7, §13.4), for a run of list cards on a settings or detail page: 20 sp bold, 24 dp
  * under what is above it and 12 dp above its card; with [onClick], a chevron in the title's colour, and the title opens it.
+ * The [first] one under a [RvPageHeader] adds nothing above itself: the header's gap is already there.
  */
 @Composable
-internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, first: Boolean = false) {
     val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSpace.tight), Role.Button, it) } ?: Modifier
-    Row(modifier.padding(top = RvSpace.sectionAbove, bottom = RvSpace.sectionBelow).then(press), verticalAlignment = Alignment.CenterVertically) {
+    val above = if (first) Modifier else Modifier.padding(top = RvSpace.sectionAbove)
+    Row(modifier.then(above).padding(bottom = RvSpace.sectionBelow).testTag(RvPart.SECTION).then(press), verticalAlignment = Alignment.CenterVertically) {
         RvText(title, Rv.type.section, Modifier.semantics { heading() })
         if (onClick != null) RvChevron(color = Rv.colors.text)
     }

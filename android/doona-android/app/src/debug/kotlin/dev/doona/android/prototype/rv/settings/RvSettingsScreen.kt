@@ -96,7 +96,6 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets) {
                 RvAction(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_settings_export_diagnostics), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
                 RvAction(R.drawable.rv_settings_ic_update, stringResource(R.string.rv_settings_check_update), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
             }
-            Spacer(Modifier.height(RvSettingsSpace.heroBottom))
         }
     }
 }

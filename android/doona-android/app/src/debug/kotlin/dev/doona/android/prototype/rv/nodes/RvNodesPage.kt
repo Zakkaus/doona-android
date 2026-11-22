@@ -29,13 +29,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
-import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLatencyChange
+import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
@@ -65,10 +66,8 @@ internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: 
     var steadiest by rememberSaveable { mutableStateOf(false) }
     val title = stringResource(R.string.rv_nodes_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
-        RvLargeTitle(title, titleBlock, insets)
         // The pull-down from 活動 picks the main node; groups with their own choice open from 活動's rule rows (item 24).
-        RvText(stringResource(R.string.rv_main_node_hint), Rv.type.rowSub, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.subGap * 2), color = Rv.colors.textSecondary)
-        Chips(onFilter)
+        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) }, control = { Chips(onFilter) })
         RvGutter {
             TopCard(state.top(steadiest), state.currentId, steadiest, { steadiest = it }, onOpen, onAllNodes)
             MapCard(state)
@@ -85,12 +84,11 @@ internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: 
 /** Under the large title, Analytics' two chips: the subscription at the start, the order at the end. */
 @Composable
 private fun Chips(onFilter: () -> Unit) {
-    Row(Modifier.padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         RvFilterChip(stringResource(R.string.rv_nodes_all_subscriptions), onFilter)
         Spacer(Modifier.weight(1f))
         RvFilterChip(stringResource(R.string.rv_nodes_by_latency), onFilter)
     }
-    Spacer(Modifier.height(RvSpace.titleToCard))
 }
 
 /** 'Top movers': the card's header (it opens the list, as on 活動), 最快 | 最穩, then the eight nodes in two rows of four. */

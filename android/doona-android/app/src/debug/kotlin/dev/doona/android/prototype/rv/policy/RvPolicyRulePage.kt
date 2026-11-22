@@ -28,11 +28,12 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
+import dev.doona.android.prototype.rv.RvControlCard
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
+import dev.doona.android.prototype.rv.RvPageTop
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRadio
 import dev.doona.android.prototype.rv.RvRow
@@ -69,8 +70,7 @@ internal fun RvPolicyRulePage(
         compact = true,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply) },
     ) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSpace.gutter))
+        RvPageTop(insets)
         RvGutter { ConnectionCard(connection) }
         RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter))
         MatchBy(connection.host, rule.matchBy) { onChange(rule.copy(matchBy = it)) }
@@ -94,13 +94,14 @@ private fun ConnectionCard(connection: RvConnection) {
     }
 }
 
-/** 完整網域 | 網域後綴 | 關鍵字, and one line saying what the chosen way covers for this host. */
+/** 完整網域 | 網域後綴 | 關鍵字 in a control card, as 策略's mode, and one line saying what the chosen way covers for this host. */
 @Composable
 private fun MatchBy(host: String, matchBy: RvMatchBy, onMatchBy: (RvMatchBy) -> Unit) {
     val ways = RvMatchBy.entries
-    Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-        RvSegmented(ways.map { stringResource(it.label) }, ways.indexOf(matchBy), { onMatchBy(ways[it]) })
-        RvText(stringResource(matchBy.line, matchBy.of(host)), Rv.type.rowSub, Modifier.padding(top = RvSpace.tight), color = Rv.colors.textSecondary)
+    RvGutter {
+        RvControlCard(stringResource(matchBy.line, matchBy.of(host))) {
+            RvSegmented(ways.map { stringResource(it.label) }, ways.indexOf(matchBy), { onMatchBy(ways[it]) })
+        }
     }
 }
 

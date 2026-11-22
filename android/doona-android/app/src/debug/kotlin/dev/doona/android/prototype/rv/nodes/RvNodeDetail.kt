@@ -29,11 +29,12 @@ import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBarSpacer
+import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
+import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSpace
@@ -46,8 +47,8 @@ import dev.doona.android.prototype.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.scripted
 
 /**
- * A node's page, its name on the bar beside the back disc, in the language of Revolut's stock page: the flag, its
- * protocol and country with a status chip; 延遲紀錄 as the EPS dot chart of its last tests, the picked one's figure over
+ * A node's page in the language of Revolut's stock page: the flag over its name as the large title, which collapses into
+ * the bar beside the back disc on scroll, its protocol and country under it, and the status chips that apply; 延遲紀錄 as the EPS dot chart of its last tests, the picked one's figure over
  * it; its share link's details as a Key stats card; and 設為目前節點 floating at the bottom as 'Get started', with a
  * round 測試延遲 beside it.
  */
@@ -61,12 +62,9 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
         node.name,
         insets,
         onBack = onBack,
-        compact = true,
         overlay = { Actions(current, onUse, onTest, insets, Modifier.align(Alignment.BottomCenter)) },
-    ) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSpace.gutter))
-        Top(node, current)
+    ) { titleBlock ->
+        Header(node, current, titleBlock, insets)
         RvGutter {
             HistoryCard(node, times, picked) { picked = it }
         }
@@ -78,23 +76,28 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
     }
 }
 
-/** The flag, `協定 · 地區`, and the chips that apply: in use, and a latency over the good range; the bar names the node. */
+/** The flag over the name, `協定 · 地區`, and the chips that apply: in use, and a latency over the good range. */
 @Composable
-private fun Top(node: RvNode, current: Boolean) {
-    Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-        RvFlag(node.place.name, RvNodesSize.detailFlag)
-        Spacer(Modifier.height(RvSpace.sectionBelow))
-        RvText(node.protocol + SEPARATOR + stringResource(node.place.label), Rv.type.rowSub, color = Rv.colors.textSecondary)
-        val high = latencyTone(node.latencyMs).let { it == Tone.Warn || it == Tone.Err }
-        if (current || high) {
-            Spacer(Modifier.height(RvSpace.sectionBelow))
+private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets: WindowInsets) {
+    val high = latencyTone(node.latencyMs).let { it == Tone.Warn || it == Tone.Err }
+    val chips: (@Composable () -> Unit)? = if (current || high) {
+        {
             Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tight * 2)) {
                 if (current) RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_nodes_in_use), Rv.colors.positive)
                 if (high) RvStatusChip(R.drawable.rv_nodes_ic_warning, stringResource(R.string.rv_nodes_latency_high), latencyColor(node.latencyMs))
             }
         }
+    } else {
+        null
     }
-    Spacer(Modifier.height(RvSpace.titleToCard))
+    RvPageHeader(
+        node.name,
+        titleBlock,
+        insets,
+        mark = { RvFlag(node.place.name, RvNodesSize.detailFlag) },
+        caption = { RvCaption(node.protocol + SEPARATOR + stringResource(node.place.label)) },
+        control = chips,
+    )
 }
 
 /** 延遲紀錄: the header, the picked test's latency over its time and the median, and the dot chart. */

@@ -27,13 +27,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvDelta
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvInline
-import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -66,27 +67,24 @@ internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelec
         onBack = onBack,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), onTest) },
     ) { titleBlock ->
-        RvLargeTitle(name, titleBlock, insets)
-        Header(group)
+        val node = group.selected
+        RvPageHeader(
+            name,
+            titleBlock,
+            insets,
+            caption = { Caption(group) },
+            control = { RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_policy_selected, node.name, latencyText(node.latencyMs)), Rv.colors.positive) },
+        )
         RvGutter { NodesCard(group, onSelect) }
     }
 }
 
-/** The kind and the node count, for url-test the rule it picks by, and the chosen node with its latency. */
+/** The header's caption: the kind and the node count, and for url-test the rule it picks by. */
 @Composable
-private fun Header(group: RvPolicyGroup) {
+private fun Caption(group: RvPolicyGroup) {
     val count = pluralStringResource(R.plurals.rv_policy_node_count, group.members.size, group.members.size)
-    val secondary = Rv.colors.textSecondary
-    Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-        RvInline(group.kind.glyph, stringResource(group.kind.label) + SEPARATOR + count, secondary, Rv.type.rowSub)
-        if (group.kind == RvGroupKind.Auto) {
-            RvText(stringResource(R.string.rv_policy_auto_note), Rv.type.rowSub, Modifier.padding(top = RvSpace.tight), color = secondary)
-        }
-        Spacer(Modifier.height(RvSpace.sectionBelow))
-        val node = group.selected
-        RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_policy_selected, node.name, latencyText(node.latencyMs)), Rv.colors.positive)
-    }
-    Spacer(Modifier.height(RvSpace.titleToCard))
+    RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)
+    if (group.kind == RvGroupKind.Auto) RvCaption(stringResource(R.string.rv_policy_auto_note))
 }
 
 /** The nodes, fastest first: the first [ROWS], then 查看全部, which opens the rest in place. */

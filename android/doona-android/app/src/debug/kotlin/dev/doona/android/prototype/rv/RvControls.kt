@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -92,14 +93,15 @@ private val primaryLabel = TextStyle(fontFamily = RvInter, fontWeight = FontWeig
 
 /**
  * A filter chip under a pushed page's large title, Revolut's small action button (`Personal ▾`, `This month ▾`): the
- * label on the segment track's fill and a chevron that says it opens a choice; a 48 dp target (S7-07).
+ * label on the segment track's fill and a chevron that says it opens a choice. The 40 dp pill is its layout box, so the
+ * header measures from its visible edge (spacing audit row 3); its target reaches 48 dp (S7-07) through Compose's touch
+ * target expansion, which does not move the layout.
  */
 @Composable
 internal fun RvFilterChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val size = RvControlSize
     Row(
         modifier
-            .minimumInteractiveComponentSize()
             .heightIn(min = size.chip)
             .clip(CircleShape)
             .background(Rv.colors.segmentTrack)
@@ -139,13 +141,15 @@ internal fun Modifier.rvRaised(shape: Shape): Modifier {
 
 /**
  * Revolut's segmented control (measured §8): a 36 dp pill track, visible on any surface, [options] in equal parts, the
- * [selected] one on a raised pill 2 dp inside it. Each part is a 48 dp target; the press lights only its pill.
+ * [selected] one on a raised pill 2 dp inside it. The track is the control's layout box, so what is above and below it
+ * measures from its visible edge (spacing audit row 4); each part's target reaches 48 dp through Compose's touch target
+ * expansion, which does not move the layout. The press lights only its pill.
  */
 @Composable
 internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val colors = Rv.colors
-    Box(modifier.fillMaxWidth().height(RvSize.touch), contentAlignment = Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(RvChartSize.segment).clip(CircleShape).background(colors.segmentTrack))
+    Box(modifier.fillMaxWidth().height(RvChartSize.segment).testTag(RvPart.SEGMENTED)) {
+        Box(Modifier.matchParentSize().clip(CircleShape).background(colors.segmentTrack))
         Row(Modifier.fillMaxSize()) {
             options.forEachIndexed { i, label ->
                 val source = remember { MutableInteractionSource() }
@@ -154,7 +158,6 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
                         .weight(1f)
                         .fillMaxHeight()
                         .selectable(i == selected, interactionSource = source, indication = null, role = Role.Tab) { onSelect(i) }
-                        .padding(vertical = (RvSize.touch - RvChartSize.segment) / 2)
                         .padding(RvChartSize.segmentInset)
                         .then(if (i == selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
                         .indication(source, ripple(color = colors.stateLayer)),

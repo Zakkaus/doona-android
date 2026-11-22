@@ -78,9 +78,9 @@ internal fun RvThemeScreen(
     RvTheme(appearance.scheme(if (pageDark) dark else light, pageDark), pageDark) {
         RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
             RvLargeTitle(title, titleBlock, insets)
-            // Each card has its outside title, as 強調色 has (N-07).
+            // Each card has its outside title, as 強調色 has (N-07); the first one sits on the header's gap.
             Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-                RvSettingsSection(stringResource(R.string.rv_settings_preview))
+                RvSettingsSection(stringResource(R.string.rv_settings_preview), first = true)
                 RvThemePreview(appearance, light, dark)
                 RvSettingsSection(stringResource(R.string.rv_settings_mode))
                 ModeCard(appearance, light, dark, onChange)

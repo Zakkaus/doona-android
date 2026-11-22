@@ -31,7 +31,9 @@ internal object RvSpace {
      */
     val headerTop = 152.dp
     val heroToActions = 64.dp
-    val actionsToCard = 32.dp
+
+    /** From the round actions' labels to the first card (measured §5: the action row ends 1360 px, the card starts 1400). */
+    val actionsToCard = 16.dp
     val subGap = 6.dp
     val tight = 4.dp
 
@@ -51,8 +53,31 @@ internal object RvSpace {
     /** A card's in-card header row sits this far under the card's top, so the card's padding is the same at both ends. */
     val headerInset = 4.dp
 
-    /** From a screen's title block to its first card. */
-    val titleToCard = 24.dp
+    /**
+     * The page header's rhythm ([RvPageHeader]; spacing audit 2026-11-23, after Revolut's Analytics page): a caption sits
+     * this far under the large title's line box, as Revolut's New features page sets its description under the title.
+     */
+    val captionGap = 4.dp
+
+    /**
+     * From the title or its caption to the first card or section title, which then adds nothing above itself: the gap
+     * between cards (spacing audit row 2; Revolut's 設定 puts its first card 79 dp under the bar's controls, 07-settings-a
+     * (41,494): the title 24 dp under them, its 38 dp line, then 16).
+     */
+    val headerGap = 16.dp
+
+    /**
+     * Round a control row on the page (a page's filter chips, a status chip): from the title block to it, and from it to
+     * the first card (measured Analytics, 03-analytics-a: the chips at 202-242 dp, the first tile at 266, 87 dp under the
+     * bar's controls).
+     */
+    val controlGap = 24.dp
+
+    /** From a page's mark (a node's flag) to the large title under it. */
+    val markToTitle = 12.dp
+
+    /** In a control card ([RvControlCard]), from the control to the caption under it. */
+    val controlToCaption = 12.dp
 
     /** Between a card's lines of text and its progress bar. */
     val barGap = 14.dp
@@ -308,9 +333,11 @@ internal object RvChrome {
     /** A pushed page's compact title starts this far from the screen's edge: after the back disc and a gutter. */
     val titleStart = 76.dp
 
-    /** A pushed page's large title: this far under the bar, and this far above what follows it. */
-    val largeTitleTop = 8.dp
-    val largeTitleBottom = 16.dp
+    /**
+     * A page's large title, or the mark above it, this far under the bar's controls ([RvPageHeader] then sets what follows):
+     * Revolut's 設定 card starts 79 dp under the controls (§2, 07-settings-a), which is this, the title's line and 16 dp.
+     */
+    val largeTitleTop = 24.dp
 
     val navInset = 16.dp
     val navBottom = 40.dp

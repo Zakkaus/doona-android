@@ -48,6 +48,6 @@ class RvSettingsShotTest {
 
     private companion object {
         /** As tall as the whole 設定 page, so its end shows as the phone shows it: the last card 28 dp above the bottom navigation. */
-        const val LONG_PAGE = "+h1433dp"
+        const val LONG_PAGE = "+h1533dp"
     }
 }
