@@ -6,9 +6,9 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.LayoutRole
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.testing.FrameInsets
+import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.layoutTree
 import dev.doona.android.testing.screenCases
 import dev.doona.android.testing.sheetScroll
@@ -31,7 +31,7 @@ class SheetScrollTest {
     fun sheetEndsFortyBelowItsLastBlock() {
         compose.setContent {
             CompositionLocalProvider(LocalFrameInsets provides FrameInsets) {
-                DoonaTheme { screenCases().first { it.name == "group" }.content() }
+                SeedTheme { screenCases().first { it.name == "group" }.content() }
             }
         }
         compose.onNode(sheetScroll()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }

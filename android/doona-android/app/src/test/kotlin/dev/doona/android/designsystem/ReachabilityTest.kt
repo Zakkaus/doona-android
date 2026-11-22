@@ -5,10 +5,10 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.designsystem.components.LayoutRole
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.testing.FrameInsets
 import dev.doona.android.testing.Landscape
+import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.layoutTree
 import dev.doona.android.testing.screenCases
 import dev.doona.android.testing.sheetScroll
@@ -40,7 +40,7 @@ class ReachabilityTest(private val name: String) {
     fun theLastActionScrollsIntoView() {
         RuntimeEnvironment.setQualifiers(Landscape.qualifiers)
         val case = screenCases().first { it.name == name }
-        compose.setContent { CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { DoonaTheme { case.content() } } }
+        compose.setContent { CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { SeedTheme { case.content() } } }
         compose.onNode(sheetScroll()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
         compose.waitForIdle()
 

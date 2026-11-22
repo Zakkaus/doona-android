@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -22,7 +23,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.designsystem.components.DoonaCard
+import dev.doona.android.designsystem.components.DoonaFilterPicker
 import dev.doona.android.designsystem.components.DoonaGap
 import dev.doona.android.designsystem.components.DoonaHGap
 import dev.doona.android.designsystem.components.DoonaHubShell
@@ -31,9 +32,8 @@ import dev.doona.android.designsystem.components.DoonaIcon
 import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaPageTabs
 import dev.doona.android.designsystem.components.DoonaPageTitle
-import dev.doona.android.designsystem.components.DoonaRow
-import dev.doona.android.designsystem.components.DoonaTagChip
 import dev.doona.android.designsystem.components.DoonaText
+import dev.doona.android.designsystem.components.InsetCard
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.components.layoutRole
 import dev.doona.android.designsystem.theme.DoonaTheme
@@ -73,11 +73,11 @@ class SpacingRulesTest {
         DoonaPageTabs(listOf("A", "B"), selected = 0)
         DoonaGap(space.section)
         Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
-            DoonaCard(Modifier.fillMaxWidth()) { DoonaText("one", DoonaTheme.type.body) }
-            DoonaCard(Modifier.fillMaxWidth()) { DoonaText("two", DoonaTheme.type.body) }
+            InsetCard(Modifier.fillMaxWidth()) { DoonaText("one", DoonaTheme.type.body) }
+            InsetCard(Modifier.fillMaxWidth()) { DoonaText("two", DoonaTheme.type.body) }
         }
         DoonaGap(before)
-        DoonaCard(Modifier.fillMaxWidth()) { DoonaText("tiles", DoonaTheme.type.body) }
+        InsetCard(Modifier.fillMaxWidth()) { DoonaText("tiles", DoonaTheme.type.body) }
     }
 
     private val rhythm get() = listOf(space.afterTitle, space.section, space.section)
@@ -107,8 +107,8 @@ class SpacingRulesTest {
 
     @Composable
     private fun Cards(gap: Dp) = Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-        DoonaCard(Modifier.fillMaxWidth()) { DoonaText("one", DoonaTheme.type.body) }
-        DoonaCard(Modifier.fillMaxWidth()) { DoonaText("two", DoonaTheme.type.body) }
+        InsetCard(Modifier.fillMaxWidth()) { DoonaText("one", DoonaTheme.type.body) }
+        InsetCard(Modifier.fillMaxWidth()) { DoonaText("two", DoonaTheme.type.body) }
     }
 
     @Test
@@ -147,7 +147,7 @@ class SpacingRulesTest {
                 layout(placeable.width - px, placeable.height) { placeable.place(-px, 0) }
             },
         ) {
-            Box(Modifier.size(8.dp).background(DoonaTheme.colors.accent))
+            Box(Modifier.size(8.dp).background(DoonaTheme.colors.positive))
             DoonaHGap(space.dotGap)
             DoonaText("42", DoonaTheme.type.bodyStrong)
         }
@@ -196,9 +196,9 @@ class SpacingRulesTest {
     }
 
     @Composable
-    private fun IconRow(gap: Dp) = DoonaCard(Modifier.fillMaxWidth()) {
-        DoonaRow {
-            DoonaIcon(IconsR.drawable.sym_search, DoonaTheme.colors.accent)
+    private fun IconRow(gap: Dp) = InsetCard(Modifier.fillMaxWidth()) {
+        Row(Modifier.layoutRole(LayoutRole.Row, mergeDescendants = true).heightIn(min = DoonaTheme.size.touch), verticalAlignment = Alignment.CenterVertically) {
+            DoonaIcon(IconsR.drawable.sym_search, DoonaTheme.colors.positive)
             DoonaHGap(gap)
             DoonaText("label", DoonaTheme.type.body)
         }
@@ -217,7 +217,7 @@ class SpacingRulesTest {
     }
 
     /**
-     * Two chips 4 dp apart under 600 dp of space: hit over 48 dp each, their areas overlap by 8 dp. Below the fold the
+     * Two pickers 4 dp apart under 600 dp of space: hit over 48 dp each, their areas overlap by 8 dp. Below the fold the
      * unscrolled page does not show them whole and the rule skips them; a scroll shows them and fails them.
      */
     @Test
@@ -227,8 +227,8 @@ class SpacingRulesTest {
                 DoonaPage {
                     Spacer(Modifier.height(600.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(space.tight)) {
-                        DoonaTagChip("a", onClick = {})
-                        DoonaTagChip("b", onClick = {})
+                        DoonaFilterPicker("a", onClick = {})
+                        DoonaFilterPicker("b", onClick = {})
                     }
                 }
             }
@@ -243,7 +243,7 @@ class SpacingRulesTest {
     fun anActionThatNoOffsetShowsWholeIsReported() {
         compose.setDoonaContent {
             Box(Modifier.height(320.dp)) {
-                DoonaPage { DoonaTagChip("a", onClick = {}) }
+                DoonaPage { DoonaFilterPicker("a", onClick = {}) }
             }
         }
         val first = compose.readWhileScrolling { SpacingRules.touch(it) }

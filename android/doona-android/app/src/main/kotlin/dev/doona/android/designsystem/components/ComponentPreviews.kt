@@ -42,7 +42,7 @@ internal fun GalleryPage(title: String, content: @Composable ColumnScope.() -> U
     Column(
         Modifier
             .fillMaxSize()
-            .background(DoonaTheme.colors.surface)
+            .background(DoonaTheme.colors.page)
             .windowInsetsPadding(DoonaTheme.insets)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = space.gutter, vertical = space.sheetTop),
@@ -56,7 +56,7 @@ internal fun GalleryPage(title: String, content: @Composable ColumnScope.() -> U
 @Composable
 internal fun Section(name: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
-        DoonaText(name, DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
+        DoonaText(name, DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary)
         content()
     }
 }
@@ -72,10 +72,10 @@ internal fun ControlsGallery() = GalleryPage("Controls") {
             DoonaSegmented(listOf(stringResource(R.string.mode_global), stringResource(R.string.mode_direct)), selected = 1, onSelect = {})
         }
     }
-    Section("DoonaTagChip") {
-        Row(horizontalArrangement = Arrangement.spacedBy(space.item)) {
-            DoonaTagChip("Auto")
-            DoonaTagChip("HK")
+    Section("DoonaTag, tappable and plain") {
+        Row(horizontalArrangement = Arrangement.spacedBy(space.item), verticalAlignment = Alignment.CenterVertically) {
+            DoonaTag("Auto", onClick = {})
+            DoonaTag("HK")
         }
     }
     Section("DoonaPicker, plain and filled") {
@@ -86,9 +86,7 @@ internal fun ControlsGallery() = GalleryPage("Controls") {
     }
     Section("DoonaSwitchRow, on and off") {
         listOf(true, false).forEach { on ->
-            DoonaSwitchRow(on, onChange = {}) {
-                DoonaText(stringResource(R.string.policy_alive_only), DoonaTheme.type.body, maxLines = 1)
-            }
+            DoonaSwitchRow(stringResource(R.string.policy_alive_only), on, onChange = {})
         }
     }
     Section("DoonaIconAction") {
@@ -106,15 +104,15 @@ internal fun ControlsGallery() = GalleryPage("Controls") {
 internal fun CardsGallery() = GalleryPage("Cards") {
     val space = DoonaTheme.spacing
     Section("DoonaCard, plain and tappable") {
-        DoonaCard(Modifier.fillMaxWidth()) { DoonaText("hk-01", DoonaTheme.type.cardTitle, maxLines = 1) }
-        DoonaCard(Modifier.fillMaxWidth(), onClick = {}) {
-            DoonaText("Proxy", DoonaTheme.type.cardTitle, maxLines = 1)
-            DoonaText(stringResource(R.string.group_every_node), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
+        InsetCard { DoonaText("hk-01", DoonaTheme.type.blockTitle, maxLines = 1) }
+        InsetCard(onClick = {}) {
+            DoonaText("Proxy", DoonaTheme.type.blockTitle, maxLines = 1)
+            DoonaText(stringResource(R.string.group_every_node), DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary)
         }
     }
     Section("DoonaControlCard") {
         DoonaControlCard(IconsR.drawable.sym_shuffle, stringResource(R.string.act_mode)) {
-            DoonaSegmented(listOf(stringResource(R.string.mode_global), stringResource(R.string.mode_direct)), selected = 0, onSelect = {})
+            DoonaSegmented(listOf(stringResource(R.string.mode_global), stringResource(R.string.mode_direct)), selected = 0, onSelect = {}, modifier = Modifier.weight(1f))
         }
         DoonaControlCard(IconsR.drawable.sym_filter_alt, stringResource(R.string.act_global)) {
             DoonaPicker("Auto", onClick = {})
@@ -122,10 +120,10 @@ internal fun CardsGallery() = GalleryPage("Cards") {
     }
     Section("DoonaMetricTile") {
         DoonaTileRow {
-            MetricTile(IconsR.drawable.sym_download, DoonaTheme.colors.series1, stringResource(R.string.ui_download), "3.9 MB/s")
-            MetricTile(IconsR.drawable.sym_upload, DoonaTheme.colors.series2, stringResource(R.string.ui_upload), "330 kB/s")
+            MetricTile(IconsR.drawable.sym_download, DoonaTheme.colors.down.line, stringResource(R.string.ui_download), "3.9 MB/s")
+            MetricTile(IconsR.drawable.sym_upload, DoonaTheme.colors.up.line, stringResource(R.string.ui_upload), "330 kB/s")
         }
-        DoonaMetricTile(IconsR.drawable.sym_schedule, { DoonaNodeName("hk-01", DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) }, Modifier.fillMaxWidth()) {
+        DoonaMetricTile(IconsR.drawable.sym_schedule, { DoonaNodeName("hk-01", DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary) }, Modifier.fillMaxWidth()) {
             DoonaMetricLatency(42)
         }
     }
@@ -148,7 +146,7 @@ private fun RowScope.MetricTile(icon: Int, seriesColor: Color, caption: String, 
     }
 }
 
-/** Text, status and icons: the type ramp, status lights, latency in each tone, the badge, chevrons, icons and flags. */
+/** Text, status and icons: the type ramp, status lights, latency in each tone, the tag, chevrons, icons and flags. */
 @Composable
 internal fun StatusGallery() = GalleryPage("Status and text") {
     val space = DoonaTheme.spacing
@@ -168,13 +166,13 @@ internal fun StatusGallery() = GalleryPage("Status and text") {
             listOf(42, 171, 480, null).forEach { DoonaLatency(it) }
         }
     }
-    Section("DoonaBadge") {
+    Section("DoonaTag") {
         Row(horizontalArrangement = Arrangement.spacedBy(space.item)) {
-            DoonaBadge(stringResource(R.string.ui_group))
-            DoonaBadge(stringResource(R.string.policy_kind_manual, 3))
+            DoonaTag(stringResource(R.string.ui_group))
+            DoonaTag(stringResource(R.string.policy_kind_manual, 3))
         }
     }
-    Section("DoonaChevron, DoonaIcon, DoonaFlag") { glyphs() }
+    Section("DropDownGlyph, DoonaChevron, DoonaIcon, DoonaFlag") { glyphs() }
     Section("Chart series: download, upload") { swatches() }
 }
 
@@ -187,15 +185,15 @@ private fun typeRamp(): List<Pair<String, TextStyle>> = with(DoonaTheme.type) {
 private fun glyphs() {
     val c = DoonaTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block), verticalAlignment = Alignment.CenterVertically) {
-        DoonaChevron(ChevronDirection.Down, c.text.secondary)
-        DoonaChevron(ChevronDirection.Right, c.text.secondary)
-        DoonaIcon(IconsR.drawable.sym_speed, c.accent)
-        DoonaIcon(IconsR.drawable.sym_link, c.icon)
-        DoonaFlag("HK", "HK")
-        DoonaFlag("JP", "JP")
-        DoonaFlag("US", "US")
+        DropDownGlyph(c.textSecondary)
+        DoonaChevron()
+        DoonaIcon(IconsR.drawable.sym_speed, c.positive)
+        DoonaIcon(IconsR.drawable.sym_link, c.textSecondary)
+        DoonaFlag("HK", DoonaTheme.size.flag, contentDescription = "HK")
+        DoonaFlag("JP", DoonaTheme.size.flag, contentDescription = "JP")
+        DoonaFlag("US", DoonaTheme.size.flag, contentDescription = "US")
         // A code the set lacks: the neutral disc with its letters.
-        DoonaFlag("ZZ", "ZZ")
+        DoonaFlag("ZZ", DoonaTheme.size.flag, contentDescription = "ZZ")
     }
 }
 
@@ -203,7 +201,7 @@ private fun glyphs() {
 private fun swatches() {
     val c = DoonaTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
-        listOf(c.series1, c.series2).forEach {
+        listOf(c.down.line, c.up.line).forEach {
             Box(Modifier.size(DoonaTheme.size.control).clip(DoonaTheme.shape.control).background(it))
         }
     }

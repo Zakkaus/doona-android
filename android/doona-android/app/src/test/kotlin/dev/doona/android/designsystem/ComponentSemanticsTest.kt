@@ -11,10 +11,10 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.DoonaLatency
+import dev.doona.android.designsystem.components.DoonaListRow
 import dev.doona.android.designsystem.components.DoonaMetricLatency
 import dev.doona.android.designsystem.components.DoonaPageTabs
-import dev.doona.android.designsystem.components.DoonaRow
-import dev.doona.android.designsystem.components.DoonaTagChip
+import dev.doona.android.designsystem.components.DoonaTag
 import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.setDoonaContent
@@ -49,12 +49,9 @@ class ComponentSemanticsTest {
     @Test
     fun aRowReadsAsOneLine() {
         compose.setDoonaContent {
-            DoonaRow {
-                DoonaText("Label", DoonaTheme.type.body)
-                DoonaText("Value", DoonaTheme.type.body)
-            }
+            DoonaListRow("Label", subtitle = "Sub", trailing = { DoonaText("Value", DoonaTheme.type.body) })
         }
-        compose.onNode(hasText("Label") and hasText("Value")).assertExists()
+        compose.onNode(hasText("Label") and hasText("Sub") and hasText("Value")).assertExists()
     }
 
     @Test
@@ -66,8 +63,8 @@ class ComponentSemanticsTest {
     }
 
     @Test
-    fun aChipWithoutAHandlerIsALabel() {
-        compose.setDoonaContent { DoonaTagChip("Auto") }
+    fun aTagWithoutAHandlerIsALabel() {
+        compose.setDoonaContent { DoonaTag("Auto") }
         compose.onNodeWithText("Auto").assertHasNoClickAction()
     }
 }

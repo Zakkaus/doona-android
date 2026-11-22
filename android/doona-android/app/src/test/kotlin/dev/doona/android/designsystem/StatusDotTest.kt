@@ -48,7 +48,7 @@ class StatusDotTest {
     }
 
     /** A dot's share of its line at the normal font size: 10 of the body's 20, 8 of its 20 and of the figure's 28. */
-    private val shares = with(DoonaTheme.size) { listOf(dotSmall.value / FIGURE_LINE, dotSmall.value / BODY_LINE, dotSmall.value / BODY_LINE, dot.value / BODY_LINE, dot.value / BODY_LINE) }
+    private val shares = with(DoonaTheme.size) { listOf(dot.value / FIGURE_LINE, dot.value / BODY_LINE, dot.value / BODY_LINE, statusDot.value / BODY_LINE, statusDot.value / BODY_LINE) }
 
     @Test
     fun dotsKeepTheirSizeAtTheNormalFontSize() {
@@ -62,7 +62,7 @@ class StatusDotTest {
     fun dotsGrowWithTheLineAtTwiceTheFontSize() {
         val dots = dots(FontScale200)
         assertClose(shares.sorted(), dots.map { it.first / it.second }, 0.01f)
-        val nominal = with(DoonaTheme.size) { listOf(dotSmall.value, dotSmall.value, dotSmall.value, dot.value, dot.value) }
+        val nominal = with(DoonaTheme.size) { listOf(dot.value, dot.value, dot.value, statusDot.value, statusDot.value) }
         assertTrue("every dot is at least 1.25 times its normal size: $dots", dots.map { it.first }.sorted().zip(nominal).all { (got, normal) -> got >= normal * GROWN })
     }
 

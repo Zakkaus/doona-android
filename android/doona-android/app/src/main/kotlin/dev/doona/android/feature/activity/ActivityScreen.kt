@@ -37,15 +37,12 @@ import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaPageTabs
 import dev.doona.android.designsystem.components.DoonaPageTitle
 import dev.doona.android.designsystem.components.DoonaPicker
-import dev.doona.android.designsystem.components.DoonaRow
 import dev.doona.android.designsystem.components.DoonaSegmented
+import dev.doona.android.designsystem.components.DoonaSettingsRow
 import dev.doona.android.designsystem.components.DoonaSparkline
-import dev.doona.android.designsystem.components.DoonaStatusLight
 import dev.doona.android.designsystem.components.DoonaSwitchRow
-import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.components.DoonaTileCaption
 import dev.doona.android.designsystem.components.DoonaTileRow
-import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.Mode
@@ -92,6 +89,7 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
                     Mode.entries.map { stringResource(it.label) },
                     selected = state.mode.ordinal,
                     onSelect = { onAction(ActivityAction.SetMode(Mode.entries[it])) },
+                    modifier = Modifier.weight(1f),
                 )
             }
             DoonaControlCard(IconsR.drawable.sym_filter_alt, stringResource(R.string.act_global)) {
@@ -115,8 +113,8 @@ private val Mode.label: Int
 private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
         DoonaTileRow {
-            RateTile(IconsR.drawable.sym_download, DoonaTheme.colors.series1, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
-            RateTile(IconsR.drawable.sym_upload, DoonaTheme.colors.series2, stringResource(R.string.ui_upload), rateText(state.upRate), state.upHistory)
+            RateTile(IconsR.drawable.sym_download, DoonaTheme.colors.down.line, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
+            RateTile(IconsR.drawable.sym_upload, DoonaTheme.colors.up.line, stringResource(R.string.ui_upload), rateText(state.upRate), state.upHistory)
         }
         // Direct traffic uses no node, so there is no latency to show.
         if (state.mode == Mode.Direct) return@Column
@@ -124,7 +122,7 @@ private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
         val latency = node?.latencyMs?.takeUnless { node.failed }
         DoonaMetricTile(
             icon = IconsR.drawable.sym_schedule,
-            caption = { DoonaNodeName(node?.name ?: stringResource(R.string.act_latency), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) },
+            caption = { DoonaNodeName(node?.name ?: stringResource(R.string.act_latency), DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary) },
             modifier = Modifier.fillMaxWidth(),
             onClick = state.outboundGroupId?.let { id -> { onOpenGroup(id) } },
         ) {
@@ -145,28 +143,12 @@ private fun rateText(bytesPerSecond: Long): String =
 @Composable
 private fun ConnectionCard(status: Status, canStart: Boolean, onSwitch: (Boolean) -> Unit) {
     val on = status is Status.Running || status is Status.Starting
+    val title = stringResource(status.label)
+    val reason = (status as? Status.Failed)?.let { stringResource(it.reason.messageRes()) }
     DoonaCard(Modifier.fillMaxWidth()) {
-        if (on || canStart) DoonaSwitchRow(on, onSwitch) { ConnectionState(status) } else ConnectionState(status)
+        if (on || canStart) DoonaSwitchRow(title, on, onSwitch, subtitle = reason) else DoonaSettingsRow(title, subtitle = reason)
     }
 }
-
-@Composable
-private fun ConnectionState(status: Status) {
-    Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
-        DoonaStatusLight(status.tone, stringResource(status.label), style = DoonaTheme.type.cardTitle)
-        (status as? Status.Failed)?.let {
-            DoonaText(stringResource(it.reason.messageRes()), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
-        }
-    }
-}
-
-private val Status.tone: Tone
-    get() = when (this) {
-        is Status.Running -> Tone.Ok
-        Status.Starting, Status.Stopping -> Tone.Warn
-        Status.Stopped -> Tone.Neutral
-        is Status.Failed -> Tone.Err
-    }
 
 private val Status.label: Int
     get() = when (this) {

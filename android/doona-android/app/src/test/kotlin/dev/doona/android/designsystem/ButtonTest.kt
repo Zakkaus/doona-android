@@ -34,11 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.DoonaButton
 import dev.doona.android.designsystem.components.DoonaButtonStyle
-import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.tokens.Dawn
-import dev.doona.android.designsystem.tokens.DoonaPalette
-import dev.doona.android.designsystem.tokens.Moon
 import dev.doona.android.testing.Dark
 import dev.doona.android.testing.Light
 import dev.doona.android.testing.SpacingRules
@@ -46,6 +42,7 @@ import dev.doona.android.testing.Variant
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.inkColour
 import dev.doona.android.testing.layoutTree
+import dev.doona.android.testing.seedColors
 import dev.doona.android.testing.setDoonaContent
 import dev.doona.android.testing.setVariantContent
 import org.junit.Assert.assertEquals
@@ -142,10 +139,10 @@ class ButtonTest {
 
     @Test
     fun eachLookHasItsFill() {
-        val c = DoonaColors(Dawn)
+        val c = seedColors(false)
         val fills = mutableMapOf<String, Color>()
         compose.setDoonaContent {
-            Column(Modifier.fillMaxSize().background(c.surface).padding(space.gutter), verticalArrangement = Arrangement.spacedBy(space.block)) {
+            Column(Modifier.fillMaxSize().background(c.page).padding(space.gutter), verticalArrangement = Arrangement.spacedBy(space.block)) {
                 DoonaButton("Primary", onClick = {})
                 DoonaButton("Disabled", onClick = {}, enabled = false)
                 DoonaButton("Secondary", onClick = {}, style = DoonaButtonStyle.Secondary)
@@ -153,9 +150,9 @@ class ButtonTest {
             }
         }
         listOf("Primary", "Disabled", "Secondary", "Destructive").forEach { fills[it] = fillAt(it, FILL_INSET) }
-        assertEquals(hex(c.accent), hex(fills.getValue("Primary")))
-        assertEquals("a disabled primary button has the control fill, not the accent", hex(c.control), hex(fills.getValue("Disabled")))
-        assertEquals("a secondary button has no fill, only an outline", hex(c.surface), hex(fills.getValue("Secondary")))
+        assertEquals(hex(c.positive), hex(fills.getValue("Primary")))
+        assertEquals("a disabled primary button has the disc fill, not the accent", hex(c.discOnCard), hex(fills.getValue("Disabled")))
+        assertEquals("a secondary button has no fill, only an outline", hex(c.page), hex(fills.getValue("Secondary")))
         assertEquals(hex(c.destructive), hex(fills.getValue("Destructive")))
     }
 
@@ -163,45 +160,45 @@ class ButtonTest {
      * A disabled secondary button draws its outline plainly fainter than an enabled one's, in both themes, where the
      * strong line is only a step off the fill: not at the same strength beside a muted label, and not gone.
      */
-    private fun disabledOutlineAgainstEnabled(variant: Variant, palette: DoonaPalette) {
-        val c = DoonaColors(palette)
+    private fun disabledOutlineAgainstEnabled(variant: Variant, dark: Boolean) {
+        val c = seedColors(dark)
         compose.setVariantContent(variant) {
-            Column(Modifier.fillMaxSize().background(c.surface).padding(space.gutter), verticalArrangement = Arrangement.spacedBy(space.block)) {
+            Column(Modifier.fillMaxSize().background(c.page).padding(space.gutter), verticalArrangement = Arrangement.spacedBy(space.block)) {
                 DoonaButton("Enabled", onClick = {}, style = DoonaButtonStyle.Secondary)
                 DoonaButton("Disabled", onClick = {}, style = DoonaButtonStyle.Secondary, enabled = false)
             }
         }
         val enabled = fillAt("Enabled", OUTLINE_INSET)
         val disabled = fillAt("Disabled", OUTLINE_INSET)
-        assertEquals(hex(c.strongLine), hex(enabled))
-        assertTrue("the dimmed outline still shows against the sheet, %.3f from it".format(disabled.apart(c.surface)), disabled.apart(c.surface) >= OUTLINE_SHOWS)
-        assertTrue("and is plainly fainter than the enabled one: %.3f against %.3f".format(disabled.apart(c.surface), enabled.apart(c.surface)), disabled.apart(c.surface) <= OUTLINE_FAINTER * enabled.apart(c.surface))
+        assertEquals(hex(c.control), hex(enabled))
+        assertTrue("the dimmed outline still shows against the sheet, %.3f from it".format(disabled.apart(c.page)), disabled.apart(c.page) >= OUTLINE_SHOWS)
+        assertTrue("and is plainly fainter than the enabled one: %.3f against %.3f".format(disabled.apart(c.page), enabled.apart(c.page)), disabled.apart(c.page) <= OUTLINE_FAINTER * enabled.apart(c.page))
     }
 
     @Test
-    fun aDisabledSecondaryButtonHasADimmedOutlineInLight() = disabledOutlineAgainstEnabled(Light, Dawn)
+    fun aDisabledSecondaryButtonHasADimmedOutlineInLight() = disabledOutlineAgainstEnabled(Light, false)
 
     @Test
-    fun aDisabledSecondaryButtonHasADimmedOutlineInDark() = disabledOutlineAgainstEnabled(Dark, Moon)
+    fun aDisabledSecondaryButtonHasADimmedOutlineInDark() = disabledOutlineAgainstEnabled(Dark, true)
 
     /** What a text button draws its label in is the accent text role in both themes, read off the rendered pixels. */
-    private fun textButtonInk(variant: Variant, palette: DoonaPalette) {
-        val c = DoonaColors(palette)
+    private fun textButtonInk(variant: Variant, dark: Boolean) {
+        val c = seedColors(dark)
         compose.setVariantContent(variant) {
-            Column(Modifier.fillMaxSize().background(c.surface).padding(space.gutter)) { DoonaButton("HIH", onClick = {}, style = DoonaButtonStyle.Text) }
+            Column(Modifier.fillMaxSize().background(c.page).padding(space.gutter)) { DoonaButton("HIH", onClick = {}, style = DoonaButtonStyle.Text) }
         }
         compose.drawFully()
         val label = compose.onNodeWithText("HIH", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        val ink = compose.onRoot().captureToImage().toPixelMap().inkColour(label, c.surface)
-        assertTrue("the label is drawn in ${hex(ink)}, not the accent text ${hex(c.text.accent)}", ink.apart(c.text.accent) <= INK_MATCH)
-        assertTrue("and that colour holds 4.5:1 on the sheet", contrast(ink, c.surface) >= 4.5f)
+        val ink = compose.onRoot().captureToImage().toPixelMap().inkColour(label, c.page)
+        assertTrue("the label is drawn in ${hex(ink)}, not the accent text ${hex(c.accentText)}", ink.apart(c.accentText) <= INK_MATCH)
+        assertTrue("and that colour holds 4.5:1 on the sheet", contrast(ink, c.page) >= 4.5f)
     }
 
     @Test
-    fun aTextButtonDrawsItsLabelInTheAccentTextInLight() = textButtonInk(Light, Dawn)
+    fun aTextButtonDrawsItsLabelInTheAccentTextInLight() = textButtonInk(Light, false)
 
     @Test
-    fun aTextButtonDrawsItsLabelInTheAccentTextInDark() = textButtonInk(Dark, Moon)
+    fun aTextButtonDrawsItsLabelInTheAccentTextInDark() = textButtonInk(Dark, true)
 
     private fun contrast(a: Color, b: Color): Float {
         val (hi, lo) = listOf(a.luminance(), b.luminance()).sortedDescending()

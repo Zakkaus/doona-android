@@ -34,15 +34,14 @@ import dev.doona.android.designsystem.components.DoonaIconAction
 import dev.doona.android.designsystem.components.DoonaSearchField
 import dev.doona.android.designsystem.components.DoonaTextField
 import dev.doona.android.designsystem.components.LayoutRole
-import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.tokens.Dawn
 import dev.doona.android.designsystem.tokens.TypeScale
 import dev.doona.android.testing.FontScale200
 import dev.doona.android.testing.Light
 import dev.doona.android.testing.Variant
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.layoutTree
+import dev.doona.android.testing.seedColors
 import dev.doona.android.testing.setDoonaContent
 import dev.doona.android.testing.setVariantContent
 import org.junit.Assert.assertEquals
@@ -213,8 +212,8 @@ class TextFieldTest {
      * at no more than [FAINT] of that, so no half glyph is left at full strength.
      */
     private fun aLongValueFades(variant: Variant) {
-        val c = DoonaColors(Dawn)
-        compose.setVariantContent(variant) { Column(Modifier.background(c.surface)) { DoonaTextField(TextFieldState("W".repeat(LONG)), label = "URL") } }
+        val c = seedColors(false)
+        compose.setVariantContent(variant) { Column(Modifier.background(c.page)) { DoonaTextField(TextFieldState("W".repeat(LONG)), label = "URL") } }
         compose.drawFully()
         val page = compose.onRoot().fetchSemanticsNode().boundsInRoot
         val density = compose.density.density
@@ -223,7 +222,7 @@ class TextFieldTest {
         val rows = ((page.bottom - 48f * density).toInt() until page.bottom.toInt())
         val em = (TypeScale.body.size.value * variant.fontScale * density).toInt()
         val fade = (DoonaTheme.size.fieldFade.value * variant.fontScale * density).toInt()
-        fun ink(from: Int, to: Int) = (from..to).maxOf { x -> rows.maxOf { y -> image[x, y].apart(c.control) } }
+        fun ink(from: Int, to: Int) = (from..to).maxOf { x -> rows.maxOf { y -> image[x, y].apart(c.discOnCard) } }
         val atEdge = ink(edge, edge)
         val full = ink(edge - fade - 2 * em, edge - fade)
         val lastGlyph = ink(edge - em, edge)

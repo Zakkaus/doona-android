@@ -20,9 +20,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.scripted
 
 /**
- * Node tile (§7): 56 min high, padding 8 × 12, radius 8, overlay fill, 2 px border (accent and the selected fill
+ * Node tile (§7): 56 min high, padding 8 × 12, radius 8, the disc fill, 2 px border (accent and the selected fill
  * when current); row 1 name, badge, latency; row 2 the 12/16 source, 2 below.
  */
 @Composable
@@ -43,8 +44,8 @@ fun DoonaNodeTile(
             .fillMaxWidth()
             .heightIn(min = DoonaTheme.size.nodeTileMin)
             .clip(shape)
-            .background(if (current) c.selected else c.control)
-            .border(DoonaTheme.size.borderStrong, if (current) c.accent else Color.Transparent, shape)
+            .background(if (current) c.navPill else c.discOnCard)
+            .border(DoonaTheme.size.borderStrong, if (current) c.positive else Color.Transparent, shape)
             .selectable(current, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = space.fillInset, vertical = space.item),
         verticalArrangement = Arrangement.spacedBy(space.lineGap, Alignment.CenterVertically),
@@ -53,11 +54,11 @@ fun DoonaNodeTile(
             DoonaNodeName(name, DoonaTheme.type.bodyStrong, modifier = Modifier.weight(1f))
             if (groupLabel != null) {
                 Spacer(Modifier.width(space.item))
-                DoonaBadge(groupLabel)
+                DoonaTag(groupLabel)
             }
             Spacer(Modifier.width(space.block))
-            DoonaLatency(latencyMs)
+            TileLatency(latencyMs)
         }
-        source?.let { Text(it, style = DoonaTheme.type.caption, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        source?.let { Text(scripted(it), style = DoonaTheme.type.footnote, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
 }

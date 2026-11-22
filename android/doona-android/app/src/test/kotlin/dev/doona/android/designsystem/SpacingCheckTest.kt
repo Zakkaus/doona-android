@@ -3,11 +3,11 @@ package dev.doona.android.designsystem
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.testing.FrameInsets
 import dev.doona.android.testing.Landscape
 import dev.doona.android.testing.Light
+import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.SpacingRules
 import dev.doona.android.testing.Variant
 import dev.doona.android.testing.Wide
@@ -39,7 +39,7 @@ class SpacingCheckTest(private val name: String, private val window: Variant) {
         RuntimeEnvironment.setQualifiers(window.qualifiers)
         val case = screenCases().first { it.name == name }
         compose.setContent {
-            CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { DoonaTheme { case.content() } }
+            CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { SeedTheme { case.content() } }
         }
         val page = requireNotNull(case.layout)
         val reads = compose.readWhileScrolling { tree -> SpacingRules.check(tree, page) to SpacingRules.touch(tree) }

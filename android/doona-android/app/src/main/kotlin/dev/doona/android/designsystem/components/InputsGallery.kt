@@ -88,7 +88,7 @@ internal fun InputsGallery() = GalleryPage("Inputs") {
 @Composable
 private fun SampleAppIcon() {
     val c = DoonaTheme.colors
-    Box(Modifier.size(DoonaTheme.size.appIcon).clip(DoonaTheme.shape.control).background(c.control), contentAlignment = Alignment.Center) {
-        DoonaIcon(IconsR.drawable.sym_link, c.icon)
+    Box(Modifier.size(DoonaTheme.size.appIcon).clip(DoonaTheme.shape.control).background(c.discOnCard), contentAlignment = Alignment.Center) {
+        DoonaIcon(IconsR.drawable.sym_link, c.textSecondary)
     }
 }

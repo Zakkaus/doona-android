@@ -3,6 +3,7 @@ package dev.doona.android.designsystem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,13 +29,12 @@ import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.tokens.Dawn
-import dev.doona.android.designsystem.tokens.Moon
 import dev.doona.android.testing.Dark
 import dev.doona.android.testing.LayoutBox
 import dev.doona.android.testing.Light
 import dev.doona.android.testing.Variant
 import dev.doona.android.testing.layoutTree
+import dev.doona.android.testing.seedColors
 import dev.doona.android.testing.setVariantContent
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -70,7 +70,7 @@ class FillsTest(private val variant: Variant, private val colors: DoonaColors) {
     @Test
     fun theCurrentTabAndTheCurrentNodeShareOneSelectedFill() {
         compose.setVariantContent(variant) {
-            Column(Modifier.fillMaxSize().background(DoonaTheme.colors.surface)) {
+            Column(Modifier.fillMaxSize().background(DoonaTheme.colors.page)) {
                 DoonaNodeTile("hk-01", 42, current = true, groupLabel = null, onClick = {})
                 Box(Modifier.weight(1f))
                 DoonaHubBar(listOf(DoonaHubTab("A", IconsR.drawable.sym_search), DoonaHubTab("B", IconsR.drawable.sym_edit)), selected = 0, onSelect = {})
@@ -79,8 +79,8 @@ class FillsTest(private val variant: Variant, private val colors: DoonaColors) {
         val tree = compose.layoutTree()
         val pill = tree.descendants().first { it.role == LayoutRole.HubBar }.content.first().content.first()
         val tile = compose.onNode(isSelected() and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)).fetchSemanticsNode().boundsInRoot
-        assertFill("the current tab's pill", colors.selected, pixel(pill.left + PAD, pill.centerY))
-        assertFill("the current node tile", colors.selected, pixel(tile.left / compose.density.density + 6f, tile.center.y / compose.density.density))
+        assertFill("the current tab's pill", colors.navPill, pixel(pill.left + PAD, pill.centerY))
+        assertFill("the current node tile", colors.navPill, pixel(tile.left / compose.density.density + 6f, tile.center.y / compose.density.density))
     }
 
     @Test
@@ -90,27 +90,33 @@ class FillsTest(private val variant: Variant, private val colors: DoonaColors) {
         }
         val thumb = compose.onNodeWithText("One").fetchSemanticsNode().boundsInRoot
         val density = compose.density.density
-        // Just inside the thumb's left edge and mid-height, where an outline would be: the fill reaches the edge.
-        assertFill("the thumb's edge", colors.accent, pixel(PAD + 1f, thumb.center.y / density))
+        // Inside the raised pill's left end at mid-height, past where a rim would be: the raised fill reaches there.
+        assertFill("the selected segment's pill", colors.raised, pixel(PAD + SEGMENT_INSET + EDGE_IN, thumb.center.y / density))
     }
 
     @Test
     fun aCardHasNoOutlineAndSitsOneStepOffTheSheet() {
         compose.setVariantContent(variant) {
-            Box(Modifier.fillMaxSize().background(DoonaTheme.colors.surface).padding(PAD.dp)) { DoonaCard(Modifier.fillMaxWidth()) { DoonaText("Card", DoonaTheme.type.body) } }
+            Box(Modifier.fillMaxSize().background(DoonaTheme.colors.page).padding(PAD.dp)) {
+                DoonaCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(PAD.dp)) { DoonaText("Card", DoonaTheme.type.body) }
+            }
         }
         val card = compose.onNodeWithText("Card").fetchSemanticsNode().boundsInRoot
         val density = compose.density.density
         // The pixel half a dp inside the card's left edge is where a 1 dp border would be.
         assertFill("the card's edge", colors.card, pixel(PAD + 0.5f, card.center.y / density))
-        assertFill("the sheet", colors.surface, pixel(PAD / 2, card.center.y / density))
+        assertFill("the sheet", colors.page, pixel(PAD / 2, card.center.y / density))
     }
 
     companion object {
         private const val PAD = 16f
 
+        /** The segmented control's pill sits this far inside its track; a point this far inside the pill is past any rim. */
+        private const val SEGMENT_INSET = 2f
+        private const val EDGE_IN = 3f
+
         @JvmStatic
         @Parameters(name = "{0}")
-        fun parameters(): List<Array<Any>> = listOf(arrayOf(Light, DoonaColors(Dawn)), arrayOf(Dark, DoonaColors(Moon)))
+        fun parameters(): List<Array<Any>> = listOf(arrayOf(Light, seedColors(false)), arrayOf(Dark, seedColors(true)))
     }
 }

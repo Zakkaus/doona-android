@@ -32,7 +32,7 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 /** A phone's status bar (time, Wi-Fi, battery) and gesture handle, drawn over the app in the theme's text colour. */
 @Composable
 fun PhoneFrame(content: @Composable () -> Unit) {
-    val ink = DoonaTheme.colors.text.primary
+    val ink = DoonaTheme.colors.text
     CompositionLocalProvider(LocalFrameInsets provides FrameInsets) {
         Box(Modifier.fillMaxSize()) {
             content()

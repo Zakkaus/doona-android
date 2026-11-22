@@ -3,9 +3,9 @@ package dev.doona.android.app
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
+import dev.doona.android.testing.SeedTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -16,7 +16,7 @@ class SettingsVersionTest {
     val compose = createComposeRule()
 
     private fun settings(version: String) = compose.setContent {
-        DoonaTheme {
+        SeedTheme {
             DoonaApp(FakeEngine(), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, SettingsKey), version = version)
         }
     }

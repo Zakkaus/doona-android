@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_nodes_title">節點</string>
+    <string name="rv_nodes_all_subscriptions">全部訂閱</string>
+    <string name="rv_nodes_by_latency">依延遲</string>
+    <string name="rv_nodes_fastest_card">最快節點</string>
+    <string name="rv_nodes_fastest">最快</string>
+    <string name="rv_nodes_steadiest">最穩</string>
+    <string name="rv_nodes_spread">節點分布</string>
+    <plurals name="rv_nodes_countries">
+        <item quantity="other">%1$d 個國家或地區</item>
+    </plurals>
+    <plurals name="rv_nodes_nodes">
+        <item quantity="other">%1$d 個節點</item>
+    </plurals>
+    <string name="rv_nodes_all">全部節點</string>
+    <plurals name="rv_nodes_see_all">
+        <item quantity="other">查看全部 %1$d 個</item>
+    </plurals>
+    <string name="rv_nodes_region_asia">亞洲</string>
+    <string name="rv_nodes_region_oceania">大洋洲</string>
+    <string name="rv_nodes_region_americas">美洲</string>
+    <string name="rv_nodes_region_europe">歐洲</string>
+    <string name="rv_nodes_place_hk">香港</string>
+    <string name="rv_nodes_place_tw">臺灣</string>
+    <string name="rv_nodes_place_jp">日本</string>
+    <string name="rv_nodes_place_kr">韓國</string>
+    <string name="rv_nodes_place_sg">新加坡</string>
+    <string name="rv_nodes_place_us">美國</string>
+    <string name="rv_nodes_place_ca">加拿大</string>
+    <string name="rv_nodes_place_gb">英國</string>
+    <string name="rv_nodes_place_de">德國</string>
+    <string name="rv_nodes_place_nl">荷蘭</string>
+    <string name="rv_nodes_place_fr">法國</string>
+    <string name="rv_nodes_place_au">澳洲</string>
+    <string name="rv_nodes_in_use">目前使用中</string>
+    <string name="rv_nodes_latency_high">延遲偏高</string>
+    <string name="rv_nodes_history">延遲紀錄</string>
+    <string name="rv_nodes_median">中位數 %1$s</string>
+    <string name="rv_nodes_details">節點資訊</string>
+    <string name="rv_nodes_protocol">協定</string>
+    <string name="rv_nodes_server">伺服器</string>
+    <string name="rv_nodes_port">埠</string>
+    <string name="rv_nodes_transport">傳輸</string>
+    <string name="rv_nodes_subscription">來自訂閱</string>
+    <string name="rv_nodes_last_test">上次測試</string>
+    <string name="rv_nodes_use">設為目前節點</string>
+</resources>

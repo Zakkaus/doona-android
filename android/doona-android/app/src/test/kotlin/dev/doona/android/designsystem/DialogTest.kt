@@ -39,10 +39,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.DoonaConfirmDialog
 import dev.doona.android.designsystem.components.DoonaConfirmKind
 import dev.doona.android.designsystem.components.DoonaConfirmPanel
-import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.tokens.Dawn
 import dev.doona.android.testing.Variant
+import dev.doona.android.testing.seedColors
 import dev.doona.android.testing.setDoonaContent
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -282,9 +281,9 @@ class DialogTest {
 
     @Test
     fun aRemovalIsFilledDestructiveAndAChoiceIsFilledAccent() {
-        val c = DoonaColors(Dawn)
+        val c = seedColors(false)
         compose.setDoonaContent {
-            Column(Modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+            Column(Modifier.fillMaxSize().background(DoonaTheme.colors.page)) {
                 DoonaConfirmPanel("A", "a", "Choose", "No", {}, {}, DoonaConfirmKind.Default)
                 DoonaConfirmPanel("B", "b", "Remove", "No", {}, {}, DoonaConfirmKind.Destructive)
             }
@@ -295,7 +294,7 @@ class DialogTest {
             val button = compose.onNodeWithText(label).fetchSemanticsNode().boundsInRoot
             return image[(button.left + FILL_INSET * density).toInt(), button.center.y.toInt()]
         }
-        assertEquals(hex(c.accent), hex(fill("Choose")))
+        assertEquals(hex(c.positive), hex(fill("Choose")))
         assertEquals(hex(c.destructive), hex(fill("Remove")))
     }
 

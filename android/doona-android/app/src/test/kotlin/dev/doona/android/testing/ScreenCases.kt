@@ -55,7 +55,7 @@ private fun appScreenCases(): List<ScreenCase> {
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar)
     val withHub = bars + LayoutRole.HubBar
-    val activity = setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Control, LayoutRole.Value, LayoutRole.Chevron)
+    val activity = setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Control, LayoutRole.Segmented, LayoutRole.Value, LayoutRole.Chevron)
     return listOf(
         ScreenCase("activity", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
             DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey))
@@ -66,7 +66,7 @@ private fun appScreenCases(): List<ScreenCase> {
         },
         ScreenCase(
             "settings",
-            PageLayout(withHub + setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Chevron), listOf(space.afterTitle)),
+            PageLayout(withHub + setOf(LayoutRole.ListCard, LayoutRole.ListRow, LayoutRole.Mark), listOf(space.afterTitle)),
         ) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
     ) + perAppCases()
 }

@@ -37,7 +37,7 @@ fun DoonaAppIcon(packageName: String, modifier: Modifier = Modifier) {
     if (loaded != null) {
         Image(loaded, contentDescription = null, modifier = modifier.size(edge))
     } else {
-        Box(modifier.size(edge).clip(DoonaTheme.shape.control).background(DoonaTheme.colors.control))
+        Box(modifier.size(edge).clip(DoonaTheme.shape.control).background(DoonaTheme.colors.discOnCard))
     }
 }
 

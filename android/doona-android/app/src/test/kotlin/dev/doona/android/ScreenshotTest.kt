@@ -9,15 +9,17 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.github.takahirom.roborazzi.checkRoboAccessibility
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.GalleryVariants
 import dev.doona.android.testing.PhoneFrame
+import dev.doona.android.testing.RvGalleryVariants
 import dev.doona.android.testing.ScreenCase
 import dev.doona.android.testing.ScreenVariants
+import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.Variant
+import dev.doona.android.testing.checkAccessibility
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.galleryCases
+import dev.doona.android.testing.rvGalleryScreenCases
 import dev.doona.android.testing.screenCases
 import dev.doona.android.testing.showsContent
 import org.junit.Assert.assertTrue
@@ -48,14 +50,14 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
     @Test
     fun matchesGoldenAndPassesAccessibilityChecks() {
         RuntimeEnvironment.setQualifiers(variant.qualifiers)
-        val case = (screenCases() + galleryCases()).first { it.name == name }
+        val case = (screenCases() + galleryCases() + rvGalleryScreenCases()).first { it.name == name }
         compose.setContent { Framed(case, variant) }
         compose.drawFully()
         // One capture is checked, recorded and compared, so what is checked is what the golden holds.
         val image = compose.onRoot().captureToImage()
         assertTrue("$name-${variant.name}: the content area shows nothing but fills", image.showsContent(compose.density.density))
         image.asAndroidBitmap().captureRoboImage("$dir/$name-${variant.name}.png")
-        compose.onRoot().checkRoboAccessibility()
+        compose.onRoot().checkAccessibility()
     }
 
     companion object {
@@ -63,7 +65,8 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
         @Parameters(name = "{0}-{1}")
         fun parameters(): List<Array<Any>> =
             screenCases().flatMap { case -> ScreenVariants.map { arrayOf(case.name, it) } } +
-                galleryCases().flatMap { case -> GalleryVariants.map { arrayOf(case.name, it) } }
+                galleryCases().flatMap { case -> GalleryVariants.map { arrayOf(case.name, it) } } +
+                rvGalleryScreenCases().flatMap { case -> RvGalleryVariants.map { arrayOf(case.name, it) } }
     }
 }
 
@@ -71,6 +74,6 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
 private fun Framed(case: ScreenCase, variant: Variant) {
     val density = LocalDensity.current
     CompositionLocalProvider(LocalDensity provides Density(density.density, variant.fontScale)) {
-        DoonaTheme { PhoneFrame(case.content) }
+        SeedTheme { PhoneFrame(case.content) }
     }
 }

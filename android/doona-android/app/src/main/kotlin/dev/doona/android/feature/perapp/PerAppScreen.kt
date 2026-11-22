@@ -71,7 +71,7 @@ fun PerAppScreen(state: PerAppUiState, onAction: (PerAppAction) -> Unit, onBack:
     val search = rememberTextFieldState(state.query)
     val latest by rememberUpdatedState(onAction)
     LaunchedEffect(search) { snapshotFlow { search.text.toString() }.collect { latest(PerAppAction.SetQuery(it)) } }
-    Column(Modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+    Column(Modifier.fillMaxSize().background(DoonaTheme.colors.page)) {
         DoonaTopBar(onBack)
         DoonaLazyPageSheet(Modifier.weight(1f)) {
             item(key = HEADER, contentType = HEADER) { Controls(state, search, onAction) }
@@ -102,15 +102,15 @@ private fun Controls(state: PerAppUiState, search: TextFieldState, onAction: (Pe
             onSelect = { onAction(PerAppAction.SetPolicy(AppPolicy.entries[it])) },
         )
         DoonaGap(space.block)
-        DoonaText(stringResource(state.policy.summary), style = DoonaTheme.type.caption, color = c.text.secondary)
+        DoonaText(stringResource(state.policy.summary), style = DoonaTheme.type.footnote, color = c.textSecondary)
         if (state.needsApp) {
             DoonaGap(space.item)
-            DoonaText(stringResource(R.string.perapp_needs_app), style = DoonaTheme.type.fieldError, color = c.text.negative)
+            DoonaText(stringResource(R.string.perapp_needs_app), style = DoonaTheme.type.fieldError, color = c.slow)
         }
         DoonaGap(space.section)
         DoonaButton(stringResource(R.string.perapp_save), { onAction(PerAppAction.Save) }, enabled = state.canSave, busy = state.busy)
         DoonaGap(space.item)
-        DoonaText(stringResource(R.string.perapp_reconnect_note), style = DoonaTheme.type.caption, color = c.text.secondary)
+        DoonaText(stringResource(R.string.perapp_reconnect_note), style = DoonaTheme.type.footnote, color = c.textSecondary)
         if (state.policy != AppPolicy.All) {
             DoonaGap(space.section)
             DoonaSearchField(search, stringResource(R.string.perapp_search))

@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.scripted
 import dev.doona.android.icons.R as IconsR
 
 /**
@@ -55,9 +56,9 @@ fun DoonaCheckRow(
             DoonaHGap(DoonaTheme.spacing.block)
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = DoonaTheme.type.label, color = c.text.primary, maxLines = LABEL_LINES, overflow = TextOverflow.Ellipsis)
+            Text(scripted(title), style = DoonaTheme.type.label, color = c.text, maxLines = LABEL_LINES, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
-                Text(subtitle, style = DoonaTheme.type.caption, color = c.text.secondary, maxLines = LABEL_LINES, overflow = TextOverflow.Ellipsis)
+                Text(scripted(subtitle), style = DoonaTheme.type.footnote, color = c.textSecondary, maxLines = LABEL_LINES, overflow = TextOverflow.Ellipsis)
             }
         }
         DoonaHGap(DoonaTheme.spacing.block)
@@ -73,9 +74,9 @@ private fun CheckBox(checked: Boolean) {
         Modifier
             .size(DoonaTheme.size.checkbox)
             .clip(shape)
-            .then(if (checked) Modifier.background(c.accent) else Modifier.border(DoonaTheme.size.borderStrong, c.boxLine, shape)),
+            .then(if (checked) Modifier.background(c.positive) else Modifier.border(DoonaTheme.size.borderStrong, c.control, shape)),
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) DoonaIcon(IconsR.drawable.sym_check, c.onAccent, size = DoonaTheme.size.iconInline)
+        if (checked) DoonaIcon(IconsR.drawable.sym_check, c.onPositive, size = DoonaTheme.size.inlineGlyph)
     }
 }

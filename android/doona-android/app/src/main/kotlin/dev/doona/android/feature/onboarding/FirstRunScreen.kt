@@ -3,6 +3,7 @@ package dev.doona.android.feature.onboarding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,17 +64,17 @@ fun FirstRunScreen(state: FirstRunUiState, fields: AddFormFields, onAction: (Fir
         DoonaPageTitle(stringResource(R.string.hub_activity))
         DoonaGap(space.section)
         Column(verticalArrangement = Arrangement.spacedBy(space.tight)) {
-            DoonaText(stringResource(R.string.first_heading), style = DoonaTheme.type.cardTitle)
-            DoonaText(stringResource(R.string.first_line_what), style = DoonaTheme.type.body, color = DoonaTheme.colors.text.secondary)
-            DoonaText(stringResource(R.string.first_line_next), style = DoonaTheme.type.body, color = DoonaTheme.colors.text.secondary)
+            DoonaText(stringResource(R.string.first_heading), style = DoonaTheme.type.blockTitle)
+            DoonaText(stringResource(R.string.first_line_what), style = DoonaTheme.type.body, color = DoonaTheme.colors.textSecondary)
+            DoonaText(stringResource(R.string.first_line_next), style = DoonaTheme.type.body, color = DoonaTheme.colors.textSecondary)
         }
         DoonaGap(space.section)
         Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
             if (state.noNodes) {
-                DoonaCard(Modifier.fillMaxWidth()) { DoonaText(stringResource(R.string.first_no_nodes), style = DoonaTheme.type.body) }
+                DoonaCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(space.cardInset)) { DoonaText(stringResource(R.string.first_no_nodes), style = DoonaTheme.type.body) }
             }
             state.failure?.let { reason ->
-                DoonaCard(Modifier.fillMaxWidth()) { DoonaText(stringResource(reason.messageRes()), style = DoonaTheme.type.body) }
+                DoonaCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(space.cardInset)) { DoonaText(stringResource(reason.messageRes()), style = DoonaTheme.type.body) }
             }
             AddSubscriptionForm(
                 fields = fields,

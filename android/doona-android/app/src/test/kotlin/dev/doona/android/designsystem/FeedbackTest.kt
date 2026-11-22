@@ -26,20 +26,17 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.DoonaEmptyState
-import dev.doona.android.designsystem.components.DoonaMeter
 import dev.doona.android.designsystem.components.DoonaProgress
+import dev.doona.android.designsystem.components.DoonaProgressBar
 import dev.doona.android.designsystem.components.DoonaProgressSize
 import dev.doona.android.designsystem.components.LayoutRole
-import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.tokens.Dawn
-import dev.doona.android.designsystem.tokens.DoonaPalette
-import dev.doona.android.designsystem.tokens.Moon
 import dev.doona.android.testing.Dark
 import dev.doona.android.testing.Light
 import dev.doona.android.testing.Variant
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.layoutTree
+import dev.doona.android.testing.seedColors
 import dev.doona.android.testing.setVariantContent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -50,7 +47,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import dev.doona.android.icons.R as IconsR
 
-/** The meter, the empty state and the spinner: what a reader hears, the room between the meter's text and its bar, the empty state's action and inset. */
+/** The progress bar, the empty state and the spinner: what a reader hears, how the bar fills, the empty state's action and inset. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "zh-rTW-w412dp-h915dp-notnight-xhdpi")
@@ -60,29 +57,26 @@ class FeedbackTest {
 
     private fun hasRange(fraction: Float) = SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(fraction, 0f..1f))
 
-    /** The value text is read once: as the merged text of the progress, with no state description saying it again beside it. */
+    /** A progress bar is one progress for a screen reader, its fraction held to 0 to 1. */
     @Test
-    fun aMeterIsOneProgressAndItsValueTextIsReadOnce() {
+    fun aProgressBarIsOneProgressHeldToItsRange() {
         compose.setVariantContent(Light) {
             Column {
-                DoonaMeter(0.25f, "25 / 100 GB")
-                DoonaMeter(7f, "over")
-                DoonaMeter(-1f, "under")
+                DoonaProgressBar(0.25f)
+                DoonaProgressBar(7f)
+                DoonaProgressBar(-1f)
             }
         }
-        compose.onNodeWithText("25 / 100 GB").assert(hasRange(0.25f)).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
-        assertEquals(listOf("25 / 100 GB"), compose.onNodeWithText("25 / 100 GB").fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text })
-        compose.onNodeWithText("over").assert(hasRange(1f))
-        compose.onNodeWithText("under").assert(hasRange(0f))
+        listOf(0.25f, 1f, 0f).forEach { compose.onAllNodes(hasRange(it)).assertCountEquals(1) }
     }
 
     @Test
     fun theBarIsFilledByTheFraction() {
-        compose.setVariantContent(Light) { Column(Modifier.width(300.dp)) { DoonaMeter(0.4f, "40 %") } }
+        compose.setVariantContent(Light) { Column(Modifier.width(300.dp)) { DoonaProgressBar(0.4f) } }
         val bar = compose.layoutTree().descendants().first { it.role == LayoutRole.Bar }
         val fill = bar.content.single()
         assertEquals("the fill is 40 % of the track", 0.4f, fill.width / bar.width, 0.01f)
-        assertEquals("the track is 4 dp", DoonaTheme.size.meterTrack.value, bar.height, 0.5f)
+        assertEquals("the track is the progress role's height", DoonaTheme.size.progress.value, bar.height, 0.5f)
     }
 
     private fun contrast(a: Color, b: Color): Float {
@@ -93,13 +87,13 @@ class FeedbackTest {
     private fun hex(c: Color) = "#%08X".format(c.toArgb())
 
     /**
-     * What the meter draws, read off the rendered pixels: the fill in the meter fill role and the rest of the bar in the
+     * What the progress bar draws, read off the rendered pixels: the fill in the accent and the rest of the bar in the
      * track role, the fill 3:1 on its track and on the card, so a palette role that is right on paper but not the one the
-     * meter paints cannot pass.
+     * bar paints cannot pass.
      */
-    private fun meterDraws(variant: Variant, palette: DoonaPalette) {
-        val c = DoonaColors(palette)
-        compose.setVariantContent(variant) { Column(Modifier.width(300.dp).background(c.card)) { DoonaMeter(0.5f, "50 %") } }
+    private fun barDraws(variant: Variant, dark: Boolean) {
+        val c = seedColors(dark)
+        compose.setVariantContent(variant) { Column(Modifier.width(300.dp).background(c.card)) { DoonaProgressBar(0.5f) } }
         compose.drawFully()
         val bar = compose.layoutTree().descendants().first { it.role == LayoutRole.Bar }
         val density = compose.density.density
@@ -107,18 +101,18 @@ class FeedbackTest {
         fun at(share: Float) = image[((bar.left + bar.width * share) * density).toInt(), (bar.centerY * density).toInt()]
         val fill = at(0.25f)
         val track = at(0.75f)
-        assertEquals("the filled half", hex(c.meterFill), hex(fill))
+        assertEquals("the filled half", hex(c.positive), hex(fill))
         assertEquals("the rest of the bar", hex(c.track), hex(track))
         assertTrue("the fill is %.2f:1 on its track".format(contrast(fill, track)), contrast(fill, track) >= 3f)
         assertTrue("the fill is %.2f:1 on the card".format(contrast(fill, c.card)), contrast(fill, c.card) >= 3f)
-        assertTrue("the track is %.2f:1 on the card".format(contrast(track, c.card)), contrast(track, c.card) >= 1.4f)
+        assertTrue("the track is %.2f:1 on the card".format(contrast(track, c.card)), contrast(track, c.card) >= TRACK_STEP)
     }
 
     @Test
-    fun theMeterDrawsItsFillAndTrackInLight() = meterDraws(Light, Dawn)
+    fun theProgressBarDrawsItsFillAndTrackInLight() = barDraws(Light, false)
 
     @Test
-    fun theMeterDrawsItsFillAndTrackInDark() = meterDraws(Dark, Moon)
+    fun theProgressBarDrawsItsFillAndTrackInDark() = barDraws(Dark, true)
 
     @Test
     fun theEmptyStateActionTakesATapAndTheTitleIsAHeading() {
@@ -172,6 +166,9 @@ class FeedbackTest {
             .assertWidthIsEqualTo(DoonaTheme.size.icon).assertHeightIsEqualTo(DoonaTheme.size.icon)
         compose.onNodeWithTag("inline").assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate))
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
-            .assertWidthIsEqualTo(DoonaTheme.size.iconInline).assertHeightIsEqualTo(DoonaTheme.size.iconInline)
+            .assertWidthIsEqualTo(DoonaTheme.size.inlineGlyph).assertHeightIsEqualTo(DoonaTheme.size.inlineGlyph)
     }
 }
+
+/** A step one surface up shows on the card: the scheme puts its track one tone step above the card. */
+private const val TRACK_STEP = 1.15f

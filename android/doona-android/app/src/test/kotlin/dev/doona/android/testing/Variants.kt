@@ -12,6 +12,7 @@ val Light = Variant("light", WINDOW.format(412, 915, "notnight"))
 val Dark = Variant("dark", WINDOW.format(412, 915, "night"))
 val FontScale115 = Variant("fs115", WINDOW.format(412, 915, "notnight"), 1.15f)
 val FontScale200 = Variant("fs200", WINDOW.format(412, 915, "notnight"), 2f)
+val FontScale200Dark = Variant("fs200-dark", WINDOW.format(412, 915, "night"), 2f)
 
 /** A tablet-width window: the content column stays at most 600 dp wide and centred. */
 val Wide = Variant("wide", WINDOW.format(840, 915, "notnight"))
@@ -27,3 +28,6 @@ fun Variant.tall(height: Int) = Variant(name, qualifiers.replace(Regex("-h\\d+dp
 
 /** The component gallery pages are long: 1300 dp shows the longest whole, and the window grows with the font scale. */
 val GalleryVariants = PhoneVariants.map { it.tall((1300 * it.fontScale).toInt()) }
+
+/** The design system's gallery pages: light and dark at font scales 1.0 and 2.0, in a window that grows with the font scale. */
+val RvGalleryVariants = listOf(Light, Dark, FontScale200, FontScale200Dark).map { it.tall((2000 * it.fontScale).toInt()) }

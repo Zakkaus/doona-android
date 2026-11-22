@@ -34,7 +34,7 @@ internal fun DialogGallery() = GalleryPage("Dialog") {
 /** The window under a dialog: the page's colour with the scrim over it. */
 @Composable
 private fun Underlay(content: @Composable () -> Unit) {
-    Box(Modifier.fillMaxWidth().background(DoonaTheme.colors.window)) {
+    Box(Modifier.fillMaxWidth().background(DoonaTheme.colors.page)) {
         Column(Modifier.fillMaxWidth().background(DoonaTheme.colors.scrim).padding(DoonaTheme.spacing.gutter), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.section)) {
             content()
         }

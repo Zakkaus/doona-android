@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,8 +18,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.ChevronDirection
-import dev.doona.android.designsystem.components.DoonaBadge
 import dev.doona.android.designsystem.components.DoonaBarAction
 import dev.doona.android.designsystem.components.DoonaCard
 import dev.doona.android.designsystem.components.DoonaChevron
@@ -35,6 +34,7 @@ import dev.doona.android.designsystem.components.DoonaProgress
 import dev.doona.android.designsystem.components.DoonaProgressSize
 import dev.doona.android.designsystem.components.DoonaSegmented
 import dev.doona.android.designsystem.components.DoonaSmallStatusLight
+import dev.doona.android.designsystem.components.DoonaTag
 import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.components.lineHeightOf
@@ -127,7 +127,7 @@ private fun kindLabel(kind: GroupKind): String = stringResource(
 )
 
 /**
- * Group heading facts: kind badge, then the available, untested and failed counts as small lights (§7, DoonaBadge,
+ * Group heading facts: kind tag, then the available, untested and failed counts as small lights (§7, DoonaTag,
  * Status light). A count of none is left out, so a group that was never tested says only that.
  */
 @Composable
@@ -140,7 +140,7 @@ internal fun GroupFacts(group: Group) {
         verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight),
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        DoonaBadge(kindLabel(group.kind))
+        DoonaTag(kindLabel(group.kind))
         DoonaSmallStatusLight(Tone.Ok, stringResource(R.string.policy_healthy, healthy))
         if (untested > 0) DoonaSmallStatusLight(Tone.Neutral, stringResource(R.string.policy_untested, untested))
         if (failed > 0) DoonaSmallStatusLight(Tone.Err, stringResource(R.string.policy_failed_count, failed))
@@ -152,16 +152,21 @@ internal fun GroupFacts(group: Group) {
 private fun GroupCard(item: GroupItem, onOpen: () -> Unit) {
     val c = DoonaTheme.colors
     val group = item.group
-    DoonaCard(Modifier.fillMaxWidth(), onClick = onOpen) {
+    DoonaCard(
+        Modifier.fillMaxWidth(),
+        onClick = onOpen,
+        contentPadding = PaddingValues(DoonaTheme.spacing.cardInset),
+        verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block),
+    ) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
-                DoonaText(group.name, style = DoonaTheme.type.cardTitle, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                DoonaText(group.name, style = DoonaTheme.type.blockTitle, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 GroupFacts(group)
             }
             DoonaHGap(DoonaTheme.spacing.block)
             // The chevron is centred on the title's first line.
-            Box(Modifier.height(lineHeightOf(DoonaTheme.type.cardTitle)), contentAlignment = Alignment.Center) {
-                DoonaChevron(ChevronDirection.Right, c.text.secondary)
+            Box(Modifier.height(lineHeightOf(DoonaTheme.type.blockTitle)), contentAlignment = Alignment.Center) {
+                DoonaChevron(color = c.textSecondary)
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -181,7 +186,7 @@ private fun GroupCard(item: GroupItem, onOpen: () -> Unit) {
 @Composable
 internal fun CurrentSummary(current: Member?, style: TextStyle, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        DoonaText(stringResource(R.string.policy_current), style = style, color = DoonaTheme.colors.text.primary, maxLines = 1, softWrap = false)
+        DoonaText(stringResource(R.string.policy_current), style = style, color = DoonaTheme.colors.text, maxLines = 1, softWrap = false)
         DoonaHGap(DoonaTheme.spacing.block)
         DoonaNodeName(current?.name ?: "—", style, modifier = Modifier.weight(1f, fill = false))
     }

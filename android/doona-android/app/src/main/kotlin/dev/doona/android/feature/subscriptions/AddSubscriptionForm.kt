@@ -3,6 +3,7 @@ package dev.doona.android.feature.subscriptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -41,7 +42,7 @@ fun AddSubscriptionForm(
         state.error?.let { code ->
             DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), onDismissError)
         }
-        DoonaCard {
+        DoonaCard(contentPadding = PaddingValues(DoonaTheme.spacing.cardInset), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
             DoonaTextField(
                 fields.url,
                 label = stringResource(R.string.sub_url),

@@ -30,7 +30,7 @@ class IconInkTest {
     fun theTableHoldsWhatEveryIconDraws() {
         val icons = DoonaIconInk.icons.toList()
         val size = DoonaTheme.size.icon
-        compose.setDoonaContent { androidx.compose.foundation.layout.Column { icons.forEach { DoonaIcon(it, DoonaTheme.colors.text.primary, Modifier.testTag("icon-$it")) } } }
+        compose.setDoonaContent { androidx.compose.foundation.layout.Column { icons.forEach { DoonaIcon(it, DoonaTheme.colors.text, Modifier.testTag("icon-$it")) } } }
         icons.forEach { icon ->
             val ink = compose.onNodeWithTag("icon-$icon").inkInsets(compose.density.density)
             assertNotNull("icon $icon draws nothing", ink)

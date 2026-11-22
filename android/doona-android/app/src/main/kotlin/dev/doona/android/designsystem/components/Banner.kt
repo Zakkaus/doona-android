@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.scripted
 
 /**
  * Error banner: a card with the error tone's dot and border, holding a message that may wrap. It is the one card that
@@ -40,14 +41,14 @@ fun DoonaErrorBanner(message: String, dismissLabel: String, onDismiss: () -> Uni
             .heightIn(min = DoonaTheme.size.touch)
             .clip(shape)
             .background(c.card)
-            .border(DoonaTheme.size.border, c.negative, shape)
+            .border(DoonaTheme.size.ring, c.slow, shape)
             .clickable(role = Role.Button, onClickLabel = dismissLabel, onClick = onDismiss)
             .semantics { liveRegion = LiveRegionMode.Polite }
             .padding(DoonaTheme.spacing.cardInset),
         verticalAlignment = Alignment.Top,
     ) {
-        LineDot(Tone.Err, style, DoonaTheme.size.dot)
+        LineDot(Tone.Err, style, DoonaTheme.size.statusDot)
         Spacer(Modifier.width(DoonaTheme.spacing.item))
-        Text(message, style = style, color = c.text.primary)
+        Text(scripted(message), style = style, color = c.text)
     }
 }
