@@ -18,11 +18,10 @@ use route::ModeCell;
 use std::future::Future;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::panic::AssertUnwindSafe;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering::Relaxed};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Handle;
-use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 pub(crate) use tun::Tun;
@@ -46,18 +45,111 @@ pub struct Settings {
 pub(crate) type TunHandle = Arc<Tun>;
 
 /// What serves a generation's tun: the netstack driver, or a stand-in in unit tests. It sends on
-/// `ready` once it serves the tun.
-pub(crate) type Launch =
-    fn(TunHandle, Settings, Gen, oneshot::Sender<()>) -> BoxFuture<'static, ()>;
+/// its [`StartSignal`] once it serves the tun.
+pub(crate) type Launch = fn(TunHandle, Settings, Gen, StartSignal) -> BoxFuture<'static, ()>;
 
 /// The [`Launch`] the app runs.
 pub(crate) fn drive(
     tun: TunHandle,
     settings: Settings,
     gen_: Gen,
-    ready: oneshot::Sender<()>,
+    ready: StartSignal,
 ) -> BoxFuture<'static, ()> {
     Box::pin(driver::run(tun, settings, gen_, ready))
+}
+
+/// How a starting generation reports to the thread that waits in `start`. That thread waits on
+/// it with its own timer, so `start` keeps its deadline even while every runtime worker is held.
+pub(crate) struct Gate {
+    state: Mutex<GateState>,
+    changed: Condvar,
+}
+
+#[derive(Default)]
+struct GateState {
+    /// `Some(true)` once the tun is served, `Some(false)` if the driver gave up first.
+    ready: Option<bool>,
+    /// A `stop` cancelled the start.
+    aborted: bool,
+}
+
+impl Gate {
+    pub fn new() -> Arc<Gate> {
+        Arc::new(Gate {
+            state: Mutex::new(GateState::default()),
+            changed: Condvar::new(),
+        })
+    }
+
+    /// Cancels the start; this wins over a readiness reported at the same time.
+    pub fn abort(&self) {
+        self.update(|s| s.aborted = true);
+    }
+
+    pub fn aborted(&self) -> bool {
+        self.lock().aborted
+    }
+
+    fn report(&self, ready: bool) {
+        self.update(|s| {
+            s.ready.get_or_insert(ready);
+        });
+    }
+
+    fn update(&self, f: impl FnOnce(&mut GateState)) {
+        f(&mut self.lock());
+        self.changed.notify_all();
+    }
+
+    /// Waits on the calling thread until the driver reports, a `stop` aborts, or `deadline`
+    /// passes.
+    fn wait(&self, deadline: Instant) -> Result<(), ErrorCode> {
+        let mut s = self.lock();
+        loop {
+            if s.aborted {
+                return Err(ErrorCode::Busy);
+            }
+            match s.ready {
+                Some(true) => return Ok(()),
+                Some(false) => return Err(ErrorCode::Internal),
+                None => {}
+            }
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() {
+                return Err(ErrorCode::Internal);
+            }
+            s = self
+                .changed
+                .wait_timeout(s, left)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+        }
+    }
+
+    /// A poisoned lock still holds a consistent state: every update only assigns.
+    fn lock(&self) -> MutexGuard<'_, GateState> {
+        self.state.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
+/// The driver's side of a [`Gate`]: `send` reports the tun served; dropped unsent, it reports
+/// that the driver gave up.
+pub(crate) struct StartSignal(Option<Arc<Gate>>);
+
+impl StartSignal {
+    pub fn send(mut self) {
+        if let Some(gate) = self.0.take() {
+            gate.report(true);
+        }
+    }
+}
+
+impl Drop for StartSignal {
+    fn drop(&mut self) {
+        if let Some(gate) = self.0.take() {
+            gate.report(false);
+        }
+    }
 }
 
 /// What `snapshot` reports about one generation; its tasks update it.
@@ -151,16 +243,16 @@ pub struct Tunnel {
 }
 
 impl Tunnel {
-    /// Serves `tun` and returns once `launch` does, by `deadline`, cleanup included. `abort` (a
-    /// `stop` arriving meanwhile) ends the wait with `busy`, and wins over a readiness that
-    /// arrives at the same time. On any failure the generation is halted, which closes `tun`.
+    /// Serves `tun` and returns once `launch` does, by `deadline`, cleanup included. A `stop`
+    /// arriving meanwhile aborts `gate`, which ends the wait with `busy`. On any failure the
+    /// generation is halted, which closes `tun`.
     pub(crate) fn start(
         rt: &Handle,
         tun: Arc<Tun>,
         (settings, generation): (Settings, i64),
         launch: Launch,
         deadline: Instant,
-        abort: &CancellationToken,
+        gate: &Arc<Gate>,
     ) -> Result<Tunnel, ErrorCode> {
         let tunnel = Tunnel {
             gen_: Gen {
@@ -171,19 +263,10 @@ impl Tunnel {
             },
             tun: Arc::clone(&tun),
         };
-        let (ready_tx, ready_rx) = oneshot::channel();
+        let signal = StartSignal(Some(Arc::clone(gate)));
         let gen_ = tunnel.gen_.clone();
-        tunnel.gen_.spawn(launch(tun, settings, gen_, ready_tx));
-        // Timers must be created inside block_on, where the runtime's context is set.
-        let up = rt.block_on(async {
-            tokio::select! {
-                biased;
-                () = abort.cancelled() => Err(ErrorCode::Busy),
-                r = ready_rx => r.map_err(|_| ErrorCode::Internal),
-                () = tokio::time::sleep_until(deadline.into()) => Err(ErrorCode::Internal),
-            }
-        });
-        match up {
+        tunnel.gen_.spawn(launch(tun, settings, gen_, signal));
+        match gate.wait(deadline) {
             Ok(()) => Ok(tunnel),
             Err(code) => {
                 tunnel.halt();
@@ -211,9 +294,18 @@ impl Tunnel {
         let begun = Instant::now();
         let until = deadline.min(begun + STOP_WAIT);
         let g = &self.gen_;
-        let done = rt
-            .block_on(async { tokio::time::timeout_at(until.into(), g.tracker.wait()).await })
-            .is_ok();
+        let done = g.tracker.is_empty() || {
+            // A runtime task reports the end, but the wait is timed on this thread, so it ends
+            // on time even while every worker is held.
+            let (tx, rx) = std::sync::mpsc::channel();
+            let tracker = g.tracker.clone();
+            rt.spawn(async move {
+                tracker.wait().await;
+                let _ = tx.send(());
+            });
+            rx.recv_timeout(until.saturating_duration_since(Instant::now()))
+                .is_ok()
+        };
         let ms = begun.elapsed().as_millis();
         let generation = g.session.generation;
         if done {

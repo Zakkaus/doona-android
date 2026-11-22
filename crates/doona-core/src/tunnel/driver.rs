@@ -10,7 +10,7 @@ use super::flow::{self, Event, Events, Key, Waker};
 use super::route::Route;
 use super::tcp::{self, Step, TcpFlow};
 use super::udp::{self, Budget, Nat};
-use super::{Gen, Settings, Tun};
+use super::{Gen, Settings, StartSignal, Tun};
 use crate::sys;
 use honk_netstack::{
     AcceptOpts, AcceptWhen, Config, ExcludeSet, FlowId, Mode, Ready, Refuse, Rx, Stack,
@@ -21,7 +21,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::io::Interest;
-use tokio::sync::{Semaphore, mpsc, oneshot};
+use tokio::sync::{Semaphore, mpsc};
 
 /// Packets read per wakeup before the stack's output gets a turn (the stack's batch limit).
 const TUN_BATCH: usize = 64;
@@ -37,13 +37,13 @@ const DNS_IN_FLIGHT: usize = 64;
 const TCP_BUF: usize = 4 << 20;
 const STACK_MEMORY: usize = 128 << 20;
 
-pub(crate) async fn run(tun: Arc<Tun>, settings: Settings, gen_: Gen, ready: oneshot::Sender<()>) {
+pub(crate) async fn run(tun: Arc<Tun>, settings: Settings, gen_: Gen, ready: StartSignal) {
     let (events_tx, mut events) = mpsc::unbounded_channel();
     let Ok(mut d) = Driver::new(settings, gen_.clone(), events_tx) else {
         // `ready` drops unsent: start fails with internal.
         return;
     };
-    let _ = ready.send(());
+    ready.send();
     // A stopped generation's tun is revoked; the error that follows is not a failure.
     if let Err(e) = d.serve(&tun, &mut events).await
         && !gen_.cancel.is_cancelled()

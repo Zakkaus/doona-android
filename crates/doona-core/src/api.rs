@@ -7,7 +7,7 @@ use crate::dto::{
 };
 use crate::state::{Loaded, State, Store};
 use crate::tunnel::route::ModeCell;
-use crate::tunnel::{self, Launch, STOP_WAIT, Settings, Tun, Tunnel};
+use crate::tunnel::{self, Gate, Launch, STOP_WAIT, Settings, Tun, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::net::SocketAddr;
@@ -17,7 +17,6 @@ use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
-use tokio_util::sync::CancellationToken;
 
 /// The tokio runtime's worker threads; flows are I/O bound and the phone has few big cores.
 const WORKERS: usize = 2;
@@ -66,7 +65,7 @@ enum Life {
     Stopped,
     /// A `start` is under way; a `stop` cancels it and closes its tun.
     Starting {
-        abort: CancellationToken,
+        gate: Arc<Gate>,
         tun: Arc<Tun>,
     },
     Running(Tunnel),
@@ -154,8 +153,8 @@ impl Core {
     ) -> Result<i64, ErrorCode> {
         let rt = self.runtime.handle();
         let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
-        let abort = CancellationToken::new();
-        let old = self.begin(&abort, &tun)?;
+        let gate = Gate::new();
+        let old = self.begin(&gate, &tun)?;
         let generation = self.generation.fetch_add(1, Relaxed) + 1;
         if let Some(old) = old {
             old.wait(rt, deadline);
@@ -166,19 +165,15 @@ impl Core {
             (settings, generation),
             self.launch.0,
             deadline,
-            &abort,
+            &gate,
         );
-        self.finish(started, &abort, deadline)?;
+        self.finish(started, &gate, deadline)?;
         Ok(generation)
     }
 
     /// Marks a start under way, or answers `busy` (closing `tun`) while another is. Halts the
     /// running generation, if any, and hands it back for the caller to wait for.
-    fn begin(
-        &self,
-        abort: &CancellationToken,
-        tun: &Arc<Tun>,
-    ) -> Result<Option<Tunnel>, ErrorCode> {
+    fn begin(&self, gate: &Arc<Gate>, tun: &Arc<Tun>) -> Result<Option<Tunnel>, ErrorCode> {
         let mut life = lock(&self.life);
         if matches!(*life, Life::Starting { .. }) {
             drop(life);
@@ -186,7 +181,7 @@ impl Core {
             return Err(ErrorCode::Busy);
         }
         let starting = Life::Starting {
-            abort: abort.clone(),
+            gate: Arc::clone(gate),
             tun: Arc::clone(tun),
         };
         match std::mem::replace(&mut *life, starting) {
@@ -198,34 +193,39 @@ impl Core {
         }
     }
 
-    /// Publishes the started generation, unless a `stop` cancelled the start meanwhile: that
+    /// Publishes the started generation, unless a `stop` aborted the start meanwhile (that
     /// `stop` closed the tun already and left the core stopped, which a newer `start` may have
-    /// changed since.
+    /// changed since) or the deadline passed as the driver became ready.
     fn finish(
         &self,
         started: Result<Tunnel, ErrorCode>,
-        abort: &CancellationToken,
+        gate: &Gate,
         deadline: Instant,
     ) -> Result<(), ErrorCode> {
         let mut life = lock(&self.life);
-        if abort.is_cancelled() {
-            drop(life);
-            if let Ok(tunnel) = started {
-                tunnel.halt();
-                tunnel.wait(self.runtime.handle(), deadline);
+        // `stop` aborts under the life lock, which is held here, so this cannot change below.
+        let aborted = gate.aborted();
+        let (late, code) = if aborted {
+            (started.ok(), ErrorCode::Busy)
+        } else {
+            match started {
+                Ok(tunnel) if Instant::now() < deadline => {
+                    *life = Life::Running(tunnel);
+                    return Ok(());
+                }
+                Ok(tunnel) => (Some(tunnel), ErrorCode::Internal),
+                Err(code) => (None, code),
             }
-            return Err(ErrorCode::Busy);
+        };
+        if !aborted {
+            *life = Life::Stopped;
         }
-        match started {
-            Ok(tunnel) => {
-                *life = Life::Running(tunnel);
-                Ok(())
-            }
-            Err(code) => {
-                *life = Life::Stopped;
-                Err(code)
-            }
+        drop(life);
+        if let Some(tunnel) = late {
+            tunnel.halt();
+            tunnel.wait(self.runtime.handle(), deadline);
         }
+        Err(code)
     }
 
     fn settings(&self, config: &str) -> Result<Settings, ErrorCode> {
@@ -251,8 +251,8 @@ impl Core {
                     tunnel.halt();
                     Some(tunnel)
                 }
-                Life::Starting { abort, tun } => {
-                    abort.cancel();
+                Life::Starting { gate, tun } => {
+                    gate.abort();
                     tun.revoke();
                     None
                 }

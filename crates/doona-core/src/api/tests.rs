@@ -5,30 +5,26 @@
 use super::Core;
 use crate::dto::ErrorCode;
 use crate::testutil::{TempDir, closed, tun};
-use crate::tunnel::{Gen, Settings, TunHandle};
+use crate::tunnel::{Gen, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::oneshot;
 
 const CONFIG: &str =
     r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":["192.168.8.1"]}"#;
 /// How long a stuck driver blocks its worker thread.
 const STUCK: Duration = Duration::from_millis(1500);
+/// How long each generation holds its worker in the tests that hold both of them.
+const HELD: Duration = Duration::from_millis(2500);
 /// What a returning call may take beyond its bound.
 const SLACK: Duration = Duration::from_millis(250);
 
 /// Ready at once, then blocks its worker without yielding, as a driver caught in a long
 /// operation would.
-fn stuck(
-    tun: TunHandle,
-    _: Settings,
-    _: Gen,
-    ready: oneshot::Sender<()>,
-) -> BoxFuture<'static, ()> {
+fn stuck(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'static, ()> {
     Box::pin(async move {
         let _held = tun;
-        let _ = ready.send(());
+        ready.send();
         std::thread::sleep(STUCK);
     })
 }
@@ -38,7 +34,7 @@ fn stuck_unready(
     tun: TunHandle,
     _: Settings,
     _: Gen,
-    ready: oneshot::Sender<()>,
+    ready: StartSignal,
 ) -> BoxFuture<'static, ()> {
     Box::pin(async move {
         let _held = (tun, ready);
@@ -51,12 +47,12 @@ fn stuck_then_unready(
     tun: TunHandle,
     _: Settings,
     gen_: Gen,
-    ready: oneshot::Sender<()>,
+    ready: StartSignal,
 ) -> BoxFuture<'static, ()> {
     Box::pin(async move {
         let _held = tun;
         if gen_.session.generation == 1 {
-            let _ = ready.send(());
+            ready.send();
             std::thread::sleep(STUCK);
         } else {
             let _ready = ready;
@@ -65,12 +61,40 @@ fn stuck_then_unready(
     })
 }
 
+/// Ready at once, then holds its worker for [`HELD`].
+fn held(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = tun;
+        ready.send();
+        std::thread::sleep(HELD);
+    })
+}
+
+/// The first generation as [`held`]; later ones hold their worker without becoming ready.
+fn held_then_unready(
+    tun: TunHandle,
+    _: Settings,
+    gen_: Gen,
+    ready: StartSignal,
+) -> BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = tun;
+        let _unsent = if gen_.session.generation == 1 {
+            ready.send();
+            None
+        } else {
+            Some(ready)
+        };
+        std::thread::sleep(HELD);
+    })
+}
+
 /// Ready after a second, then idle.
-fn slow(tun: TunHandle, _: Settings, _: Gen, ready: oneshot::Sender<()>) -> BoxFuture<'static, ()> {
+fn slow(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'static, ()> {
     Box::pin(async move {
         let _held = tun;
         tokio::time::sleep(Duration::from_secs(1)).await;
-        let _ = ready.send(());
+        ready.send();
         std::future::pending::<()>().await;
     })
 }
@@ -165,4 +189,35 @@ fn an_overlapping_start_is_busy() {
     let begun = Instant::now();
     core.stop();
     assert!(begun.elapsed() < Duration::from_secs(1));
+}
+
+#[test]
+fn start_keeps_its_deadline_while_both_workers_are_held() {
+    let dir = TempDir::new("api-held-start");
+    let bound = Duration::from_secs(1);
+    // The first generation, detached, holds one worker; its replacement holds the other.
+    let core = core(&dir, held_then_unready, bound);
+    let (first, _old) = tun();
+    core.start(first, CONFIG).unwrap();
+    let (second, new) = tun();
+    let begun = Instant::now();
+    assert_eq!(core.start(second, CONFIG), Err(ErrorCode::Internal));
+    let took = begun.elapsed();
+    assert!(closed(&new));
+    assert!(took < bound + SLACK, "{took:?}");
+}
+
+#[test]
+fn stop_keeps_its_bound_while_both_workers_are_held() {
+    let dir = TempDir::new("api-held-stop");
+    let core = core(&dir, held, Duration::from_secs(10));
+    let (first, _old) = tun();
+    core.start(first, CONFIG).unwrap();
+    let (second, running) = tun();
+    core.start(second, CONFIG).unwrap();
+    let begun = Instant::now();
+    core.stop();
+    let took = begun.elapsed();
+    assert!(closed(&running));
+    assert!(took < Duration::from_secs(1), "{took:?}");
 }
