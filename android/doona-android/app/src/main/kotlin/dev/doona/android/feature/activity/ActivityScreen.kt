@@ -115,8 +115,8 @@ private val Mode.label: Int
 private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
         DoonaTileRow {
-            RateTile(IconsR.drawable.sym_download, DoonaTheme.colors.series1, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
-            RateTile(IconsR.drawable.sym_upload, DoonaTheme.colors.series2, stringResource(R.string.ui_upload), rateText(state.upRate), state.upHistory)
+            RateTile(IconsR.drawable.sym_download, DoonaTheme.colors.down.line, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
+            RateTile(IconsR.drawable.sym_upload, DoonaTheme.colors.up.line, stringResource(R.string.ui_upload), rateText(state.upRate), state.upHistory)
         }
         // Direct traffic uses no node, so there is no latency to show.
         if (state.mode == Mode.Direct) return@Column
@@ -124,7 +124,7 @@ private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
         val latency = node?.latencyMs?.takeUnless { node.failed }
         DoonaMetricTile(
             icon = IconsR.drawable.sym_schedule,
-            caption = { DoonaNodeName(node?.name ?: stringResource(R.string.act_latency), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) },
+            caption = { DoonaNodeName(node?.name ?: stringResource(R.string.act_latency), DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary) },
             modifier = Modifier.fillMaxWidth(),
             onClick = state.outboundGroupId?.let { id -> { onOpenGroup(id) } },
         ) {
@@ -153,9 +153,9 @@ private fun ConnectionCard(status: Status, canStart: Boolean, onSwitch: (Boolean
 @Composable
 private fun ConnectionState(status: Status) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
-        DoonaStatusLight(status.tone, stringResource(status.label), style = DoonaTheme.type.cardTitle)
+        DoonaStatusLight(status.tone, stringResource(status.label), style = DoonaTheme.type.blockTitle)
         (status as? Status.Failed)?.let {
-            DoonaText(stringResource(it.reason.messageRes()), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
+            DoonaText(stringResource(it.reason.messageRes()), DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary)
         }
     }
 }

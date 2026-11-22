@@ -33,9 +33,9 @@ enum class DoonaProgressSize { Inline, Small }
  */
 @Composable
 fun DoonaProgress(modifier: Modifier = Modifier, size: DoonaProgressSize = DoonaProgressSize.Small) {
-    val box = if (size == DoonaProgressSize.Inline) DoonaTheme.size.iconInline else DoonaTheme.size.icon
+    val box = if (size == DoonaProgressSize.Inline) DoonaTheme.size.inlineGlyph else DoonaTheme.size.icon
     Spinner(
-        DoonaTheme.colors.accent,
+        DoonaTheme.colors.positive,
         box,
         modifier.semantics { progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate },
     )

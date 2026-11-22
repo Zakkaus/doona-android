@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.scripted
 import dev.doona.android.icons.R as IconsR
 
 /** One destination of the [DoonaHubBar]: its label and the icon of its first page. */
@@ -73,7 +74,7 @@ private fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Uni
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        DoonaIcon(icon, DoonaTheme.colors.text.primary, Modifier.offset(x = nudge))
+        DoonaIcon(icon, DoonaTheme.colors.text, Modifier.offset(x = nudge))
     }
 }
 
@@ -113,7 +114,7 @@ fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: L
     Box(
         modifier
             .fillMaxWidth()
-            .background(DoonaTheme.colors.window)
+            .background(DoonaTheme.colors.page)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Top)),
         contentAlignment = columnAlignment(),
     ) {
@@ -156,7 +157,7 @@ fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit,
     Box(
         modifier
             .fillMaxWidth()
-            .background(c.window)
+            .background(c.page)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Bottom)),
         contentAlignment = Alignment.TopCenter,
     ) {
@@ -185,7 +186,7 @@ fun DoonaHubRail(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit
             .layoutRole(LayoutRole.HubBar)
             .fillMaxHeight()
             .width(DoonaTheme.size.railWidth)
-            .background(DoonaTheme.colors.window)
+            .background(DoonaTheme.colors.page)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical))
             .selectableGroup(),
         verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item, Alignment.CenterVertically),
@@ -203,12 +204,12 @@ fun DoonaHubRail(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit
 fun DoonaHubShell(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val insets = DoonaTheme.insets
     if (DoonaTheme.compactHeight) {
-        Row(modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+        Row(modifier.fillMaxSize().background(DoonaTheme.colors.page)) {
             DoonaHubRail(tabs, selected, onSelect)
             Box(Modifier.weight(1f).fillMaxHeight().windowInsetsPadding(insets.only(WindowInsetsSides.End))) { content() }
         }
     } else {
-        Column(modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+        Column(modifier.fillMaxSize().background(DoonaTheme.colors.page)) {
             Box(Modifier.weight(1f).consumeWindowInsets(insets.only(WindowInsetsSides.Bottom))) { content() }
             DoonaHubBar(tabs, selected, onSelect)
         }
@@ -230,15 +231,15 @@ private fun HubTab(tab: DoonaHubTab, on: Boolean, modifier: Modifier, onClick: (
             Modifier
                 .size(DoonaTheme.size.hubPillWidth, DoonaTheme.size.hubPillHeight)
                 .clip(DoonaTheme.shape.pill)
-                .then(if (on) Modifier.background(c.selected) else Modifier),
+                .then(if (on) Modifier.background(c.navPill) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
-            DoonaIcon(tab.icon, if (on) c.accent else c.icon)
+            DoonaIcon(tab.icon, if (on) c.positive else c.textSecondary)
         }
         Text(
-            tab.label,
-            style = if (on) DoonaTheme.type.navLabelCurrent else DoonaTheme.type.navLabel,
-            color = if (on) c.text.primary else c.text.secondary,
+            scripted(tab.label),
+            style = if (on) DoonaTheme.type.tabLabelCurrent else DoonaTheme.type.tabLabel,
+            color = if (on) c.text else c.textSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -257,7 +258,7 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
         modifier
             .fillMaxSize()
             .clip(DoonaTheme.shape.sheet)
-            .background(DoonaTheme.colors.surface)
+            .background(DoonaTheme.colors.page)
             .verticalScroll(rememberScrollState()),
         contentAlignment = columnAlignment(),
     ) {
@@ -292,7 +293,7 @@ fun DoonaLazyPageSheet(modifier: Modifier = Modifier, state: LazyListState = rem
         modifier
             .fillMaxSize()
             .clip(DoonaTheme.shape.sheet)
-            .background(DoonaTheme.colors.surface),
+            .background(DoonaTheme.colors.page),
         contentAlignment = columnAlignment(),
     ) {
         LazyColumn(
@@ -315,7 +316,7 @@ fun DoonaLazyPageSheet(modifier: Modifier = Modifier, state: LazyListState = rem
 /** Page title `.rp-h1` 28/36/800 at the top of the sheet: the large title of the top app bar. */
 @Composable
 fun DoonaPageTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier.semantics { heading() })
+    Text(scripted(text), style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier.semantics { heading() })
 }
 
 /**
@@ -345,7 +346,7 @@ fun DoonaPageTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifi
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, style = DoonaTheme.type.label, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = DoonaTheme.spacing.fillInset))
+                    Text(scripted(label), style = DoonaTheme.type.label, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = DoonaTheme.spacing.fillInset))
                     if (on) {
                         Box(Modifier.matchParentSize(), contentAlignment = Alignment.BottomCenter) {
                             Box(
@@ -353,14 +354,14 @@ fun DoonaPageTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifi
                                     .fillMaxWidth()
                                     .height(DoonaTheme.size.tabUnderline)
                                     .clip(DoonaTheme.shape.pill)
-                                    .background(c.text.primary),
+                                    .background(c.text),
                             )
                         }
                     }
                 }
             }
         }
-        Box(Modifier.fillMaxWidth().height(DoonaTheme.size.border).background(c.line))
+        Box(Modifier.fillMaxWidth().height(DoonaTheme.size.ring).background(c.line))
     }
 }
 
@@ -375,7 +376,7 @@ fun DoonaPage(
     actions: List<DoonaBarAction> = emptyList(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+    Column(modifier.fillMaxSize().background(DoonaTheme.colors.page)) {
         DoonaTopBar(onBack, actions = actions)
         DoonaPageSheet(Modifier.weight(1f), content)
     }

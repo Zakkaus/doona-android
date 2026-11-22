@@ -42,7 +42,7 @@ internal fun GalleryPage(title: String, content: @Composable ColumnScope.() -> U
     Column(
         Modifier
             .fillMaxSize()
-            .background(DoonaTheme.colors.surface)
+            .background(DoonaTheme.colors.page)
             .windowInsetsPadding(DoonaTheme.insets)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = space.gutter, vertical = space.sheetTop),
@@ -56,7 +56,7 @@ internal fun GalleryPage(title: String, content: @Composable ColumnScope.() -> U
 @Composable
 internal fun Section(name: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
-        DoonaText(name, DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
+        DoonaText(name, DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary)
         content()
     }
 }
@@ -106,10 +106,10 @@ internal fun ControlsGallery() = GalleryPage("Controls") {
 internal fun CardsGallery() = GalleryPage("Cards") {
     val space = DoonaTheme.spacing
     Section("DoonaCard, plain and tappable") {
-        DoonaCard(Modifier.fillMaxWidth()) { DoonaText("hk-01", DoonaTheme.type.cardTitle, maxLines = 1) }
+        DoonaCard(Modifier.fillMaxWidth()) { DoonaText("hk-01", DoonaTheme.type.blockTitle, maxLines = 1) }
         DoonaCard(Modifier.fillMaxWidth(), onClick = {}) {
-            DoonaText("Proxy", DoonaTheme.type.cardTitle, maxLines = 1)
-            DoonaText(stringResource(R.string.group_every_node), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
+            DoonaText("Proxy", DoonaTheme.type.blockTitle, maxLines = 1)
+            DoonaText(stringResource(R.string.group_every_node), DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary)
         }
     }
     Section("DoonaControlCard") {
@@ -122,10 +122,10 @@ internal fun CardsGallery() = GalleryPage("Cards") {
     }
     Section("DoonaMetricTile") {
         DoonaTileRow {
-            MetricTile(IconsR.drawable.sym_download, DoonaTheme.colors.series1, stringResource(R.string.ui_download), "3.9 MB/s")
-            MetricTile(IconsR.drawable.sym_upload, DoonaTheme.colors.series2, stringResource(R.string.ui_upload), "330 kB/s")
+            MetricTile(IconsR.drawable.sym_download, DoonaTheme.colors.down.line, stringResource(R.string.ui_download), "3.9 MB/s")
+            MetricTile(IconsR.drawable.sym_upload, DoonaTheme.colors.up.line, stringResource(R.string.ui_upload), "330 kB/s")
         }
-        DoonaMetricTile(IconsR.drawable.sym_schedule, { DoonaNodeName("hk-01", DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) }, Modifier.fillMaxWidth()) {
+        DoonaMetricTile(IconsR.drawable.sym_schedule, { DoonaNodeName("hk-01", DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary) }, Modifier.fillMaxWidth()) {
             DoonaMetricLatency(42)
         }
     }
@@ -187,10 +187,10 @@ private fun typeRamp(): List<Pair<String, TextStyle>> = with(DoonaTheme.type) {
 private fun glyphs() {
     val c = DoonaTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block), verticalAlignment = Alignment.CenterVertically) {
-        DoonaChevron(ChevronDirection.Down, c.text.secondary)
-        DoonaChevron(ChevronDirection.Right, c.text.secondary)
-        DoonaIcon(IconsR.drawable.sym_speed, c.accent)
-        DoonaIcon(IconsR.drawable.sym_link, c.icon)
+        DoonaChevron(ChevronDirection.Down, c.textSecondary)
+        DoonaChevron(ChevronDirection.Right, c.textSecondary)
+        DoonaIcon(IconsR.drawable.sym_speed, c.positive)
+        DoonaIcon(IconsR.drawable.sym_link, c.textSecondary)
         DoonaFlag("HK", "HK")
         DoonaFlag("JP", "JP")
         DoonaFlag("US", "US")
@@ -203,7 +203,7 @@ private fun glyphs() {
 private fun swatches() {
     val c = DoonaTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
-        listOf(c.series1, c.series2).forEach {
+        listOf(c.down.line, c.up.line).forEach {
             Box(Modifier.size(DoonaTheme.size.control).clip(DoonaTheme.shape.control).background(it))
         }
     }

@@ -121,7 +121,7 @@ private fun Actions(detail: GroupDetail, onAction: (GroupAction) -> Unit) {
 @Composable
 private fun SubGroups(detail: GroupDetail, onOpenGroup: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
-        DoonaText(stringResource(R.string.policy_groups_inside), style = DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
+        DoonaText(stringResource(R.string.policy_groups_inside), style = DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
             detail.subGroups.forEach { DoonaTagChip(it.name, onClick = { onOpenGroup(it.id) }) }
         }

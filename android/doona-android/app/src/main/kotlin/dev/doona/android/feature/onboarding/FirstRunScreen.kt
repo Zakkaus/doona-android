@@ -63,9 +63,9 @@ fun FirstRunScreen(state: FirstRunUiState, fields: AddFormFields, onAction: (Fir
         DoonaPageTitle(stringResource(R.string.hub_activity))
         DoonaGap(space.section)
         Column(verticalArrangement = Arrangement.spacedBy(space.tight)) {
-            DoonaText(stringResource(R.string.first_heading), style = DoonaTheme.type.cardTitle)
-            DoonaText(stringResource(R.string.first_line_what), style = DoonaTheme.type.body, color = DoonaTheme.colors.text.secondary)
-            DoonaText(stringResource(R.string.first_line_next), style = DoonaTheme.type.body, color = DoonaTheme.colors.text.secondary)
+            DoonaText(stringResource(R.string.first_heading), style = DoonaTheme.type.blockTitle)
+            DoonaText(stringResource(R.string.first_line_what), style = DoonaTheme.type.body, color = DoonaTheme.colors.textSecondary)
+            DoonaText(stringResource(R.string.first_line_next), style = DoonaTheme.type.body, color = DoonaTheme.colors.textSecondary)
         }
         DoonaGap(space.section)
         Column(verticalArrangement = Arrangement.spacedBy(space.block)) {

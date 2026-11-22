@@ -13,10 +13,10 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
@@ -24,6 +24,7 @@ import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
+import dev.doona.android.testing.SeedTheme
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -40,7 +41,7 @@ class PolicyFlowsTest {
     private val url = "https://example.invalid/x"
 
     private fun show(engine: Engine, vararg start: NavKey) {
-        compose.setContent { DoonaTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = start.toList().ifEmpty { listOf(ActivityKey) }) } }
+        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = start.toList().ifEmpty { listOf(ActivityKey) }) } }
     }
 
     private fun typeUrl() {
@@ -121,7 +122,7 @@ class PolicyFlowsTest {
         compose.onNodeWithText("Connected").assertDoesNotExist()
 
         typeUrl()
-        compose.onNodeWithText("Add").performClick()
+        compose.onNodeWithText("Add").performScrollTo().performClick()
 
         compose.onNodeWithText("Add your first subscription").assertDoesNotExist()
         assertTrue("the activity screen's switch", compose.onAllNodes(isToggleable()).fetchSemanticsNodes().isNotEmpty())
@@ -167,7 +168,7 @@ class PolicyFlowsTest {
             }
         }
         var starts = 0
-        compose.setContent { DoonaTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = { starts++ }) } }
+        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = { starts++ }) } }
         compose.runOnIdle { fake.subscriptions.value = emptyList() }
 
         // The one switch is the one that stops the tunnel; a tap on it is the user's Stop.

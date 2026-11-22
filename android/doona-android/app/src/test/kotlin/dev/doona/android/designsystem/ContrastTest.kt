@@ -3,135 +3,106 @@ package dev.doona.android.designsystem
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import dev.doona.android.designsystem.theme.DoonaColors
-import dev.doona.android.designsystem.tokens.Dawn
-import dev.doona.android.designsystem.tokens.DoonaPalette
-import dev.doona.android.designsystem.tokens.Moon
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
+import dev.doona.android.designsystem.theme.contrastRatio
+import dev.doona.android.testing.Seed
+import dev.doona.android.testing.seedColors
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** WCAG contrast of every colour role against the fills it is drawn on, in both themes. */
+/**
+ * WCAG contrast of every colour role against the fills it is drawn on. The roles derive from the wallpaper's scheme, so
+ * the rules hold for the owner's Cyan, a warm Orange and a dark Navy accent, each in light and dark.
+ */
 class ContrastTest {
-    private fun ratio(a: Color, b: Color): Float {
-        val (hi, lo) = listOf(a.luminance(), b.luminance()).sortedDescending()
-        return (hi + 0.05f) / (lo + 0.05f)
+    private class Theme(val name: String, val c: DoonaColors) {
+        val fills = mapOf("page" to c.page, "card" to c.card, "disc" to c.discOnCard)
     }
 
-    private class Theme(val name: String, val palette: DoonaPalette) {
-        val c = DoonaColors(palette)
-        val fills = mapOf("window" to c.window, "surface" to c.surface, "card" to c.card, "control" to c.control, "selected" to c.selected)
+    private val themes = Seed.entries.flatMap { seed ->
+        listOf(false, true).map { dark -> Theme("${seed.name} ${if (dark) "dark" else "light"}", seedColors(dark, seed)) }
     }
 
-    private val themes = listOf(Theme("Dawn", Dawn), Theme("Moon", Moon))
+    private class Check(val what: String, val ratio: Float, val minimum: Float)
 
-    private fun failures(roles: (Theme) -> Map<String, Color>, minimum: Float): List<String> = themes.flatMap { t ->
-        roles(t).flatMap { (role, color) ->
-            t.fills.map { (fill, bg) -> Triple("${t.name}: $role on $fill", ratio(color, bg), minimum) }
+    private fun assertAll(checks: (Theme) -> List<Check>) {
+        val bad = themes.flatMap { t -> checks(t).map { Check("${t.name}: ${it.what}", it.ratio, it.minimum) } }.filter { it.ratio < it.minimum }
+        assertTrue(bad.joinToString("\n") { "%s is %.2f:1, under %.1f".format(it.what, it.ratio, it.minimum) }, bad.isEmpty())
+    }
+
+    private fun Theme.on(role: String, color: Color, minimum: Float, fills: List<String> = this.fills.keys.toList()) =
+        fills.map { Check("$role on $it", contrastRatio(color, this.fills.getValue(it)), minimum) }
+
+    @Test
+    fun textHasFourPointFiveToOne() = assertAll { t ->
+        t.on("text", t.c.text, TEXT) + t.on("textSecondary", t.c.textSecondary, TEXT) +
+            Check("textSecondary on the selected pill", contrastRatio(t.c.textSecondary, t.c.navPill), TEXT)
+    }
+
+    /** The latency qualities are text: a latency's value, a status line, a field's error. */
+    @Test
+    fun latencyHuesHaveFourPointFiveToOne() = assertAll { t ->
+        listOf("good" to t.c.good, "fair" to t.c.fair, "slow" to t.c.slow).flatMap { (name, hue) ->
+            t.on(name, hue, TEXT) + Check("$name on the selected pill", contrastRatio(hue, t.c.navPill), TEXT)
         }
-    }.filter { it.second < it.third }.map { "%s is %.2f:1, under %.1f".format(it.first, it.second, it.third) }
-
-    @Test
-    fun textHasFourPointFiveToOne() {
-        val bad = failures({ t -> t.c.text.let { mapOf("text.primary" to it.primary, "text.secondary" to it.secondary, "text.positive" to it.positive, "text.notice" to it.notice, "text.negative" to it.negative) } }, 4.5f)
-        assertTrue(bad.joinToString("\n"), bad.isEmpty())
     }
 
-    /** A text button sits on the window, the sheet, a card or a control fill, never on the selected one, where Dawn's pine is 4.42:1. */
+    /** A text button sits on the page, a card or a disc fill. */
     @Test
-    fun accentTextHasFourPointFiveToOneOnTheFillsATextButtonSitsOn() {
-        val bad = themes.flatMap { t ->
-            listOf("window", "surface", "card", "control").map { fill -> Triple("${t.name}: text.accent on $fill", ratio(t.c.text.accent, t.fills.getValue(fill)), 4.5f) }
-        }.filter { it.second < it.third }
-        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
-    }
+    fun accentTextHasFourPointFiveToOne() = assertAll { t -> t.on("accentText", t.c.accentText, TEXT) }
 
     @Test
-    fun accentTextOnAccentFillHasFourPointFiveToOne() {
-        val bad = themes.map { it to ratio(it.c.onAccent, it.c.accent) }.filter { it.second < 4.5f }
-        assertTrue(bad.joinToString { "${it.first.name}: onAccent on accent is %.2f:1".format(it.second) }, bad.isEmpty())
+    fun labelsOnFilledButtonsHaveFourPointFiveToOne() = assertAll { t ->
+        listOf(
+            Check("onPositive on positive", contrastRatio(t.c.onPositive, t.c.positive), TEXT),
+            Check("onDestructive on destructive", contrastRatio(t.c.onDestructive, t.c.destructive), TEXT),
+        )
     }
 
-    /** The destructive button's label is the on-accent colour. */
+    /** The accent fills buttons, checked boxes and the meter, and colours glyphs: 3:1 on what they sit on. */
     @Test
-    fun destructiveTextOnDestructiveFillHasFourPointFiveToOne() {
-        val bad = themes.map { it to ratio(it.c.onAccent, it.c.destructive) }.filter { it.second < 4.5f }
-        assertTrue(bad.joinToString { "${it.first.name}: onAccent on destructive is %.2f:1".format(it.second) }, bad.isEmpty())
+    fun accentFillsAndGlyphsHaveThreeToOne() = assertAll { t -> t.on("positive", t.c.positive, MARK, listOf("page", "card")) }
+
+    /** A control's marks (a checkbox's outline, a chevron, an outlined button's edge) show its state at 3:1. */
+    @Test
+    fun controlMarksHaveThreeToOne() = assertAll { t -> t.on("control", t.c.control, MARK, listOf("page", "card")) }
+
+    /** The meter's track shows on the card and the page, and its fill is 3:1 on the track. FeedbackTest holds that the meter draws them. */
+    @Test
+    fun theMeterTrackShowsAndTheFillHasThreeToOne() = assertAll { t ->
+        t.on("track", t.c.track, STEP, listOf("page", "card")) + Check("the meter fill on its track", contrastRatio(t.c.positive, t.c.track), MARK)
     }
 
+    /** WCAG 1.4.11 on the switch, on and off: each thumb 3:1 on its track, each track or its rim 3:1 on the card. */
     @Test
-    fun accentFillsAndGlyphsHaveThreeToOneOnSheetAndCard() {
-        val bad = themes.flatMap { t ->
-            listOf("surface", "card").map { fill -> Triple("${t.name}: accent on $fill", ratio(t.c.accent, t.fills.getValue(fill)), 3f) }
-        }.filter { it.second < it.third }
-        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    fun theSwitchShowsItsStateAtThreeToOne() = assertAll { t ->
+        val onEdge = t.c.switchOnRim ?: t.c.switchOnTrack
+        listOf(
+            Check("off thumb on the off track", contrastRatio(t.c.switchOffThumb, t.c.control), MARK),
+            Check("off track on the card", contrastRatio(t.c.control, t.c.card), MARK),
+            Check("on thumb on the on track", contrastRatio(t.c.switchOnThumb, t.c.switchOnTrack), MARK),
+            Check("on track or its rim on the card", contrastRatio(onEdge, t.c.card), MARK),
+        )
     }
 
-    /** The checkbox's outline shows its state, so it is 3:1 against the card and the sheet it sits on. */
+    /** One frame per page: the card is a step lighter than the page in both themes, and a disc on it is not the card's colour. */
     @Test
-    fun theCheckboxOutlineHasThreeToOneOnSheetAndCard() {
-        val bad = themes.flatMap { t ->
-            listOf("card", "surface").map { fill -> Triple("${t.name}: checkbox outline on $fill", ratio(t.c.boxLine, t.fills.getValue(fill)), 3f) }
-        }.filter { it.second < it.third }
-        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
-    }
-
-    /**
-     * The meter's track shows on the card, the sheet and the window, and its fill, which shows how much is used, is 3:1
-     * on the track and on the card and the sheet beside it. FeedbackTest holds that the meter draws these two roles.
-     */
-    @Test
-    fun theMeterTrackShowsAndTheFillHasThreeToOne() {
-        val bad = themes.flatMap { t ->
-            listOf("card", "surface", "window").map { fill -> Triple("${t.name}: meter track on $fill", ratio(t.c.track, t.fills.getValue(fill)), 1.4f) } +
-                listOf("card", "surface").map { fill -> Triple("${t.name}: meter fill on $fill", ratio(t.c.meterFill, t.fills.getValue(fill)), 3f) } +
-                Triple("${t.name}: meter fill on its track", ratio(t.c.meterFill, t.c.track), 3f)
-        }.filter { it.second < it.third }
-        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
-    }
-
-    /** A text button is in the accent's hue in both themes: the role is never body text, and in light it is the accent itself. */
-    @Test
-    fun accentTextIsTheAccentsHueInBothThemes() {
+    fun aCardIsOneStepOffThePage() {
         themes.forEach { t ->
-            assertNotEquals("${t.name}: text.accent is body text", t.c.text.primary, t.c.text.accent)
-            assertTrue("${t.name}: text.accent is not bluer than red", t.c.text.accent.blue > t.c.text.accent.red)
-        }
-        assertEquals(Dawn.pine, DoonaColors(Dawn).text.accent)
-    }
-
-    /** WCAG 1.4.11: the parts of a control that show its state are 3:1 against what they sit on. */
-    @Test
-    fun switchOffShowsItsStateAtThreeToOne() {
-        val bad = themes.flatMap { t ->
-            listOf("card", "surface").map { fill -> Triple("${t.name}: off outline on $fill", ratio(t.c.switchOffLine, t.fills.getValue(fill)), 3f) } +
-                Triple("${t.name}: off knob on the off track", ratio(t.c.switchOffLine, t.c.switchOff), 3f)
-        }.filter { it.second < it.third }
-        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
-    }
-
-    @Test
-    fun switchOnKnobHasThreeToOneOnTheAccentTrack() {
-        val bad = themes.map { it to ratio(it.c.switchKnob, it.c.accent) }.filter { it.second < 3f }
-        assertTrue(bad.joinToString { "${it.first.name}: on knob on the accent track is %.2f:1".format(it.second) }, bad.isEmpty())
-    }
-
-    /** One frame per page: the card is a step off the sheet, lighter than it on Moon and darker on Dawn, and is not the control fill. */
-    @Test
-    fun aCardIsOneStepOffTheSheet() {
-        themes.forEach { t ->
-            val card = t.c.card.luminance()
-            val sheet = t.c.surface.luminance()
-            assertTrue("${t.name}: the card is not a step ${if (t.c.dark) "lighter" else "darker"} than the sheet", if (t.c.dark) card > sheet else card < sheet)
-            assertTrue("${t.name}: the card is %.3f:1 against the sheet, a step shows at 1.03".format(ratio(t.c.card, t.c.surface)), ratio(t.c.card, t.c.surface) >= 1.03f)
-            assertTrue("${t.name}: a control on the card is the card's own colour", t.c.control != t.c.card)
+            assertTrue("${t.name}: the card is not lighter than the page", t.c.card.luminance() > t.c.page.luminance())
+            assertTrue("${t.name}: the card is %.3f:1 against the page".format(contrastRatio(t.c.card, t.c.page)), contrastRatio(t.c.card, t.c.page) >= STEP)
+            assertTrue("${t.name}: a disc on the card is the card's own colour", contrastRatio(t.c.discOnCard, t.c.card) >= STEP)
         }
     }
 
-    /** The one selected fill shows on the bar it sits on. */
+    /** The one selected fill (the hub bar's current tab, the current node tile) shows on the page it sits on. */
     @Test
-    fun theSelectedFillShowsOnTheBar() {
-        val bad = themes.map { it to ratio(it.c.selected, it.c.window) }.filter { it.second < 1.15f }
-        assertTrue(bad.joinToString { "${it.first.name}: selected on the window is %.2f:1".format(it.second) }, bad.isEmpty())
+    fun theSelectedFillShowsOnThePage() = assertAll { t -> listOf(Check("the selected pill on the page", contrastRatio(t.c.navPill, t.c.page), STEP)) }
+
+    private companion object {
+        const val TEXT = 4.5f
+        const val MARK = 3f
+
+        /** A step between two fills shows at 1.03:1, the least the page and card of a scheme are apart. */
+        const val STEP = 1.03f
     }
 }

@@ -29,9 +29,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.scripted
 
 /**
- * Tag chip (§7): control height, padding 12, radius 8, overlay fill, 14/400. Without [onClick] it is a label; with it,
+ * Tag chip (§7): control height, padding 12, radius 8, the disc fill, 14/400. Without [onClick] it is a label; with it,
  * it is hit over 48 dp, as every control.
  */
 @Composable
@@ -41,12 +42,12 @@ fun DoonaTagChip(text: String, modifier: Modifier = Modifier, onClick: (() -> Un
             .layoutRole(LayoutRole.Control)
             .heightIn(min = DoonaTheme.size.control)
             .clip(DoonaTheme.shape.control)
-            .background(DoonaTheme.colors.control)
+            .background(DoonaTheme.colors.discOnCard)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .padding(horizontal = DoonaTheme.spacing.fillInset),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = DoonaTheme.type.body, color = DoonaTheme.colors.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(scripted(text), style = DoonaTheme.type.body, color = DoonaTheme.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -65,7 +66,7 @@ fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, 
             .layoutRole(LayoutRole.Control)
             .heightIn(min = DoonaTheme.size.control)
             .clip(DoonaTheme.shape.control)
-            .background(c.control)
+            .background(c.discOnCard)
             .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight),
     ) {
@@ -76,12 +77,12 @@ fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, 
                     .heightIn(min = DoonaTheme.size.control)
                     .widthIn(min = DoonaTheme.size.control)
                     .clip(DoonaTheme.shape.control)
-                    .then(if (on) Modifier.background(c.accent) else Modifier)
+                    .then(if (on) Modifier.background(c.positive) else Modifier)
                     .selectable(on, role = Role.RadioButton, onClick = { onSelect(i) })
                     .padding(horizontal = DoonaTheme.spacing.item),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, style = DoonaTheme.type.bodyTabular, color = if (on) c.onAccent else c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(scripted(label), style = DoonaTheme.type.bodyTabular, color = if (on) c.onPositive else c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -119,8 +120,8 @@ internal object DoonaSwitchDefaults {
 }
 
 /**
- * On, the track is the accent with the surface knob. Off, the track has the control fill, an outline and the knob in
- * the secondary text colour: those are the pair that reaches 3:1 against the card, which the old fill did not.
+ * The sample's switch colours on U1's geometry: on, the accent knob over the accent's tint, outlined in the accent where
+ * no tint reaches 3:1 on the card; off, the light knob with its ring over the control-grey track.
  */
 @Composable
 private fun SwitchTrack(checked: Boolean) {
@@ -130,8 +131,8 @@ private fun SwitchTrack(checked: Boolean) {
         Modifier
             .size(DoonaSwitchDefaults.trackWidth, DoonaSwitchDefaults.trackHeight)
             .clip(shape)
-            .background(if (checked) c.accent else c.switchOff)
-            .then(if (checked) Modifier else Modifier.border(DoonaTheme.size.border, c.switchOffLine, shape))
+            .background(if (checked) c.switchOnTrack else c.control)
+            .then(c.switchOnRim?.takeIf { checked }?.let { Modifier.border(DoonaTheme.size.ring, it, shape) } ?: Modifier)
             .padding(DoonaSwitchDefaults.knobInset),
         contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
@@ -139,7 +140,8 @@ private fun SwitchTrack(checked: Boolean) {
             Modifier
                 .size(DoonaSwitchDefaults.knob)
                 .clip(DoonaTheme.shape.pill)
-                .background(if (checked) c.switchKnob else c.switchOffLine),
+                .background(if (checked) c.switchOnThumb else c.switchOffThumb)
+                .then(if (checked) Modifier else Modifier.border(DoonaTheme.size.ring, c.control, DoonaTheme.shape.pill)),
         )
     }
 }
@@ -151,7 +153,7 @@ private fun SwitchTrack(checked: Boolean) {
 @Composable
 fun DoonaPicker(value: String, onClick: () -> Unit, modifier: Modifier = Modifier) = PickerRow(value, onClick, modifier, filled = false)
 
-/** The picker of a filter bar: a control with the overlay fill and 12 dp of padding at its sides. */
+/** The picker of a filter bar: a control with the disc fill and 12 dp of padding at its sides. */
 @Composable
 fun DoonaFilterPicker(value: String, onClick: () -> Unit, modifier: Modifier = Modifier) = PickerRow(value, onClick, modifier, filled = true)
 
@@ -163,13 +165,13 @@ private fun PickerRow(value: String, onClick: () -> Unit, modifier: Modifier, fi
             .layoutRole(LayoutRole.Control)
             .heightIn(min = DoonaTheme.size.control)
             .clip(DoonaTheme.shape.control)
-            .then(if (filled) Modifier.background(c.control) else Modifier)
+            .then(if (filled) Modifier.background(c.discOnCard) else Modifier)
             .clickable(role = Role.Button, onClick = onClick)
             .then(if (filled) Modifier.padding(horizontal = DoonaTheme.spacing.fillInset) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item),
     ) {
-        Text(value, style = DoonaTheme.type.body, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-        DoonaChevron(ChevronDirection.Down, c.text.primary)
+        Text(scripted(value), style = DoonaTheme.type.body, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        DoonaChevron(ChevronDirection.Down, c.text)
     }
 }

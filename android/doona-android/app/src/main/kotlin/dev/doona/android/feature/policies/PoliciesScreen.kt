@@ -155,13 +155,13 @@ private fun GroupCard(item: GroupItem, onOpen: () -> Unit) {
     DoonaCard(Modifier.fillMaxWidth(), onClick = onOpen) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
-                DoonaText(group.name, style = DoonaTheme.type.cardTitle, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                DoonaText(group.name, style = DoonaTheme.type.blockTitle, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 GroupFacts(group)
             }
             DoonaHGap(DoonaTheme.spacing.block)
             // The chevron is centred on the title's first line.
-            Box(Modifier.height(lineHeightOf(DoonaTheme.type.cardTitle)), contentAlignment = Alignment.Center) {
-                DoonaChevron(ChevronDirection.Right, c.text.secondary)
+            Box(Modifier.height(lineHeightOf(DoonaTheme.type.blockTitle)), contentAlignment = Alignment.Center) {
+                DoonaChevron(ChevronDirection.Right, c.textSecondary)
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -181,7 +181,7 @@ private fun GroupCard(item: GroupItem, onOpen: () -> Unit) {
 @Composable
 internal fun CurrentSummary(current: Member?, style: TextStyle, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        DoonaText(stringResource(R.string.policy_current), style = style, color = DoonaTheme.colors.text.primary, maxLines = 1, softWrap = false)
+        DoonaText(stringResource(R.string.policy_current), style = style, color = DoonaTheme.colors.text, maxLines = 1, softWrap = false)
         DoonaHGap(DoonaTheme.spacing.block)
         DoonaNodeName(current?.name ?: "—", style, modifier = Modifier.weight(1f, fill = false))
     }

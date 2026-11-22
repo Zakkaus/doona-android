@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.scripted
 
 enum class Tone { Ok, Warn, Err, Neutral }
 
@@ -37,10 +38,10 @@ fun latencyTone(ms: Int?): Tone = when {
 }
 
 fun toneColor(c: DoonaColors, tone: Tone): Color = when (tone) {
-    Tone.Ok -> c.positive
-    Tone.Warn -> c.notice
-    Tone.Err -> c.negative
-    Tone.Neutral -> c.neutral
+    Tone.Ok -> c.good
+    Tone.Warn -> c.fair
+    Tone.Err -> c.slow
+    Tone.Neutral -> c.textSecondary
 }
 
 /** The dot of a status, centred on the first line of text of [style] and sized with that line (see [dotSizeFor]). */
@@ -62,7 +63,7 @@ private fun StatusLight(tone: Tone, text: String, modifier: Modifier, style: Tex
     Row(modifier, verticalAlignment = Alignment.Top) {
         LineDot(tone, style, dot)
         Spacer(Modifier.width(gap))
-        Text(text, style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Text(scripted(text), style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
@@ -76,8 +77,8 @@ fun DoonaStatusLight(
     text: String,
     modifier: Modifier = Modifier,
     style: TextStyle = DoonaTheme.type.body,
-    color: Color = DoonaTheme.colors.text.primary,
-) = StatusLight(tone, text, modifier, style, color, DoonaTheme.size.dot, DoonaTheme.spacing.item)
+    color: Color = DoonaTheme.colors.text,
+) = StatusLight(tone, text, modifier, style, color, DoonaTheme.size.statusDot, DoonaTheme.spacing.item)
 
 /** The small status light (§7): the same with an 8 px dot, for counts that sit among text. */
 @Composable
@@ -86,18 +87,18 @@ fun DoonaSmallStatusLight(
     text: String,
     modifier: Modifier = Modifier,
     style: TextStyle = DoonaTheme.type.body,
-    color: Color = DoonaTheme.colors.text.primary,
-) = StatusLight(tone, text, modifier, style, color, DoonaTheme.size.dotSmall, DoonaTheme.spacing.item)
+    color: Color = DoonaTheme.colors.text,
+) = StatusLight(tone, text, modifier, style, color, DoonaTheme.size.dot, DoonaTheme.spacing.item)
 
-/** The latency text role of a tone: light keeps body text and shows the tone only in the dot. */
+/** The latency text role of a tone: the quality's hue, which reads at 4.5:1 on the page and the card. */
 @Composable
 private fun latencyColor(tone: Tone): Color {
-    val text = DoonaTheme.colors.text
+    val c = DoonaTheme.colors
     return when (tone) {
-        Tone.Ok -> text.positive
-        Tone.Warn -> text.notice
-        Tone.Err -> text.negative
-        Tone.Neutral -> text.secondary
+        Tone.Ok -> c.good
+        Tone.Warn -> c.fair
+        Tone.Err -> c.slow
+        Tone.Neutral -> c.textSecondary
     }
 }
 
@@ -129,7 +130,7 @@ fun DoonaLatency(ms: Int?, modifier: Modifier = Modifier) {
         modifier.semantics(mergeDescendants = true) { stateDescription = quality },
         DoonaTheme.type.latency,
         latencyColor(tone),
-        DoonaTheme.size.dotSmall,
+        DoonaTheme.size.dot,
         DoonaTheme.spacing.dotGap,
     )
 }
@@ -142,25 +143,25 @@ fun DoonaLatency(ms: Int?, modifier: Modifier = Modifier) {
 fun DoonaMetricLatency(ms: Int?, modifier: Modifier = Modifier) {
     val tone = latencyTone(ms)
     val quality = latencyQuality(tone)
-    val style = DoonaTheme.type.tileValue
+    val style = DoonaTheme.type.metricValue
     Row(modifier.semantics(mergeDescendants = true) { stateDescription = quality }, verticalAlignment = Alignment.Top) {
-        Text(latencyText(ms), style = style, color = latencyColor(tone), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).layoutRole(LayoutRole.Value))
+        Text(scripted(latencyText(ms)), style = style, color = latencyColor(tone), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).layoutRole(LayoutRole.Value))
         Spacer(Modifier.width(DoonaTheme.spacing.dotGap))
-        LineDot(tone, style, DoonaTheme.size.dotSmall)
+        LineDot(tone, style, DoonaTheme.size.dot)
     }
 }
 
-/** Badge (§7): at least 20 high, growing with the font size, padding 0 × 8, radius 6, 1 px hl-high border, 12/500 subtle. */
+/** Badge (§7): at least 20 high, growing with the font size, padding 0 × 8, radius 6, 1 px line border, 12/500 secondary. */
 @Composable
 fun DoonaBadge(text: String, modifier: Modifier = Modifier) {
     val c = DoonaTheme.colors
     Box(
         modifier
             .heightIn(min = DoonaTheme.size.badgeHeight)
-            .border(DoonaTheme.size.border, c.badgeBorder, DoonaTheme.shape.badge)
+            .border(DoonaTheme.size.ring, c.line, DoonaTheme.shape.badge)
             .padding(horizontal = DoonaTheme.spacing.item),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = DoonaTheme.type.badge, color = c.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(scripted(text), style = DoonaTheme.type.badge, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

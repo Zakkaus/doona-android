@@ -39,21 +39,21 @@ fun DoonaIcon(@DrawableRes icon: Int, tint: Color, modifier: Modifier = Modifier
 @Composable
 fun DoonaFlag(code: String, label: String, modifier: Modifier = Modifier) {
     val flag = flagResource(code)
-    val edge = DoonaTheme.colors.flagEdge
+    val edge = DoonaTheme.colors.flagRing
     val disc = modifier
         .size(DoonaTheme.size.flag)
-        .then(if (edge != null) Modifier.border(DoonaTheme.size.flagEdge, edge, DoonaTheme.shape.flag) else Modifier)
+        .border(DoonaTheme.size.flagEdge, edge, DoonaTheme.shape.flag)
     if (flag != null) {
         Image(painterResource(flag), contentDescription = label, modifier = disc)
         return
     }
     // The letters keep their size at any font scale: they must fit the disc, which does not grow.
     val letters = with(LocalDensity.current) { DoonaTheme.size.flagLetters.toSp() }
-    Box(disc.background(DoonaTheme.colors.control, DoonaTheme.shape.flag).semantics { contentDescription = label }, Alignment.Center) {
+    Box(disc.background(DoonaTheme.colors.flagFallback, DoonaTheme.shape.flag).semantics { contentDescription = label }, Alignment.Center) {
         DoonaText(
             code.take(2).uppercase(),
             DoonaTheme.type.badge.copy(fontSize = letters, lineHeight = letters),
-            color = DoonaTheme.colors.text.secondary,
+            color = DoonaTheme.colors.textSecondary,
             maxLines = 1,
             overflow = TextOverflow.Clip,
         )
@@ -103,7 +103,7 @@ fun DoonaChevron(
     direction: ChevronDirection,
     tint: Color,
     modifier: Modifier = Modifier,
-    size: Dp = if (direction == ChevronDirection.Down) DoonaTheme.size.iconInline else DoonaTheme.size.iconSmall,
+    size: Dp = if (direction == ChevronDirection.Down) DoonaTheme.size.inlineGlyph else DoonaTheme.size.iconSmall,
 ) {
     val down = direction == ChevronDirection.Down
     val ink = if (down) CHEVRON_DOWN_INK else CHEVRON_RIGHT_INK

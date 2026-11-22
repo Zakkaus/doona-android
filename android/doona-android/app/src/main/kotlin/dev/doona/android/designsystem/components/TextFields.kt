@@ -48,6 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.forInput
+import dev.doona.android.designsystem.theme.scripted
 import androidx.compose.ui.semantics.error as semanticsError
 import dev.doona.android.icons.R as IconsR
 
@@ -85,7 +87,7 @@ fun DoonaTextField(
     val c = DoonaTheme.colors
     FieldInput(state, modifier, enabled, keyboardOptions, onImeAction, error) { inner, focused, scroll ->
         Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
-            Text(label, style = DoonaTheme.type.caption, color = c.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(scripted(label), style = DoonaTheme.type.footnote, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             FieldBox(error != null, focused) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     val end = if (trailing == null) DoonaTheme.spacing.fillInset else DoonaTheme.spacing.item
@@ -96,7 +98,7 @@ fun DoonaTextField(
             if (error != null) {
                 FieldError(error)
             } else if (supportingText != null) {
-                Text(supportingText, style = DoonaTheme.type.caption, color = c.text.secondary)
+                Text(scripted(supportingText), style = DoonaTheme.type.footnote, color = c.textSecondary)
             }
         }
     }
@@ -124,7 +126,7 @@ fun DoonaSearchField(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.width(DoonaTheme.spacing.fillInset))
                 // The icon grows with the text beside it, as a button's glyph does.
-                DoonaIcon(IconsR.drawable.sym_search, c.icon, size = dotSizeFor(DoonaTheme.type.body, DoonaTheme.size.iconSmall))
+                DoonaIcon(IconsR.drawable.sym_search, c.textSecondary, size = dotSizeFor(DoonaTheme.type.body, DoonaTheme.size.iconSmall))
                 Spacer(Modifier.width(DoonaTheme.spacing.item))
                 Box(Modifier.weight(1f).padding(end = DoonaTheme.spacing.item)) { Typed(state, placeholder, enabled = true, readPlaceholder = false, scroll, inner) }
                 if (state.text.isNotEmpty()) DoonaIconAction(IconsR.drawable.sym_close, stringResource(R.string.ui_clear), onClick = { state.clearText() })
@@ -144,9 +146,9 @@ private fun Typed(state: TextFieldState, placeholder: String?, enabled: Boolean,
     Box(Modifier.fadedAtEdges(scroll), contentAlignment = Alignment.CenterStart) {
         if (state.text.isEmpty() && placeholder != null) {
             Text(
-                placeholder,
+                scripted(placeholder),
                 style = DoonaTheme.type.body,
-                color = if (enabled) c.text.secondary else c.text.disabled,
+                color = if (enabled) c.textSecondary else c.textDisabled,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = if (readPlaceholder) Modifier else Modifier.clearAndSetSemantics {},
@@ -191,9 +193,9 @@ private fun FieldBox(invalid: Boolean, focused: Boolean, content: @Composable ()
     val c = DoonaTheme.colors
     val shape = DoonaTheme.shape.control
     val ring = if (invalid) {
-        c.negative
+        c.slow
     } else if (focused) {
-        c.accent
+        c.positive
     } else {
         null
     }
@@ -203,7 +205,7 @@ private fun FieldBox(invalid: Boolean, focused: Boolean, content: @Composable ()
             .fillMaxWidth()
             .heightIn(min = DoonaTheme.size.touch)
             .clip(shape)
-            .background(c.control)
+            .background(c.discOnCard)
             .then(if (ring != null) Modifier.border(DoonaTheme.size.borderStrong, ring, shape) else Modifier),
         contentAlignment = Alignment.CenterStart,
     ) { content() }
@@ -213,9 +215,9 @@ private fun FieldBox(invalid: Boolean, focused: Boolean, content: @Composable ()
 private fun FieldError(message: String) {
     val style = DoonaTheme.type.fieldError
     Row(verticalAlignment = Alignment.Top) {
-        LineDot(Tone.Err, style, DoonaTheme.size.dotSmall)
+        LineDot(Tone.Err, style, DoonaTheme.size.dot)
         Spacer(Modifier.width(DoonaTheme.spacing.item))
-        Text(message, style = style, color = DoonaTheme.colors.text.negative)
+        Text(scripted(message), style = style, color = DoonaTheme.colors.slow)
     }
 }
 
@@ -245,7 +247,7 @@ private fun FieldInput(
             if (hint != null) hintText = hint
         },
         enabled = enabled,
-        textStyle = DoonaTheme.type.body.copy(color = if (enabled) c.text.primary else c.text.disabled),
+        textStyle = DoonaTheme.type.body.forInput().copy(color = if (enabled) c.text else c.textDisabled),
         keyboardOptions = keyboardOptions,
         onKeyboardAction = onImeAction?.let { act ->
             KeyboardActionHandler { performDefault ->
@@ -255,7 +257,7 @@ private fun FieldInput(
         },
         lineLimits = TextFieldLineLimits.SingleLine,
         interactionSource = interaction,
-        cursorBrush = SolidColor(c.accent),
+        cursorBrush = SolidColor(c.positive),
         scrollState = scroll,
         decorator = TextFieldDecorator { inner -> decoration(inner, focused, scroll) },
     )

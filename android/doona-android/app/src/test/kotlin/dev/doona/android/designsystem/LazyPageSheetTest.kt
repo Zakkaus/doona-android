@@ -25,13 +25,12 @@ import dev.doona.android.designsystem.components.DoonaLazyPageSheet
 import dev.doona.android.designsystem.components.DoonaPageSheet
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.components.LayoutRoleKey
-import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.tokens.Dawn
 import dev.doona.android.testing.GestureBar
 import dev.doona.android.testing.SpacingRules
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.layoutTree
+import dev.doona.android.testing.seedColors
 import dev.doona.android.testing.setDoonaContent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -59,7 +58,7 @@ class LazyPageSheetTest {
 
     private fun listOfRows() {
         compose.setDoonaContent {
-            Column(Modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+            Column(Modifier.fillMaxSize().background(DoonaTheme.colors.page)) {
                 DoonaLazyPageSheet {
                     items(ROWS, key = { it }) { DoonaCheckRow(checked = it % 2 == 0, onChange = {}, title = "App $it", subtitle = "com.example.app$it") }
                 }
@@ -95,14 +94,14 @@ class LazyPageSheetTest {
     @Test
     fun theSheetDrawsTheSurfaceWithRoundedTopCorners() {
         listOfRows()
-        val c = DoonaColors(Dawn)
+        val c = seedColors(false)
         compose.drawFully()
         val image = compose.onRoot().captureToImage().toPixelMap()
         val sheet = compose.layoutTree().descendants().first { it.role == LayoutRole.Sheet }
         val density = compose.density.density
         val top = (sheet.top * density).toInt()
-        assertEquals("the corner is clipped to the window", hex(c.window), hex(image[0, top]))
-        assertEquals("the sheet is the surface beside its rows", hex(c.surface), hex(image[2, top + (sheet.height * density / 2).toInt()]))
+        assertEquals("the corner is clipped to the window", hex(c.page), hex(image[0, top]))
+        assertEquals("the sheet is the surface beside its rows", hex(c.page), hex(image[2, top + (sheet.height * density / 2).toInt()]))
     }
 
     /** The premise of the lazy sheet: a lazy list in the scrolling page sheet cannot be measured. */

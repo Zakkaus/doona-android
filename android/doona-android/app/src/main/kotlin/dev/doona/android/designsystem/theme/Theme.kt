@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -16,9 +16,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
-import dev.doona.android.designsystem.tokens.Dawn
-import dev.doona.android.designsystem.tokens.Moon
-import dev.doona.android.designsystem.tokens.NotoSansTc
+import androidx.compose.ui.platform.LocalContext
 
 @Immutable
 class DoonaTokens(val colors: DoonaColors, val type: DoonaType)
@@ -42,6 +40,11 @@ object DoonaTheme {
     val spacing = DoonaSpacing
     val shape = DoonaShape
     val size = DoonaSize
+    val chart = DoonaChart
+    val chrome = DoonaChrome
+    val elevation = DoonaElevation
+    val glass = DoonaGlass
+    val motion = DoonaMotion
 
     val insets: WindowInsets
         @Composable
@@ -54,26 +57,22 @@ object DoonaTheme {
 }
 
 /**
- * doona's palettes win over Android's dynamic colour here: doona is the reference, and its palette is the product's
- * identity. M3 gets a matching scheme only so its plumbing (ripple, selection) picks doona's colours.
+ * The theme: every colour role derives from [scheme], by default the wallpaper's dynamic scheme (minSdk 31, so it always
+ * exists on a device). Tests pass a scheme seeded from a fixed colour, since Robolectric has no wallpaper. Material's
+ * theme gets the same scheme only as plumbing (ripple, selection); components read [DoonaTheme].
  */
 @Composable
-fun DoonaTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    // The roles are built once per theme: a staticCompositionLocalOf recomposes everything under it when it changes.
-    val colors = remember(dark) { DoonaColors(if (dark) Moon else Dawn) }
-    val type = remember { DoonaType(NotoSansTc) }
-    val tokens = remember(colors, type) { DoonaTokens(colors, type) }
-    val scheme = remember(colors) { materialScheme(colors) }
+fun DoonaTheme(dark: Boolean = isSystemInDarkTheme(), scheme: ColorScheme = dynamicScheme(dark), content: @Composable () -> Unit) {
+    // The roles are built once per scheme: a staticCompositionLocalOf recomposes everything under it when it changes.
+    val tokens = remember(scheme, dark) { DoonaTokens(DoonaColors(scheme, dark), DoonaType()) }
     MaterialTheme(colorScheme = scheme) {
-        CompositionLocalProvider(LocalDoona provides tokens, LocalContentColor provides colors.text.primary, content = content)
+        CompositionLocalProvider(LocalDoona provides tokens, LocalContentColor provides tokens.colors.text, content = content)
     }
 }
 
-private fun materialScheme(c: DoonaColors): ColorScheme {
-    val text = c.text.primary
-    return if (c.dark) {
-        darkColorScheme(primary = c.accent, onPrimary = c.onAccent, background = c.window, surface = c.surface, onSurface = text, onBackground = text)
-    } else {
-        lightColorScheme(primary = c.accent, onPrimary = c.onAccent, background = c.window, surface = c.surface, onSurface = text, onBackground = text)
-    }
+/** The wallpaper's scheme, light or [dark]. */
+@Composable
+private fun dynamicScheme(dark: Boolean): ColorScheme {
+    val context = LocalContext.current
+    return remember(context, dark) { if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context) }
 }

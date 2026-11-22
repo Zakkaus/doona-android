@@ -19,6 +19,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.Dark
 import dev.doona.android.testing.Light
 import dev.doona.android.testing.PhoneFrame
+import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.Variant
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.showsContent
@@ -49,7 +50,7 @@ class LocalNetworkPromptShotTest(private val prompt: LocalNetworkPrompt, private
     @Test
     fun matchesGoldenAndPassesAccessibilityChecks() {
         RuntimeEnvironment.setQualifiers(variant.qualifiers)
-        compose.setContent { DoonaTheme { PhoneFrame { OnUnderlay(prompt) } } }
+        compose.setContent { SeedTheme { PhoneFrame { OnUnderlay(prompt) } } }
         compose.drawFully()
         val name = "local-network-${prompt.name.lowercase()}-${variant.name}"
         val image = compose.onRoot().captureToImage()
@@ -70,7 +71,7 @@ class LocalNetworkPromptShotTest(private val prompt: LocalNetworkPrompt, private
 @Composable
 private fun OnUnderlay(prompt: LocalNetworkPrompt) {
     val text = prompt.text()
-    Box(Modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+    Box(Modifier.fillMaxSize().background(DoonaTheme.colors.page)) {
         Box(
             Modifier.fillMaxSize().background(DoonaTheme.colors.scrim).padding(DoonaTheme.spacing.gutter),
             contentAlignment = Alignment.Center,

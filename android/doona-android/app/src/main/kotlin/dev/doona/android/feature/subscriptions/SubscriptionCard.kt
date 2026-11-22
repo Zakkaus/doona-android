@@ -37,7 +37,7 @@ fun SubscriptionCard(item: SubscriptionItem, onUpdate: () -> Unit, onRemove: () 
     val sub = item.subscription
     DoonaCard(modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
-            DoonaText(sub.name, style = DoonaTheme.type.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            DoonaText(sub.name, style = DoonaTheme.type.blockTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Facts(item)
         }
         sub.trafficFraction()?.let { fraction ->
@@ -65,8 +65,8 @@ private fun Subscription.trafficFraction(): Float? {
 private fun Facts(item: SubscriptionItem) {
     val sub = item.subscription
     val date = rememberDateFormat()
-    val secondary = DoonaTheme.colors.text.secondary
-    val style = DoonaTheme.type.caption
+    val secondary = DoonaTheme.colors.textSecondary
+    val style = DoonaTheme.type.footnote
     DoonaText(pluralStringResource(R.plurals.sub_nodes, sub.nodes, sub.nodes), style, color = secondary)
     DoonaText(sub.updatedAtEpochMs?.let { stringResource(R.string.sub_updated, date.format(Date(it))) } ?: stringResource(R.string.sub_never_updated), style, color = secondary)
     sub.expiresAtEpochMs?.let { expiry ->

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.offset
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.scripted
 
 /** What a [DoonaConfirmDialog] asks for: [Default] a choice, [Destructive] the removal of something, in the destructive fill. */
 enum class DoonaConfirmKind { Default, Destructive }
@@ -88,14 +89,14 @@ internal fun DoonaConfirmPanel(
             .widthIn(max = DoonaTheme.size.dialogMax)
             .fillMaxWidth()
             .clip(DoonaTheme.shape.card)
-            .background(c.surface)
+            .background(c.card)
             .semantics { paneTitle = title }
             .then(if (scroll != null) Modifier.verticalScroll(scroll) else Modifier)
             .padding(DoonaTheme.spacing.dialogInset),
     ) {
-        Text(title, style = DoonaTheme.type.cardTitle, color = c.text.primary, modifier = Modifier.semantics { heading() })
+        Text(scripted(title), style = DoonaTheme.type.blockTitle, color = c.text, modifier = Modifier.semantics { heading() })
         DoonaGap(DoonaTheme.spacing.block)
-        Text(body, style = DoonaTheme.type.body, color = c.text.primary)
+        Text(scripted(body), style = DoonaTheme.type.body, color = c.text)
         DoonaGap(DoonaTheme.spacing.section)
         DialogButtons {
             DoonaButton(dismissLabel, onDismiss, style = DoonaButtonStyle.Text, maxLines = Int.MAX_VALUE)

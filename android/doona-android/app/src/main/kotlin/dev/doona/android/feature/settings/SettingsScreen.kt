@@ -59,16 +59,16 @@ private fun SettingCard(@DrawableRes icon: Int, label: String, value: String?, o
     val space = DoonaTheme.spacing
     DoonaCard(onClick = onClick) {
         DoonaRow {
-            DoonaIcon(icon, c.icon)
+            DoonaIcon(icon, c.textSecondary)
             DoonaHGap(space.item)
-            DoonaText(label, style = DoonaTheme.type.label, color = c.text.primary, maxLines = 1, modifier = Modifier.weight(1f))
+            DoonaText(label, style = DoonaTheme.type.label, color = c.text, maxLines = 1, modifier = Modifier.weight(1f))
             if (value != null) {
                 DoonaHGap(space.block)
-                DoonaText(value, style = DoonaTheme.type.body, color = c.text.secondary, maxLines = 1)
+                DoonaText(value, style = DoonaTheme.type.body, color = c.textSecondary, maxLines = 1)
             }
             if (onClick != null) {
                 DoonaHGap(space.block)
-                DoonaChevron(ChevronDirection.Right, c.text.secondary)
+                DoonaChevron(ChevronDirection.Right, c.textSecondary)
             }
         }
     }

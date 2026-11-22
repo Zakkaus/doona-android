@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.scripted
 
 internal object DoonaRowDefaults {
     val minHeight get() = DoonaTheme.size.touch
@@ -34,8 +35,8 @@ internal object DoonaCardDefaults {
 }
 
 /**
- * Card (§7): padding 16, gap 12, radius 16, no border. The fill is one step off the sheet's, so the sheet is the only
- * frame on a page: the card is lighter than the sheet on Moon and darker on Dawn.
+ * Card (§7): padding 16, gap 12, radius 20, no border. The fill is one step off the page's, so the page is the only
+ * frame: white on the grey page in light, one step up from the black page in dark.
  */
 @Composable
 fun DoonaCard(
@@ -81,9 +82,9 @@ fun DoonaControlCard(
 ) {
     DoonaCard(modifier.fillMaxWidth()) {
         DoonaRow {
-            DoonaIcon(icon, DoonaTheme.colors.icon)
+            DoonaIcon(icon, DoonaTheme.colors.textSecondary)
             Spacer(Modifier.width(DoonaTheme.spacing.item))
-            Text(label, style = DoonaTheme.type.label, color = DoonaTheme.colors.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(scripted(label), style = DoonaTheme.type.label, color = DoonaTheme.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(DoonaTheme.spacing.block))
             trailing()
         }
@@ -103,7 +104,7 @@ fun DoonaTileRow(modifier: Modifier = Modifier, content: @Composable RowScope.()
 /** `.rp-tile-head`: the 12/16 caption of a metric tile, in the secondary colour. */
 @Composable
 fun DoonaTileCaption(text: String, modifier: Modifier = Modifier) {
-    DoonaText(text, modifier = modifier, style = DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    DoonaText(text, modifier = modifier, style = DoonaTheme.type.footnote, color = DoonaTheme.colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 /**
@@ -120,7 +121,7 @@ fun DoonaMetricTile(
 ) {
     DoonaCard(modifier, onClick = onClick) {
         Row(Modifier.heightIn(min = DoonaTheme.size.control), verticalAlignment = Alignment.CenterVertically) {
-            DoonaIcon(icon, DoonaTheme.colors.icon)
+            DoonaIcon(icon, DoonaTheme.colors.textSecondary)
             DoonaHGap(DoonaTheme.spacing.item)
             caption()
         }

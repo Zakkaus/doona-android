@@ -30,16 +30,13 @@ import dev.doona.android.designsystem.components.DoonaMeter
 import dev.doona.android.designsystem.components.DoonaProgress
 import dev.doona.android.designsystem.components.DoonaProgressSize
 import dev.doona.android.designsystem.components.LayoutRole
-import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.tokens.Dawn
-import dev.doona.android.designsystem.tokens.DoonaPalette
-import dev.doona.android.designsystem.tokens.Moon
 import dev.doona.android.testing.Dark
 import dev.doona.android.testing.Light
 import dev.doona.android.testing.Variant
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.layoutTree
+import dev.doona.android.testing.seedColors
 import dev.doona.android.testing.setVariantContent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -97,8 +94,8 @@ class FeedbackTest {
      * track role, the fill 3:1 on its track and on the card, so a palette role that is right on paper but not the one the
      * meter paints cannot pass.
      */
-    private fun meterDraws(variant: Variant, palette: DoonaPalette) {
-        val c = DoonaColors(palette)
+    private fun meterDraws(variant: Variant, dark: Boolean) {
+        val c = seedColors(dark)
         compose.setVariantContent(variant) { Column(Modifier.width(300.dp).background(c.card)) { DoonaMeter(0.5f, "50 %") } }
         compose.drawFully()
         val bar = compose.layoutTree().descendants().first { it.role == LayoutRole.Bar }
@@ -107,18 +104,18 @@ class FeedbackTest {
         fun at(share: Float) = image[((bar.left + bar.width * share) * density).toInt(), (bar.centerY * density).toInt()]
         val fill = at(0.25f)
         val track = at(0.75f)
-        assertEquals("the filled half", hex(c.meterFill), hex(fill))
+        assertEquals("the filled half", hex(c.positive), hex(fill))
         assertEquals("the rest of the bar", hex(c.track), hex(track))
         assertTrue("the fill is %.2f:1 on its track".format(contrast(fill, track)), contrast(fill, track) >= 3f)
         assertTrue("the fill is %.2f:1 on the card".format(contrast(fill, c.card)), contrast(fill, c.card) >= 3f)
-        assertTrue("the track is %.2f:1 on the card".format(contrast(track, c.card)), contrast(track, c.card) >= 1.4f)
+        assertTrue("the track is %.2f:1 on the card".format(contrast(track, c.card)), contrast(track, c.card) >= TRACK_STEP)
     }
 
     @Test
-    fun theMeterDrawsItsFillAndTrackInLight() = meterDraws(Light, Dawn)
+    fun theMeterDrawsItsFillAndTrackInLight() = meterDraws(Light, false)
 
     @Test
-    fun theMeterDrawsItsFillAndTrackInDark() = meterDraws(Dark, Moon)
+    fun theMeterDrawsItsFillAndTrackInDark() = meterDraws(Dark, true)
 
     @Test
     fun theEmptyStateActionTakesATapAndTheTitleIsAHeading() {
@@ -172,6 +169,9 @@ class FeedbackTest {
             .assertWidthIsEqualTo(DoonaTheme.size.icon).assertHeightIsEqualTo(DoonaTheme.size.icon)
         compose.onNodeWithTag("inline").assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate))
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
-            .assertWidthIsEqualTo(DoonaTheme.size.iconInline).assertHeightIsEqualTo(DoonaTheme.size.iconInline)
+            .assertWidthIsEqualTo(DoonaTheme.size.inlineGlyph).assertHeightIsEqualTo(DoonaTheme.size.inlineGlyph)
     }
 }
+
+/** A step one surface up shows on the card: the scheme puts its track one tone step above the card. */
+private const val TRACK_STEP = 1.15f

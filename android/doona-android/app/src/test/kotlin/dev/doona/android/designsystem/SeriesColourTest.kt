@@ -3,9 +3,8 @@ package dev.doona.android.designsystem
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import dev.doona.android.designsystem.theme.DoonaColors
-import dev.doona.android.designsystem.tokens.Dawn
-import dev.doona.android.designsystem.tokens.DoonaPalette
-import dev.doona.android.designsystem.tokens.Moon
+import dev.doona.android.testing.Seed
+import dev.doona.android.testing.seedColors
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.pow
@@ -16,13 +15,15 @@ import kotlin.math.sqrt
  * connected, fair, failed and untested), and not near each other, or a legend reads as a status.
  */
 class SeriesColourTest {
-    private class Theme(val name: String, val palette: DoonaPalette) {
-        val c = DoonaColors(palette)
-        val statuses = mapOf("positive" to c.positive, "notice" to c.notice, "negative" to c.negative, "neutral" to c.neutral)
-        val series = mapOf("series1" to c.series1, "series2" to c.series2)
+    private class Theme(val name: String, val c: DoonaColors) {
+        val statuses = mapOf("good" to c.good, "fair" to c.fair, "slow" to c.slow, "neutral" to c.textSecondary)
+        val series = mapOf("download" to c.down.line, "upload" to c.up.line)
     }
 
-    private val themes = listOf(Theme("Dawn", Dawn), Theme("Moon", Moon))
+    /** The series are the scheme's primary and tertiary: the rules hold for the owner's Cyan, a warm and a dark accent. */
+    private val themes = Seed.entries.flatMap { seed ->
+        listOf(false, true).map { dark -> Theme("${seed.name} ${if (dark) "dark" else "light"}", seedColors(dark, seed)) }
+    }
 
     /** CIE 1976 colour difference: about 2.3 is just noticeable, 10 is clearly another colour. */
     private fun difference(a: Color, b: Color): Double {
@@ -59,22 +60,22 @@ class SeriesColourTest {
 
     @Test
     fun theSeriesAreClearlyApart() {
-        val bad = themes.filter { difference(it.c.series1, it.c.series2) < CLEAR }.map { "${it.name}: the two series are within $CLEAR of each other" }
+        val bad = themes.filter { difference(it.c.down.line, it.c.up.line) < CLEAR }.map { "${it.name}: the two series are within $CLEAR of each other" }
         assertTrue(bad.joinToString("\n"), bad.isEmpty())
     }
 
-    /** The upload line was gold, the notice colour: the same check fails it, in both themes. */
+    /** A series drawn in a status hue is caught by the same check, in every theme. */
     @Test
-    fun theOldUploadSeriesFailsTheSameCheck() {
-        themes.forEach { t -> assertTrue("${t.name}: gold passed as a series", "notice" in nearStatus(t, t.palette.gold)) }
+    fun aStatusHueFailsTheSameCheck() {
+        themes.forEach { t -> assertTrue("${t.name}: the fair hue passed as a series", "fair" in nearStatus(t, t.c.fair)) }
     }
 
-    /** WCAG 1.4.11: a line that carries data is 3:1 against the card and the sheet it is drawn on. */
+    /** WCAG 1.4.11: a line that carries data is 3:1 against the card and the page it is drawn on. */
     @Test
     fun aSeriesLineHasThreeToOneOnTheCardAndTheSheet() {
         val bad = themes.flatMap { t ->
             t.series.flatMap { (name, color) ->
-                listOf("card" to t.c.card, "surface" to t.c.surface).map { (fill, bg) -> Triple("${t.name}: $name on $fill", contrast(color, bg), 3f) }
+                listOf("card" to t.c.card, "page" to t.c.page).map { (fill, bg) -> Triple("${t.name}: $name on $fill", contrast(color, bg), 3f) }
             }
         }.filter { it.second < it.third }
         assertTrue(bad.joinToString("\n") { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())

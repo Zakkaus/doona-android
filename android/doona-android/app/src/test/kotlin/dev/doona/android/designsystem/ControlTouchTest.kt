@@ -17,7 +17,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.DoonaSegmented
-import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.testing.SeedTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -39,7 +39,7 @@ class ControlTouchTest {
 
     private fun tapOutsideTrack(above: Boolean) {
         compose.setContent {
-            DoonaTheme {
+            SeedTheme {
                 Column(Modifier.fillMaxWidth()) {
                     Spacer(Modifier.height(100.dp))
                     DoonaSegmented(listOf("A", "B", "C"), selected, { selected = it })

@@ -24,6 +24,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.testing.FrameInsets
 import dev.doona.android.testing.InkInsets
+import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.inkInsets
 import dev.doona.android.testing.screenCases
@@ -52,7 +53,7 @@ class ChevronInkTest {
 
     private fun checkChevrons(name: String) {
         compose.setContent {
-            CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { DoonaTheme { screenCases().first { it.name == name }.content() } }
+            CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { SeedTheme { screenCases().first { it.name == name }.content() } }
         }
         compose.drawFully()
         val chevrons = compose.onAllNodes(SemanticsMatcher("is a chevron") { it.config.getOrNull(LayoutRoleKey) == LayoutRole.Chevron }, useUnmergedTree = true)
@@ -71,11 +72,11 @@ class ChevronInkTest {
     /** The chevron's box and the same glyph drawn whole, as an icon of the chevron's size, for each direction. */
     private fun render(direction: ChevronDirection, chevron: Modifier = Modifier): Pair<InkInsets, InkInsets> {
         compose.setContent {
-            DoonaTheme {
-                val tint = DoonaTheme.colors.text.primary
-                val size = if (direction == ChevronDirection.Down) DoonaTheme.size.iconInline else DoonaTheme.size.iconSmall
+            SeedTheme {
+                val tint = DoonaTheme.colors.text
+                val size = if (direction == ChevronDirection.Down) DoonaTheme.size.inlineGlyph else DoonaTheme.size.iconSmall
                 val whole = if (direction == ChevronDirection.Down) IconsR.drawable.sym_keyboard_arrow_down else IconsR.drawable.sym_chevron_right
-                Column(Modifier.background(DoonaTheme.colors.window).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(Modifier.background(DoonaTheme.colors.page).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     DoonaChevron(direction, tint, chevron)
                     Box(Modifier.testTag("whole")) { DoonaIcon(whole, tint, size = size) }
                 }

@@ -10,11 +10,11 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.checkRoboAccessibility
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.GalleryVariants
 import dev.doona.android.testing.PhoneFrame
 import dev.doona.android.testing.ScreenCase
 import dev.doona.android.testing.ScreenVariants
+import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.Variant
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.galleryCases
@@ -71,6 +71,6 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
 private fun Framed(case: ScreenCase, variant: Variant) {
     val density = LocalDensity.current
     CompositionLocalProvider(LocalDensity provides Density(density.density, variant.fontScale)) {
-        DoonaTheme { PhoneFrame(case.content) }
+        SeedTheme { PhoneFrame(case.content) }
     }
 }

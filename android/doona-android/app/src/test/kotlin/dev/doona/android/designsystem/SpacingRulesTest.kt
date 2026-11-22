@@ -147,7 +147,7 @@ class SpacingRulesTest {
                 layout(placeable.width - px, placeable.height) { placeable.place(-px, 0) }
             },
         ) {
-            Box(Modifier.size(8.dp).background(DoonaTheme.colors.accent))
+            Box(Modifier.size(8.dp).background(DoonaTheme.colors.positive))
             DoonaHGap(space.dotGap)
             DoonaText("42", DoonaTheme.type.bodyStrong)
         }
@@ -198,7 +198,7 @@ class SpacingRulesTest {
     @Composable
     private fun IconRow(gap: Dp) = DoonaCard(Modifier.fillMaxWidth()) {
         DoonaRow {
-            DoonaIcon(IconsR.drawable.sym_search, DoonaTheme.colors.accent)
+            DoonaIcon(IconsR.drawable.sym_search, DoonaTheme.colors.positive)
             DoonaHGap(gap)
             DoonaText("label", DoonaTheme.type.body)
         }

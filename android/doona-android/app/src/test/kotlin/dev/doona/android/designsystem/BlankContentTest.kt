@@ -15,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.DoonaPageTitle
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.PhoneFrame
+import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.colours
 import dev.doona.android.testing.contentInk
 import dev.doona.android.testing.drawFully
@@ -42,14 +43,14 @@ class BlankContentTest {
     private val density = 3f
 
     private fun capture(content: @Composable () -> Unit): ImageBitmap {
-        compose.setContent { DoonaTheme { PhoneFrame(content) } }
+        compose.setContent { SeedTheme { PhoneFrame(content) } }
         compose.drawFully()
         return compose.onRoot().captureToImage()
     }
 
     @Test
     fun anEmptyPageInThePhoneFrameShowsNoContent() {
-        val image = capture { Box(Modifier.fillMaxSize().background(DoonaTheme.colors.surface)) }
+        val image = capture { Box(Modifier.fillMaxSize().background(DoonaTheme.colors.page)) }
         assertTrue("the whole capture has ${image.colours()} colours: the frame's clock and handle", image.colours() > 2)
         assertFalse("content ink ${image.contentInk(density)}", image.showsContent(density))
     }
@@ -57,7 +58,7 @@ class BlankContentTest {
     @Test
     fun aPageWithATitleShowsContent() {
         val image = capture {
-            Box(Modifier.fillMaxSize().background(DoonaTheme.colors.surface).padding(top = 80.dp, start = 16.dp)) { DoonaPageTitle("Title") }
+            Box(Modifier.fillMaxSize().background(DoonaTheme.colors.page).padding(top = 80.dp, start = 16.dp)) { DoonaPageTitle("Title") }
         }
         assertTrue("content ink ${image.contentInk(density)}", image.showsContent(density))
     }

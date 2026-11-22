@@ -26,12 +26,11 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.DoonaCheckRow
-import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.tokens.Dawn
 import dev.doona.android.designsystem.tokens.TypeScale
 import dev.doona.android.testing.SpacingRules
 import dev.doona.android.testing.layoutTree
+import dev.doona.android.testing.seedColors
 import dev.doona.android.testing.setDoonaContent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -137,9 +136,9 @@ class CheckRowTest {
     /** Inside the box, away from its checkmark and its outline: the accent when checked and the surface when not. */
     @Test
     fun theBoxIsFilledWhenCheckedAndOutlinedWhenNot() {
-        val c = DoonaColors(Dawn)
+        val c = seedColors(false)
         compose.setDoonaContent {
-            Column(Modifier.fillMaxSize().background(DoonaTheme.colors.surface)) {
+            Column(Modifier.fillMaxSize().background(DoonaTheme.colors.page)) {
                 DoonaCheckRow(checked = true, onChange = {}, title = "Checked")
                 DoonaCheckRow(checked = false, onChange = {}, title = "Unchecked")
             }
@@ -150,8 +149,8 @@ class CheckRowTest {
             val row = compose.onNodeWithText(title).fetchSemanticsNode().boundsInRoot
             return image[(row.right - fromEnd * density).toInt(), (row.center.y + fromCentre * density).toInt()]
         }
-        assertEquals(hex(c.accent), hex(boxPixel("Checked", fromEnd = 3f, fromCentre = 6f)))
-        assertEquals(hex(c.surface), hex(boxPixel("Unchecked", fromEnd = 3f, fromCentre = 6f)))
-        assertEquals("the outline of the unchecked box", hex(c.boxLine), hex(boxPixel("Unchecked", fromEnd = 1f, fromCentre = 0f)))
+        assertEquals(hex(c.positive), hex(boxPixel("Checked", fromEnd = 3f, fromCentre = 6f)))
+        assertEquals(hex(c.page), hex(boxPixel("Unchecked", fromEnd = 3f, fromCentre = 6f)))
+        assertEquals("the outline of the unchecked box", hex(c.control), hex(boxPixel("Unchecked", fromEnd = 1f, fromCentre = 0f)))
     }
 }

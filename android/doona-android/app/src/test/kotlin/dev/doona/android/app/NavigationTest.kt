@@ -7,9 +7,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
+import dev.doona.android.testing.SeedTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -45,7 +45,7 @@ class NavigationTest {
     fun `the back stack survives saving and restoring`() {
         val restoration = StateRestorationTester(compose)
         val engine = FakeEngine()
-        restoration.setContent { DoonaTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}) } }
+        restoration.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}) } }
         compose.onNodeWithText("Policies").performClick()
         compose.onNodeWithText("Proxy").performClick()
 
@@ -58,7 +58,7 @@ class NavigationTest {
 
     @Test
     fun `the per-app row opens its page and back returns to the settings`() {
-        compose.setContent { DoonaTheme { DoonaApp(FakeEngine(), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, SettingsKey)) } }
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, SettingsKey)) } }
         compose.onNodeWithText("Per-app").performClick()
         compose.onNodeWithText("Save").assertExists()
 
@@ -69,7 +69,7 @@ class NavigationTest {
 
     @Test
     fun `a second back while the page leaves does not pop the tab underneath`() {
-        compose.setContent { DoonaTheme { DoonaApp(FakeEngine(), FakeInstalledApps(), onConnect = {}, start = GROUP) } }
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(), FakeInstalledApps(), onConnect = {}, start = GROUP) } }
         compose.mainClock.autoAdvance = false
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithContentDescription("Back").performClick()
@@ -81,7 +81,7 @@ class NavigationTest {
     @Test
     fun `a group page leaves when its group is removed`() {
         val engine = FakeEngine()
-        compose.setContent { DoonaTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = GROUP) } }
+        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = GROUP) } }
         compose.onNodeWithText("Proxy").assertExists()
 
         engine.groups.value = engine.groups.value.filter { it.id != "g-Proxy" }
@@ -93,7 +93,7 @@ class NavigationTest {
     @Test
     fun `a restored group page waits for the engine before it leaves`() {
         val engine = FakeEngine(groups = emptyList()).apply { ready.value = false }
-        compose.setContent { DoonaTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = GROUP) } }
+        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = GROUP) } }
         compose.waitForIdle()
 
         engine.groups.value = FakeEngine.SAMPLE_GROUPS

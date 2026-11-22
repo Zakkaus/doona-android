@@ -56,7 +56,7 @@ class ProbeDetectionTest {
                 }
                 Spacer(Modifier.height(12.dp))
                 DoonaSegmented(listOf("A", "B"), selected = 0, onSelect = {})
-                DoonaIcon(IconsR.drawable.sym_search, DoonaTheme.colors.accent)
+                DoonaIcon(IconsR.drawable.sym_search, DoonaTheme.colors.positive)
                 DoonaText("hello", DoonaTheme.type.body)
             }
         }

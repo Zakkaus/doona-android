@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.offset
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.scripted
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -65,7 +66,7 @@ fun DoonaButton(
 ) {
     val skin = skinOf(style, enabled)
     // The glyph grows with the label as the label's line does, so it does not stay a speck beside a large font.
-    val glyph = dotSizeFor(skin.type, DoonaTheme.size.iconInline)
+    val glyph = dotSizeFor(skin.type, DoonaTheme.size.inlineGlyph)
     val state = stringResource(R.string.ui_in_progress)
     Row(
         modifier
@@ -87,7 +88,7 @@ fun DoonaButton(
             DoonaIcon(icon, skin.label, size = glyph)
         }
         Text(
-            label,
+            scripted(label),
             style = skin.type,
             color = skin.label,
             textAlign = TextAlign.Center,
@@ -105,12 +106,12 @@ private class ButtonSkin(val fill: Color?, val outline: Color?, val label: Color
 @Composable
 private fun skinOf(style: DoonaButtonStyle, enabled: Boolean): ButtonSkin {
     val c = DoonaTheme.colors
-    val ink = if (enabled) null else c.text.disabled
+    val ink = if (enabled) null else c.textDisabled
     return when (style) {
-        DoonaButtonStyle.Primary -> ButtonSkin(if (enabled) c.accent else c.control, null, ink ?: c.onAccent, DoonaTheme.shape.pill, DoonaTheme.type.bodyStrong)
-        DoonaButtonStyle.Destructive -> ButtonSkin(if (enabled) c.destructive else c.control, null, ink ?: c.onAccent, DoonaTheme.shape.pill, DoonaTheme.type.bodyStrong)
-        DoonaButtonStyle.Secondary -> ButtonSkin(null, if (enabled) c.strongLine else c.disabledLine, ink ?: c.text.primary, DoonaTheme.shape.control, DoonaTheme.type.label)
-        DoonaButtonStyle.Text -> ButtonSkin(null, null, ink ?: c.text.accent, DoonaTheme.shape.control, DoonaTheme.type.label)
+        DoonaButtonStyle.Primary -> ButtonSkin(if (enabled) c.positive else c.discOnCard, null, ink ?: c.onPositive, DoonaTheme.shape.pill, DoonaTheme.type.bodyStrong)
+        DoonaButtonStyle.Destructive -> ButtonSkin(if (enabled) c.destructive else c.discOnCard, null, ink ?: c.onDestructive, DoonaTheme.shape.pill, DoonaTheme.type.bodyStrong)
+        DoonaButtonStyle.Secondary -> ButtonSkin(null, if (enabled) c.control else c.disabledLine, ink ?: c.text, DoonaTheme.shape.control, DoonaTheme.type.label)
+        DoonaButtonStyle.Text -> ButtonSkin(null, null, ink ?: c.accentText, DoonaTheme.shape.control, DoonaTheme.type.label)
     }
 }
 
