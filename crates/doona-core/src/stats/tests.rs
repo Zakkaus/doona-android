@@ -143,3 +143,26 @@ fn a_file_with_odd_days_is_fixed_on_load() {
     assert_eq!(stats.today(&clock(1, NOW_MS)).up_total, 5);
     assert_eq!(stats.usage(&clock(1, NOW_MS)).today.down.len(), day::HOURS);
 }
+
+#[test]
+fn latency_tests_are_kept_written_at_a_round_end_and_pruned() {
+    let dir = TempDir::new("stats-latency");
+    {
+        let rt = runtime();
+        let stats = stats(&dir, &rt);
+        stats.record_latency("n-a", 1_000, Some(38));
+        stats.record_latency("n-b", 1_000, None);
+        stats.record_latency("n-a", 2_000, Some(35));
+        stats.end_round(|id| id != "n-b");
+        let tests = stats.latency(["n-a", "n-b", "n-c"].into_iter());
+        let a: Vec<_> = tests[0].iter().map(|t| (t.at_epoch_ms, t.ms)).collect();
+        assert_eq!(a, [(1_000, Some(38)), (2_000, Some(35))]);
+        assert!(tests[1].is_empty() && tests[2].is_empty());
+    }
+    let rt = runtime();
+    let again = stats(&dir, &rt);
+    assert_eq!(again.latency(["n-a"].into_iter())[0].len(), 2);
+    // A new process drops the nodes its catalog no longer has.
+    again.keep_nodes(|_| false);
+    assert!(again.latency(["n-a"].into_iter())[0].is_empty());
+}

@@ -1,10 +1,15 @@
 //! `snapshot` and the reads of the stats: cheap, and served while stopped too.
 
 use super::{Core, Life, lock, parse, to_json};
-use crate::dto::{Empty, ErrorCode, Reply, SeriesArgs, Snapshot, Today, Traffic, TrafficSeries};
+use crate::catalog::NodeEntry;
+use crate::dto::{
+    Empty, ErrorCode, LatencyTest, NodeInfo, Nodes, NodesArgs, Reply, SeriesArgs, Snapshot, Today,
+    Traffic, TrafficSeries,
+};
 use crate::stats::Clock;
 use crate::stats::ring::SPAN;
 use crate::tunnel::Session;
+use honk_config::types::NodeProtocol;
 use std::sync::Arc;
 
 impl Core {
@@ -75,6 +80,22 @@ impl Core {
         Ok(to_json(&Reply::Ok(self.stats.usage(&Clock::now()))))
     }
 
+    /// `nodes`: what each node's share link says and its last latency tests, for every node in
+    /// catalog order, or for those of `ids` that exist.
+    pub(super) fn nodes(&self, args: &str) -> Result<String, ErrorCode> {
+        let NodesArgs { ids } = parse(args)?;
+        let entries: Vec<Arc<NodeEntry>> = {
+            let c = lock(&self.shared.catalog);
+            match ids {
+                None => c.model.nodes.clone(),
+                Some(ids) => ids.iter().filter_map(|id| c.model.entry(id)).collect(),
+            }
+        };
+        let tests = self.stats.latency(entries.iter().map(|e| e.id.as_str()));
+        let nodes = entries.iter().zip(tests).map(node_info).collect();
+        Ok(to_json(&Reply::Ok(Nodes { nodes })))
+    }
+
     /// Folds the last bytes of a generation that has ended into the stats, and writes them.
     pub(super) fn retire(&self, session: &Session) {
         self.stats.finish(session, &Clock::now());
@@ -94,4 +115,28 @@ pub fn snapshot_before_init() -> String {
         today: Today::default(),
         catalog: None,
     })
+}
+
+/// A node's details from its share link, with its `tests`.
+fn node_info((entry, tests): (&Arc<NodeEntry>, Vec<LatencyTest>)) -> NodeInfo {
+    let node = &entry.node;
+    let protocol = node.protocol();
+    let quic = matches!(
+        protocol,
+        NodeProtocol::Hysteria2 | NodeProtocol::Tuic | NodeProtocol::Juicity
+    );
+    let transport = match node.transport() {
+        _ if quic => "quic".to_owned(),
+        Some(t) => t.transport.clone(),
+        None => "tcp".to_owned(),
+    };
+    NodeInfo {
+        id: entry.id.clone(),
+        protocol: protocol.as_str().to_owned(),
+        server: node.host.clone(),
+        port: node.port,
+        transport,
+        tls: node.tls().is_some_and(|t| t.enabled),
+        tests,
+    }
 }

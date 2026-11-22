@@ -150,6 +150,7 @@ impl Probes {
             if !cancel.is_cancelled() && c.model.record(&target, ms, error) {
                 c.revision += 1;
                 shared.publish(&c);
+                (shared.stats).record_latency(&target.entry.id, target.began_ms, ms);
             }
         }
     }
@@ -173,5 +174,6 @@ impl Drop for Ended {
         let mut c = lock(&self.shared.catalog);
         c.model.finish(&self.round);
         c.revision += 1;
+        self.shared.stats.end_round(|id| c.model.has(id));
     }
 }

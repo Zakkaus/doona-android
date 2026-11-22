@@ -1,13 +1,15 @@
 //! `stats.json` beside `state.json`: the counters that must outlive the process (the day's
-//! usage). Not `state.json`, which is the config the user chose and holds every
+//! usage and the latency history). Not `state.json`, which is the config the user chose and holds every
 //! subscription's nodes: rewriting it each minute for counters would wear the flash and take the
 //! state writer's lock. Written the same way, to a synced temporary file renamed over the old one;
 //! a file this core cannot read is set aside, and the stats start empty.
 
 use super::day::Usage;
+use super::latency::Tests;
 use crate::api::lock;
 use crate::state::{sync_dir, write_synced};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
@@ -27,6 +29,9 @@ pub(crate) struct Saved {
     pub stats_version: u32,
     #[serde(default)]
     pub usage: Usage,
+    /// Node id to its last tests, oldest first.
+    #[serde(default)]
+    pub latency: BTreeMap<String, Tests>,
 }
 
 /// The file as written, borrowed from the stores.
@@ -35,6 +40,7 @@ pub(crate) struct Saved {
 pub(crate) struct SavedRef<'a> {
     pub stats_version: u32,
     pub usage: &'a Usage,
+    pub latency: &'a BTreeMap<String, Tests>,
 }
 
 pub(crate) struct StatsFile {

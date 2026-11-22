@@ -157,13 +157,15 @@ impl Core {
         let built = outbounds.build(&model.nodes);
         let mode = Arc::new(ModeCell::new(state.mode));
         let catalog = CatalogState::new(state, model);
+        let stats = Arc::new(Stats::new(store.dir(), runtime.handle().clone()));
+        stats.keep_nodes(|id| catalog.model.has(id));
         let shared = Arc::new(Shared {
             catalog: Mutex::new(catalog),
             outbounds,
+            stats: Arc::clone(&stats),
         });
         shared.publish_nodes(&lock(&shared.catalog), built);
         let probes = Probes::new(prober, &options.probe_url);
-        let stats = Arc::new(Stats::new(store.dir(), runtime.handle().clone()));
         Ok(Core {
             runtime,
             options,
@@ -395,6 +397,7 @@ impl Core {
             }
             "trafficSeries" => self.traffic_series(args),
             "usage" => self.usage(args),
+            "nodes" => self.nodes(args),
             _ => Err(ErrorCode::InvalidArgument),
         };
         reply.unwrap_or_else(|code| {
@@ -508,7 +511,7 @@ pub fn error_reply(code: ErrorCode) -> String {
 
 /// A command name fit for the log: the closed list, never caller text.
 fn command_name(command: &str) -> &'static str {
-    const KNOWN: [&str; 8] = [
+    const KNOWN: [&str; 9] = [
         "select",
         "testLatency",
         "addSubscription",
@@ -517,6 +520,7 @@ fn command_name(command: &str) -> &'static str {
         "setMode",
         "trafficSeries",
         "usage",
+        "nodes",
     ];
     KNOWN
         .into_iter()

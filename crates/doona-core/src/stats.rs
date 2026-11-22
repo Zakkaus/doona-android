@@ -6,6 +6,7 @@
 
 pub(crate) mod day;
 mod file;
+pub(crate) mod latency;
 pub(crate) mod meter;
 pub(crate) mod ring;
 
@@ -15,6 +16,7 @@ use crate::sys;
 use crate::tunnel::Session;
 use day::{Day, Moved, Usage};
 use file::{STATS_VERSION, SavedRef, StatsFile};
+use latency::Latency;
 use ring::{Ring, Series};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -84,6 +86,9 @@ struct Inner {
     dirty: bool,
     /// The boot second of the last write asked for.
     written_s: Option<u64>,
+    latency: Latency,
+    /// A latency test was recorded since the last write.
+    tested: bool,
 }
 
 impl Stats {
@@ -96,6 +101,8 @@ impl Stats {
             usage: saved.usage.sane(),
             dirty: false,
             written_s: None,
+            latency: Latency::from_saved(saved.latency),
+            tested: false,
         };
         Stats {
             inner: Mutex::new(inner),
@@ -155,9 +162,50 @@ impl Stats {
             let saved = SavedRef {
                 stats_version: STATS_VERSION,
                 usage: &inner.usage,
+                latency: inner.latency.all(),
             };
             serde_json::to_vec(&saved).ok()
         });
+    }
+
+    /// Records a latency test of node `id` in the round begun at `at_ms`: `ms`, or none when the
+    /// probe failed. The caller holds the catalog lock, as every caller that nests the two does.
+    pub fn record_latency(&self, id: &str, at_ms: i64, ms: Option<u32>) {
+        let mut inner = lock(&self.inner);
+        inner.latency.record(id, at_ms, ms);
+        inner.tested = true;
+    }
+
+    /// A latency round ended: forgets the nodes `keep` does not keep (they left the catalog), and
+    /// writes the tests if the round recorded any.
+    pub fn end_round(self: &Arc<Self>, keep: impl Fn(&str) -> bool) {
+        let tested = {
+            let mut inner = lock(&self.inner);
+            inner.latency.retain(keep);
+            std::mem::take(&mut inner.tested)
+        };
+        if tested {
+            self.save();
+        }
+    }
+
+    /// Forgets the tests of nodes `keep` does not keep, as a new process loads the catalog.
+    pub fn keep_nodes(&self, keep: impl Fn(&str) -> bool) {
+        lock(&self.inner).latency.retain(keep);
+    }
+
+    /// The tests of each node of `ids`, oldest first.
+    pub fn latency<'a>(&self, ids: impl Iterator<Item = &'a str>) -> Vec<Vec<dto::LatencyTest>> {
+        let inner = lock(&self.inner);
+        ids.map(|id| {
+            (inner.latency.get(id).into_iter().flatten())
+                .map(|t| dto::LatencyTest {
+                    at_epoch_ms: t.0,
+                    ms: t.1,
+                })
+                .collect()
+        })
+        .collect()
     }
 
     /// Today's bytes each way and yesterday's by the same local time, for `snapshot`.

@@ -378,3 +378,83 @@ fn a_test_registered_across_a_refresh_probes_the_new_nodes_through_their_registr
     assert_eq!(b.name, "B");
     assert!(b.latency_ms.is_some() && !b.failed, "{b:?}");
 }
+
+/// Every node's details and its tests, by name.
+fn nodes(core: &Core, ids: serde_json::Value) -> Vec<(String, serde_json::Value)> {
+    let names: std::collections::HashMap<String, String> = (catalog(core).groups[0].members)
+        .iter()
+        .map(|m| (m.id.clone(), m.name.clone()))
+        .collect();
+    let reply = call(core, "nodes", json!({ "ids": ids })).unwrap();
+    (reply["nodes"].as_array().unwrap().iter())
+        .map(|n| (names[n["id"].as_str().unwrap()].clone(), n.clone()))
+        .collect()
+}
+
+#[test]
+fn each_round_adds_a_test_to_every_node_it_probed_and_a_restart_keeps_them() {
+    let stand = Stand::new(true);
+    let (dir, _feeds, core) = setup(&stand);
+    for _ in 0..2 {
+        call(&core, "testLatency", json!({"group": null})).unwrap();
+        wait_for(&core, |c| !testing(c));
+    }
+    let all = nodes(&core, json!(null));
+    // Auto holds every node.
+    assert_eq!(all.len(), catalog(&core).groups[1].members.len());
+    let (_, sg) = all.iter().find(|(name, _)| name == "SG 01").unwrap();
+    let tests = sg["tests"].as_array().unwrap();
+    assert_eq!(tests.len(), 2);
+    assert!(tests.iter().all(|t| t["ms"] == 3));
+    assert!(tests[0]["atEpochMs"].as_i64() <= tests[1]["atEpochMs"].as_i64());
+    let (_, other) = all.iter().find(|(name, _)| name == "Other").unwrap();
+    assert!(
+        other["tests"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|t| t["ms"].is_null())
+    );
+    // Every node of one round carries that round's time.
+    let firsts: std::collections::HashSet<_> = (all.iter())
+        .map(|(_, n)| n["tests"][0]["atEpochMs"].clone())
+        .collect();
+    assert_eq!(firsts.len(), 1);
+    // A new process reads the tests back.
+    let id = sg["id"].clone();
+    drop(core);
+    let again = Core::with_prober(dir.path().to_str().unwrap(), stand.prober());
+    let reply = call(&again, "nodes", json!({"ids": [id, "n-gone"]})).unwrap();
+    assert_eq!(reply["nodes"].as_array().unwrap().len(), 1);
+    assert_eq!(reply["nodes"][0]["tests"], sg["tests"]);
+}
+
+#[test]
+fn a_node_says_what_its_share_link_says() {
+    let stand = Stand::new(true);
+    let (_dir, _feeds, core) = setup(&stand);
+    let all = nodes(&core, json!(null));
+    let at = |server: &str| (all.iter().find(|(_, n)| n["server"] == server)).unwrap();
+    let (name, hk) = at("192.0.2.1");
+    assert_eq!(name, "hk-01");
+    assert_eq!(
+        (&hk["protocol"], &hk["server"], &hk["port"]),
+        (&json!("trojan"), &json!("192.0.2.1"), &json!(443))
+    );
+    assert_eq!(
+        (&hk["transport"], &hk["tls"]),
+        (&json!("tcp"), &json!(true))
+    );
+    assert_eq!(hk["tests"], json!([]));
+    let (_, tw) = at("192.0.2.5");
+    assert_eq!(
+        (&tw["protocol"], &tw["transport"]),
+        (&json!("hysteria2"), &json!("quic"))
+    );
+    let (_, ss) = at("192.0.2.3");
+    assert_eq!((&ss["protocol"], &ss["tls"]), (&json!("ss"), &json!(false)));
+    assert_eq!(
+        call(&core, "nodes", json!({})),
+        Err(ErrorCode::InvalidArgument)
+    );
+}
