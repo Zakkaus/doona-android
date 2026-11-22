@@ -9,12 +9,17 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaConfirmDialog
 
 /** What the app gives the prompts: the state holder, and the two steps only an activity can take. */
-class LocalNetworkHost(val access: LocalNetworkAccess, val request: () -> Unit, val openSettings: () -> Unit)
+class LocalNetworkHost(val access: LocalNetworkAccess, val request: () -> Unit, val openSettings: () -> Unit) {
+    /** The reason's confirm button: the system's question, only while the reason still waits for an answer. */
+    fun proceed() {
+        if (access.requesting()) request()
+    }
+}
 
 /**
  * Shows the prompt [LocalNetworkHost.access] holds, over whatever page is open. The reason's confirm button goes on to
- * the system's question, and back or a tap outside it closes it without a refusal; the refusal's confirm button opens
- * the app's settings page, where the user can still allow access.
+ * the system's question unless the reason was withdrawn meanwhile, and back or a tap outside it closes it without a
+ * refusal; the refusal's confirm button opens the app's settings page, where the user can still allow access.
  */
 @Composable
 fun LocalNetworkPrompts(host: LocalNetworkHost) {
@@ -24,10 +29,7 @@ fun LocalNetworkPrompts(host: LocalNetworkHost) {
 
         LocalNetworkPrompt.Ask -> PromptDialog(
             LocalNetworkPrompt.Ask.text(),
-            onConfirm = {
-                host.access.requesting()
-                host.request()
-            },
+            onConfirm = host::proceed,
             onDismiss = host.access::declined,
             onDismissRequest = host.access::closed,
         )

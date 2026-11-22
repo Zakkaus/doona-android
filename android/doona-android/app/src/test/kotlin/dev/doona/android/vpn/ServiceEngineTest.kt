@@ -308,10 +308,37 @@ class ServiceEngineTest {
         assertEquals(null, engine.warning.value)
         engine.connect()
         assertTrue(engine.controller.start(StartHost(installed = setOf("a")), requested.single()))
+        withTimeout(5_000) { engine.status.first { it is Status.Running } }
+        // A snapshot of this run: the refresh after a command.
+        assertTrue(engine.setMode(Mode.Direct).isSuccess)
         withTimeout(5_000) { engine.warning.first { it == ErrorCode.LocalNetwork } }
         engine.disconnect()
         withTimeout(5_000) { engine.warning.first { it == null } }
         Unit
+    }
+
+    @Test
+    fun aRunShowsNoWarningAnEarlierRunReportedBeforeItsOwnSnapshot() = runBlocking {
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
+        withTimeout(5_000) { engine.ready.first { it } }
+        engine.connect()
+        assertTrue(engine.controller.start(StartHost(installed = setOf("a")), requested.single()))
+        withTimeout(5_000) { engine.status.first { it is Status.Running } }
+        assertTrue(engine.setMode(Mode.Direct).isSuccess)
+        withTimeout(5_000) { engine.warning.first { it == ErrorCode.LocalNetwork } }
+        engine.disconnect()
+        withTimeout(5_000) { engine.status.first { it == Status.Stopped } }
+
+        // The next run's core has no failed dial, so none of its snapshots carries a warning.
+        core.onStart = { core.warns = false }
+        val shown = CopyOnWriteArrayList<ErrorCode>()
+        val watcher = launch(Dispatchers.Unconfined) { engine.warning.collect { it?.let(shown::add) } }
+        engine.connect()
+        assertTrue(engine.controller.start(StartHost(installed = setOf("a")), requested.last()))
+        withTimeout(5_000) { engine.status.first { it is Status.Running } }
+        assertTrue("a snapshot of this run", engine.setMode(Mode.Direct).isSuccess)
+        watcher.cancel()
+        assertEquals("the earlier run's warning", emptyList<ErrorCode>(), shown)
     }
 
     @Test
@@ -432,9 +459,15 @@ class ServiceEngineTest {
         /** Served first, in order, before the fixtures. */
         val snapshotReplies = ConcurrentLinkedQueue<() -> String>()
 
+        /** Whether the running fixture keeps its `local_network` warning. */
+        @Volatile var warns = true
+
+        /** Runs as the core starts a generation. */
+        @Volatile var onStart: () -> Unit = {}
+
         override fun init(dataDir: String) = """{"schema":$schema}"""
 
-        override fun start(tunFd: Int, configJson: String) = Unit
+        override fun start(tunFd: Int, configJson: String) = onStart()
 
         override fun stop() = Unit
 
@@ -443,7 +476,8 @@ class ServiceEngineTest {
             snapshots.incrementAndGet()
             snapshotError?.let { throw it }
             snapshotReplies.poll()?.let { return it() }
-            return ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
+            val fixture = ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
+            return if (warns) fixture else fixture.replace("\"warning\": \"local_network\"", "\"warning\": null")
         }
 
         override fun call(command: String, argsJson: String): String {

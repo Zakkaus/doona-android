@@ -139,4 +139,41 @@ class LocalNetworkAccessTest {
         assertFalse(access.ask())
         assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
     }
+
+    @Test
+    fun theTunnelsRefusalComesDownWithoutAnActionsRefusal() = runTest(UnconfinedTestDispatcher()) {
+        val answer = async { access.ask() }
+        access.declined()
+        assertFalse(answer.await())
+        // The tunnel's report shows the way to the settings; the user closes it while the report stays.
+        val report = launch { access.noticed() }
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+        access.dismissed()
+        assertNull(access.prompt.value)
+        // A subscription then fails on the local network, and the tunnel's report clears while that refusal is up.
+        assertFalse(access.ask())
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+        report.cancel()
+        assertEquals("the subscription's way to the settings stays", LocalNetworkPrompt.Denied, access.prompt.value)
+        access.dismissed()
+        assertNull(access.prompt.value)
+    }
+
+    @Test
+    fun continuingAWithdrawnReasonAsksTheSystemNothing() = runTest(UnconfinedTestDispatcher()) {
+        var requests = 0
+        val host = LocalNetworkHost(access, request = { requests++ }, openSettings = {})
+        val report = launch { access.noticed() }
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+        // The tunnel's report clears as the user taps Continue on the reason still on screen.
+        report.cancel()
+        host.proceed()
+        assertEquals(0, requests)
+        val asking = async { access.ask() }
+        host.proceed()
+        host.proceed()
+        assertEquals("one system question for one reason", 1, requests)
+        access.answered(true)
+        assertTrue(asking.await())
+    }
 }

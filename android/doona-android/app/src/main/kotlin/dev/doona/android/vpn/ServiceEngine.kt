@@ -80,11 +80,15 @@ class ServiceEngine internal constructor(
     private val _perAppLoaded = MutableStateFlow(false)
     override val perAppLoaded: StateFlow<Boolean> = _perAppLoaded.asStateFlow()
 
-    /** The last snapshot's warning; [warning] shows it only while the tunnel runs. */
-    private val lastWarning = MutableStateFlow<ErrorCode?>(null)
+    /**
+     * The last snapshot's warning and the session that ran as it was taken. [warning] shows it only while that session
+     * runs, so a run shows nothing an earlier run reported before its own first snapshot.
+     */
+    private val lastWarning = MutableStateFlow<Pair<Session, ErrorCode?>?>(null)
     override val warning: StateFlow<ErrorCode?> =
-        combine(controller.status, lastWarning) { status, warning -> warning.takeIf { status is Status.Running } }
-            .stateIn(scope, SharingStarted.Eagerly, null)
+        combine(controller.session, lastWarning) { session, last ->
+            last?.second.takeIf { session.status is Status.Running && last?.first == session }
+        }.stateIn(scope, SharingStarted.Eagerly, null)
 
     private val publishing = Any()
 
@@ -263,11 +267,12 @@ class ServiceEngine internal constructor(
     private suspend fun poll(): SnapshotDto? {
         // A core that lost a native function takes no further snapshot.
         if (opener.schema() != CORE_SCHEMA) return null
+        val during = controller.session.value
         return try {
             withContext(io) {
                 CoreJson.snapshot(core.snapshot(revision)).also { snapshot ->
                     snapshot.catalog?.let { publish(Catalog.of(snapshot.revision, it)) }
-                    lastWarning.value = snapshot.warning?.let(::errorCodeOf)
+                    lastWarning.value = during to snapshot.warning?.let(::errorCodeOf)
                 }
             }
         } catch (e: CancellationException) {
