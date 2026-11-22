@@ -1,0 +1,42 @@
+[package]
+name = "doona-core"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+publish = false
+description = "doona-Android's Rust core: the tun data path, state and the JNI surface of dev.doona.android.vpn.NativeCore"
+
+[lib]
+# Loaded by dev.doona.android.vpn.NativeCore as libdoonacore.so.
+name = "doonacore"
+# rlib: for the host tests, which drive the plain Rust API without a JVM.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Full SHAs: daeuniverse/honk main for config and outbounds, Glassyiris/honk for the netstack
+# (daeuniverse/honk#483), as in crates/honk-android.
+honk-config = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2" }
+honk-outbound = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2", features = ["rprx"] }
+honk-netstack = { git = "https://github.com/Glassyiris/honk", rev = "c5b36a64d7f3c7d7ba234574e787f93b893a07aa" }
+jni = { version = "=0.22.4", default-features = false }
+libc = "0.2"
+
+[target.'cfg(target_os = "android")'.dependencies]
+# Routes `log` records to logcat.
+android_logger = { version = "0.15", default-features = false }
+log = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+# Every JNI entry point catches panics; abort would turn a caught panic into a process kill.
+panic = "unwind"
+
+# honk's own workspace overrides (its root Cargo.toml at the pinned revision): the REALITY hooks of
+# its boring-sys fork and its Quinn fork. Git dependencies do not carry them, so they are repeated.
+[patch.crates-io]
+boring-sys = { git = "https://github.com/Glassyiris/boring-sys", rev = "3beb573b65ecaa69b7eefe3c2fecd074b97facd2" }
+quinn = { git = "https://github.com/Glassyiris/quinn", rev = "11f1de84c28305a3c98ace6d681c35219a8d1e6c" }
+quinn-proto = { git = "https://github.com/Glassyiris/quinn", rev = "11f1de84c28305a3c98ace6d681c35219a8d1e6c" }
