@@ -72,25 +72,30 @@ impl Names {
         let Some((name, mut at)) = question(m) else {
             return;
         };
-        let name: Arc<str> = name.into();
-        let mut cache = lock(&self.0);
-        let mut mapped = 0;
+        // Read before the lock is taken, so a new flow's lookup never waits on a long answer.
+        let mut found = Vec::new();
         for _ in 0..count(m, 6) {
             let Some((end, a)) = record(m, at) else {
-                return;
+                break;
             };
             at = end;
-            let Some((addr, ttl)) = a else { continue };
+            found.extend(a);
+            if found.len() == PER_ANSWER {
+                break;
+            }
+        }
+        if found.is_empty() {
+            return;
+        }
+        let name: Arc<str> = name.into();
+        let mut cache = lock(&self.0);
+        for (addr, ttl) in found {
             if cache.len() >= CAPACITY && !cache.contains(&addr) {
                 cache.pop_lru();
             }
             let until_ms = now_ms + u64::from(ttl) * 1000;
             let name = Arc::clone(&name);
             cache.put(addr, Entry { name, until_ms });
-            mapped += 1;
-            if mapped == PER_ANSWER {
-                return;
-            }
         }
     }
 
