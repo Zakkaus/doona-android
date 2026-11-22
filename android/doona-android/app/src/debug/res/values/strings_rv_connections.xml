@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_nav_connections">Connections</string>
+    <string name="rv_conn_search">Search connections</string>
+    <plurals name="rv_conn_summary">
+        <item quantity="one">%1$d connection · %2$s down · %3$s up</item>
+        <item quantity="other">%1$d connections · %2$s down · %3$s up</item>
+    </plurals>
+    <string name="rv_conn_all_apps">All apps</string>
+    <string name="rv_conn_newest">Newest first</string>
+    <string name="rv_conn_seconds">%1$d s</string>
+    <string name="rv_conn_minutes">%1$d min</string>
+    <string name="rv_conn_path">Path</string>
+    <string name="rv_conn_port">Port %1$d</string>
+    <string name="rv_conn_started">Started</string>
+    <string name="rv_conn_age">Open for</string>
+    <string name="rv_conn_rule_index">Rule %1$d</string>
+    <string name="rv_conn_no_domain">No domain, matched by address</string>
+    <string name="rv_conn_close">Close connection</string>
+</resources>

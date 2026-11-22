@@ -41,7 +41,11 @@ internal fun RvPolicyPreview(route: String, state: RvPolicyPreviewState, push: (
             RvPolicyGroupPage(group, onBack = pop, onSelect = { state.policy = state.policy.choose(group.id, it) }, onTest = {})
         }
 
-        r.RULE -> RvPolicyRulePage(RvPolicyData.connection, state.quickRule, { state.quickRule = it }, onBack = pop, onApply = pop)
+        r.RULE -> {
+            // `rule:<i>` starts from the i-th open connection (連線 → 新增規則); `rule` from the sample.
+            val from = route.substringAfter(':', "").toIntOrNull()?.let(RvPolicyData.connections::get) ?: RvPolicyData.connection
+            RvPolicyRulePage(from, state.quickRule, { state.quickRule = it }, onBack = pop, onApply = pop)
+        }
 
         r.RULES -> {
             val routes = RvRulesRoutes(edit = { state.editing = it }, newRule = { push(r.RULE) }, apply = { state.pending = emptyList() }, discard = { state.pending = emptyList() })

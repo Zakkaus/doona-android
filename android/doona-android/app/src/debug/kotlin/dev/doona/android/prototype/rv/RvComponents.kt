@@ -36,12 +36,16 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -51,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.core.graphics.drawable.toBitmap
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvPlace
@@ -232,6 +237,23 @@ internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text) {
     Box(Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
         RvGlyph(icon, RvSize.rowGlyph, color)
     }
+}
+
+/**
+ * A row's leading disc for an app: the app's own launcher icon, from the package manager, filling the disc as a flag
+ * does; an app the phone does not have (or does not let doona see) gets the apps glyph on the raised fill instead.
+ * [label] (the app's name) is for a screen reader, where the row does not name the app.
+ */
+@Composable
+internal fun RvAppDisc(packageName: String, label: String? = null) {
+    val context = LocalContext.current
+    val px = with(LocalDensity.current) { RvSize.rowDisc.roundToPx() }
+    val icon = remember(packageName, px) {
+        runCatching { context.packageManager.getApplicationIcon(packageName).toBitmap(px, px).asImageBitmap() }.getOrNull()
+    }
+    val named = label?.let { Modifier.semantics { contentDescription = it } } ?: Modifier
+    if (icon == null) return Box(named) { RvIconDisc(R.drawable.rv_sym_apps) }
+    Image(icon, contentDescription = label, Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard))
 }
 
 /** Revolut's 'See all' row at a list card's foot (measured §7): [text] centred, 19 sp bold in the accent, in 56 dp. */

@@ -8,11 +8,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import dev.doona.android.prototype.rv.connections.RvConnectionDetail
+import dev.doona.android.prototype.rv.connections.RvConnectionsPage
+import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
@@ -46,7 +50,10 @@ class RvPreviewActivity : ComponentActivity() {
                 var stack by rememberSaveable { mutableStateOf(startStack(intent)) }
                 val policy = remember { RvPolicyPreviewState(if (intent.getBooleanExtra(EXTRA_PENDING, false)) RvPolicyData.pending else emptyList()) }
                 BackHandler(enabled = stack.size > 1) { stack = stack.dropLast(1) }
-                RvPreviewPage(stack.last(), policy, push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
+                val tabs = if (intent.getBooleanExtra(EXTRA_FOUR_TABS, false)) RV_NAV_FOUR else RV_NAV
+                CompositionLocalProvider(LocalRvNav provides tabs) {
+                    RvPreviewPage(stack.last(), policy, push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
+                }
             }
         }
     }
@@ -72,6 +79,13 @@ private fun RvPreviewPage(route: String, policy: RvPolicyPreviewState, push: (St
         }
 
         SETTINGS -> RvSettingsScreen(settings, onChange = { settings = it }, onOpenTheme = { push(THEME) }, onTab = onTab)
+
+        CONNECTIONS -> RvConnectionsPage(RvPolicyData.connections, RvConnectionsRoutes(open = { push("$CONNECTION:$it") }, tab = onTab))
+
+        CONNECTION -> {
+            val i = route.substringAfter(':').toInt()
+            RvConnectionDetail(RvPolicyData.connections[i], onBack = pop, onClose = pop, onNewRule = { push("${RvPolicyPreviewRoutes.RULE}:$i") })
+        }
 
         THEME -> RvThemeScreen(settings.appearance, { settings = settings.copy(appearance = it) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pop)
 
@@ -99,5 +113,10 @@ private const val GROUP = RvPolicyPreviewRoutes.GROUP
 private const val EXTRA_ROUTE = "rv.route"
 private const val EXTRA_PENDING = "rv.pending"
 
+/** `--ez rv.tabs4 true` shows the bar with the proposed fourth tab, 連線, on every tab home. */
+private const val EXTRA_FOUR_TABS = "rv.tabs4"
+private const val CONNECTIONS = "connections"
+private const val CONNECTION = "connection"
+
 private fun startStack(intent: Intent): List<String> = intent.getStringExtra(EXTRA_ROUTE)?.split(',')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() } ?: listOf(ACTIVITY)
-private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS)
+private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS, RV_NAV_CONNECTIONS to CONNECTIONS)

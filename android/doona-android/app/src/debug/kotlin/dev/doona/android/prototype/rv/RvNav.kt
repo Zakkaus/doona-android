@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -43,22 +44,31 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.max
 import dev.doona.android.R
 
-/** A destination of the floating bottom bar. */
-internal class RvNavItem(@DrawableRes val icon: Int, @StringRes val label: Int)
+/** A destination of the floating bottom bar: its id (one of the `RV_NAV_*` values), glyph and label. */
+internal class RvNavItem(val id: Int, @DrawableRes val icon: Int, @StringRes val label: Int)
 
-/** The tab homes, the same on every page that shows the bar: 活動, 策略 and 設定. */
-internal val RV_NAV = listOf(
-    RvNavItem(R.drawable.rv_sym_space_dashboard, R.string.hub_activity),
-    RvNavItem(R.drawable.rv_sym_account_tree, R.string.nav_policies),
-    RvNavItem(R.drawable.rv_sym_settings, R.string.hub_settings),
-)
 internal const val RV_NAV_ACTIVITY = 0
 internal const val RV_NAV_POLICY = 1
 internal const val RV_NAV_SETTINGS = 2
+internal const val RV_NAV_CONNECTIONS = 3
+
+private val activityItem = RvNavItem(RV_NAV_ACTIVITY, R.drawable.rv_sym_space_dashboard, R.string.hub_activity)
+private val policyItem = RvNavItem(RV_NAV_POLICY, R.drawable.rv_sym_account_tree, R.string.nav_policies)
+private val settingsItem = RvNavItem(RV_NAV_SETTINGS, R.drawable.rv_sym_settings, R.string.hub_settings)
+
+/** The tab homes, the same on every page that shows the bar: 活動, 策略 and 設定. */
+internal val RV_NAV = listOf(activityItem, policyItem, settingsItem)
+
+/** The proposed fourth tab (features-gap Q5, option A): 連線 between 策略 and 設定. */
+internal val RV_NAV_FOUR = listOf(activityItem, policyItem, RvNavItem(RV_NAV_CONNECTIONS, R.drawable.rv_sym_sync_alt, R.string.rv_nav_connections), settingsItem)
+
+/** The tabs the bar shows: [RV_NAV] unless a preview provides [RV_NAV_FOUR]. */
+internal val LocalRvNav = staticCompositionLocalOf { RV_NAV }
 
 /**
  * The floating bottom bar (measured §9): a glass capsule [RvChrome.navInset] in from the sides and [rvNavBottom] above
- * the screen's edge, a filled glyph over a label for each of [RV_NAV], the [selected] one on a flat opaque pill.
+ * the screen's edge, a filled glyph over a label for each of [LocalRvNav]'s tabs, the one whose id is [selected] on a
+ * flat opaque pill; [onSelect] gets a tab's id.
  * [collapsed] shrinks it to icons only, 336 x 52 dp, centred and almost opaque, as Revolut's bar does while the content
  * scrolls up.
  */
@@ -79,7 +89,7 @@ internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlas
                 .then(rim)
                 .padding(RvChrome.navPillInset),
         ) {
-            RV_NAV.forEachIndexed { i, item -> NavItem(item, i == selected, shrink, Modifier.weight(1f)) { onSelect(i) } }
+            LocalRvNav.current.forEach { item -> NavItem(item, item.id == selected, shrink, Modifier.weight(1f)) { onSelect(item.id) } }
         }
     }
 }
