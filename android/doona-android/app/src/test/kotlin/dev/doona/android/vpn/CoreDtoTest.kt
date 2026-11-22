@@ -12,15 +12,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
-import java.io.File
 
 /** Parses every payload in `contracts/doona-core/`, the examples both sides of the JNI contract test against. */
 class CoreDtoTest {
-    private val fixtures: File = generateSequence(File(System.getProperty("user.dir")).absoluteFile) { it.parentFile }
-        .map { it.resolve("contracts/doona-core") }
-        .first { it.isDirectory }
-
-    private fun fixture(name: String) = fixtures.resolve(name).readText()
+    private fun fixture(name: String) = ContractFixtures.read(name)
 
     @Test
     fun everyFixtureHasAParser() {
@@ -28,7 +23,7 @@ class CoreDtoTest {
             "init.json", "start-config.json", "snapshot-running.json", "snapshot-died.json", "snapshot-stopped-catalog.json",
             "call-ok-empty.json", "call-ok-subscription.json", "call-error.json", "call-select-args.json",
         )
-        val present = fixtures.listFiles { f -> f.extension == "json" }.orEmpty().map { it.name }.toSet()
+        val present = ContractFixtures.dir.listFiles { f -> f.extension == "json" }.orEmpty().map { it.name }.toSet()
         assertEquals(checked, present)
     }
 

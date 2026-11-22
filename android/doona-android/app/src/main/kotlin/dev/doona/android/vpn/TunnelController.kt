@@ -15,6 +15,9 @@ import kotlinx.coroutines.launch
 /** Starting or running: a session the user has not ended. */
 internal val Status.active: Boolean get() = this is Status.Starting || this is Status.Running
 
+/** Stopped or failed: no session, and nothing left to stop. */
+internal val Status.ended: Boolean get() = this is Status.Stopped || this is Status.Failed
+
 /**
  * Runs start, stop, rebuild and revoke one at a time (ARCH D15). Every accepted command takes a new generation at
  * once, on the caller's thread, so a stop or revoke invalidates a start that is still blocked in the core; that start
