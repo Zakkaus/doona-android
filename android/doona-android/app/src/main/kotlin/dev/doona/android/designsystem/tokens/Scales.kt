@@ -104,6 +104,12 @@ object SizeScale {
     /** A checkbox's box: doona's 14 grown to a touch size, like its 20 to 25 icons (§6). */
     val checkbox = 20.dp
     val meterTrack = 4.dp
+
+    /** The width of the busy spinner's stroke. */
+    val spinnerStroke = 2.dp
+
+    /** The edge of a field's text that fades where the text runs on past the box. */
+    val fieldFade = 16.dp
     val emptyIcon = 48.dp
 
     /** Widest dialog; a narrower window leaves the gutter at both sides. */

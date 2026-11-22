@@ -38,6 +38,8 @@ object DoonaSize {
     val appIcon = SizeScale.appIcon
     val checkbox = SizeScale.checkbox
     val meterTrack = SizeScale.meterTrack
+    val spinnerStroke = SizeScale.spinnerStroke
+    val fieldFade = SizeScale.fieldFade
     val emptyIcon = SizeScale.emptyIcon
     val dialogMax = SizeScale.dialogMax
     val contentMax = SizeScale.contentMax

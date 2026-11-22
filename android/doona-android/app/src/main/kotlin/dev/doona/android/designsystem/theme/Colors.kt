@@ -12,8 +12,8 @@ class DoonaTextColors(p: DoonaPalette) {
     val secondary = p.subtleText
     val disabled = p.muted
 
-    /** Accent as text, for a text-style button: the accent in light, body text in dark, where the accent reads under 4.5:1 (`--rp-accent-text`). */
-    val accent = if (p.dark) p.text else p.pine
+    /** Accent as text, for a text-style button: the accent's hue in both themes, lightened in dark, where the accent itself reads under 4.5:1 on a card. */
+    val accent = p.pineText
 
     /** Latency text: light keeps body text and shows the tone only in the dot. */
     val positive = if (p.dark) p.foam else p.text
@@ -56,6 +56,9 @@ class DoonaColors(p: DoonaPalette) {
 
     /** The fill of a destructive button, under the on-accent text. */
     val destructive = p.loveFill
+
+    /** The unfilled part of a bar (the meter's track): a step past the control fill, so it shows on the card, the sheet and the window. */
+    val track = p.hlHigh
 
     /** An unchecked checkbox's outline, 3:1 on the card and the sheet like the off switch's. */
     val boxLine = p.subtleText

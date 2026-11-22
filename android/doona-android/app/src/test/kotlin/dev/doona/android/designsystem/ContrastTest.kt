@@ -6,6 +6,8 @@ import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.tokens.Dawn
 import dev.doona.android.designsystem.tokens.DoonaPalette
 import dev.doona.android.designsystem.tokens.Moon
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -66,14 +68,42 @@ class ContrastTest {
         assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
     }
 
-    /** The meter's fill shows how much is used, so it is 3:1 against its track; the checkbox's outline against the card and the sheet. */
+    /** The meter's fill shows how much is used, so it is 3:1 against the card and the sheet it sits on; the checkbox's outline likewise. */
     @Test
     fun theMeterFillAndTheCheckboxOutlineHaveThreeToOne() {
         val bad = themes.flatMap { t ->
-            listOf(Triple("${t.name}: meter fill on its track", ratio(t.c.accent, t.c.control), 3f)) +
-                listOf("card", "surface").map { fill -> Triple("${t.name}: checkbox outline on $fill", ratio(t.c.boxLine, t.fills.getValue(fill)), 3f) }
+            listOf("card", "surface").flatMap { fill ->
+                listOf(
+                    Triple("${t.name}: meter fill on $fill", ratio(t.c.accent, t.fills.getValue(fill)), 3f),
+                    Triple("${t.name}: checkbox outline on $fill", ratio(t.c.boxLine, t.fills.getValue(fill)), 3f),
+                )
+            }
         }.filter { it.second < it.third }
         assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    }
+
+    /**
+     * The meter's track shows on the card, the sheet and the window, where the control fill (1.03:1 on Dawn's card) all
+     * but vanished, and the fill still reads against it.
+     */
+    @Test
+    fun theMeterTrackShowsAndTheFillReadsOnIt() {
+        val bad = themes.flatMap { t ->
+            listOf("card", "surface", "window").map { fill -> Triple("${t.name}: meter track on $fill", ratio(t.c.track, t.fills.getValue(fill)), 1.4f) } +
+                Triple("${t.name}: meter fill on its track", ratio(t.c.accent, t.c.track), 2f)
+        }.filter { it.second < it.third }
+        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+        themes.forEach { t -> assertTrue("${t.name}: the old track, the control fill, is ${ratio(t.c.control, t.c.card)}:1 on the card", ratio(t.c.control, t.c.card) < 1.4f) }
+    }
+
+    /** A text button is in the accent's hue in both themes: the role is never body text, and in light it is the accent itself. */
+    @Test
+    fun accentTextIsTheAccentsHueInBothThemes() {
+        themes.forEach { t ->
+            assertNotEquals("${t.name}: text.accent is body text", t.c.text.primary, t.c.text.accent)
+            assertTrue("${t.name}: text.accent is not bluer than red", t.c.text.accent.blue > t.c.text.accent.red)
+        }
+        assertEquals(Dawn.pine, DoonaColors(Dawn).text.accent)
     }
 
     /** WCAG 1.4.11: the parts of a control that show its state are 3:1 against what they sit on. */

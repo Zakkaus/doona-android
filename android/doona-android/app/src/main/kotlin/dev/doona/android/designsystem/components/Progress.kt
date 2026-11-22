@@ -47,13 +47,13 @@ fun DoonaProgress(modifier: Modifier = Modifier, size: DoonaProgressSize = Doona
 }
 
 /**
- * The spinner in any colour and size, for a button's busy state, where the label colour of the button is the spinner's: a stroke
- * 2 dp wide, round at both ends, an arc of three quarters turning once a second. Still, as a screenshot shows it, it is
- * that arc and not the speck a material indicator starts from.
+ * The spinner in any [color] and [box] size, which a button's busy state uses in its label's colour: a round-ended arc
+ * of three quarters of a turn, drawn with the spinner stroke and turning once a second. A still frame, such as a
+ * screenshot, shows that arc where Material's indicator would show a dot.
  */
 @Composable
 internal fun Spinner(color: Color, box: Dp, modifier: Modifier = Modifier) {
-    val stroke = DoonaTheme.size.borderStrong
+    val stroke = DoonaTheme.size.spinnerStroke
     val turn by rememberInfiniteTransition(label = "spinner").animateFloat(0f, FULL_TURN, infiniteRepeatable(tween(TURN_MS, easing = LinearEasing), RepeatMode.Restart), label = "turn")
     Canvas(modifier.size(box)) {
         val width = stroke.toPx()
