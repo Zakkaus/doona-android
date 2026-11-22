@@ -12,8 +12,8 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import dev.doona.android.designsystem.components.HubBar
-import dev.doona.android.designsystem.components.HubTab
+import dev.doona.android.designsystem.components.DoonaHubBar
+import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.activity.ActivityRoute
@@ -42,8 +42,8 @@ fun DoonaApp(engine: Engine, onConnect: () -> Unit, start: List<NavKey> = listOf
                 entry<SettingsKey> { SettingsScreen() }
             },
         )
-        HubBar(
-            tabs = Tab.entries.map { HubTab(stringResource(it.label), it.icon) },
+        DoonaHubBar(
+            tabs = Tab.entries.map { DoonaHubTab(stringResource(it.label), it.icon) },
             selected = currentTab(backStack).ordinal,
             onSelect = { backStack.selectTab(Tab.entries[it]) },
         )

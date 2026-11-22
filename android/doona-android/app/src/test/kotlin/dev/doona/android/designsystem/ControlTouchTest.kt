@@ -16,7 +16,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.designsystem.components.Segmented
+import dev.doona.android.designsystem.components.DoonaSegmented
 import dev.doona.android.designsystem.theme.DoonaTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -42,7 +42,7 @@ class ControlTouchTest {
             DoonaTheme {
                 Column(Modifier.fillMaxWidth()) {
                     Spacer(Modifier.height(100.dp))
-                    Segmented(listOf("A", "B", "C"), selected, { selected = it })
+                    DoonaSegmented(listOf("A", "B", "C"), selected, { selected = it })
                     Spacer(Modifier.height(100.dp))
                 }
             }

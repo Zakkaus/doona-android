@@ -135,7 +135,7 @@ private val GestureBar = 24.dp
 /** A phone's status bar (time, Wi-Fi, battery) and gesture handle, drawn over the app in the theme's text colour. */
 @Composable
 private fun PhoneFrame(content: @Composable () -> Unit) {
-    val ink = DoonaTheme.colors.text
+    val ink = DoonaTheme.colors.text.primary
     CompositionLocalProvider(LocalFrameInsets provides WindowInsets(top = StatusBar, bottom = GestureBar)) {
         Box(Modifier.fillMaxSize()) {
             content()

@@ -30,7 +30,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 @Composable
 fun DoonaErrorBanner(message: String, dismissLabel: String, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val c = DoonaTheme.colors
-    val shape = DoonaTheme.shape.xl
+    val shape = DoonaTheme.shape.card
     val style = DoonaTheme.type.body
     Row(
         modifier
@@ -42,13 +42,13 @@ fun DoonaErrorBanner(message: String, dismissLabel: String, onDismiss: () -> Uni
             .border(DoonaTheme.size.border, c.negative, shape)
             .clickable(role = Role.Button, onClickLabel = dismissLabel, onClick = onDismiss)
             .semantics { liveRegion = LiveRegionMode.Polite }
-            .padding(DoonaTheme.space.s4),
+            .padding(DoonaTheme.spacing.cardInset),
         verticalAlignment = Alignment.Top,
     ) {
         Box(Modifier.height(lineHeightOf(style)), contentAlignment = Alignment.Center) {
             Box(Modifier.size(DoonaTheme.size.dot).clip(DoonaTheme.shape.pill).background(c.negative))
         }
-        Spacer(Modifier.width(DoonaTheme.space.s2))
-        Text(message, style = style, color = c.text)
+        Spacer(Modifier.width(DoonaTheme.spacing.item))
+        Text(message, style = style, color = c.text.primary)
     }
 }

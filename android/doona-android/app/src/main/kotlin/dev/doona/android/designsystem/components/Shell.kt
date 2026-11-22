@@ -39,13 +39,13 @@ import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
-/** One destination of the [HubBar]: its label and the icon of its first page. */
+/** One destination of the [DoonaHubBar]: its label and the icon of its first page. */
 @Immutable
-data class HubTab(val label: String, @DrawableRes val icon: Int)
+data class DoonaHubTab(val label: String, @DrawableRes val icon: Int)
 
 /** Icon action with a 48 dp touch target and the 25 dp touch icon (§6). */
 @Composable
-fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit = {}) {
+fun DoonaIconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit = {}) {
     Box(
         Modifier
             .size(DoonaTheme.size.touch)
@@ -54,7 +54,7 @@ fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit = {}) 
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        DoonaIcon(icon, DoonaTheme.colors.text)
+        DoonaIcon(icon, DoonaTheme.colors.text.primary)
     }
 }
 
@@ -63,7 +63,7 @@ fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit = {}) 
  * page and the back arrow on a pushed page; icon actions sit at the end.
  */
 @Composable
-fun TopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit) {
+fun DoonaTopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit) {
     Row(
         Modifier
             .layoutRole(LayoutRole.TopBar)
@@ -71,11 +71,11 @@ fun TopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Uni
             .background(DoonaTheme.colors.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Top))
             .height(DoonaTheme.size.topBar)
-            .padding(horizontal = DoonaTheme.space.s3),
+            .padding(horizontal = DoonaTheme.spacing.block),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
-            IconAction(R.drawable.ic_arrow_back, stringResource(R.string.ui_back), onBack)
+            DoonaIconAction(R.drawable.ic_arrow_back, stringResource(R.string.ui_back), onBack)
         } else {
             Box(Modifier.size(DoonaTheme.size.touch), contentAlignment = Alignment.Center) {
                 Image(painterResource(R.drawable.ic_duck), contentDescription = stringResource(R.string.app_name), modifier = Modifier.size(DoonaTheme.size.logo))
@@ -91,7 +91,7 @@ fun TopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Uni
  * holding the 25 px icon over a 12/16 label, gap 4. The current pill takes the selected fill and the accent icon.
  */
 @Composable
-fun HubBar(tabs: List<HubTab>, selected: Int, onSelect: (Int) -> Unit) {
+fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit) {
     val c = DoonaTheme.colors
     Row(
         Modifier
@@ -100,7 +100,7 @@ fun HubBar(tabs: List<HubTab>, selected: Int, onSelect: (Int) -> Unit) {
             .background(c.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Bottom))
             .height(DoonaTheme.size.bottomBar)
-            .padding(horizontal = DoonaTheme.space.s2)
+            .padding(horizontal = DoonaTheme.spacing.item)
             .selectableGroup(),
     ) {
         tabs.forEachIndexed { i, tab ->
@@ -111,7 +111,7 @@ fun HubBar(tabs: List<HubTab>, selected: Int, onSelect: (Int) -> Unit) {
                     .fillMaxSize()
                     .selectable(on, role = Role.Tab, onClick = { onSelect(i) }),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(DoonaTheme.space.s1, Alignment.CenterVertically),
+                verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight, Alignment.CenterVertically),
             ) {
                 Box(
                     Modifier
@@ -120,12 +120,12 @@ fun HubBar(tabs: List<HubTab>, selected: Int, onSelect: (Int) -> Unit) {
                         .then(if (on) Modifier.background(c.selected) else Modifier),
                     contentAlignment = Alignment.Center,
                 ) {
-                    DoonaIcon(tab.icon, if (on) c.accent else c.textSecondary)
+                    DoonaIcon(tab.icon, if (on) c.accent else c.text.secondary)
                 }
                 Text(
                     tab.label,
                     style = if (on) DoonaTheme.type.navLabelCurrent else DoonaTheme.type.navLabel,
-                    color = if (on) c.text else c.textSecondary,
+                    color = if (on) c.text.primary else c.text.secondary,
                     maxLines = 1,
                 )
             }
@@ -138,19 +138,19 @@ fun HubBar(tabs: List<HubTab>, selected: Int, onSelect: (Int) -> Unit) {
  * stacked by the caller.
  */
 @Composable
-fun PageSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier
             .layoutRole(LayoutRole.Sheet)
             .fillMaxSize()
             .clip(DoonaTheme.shape.sheet)
-            .background(DoonaTheme.colors.sheet)
+            .background(DoonaTheme.colors.surface)
             .verticalScroll(rememberScrollState())
             .padding(
-                start = DoonaTheme.space.s4,
-                end = DoonaTheme.space.s4,
-                top = DoonaTheme.space.s5,
-                bottom = DoonaTheme.space.s6,
+                start = DoonaTheme.spacing.gutter,
+                end = DoonaTheme.spacing.gutter,
+                top = DoonaTheme.spacing.sheetTop,
+                bottom = DoonaTheme.spacing.sheetBottom,
             ),
         content = content,
     )
@@ -158,8 +158,8 @@ fun PageSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
 
 /** Page title `.rp-h1` 28/36/800 at the top of the sheet: the large title of the top app bar. */
 @Composable
-fun PageTitle(text: String) {
-    Text(text, style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text, maxLines = 1, modifier = Modifier.semantics { heading() })
+fun DoonaPageTitle(text: String) {
+    Text(text, style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text.primary, maxLines = 1, modifier = Modifier.semantics { heading() })
 }
 
 /**
@@ -167,10 +167,10 @@ fun PageTitle(text: String) {
  * carries a 2 px pill underline in text colour; tabs 4 apart over a 1 px line.
  */
 @Composable
-fun PageTabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit = {}) {
+fun DoonaPageTabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit = {}) {
     val c = DoonaTheme.colors
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(DoonaTheme.space.s1)) {
+        Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
             tabs.forEachIndexed { i, label ->
                 val on = i == selected
                 Box(
@@ -179,7 +179,7 @@ fun PageTabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit = {}) {
                         .selectable(on, role = Role.Tab, onClick = { onSelect(i) }),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, style = DoonaTheme.type.label, color = c.text, maxLines = 1, modifier = Modifier.padding(horizontal = DoonaTheme.space.s3))
+                    Text(label, style = DoonaTheme.type.label, color = c.text.primary, maxLines = 1, modifier = Modifier.padding(horizontal = DoonaTheme.spacing.block))
                     if (on) {
                         Box(Modifier.matchParentSize(), contentAlignment = Alignment.BottomCenter) {
                             Box(
@@ -187,7 +187,7 @@ fun PageTabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit = {}) {
                                     .fillMaxWidth()
                                     .height(DoonaTheme.size.tabUnderline)
                                     .clip(DoonaTheme.shape.pill)
-                                    .background(c.text),
+                                    .background(c.text.primary),
                             )
                         }
                     }
@@ -200,7 +200,7 @@ fun PageTabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit = {}) {
 
 /**
  * A page: top bar over the sheet; the window's base colour runs under the status bar. The app shell puts the
- * [HubBar] below every page.
+ * [DoonaHubBar] below every page.
  */
 @Composable
 fun DoonaPage(
@@ -209,14 +209,7 @@ fun DoonaPage(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
-        TopBar(onBack, actions)
-        PageSheet(Modifier.weight(1f), content)
+        DoonaTopBar(onBack, actions)
+        DoonaPageSheet(Modifier.weight(1f), content)
     }
 }
-
-/** Vertical gap between blocks, from the spacing scale. */
-@Composable
-fun Gap(size: androidx.compose.ui.unit.Dp) = Spacer(Modifier.height(size))
-
-@Composable
-fun HGap(size: androidx.compose.ui.unit.Dp) = Spacer(Modifier.width(size))

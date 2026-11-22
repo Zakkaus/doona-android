@@ -18,7 +18,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
  * colour over an area filled with a vertical gradient of that colour, 0.35 to 0.03, drawn at 0.6.
  */
 @Composable
-fun Sparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier) {
+fun DoonaSparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier) {
     val stroke = DoonaTheme.size.sparkStroke
     Canvas(modifier) {
         if (values.size < 2) return@Canvas
@@ -27,7 +27,7 @@ fun Sparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier) 
         val lo = values.min() * DoonaChart.DOMAIN_LOW
         val hi = values.max() * DoonaChart.DOMAIN_HIGH
         val span = (hi - lo).takeIf { it > 0f } ?: 1f
-        val inset = DoonaChart.INSET.toPx()
+        val inset = DoonaTheme.size.chartInset.toPx()
         val points = values.mapIndexed { i, v ->
             Offset(i * size.width / (values.size - 1), inset + (1f - (v - lo) / span) * (size.height - 2 * inset))
         }

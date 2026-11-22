@@ -11,11 +11,11 @@ import kotlin.math.abs
  */
 object SpacingRules {
     private const val TOL = 0.5f
-    private val space = DoonaTheme.space
+    private val space = DoonaTheme.spacing
     private val size = DoonaTheme.size
 
     /** Gaps between blocks of a page: the roles `tight`, `item`, `block`, `afterTitle` and `section`. */
-    private val pageGaps = listOf(space.s1, space.s2, space.s3, space.s4, space.s6).map { it.value }
+    private val pageGaps = listOf(space.tight, space.item, space.block, space.afterTitle, space.section).map { it.value }
 
     fun check(root: LayoutBox, windowWidth: Float): List<String> =
         scaleGaps(root) + sheet(root, windowWidth) + cards(root) + controls(root) + alikeControls(root) + touchTargets(root) +
@@ -25,7 +25,7 @@ object SpacingRules {
 
     /** Every gap between consecutive children of a column is 0 or a value of the spacing scale. */
     fun scaleGaps(root: LayoutBox): List<String> {
-        val allowed = listOf(0f) + DoonaTheme.spacing.map { it.value }
+        val allowed = listOf(0f) + space.scale.map { it.value }
         return root.descendants().flatMap { it.columnGaps() }
             .filter { (_, _, gap) -> allowed.none { near(it, gap) } }
             .map { (a, b, gap) -> "gap of %.1f dp between %s and %s is not on the scale".format(gap, a, b) }
@@ -35,12 +35,12 @@ object SpacingRules {
     /** Sheet: blocks start on the gutter, stay inside it, sit 20 below the sheet's top and 4 to 24 apart. */
     fun sheet(root: LayoutBox, windowWidth: Float): List<String> = root.descendants().filter { it.role == LayoutRole.Sheet }.flatMap { sheet ->
         val blocks = sheet.content
-        val gutter = space.s4.value
+        val gutter = space.gutter.value
         buildList {
             blocks.filter { !near(it.left, gutter) }.forEach { add("sheet block $it starts at %.1f, not on the %.0f dp gutter".format(it.left, gutter)) }
             blocks.filter { it.right > windowWidth - gutter + TOL }.forEach { add("sheet block $it ends past the gutter") }
-            blocks.firstOrNull()?.takeUnless { near(it.top - sheet.top, space.s5.value) }
-                ?.let { add("sheet starts its first block $it %.1f dp below its top, not %.0f".format(it.top - sheet.top, space.s5.value)) }
+            blocks.firstOrNull()?.takeUnless { near(it.top - sheet.top, space.sheetTop.value) }
+                ?.let { add("sheet starts its first block $it %.1f dp below its top, not %.0f".format(it.top - sheet.top, space.sheetTop.value)) }
             sheet.columnGaps().filter { (_, _, gap) -> pageGaps.none { near(it, gap) } }
                 .forEach { (a, b, gap) -> add("sheet gap of %.1f dp between %s and %s is not a page gap".format(gap, a, b)) }
         }
@@ -48,7 +48,7 @@ object SpacingRules {
 
     /** Card: content starts 16 inside every edge. */
     fun cards(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Card }.flatMap { card ->
-        val inset = space.s4.value
+        val inset = space.cardInset.value
         val items = card.content
         buildList {
             if (items.isNotEmpty()) {
@@ -87,7 +87,7 @@ object SpacingRules {
 
     /** Top bar: the first and last glyph sit on the content gutter, as the content below does. */
     fun topBar(root: LayoutBox, windowWidth: Float): List<String> = root.descendants().filter { it.role == LayoutRole.TopBar }.flatMap { bar ->
-        val gutter = space.s4.value
+        val gutter = space.gutter.value
         val glyphs = bar.leaves
         buildList {
             glyphs.minByOrNull { it.left }?.takeUnless { near(it.left, gutter) }
@@ -114,7 +114,7 @@ object SpacingRules {
 
     /** A metric tile's value starts on the tile's content edge, with or without a status dot. */
     fun valueColumns(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Card }.flatMap { card ->
-        val edge = card.left + space.s4.value
+        val edge = card.left + space.cardInset.value
         card.descendants().filter { it.role == LayoutRole.Value }.mapNotNull { value ->
             val text = value.leaves.firstOrNull { it.text != null } ?: return@mapNotNull null
             "value $text starts %.1f dp off its tile's content edge".format(text.left - edge).takeUnless { near(text.left, edge) }
