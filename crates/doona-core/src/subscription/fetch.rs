@@ -38,11 +38,12 @@ pub(crate) struct Fetched {
     pub userinfo: Userinfo,
 }
 
-/// The quota a provider reports in `Subscription-Userinfo`, when it does.
+/// The quota a provider reports in `Subscription-Userinfo`, when it does. Each value fits Kotlin's
+/// signed `Long`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Userinfo {
-    pub used_bytes: Option<u64>,
-    pub total_bytes: Option<u64>,
+    pub used_bytes: Option<i64>,
+    pub total_bytes: Option<i64>,
     pub expires_at_epoch_ms: Option<i64>,
 }
 
@@ -381,30 +382,36 @@ async fn read_line<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<String, Er
 }
 
 /// `upload=…; download=…; total=…; expire=…`: used is upload plus download, a zero total or
-/// expiry means none, and the expiry is in seconds.
+/// expiry means none, and the expiry is in seconds. A value a signed 64-bit integer cannot hold,
+/// or a sum or millisecond time that overflows one, leaves its field out.
 fn parse_userinfo(header: &str) -> Userinfo {
     let (mut upload, mut download, mut info) = (None, None, Userinfo::default());
     for pair in header.split(';') {
         let Some((key, value)) = pair.split_once('=') else {
             continue;
         };
-        let Ok(value) = value.trim().parse::<u64>() else {
+        // Digits only, as honk reads them; a number too long for an i64 is present but unusable.
+        let value = value.trim();
+        if value.is_empty() || !value.bytes().all(|b| b.is_ascii_digit()) {
             continue;
-        };
+        }
+        let value = value.parse::<i64>().ok();
         match key.trim() {
             "upload" => upload = Some(value),
             "download" => download = Some(value),
-            "total" => info.total_bytes = (value != 0).then_some(value),
+            "total" => info.total_bytes = value.filter(|v| *v != 0),
             "expire" => {
-                info.expires_at_epoch_ms = (value != 0)
-                    .then(|| i64::try_from(value.saturating_mul(1000)).ok())
-                    .flatten();
+                info.expires_at_epoch_ms =
+                    value.filter(|v| *v != 0).and_then(|v| v.checked_mul(1000));
             }
             _ => {}
         }
     }
     if upload.is_some() || download.is_some() {
-        info.used_bytes = Some(upload.unwrap_or(0).saturating_add(download.unwrap_or(0)));
+        let part = |p: Option<Option<i64>>| p.unwrap_or(Some(0));
+        info.used_bytes = part(upload)
+            .zip(part(download))
+            .and_then(|(u, d)| u.checked_add(d));
     }
     info
 }

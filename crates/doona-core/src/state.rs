@@ -67,8 +67,8 @@ pub struct StoredSubscription {
     pub name: String,
     pub url: String,
     pub updated_at_epoch_ms: Option<i64>,
-    pub used_bytes: Option<u64>,
-    pub total_bytes: Option<u64>,
+    pub used_bytes: Option<i64>,
+    pub total_bytes: Option<i64>,
     pub expires_at_epoch_ms: Option<i64>,
     /// The code of the last failed update; a successful one clears it.
     #[serde(default)]

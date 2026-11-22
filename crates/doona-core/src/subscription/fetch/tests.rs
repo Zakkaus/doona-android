@@ -160,3 +160,19 @@ fn an_https_fetch_reaches_a_public_server() {
     let fetched = get_url("https://www.gstatic.com/generate_204").unwrap();
     assert!(fetched.body.is_empty());
 }
+
+#[test]
+fn quotas_a_signed_long_cannot_hold_are_left_out() {
+    let max = i128::from(i64::MAX);
+    let beyond_u64 = parse_userinfo("upload=99999999999999999999; download=5");
+    assert_eq!(beyond_u64.used_bytes.map(i128::from), None);
+    let info = parse_userinfo(
+        "upload=9223372036854775807; download=1; total=18446744073709551615; expire=9223372036854776",
+    );
+    assert_eq!(info.used_bytes.map(i128::from), None);
+    assert_eq!(info.total_bytes.map(i128::from), None);
+    assert_eq!(info.expires_at_epoch_ms.map(i128::from), None);
+    let info = parse_userinfo("upload=9223372036854775806; download=1; total=9223372036854775807");
+    assert_eq!(info.used_bytes.map(i128::from), Some(max));
+    assert_eq!(info.total_bytes.map(i128::from), Some(max));
+}
