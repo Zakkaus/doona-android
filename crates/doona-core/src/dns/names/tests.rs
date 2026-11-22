@@ -133,6 +133,101 @@ fn a_cname_chain_maps_to_the_question_name() {
     }
 }
 
+/// Only the A records the question's name reaches through its CNAME chain map: an address of
+/// another name in the same answer, or one behind an alias the chain does not reach, maps nothing.
+/// Owner names match in any case.
+#[test]
+fn only_what_the_question_name_reaches_maps() {
+    let edge = wire("edge.nflxvideo.net");
+    let (other, side) = (wire("other.example"), wire("side.example"));
+    // The question, then CNAME www.netflix.com -> edge.nflxvideo.net, whose data starts after
+    // the record's pointer and fixed fields.
+    let edge_at = 12 + wire("www.netflix.com").len() + 4 + 12;
+    let to = |at: usize| vec![0xc0 | (at >> 8) as u8, at as u8];
+    let records = [
+        Rr {
+            owner: AT_QUESTION.to_vec(),
+            kind: 5,
+            ttl: 300,
+            data: &edge,
+        },
+        // An address of a name the chain never reaches.
+        Rr {
+            owner: other.clone(),
+            kind: TYPE_A,
+            ttl: 300,
+            data: &[203, 0, 113, 9],
+        },
+        // An alias the chain does not reach, and the address behind it.
+        Rr {
+            owner: other.clone(),
+            kind: 5,
+            ttl: 300,
+            data: &side,
+        },
+        Rr {
+            owner: side.clone(),
+            kind: TYPE_A,
+            ttl: 300,
+            data: &[203, 0, 113, 10],
+        },
+        Rr {
+            owner: to(edge_at),
+            kind: TYPE_A,
+            ttl: 60,
+            data: &[45, 57, 3, 1],
+        },
+        Rr {
+            owner: wire("EDGE.NflxVideo.NET"),
+            kind: TYPE_A,
+            ttl: 60,
+            data: &[45, 57, 3, 2],
+        },
+    ];
+    let m = answer("www.netflix.com", &records);
+    let names = Names::new();
+    names.learn_at(&m, 0);
+    for ip in [v4(45, 57, 3, 1), v4(45, 57, 3, 2)] {
+        assert_eq!(name_of(&names, ip, 1).as_deref(), Some("www.netflix.com"));
+    }
+    for ip in [v4(203, 0, 113, 9), v4(203, 0, 113, 10)] {
+        assert_eq!(name_of(&names, ip, 1), None, "{ip}");
+    }
+    assert_eq!(names.len(), 2);
+}
+
+/// An alias back to a name already in the chain ends it; what the chain reached still maps.
+#[test]
+fn an_alias_loop_ends_the_chain() {
+    let (alias, question) = (wire("alias.example"), wire("loop.example"));
+    let records = [
+        Rr {
+            owner: AT_QUESTION.to_vec(),
+            kind: 5,
+            ttl: 300,
+            data: &alias,
+        },
+        Rr {
+            owner: alias.clone(),
+            kind: 5,
+            ttl: 300,
+            data: &question,
+        },
+        Rr {
+            owner: alias.clone(),
+            kind: TYPE_A,
+            ttl: 300,
+            data: &[192, 0, 2, 7],
+        },
+    ];
+    let names = Names::new();
+    names.learn_at(&answer("loop.example", &records), 0);
+    assert_eq!(
+        name_of(&names, v4(192, 0, 2, 7), 1).as_deref(),
+        Some("loop.example")
+    );
+}
+
 #[test]
 fn a_ttl_is_held_to_one_minute_and_one_hour() {
     let names = Names::new();

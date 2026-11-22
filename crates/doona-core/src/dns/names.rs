@@ -1,6 +1,7 @@
-//! The names DNS answers give addresses (rule-mode.md decision 3, ARCH D33). Each A record of an
-//! answer the core forwards maps its address to the question's name, through any CNAME chain, so a
-//! new flow to that address is matched as that name. A flow is looked up once, when it opens.
+//! The names DNS answers give addresses (rule-mode.md decision 3, ARCH D33). An answer the core
+//! forwards maps to the question's name the address of each A record that name reaches through its
+//! CNAME chain, so a new flow to that address is matched as that name; an answer to another
+//! question than the one asked maps nothing. A flow is looked up once, when it opens.
 //! Strict Private DNS and an app's own DoH never reach the core's resolver: their flows have no
 //! name, so domain rules miss them and the rules that match by address, or the last one, decide.
 //! The tun carries IPv4 only (`DoonaVpnService.tunBuilder`), so AAAA records name no flow.
@@ -27,7 +28,11 @@ pub(crate) const MAX_TTL: u32 = 3_600;
 /// the other names out of the cache.
 const PER_ANSWER: usize = 64;
 const TYPE_A: u16 = 1;
+const TYPE_CNAME: u16 = 5;
 const CLASS_IN: u16 = 1;
+/// The most names a CNAME chain is followed through, the question's included; a longer chain ends
+/// there.
+const MAX_CHAIN: usize = 16;
 /// The longest name, without its final dot.
 const MAX_NAME: usize = 253;
 
@@ -44,10 +49,13 @@ impl Names {
         Names(Mutex::new(LruCache::unbounded()))
     }
 
-    /// Maps the addresses `answer` gives to its question's name. Anything but a successful answer
-    /// to one A question in class IN, with a name of letters, digits, `-` and `_`, maps nothing.
-    pub fn learn(&self, answer: &[u8]) {
-        self.learn_at(answer, sys::boot_ms());
+    /// Maps the addresses `answer` gives to its question's name, when it answers the question of
+    /// `query`. Anything but a successful answer to one A question in class IN, with a name of
+    /// letters, digits, `-` and `_`, maps nothing.
+    pub fn learn(&self, query: &[u8], answer: &[u8]) {
+        if same_question(query, answer) {
+            self.learn_at(answer, sys::boot_ms());
+        }
     }
 
     /// The name `ip` answered, while its mapping lasts.
@@ -69,21 +77,12 @@ impl Names {
     }
 
     pub(super) fn learn_at(&self, m: &[u8], now_ms: u64) {
-        let Some((name, mut at)) = question(m) else {
+        let Some((name, at)) = question(m) else {
             return;
         };
         // Read before the lock is taken, so a new flow's lookup never waits on a long answer.
-        let mut found = Vec::new();
-        for _ in 0..count(m, 6) {
-            let Some((end, a)) = record(m, at) else {
-                break;
-            };
-            at = end;
-            found.extend(a);
-            if found.len() == PER_ANSWER {
-                break;
-            }
-        }
+        let mut found = reached(m, &name, at);
+        found.truncate(PER_ANSWER);
         if found.is_empty() {
             return;
         }
@@ -127,21 +126,81 @@ fn question(m: &[u8]) -> Option<(String, usize)> {
     (u16_at(m, end - 4)? == TYPE_A && u16_at(m, end - 2)? == CLASS_IN).then_some((name, end))
 }
 
-/// The record at `at`: the offset past it, and its address and TTL (held to the bounds) when it
-/// is an A record in IN. None when it runs past the message.
-fn record(m: &[u8], at: usize) -> Option<(usize, Option<(Ipv4Addr, u32)>)> {
+/// Whether `answer` answers the question of `query`: one question each, with the same name in any
+/// case (DNS 0x20), type and class.
+fn same_question(query: &[u8], answer: &[u8]) -> bool {
+    if count(query, 4) != 1 || count(answer, 4) != 1 {
+        return false;
+    }
+    let (Some(q), Some(a)) = (question_end(query), question_end(answer)) else {
+        return false;
+    };
+    // A label's length (at most 63) and a pointer (0xc0 and up) are never ASCII letters, so case
+    // is ignored in the labels only.
+    query[HEADER..q - 4].eq_ignore_ascii_case(&answer[HEADER..a - 4])
+        && query[q - 4..q] == answer[a - 4..a]
+}
+
+/// What an A or CNAME record in IN holds.
+enum Data {
+    /// An address, and its TTL held to the bounds.
+    A(Ipv4Addr, u32),
+    /// Where the name it aliases starts.
+    Alias(usize),
+}
+
+/// The addresses, with their TTLs, of the A records in the answer section from `at` that `name`
+/// reaches through its CNAME chain: `name`, the name its CNAME gives, and so on. An alias back into
+/// the chain ends it, as does a record that runs past the message; what came before counts.
+fn reached(m: &[u8], name: &str, mut at: usize) -> Vec<(Ipv4Addr, u32)> {
+    let mut records = Vec::new();
+    for _ in 0..count(m, 6) {
+        let Some((end, held)) = record(m, at) else {
+            break;
+        };
+        at = end;
+        records.extend(held);
+    }
+    let mut chain = vec![name.to_owned()];
+    while chain.len() < MAX_CHAIN {
+        let last = &chain[chain.len() - 1];
+        let next = records.iter().find_map(|(owner, data)| match data {
+            Data::Alias(to) if owner == last => read_name(m, *to),
+            _ => None,
+        });
+        match next {
+            Some(next) if !chain.contains(&next) => chain.push(next),
+            _ => break,
+        }
+    }
+    records
+        .into_iter()
+        .filter_map(|(owner, data)| match data {
+            Data::A(addr, ttl) if chain.contains(&owner) => Some((addr, ttl)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The record at `at`: the offset past it, and for an A or CNAME record in IN, its owner's name
+/// and what it holds. None when it runs past the message.
+fn record(m: &[u8], at: usize) -> Option<(usize, Option<(String, Data)>)> {
+    let owner = at;
     let at = skip_name(m, at)?;
     let (kind, class, len) = (u16_at(m, at)?, u16_at(m, at + 2)?, u16_at(m, at + 8)?);
     let ttl = u32::from_be_bytes(m.get(at + 4..at + 8)?.try_into().ok()?);
     let data = m.get(at + 10..at + 10 + usize::from(len))?;
     let end = at + 10 + data.len();
-    let octets = <[u8; 4]>::try_from(data)
-        .ok()
-        .filter(|_| kind == TYPE_A && class == CLASS_IN);
     // RFC 2181 §8: a TTL with the top bit set is read as zero.
     let ttl = if ttl >> 31 == 1 { 0 } else { ttl };
-    let ttl = ttl.clamp(MIN_TTL, MAX_TTL);
-    Some((end, octets.map(|o| (Ipv4Addr::from(o), ttl))))
+    let held = match (kind, class) {
+        (TYPE_A, CLASS_IN) => <[u8; 4]>::try_from(data)
+            .ok()
+            .map(|o| Data::A(Ipv4Addr::from(o), ttl.clamp(MIN_TTL, MAX_TTL))),
+        (TYPE_CNAME, CLASS_IN) => Some(Data::Alias(at + 10)),
+        _ => None,
+    };
+    Some((end, held.and_then(|d| Some((read_name(m, owner)?, d)))))
 }
 
 /// The name at `at`, compressed or not, lower case and dot-separated; none when a label holds

@@ -385,6 +385,9 @@ pub(crate) async fn answer_dns(
 }
 
 #[cfg(test)]
+mod tests_dns;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::dto::ErrorCode;

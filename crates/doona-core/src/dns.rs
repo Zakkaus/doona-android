@@ -181,7 +181,7 @@ pub(crate) async fn answer(
         exchange(upstreams, route, query).await
     };
     if let Some(a) = &answer {
-        names.learn(a);
+        names.learn(query, a);
     }
     Some(answer.unwrap_or_else(|| servfail(query)))
 }
@@ -322,6 +322,11 @@ pub(crate) mod tests {
 
     /// A DNS-over-TCP server on loopback that answers each query with two A records.
     fn upstream() -> SocketAddr {
+        upstream_with(|q| answer_to(q, 2))
+    }
+
+    /// A DNS-over-TCP server on loopback that answers each query `q` with `answer(q)`.
+    pub fn upstream_with(answer: fn(&[u8]) -> Vec<u8>) -> SocketAddr {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
         std::thread::spawn(move || {
@@ -331,7 +336,7 @@ pub(crate) mod tests {
                 while s.read_exact(&mut len).is_ok() {
                     let mut q = vec![0; usize::from(u16::from_be_bytes(len))];
                     s.read_exact(&mut q).unwrap();
-                    let a = answer_to(&q, 2);
+                    let a = answer(&q);
                     s.write_all(&(a.len() as u16).to_be_bytes()).unwrap();
                     s.write_all(&a).unwrap();
                 }
