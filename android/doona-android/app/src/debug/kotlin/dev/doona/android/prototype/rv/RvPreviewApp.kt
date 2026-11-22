@@ -37,11 +37,29 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
+ * A launcher shortcut the sample was opened by ([action], as in xml/rv_shortcuts): 連線 and 中斷連線 run on screen as
+ * soon as it shows (in the app, connecting goes through VpnService's consent first), 節點 starts with the picker open.
+ */
+internal enum class RvLaunch(val action: String?) {
+    None(null),
+    Connect("dev.doona.android.prototype.rv.CONNECT"),
+    Disconnect("dev.doona.android.prototype.rv.DISCONNECT"),
+    Nodes("dev.doona.android.prototype.rv.NODES"),
+}
+
+/**
  * How the sample starts: [connected] or not, whether connecting [fails], the [page] on top of its tab home (a route
- * such as `nodes` or `settings`), and whether a latency [test] runs a second after launch (for recording it).
+ * such as `nodes` or `settings`), whether a latency [test] runs a second after launch (for recording it), and the
+ * shortcut it was [launch]ed by.
  */
 @Immutable
-internal data class RvSampleStart(val connected: Boolean = true, val fails: Boolean = false, val page: String? = null, val test: Boolean = false) {
+internal data class RvSampleStart(
+    val connected: Boolean = true,
+    val fails: Boolean = false,
+    val page: String? = null,
+    val test: Boolean = false,
+    val launch: RvLaunch = RvLaunch.None,
+) {
     val stack: List<String>
         get() = when (page) {
             null, ACTIVITY -> listOf(ACTIVITY)
@@ -79,16 +97,28 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
         delay(TEST_DELAY_MS)
         run.test()
     }
+    LaunchedEffect(start.launch) {
+        if (start.launch == RvLaunch.Connect) run.connect()
+        if (start.launch == RvLaunch.Disconnect) run.disconnect()
+    }
     val pages = RvSamplePages(push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { i -> TABS[i]?.let { stack = listOf(it) } })
     CompositionLocalProvider(LocalRvTesting provides run.testing) {
-        RvStackHost(stack, onBack = pages.pop, options) { route -> RvSamplePage(route, run, options, settings, onSettings, pages) }
+        RvStackHost(stack, onBack = pages.pop, options) { route -> RvSamplePage(route, run, options, settings, onSettings, pages, start.launch == RvLaunch.Nodes) }
     }
 }
 
 private class RvSamplePages(val push: (String) -> Unit, val pop: () -> Unit, val tab: (Int) -> Unit)
 
 @Composable
-private fun RvSamplePage(route: String, run: RvSampleRun, options: RvMotionOptions, settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit, pages: RvSamplePages) {
+private fun RvSamplePage(
+    route: String,
+    run: RvSampleRun,
+    options: RvMotionOptions,
+    settings: RvSettingsState,
+    onSettings: (RvSettingsState) -> Unit,
+    pages: RvSamplePages,
+    picking: Boolean,
+) {
     when (route.substringBefore(':')) {
         TRAFFIC -> RvTrafficScreen(run.activity(), RvData.session, onBack = pages.pop)
 
@@ -105,14 +135,17 @@ private fun RvSamplePage(route: String, run: RvSampleRun, options: RvMotionOptio
 
         THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pages.pop)
 
-        else -> ActivityPage(run, options, pages)
+        else -> ActivityPage(run, options, pages, picking)
     }
 }
 
-/** 活動 with its pull-down: a picked node becomes the current one and the picker closes; its page opens over 活動. */
+/**
+ * 活動 with its pull-down (open at first when [picking]): a picked node becomes the current one and the picker closes;
+ * its page opens over 活動.
+ */
 @Composable
-private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages) {
-    val pull = rememberRvPullState()
+private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean) {
+    val pull = rememberRvPullState(picking)
     val routes = RvActivityRoutes(
         traffic = { pages.push(TRAFFIC) },
         stats = { pages.push(STATS) },

@@ -154,13 +154,14 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
     }
 }
 
+/** The pull-down's state, the picker [open] at first or not; afterwards whatever it was when the activity went. */
 @Composable
-internal fun rememberRvPullState(): RvPullState {
+internal fun rememberRvPullState(open: Boolean = false): RvPullState {
     val motion = Rv.motion
     val scope = rememberCoroutineScope()
     val px = with(LocalDensity.current) { RvPullPx(RvMotion.pullCommit.toPx(), RvMotion.pullDead.toPx(), RvMotion.pullGive.toPx(), RvMotion.pullFling.toPx()) }
     val saver = Saver<RvPullState, Boolean>({ it.open }, { RvPullState(it, scope, motion, px) })
-    return rememberSaveable(motion, saver = saver) { RvPullState(false, scope, motion, px) }
+    return rememberSaveable(motion, saver = saver) { RvPullState(open, scope, motion, px) }
 }
 
 /**

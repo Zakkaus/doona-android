@@ -18,7 +18,10 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`, adding any of:
  * `--es pull P2` (P1-P3, [RvPullMotion]), `--es tab T2` ([RvTabMotion]), `--es push S2` ([RvPushMotion]),
  * `--es start idle` (start disconnected), `--ez fail true` (connecting fails), `--es page nodes` (start on a page:
- * nodes, stats, traffic or settings) and `--ez test true` (a latency test a second after launch).
+ * nodes, stats, traffic or settings) and `--ez test true` (a latency test a second after launch). The launcher icon's
+ * shortcuts (xml/rv_shortcuts) open it with an action, [RvLaunch]: `-a dev.doona.android.prototype.rv.CONNECT` starts
+ * disconnected and connects on screen, `.DISCONNECT` starts connected and disconnects, `.NODES` starts with the node
+ * picker open. A recreated activity does not run its action again.
  */
 class RvPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,11 +32,17 @@ class RvPreviewActivity : ComponentActivity() {
             tab = extra(EXTRA_TAB, RvTabMotion.entries) { it.code } ?: RvTabMotion.Cut,
             push = extra(EXTRA_PUSH, RvPushMotion.entries) { it.code } ?: RvPushMotion.Zoom,
         )
+        val launch = RvLaunch.entries.firstOrNull { it.action != null && it.action == intent.action }.takeIf { savedInstanceState == null } ?: RvLaunch.None
         val start = RvSampleStart(
-            connected = intent.getStringExtra(EXTRA_START) != START_IDLE,
+            connected = when (launch) {
+                RvLaunch.Connect -> false
+                RvLaunch.Disconnect -> true
+                else -> intent.getStringExtra(EXTRA_START) != START_IDLE
+            },
             fails = intent.getBooleanExtra(EXTRA_FAIL, false),
             page = intent.getStringExtra(EXTRA_PAGE),
             test = intent.getBooleanExtra(EXTRA_TEST, false),
+            launch = launch,
         )
         setContent { RvPreviewApp(options, start) }
     }
