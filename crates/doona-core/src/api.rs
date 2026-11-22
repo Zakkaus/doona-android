@@ -45,7 +45,10 @@ pub struct Core {
     runtime: Runtime,
     options: Options,
     store: Store,
+    /// What `snapshot` reads; held only to copy or assign, never across file I/O.
     catalog: Mutex<CatalogState>,
+    /// Serializes the commands that write `state.json`, so a slow write never holds `catalog`.
+    writer: Mutex<()>,
     /// The committed mode, shared with the running generation.
     mode: Arc<ModeCell>,
     /// Which generation runs, or that one is starting. Held only to read or swap it, never
@@ -110,6 +113,7 @@ impl Core {
             store,
             mode: Arc::new(ModeCell::new(state.mode)),
             catalog: Mutex::new(CatalogState { state, revision: 1 }),
+            writer: Mutex::new(()),
             life: Mutex::new(Life::Stopped),
             generation: AtomicI64::new(0),
             launch,
@@ -321,20 +325,20 @@ impl Core {
         }
     }
 
-    /// Commits the mode to `state.json` first; new flows read it from then on.
+    /// Commits the mode to `state.json` first; new flows read it from then on. Only writers
+    /// change `catalog.state`, and they run one at a time, so the copy read here stays current.
     fn set_mode(&self, mode: Mode) -> Result<(), ErrorCode> {
-        let mut catalog = lock(&self.catalog);
-        if catalog.state.mode == mode {
+        let _writer = lock(&self.writer);
+        let current = lock(&self.catalog).state.clone();
+        if current.mode == mode {
             return Ok(());
         }
-        let next = State {
-            mode,
-            ..catalog.state.clone()
-        };
+        let next = State { mode, ..current };
         self.store.save(&next).map_err(|e| {
             log::error!("setMode: state not written ({:?})", e.kind());
             ErrorCode::Internal
         })?;
+        let mut catalog = lock(&self.catalog);
         catalog.state = next;
         catalog.revision += 1;
         self.mode.set(mode);

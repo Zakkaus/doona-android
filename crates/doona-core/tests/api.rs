@@ -127,3 +127,30 @@ fn a_mode_that_cannot_be_written_is_not_committed() {
     assert_eq!(after.revision, before);
     assert_eq!(after.catalog.unwrap().mode, Mode::Global);
 }
+
+#[test]
+fn a_mode_renamed_into_place_is_committed_although_the_directory_sync_fails() {
+    use std::os::unix::fs::PermissionsExt;
+    // SAFETY: geteuid has no preconditions.
+    if unsafe { libc::geteuid() } == 0 {
+        return; // root ignores the permission that makes the sync fail
+    }
+    let dir = TempDir::new("api-nosync");
+    let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    let before = snapshot(&core, -1).revision;
+    let set = |mode: u32| {
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(mode)).unwrap()
+    };
+    // Without read permission the directory cannot be opened for its sync; files in it can
+    // still be created and renamed.
+    set(0o300);
+    let reply = core.call("setMode", r#"{"mode":"Direct"}"#);
+    set(0o700);
+    assert_eq!(reply, r#"{"ok":{}}"#);
+    let after = snapshot(&core, -1);
+    assert_eq!(after.revision, before + 1);
+    assert_eq!(after.catalog.unwrap().mode, Mode::Direct);
+    drop(core);
+    let again = Core::new(dir.path().to_str().unwrap()).unwrap();
+    assert_eq!(snapshot(&again, -1).catalog.unwrap().mode, Mode::Direct);
+}

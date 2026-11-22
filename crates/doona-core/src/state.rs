@@ -93,16 +93,22 @@ impl Store {
         }
     }
 
+    /// Writes `state` to a synced temporary file and renames it over the state file. The
+    /// rename is the commit: once it succeeds, a restart reads the new state, so a failure to
+    /// sync the directory afterwards is only logged.
     pub fn save(&self, state: &State) -> io::Result<()> {
         let bytes = serde_json::to_vec_pretty(state).map_err(io::Error::other)?;
         let temp = self.dir.join(TEMP);
-        let result = write_synced(&temp, &bytes)
-            .and_then(|()| fs::rename(&temp, self.dir.join(FILE)))
-            .and_then(|()| File::open(&self.dir)?.sync_all());
-        if result.is_err() {
+        let committed =
+            write_synced(&temp, &bytes).and_then(|()| fs::rename(&temp, self.dir.join(FILE)));
+        if committed.is_err() {
             let _ = fs::remove_file(&temp);
+            return committed;
         }
-        result
+        if let Err(e) = File::open(&self.dir).and_then(|d| d.sync_all()) {
+            log::warn!("state: directory not synced ({:?})", e.kind());
+        }
+        Ok(())
     }
 }
 
