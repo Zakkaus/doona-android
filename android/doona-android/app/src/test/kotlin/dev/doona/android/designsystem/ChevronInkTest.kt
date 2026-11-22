@@ -15,7 +15,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.R
 import dev.doona.android.designsystem.components.ChevronDirection
 import dev.doona.android.designsystem.components.DoonaChevron
 import dev.doona.android.designsystem.components.DoonaIcon
@@ -35,6 +34,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import dev.doona.android.icons.R as IconsR
 
 private const val DENSITY = 3f
 private const val INK_TOLERANCE = 0.67f
@@ -74,7 +74,7 @@ class ChevronInkTest {
             DoonaTheme {
                 val tint = DoonaTheme.colors.text.primary
                 val size = if (direction == ChevronDirection.Down) DoonaTheme.size.iconInline else DoonaTheme.size.iconSmall
-                val whole = if (direction == ChevronDirection.Down) R.drawable.ic_chevron_down else R.drawable.ic_chevron_right
+                val whole = if (direction == ChevronDirection.Down) IconsR.drawable.sym_keyboard_arrow_down else IconsR.drawable.sym_chevron_right
                 Column(Modifier.background(DoonaTheme.colors.window).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     DoonaChevron(direction, tint, chevron)
                     Box(Modifier.testTag("whole")) { DoonaIcon(whole, tint, size = size) }
@@ -99,7 +99,7 @@ class ChevronInkTest {
     /** A glyph cut off at its box edge has no ink inside the box, so only the comparison with the whole glyph sees it. */
     @Test
     fun aChevronInABoxTooSmallIsClipped() {
-        val (box, whole) = render(ChevronDirection.Down, Modifier.size(width = 8.dp, height = 4.dp))
+        val (box, whole) = render(ChevronDirection.Down, Modifier.size(width = 6.dp, height = 3.dp))
         assertTrue("the clipped box has no ink inside its edges: ${box.describe()}", box.max() <= INK_TOLERANCE)
         assertTrue("a ${box.inkWidth} x ${box.inkHeight} box against ${whole.inkWidth} x ${whole.inkHeight}", box.clippedAgainst(whole, INK_TOLERANCE))
     }

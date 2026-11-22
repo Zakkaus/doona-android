@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.icons.R as IconsR
 
 /** Fields: the text field with a label in each of its states, and the search field. */
 @Composable
@@ -26,7 +27,7 @@ internal fun FieldsGallery() = GalleryPage("Fields") {
             DoonaTextField(
                 rememberTextFieldState("https://example.com/sub"),
                 label = "Subscription URL",
-                trailing = { DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = {}) },
+                trailing = { DoonaIconAction(IconsR.drawable.sym_more_vert, stringResource(R.string.ui_more_options), onClick = {}) },
             )
         }
     }
@@ -41,7 +42,7 @@ internal fun FieldsGallery() = GalleryPage("Fields") {
                 rememberTextFieldState("https://example.com/api/v1/client/subscribe?token=0123456789abcdef0123456789abcdef"),
                 label = "訂閱網址",
                 error = "無法下載訂閱：伺服器回應逾時，請確認網址與目前的網路連線後再試一次",
-                trailing = { DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = {}) },
+                trailing = { DoonaIconAction(IconsR.drawable.sym_more_vert, stringResource(R.string.ui_more_options), onClick = {}) },
             )
         }
     }

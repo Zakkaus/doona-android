@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.icons.R as IconsR
 
 /** One destination of the [DoonaHubBar]: its label and the icon of its first page. */
 @Immutable
@@ -107,7 +108,7 @@ private class BarEdge(ink: Dp) {
  */
 @Composable
 fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: List<DoonaBarAction> = emptyList()) {
-    val start = BarEdge(DoonaIconInk.start(R.drawable.ic_arrow_back, DoonaTheme.size.icon))
+    val start = BarEdge(DoonaIconInk.start(IconsR.drawable.sym_arrow_back, DoonaTheme.size.icon))
     val end = actions.lastOrNull()?.let { BarEdge(DoonaIconInk.end(it.icon, DoonaTheme.size.icon)) }
     Box(
         modifier
@@ -125,7 +126,7 @@ fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: L
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (onBack != null) {
-                IconAction(R.drawable.ic_arrow_back, stringResource(R.string.ui_back), onBack, Modifier.padding(start = start.padding), start.nudge)
+                IconAction(IconsR.drawable.sym_arrow_back, stringResource(R.string.ui_back), onBack, Modifier.padding(start = start.padding), start.nudge)
             } else {
                 // The mark is not a target: its box starts where its shape must, so it needs no nudge.
                 Image(

@@ -23,6 +23,7 @@ import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.labelRes
+import dev.doona.android.icons.R as IconsR
 
 /** The 設定 entry; [version] is the app's version name, which the shell reads once and passes on. */
 @Composable
@@ -44,9 +45,9 @@ fun SettingsScreen(state: SettingsUiState, version: String, onOpenPerApp: () -> 
         DoonaPageTitle(stringResource(R.string.hub_settings))
         DoonaGap(DoonaTheme.spacing.afterTitle)
         Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
-            SettingCard(R.drawable.ic_filter, stringResource(R.string.perapp_title), stringResource(state.appPolicy.labelRes()), onOpenPerApp)
-            SettingCard(R.drawable.ic_link, stringResource(R.string.settings_subscriptions), value = null, onOpenSubscriptions)
-            SettingCard(R.drawable.ic_cpu, stringResource(R.string.settings_version), version.ifBlank { NO_VALUE }, onClick = null)
+            SettingCard(IconsR.drawable.sym_filter_alt, stringResource(R.string.perapp_title), stringResource(state.appPolicy.labelRes()), onOpenPerApp)
+            SettingCard(IconsR.drawable.sym_link, stringResource(R.string.settings_subscriptions), value = null, onOpenSubscriptions)
+            SettingCard(IconsR.drawable.sym_memory, stringResource(R.string.settings_version), version.ifBlank { NO_VALUE }, onClick = null)
         }
     }
 }

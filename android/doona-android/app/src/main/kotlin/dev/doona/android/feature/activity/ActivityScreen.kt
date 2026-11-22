@@ -52,6 +52,7 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.messageRes
+import dev.doona.android.icons.R as IconsR
 
 /**
  * The 活動 entry: builds the ViewModel and collects its state while the screen is started. Connecting (which needs
@@ -73,8 +74,8 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
     val space = DoonaTheme.spacing
     DoonaPage(
         actions = listOf(
-            DoonaBarAction(R.drawable.ic_search, stringResource(R.string.ui_search), NOT_WIRED),
-            DoonaBarAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), NOT_WIRED),
+            DoonaBarAction(IconsR.drawable.sym_search, stringResource(R.string.ui_search), NOT_WIRED),
+            DoonaBarAction(IconsR.drawable.sym_more_vert, stringResource(R.string.ui_more_options), NOT_WIRED),
         ),
     ) {
         DoonaPageTitle(stringResource(R.string.hub_activity))
@@ -86,14 +87,14 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
                 DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(ActivityAction.DismissError) })
             }
             ConnectionCard(state.status, state.hasSubscriptions, onSwitch = { if (it) onConnect() else onAction(ActivityAction.Disconnect) })
-            DoonaControlCard(R.drawable.ic_shuffle, stringResource(R.string.act_mode)) {
+            DoonaControlCard(IconsR.drawable.sym_shuffle, stringResource(R.string.act_mode)) {
                 DoonaSegmented(
                     Mode.entries.map { stringResource(it.label) },
                     selected = state.mode.ordinal,
                     onSelect = { onAction(ActivityAction.SetMode(Mode.entries[it])) },
                 )
             }
-            DoonaControlCard(R.drawable.ic_filter, stringResource(R.string.act_global)) {
+            DoonaControlCard(IconsR.drawable.sym_filter_alt, stringResource(R.string.act_global)) {
                 DoonaPicker(state.outbound ?: NO_VALUE, onClick = { state.outboundGroupId?.let(onOpenGroup) })
             }
         }
@@ -114,15 +115,15 @@ private val Mode.label: Int
 private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
         DoonaTileRow {
-            RateTile(R.drawable.ic_download, DoonaTheme.colors.series1, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
-            RateTile(R.drawable.ic_upload, DoonaTheme.colors.series2, stringResource(R.string.ui_upload), rateText(state.upRate), state.upHistory)
+            RateTile(IconsR.drawable.sym_download, DoonaTheme.colors.series1, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
+            RateTile(IconsR.drawable.sym_upload, DoonaTheme.colors.series2, stringResource(R.string.ui_upload), rateText(state.upRate), state.upHistory)
         }
         // Direct traffic uses no node, so there is no latency to show.
         if (state.mode == Mode.Direct) return@Column
         val node = state.node
         val latency = node?.latencyMs?.takeUnless { node.failed }
         DoonaMetricTile(
-            icon = R.drawable.ic_clock,
+            icon = IconsR.drawable.sym_schedule,
             caption = { DoonaNodeName(node?.name ?: stringResource(R.string.act_latency), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) },
             modifier = Modifier.fillMaxWidth(),
             onClick = state.outboundGroupId?.let { id -> { onOpenGroup(id) } },

@@ -1,5 +1,6 @@
 package dev.doona.android.designsystem.theme
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Immutable
 import dev.doona.android.designsystem.tokens.RadiusScale
@@ -18,6 +19,6 @@ object DoonaShape {
     /** Page sheet: 16 on the top corners only. */
     val sheet = RoundedCornerShape(topStart = RadiusScale.xl, topEnd = RadiusScale.xl)
 
-    /** Twemoji flag corner: 57 of 512 units across 16.6 dp (flag_*.xml). */
-    val flag = RoundedCornerShape(RadiusScale.xs)
+    /** A circle flag: the flag drawables are discs, and their edge and fallback follow the same outline. */
+    val flag = CircleShape
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.icons.R as IconsR
 
 /** Inputs: the buttons in every style and state, the app icon and the check rows. */
 @Composable
@@ -34,9 +35,9 @@ internal fun InputsGallery() = GalleryPage("Inputs") {
     }
     Section("With an icon") {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(space.item), verticalArrangement = Arrangement.spacedBy(space.block)) {
-            DoonaButton(add, onClick = {}, icon = R.drawable.ic_add_circle)
-            DoonaButton(edit, onClick = {}, style = DoonaButtonStyle.Secondary, icon = R.drawable.ic_edit)
-            DoonaButton(stringResource(R.string.ui_search), onClick = {}, style = DoonaButtonStyle.Text, icon = R.drawable.ic_search)
+            DoonaButton(add, onClick = {}, icon = IconsR.drawable.sym_add_circle)
+            DoonaButton(edit, onClick = {}, style = DoonaButtonStyle.Secondary, icon = IconsR.drawable.sym_edit)
+            DoonaButton(stringResource(R.string.ui_search), onClick = {}, style = DoonaButtonStyle.Text, icon = IconsR.drawable.sym_search)
         }
     }
     Section("Disabled") {
@@ -51,14 +52,14 @@ internal fun InputsGallery() = GalleryPage("Inputs") {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(space.item), verticalArrangement = Arrangement.spacedBy(space.block)) {
             DoonaButton(add, onClick = {}, busy = true)
             DoonaButton(cancel, onClick = {}, style = DoonaButtonStyle.Secondary, busy = true)
-            DoonaButton(edit, onClick = {}, style = DoonaButtonStyle.Text, icon = R.drawable.ic_edit, busy = true)
+            DoonaButton(edit, onClick = {}, style = DoonaButtonStyle.Text, icon = IconsR.drawable.sym_edit, busy = true)
             DoonaButton(remove, onClick = {}, style = DoonaButtonStyle.Destructive, busy = true)
         }
     }
     Section("Long label, full width") {
         Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
             DoonaButton("Add the subscription and test every node in the group", onClick = {}, Modifier.fillMaxWidth())
-            DoonaButton("新增訂閱並立即測試群組裡的每一個節點的延遲與可用性", onClick = {}, Modifier.fillMaxWidth(), style = DoonaButtonStyle.Secondary, icon = R.drawable.ic_add_circle)
+            DoonaButton("新增訂閱並立即測試群組裡的每一個節點的延遲與可用性", onClick = {}, Modifier.fillMaxWidth(), style = DoonaButtonStyle.Secondary, icon = IconsR.drawable.sym_add_circle)
         }
     }
     Section("DoonaCheckRow: checked, unchecked, no subtitle") {
@@ -88,6 +89,6 @@ internal fun InputsGallery() = GalleryPage("Inputs") {
 private fun SampleAppIcon() {
     val c = DoonaTheme.colors
     Box(Modifier.size(DoonaTheme.size.appIcon).clip(DoonaTheme.shape.control).background(c.control), contentAlignment = Alignment.Center) {
-        DoonaIcon(R.drawable.ic_link, c.icon)
+        DoonaIcon(IconsR.drawable.sym_link, c.icon)
     }
 }

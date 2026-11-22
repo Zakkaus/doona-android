@@ -1,0 +1,8 @@
+Material Symbols Rounded (res/drawable/sym_*.xml)
+Copyright Google LLC. From google/material-design-icons at commit
+10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7,
+the Rounded style, filled (FILL 1), weight 500, 24 px, as upstream ships it in
+symbols/android/<name>/materialsymbolsrounded/<name>_wght500fill1_24px.xml.
+sym_add_w600 and sym_close_w600 are the weight-600 files. Only the fill (black)
+and the colorControlNormal tint differ from upstream. Apache License 2.0, in
+LICENSE. tools/gen_icons.py regenerates every file.

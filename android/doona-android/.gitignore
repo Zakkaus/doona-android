@@ -1,5 +1,7 @@
 /build/
 /app/build/
+/icons/build/
+/flags/build/
 /.gradle/
 /.kotlin/
 /.idea/

@@ -19,7 +19,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
-import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaCard
 import dev.doona.android.designsystem.components.DoonaHubBar
 import dev.doona.android.designsystem.components.DoonaHubTab
@@ -45,6 +44,7 @@ import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.ParameterizedRobolectricTestRunner.Parameters
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import dev.doona.android.icons.R as IconsR
 
 /**
  * What the fills of one page add up to, read from the pixels: a page has one frame (the sheet; its cards are a step off
@@ -73,7 +73,7 @@ class FillsTest(private val variant: Variant, private val colors: DoonaColors) {
             Column(Modifier.fillMaxSize().background(DoonaTheme.colors.surface)) {
                 DoonaNodeTile("hk-01", 42, current = true, groupLabel = null, onClick = {})
                 Box(Modifier.weight(1f))
-                DoonaHubBar(listOf(DoonaHubTab("A", R.drawable.ic_search), DoonaHubTab("B", R.drawable.ic_edit)), selected = 0, onSelect = {})
+                DoonaHubBar(listOf(DoonaHubTab("A", IconsR.drawable.sym_search), DoonaHubTab("B", IconsR.drawable.sym_edit)), selected = 0, onSelect = {})
             }
         }
         val tree = compose.layoutTree()

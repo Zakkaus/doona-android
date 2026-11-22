@@ -32,7 +32,8 @@ object DoonaSize {
     val tabUnderline = SizeScale.tabUnderline
     val spark = SizeScale.spark
     val sparkStroke = SizeScale.sparkStroke
-    val flagHeight = SizeScale.flagHeight
+    val flag = SizeScale.flag
+    val flagLetters = SizeScale.flagLetters
     val flagEdge = SizeScale.flagEdge
     val chartInset = SizeScale.chartInset
     val appIcon = SizeScale.appIcon

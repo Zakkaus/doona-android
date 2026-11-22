@@ -26,6 +26,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.icons.R as IconsR
 
 /*
  * The design system on several pages (the three here, and `InputsGallery`, `FieldsGallery`, `FeedbackGallery` and `DialogGallery`), every component in every
@@ -92,9 +93,9 @@ internal fun ControlsGallery() = GalleryPage("Controls") {
     }
     Section("DoonaIconAction") {
         Row {
-            DoonaIconAction(R.drawable.ic_search, stringResource(R.string.ui_search), onClick = {})
-            DoonaIconAction(R.drawable.ic_edit, stringResource(R.string.policy_edit), onClick = {})
-            DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = {})
+            DoonaIconAction(IconsR.drawable.sym_search, stringResource(R.string.ui_search), onClick = {})
+            DoonaIconAction(IconsR.drawable.sym_edit, stringResource(R.string.policy_edit), onClick = {})
+            DoonaIconAction(IconsR.drawable.sym_more_vert, stringResource(R.string.ui_more_options), onClick = {})
         }
     }
     Section("DoonaPageTabs") { DoonaPageTabs(tabs, selected = 1) }
@@ -112,19 +113,19 @@ internal fun CardsGallery() = GalleryPage("Cards") {
         }
     }
     Section("DoonaControlCard") {
-        DoonaControlCard(R.drawable.ic_shuffle, stringResource(R.string.act_mode)) {
+        DoonaControlCard(IconsR.drawable.sym_shuffle, stringResource(R.string.act_mode)) {
             DoonaSegmented(listOf(stringResource(R.string.mode_global), stringResource(R.string.mode_direct)), selected = 0, onSelect = {})
         }
-        DoonaControlCard(R.drawable.ic_filter, stringResource(R.string.act_global)) {
+        DoonaControlCard(IconsR.drawable.sym_filter_alt, stringResource(R.string.act_global)) {
             DoonaPicker("Auto", onClick = {})
         }
     }
     Section("DoonaMetricTile") {
         DoonaTileRow {
-            MetricTile(R.drawable.ic_download, DoonaTheme.colors.series1, stringResource(R.string.ui_download), "3.9 MB/s")
-            MetricTile(R.drawable.ic_upload, DoonaTheme.colors.series2, stringResource(R.string.ui_upload), "330 kB/s")
+            MetricTile(IconsR.drawable.sym_download, DoonaTheme.colors.series1, stringResource(R.string.ui_download), "3.9 MB/s")
+            MetricTile(IconsR.drawable.sym_upload, DoonaTheme.colors.series2, stringResource(R.string.ui_upload), "330 kB/s")
         }
-        DoonaMetricTile(R.drawable.ic_clock, { DoonaNodeName("hk-01", DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) }, Modifier.fillMaxWidth()) {
+        DoonaMetricTile(IconsR.drawable.sym_schedule, { DoonaNodeName("hk-01", DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) }, Modifier.fillMaxWidth()) {
             DoonaMetricLatency(42)
         }
     }
@@ -188,11 +189,13 @@ private fun glyphs() {
     Row(horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block), verticalAlignment = Alignment.CenterVertically) {
         DoonaChevron(ChevronDirection.Down, c.text.secondary)
         DoonaChevron(ChevronDirection.Right, c.text.secondary)
-        DoonaIcon(R.drawable.ic_speed_fast, c.accent)
-        DoonaIcon(R.drawable.ic_link, c.icon)
-        DoonaFlag(R.drawable.flag_hk, "HK")
-        DoonaFlag(R.drawable.flag_jp, "JP")
-        DoonaFlag(R.drawable.flag_us, "US")
+        DoonaIcon(IconsR.drawable.sym_speed, c.accent)
+        DoonaIcon(IconsR.drawable.sym_link, c.icon)
+        DoonaFlag("HK", "HK")
+        DoonaFlag("JP", "JP")
+        DoonaFlag("US", "US")
+        // A code the set lacks: the neutral disc with its letters.
+        DoonaFlag("ZZ", "ZZ")
     }
 }
 

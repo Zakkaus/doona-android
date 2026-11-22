@@ -30,7 +30,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaIconAction
 import dev.doona.android.designsystem.components.DoonaSearchField
 import dev.doona.android.designsystem.components.DoonaTextField
@@ -54,6 +53,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
+import dev.doona.android.icons.R as IconsR
 
 /** What the text fields do and say: typing into the state, the label and error a reader hears, the keyboard action, the clear action. */
 @RunWith(AndroidJUnit4::class)
@@ -191,7 +191,7 @@ class TextFieldTest {
         var taps = 0
         val state = TextFieldState()
         compose.setDoonaContent {
-            DoonaTextField(state, label = "URL", trailing = { DoonaIconAction(R.drawable.ic_more_vertical, "Paste", onClick = { taps++ }) })
+            DoonaTextField(state, label = "URL", trailing = { DoonaIconAction(IconsR.drawable.sym_more_vert, "Paste", onClick = { taps++ }) })
         }
         val density = compose.density.density
         val box = compose.layoutTree().descendants().single { it.role == LayoutRole.Field }

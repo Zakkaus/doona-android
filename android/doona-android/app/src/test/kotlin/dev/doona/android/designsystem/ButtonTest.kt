@@ -32,7 +32,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaButton
 import dev.doona.android.designsystem.components.DoonaButtonStyle
 import dev.doona.android.designsystem.theme.DoonaColors
@@ -58,6 +57,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
 import kotlin.math.hypot
+import dev.doona.android.icons.R as IconsR
 
 /** What a button does and shows: its taps, its disabled and busy states, its size and the fill of each look. */
 @RunWith(AndroidJUnit4::class)
@@ -108,7 +108,7 @@ class ButtonTest {
     private fun Buttons(gap: Dp) = Column(verticalArrangement = Arrangement.spacedBy(gap)) {
         Row(horizontalArrangement = Arrangement.spacedBy(space.item)) {
             DoonaButton("One", onClick = {})
-            DoonaButton("Two", onClick = {}, style = DoonaButtonStyle.Secondary, icon = R.drawable.ic_edit)
+            DoonaButton("Two", onClick = {}, style = DoonaButtonStyle.Secondary, icon = IconsR.drawable.sym_edit)
             DoonaButton("Three", onClick = {}, style = DoonaButtonStyle.Text, busy = true)
         }
         DoonaButton("Four", onClick = {}, enabled = false)
