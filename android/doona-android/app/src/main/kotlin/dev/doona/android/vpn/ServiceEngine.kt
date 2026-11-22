@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -70,10 +71,17 @@ class ServiceEngine internal constructor(
     private fun launchIn(scope: CoroutineScope, lane: CoroutineDispatcher) {
         scope.launch(lane) { controller.run() }
         scope.launch { if (opener.schema() == CORE_SCHEMA) poll() }
-        scope.launch { perAppSettings.perApp.collect { perApp -> _settings.update { it.copy(perApp = perApp) } } }
+        scope.launch { followPerApp() }
         scope.launch { checkHealth() }
         scope.launch { sampleTraffic() }
         scope.launch { followProbes() }
+    }
+
+    /** An unreadable policy fails each start on its own; here it only stops updating the settings shown. */
+    private suspend fun followPerApp() {
+        perAppSettings.perApp
+            .catch { e -> VpnLog.warn("per-app policy unreadable: ${e.javaClass.simpleName}") }
+            .collect { perApp -> _settings.update { it.copy(perApp = perApp) } }
     }
 
     override fun connect() {

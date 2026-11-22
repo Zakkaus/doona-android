@@ -20,6 +20,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -33,11 +34,14 @@ class TunnelControllerTest {
 
     @Volatile
     private var perApp = PerApp()
+
+    @Volatile
+    private var perAppError: IOException? = null
     private val killed = CountDownLatch(1)
     private val controller = TunnelController(
         core = core,
         opener = CoreOpener(core, "/data", Dispatchers.IO),
-        perApp = { perApp },
+        perApp = { perAppError?.let { throw it } ?: perApp },
         scope = scope,
         killProcess = { killed.countDown() },
         stopDeadlineMs = 200,
@@ -152,6 +156,15 @@ class TunnelControllerTest {
         assertEquals(Status.Failed(FailureReason.NoAllowedApps), awaitStatus { it is Status.Failed })
         assertEquals(listOf("start", "stop"), core.events)
         assertEquals(1, host.routings.size)
+    }
+
+    @Test
+    fun anUnreadablePolicyFailsTheStartBeforeTheTunIsBuilt() {
+        perAppError = IOException("corrupt")
+        controller.start(host)
+        assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
+        assertTrue(host.routings.isEmpty())
+        assertTrue(core.events.isEmpty())
     }
 
     @Test
