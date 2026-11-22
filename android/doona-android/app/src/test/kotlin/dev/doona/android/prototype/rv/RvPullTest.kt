@@ -3,8 +3,14 @@ package dev.doona.android.prototype.rv
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -214,6 +220,29 @@ class RvPullTest {
         compose.mainClock.advanceTimeByFrame()
         compose.onAllNodesWithTag(RV_PICKER).assertCountIs(0, "back closes it at once")
         assertEquals("the threshold still ticks", HapticFeedbackType.GestureThresholdActivate, taps.kinds.first())
+    }
+
+    @Test
+    fun closingDoesNotComposeThePickerEachFrame() {
+        var compositions = 0
+        lateinit var state: RvPullState
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                state = rememberRvPullState(open = true)
+                // As the sample's picker does, this one takes the motion's close and stretch.
+                RvPullDown(RvPullMotion.Sheet, state, activity = { Box(Modifier.fillMaxSize()) }) { motion ->
+                    SideEffect { compositions++ }
+                    Box(Modifier.fillMaxSize().clickable(onClick = motion.close).graphicsLayer { translationY = motion.stretch() })
+                }
+            }
+        }
+        compose.mainClock.autoAdvance = false
+        compose.mainClock.advanceTimeByFrame()
+        val before = compositions
+        compose.runOnIdle { state.close() }
+        compose.mainClock.advanceTimeBy(RvMotion.RETURN_MS * 2L)
+        assertEquals("closed", 0f, state.shown.value)
+        assertTrue("the close moves the picker by its layer, not by composing it (${compositions - before} times)", compositions - before <= 1)
     }
 
     private fun app() {

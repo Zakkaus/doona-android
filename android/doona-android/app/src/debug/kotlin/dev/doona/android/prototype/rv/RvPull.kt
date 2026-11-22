@@ -82,8 +82,14 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
     /** On its way in or out, or held: a touch anywhere catches it. */
     val moving: Boolean get() = shown.isRunning || held
 
-    /** Draw the picker. */
-    val drawn: Boolean get() = open || shown.value > 0f
+    /**
+     * Draw the picker: from a reveal until a close has run all the way back. A state of its own, set only there, so
+     * that composition, which reads it, hears of it only when it flips. Worked out from [shown] as `open || shown > 0`,
+     * it read [shown] on every frame of a close (where [open] is already false) and composed the whole picker again
+     * each frame, about 100 ms a frame in a debug build.
+     */
+    var drawn by mutableStateOf(open)
+        private set
 
     /** How far 活動 has blurred and faded: the pull's progress, then at least how far the picker has come in. */
     val look: Float get() = maxOf(opening.progress, shown.value)
@@ -91,6 +97,7 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
     /** Opens the picker, carrying a downward [velocity] in pixels per second. */
     fun reveal(velocity: Float = 0f) {
         open = true
+        drawn = true
         // P3: 活動 has already moved down with the finger, so the reveal takes over from that distance.
         val from = if (variant == RvPullMotion.Drop && height > 0f) (opening.pulled / height).coerceIn(0f, 1f) else null
         if (from != null) opening.clear()
@@ -112,7 +119,10 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             RvFrames.begin(CLOSE)
             try {
-                shown.animateTo(0f, motion.settle(RvMotion.RETURN_MS, FRACTION), velocity / height.coerceAtLeast(1f))
+                // At animator scale 0 it is gone in this frame: an animation, even a snap, would end in the next one.
+                if (motion.instant) shown.snapTo(0f) else shown.animateTo(0f, motion.settle(RvMotion.RETURN_MS, FRACTION), velocity / height.coerceAtLeast(1f))
+                // All the way back, not caught nor turned round on the way (either cancels the animation above).
+                drawn = false
             } finally {
                 RvFrames.end(CLOSE)
             }
@@ -207,11 +217,13 @@ internal fun RvPullDown(variant: RvPullMotion, state: RvPullState, activity: @Co
     val dropPx = with(LocalDensity.current) { RvMotion.drop.toPx() }
     val drop = variant == RvPullMotion.Drop
     val look = remember(state, drop) { RvPullLook(if (drop) null else ({ state.opening.pulled }), { state.look }, { state.reveal() }) }
-    val hooks: (Boolean) -> RvPickerMotion = { staggered ->
-        RvPickerMotion({ state.close() }, if (staggered) ({ i -> Modifier.graphicsLayer { dropIn(state.shown.value, i, dropPx) } }) else ({ Modifier }), { state.closing.pulled })
+    // One motion each, kept: a new one would make the picker compose again whenever this does.
+    val still = remember(state) { RvPickerMotion({ state.close() }, { Modifier }, { state.closing.pulled }) }
+    val staggered = remember(state, dropPx) {
+        RvPickerMotion({ state.close() }, { i -> Modifier.graphicsLayer { dropIn(state.shown.value, i, dropPx) } }, { state.closing.pulled })
     }
     Box(Modifier.fillMaxSize().onSizeChanged { state.height = it.height.toFloat() }.then(state.opening.catching).then(state.opening.nested)) {
-        if (drop && state.drawn) PickerBox(state, Modifier) { picker(hooks(true)) }
+        if (drop && state.drawn) PickerBox(state, Modifier) { picker(staggered) }
         Box(Modifier.fillMaxSize().graphicsLayer { if (drop) translationY = state.opening.pulled + state.shown.value * state.height }) {
             activity(look)
             if (variant == RvPullMotion.Sheet && state.drawn) {
@@ -220,8 +232,8 @@ internal fun RvPullDown(variant: RvPullMotion, state: RvPullState, activity: @Co
         }
         if (state.drawn) {
             when (variant) {
-                RvPullMotion.Sheet -> PickerBox(state, Modifier.graphicsLayer { translationY = (state.shown.value - 1f) * state.height }) { picker(hooks(false)) }
-                RvPullMotion.Stretch -> PickerBox(state, Modifier.graphicsLayer { alpha = state.shown.value }) { picker(hooks(false)) }
+                RvPullMotion.Sheet -> PickerBox(state, Modifier.graphicsLayer { translationY = (state.shown.value - 1f) * state.height }) { picker(still) }
+                RvPullMotion.Stretch -> PickerBox(state, Modifier.graphicsLayer { alpha = state.shown.value }) { picker(still) }
                 RvPullMotion.Drop -> Unit
             }
         }
@@ -270,7 +282,9 @@ private fun ThresholdTick(stretch: RvStretch) {
 
 /**
  * 活動 under the pull as [progress] runs to 1: a blur of a fixed radius cross-fades in (from API 31; the radius is never
- * animated, only the blurred copy's alpha), then the page colour fades over it by [RvMotion.PULL_FADE].
+ * animated, only the blurred copy's alpha), then the page colour fades over it by [RvMotion.PULL_FADE]. What it draws
+ * is a layer of its own, so a frame of the pull records only a reference to it here, not 活動 again (whose glass source
+ * records everything it draws each time it is drawn).
  */
 @Composable
 internal fun Modifier.rvPullBlur(progress: () -> Float): Modifier {
@@ -294,7 +308,7 @@ internal fun Modifier.rvPullBlur(progress: () -> Float): Modifier {
             drawContent()
         }
         drawRect(page, alpha = RvMotion.PULL_FADE * p)
-    }
+    }.graphicsLayer {}
 }
 
 /** P3: section [index] drops in from [RvMotion.drop] above as [shown] runs, [RvMotion.STAGGER_MS] after the one before. */
