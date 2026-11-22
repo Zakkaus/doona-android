@@ -1,11 +1,113 @@
+# A test profile in the shape Clash and Mihomo providers serve. Every server is an invented name
+# under example.net or a documentation address (RFC 5737), and every secret is made up.
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+dns:
+  enable: true
+  nameserver:
+    - https://dns.example.net/dns-query
 proxies:
-  - name: hk-01
+  - name: ss-01
+    type: ss
+    server: 192.0.2.11
+    port: 8388
+    cipher: aes-256-gcm
+    password: pass
+  - {name: vmess-01, type: vmess, server: vmess.example.net, port: 443, uuid: 320cbcd4-e85c-402f-ae69-6b4b6d5794bb, alterId: 0, cipher: auto, tls: true, servername: vmess.example.net, network: ws, ws-opts: {path: /ws, headers: {Host: vmess.example.net}}}
+  - name: vless-01
+    type: vless
+    server: vless.example.net
+    port: 443
+    uuid: ef0c8917-ad5e-4c82-8e5b-5c07d818d829
+    network: tcp
+    tls: true
+    servername: vless.example.net
+    packet-encoding: xudp
+  - name: reality-01
+    type: vless
+    server: 192.0.2.14
+    port: 443
+    uuid: ef0c8917-ad5e-4c82-8e5b-5c07d818d829
+    network: tcp
+    tls: true
+    flow: xtls-rprx-vision
+    servername: www.example.net
+    client-fingerprint: chrome
+    packet-encoding: xudp
+    reality-opts:
+      public-key: d-Z80R7ouznLhLvLJAs5iS2sEeiGJ_KHIQQkiicVTnA
+      short-id: 6ba85179
+  - name: trojan-01
     type: trojan
-    server: 192.0.2.1
+    server: trojan.example.net
     port: 443
     password: secret
+    sni: trojan.example.net
+  - name: hy2-01
+    type: hysteria2
+    server: hy2.example.net
+    port: 443
+    password: secret
+    sni: hy2.example.net
+    obfs: salamander
+    obfs-password: obfs-secret
+  - name: tuic-01
+    type: tuic
+    server: tuic.example.net
+    port: 443
+    uuid: b38ad070-88e0-4bcc-9808-924f3c0e1bd5
+    password: secret
+    alpn: [h3]
+    congestion-controller: bbr
+    sni: tuic.example.net
+  - name: anytls-01
+    type: anytls
+    server: anytls.example.net
+    port: 443
+    password: secret
+    sni: anytls.example.net
+  - name: socks-01
+    type: socks5
+    server: 192.0.2.19
+    port: 1080
+    username: user
+    password: pass
+  - name: juicity-01
+    type: juicity
+    server: juicity.example.net
+    port: 443
+    uuid: 354987ca-285a-4dfc-aac3-05cd46717ea9
+    password: secret
+    sni: juicity.example.net
+  # Skipped: types honk does not take, a plugin, a missing credential, a repeated endpoint and
+  # an entry that is not a mapping.
+  - {name: ssr-01, type: ssr, server: 192.0.2.30, port: 8388, cipher: aes-256-cfb, password: pass, protocol: origin, obfs: plain}
+  - {name: snell-01, type: snell, server: 192.0.2.31, port: 44046, psk: secret, version: 3}
+  - {name: wg-01, type: wireguard, server: 192.0.2.32, port: 51820, ip: 172.16.0.2}
+  - {name: http-01, type: http, server: 192.0.2.33, port: 8080}
+  - name: plugin-01
+    type: ss
+    server: 192.0.2.34
+    port: 8388
+    cipher: aes-256-gcm
+    password: pass
+    plugin: obfs
+    plugin-opts: {mode: http, host: obfs.example.net}
+  - {name: no-password, type: trojan, server: 192.0.2.35, port: 443, sni: trojan.example.net}
+  - {name: ss-01 again, type: ss, server: 192.0.2.11, port: 8388, cipher: aes-256-gcm, password: pass}
+  - not a proxy
 proxy-groups:
   - name: Proxy
+    type: select
+    proxies: [Auto, ss-01, vmess-01, vless-01, reality-01, trojan-01, hy2-01, tuic-01, anytls-01]
+  - name: Auto
     type: url-test
-    proxies: [hk-01]
-    url: http://www.gstatic.com/generate_204
+    proxies: [ss-01, trojan-01, hy2-01]
+    url: http://probe.example.net/generate_204
+    interval: 300
+rules:
+  - DOMAIN-SUFFIX,ads.example.net,REJECT
+  - GEOIP,CN,DIRECT
+  - MATCH,Proxy

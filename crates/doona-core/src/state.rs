@@ -65,7 +65,8 @@ impl Default for State {
     }
 }
 
-/// A subscription as stored. Its nodes are parsed from `links` at load.
+/// A subscription as stored. Its nodes are parsed at load from `document` when it has one, else
+/// from `links`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredSubscription {
@@ -84,6 +85,11 @@ pub struct StoredSubscription {
     /// The share links of its nodes as last fetched, one per node, in feed order.
     #[serde(default)]
     pub links: Vec<String>,
+    /// For a structured body (Clash, sing-box or SIP008), the entries of its nodes as last
+    /// fetched: a YAML document of the entries alone, under the body's own key. Cores before this
+    /// one ignore it and show the subscription without nodes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub document: Option<String>,
 }
 
 /// How [`Store::load`] found the file.
@@ -233,7 +239,8 @@ mod tests {
             r#"{"stateVersion":1,"mode":"Global","subscriptions":[{"id":"s7","name":"a","url":"https://a.invalid/","updatedAtEpochMs":null,"usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null}]}"#,
         )
         .unwrap();
-        assert!(old.subscriptions[0].links.is_empty() && old.subscriptions[0].error.is_none());
+        let s7 = &old.subscriptions[0];
+        assert!(s7.links.is_empty() && s7.document.is_none() && s7.error.is_none());
         assert_eq!(old.take_subscription_id(), "s8");
     }
 

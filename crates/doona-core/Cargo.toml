@@ -30,12 +30,14 @@ tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-threa
 tokio-util = { version = "0.7", features = ["rt"] }
 # The subscription download and parser. Every one of these is already in the graph through
 # honk-config and honk-outbound, so the library links no new TLS stack: BoringSSL with the
-# webpki roots, as honk-outbound's own TLS.
+# webpki roots, as honk-outbound's own TLS. serde_yaml reads Clash documents, as honk-config's
+# own YAML.
 anyhow = "1"
 base64 = "0.23"
 boring = "5"
 httparse = "1"
 percent-encoding = "2"
+serde_yaml = "0.9"
 tokio-boring = "5"
 url = "2"
 uuid = { version = "1", features = ["v5"] }

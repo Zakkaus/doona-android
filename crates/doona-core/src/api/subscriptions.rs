@@ -53,6 +53,7 @@ impl Core {
             expires_at_epoch_ms: None,
             error: None,
             links: Vec::new(),
+            document: None,
         };
         let fresh = refreshed(&mut stored, parsed, userinfo);
         next.subscriptions.push(stored);
@@ -214,6 +215,7 @@ fn refreshed(
     stored.expires_at_epoch_ms = info.expires_at_epoch_ms;
     stored.error = None;
     stored.links = parsed.links;
+    stored.document = parsed.document;
     catalog::entries(&stored.id, parsed.nodes)
 }
 
