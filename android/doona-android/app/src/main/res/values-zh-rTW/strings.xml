@@ -49,4 +49,19 @@
     <string name="group_every_node">包含所有節點</string>
     <string name="policy_includes">選入條件</string>
     <string name="policy_filter">篩選節點</string>
+    <string name="ui_dismiss">關閉</string>
+    <string name="status_stopped">未連線</string>
+    <string name="status_starting">連線中</string>
+    <string name="status_stopping">正在中斷連線</string>
+    <string name="status_failed_no_allowed_apps">已安裝的 App 都不走 VPN</string>
+    <string name="status_failed_start">VPN 未能啟動</string>
+    <string name="status_failed_core_stopped">核心已停止</string>
+    <string name="status_failed_incompatible_core">內建核心的版本不相容</string>
+    <string name="error_invalid_argument">值無效</string>
+    <string name="error_not_found">找不到項目</string>
+    <string name="error_fetch_failed">無法下載訂閱</string>
+    <string name="error_parse_failed">無法解析訂閱</string>
+    <string name="error_no_nodes">訂閱裡沒有節點</string>
+    <string name="error_busy">另一項變更正在進行，請稍後再試</string>
+    <string name="error_internal">發生內部錯誤</string>
 </resources>

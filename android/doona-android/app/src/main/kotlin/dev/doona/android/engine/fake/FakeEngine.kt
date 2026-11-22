@@ -13,6 +13,7 @@ import dev.doona.android.engine.Traffic
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlin.math.sin
 
 /** Deterministic in-memory [Engine] for previews and screenshot tests; it never touches the network or a tunnel. */
 class FakeEngine(
@@ -89,6 +90,17 @@ class FakeEngine(
             Group(id = "g-Auto", name = "Auto", kind = GroupKind.UrlTest, members = NODES, selectedId = "n-hk1"),
             Group(id = "g-HK", name = "HK", kind = GroupKind.UrlTest, members = NODES.take(2), selectedId = "n-hk1"),
         )
+
+        /** A minute of download near 3.9 MB/s and upload near 330 KB/s: two slow waves around each level. */
+        val SAMPLE_TRAFFIC: Traffic = run {
+            fun series(level: Double, swing: Double, seed: Int) = List(60) { i ->
+                val t = (i + seed).toDouble()
+                (level + swing * (0.6 * sin(t / 9.0) + 0.4 * sin(t / 3.4 + seed))).toLong()
+            }
+            val down = series(3_900_000.0, 500_000.0, 1)
+            val up = series(330_000.0, 60_000.0, 5)
+            Traffic(upRate = 330_000, downRate = 3_900_000, upTotal = up.sum(), downTotal = down.sum(), upHistory = up, downHistory = down)
+        }
 
         val SAMPLE_SUBSCRIPTIONS = listOf(
             Subscription(id = "s1", name = "harbor", url = "https://example.invalid/sub", nodes = 4, updatedAtEpochMs = 0),

@@ -1,0 +1,41 @@
+package dev.doona.android.app
+
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
+import androidx.navigation3.runtime.NavKey
+import dev.doona.android.R
+import kotlinx.serialization.Serializable
+
+// Back stack keys. They are saved across process death, so they carry ids only, never engine data.
+
+@Serializable
+data object ActivityKey : NavKey
+
+@Serializable
+data object PoliciesKey : NavKey
+
+@Serializable
+data object SettingsKey : NavKey
+
+@Serializable
+data class GroupKey(val groupId: String) : NavKey
+
+/** The hub bar's tabs. Each opens its root key; 活動 is always the bottom of the back stack. */
+enum class Tab(val key: NavKey, @StringRes val label: Int, @DrawableRes val icon: Int) {
+    // Each tab shows its first page's icon (doona `src/shell/HubBar.tsx:33`, `src/shell/registry.ts`).
+    Activity(ActivityKey, R.string.hub_activity, R.drawable.ic_speed_fast),
+    Policies(PoliciesKey, R.string.nav_policies, R.drawable.ic_share),
+    Settings(SettingsKey, R.string.hub_settings, R.drawable.ic_file_text),
+}
+
+/** The tab whose root is nearest the top of [backStack]; a page pushed from a tab keeps that tab current. */
+fun currentTab(backStack: List<NavKey>): Tab = Tab.entries.lastOrNull { it.key in backStack } ?: Tab.Activity
+
+/**
+ * Exit through home: switching tabs drops every page above 活動, so back from another tab returns to 活動 and back
+ * from 活動 leaves the app. Selecting the current tab again returns to its root.
+ */
+fun MutableList<NavKey>.selectTab(tab: Tab) {
+    while (size > 1) removeAt(lastIndex)
+    if (tab != Tab.Activity) add(tab.key)
+}

@@ -53,4 +53,20 @@
     <string name="group_every_node">Includes every node</string>
     <string name="policy_includes">Includes</string>
     <string name="policy_filter">Filter nodes</string>
+    <string name="ui_dismiss">Dismiss</string>
+    <string name="act_rate" translatable="false">%1$s/s</string>
+    <string name="status_stopped">Not connected</string>
+    <string name="status_starting">Connecting</string>
+    <string name="status_stopping">Disconnecting</string>
+    <string name="status_failed_no_allowed_apps">No installed app is set to use the VPN</string>
+    <string name="status_failed_start">The VPN did not start</string>
+    <string name="status_failed_core_stopped">The core stopped</string>
+    <string name="status_failed_incompatible_core">The bundled core is incompatible</string>
+    <string name="error_invalid_argument">Invalid value</string>
+    <string name="error_not_found">Not found</string>
+    <string name="error_fetch_failed">Could not download the subscription</string>
+    <string name="error_parse_failed">Could not read the subscription</string>
+    <string name="error_no_nodes">The subscription has no nodes</string>
+    <string name="error_busy">Another change is in progress. Try again.</string>
+    <string name="error_internal">Something went wrong</string>
 </resources>

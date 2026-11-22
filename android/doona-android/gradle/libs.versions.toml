@@ -4,6 +4,9 @@ kotlin = "2.4.21"
 # https://developer.android.com/develop/ui/compose/bom/bom-mapping: material3 1.5.0, ui and foundation 1.13.0
 compose-bom = "2026.11.01"
 activity-compose = "1.13.0"
+# https://developer.android.com/jetpack/androidx/releases/navigation3: 1.2.2 stable (2026-11-18); 1.3 is alpha.
+navigation3 = "1.2.2"
+lifecycle = "2.11.1"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.13.0"
 datastore = "1.3.0"
@@ -22,9 +25,16 @@ androidx-test-espresso = "3.7.0"
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
+navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
+lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycle" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }

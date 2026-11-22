@@ -1,7 +1,6 @@
 package dev.doona.android.designsystem.components
 
 import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,6 +26,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,13 +39,9 @@ import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
-enum class Hub(@StringRes val label: Int, @DrawableRes val icon: Int) {
-    // Each hub shows its first page's icon (`src/shell/HubBar.tsx:33`, `src/shell/registry.ts`).
-    Activity(R.string.hub_activity, R.drawable.ic_speed_fast),
-    Traffic(R.string.hub_traffic, R.drawable.ic_link),
-    Routing(R.string.hub_routing, R.drawable.ic_share),
-    Settings(R.string.hub_settings, R.drawable.ic_file_text),
-}
+/** One destination of the [HubBar]: its label and the icon of its first page. */
+@Immutable
+data class HubTab(val label: String, @DrawableRes val icon: Int)
 
 /** Icon action with a 48 dp touch target and the 25 dp touch icon (§6). */
 @Composable
@@ -90,11 +86,11 @@ fun TopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Uni
 }
 
 /**
- * Bottom hub bar (§8): 64 high plus the gesture bar, base fill, padding 0 × 8, four equal items; each a 56 × 32 pill
+ * Bottom hub bar (§8): 64 high plus the gesture bar, base fill, padding 0 × 8, equal items; each a 56 × 32 pill
  * holding the 25 px icon over a 12/16 label, gap 4. The current pill takes the selected fill and the accent icon.
  */
 @Composable
-fun HubBar(current: Hub, onSelect: (Hub) -> Unit) {
+fun HubBar(tabs: List<HubTab>, selected: Int, onSelect: (Int) -> Unit) {
     val c = DoonaTheme.colors
     Row(
         Modifier
@@ -105,13 +101,13 @@ fun HubBar(current: Hub, onSelect: (Hub) -> Unit) {
             .padding(horizontal = DoonaTheme.space.s2)
             .selectableGroup(),
     ) {
-        Hub.entries.forEach { hub ->
-            val on = hub == current
+        tabs.forEachIndexed { i, tab ->
+            val on = i == selected
             Column(
                 Modifier
                     .weight(1f)
                     .fillMaxSize()
-                    .selectable(on, role = Role.Tab, onClick = { onSelect(hub) }),
+                    .selectable(on, role = Role.Tab, onClick = { onSelect(i) }),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(DoonaTheme.space.s1, Alignment.CenterVertically),
             ) {
@@ -122,10 +118,10 @@ fun HubBar(current: Hub, onSelect: (Hub) -> Unit) {
                         .then(if (on) Modifier.background(c.selected) else Modifier),
                     contentAlignment = Alignment.Center,
                 ) {
-                    DoonaIcon(hub.icon, if (on) c.accent else c.textSecondary)
+                    DoonaIcon(tab.icon, if (on) c.accent else c.textSecondary)
                 }
                 Text(
-                    stringResource(hub.label),
+                    tab.label,
                     style = if (on) DoonaTheme.type.navLabelCurrent else DoonaTheme.type.navLabel,
                     color = if (on) c.text else c.textSecondary,
                     maxLines = 1,
@@ -199,19 +195,19 @@ fun PageTabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit = {}) {
     }
 }
 
-/** A hub page: top bar, sheet, hub bar; the window's base colour runs under both system bars. */
+/**
+ * A page: top bar over the sheet; the window's base colour runs under the status bar. The app shell puts the
+ * [HubBar] below every page.
+ */
 @Composable
-fun HubPage(
-    hub: Hub,
-    onHub: (Hub) -> Unit,
+fun DoonaPage(
     onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
         TopBar(onBack, actions)
         PageSheet(Modifier.weight(1f), content)
-        HubBar(hub, onHub)
     }
 }
 

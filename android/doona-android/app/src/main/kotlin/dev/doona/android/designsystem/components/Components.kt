@@ -39,41 +39,42 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
+import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.model.Member
-import dev.doona.android.model.Region
-import dev.doona.android.model.Tone
-import dev.doona.android.model.latencyTone
 
 @Composable
 fun DoonaIcon(@DrawableRes icon: Int, tint: Color, modifier: Modifier = Modifier, size: Dp = DoonaTheme.size.icon) {
     Icon(painterResource(icon), contentDescription = null, tint = tint, modifier = modifier.size(size))
 }
 
-@DrawableRes
-fun flagOf(region: Region): Int = when (region) {
-    Region.HK -> R.drawable.flag_hk
-    Region.JP -> R.drawable.flag_jp
-    Region.TW -> R.drawable.flag_tw
-    Region.SG -> R.drawable.flag_sg
-    Region.US -> R.drawable.flag_us
-    Region.KR -> R.drawable.flag_kr
-}
-
 /** Twemoji flag ahead of a node name (doona puts the flag glyph first, `src/ui/flags.css`). */
 @Composable
-fun Flag(region: Region, modifier: Modifier = Modifier) {
-    val painter = painterResource(flagOf(region))
+fun Flag(@DrawableRes flag: Int, label: String, modifier: Modifier = Modifier) {
+    val painter = painterResource(flag)
     val ratio = painter.intrinsicSize.width / painter.intrinsicSize.height
     val edge = DoonaTheme.colors.flagEdge
     Image(
         painter,
-        contentDescription = region.code,
+        contentDescription = label,
         modifier = modifier
             .height(DoonaTheme.size.flagHeight)
             .aspectRatio(ratio)
             .then(if (edge != null) Modifier.border(DoonaTheme.size.flagEdge, edge, DoonaTheme.shape.flag) else Modifier),
     )
+}
+
+/** Body text in the theme's type; feature code uses this, not Material's `Text`. */
+@Composable
+fun DoonaText(
+    text: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    color: Color = DoonaTheme.colors.text,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+    softWrap: Boolean = true,
+) {
+    Text(text, modifier, color = color, style = style, maxLines = maxLines, overflow = overflow, softWrap = softWrap)
 }
 
 /** Height of one text line of [style] in dp, so a dot or icon can sit on the centre of a first line. */
@@ -115,7 +116,17 @@ fun ControlCard(@DrawableRes icon: Int, iconTint: Color, label: String, trailing
     }
 }
 
-fun toneColor(c: dev.doona.android.designsystem.theme.DoonaColors, tone: Tone): Color = when (tone) {
+enum class Tone { Ok, Warn, Err, Neutral }
+
+/** Latency colours (`src/ui/Tile.tsx:79`): under 100 ms ok, under 300 ms warn, otherwise err. */
+fun latencyTone(ms: Int?): Tone = when {
+    ms == null -> Tone.Neutral
+    ms < 100 -> Tone.Ok
+    ms < 300 -> Tone.Warn
+    else -> Tone.Err
+}
+
+fun toneColor(c: DoonaColors, tone: Tone): Color = when (tone) {
     Tone.Ok -> c.positive
     Tone.Warn -> c.notice
     Tone.Err -> c.negative
@@ -295,16 +306,10 @@ fun PickerButton(value: String, onClick: () -> Unit, filled: Boolean = false, le
     }
 }
 
-/** Node name with its flag first. */
+/** A node or group name on one line, ellipsized. */
 @Composable
-fun NodeName(member: Member, style: TextStyle, color: Color = DoonaTheme.colors.text, modifier: Modifier = Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        member.region?.let {
-            Flag(it)
-            Spacer(Modifier.width(DoonaTheme.space.s1))
-        }
-        Text(member.name, style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
+fun NodeName(name: String, style: TextStyle, modifier: Modifier = Modifier, color: Color = DoonaTheme.colors.text) {
+    Text(name, modifier, color = color, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 /**
@@ -312,7 +317,14 @@ fun NodeName(member: Member, style: TextStyle, color: Color = DoonaTheme.colors.
  * when current); row 1 name, badge, latency; row 2 the 12/16 source, 2 below.
  */
 @Composable
-fun NodeTile(member: Member, current: Boolean, groupLabel: String, onClick: () -> Unit = {}) {
+fun NodeTile(
+    name: String,
+    latencyMs: Int?,
+    current: Boolean,
+    groupLabel: String?,
+    source: String? = null,
+    onClick: () -> Unit = {},
+) {
     val c = DoonaTheme.colors
     val shape = DoonaTheme.shape.md
     Column(
@@ -327,14 +339,14 @@ fun NodeTile(member: Member, current: Boolean, groupLabel: String, onClick: () -
         verticalArrangement = Arrangement.spacedBy(DoonaTheme.space.half, Alignment.CenterVertically),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            NodeName(member, DoonaTheme.type.bodyStrong, modifier = Modifier.weight(1f))
-            if (member.isGroup) {
+            NodeName(name, DoonaTheme.type.bodyStrong, modifier = Modifier.weight(1f))
+            if (groupLabel != null) {
                 Spacer(Modifier.width(DoonaTheme.space.s2))
                 Badge(groupLabel)
             }
             Spacer(Modifier.width(DoonaTheme.space.s3))
-            Latency(member.latencyMs)
+            Latency(latencyMs)
         }
-        member.source?.let { Text(it, style = DoonaTheme.type.caption, color = c.text, maxLines = 1) }
+        source?.let { Text(it, style = DoonaTheme.type.caption, color = c.text, maxLines = 1) }
     }
 }
