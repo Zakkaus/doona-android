@@ -12,6 +12,7 @@ use super::Session;
 use super::flow::{DEPTH, Event, Events, Key, Waker};
 use super::route::Route;
 use crate::dns;
+use crate::dns::names::Learned;
 use crate::rules::Network;
 use crate::stats::meter::{Meter, Tally};
 use bytes::Bytes;
@@ -364,22 +365,24 @@ fn receive(socket: &UdpSocket, budget: &Arc<Budget>) -> io::Result<Option<Datagr
     })
 }
 
-/// Answers one DNS datagram from `client` to `server`, through `route`; `session`'s names learn
-/// what the answer the client gets maps.
+/// Answers one DNS datagram from `client` to `server`, through `route`. What the answer the client
+/// gets maps is read here, off the driver, which puts it in the generation's names once the tun
+/// takes the answer.
 pub(crate) async fn answer_dns(
     query: Vec<u8>,
     (client, server): (SocketAddr, SocketAddr),
-    (route, session): (Route, Arc<Session>),
+    route: Route,
     upstreams: Arc<[SocketAddr]>,
     events: Events,
     slot: OwnedSemaphorePermit,
 ) {
-    let via = (&route, session.names());
-    if let Some(payload) = dns::answer(&upstreams, via, &query, Network::Udp).await {
+    if let Some(payload) = dns::answer(&upstreams, &route, &query, Network::Udp).await {
+        let learned = Learned::read(&query, &payload);
         let _ = events.send(Event::DnsAnswer {
             from: server,
             to: client,
             payload,
+            learned,
             _slot: slot,
         });
     }

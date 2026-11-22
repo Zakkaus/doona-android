@@ -3,6 +3,7 @@
 //! the driver through one unbounded event channel. Each flow has at most one wake queued (its
 //! [`Waker`] remembers), so that channel stays as short as the number of flows.
 
+use crate::dns::names::Learned;
 use crate::stats::meter::Tally;
 use bytes::{Buf, Bytes};
 use honk_netstack::FlowId;
@@ -38,12 +39,14 @@ pub(crate) enum Event {
     Finished { id: FlowId, failed: bool },
     /// A UDP association ended (idle, or its socket failed).
     UdpEnded(u64),
-    /// A DNS answer to send back from `from` (the address the query went to) to `to`. It keeps
-    /// its query's slot until the driver writes it, so queued answers stay bounded too.
+    /// A DNS answer to send back from `from` (the address the query went to) to `to`, and what it
+    /// maps once the tun takes it. It keeps its query's slot until the driver writes it, so queued
+    /// answers stay bounded too.
     DnsAnswer {
         from: SocketAddr,
         to: SocketAddr,
         payload: Vec<u8>,
+        learned: Option<Learned>,
         _slot: OwnedSemaphorePermit,
     },
 }

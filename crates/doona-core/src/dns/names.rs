@@ -7,6 +7,10 @@
 //! name, so domain rules miss them and the rules that match by address, or the last one, decide.
 //! The tun carries IPv4 only (`DoonaVpnService.tunBuilder`), so AAAA records name no flow.
 //!
+//! What an answer maps is read first ([`Learned`]) and put in the cache only once the answer is on
+//! its way to the client (see `dns.rs`), so an answer dropped, or one the client never takes, maps
+//! nothing.
+//!
 //! One cache per generation (see `Session`), at most [`CAPACITY`] addresses, the least recently
 //! used leaving first. A TTL is held to [`MIN_TTL`]–[`MAX_TTL`] on `CLOCK_BOOTTIME`, which counts
 //! the time the phone slept. Nothing runs on a timer: an entry past its time is dropped when it is
@@ -43,17 +47,49 @@ struct Entry {
     until_ms: u64,
 }
 
+/// What an answer maps, read but not yet in a cache: its question's name, and the addresses that
+/// name reaches with their TTLs.
+pub(crate) struct Learned {
+    name: Arc<str>,
+    found: Vec<(Ipv4Addr, u32)>,
+}
+
+impl Learned {
+    /// What `answer` maps to its question's name, when it answers the question of `query`; none
+    /// when that is nothing. Anything but a successful answer to one A question in class IN, with a
+    /// name of letters, digits, `-` and `_`, maps nothing. It reads the whole answer, so it runs
+    /// before any lock is taken, and off the driver.
+    pub fn read(query: &[u8], answer: &[u8]) -> Option<Learned> {
+        if !same_question(query, answer) {
+            return None;
+        }
+        Learned::of(answer)
+    }
+
+    /// What `m` maps, whatever question it was sent for.
+    fn of(m: &[u8]) -> Option<Learned> {
+        let (name, at) = question(m)?;
+        let found = reached(m, &name, at).filter(|f| !f.is_empty())?;
+        let name = name.into();
+        Some(Learned { name, found })
+    }
+}
+
 impl Names {
     pub fn new() -> Names {
         Names(Mutex::new(LruCache::unbounded()))
     }
 
-    /// Maps the addresses `answer` gives to its question's name, when it answers the question of
-    /// `query`. Anything but a successful answer to one A question in class IN, with a name of
-    /// letters, digits, `-` and `_`, maps nothing.
+    /// Maps what an answer gave, from now on.
+    pub fn put(&self, learned: Learned) {
+        self.put_at(learned, sys::boot_ms());
+    }
+
+    /// Maps what `answer` gives when it answers the question of `query` (see [`Learned::read`]).
+    #[cfg(test)]
     pub fn learn(&self, query: &[u8], answer: &[u8]) {
-        if same_question(query, answer) {
-            self.learn_at(answer, sys::boot_ms());
+        if let Some(learned) = Learned::read(query, answer) {
+            self.put(learned);
         }
     }
 
@@ -75,15 +111,15 @@ impl Names {
         lock(&self.0).put(ip, Entry { name, until_ms });
     }
 
+    /// Maps what `m` gives, whatever question it was sent for.
+    #[cfg(test)]
     pub(super) fn learn_at(&self, m: &[u8], now_ms: u64) {
-        let Some((name, at)) = question(m) else {
-            return;
-        };
-        // Read before the lock is taken, so a new flow's lookup never waits on a long answer.
-        let Some(found) = reached(m, &name, at).filter(|f| !f.is_empty()) else {
-            return;
-        };
-        let name: Arc<str> = name.into();
+        if let Some(learned) = Learned::of(m) {
+            self.put_at(learned, now_ms);
+        }
+    }
+
+    fn put_at(&self, Learned { name, found }: Learned, now_ms: u64) {
         for batch in found.chunks(BATCH) {
             let mut cache = lock(&self.0);
             for &(addr, ttl) in batch {
