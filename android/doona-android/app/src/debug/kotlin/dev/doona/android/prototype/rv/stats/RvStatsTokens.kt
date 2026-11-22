@@ -9,8 +9,7 @@ internal object RvStatsSpace {
     /** A card's inner padding, Revolut's 16 dp. */
     val pad = 16.dp
 
-    /** From the back button's row to the title, and from the title to the chips. */
-    val titleGap = 4.dp
+    /** From the chips to the first card. */
     val chipsGap = 16.dp
 
     /** Between two paged tiles; the third peeks this much less the gutter at the screen's edge. */

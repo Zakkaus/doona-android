@@ -7,17 +7,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.windowInsetsTopHeight
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,11 +30,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBackBar
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvGutter
+import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvRow
+import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
@@ -48,19 +46,20 @@ import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
- * The 節點 page, pushed from the node card, in the language of Revolut's Analytics and Crypto pages: the title over two
- * filter chips; 最快節點 as 'Top movers' (fastest or steadiest, eight flags with their latency); 節點分佈 as 'Your trips'
- * (the world map with every country that has a node filled); then 全部節點 as 'All crypto' rows, one card per part of
- * the world, each node's latency over its change since the test before. The node in use sits on a faint primary tint.
+ * The 節點 page, pushed from 活動, in the language of Revolut's Analytics and Crypto pages: the back disc and the large
+ * title over two filter chips; 最快節點 as 'Top movers' (fastest or steadiest, eight flags with their latency); 節點分佈
+ * as 'Your trips' (the world map with every country that has a node filled); then 全部節點 as 'All crypto' rows, one
+ * card per part of the world, each node's latency over its change since the test before. The node in use sits on a
+ * faint primary tint.
  */
 @Composable
 internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: () -> Unit, onOpen: (String) -> Unit, onAllNodes: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().background(Rv.colors.page).verticalScroll(rememberScrollState())) {
-        Spacer(Modifier.windowInsetsTopHeight(insets))
-        RvBackBar(onBack)
-        Title(onFilter)
+    val title = stringResource(R.string.rv_nodes_title)
+    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
+        Chips(onFilter)
         RvGutter {
             TopCard(state.top(steadiest), steadiest, { steadiest = it }, onOpen)
             MapCard(state)
@@ -76,17 +75,13 @@ internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: 
     }
 }
 
-/** The large title, and under it Analytics' two chips: the subscription at the start, the order at the end. */
+/** Under the large title, Analytics' two chips: the subscription at the start, the order at the end. */
 @Composable
-private fun Title(onFilter: () -> Unit) {
-    Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-        RvText(stringResource(R.string.rv_nodes_title), Rv.type.title)
-        Spacer(Modifier.height(RvSpace.headingGap))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RvFilterChip(stringResource(R.string.rv_nodes_all_subscriptions), menu = true, onFilter)
-            Spacer(Modifier.weight(1f))
-            RvFilterChip(stringResource(R.string.rv_nodes_by_latency), menu = false, onFilter)
-        }
+private fun Chips(onFilter: () -> Unit) {
+    Row(Modifier.padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
+        RvFilterChip(stringResource(R.string.rv_nodes_all_subscriptions), menu = true, onFilter)
+        Spacer(Modifier.weight(1f))
+        RvFilterChip(stringResource(R.string.rv_nodes_by_latency), menu = false, onFilter)
     }
     Spacer(Modifier.height(RvSpace.titleToCard))
 }
@@ -123,7 +118,7 @@ private fun TopNode(node: RvNode, onOpen: (String) -> Unit, modifier: Modifier) 
             .padding(vertical = RvSpace.tight),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        RvNodeFlag(node.place, RvNodesSize.topFlag)
+        RvFlag(node.place.name, RvNodesSize.topFlag)
         Spacer(Modifier.height(RvNodesSize.topLabelGap))
         RvText(node.short, RvNodesType.topName, align = TextAlign.Center)
         RvText(latencyText(node.latencyMs), RvNodesType.topValue, color = latencyColor(node.latencyMs), align = TextAlign.Center)
@@ -154,7 +149,7 @@ private fun Heading(onAllNodes: () -> Unit) {
     ) {
         RvText(stringResource(R.string.rv_nodes_all), Rv.type.section)
         Spacer(Modifier.width(RvSpace.tight / 2))
-        RvGlyph(R.drawable.rv_nodes_ic_chevron_right, RvSize.navGlyph, Rv.colors.text)
+        RvGlyph(R.drawable.rv_sym_chevron_right, RvSize.navGlyph, Rv.colors.text)
     }
 }
 
@@ -166,7 +161,7 @@ private fun RegionCard(region: RvNodesRegion, nodes: List<RvNode>, currentId: St
         RvCardHeader(stringResource(region.label))
         for (node in nodes) {
             RvRow(
-                { RvNodeFlag(node.place, RvNodesSize.rowFlag) },
+                { RvFlag(node.place.name, RvNodesSize.rowFlag) },
                 node.name,
                 node.protocol + SEPARATOR + stringResource(node.place.label),
                 if (node.id == currentId) Modifier.background(tint) else Modifier,

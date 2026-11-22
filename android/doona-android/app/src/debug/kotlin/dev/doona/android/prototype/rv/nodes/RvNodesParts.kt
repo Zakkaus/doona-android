@@ -2,9 +2,7 @@ package dev.doona.android.prototype.rv.nodes
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,8 +21,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -32,7 +28,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.doona.android.R
@@ -94,9 +89,6 @@ internal object RvNodesType {
     val topName = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp)
     val topValue = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp, fontFeatureSettings = "tnum")
 
-    /** The detail page's name (the brief: 26 sp bold). */
-    val detailName = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp)
-
     /** The floating pill's label (§8: 22 sp on a 423 dp screen, 20 sp on ours). */
     val cta = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp)
 }
@@ -105,13 +97,6 @@ internal object RvNodesType {
 @Composable
 @ReadOnlyComposable
 internal fun selectedRowTint(): Color = Rv.colors.positive.copy(alpha = if (Rv.colors.dark) SELECTED_DARK else SELECTED_LIGHT)
-
-/** A node's flag cropped to a circle of [size], with the hairline edge light pages need round white fields. */
-@Composable
-internal fun RvNodeFlag(place: RvNodesPlace, size: Dp, modifier: Modifier = Modifier) {
-    val edge = Rv.colors.flagEdge?.let { Modifier.border(Dp.Hairline, it, CircleShape) } ?: Modifier
-    Image(painterResource(place.flag), contentDescription = null, modifier.size(size).clip(CircleShape).then(edge), contentScale = ContentScale.Crop)
-}
 
 /** A card's own header, top-left in grey, as Revolut's 'Top movers' and 'Your trips'. */
 @Composable

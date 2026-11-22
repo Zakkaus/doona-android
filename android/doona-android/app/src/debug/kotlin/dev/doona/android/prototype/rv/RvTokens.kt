@@ -60,7 +60,6 @@ internal object RvSize {
     val dot = 8.dp
     val cardRadius = 18.dp
     val touch = 48.dp
-    val topBar = 56.dp
     val navGlyph = 24.dp
     val progress = 5.dp
 
@@ -180,33 +179,49 @@ internal object RvAlpha {
     /** A range the build does not offer yet. */
     const val DISABLED = 0.38f
 
-    /** Glass tints: over the blur in light and in dark, the solid fill, and the top bar's controls in light. */
-    const val GLASS_LIGHT = 0.5f
+    /** Glass tints: the top bar's controls over the blur in dark and in light, and any glass's solid fill. */
     const val GLASS_DARK = 0.6f
     const val GLASS_SOLID = 0.94f
     const val CONTROL_GLASS = 0.7f
-    const val BAR_GLASS = 0.8f
-    const val NAV_PILL_LIGHT = 0.07f
-    const val NAV_PILL_DARK = 0.12f
+
+    /** The strip behind a bar: the page at 85 % over the blur (S5-24). */
+    const val BAR_GLASS = 0.85f
+
+    /** The capsule: white 65 % over the blur in light (S5-22), white 11 % with a rim of white 8 % in dark (S5-20). */
+    const val NAV_LIGHT = 0.65f
+    const val NAV_DARK = 0.11f
+    const val NAV_RIM = 0.08f
+
+    /** The selected pill: the capsule's solid fill with the text colour at 8 % on it, flat and opaque (S5-19). */
+    const val NAV_PILL = 0.08f
+
+    /** The back disc's ring in light (measured §4: about 1 px of #f2f2f2 round #fcfcfc) and a flag's ring. */
+    const val BACK_RING = 0.06f
+    const val FLAG_RING_LIGHT = 0.08f
+    const val FLAG_RING_DARK = 0.1f
 }
 
 /**
- * The chrome over 活動's content, after Revolut's measured top bar (§4) and floating bottom bar (§9): the top bar's
- * controls 40 dp (the duck's disc 38 dp), and a glass capsule 16 dp in from the sides whose bottom sits 40 dp above the
- * screen's edge, 60 dp tall, that shrinks to icons only, 336 x 52 dp, while the content scrolls up.
+ * The chrome of every page, after Revolut's measured top bar (§4) and floating bottom bar (§9): a row of 44 dp controls
+ * 12 dp under the status bar (活動's duck, search pill and discs; a pushed page's back disc and title), a strip of blurred
+ * page behind the row once content scrolls under it, and a glass capsule 16 dp in from the sides whose bottom sits 40 dp
+ * above the screen's edge, 60 dp tall, that shrinks to icons only, 336 x 52 dp, while the content scrolls up.
  */
 internal object RvChrome {
-    /** The top bar's row, this far under the status bar; its strip ends this far under the row, fading out on the way. */
+    /** The controls' row: its top this far under the status bar, every control a 44 dp disc or pill in a 48 dp target. */
     val barTop = 12.dp
-    val barBottom = 16.dp
-    val barFade = 16.dp
+    val control = 44.dp
+    val controlGlyph = 24.dp
+    val touchPad = (RvSize.touch - control) / 2
 
-    /** The strip behind the top bar is fully in once the content has scrolled this far. */
+    /** The strip behind the row: solid to the controls' bottom plus [stripBelow], then fading out over [stripFade]. */
+    val stripBelow = 8.dp
+    val stripFade = 12.dp
+
+    /** The strip is fully in once the content has scrolled this far; a large title hands over to the bar's over this. */
     val shadeAfter = 48.dp
-    val mark = 38.dp
-    val markGlyph = 26.dp
-    val control = 40.dp
-    val controlGlyph = 22.dp
+    val collapse = 32.dp
+    val markGlyph = 28.dp
 
     /** From the duck to the search pill and from the pill to the buttons; between the two buttons. */
     val controlGap = 10.dp
@@ -215,6 +230,13 @@ internal object RvChrome {
     /** The search pill's magnifier, inset from its start, and the gap to the placeholder. */
     val searchGlyph = 24.dp
     val searchInset = 8.dp
+
+    /** A pushed page's compact title starts this far from the screen's edge: after the back disc and a gutter. */
+    val titleStart = 76.dp
+
+    /** A pushed page's large title: this far under the bar, and this far above what follows it. */
+    val largeTitleTop = 8.dp
+    val largeTitleBottom = 16.dp
 
     val navInset = 16.dp
     val navBottom = 40.dp
@@ -230,7 +252,10 @@ internal object RvChrome {
     val navGlyph = 24.dp
     val navCollapsedGlyph = 20.dp
     val navLabelGap = 2.dp
-    val navLabel = 15.dp
+
+    /** The label's line: 15 sp semibold whole, so glyph, gap and label (44 dp) sit inside the 52 dp pill. */
+    val navLabel = 18.dp
+    val navRim = 1.dp
 
     /** The glass blur's radius, and the shadows under the capsule and the top bar's controls (light only). */
     val blur = 20.dp
@@ -238,6 +263,9 @@ internal object RvChrome {
     val navShadowDrop = 4.dp
     val controlShadow = 6.dp
     val controlShadowDrop = 1.dp
+
+    /** The ring round a flag, so white fields keep their edge on any surface, and round the back disc in light. */
+    val ring = 1.dp
 
     const val NAV_SHADOW_ALPHA = 0.16f
     const val CONTROL_SHADOW_ALPHA = 0.06f
@@ -300,8 +328,14 @@ internal object RvTypeScale {
     val pill = RvTypeStep(12, 16, FontWeight.Medium)
     val section = RvTypeStep(20, 26, FontWeight.Bold, display = true)
     val stat = RvTypeStep(16, 22, FontWeight.Medium)
-    val title = RvTypeStep(34, 40, FontWeight.Bold, display = true)
-    val navLabel = RvTypeStep(12, 15, FontWeight.SemiBold)
+    val navLabel = RvTypeStep(15, 18, FontWeight.SemiBold)
+
+    /** A pushed page's large title, and the compact one it collapses to beside the back disc (measured §4). */
+    val largeTitle = RvTypeStep(32, 38, FontWeight.Bold, display = true)
+    val barTitle = RvTypeStep(20, 26, FontWeight.SemiBold, display = true)
+
+    /** The two letters on a flag's fallback disc. */
+    val flagCode = RvTypeStep(13, 16, FontWeight.SemiBold)
 
     /** The search pill's placeholder (measured §4: 17 sp) and a home card's own header (study §3: 15 pt semibold). */
     val search = RvTypeStep(17, 22, FontWeight.Normal)

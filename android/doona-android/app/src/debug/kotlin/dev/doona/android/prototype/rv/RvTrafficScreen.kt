@@ -2,23 +2,18 @@ package dev.doona.android.prototype.rv
 
 import android.content.res.Configuration
 import android.text.format.Formatter
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.windowInsetsTopHeight
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,11 +35,11 @@ import java.text.NumberFormat
 import java.util.Locale
 
 /**
- * The page a traffic tile opens, in the language of Revolut's stock page: 下載 or 上傳 picked at the top, each on its own
- * scale; the rate as the hero with small decimals and when it was; the minute's chart full-bleed; the range chips and
- * two round buttons; and the connection's figures in a Key stats card. A finger on the chart shows that second in the
- * hero until it lifts. v0.1 keeps only the live 60-second window, so 1 分 is the one range offered. [initialScrub] starts
- * the page scrubbed to that second, as the scrubbed golden shows it.
+ * The page a traffic tile opens, 流量詳情 on the bar beside the back disc, in the language of Revolut's stock page: 下載
+ * or 上傳 picked at the top, each on its own scale; the rate as the hero with small decimals and when it was; the
+ * minute's chart full-bleed; the range chips and two round buttons; and the connection's figures in a Key stats card. A
+ * finger on the chart shows that second in the hero until it lifts. v0.1 keeps only the live 60-second window, so 1 分
+ * is the one range offered. [initialScrub] starts the page scrubbed to that second, as the scrubbed golden shows it.
  */
 @Composable
 internal fun RvTrafficScreen(state: ActivityUiState, connection: RvConnection, onBack: () -> Unit, initialScrub: Int? = null) {
@@ -54,9 +49,9 @@ internal fun RvTrafficScreen(state: ActivityUiState, connection: RvConnection, o
     var scrub by remember { mutableStateOf(initialScrub) }
     val values = if (upload) state.upHistory else state.downHistory
     val live = if (upload) state.upRate else state.downRate
-    Column(Modifier.fillMaxSize().background(Rv.colors.page).verticalScroll(rememberScrollState())) {
-        Spacer(Modifier.windowInsetsTopHeight(insets))
-        RvBackBar(onBack, R.drawable.rv_sym_arrow_back)
+    RvScrollPage(stringResource(R.string.rv_traffic_title), insets, onBack = onBack, compact = true) {
+        RvBarSpacer(insets)
+        Spacer(Modifier.height(RvSpace.gutter))
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             val options = listOf(stringResource(R.string.ui_download), stringResource(R.string.ui_upload))
             RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 })
@@ -97,7 +92,7 @@ private fun Ranges() {
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
             RANGES.forEach { (label, offered) -> RvRangePill(stringResource(label), selected = offered, enabled = offered, onClick = NOT_WIRED) }
         }
-        RvRoundButton(R.drawable.rv_sym_bar_chart, stringResource(R.string.rv_chart_type), NOT_WIRED)
+        RvRoundButton(R.drawable.rv_sym_candlestick_chart, stringResource(R.string.rv_chart_type), NOT_WIRED)
         Spacer(Modifier.width(RvSpace.tight))
         RvRoundButton(R.drawable.rv_sym_open_in_full, stringResource(R.string.rv_full_screen), NOT_WIRED)
     }

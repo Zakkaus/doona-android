@@ -150,7 +150,7 @@ internal fun RvStatsDots(count: Int, current: Int) {
 /** A row's trailing chevron, light grey as Revolut's. */
 @Composable
 internal fun RvStatsChevron() {
-    RvGlyph(R.drawable.rv_stats_ic_chevron_right, RvSize.chevron, Rv.colors.reference)
+    RvGlyph(R.drawable.rv_sym_chevron_right, RvSize.chevron, Rv.colors.reference)
 }
 
 /** A row of the tools card: its glyph, title and subtitle. */

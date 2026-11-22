@@ -179,7 +179,7 @@ internal fun RvSubscriptionsCard(subscriptions: List<RvSubscriptionUse>) {
 @Composable
 private fun AccentDisc(disc: Color, glyph: Color) {
     Box(Modifier.size(RvHomeSize.disc).clip(CircleShape).background(disc), contentAlignment = Alignment.Center) {
-        RvGlyph(R.drawable.rv_sym_dns, RvHomeSize.discGlyph, glyph)
+        RvGlyph(R.drawable.rv_sym_rss_feed, RvHomeSize.discGlyph, glyph)
     }
 }
 
@@ -194,7 +194,7 @@ internal fun RvFastestCard(nodes: List<RvFastNode>) {
         nodes.forEach { node ->
             val place = placeOf(node.name)
             val region = place?.let { stringResource(it.label) }
-            RvRow({ RvFlagDisc(place, selected = false) }, withoutFlag(node.name), listOfNotNull(node.protocol, region).joinToString(" · ")) {
+            RvRow({ RvFlag(place?.name, RvSize.rowDisc) }, withoutFlag(node.name), listOfNotNull(node.protocol, region).joinToString(" · ")) {
                 Column(horizontalAlignment = Alignment.End) {
                     RvText(stringResource(R.string.latency_ms, node.latencyMs), Rv.type.rowValue, align = TextAlign.End)
                     RvDelta(node.changeMs)

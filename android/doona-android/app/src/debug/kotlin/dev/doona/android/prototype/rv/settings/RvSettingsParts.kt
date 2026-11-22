@@ -124,7 +124,7 @@ internal fun RvSettingsNavRow(title: String, @DrawableRes icon: Int, onClick: ()
                 RvSettingsText(it, RvSettingsType.value, color = Rv.colors.textSecondary)
                 Spacer(Modifier.width(RvSettingsSpace.valueGap))
             }
-            RvGlyph(R.drawable.rv_settings_ic_chevron, RvSettingsSize.chevron, Rv.colors.reference)
+            RvGlyph(R.drawable.rv_sym_chevron_right, RvSettingsSize.chevron, Rv.colors.reference)
         }
     }
 }

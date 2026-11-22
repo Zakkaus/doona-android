@@ -1,27 +1,21 @@
 package dev.doona.android.prototype.rv.stats
 
 import android.content.res.Configuration
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,13 +28,11 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvChartSize
 import dev.doona.android.prototype.rv.RvFigure
 import dev.doona.android.prototype.rv.RvGutter
-import dev.doona.android.prototype.rv.RvRoundButton
-import dev.doona.android.prototype.rv.RvSize
+import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvSystemScheme
 import java.text.NumberFormat
@@ -49,7 +41,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * The 統計 page in the language of Revolut's Analytics page: a round back button and the large title, the subscription
+ * The 統計 page in the language of Revolut's Analytics page: the back disc and the large title, the subscription
  * and range chips, then the cards. Each card names its v0.1 source at its foot, and a card whose data v0.1 lacks carries
  * a `v0.2` tag: 已用流量 and the paged tiles (the app-side daily history; 連線次數 is v0.2), 訂閱流量 (the subscriptions'
  * quota), 節點分佈 (node names and flags), 延遲分佈 (latency results), 分流比例 (v0.2) and the tools. The chips and the
@@ -58,14 +50,9 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, initialTile: Int = 0) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    Column(Modifier.fillMaxSize().background(Rv.colors.page).verticalScroll(rememberScrollState())) {
-        Spacer(Modifier.windowInsetsTopHeight(insets))
-        Box(Modifier.height(RvSize.topBar).padding(start = RvSpace.gutter - (RvSize.touch - RvChartSize.roundButton) / 2), contentAlignment = Alignment.CenterStart) {
-            RvRoundButton(R.drawable.rv_ic_back, stringResource(R.string.ui_back), onBack)
-        }
-        Spacer(Modifier.height(RvStatsSpace.titleGap))
-        RvText(stringResource(R.string.rv_stats_title), Rv.type.title, Modifier.padding(horizontal = RvSpace.gutter))
-        Spacer(Modifier.height(RvStatsSpace.chipsGap))
+    val title = stringResource(R.string.rv_stats_title)
+    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
         Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
             RvStatsChip(stringResource(R.string.rv_stats_all_subscriptions), NOT_WIRED)
             Spacer(Modifier.weight(1f))
@@ -135,7 +122,7 @@ private fun tools(state: RvStatsState): List<RvStatsTool> {
         stringResource(R.string.rv_updated, TIME.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())))
     }
     return listOf(
-        RvStatsTool(R.drawable.rv_ic_speed, stringResource(R.string.rv_stats_test_all), nodes),
+        RvStatsTool(R.drawable.rv_sym_speed, stringResource(R.string.rv_stats_test_all), nodes),
         RvStatsTool(R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), listOfNotNull(subscriptions, refreshed).joinToString(" · ")),
         RvStatsTool(R.drawable.rv_stats_ic_bug_report, stringResource(R.string.rv_stats_export), stringResource(R.string.rv_stats_export_detail)),
     )

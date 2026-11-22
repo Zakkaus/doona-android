@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -34,12 +33,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvSystemScheme
 
@@ -58,15 +58,9 @@ internal fun RvThemeScreen(
     onBack: () -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    RvScrollPage(stringResource(R.string.rv_settings_theme), insets, Modifier.fillMaxSize(), onBack) { titleBlock ->
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSettingsSpace.titleTop))
-        RvSettingsText(
-            stringResource(R.string.rv_settings_theme),
-            RvSettingsType.title,
-            titleBlock.padding(horizontal = RvSettingsSpace.margin).semantics { heading() },
-        )
-        Spacer(Modifier.height(RvSettingsSpace.titleBottom))
+    val title = stringResource(R.string.rv_settings_theme)
+    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             ModeCard(appearance, onChange)
             RvSettingsSection(stringResource(R.string.rv_settings_accent))
@@ -93,7 +87,7 @@ private fun AccentCard(appearance: RvAppearance, onChange: (RvAppearance) -> Uni
     RvSettingsCard {
         RvSettingsSwitchRow(
             stringResource(R.string.rv_settings_follow_wallpaper),
-            R.drawable.rv_settings_ic_wallpaper,
+            R.drawable.rv_sym_image,
             appearance.followWallpaper,
             { onChange(appearance.copy(followWallpaper = it)) },
         )

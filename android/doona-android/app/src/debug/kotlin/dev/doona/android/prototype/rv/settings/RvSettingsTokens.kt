@@ -46,10 +46,6 @@ internal object RvSettingsSpace {
     /** How far under the bar the hero's dot map is centred, so East Asia's land falls behind the title. */
     val mapDrop = 16.dp
 
-    /** The large title of a sub-page, from the bar to the first card. */
-    val titleTop = 8.dp
-    val titleBottom = 16.dp
-
     /** The theme page's colour row and preview. */
     val accentPad = 14.dp
     val previewPad = 12.dp
@@ -69,11 +65,6 @@ internal object RvSettingsSize {
     val titleLine = 26.dp
     val glyph = 24.dp
     val chevron = 24.dp
-
-    /** The bar over the scrolling page, under the status bar. */
-    val bar = 56.dp
-    val backDisc = 44.dp
-    val backGlyph = 24.dp
 
     /** The hero: the duck mark beside the title, and a round action's disc and glyph. */
     val mark = 32.dp
@@ -107,14 +98,8 @@ internal object RvSettingsSize {
 }
 
 internal object RvSettingsAlpha {
-    /** The page's colour over the scrolling content once the large title has collapsed. */
-    const val STRIP = 0.98f
-
     /** The switch's track while on: the thumb's colour at half strength, as Revolut's #9bb5ea under #366ad1. */
     const val SWITCH_TRACK = 0.5f
-
-    /** The collapse runs over this much scrolling, in dp. */
-    const val COLLAPSE_DP = 32f
 
     /** The hero's dot texture: a settings page asks for less than the activity header. */
     const val HERO_DOTS = 0.5f
@@ -124,10 +109,8 @@ internal object RvSettingsAlpha {
 }
 
 internal object RvSettingsType {
-    /** The large title: 32 sp bold. It collapses to [compactTitle] on the bar. */
-    val title = TextStyle(fontFamily = RvInterDisplay, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 38.sp)
-    val compactTitle = TextStyle(fontFamily = RvInterDisplay, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp)
-    val section = compactTitle
+    /** A section title: 20 sp semibold, the size of a bar's title. */
+    val section = TextStyle(fontFamily = RvInterDisplay, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp)
     val rowTitle = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.SemiBold, fontSize = 19.sp, lineHeight = 26.sp)
     val rowSub = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 24.sp)
 

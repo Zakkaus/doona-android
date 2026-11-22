@@ -116,4 +116,4 @@ private fun MiniAction(@DrawableRes icon: Int) {
     ) { RvGlyph(icon, RvSettingsSize.previewGlyph, Rv.colors.text) }
 }
 
-private val MINI_ACTIONS = listOf(R.drawable.rv_sym_power, R.drawable.rv_sym_directions, R.drawable.rv_ic_speed, R.drawable.rv_sym_more_horiz)
+private val MINI_ACTIONS = listOf(R.drawable.rv_sym_power, R.drawable.rv_sym_directions, R.drawable.rv_sym_speed, R.drawable.rv_sym_more_horiz)

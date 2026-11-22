@@ -1,6 +1,5 @@
 package dev.doona.android.prototype.rv.nodes
 
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
@@ -16,20 +15,20 @@ internal enum class RvNodesRegion(@StringRes val label: Int) {
     Europe(R.string.rv_nodes_region_europe),
 }
 
-/** A country or region a node is in: its flag, its name, its part of the world and where it is, in degrees. */
-internal enum class RvNodesPlace(@DrawableRes val flag: Int, @StringRes val label: Int, val region: RvNodesRegion, val lat: Float, val lon: Float) {
-    HK(R.drawable.rv_nodes_flag_hk, R.string.rv_nodes_place_hk, RvNodesRegion.Asia, 22.35f, 114.15f),
-    TW(R.drawable.rv_nodes_flag_tw, R.string.rv_nodes_place_tw, RvNodesRegion.Asia, 23.7f, 120.96f),
-    JP(R.drawable.rv_nodes_flag_jp, R.string.rv_nodes_place_jp, RvNodesRegion.Asia, 36.2f, 138.25f),
-    KR(R.drawable.rv_nodes_flag_kr, R.string.rv_nodes_place_kr, RvNodesRegion.Asia, 35.9f, 127.8f),
-    SG(R.drawable.rv_nodes_flag_sg, R.string.rv_nodes_place_sg, RvNodesRegion.Asia, 1.35f, 103.82f),
-    US(R.drawable.rv_nodes_flag_us, R.string.rv_nodes_place_us, RvNodesRegion.Americas, 39.83f, -98.58f),
-    CA(R.drawable.rv_nodes_flag_ca, R.string.rv_nodes_place_ca, RvNodesRegion.Americas, 56.13f, -106.35f),
-    GB(R.drawable.rv_nodes_flag_gb, R.string.rv_nodes_place_gb, RvNodesRegion.Europe, 54f, -2f),
-    DE(R.drawable.rv_nodes_flag_de, R.string.rv_nodes_place_de, RvNodesRegion.Europe, 51.17f, 10.45f),
-    NL(R.drawable.rv_nodes_flag_nl, R.string.rv_nodes_place_nl, RvNodesRegion.Europe, 52.13f, 5.29f),
-    FR(R.drawable.rv_nodes_flag_fr, R.string.rv_nodes_place_fr, RvNodesRegion.Europe, 46.23f, 2.21f),
-    AU(R.drawable.rv_nodes_flag_au, R.string.rv_nodes_place_au, RvNodesRegion.Oceania, -25.27f, 133.78f),
+/** A country or region a node is in, by its ISO code (for its flag): its name, its part of the world, where it is. */
+internal enum class RvNodesPlace(@StringRes val label: Int, val region: RvNodesRegion, val lat: Float, val lon: Float) {
+    HK(R.string.rv_nodes_place_hk, RvNodesRegion.Asia, 22.35f, 114.15f),
+    TW(R.string.rv_nodes_place_tw, RvNodesRegion.Asia, 23.7f, 120.96f),
+    JP(R.string.rv_nodes_place_jp, RvNodesRegion.Asia, 36.2f, 138.25f),
+    KR(R.string.rv_nodes_place_kr, RvNodesRegion.Asia, 35.9f, 127.8f),
+    SG(R.string.rv_nodes_place_sg, RvNodesRegion.Asia, 1.35f, 103.82f),
+    US(R.string.rv_nodes_place_us, RvNodesRegion.Americas, 39.83f, -98.58f),
+    CA(R.string.rv_nodes_place_ca, RvNodesRegion.Americas, 56.13f, -106.35f),
+    GB(R.string.rv_nodes_place_gb, RvNodesRegion.Europe, 54f, -2f),
+    DE(R.string.rv_nodes_place_de, RvNodesRegion.Europe, 51.17f, 10.45f),
+    NL(R.string.rv_nodes_place_nl, RvNodesRegion.Europe, 52.13f, 5.29f),
+    FR(R.string.rv_nodes_place_fr, RvNodesRegion.Europe, 46.23f, 2.21f),
+    AU(R.string.rv_nodes_place_au, RvNodesRegion.Oceania, -25.27f, 133.78f),
 }
 
 /**

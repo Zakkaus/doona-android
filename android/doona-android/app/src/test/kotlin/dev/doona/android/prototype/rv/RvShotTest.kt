@@ -29,9 +29,8 @@ import java.util.TimeZone
  * The Revolut-style samples, light and dark, in the scheme of the owner's wallpaper, for the owner to judge next to
  * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`, disconnected in
  * `proto-rv-activity-idle-light`, scrolled with the bottom bar collapsed in `proto-rv-activity-scrolled-light`, and the
- * whole page in one tall capture in `proto-rv-activity-full-light` and `-dark`), the 「Proxy」 group's node screen
- * (`proto-rv-nodes-light` and `-dark`) and the traffic page a tile opens (`proto-rv-traffic-light` and `-dark`, and held
- * at one second in `proto-rv-traffic-scrub-dark`).
+ * whole page in one tall capture in `proto-rv-activity-full-light` and `-dark`) and the traffic page a tile opens
+ * (`proto-rv-traffic-light` and `-dark`, and held at one second in `proto-rv-traffic-scrub-dark`).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -43,8 +42,7 @@ class RvShotTest {
     private val dir = System.getProperty("doona.shots") ?: "src/test/screenshots"
     private val zone = TimeZone.getDefault()
 
-    // The node screen prints the subscription's update time in the device's zone; UTC keeps the golden the same on
-    // every machine.
+    // The pages print times in the device's zone; UTC keeps the goldens the same on every machine.
     @Before
     fun utc() = TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
 
@@ -52,36 +50,30 @@ class RvShotTest {
     fun restoreZone() = TimeZone.setDefault(zone)
 
     @Test
-    fun activityLight() = shot("activity", dark = false) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
+    fun activityLight() = shot("activity", dark = false) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
     @Test
-    fun activityDark() = shot("activity", dark = true) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
+    fun activityDark() = shot("activity", dark = true) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
     @Test
-    fun activityIdleLight() = shot("activity-idle", dark = false) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
+    fun activityIdleLight() = shot("activity-idle", dark = false) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}) }
 
     @Test
     fun activityScrolledLight() = shot("activity-scrolled", dark = false, before = { scrollBy(SCROLLED_DP) }) {
-        RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {})
+        RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {})
     }
 
     @Test
     @Config(qualifiers = FULL_PAGE)
     fun activityFullLight() = shot("activity-full", dark = false, before = ::assertWhole) {
-        RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {})
+        RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {})
     }
 
     @Test
     @Config(qualifiers = FULL_PAGE)
     fun activityFullDark() = shot("activity-full", dark = true, before = ::assertWhole) {
-        RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {})
+        RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {})
     }
-
-    @Test
-    fun nodesLight() = shot("nodes", dark = false) { RvNodesScreen(sampleNodesState(), onBack = {}, onTestAll = {}, onSelect = {}) }
-
-    @Test
-    fun nodesDark() = shot("nodes", dark = true) { RvNodesScreen(sampleNodesState(), onBack = {}, onTestAll = {}, onSelect = {}) }
 
     @Test
     fun trafficLight() = shot("traffic", dark = false) { RvTrafficScreen(rvSampleActivity(), RV_SAMPLE_CONNECTION, onBack = {}) }

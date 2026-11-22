@@ -10,12 +10,12 @@ Fixed-weight instances (opsz 14 and 32) and a Latin subset of Inter[opsz,wght].t
 Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter).
 SIL Open Font License 1.1: app/src/debug/assets/licenses/inter-OFL.txt
 
-Material Symbols Rounded (app/src/debug/res/drawable/rv_sym_*.xml, rv_nodes_ic_*.xml, rv_settings_ic_*.xml,
-rv_stats_ic_*.xml and rv_ic_*.xml except rv_ic_analytics.xml, the prototype/rv sample only)
+Material Symbols Rounded (app/src/debug/res/drawable/rv_sym_*.xml, rv_nodes_ic_*.xml, rv_settings_ic_*.xml and
+rv_stats_ic_*.xml, the prototype/rv sample only; rv_ic_analytics.xml is the sample's own)
 Copyright Google LLC. rv_sym_*: filled 24 px Android vector drawables at weight 500 or 600 from
 google/material-design-icons (symbols/android/<name>/materialsymbolsrounded, commit 10ecc147), paths unchanged; the
-theme tint attribute is removed and each file names its source. rv_ic_*: weight 600, filled, 24 px SVGs from Google
-Fonts' icon release (fonts.gstatic.com/s/i/short-term/release/materialsymbolsrounded), converted to vector drawables.
+theme tint attribute is removed and each file names its source. rv_nodes_ic_*, rv_settings_ic_* and rv_stats_ic_*:
+filled 24 px glyphs from the same set, converted to vector drawables; each file names its glyph and weight.
 Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
 
 Natural Earth land (app/src/debug/kotlin/dev/doona/android/prototype/rv/RvLandMask.kt, the prototype/rv sample only)
@@ -27,7 +27,7 @@ app/src/debug/res/drawable/rv_stats_world.xml, the prototype/rv sample only)
 Outlines that tools/rv_nodes_countries.py and tools/rv_stats_world.py simplify from ne_110m_admin_0_countries.geojson,
 Natural Earth 1:110m v5.1.2. Public domain: https://www.naturalearthdata.com/about/terms-of-use/
 
-circle-flags (app/src/debug/res/drawable/rv_nodes_flag_*.xml, the prototype/rv sample only)
+circle-flags (app/src/debug/res/drawable/rv_flag_*.xml, the prototype/rv sample only)
 Copyright (c) 2026 HatScripts. flags/<cc>.svg from HatScripts/circle-flags (commit 379588b5), converted to vector
 drawables with the paths unchanged. MIT License: app/src/debug/assets/licenses/circle-flags-MIT.txt
 

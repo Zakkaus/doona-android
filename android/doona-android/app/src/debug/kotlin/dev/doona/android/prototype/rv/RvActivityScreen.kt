@@ -46,13 +46,7 @@ import dev.doona.android.feature.activity.ActivityUiState
  * while the content scrolls up. It renders [ActivityUiState] unchanged; the three lower cards show invented data.
  */
 @Composable
-internal fun RvActivityScreen(
-    state: ActivityUiState,
-    onAction: (ActivityAction) -> Unit,
-    onConnect: () -> Unit,
-    onOpenGroup: (String) -> Unit,
-    onOpenTraffic: () -> Unit,
-) {
+internal fun RvActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, routes: RvActivityRoutes = RvActivityRoutes()) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val glass = rememberRvGlass()
@@ -60,18 +54,27 @@ internal fun RvActivityScreen(
         Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
             Header(state, onAction, onConnect, insets)
             RvGutter {
-                OutboundCard(state, onOpenGroup)
-                TrafficTiles(state, onOpenTraffic)
+                OutboundCard(state, routes)
+                TrafficTiles(state, routes.traffic)
                 RvUsageCard(remember { RvUsageSample.today() })
                 RvSubscriptionsCard(RV_SAMPLE_SUBSCRIPTIONS)
                 RvFastestCard(RV_SAMPLE_FASTEST)
             }
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
-        RvTopBar(glass, insets, rvShade(scroll), Modifier.align(Alignment.TopCenter))
-        RvFloatingNav(NAV, selected = 0, onSelect = { NOT_WIRED() }, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter))
+        RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.nodes, onStats = routes.stats, Modifier.align(Alignment.TopCenter))
+        RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter))
     }
 }
+
+/** Where 活動 leads: a traffic tile, 統計, 節點 (the search pill and the outbound row), the node row, and the nav's tabs. */
+internal class RvActivityRoutes(
+    val traffic: () -> Unit = {},
+    val stats: () -> Unit = {},
+    val nodes: () -> Unit = {},
+    val node: () -> Unit = {},
+    val tab: (Int) -> Unit = {},
+)
 
 @Composable
 private fun Header(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, insets: WindowInsets) {
@@ -107,20 +110,23 @@ private fun Header(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
 }
 
 @Composable
-private fun OutboundCard(state: ActivityUiState, onOpenGroup: (String) -> Unit) {
+private fun OutboundCard(state: ActivityUiState, routes: RvActivityRoutes) {
     RvCard {
         RvRow(
-            { RvIconDisc(R.drawable.rv_sym_filter_alt) },
+            { RvIconDisc(R.drawable.rv_sym_directions) },
             stringResource(R.string.act_global),
             state.outbound ?: RV_NO_VALUE,
-            onClick = state.outboundGroupId?.let { id -> { onOpenGroup(id) } },
+            onClick = routes.nodes,
         ) { RvGlyph(R.drawable.rv_sym_chevron_right, RvSize.chevron, Rv.colors.textSecondary) }
         // Direct traffic uses no node, so there is no node or latency to show.
         if (state.mode == Mode.Direct) return@RvCard
         val node = state.node
-        RvRow({ RvIconDisc(R.drawable.rv_sym_schedule) }, node?.name ?: RV_NO_VALUE, stringResource(R.string.nav_nodes)) {
-            RvLatency(node?.latencyMs?.takeUnless { node.failed })
-        }
+        RvRow(
+            { RvFlag(node?.name?.let(::placeOf)?.name, RvSize.rowDisc) },
+            node?.name?.let(::withoutFlag) ?: RV_NO_VALUE,
+            stringResource(R.string.nav_nodes),
+            onClick = routes.node,
+        ) { RvLatency(node?.latencyMs?.takeUnless { node.failed }) }
     }
 }
 
@@ -165,12 +171,6 @@ private fun rateText(context: Context, bytesPerSecond: Long) = Formatter.formatS
 
 private const val PER_SECOND = "/s"
 
-private val NAV = listOf(
-    RvNavItem(R.drawable.rv_sym_space_dashboard, R.string.hub_activity),
-    RvNavItem(R.drawable.rv_sym_account_tree, R.string.nav_policies),
-    RvNavItem(R.drawable.rv_sym_settings, R.string.hub_settings),
-)
-
 private val Status.label: Int
     get() = when (this) {
         is Status.Running -> R.string.backend_connected
@@ -190,5 +190,5 @@ private val Mode.label: Int
 @Composable
 private fun RvActivityScreenPreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
 }

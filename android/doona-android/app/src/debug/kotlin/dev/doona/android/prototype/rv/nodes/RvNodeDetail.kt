@@ -4,21 +4,16 @@ import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.windowInsetsTopHeight
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,9 +31,11 @@ import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBackBar
+import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
+import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvText
@@ -50,43 +47,45 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * A node's page, in the language of Revolut's stock page: the flag, the name and its protocol and country with a status
- * chip; 延遲紀錄 as the EPS dot chart of its last tests, the picked one's figure over it; its share link's details as a
- * Key stats card; and 設為目前節點 floating at the bottom as 'Get started', with a round 測試延遲 beside it.
+ * A node's page, its name on the bar beside the back disc, in the language of Revolut's stock page: the flag, its
+ * protocol and country with a status chip; 延遲紀錄 as the EPS dot chart of its last tests, the picked one's figure over
+ * it; its share link's details as a Key stats card; and 設為目前節點 floating at the bottom as 'Get started', with a
+ * round 測試延遲 beside it.
  */
 @Composable
 internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<Long>, onBack: () -> Unit, onUse: () -> Unit, onTest: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val times = testedAtEpochMs.map { TIME.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())) }
     var picked by rememberSaveable(node.id) { mutableIntStateOf(node.history.lastIndex) }
-    Box(Modifier.fillMaxSize().background(Rv.colors.page)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Spacer(Modifier.windowInsetsTopHeight(insets))
-            RvBackBar(onBack)
-            Top(node, current)
-            RvGutter {
-                HistoryCard(node, times, picked) { picked = it }
-            }
-            Spacer(Modifier.height(RvSpace.sectionGap))
-            RvText(stringResource(R.string.rv_nodes_details), Rv.type.section, Modifier.padding(horizontal = RvSpace.gutter))
-            Spacer(Modifier.height(RvSpace.headingGap))
-            RvGutter { StatsCard(node, times.last()) }
-            // Room under the last card for the floating actions, so it scrolls clear of them.
-            Spacer(Modifier.height(RvNodesSize.ctaFade + RvNodesSize.cta + RvSpace.gutter))
-            Spacer(Modifier.windowInsetsBottomHeight(insets))
+    RvScrollPage(
+        node.name,
+        insets,
+        onBack = onBack,
+        compact = true,
+        overlay = { Actions(current, onUse, onTest, insets, Modifier.align(Alignment.BottomCenter)) },
+    ) {
+        RvBarSpacer(insets)
+        Spacer(Modifier.height(RvSpace.gutter))
+        Top(node, current)
+        RvGutter {
+            HistoryCard(node, times, picked) { picked = it }
         }
-        Actions(current, onUse, onTest, insets, Modifier.align(Alignment.BottomCenter))
+        Spacer(Modifier.height(RvSpace.sectionGap))
+        RvText(stringResource(R.string.rv_nodes_details), Rv.type.section, Modifier.padding(horizontal = RvSpace.gutter))
+        Spacer(Modifier.height(RvSpace.headingGap))
+        RvGutter { StatsCard(node, times.last()) }
+        // Room under the last card for the floating actions, so it scrolls clear of them.
+        Spacer(Modifier.height(RvNodesSize.ctaFade + RvNodesSize.cta + RvSpace.gutter))
+        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 
-/** The flag, the name, `協定 · 地區`, and the chips that apply: in use, and a latency over the good range. */
+/** The flag, `協定 · 地區`, and the chips that apply: in use, and a latency over the good range; the bar names the node. */
 @Composable
 private fun Top(node: RvNode, current: Boolean) {
     Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-        RvNodeFlag(node.place, RvNodesSize.detailFlag)
+        RvFlag(node.place.name, RvNodesSize.detailFlag)
         Spacer(Modifier.height(RvSpace.headingGap))
-        RvText(node.name, RvNodesType.detailName)
-        Spacer(Modifier.height(RvSpace.tight))
         RvText(node.protocol + SEPARATOR + stringResource(node.place.label), Rv.type.rowSub, color = Rv.colors.textSecondary)
         val high = latencyTone(node.latencyMs).let { it == Tone.Warn || it == Tone.Err }
         if (current || high) {
@@ -152,7 +151,7 @@ private fun Actions(current: Boolean, onUse: () -> Unit, onTest: () -> Unit, ins
             RvFloatingActions(
                 stringResource(if (current) R.string.rv_nodes_in_use else R.string.rv_nodes_use),
                 onUse,
-                R.drawable.rv_ic_speed,
+                R.drawable.rv_sym_speed,
                 stringResource(R.string.rv_test_latency),
                 onTest,
             )

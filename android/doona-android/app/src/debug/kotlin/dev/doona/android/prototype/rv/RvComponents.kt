@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,11 +12,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,7 +33,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -158,26 +154,6 @@ internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text) {
     }
 }
 
-/** A node's flag filling the row's disc, or a globe when its name names no country; [selected] adds #13's check. */
-@Composable
-internal fun RvFlagDisc(place: RvPlace?, selected: Boolean) {
-    Box(Modifier.size(RvSize.rowDisc)) {
-        if (place == null) {
-            RvIconDisc(R.drawable.rv_ic_globe, Rv.colors.textSecondary)
-        } else {
-            val edge = Rv.colors.flagEdge?.let { Modifier.border(Dp.Hairline, it, CircleShape) } ?: Modifier
-            Image(painterResource(place.flag), contentDescription = null, Modifier.fillMaxSize().clip(CircleShape).then(edge), contentScale = ContentScale.Crop)
-        }
-        if (selected) {
-            val ring = Modifier.size(RvSize.badge).clip(CircleShape).background(Rv.colors.card).padding(RvSize.badgeRing)
-            Box(
-                Modifier.align(Alignment.BottomEnd).offset(RvSize.badgeOverhang, RvSize.badgeOverhang).then(ring).clip(CircleShape).background(Rv.colors.positive),
-                contentAlignment = Alignment.Center,
-            ) { RvGlyph(R.drawable.rv_ic_check, RvSize.badgeGlyph, Rv.colors.onPositive) }
-        }
-    }
-}
-
 /** A node's latency over its quality word, the word in the quality's fixed hue. */
 @Composable
 internal fun RvLatency(ms: Int?) {
@@ -190,21 +166,6 @@ internal fun RvLatency(ms: Int?) {
 internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().height(RvSize.progress).clip(CircleShape).background(Rv.colors.track)) {
         Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(Rv.colors.positive))
-    }
-}
-
-/**
- * A screen's top bar: the back glyph's edge sits on the gutter; its touch target reaches past it. The node screen keeps
- * sample 2's glyph ([R.drawable.rv_ic_back], weight 600) until it is redone; the traffic page passes weight 500.
- */
-@Composable
-internal fun RvBackBar(onBack: () -> Unit, @DrawableRes glyph: Int = R.drawable.rv_ic_back) {
-    val back = stringResource(R.string.ui_back)
-    Box(Modifier.height(RvSize.topBar).padding(start = RvSpace.gutter - (RvSize.touch - RvSize.navGlyph) / 2), contentAlignment = Alignment.CenterStart) {
-        Box(
-            Modifier.size(RvSize.touch).rvPress(CircleShape, Role.Button, onBack).semantics { contentDescription = back },
-            contentAlignment = Alignment.Center,
-        ) { RvGlyph(glyph, RvSize.navGlyph, Rv.colors.text) }
     }
 }
 
@@ -289,9 +250,6 @@ internal fun RvStatRow(label: String, value: String) {
         RvText(value, Rv.type.stat, align = TextAlign.End)
     }
 }
-
-/** A destination of the bottom navigation. */
-internal class RvNavItem(@DrawableRes val icon: Int, @StringRes val label: Int)
 
 /** A trailing value over a short line under it, both ending at the row's end, as Revolut's amount and change. */
 @Composable

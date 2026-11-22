@@ -13,6 +13,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -54,27 +55,29 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val track = discOnCard
 
     /**
-     * Glass over the content. The floating capsule: the page's lightest surface, half see-through in light as Revolut's
-     * 35 to 65 % white (measured §9), a raised container in dark (not measured; derived); its solid fill is what it
-     * shows collapsed and where the platform cannot blur. The top bar's controls are a step darker, so they read on the
-     * light page.
+     * Glass over the content. The floating capsule: white 65 % over the blur in light, as Revolut's 35 to 65 % white
+     * (measured §9); white 11 % in dark with a rim of white 8 %, so it does not dissolve into the black page (S5-20). Its
+     * solid fill is what it shows collapsed and where the platform cannot blur. The top bar's controls are a step darker,
+     * so they read on the light page.
      */
-    val navGlass = if (dark) {
-        RvGlassTint(s.surfaceContainerHigh.copy(alpha = RvAlpha.GLASS_DARK), s.surfaceContainerHigh.copy(alpha = RvAlpha.GLASS_SOLID))
-    } else {
-        RvGlassTint(s.surfaceContainerLowest.copy(alpha = RvAlpha.GLASS_LIGHT), s.surfaceContainerLowest.copy(alpha = RvAlpha.GLASS_SOLID))
-    }
+    private val navSolid = if (dark) Color.White.copy(alpha = RvAlpha.NAV_DARK).compositeOver(page) else Color.White
+    val navGlass = RvGlassTint(Color.White.copy(alpha = if (dark) RvAlpha.NAV_DARK else RvAlpha.NAV_LIGHT), navSolid.copy(alpha = RvAlpha.GLASS_SOLID))
+    val navRim: Color? = if (dark) Color.White.copy(alpha = RvAlpha.NAV_RIM) else null
     val controlGlass = if (dark) {
         RvGlassTint(s.surfaceContainerHighest.copy(alpha = RvAlpha.GLASS_DARK), s.surfaceContainerHighest)
     } else {
         RvGlassTint(s.surfaceContainerHigh.copy(alpha = RvAlpha.CONTROL_GLASS), s.surfaceContainerHigh)
     }
 
-    /** The strip behind 活動's top bar once content scrolls under it: the page, mostly opaque over the blur. */
+    /** The strip behind any bar once content scrolls under it: the page at 85 % over the blur. */
     val barGlass = RvGlassTint(page.copy(alpha = RvAlpha.BAR_GLASS), page.copy(alpha = RvAlpha.GLASS_SOLID))
 
-    /** The selected item's inner pill in the capsule: the text colour, faint (measured: about black 7 % in light). */
-    val navPill = s.onSurface.copy(alpha = if (dark) RvAlpha.NAV_PILL_DARK else RvAlpha.NAV_PILL_LIGHT)
+    /** The selected item's pill in the capsule: flat and opaque, the capsule's solid fill with the text colour at 8 %. */
+    val navPill = s.onSurface.copy(alpha = RvAlpha.NAV_PILL).compositeOver(navSolid)
+
+    /** A pushed page's back disc (measured §4): white with a faint ring in light, a raised container in dark. */
+    val backDisc = if (dark) s.surfaceContainerHigh else s.surfaceContainerLowest
+    val backRing: Color? = if (dark) null else s.onSurface.copy(alpha = RvAlpha.BACK_RING)
 
     /** Soft shadows under the capsule and the top bar's controls, in light only. */
     val glassShadow = !dark
@@ -82,8 +85,9 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     /** A subscription's disc and the glyph on it, one dynamic role each, as Revolut colours its Total wealth rows. */
     val accents = listOf(s.primary to s.onPrimary, s.tertiary to s.onTertiary)
 
-    /** A hairline round a flag in light, where white fields meet the light grey card; dark needs none. */
-    val flagEdge: Color? = if (dark) null else s.outlineVariant
+    /** A flag's 1 dp ring (X-18), and the disc a country without artwork gets instead. */
+    val flagRing = if (dark) Color.White.copy(alpha = RvAlpha.FLAG_RING_DARK) else Color.Black.copy(alpha = RvAlpha.FLAG_RING_LIGHT)
+    val flagFallback = s.surfaceContainerHigh
 
     /** Traffic has no good or bad direction, so download and upload take two plain roles of the scheme. */
     private val area = if (dark) RvAlpha.AREA_DARK else RvAlpha.AREA_LIGHT
@@ -147,8 +151,10 @@ internal class RvType {
     val pill = RvTypeScale.pill.style(tabular = true)
     val section = RvTypeScale.section.style()
     val stat = RvTypeScale.stat.style(tabular = true)
-    val title = RvTypeScale.title.style()
+    val largeTitle = RvTypeScale.largeTitle.style()
+    val barTitle = RvTypeScale.barTitle.style()
     val navLabel = RvTypeScale.navLabel.style()
+    val flagCode = RvTypeScale.flagCode.style()
     val search = RvTypeScale.search.style()
     val cardTitle = RvTypeScale.cardTitle.style()
 
