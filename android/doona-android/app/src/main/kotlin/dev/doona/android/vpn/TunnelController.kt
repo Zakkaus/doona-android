@@ -5,6 +5,7 @@ import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,9 +29,10 @@ internal class TunnelController(
     private val core: CoreBridge,
     private val opener: CoreOpener,
     private val perApp: suspend () -> PerApp,
-    /** Runs the stop watchdog; must not share a thread with [run]. */
+    /** Runs the stop watchdogs; must not share a thread with [run]. */
     private val scope: CoroutineScope,
     private val killProcess: () -> Unit,
+    private val startBoundMs: Long = START_BOUND_MS,
     private val stopDeadlineMs: Long = STOP_DEADLINE_MS,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
@@ -44,6 +46,9 @@ internal class TunnelController(
 
     private var coreRunning = false // Touched only by run().
 
+    @Volatile
+    private var handled = 0L // Written only by run(): the generation of the last command it finished.
+
     /** Executes commands in order until cancelled. The owner launches it once, off the main thread. */
     suspend fun run() {
         for (command in commands) {
@@ -52,6 +57,7 @@ internal class TunnelController(
                 is Command.Open -> if (isCurrent(command.generation)) open(command.generation, command.host)
                 is Command.Close -> publish(command.generation, command.terminal)
             }
+            handled = command.generation
         }
     }
 
@@ -62,24 +68,35 @@ internal class TunnelController(
     }
 
     /** The user's stop and the system's revoke alike. */
-    fun stop() = submit(Status.Stopping, accept = { it.active }) { g -> Command.Close(g, Status.Stopped) }
+    fun stop() = close(accept = { it.active }, Status.Stopped)
 
     /** Builds the session's tunnel again with the current per-app policy. */
     fun rebuild() = submit(Status.Starting, accept = { it.active }) { g -> Command.Open(g, checkNotNull(host)) }
 
     /** The health check found [observed]'s data path dead; ignored once the status has moved on. */
-    fun coreStopped(observed: Status.Running) = submit(Status.Stopping, accept = { it == observed }) { g ->
-        Command.Close(g, Status.Failed(FailureReason.CoreStopped))
+    fun coreStopped(observed: Status.Running) = close(accept = { it == observed }, Status.Failed(FailureReason.CoreStopped))
+
+    private fun close(accept: (Status) -> Boolean, terminal: Status) {
+        val g = submit(Status.Stopping, accept) { g -> Command.Close(g, terminal) } ?: return
+        // A start that never returns holds the runner, so the stop's own watchdog may never be armed. The runner gets
+        // the start's bound plus the stop deadline to reach this command; past that only ending the process frees the tun.
+        scope.launch {
+            delay(startBoundMs + stopDeadlineMs)
+            if (handled < g) {
+                VpnLog.warn("stop $g not reached in ${startBoundMs + stopDeadlineMs} ms; ending the process")
+                killProcess()
+            }
+        }
     }
 
-    private inline fun submit(next: Status, accept: (Status) -> Boolean, command: (Long) -> Command) {
-        synchronized(lock) {
-            if (!accept(_status.value)) return
-            generation++
-            _status.value = next
-            // Queued under the lock, so the queue order is the generation order.
-            commands.trySend(command(generation))
-        }
+    /** The new generation, or null when [accept] refused the current status. */
+    private inline fun submit(next: Status, accept: (Status) -> Boolean, command: (Long) -> Command): Long? = synchronized(lock) {
+        if (!accept(_status.value)) return null
+        generation++
+        _status.value = next
+        // Queued under the lock, so the queue order is the generation order.
+        commands.trySend(command(generation))
+        generation
     }
 
     private fun isCurrent(g: Long) = synchronized(lock) { g == generation }
@@ -137,7 +154,7 @@ internal class TunnelController(
         return null
     }
 
-    private fun stopCore() {
+    private suspend fun stopCore() {
         if (!coreRunning) return
         coreRunning = false
         val begun = System.nanoTime()
@@ -147,23 +164,36 @@ internal class TunnelController(
             VpnLog.warn("stop exceeded $stopDeadlineMs ms; ending the process")
             killProcess()
         }
-        try {
+        val failure = try {
             core.stop()
+            null
         } catch (e: Exception) {
-            VpnLog.warn("stop threw ${e.javaClass.simpleName}")
+            e
+        } catch (e: LinkageError) {
+            e
         } finally {
             watchdog.cancel()
+        }
+        if (failure != null) {
+            // The core may still hold the duplicate fd: nothing may report the tunnel stopped until the process is gone.
+            VpnLog.warn("stop threw ${failure.javaClass.simpleName}; ending the process")
+            killProcess()
+            awaitCancellation()
         }
         VpnLog.info("stop after ${(System.nanoTime() - begun) / 1_000_000} ms")
     }
 
     private sealed interface Command {
-        data class Open(val generation: Long, val host: TunHost) : Command
+        val generation: Long
 
-        data class Close(val generation: Long, val terminal: Status) : Command
+        data class Open(override val generation: Long, val host: TunHost) : Command
+
+        data class Close(override val generation: Long, val terminal: Status) : Command
     }
 
     companion object {
+        /** `start` returns within this, per the core contract. */
+        const val START_BOUND_MS = 10_000L
         const val STOP_DEADLINE_MS = 5_000L
     }
 }

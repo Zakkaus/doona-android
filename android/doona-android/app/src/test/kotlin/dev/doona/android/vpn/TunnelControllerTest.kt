@@ -44,6 +44,7 @@ class TunnelControllerTest {
         perApp = { perAppError?.let { throw it } ?: perApp },
         scope = scope,
         killProcess = { killed.countDown() },
+        startBoundMs = 300,
         stopDeadlineMs = 200,
     )
     private val seen = CopyOnWriteArrayList<Status>()
@@ -124,7 +125,29 @@ class TunnelControllerTest {
         startRunning()
         controller.stop()
         awaitStatus { it == Status.Stopped }
-        assertFalse(killed.await(400, TimeUnit.MILLISECONDS))
+        // Past both the stop deadline and the start bound plus the stop deadline.
+        assertFalse(killed.await(700, TimeUnit.MILLISECONDS))
+    }
+
+    @Test
+    fun aStopDuringAStartThatNeverReturnsEndsTheProcess() {
+        val release = CountDownLatch(1)
+        core.startGate = release
+        controller.start(host)
+        assertTrue(core.startEntered.await(5, TimeUnit.SECONDS))
+        controller.stop()
+        assertTrue(killed.await(5, TimeUnit.SECONDS))
+        release.countDown()
+    }
+
+    @Test
+    fun aThrowingStopEndsTheProcessInsteadOfReportingStopped() {
+        startRunning()
+        core.stopError = IllegalStateException("internal")
+        controller.stop()
+        assertTrue(killed.await(5, TimeUnit.SECONDS))
+        assertEquals(Status.Stopping, controller.status.value)
+        assertFalse(seen.dropWhile { it !is Status.Running }.contains(Status.Stopped))
     }
 
     @Test
@@ -205,6 +228,8 @@ class TunnelControllerTest {
         @Volatile var startGate: CountDownLatch? = null
 
         @Volatile var stopGate: CountDownLatch? = null
+
+        @Volatile var stopError: Throwable? = null
         val startEntered = CountDownLatch(1)
         val events = CopyOnWriteArrayList<String>()
         val configs = CopyOnWriteArrayList<String>()
@@ -222,6 +247,7 @@ class TunnelControllerTest {
         override fun stop() {
             stopGate?.await()
             events += "stop"
+            stopError?.let { throw it }
         }
 
         override fun snapshot(sinceRevision: Long) = error("unused")
