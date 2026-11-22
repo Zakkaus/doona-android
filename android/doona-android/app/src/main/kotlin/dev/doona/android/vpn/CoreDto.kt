@@ -43,13 +43,81 @@ internal data class SnapshotDto(
     /** An error code for a problem that leaves the data path up: `local_network`. */
     val warning: String? = null,
     val traffic: TrafficDto,
+    /** The local day's bytes so far; an older core sends none. */
+    val today: TodayDto = TodayDto(),
     val catalog: CatalogDto? = null,
 ) {
     val alive: Boolean get() = running && error == null
 }
 
+/** Bytes since `start`, the flows open now, and the session's fastest second each way (bytes). */
 @Serializable
-internal data class TrafficDto(val upTotal: Long, val downTotal: Long, val activeFlows: Int)
+internal data class TrafficDto(
+    val upTotal: Long,
+    val downTotal: Long,
+    val activeFlows: Int,
+    val upPeak: Long = 0,
+    val downPeak: Long = 0,
+)
+
+/** Today's bytes each way in local time, and yesterday's both ways together by the same time (0: none kept). */
+@Serializable
+internal data class TodayDto(val upTotal: Long = 0, val downTotal: Long = 0, val yesterdayByNow: Long = 0)
+
+/**
+ * `trafficSeries`' reply: average bytes a second per point of [stepSeconds], oldest first, the fastest second of the
+ * window each way, and the wall time at the end of the last point.
+ */
+@Serializable
+internal data class TrafficSeriesDto(
+    val stepSeconds: Long,
+    val endEpochMs: Long,
+    val up: List<Long>,
+    val down: List<Long>,
+    val upPeak: Long,
+    val downPeak: Long,
+)
+
+/** `usage`'s reply: today and yesterday by the hour, and the finished days of the last 31 that had bytes. */
+@Serializable
+internal data class UsageDto(val today: DayUsageDto, val yesterday: DayUsageDto? = null, val days: List<DayTotalDto>)
+
+/** One local day ([date] as `2026-11-22`): 24 hours of bytes each way and of flows opened, and each outbound's bytes. */
+@Serializable
+internal data class DayUsageDto(
+    val date: String,
+    val up: List<Long>,
+    val down: List<Long>,
+    val flows: List<Long>,
+    val outbounds: List<OutboundBytesDto>,
+)
+
+/** An outbound's payload: [id] is a group (`g-Proxy`), a node, `direct`, or `other` past 64 in a day. */
+@Serializable
+internal data class OutboundBytesDto(val id: String, val up: Long, val down: Long)
+
+@Serializable
+internal data class DayTotalDto(val date: String, val up: Long, val down: Long)
+
+/** `nodes`' reply. */
+@Serializable
+internal data class NodesDto(val nodes: List<NodeInfoDto>)
+
+/** What a node's share link says, and its last latency tests, oldest first. */
+@Serializable
+internal data class NodeInfoDto(
+    val id: String,
+    val protocol: String,
+    val server: String,
+    val port: Int,
+    val transport: String,
+    val tls: Boolean,
+    val tests: List<LatencyTestDto>,
+)
+
+/** A test: when its round began, and the time it measured; null when the probe failed. */
+@Serializable
+internal data class LatencyTestDto(val atEpochMs: Long, val ms: Int? = null)
 
 @Serializable
 internal data class CatalogDto(val mode: Mode, val groups: List<GroupDto>, val subscriptions: List<SubscriptionDto>)
@@ -121,6 +189,14 @@ internal data class IdArgs(val id: String)
 
 @Serializable
 internal data class ModeArgs(val mode: Mode)
+
+/** `trafficSeries`' window, 1 to 3600 seconds. */
+@Serializable
+internal data class SeriesArgs(val seconds: Long)
+
+/** `nodes`: every node when [ids] is null. */
+@Serializable
+internal data class NodesArgs(val ids: List<String>?)
 
 @Serializable
 private data class CallErrorDto(val code: String)
