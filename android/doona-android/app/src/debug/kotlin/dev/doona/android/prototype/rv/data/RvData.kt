@@ -13,7 +13,8 @@ internal class RvSubscription(
     val totalBytes: Long,
     val expiresAtEpochMs: Long?,
 ) {
-    val leftBytes: Long get() = totalBytes - usedBytes
+    /** What is left, never below nothing when a subscription has gone over its quota. */
+    val leftBytes: Long get() = (totalBytes - usedBytes).coerceAtLeast(0L)
 }
 
 /** One day by the hour from midnight, oldest first; the last hour is the current one, still filling. */
@@ -45,10 +46,13 @@ internal class RvSession(
     val minuteUp: List<Float>,
 ) {
     val seconds = (nowEpochMs - startEpochMs) / MS_PER_SECOND
+
+    /** The averages divide by at least one second, so a session that has just started has no infinite rate. */
+    private val perSecond = seconds.coerceAtLeast(1L).toDouble()
     val downTotal = downByHour.sum()
     val upTotal = upByHour.sum()
-    val averageDown = downTotal.toDouble() / seconds
-    val averageUp = upTotal.toDouble() / seconds
+    val averageDown = downTotal / perSecond
+    val averageUp = upTotal / perSecond
 }
 
 /** Today's bytes that left through a proxy and directly, for the 分流比例 card; together they are the day's total. */

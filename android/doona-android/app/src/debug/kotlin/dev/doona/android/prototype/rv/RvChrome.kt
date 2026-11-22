@@ -140,10 +140,12 @@ private fun GlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, o
     ) { RvGlyph(icon, RvChrome.controlGlyph, Rv.colors.text) }
 }
 
-/** A top bar control's fill: a very soft shadow in light, then the controls' glass. */
+/** A top bar control's fill: a very soft shadow in light, then the controls' glass, and its rim in dark. */
 @Composable
-private fun Modifier.rvControl(glass: RvGlass, shape: Shape): Modifier =
-    rvSoftShadow(shape, RvChrome.controlShadow, RvChrome.controlShadowDrop, RvChrome.CONTROL_SHADOW_ALPHA).rvGlass(glass, shape, Rv.colors.controlGlass)
+private fun Modifier.rvControl(glass: RvGlass, shape: Shape): Modifier {
+    val rim = Rv.colors.controlRim?.let { Modifier.border(RvChrome.navRim, it, shape) } ?: Modifier
+    return rvSoftShadow(shape, RvChrome.controlShadow, RvChrome.controlShadowDrop, RvChrome.CONTROL_SHADOW_ALPHA).rvGlass(glass, shape, Rv.colors.controlGlass).then(rim)
+}
 
 @Composable
 internal fun Modifier.rvSoftShadow(shape: Shape, radius: Dp, drop: Dp, alpha: Float): Modifier =

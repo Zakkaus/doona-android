@@ -13,8 +13,8 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The Revolut-style 統計 sample, light and dark, in the scheme of the owner's wallpaper, as one long capture of the whole
- * page (goldens `proto-rv-stats-light` and `-dark`): the window is as tall as the page, so nothing scrolls. The paged
- * tiles show two at a time, so dark starts them on the second page: 上傳 and 連線次數 with its v0.2 tag.
+ * page (goldens `proto-rv-stats-light` and `-dark`): the window is as tall as the page, so nothing scrolls. Both themes
+ * show the paged tiles on their first page, 下載 and 上傳, so the two goldens compare (L-04).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -30,7 +30,5 @@ class RvStatsShotTest {
     fun statsLight() = compose.rvShot("stats", dark = false, before = { assertWhole() }) { RvStatsScreen(rvStatsSample(), onBack = {}) }
 
     @Test
-    fun statsDark() = compose.rvShot("stats", dark = true, before = { assertWhole() }) {
-        RvStatsScreen(rvStatsSample(), onBack = {}, initialTile = 1)
-    }
+    fun statsDark() = compose.rvShot("stats", dark = true, before = { assertWhole() }) { RvStatsScreen(rvStatsSample(), onBack = {}) }
 }

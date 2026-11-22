@@ -128,26 +128,29 @@ private fun OutboundCard(state: ActivityUiState, routes: RvActivityRoutes) {
         // Direct traffic uses no node, so there is no node or latency to show.
         if (state.mode == Mode.Direct) return@RvCard
         val node = state.node
+        val listed = node?.let { RvData.node(it.id) }
         RvRow(
             // The node in use: its flag carries the current node's check.
-            { RvFlag(node?.let { RvData.node(it.id) }?.place?.name, RvSize.rowDisc, current = node != null) },
+            { RvFlag(listed?.place?.name, RvSize.rowDisc, current = node != null) },
             node?.name ?: RV_NO_VALUE,
             stringResource(R.string.nav_nodes),
             onClick = routes.node,
-        ) { RvLatency(node?.latencyMs?.takeUnless { node.failed }) }
+            // Its latency over the change since the test before, as 節點 and the 最快節點 rows show it (L-12).
+        ) { RvLatencyChange(node?.latencyMs?.takeUnless { node.failed }, listed?.changeMs?.takeUnless { node.failed }) }
     }
 }
 
 /**
- * Download and upload as two tiles side by side, each on its own scale: the rate, the window's peak, and the minute's
- * sparkline. Disconnected, or with no traffic in the window, both tiles say so over ghost bars instead.
+ * Download and upload as two tiles side by side, each on its own scale: the rate, the session's peak (the same 峰值 as
+ * 流量詳情's, from [RvData.session], L-18), and the minute's sparkline. Disconnected, or with no traffic in the window,
+ * both tiles say so over ghost bars instead.
  */
 @Composable
 private fun TrafficTiles(state: ActivityUiState, onOpenTraffic: () -> Unit) {
     val quiet = state.status !is Status.Running || (state.downHistory.all { it == 0f } && state.upHistory.all { it == 0f })
     Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tileGap)) {
-        TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.downRate, state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
-        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
+        TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.downRate, RvData.session.peakDown, state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
+        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, RvData.session.peakUp, state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
     }
 }
 
@@ -156,6 +159,7 @@ private fun TrafficTile(
     @StringRes caption: Int,
     @DrawableRes icon: Int,
     rate: Long,
+    peak: Float,
     history: List<Float>,
     series: RvSeries,
     quiet: Boolean,
@@ -164,8 +168,7 @@ private fun TrafficTile(
     ghost: FloatArray = RV_GHOST_DOWN,
 ) {
     val format = rememberRvFormat()
-    val peak = format.rate((history.maxOrNull() ?: 0f).toDouble())
-    val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, peak.toString())
+    val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, format.rate(peak.toDouble()).toString())
     RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier, ghost)
 }
 

@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +58,7 @@ internal object RvControlSize {
     val switchTrackHeight = 14.dp
     val switchThumb = 19.dp
     val switchThumbShadow = 1.dp
+    val switchThumbRing = 1.dp
     val radio = 24.dp
     val radioStroke = 2.dp
     val radioDot = 12.dp
@@ -111,7 +113,8 @@ internal fun RvRangePill(label: String, selected: Boolean, onClick: () -> Unit) 
 internal fun Modifier.rvRaised(shape: Shape): Modifier {
     val colors = Rv.colors
     val lift = if (colors.raisedShadow) Modifier.shadow(RvChartSize.rangeShadow, shape) else Modifier
-    return then(lift).clip(shape).background(colors.raised)
+    val rim = colors.raisedRim?.let { Modifier.border(RvChrome.ring, it, shape) } ?: Modifier
+    return then(lift).clip(shape).background(colors.raised).then(rim)
 }
 
 /**
@@ -228,7 +231,9 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
                 .offset(x = x)
                 .size(size.switchThumb)
                 .shadow(size.switchThumbShadow, CircleShape)
-                .background(if (checked) colors.switchOnThumb else colors.switchOffThumb, CircleShape),
+                .background(if (checked) colors.switchOnThumb else colors.switchOffThumb, CircleShape)
+                // Off, the light thumb keeps an edge of the track's grey, so it does not melt into the card (L-10).
+                .then(if (checked) Modifier else Modifier.border(size.switchThumbRing, colors.control, CircleShape)),
         )
     }
 }

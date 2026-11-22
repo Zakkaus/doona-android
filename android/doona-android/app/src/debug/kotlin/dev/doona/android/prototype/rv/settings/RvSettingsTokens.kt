@@ -71,7 +71,9 @@ internal object RvSettingsSize {
      */
     val previewScreen = DpSize(412.dp, 915.dp)
     val previewStatus = 24.dp
-    val previewHeight = 470.dp
+
+    // It ends in the gap between the round actions and the first card, so no sliver of the card shows (L-15).
+    val previewHeight = 436.dp
     val previewRadius = 16.dp
     val modeThumb = DpSize(64.dp, 96.dp)
     val modeRadius = 12.dp

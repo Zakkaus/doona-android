@@ -49,8 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.Tone
-import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvPlace
 import java.text.DecimalFormatSymbols
@@ -188,13 +186,6 @@ internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text) {
     }
 }
 
-/** A node's latency over its quality word, the word in the quality's fixed hue. */
-@Composable
-internal fun RvLatency(ms: Int?) {
-    val tone = latencyTone(ms)
-    RvTrailingValue(ms?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, stringResource(tone.quality), Rv.colors.quality(tone))
-}
-
 /** A thin pill bar, #13's goal progress: [fraction] of it in the positive colour on the raised track. */
 @Composable
 internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) {
@@ -308,15 +299,6 @@ internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?) {
     }
 }
 
-/** A trailing value over a short line under it, both ending at the row's end, as Revolut's amount and change. */
-@Composable
-internal fun RvTrailingValue(value: String, note: String?, noteColor: Color) {
-    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-        RvText(value, Rv.type.rowValue, align = TextAlign.End)
-        note?.let { RvText(it, Rv.type.rowSub, color = noteColor, align = TextAlign.End) }
-    }
-}
-
 /** A small glyph before a label in the same colour: the header's sub line. */
 @Composable
 internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
@@ -335,11 +317,3 @@ internal const val RV_NO_VALUE = "—"
 
 /** An equilateral triangle is this share of its width high. */
 private const val TRIANGLE_HEIGHT = 0.866f
-
-private val Tone.quality: Int
-    get() = when (this) {
-        Tone.Ok -> R.string.latency_good
-        Tone.Warn -> R.string.latency_fair
-        Tone.Err -> R.string.latency_slow
-        Tone.Neutral -> R.string.latency_untested
-    }

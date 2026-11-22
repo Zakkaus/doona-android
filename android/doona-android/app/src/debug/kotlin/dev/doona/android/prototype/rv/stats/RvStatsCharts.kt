@@ -27,22 +27,27 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.RvAlpha
 import dev.doona.android.prototype.rv.RvChartSize
 import dev.doona.android.prototype.rv.RvText
+import dev.doona.android.prototype.rv.RvUsageSize
 
 /**
- * Revolut's 'Spent' chart: the day's running total as a grey stepped line over a grey tint, on a hairline grid that fades
- * out toward the left and the bottom. [hours] are the day's bytes per hour from midnight; the last one runs to [now],
- * in hours from midnight. With no bytes the grid stands alone.
+ * Revolut's 'Spent' chart: the day's running total as a grey stepped line over a grey tint, on a hairline grid from the
+ * chart's left edge with a column every [RvUsageSize.GRID_HOURS] hours, so the steps rise on it as on 活動's 今日用量;
+ * a 5 dp dot on its halo ends the line now (S5-14, L-05). [hours] are the day's bytes per hour from midnight; the last one
+ * runs to [now], in hours from midnight. With no bytes the grid stands alone.
  */
 @Composable
 internal fun RvSteppedArea(hours: List<Long>, now: Float, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val line = colors.textSecondary.copy(alpha = colors.textSecondary.alpha * RvStatsAlpha.STEP_LINE)
     Canvas(modifier) {
-        fadingGrid(colors.grid)
+        hourGrid(colors.grid)
         val total = hours.sum()
         if (total == 0L) return@Canvas
         val stroke = RvStatsSize.stepStroke.toPx()
@@ -65,32 +70,32 @@ internal fun RvSteppedArea(hours: List<Long>, now: Float, modifier: Modifier = M
         }
         drawPath(area, Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), y(total), size.height))
         drawPath(path, line, style = Stroke(stroke, cap = StrokeCap.Round))
+        val end = Offset(x(now), y(total))
+        drawCircle(line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, end)
+        drawCircle(line, RvChartSize.liveDot.toPx() / 2, end)
     }
 }
 
-/** An empty chart (Addendum A): the grid alone, faint, with a short [line] on it; never bars that were not measured. */
+/** An empty chart (Addendum A): the grid alone with a short [line] on it; never bars that were not measured. */
 @Composable
 internal fun RvEmptyChart(line: String, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.matchParentSize()) { fadingGrid(colors.grid) }
+        Canvas(Modifier.matchParentSize()) { hourGrid(colors.grid) }
         RvText(line, Rv.type.tileCaption, color = colors.textSecondary, align = TextAlign.Center)
     }
 }
 
-/** Hairlines in [color], [RvStatsSize.GRID_COLUMNS] by [RvStatsSize.GRID_ROWS] cells, gone at the left and the bottom. */
-private fun DrawScope.fadingGrid(color: Color) {
+/** Hairlines in [color]: a column every [RvUsageSize.GRID_HOURS] hours of the day, edges included, and [RvStatsSize.GRID_ROWS] rows. */
+private fun DrawScope.hourGrid(color: Color) {
     val hairline = 1f
-    val fadeIn = size.width * GRID_FADE
-    for (i in 1..RvStatsSize.GRID_COLUMNS) {
-        val x = size.width * i / RvStatsSize.GRID_COLUMNS - hairline / 2
-        val strength = (x / fadeIn).coerceIn(0f, 1f)
-        drawLine(Brush.verticalGradient(listOf(color.copy(alpha = color.alpha * strength), Color.Transparent)), Offset(x, 0f), Offset(x, size.height), hairline)
+    for (hour in 0..HOURS step RvUsageSize.GRID_HOURS) {
+        val x = (size.width * hour / HOURS).coerceIn(hairline / 2, size.width - hairline / 2)
+        drawLine(color, Offset(x, 0f), Offset(x, size.height), hairline)
     }
     for (j in 0 until RvStatsSize.GRID_ROWS) {
         val y = size.height * j / RvStatsSize.GRID_ROWS + hairline / 2
-        val faded = color.copy(alpha = color.alpha * (1f - y / size.height))
-        drawLine(Brush.horizontalGradient(0f to Color.Transparent, GRID_FADE to faded, 1f to faded), Offset(0f, y), Offset(size.width, y), hairline)
+        drawLine(color, Offset(0f, y), Offset(size.width, y), hairline)
     }
 }
 
@@ -152,22 +157,25 @@ internal fun RvQuotaRing(segments: List<RvRingSegment>, modifier: Modifier = Mod
 
 /**
  * Revolut's EPS chart turned to latency: a dot per tested node in its quality's hue, sorted from the fastest, on
- * hairlines every 100 ms labelled at the right, over a dotted zero line. The current node ([selected], an index into
+ * hairlines every 100 ms labelled at the right, the top one with its [unit] as node detail's chart labels it, over a
+ * dotted zero line. The current node ([selected], an index into
  * [values]) stands in a column of the primary colour's pale tint, with [label] in a chip of the same tint under it, as
  * Revolut marks the selected year.
  */
 @Composable
-internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, modifier: Modifier = Modifier) {
+internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, unit: String, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val measurer = rememberTextMeasurer()
     val axisStyle = Rv.type.pill.copy(color = colors.textSecondary)
     // A node's name keeps its own figures: Inter's tabular figures widen the hyphen of `hk-01`.
     val chipStyle = Rv.type.pill.copy(color = colors.down.line, fontWeight = FontWeight.SemiBold, fontFeatureSettings = null)
     val top = (((values.maxOrNull() ?: 0) + STEP_MS - 1) / STEP_MS).coerceAtLeast(1) * STEP_MS
-    val ticks = (0..top step STEP_MS).map { it to "$it" }
+    val ticks = (0..top step STEP_MS).map { it to if (it == top) "$it $unit" else "$it" }
     Canvas(modifier.fillMaxWidth().height(RvStatsSize.latency)) {
         val axis = ticks.map { (ms, text) -> ms to measurer.measure(text, axisStyle) }
-        val chip = measurer.measure(label, chipStyle)
+        // At a large font scale the label could outgrow the chart: it ends in an ellipsis instead.
+        val chipMax = (size.width - 2 * RvStatsSize.labelChipPadH.toPx()).toInt().coerceAtLeast(0)
+        val chip = measurer.measure(label, chipStyle, TextOverflow.Ellipsis, maxLines = 1, constraints = Constraints(maxWidth = chipMax))
         val chipH = chip.size.height + 2 * RvStatsSize.labelChipPadV.toPx()
         val plot = Plot(
             right = size.width - axis.maxOf { it.second.size.width } - RvStatsSize.axisLabelGap.toPx(),
@@ -213,7 +221,7 @@ private fun DrawScope.axisLine(plot: Plot, ms: Int, text: TextLayoutResult, grid
 private fun DrawScope.labelChip(text: TextLayoutResult, x: Float, height: Float, fill: Color) {
     val padH = RvStatsSize.labelChipPadH.toPx()
     val width = text.size.width + 2 * padH
-    val left = (x - width / 2).coerceIn(0f, size.width - width)
+    val left = (x - width / 2).coerceAtMost(size.width - width).coerceAtLeast(0f)
     val top = size.height - height
     drawRoundRect(fill, Offset(left, top), Size(width, height), CornerRadius(height / 2))
     drawText(text, topLeft = Offset(left + padH, top + RvStatsSize.labelChipPadV.toPx()))
@@ -234,8 +242,6 @@ internal const val HOURS = 24
 /** The running total ends this far under the top, so the grid shows above it. */
 private const val STEP_HEADROOM = 1.25f
 
-/** The grid's columns and rows reach full strength this far across from the left. */
-private const val GRID_FADE = 0.5f
 private const val FULL_TURN = 360f
 private const val START_ANGLE = -90f
 private const val STEP_MS = 100

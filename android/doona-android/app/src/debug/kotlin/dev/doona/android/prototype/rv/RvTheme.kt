@@ -60,11 +60,10 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     private val navSolid = if (dark) Color.White.copy(alpha = RvAlpha.NAV_DARK).compositeOver(page) else Color.White
     val navGlass = RvGlassTint(Color.White.copy(alpha = if (dark) RvAlpha.NAV_DARK else RvAlpha.NAV_LIGHT), navSolid.copy(alpha = RvAlpha.GLASS_SOLID))
     val navRim: Color? = if (dark) Color.White.copy(alpha = RvAlpha.NAV_RIM) else null
-    val controlGlass = if (dark) {
-        RvGlassTint(s.surfaceContainerHighest.copy(alpha = RvAlpha.GLASS_DARK), s.surfaceContainerHighest)
-    } else {
-        RvGlassTint(s.surfaceContainerHigh.copy(alpha = RvAlpha.CONTROL_GLASS), s.surfaceContainerHigh)
-    }
+    val controlGlass = if (dark) navGlass else RvGlassTint(s.surfaceContainerHigh.copy(alpha = RvAlpha.CONTROL_GLASS), s.surfaceContainerHigh)
+
+    /** In dark the top bar's controls are the capsule's glass, rim included, so they stand off the black page (L-02). */
+    val controlRim: Color? = navRim
 
     /** The strip behind any bar once content scrolls under it: the page at 85 % over the blur. */
     val barGlass = RvGlassTint(page.copy(alpha = RvAlpha.BAR_GLASS), page.copy(alpha = RvAlpha.GLASS_SOLID))
@@ -83,6 +82,7 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     /** The segmented control's track over whatever it sits on, and the raised segment or range chip on it (measured §8). */
     val segmentTrack = if (dark) Color.White.copy(alpha = RvAlpha.SEGMENT_DARK) else s.onSurface.copy(alpha = RvAlpha.SEGMENT_LIGHT)
     val raised = if (dark) s.surfaceContainerHighest else s.surfaceContainerLowest
+    val raisedRim: Color? = if (dark) Color.White.copy(alpha = RvAlpha.RAISED_RIM) else null
 
     /** The one value pill, on charts, the median and 統計's chips: opaque, on a soft shadow in light (S5-26, T04). */
     val pill = if (dark) s.surfaceContainerHighest else s.surfaceContainerHigh
@@ -109,8 +109,8 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val switchOnTrack = firstPassing(card, s.primary, RvContrast.MARK, listOf(card))
     val switchOffThumb = Color(if (dark) 0xFF525254 else 0xFFFAFAFA)
 
-    /** A subscription's disc and the glyph on it, one dynamic role each, as Revolut colours its Total wealth rows. */
-    val accents = listOf(s.primary to s.onPrimary, s.tertiary to s.onTertiary)
+    /** Categories that are not a direction (統計's quota ring, per subscription): ink and the control grey, never [down] or [up]. */
+    val categories = listOf(s.onSurface, control)
 
     /** A flag's 1 dp ring (X-18), and the disc a country without artwork gets instead. */
     val flagRing = if (dark) Color.White.copy(alpha = RvAlpha.FLAG_RING_DARK) else Color.Black.copy(alpha = RvAlpha.FLAG_RING_LIGHT)

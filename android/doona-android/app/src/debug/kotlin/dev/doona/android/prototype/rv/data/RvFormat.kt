@@ -33,7 +33,8 @@ internal class RvFormat(val locale: Locale) {
 
     fun bytes(bytes: Long): RvAmount = scaled(BigDecimal.valueOf(bytes), "")
 
-    fun rate(bytesPerSecond: Double): RvAmount = scaled(BigDecimal.valueOf(bytesPerSecond), PER_SECOND)
+    /** A rate; one that is not a number or infinite (no time has passed) is written as none. */
+    fun rate(bytesPerSecond: Double): RvAmount = scaled(BigDecimal.valueOf(if (bytesPerSecond.isFinite()) bytesPerSecond else 0.0), PER_SECOND)
 
     /** [bytes] written in the unit [like] has, without the unit: the `61.7` of `61.7 / 200 GB`. */
     fun bytesIn(bytes: Long, like: RvAmount): String {
@@ -56,11 +57,11 @@ internal class RvFormat(val locale: Locale) {
     /** A second's time of day, for a scrubbed sample: `10:23:31`. */
     fun clock(epochMs: Long): String = CLOCK.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
 
-    /** [value] in the largest unit that keeps it under a thousand once rounded, so 999.6 MB is `1.00 GB`. */
+    /** [value] in the largest unit that keeps it under a thousand once rounded, so 999.6 MB is `1.00 GB`; a negative one alike. */
     private fun scaled(value: BigDecimal, suffix: String): RvAmount {
         var unit = 0
         var scaled = value
-        while (unit < UNITS.lastIndex && significant(scaled) >= THOUSAND) {
+        while (unit < UNITS.lastIndex && significant(scaled).abs() >= THOUSAND) {
             scaled = scaled.movePointLeft(STEP)
             unit++
         }
@@ -71,8 +72,8 @@ internal class RvFormat(val locale: Locale) {
     private fun digits(value: BigDecimal, unit: Int): String {
         val rounded = if (unit == 0) value.setScale(0, RoundingMode.HALF_UP) else significant(value)
         val decimals = when {
-            unit == 0 || rounded >= HUNDRED -> 0
-            rounded >= TEN -> 1
+            unit == 0 || rounded.abs() >= HUNDRED -> 0
+            rounded.abs() >= TEN -> 1
             else -> 2
         }
         return NumberFormat.getNumberInstance(locale).apply {

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -89,7 +88,8 @@ private fun LegendItem(color: Color, text: String) {
 private fun UsageChart(day: RvDay, nowHour: Float, modifier: Modifier) {
     val colors = Rv.colors
     Canvas(modifier) {
-        val high = day.total * RvUsageSize.HEADROOM
+        // A day with no bytes yet keeps a top of one byte, so every step lies on the bottom rather than at 0 / 0.
+        val high = (day.total * RvUsageSize.HEADROOM).coerceAtLeast(1f)
         val chart = StepChart(size.width, size.height, high, nowHour)
         hourGrid(colors.grid, chart)
         val downTop = chart.steps(day.down.runningSum())
@@ -155,36 +155,28 @@ private fun DrawScope.hourGrid(color: Color, chart: StepChart) {
 
 /**
  * 訂閱 in the style of Revolut's Total wealth: the card's own header, the data left on every subscription, and a row
- * for each, with a coloured disc, its use against its quota, its end date and what is left.
+ * for each, with a neutral disc (colour means a direction on this page, L-17), its use against its quota, its end date
+ * and what is left.
  */
 @Composable
 internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>) {
-    val colors = Rv.colors
     val format = rememberRvFormat()
     RvCard {
         RvCardHeader(stringResource(R.string.rv_subscriptions), NOT_WIRED)
         Row(Modifier.padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.Bottom) {
             RvFigureText(format.bytes(subscriptions.sumOf { it.leftBytes }).figure(), Rv.type.cardValue, Rv.type.cardUnit, Modifier.alignByBaseline())
             Spacer(Modifier.width(RvSpace.tight * 2))
-            RvText(stringResource(R.string.rv_remaining), Rv.type.cardUnit, Modifier.alignByBaseline(), color = colors.textSecondary)
+            RvText(stringResource(R.string.rv_remaining), Rv.type.cardUnit, Modifier.alignByBaseline(), color = Rv.colors.textSecondary)
         }
         Spacer(Modifier.height(RvSpace.tight))
-        subscriptions.forEachIndexed { i, sub ->
-            val (disc, glyph) = colors.accents[i % colors.accents.size]
+        subscriptions.forEach { sub ->
             val total = format.bytes(sub.totalBytes)
             RvRow(
-                { AccentDisc(disc, glyph) },
+                { RvIconDisc(R.drawable.rv_sym_rss_feed) },
                 sub.name,
                 stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
             ) { RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
         }
-    }
-}
-
-@Composable
-private fun AccentDisc(disc: Color, glyph: Color) {
-    Box(Modifier.size(RvHomeSize.disc).clip(CircleShape).background(disc), contentAlignment = Alignment.Center) {
-        RvGlyph(R.drawable.rv_sym_rss_feed, RvHomeSize.discGlyph, glyph)
     }
 }
 

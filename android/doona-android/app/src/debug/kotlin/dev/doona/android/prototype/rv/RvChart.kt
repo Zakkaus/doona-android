@@ -91,13 +91,14 @@ internal fun RvSparkTile(
     RvCard(modifier.aspectRatio(1f).rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, onClick)) {
         Column(Modifier.fillMaxSize().padding(RvChartSize.tilePad)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RvText(caption, if (quiet) type.rowSub else type.tileCaption, Modifier.weight(1f), color = Rv.colors.textSecondary)
+                // One tile layout in every state and on every page: the in-card header's 19 sp, the value at the tile's size (L-03).
+                RvText(caption, type.cardTitle, Modifier.weight(1f), color = Rv.colors.textSecondary)
                 Box(Modifier.size(RvChartSize.tileDisc).clip(CircleShape).background(series.disc), contentAlignment = Alignment.Center) {
                     RvGlyph(icon, RvChartSize.tileGlyph, series.line)
                 }
             }
             Spacer(Modifier.height(RvSpace.tight))
-            RvFigureText(figure, if (quiet) type.cardValue else type.tileValue, if (quiet) type.cardUnit else type.tileUnit)
+            RvFigureText(figure, type.tileValue, type.tileUnit)
             RvText(note, type.tileCaption, color = Rv.colors.textSecondary)
             Spacer(Modifier.weight(1f))
             if (quiet) RvGhostBars(ghost) else RvSparkline(values, series.line)
@@ -238,17 +239,18 @@ private fun Modifier.scrubbing(count: Int, onScrub: (Int?) -> Unit): Modifier {
     val report by rememberUpdatedState(onScrub)
     if (count < 2) return this
     return pointerInput(count) {
-        val right = size.width - RvChartSize.detailEnd.toPx()
+        // Read at every event rather than once: the chart can change width without changing its count.
+        fun right() = size.width - RvChartSize.detailEnd.toPx()
         awaitEachGesture {
             val down = awaitFirstDown()
             down.consume()
-            report(sampleAt(down.position.x, right, count))
+            report(sampleAt(down.position.x, right(), count))
             try {
                 while (true) {
                     val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
                     if (!change.pressed) break
                     change.consume()
-                    report(sampleAt(change.position.x, right, count))
+                    report(sampleAt(change.position.x, right(), count))
                 }
             } finally {
                 report(null)
@@ -300,8 +302,15 @@ private fun polyline(values: List<Float>, scale: Scale, right: Float): Path {
         values.forEachIndexed { i, v ->
             when {
                 v.isNaN() -> drawing = false
+
                 drawing -> lineTo(i * step, scale.y(v))
-                else -> moveTo(i * step, scale.y(v)).also { drawing = true }
+
+                else -> {
+                    moveTo(i * step, scale.y(v))
+                    drawing = true
+                    // A sample alone between two gaps draws as a dot under the round cap, not as nothing.
+                    if (values.getOrNull(i + 1)?.isNaN() != false) lineTo(i * step, scale.y(v))
+                }
             }
         }
     }

@@ -46,10 +46,10 @@ import java.text.NumberFormat
  * and range chips, then the cards. Each card names its v0.1 source at its foot, and a card whose data v0.1 lacks carries
  * a `v0.2` tag: 已用流量 and the paged tiles (the app-side daily history; 連線次數 is v0.2), 訂閱流量 (the subscriptions'
  * quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 (v0.2) and the tools. The chips and the
- * tools are not wired in the sample. [initialTile] is the paged tile the row starts on.
+ * tools are not wired in the sample.
  */
 @Composable
-internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, initialTile: Int = 0) {
+internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_stats_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
@@ -62,7 +62,7 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, initialTile:
         Spacer(Modifier.height(RvStatsSpace.chipsGap))
         RvGutter { RvSpentCard(state) }
         Spacer(Modifier.height(RvSpace.cardGap))
-        DayTiles(state.today, initialTile)
+        DayTiles(state.today)
         Spacer(Modifier.height(RvSpace.cardGap))
         RvGutter {
             RvQuotaCard(state.subscriptions, state.nowEpochMs)
@@ -81,7 +81,7 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, initialTile:
  * Download and upload come from the daily history; a count of opened connections needs the core, so that tile is v0.2.
  */
 @Composable
-private fun DayTiles(day: RvDay, initialTile: Int) {
+private fun DayTiles(day: RvDay) {
     val locale = LocalConfiguration.current.locales[0]
     val format = rememberRvFormat()
     val source = stringResource(R.string.rv_stats_source, stringResource(R.string.rv_stats_source_traffic))
@@ -98,7 +98,7 @@ private fun DayTiles(day: RvDay, initialTile: Int) {
             v02 = true,
         ),
     )
-    val pager = rememberPagerState(initialTile) { tiles.size }
+    val pager = rememberPagerState { tiles.size }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val width = (maxWidth - RvSpace.gutter * 2 - RvStatsSpace.tileGap) / 2
         Column {

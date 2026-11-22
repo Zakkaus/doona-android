@@ -52,7 +52,8 @@ import kotlin.math.roundToInt
 internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val top = axisTop(history.filterNotNull().maxOrNull() ?: 0)
-    val axis = listOf(top, top / 2, 0).map { stringResource(R.string.latency_ms, it) }
+    // The unit on the top label only, as 統計's latency chart labels its axis (L-11).
+    val axis = listOf(stringResource(R.string.latency_ms, top), "${top / 2}", "0")
     val medianText = median?.let { stringResource(R.string.latency_ms, it) }
     val look = DotsLook(
         label = Rv.type.pill.copy(color = colors.textSecondary),

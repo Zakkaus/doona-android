@@ -30,9 +30,8 @@ internal data class RvNode(
     /** The change from the test before, when both answered: positive is slower. */
     val changeMs: Int? get() = history[history.size - 2]?.let { before -> latencyMs?.let { it - before } }
 
-    /** The middle of the answered tests, the mean of the two middle ones when there are an even number. */
-    val medianMs: Int?
-        get() = history.filterNotNull().sorted().takeIf { it.isNotEmpty() }?.let { (it[(it.size - 1) / 2] + it[it.size / 2]) / 2 }
+    /** The middle of the answered tests ([rvMedian]). */
+    val medianMs: Int? get() = rvMedian(history.filterNotNull())
 
     /** How far the answered tests stray from their mean, in ms; a node that ever timed out is the least steady. */
     val jitterMs: Double
@@ -52,6 +51,9 @@ internal fun List<RvNode>.fastest(count: Int): List<RvNode> = filter { it.latenc
 
 /** The [count] steadiest nodes over all tests. */
 internal fun List<RvNode>.steadiest(count: Int): List<RvNode> = sortedBy { it.jitterMs }.take(count)
+
+/** The middle of [values], the mean of the two middle ones when there are an even number; null when there are none. */
+internal fun rvMedian(values: List<Int>): Int? = values.sorted().takeIf { it.isNotEmpty() }?.let { (it[(it.size - 1) / 2] + it[it.size / 2]) / 2 }
 
 /** How many latency tests each node keeps. */
 internal const val RV_TESTS = 8

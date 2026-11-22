@@ -122,7 +122,7 @@ internal object RvDots {
 
     /** Round the hero's text, this far out, the dots are at most [CLEAR_ALPHA] (S5-02). */
     val clearPad = 8.dp
-    const val CLEAR_ALPHA = 0.25f
+    const val CLEAR_ALPHA = 0.12f
 
     const val ALPHA = 0.62f
     const val RING_ALPHA = 0.55f
@@ -205,9 +205,9 @@ internal object RvAlpha {
     /** The state layer: the content colour over the visible shape while pressed. */
     const val PRESSED = 0.1f
 
-    /** The detail chart's hairline grid, in the text colour: about 6 % in light, almost invisible in dark. */
-    const val GRID_LIGHT = 0.06f
-    const val GRID_DARK = 0.025f
+    /** Every chart's hairline grid, in the text colour: about 1.2:1 against the card in both themes (L-11). */
+    const val GRID_LIGHT = 0.09f
+    const val GRID_DARK = 0.09f
 
     /** A tile's fill under its sparkline: neutral, the text colour, fading to nothing at the bottom. */
     const val TILE_FILL = 0.08f
@@ -246,10 +246,12 @@ internal object RvAlpha {
     /** A range the build does not offer yet. */
     const val DISABLED = 0.38f
 
-    /** Glass tints: the top bar's controls over the blur in dark and in light, and any glass's solid fill. */
-    const val GLASS_DARK = 0.6f
+    /** Glass tints: the top bar's controls over the blur in light, dense enough that a title under them stays a blur (L-08), and any glass's solid fill. */
     const val GLASS_SOLID = 0.94f
-    const val CONTROL_GLASS = 0.7f
+    const val CONTROL_GLASS = 0.85f
+
+    /** A raised segment or chip's 1 dp rim in dark, so it reads on a card's track (L-07). */
+    const val RAISED_RIM = 0.12f
 
     /** The strip behind a bar: the page at 85 % over the blur (S5-24). */
     const val BAR_GLASS = 0.85f
@@ -369,8 +371,6 @@ internal object RvUsageSize {
 internal object RvHomeSize {
     val headerPad = 16.dp
     val headerChevron = 20.dp
-    val disc = 40.dp
-    val discGlyph = 22.dp
 
     /** The filled triangle before a change, as Revolut's delta (measured §7: 8 dp). */
     val delta = 8.dp

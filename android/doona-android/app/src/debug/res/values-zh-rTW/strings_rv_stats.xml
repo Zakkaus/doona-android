@@ -6,13 +6,13 @@
     <string name="rv_stats_week">本週</string>
     <string name="rv_stats_month">本月</string>
     <string name="rv_stats_used">已用流量</string>
-    <string name="rv_stats_vs_yesterday">比昨天同一時間</string>
+    <string name="rv_stats_vs_yesterday">比昨天同時段</string>
     <string name="rv_stats_nothing_today">今天還沒有流量</string>
     <string name="rv_stats_no_data">尚無資料</string>
     <string name="rv_stats_source">來源：%1$s</string>
     <string name="rv_stats_needs">需要：%1$s</string>
-    <string name="rv_stats_source_history">App 每日記錄的 traffic 總量</string>
-    <string name="rv_stats_source_traffic">traffic 總量</string>
+    <string name="rv_stats_source_history">App 每日記錄的流量總量</string>
+    <string name="rv_stats_source_traffic">流量總量</string>
     <string name="rv_stats_connections">連線次數</string>
     <string name="rv_stats_needs_connections">核心的連線計數</string>
     <string name="rv_stats_quota">訂閱流量</string>
@@ -34,7 +34,7 @@
     <string name="rv_stats_tools">工具</string>
     <string name="rv_stats_test_all">測試全部延遲</string>
     <string name="rv_stats_update_all">更新所有訂閱</string>
-    <string name="rv_stats_export">匯出診斷資訊</string>
+    <string name="rv_stats_export">匯出診斷</string>
     <string name="rv_stats_export_detail">日誌與連線狀態</string>
     <plurals name="rv_stats_subscriptions">
         <item quantity="other">%1$d 個訂閱</item>

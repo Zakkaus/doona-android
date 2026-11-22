@@ -14,6 +14,7 @@ Natural Earth puts at the far west (Russia's Chukotka, Fiji): the map stops at 1
 
 import json
 import math
+import re
 import sys
 
 WIDTH = 1000
@@ -123,8 +124,14 @@ def country(feature):
 
 
 def main():
-    with open(sys.argv[1]) as f:
-        features = json.load(f)["features"]
+    if len(sys.argv) != 2:
+        print(f"usage: python -I {sys.argv[0]} <ne_110m_admin_0_countries.geojson>", file=sys.stderr)
+        sys.exit(2)
+    try:
+        with open(sys.argv[1]) as f:
+            features = json.load(f)["features"]
+    except (OSError, ValueError, KeyError) as e:
+        sys.exit(f"{sys.argv[1]}: not a readable GeoJSON feature collection ({e})")
     shapes, before, after = [], 0, 0
     for feature in features:
         code, text, b, a = country(feature)
@@ -132,6 +139,10 @@ def main():
         if code == "AQ" or not text:
             continue
         after += a
+        # The code goes into a Kotlin string as it is, so it must be a plain ISO or Natural Earth code. The polyline
+        # alphabet ('?' to '~') holds no quote or dollar sign; only its backslash needs escaping.
+        if not re.fullmatch(r"[A-Z0-9]{2,3}", code):
+            sys.exit(f"unexpected country code {code!r}")
         shapes.append((code, text.replace("\\", "\\\\")))
     shapes.sort()
     body = "\n".join(f'        RvCountry("{code}", "{text}"),' for code, text in shapes)

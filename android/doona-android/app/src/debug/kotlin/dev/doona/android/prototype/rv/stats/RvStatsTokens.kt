@@ -28,7 +28,6 @@ internal object RvStatsSize {
     val spent = 188.dp
     const val SPENT_CHART_SHARE = 0.56f
     val stepStroke = 1.5.dp
-    const val GRID_COLUMNS = 7
     const val GRID_ROWS = 6
 
     /** A paged tile, Revolut's half tile, and its bar chart at the bottom (132 x 54 dp). */

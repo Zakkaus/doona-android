@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,10 +29,9 @@ import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvWorldMap
 import dev.doona.android.prototype.rv.data.RvSplit
 import dev.doona.android.prototype.rv.data.RvSubscription
+import dev.doona.android.prototype.rv.data.rvMedian
 import dev.doona.android.prototype.rv.figure
 import dev.doona.android.prototype.rv.rememberRvFormat
-import java.time.Instant
-import java.time.ZoneId
 import kotlin.math.abs
 
 /**
@@ -68,11 +68,11 @@ internal fun RvSpentCard(state: RvStatsState) {
     }
 }
 
-/** The current hour's index plus the share of it gone, in the device's zone: where the running total ends. */
-private fun nowInHours(state: RvStatsState): Float {
-    val now = Instant.ofEpochMilli(state.nowEpochMs).atZone(ZoneId.systemDefault())
-    return state.today.hours.lastIndex + now.minute / MINUTES_PER_HOUR
-}
+/**
+ * The current hour's index plus the share of it gone: where the running total ends. The share comes from the instant
+ * itself, as the hour buckets do, so a zone with a half-hour offset does not move it.
+ */
+private fun nowInHours(state: RvStatsState): Float = state.today.hours.lastIndex + (state.nowEpochMs % MS_PER_HOUR).toFloat() / MS_PER_HOUR
 
 /** One of the paged tiles: what it counts, its figure, where the figure comes from, and its bars by the hour. */
 internal class RvDayTile(val label: String, val figure: RvFigure, val source: String, val hours: List<Long>?, val color: Color, val v02: Boolean)
@@ -107,7 +107,8 @@ internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier) {
 internal fun RvQuotaCard(subscriptions: List<RvSubscription>, nowEpochMs: Long) {
     val format = rememberRvFormat()
     val withQuota = subscriptions.filter { it.totalBytes > 0L }
-    val palette = listOf(Rv.colors.down.line, Rv.colors.up.line, Rv.colors.textSecondary)
+    // Categories, not directions: the ring keeps download's and upload's colours for those alone (L-17).
+    val palette = Rv.colors.categories
     val segments = withQuota.mapIndexed { i, s -> RvRingSegment(palette[i % palette.size], s.usedBytes, s.totalBytes) }
     RvCard {
         RvCardHeader(stringResource(R.string.rv_stats_quota))
@@ -185,13 +186,13 @@ internal fun RvLatencyCard(state: RvStatsState) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_stats_latency))
         Column(cardBody) {
-            RvStatsFigure(RvFigure(values.getOrNull(values.size / 2)?.toString() ?: RV_NO_VALUE, " $unit"))
+            RvStatsFigure(RvFigure(rvMedian(values)?.toString() ?: RV_NO_VALUE, " $unit"))
             RvText(stringResource(R.string.rv_stats_median, values.size), Rv.type.rowSub, color = Rv.colors.textSecondary)
             Spacer(Modifier.height(RvStatsSpace.chartGap))
             // The current node's chip says so in words, not by its tint alone.
             val inUse = stringResource(R.string.rv_nodes_in_use)
             val label = selected?.let { "$inUse$SEPARATOR${tested[it].name}$SEPARATOR${values[it]} $unit" } ?: ""
-            RvLatencyDots(values, selected, label)
+            RvLatencyDots(values, selected, label, unit)
             Spacer(Modifier.height(RvStatsSpace.chartGap))
             RvStatsSource(stringResource(R.string.rv_stats_source, stringResource(R.string.rv_stats_source_latency)))
         }
@@ -230,7 +231,7 @@ private fun RatingRow(fraction: Float, percent: String, label: String, color: Co
     Row(Modifier.height(RvStatsSize.ratingRow), verticalAlignment = Alignment.CenterVertically) {
         RvRatingBar(if (known) fraction else 0f, color, Modifier.weight(1f))
         Spacer(Modifier.width(RvSpace.trailingGap))
-        RvText(if (known) "$percent $label" else label, Rv.type.rowSub, Modifier.width(RvStatsSize.ratingLabel), align = TextAlign.End)
+        RvText(if (known) "$percent $label" else label, Rv.type.rowSub, Modifier.widthIn(min = RvStatsSize.ratingLabel), align = TextAlign.End)
     }
 }
 
@@ -255,4 +256,4 @@ internal fun RvToolsCard(tools: List<RvStatsTool>, onTool: (Int) -> Unit) {
 private val cardBody = Modifier.padding(start = RvStatsSpace.pad, end = RvStatsSpace.pad, bottom = RvStatsSpace.pad)
 
 private const val SEPARATOR = " · "
-private const val MINUTES_PER_HOUR = 60f
+private const val MS_PER_HOUR = 3_600_000L
