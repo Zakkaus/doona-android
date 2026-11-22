@@ -66,6 +66,16 @@ class ContrastTest {
         assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
     }
 
+    /** The meter's fill shows how much is used, so it is 3:1 against its track; the checkbox's outline against the card and the sheet. */
+    @Test
+    fun theMeterFillAndTheCheckboxOutlineHaveThreeToOne() {
+        val bad = themes.flatMap { t ->
+            listOf(Triple("${t.name}: meter fill on its track", ratio(t.c.accent, t.c.control), 3f)) +
+                listOf("card", "surface").map { fill -> Triple("${t.name}: checkbox outline on $fill", ratio(t.c.boxLine, t.fills.getValue(fill)), 3f) }
+        }.filter { it.second < it.third }
+        assertTrue(bad.joinToString { "%s is %.2f:1".format(it.first, it.second) }, bad.isEmpty())
+    }
+
     /** WCAG 1.4.11: the parts of a control that show its state are 3:1 against what they sit on. */
     @Test
     fun switchOffShowsItsStateAtThreeToOne() {
