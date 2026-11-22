@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.LocalRvRowActions
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
@@ -38,6 +39,7 @@ import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLatencyChange
+import dev.doona.android.prototype.rv.RvMenuAnchor
 import dev.doona.android.prototype.rv.RvMotion
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -52,6 +54,7 @@ import dev.doona.android.prototype.rv.RvWorldMap
 import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.data.RvRegion
 import dev.doona.android.prototype.rv.rvMoves
+import dev.doona.android.prototype.rv.rvNodeMenu
 import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 
@@ -166,13 +169,17 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
         (if (all) nodes else nodes.take(REGION_ROWS)).forEachIndexed { order, node ->
             key(node.id) {
                 val current = node.id == currentId
-                RvRow(
-                    { RvFlag(node.place.name, RvNodesSize.rowFlag, current = current) },
-                    node.name,
-                    node.protocol + SEPARATOR + stringResource(node.place.label),
-                    (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).rvMoves(),
-                    onClick = { onOpen(node.id) },
-                ) { RvLatencyChange(node.latencyMs, node.changeMs, order) }
+                // A long press opens the row's menu; the box round the row moves when a test re-sorts the card.
+                RvMenuAnchor(rvNodeMenu(node, current, LocalRvRowActions.current.useNode, onOpen), Modifier.rvMoves()) { menu, actions ->
+                    RvRow(
+                        { RvFlag(node.place.name, RvNodesSize.rowFlag, current = current) },
+                        node.name,
+                        node.protocol + SEPARATOR + stringResource(node.place.label),
+                        (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
+                        onClick = { onOpen(node.id) },
+                        onLongClick = menu,
+                    ) { RvLatencyChange(node.latencyMs, node.changeMs, order, node.id) }
+                }
             }
         }
         if (!all && nodes.size > REGION_ROWS) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, nodes.size, nodes.size)) { all = true }

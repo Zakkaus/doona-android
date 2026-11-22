@@ -45,4 +45,12 @@
         <item quantity="one">See the %1$d rule</item>
         <item quantity="other">See all %1$d rules</item>
     </plurals>
+    <!-- Long-press menus (G3). -->
+    <string name="rv_menu_set_main">Set as main node</string>
+    <string name="rv_menu_details">Details</string>
+    <string name="rv_menu_copy_link">Copy share link</string>
+    <string name="rv_menu_update">Update</string>
+    <string name="rv_menu_delete">Delete</string>
+    <string name="rv_menu_cancel">Cancel</string>
+    <string name="rv_menu_delete_question">Delete %1$s?</string>
 </resources>

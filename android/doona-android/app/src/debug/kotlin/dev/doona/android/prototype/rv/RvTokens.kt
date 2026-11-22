@@ -92,6 +92,9 @@ internal object RvSize {
     val badgeRing = 2.dp
     val badgeCheck = 1.5.dp
     val badgeOverhang = 2.dp
+
+    /** A long-press menu: a card of one-line rows this wide, floating by the row it belongs to. */
+    val menuWidth = 248.dp
 }
 
 /** The one chevron (measured §7): 6.7 x 12.2 dp of 2 dp stroke in a 24 dp box. */

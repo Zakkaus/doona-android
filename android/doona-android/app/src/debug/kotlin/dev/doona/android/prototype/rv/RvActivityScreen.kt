@@ -59,6 +59,7 @@ import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.data.RvPlace
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.data.RvRuleOutbound
+import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.fastest
 import kotlinx.coroutines.launch
 
@@ -79,6 +80,7 @@ internal fun RvActivityScreen(
     routes: RvActivityRoutes = RvActivityRoutes(),
     mode: RvRouteMode = if (state.mode == Mode.Direct) RvRouteMode.Direct else RvRouteMode.Rule,
     nodes: List<RvNode> = RvData.nodes,
+    subscriptions: List<RvSubscription> = RvData.subscriptions,
     pull: RvPullLook = RvPullLook.None,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -94,7 +96,7 @@ internal fun RvActivityScreen(
                 OutboundCard(state, mode, routes, nodes)
                 TrafficTiles(state, routes.traffic)
                 RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
-                RvSubscriptionsCard(RvData.subscriptions)
+                RvSubscriptionsCard(subscriptions)
                 RvFastestCard(nodes.fastest(FASTEST), state.node?.id ?: RvData.CURRENT_ID, routes.nodes)
             }
             Spacer(Modifier.height(rvNavClearance(insets)))

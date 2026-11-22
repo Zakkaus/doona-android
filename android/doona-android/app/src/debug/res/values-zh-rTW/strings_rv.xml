@@ -42,4 +42,12 @@
     <plurals name="rv_see_all_rules">
         <item quantity="other">查看全部 %1$d 條分流</item>
     </plurals>
+    <!-- Long-press menus (G3). -->
+    <string name="rv_menu_set_main">設為主節點</string>
+    <string name="rv_menu_details">詳情</string>
+    <string name="rv_menu_copy_link">複製分享連結</string>
+    <string name="rv_menu_update">更新</string>
+    <string name="rv_menu_delete">刪除</string>
+    <string name="rv_menu_cancel">取消</string>
+    <string name="rv_menu_delete_question">刪除 %1$s？</string>
 </resources>

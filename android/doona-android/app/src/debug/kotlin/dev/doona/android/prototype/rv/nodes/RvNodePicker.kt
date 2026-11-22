@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.nodes
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -49,10 +50,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.LocalRvUpdating
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBackDisc
 import dev.doona.android.prototype.rv.RvBar
+import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvChrome
@@ -62,6 +65,7 @@ import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLatencyChange
 import dev.doona.android.prototype.rv.RvLongPressTiming
+import dev.doona.android.prototype.rv.RvMenuAnchor
 import dev.doona.android.prototype.rv.RvMotion
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvSearchField
@@ -75,8 +79,10 @@ import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.rememberRvFormat
 import dev.doona.android.prototype.rv.rememberRvGlass
 import dev.doona.android.prototype.rv.rvGlassSource
+import dev.doona.android.prototype.rv.rvNodeMenu
 import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.rvShade
+import dev.doona.android.prototype.rv.rvSubscriptionMenu
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /** The picker's root, for tests. */
@@ -174,7 +180,10 @@ private fun Group(
     }
 }
 
-/** 活動's 訂閱 row for [sub] (use, quota, end date, what is left), with a chevron that turns down while [open]. */
+/**
+ * 活動's 訂閱 row for [sub] (use, quota, end date, what is left), with a chevron that turns down while [open]; a long
+ * press opens its menu (更新, 刪除), and an update in progress shows a busy bar where what is left would be.
+ */
 @Composable
 private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean, onToggle: () -> Unit) {
     val format = rememberRvFormat()
@@ -194,46 +203,61 @@ private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean
             }
         }
     }
-    RvRow(
-        { RvIconDisc(R.drawable.rv_sym_rss_feed) },
-        sub.name,
-        stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
-        toggle,
-        onClick = onToggle.takeIf { enabled },
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End)
-            Spacer(Modifier.width(RvSpace.trailingGap))
-            RvChevron(Modifier.rotate(turn))
+    val updating = sub.id in LocalRvUpdating.current
+    RvMenuAnchor(rvSubscriptionMenu(sub)) { menu, actions ->
+        RvRow(
+            { RvIconDisc(R.drawable.rv_sym_rss_feed) },
+            sub.name,
+            stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
+            toggle.then(actions),
+            onClick = onToggle.takeIf { enabled },
+            onLongClick = menu,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Crossfade(updating, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "update") { busy ->
+                    if (busy) RvBusy(Modifier.width(RvSize.busy)) else RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End)
+                }
+                Spacer(Modifier.width(RvSpace.trailingGap))
+                RvChevron(Modifier.rotate(turn))
+            }
         }
     }
 }
 
-/** 節點's row with an info mark at its end: a tap picks the node, a long press or the mark opens its page. */
+/**
+ * 節點's row with an info mark at its end: a tap picks the node, the mark opens its page, and a long press opens its
+ * menu (設為主節點, 測試延遲, 詳情, 複製分享連結), or its page where the sample offers no menus.
+ */
 @Composable
 private fun NodeRow(node: RvNode, label: String, current: Boolean, order: Int, onPick: (String) -> Unit, onDetail: (String) -> Unit) {
     val inUse = stringResource(R.string.rv_nodes_in_use)
     val details = stringResource(R.string.rv_nodes_details)
-    RvRow(
-        { RvFlag(node.place.name, RvNodesSize.rowFlag, current = current) },
-        node.name,
-        node.protocol + SEPARATOR + label,
-        if (current) Modifier.semantics { stateDescription = inUse } else Modifier,
-        onClick = { onPick(node.id) },
-        onLongClick = { onDetail(node.id) },
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RvLatencyChange(node.latencyMs, node.changeMs, order)
-            // The mark's 48 dp target reaches into the row's padding, so the glyph ends where every trailing ink ends.
-            Box(
-                Modifier
-                    .offset(x = (RvSize.touch - RvSize.rowGlyph) / 2)
-                    .size(RvSize.touch)
-                    .rvPress(CircleShape, Role.Button, { onDetail(node.id) })
-                    .semantics { contentDescription = details },
-                contentAlignment = Alignment.Center,
-            ) { RvGlyph(R.drawable.rv_sym_info, RvSize.rowGlyph, Rv.colors.control) }
-        }
+    RvMenuAnchor(rvNodeMenu(node, current, onPick, onDetail)) { menu, actions ->
+        RvRow(
+            { RvFlag(node.place.name, RvNodesSize.rowFlag, current = current) },
+            node.name,
+            node.protocol + SEPARATOR + label,
+            (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
+            onClick = { onPick(node.id) },
+            onLongClick = menu ?: { onDetail(node.id) },
+        ) { NodeTrailing(node, order, details, onDetail) }
+    }
+}
+
+/** The row's latency and change, then the info mark that opens the node's page. */
+@Composable
+private fun NodeTrailing(node: RvNode, order: Int, details: String, onDetail: (String) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        RvLatencyChange(node.latencyMs, node.changeMs, order, node.id)
+        // The mark's 48 dp target reaches into the row's padding, so the glyph ends where every trailing ink ends.
+        Box(
+            Modifier
+                .offset(x = (RvSize.touch - RvSize.rowGlyph) / 2)
+                .size(RvSize.touch)
+                .rvPress(CircleShape, Role.Button, { onDetail(node.id) })
+                .semantics { contentDescription = details },
+            contentAlignment = Alignment.Center,
+        ) { RvGlyph(R.drawable.rv_sym_info, RvSize.rowGlyph, Rv.colors.control) }
     }
 }
 

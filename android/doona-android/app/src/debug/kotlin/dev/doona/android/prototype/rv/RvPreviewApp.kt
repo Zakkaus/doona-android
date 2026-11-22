@@ -19,6 +19,7 @@ import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
@@ -102,7 +103,13 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
         if (start.launch == RvLaunch.Disconnect) run.disconnect()
     }
     val pages = RvSamplePages(push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { i -> TABS[i]?.let { stack = listOf(it) } })
-    CompositionLocalProvider(LocalRvTesting provides run.testing) {
+    val actions = remember(run) { RvRowActions(useNode = { run.currentId = it }, testNode = run::testNode, updateSubscription = run::update, deleteSubscription = run::delete) }
+    CompositionLocalProvider(
+        LocalRvTesting provides run.testing,
+        LocalRvTestingNodes provides run.testingNodes,
+        LocalRvUpdating provides run.updating,
+        LocalRvRowActions provides actions,
+    ) {
         RvStackHost(stack, onBack = pages.pop, options) { route -> RvSamplePage(route, run, options, settings, onSettings, pages, start.launch == RvLaunch.Nodes) }
     }
 }
@@ -159,7 +166,7 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
         pull,
         activity = { look ->
             val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) run.disconnect() }
-            RvActivityScreen(run.activity(), onAction, run::connect, routes, nodes = run.nodes, pull = look)
+            RvActivityScreen(run.activity(), onAction, run::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look)
         },
         picker = { motion ->
             val pick: (String) -> Unit = {
@@ -174,7 +181,8 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
 /**
  * What the sample runs by itself, at the sample's own pace: connecting takes [RV_CONNECT_MS] and ends connected, or
  * failed when it [fails]; disconnecting takes [RV_STOP_MS]; while connected the live minute moves on a [second] at a
- * time; a latency test runs [RV_TEST_MS] and gives every node a new result; the current node is the one picked last.
+ * time; a latency test runs [RV_TEST_MS] and gives every node a new result ([testNode] one node); the current node is
+ * the one picked last. A row menu [update]s a subscription (as long as a test) or [delete]s it with its nodes.
  */
 @Stable
 internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean, private val fails: Boolean) {
@@ -185,6 +193,12 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
         private set
     var currentId by mutableStateOf(RvData.CURRENT_ID)
     var testing by mutableStateOf(false)
+        private set
+    var testingNodes by mutableStateOf(emptySet<String>())
+        private set
+    var subscriptions by mutableStateOf(RvData.subscriptions)
+        private set
+    var updating by mutableStateOf(emptySet<String>())
         private set
     private var rounds = 0
     private var link: Job? = null
@@ -217,6 +231,34 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
             nodes = nodes.map { it.retested(rounds) }
             testing = false
         }
+    }
+
+    fun testNode(id: String) {
+        if (testing || id in testingNodes) return
+        testingNodes += id
+        scope.launch {
+            delay(RV_TEST_MS)
+            rounds++
+            nodes = nodes.map { if (it.id == id) it.retested(rounds) else it }
+            testingNodes -= id
+        }
+    }
+
+    fun update(id: String) {
+        if (id in updating) return
+        updating += id
+        scope.launch {
+            delay(RV_TEST_MS)
+            updating -= id
+        }
+    }
+
+    /** Removes the subscription and its nodes; when the main node goes with them, the fastest left takes its place. */
+    fun delete(id: String) {
+        val gone = subscriptions.firstOrNull { it.id == id } ?: return
+        subscriptions = subscriptions - gone
+        nodes = nodes.filterNot { it.subscription == gone.name }
+        if (nodes.none { it.id == currentId }) nodes.fastest(1).firstOrNull()?.let { currentId = it.id }
     }
 
     /** 活動 as the run has it: live while connected; otherwise its state with no rates and no history. */

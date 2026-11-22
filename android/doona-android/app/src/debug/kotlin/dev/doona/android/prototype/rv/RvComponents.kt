@@ -323,18 +323,21 @@ internal fun RvDelta(changeMs: Int) {
     }
 }
 
-/** Whether a latency test is running: every [RvLatencyChange] shows [RvBusy] until its result arrives. */
+/** Whether a latency test of every node is running: every [RvLatencyChange] shows [RvBusy] until its result arrives. */
 internal val LocalRvTesting = compositionLocalOf { false }
 
+/** The nodes a test of their own is running for (a row menu's 測試延遲): only their rows show [RvBusy]. */
+internal val LocalRvTestingNodes = compositionLocalOf { emptySet<String>() }
+
 /**
- * A node's latency over its change since the test before ([RvDelta]). While a test runs ([LocalRvTesting]) a busy bar
- * stands in for both; when it ends the result fades in [order] × [RvMotion.STAGGER_MS] after the list's first, so the
- * results run down the list, and any later change cross-fades.
+ * A node's latency over its change since the test before ([RvDelta]). While a test runs ([LocalRvTesting], or one of
+ * [node]'s own in [LocalRvTestingNodes]) a busy bar stands in for both; when it ends the result fades in [order] ×
+ * [RvMotion.STAGGER_MS] after the list's first, so the results run down the list, and any later change cross-fades.
  */
 @Composable
-internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, order: Int = 0) {
+internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, order: Int = 0, node: String? = null) {
     val motion = Rv.motion
-    val testing = LocalRvTesting.current
+    val testing = LocalRvTesting.current || node in LocalRvTestingNodes.current
     var waiting by remember { mutableStateOf(testing) }
     LaunchedEffect(testing) {
         if (!testing && waiting && !motion.instant) delay(order.toLong() * RvMotion.STAGGER_MS)

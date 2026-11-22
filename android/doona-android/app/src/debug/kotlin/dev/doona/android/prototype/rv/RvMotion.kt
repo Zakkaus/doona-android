@@ -87,10 +87,12 @@ internal object RvMotion {
     const val HERO_FADE_MS = 330
 
     /**
-     * The More popup and the long-press menu scale and fade in about 267 ms (measured). The RV set has no menu yet, so
-     * nothing reads it; it is kept with the other measured values for when one is built.
+     * A long-press menu (as Revolut's More popup) scales from [MENU_FROM] and fades in, from its anchor, in about 267 ms,
+     * and goes the same way in about 233 ms (both measured).
      */
     const val MENU_MS = 267
+    const val MENU_OUT_MS = 233
+    const val MENU_FROM = 0.9f
 
     /** The switch's thumb, as Material 3's (100 ms). */
     const val SWITCH_MS = 100
