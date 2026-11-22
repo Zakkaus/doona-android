@@ -53,7 +53,8 @@ import dev.doona.android.prototype.rv.data.fastest
  * download and upload as two of Revolut's square home tiles (either opens the traffic page), and three more cards as
  * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
  * floating glass bottom bar (§9), which shrinks while the content scrolls up. It renders [ActivityUiState]; the engine
- * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData].
+ * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. [hero] picks the dot map or
+ * one of the alternatives the owner compares ([RvHeroVariant]).
  */
 @Composable
 internal fun RvActivityScreen(
@@ -62,13 +63,15 @@ internal fun RvActivityScreen(
     onConnect: () -> Unit,
     routes: RvActivityRoutes = RvActivityRoutes(),
     mode: RvRouteMode = if (state.mode == Mode.Direct) RvRouteMode.Direct else RvRouteMode.Rule,
+    hero: RvHeroVariant = RvHeroVariant.Map,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val glass = rememberRvGlass()
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
-            Header(state, mode, onAction, onConnect, insets)
+            val actions: @Composable () -> Unit = { RvHeroActions(state, onAction, onConnect) }
+            if (hero == RvHeroVariant.Map) MapHeader(state, mode, insets, actions) else RvVariantHeader(hero, state, mode, routes, insets, actions)
             RvGutter {
                 OutboundCard(state, mode, routes)
                 TrafficTiles(state, routes.traffic)
@@ -98,9 +101,9 @@ internal class RvActivityRoutes(
     val rules: () -> Unit = {},
 )
 
+/** The default hero: the dot map behind the figure, marking the node's country, over the round actions. */
 @Composable
-private fun Header(state: ActivityUiState, mode: RvRouteMode, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, insets: WindowInsets) {
-    val format = rememberRvFormat()
+private fun MapHeader(state: ActivityUiState, mode: RvRouteMode, insets: WindowInsets, actions: @Composable () -> Unit) {
     val running = state.status is Status.Running || state.status is Status.Starting
     // Direct traffic uses no node, so the map marks no place.
     val place = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.place }
@@ -110,24 +113,44 @@ private fun Header(state: ActivityUiState, mode: RvRouteMode, onAction: (Activit
     RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
         Spacer(Modifier.height(RvSpace.headerTop))
-        Column(Modifier.onPlaced { heroBounds = it.boundsInParent() }, horizontalAlignment = Alignment.CenterHorizontally) {
-            RvText("${stringResource(state.status.label)} · ${stringResource(mode.label)}", Rv.type.caption)
-            Spacer(Modifier.height(RvSpace.tight))
-            RvHero(format.rate(state.downRate.toDouble()))
-            Spacer(Modifier.height(RvSpace.subGap))
-            // The hero is the download rate, so the line under it carries the other direction only (N-10).
-            RvInline(R.drawable.rv_sym_arrow_upward, format.rate(state.upRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
-        }
+        RvHeroFigure(state, mode, Modifier.onPlaced { heroBounds = it.boundsInParent() })
         Spacer(Modifier.height(RvSpace.heroToActions))
-        Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
-            val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
-            val toggle = if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect
-            RvAction(R.drawable.rv_sym_power, stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect), toggle, Modifier.weight(1f))
-            RvAction(R.drawable.rv_sym_directions, stringResource(R.string.act_mode), { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f))
-            RvAction(R.drawable.rv_sym_speed, stringResource(R.string.rv_test_latency), NOT_WIRED, Modifier.weight(1f))
-            RvAction(R.drawable.rv_sym_more_horiz, stringResource(R.string.rv_more), NOT_WIRED, Modifier.weight(1f))
-        }
+        actions()
         Spacer(Modifier.height(RvSpace.actionsToCard))
+    }
+}
+
+/**
+ * The hero's figure: the state and the mode, the download rate large and the upload rate under it. At a [scrub]bed second
+ * of the last minute it shows that second's time and rates instead, as 流量詳情's hero does.
+ */
+@Composable
+internal fun RvHeroFigure(state: ActivityUiState, mode: RvRouteMode, modifier: Modifier = Modifier, scrub: Int? = null) {
+    val format = rememberRvFormat()
+    val at = scrub?.takeIf { it in state.downHistory.indices && it in state.upHistory.indices && !state.downHistory[it].isNaN() }
+    val caption = at?.let { format.clock(RvData.nowEpochMs - (state.downHistory.lastIndex - it) * MS_PER_SECOND) }
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        RvText(caption ?: "${stringResource(state.status.label)} · ${stringResource(mode.label)}", Rv.type.caption)
+        Spacer(Modifier.height(RvSpace.tight))
+        RvHero(format.rate((at?.let { state.downHistory[it] } ?: state.downRate.toFloat()).toDouble()))
+        Spacer(Modifier.height(RvSpace.subGap))
+        // The hero is the download rate, so the line under it carries the other direction only (N-10).
+        val up = at?.let { state.upHistory[it] } ?: state.upRate.toFloat()
+        RvInline(R.drawable.rv_sym_arrow_upward, format.rate(up.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
+    }
+}
+
+/** The four round actions under the hero: connect or disconnect, the outbound mode, a latency test and more. */
+@Composable
+internal fun RvHeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit) {
+    val running = state.status is Status.Running || state.status is Status.Starting
+    Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
+        val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
+        val toggle = if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect
+        RvAction(R.drawable.rv_sym_power, stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect), toggle, Modifier.weight(1f))
+        RvAction(R.drawable.rv_sym_directions, stringResource(R.string.act_mode), { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f))
+        RvAction(R.drawable.rv_sym_speed, stringResource(R.string.rv_test_latency), NOT_WIRED, Modifier.weight(1f))
+        RvAction(R.drawable.rv_sym_more_horiz, stringResource(R.string.rv_more), NOT_WIRED, Modifier.weight(1f))
     }
 }
 
@@ -215,6 +238,7 @@ private fun minutePeak(history: List<Float>): Float = history.filterNot { it.isN
 /** The 最快節點 card lists the first three of the 節點 page's fastest; the outbound card, two rule groups after the main node. */
 private const val FASTEST = 3
 private const val RULE_ROWS = 2
+private const val MS_PER_SECOND = 1_000L
 
 private val Status.label: Int
     get() = when (this) {
@@ -224,7 +248,7 @@ private val Status.label: Int
         Status.Stopped, is Status.Failed -> R.string.status_stopped
     }
 
-private val RvRouteMode.label: Int
+internal val RvRouteMode.label: Int
     get() = when (this) {
         RvRouteMode.Rule -> R.string.rv_mode_rule
         RvRouteMode.Global -> R.string.mode_global

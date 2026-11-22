@@ -110,6 +110,18 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val fair = readableHue(Color(if (dark) 0xFFE7B04E else 0xFF94600A))
     val slow = readableHue(Color(if (dark) 0xFFFF8A80 else 0xFFB3261E))
 
+    /**
+     * Outbounds side by side (the hero alternatives, 出站's share bar): the main node in the accent, the next nodes in
+     * lighter steps of it, direct in [control]. Colour here tells routes apart, never a direction.
+     */
+    val outbounds = listOf(s.primary, s.primary.copy(alpha = RvAlpha.OUTBOUND_SECOND), s.primary.copy(alpha = RvAlpha.OUTBOUND_THIRD))
+    val outboundDirect = control
+
+    /** V4's flat hero: the accent while connected, the warning hue while the main node is slow, a neutral step when off. */
+    val heroOn = s.primary.copy(alpha = RvAlpha.HERO_TINT).compositeOver(page)
+    val heroWarn = fair.copy(alpha = RvAlpha.HERO_TINT).compositeOver(page)
+    val heroOff = s.onSurface.copy(alpha = RvAlpha.HERO_NEUTRAL).compositeOver(page)
+
     /** A progress bar's empty part. */
     val track = discOnCard
 
