@@ -67,7 +67,18 @@ internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlas
     val scope = rememberCoroutineScope()
     val shrink by animateFloatAsState(if (rvCollapsedOnScroll(scroll)) 1f else 0f, motion.tween(RvMotion.NAV_MS), label = "nav")
     val pick: (Int) -> Unit = { i ->
-        if (i != selected) onSelect(i) else scope.launch { scroll.animateScrollTo(0, motion.tween(RvMotion.TOP_MS, RvMotion.Decelerate)) }
+        if (i != selected) {
+            onSelect(i)
+        } else {
+            scope.launch {
+                RvFrames.begin(TO_TOP)
+                try {
+                    scroll.animateScrollTo(0, motion.tween(RvMotion.TOP_MS, RvMotion.Decelerate))
+                } finally {
+                    RvFrames.end(TO_TOP)
+                }
+            }
+        }
     }
     BoxWithConstraints(modifier.fillMaxWidth().padding(bottom = rvNavBottom(insets)), contentAlignment = Alignment.BottomCenter) {
         val width = lerp(maxWidth - RvChrome.navInset * 2, RvChrome.navCollapsedWidth, shrink)
@@ -152,3 +163,5 @@ private fun rvCollapsedOnScroll(scroll: ScrollState): Boolean {
     }
     return collapsed
 }
+
+private const val TO_TOP = "tab-to-top"

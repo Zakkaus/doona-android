@@ -367,6 +367,7 @@ private fun Modifier.scrubbing(count: Int, onScrub: (Int?) -> Unit): Modifier {
         awaitEachGesture {
             val down = awaitFirstDown()
             down.consume()
+            RvFrames.begin(SCRUB)
             report(sampleAt(down.position.x, right(), count))
             try {
                 while (true) {
@@ -377,10 +378,13 @@ private fun Modifier.scrubbing(count: Int, onScrub: (Int?) -> Unit): Modifier {
                 }
             } finally {
                 report(null)
+                RvFrames.end(SCRUB)
             }
         }
     }
 }
+
+private const val SCRUB = "scrub"
 
 /** The sample nearest [x] when [count] samples span [0, right]. */
 private fun sampleAt(x: Float, right: Float, count: Int): Int = (x / right * (count - 1)).roundToInt().coerceIn(0, count - 1)
