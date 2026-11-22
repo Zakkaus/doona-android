@@ -11,6 +11,7 @@ import kotlin.math.abs
  */
 object SpacingRules {
     private const val TOL = 0.5f
+    private const val SHARED_TOUCH = 1f
     private val space = DoonaTheme.spacing
     private val sizes = DoonaTheme.size
 
@@ -104,7 +105,7 @@ object SpacingRules {
      * visible part of them, so their touch bounds say nothing about the design, and they do not compete for room.
      */
     private fun scrolledOut(root: LayoutBox): Set<LayoutBox> = root.descendants().filter { it.role == LayoutRole.Sheet }.flatMap { sheet ->
-        val viewport = root.descendants().first { parent -> parent.children.any { it === sheet } }
+        val viewport = root.viewportOf(sheet)
         sheet.descendants().filter { it !== sheet && (it.top < viewport.top - TOL || it.bottom > viewport.bottom + TOL) }
     }.toSet()
 
@@ -119,18 +120,24 @@ object SpacingRules {
 
     /**
      * A control smaller than 48 dp is still hit over 48 dp, and a screen reader reports that area as its bounds; the
-     * area must not reach into text or another control, or the reader trims it below 48.
+     * area must not reach into text or into another control's area, or the reader trims it below 48.
      */
     fun touchZones(root: LayoutBox): List<String> {
         val hidden = scrolledOut(root)
         val nodes = root.descendants().filter { it !in hidden }.toList()
+        fun zone(node: LayoutBox): List<Float> {
+            val (w, h) = node.touchSize?.takeIf { node.actionable } ?: (node.width to node.height)
+            return listOf(node.centerX - w / 2, node.centerY - h / 2, node.centerX + w / 2, node.centerY + h / 2)
+        }
         return nodes.filter { it.actionable }.flatMap { target ->
-            val (w, h) = target.touchSize ?: return@flatMap emptyList()
             val skip = target.descendants().toSet() + nodes.filter { n -> n.descendants().any { it === target } }
+            val (left, top, right, bottom) = zone(target)
             nodes.filter { it !in skip && (it.text != null || it.actionable) }.filter { other ->
-                val across = minOf(other.right, target.centerX + w / 2) - maxOf(other.left, target.centerX - w / 2)
-                val down = minOf(other.bottom, target.centerY + h / 2) - maxOf(other.top, target.centerY - h / 2)
-                across > TOL && down > TOL
+                val (l, t, r, b) = zone(other)
+                // Neighbouring controls may share a sliver of touch area, which the platform splits between them: the
+                // items of a segmented control are 44 dp wide, 4 apart, and a reader still reports them as 48.
+                val slack = if (other.actionable) SHARED_TOUCH else TOL
+                minOf(r, right) - maxOf(l, left) > slack && minOf(b, bottom) - maxOf(t, top) > slack
             }.map { "touch area of $target reaches into $it" }
         }
     }

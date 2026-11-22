@@ -8,6 +8,9 @@ import dev.doona.android.app.DoonaApp
 import dev.doona.android.app.GroupKey
 import dev.doona.android.app.PoliciesKey
 import dev.doona.android.app.SettingsKey
+import dev.doona.android.designsystem.components.CardsGallery
+import dev.doona.android.designsystem.components.ControlsGallery
+import dev.doona.android.designsystem.components.StatusGallery
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
@@ -38,3 +41,13 @@ fun screenCases(): List<ScreenCase> {
         ScreenCase("settings") { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
     )
 }
+
+/**
+ * The component gallery pages. They get goldens and the accessibility check like a screen, but not the spacing rules,
+ * since a gallery lists components rather than laying out a page.
+ */
+fun galleryCases(): List<ScreenCase> = listOf(
+    ScreenCase("gallery-controls") { ControlsGallery() },
+    ScreenCase("gallery-cards") { CardsGallery() },
+    ScreenCase("gallery-status") { StatusGallery() },
+)

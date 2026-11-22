@@ -8,11 +8,18 @@ and components read roles only.
 
 ```sh
 . ~/.cache/android-dev/env.sh
-./gradlew spotlessCheck :app:lintDebug :app:testDebugUnitTest
-./gradlew recordRoborazziDebug -Ddoona.shots=<dir>   # 412 × 915 dp, zh-TW: light, dark, font scale 1.15
+./gradlew spotlessCheck :app:lintDebug :app:testDebugUnitTest verifyRoborazziDebug
+./gradlew recordRoborazziDebug                        # rewrite the goldens in app/src/test/screenshots after a change you meant
+./gradlew recordRoborazziDebug -Ddoona.shots=<dir>    # the same renders in <dir>, to look at without touching the goldens
 tools/check-tokens.sh                                 # no dp, sp or colour literal outside designsystem/tokens
 tools/check-layers.sh                                 # material3 and tokens stay in designsystem/, feature/ builds no interactive element
 ```
+
+Goldens (`app/src/test/screenshots`, fake data only) cover every screen at 412 × 915 dp in zh-TW in light, dark and at
+font scale 1.15 and 2.0, plus a 840 dp wide window and a 915 × 412 dp landscape one, and the three component gallery
+pages (`designsystem/components/ComponentPreviews.kt`) in the four phone variants. Each render also goes through
+Google's accessibility checks. Spacing, contrast and reachability are asserted by `SpacingCheckTest`, `ContrastTest`
+and `ReachabilityTest`.
 
 `tools/icons.py` and `tools/fonts.py` rebuild the drawables and fonts from a doona checkout (fontTools and brotli);
 `NOTICE` lists their licences.
@@ -36,6 +43,9 @@ tools/check-layers.sh                                 # material3 and tokens sta
 - **UI:** components come from `designsystem/components` only; no `androidx.compose.material3`, `clickable` or
   literal sizes in `feature/`. Gaps are spacing roles (`DoonaGap(DoonaTheme.spacing.section)`), never numbers. Strings go in `values/strings.xml` and `values-zh-rTW/strings.xml`.
 - **Previews:** in `<Screen>Previews.kt`, light and dark, built from `FakeEngine` fixtures through the same pure
-  state function; the screenshot test reuses that fixture.
+  state function; the screenshot test reuses that fixture. A new component goes on a page of `ComponentPreviews.kt`
+  in every state it has.
 - **Tests:** a JVM test of the ViewModel on `FakeEngine` (wrap it with `Engine by FakeEngine()` to make one action
-  fail), and a Roborazzi shot in `SketchScreenshotTest`.
+  fail), and a case in `screenCases()` (`testing/ScreenCases.kt`): it gets the spacing check on a phone, a wide window and
+  a landscape one, the reachability check, and a golden in every variant. Record the goldens and look at them before
+  committing.

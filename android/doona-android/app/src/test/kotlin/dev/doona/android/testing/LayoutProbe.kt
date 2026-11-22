@@ -51,6 +51,9 @@ class LayoutBox(
 
     fun descendants(): Sequence<LayoutBox> = sequenceOf(this) + children.asSequence().flatMap { it.descendants() }
 
+    /** The box that clips [scrolling], which is this node's descendant: the viewport a scrolling column moves in. */
+    fun viewportOf(scrolling: LayoutBox): LayoutBox = descendants().first { parent -> parent.children.any { it === scrolling } }
+
     /** Consecutive children stacked top to bottom with their vertical gaps; empty when the node is not a column. */
     fun columnGaps(): List<Triple<LayoutBox, LayoutBox, Float>> {
         val items = content

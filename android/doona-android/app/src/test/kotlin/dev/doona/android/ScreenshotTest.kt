@@ -9,10 +9,12 @@ import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.checkRoboAccessibility
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.testing.GalleryVariants
 import dev.doona.android.testing.PhoneFrame
-import dev.doona.android.testing.PhoneVariants
 import dev.doona.android.testing.ScreenCase
+import dev.doona.android.testing.ScreenVariants
 import dev.doona.android.testing.Variant
+import dev.doona.android.testing.galleryCases
 import dev.doona.android.testing.screenCases
 import org.junit.Rule
 import org.junit.Test
@@ -24,7 +26,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Every screen in every [Variant]: draws it inside a phone frame, compares or records the golden in
+ * Every screen in every [Variant], and every component gallery page at the phone's variants: draws it inside a phone frame, compares or records the golden in
  * `src/test/screenshots/<screen>-<variant>.png` (`-Ddoona.shots=<dir>` records elsewhere, for looking), and runs
  * Google's accessibility checks on the same render.
  */
@@ -40,7 +42,7 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
     @Test
     fun matchesGoldenAndPassesAccessibilityChecks() {
         RuntimeEnvironment.setQualifiers(variant.qualifiers)
-        val case = screenCases().first { it.name == name }
+        val case = (screenCases() + galleryCases()).first { it.name == name }
         compose.setContent { Framed(case, variant) }
         compose.onRoot().captureRoboImage("$dir/$name-${variant.name}.png")
         compose.onRoot().checkRoboAccessibility()
@@ -49,7 +51,9 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
     companion object {
         @JvmStatic
         @Parameters(name = "{0}-{1}")
-        fun parameters(): List<Array<Any>> = screenCases().flatMap { case -> PhoneVariants.map { arrayOf(case.name, it) } }
+        fun parameters(): List<Array<Any>> =
+            screenCases().flatMap { case -> ScreenVariants.map { arrayOf(case.name, it) } } +
+                galleryCases().flatMap { case -> GalleryVariants.map { arrayOf(case.name, it) } }
     }
 }
 
