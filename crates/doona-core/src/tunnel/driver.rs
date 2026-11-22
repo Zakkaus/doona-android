@@ -6,6 +6,7 @@
 //!
 //! The packet loop and its error handling follow crates/honk-android/src/engine.rs.
 
+use super::blocked::Blocked;
 use super::flow::{self, Event, Events, Key, Waker};
 use super::route::{Inbound, Route};
 use super::tcp::{self, Step, TcpFlow};
@@ -77,6 +78,8 @@ struct Driver {
     /// The flows of `tcp` whose task ended while their tail still waits for the client.
     tails: BinaryHeap<Due>,
     nat: Nat,
+    /// The UDP five-tuples blockQuic refused lately.
+    blocked: Blocked,
     dns_slots: Arc<Semaphore>,
     /// Tun input, stack output, and the buffer flows are read into.
     rx: Vec<u8>,
@@ -112,6 +115,7 @@ impl Driver {
             dns_flows: 0,
             tails: BinaryHeap::new(),
             nat: Nat::new(Budget::new(udp::QUEUED_BYTES), idle),
+            blocked: Blocked::new(),
             dns_slots: Arc::new(Semaphore::new(DNS_IN_FLIGHT)),
             rx: vec![0; mtu.max(1500) + 64],
             tx: vec![0; mtu + 64],
@@ -414,7 +418,7 @@ impl Driver {
 
     /// A datagram from an app: UDP/53 to any address is DNS the core answers; nothing else
     /// listens on the virtual resolver; other datagrams follow the route their association
-    /// opened with.
+    /// opened with. A five-tuple blockQuic refused lately is refused again without a route.
     fn on_datagram(&mut self, src: SocketAddr, dst: SocketAddr, payload: &[u8]) {
         if dst.port() == 53 {
             let Ok(slot) = Arc::clone(&self.dns_slots).try_acquire_owned() else {
@@ -427,8 +431,19 @@ impl Driver {
             self.gen_.spawn(task);
         } else if dst.ip() != IpAddr::V4(self.settings.dns) {
             let (settings, session) = (&self.settings, &self.gen_.session);
-            let udp = (dst, Network::Udp);
-            let open = || Some(new_route(settings, session, udp)).filter(Route::carries_udp);
+            let blocked = &mut self.blocked;
+            let open = || {
+                let stamp = (settings.mode.changes(), settings.outbounds.routings());
+                let now = Instant::now();
+                if blocked.holds((src, dst), stamp, now) {
+                    return None;
+                }
+                let route = new_route(settings, session, (dst, Network::Udp));
+                if let Route::Blocked = route {
+                    blocked.refuse((src, dst), stamp, now);
+                }
+                Some(route).filter(Route::carries_udp)
+            };
             if let Some((opened, route)) = self.nat.send((src, dst), payload, &self.events, open) {
                 self.opened += 1;
                 let meter = route.meter(&self.gen_.session);

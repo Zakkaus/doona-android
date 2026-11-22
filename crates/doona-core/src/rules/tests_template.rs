@@ -120,7 +120,7 @@ fn block_quic_rejects_quic_bound_for_a_group_and_keeps_direct_quic() {
         (Some("openai.com"), ABROAD),
         (None, ABROAD),
     ] {
-        assert_eq!(on.choose(&quic(domain, ip)), Choice::Reject, "{domain:?}");
+        assert_eq!(on.choose(&quic(domain, ip)), Choice::Blocked, "{domain:?}");
         assert!(
             matches!(off.choose(&quic(domain, ip)), Choice::Group(_)),
             "{domain:?}"

@@ -26,26 +26,32 @@ use honk_outbound::proxy::AsyncReadWrite;
 use std::io::{self, ErrorKind};
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU8, Ordering::Relaxed};
+use std::sync::atomic::{AtomicU8, AtomicU64, Ordering::Relaxed};
 use std::time::Duration;
 use tokio::net::{TcpStream, UdpSocket};
 
 /// A dial, through a node or straight out, gives up after this long.
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// The committed mode, read by every new flow.
+/// The committed mode, read by every new flow, and how many times it was set.
 #[derive(Debug)]
-pub struct ModeCell(AtomicU8);
+pub struct ModeCell {
+    mode: AtomicU8,
+    changes: AtomicU64,
+}
 
 impl ModeCell {
     pub fn new(mode: Mode) -> ModeCell {
-        let cell = ModeCell(AtomicU8::new(0));
+        let cell = ModeCell {
+            mode: AtomicU8::new(0),
+            changes: AtomicU64::new(0),
+        };
         cell.set(mode);
         cell
     }
 
     pub fn get(&self) -> Mode {
-        match self.0.load(Relaxed) {
+        match self.mode.load(Relaxed) {
             1 => Mode::Direct,
             2 => Mode::Rule,
             _ => Mode::Global,
@@ -53,7 +59,7 @@ impl ModeCell {
     }
 
     pub fn set(&self, mode: Mode) {
-        self.0.store(
+        self.mode.store(
             match mode {
                 Mode::Global => 0,
                 Mode::Direct => 1,
@@ -61,6 +67,12 @@ impl ModeCell {
             },
             Relaxed,
         );
+        self.changes.fetch_add(1, Relaxed);
+    }
+
+    /// How many times the mode was set, so a decision taken under it can tell it changed since.
+    pub fn changes(&self) -> u64 {
+        self.changes.load(Relaxed)
     }
 }
 
@@ -80,6 +92,9 @@ pub(crate) enum Route {
     /// A rule's reject; Global or a rule's group while it has no node. TCP is reset, datagrams
     /// are dropped.
     Refuse,
+    /// QUIC bound for a group, which `blockQuic` refuses: as `Refuse`, and the driver refuses the
+    /// same five-tuple again for a while without routing it (see `blocked.rs`).
+    Blocked,
 }
 
 /// An upstream byte stream: a socket, or a node's protocol over one.
@@ -115,6 +130,7 @@ impl Route {
                 match policy.choose(&flow) {
                     Choice::Direct => return Route::Direct,
                     Choice::Reject => return Route::Refuse,
+                    Choice::Blocked => return Route::Blocked,
                     Choice::Group(group) => group,
                 }
             }
@@ -148,7 +164,7 @@ impl Route {
     }
 
     pub fn refused(&self) -> bool {
-        matches!(self, Route::Refuse)
+        matches!(self, Route::Refuse | Route::Blocked)
     }
 
     /// The meter of this route's target in `session`: the group it goes through, or `direct`.
@@ -156,7 +172,7 @@ impl Route {
         match self {
             Route::Direct => Some(session.meters().get(DIRECT)),
             Route::Proxy(d, _) => Some(session.meters().get(&d.group)),
-            Route::Refuse => None,
+            Route::Refuse | Route::Blocked => None,
         }
     }
 
@@ -166,7 +182,7 @@ impl Route {
         match self {
             Route::Direct => true,
             Route::Proxy(d, _) => d.supports_udp(),
-            Route::Refuse => false,
+            Route::Refuse | Route::Blocked => false,
         }
     }
 
@@ -191,7 +207,7 @@ impl Route {
                 session.dialed(began, &trace, dialed.is_ok());
                 dialed
             }
-            Route::Refuse => Err(ErrorKind::PermissionDenied.into()),
+            Route::Refuse | Route::Blocked => Err(ErrorKind::PermissionDenied.into()),
         }
     }
 
@@ -230,7 +246,7 @@ impl Route {
                     local.then(|| Arc::clone(session)),
                 ))
             }
-            Route::Refuse => Err(ErrorKind::PermissionDenied.into()),
+            Route::Refuse | Route::Blocked => Err(ErrorKind::PermissionDenied.into()),
         }
     }
 }

@@ -10,10 +10,10 @@ use super::{Core, Life, Options, lock};
 use crate::dns::tests::{answer_to, query};
 use crate::groups::GroupDef;
 use crate::probe;
-use crate::rules::RuleSet;
 use crate::rules::policy::Policy;
 use crate::rules::template;
 use crate::rules::tests::{group, rule};
+use crate::rules::{RuleSet, RuleSpec};
 use crate::state::Store;
 use crate::testutil::client::Client;
 use crate::testutil::{TempDir, socks5, tun_and_peer};
@@ -77,6 +77,14 @@ impl Rig {
         self.dials.load(SeqCst)
     }
 
+    /// Flows the running generation's apps opened.
+    fn opened(&self) -> u64 {
+        match &*lock(&self.core.life) {
+            Life::Running(t) => t.session().opened(),
+            _ => panic!("not running"),
+        }
+    }
+
     /// The running generation's number and session.
     fn generation(&self) -> (i64, usize) {
         match &*lock(&self.core.life) {
@@ -87,11 +95,16 @@ impl Rig {
 
     /// Makes the catalog's policy the template's groups plus `extra`, under `rules`.
     fn rules(&self, extra: &[GroupDef], rules: &[crate::rules::RuleSpec]) {
+        self.rules_with(extra, rules, template::Options::default());
+    }
+
+    /// As `rules`, with the template's `options`.
+    fn rules_with(&self, extra: &[GroupDef], rules: &[RuleSpec], options: template::Options) {
         let mut c = lock(&self.core.shared.catalog);
         let mut groups = c.model.groups.clone();
         groups.extend_from_slice(extra);
         let set = RuleSet::compile(&groups, &|id| c.model.has(id), rules).unwrap();
-        let policy = Policy::new("g-Proxy", Some(set), template::Options::default());
+        let policy = Policy::new("g-Proxy", Some(set), options);
         c.model.policy = Arc::new(policy);
         self.core.shared.publish(&c);
     }
@@ -316,4 +329,64 @@ fn rule_without_a_node_keeps_the_template_direct_rows() {
         r.core.start(tun, CONFIG),
         Err(crate::dto::ErrorCode::NoNodes)
     );
+}
+
+/// blockQuic refuses a QUIC five-tuple, and refuses its retransmits for a few seconds without
+/// another lookup, even when a name learned since would send it direct. A mode change, or a new
+/// policy, ends that. A UDP echo the rules send direct shows the driver has handled every
+/// datagram sent before it.
+#[test]
+fn a_five_tuple_block_quic_refused_stays_refused_until_the_mode_or_policy_changes() {
+    let options = Options {
+        dns_upstreams: vec![resolver([127, 0, 0, 5])],
+        ..Options::default()
+    };
+    let mut r = Rig::new("rules-quic", options);
+    let echo = udp_echo();
+    let mut rules = vec![
+        rule("IP-CIDR", &["127.0.0.1/32"], "DIRECT"),
+        rule("DOMAIN", &["quic.test"], "DIRECT"),
+        rule("MATCH", &[], "Proxy"),
+    ];
+    let block = template::Options { block_quic: true };
+    r.rules_with(&[], &rules, block);
+    r.set_mode("Rule");
+    let settle = |r: &mut Rig| {
+        r.client.send_udp(echo, b"settle");
+        let echoed = r.client.recv_udp(echo, Duration::from_secs(10));
+        assert_eq!(echoed.as_deref(), Some(&b"settle"[..]));
+    };
+    let quic = SocketAddr::from(([127, 0, 0, 5], 443));
+    r.client.send_udp(quic, b"initial");
+    settle(&mut r);
+    let base = r.opened();
+    // The answer names the address quic.test, which the rules send direct.
+    r.client.send_udp(RESOLVER, &query(9, "quic.test", None));
+    assert!(
+        r.client
+            .recv_udp(RESOLVER, Duration::from_secs(10))
+            .is_some()
+    );
+    r.client.send_udp(quic, b"retransmit");
+    settle(&mut r);
+    assert_eq!(
+        r.opened(),
+        base,
+        "the retransmit is refused as the first was"
+    );
+    r.set_mode("Global");
+    r.set_mode("Rule");
+    r.client.send_udp(quic, b"after a switch");
+    settle(&mut r);
+    assert_eq!(r.opened(), base + 1, "direct by its name");
+    // An address the rules send to Proxy, until a new policy sends it direct.
+    let other = SocketAddr::from(([127, 0, 0, 6], 443));
+    r.client.send_udp(other, b"initial");
+    settle(&mut r);
+    assert_eq!(r.opened(), base + 1);
+    rules.insert(0, rule("IP-CIDR", &["127.0.0.6/32"], "DIRECT"));
+    r.rules_with(&[], &rules, block);
+    r.client.send_udp(other, b"after the policy");
+    settle(&mut r);
+    assert_eq!(r.opened(), base + 2, "direct by the new policy");
 }

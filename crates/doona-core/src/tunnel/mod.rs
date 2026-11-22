@@ -6,6 +6,7 @@
 //! tasks without tun access are ever left running, and shuts down the carriers it dialed through
 //! within the same deadline (see `outbounds.rs`).
 
+mod blocked;
 mod driver;
 mod flow;
 pub mod route;
@@ -302,6 +303,12 @@ impl Session {
     /// The names the generation's DNS answers gave addresses; a new generation starts with none.
     pub(crate) fn names(&self) -> &Names {
         &self.names
+    }
+
+    /// Flows the apps opened, as the driver last published them.
+    #[cfg(test)]
+    pub(crate) fn opened(&self) -> u64 {
+        self.opened.load(Relaxed)
     }
 
     /// The meters of the outbounds the session's flows use.

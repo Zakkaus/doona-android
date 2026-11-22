@@ -54,21 +54,28 @@ fn target(route: &Route) -> &str {
         Route::Direct => "direct",
         Route::Proxy(d, _) => &d.group,
         Route::Refuse => "refused",
+        Route::Blocked => "blocked",
     }
 }
 
+/// Each set counts as a change, so a decision taken under the mode can tell it was set since.
 #[test]
 fn mode_cell_round_trips() {
     let cell = ModeCell::new(Mode::Direct);
-    for mode in [
+    let first = cell.changes();
+    for (n, mode) in [
         Mode::Global,
         Mode::Rule,
         Mode::Direct,
         Mode::Rule,
         Mode::Global,
-    ] {
+    ]
+    .into_iter()
+    .enumerate()
+    {
         cell.set(mode);
         assert_eq!(cell.get(), mode);
+        assert_eq!(cell.changes(), first + n as u64 + 1);
     }
 }
 
@@ -192,8 +199,11 @@ fn block_quic_refuses_quic_bound_for_a_group() {
     let session = session();
     session.names().map(ABROAD.into(), "youtube.com");
     let route = |dst, mode| Route::of(Inbound::Tun, dst, mode, &outbounds, &session);
-    assert!(route(udp(ABROAD, 443), Mode::Rule).refused());
-    assert!(route(udp([104, 20, 0, 1], 443), Mode::Rule).refused());
+    for dst in [udp(ABROAD, 443), udp([104, 20, 0, 1], 443)] {
+        let blocked = route(dst, Mode::Rule);
+        assert!(blocked.refused() && !blocked.carries_udp(), "{dst:?}");
+        assert_eq!(target(&blocked), "blocked", "{dst:?}");
+    }
     assert_eq!(target(&route(udp(CN, 443), Mode::Rule)), "direct");
     assert_eq!(target(&route(tcp(ABROAD, 443), Mode::Rule)), "g-Streaming");
     assert_eq!(target(&route(udp(ABROAD, 8443), Mode::Rule)), "g-Streaming");

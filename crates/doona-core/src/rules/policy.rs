@@ -26,6 +26,8 @@ pub(crate) struct Policy {
 pub(crate) enum Choice<'a> {
     Direct,
     Reject,
+    /// QUIC bound for a group, which `blockQuic` refuses.
+    Blocked,
     /// Through this group, by id.
     Group(&'a str),
 }
@@ -100,7 +102,7 @@ impl Policy {
             None => self.main.as_str(),
         };
         if self.block_quic && flow.network == Network::Udp && flow.port == QUIC_PORT {
-            return Choice::Reject;
+            return Choice::Blocked;
         }
         Choice::Group(group)
     }

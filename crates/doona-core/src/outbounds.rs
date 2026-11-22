@@ -29,7 +29,7 @@ use honk_outbound::proxy::ProxyRegistry;
 use honk_outbound::runtime::OutboundRuntimeRegistry;
 use std::collections::HashSet;
 use std::io::{self, ErrorKind};
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 use std::time::Instant;
 use tokio::runtime::{Handle, Runtime};
@@ -50,6 +50,8 @@ const WORKERS: usize = 2;
 pub struct Outbounds {
     proxies: Arc<ProxyRegistry>,
     table: RwLock<Arc<Table>>,
+    /// How many times `table`'s routing was published.
+    routings: AtomicU64,
     /// The carriers new registries are built for, and who ends them. Taken after the table lock
     /// when both are held.
     current: Mutex<Current>,
@@ -269,6 +271,7 @@ impl Outbounds {
         Ok(Outbounds {
             proxies: Arc::new(proxies),
             table: RwLock::new(Arc::default()),
+            routings: AtomicU64::new(0),
             current: Mutex::default(),
             panics,
             #[cfg(test)]
@@ -424,6 +427,7 @@ impl Outbounds {
             }
             let old = table.published.clone();
             *table = Arc::new(Table::new(published, routing));
+            self.routings.fetch_add(1, Relaxed);
             (old, reused)
         };
         if let Some(old) = old.filter(|old| !old.carriers.ended()) {
@@ -446,6 +450,13 @@ impl Outbounds {
     pub(crate) fn select(&self, routing: Routing) {
         let mut table = self.table.write().unwrap_or_else(|e| e.into_inner());
         *table = Arc::new(Table::new(table.published.clone(), routing));
+        self.routings.fetch_add(1, Relaxed);
+    }
+
+    /// How many times a routing (each group's node and the policy) was published, so a decision
+    /// taken under one can tell a new one came since.
+    pub(crate) fn routings(&self) -> u64 {
+        self.routings.load(Relaxed)
     }
 
     /// Builds the published registry again, for the same nodes on new carriers, when its own
