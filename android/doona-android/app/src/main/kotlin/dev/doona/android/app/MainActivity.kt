@@ -20,21 +20,34 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 class MainActivity : ComponentActivity() {
     private val engine get() = (application as DoonaApplication).container.engine
 
+    /**
+     * True from a connect request until it connects or consent is refused, so a repeated tap or a redelivered intent
+     * joins the pending request. Saved with the activity, because a pending result is delivered to the recreated one.
+     */
+    private var connecting = false
+
     // A denied notification permission does not stop the connection; the service then runs without a visible notice.
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { requestVpnConsent() }
 
     private val vpnConsent = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        connecting = false
         if (result.resultCode == RESULT_OK) engine.connect()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        connecting = savedInstanceState?.getBoolean(KEY_CONNECTING) ?: false
         setContent { DoonaTheme { DoonaApp(engine, onConnect = ::connect) } }
         // A recreated activity or one reopened from recents must not repeat the request that first launched it.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (savedInstanceState == null && !fromHistory) handle(intent)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_CONNECTING, connecting)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -53,6 +66,8 @@ class MainActivity : ComponentActivity() {
      * reports a rationale and the request is skipped, and after a permanent denial the system answers at once.
      */
     private fun connect() {
+        if (connecting) return
+        connecting = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permission = Manifest.permission.POST_NOTIFICATIONS
             val granted = checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
@@ -66,7 +81,9 @@ class MainActivity : ComponentActivity() {
 
     private fun requestVpnConsent() {
         val consent = VpnService.prepare(this)
-        if (consent == null) engine.connect() else vpnConsent.launch(consent)
+        if (consent != null) return vpnConsent.launch(consent)
+        connecting = false
+        engine.connect()
     }
 
     companion object {
@@ -74,6 +91,7 @@ class MainActivity : ComponentActivity() {
 
         /** The `<activity-alias>` in the manifest; not exported. */
         private const val CONNECT_ENTRY = "dev.doona.android.app.ConnectEntry"
+        private const val KEY_CONNECTING = "connecting"
 
         /**
          * Opens the app and runs the same path as the connect switch, asking for consent first where needed. For this
