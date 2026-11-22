@@ -317,8 +317,9 @@ impl Core {
     }
 
     /// What a generation runs with, and the resolvers that serve host lookups once it is up (also
-    /// after `stop`). A resolver that is not an address is `invalid_argument`; Global or Rule with
-    /// no node in the main group is `no_nodes`: the tunnel would carry nothing but direct flows.
+    /// after `stop`). A resolver that is not an address is `invalid_argument`; Global with no node
+    /// in the main group is `no_nodes`, as it would refuse every flow. Rule starts without one: its
+    /// rules may still send flows direct, and refuse those bound for a group with no node.
     fn settings(&self, config: &str) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
         let config: StartConfig = parse(config)?;
         if config.mtu < MIN_MTU {
@@ -331,7 +332,7 @@ impl Core {
         let resolvers = bootstrap::servers(&config.bootstrap_dns, port, fallback)
             .ok_or(ErrorCode::InvalidArgument)?;
         let view = self.shared.outbounds.view();
-        if self.mode.get() != Mode::Direct && view.dialer(view.policy().main()).is_none() {
+        if self.mode.get() == Mode::Global && view.dialer(view.policy().main()).is_none() {
             return Err(ErrorCode::NoNodes);
         }
         let settings = Settings {

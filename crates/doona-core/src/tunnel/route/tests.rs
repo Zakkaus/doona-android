@@ -155,6 +155,37 @@ fn reject_and_a_group_without_a_node_are_refused_never_direct() {
     assert!(route.refused());
 }
 
+/// The last subscription removed: the catalog publishes no node and no group. Rule still sends
+/// direct what its rules send direct (private and China's addresses), and refuses what a group
+/// would carry, DNS included; Global refuses everything (rule-mode.md decision 9).
+#[test]
+fn without_a_node_rule_keeps_its_direct_rows_and_refuses_the_rest() {
+    let model = Model::new(Vec::new(), HashMap::new());
+    let outbounds = Outbounds::new(Arc::default()).unwrap();
+    let built = outbounds.build(&model.nodes);
+    outbounds.replace(built, model.routing(&BTreeMap::new()));
+    let session = session();
+    session.names().map(ABROAD.into(), "www.netflix.com");
+    let route = |dst, mode| Route::of(Inbound::Tun, dst, mode, &outbounds, &session);
+    for dst in [
+        tcp([192, 168, 1, 1], 80),
+        udp([192, 168, 1, 1], 5353),
+        tcp(CN, 443),
+        udp(CN, 443),
+    ] {
+        assert_eq!(target(&route(dst, Mode::Rule)), "direct", "{dst:?}");
+        assert!(route(dst, Mode::Global).refused(), "{dst:?}");
+    }
+    for dst in [
+        tcp(ABROAD, 443),
+        tcp([104, 20, 0, 1], 443),
+        udp(ABROAD, 8443),
+    ] {
+        assert!(route(dst, Mode::Rule).refused(), "{dst:?}");
+    }
+    assert!(Route::dns(Inbound::Tun, Mode::Rule, &outbounds, &session).refused());
+}
+
 #[test]
 fn block_quic_refuses_quic_bound_for_a_group() {
     let (outbounds, _model) = published(Options { block_quic: true });

@@ -135,13 +135,22 @@ fn block_quic_rejects_quic_bound_for_a_group_and_keeps_direct_quic() {
     assert_eq!(on.choose(&dns), Choice::Group("g-Proxy"));
 }
 
+/// With no node the catalog has no group, and the rules still apply: private and China's addresses
+/// go direct, and the rest names the group a rule gives, which then has no node to take it.
 #[test]
-fn without_nodes_every_flow_takes_the_main_group() {
+fn without_nodes_the_rules_still_apply() {
     let (groups, p) = policy(0, Options::default());
     assert!(groups.is_empty());
-    assert!(!p.wants_names());
-    let named = flow(Some("netflix.com"), CN, 443, Network::Tcp);
-    assert_eq!(p.choose(&named), Choice::Group("g-Proxy"));
+    assert!(p.wants_names());
+    let tcp = |domain, ip| p.choose(&flow(domain, ip, 443, Network::Tcp));
+    assert_eq!(tcp(None, [192, 168, 1, 1]), Choice::Direct);
+    assert_eq!(tcp(None, CN), Choice::Direct);
+    assert_eq!(
+        tcp(Some("www.netflix.com"), ABROAD),
+        Choice::Group("g-Streaming")
+    );
+    assert_eq!(tcp(Some("claude.ai"), ABROAD), Choice::Group("g-AI"));
+    assert_eq!(tcp(None, ABROAD), Choice::Group("g-Proxy"));
 }
 
 #[test]

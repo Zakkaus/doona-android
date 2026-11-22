@@ -4,7 +4,8 @@
 //! publishes it with each group's node (`Outbounds`), so a flow reads both from one publication.
 
 use super::template::{self, Options};
-use super::{Flow, Network, RuleSet, Target};
+use super::{Flow, Network, RuleSet, RuleSpec, Target};
+use crate::dto::GroupKind;
 use crate::groups::{self, GroupDef};
 use crate::ids::group_id;
 
@@ -15,7 +16,7 @@ const QUIC_PORT: u16 = 443;
 pub(crate) struct Policy {
     /// The main group's id (`mainGroupId`): `g-Proxy` under the template.
     main: String,
-    /// None while the catalog has no group, that is no node.
+    /// None before the catalog publishes, or when the rules failed to compile.
     rules: Option<RuleSet>,
     block_quic: bool,
 }
@@ -40,21 +41,27 @@ impl Default for Policy {
 }
 
 impl Policy {
-    /// The template's rules over the catalog's `groups`, whose nodes `is_node` knows; none
-    /// without groups. The template always compiles over the catalog's groups (a test holds it to
-    /// a full catalog), so a failure is logged and leaves every flow to the main group.
+    /// The template's rules over the catalog's `groups`, whose nodes `is_node` knows. Without a
+    /// node the catalog has no group: the rules then compile over the groups they name, empty, so
+    /// the rows that go direct still apply and a flow a group would carry is refused (rule-mode.md
+    /// decision 9). The template always compiles (tests hold it to a full catalog and to none), so
+    /// a failure is logged and leaves every flow to the main group.
     pub fn template(
         groups: &[GroupDef],
         is_node: &dyn Fn(&str) -> bool,
         options: Options,
     ) -> Policy {
-        let rules = (!groups.is_empty())
-            .then(|| RuleSet::compile_template(groups, is_node, &template::rules()))
-            .and_then(|compiled| {
-                compiled
-                    .inspect_err(|code| log::error!("rules: template refused ({})", code.as_str()))
-                    .ok()
-            });
+        let rows = template::rules();
+        let empty;
+        let groups = if groups.is_empty() {
+            empty = named_groups(&rows);
+            &empty[..]
+        } else {
+            groups
+        };
+        let rules = RuleSet::compile_template(groups, is_node, &rows)
+            .inspect_err(|code| log::error!("rules: template refused ({})", code.as_str()))
+            .ok();
         Policy {
             rules,
             block_quic: options.block_quic,
@@ -97,4 +104,22 @@ impl Policy {
         }
         Choice::Group(group)
     }
+}
+
+/// The groups `rows` send flows to, each without a member.
+fn named_groups(rows: &[RuleSpec]) -> Vec<GroupDef> {
+    let mut groups: Vec<GroupDef> = Vec::new();
+    for row in rows {
+        if let Target::Group(id) = &row.target
+            && !groups.iter().any(|g| &g.id == id)
+        {
+            groups.push(GroupDef {
+                id: id.clone(),
+                name: id.strip_prefix("g-").unwrap_or(id).to_owned(),
+                kind: GroupKind::Selector,
+                members: Vec::new(),
+            });
+        }
+    }
+    groups
 }

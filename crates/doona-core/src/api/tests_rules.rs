@@ -282,3 +282,38 @@ fn a_rejected_flow_and_a_group_without_a_node_are_refused() {
     let reply = r.client.recv_udp(udp, Duration::from_secs(10));
     assert_eq!(reply.as_deref(), Some(&b"direct"[..]));
 }
+
+/// The last subscription removed in Rule: the template's direct rows still carry private and
+/// China's addresses, and a flow a group would carry is reset without a dial. `start` then refuses
+/// Global with `no_nodes`, not Rule.
+#[test]
+fn rule_without_a_node_keeps_the_template_direct_rows() {
+    let (echo, accepted) = counted_echo([127, 0, 0, 1]);
+    let mut r = Rig::new("rules-no-node", Options::default());
+    r.set_mode("Rule");
+    let removed = r.core.call("removeSubscription", r#"{"id":"s1"}"#);
+    assert_eq!(removed, r#"{"ok":{}}"#);
+    let id = r.client.connect(echo);
+    assert_eq!(round_trip(&mut r.client, id, b"private"), b"private");
+    let abroad = SocketAddr::from(([104, 16, 0, 1], 443));
+    let id = r.client.connect(abroad);
+    let refused = r.client.exchange(id, b"abroad");
+    assert!(
+        matches!(refused, Err(StreamError::Reset | StreamError::Unreachable)),
+        "{refused:?}"
+    );
+    assert_eq!((r.dials(), accepted.load(SeqCst)), (0, 1));
+    r.core.stop();
+    let (tun, peer) = tun_and_peer();
+    assert_eq!(r.core.start(tun, CONFIG), Ok(()));
+    let mut client = Client::new(peer);
+    let id = client.connect(echo);
+    assert_eq!(round_trip(&mut client, id, b"again"), b"again");
+    r.core.stop();
+    r.set_mode("Global");
+    let (tun, _peer) = tun_and_peer();
+    assert_eq!(
+        r.core.start(tun, CONFIG),
+        Err(crate::dto::ErrorCode::NoNodes)
+    );
+}
