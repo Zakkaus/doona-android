@@ -21,6 +21,25 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1"
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // The debug key lets a release APK install locally; a store release is signed elsewhere.
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 
     buildFeatures {

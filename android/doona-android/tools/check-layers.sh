@@ -6,9 +6,10 @@
 #     selectable or BasicText: every interactive element is a designsystem component;
 #   - engine/ imports no android.* class.
 # Inside one module `internal` hides nothing, so imports are the only boundary there is.
+# Override the scanned source root with $1 (the negative control points it at a planted tree).
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
-src="$root/app/src/main/kotlin/dev/doona/android"
+src=${1:-$root/app/src/main/kotlin/dev/doona/android}
 fail=0
 
 # rule <description> <regex> <directory or file filter: grep -v pattern of allowed paths> <search dir>
@@ -20,7 +21,7 @@ rule() {
     fi
 }
 
-rule 'androidx.compose.material3 outside designsystem/' '^import androidx\.compose\.material3\.' '/designsystem/' "$src"
+rule 'androidx.compose.material3 outside designsystem/' 'androidx\.compose\.material3' '/designsystem/' "$src"
 rule 'designsystem.tokens outside designsystem/tokens and designsystem/theme' 'designsystem\.tokens' '/designsystem/(tokens|theme)/' "$src"
 rule 'feature/ imports vpn/ or data/' 'import dev\.doona\.android\.(vpn|data)\.' '^$' "$src/feature"
 rule 'feature/ reaches into a component Defaults object' 'Defaults\b' '^$' "$src/feature"
