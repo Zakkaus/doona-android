@@ -1,0 +1,246 @@
+package dev.doona.android.vpn
+
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.FailureReason
+import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.Status
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+/** Real threads, as on the phone: the core blocks the controller's thread while the test acts from another. */
+@RunWith(AndroidJUnit4::class)
+class TunnelControllerTest {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val core = FakeCore()
+    private val host = FakeHost()
+
+    @Volatile
+    private var perApp = PerApp()
+    private val killed = CountDownLatch(1)
+    private val controller = TunnelController(
+        core = core,
+        opener = CoreOpener(core, "/data", Dispatchers.IO),
+        perApp = { perApp },
+        scope = scope,
+        killProcess = { killed.countDown() },
+        stopDeadlineMs = 200,
+    )
+    private val seen = CopyOnWriteArrayList<Status>()
+
+    @Before
+    fun launch() {
+        scope.launch(Dispatchers.IO.limitedParallelism(1)) { controller.run() }
+        scope.launch(Dispatchers.Unconfined) { controller.status.collect { seen += it } }
+    }
+
+    @After
+    fun tearDown() = scope.cancel()
+
+    private fun awaitStatus(predicate: (Status) -> Boolean): Status =
+        runBlocking { withTimeout(5_000) { controller.status.first(predicate) } }
+
+    private fun startRunning(): Status.Running {
+        controller.start(host)
+        return awaitStatus { it is Status.Running } as Status.Running
+    }
+
+    @Test
+    fun startLendsTheTunAndPublishesRunning() {
+        startRunning()
+        assertEquals(listOf("start"), core.events)
+        assertEquals(listOf(AppRouting.Exclude(setOf(SELF))), host.routings)
+        assertTrue(host.tuns.single().closed)
+        assertTrue("bootstrap DNS read before establish", core.configs.single().contains("192.168.8.1"))
+    }
+
+    @Test
+    fun revokeDuringABlockedStartStopsTheLateSuccess() {
+        val release = CountDownLatch(1)
+        core.startGate = release
+        controller.start(host)
+        assertTrue(core.startEntered.await(5, TimeUnit.SECONDS))
+
+        controller.stop()
+        assertEquals(Status.Stopping, controller.status.value)
+        release.countDown()
+
+        awaitStatus { it == Status.Stopped }
+        assertEquals(listOf("start", "stop"), core.events)
+        assertTrue(host.tuns.single().closed)
+        assertFalse(seen.any { it is Status.Running })
+    }
+
+    @Test
+    fun startFailureIsReportedOnceAndClosesTheTun() {
+        core.startError = IllegalStateException("internal")
+        controller.start(host)
+        assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
+        assertEquals(listOf("start"), core.events)
+        assertTrue(host.tuns.single().closed)
+        assertFalse(seen.any { it is Status.Running })
+    }
+
+    @Test
+    fun aMissingLibraryIsAStartFailure() {
+        core.startError = UnsatisfiedLinkError("start")
+        controller.start(host)
+        assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
+        assertTrue(host.tuns.single().closed)
+    }
+
+    @Test
+    fun aStopPastTheDeadlineEndsTheProcess() {
+        startRunning()
+        val release = CountDownLatch(1)
+        core.stopGate = release
+        controller.stop()
+        assertTrue(killed.await(5, TimeUnit.SECONDS))
+        release.countDown()
+    }
+
+    @Test
+    fun aPromptStopDoesNotEndTheProcess() {
+        startRunning()
+        controller.stop()
+        awaitStatus { it == Status.Stopped }
+        assertFalse(killed.await(400, TimeUnit.MILLISECONDS))
+    }
+
+    @Test
+    fun onlyListedWithNoInstalledAppIsRefused() {
+        perApp = PerApp(AppPolicy.OnlyListed, setOf("gone.app"))
+        controller.start(host)
+        assertEquals(Status.Failed(FailureReason.NoAllowedApps), awaitStatus { it is Status.Failed })
+        assertTrue(host.routings.isEmpty())
+        assertTrue(core.events.isEmpty())
+    }
+
+    @Test
+    fun rebuildEstablishesANewTunWithTheNewPolicy() {
+        startRunning()
+        perApp = PerApp(AppPolicy.ExceptListed, setOf(FIREFOX))
+        controller.rebuild()
+        assertEquals(Status.Starting, controller.status.value)
+        awaitStatus { it is Status.Running }
+        assertEquals(listOf("start", "stop", "start"), core.events)
+        assertEquals(AppRouting.Exclude(setOf(FIREFOX, SELF)), host.routings.last())
+        assertTrue(host.tuns.all { it.closed })
+    }
+
+    @Test
+    fun rebuildToAnEmptyAllowListFailsInsteadOfCapturingEveryApp() {
+        startRunning()
+        perApp = PerApp(AppPolicy.OnlyListed, setOf("gone.app"))
+        controller.rebuild()
+        assertEquals(Status.Failed(FailureReason.NoAllowedApps), awaitStatus { it is Status.Failed })
+        assertEquals(listOf("start", "stop"), core.events)
+        assertEquals(1, host.routings.size)
+    }
+
+    @Test
+    fun anotherSchemaIsAnIncompatibleCore() {
+        core.schema = 2
+        controller.start(host)
+        assertEquals(Status.Failed(FailureReason.IncompatibleCore), awaitStatus { it is Status.Failed })
+        assertTrue(host.routings.isEmpty())
+    }
+
+    @Test
+    fun aDeadDataPathFailsTheSessionItWasSeenIn() {
+        val running = startRunning()
+        controller.coreStopped(Status.Running(running.sinceEpochMs - 1))
+        assertEquals(running, controller.status.value)
+
+        controller.coreStopped(running)
+        assertEquals(Status.Failed(FailureReason.CoreStopped), awaitStatus { it is Status.Failed })
+        assertEquals(listOf("start", "stop"), core.events)
+    }
+
+    @Test
+    fun aSecondStartWhileStartingIsIgnored() {
+        val release = CountDownLatch(1)
+        core.startGate = release
+        controller.start(host)
+        controller.start(host)
+        release.countDown()
+        awaitStatus { it is Status.Running }
+        assertEquals(1, host.routings.size)
+    }
+
+    private class FakeCore : CoreBridge {
+        @Volatile var schema = CORE_SCHEMA
+
+        @Volatile var startError: Throwable? = null
+
+        @Volatile var startGate: CountDownLatch? = null
+
+        @Volatile var stopGate: CountDownLatch? = null
+        val startEntered = CountDownLatch(1)
+        val events = CopyOnWriteArrayList<String>()
+        val configs = CopyOnWriteArrayList<String>()
+
+        override fun init(dataDir: String) = """{"schema":$schema}"""
+
+        override fun start(tunFd: Int, configJson: String) {
+            startEntered.countDown()
+            startGate?.await()
+            events += "start"
+            configs += configJson
+            startError?.let { throw it }
+        }
+
+        override fun stop() {
+            stopGate?.await()
+            events += "stop"
+        }
+
+        override fun snapshot(sinceRevision: Long) = error("unused")
+
+        override fun call(command: String, argsJson: String) = error("unused")
+    }
+
+    private class FakeTun(override val fd: Int) : Tun {
+        @Volatile var closed = false
+
+        override fun close() {
+            closed = true
+        }
+    }
+
+    private class FakeHost : TunHost {
+        override val selfPackage = SELF
+        val routings = CopyOnWriteArrayList<AppRouting>()
+        val tuns = CopyOnWriteArrayList<FakeTun>()
+
+        override fun installed(packages: Set<String>) = packages intersect setOf(FIREFOX)
+
+        override fun bootstrapDns() = listOf("192.168.8.1")
+
+        override fun establish(routing: AppRouting): Tun {
+            routings += routing
+            return FakeTun(fd = 40 + tuns.size).also { tuns += it }
+        }
+    }
+
+    private companion object {
+        const val SELF = "dev.doona.android"
+        const val FIREFOX = "org.mozilla.firefox"
+    }
+}
