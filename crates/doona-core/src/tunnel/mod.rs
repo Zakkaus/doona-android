@@ -12,6 +12,7 @@ mod tun;
 mod udp;
 
 use crate::dto::{ErrorCode, Traffic};
+use crate::outbounds::Outbounds;
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use route::ModeCell;
@@ -39,6 +40,9 @@ pub struct Settings {
     pub dns_upstreams: Vec<SocketAddr>,
     /// The committed mode; each new flow reads it.
     pub mode: Arc<ModeCell>,
+    /// Each group's current node and what dials it. Flows do not go through groups yet: Global
+    /// refuses them while the data path cannot dial a node.
+    pub outbounds: Arc<Outbounds>,
 }
 
 /// The tun as the driver holds it.

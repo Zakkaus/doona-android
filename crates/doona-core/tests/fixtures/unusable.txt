@@ -1,0 +1,3 @@
+vmess://not-base64
+foo://bar
+ss://YWVzLTI1Ni1nY206cGFzcw@192.0.2.4:8388?plugin=obfs-local%3Bobfs%3Dhttp#plugin

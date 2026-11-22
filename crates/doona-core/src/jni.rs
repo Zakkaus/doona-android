@@ -80,12 +80,19 @@ fn install_panic_hook() {
     }));
 }
 
+/// Only the core's own records reach logcat. honk's `tracing` events arrive as `log` records
+/// too (no subscriber is installed) and may name nodes, servers or URLs.
 fn init_logging() {
     #[cfg(target_os = "android")]
     android_logger::init_once(
         android_logger::Config::default()
             .with_tag("doona-core")
-            .with_max_level(log::LevelFilter::Info),
+            .with_max_level(log::LevelFilter::Info)
+            .with_filter(
+                android_logger::FilterBuilder::new()
+                    .filter_module("doonacore", log::LevelFilter::Info)
+                    .build(),
+            ),
     );
 }
 

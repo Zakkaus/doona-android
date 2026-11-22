@@ -2,7 +2,7 @@
 //! core owns this file (Kotlin's DataStore holds only the per-app policy). Writes replace it
 //! atomically: a temp file is written and synced, then renamed over the old one.
 
-use crate::dto::Mode;
+use crate::dto::{ErrorCode, Mode};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -27,6 +27,30 @@ pub struct State {
     /// Group id to the member id chosen by hand.
     #[serde(default)]
     pub selections: BTreeMap<String, String>,
+    /// The number in the next subscription's id; an id is never given twice.
+    #[serde(default)]
+    pub next_subscription: u64,
+}
+
+impl State {
+    /// A new subscription id: `s` and a number above every id given before.
+    pub fn take_subscription_id(&mut self) -> String {
+        let used = self
+            .subscriptions
+            .iter()
+            .filter_map(|s| s.id.strip_prefix('s')?.parse::<u64>().ok())
+            .max()
+            .unwrap_or(0);
+        let n = self.next_subscription.max(used + 1);
+        self.next_subscription = n + 1;
+        format!("s{n}")
+    }
+}
+
+/// A stored quota. Cores before this one stored them as unsigned numbers, so a value past
+/// `i64::MAX` may be in the file: it reads as no quota, and the rest of the file stays usable.
+fn quota<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<i64>, D::Error> {
+    Ok(Option::<serde_json::Number>::deserialize(d)?.and_then(|n| n.as_i64()))
 }
 
 impl Default for State {
@@ -36,11 +60,12 @@ impl Default for State {
             mode: Mode::Global,
             subscriptions: Vec::new(),
             selections: BTreeMap::new(),
+            next_subscription: 1,
         }
     }
 }
 
-/// A subscription as stored; its nodes and status are derived at run time.
+/// A subscription as stored. Its nodes are parsed from `links` at load.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredSubscription {
@@ -48,9 +73,17 @@ pub struct StoredSubscription {
     pub name: String,
     pub url: String,
     pub updated_at_epoch_ms: Option<i64>,
-    pub used_bytes: Option<u64>,
-    pub total_bytes: Option<u64>,
+    #[serde(default, deserialize_with = "quota")]
+    pub used_bytes: Option<i64>,
+    #[serde(default, deserialize_with = "quota")]
+    pub total_bytes: Option<i64>,
     pub expires_at_epoch_ms: Option<i64>,
+    /// The code of the last failed update; a successful one clears it.
+    #[serde(default)]
+    pub error: Option<ErrorCode>,
+    /// The share links of its nodes as last fetched, one per node, in feed order.
+    #[serde(default)]
+    pub links: Vec<String>,
 }
 
 /// How [`Store::load`] found the file.
@@ -106,9 +139,14 @@ impl Store {
 
     /// Writes `state` to a synced temporary file and renames it over the state file. The
     /// rename is the commit: once it succeeds, a restart reads the new state. [`Store::sync`]
-    /// then makes the rename durable.
-    pub fn commit(&self, state: &State) -> io::Result<()> {
+    /// then makes the rename durable. `proceed` runs once `state` is serialized, right before
+    /// the first write to the file system; when it answers false nothing is written and the
+    /// error is `TimedOut`.
+    pub fn commit(&self, state: &State, proceed: impl FnOnce() -> bool) -> io::Result<()> {
         let bytes = serde_json::to_vec_pretty(state).map_err(io::Error::other)?;
+        if !proceed() {
+            return Err(ErrorKind::TimedOut.into());
+        }
         let temp = self.dir.join(TEMP);
         let committed =
             write_synced(&temp, &bytes).and_then(|()| fs::rename(&temp, self.dir.join(FILE)));
@@ -162,7 +200,7 @@ mod tests {
         state
             .selections
             .insert("g-Proxy".into(), "n-0c41be77".into());
-        store.commit(&state).unwrap();
+        store.commit(&state, || true).unwrap();
         store.sync();
         assert!(!dir.path().join(TEMP).exists());
         let (loaded, how) = store.load().unwrap();
@@ -185,6 +223,21 @@ mod tests {
     }
 
     #[test]
+    fn subscription_ids_are_never_given_twice() {
+        let mut state = State::default();
+        let first = state.take_subscription_id();
+        assert_eq!(first, "s1");
+        assert_eq!(state.take_subscription_id(), "s2");
+        // A file written without the counter still avoids the ids it holds.
+        let mut old: State = serde_json::from_str(
+            r#"{"stateVersion":1,"mode":"Global","subscriptions":[{"id":"s7","name":"a","url":"https://a.invalid/","updatedAtEpochMs":null,"usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null}]}"#,
+        )
+        .unwrap();
+        assert!(old.subscriptions[0].links.is_empty() && old.subscriptions[0].error.is_none());
+        assert_eq!(old.take_subscription_id(), "s8");
+    }
+
+    #[test]
     fn unreadable_or_newer_files_are_set_aside() {
         for text in [&b"{not json"[..], br#"{"stateVersion":2,"mode":"Direct"}"#] {
             let dir = TempDir::new("state-aside");
@@ -195,5 +248,31 @@ mod tests {
             assert_eq!(fs::read(dir.path().join(SET_ASIDE)).unwrap(), text);
             assert!(!dir.path().join(FILE).exists());
         }
+    }
+
+    #[test]
+    fn a_quota_stored_as_an_unsigned_number_keeps_the_rest_of_the_file() {
+        // Written before quotas became signed: u64::MAX and 2^63 have no i64.
+        let dir = TempDir::new("state-old-quota");
+        fs::write(
+            dir.path().join(FILE),
+            br#"{"stateVersion":1,"mode":"Direct","nextSubscription":3,
+                "subscriptions":[
+                  {"id":"s1","name":"a","url":"https://a.invalid/","updatedAtEpochMs":5,
+                   "usedBytes":18446744073709551615,"totalBytes":9223372036854775808,
+                   "expiresAtEpochMs":7},
+                  {"id":"s2","name":"b","url":"https://b.invalid/","updatedAtEpochMs":null,
+                   "usedBytes":9223372036854775807,"totalBytes":0,"expiresAtEpochMs":null}],
+                "selections":{"g-Proxy":"g-Auto"}}"#,
+        )
+        .unwrap();
+        let (state, how) = Store::new(dir.path()).load().unwrap();
+        assert_eq!(how, Loaded::Read);
+        assert_eq!(state.mode, Mode::Direct);
+        let (a, b) = (&state.subscriptions[0], &state.subscriptions[1]);
+        assert_eq!((a.used_bytes, a.total_bytes), (None, None));
+        assert_eq!(a.expires_at_epoch_ms, Some(7));
+        assert_eq!((b.used_bytes, b.total_bytes), (Some(i64::MAX), Some(0)));
+        assert_eq!(state.selections.len(), 1);
     }
 }

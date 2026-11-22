@@ -124,8 +124,8 @@ pub struct Subscription {
     pub nodes: u32,
     pub updated_at_epoch_ms: Option<i64>,
     pub error: Option<ErrorCode>,
-    pub used_bytes: Option<u64>,
-    pub total_bytes: Option<u64>,
+    pub used_bytes: Option<i64>,
+    pub total_bytes: Option<i64>,
     pub expires_at_epoch_ms: Option<i64>,
 }
 

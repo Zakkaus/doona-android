@@ -1,0 +1,14 @@
+# A test feed: every server is a documentation address (RFC 5737) with a made-up secret.
+REMARKS=harbor
+STATUS=used 1 GB
+trojan://secret@192.0.2.1:443#hk-01
+trojan://other@192.0.2.2:443#hk-01
+trojan://secret@192.0.2.1:443#hk-01%20again
+ss://YWVzLTI1Ni1nY206cGFzcw@192.0.2.3:8388#%F0%9F%87%AF%F0%9F%87%B5%20Tokyo%2001
+ss://YWVzLTI1Ni1nY206cGFzcw@192.0.2.4:8388?plugin=obfs-local%3Bobfs%3Dhttp#plugin
+hysteria2://secret@192.0.2.5:443#%E5%8F%B0%E6%B9%BE%20TW01
+trojan://secret@192.0.2.6:443#SG%2001
+trojan://secret@192.0.2.7:443#US-West
+vless://00000000-0000-4000-8000-000000000001@192.0.2.8:443#KR%20Seoul
+socks5://192.0.2.9:1080#Other
+anytls://secret@192.0.2.10:443#HK-02

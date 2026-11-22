@@ -7,8 +7,8 @@ plugins {
 }
 
 // libdoonacore.so (Rust, crates/doona-core) is built by cargo-ndk into a generated jniLibs directory of each
-// variant, beside the NDK's libc++_shared.so, which BoringSSL needs. -Pdoona.skipCore=true leaves both out, for
-// builds that never load the core (JVM tests, UI work).
+// variant, beside the NDK's libc++_shared.so when the library lists it as NEEDED. -Pdoona.skipCore=true leaves both
+// out, for builds that never load the core (JVM tests, UI work).
 abstract class CargoNdk : Exec() {
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
@@ -61,17 +61,29 @@ androidComponents {
             doLast {
                 val abiDir = outputDir.get().dir("arm64-v8a").asFile
                 val tools = ndkDir.get().dir("toolchains/llvm/prebuilt").asFile.listFiles().orEmpty().single()
-                File(tools, "sysroot/usr/lib/aarch64-linux-android/libc++_shared.so")
-                    .copyTo(File(abiDir, "libc++_shared.so"), overwrite = true)
-                // A missing export only fails when Kotlin first calls it, on a phone: check here.
                 val library = File(abiDir, "libdoonacore.so").path
-                val nm = ProcessBuilder(File(tools, "bin/llvm-nm").path, "-D", "--defined-only", library)
-                    .redirectErrorStream(true)
-                    .start()
-                val listing = nm.inputStream.bufferedReader().readText()
-                if (nm.waitFor() != 0) throw GradleException("llvm-nm failed on libdoonacore.so:\n$listing")
+                fun tool(name: String, vararg args: String): String {
+                    val process = ProcessBuilder(File(tools, "bin/$name").path, *args, library)
+                        .redirectErrorStream(true)
+                        .start()
+                    val output = process.inputStream.bufferedReader().readText()
+                    if (process.waitFor() != 0) throw GradleException("$name failed on libdoonacore.so:\n$output")
+                    return output
+                }
+                // The C++ runtime ships only when the library links it, and then it must ship: the loader would
+                // fail on a phone.
+                val needed = Regex("""\(NEEDED\)\s+Shared library: \[([^\]]+)]""")
+                    .findAll(tool("llvm-readelf", "-d"))
+                    .map { it.groupValues[1] }
+                    .toSet()
+                if ("libc++_shared.so" in needed) {
+                    val runtime = File(tools, "sysroot/usr/lib/aarch64-linux-android/libc++_shared.so")
+                    if (!runtime.isFile) throw GradleException("libdoonacore.so needs libc++_shared.so; not in the NDK")
+                    runtime.copyTo(File(abiDir, "libc++_shared.so"), overwrite = true)
+                }
+                // A missing export only fails when Kotlin first calls it, on a phone: check here.
                 val exported = Regex("""\bJava_dev_doona_android_vpn_NativeCore_\w+""")
-                    .findAll(listing)
+                    .findAll(tool("llvm-nm", "-D", "--defined-only"))
                     .map { it.value }
                     .toSet()
                 if (exported != coreSymbols) {
