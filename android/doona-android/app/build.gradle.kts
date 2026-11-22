@@ -93,6 +93,13 @@ androidComponents {
         }
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildCore, CargoNdk::outputDir)
     }
+    // The profile build carries the debug source set: the RV prototype, its resources and its launcher entry.
+    onVariants(selector().withBuildType("profile")) { variant ->
+        variant.sources.kotlin?.addStaticSourceDirectory("src/debug/kotlin")
+        variant.sources.res?.addStaticSourceDirectory("src/debug/res")
+        variant.sources.assets?.addStaticSourceDirectory("src/debug/assets")
+        variant.sources.manifests.addStaticManifestFile("src/debug/AndroidManifest.xml")
+    }
 }
 
 android {
@@ -124,6 +131,14 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // The debug key lets a release APK install locally; a store release is signed elsewhere.
             signingConfig = signingConfigs.getByName("debug")
+        }
+        // A release build (R8, not debuggable) that also carries the debug source set's prototype, so frame times
+        // measured on a phone mean what a user would see; profileable, so Perfetto can trace it. Debug Compose
+        // numbers are not decisions. The source set is added below, under androidComponents.
+        create("profile") {
+            initWith(getByName("release"))
+            isProfileable = true
+            matchingFallbacks += "release"
         }
     }
 
