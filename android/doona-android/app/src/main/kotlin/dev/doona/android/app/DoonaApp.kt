@@ -1,4 +1,4 @@
-package dev.doona.android.ui
+package dev.doona.android.app
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
@@ -6,6 +6,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import dev.doona.android.designsystem.components.Hub
+import dev.doona.android.feature.activity.ActivityScreen
+import dev.doona.android.feature.policies.GroupScreen
+import dev.doona.android.feature.policies.PoliciesScreen
 import dev.doona.android.model.Demo
 
 enum class Screen { Activity, Policies, Group }

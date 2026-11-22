@@ -1,4 +1,4 @@
-package dev.doona.android.ui
+package dev.doona.android.feature.policies
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,12 +20,30 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.Badge
+import dev.doona.android.designsystem.components.DoonaCard
+import dev.doona.android.designsystem.components.DoonaIcon
+import dev.doona.android.designsystem.components.DoonaSwitch
+import dev.doona.android.designsystem.components.Gap
+import dev.doona.android.designsystem.components.HGap
+import dev.doona.android.designsystem.components.Hub
+import dev.doona.android.designsystem.components.HubPage
+import dev.doona.android.designsystem.components.IconAction
+import dev.doona.android.designsystem.components.Latency
+import dev.doona.android.designsystem.components.NodeName
+import dev.doona.android.designsystem.components.NodeTile
+import dev.doona.android.designsystem.components.PageTabs
+import dev.doona.android.designsystem.components.PageTitle
+import dev.doona.android.designsystem.components.PickerButton
+import dev.doona.android.designsystem.components.Segmented
+import dev.doona.android.designsystem.components.StatusLight
+import dev.doona.android.designsystem.components.TagChip
+import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.model.GroupDetail
 import dev.doona.android.model.Member
 import dev.doona.android.model.PolicyGroup
 import dev.doona.android.model.PolicyKind
 import dev.doona.android.model.Tone
-import dev.doona.android.theme.DoonaTheme
 
 @Composable
 private fun kindLabel(kind: PolicyKind): String = stringResource(

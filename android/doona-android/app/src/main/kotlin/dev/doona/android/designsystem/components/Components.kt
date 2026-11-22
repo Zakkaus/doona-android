@@ -1,4 +1,4 @@
-package dev.doona.android.ui
+package dev.doona.android.designsystem.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
@@ -39,11 +39,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
+import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.model.Member
 import dev.doona.android.model.Region
 import dev.doona.android.model.Tone
 import dev.doona.android.model.latencyTone
-import dev.doona.android.theme.DoonaTheme
 
 @Composable
 fun DoonaIcon(@DrawableRes icon: Int, tint: Color, modifier: Modifier = Modifier, size: Dp = DoonaTheme.size.icon) {
@@ -115,7 +115,7 @@ fun ControlCard(@DrawableRes icon: Int, iconTint: Color, label: String, trailing
     }
 }
 
-fun toneColor(c: dev.doona.android.theme.DoonaColors, tone: Tone): Color = when (tone) {
+fun toneColor(c: dev.doona.android.designsystem.theme.DoonaColors, tone: Tone): Color = when (tone) {
     Tone.Ok -> c.positive
     Tone.Warn -> c.notice
     Tone.Err -> c.negative

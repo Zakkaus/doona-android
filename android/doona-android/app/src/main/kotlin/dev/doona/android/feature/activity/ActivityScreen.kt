@@ -1,4 +1,4 @@
-package dev.doona.android.ui
+package dev.doona.android.feature.activity
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
@@ -26,10 +26,26 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.ControlCard
+import dev.doona.android.designsystem.components.DoonaCard
+import dev.doona.android.designsystem.components.DoonaIcon
+import dev.doona.android.designsystem.components.DoonaSwitch
+import dev.doona.android.designsystem.components.Gap
+import dev.doona.android.designsystem.components.HGap
+import dev.doona.android.designsystem.components.Hub
+import dev.doona.android.designsystem.components.HubPage
+import dev.doona.android.designsystem.components.IconAction
+import dev.doona.android.designsystem.components.NodeName
+import dev.doona.android.designsystem.components.PageTabs
+import dev.doona.android.designsystem.components.PageTitle
+import dev.doona.android.designsystem.components.PickerButton
+import dev.doona.android.designsystem.components.Segmented
+import dev.doona.android.designsystem.components.Sparkline
+import dev.doona.android.designsystem.components.StatusLight
+import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.model.Activity
 import dev.doona.android.model.Tone
 import dev.doona.android.model.latencyTone
-import dev.doona.android.theme.DoonaTheme
 
 /**
  * 活動 (doona `src/features/activity`): the connection card this client adds, doona's quick controls (outbound mode,

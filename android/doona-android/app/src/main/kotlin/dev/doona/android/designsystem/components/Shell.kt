@@ -1,4 +1,4 @@
-package dev.doona.android.ui
+package dev.doona.android.designsystem.components
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -37,7 +37,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
-import dev.doona.android.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.DoonaTheme
 
 enum class Hub(@StringRes val label: Int, @DrawableRes val icon: Int) {
     // Each hub shows its first page's icon (`src/shell/HubBar.tsx:33`, `src/shell/registry.ts`).

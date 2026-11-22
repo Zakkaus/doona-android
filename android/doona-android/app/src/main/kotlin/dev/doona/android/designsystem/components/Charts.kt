@@ -1,4 +1,4 @@
-package dev.doona.android.ui
+package dev.doona.android.designsystem.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
@@ -10,8 +10,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import dev.doona.android.theme.DoonaChart
-import dev.doona.android.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.DoonaChart
+import dev.doona.android.designsystem.theme.DoonaTheme
 
 /**
  * doona's sparkline (§7, Charts; `Sparkline.tsx`, `AreaCurve.tsx`): a monotone-X curve stroked 1.5 in the series

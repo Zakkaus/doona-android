@@ -33,10 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
-import dev.doona.android.theme.DoonaTheme
-import dev.doona.android.theme.LocalFrameInsets
-import dev.doona.android.ui.DoonaApp
-import dev.doona.android.ui.Screen
+import dev.doona.android.app.DoonaApp
+import dev.doona.android.app.Screen
+import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.theme.LocalFrameInsets
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
