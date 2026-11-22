@@ -13,8 +13,12 @@ data class DoonaPalette(
     val overlay: Color,
     val muted: Color,
     val subtle: Color,
+    /** `subtle` darkened (Dawn) or lightened (Moon) to 4.5:1 on every fill secondary text sits on, which `subtle` itself misses. */
+    val subtleText: Color,
     val text: Color,
     val love: Color,
+    /** `love` lightened to 4.5:1 on Moon's fills, for error text; Dawn uses body text for tones, so it keeps `love`. */
+    val loveText: Color,
     val gold: Color,
     val rose: Color,
     val pine: Color,
@@ -23,7 +27,16 @@ data class DoonaPalette(
     val hlLow: Color,
     val hlMed: Color,
     val hlHigh: Color,
-    /** `--rp-selected`: accent 10 % over overlay, measured. */
+    /**
+     * The card fill, one step off the sheet (`surface`) so a card needs no border: `base` on Dawn, where the sheet is the
+     * lightest fill, and a step lighter than the sheet on Moon, between `surface` and `overlay`.
+     */
+    val card: Color,
+    /**
+     * The one fill of a selected item (the current tab's pill, the current node tile): a warm neutral in the hue of the
+     * surfaces it sits on, one step darker than `overlay` on Dawn and just above `overlay` on Moon. Dark enough to show on
+     * the bar and light enough that `subtleText` still reaches 4.5:1 on it, which ContrastTest holds.
+     */
     val selected: Color,
     val onAccent: Color,
     val dark: Boolean,
@@ -35,8 +48,10 @@ val Dawn = DoonaPalette(
     overlay = Color(0xFFF2E9E1),
     muted = Color(0xFF9893A5),
     subtle = Color(0xFF797593),
+    subtleText = Color(0xFF605C7A),
     text = Color(0xFF464261),
     love = Color(0xFFB4637A),
+    loveText = Color(0xFFB4637A),
     gold = Color(0xFFEA9D34),
     rose = Color(0xFFD7827E),
     pine = Color(0xFF286983),
@@ -45,7 +60,8 @@ val Dawn = DoonaPalette(
     hlLow = Color(0xFFF4EDE8),
     hlMed = Color(0xFFDFDAD9),
     hlHigh = Color(0xFFCECACD),
-    selected = Color(0xFFDEDCD8),
+    card = Color(0xFFFAF4ED),
+    selected = Color(0xFFE7D9CC),
     onAccent = Color(0xFFFFFAF3),
     dark = false,
 )
@@ -56,8 +72,10 @@ val Moon = DoonaPalette(
     overlay = Color(0xFF393552),
     muted = Color(0xFF6E6A86),
     subtle = Color(0xFF908CAA),
+    subtleText = Color(0xFFACA9C4),
     text = Color(0xFFE0DEF4),
     love = Color(0xFFEB6F92),
+    loveText = Color(0xFFE796B4),
     gold = Color(0xFFF6C177),
     rose = Color(0xFFEA9A97),
     pine = Color(0xFF3E8FB0),
@@ -66,7 +84,8 @@ val Moon = DoonaPalette(
     hlLow = Color(0xFF2A283E),
     hlMed = Color(0xFF44415A),
     hlHigh = Color(0xFF56526E),
-    selected = Color(0xFF3A3E5B),
+    card = Color(0xFF322E49),
+    selected = Color(0xFF3F3B57),
     onAccent = Color(0xFF191724),
     dark = true,
 )

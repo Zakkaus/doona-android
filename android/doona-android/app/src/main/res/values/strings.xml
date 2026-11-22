@@ -28,6 +28,10 @@
     <string name="act_active">Active connections</string>
     <string name="act_latency">Latency</string>
     <string name="latency_ms">%1$d ms</string>
+    <string name="latency_good">Fast</string>
+    <string name="latency_fair">Fair</string>
+    <string name="latency_slow">Slow</string>
+    <string name="latency_untested">Not tested</string>
     <string name="act_cpu">CPU usage</string>
     <string name="policy_kind_selector">Manual</string>
     <string name="policy_kind_urltest">Fastest on average</string>
@@ -55,6 +59,8 @@
     <string name="policy_includes">Includes</string>
     <string name="policy_filter">Filter nodes</string>
     <string name="ui_dismiss">Dismiss</string>
+    <string name="ui_on">On</string>
+    <string name="ui_off">Off</string>
     <string name="act_rate" translatable="false">%1$s/s</string>
     <string name="status_stopped">Not connected</string>
     <string name="status_starting">Connecting</string>

@@ -24,16 +24,18 @@ import androidx.compose.ui.semantics.semantics
 import dev.doona.android.designsystem.theme.DoonaTheme
 
 /**
- * Error banner: a card with the error tone's dot and border, holding a message that may wrap. Tapping it dismisses
- * it; screen readers announce it when it appears.
+ * Error banner: a card with the error tone's dot and border, holding a message that may wrap. It is the one card that
+ * keeps a border: the border says it is an error, which a card's fill does not. Tapping it dismisses it; screen
+ * readers announce it when it appears.
  */
 @Composable
 fun DoonaErrorBanner(message: String, dismissLabel: String, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val c = DoonaTheme.colors
-    val shape = DoonaTheme.shape.xl
+    val shape = DoonaTheme.shape.card
     val style = DoonaTheme.type.body
     Row(
         modifier
+            .layoutRole(LayoutRole.Card)
             .fillMaxWidth()
             .heightIn(min = DoonaTheme.size.touch)
             .clip(shape)
@@ -41,13 +43,11 @@ fun DoonaErrorBanner(message: String, dismissLabel: String, onDismiss: () -> Uni
             .border(DoonaTheme.size.border, c.negative, shape)
             .clickable(role = Role.Button, onClickLabel = dismissLabel, onClick = onDismiss)
             .semantics { liveRegion = LiveRegionMode.Polite }
-            .padding(DoonaTheme.space.s4),
+            .padding(DoonaTheme.spacing.cardInset),
         verticalAlignment = Alignment.Top,
     ) {
-        Box(Modifier.height(lineHeightOf(style)), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(DoonaTheme.size.dot).clip(DoonaTheme.shape.pill).background(c.negative))
-        }
-        Spacer(Modifier.width(DoonaTheme.space.s2))
-        Text(message, style = style, color = c.text)
+        LineDot(Tone.Err, style, DoonaTheme.size.dot)
+        Spacer(Modifier.width(DoonaTheme.spacing.item))
+        Text(message, style = style, color = c.text.primary)
     }
 }

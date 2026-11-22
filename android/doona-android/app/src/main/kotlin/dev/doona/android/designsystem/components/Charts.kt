@@ -1,6 +1,7 @@
 package dev.doona.android.designsystem.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -15,19 +16,20 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 
 /**
  * doona's sparkline (§7, Charts; `Sparkline.tsx`, `AreaCurve.tsx`): a monotone-X curve stroked 1.5 in the series
- * colour over an area filled with a vertical gradient of that colour, 0.35 to 0.03, drawn at 0.6.
+ * colour over an area filled with a vertical gradient of that colour, 0.35 to 0.03, drawn at 0.6. It is 32 high and
+ * as wide as its caller makes it.
  */
 @Composable
-fun Sparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier) {
+fun DoonaSparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier) {
     val stroke = DoonaTheme.size.sparkStroke
-    Canvas(modifier) {
+    Canvas(modifier.height(DoonaTheme.size.spark)) {
         if (values.size < 2) return@Canvas
         val sw = stroke.toPx()
         // doona's domain and range (`Sparkline.tsx:42-49`): min × 0.85 to max × 1.05, drawn 2 px inside the box.
         val lo = values.min() * DoonaChart.DOMAIN_LOW
         val hi = values.max() * DoonaChart.DOMAIN_HIGH
         val span = (hi - lo).takeIf { it > 0f } ?: 1f
-        val inset = DoonaChart.INSET.toPx()
+        val inset = DoonaTheme.size.chartInset.toPx()
         val points = values.mapIndexed { i, v ->
             Offset(i * size.width / (values.size - 1), inset + (1f - (v - lo) / span) * (size.height - 2 * inset))
         }

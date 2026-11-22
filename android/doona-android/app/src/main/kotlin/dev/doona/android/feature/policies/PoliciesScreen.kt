@@ -1,10 +1,12 @@
 package dev.doona.android.feature.policies
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,29 +21,34 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.Badge
+import dev.doona.android.designsystem.components.ChevronDirection
+import dev.doona.android.designsystem.components.DoonaBadge
+import dev.doona.android.designsystem.components.DoonaBarAction
 import dev.doona.android.designsystem.components.DoonaCard
+import dev.doona.android.designsystem.components.DoonaChevron
+import dev.doona.android.designsystem.components.DoonaFilterPicker
+import dev.doona.android.designsystem.components.DoonaGap
+import dev.doona.android.designsystem.components.DoonaHGap
 import dev.doona.android.designsystem.components.DoonaIcon
+import dev.doona.android.designsystem.components.DoonaLatency
+import dev.doona.android.designsystem.components.DoonaNodeName
+import dev.doona.android.designsystem.components.DoonaNodeTile
 import dev.doona.android.designsystem.components.DoonaPage
-import dev.doona.android.designsystem.components.DoonaSwitch
+import dev.doona.android.designsystem.components.DoonaPageTabs
+import dev.doona.android.designsystem.components.DoonaPageTitle
+import dev.doona.android.designsystem.components.DoonaRow
+import dev.doona.android.designsystem.components.DoonaSegmented
+import dev.doona.android.designsystem.components.DoonaSmallStatusLight
+import dev.doona.android.designsystem.components.DoonaSwitchRow
+import dev.doona.android.designsystem.components.DoonaTagChip
 import dev.doona.android.designsystem.components.DoonaText
-import dev.doona.android.designsystem.components.Gap
-import dev.doona.android.designsystem.components.HGap
-import dev.doona.android.designsystem.components.IconAction
-import dev.doona.android.designsystem.components.Latency
-import dev.doona.android.designsystem.components.NodeName
-import dev.doona.android.designsystem.components.NodeTile
-import dev.doona.android.designsystem.components.PageTabs
-import dev.doona.android.designsystem.components.PageTitle
-import dev.doona.android.designsystem.components.PickerButton
-import dev.doona.android.designsystem.components.Segmented
-import dev.doona.android.designsystem.components.StatusLight
-import dev.doona.android.designsystem.components.TagChip
 import dev.doona.android.designsystem.components.Tone
+import dev.doona.android.designsystem.components.lineHeightOf
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
+import dev.doona.android.feature.NOT_WIRED
 
 @Composable
 private fun kindLabel(kind: GroupKind): String = stringResource(
@@ -57,21 +64,21 @@ private val Group.current: Member? get() = members.firstOrNull { it.id == select
 /** 策略 (doona `src/features/policies/Policies.tsx`): the kind filter, then one card per group. */
 @Composable
 fun PoliciesScreen(groups: List<Group>, onOpen: (String) -> Unit) {
-    val space = DoonaTheme.space
+    val space = DoonaTheme.spacing
     var kind by remember { mutableIntStateOf(0) }
     val manual = groups.count { it.kind.manual }
     DoonaPage(
-        actions = {
-            IconAction(R.drawable.ic_add_circle, stringResource(R.string.group_new_group))
-            IconAction(R.drawable.ic_search, stringResource(R.string.ui_search))
-            IconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options))
-        },
+        actions = listOf(
+            DoonaBarAction(R.drawable.ic_add_circle, stringResource(R.string.group_new_group), NOT_WIRED),
+            DoonaBarAction(R.drawable.ic_search, stringResource(R.string.ui_search), NOT_WIRED),
+            DoonaBarAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), NOT_WIRED),
+        ),
     ) {
-        PageTitle(stringResource(R.string.nav_policies))
-        Gap(space.s4)
-        PageTabs(listOf(stringResource(R.string.nav_policies), stringResource(R.string.nav_nodes), stringResource(R.string.nav_rules)), selected = 0)
-        Gap(space.s6)
-        Segmented(
+        DoonaPageTitle(stringResource(R.string.nav_policies))
+        DoonaGap(space.afterTitle)
+        DoonaPageTabs(listOf(stringResource(R.string.nav_policies), stringResource(R.string.nav_nodes), stringResource(R.string.nav_rules)), selected = 0)
+        DoonaGap(space.section)
+        DoonaSegmented(
             listOf(
                 stringResource(R.string.ui_all_count, groups.size),
                 stringResource(R.string.policy_kind_manual, manual),
@@ -80,26 +87,26 @@ fun PoliciesScreen(groups: List<Group>, onOpen: (String) -> Unit) {
             selected = kind,
             onSelect = { kind = it },
         )
-        Gap(space.s6)
-        Column(verticalArrangement = Arrangement.spacedBy(space.s3)) {
+        DoonaGap(space.section)
+        Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
             groups.forEach { GroupCard(it) { onOpen(it.id) } }
         }
     }
 }
 
-/** Group heading facts: kind badge, then the available and untested counts as small lights (§7, Badge, Status light). */
+/** Group heading facts: kind badge, then the available and untested counts as small lights (§7, DoonaBadge, Status light). */
 @Composable
 private fun GroupFacts(group: Group) {
     val healthy = group.members.count { it.latencyMs != null && !it.failed }
     val untested = group.members.count { it.latencyMs == null && !it.failed }
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(DoonaTheme.space.s3),
-        verticalArrangement = Arrangement.spacedBy(DoonaTheme.space.s1),
+        horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block),
+        verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight),
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        Badge(kindLabel(group.kind))
-        StatusLight(Tone.Ok, stringResource(R.string.policy_healthy, healthy), small = true)
-        if (untested > 0) StatusLight(Tone.Neutral, stringResource(R.string.policy_untested, untested), small = true)
+        DoonaBadge(kindLabel(group.kind))
+        DoonaSmallStatusLight(Tone.Ok, stringResource(R.string.policy_healthy, healthy))
+        if (untested > 0) DoonaSmallStatusLight(Tone.Neutral, stringResource(R.string.policy_untested, untested))
     }
 }
 
@@ -109,17 +116,20 @@ private fun GroupCard(group: Group, onOpen: () -> Unit) {
     val c = DoonaTheme.colors
     DoonaCard(Modifier.fillMaxWidth(), onClick = onOpen) {
         Row(verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DoonaTheme.space.s2)) {
-                DoonaText(group.name, style = DoonaTheme.type.cardTitle, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
+                DoonaText(group.name, style = DoonaTheme.type.cardTitle, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 GroupFacts(group)
             }
-            HGap(DoonaTheme.space.s3)
-            DoonaIcon(R.drawable.ic_chevron_right, c.textSecondary, size = DoonaTheme.size.iconSmall)
+            DoonaHGap(DoonaTheme.spacing.block)
+            // The chevron is centred on the title's first line.
+            Box(Modifier.height(lineHeightOf(DoonaTheme.type.cardTitle)), contentAlignment = Alignment.Center) {
+                DoonaChevron(ChevronDirection.Right, c.text.secondary)
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             CurrentSummary(group, DoonaTheme.type.label, Modifier.weight(1f))
-            HGap(DoonaTheme.space.s3)
-            Latency(group.current?.latencyMs)
+            DoonaHGap(DoonaTheme.spacing.block)
+            DoonaLatency(group.current?.latencyMs)
         }
     }
 }
@@ -129,9 +139,9 @@ private fun GroupCard(group: Group, onOpen: () -> Unit) {
 private fun CurrentSummary(group: Group, style: TextStyle, modifier: Modifier = Modifier) {
     val c = DoonaTheme.colors
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        DoonaText(stringResource(R.string.policy_current), style = style, color = c.text, maxLines = 1, softWrap = false)
-        HGap(DoonaTheme.space.s3)
-        NodeName(group.current?.name ?: "—", style, modifier = Modifier.weight(1f, fill = false))
+        DoonaText(stringResource(R.string.policy_current), style = style, color = c.text.primary, maxLines = 1, softWrap = false)
+        DoonaHGap(DoonaTheme.spacing.block)
+        DoonaNodeName(group.current?.name ?: "—", style, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
@@ -141,7 +151,7 @@ private fun CurrentSummary(group: Group, style: TextStyle, modifier: Modifier = 
  */
 @Composable
 fun GroupScreen(group: Group, onBack: () -> Unit) {
-    val space = DoonaTheme.space
+    val space = DoonaTheme.spacing
     val c = DoonaTheme.colors
     // doona's default order: by latency, untested last.
     val members = group.members.sortedBy { it.latencyMs ?: Int.MAX_VALUE }
@@ -149,52 +159,50 @@ fun GroupScreen(group: Group, onBack: () -> Unit) {
     var aliveOnly by remember { mutableStateOf(false) }
     DoonaPage(
         onBack = onBack,
-        actions = {
-            IconAction(R.drawable.ic_search, stringResource(R.string.policy_filter))
-            IconAction(R.drawable.ic_edit, stringResource(R.string.policy_edit))
-            IconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options))
-        },
+        actions = listOf(
+            DoonaBarAction(R.drawable.ic_search, stringResource(R.string.policy_filter), NOT_WIRED),
+            DoonaBarAction(R.drawable.ic_edit, stringResource(R.string.policy_edit), NOT_WIRED),
+            DoonaBarAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), NOT_WIRED),
+        ),
     ) {
-        PageTitle(group.name)
-        Gap(space.s2)
+        DoonaPageTitle(group.name)
+        DoonaGap(space.item)
         GroupFacts(group)
-        Gap(space.s6)
+        DoonaGap(space.section)
         CurrentSummary(group, DoonaTheme.type.label)
-        Gap(space.s3)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(space.s2)) {
-            group.members.filter { it.isGroup }.forEach { TagChip(it.name) }
+        DoonaGap(space.block)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(space.item), verticalArrangement = Arrangement.spacedBy(space.item)) {
+            group.members.filter { it.isGroup }.forEach { DoonaTagChip(it.name) }
         }
-        Gap(space.s1)
-        DoonaText(stringResource(R.string.group_every_node), style = DoonaTheme.type.caption, color = c.textSecondary)
-        Gap(space.s6)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Segmented(
+        DoonaGap(space.item)
+        DoonaText(stringResource(R.string.group_every_node), style = DoonaTheme.type.caption, color = c.text.secondary)
+        DoonaGap(space.section)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            DoonaSegmented(
                 listOf(stringResource(R.string.policy_both), stringResource(R.string.ui_tcp), stringResource(R.string.ui_udp)),
                 selected = net,
                 onSelect = { net = it },
-                modifier = Modifier.weight(1f),
             )
-            HGap(space.s3)
             DoonaText(
                 pluralStringResource(R.plurals.policy_members, members.size, members.size),
-                style = DoonaTheme.type.body.copy(fontFeatureSettings = DoonaTheme.type.tabular),
-                color = c.textSecondary,
+                style = DoonaTheme.type.bodyTabular,
+                color = c.text.secondary,
                 maxLines = 1,
             )
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(space.s3)) {
-            PickerButton(stringResource(R.string.policy_all_regions), onClick = {})
-            PickerButton(stringResource(R.string.policy_by_latency), onClick = {}, filled = true)
+        DoonaGap(space.block)
+        Row(horizontalArrangement = Arrangement.spacedBy(space.block)) {
+            DoonaFilterPicker(stringResource(R.string.policy_all_regions), onClick = NOT_WIRED)
+            DoonaFilterPicker(stringResource(R.string.policy_by_latency), onClick = NOT_WIRED)
         }
-        Row(Modifier.fillMaxWidth().heightIn(min = DoonaTheme.size.touch), verticalAlignment = Alignment.CenterVertically) {
-            DoonaText(stringResource(R.string.policy_alive_only), style = DoonaTheme.type.body, color = c.text, maxLines = 1, modifier = Modifier.weight(1f))
-            HGap(space.s3)
-            DoonaSwitch(aliveOnly, { aliveOnly = it }, stringResource(R.string.policy_alive_only))
+        DoonaGap(space.block)
+        DoonaSwitchRow(aliveOnly, { aliveOnly = it }) {
+            DoonaText(stringResource(R.string.policy_alive_only), style = DoonaTheme.type.body, color = c.text.primary, maxLines = 1)
         }
-        Gap(space.s3)
-        Column(verticalArrangement = Arrangement.spacedBy(space.s2)) {
+        DoonaGap(space.block)
+        Column(verticalArrangement = Arrangement.spacedBy(space.item)) {
             val groupLabel = stringResource(R.string.ui_group)
-            members.forEach { NodeTile(it.name, it.latencyMs, current = it.id == group.selectedId, groupLabel = groupLabel.takeIf { _ -> it.isGroup }) }
+            members.forEach { DoonaNodeTile(it.name, it.latencyMs, current = it.id == group.selectedId, groupLabel = groupLabel.takeIf { _ -> it.isGroup }, onClick = NOT_WIRED) }
         }
     }
 }
