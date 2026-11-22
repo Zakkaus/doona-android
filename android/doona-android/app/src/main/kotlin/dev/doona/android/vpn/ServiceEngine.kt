@@ -33,6 +33,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
@@ -68,6 +70,7 @@ class ServiceEngine internal constructor(
     private val _subscriptions = MutableStateFlow(emptyList<Subscription>())
     override val subscriptions: StateFlow<List<Subscription>> = _subscriptions.asStateFlow()
     private val _settings = MutableStateFlow(Settings())
+    private val perAppEdits = Mutex()
     override val settings: StateFlow<Settings> = _settings.asStateFlow()
 
     private val publishing = Any()
@@ -157,9 +160,12 @@ class ServiceEngine internal constructor(
     override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> = try {
-        val saved = perAppSettings.update { perApp }
-        // Shown at once: after a failed read the collector reads the file again only after a pause.
-        _settings.update { it.copy(perApp = saved) }
+        // One save and its publication at a time, so an older save cannot show its policy after a newer one.
+        perAppEdits.withLock {
+            val saved = perAppSettings.update { perApp }
+            // Shown at once: after a failed read the collector reads the file again only after a pause.
+            _settings.update { it.copy(perApp = saved) }
+        }
         controller.rebuild()
         Result.success(Unit)
     } catch (e: IOException) {
