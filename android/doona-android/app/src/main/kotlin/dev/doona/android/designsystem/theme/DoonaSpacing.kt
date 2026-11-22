@@ -10,6 +10,9 @@ import dev.doona.android.designsystem.tokens.SpaceScale
  */
 @Immutable
 object DoonaSpacing {
+    /** No space: the bound of a clamp, or a shift that is not there. */
+    val none = SpaceScale.none
+
     /** Content edge: the sheet's side padding, where the first and last glyph of the top bar sit. */
     val gutter = SpaceScale.s4
 
@@ -48,6 +51,9 @@ object DoonaSpacing {
 
     /** Between the lines of a tile: the name row and its source row. The switch's knob inset is the switch's own. */
     val lineGap = SpaceScale.half
+
+    /** Above and below the icon and label of a hub tab: the tab keeps its air when a larger font makes it taller than the bar. */
+    val navInset = SpaceScale.s1h
 
     /** The whole scale, for checks. */
     val scale: List<Dp> = SpaceScale.all

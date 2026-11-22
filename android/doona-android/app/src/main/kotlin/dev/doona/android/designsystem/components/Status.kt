@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaColors
@@ -42,13 +43,14 @@ fun toneColor(c: DoonaColors, tone: Tone): Color = when (tone) {
     Tone.Neutral -> c.neutral
 }
 
-/** The dot of a status, centred on the first line of text of [style]. */
+/** The dot of a status, centred on the first line of text of [style] and sized with that line (see [dotSizeFor]). */
 @Composable
-private fun LineDot(tone: Tone, style: TextStyle, dot: Dp) {
+internal fun LineDot(tone: Tone, style: TextStyle, dot: Dp) {
     Box(Modifier.height(lineHeightOf(style)), contentAlignment = Alignment.Center) {
         Box(
             Modifier
-                .size(dot)
+                .layoutRole(LayoutRole.Dot)
+                .size(dotSizeFor(style, dot))
                 .clip(DoonaTheme.shape.pill)
                 .background(toneColor(DoonaTheme.colors, tone)),
         )
@@ -60,11 +62,14 @@ private fun StatusLight(tone: Tone, text: String, modifier: Modifier, style: Tex
     Row(modifier, verticalAlignment = Alignment.Top) {
         LineDot(tone, style, dot)
         Spacer(Modifier.width(gap))
-        Text(text, style = style, color = color, maxLines = 1, softWrap = false)
+        Text(text, style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
-/** Status light (§7): a dot and a label, the dot centred on the label's first line. 10 px dot, gap 8. */
+/**
+ * Status light (§7): a dot and a label, the dot centred on the label's first line. 10 px dot, gap 8; the dot grows with
+ * the font as the label does. A label too long for its room ends in an ellipsis.
+ */
 @Composable
 fun DoonaStatusLight(
     tone: Tone,
@@ -139,7 +144,7 @@ fun DoonaMetricLatency(ms: Int?, modifier: Modifier = Modifier) {
     val quality = latencyQuality(tone)
     val style = DoonaTheme.type.tileValue
     Row(modifier.semantics(mergeDescendants = true) { stateDescription = quality }, verticalAlignment = Alignment.Top) {
-        Text(latencyText(ms), style = style, color = latencyColor(tone), maxLines = 1, softWrap = false, modifier = Modifier.layoutRole(LayoutRole.Value))
+        Text(latencyText(ms), style = style, color = latencyColor(tone), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).layoutRole(LayoutRole.Value))
         Spacer(Modifier.width(DoonaTheme.spacing.dotGap))
         LineDot(tone, style, DoonaTheme.size.dotSmall)
     }
@@ -156,6 +161,6 @@ fun DoonaBadge(text: String, modifier: Modifier = Modifier) {
             .padding(horizontal = DoonaTheme.spacing.item),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = DoonaTheme.type.badge, color = c.text.secondary, maxLines = 1)
+        Text(text, style = DoonaTheme.type.badge, color = c.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

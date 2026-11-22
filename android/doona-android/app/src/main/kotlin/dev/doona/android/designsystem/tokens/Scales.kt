@@ -10,6 +10,8 @@ import androidx.compose.ui.unit.sp
 
 /** Spacing scale (§4, `foundations.css:67-79`). */
 object SpaceScale {
+    /** No space, for a clamp or a padding that is not there; not a step of the scale. */
+    val none = 0.dp
     val half = 2.dp
     val s1 = 4.dp
     val s1h = 6.dp
@@ -76,6 +78,7 @@ object SizeScale {
     val touch = 48.dp
     val topBar = 64.dp
     val bottomBar = 64.dp
+    val railWidth = 80.dp
     val logo = 28.dp
     val icon = 25.dp
     val iconSmall = 20.dp
@@ -97,13 +100,13 @@ object SizeScale {
 
     /** Widest content column: wider windows centre it (D20). */
     val contentMax = 600.dp
+
+    /** Windows shorter than this swap the bottom bar for a rail at the start edge (Material's compact height). */
+    val compactHeight = 480.dp
 }
 
 /** Alpha of the colours doona derives from a palette colour (§2). */
 object AlphaScale {
-    /** `--rp-card-border`: the palette's `hlMed` at 70 %. */
-    const val CARD_BORDER = 0.7f
-
     /** Light flag edge: black at 35 % (`--rp-node-flag-edge`, `src/ui/flags.css:8-13`). */
     const val FLAG_EDGE = 0.35f
 }

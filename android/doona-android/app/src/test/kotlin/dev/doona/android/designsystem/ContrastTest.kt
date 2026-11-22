@@ -70,4 +70,23 @@ class ContrastTest {
     fun theOldOffTrackFailsTheSameCheck() {
         themes.forEach { t -> assertTrue("${t.name}: hlHigh is ${ratio(t.palette.hlHigh, t.c.card)}:1 on the card", ratio(t.palette.hlHigh, t.c.card) < 3f) }
     }
+
+    /** One frame per page: the card is a step off the sheet, lighter than it on Moon and darker on Dawn, and is not the control fill. */
+    @Test
+    fun aCardIsOneStepOffTheSheet() {
+        themes.forEach { t ->
+            val card = t.c.card.luminance()
+            val sheet = t.c.surface.luminance()
+            assertTrue("${t.name}: the card is not a step ${if (t.c.dark) "lighter" else "darker"} than the sheet", if (t.c.dark) card > sheet else card < sheet)
+            assertTrue("${t.name}: the card is %.3f:1 against the sheet, a step shows at 1.03".format(ratio(t.c.card, t.c.surface)), ratio(t.c.card, t.c.surface) >= 1.03f)
+            assertTrue("${t.name}: a control on the card is the card's own colour", t.c.control != t.c.card)
+        }
+    }
+
+    /** The one selected fill shows on the bar it sits on. */
+    @Test
+    fun theSelectedFillShowsOnTheBar() {
+        val bad = themes.map { it to ratio(it.c.selected, it.c.window) }.filter { it.second < 1.15f }
+        assertTrue(bad.joinToString { "${it.first.name}: selected on the window is %.2f:1".format(it.second) }, bad.isEmpty())
+    }
 }

@@ -24,13 +24,15 @@ class DoonaColors(p: DoonaPalette) {
     val dark = p.dark
     val window = p.base
     val surface = p.surface
-    val card = p.base
-    val cardBorder = p.hlMed.copy(alpha = AlphaScale.CARD_BORDER)
+    val card = p.card
     val control = p.overlay
     val line = if (p.dark) p.hlMed else p.hlLow
     val strongLine = p.hlMed
     val text = DoonaTextColors(p)
     val accent = p.pine
+
+    /** The one colour of a decorative glyph: icons in tiles and rows are neutral, so colour is left to status and the accent. */
+    val icon = p.subtleText
     val onAccent = p.onAccent
     val selected = p.selected
     val badgeBorder = p.hlHigh
@@ -52,11 +54,10 @@ class DoonaColors(p: DoonaPalette) {
     /** Flag edge: a 0.5 px black 35 % outline in light, none in dark (`--rp-node-flag-edge`, `src/ui/flags.css:8-13`). */
     val flagEdge: Color? = if (p.dark) null else Color.Black.copy(alpha = AlphaScale.FLAG_EDGE)
 
-    /** Chart series c1…c6 (§2, chart series table). */
-    val c1 = p.pine
-    val c2 = p.foam
-    val c3 = p.iris
-    val c4 = p.gold
-    val c5 = p.rose
-    val c6 = p.love
+    /**
+     * The two series of the traffic chart (download, upload). A chart needs a hue to tell lines apart; nothing else on a
+     * page uses one for decoration, so there are no more series than a chart shows.
+     */
+    val series1 = p.pine
+    val series2 = p.gold
 }

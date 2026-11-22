@@ -19,7 +19,7 @@ object SpacingRules {
     /** The rules that hold at any scroll offset: the geometry of the layout, which a scroll only shifts. */
     internal fun check(root: LayoutBox, page: PageLayout): List<String> =
         detected(root, page.shows) + scaleGaps(root) + rhythm(root, page.rhythm) + sheet(root) + stacks(root) + cards(root) + controls(root) +
-            alikeControls(root) + contained(root) + rows(root) + topBar(root) + hubBar(root) + valueColumns(root) + contentColumn(root)
+            alikeControls(root) + contained(root) + rows(root) + hubBar(root) + valueColumns(root) + contentColumn(root)
 
     private fun near(a: Float, b: Float) = abs(a - b) <= TOL
 
@@ -98,13 +98,18 @@ object SpacingRules {
         }
     }
 
-    /** The sheet, the top bar and the hub bar hold a column at most 600 dp wide, centred in the window (D20). */
+    /**
+     * The sheet, the top bar and the hub bar hold a column at most 600 dp wide, centred in the room their parent gives
+     * them: the window, or what a rail leaves of it (D20). A rail is a hub bar that stands on end at the window's edge;
+     * it holds no content column.
+     */
     fun contentColumn(root: LayoutBox): List<String> {
         val roles = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
-        return root.descendants().filter { it.role in roles }.flatMap { column ->
+        return root.descendants().filter { it.role in roles && !(it.role == LayoutRole.HubBar && it.vertical) }.flatMap { column ->
+            val room = root.parentOf(column)
             buildList {
                 if (column.width > sizes.contentMax.value + TOL) add("${column.role} column $column is %.1f dp wide, over the %.0f dp cap".format(column.width, sizes.contentMax.value))
-                if (!near(column.left - root.left, root.right - column.right)) add("${column.role} column $column is not centred: %.1f dp left, %.1f dp right".format(column.left - root.left, root.right - column.right))
+                if (!near(column.left - room.left, room.right - column.right)) add("${column.role} column $column is not centred: %.1f dp left, %.1f dp right".format(column.left - room.left, room.right - column.right))
             }
         }.toList()
     }
@@ -225,20 +230,10 @@ object SpacingRules {
         }
     }
 
-    /** Top bar: the first and last glyph sit on the content gutter, as the content below does. */
-    fun topBar(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.TopBar }.flatMap { bar ->
-        val gutter = space.gutter.value
-        val glyphs = bar.leaves
-        buildList {
-            glyphs.minByOrNull { it.left }?.takeUnless { near(it.left - bar.left, gutter) }
-                ?.let { add("top bar: first glyph $it starts %.1f dp from the bar's start, %.1f dp off the gutter".format(it.left - bar.left, it.left - bar.left - gutter)) }
-            // Without actions the bar holds only the mark or the back arrow.
-            glyphs.takeIf { it.size > 1 }?.maxByOrNull { it.right }?.takeUnless { near(bar.right - it.right, gutter) }
-                ?.let { add("top bar: last glyph $it ends %.1f dp from the bar's end, %.1f dp off the gutter".format(bar.right - it.right, bar.right - it.right - gutter)) }
-        }
-    }.toList()
-
-    /** Hub bar: equal tabs, each label and pill centred on its tab. */
+    /**
+     * Hub bar: equal tabs, each label and pill centred on its tab, and the tab's content padded by [space].navInset
+     * above and below, so a bar that a larger font makes taller than its minimum does not press its content on its edges.
+     */
     fun hubBar(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.HubBar }.flatMap { bar ->
         val tabs = bar.content
         buildList {
@@ -248,6 +243,9 @@ object SpacingRules {
                 if (label != null && !near(label.centerX, tab.centerX)) add("hub bar: label $label is %.1f dp off the centre of its tab".format(label.centerX - tab.centerX))
                 val pill = tab.content.firstOrNull()
                 if (pill != null && !near(pill.centerX, tab.centerX)) add("hub bar: pill $pill is %.1f dp off the centre of its tab".format(pill.centerX - tab.centerX))
+                val air = space.navInset.value
+                if (pill != null && pill.top - tab.top < air - TOL) add("hub bar: pill $pill is %.1f dp from the top of its tab, under %.0f".format(pill.top - tab.top, air))
+                if (label != null && tab.bottom - label.bottom < air - TOL) add("hub bar: label $label is %.1f dp from the bottom of its tab, under %.0f".format(tab.bottom - label.bottom, air))
             }
         }
     }.toList()

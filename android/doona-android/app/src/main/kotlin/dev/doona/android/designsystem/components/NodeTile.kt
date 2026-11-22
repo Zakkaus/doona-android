@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.designsystem.theme.DoonaTheme
 
 /**
@@ -57,6 +58,6 @@ fun DoonaNodeTile(
             Spacer(Modifier.width(space.block))
             DoonaLatency(latencyMs)
         }
-        source?.let { Text(it, style = DoonaTheme.type.caption, color = c.text.primary, maxLines = 1) }
+        source?.let { Text(it, style = DoonaTheme.type.caption, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
 }

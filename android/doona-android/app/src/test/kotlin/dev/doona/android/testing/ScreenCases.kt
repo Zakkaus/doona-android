@@ -6,9 +6,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.doona.android.app.ActivityKey
 import dev.doona.android.app.DoonaApp
+import dev.doona.android.app.DoonaAppShell
 import dev.doona.android.app.GroupKey
 import dev.doona.android.app.PoliciesKey
 import dev.doona.android.app.SettingsKey
+import dev.doona.android.app.Tab
 import dev.doona.android.designsystem.components.CardsGallery
 import dev.doona.android.designsystem.components.ControlsGallery
 import dev.doona.android.designsystem.components.LayoutRole
@@ -52,8 +54,9 @@ internal fun screenCases(): List<ScreenCase> {
         ScreenCase("activity", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
             DoonaApp(engine, onConnect = {}, listOf(ActivityKey))
         },
-        ScreenCase("activity-error", PageLayout(bars + activity, listOf(space.afterTitle, space.section, space.section))) {
-            ActivityScreen(sampleActivityState(ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {})
+        ScreenCase("activity-error", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
+            // The error state sits in the frame of every other screen: the hub bar under it and the gesture bar's inset.
+            DoonaAppShell(Tab.Activity, onSelect = {}) { ActivityScreen(sampleActivityState(ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {}) }
         },
         ScreenCase(
             "policies",

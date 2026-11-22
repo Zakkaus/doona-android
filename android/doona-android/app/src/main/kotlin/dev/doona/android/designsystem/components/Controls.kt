@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
@@ -45,13 +46,14 @@ fun DoonaTagChip(text: String, modifier: Modifier = Modifier, onClick: (() -> Un
             .padding(horizontal = DoonaTheme.spacing.fillInset),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = DoonaTheme.type.body, color = DoonaTheme.colors.text.primary, maxLines = 1)
+        Text(text, style = DoonaTheme.type.body, color = DoonaTheme.colors.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 /**
  * Segmented control (§7): overlay track, radius 8, gap 4, 36 high; items 14/400 tabular, padding 0 × 8 on the
- * phone; the selected item is a surface box with a 2 px accent border. The layout is the visible track: Compose hits
+ * phone; the selected item is a thumb filled with the accent, its label on the accent. A filled thumb reads as a choice
+ * made, where an outline reads as the focus ring. The layout is the visible track: Compose hits
  * each item over 48 dp (the minimum touch target) without adding space around it, so the gaps of a page are measured
  * to what is drawn.
  */
@@ -74,12 +76,12 @@ fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, 
                     .heightIn(min = DoonaTheme.size.control)
                     .widthIn(min = DoonaTheme.size.control)
                     .clip(DoonaTheme.shape.control)
-                    .then(if (on) Modifier.background(c.surface).border(DoonaTheme.size.borderStrong, c.accent, DoonaTheme.shape.control) else Modifier)
+                    .then(if (on) Modifier.background(c.accent) else Modifier)
                     .selectable(on, role = Role.RadioButton, onClick = { onSelect(i) })
                     .padding(horizontal = DoonaTheme.spacing.item),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, style = DoonaTheme.type.bodyTabular, color = c.text.primary, maxLines = 1, softWrap = false)
+                Text(label, style = DoonaTheme.type.bodyTabular, color = if (on) c.onAccent else c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -167,7 +169,7 @@ private fun PickerRow(value: String, onClick: () -> Unit, modifier: Modifier, fi
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item),
     ) {
-        Text(value, style = DoonaTheme.type.body, color = c.text.primary, maxLines = 1)
+        Text(value, style = DoonaTheme.type.body, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         DoonaChevron(ChevronDirection.Down, c.text.primary)
     }
 }

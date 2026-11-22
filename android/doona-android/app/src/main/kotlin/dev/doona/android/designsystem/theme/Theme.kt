@@ -15,6 +15,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalConfiguration
 import dev.doona.android.designsystem.tokens.Dawn
 import dev.doona.android.designsystem.tokens.Moon
 import dev.doona.android.designsystem.tokens.NotoSansTc
@@ -45,6 +46,11 @@ object DoonaTheme {
     val insets: WindowInsets
         @Composable
         get() = LocalFrameInsets.current ?: WindowInsets.systemBars
+
+    /** Whether the window is too short for a bar at the bottom: the shell puts a rail at the start edge instead. */
+    val compactHeight: Boolean
+        @Composable @ReadOnlyComposable
+        get() = LocalConfiguration.current.screenHeightDp < size.compactHeight.value
 }
 
 /**

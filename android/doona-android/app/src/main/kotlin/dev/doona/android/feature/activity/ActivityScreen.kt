@@ -22,13 +22,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.DoonaBarAction
 import dev.doona.android.designsystem.components.DoonaCard
 import dev.doona.android.designsystem.components.DoonaControlCard
 import dev.doona.android.designsystem.components.DoonaErrorBanner
 import dev.doona.android.designsystem.components.DoonaGap
 import dev.doona.android.designsystem.components.DoonaHGap
 import dev.doona.android.designsystem.components.DoonaIcon
-import dev.doona.android.designsystem.components.DoonaIconAction
 import dev.doona.android.designsystem.components.DoonaMetricLatency
 import dev.doona.android.designsystem.components.DoonaMetricTile
 import dev.doona.android.designsystem.components.DoonaMetricValue
@@ -73,10 +73,10 @@ fun ActivityRoute(engine: Engine, onConnect: () -> Unit, onOpenGroup: (String) -
 fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
     val space = DoonaTheme.spacing
     DoonaPage(
-        actions = {
-            DoonaIconAction(R.drawable.ic_search, stringResource(R.string.ui_search), onClick = NOT_WIRED)
-            DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = NOT_WIRED)
-        },
+        actions = listOf(
+            DoonaBarAction(R.drawable.ic_search, stringResource(R.string.ui_search), NOT_WIRED),
+            DoonaBarAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), NOT_WIRED),
+        ),
     ) {
         DoonaPageTitle(stringResource(R.string.hub_activity))
         DoonaGap(space.afterTitle)
@@ -87,14 +87,14 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
                 DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(ActivityAction.DismissError) })
             }
             ConnectionCard(state.status, onSwitch = { if (it) onConnect() else onAction(ActivityAction.Disconnect) })
-            DoonaControlCard(R.drawable.ic_shuffle, DoonaTheme.colors.c3, stringResource(R.string.act_mode)) {
+            DoonaControlCard(R.drawable.ic_shuffle, stringResource(R.string.act_mode)) {
                 DoonaSegmented(
                     Mode.entries.map { stringResource(it.label) },
                     selected = state.mode.ordinal,
                     onSelect = { onAction(ActivityAction.SetMode(Mode.entries[it])) },
                 )
             }
-            DoonaControlCard(R.drawable.ic_filter, DoonaTheme.colors.c2, stringResource(R.string.act_global)) {
+            DoonaControlCard(R.drawable.ic_filter, stringResource(R.string.act_global)) {
                 DoonaPicker(state.outbound ?: NO_VALUE, onClick = { state.outboundGroupId?.let(onOpenGroup) })
             }
         }
@@ -115,8 +115,8 @@ private val Mode.label: Int
 private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
         DoonaTileRow {
-            RateTile(R.drawable.ic_download, DoonaTheme.colors.c1, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
-            RateTile(R.drawable.ic_upload, DoonaTheme.colors.c4, stringResource(R.string.ui_upload), rateText(state.upRate), state.upHistory)
+            RateTile(R.drawable.ic_download, DoonaTheme.colors.series1, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
+            RateTile(R.drawable.ic_upload, DoonaTheme.colors.series2, stringResource(R.string.ui_upload), rateText(state.upRate), state.upHistory)
         }
         // Direct traffic uses no node, so there is no latency to show.
         if (state.mode == Mode.Direct) return@Column
@@ -124,7 +124,6 @@ private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
         val latency = node?.latencyMs?.takeUnless { node.failed }
         DoonaMetricTile(
             icon = R.drawable.ic_clock,
-            tint = DoonaTheme.colors.c5,
             caption = { DoonaNodeName(node?.name ?: stringResource(R.string.act_latency), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) },
             modifier = Modifier.fillMaxWidth(),
             onClick = state.outboundGroupId?.let { id -> { onOpenGroup(id) } },
@@ -180,9 +179,9 @@ private val FailureReason.label: Int
 
 /** A rate tile: the value and the last minute's series as a sparkline across the tile. */
 @Composable
-private fun RowScope.RateTile(@DrawableRes icon: Int, tint: Color, caption: String, value: String, series: List<Float>) {
-    DoonaMetricTile(icon, tint, { DoonaTileCaption(caption) }, Modifier.weight(1f).fillMaxHeight()) {
+private fun RowScope.RateTile(@DrawableRes icon: Int, seriesColor: Color, caption: String, value: String, series: List<Float>) {
+    DoonaMetricTile(icon, { DoonaTileCaption(caption) }, Modifier.weight(1f).fillMaxHeight()) {
         DoonaMetricValue(value)
-        if (series.isNotEmpty()) DoonaSparkline(series, tint, Modifier.fillMaxWidth())
+        if (series.isNotEmpty()) DoonaSparkline(series, seriesColor, Modifier.fillMaxWidth())
     }
 }

@@ -9,13 +9,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,6 +42,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
@@ -49,7 +53,11 @@ data class DoonaHubTab(val label: String, @DrawableRes val icon: Int)
 
 /** Icon action with a 48 dp touch target and the 25 dp touch icon (§6). */
 @Composable
-fun DoonaIconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun DoonaIconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) = IconAction(icon, label, onClick, modifier, DoonaTheme.spacing.none)
+
+/** The action, its glyph moved [nudge] inside the 48 dp target (negative to the start): for a glyph that must reach the gutter. */
+@Composable
+private fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier, nudge: Dp) {
     Box(
         modifier
             .size(DoonaTheme.size.touch)
@@ -58,25 +66,35 @@ fun DoonaIconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, 
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        DoonaIcon(icon, DoonaTheme.colors.text.primary)
+        DoonaIcon(icon, DoonaTheme.colors.text.primary, Modifier.offset(x = nudge))
     }
 }
 
-internal object DoonaTopBarDefaults {
-    /**
-     * Padding at the ends of the bar. An icon action holds its 25 dp icon centred in a 48 dp target, so the icon reaches
-     * the gutter when the target starts this far inside it.
-     */
-    val edgeInset get() = DoonaTheme.spacing.gutter - (DoonaTheme.size.touch - DoonaTheme.size.icon) / 2
+/** One icon action of the [DoonaTopBar]. */
+@Immutable
+class DoonaBarAction(@DrawableRes val icon: Int, val label: String, val onClick: () -> Unit)
+
+/**
+ * Where an end of the bar puts a glyph whose drawn shape starts [ink] inside its box, so that the shape and not the box
+ * lies on the gutter: the space before the touch target, and how far the glyph moves inside the target when the target
+ * would otherwise start outside the window. The shape of the back arrow starts 3 dp inside its box and that of the
+ * menu's dots 10 dp inside theirs, so boxes on the gutter leave ragged edges.
+ */
+private class BarEdge(ink: Dp) {
+    private val gap = DoonaTheme.spacing.gutter - ink - (DoonaTheme.size.touch - DoonaTheme.size.icon) / 2
+    val padding = maxOf(gap, DoonaTheme.spacing.none)
+    val nudge = minOf(gap, DoonaTheme.spacing.none)
 }
 
 /**
  * Top app bar (§8): 64 high on the base fill, drawn under the status bar. The start holds the duck mark on a hub
- * page and the back arrow on a pushed page; icon actions sit at the end. The first and last glyph sit on the gutter of
- * the content column, which is at most 600 dp wide and centred.
+ * page and the back arrow on a pushed page; [actions] sit at the end. The first and last glyph sit on the gutter of
+ * the content column, which is at most 600 dp wide and centred, by their drawn shape (see [BarEdge]).
  */
 @Composable
-fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: @Composable RowScope.() -> Unit) {
+fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: List<DoonaBarAction> = emptyList()) {
+    val start = BarEdge(DoonaIconInk.start(R.drawable.ic_arrow_back, DoonaTheme.size.icon))
+    val end = actions.lastOrNull()?.let { BarEdge(DoonaIconInk.end(it.icon, DoonaTheme.size.icon)) }
     Box(
         modifier
             .fillMaxWidth()
@@ -89,26 +107,33 @@ fun DoonaTopBar(onBack: (() -> Unit)?, modifier: Modifier = Modifier, actions: @
                 .layoutRole(LayoutRole.TopBar)
                 .widthIn(max = DoonaTheme.size.contentMax)
                 .fillMaxWidth()
-                .height(DoonaTheme.size.topBar)
-                .padding(horizontal = DoonaTopBarDefaults.edgeInset),
+                .height(DoonaTheme.size.topBar),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (onBack != null) {
-                DoonaIconAction(R.drawable.ic_arrow_back, stringResource(R.string.ui_back), onBack)
+                IconAction(R.drawable.ic_arrow_back, stringResource(R.string.ui_back), onBack, Modifier.padding(start = start.padding), start.nudge)
             } else {
-                Box(Modifier.padding(start = (DoonaTheme.size.touch - DoonaTheme.size.icon) / 2)) {
-                    Image(painterResource(R.drawable.ic_duck), contentDescription = stringResource(R.string.app_name), modifier = Modifier.size(DoonaTheme.size.logo))
-                }
+                // The mark is not a target: its box starts where its shape must, so it needs no nudge.
+                Image(
+                    painterResource(R.drawable.ic_duck),
+                    contentDescription = stringResource(R.string.app_name),
+                    modifier = Modifier.padding(start = DoonaTheme.spacing.gutter - DoonaIconInk.start(R.drawable.ic_duck, DoonaTheme.size.logo)).size(DoonaTheme.size.logo),
+                )
             }
             Spacer(Modifier.weight(1f))
-            actions()
+            actions.forEachIndexed { i, action ->
+                val last = i == actions.lastIndex && end != null
+                IconAction(action.icon, action.label, action.onClick, if (last) Modifier.padding(end = end!!.padding) else Modifier, if (last) -end!!.nudge else DoonaTheme.spacing.none)
+            }
         }
     }
 }
 
 /**
- * Bottom hub bar (§8): 64 high plus the gesture bar, base fill, padding 0 × 8, equal items in a column at most 600 dp wide; each a 56 × 32 pill
- * holding the 25 px icon over a 12/16 label, gap 4. The current pill takes the selected fill and the accent icon.
+ * Bottom hub bar (§8): at least 64 high plus the gesture bar, base fill, padding 0 × 8, equal items in a column at most
+ * 600 dp wide; each a 56 × 32 pill holding the 25 px icon over a 12/16 label, gap 4, with 6 of air above and below. A
+ * larger font makes the tabs, and so the bar, taller; the bar never presses its content on its edges. The current pill
+ * takes the selected fill and the accent icon.
  */
 @Composable
 fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -134,13 +159,55 @@ fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit,
     }
 }
 
+/**
+ * Hub rail: the hub bar for a window too short to give the page a bar (see [DoonaHubShell]): the same tabs in a column
+ * at the start edge, as wide as [DoonaSize.railWidth] and as tall as the window, centred between the bars of the system.
+ */
+@Composable
+fun DoonaHubRail(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .layoutRole(LayoutRole.HubBar)
+            .fillMaxHeight()
+            .width(DoonaTheme.size.railWidth)
+            .background(DoonaTheme.colors.window)
+            .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical))
+            .selectableGroup(),
+        verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item, Alignment.CenterVertically),
+    ) {
+        tabs.forEachIndexed { i, tab -> HubTab(tab, i == selected, Modifier.fillMaxWidth()) { onSelect(i) } }
+    }
+}
+
+/**
+ * The frame of every page of the app: [content] over the hub bar, or beside the hub rail in a window shorter than
+ * [DoonaSize.compactHeight], where a bar and the top bar would leave a page under a third of the height. The bar takes
+ * the gesture bar's inset, so the page above it does not; beside a rail the page takes it, and the end inset of the window.
+ */
+@Composable
+fun DoonaHubShell(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val insets = DoonaTheme.insets
+    if (DoonaTheme.compactHeight) {
+        Row(modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+            DoonaHubRail(tabs, selected, onSelect)
+            Box(Modifier.weight(1f).fillMaxHeight().windowInsetsPadding(insets.only(WindowInsetsSides.End))) { content() }
+        }
+    } else {
+        Column(modifier.fillMaxSize().background(DoonaTheme.colors.window)) {
+            Box(Modifier.weight(1f).consumeWindowInsets(insets.only(WindowInsetsSides.Bottom))) { content() }
+            DoonaHubBar(tabs, selected, onSelect)
+        }
+    }
+}
+
 @Composable
 private fun HubTab(tab: DoonaHubTab, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val c = DoonaTheme.colors
     Column(
         modifier
             .heightIn(min = DoonaTheme.size.bottomBar)
-            .selectable(on, role = Role.Tab, onClick = onClick),
+            .selectable(on, role = Role.Tab, onClick = onClick)
+            .padding(vertical = DoonaTheme.spacing.navInset),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight, Alignment.CenterVertically),
     ) {
@@ -151,20 +218,22 @@ private fun HubTab(tab: DoonaHubTab, on: Boolean, modifier: Modifier, onClick: (
                 .then(if (on) Modifier.background(c.selected) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
-            DoonaIcon(tab.icon, if (on) c.accent else c.text.secondary)
+            DoonaIcon(tab.icon, if (on) c.accent else c.icon)
         }
         Text(
             tab.label,
             style = if (on) DoonaTheme.type.navLabelCurrent else DoonaTheme.type.navLabel,
             color = if (on) c.text.primary else c.text.secondary,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
 /**
  * The page sheet (§8): surface fill with 16 px top corners under the top bar; padding 20 top and 16 sides; blocks
- * stacked by the caller in a column at most 600 dp wide, centred on wider windows (D20).
+ * stacked by the caller in a column at most 600 dp wide, centred on wider windows (D20). The title, the tabs and every
+ * block scroll together. When nothing below the sheet takes the gesture bar's inset, the sheet's end does.
  */
 @Composable
 fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -181,6 +250,7 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
                 .layoutRole(LayoutRole.Sheet)
                 .widthIn(max = DoonaTheme.size.contentMax)
                 .fillMaxWidth()
+                .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Bottom))
                 .padding(
                     start = DoonaTheme.spacing.gutter,
                     end = DoonaTheme.spacing.gutter,
@@ -195,7 +265,7 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
 /** Page title `.rp-h1` 28/36/800 at the top of the sheet: the large title of the top app bar. */
 @Composable
 fun DoonaPageTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text.primary, maxLines = 1, modifier = modifier.semantics { heading() })
+    Text(text, style = DoonaTheme.type.pageTitle, color = DoonaTheme.colors.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier.semantics { heading() })
 }
 
 /**
@@ -225,7 +295,7 @@ fun DoonaPageTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifi
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, style = DoonaTheme.type.label, color = c.text.primary, maxLines = 1, modifier = Modifier.padding(horizontal = DoonaTheme.spacing.fillInset))
+                    Text(label, style = DoonaTheme.type.label, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = DoonaTheme.spacing.fillInset))
                     if (on) {
                         Box(Modifier.matchParentSize(), contentAlignment = Alignment.BottomCenter) {
                             Box(
@@ -245,14 +315,14 @@ fun DoonaPageTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifi
 }
 
 /**
- * A page: top bar over the sheet; the window's base colour runs under the status bar. The app shell puts the
- * [DoonaHubBar] below every page.
+ * A page: top bar over the sheet; the window's base colour runs under the status bar. The [DoonaHubShell] puts the
+ * hub bar below every page, or a rail beside it.
  */
 @Composable
 fun DoonaPage(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
+    actions: List<DoonaBarAction> = emptyList(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier.fillMaxSize().background(DoonaTheme.colors.window)) {

@@ -23,13 +23,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.ChevronDirection
 import dev.doona.android.designsystem.components.DoonaBadge
+import dev.doona.android.designsystem.components.DoonaBarAction
 import dev.doona.android.designsystem.components.DoonaCard
 import dev.doona.android.designsystem.components.DoonaChevron
 import dev.doona.android.designsystem.components.DoonaFilterPicker
 import dev.doona.android.designsystem.components.DoonaGap
 import dev.doona.android.designsystem.components.DoonaHGap
 import dev.doona.android.designsystem.components.DoonaIcon
-import dev.doona.android.designsystem.components.DoonaIconAction
 import dev.doona.android.designsystem.components.DoonaLatency
 import dev.doona.android.designsystem.components.DoonaNodeName
 import dev.doona.android.designsystem.components.DoonaNodeTile
@@ -68,11 +68,11 @@ fun PoliciesScreen(groups: List<Group>, onOpen: (String) -> Unit) {
     var kind by remember { mutableIntStateOf(0) }
     val manual = groups.count { it.kind.manual }
     DoonaPage(
-        actions = {
-            DoonaIconAction(R.drawable.ic_add_circle, stringResource(R.string.group_new_group), onClick = NOT_WIRED)
-            DoonaIconAction(R.drawable.ic_search, stringResource(R.string.ui_search), onClick = NOT_WIRED)
-            DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = NOT_WIRED)
-        },
+        actions = listOf(
+            DoonaBarAction(R.drawable.ic_add_circle, stringResource(R.string.group_new_group), NOT_WIRED),
+            DoonaBarAction(R.drawable.ic_search, stringResource(R.string.ui_search), NOT_WIRED),
+            DoonaBarAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), NOT_WIRED),
+        ),
     ) {
         DoonaPageTitle(stringResource(R.string.nav_policies))
         DoonaGap(space.afterTitle)
@@ -159,11 +159,11 @@ fun GroupScreen(group: Group, onBack: () -> Unit) {
     var aliveOnly by remember { mutableStateOf(false) }
     DoonaPage(
         onBack = onBack,
-        actions = {
-            DoonaIconAction(R.drawable.ic_search, stringResource(R.string.policy_filter), onClick = NOT_WIRED)
-            DoonaIconAction(R.drawable.ic_edit, stringResource(R.string.policy_edit), onClick = NOT_WIRED)
-            DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = NOT_WIRED)
-        },
+        actions = listOf(
+            DoonaBarAction(R.drawable.ic_search, stringResource(R.string.policy_filter), NOT_WIRED),
+            DoonaBarAction(R.drawable.ic_edit, stringResource(R.string.policy_edit), NOT_WIRED),
+            DoonaBarAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), NOT_WIRED),
+        ),
     ) {
         DoonaPageTitle(group.name)
         DoonaGap(space.item)

@@ -14,6 +14,7 @@ object DoonaSize {
     val touch = SizeScale.touch
     val topBar = SizeScale.topBar
     val bottomBar = SizeScale.bottomBar
+    val railWidth = SizeScale.railWidth
     val logo = SizeScale.logo
 
     /** Icons: 25 on touch, 20 on the grid, 16 inside a button (§6). */
@@ -35,6 +36,7 @@ object DoonaSize {
     val flagEdge = SizeScale.flagEdge
     val chartInset = SizeScale.chartInset
     val contentMax = SizeScale.contentMax
+    val compactHeight = SizeScale.compactHeight
 }
 
 /** Chart style (§7, Charts). */

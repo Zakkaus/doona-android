@@ -2,7 +2,6 @@ package dev.doona.android.designsystem.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.designsystem.theme.DoonaTheme
@@ -35,7 +33,10 @@ internal object DoonaCardDefaults {
     val gap get() = DoonaTheme.spacing.block
 }
 
-/** Card (§7): padding 16, gap 12, radius 16, 1 px border, base fill on the sheet. */
+/**
+ * Card (§7): padding 16, gap 12, radius 16, no border. The fill is one step off the sheet's, so the sheet is the only
+ * frame on a page: the card is lighter than the sheet on Moon and darker on Dawn.
+ */
 @Composable
 fun DoonaCard(
     modifier: Modifier = Modifier,
@@ -49,7 +50,6 @@ fun DoonaCard(
             .layoutRole(LayoutRole.Card)
             .clip(shape)
             .background(c.card)
-            .border(DoonaTheme.size.border, c.cardBorder, shape)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .padding(DoonaCardDefaults.inset),
         verticalArrangement = Arrangement.spacedBy(DoonaCardDefaults.gap),
@@ -71,20 +71,19 @@ fun DoonaRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> 
     )
 }
 
-/** Control card (§7): tinted icon and 14/500 label, controls at the end of the same row. */
+/** Control card (§7): icon and 14/500 label, controls at the end of the same row. */
 @Composable
 fun DoonaControlCard(
     @DrawableRes icon: Int,
-    iconTint: Color,
     label: String,
     modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit,
 ) {
     DoonaCard(modifier.fillMaxWidth()) {
         DoonaRow {
-            DoonaIcon(icon, iconTint)
+            DoonaIcon(icon, DoonaTheme.colors.icon)
             Spacer(Modifier.width(DoonaTheme.spacing.item))
-            Text(label, style = DoonaTheme.type.label, color = DoonaTheme.colors.text.primary, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(label, style = DoonaTheme.type.label, color = DoonaTheme.colors.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(DoonaTheme.spacing.block))
             trailing()
         }
@@ -108,13 +107,12 @@ fun DoonaTileCaption(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * Dashboard tile (§7): a head of tinted icon and [caption] at control height, then the [value]. With [onClick] the whole
+ * Dashboard tile (§7): a head of icon and [caption] at control height, then the [value]. With [onClick] the whole
  * tile is the touch target, so the head keeps doona's control height.
  */
 @Composable
 fun DoonaMetricTile(
     @DrawableRes icon: Int,
-    tint: Color,
     caption: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
@@ -122,7 +120,7 @@ fun DoonaMetricTile(
 ) {
     DoonaCard(modifier, onClick = onClick) {
         Row(Modifier.heightIn(min = DoonaTheme.size.control), verticalAlignment = Alignment.CenterVertically) {
-            DoonaIcon(icon, tint)
+            DoonaIcon(icon, DoonaTheme.colors.icon)
             DoonaHGap(DoonaTheme.spacing.item)
             caption()
         }

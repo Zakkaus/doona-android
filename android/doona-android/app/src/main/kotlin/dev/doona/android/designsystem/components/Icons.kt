@@ -42,6 +42,35 @@ fun DoonaFlag(@DrawableRes flag: Int, label: String, modifier: Modifier = Modifi
     )
 }
 
+/**
+ * How far the drawn shape of an icon sits inside its box, as a share of the box, from the side it starts and the side it
+ * ends: measured from the drawables, and held to what is drawn by IconInkTest. A layout that must put the shape and not
+ * the box on a line (the ends of the top bar) reads it here.
+ */
+internal object DoonaIconInk {
+    private class Ink(val start: Float, val end: Float)
+
+    private val table = mapOf(
+        R.drawable.ic_arrow_back to Ink(0.125f, 0.1375f),
+        R.drawable.ic_search to Ink(0.05f, 0.047f),
+        R.drawable.ic_edit to Ink(0.05f, 0.051f),
+        R.drawable.ic_add_circle to Ink(0.075f, 0.075f),
+        R.drawable.ic_more_vertical to Ink(0.425f, 0.425f),
+        R.drawable.ic_duck to Ink(0.089f, 0.089f),
+    )
+
+    /** The icons the table covers. */
+    val icons: Set<Int> get() = table.keys
+
+    /** Distance from the start edge of an icon drawn in a box of [box] to where its shape starts. */
+    fun start(@DrawableRes icon: Int, box: Dp): Dp = box * ink(icon).start
+
+    /** Distance from where its shape ends to the end edge of the box. */
+    fun end(@DrawableRes icon: Int, box: Dp): Dp = box * ink(icon).end
+
+    private fun ink(icon: Int) = checkNotNull(table[icon]) { "no ink measured for icon $icon: add it to DoonaIconInk" }
+}
+
 enum class ChevronDirection { Down, Right }
 
 /**

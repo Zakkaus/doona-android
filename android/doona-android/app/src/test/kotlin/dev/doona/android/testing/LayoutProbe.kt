@@ -53,6 +53,9 @@ class LayoutBox(
 
     fun descendants(): Sequence<LayoutBox> = sequenceOf(this) + children.asSequence().flatMap { it.descendants() }
 
+    /** The node that holds [child] directly. */
+    fun parentOf(child: LayoutBox): LayoutBox = descendants().first { parent -> parent.children.any { it === child } }
+
     /** The box that clips [scrolling], which is this node's descendant: the viewport a scrolling column moves in. */
     fun viewportOf(scrolling: LayoutBox): LayoutBox = descendants().first { parent -> parent.children.any { it === scrolling } }
 
