@@ -596,6 +596,7 @@ name = "doona-core"
 version = "0.1.0"
 dependencies = [
  "android_logger",
+ "bytes",
  "futures-util",
  "honk-config",
  "honk-netstack",

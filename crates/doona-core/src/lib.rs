@@ -3,6 +3,7 @@
 //! without a JVM.
 
 pub mod api;
+mod dns;
 pub mod dto;
 mod jni;
 pub mod state;

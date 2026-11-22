@@ -4,11 +4,17 @@
 //! and cancels the rest.
 
 mod driver;
+mod flow;
+pub mod route;
+mod tcp;
+mod udp;
 
 use crate::dto::{ErrorCode, Traffic};
 use crate::sys;
 use futures_util::FutureExt;
+use route::ModeCell;
 use std::future::Future;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::os::fd::{AsRawFd, OwnedFd};
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
@@ -25,10 +31,16 @@ const START_BOUND: Duration = Duration::from_secs(10);
 /// `stop` returns within 1 s; the rest is left for the locks around it.
 const STOP_WAIT: Duration = Duration::from_millis(900);
 
-/// What a generation runs with, from `start`'s config.
+/// What a generation runs with: `start`'s config and the core's own settings.
 #[derive(Clone, Debug)]
 pub struct Settings {
     pub mtu: u16,
+    /// The virtual resolver the tun advertises.
+    pub dns: Ipv4Addr,
+    /// Where DNS the core answers is forwarded, in order.
+    pub dns_upstreams: Vec<SocketAddr>,
+    /// The committed mode; each new flow reads it.
+    pub mode: Arc<ModeCell>,
 }
 
 /// What `snapshot` reports about one generation; its tasks update it.

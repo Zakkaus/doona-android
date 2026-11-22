@@ -6,9 +6,11 @@ use crate::dto::{
     SelectArgs, Snapshot, StartConfig, Traffic,
 };
 use crate::state::{Loaded, State, Store};
+use crate::tunnel::route::ModeCell;
 use crate::tunnel::{Session, Settings, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::net::SocketAddr;
 use std::os::fd::OwnedFd;
 use std::path::Path;
 use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
@@ -22,10 +24,28 @@ const WORKERS: usize = 2;
 /// The smallest MTU an IPv4 link may have.
 const MIN_MTU: u16 = 576;
 
+/// What a host test may change; the app runs with the defaults.
+#[derive(Clone, Debug)]
+pub struct Options {
+    /// Where DNS the core answers is forwarded, in order.
+    pub dns_upstreams: Vec<SocketAddr>,
+}
+
+impl Default for Options {
+    fn default() -> Options {
+        Options {
+            dns_upstreams: crate::dns::UPSTREAMS.to_vec(),
+        }
+    }
+}
+
 pub struct Core {
     runtime: Runtime,
+    options: Options,
     store: Store,
     catalog: Mutex<CatalogState>,
+    /// The committed mode, shared with the running generation.
+    mode: Arc<ModeCell>,
     /// The running generation. Held through a whole `start` (at most 10 s) or `stop` (1 s);
     /// Kotlin runs those one at a time, and `snapshot` and `call` never take it.
     tunnel: Mutex<Option<Tunnel>>,
@@ -47,6 +67,10 @@ struct CatalogState {
 impl Core {
     /// Reads `data_dir/state.json` and builds the runtime.
     pub fn new(data_dir: &str) -> Result<Core, ErrorCode> {
+        Core::with_options(data_dir, Options::default())
+    }
+
+    pub fn with_options(data_dir: &str, options: Options) -> Result<Core, ErrorCode> {
         let store = Store::new(Path::new(data_dir));
         let (state, loaded) = store.load().map_err(|e| {
             log::error!("init: state unreadable ({:?})", e.kind());
@@ -63,7 +87,9 @@ impl Core {
             .map_err(|_| ErrorCode::Internal)?;
         Ok(Core {
             runtime,
+            options,
             store,
+            mode: Arc::new(ModeCell::new(state.mode)),
             catalog: Mutex::new(CatalogState { state, revision: 1 }),
             tunnel: Mutex::new(None),
             starting: Mutex::new(None),
@@ -83,7 +109,7 @@ impl Core {
     /// from here on: every failure closes it. A generation still running is stopped first.
     pub fn start(&self, tun: OwnedFd, config: &str) -> Result<(), ErrorCode> {
         let begun = Instant::now();
-        let settings = settings(config)?;
+        let settings = self.settings(config)?;
         let abort = CancellationToken::new();
         *lock(&self.starting) = Some(abort.clone());
         let result = self.start_generation(tun, settings, &abort);
@@ -115,6 +141,19 @@ impl Core {
         *lock(&self.session) = Some(Arc::clone(tunnel.session()));
         *slot = Some(tunnel);
         Ok(generation)
+    }
+
+    fn settings(&self, config: &str) -> Result<Settings, ErrorCode> {
+        let config: StartConfig = parse(config)?;
+        if config.mtu < MIN_MTU {
+            return Err(ErrorCode::InvalidArgument);
+        }
+        Ok(Settings {
+            mtu: config.mtu,
+            dns: config.dns,
+            dns_upstreams: self.options.dns_upstreams.clone(),
+            mode: Arc::clone(&self.mode),
+        })
     }
 
     /// Ends the running generation, if any, within 1 s. Also cancels a `start` in progress.
@@ -204,6 +243,7 @@ impl Core {
         })?;
         catalog.state = next;
         catalog.revision += 1;
+        self.mode.set(mode);
         Ok(())
     }
 }
@@ -212,14 +252,6 @@ impl Drop for Core {
     fn drop(&mut self) {
         self.stop();
     }
-}
-
-fn settings(config: &str) -> Result<Settings, ErrorCode> {
-    let config: StartConfig = parse(config)?;
-    if config.mtu < MIN_MTU {
-        return Err(ErrorCode::InvalidArgument);
-    }
-    Ok(Settings { mtu: config.mtu })
 }
 
 /// `{"error":{"code":…}}`.
