@@ -8,7 +8,7 @@ use crate::testutil::{TempDir, fixture, http, response, target};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -187,7 +187,8 @@ fn an_update_keeps_ids_and_drops_choices_whose_node_went() {
 }
 
 /// A refresh publishes its registry and each group's node in one step: a flow that opens
-/// meanwhile never gets a node its registry lacks.
+/// meanwhile never gets a node its registry lacks. The reader reads before the first refresh and
+/// after each one is published.
 #[test]
 fn a_refresh_publishes_its_registry_and_nodes_together() {
     let dir = TempDir::new("api-swap");
@@ -198,20 +199,31 @@ fn a_refresh_publishes_its_registry_and_nodes_together() {
     add(&core, &feeds, "/sub").unwrap();
     let outbounds = Arc::clone(&core.shared.outbounds);
     let done = Arc::new(AtomicBool::new(false));
+    let reads = Arc::new(AtomicUsize::new(0));
     let reader = {
-        let done = Arc::clone(&done);
+        let (done, reads) = (Arc::clone(&done), Arc::clone(&reads));
         std::thread::spawn(move || {
             let mut torn = 0usize;
             while !done.load(Relaxed) {
                 let d = outbounds.dialer("g-Proxy").expect("Proxy has a node");
                 torn += usize::from(d.registry.get(&d.node.id).is_none());
+                reads.fetch_add(1, Relaxed);
             }
             torn
         })
     };
+    let read_after = |n: usize| {
+        let end = Instant::now() + Duration::from_secs(5);
+        while reads.load(Relaxed) <= n && Instant::now() < end {
+            std::thread::yield_now();
+        }
+        assert!(reads.load(Relaxed) > n, "the reader stopped reading");
+    };
+    read_after(0);
     for i in 1..=100 {
         feeds.set("/sub", sets[i % 2]);
         call(&core, "updateSubscription", json!({"id": "s1"})).unwrap();
+        read_after(reads.load(Relaxed));
     }
     done.store(true, Relaxed);
     assert_eq!(
