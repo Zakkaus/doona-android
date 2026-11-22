@@ -1,6 +1,7 @@
 //! Generations on a socketpair standing in for the tun: the core owns only its duplicate, `stop`
-//! returns within 1 s and closes it, a dead tun shows as `internal`, and no path leaks a
-//! descriptor. The fd counts read /proc/self/fd, so these tests run one at a time.
+//! returns within 1 s and closes it, a dead tun shows as `internal`, Global without a node does
+//! not start, and no path leaks a descriptor. The fd counts read /proc/self/fd, so these tests
+//! run one at a time. The cores run in Direct, which needs no node.
 
 mod common;
 
@@ -25,7 +26,9 @@ fn open_fds() -> usize {
 }
 
 fn new_core(dir: &TempDir) -> Core {
-    Core::new(dir.path().to_str().unwrap()).unwrap()
+    let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
+    core
 }
 
 fn snapshot(core: &Core) -> Snapshot {
@@ -156,6 +159,20 @@ fn a_bad_config_fails_without_starting() {
     assert!(peer_sees_eof(&peer), "a failed start kept its duplicate");
     let s = snapshot(&core);
     assert!(!s.running && s.generation == 0);
+}
+
+#[test]
+fn global_without_a_node_does_not_start() {
+    let _s = serial();
+    let dir = TempDir::new("life-no-nodes");
+    // A fresh state.json is in Global, and there is no subscription.
+    let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    let (tun, peer) = seqpacket_pair();
+    assert_eq!(start(&core, &tun, CONFIG), Err(ErrorCode::NoNodes));
+    drop(tun);
+    assert!(peer_sees_eof(&peer), "a refused start kept its duplicate");
+    let s = snapshot(&core);
+    assert!(!s.running && s.generation == 0 && s.error.is_none());
 }
 
 #[test]

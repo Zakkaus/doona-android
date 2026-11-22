@@ -1,8 +1,7 @@
 //! The hand-off from the catalog to the data path: for each group, the node it sends traffic to
 //! now, with honk's runtime registry that dials it and the protocol handlers. The catalog
-//! publishes a new table whenever a selection, a latency or the node set changes; a flow reads
-//! one with [`Outbounds::dialer`]. The data path does not route through it yet, so Global still
-//! refuses every flow.
+//! publishes a new table whenever a selection, a latency or the node set changes; a new flow
+//! reads one with [`Outbounds::dialer`] and keeps what it read.
 //!
 //! The registry is rebuilt when the node set changes, reusing the runtimes of the nodes that
 //! stay; the previous one then retires the rest without cutting streams that use them.
@@ -45,6 +44,13 @@ pub struct Dialer {
     pub node: Arc<Node>,
     pub registry: Arc<OutboundRuntimeRegistry>,
     pub proxies: Arc<ProxyRegistry>,
+}
+
+impl Dialer {
+    /// Whether the node carries UDP (`dial_udp_transport_runtime`).
+    pub fn supports_udp(&self) -> bool {
+        (honk_outbound::descriptor::descriptor(self.node.protocol()).supports_udp)(&self.node)
+    }
 }
 
 /// A registry built for a new node set, not yet published.

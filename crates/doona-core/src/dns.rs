@@ -129,7 +129,7 @@ pub fn fit_udp(answer: Vec<u8>, query: &[u8]) -> Vec<u8> {
 
 /// Sends `query` to each upstream in turn through `route`; the first answer with the query's
 /// id wins.
-async fn exchange(upstreams: &[SocketAddr], route: Route, query: &[u8]) -> Option<Vec<u8>> {
+async fn exchange(upstreams: &[SocketAddr], route: &Route, query: &[u8]) -> Option<Vec<u8>> {
     for &server in upstreams {
         match tokio::time::timeout(EXCHANGE, exchange_one(server, route, query)).await {
             Ok(Ok(a)) if a.len() >= HEADER && a[..2] == query[..2] => return Some(a),
@@ -139,7 +139,7 @@ async fn exchange(upstreams: &[SocketAddr], route: Route, query: &[u8]) -> Optio
     None
 }
 
-async fn exchange_one(server: SocketAddr, route: Route, query: &[u8]) -> io::Result<Vec<u8>> {
+async fn exchange_one(server: SocketAddr, route: &Route, query: &[u8]) -> io::Result<Vec<u8>> {
     let mut s = route.connect(server).await?;
     write_framed(&mut s, query).await?;
     read_framed(&mut s).await
@@ -163,15 +163,16 @@ async fn read_framed<S: AsyncRead + Unpin>(s: &mut S) -> io::Result<Vec<u8>> {
 /// The answer to `query`, or SERVFAIL; None when `query` is not a query.
 pub(crate) async fn answer(
     upstreams: &[SocketAddr],
-    route: Route,
+    route: &Route,
     query: &[u8],
 ) -> Option<Vec<u8>> {
     if !is_query(query) {
         return None;
     }
-    let answer = match route {
-        Route::Refuse => None,
-        Route::Direct => exchange(upstreams, route, query).await,
+    let answer = if route.refused() {
+        None
+    } else {
+        exchange(upstreams, route, query).await
     };
     Some(answer.unwrap_or_else(|| servfail(query)))
 }
@@ -180,7 +181,7 @@ pub(crate) async fn answer(
 pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
     io: &mut S,
     upstreams: &[SocketAddr],
-    route: Route,
+    route: &Route,
 ) -> io::Result<()> {
     loop {
         let query = match read_framed(io).await {

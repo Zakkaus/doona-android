@@ -113,12 +113,11 @@ fn slow(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'s
     })
 }
 
+/// A core in Direct, which starts without nodes, whose generations run `launch`.
 fn core(dir: &TempDir, launch: crate::tunnel::Launch, bound: Duration) -> Arc<Core> {
-    Arc::new(Core::with_launch(
-        dir.path().to_str().unwrap(),
-        launch,
-        bound,
-    ))
+    let core = Core::with_launch(dir.path().to_str().unwrap(), launch, bound);
+    core.set_mode(Mode::Direct).unwrap();
+    Arc::new(core)
 }
 
 #[test]

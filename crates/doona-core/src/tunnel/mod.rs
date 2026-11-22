@@ -40,8 +40,7 @@ pub struct Settings {
     pub dns_upstreams: Vec<SocketAddr>,
     /// The committed mode; each new flow reads it.
     pub mode: Arc<ModeCell>,
-    /// Each group's current node and what dials it. Flows do not go through groups yet: Global
-    /// refuses them while the data path cannot dial a node.
+    /// Each group's current node and what dials it; a new Global flow goes through `g-Proxy`'s.
     pub outbounds: Arc<Outbounds>,
 }
 

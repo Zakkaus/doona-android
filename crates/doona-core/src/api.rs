@@ -9,7 +9,7 @@ use crate::dto::{
 use crate::outbounds::{self, Outbounds};
 use crate::probe::{self, Prober, Probes};
 use crate::state::{Loaded, State, Store};
-use crate::tunnel::route::ModeCell;
+use crate::tunnel::route::{ModeCell, PROXY_GROUP};
 use crate::tunnel::{self, Gate, Launch, STOP_WAIT, Settings, Tun, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -272,10 +272,15 @@ impl Core {
         Err(code)
     }
 
+    /// What a generation runs with. Global with no node in the `Proxy` group is `no_nodes`: the
+    /// tunnel would carry nothing.
     fn settings(&self, config: &str) -> Result<Settings, ErrorCode> {
         let config: StartConfig = parse(config)?;
         if config.mtu < MIN_MTU {
             return Err(ErrorCode::InvalidArgument);
+        }
+        if self.mode.get() == Mode::Global && self.shared.outbounds.dialer(PROXY_GROUP).is_none() {
+            return Err(ErrorCode::NoNodes);
         }
         Ok(Settings {
             mtu: config.mtu,

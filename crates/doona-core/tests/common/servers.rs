@@ -1,5 +1,5 @@
-//! Loopback upstreams for the data-path tests: a TCP echo, a UDP echo, and a DNS-over-TCP
-//! resolver, each on its own threads.
+//! Loopback upstreams for the data-path tests: a TCP echo, a UDP echo, a DNS-over-TCP resolver
+//! and a subscription feed, each on its own threads.
 
 use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, UdpSocket};
@@ -164,4 +164,26 @@ fn serve_dns(mut conn: TcpStream, seen: &Seen) {
             return;
         }
     }
+}
+
+/// An HTTP server that answers every request with `body`, as a subscription feed.
+pub fn feed(body: String) -> SocketAddr {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(mut conn) = conn else { return };
+            let mut head = Vec::new();
+            let mut byte = [0u8; 1];
+            while !head.ends_with(b"\r\n\r\n") && conn.read_exact(&mut byte).is_ok() {
+                head.push(byte[0]);
+            }
+            let reply = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = conn.write_all(reply.as_bytes());
+        }
+    });
+    addr
 }

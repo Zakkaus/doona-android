@@ -7,7 +7,7 @@
 //! The packet loop and its error handling follow crates/honk-android/src/engine.rs.
 
 use super::flow::{self, Event, Events, Key, Waker};
-use super::route::Route;
+use super::route::{Inbound, Route};
 use super::tcp::{self, Step, TcpFlow};
 use super::udp::{self, Budget, Nat};
 use super::{Gen, Settings, StartSignal, Tun};
@@ -263,18 +263,19 @@ impl Driver {
     }
 
     /// Answers each new SYN: DNS to the virtual resolver is served here, anything else to it is
-    /// reset (TCP/853, so Private DNS falls back at once), and other flows follow the route.
+    /// reset (TCP/853, so Private DNS falls back at once), and other flows follow their route.
     fn accept(&mut self) {
         while let Some(syn) = self.stack.poll_accept() {
             let dst = syn.original_dst;
-            let route = Route::for_mode(self.settings.mode.get());
-            if dst.ip() == IpAddr::V4(self.settings.dns) {
-                if dst.port() == 53 {
-                    self.open_tcp(syn.id, route, None);
-                } else {
-                    self.stack.tcp_refuse(syn.id, Refuse::Rst);
-                }
-            } else if route == Route::Refuse {
+            let to_resolver = dst.ip() == IpAddr::V4(self.settings.dns);
+            if to_resolver && dst.port() != 53 {
+                self.stack.tcp_refuse(syn.id, Refuse::Rst);
+                continue;
+            }
+            let route = new_route(&self.settings);
+            if to_resolver {
+                self.open_tcp(syn.id, route, None);
+            } else if route.refused() {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
             } else {
                 self.open_tcp(syn.id, route, Some(dst));
@@ -355,23 +356,25 @@ impl Driver {
     }
 
     /// A datagram from an app: UDP/53 to any address is DNS the core answers; nothing else
-    /// listens on the virtual resolver; other datagrams follow the route.
+    /// listens on the virtual resolver; other datagrams follow the route their association
+    /// opened with.
     fn on_datagram(&mut self, src: SocketAddr, dst: SocketAddr, payload: &[u8]) {
-        let route = Route::for_mode(self.settings.mode.get());
         if dst.port() == 53 {
             let Ok(slot) = Arc::clone(&self.dns_slots).try_acquire_owned() else {
                 return;
             };
             let (upstreams, events) = (Arc::clone(&self.upstreams), self.events.clone());
+            let route = new_route(&self.settings);
             let task =
                 udp::answer_dns(payload.to_vec(), (src, dst), route, upstreams, events, slot);
             self.gen_.spawn(task);
-        } else if dst.ip() != IpAddr::V4(self.settings.dns)
-            && route != Route::Refuse
-            && let Some(opened) = self.nat.send(src, dst, payload, &self.events)
-        {
-            self.gen_
-                .spawn(udp::relay(opened, dst, route, self.events.clone()));
+        } else if dst.ip() != IpAddr::V4(self.settings.dns) {
+            let settings = &self.settings;
+            let open = || Some(new_route(settings)).filter(Route::carries_udp);
+            if let Some((opened, route)) = self.nat.send((src, dst), payload, &self.events, open) {
+                self.gen_
+                    .spawn(udp::relay(opened, dst, route, self.events.clone()));
+            }
         }
     }
 
@@ -413,6 +416,11 @@ impl Driver {
             Err(_) => Ok(()),
         }
     }
+}
+
+/// The route of a new flow from the tun.
+fn new_route(settings: &Settings) -> Route {
+    Route::of(Inbound::Tun, settings.mode.get(), &settings.outbounds)
 }
 
 /// A tun write that failed for lack of memory or room loses its packet, as hev does for

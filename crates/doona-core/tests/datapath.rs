@@ -1,7 +1,7 @@
 //! The Direct data path end to end, no tun needed: the core runs a generation on one end of a
 //! SOCK_SEQPACKET socketpair, an endpoint-mode honk Stack on the other end plays the apps (see
 //! `common/client.rs`), and loopback servers are the internet. DNS goes to a loopback
-//! DNS-over-TCP resolver instead of 1.1.1.1.
+//! DNS-over-TCP resolver instead of 1.1.1.1. Global through nodes is in `proxied.rs`.
 
 mod common;
 
@@ -88,19 +88,6 @@ fn direct_tcp_to_a_closed_port_is_reset() {
 }
 
 #[test]
-fn global_without_nodes_refuses_flows_and_never_goes_direct() {
-    let (echo, tcp_seen) = servers::tcp_echo();
-    let (udp, udp_seen) = servers::udp_echo();
-    let mut s = setup("Global", vec![]);
-    let id = s.client.connect(echo);
-    assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
-    s.client.send_udp(udp, b"hello");
-    assert!(s.client.recv_udp(udp, Duration::from_millis(300)).is_none());
-    assert_eq!(tcp_seen.connections.load(Relaxed), 0);
-    assert_eq!(udp_seen.datagrams.load(Relaxed), 0);
-}
-
-#[test]
 fn direct_udp_gets_its_replies_from_the_destination() {
     let (udp, seen) = servers::udp_echo();
     let mut s = setup("Direct", vec![]);
@@ -154,35 +141,12 @@ fn dns_is_answered_over_tcp_upstream_and_truncated_for_udp() {
 }
 
 #[test]
-fn dns_without_a_route_fails_fast_and_private_dns_is_reset() {
-    let (resolver, seen) = servers::dns_server();
-    let mut s = setup("Global", vec![resolver]);
+fn private_dns_to_the_virtual_resolver_is_reset_at_once() {
+    let mut s = setup("Direct", vec![]);
     let begun = Instant::now();
-    let a = dns_over_udp(
-        &mut s.client,
-        RESOLVER,
-        &servers::query(9, "a.example", None),
-    );
-    assert_eq!(servers::answers_and_rcode(&a), (0, 2), "SERVFAIL");
-    assert!(begun.elapsed() < Duration::from_secs(1));
-    assert_eq!(seen.datagrams.load(Relaxed), 0);
     let id = s.client.connect(SocketAddr::new(RESOLVER.ip(), 853));
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
-}
-
-#[test]
-fn set_mode_applies_to_new_flows_at_once() {
-    let (echo, seen) = servers::tcp_echo();
-    let mut s = setup("Global", vec![]);
-    let refused = s.client.connect(echo);
-    assert!(s.client.until(WAIT, |c| c.read_now(refused).is_err()));
-    assert_eq!(
-        s.core.call("setMode", r#"{"mode":"Direct"}"#),
-        r#"{"ok":{}}"#
-    );
-    let id = s.client.connect(echo);
-    assert_eq!(s.client.exchange(id, b"ping").unwrap(), b"ping");
-    assert_eq!(seen.connections.load(Relaxed), 1);
+    assert!(begun.elapsed() < Duration::from_secs(1));
 }
 
 #[test]
