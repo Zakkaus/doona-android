@@ -34,7 +34,7 @@ androidComponents {
             executable = cargo
             argumentProviders.add {
                 listOf(
-                    "ndk", "-t", "arm64-v8a", "--platform", "29",
+                    "ndk", "-t", "arm64-v8a", "--platform", "31",
                     "-o", outputDir.get().asFile.absolutePath,
                     // Cargo applies `lto` only when every crate type of the unit supports it; the manifest's `rlib`
                     // (for the host tests) would turn fat LTO off, so build the cdylib alone.
@@ -43,7 +43,7 @@ androidComponents {
             }
             environment("PATH", cargoBin + File.pathSeparator + System.getenv("PATH"))
             // boring-sys runs bindgen, which needs the target's API level.
-            environment("BINDGEN_EXTRA_CLANG_ARGS_aarch64-linux-android", "--target=aarch64-linux-android29")
+            environment("BINDGEN_EXTRA_CLANG_ARGS_aarch64-linux-android", "--target=aarch64-linux-android31")
             // Everything that changes the library, so an unchanged crate is not rebuilt. The release profile and
             // the dependency pins live in Cargo.toml and Cargo.lock; the git dependencies are pinned by revision.
             inputs.dir(coreDir.resolve("src")).withPropertyName("sources").withPathSensitivity(PathSensitivity.RELATIVE)
@@ -51,7 +51,7 @@ androidComponents {
                 listOf("Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/config.toml").map(coreDir::resolve),
             ).withPropertyName("manifests").withPathSensitivity(PathSensitivity.RELATIVE)
             inputs.property("ndk", coreNdk)
-            inputs.property("target", "arm64-v8a android-29")
+            inputs.property("target", "arm64-v8a android-31")
             doFirst {
                 // cargo-ndk 4.1.2 keeps a copy in -o that is newer than Cargo's artifact and never removes other
                 // files, so either would be packaged: start from an empty directory.
@@ -108,7 +108,7 @@ android {
 
     defaultConfig {
         applicationId = "dev.doona.android"
-        minSdk = 29
+        minSdk = 31
         targetSdk = 37
         versionCode = 1
         versionName = "0.1"

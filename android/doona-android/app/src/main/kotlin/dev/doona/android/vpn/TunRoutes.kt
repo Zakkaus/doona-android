@@ -71,7 +71,7 @@ internal object TunRoutes {
 
     /**
      * The fewest prefixes that cover 0.0.0.0/0 minus [EXCLUDED], plus [TUN]. `excludeRoute` needs API 33 and minSdk is
-     * 29, so every level routes the complement with `addRoute`.
+     * 31, so every level routes the complement with `addRoute`.
      */
     val IPV4: List<Ipv4Prefix> = complement(Ipv4Prefix(0, 0), EXCLUDED).let { routes ->
         if (routes.any { TUN in it }) routes else routes + TUN
