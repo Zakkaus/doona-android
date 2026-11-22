@@ -9,6 +9,7 @@
 
 pub(crate) mod names;
 
+use crate::rules::Network;
 use crate::tunnel::route::Route;
 use names::Names;
 use std::io::{self, ErrorKind};
@@ -164,13 +165,15 @@ async fn read_framed<S: AsyncRead + Unpin>(s: &mut S) -> io::Result<Vec<u8>> {
     Ok(m)
 }
 
-/// The answer to `query`, or SERVFAIL; None when `query` is not a query. The addresses an answer
+/// The answer to `query`, or SERVFAIL, as the client gets it over `network`: over UDP, held to the
+/// client's buffer (see [`fit_udp`]). None when `query` is not a query. The addresses that answer
 /// gives are mapped in `names` before it is returned, so a flow the client opens to one finds its
-/// name.
+/// name; a truncated answer gives none, and the client's retry over TCP maps them.
 pub(crate) async fn answer(
     upstreams: &[SocketAddr],
     (route, names): (&Route, &Names),
     query: &[u8],
+    network: Network,
 ) -> Option<Vec<u8>> {
     if !is_query(query) {
         return None;
@@ -180,10 +183,14 @@ pub(crate) async fn answer(
     } else {
         exchange(upstreams, route, query).await
     };
-    if let Some(a) = &answer {
-        names.learn(query, a);
+    let Some(mut answer) = answer else {
+        return Some(servfail(query));
+    };
+    if network == Network::Udp {
+        answer = fit_udp(answer, query);
     }
-    Some(answer.unwrap_or_else(|| servfail(query)))
+    names.learn(query, &answer);
+    Some(answer)
 }
 
 /// Answers the framed queries of one TCP/53 connection in turn until the client closes it. A query
@@ -204,7 +211,7 @@ pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
             Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
             Err(e) => return Err(e),
         };
-        if let Some(a) = answer(upstreams, route, &query).await {
+        if let Some(a) = answer(upstreams, route, &query, Network::Tcp).await {
             tokio::time::timeout(idle, write_framed(io, &a)).await??;
         }
     }
@@ -350,7 +357,7 @@ pub(crate) mod tests {
         let names = Names::new();
         let upstreams = [upstream()];
         let q = query(3, "Learn.Example", Some(1232));
-        let a = answer(&upstreams, (&Route::Direct, &names), &q)
+        let a = answer(&upstreams, (&Route::Direct, &names), &q, Network::Tcp)
             .await
             .unwrap();
         assert_eq!(count(&a, 6), 2);
@@ -360,7 +367,7 @@ pub(crate) mod tests {
         }
         // A refused route answers SERVFAIL and maps nothing.
         let names = Names::new();
-        let a = answer(&upstreams, (&Route::Refuse, &names), &q)
+        let a = answer(&upstreams, (&Route::Refuse, &names), &q, Network::Tcp)
             .await
             .unwrap();
         assert_eq!(a[3] & 0x0f, 2);

@@ -114,10 +114,10 @@ impl Names {
 }
 
 /// The name of `m`'s question, lower case without the final dot, and the offset past the
-/// question; none unless `m` is a successful answer (QR set, opcode QUERY, NOERROR) to one A
-/// question in IN.
+/// question; none unless `m` is a whole successful answer (QR set, opcode QUERY, TC clear,
+/// NOERROR) to one A question in IN.
 fn question(m: &[u8]) -> Option<(String, usize)> {
-    let answered = m.len() >= HEADER && m[2] & 0x80 != 0 && m[2] & 0x78 == 0 && m[3] & 0x0f == 0;
+    let answered = m.len() >= HEADER && m[2] & 0xfa == 0x80 && m[3] & 0x0f == 0;
     if !answered || count(m, 4) != 1 {
         return None;
     }

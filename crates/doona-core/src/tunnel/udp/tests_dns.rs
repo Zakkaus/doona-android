@@ -32,6 +32,21 @@ fn named(session: &Session, hosts: u16) -> usize {
         .count()
 }
 
+/// An answer too large for the client's buffer goes back truncated, without an address, so the
+/// names learn none of it; the client asks again over TCP, and that answer names them. The same
+/// answer sent whole, to a client with room for it, names every address.
+#[tokio::test]
+async fn a_truncated_answer_maps_nothing() {
+    let plain = query(5, "big.example", None);
+    let (sent, session) = exchange(|q| answer_to(q, 40), &plain).await;
+    assert_eq!(sent[2] & 0x02, 0x02, "TC");
+    assert_eq!(named(&session, 40), 0);
+    let edns = query(6, "big.example", Some(4096));
+    let (sent, session) = exchange(|q| answer_to(q, 40), &edns).await;
+    assert_eq!(sent[2] & 0x02, 0, "whole");
+    assert_eq!(named(&session, 40), 40);
+}
+
 /// An answer with the query's id but another question maps nothing, though the client gets it;
 /// the question asked, in another case (DNS 0x20), maps.
 #[tokio::test]

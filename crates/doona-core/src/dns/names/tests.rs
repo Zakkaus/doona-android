@@ -266,11 +266,14 @@ fn only_a_successful_answer_to_one_a_question_maps() {
     status[2] |= 2 << 3;
     let mut two = good.clone();
     two[5] = 2;
+    let mut truncated = good.clone();
+    truncated[2] |= 0x02;
     let refused = [
         nxdomain,
         query,
         status,
         two,
+        truncated,
         answer_with("ok.example", (28, CLASS_IN), &[a(&ip, 60)]),
         answer_with("ok.example", (TYPE_A, 3), &[a(&ip, 60)]),
         answer("bad name.example", &[a(&ip, 60)]),

@@ -12,6 +12,7 @@ use super::Session;
 use super::flow::{DEPTH, Event, Events, Key, Waker};
 use super::route::Route;
 use crate::dns;
+use crate::rules::Network;
 use crate::stats::meter::{Meter, Tally};
 use bytes::Bytes;
 use honk_outbound::proxy::PacketTransport;
@@ -364,7 +365,7 @@ fn receive(socket: &UdpSocket, budget: &Arc<Budget>) -> io::Result<Option<Datagr
 }
 
 /// Answers one DNS datagram from `client` to `server`, through `route`; `session`'s names learn
-/// what the answer maps.
+/// what the answer the client gets maps.
 pub(crate) async fn answer_dns(
     query: Vec<u8>,
     (client, server): (SocketAddr, SocketAddr),
@@ -374,11 +375,11 @@ pub(crate) async fn answer_dns(
     slot: OwnedSemaphorePermit,
 ) {
     let via = (&route, session.names());
-    if let Some(a) = dns::answer(&upstreams, via, &query).await {
+    if let Some(payload) = dns::answer(&upstreams, via, &query, Network::Udp).await {
         let _ = events.send(Event::DnsAnswer {
             from: server,
             to: client,
-            payload: dns::fit_udp(a, &query),
+            payload,
             _slot: slot,
         });
     }
