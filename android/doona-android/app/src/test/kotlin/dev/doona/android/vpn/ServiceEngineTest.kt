@@ -422,7 +422,7 @@ class ServiceEngineTest {
 
         override fun bootstrapDns() = emptyList<String>()
 
-        override fun establish(routing: AppRouting): Tun = object : Tun {
+        override fun establish(routing: AppRouting, mtu: Int): Tun = object : Tun {
             override val fd = 3
 
             override fun close() = Unit
@@ -436,7 +436,7 @@ class ServiceEngineTest {
 
         override fun bootstrapDns() = error("unused")
 
-        override fun establish(routing: AppRouting) = error("unused")
+        override fun establish(routing: AppRouting, mtu: Int) = error("unused")
     }
 
     private class FakeCore : CoreBridge {

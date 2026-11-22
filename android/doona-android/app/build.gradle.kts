@@ -28,6 +28,8 @@ val skipCore = providers.gradleProperty("doona.skipCore").orNull.toBoolean()
 androidComponents {
     onVariants { variant ->
         if (skipCore) return@onVariants
+        // The debug variant's core also takes `call("debugFault")`, the fault the core-failure check uses; release has none.
+        val features = if (variant.buildType == "debug") listOf("--features", "fault-hook") else emptyList()
         val buildCore = tasks.register<CargoNdk>("buildDoonaCore" + variant.name.replaceFirstChar { it.uppercase() }) {
             description = "Builds libdoonacore.so for arm64-v8a with cargo-ndk and checks its JNI exports."
             workingDir = coreDir // rustup reads rust-toolchain.toml from the working directory
@@ -39,7 +41,7 @@ androidComponents {
                     // Cargo applies `lto` only when every crate type of the unit supports it; the manifest's `rlib`
                     // (for the host tests) would turn fat LTO off, so build the cdylib alone.
                     "rustc", "--lib", "--crate-type", "cdylib", "--release", "--locked",
-                )
+                ) + features
             }
             environment("PATH", cargoBin + File.pathSeparator + System.getenv("PATH"))
             // boring-sys runs bindgen, which needs the target's API level.
@@ -51,6 +53,7 @@ androidComponents {
                 listOf("Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/config.toml").map(coreDir::resolve),
             ).withPropertyName("manifests").withPathSensitivity(PathSensitivity.RELATIVE)
             inputs.property("ndk", coreNdk)
+            inputs.property("features", features)
             inputs.property("target", "arm64-v8a android-31")
             doFirst {
                 // cargo-ndk 4.1.2 keeps a copy in -o that is newer than Cargo's artifact and never removes other

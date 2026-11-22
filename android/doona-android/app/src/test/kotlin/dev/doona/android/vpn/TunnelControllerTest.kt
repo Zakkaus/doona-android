@@ -83,6 +83,14 @@ class TunnelControllerTest {
     }
 
     @Test
+    fun theTunAndTheCoreTakeTheHostsMtu() {
+        host.mtu = 1400
+        startRunning()
+        assertEquals(listOf(1400), host.mtus)
+        assertTrue(core.configs.single(), core.configs.single().contains("\"mtu\":1400"))
+    }
+
+    @Test
     fun revokeDuringABlockedStartStopsTheLateSuccess() {
         val release = CountDownLatch(1)
         core.startGate = release
@@ -402,7 +410,9 @@ class TunnelControllerTest {
 
     private class FakeHost : TunHost {
         override val selfPackage = SELF
+        override var mtu = StartConfigDto.MTU
         val routings = CopyOnWriteArrayList<AppRouting>()
+        val mtus = CopyOnWriteArrayList<Int>()
         val tuns = CopyOnWriteArrayList<FakeTun>()
 
         /** What the system's `Builder.establish()` throws, if anything. */
@@ -412,9 +422,10 @@ class TunnelControllerTest {
 
         override fun bootstrapDns() = listOf("192.168.8.1")
 
-        override fun establish(routing: AppRouting): Tun {
+        override fun establish(routing: AppRouting, mtu: Int): Tun {
             establishError?.let { throw it }
             routings += routing
+            mtus += mtu
             return FakeTun(fd = 40 + tuns.size).also { tuns += it }
         }
     }

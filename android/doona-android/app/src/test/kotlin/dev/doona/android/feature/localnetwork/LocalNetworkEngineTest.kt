@@ -94,14 +94,31 @@ class LocalNetworkEngineTest {
         val engine = engine(scripted)
         val added = async { engine.addSubscription("http://192.168.8.161/sub") }
         answer(allowed = false)
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+        assertTrue("the action waits on the refusal", added.isActive)
+        access.dismissed()
         assertEquals(ErrorCode.LocalNetwork, added.await().code())
         assertEquals(1, scripted.adds)
+        // Never asked again in this process: the refusal shows at once and nothing runs twice.
+        val again = async { engine.addSubscription("http://192.168.8.161/sub") }
         assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
         access.dismissed()
-        // Never asked again in this process: the refusal shows at once and nothing runs twice.
-        assertEquals(ErrorCode.LocalNetwork, engine.addSubscription("http://192.168.8.161/sub").code())
+        assertEquals(ErrorCode.LocalNetwork, again.await().code())
         assertEquals(2, scripted.adds)
-        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+    }
+
+    @Test
+    fun aReturnFromTheSettingsWithAccessRunsTheWaitingActionOnceMore() = runTest(UnconfinedTestDispatcher()) {
+        val scripted = Scripted().apply { failures += ErrorCode.LocalNetwork }
+        val updated = async { engine(scripted).updateSubscription("s1") }
+        answer(allowed = false)
+        access.toSettings()
+        assertNull(access.prompt.value)
+        assertTrue("the action waits for the user's return", updated.isActive)
+        granted = true
+        access.resumed()
+        assertTrue(updated.await().isSuccess)
+        assertEquals(2, scripted.updates)
     }
 
     @Test

@@ -116,6 +116,8 @@ internal class DoonaVpnService :
 
     override val selfPackage: String get() = packageName
 
+    override val mtu: Int get() = tunMtu()
+
     override fun installed(packages: Set<String>): Set<String> = packages.filterTo(mutableSetOf()) { name ->
         try {
             @Suppress("DEPRECATION") // The flags overload needs API 33.
@@ -133,16 +135,16 @@ internal class DoonaVpnService :
         return servers.filterIsInstance<Inet4Address>().mapNotNull { it.hostAddress }
     }
 
-    override fun establish(routing: AppRouting): Tun? {
+    override fun establish(routing: AppRouting, mtu: Int): Tun? {
         if (!foreground) return null
-        return tunBuilder(routing).establish()?.let(::ParcelTun)
+        return tunBuilder(routing, mtu).establish()?.let(::ParcelTun)
     }
 
     /** The tun's configuration, apart from [establish] so that a test can read what the builder receives. */
-    internal fun tunBuilder(routing: AppRouting): Builder {
+    internal fun tunBuilder(routing: AppRouting, mtu: Int): Builder {
         val builder = Builder()
             .setSession(getString(R.string.app_name))
-            .setMtu(StartConfigDto.MTU)
+            .setMtu(mtu)
             .addAddress(ipv4(StartConfigDto.IPV4), StartConfigDto.IPV4_PREFIX)
             .addDnsServer(ipv4(StartConfigDto.DNS))
             // Since API 29 a VPN counts as metered unless told otherwise; this makes it follow the underlying network.

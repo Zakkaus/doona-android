@@ -411,6 +411,12 @@ impl Tunnel {
         &self.gen_.session
     }
 
+    /// Panics in a task of the generation, which ends its data path as a crash would.
+    #[cfg(feature = "fault-hook")]
+    pub fn fault(&self) {
+        self.gen_.spawn(async { panic!("debugFault") });
+    }
+
     /// Lets the driver serve the tun: `start` committed the generation.
     pub fn release(&mut self) {
         if let Some(release) = self.release.take() {

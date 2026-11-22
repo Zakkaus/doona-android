@@ -19,7 +19,8 @@ class LocalNetworkHost(val access: LocalNetworkAccess, val request: () -> Unit, 
 /**
  * Shows the prompt [LocalNetworkHost.access] holds, over whatever page is open. The reason's confirm button goes on to
  * the system's question unless the reason was withdrawn meanwhile, and back or a tap outside it closes it without a
- * refusal; the refusal's confirm button opens the app's settings page, where the user can still allow access.
+ * refusal; the refusal's confirm button opens the app's settings page, where the user can still allow access, and an
+ * action that waits on the refusal waits for the user to come back.
  */
 @Composable
 fun LocalNetworkPrompts(host: LocalNetworkHost) {
@@ -37,7 +38,7 @@ fun LocalNetworkPrompts(host: LocalNetworkHost) {
         LocalNetworkPrompt.Denied -> PromptDialog(
             LocalNetworkPrompt.Denied.text(),
             onConfirm = {
-                host.access.dismissed()
+                host.access.toSettings()
                 host.openSettings()
             },
             onDismiss = host.access::dismissed,

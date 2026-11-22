@@ -45,7 +45,14 @@ url = "2"
 uuid = { version = "1", features = ["v5"] }
 webpki-root-certs = "1"
 
+[features]
+# Debug builds of the app only (its Gradle build turns this on for the debug variant):
+# `call("debugFault")` ends the running data path as a crash would (`src/api/fault.rs`).
+fault-hook = []
+
 [dev-dependencies]
+# Paused time for the TCP drain tests: a 30 s deadline without waiting 30 s.
+tokio = { version = "1", features = ["test-util"] }
 # The loopback TUIC server of the carrier tests: honk's Quinn (patched below) with its default
 # rustls on ring, both already in the graph.
 quinn = "0.11"

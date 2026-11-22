@@ -23,6 +23,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
+#[cfg(feature = "fault-hook")]
+mod fault;
 mod selection;
 mod subscriptions;
 
@@ -422,6 +424,8 @@ impl Core {
             "removeSubscription" => {
                 parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
+            #[cfg(feature = "fault-hook")]
+            "debugFault" => self.fault().map(empty),
             _ => Err(ErrorCode::InvalidArgument),
         };
         reply.unwrap_or_else(|code| {

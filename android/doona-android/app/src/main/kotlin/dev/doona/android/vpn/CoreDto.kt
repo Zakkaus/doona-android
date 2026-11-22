@@ -28,7 +28,7 @@ internal data class StartConfigDto(val mtu: Int, val ipv4: String, val dns: Stri
         const val IPV4_PREFIX = 30
         const val DNS = "172.19.0.2"
 
-        fun of(bootstrapDns: List<String>) = StartConfigDto(MTU, IPV4, DNS, bootstrapDns)
+        fun of(bootstrapDns: List<String>, mtu: Int = MTU) = StartConfigDto(mtu, IPV4, DNS, bootstrapDns)
     }
 }
 
