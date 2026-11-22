@@ -2,9 +2,9 @@
 //! resolver, each on its own threads.
 
 use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpListener, TcpStream, UdpSocket};
-use std::sync::Arc;
+use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use std::sync::{Arc, mpsc};
 
 /// Counts what a server saw.
 #[derive(Default)]
@@ -42,6 +42,24 @@ pub fn tcp_echo() -> (SocketAddr, Arc<Seen>) {
         }
     });
     (addr, seen)
+}
+
+/// Accepts one connection and closes its sending side at once; delivers what the client sent
+/// once the client's FIN arrives.
+pub fn half_closer() -> (SocketAddr, mpsc::Receiver<Vec<u8>>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let Ok((mut conn, _)) = listener.accept() else {
+            return;
+        };
+        let _ = conn.shutdown(Shutdown::Write);
+        let mut got = Vec::new();
+        let _ = conn.read_to_end(&mut got);
+        let _ = tx.send(got);
+    });
+    (addr, rx)
 }
 
 /// A loopback port with nothing listening.

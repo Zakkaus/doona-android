@@ -130,10 +130,13 @@ impl TcpFlow {
             match self.ends.down.try_recv() {
                 Ok(chunk) => self.down_pending = Some(chunk),
                 Err(TryRecvError::Empty) => return Ok(()),
-                Err(TryRecvError::Disconnected) => {
-                    stack.tcp_shutdown(id)?;
-                    self.down_shut = true;
-                }
+                Err(TryRecvError::Disconnected) => match stack.tcp_shutdown(id) {
+                    Ok(()) => self.down_shut = true,
+                    // The upstream closed before the client acknowledged the SYN-ACK: honk
+                    // queues no FIN in SynReceived. Its CONNECTED event pumps this flow again.
+                    Err(StreamError::WouldBlock) => return Ok(()),
+                    Err(e) => return Err(e),
+                },
             }
         }
     }

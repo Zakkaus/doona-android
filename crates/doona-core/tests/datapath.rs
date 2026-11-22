@@ -208,3 +208,24 @@ fn stop_closes_open_flows_within_a_second() {
     // The upstream connection was closed with its generation.
     assert!(wait_for(WAIT, || seen.closed.load(Relaxed) == 1));
 }
+
+#[test]
+fn an_upstream_fin_before_the_handshake_ends_still_lets_the_client_send() {
+    let (server, received) = servers::half_closer();
+    let mut s = setup("Direct", vec![]);
+    let id = s.client.connect(server);
+    // The client leaves the SYN-ACK unanswered while the upstream connects and half-closes.
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
+    assert!(
+        matches!(s.client.read_now(id), Err(StreamError::Closed)),
+        "EOF, not a reset"
+    );
+    assert_eq!(s.client.exchange(id, b"late").unwrap(), b"");
+    let mut got = None;
+    assert!(s.client.until(WAIT, |_| {
+        got = received.try_recv().ok();
+        got.is_some()
+    }));
+    assert_eq!(got.unwrap(), b"late");
+}
