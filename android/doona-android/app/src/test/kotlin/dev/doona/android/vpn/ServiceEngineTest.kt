@@ -21,6 +21,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -40,11 +41,15 @@ class ServiceEngineTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val core = FakeCore()
     private val requested = CopyOnWriteArrayList<Long>()
+
+    /** Sends a requested start to the service; the system may find none or refuse it. */
+    @Volatile
+    private var dispatch: (Long) -> Boolean = { requested.add(it) }
     private val engine by lazy {
         val opener = CoreOpener(core, "/data", Dispatchers.IO)
         val settings = PerAppSettings(PreferenceDataStoreFactory.create(scope = scope) { folder.root.resolve("per_app.preferences_pb") })
         val controller = TunnelController(core, opener, { PerApp() }, scope, killProcess = {})
-        ServiceEngine(core, opener, controller, settings, startService = { requested += it }, io = Dispatchers.IO, scope = scope)
+        ServiceEngine(core, opener, controller, settings, startService = { dispatch(it) }, io = Dispatchers.IO, scope = scope)
     }
 
     @After
@@ -70,6 +75,24 @@ class ServiceEngineTest {
         engine.disconnect()
         // The service's start intent arrives after the disconnect.
         assertFalse(engine.controller.start(NoHost, requested.single()))
+        withTimeout(5_000) { engine.status.first { it == Status.Stopped } }
+        Unit
+    }
+
+    @Test
+    fun aStartWithNoServiceToTakeItEnds() = runBlocking {
+        scope.launch(Dispatchers.IO.limitedParallelism(1)) { engine.controller.run() }
+        dispatch = { false }
+        engine.connect()
+        withTimeout(5_000) { engine.status.first { it == Status.Stopped } }
+        Unit
+    }
+
+    @Test
+    fun aStartTheSystemRefusesEnds() = runBlocking {
+        scope.launch(Dispatchers.IO.limitedParallelism(1)) { engine.controller.run() }
+        dispatch = { throw SecurityException("refused") }
+        assertThrows(SecurityException::class.java) { engine.connect() }
         withTimeout(5_000) { engine.status.first { it == Status.Stopped } }
         Unit
     }

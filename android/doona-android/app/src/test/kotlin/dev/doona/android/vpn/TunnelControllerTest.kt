@@ -239,6 +239,42 @@ class TunnelControllerTest {
     }
 
     @Test
+    fun aStaleServiceGoingAwayLeavesTheNextStart() {
+        // A start cancelled before its intent arrives; its service stops itself, and the user connects again before
+        // Android destroys that service.
+        val stale = checkNotNull(controller.requestStart())
+        controller.stop()
+        awaitStatus { it == Status.Stopped }
+        val staleHost = FakeHost()
+        assertFalse(controller.start(staleHost, stale))
+        val next = checkNotNull(controller.requestStart())
+        controller.release(staleHost)
+        assertEquals(Status.Starting, controller.status.value)
+        assertTrue(controller.start(host, next))
+        awaitStatus { it is Status.Running }
+    }
+
+    @Test
+    fun theServiceGoingAwayStopsTheSessionItTook() {
+        startRunning()
+        controller.release(host)
+        awaitStatus { it == Status.Stopped }
+        assertEquals(listOf("start", "stop"), core.events)
+    }
+
+    @Test
+    fun abandoningAStartLeavesANewerOneAndOneTheServiceTook() {
+        val abandoned = checkNotNull(controller.requestStart())
+        controller.stop()
+        val next = checkNotNull(controller.requestStart())
+        controller.abandon(abandoned)
+        assertEquals(Status.Starting, controller.status.value)
+        assertTrue(controller.start(host, next))
+        controller.abandon(next)
+        awaitStatus { it is Status.Running }
+    }
+
+    @Test
     fun aRebuildBeforeTheServiceTakesTheStartLeavesTheRequest() {
         val requested = checkNotNull(controller.requestStart())
         controller.rebuild()

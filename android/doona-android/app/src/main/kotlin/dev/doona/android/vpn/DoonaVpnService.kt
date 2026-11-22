@@ -109,7 +109,8 @@ internal class DoonaVpnService :
 
     override fun onDestroy() {
         scope.cancel()
-        engine.controller.stop()
+        // Only the session this instance took: a start requested after this instance stopped itself is not its own.
+        engine.controller.release(this)
         super.onDestroy()
     }
 
@@ -160,10 +161,13 @@ internal class DoonaVpnService :
         private const val ACTION_STOP = "dev.doona.android.vpn.STOP"
         private const val EXTRA_GENERATION = "generation"
 
-        /** Takes the start [TunnelController.requestStart] returned [generation] for. The caller holds VPN consent. */
-        fun start(context: Context, generation: Long) {
+        /**
+         * Takes the start [TunnelController.requestStart] returned [generation] for; false when the system finds no service
+         * to start. The caller holds VPN consent.
+         */
+        fun start(context: Context, generation: Long): Boolean {
             val intent = Intent(context, DoonaVpnService::class.java).setAction(ACTION_START).putExtra(EXTRA_GENERATION, generation)
-            context.startForegroundService(intent)
+            return context.startForegroundService(intent) != null
         }
 
         internal fun stopIntent(context: Context): Intent = Intent(context, DoonaVpnService::class.java).setAction(ACTION_STOP)

@@ -50,8 +50,8 @@ class ServiceEngine internal constructor(
     private val opener: CoreOpener,
     internal val controller: TunnelController,
     private val perAppSettings: PerAppSettings,
-    /** Starts the service with the generation of a requested start. */
-    private val startService: (Long) -> Unit,
+    /** Starts the service with the generation of a requested start; false when the system finds no service to start. */
+    private val startService: (Long) -> Boolean,
     private val io: CoroutineDispatcher,
     /** Owns the engine's own work: polling, and commands the core has begun. */
     private val scope: CoroutineScope,
@@ -106,12 +106,12 @@ class ServiceEngine internal constructor(
 
     override fun connect() {
         val generation = controller.requestStart() ?: return
+        var sent = false
         try {
-            startService(generation)
-        } catch (e: IllegalStateException) {
-            // The system refused the foreground service, so nothing will take the start.
-            controller.stop()
-            throw e
+            sent = startService(generation)
+        } finally {
+            // The system refused the foreground service or found none, so nothing will take this start.
+            if (!sent) controller.abandon(generation)
         }
     }
 

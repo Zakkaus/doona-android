@@ -91,6 +91,15 @@ internal class TunnelController(
     /** The user's stop and the system's revoke alike. */
     fun stop() = close(accept = { it.active }, Status.Stopped)
 
+    /**
+     * The service [host] is going away: stops the session only if [host] took it. A service that took none, such as one
+     * a disconnect sent away, leaves alone a start requested since.
+     */
+    fun release(host: TunHost) = close(accept = { it.active && this.host === host }, Status.Stopped)
+
+    /** The start [requested] never reached the service: ends it, unless the service took it or a newer command replaced it. */
+    fun abandon(requested: Long) = close(accept = { requested == generation && host == null }, Status.Stopped)
+
     /** The core cannot be opened: shows [reason] while nothing runs, so the UI does not wait for it; a start retries. */
     fun unavailable(reason: FailureReason) = synchronized(lock) {
         if (_status.value == Status.Stopped) show(generation, Status.Failed(reason))
