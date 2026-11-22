@@ -64,16 +64,20 @@ impl Clock {
     }
 }
 
+/// A fold the boot clock finds this much longer than the monotonic clock does spans a sleep.
+pub(crate) const SLEPT_MS: u64 = 1000;
+
 /// What a session moved since its last fold, and the boot seconds the fold covers.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Fold {
     /// The second of the previous fold, or of the session's start.
     pub from_s: u64,
     pub to_s: u64,
-    /// The monotonic time at the fold.
+    /// The boot and the monotonic time at the fold.
+    pub boot_ms: u64,
     pub mono_ms: u64,
-    /// The seconds of `from_s..to_s` the phone was awake, rounded up: fewer when it slept.
-    pub awake_s: u64,
+    /// The phone slept since the fold before.
+    pub slept: bool,
     pub up: u64,
     pub down: u64,
     /// Flows the apps opened.
@@ -187,7 +191,7 @@ impl Stats {
         let day = day::local(clock).0;
         let turned = inner.day.replace(day).is_some_and(|d| d != day);
         let fold = session.fold(clock);
-        let (up, down) = (inner.ring).add(fold.from_s, fold.to_s, fold.awake_s, fold.up, fold.down);
+        let (up, down) = (inner.ring).add(fold.from_s, fold.to_s, fold.slept, fold.up, fold.down);
         session.note_peak(up, down);
         let moved = Moved {
             up: fold.up,

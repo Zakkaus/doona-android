@@ -46,30 +46,27 @@ impl Ring {
         self.latest
     }
 
-    /// Adds `up` and `down` bytes moved after second `from` up to second `to`, spread evenly over
-    /// the first `awake` seconds after `from`: all of them for a fold that comes late; fewer
-    /// across a suspend, which the boot clock counts, so the sleep stays empty and the bytes stay
-    /// by the fold before it, as a phone stops moving data before it sleeps. All in `to` when `to`
-    /// is not after `from`. Seconds more than an hour before the last are left out. Returns the
-    /// most bytes it put in one second, each way.
-    pub fn add(&mut self, from: u64, to: u64, awake: u64, up: u64, down: u64) -> (u64, u64) {
+    /// Adds `up` and `down` bytes moved after second `from` up to second `to`: spread evenly over
+    /// those seconds for a fold that comes late; all in `to` when the phone slept in between, as
+    /// the counters tell only when the bytes were sampled, not whether they moved before the sleep
+    /// or after the wake, so neither the sleep nor the seconds before it get bytes. Seconds more
+    /// than an hour before `to` are left out. Returns the most bytes it put in one second, each
+    /// way.
+    pub fn add(&mut self, from: u64, to: u64, slept: bool, up: u64, down: u64) -> (u64, u64) {
         self.latest = Some(self.latest.map_or(to, |l| l.max(to)));
         if up == 0 && down == 0 {
             return (0, 0);
         }
-        let span = to.saturating_sub(from);
-        let last = if span == 0 {
+        let first = if slept {
             to
         } else {
-            from + awake.clamp(1, span)
+            from.saturating_add(1)
+                .clamp(to.saturating_sub(SPAN - 1), to)
         };
-        let first = from
-            .saturating_add(1)
-            .clamp(last.saturating_sub(SPAN - 1), last);
-        let seconds = last - first + 1;
+        let seconds = to - first + 1;
         let (up_each, up_rest) = (up / seconds, up % seconds);
         let (down_each, down_rest) = (down / seconds, down % seconds);
-        for (i, second) in (first..=last).enumerate() {
+        for (i, second) in (first..=to).enumerate() {
             // The remainders go to the last seconds, one byte each.
             let late = seconds - i as u64;
             let bucket = self.bucket(second);
@@ -143,7 +140,7 @@ mod tests {
     #[test]
     fn a_fold_lands_in_its_second_and_reads_back() {
         let mut ring = Ring::new();
-        assert_eq!(ring.add(99, 100, 1, 7, 900), (7, 900));
+        assert_eq!(ring.add(99, 100, false, 7, 900), (7, 900));
         assert_eq!(ring.latest(), Some(100));
         let s = ring.series(100, 60);
         assert_eq!((s.step, s.up.len(), s.down.len()), (1, 60, 60));
@@ -156,37 +153,36 @@ mod tests {
     fn a_late_fold_spreads_over_the_seconds_it_covers() {
         let mut ring = Ring::new();
         // Three seconds, 10 bytes: 3, 3, 4 (the remainder to the last).
-        assert_eq!(ring.add(10, 13, 3, 10, 0), (4, 0));
+        assert_eq!(ring.add(10, 13, false, 10, 0), (4, 0));
         let s = ring.series(13, 4);
         assert_eq!(s.up, vec![0, 3, 3, 4]);
         // A fold whose `to` is not after `from` goes to `to`.
-        ring.add(13, 13, 0, 5, 0);
+        ring.add(13, 13, false, 5, 0);
         assert_eq!(ring.series(13, 1).up, vec![9]);
         // A fold that covers more than an hour keeps only the last hour.
-        ring.add(0, 2 * SPAN, 2 * SPAN, SPAN * 2, 0);
+        ring.add(0, 2 * SPAN, false, SPAN * 2, 0);
         let hour = ring.series(2 * SPAN, SPAN);
         assert_eq!(hour.up.iter().sum::<u64>(), SPAN * 2 / hour.step);
     }
 
     #[test]
-    fn a_fold_across_a_suspend_keeps_the_sleep_empty() {
+    fn a_fold_across_a_suspend_lands_in_its_last_second() {
         let mut ring = Ring::new();
-        // Awake for 2 s of the 600 the boot clock counted: the bytes go to the first two.
-        assert_eq!(ring.add(100, 700, 2, 0, 1000), (0, 500));
-        let s = ring.series(700, 600);
-        assert_eq!((s.step, s.down[0], s.down[1]), (2, 500, 0));
-        assert!(s.down[1..].iter().all(|&b| b == 0));
-        // Awake longer than the span counted (clocks read a moment apart): the whole span.
-        ring.add(700, 703, 9, 0, 30);
+        // The boot clock counted 600 s, the phone slept through most: all in second 700.
+        assert_eq!(ring.add(100, 700, true, 0, 1000), (0, 1000));
+        assert_eq!(ring.series(700, 1).down, [1000]);
+        assert!(ring.series(699, 599).down.iter().all(|&b| b == 0));
+        // Awake throughout: the whole span.
+        ring.add(700, 703, false, 0, 30);
         assert_eq!(ring.series(703, 3).down, [10, 10, 10]);
     }
 
     #[test]
     fn seconds_an_hour_old_read_as_zero() {
         let mut ring = Ring::new();
-        ring.add(4, 5, 1, 1, 1);
+        ring.add(4, 5, false, 1, 1);
         // The same bucket an hour later holds a new second.
-        ring.add(SPAN + 4, SPAN + 5, 1, 2, 2);
+        ring.add(SPAN + 4, SPAN + 5, false, 2, 2);
         assert_eq!(ring.series(5, 1).up, vec![0]);
         assert_eq!(ring.series(SPAN + 5, 1).up, vec![2]);
         // Seconds before the boot clock began are zero, not an underflow.
@@ -200,7 +196,7 @@ mod tests {
         let mut ring = Ring::new();
         let end = 10 * SPAN;
         for s in end - SPAN + 1..=end {
-            ring.add(s - 1, s, 1, 12, s % 12);
+            ring.add(s - 1, s, false, 12, s % 12);
         }
         for (seconds, step, points) in [(60, 1, 60), (300, 1, 300), (900, 3, 300), (3600, 12, 300)]
         {

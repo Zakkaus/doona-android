@@ -219,27 +219,28 @@ fn latency_tests_are_kept_written_at_a_round_end_and_pruned() {
 }
 
 #[test]
-fn bytes_moved_before_a_suspend_stay_out_of_the_sleep() {
-    let (dir, rt) = (TempDir::new("stats-suspend"), runtime());
+fn bytes_after_a_wake_count_in_the_second_they_were_sampled() {
+    let (dir, rt) = (TempDir::new("stats-wake"), runtime());
     let stats = stats(&dir, &rt);
     let (session, base) = session();
-    moved(&session, (600, 6000, 0), 0);
-    // The phone suspends for ten minutes right after; the watch's next round comes on wake, a
-    // second later on the monotonic clock, and the boot clock counted the sleep.
+    // Ten minutes asleep after the fold at `base`; on wake 6 KiB arrive before the watch's next
+    // round, a second after `base` on the monotonic clock.
+    session.publish(0, 6144, 0, 0);
     let wake = Clock {
         mono_ms: base.mono_ms + 1000,
         ..clock(&base, 601, NOW_MS + 601_000)
     };
     stats.fold(&session, &wake, false);
     let (last_minute, _) = stats.series(60, true, &wake);
-    assert!(
-        last_minute.down.iter().all(|&b| b == 0),
-        "the sleep shows no traffic: {:?}",
-        last_minute.down
+    assert_eq!(last_minute.down[59], 6144, "{:?}", last_minute.down);
+    assert!(last_minute.down[..59].iter().all(|&b| b == 0));
+    // Nothing goes back into the sleep or the second before it.
+    let (hour, _) = stats.series(601, true, &wake);
+    assert_eq!(hour.down.iter().sum::<u64>(), 6144 / hour.step);
+    assert_eq!(
+        lock(&stats.inner).ring.series(base.boot_s() + 1, 1).down,
+        [0]
     );
-    let first = base.boot_s() + 1;
-    assert_eq!(lock(&stats.inner).ring.series(first, 1).down, [6000]);
-    assert_eq!(session.traffic().down_peak, 6000);
 }
 
 #[test]
