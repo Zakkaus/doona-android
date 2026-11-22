@@ -98,12 +98,13 @@ impl Core {
         let (parsed, userinfo) = match downloaded {
             Ok(downloaded) => downloaded,
             Err(code) => {
-                #[cfg(test)]
-                self.hooks.before_write(deadline);
-                // Out of time: the failure is returned but not recorded.
-                if stored.error != Some(code) && Instant::now() < deadline {
+                if stored.error != Some(code) {
                     stored.error = Some(code);
-                    self.commit_state(next, "updateSubscription")?;
+                    // Out of time (`busy`): the failure is returned but not recorded.
+                    match self.commit_state(next, "updateSubscription", Some(deadline)) {
+                        Ok(()) | Err(ErrorCode::Busy) => {}
+                        Err(other) => return Err(other),
+                    }
                 }
                 return Err(code);
             }
@@ -172,7 +173,8 @@ impl Core {
     /// went are dropped, the data path gets a registry for the new node set, and runtime state
     /// (latencies, automatic choices) carries over for the nodes that stay. Returns `changed`
     /// as the catalog shows it, or an empty one when it was removed. Past `deadline`, which the
-    /// registry rebuild may use up, nothing is written and the command is `busy`.
+    /// registry rebuild and the serialization may use up, nothing is written and the command is
+    /// `busy` ([`Core::write`] checks it right before the first write).
     fn commit_nodes(
         &self,
         mut next: State,
@@ -184,14 +186,7 @@ impl Core {
         let mut model = lock(&self.shared.catalog).model.with(&next, changed, fresh);
         groups::prune(&mut next.selections, &model.groups);
         let built = self.shared.outbounds.build(&model.nodes);
-        #[cfg(test)]
-        if let Some(deadline) = deadline {
-            self.hooks.before_write(deadline);
-        }
-        if deadline.is_some_and(|d| Instant::now() >= d) {
-            return Err(ErrorCode::Busy);
-        }
-        self.write(&next, command)?;
+        self.write(&next, command, deadline)?;
         let shown = {
             let mut c = lock(&self.shared.catalog);
             model.carry(&c.model);

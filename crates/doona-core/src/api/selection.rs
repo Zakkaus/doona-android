@@ -25,7 +25,7 @@ impl Core {
             Some(member) => next.selections.insert(args.group, member),
             None => next.selections.remove(&args.group),
         };
-        self.commit_state(next, "select")
+        self.commit_state(next, "select", None)
     }
 
     /// Starts probing the nodes of `group`, or of every group, and returns at once; the groups

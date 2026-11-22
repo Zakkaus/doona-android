@@ -139,9 +139,14 @@ impl Store {
 
     /// Writes `state` to a synced temporary file and renames it over the state file. The
     /// rename is the commit: once it succeeds, a restart reads the new state. [`Store::sync`]
-    /// then makes the rename durable.
-    pub fn commit(&self, state: &State) -> io::Result<()> {
+    /// then makes the rename durable. `proceed` runs once `state` is serialized, right before
+    /// the first write to the file system; when it answers false nothing is written and the
+    /// error is `TimedOut`.
+    pub fn commit(&self, state: &State, proceed: impl FnOnce() -> bool) -> io::Result<()> {
         let bytes = serde_json::to_vec_pretty(state).map_err(io::Error::other)?;
+        if !proceed() {
+            return Err(ErrorKind::TimedOut.into());
+        }
         let temp = self.dir.join(TEMP);
         let committed =
             write_synced(&temp, &bytes).and_then(|()| fs::rename(&temp, self.dir.join(FILE)));
@@ -195,7 +200,7 @@ mod tests {
         state
             .selections
             .insert("g-Proxy".into(), "n-0c41be77".into());
-        store.commit(&state).unwrap();
+        store.commit(&state, || true).unwrap();
         store.sync();
         assert!(!dir.path().join(TEMP).exists());
         let (loaded, how) = store.load().unwrap();

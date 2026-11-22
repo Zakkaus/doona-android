@@ -382,14 +382,19 @@ impl Core {
         if current.mode == mode {
             return Ok(());
         }
-        self.commit_state(State { mode, ..current }, "setMode")
+        self.commit_state(State { mode, ..current }, "setMode", None)
     }
 
     /// Writes `next`, then makes it what `snapshot`, new flows and the data path's groups see.
     /// The caller holds the writer lock and read the current state under it, so nothing else
-    /// changed the file meanwhile.
-    fn commit_state(&self, next: State, command: &str) -> Result<(), ErrorCode> {
-        self.write(&next, command)?;
+    /// changed the file meanwhile. Past `deadline`, as [`Core::write`] checks it, nothing changes.
+    fn commit_state(
+        &self,
+        next: State,
+        command: &str,
+        deadline: Option<Instant>,
+    ) -> Result<(), ErrorCode> {
+        self.write(&next, command, deadline)?;
         {
             let mut c = lock(&self.shared.catalog);
             c.state = next;
@@ -403,8 +408,28 @@ impl Core {
         Ok(())
     }
 
-    fn write(&self, next: &State, command: &str) -> Result<(), ErrorCode> {
-        self.store.commit(next).map_err(|e| {
+    /// Writes `next` to `state.json`. A `deadline` is checked once the state is serialized,
+    /// right before the first write to the file system: past it nothing is written and the
+    /// command is `busy`.
+    fn write(
+        &self,
+        next: &State,
+        command: &str,
+        deadline: Option<Instant>,
+    ) -> Result<(), ErrorCode> {
+        let mut late = false;
+        let written = self.store.commit(next, || {
+            #[cfg(test)]
+            if let Some(deadline) = deadline {
+                self.hooks.before_write(deadline);
+            }
+            late = deadline.is_some_and(|d| Instant::now() >= d);
+            !late
+        });
+        if late {
+            return Err(ErrorCode::Busy);
+        }
+        written.map_err(|e| {
             log::error!("{command}: state not written ({:?})", e.kind());
             ErrorCode::Internal
         })

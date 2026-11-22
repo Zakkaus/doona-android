@@ -28,8 +28,8 @@ impl Hooks {
         }
     }
 
-    /// Runs `f` once with a subscription command's deadline, after its preparation and before
-    /// its durable write.
+    /// Runs `f` once with a subscription command's deadline, once its state is serialized and
+    /// before the first write to the file system.
     pub fn on_before_write(&self, f: impl FnOnce(Instant) + Send + 'static) {
         *lock(&self.before_write) = Some(Box::new(f));
     }
