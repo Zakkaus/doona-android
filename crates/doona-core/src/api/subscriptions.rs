@@ -175,7 +175,9 @@ impl Core {
     /// (latencies, automatic choices) carries over for the nodes that stay. Returns `changed`
     /// as the catalog shows it, or an empty one when it was removed. Past `deadline`, which the
     /// registry rebuild and the serialization may use up, nothing is written and the command is
-    /// `busy` ([`Core::write`] checks it right before the first write).
+    /// `busy` ([`Core::write`] checks it right before the first write). A fresh node may be one
+    /// whose tests an earlier commit forgot: that reaches the disk first, or nothing is
+    /// committed, so a crash after this commit never reads the old tests back.
     fn commit_nodes(
         &self,
         mut next: State,
@@ -184,6 +186,10 @@ impl Core {
         command: &str,
         deadline: Option<Instant>,
     ) -> Result<dto::Subscription, ErrorCode> {
+        if !fresh.is_empty() && !self.shared.stats.forgetting_written() {
+            log::error!("{command}: forgotten latency tests not written");
+            return Err(ErrorCode::Internal);
+        }
         let mut model = lock(&self.shared.catalog).model.with(&next, changed, fresh);
         groups::prune(&mut next.selections, &model.groups);
         let built = self.shared.outbounds.build(&model.nodes);

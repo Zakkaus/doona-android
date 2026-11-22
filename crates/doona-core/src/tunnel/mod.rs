@@ -19,7 +19,7 @@ use crate::dto::{ErrorCode, Traffic};
 use crate::localnet::Trace;
 use crate::outbounds::{Ended, Outbounds};
 use crate::stats::meter::Meters;
-use crate::stats::{Clock, Fold, Stats};
+use crate::stats::{Clock, Fold, SLEPT_MS, Stats};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use route::ModeCell;
@@ -241,6 +241,7 @@ impl Session {
             down_peak: AtomicU64::new(0),
             folded: Mutex::new(Fold {
                 to_s: start.boot_s(),
+                boot_ms: start.boot_ms,
                 mono_ms: start.mono_ms,
                 ..Fold::default()
             }),
@@ -267,12 +268,15 @@ impl Session {
         let mut folded = lock(&self.folded);
         let (up, down) = (self.up.load(Relaxed), self.down.load(Relaxed));
         let flows = self.opened.load(Relaxed);
+        let boot_ms = clock.boot_ms.max(folded.boot_ms);
         let mono_ms = clock.mono_ms.max(folded.mono_ms);
+        let asleep_ms = (boot_ms - folded.boot_ms).saturating_sub(mono_ms - folded.mono_ms);
         let fold = Fold {
             from_s: folded.to_s,
             to_s: clock.boot_s().max(folded.to_s),
+            boot_ms,
             mono_ms,
-            awake_s: (mono_ms - folded.mono_ms).div_ceil(1000),
+            slept: asleep_ms >= SLEPT_MS,
             up: up.saturating_sub(folded.up),
             down: down.saturating_sub(folded.down),
             flows: flows.saturating_sub(folded.flows),
