@@ -4,9 +4,13 @@
     <string name="rv_disconnect">中斷連線</string>
     <string name="rv_test_latency">測試延遲</string>
     <string name="rv_more">更多</string>
-    <string name="rv_seconds_ago">%1$d 秒前</string>
-    <string name="rv_now">現在</string>
     <string name="rv_test_all">全部測試</string>
     <string name="rv_expires">%1$s 到期</string>
     <string name="rv_updated">%1$s 更新</string>
+    <string name="rv_peak">峰值 %1$s</string>
+    <string name="rv_average">平均 %1$s</string>
+    <string name="rv_range_1m">1 分</string>
+    <string name="rv_range_5m">5 分</string>
+    <string name="rv_range_15m">15 分</string>
+    <string name="rv_range_1h">1 時</string>
 </resources>

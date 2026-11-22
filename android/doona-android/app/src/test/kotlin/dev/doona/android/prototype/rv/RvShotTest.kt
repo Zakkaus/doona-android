@@ -23,8 +23,8 @@ import java.util.TimeZone
 
 /**
  * The Revolut-style samples, light and dark, in the scheme of the owner's wallpaper, for the owner to judge next to
- * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`) and the 「Proxy」 group's node
- * screen (`proto-rv-nodes-light` and `-dark`).
+ * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`), the 「Proxy」 group's node
+ * screen (`proto-rv-nodes-light` and `-dark`) and the traffic page a tile opens (`proto-rv-traffic-light` and `-dark`).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -45,16 +45,22 @@ class RvShotTest {
     fun restoreZone() = TimeZone.setDefault(zone)
 
     @Test
-    fun activityLight() = shot("activity", dark = false) { RvActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}) }
+    fun activityLight() = shot("activity", dark = false) { RvActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
 
     @Test
-    fun activityDark() = shot("activity", dark = true) { RvActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}) }
+    fun activityDark() = shot("activity", dark = true) { RvActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
 
     @Test
     fun nodesLight() = shot("nodes", dark = false) { RvNodesScreen(sampleNodesState(), onBack = {}, onTestAll = {}, onSelect = {}) }
 
     @Test
     fun nodesDark() = shot("nodes", dark = true) { RvNodesScreen(sampleNodesState(), onBack = {}, onTestAll = {}, onSelect = {}) }
+
+    @Test
+    fun trafficLight() = shot("traffic", dark = false) { RvTrafficScreen(sampleActivityState(), onBack = {}) }
+
+    @Test
+    fun trafficDark() = shot("traffic", dark = true) { RvTrafficScreen(sampleActivityState(), onBack = {}) }
 
     private fun shot(screen: String, dark: Boolean, content: @Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers(if (dark) "+night" else "+notnight")

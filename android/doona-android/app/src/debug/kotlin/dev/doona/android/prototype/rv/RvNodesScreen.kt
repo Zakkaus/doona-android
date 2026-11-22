@@ -5,7 +5,6 @@ import android.text.format.Formatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,25 +13,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
@@ -75,14 +68,7 @@ internal fun RvNodesScreen(state: RvNodesState, onBack: () -> Unit, onTestAll: (
 
 @Composable
 private fun Top(group: Group, onBack: () -> Unit, onTestAll: () -> Unit) {
-    val back = stringResource(R.string.ui_back)
-    // The back glyph's edge sits on the gutter; its touch target reaches past it.
-    Box(Modifier.height(RvSize.topBar).padding(start = RvSpace.gutter - (RvSize.touch - RvSize.navGlyph) / 2), contentAlignment = Alignment.CenterStart) {
-        Box(
-            Modifier.size(RvSize.touch).rvPress(CircleShape, Role.Button, onBack).semantics { contentDescription = back },
-            contentAlignment = Alignment.Center,
-        ) { RvGlyph(R.drawable.rv_ic_back, RvSize.navGlyph, Rv.colors.text) }
-    }
+    RvBackBar(onBack)
     Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight)) {
             RvText(group.name, Rv.type.title)

@@ -6,7 +6,6 @@ import android.text.format.Formatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,19 +14,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -40,26 +32,28 @@ import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.feature.activity.sampleActivityState
-import java.text.NumberFormat
-import kotlin.math.floor
-import kotlin.math.log10
-import kotlin.math.pow
 
 /**
  * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
  * hero figure and both rates under it on a dot map of the world that marks the node's country (#07, #08), four round
- * actions, then a grouped card with the global outbound and the node it uses, the traffic chart, and the bottom
- * navigation. It renders [ActivityUiState] unchanged.
+ * actions, then a grouped card with the global outbound and the node it uses, download and upload as two of Revolut's
+ * home tiles (either opens the traffic page), and the bottom navigation. It renders [ActivityUiState] unchanged.
  */
 @Composable
-internal fun RvActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
+internal fun RvActivityScreen(
+    state: ActivityUiState,
+    onAction: (ActivityAction) -> Unit,
+    onConnect: () -> Unit,
+    onOpenGroup: (String) -> Unit,
+    onOpenTraffic: () -> Unit,
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     Column(Modifier.fillMaxSize().background(Rv.colors.page)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Header(state, onAction, onConnect, insets)
             RvGutter {
                 OutboundCard(state, onOpenGroup)
-                TrafficCard(state)
+                TrafficTiles(state, onOpenTraffic)
             }
             Spacer(Modifier.height(RvSpace.cardGap))
         }
@@ -118,41 +112,37 @@ private fun OutboundCard(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
     }
 }
 
+/** Download and upload as two tiles side by side: the rate, the window's peak, and the minute's sparkline. */
 @Composable
-private fun TrafficCard(state: ActivityUiState) {
+private fun TrafficTiles(state: ActivityUiState, onOpenTraffic: () -> Unit) {
     val context = LocalContext.current
-    // The axis reads in MB/s whatever the range, so its labels line up with the hero's usual unit.
-    val locale = LocalConfiguration.current.locales[0]
-    val megabytes = remember(locale) { NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 } }
-    RvCard {
-        Column(Modifier.padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.legendGap)) {
-            Row(Modifier.fillMaxWidth()) {
-                Legend(stringResource(R.string.ui_download), rateText(context, state.downRate), Rv.colors.seriesDown, Modifier.weight(1f))
-                Legend(stringResource(R.string.ui_upload), rateText(context, state.upRate), Rv.colors.seriesUp, Modifier.weight(1f))
-            }
-            val top = niceMax(maxOf(state.downHistory.maxOrNull() ?: 0f, state.upHistory.maxOrNull() ?: 0f))
-            RvTrafficChart(
-                state.downHistory,
-                state.upHistory,
-                top,
-                axis = { if (it == 0f) ZERO else megabytes.format(it / BYTES_PER_MB) + MB_PER_SECOND },
-                start = stringResource(R.string.rv_seconds_ago, state.downHistory.size),
-                end = stringResource(R.string.rv_now),
-            )
-        }
+    Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tileGap)) {
+        RvSparkTile(
+            stringResource(R.string.ui_download),
+            R.drawable.ic_download,
+            rateText(context, state.downRate),
+            peakLine(state.downHistory),
+            state.downHistory,
+            Rv.colors.down,
+            onOpenTraffic,
+            Modifier.weight(1f),
+        )
+        RvSparkTile(
+            stringResource(R.string.ui_upload),
+            R.drawable.ic_upload,
+            rateText(context, state.upRate),
+            peakLine(state.upHistory),
+            state.upHistory,
+            Rv.colors.up,
+            onOpenTraffic,
+            Modifier.weight(1f),
+        )
     }
 }
 
+/** The highest rate of the window, after its label: Peak 5.2 MB/s. */
 @Composable
-private fun Legend(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.subGap)) {
-            Box(Modifier.size(RvSize.dot).clip(CircleShape).background(color))
-            RvText(label, Rv.type.rowSub, color = Rv.colors.textSecondary)
-        }
-        RvText(value, Rv.type.rowValue)
-    }
-}
+private fun peakLine(history: List<Float>): String = stringResource(R.string.rv_peak, rateText(LocalContext.current, history.maxOrNull()?.toLong() ?: 0L))
 
 /** A rate split for the hero: the figure, and its unit with "/s" set small after it. */
 private fun rateParts(context: Context, bytesPerSecond: Long): Pair<String, String> {
@@ -163,20 +153,7 @@ private fun rateParts(context: Context, bytesPerSecond: Long): Pair<String, Stri
 
 private fun rateText(context: Context, bytesPerSecond: Long) = Formatter.formatShortFileSize(context, bytesPerSecond) + PER_SECOND
 
-/** The smallest 1, 2, 2.5 or 5 times a power of ten at or above [value], so the axis reads in round steps. */
-private fun niceMax(value: Float): Float {
-    if (value <= 0f) return 1f
-    val power = 10f.pow(floor(log10(value)))
-    return NICE_STEPS.first { it * power >= value } * power
-}
-
-private val NICE_STEPS = listOf(1f, 2f, 2.5f, 5f, 10f)
-private const val ZERO = "0"
 private const val PER_SECOND = "/s"
-
-/** Android's file sizes are decimal (formatShortFileSize), so the axis is too. */
-private const val BYTES_PER_MB = 1_000_000f
-private const val MB_PER_SECOND = " MB/s"
 
 private val NAV = listOf(
     RvNavItem(R.drawable.rv_ic_nav_activity, R.string.hub_activity),
@@ -203,5 +180,5 @@ private val Mode.label: Int
 @Composable
 private fun RvActivityScreenPreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}, onOpenTraffic = {}) }
 }

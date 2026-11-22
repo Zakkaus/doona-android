@@ -25,8 +25,16 @@ internal object RvSpace {
     val actionsToCard = 32.dp
     val subGap = 6.dp
     val tight = 4.dp
-    val legendGap = 16.dp
-    val axisGap = 8.dp
+
+    /** Between two tiles side by side, as between two cards. */
+    val tileGap = 18.dp
+
+    /** From a tile's text to its sparkline. */
+    val sparkGap = 14.dp
+
+    /** From the detail page's figures to its chart, and from the chart to its legend and range pills. */
+    val chartGap = 24.dp
+    val pillGap = 8.dp
 
     /** From a screen's title block to its first card. */
     val titleToCard = 24.dp
@@ -46,11 +54,7 @@ internal object RvSize {
     val rowOneLine = 56.dp
     val inlineGlyph = 16.dp
     val chevron = 20.dp
-    val chartHeight = 132.dp
-    val chartStroke = 2.dp
-    val gridStroke = 1.dp
     val dot = 8.dp
-    val dotRing = 2.dp
     val cardRadius = 18.dp
     val touch = 48.dp
     val topBar = 56.dp
@@ -86,15 +90,49 @@ internal object RvDots {
     const val FADE_END = 0.86f
 }
 
+/** Revolut's charts, from the owner's 2026 screenshots: the home tiles' sparklines and a stock's full-bleed chart. */
+internal object RvChartSize {
+    /** A tile's caption disc, and the glyph in it. */
+    val tileDisc = 28.dp
+    val tileGlyph = 16.dp
+    val spark = 90.dp
+    val sparkStroke = 2.dp
+
+    /** The detail chart: full width, with room above the peak's line for its pill. */
+    val detail = 300.dp
+    val detailTop = 24.dp
+    val detailBottom = 8.dp
+    val detailStroke = 1.5.dp
+
+    /** Dotted lines: round dots this wide, this far apart. */
+    val dotted = 1.5.dp
+    val dottedPitch = 4.dp
+
+    /** A value pill on the chart, and its distance from the point it names. */
+    val pillPadH = 8.dp
+    val pillPadV = 3.dp
+    val pillOffset = 8.dp
+
+    /** A range pill under the chart: Revolut's raised chip. */
+    val range = 36.dp
+    val rangePad = 14.dp
+
+    /** Vertical grid lines split the minute into this many parts, one every 10 seconds. */
+    const val GRID_PARTS = 6
+}
+
 internal object RvAlpha {
     /** The state layer: the content colour over the visible shape while pressed. */
     const val PRESSED = 0.1f
 
-    /** The chart's grid lines. */
-    const val GRID = 0.6f
+    /** The detail chart's vertical grid: very faint. */
+    const val GRID = 0.5f
 
-    /** The top of the area under the chart's main series, fading to nothing at the zero line. */
-    const val FILL = 0.24f
+    /** The top of the area under a line, fading to nothing at the chart's bottom. */
+    const val FILL = 0.25f
+
+    /** A range the build does not offer yet. */
+    const val DISABLED = 0.38f
 }
 
 /** One step of the type scale: size and line height in sp, weight, display or text cut. */
@@ -108,7 +146,8 @@ internal object RvTypeScale {
     val rowTitle = RvTypeStep(17, 24, FontWeight.Medium)
     val rowSub = RvTypeStep(15, 20, FontWeight.Normal)
     val action = RvTypeStep(15, 20, FontWeight.Medium)
-    val axis = RvTypeStep(13, 16, FontWeight.Normal)
+    val tileValue = RvTypeStep(24, 30, FontWeight.Bold, display = true)
+    val pill = RvTypeStep(12, 16, FontWeight.Medium)
     val title = RvTypeStep(34, 40, FontWeight.Bold, display = true)
     val navLabel = RvTypeStep(12, 16, FontWeight.Medium)
     const val TABULAR = "tnum"

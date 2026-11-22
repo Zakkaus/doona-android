@@ -27,6 +27,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -190,6 +192,34 @@ internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().height(RvSize.progress).clip(CircleShape).background(Rv.colors.track)) {
         Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(Rv.colors.positive))
     }
+}
+
+/** A screen's top bar: the back glyph's edge sits on the gutter; its touch target reaches past it. */
+@Composable
+internal fun RvBackBar(onBack: () -> Unit) {
+    val back = stringResource(R.string.ui_back)
+    Box(Modifier.height(RvSize.topBar).padding(start = RvSpace.gutter - (RvSize.touch - RvSize.navGlyph) / 2), contentAlignment = Alignment.CenterStart) {
+        Box(
+            Modifier.size(RvSize.touch).rvPress(CircleShape, Role.Button, onBack).semantics { contentDescription = back },
+            contentAlignment = Alignment.Center,
+        ) { RvGlyph(R.drawable.rv_ic_back, RvSize.navGlyph, Rv.colors.text) }
+    }
+}
+
+/** A range under a chart, Revolut's pill: the selected one a raised chip, the rest plain text; one not offered is grey. */
+@Composable
+internal fun RvRangePill(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val color = if (enabled) Rv.colors.text else Rv.colors.text.copy(alpha = RvAlpha.DISABLED)
+    Box(
+        Modifier
+            .minimumInteractiveComponentSize()
+            .height(RvChartSize.range)
+            .clip(CircleShape)
+            .background(if (selected) Rv.colors.chip else Color.Transparent)
+            .selectable(selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), enabled = enabled, role = Role.Tab, onClick = onClick)
+            .padding(horizontal = RvChartSize.rangePad),
+        contentAlignment = Alignment.Center,
+    ) { RvText(label, Rv.type.action, color = color) }
 }
 
 /** A destination of the bottom navigation. */

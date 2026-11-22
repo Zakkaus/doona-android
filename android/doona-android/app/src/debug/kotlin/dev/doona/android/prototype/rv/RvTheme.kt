@@ -58,9 +58,21 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
 
     /** A hairline round a flag in light, where white fields meet the light grey card; dark needs none. */
     val flagEdge: Color? = if (dark) null else s.outlineVariant
-    val seriesDown = s.primary
-    val seriesUp = s.onSurfaceVariant
+
+    /** Traffic has no good or bad direction, so download and upload take two plain roles of the scheme. */
+    val down = RvSeries(s.primary, s.primaryContainer, s.onPrimaryContainer)
+    val up = RvSeries(s.tertiary, s.tertiaryContainer, s.onTertiaryContainer)
+
+    /** A chart's dotted reference lines (light grey, as Revolut's) and its faint vertical grid. */
+    val reference = s.outline
     val grid = s.outlineVariant
+
+    /** A value pill on a chart: Revolut's small dark chip, the inverse surface in light. */
+    val pill = if (dark) s.surfaceContainerHighest else s.inverseSurface
+    val onPill = if (dark) s.onSurface else s.inverseOnSurface
+
+    /** The selected range under the detail chart: a chip raised off the page. */
+    val chip = if (dark) s.surfaceContainerHighest else s.surfaceContainerHigh
     val stateLayer = s.onSurface
 
     fun quality(tone: Tone): Color = when (tone) {
@@ -70,6 +82,10 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
         Tone.Neutral -> textSecondary
     }
 }
+
+/** One traffic direction's colours: its chart line and its tile's disc with the glyph on it. */
+@Immutable
+internal class RvSeries(val line: Color, val disc: Color, val onDisc: Color)
 
 @Immutable
 internal class RvType {
@@ -83,7 +99,8 @@ internal class RvType {
     val rowValue = RvTypeScale.rowTitle.style(tabular = true)
     val rowSub = RvTypeScale.rowSub.style()
     val action = RvTypeScale.action.style()
-    val axis = RvTypeScale.axis.style(tabular = true)
+    val tileValue = RvTypeScale.tileValue.style(tabular = true)
+    val pill = RvTypeScale.pill.style(tabular = true)
     val title = RvTypeScale.title.style()
     val navLabel = RvTypeScale.navLabel.style()
 
