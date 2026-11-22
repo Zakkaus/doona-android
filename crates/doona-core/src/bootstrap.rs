@@ -32,7 +32,8 @@ pub(crate) fn use_servers(servers: Vec<SocketAddr>) {
 }
 
 /// `start`'s `bootstrapDns` on `port`, or `fallback` when it is empty; `None` when an entry is not
-/// an address. An entry may carry a scope (`fe80::1%wlan0`), by number or interface name.
+/// an address. An IPv6 entry may carry a scope (`fe80::1%wlan0`), by number or interface name; an
+/// IPv4 one has none.
 pub(crate) fn servers(
     config: &[String],
     port: u16,
@@ -50,7 +51,7 @@ fn server(text: &str, port: u16) -> Option<SocketAddr> {
         None => (text.trim(), None),
     };
     match ip.parse::<IpAddr>().ok()? {
-        IpAddr::V4(a) => Some(SocketAddr::new(a.into(), port)),
+        IpAddr::V4(a) => scope.is_none().then(|| SocketAddr::new(a.into(), port)),
         IpAddr::V6(a) => {
             let scope_id = match scope {
                 None => 0,
@@ -130,7 +131,14 @@ mod tests {
         ];
         assert_eq!(got, Some(want));
         assert_eq!(servers(&[], 53, &FALLBACK), Some(FALLBACK.to_vec()));
-        for junk in ["x", "fe80::1%no-such-interface", ""] {
+        let refused = [
+            "x",
+            "fe80::1%no-such-interface",
+            "",
+            "127.0.0.1%junk",
+            "10.0.0.1%2",
+        ];
+        for junk in refused {
             let config = ["10.0.0.1".to_owned(), junk.to_owned()];
             assert_eq!(servers(&config, 53, &FALLBACK), None, "{junk:?}");
         }
