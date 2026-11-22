@@ -78,6 +78,12 @@ fun DoonaText(
     Text(text, modifier, color = color, style = style, maxLines = maxLines, overflow = overflow, softWrap = softWrap)
 }
 
+/** A tile's value (`.rp-big`, §7): the tabular figure on its own line. */
+@Composable
+fun DoonaMetricValue(text: String) {
+    Text(text, style = DoonaTheme.type.tileValue, color = DoonaTheme.colors.text, maxLines = 1, softWrap = false, modifier = Modifier.layoutRole(LayoutRole.Value))
+}
+
 /** Height of one text line of [style] in dp, so a dot or icon can sit on the centre of a first line. */
 @Composable
 fun lineHeightOf(style: TextStyle): Dp = with(LocalDensity.current) { style.lineHeight.toDp() }
@@ -93,6 +99,7 @@ fun DoonaCard(
     val shape = DoonaTheme.shape.xl
     Column(
         modifier = modifier
+            .layoutRole(LayoutRole.Card)
             .clip(shape)
             .background(c.card)
             .border(DoonaTheme.size.border, c.cardBorder, shape)
@@ -162,9 +169,12 @@ fun StatusLight(
     }
 }
 
-/** Latency (§2): bold tabular value coloured by the tone's text role, 8 px dot, gap 6. */
+/**
+ * Latency (§2): bold tabular value coloured by the tone's text role, 8 px dot, gap 6. [alignValue] marks the value of
+ * a metric tile: the number starts on the tile's value column, like the tiles' values that have no dot.
+ */
 @Composable
-fun Latency(ms: Int?, style: TextStyle = DoonaTheme.type.bodyStrong) {
+fun Latency(ms: Int?, style: TextStyle = DoonaTheme.type.bodyStrong, modifier: Modifier = Modifier, alignValue: Boolean = false) {
     val c = DoonaTheme.colors
     val tone = latencyTone(ms)
     val text = when (tone) {
@@ -174,6 +184,7 @@ fun Latency(ms: Int?, style: TextStyle = DoonaTheme.type.bodyStrong) {
         Tone.Neutral -> c.textSecondary
     }
     StatusLight(
+        modifier = if (alignValue) modifier.layoutRole(LayoutRole.Value) else modifier,
         tone = tone,
         text = ms?.let { stringResource(R.string.latency_ms, it) } ?: "—",
         style = style.copy(fontFeatureSettings = DoonaTheme.type.tabular),
@@ -203,6 +214,7 @@ fun Badge(text: String) {
 fun TagChip(text: String, onClick: () -> Unit = {}) {
     Box(
         Modifier
+            .layoutRole(LayoutRole.Control)
             .heightIn(min = DoonaTheme.size.touch)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -227,7 +239,7 @@ fun TagChip(text: String, onClick: () -> Unit = {}) {
 @Composable
 fun Segmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = DoonaTheme.colors
-    Box(modifier.heightIn(min = DoonaTheme.size.touch), contentAlignment = Alignment.CenterStart) {
+    Box(modifier.layoutRole(LayoutRole.Control).heightIn(min = DoonaTheme.size.touch), contentAlignment = Alignment.CenterStart) {
         Row(
             Modifier
                 .height(DoonaTheme.size.control)
@@ -290,7 +302,7 @@ fun DoonaSwitch(checked: Boolean, onChange: (Boolean) -> Unit, label: String, mo
 @Composable
 fun PickerButton(value: String, onClick: () -> Unit, filled: Boolean = false, leading: (@Composable () -> Unit)? = null) {
     val c = DoonaTheme.colors
-    Box(Modifier.heightIn(min = DoonaTheme.size.touch).clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(Modifier.layoutRole(LayoutRole.Control).heightIn(min = DoonaTheme.size.touch).clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
         Row(
             Modifier
                 .height(DoonaTheme.size.control)
@@ -302,7 +314,7 @@ fun PickerButton(value: String, onClick: () -> Unit, filled: Boolean = false, le
         ) {
             leading?.invoke()
             Text(value, style = DoonaTheme.type.body, color = c.text, maxLines = 1)
-            DoonaIcon(R.drawable.ic_chevron_down, c.text, size = DoonaTheme.size.iconInline)
+            DoonaIcon(R.drawable.ic_chevron_down, c.text, Modifier.layoutRole(LayoutRole.Chevron), DoonaTheme.size.iconInline)
         }
     }
 }
@@ -330,6 +342,7 @@ fun NodeTile(
     val shape = DoonaTheme.shape.md
     Column(
         Modifier
+            .layoutRole(LayoutRole.Tile)
             .fillMaxWidth()
             .heightIn(min = DoonaTheme.size.nodeTileMin)
             .clip(shape)

@@ -26,6 +26,7 @@ import dev.doona.android.designsystem.components.ControlCard
 import dev.doona.android.designsystem.components.DoonaCard
 import dev.doona.android.designsystem.components.DoonaErrorBanner
 import dev.doona.android.designsystem.components.DoonaIcon
+import dev.doona.android.designsystem.components.DoonaMetricValue
 import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaSwitch
 import dev.doona.android.designsystem.components.DoonaText
@@ -123,7 +124,7 @@ private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
             modifier = Modifier.fillMaxWidth(),
             onClick = state.outboundGroupId?.let { id -> { onOpenGroup(id) } },
         ) {
-            Latency(latency, DoonaTheme.type.tileValue)
+            Latency(latency, DoonaTheme.type.tileValue, alignValue = true)
         }
     }
 }
@@ -189,7 +190,7 @@ private fun TileCaption(text: String) {
 @Composable
 private fun RowScope.RateTile(@DrawableRes icon: Int, tint: Color, caption: String, value: String, series: List<Float>) {
     MetricTile(icon, tint, { TileCaption(caption) }, Modifier.weight(1f).fillMaxHeight()) {
-        DoonaText(value, style = DoonaTheme.type.tileValue, color = DoonaTheme.colors.text, maxLines = 1, softWrap = false)
+        DoonaMetricValue(value)
         if (series.isNotEmpty()) Sparkline(series, tint, Modifier.fillMaxWidth().height(DoonaTheme.size.spark))
     }
 }

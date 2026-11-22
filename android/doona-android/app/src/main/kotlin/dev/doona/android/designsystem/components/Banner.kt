@@ -34,6 +34,7 @@ fun DoonaErrorBanner(message: String, dismissLabel: String, onDismiss: () -> Uni
     val style = DoonaTheme.type.body
     Row(
         modifier
+            .layoutRole(LayoutRole.Card)
             .fillMaxWidth()
             .heightIn(min = DoonaTheme.size.touch)
             .clip(shape)

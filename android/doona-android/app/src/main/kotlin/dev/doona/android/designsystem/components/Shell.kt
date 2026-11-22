@@ -66,6 +66,7 @@ fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit = {}) 
 fun TopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit) {
     Row(
         Modifier
+            .layoutRole(LayoutRole.TopBar)
             .fillMaxWidth()
             .background(DoonaTheme.colors.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Top))
@@ -94,6 +95,7 @@ fun HubBar(tabs: List<HubTab>, selected: Int, onSelect: (Int) -> Unit) {
     val c = DoonaTheme.colors
     Row(
         Modifier
+            .layoutRole(LayoutRole.HubBar)
             .fillMaxWidth()
             .background(c.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Bottom))
@@ -139,6 +141,7 @@ fun HubBar(tabs: List<HubTab>, selected: Int, onSelect: (Int) -> Unit) {
 fun PageSheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier
+            .layoutRole(LayoutRole.Sheet)
             .fillMaxSize()
             .clip(DoonaTheme.shape.sheet)
             .background(DoonaTheme.colors.sheet)
