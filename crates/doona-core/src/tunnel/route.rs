@@ -135,7 +135,10 @@ impl Route {
                     None,
                     CONNECT_TIMEOUT,
                 );
-                Ok(UdpUpstream::Proxy(within(dial).await?.map_err(refused)?))
+                Ok(UdpUpstream::Proxy(
+                    within(dial).await?.map_err(refused)?,
+                    dst,
+                ))
             }
             Route::Refuse => Err(ErrorKind::PermissionDenied.into()),
         }

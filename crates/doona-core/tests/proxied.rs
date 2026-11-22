@@ -10,7 +10,7 @@ use common::global::{Global, WAIT, pattern, ping, socks_link, vmess_link};
 use common::servers::{self, Seen};
 use common::{socks, ss};
 use honk_netstack::StreamError;
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::{Duration, Instant};
 
@@ -145,6 +145,36 @@ fn udp_goes_through_a_node_that_carries_it() {
     assert_eq!(proxy_seen.datagrams.load(Relaxed), 3);
     assert_eq!(udp_seen.datagrams.load(Relaxed), 3);
     assert_eq!(s.g.snapshot().traffic.active_flows, 1);
+}
+
+/// A UDP server that answers each datagram from a second port first, then echoes it from its own.
+fn udp_echo_with_a_stray_peer() -> SocketAddr {
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let stray = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let addr = socket.local_addr().unwrap();
+    std::thread::spawn(move || {
+        let mut buf = vec![0u8; 2048];
+        while let Ok((n, from)) = socket.recv_from(&mut buf) {
+            let _ = stray.send_to(b"stray", from);
+            let _ = socket.send_to(&buf[..n], from);
+        }
+    });
+    addr
+}
+
+/// An association is with its destination alone, as a connected socket is: the node relays a
+/// reply from another port too, and that one is dropped.
+#[test]
+fn udp_replies_from_another_peer_are_dropped() {
+    let udp = udp_echo_with_a_stray_peer();
+    let (proxy, _) = socks::socks5();
+    let mut s = setup(&[socks_link(proxy, "s5")], vec![]);
+    for i in 0..3u8 {
+        s.client.send_udp(udp, &[i; 100]);
+        assert_eq!(s.client.recv_udp(udp, WAIT), Some(vec![i; 100]));
+    }
+    assert!(s.client.recv_udp(udp, Duration::from_millis(300)).is_none());
+    assert!(s.client.datagrams.is_empty(), "{:?}", s.client.datagrams);
 }
 
 #[test]

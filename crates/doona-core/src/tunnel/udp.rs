@@ -205,15 +205,16 @@ impl Nat {
 pub(crate) enum UdpUpstream {
     /// A socket connected to the destination.
     Socket(UdpSocket),
-    /// A node's transport to the destination.
-    Proxy(Arc<dyn PacketTransport>),
+    /// A node's transport to the destination, which it names. The node relays a reply from any
+    /// peer; one from another than the destination is dropped, as a connected socket drops it.
+    Proxy(Arc<dyn PacketTransport>, SocketAddr),
 }
 
 impl UdpUpstream {
     async fn send(&self, payload: &[u8]) -> io::Result<()> {
         match self {
             UdpUpstream::Socket(s) => s.send(payload).await.map(drop),
-            UdpUpstream::Proxy(t) => t.send_packet(payload).await,
+            UdpUpstream::Proxy(t, _) => t.send_packet(payload).await,
         }
     }
 
@@ -233,12 +234,16 @@ impl UdpUpstream {
                     r => return r,
                 }
             },
-            UdpUpstream::Proxy(t) => {
+            UdpUpstream::Proxy(t, remote) => {
                 if own.is_empty() {
                     own.resize(DATAGRAM, 0);
                 }
-                let (n, _) = t.recv_packet(own).await?;
-                Ok(Datagram::copy(&own[..n], budget))
+                loop {
+                    let (n, from) = t.recv_packet(own).await?;
+                    if same_peer(from, *remote) {
+                        return Ok(Datagram::copy(&own[..n], budget));
+                    }
+                }
             }
         }
     }
@@ -304,6 +309,11 @@ async fn exchange(o: Opened, upstream: &UdpUpstream) {
         () = receiving => {}
         () = idle => {}
     }
+}
+
+/// Whether `a` and `b` are one peer; a node may name an IPv4 peer in its IPv6-mapped form.
+fn same_peer(a: SocketAddr, b: SocketAddr) -> bool {
+    a.port() == b.port() && a.ip().to_canonical() == b.ip().to_canonical()
 }
 
 fn millis(d: Duration) -> u64 {
