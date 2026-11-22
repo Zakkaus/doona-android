@@ -13,12 +13,3 @@ internal enum class RvRouteMode { Rule, Global, Direct }
 /** A rule group that sent traffic today: its name, the node it sent it to (null when it goes direct), and its bytes. */
 @Immutable
 internal class RvRuleOutbound(@StringRes val group: Int, val nodeId: String?, val bytes: Long)
-
-/**
- * What one outbound carried of the last minute, in whole percent: the main node ([group] null, [nodeId] the node), a rule
- * group through its own node, or a rule group that goes direct ([nodeId] null). With neither, everything went direct.
- */
-@Immutable
-internal class RvMinuteShare(@StringRes val group: Int?, val nodeId: String?, val percent: Int) {
-    val direct: Boolean get() = nodeId == null
-}

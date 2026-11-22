@@ -27,28 +27,26 @@ import dev.doona.android.prototype.rv.stats.rvStatsSample
  * seen where the platform draws it (Robolectric's goldens cannot). 活動 pushes 流量詳情 (a traffic tile), 統計 (the top
  * bar), 節點 (the search pill and the outbound row) and the node in use (its row); 節點 pushes a node's page; the nav
  * switches to 設定, which pushes 主題. Back returns. Start it from the launcher's "doona RV sample", or with
- * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`; add `--es hero Ring` (any
- * [RvHeroVariant] by name) to see 活動 with one of the hero alternatives.
+ * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`.
  */
 class RvPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        val hero = intent.getStringExtra(EXTRA_HERO)?.let { name -> RvHeroVariant.entries.firstOrNull { it.name.equals(name, ignoreCase = true) } } ?: RvHeroVariant.Map
         setContent {
             val dark = isSystemInDarkTheme()
             RvTheme(rvSystemScheme(dark), dark) {
                 // The pages pushed over the tab home, last on top: a route's name, and a node's id after a colon.
                 var stack by rememberSaveable { mutableStateOf(listOf(ACTIVITY)) }
                 BackHandler(enabled = stack.size > 1) { stack = stack.dropLast(1) }
-                RvPreviewPage(stack.last(), hero, push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
+                RvPreviewPage(stack.last(), push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
             }
         }
     }
 }
 
 @Composable
-private fun RvPreviewPage(route: String, hero: RvHeroVariant, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
+private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
     val nodes = remember { sampleNodesPage() }
     var settings by remember { mutableStateOf(rvSampleSettings()) }
     // 策略 has no sample page yet.
@@ -71,12 +69,11 @@ private fun RvPreviewPage(route: String, hero: RvHeroVariant, push: (String) -> 
 
         else -> {
             val routes = RvActivityRoutes({ push(TRAFFIC) }, { push(STATS) }, { push(NODES) }, { push("$NODE:${nodes.currentId}") }, onTab)
-            RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, routes, hero = hero)
+            RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, routes)
         }
     }
 }
 
-private const val EXTRA_HERO = "hero"
 private const val ACTIVITY = "activity"
 private const val TRAFFIC = "traffic"
 private const val STATS = "stats"

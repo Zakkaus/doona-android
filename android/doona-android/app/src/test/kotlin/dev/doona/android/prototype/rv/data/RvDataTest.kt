@@ -6,7 +6,6 @@ import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.rvSampleActivity
 import dev.doona.android.prototype.rv.stats.rvStatsSample
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -75,17 +74,6 @@ class RvDataTest {
         val split = RvData.split
         val shares = listOf(format.percent(split.proxyShare.toDouble()), format.percent(1.0 - split.proxyShare)).map { it.removeSuffix("%").toInt() }
         assertEquals(100, shares.sum())
-    }
-
-    @Test
-    fun theLastMinutesOutboundsAreTheRoutesAndAddUpTo100() {
-        val shares = RvData.minuteShares
-        assertEquals(100, shares.sumOf { it.percent })
-        // The main node first, then rule groups that also sent traffic today, each through the node it used today.
-        assertEquals(RvData.CURRENT_ID, shares.first().nodeId)
-        assertNull(shares.first().group)
-        val routes = RvData.ruleOutbounds.associate { it.group to it.nodeId }
-        for (share in shares.drop(1)) assertEquals(routes.getValue(share.group!!), share.nodeId)
     }
 
     @Test

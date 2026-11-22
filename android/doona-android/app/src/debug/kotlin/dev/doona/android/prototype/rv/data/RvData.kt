@@ -110,16 +110,6 @@ internal object RvData {
         RvRuleOutbound(R.string.rv_rule_ai, "jp-02", AI_BYTES),
     ).sortedByDescending { it.bytes }
 
-    /**
-     * The last minute by outbound, for the hero alternatives: most of it through the main node, the streaming rule's video
-     * through Taipei 04 and the domestic rule's bytes direct; the AI rule sent nothing in that minute.
-     */
-    val minuteShares: List<RvMinuteShare> = listOf(
-        RvMinuteShare(null, CURRENT_ID, 62),
-        RvMinuteShare(R.string.rv_rule_streaming, "tw-04", 25),
-        RvMinuteShare(R.string.rv_rule_domestic, null, 13),
-    )
-
     /** The rules in the profile; 活動 lists the few that sent traffic today. */
     const val RULES = 14
 

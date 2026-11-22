@@ -166,7 +166,7 @@ internal fun RvDetailChart(values: List<Float>, series: RvSeries, label: (Float)
     val pillStyle = Rv.type.pill.copy(color = colors.textSecondary)
     val ink = RvPillInk(colors.pill, colors.raisedShadow)
     val measurer = rememberTextMeasurer()
-    Canvas(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear).rvScrubbing(values.size, onScrub)) {
+    Canvas(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear).scrubbing(values.size, onScrub)) {
         val plot = RvChartSize.detail.toPx()
         hairlineGrid(colors.grid, plot)
         val known = values.filterNot { it.isNaN() }
@@ -234,12 +234,9 @@ private class PillPlacer(val scope: DrawScope, val values: List<Float>, val scal
     }
 }
 
-/**
- * Press and drag: [onScrub] gets the second under the finger as it moves, and null when it lifts; [count] samples span the
- * width less [RvChartSize.detailEnd]. 流量詳情's chart and 活動's waveform hero scrub with it.
- */
+/** Press and drag: [onScrub] gets the second under the finger as it moves, and null when it lifts. */
 @Composable
-internal fun Modifier.rvScrubbing(count: Int, onScrub: (Int?) -> Unit): Modifier {
+private fun Modifier.scrubbing(count: Int, onScrub: (Int?) -> Unit): Modifier {
     val report by rememberUpdatedState(onScrub)
     if (count < 2) return this
     return pointerInput(count) {
@@ -290,11 +287,6 @@ private fun DrawScope.hairlineGrid(color: Color, plot: Float) {
 /** The scrubbed second: a 1 dp line down the [plot] in the series' [color], and a dot in it on the curve, ringed in [ring]. */
 private fun DrawScope.scrubMarker(at: Offset, color: Color, ring: Color, plot: Float) {
     drawLine(color, Offset(at.x, 0f), Offset(at.x, plot), RvChartSize.scrubLine.toPx())
-    rvScrubDot(at, color, ring)
-}
-
-/** The scrubbed second's dot on a curve: [color], ringed in [ring]. */
-internal fun DrawScope.rvScrubDot(at: Offset, color: Color, ring: Color) {
     val dot = RvChartSize.scrubDot.toPx() / 2
     drawCircle(ring, dot + RvChartSize.scrubRing.toPx(), at)
     drawCircle(color, dot, at)

@@ -91,43 +91,6 @@ internal object RvSize {
     val badgeOverhang = 2.dp
 }
 
-/**
- * 活動's hero alternatives (plans/briefs/rv-hero-variants.md). V1: a 10 dp band of the last minute's outbounds 24 dp under
- * the figure, each part labelled 8 dp under it, 32 dp above the actions. V2: the waveform from the top bar's controls to
- * the actions, its curves 16 dp clear of both and 8 dp clear of the figure. V3: a ring of 80 dp radius round a 64 dp duck disc, each outbound a disc of
- * 32 to 56 dp by its share, labelled beside it. V4: 36 dp chips 20 dp under the figure, and the tinted block's round foot.
- */
-internal object RvHeroSize {
-    val mixAbove = 24.dp
-    val band = 10.dp
-    val bandGap = 4.dp
-    val bandLabel = 8.dp
-    val mixBelow = 32.dp
-    val wave = 272.dp
-    val waveInset = 16.dp
-    val waveGap = 8.dp
-    val ringAbove = 8.dp
-    val ringBlock = 216.dp
-    val ringRadius = 80.dp
-    val ringBelow = 8.dp
-    val duck = 64.dp
-    val duckGlyph = 40.dp
-    val nodeMax = 56.dp
-    val nodeMin = 32.dp
-    val nodeRing = 2.dp
-    val spoke = 1.5.dp
-    val nodeLabelGap = 8.dp
-    val chip = 36.dp
-    val chipFlag = 24.dp
-    val chipStart = 6.dp
-    val chipEnd = 14.dp
-    val chipGap = 8.dp
-    val chipsAbove = 20.dp
-    val chipsBelow = 32.dp
-    val quietBottom = 24.dp
-    val quietRadius = 28.dp
-}
-
 /** The one chevron (measured §7): 6.7 x 12.2 dp of 2 dp stroke in a 24 dp box. */
 internal object RvChevronSize {
     val box = 24.dp
@@ -278,18 +241,6 @@ internal object RvAlpha {
 
     /** The ghost bars of a tile with no traffic, in the text colour. */
     const val GHOST = 0.05f
-
-    /**
-     * Outbounds side by side: the accent for the main node, then these steps of it for the next nodes. V4's tinted hero:
-     * its hue at this alpha over the page, or the text colour at the neutral one while disconnected.
-     */
-    const val OUTBOUND_SECOND = 0.55f
-    const val OUTBOUND_THIRD = 0.3f
-    const val HERO_TINT = 0.12f
-    const val HERO_NEUTRAL = 0.04f
-
-    /** A greyed mark: V3's duck while disconnected. */
-    const val GREYED = 0.45f
 
     /** The soft halo round the live point. */
     const val HALO = 0.22f
