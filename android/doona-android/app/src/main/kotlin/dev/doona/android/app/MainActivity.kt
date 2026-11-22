@@ -40,7 +40,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         connecting = savedInstanceState?.getBoolean(KEY_CONNECTING) ?: false
-        setContent { DoonaTheme { DoonaApp(engine, installedApps, onConnect = ::connect) } }
+        // Read here, once, so the settings page never asks the package manager while it composes.
+        val version = versionName()
+        setContent { DoonaTheme { DoonaApp(engine, installedApps, onConnect = ::connect, version = version) } }
         // A recreated activity or one reopened from recents must not repeat the request that first launched it.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (savedInstanceState == null && !fromHistory) handle(intent)
@@ -55,6 +57,13 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         handle(intent)
     }
+
+    /** The app's version name; empty when the package manager gives none, which the settings show as a dash. */
+    private fun versionName(): String = try {
+        packageManager.getPackageInfo(packageName, 0).versionName
+    } catch (_: PackageManager.NameNotFoundException) {
+        null
+    } ?: ""
 
     // The activity itself is exported for the launcher, so any app can send it this action; only the non-exported
     // alias proves the request came from this app.

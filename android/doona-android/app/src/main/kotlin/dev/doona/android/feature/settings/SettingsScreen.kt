@@ -1,15 +1,11 @@
 package dev.doona.android.feature.settings
 
-import android.content.Context
-import android.content.pm.PackageManager
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,22 +24,13 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.labelRes
 
-/** The 設定 entry: the version is read once, here, so the screen takes plain values. */
+/** The 設定 entry; [version] is the app's version name, which the shell reads once and passes on. */
 @Composable
-fun SettingsRoute(engine: Engine, onOpenPerApp: () -> Unit, onOpenSubscriptions: () -> Unit) {
+fun SettingsRoute(engine: Engine, version: String, onOpenPerApp: () -> Unit, onOpenSubscriptions: () -> Unit) {
     val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(engine))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val version = remember(context) { versionName(context) }
     SettingsScreen(state, version, onOpenPerApp, onOpenSubscriptions)
 }
-
-/** The app's version name, or a dash when the package manager does not give it. */
-private fun versionName(context: Context): String = try {
-    context.packageManager.getPackageInfo(context.packageName, 0).versionName
-} catch (_: PackageManager.NameNotFoundException) {
-    null
-} ?: NO_VALUE
 
 private const val NO_VALUE = "—"
 
@@ -59,7 +46,7 @@ fun SettingsScreen(state: SettingsUiState, version: String, onOpenPerApp: () -> 
         Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
             SettingCard(R.drawable.ic_filter, stringResource(R.string.perapp_title), stringResource(state.appPolicy.labelRes()), onOpenPerApp)
             SettingCard(R.drawable.ic_link, stringResource(R.string.settings_subscriptions), value = null, onOpenSubscriptions)
-            SettingCard(R.drawable.ic_cpu, stringResource(R.string.settings_version), version, onClick = null)
+            SettingCard(R.drawable.ic_cpu, stringResource(R.string.settings_version), version.ifBlank { NO_VALUE }, onClick = null)
         }
     }
 }

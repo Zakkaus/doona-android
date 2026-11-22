@@ -41,7 +41,13 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
  * [start] must begin with [ActivityKey].
  */
 @Composable
-fun DoonaApp(engine: Engine, installedApps: InstalledApps, onConnect: () -> Unit, start: List<NavKey> = listOf(ActivityKey)) {
+fun DoonaApp(
+    engine: Engine,
+    installedApps: InstalledApps,
+    onConnect: () -> Unit,
+    start: List<NavKey> = listOf(ActivityKey),
+    version: String = "",
+) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
     DoonaAppShell(current = currentTab(backStack), onSelect = { backStack.selectTab(it) }) {
         NavDisplay(
@@ -55,7 +61,7 @@ fun DoonaApp(engine: Engine, installedApps: InstalledApps, onConnect: () -> Unit
                 entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
                 entry<SettingsKey> {
                     // 訂閱 is the policies-and-subscriptions lane's page; its row opens nothing until that lane wires it.
-                    SettingsRoute(engine, onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = NOT_WIRED)
+                    SettingsRoute(engine, version, onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = NOT_WIRED)
                 }
                 entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
             },
