@@ -37,6 +37,7 @@ GROUPS = {
         [f"*/{d}/**/*.{e}" for d in ("java", "kotlin") for e in ("kt", "java")],
     ),
     "rust": ("crates/honk-android", ["src/**/*.rs", "tests/**/*.rs"]),
+    "doona-core": ("crates/doona-core/src", ["**/*.rs"]),
 }
 BANNED_DIRS = {"util", "common", "helper", "misc"}
 RATCHET = "android/scripts/limits-ratchet.txt"
