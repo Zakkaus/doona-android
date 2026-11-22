@@ -47,6 +47,12 @@ impl State {
     }
 }
 
+/// A stored quota. Cores before this one stored them as unsigned numbers, so a value past
+/// `i64::MAX` may be in the file: it reads as no quota, and the rest of the file stays usable.
+fn quota<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<i64>, D::Error> {
+    Ok(Option::<serde_json::Number>::deserialize(d)?.and_then(|n| n.as_i64()))
+}
+
 impl Default for State {
     fn default() -> State {
         State {
@@ -67,7 +73,9 @@ pub struct StoredSubscription {
     pub name: String,
     pub url: String,
     pub updated_at_epoch_ms: Option<i64>,
+    #[serde(default, deserialize_with = "quota")]
     pub used_bytes: Option<i64>,
+    #[serde(default, deserialize_with = "quota")]
     pub total_bytes: Option<i64>,
     pub expires_at_epoch_ms: Option<i64>,
     /// The code of the last failed update; a successful one clears it.
@@ -235,5 +243,31 @@ mod tests {
             assert_eq!(fs::read(dir.path().join(SET_ASIDE)).unwrap(), text);
             assert!(!dir.path().join(FILE).exists());
         }
+    }
+
+    #[test]
+    fn a_quota_stored_as_an_unsigned_number_keeps_the_rest_of_the_file() {
+        // Written before quotas became signed: u64::MAX and 2^63 have no i64.
+        let dir = TempDir::new("state-old-quota");
+        fs::write(
+            dir.path().join(FILE),
+            br#"{"stateVersion":1,"mode":"Direct","nextSubscription":3,
+                "subscriptions":[
+                  {"id":"s1","name":"a","url":"https://a.invalid/","updatedAtEpochMs":5,
+                   "usedBytes":18446744073709551615,"totalBytes":9223372036854775808,
+                   "expiresAtEpochMs":7},
+                  {"id":"s2","name":"b","url":"https://b.invalid/","updatedAtEpochMs":null,
+                   "usedBytes":9223372036854775807,"totalBytes":0,"expiresAtEpochMs":null}],
+                "selections":{"g-Proxy":"g-Auto"}}"#,
+        )
+        .unwrap();
+        let (state, how) = Store::new(dir.path()).load().unwrap();
+        assert_eq!(how, Loaded::Read);
+        assert_eq!(state.mode, Mode::Direct);
+        let (a, b) = (&state.subscriptions[0], &state.subscriptions[1]);
+        assert_eq!((a.used_bytes, a.total_bytes), (None, None));
+        assert_eq!(a.expires_at_epoch_ms, Some(7));
+        assert_eq!((b.used_bytes, b.total_bytes), (Some(i64::MAX), Some(0)));
+        assert_eq!(state.selections.len(), 1);
     }
 }
