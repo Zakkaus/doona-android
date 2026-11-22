@@ -1,14 +1,16 @@
-//! What `stop` closes while a task of the generation holds each of the core's workers: the
-//! carriers are the core's own to shut down, so their sockets are closed when it returns.
+//! The carriers against `stop`: their sockets are closed when it returns, even while a task of
+//! the generation holds each of the core's workers, and a registry built on carriers it ended
+//! is built again on new ones before it is published.
 
 use super::Core;
 use super::tests::ping;
-use super::tests_catalog::{Feeds, add, path};
+use super::tests_catalog::{Feeds, add, call, path};
 use crate::dto::Mode;
 use crate::testutil::{TempDir, closed, tuic, tun};
 use crate::tunnel::route::{Inbound, Route};
 use crate::tunnel::{Gen, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
+use serde_json::json;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
@@ -100,4 +102,24 @@ fn stop_closes_an_established_quic_connection_while_the_workers_are_held() {
     assert!(!still_open, "the QUIC socket was open when stop returned");
     assert!(took < Duration::from_secs(1), "{took:?}");
     assert!(closed(&probe));
+}
+
+/// A refresh took the current carriers for its registry when a `stop` ended them and shut them
+/// down. The registry is built again on new carriers before it is published, so a Global start
+/// that follows finds the node, not `no_nodes`.
+#[test]
+fn a_refresh_whose_carriers_a_stop_ended_is_built_again() {
+    let dir = TempDir::new("api-stale-build");
+    let (proxy, _) = crate::testutil::socks5();
+    let feeds = Feeds::new();
+    feeds.set("/sub", format!("socks5://{proxy}#s5\n").as_bytes());
+    let core = Arc::new(Core::with_launch(path(&dir), idle, Duration::from_secs(10)));
+    let added = add(&core, &feeds, "/sub").unwrap();
+    let (first, _first) = tun();
+    core.start(first, CONFIG).unwrap();
+    let stopping = Arc::clone(&core);
+    core.shared.outbounds.on_build(move || stopping.stop());
+    call(&core, "updateSubscription", json!({"id": added["id"]})).unwrap();
+    let (second, _second) = tun();
+    assert_eq!(core.start(second, CONFIG), Ok(()));
 }

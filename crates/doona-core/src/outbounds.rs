@@ -41,6 +41,8 @@ pub struct Outbounds {
     current: Mutex<Current>,
     /// The panics on the core's threads, the carriers' included (see `panics.rs`).
     panics: Arc<AtomicU64>,
+    #[cfg(test)]
+    before_build: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 impl std::fmt::Debug for Outbounds {
@@ -143,14 +145,16 @@ impl Carriers {
         }
     }
 
-    /// A registry for `nodes`, reusing `previous`'s runtimes where the node is the same.
+    /// A registry for `nodes`, reusing `previous`'s runtimes where the node is the same; none
+    /// once the carriers are shut down. The runtime's handle is cloned under the lock, so a
+    /// shutdown never waits for a build.
     fn build(
         &self,
         nodes: &[Node],
         previous: Option<&OutboundRuntimeRegistry>,
     ) -> Option<(Arc<OutboundRuntimeRegistry>, HashSet<uuid::Uuid>)> {
-        let runtime = read(&self.runtime);
-        let _entered = runtime.as_ref()?.enter();
+        let handle = read(&self.runtime).as_ref()?.handle().clone();
+        let _entered = handle.enter();
         let dials = honk_config::config::GlobalConfig::default().max_concurrent_dials;
         match OutboundRuntimeRegistry::build_reusing(nodes, dials, previous) {
             Ok((registry, reused)) => Some((Arc::new(registry), reused)),
@@ -239,6 +243,8 @@ impl Outbounds {
             table: RwLock::new(Arc::default()),
             current: Mutex::default(),
             panics,
+            #[cfg(test)]
+            before_build: Mutex::default(),
         })
     }
 
@@ -303,12 +309,36 @@ impl Outbounds {
         let Some(carriers) = self.carriers() else {
             return (None, HashSet::new());
         };
+        #[cfg(test)]
+        {
+            let f = lock(&self.before_build).take();
+            if let Some(f) = f {
+                f();
+            }
+        }
         let previous = previous
             .filter(|p| Arc::ptr_eq(&p.carriers, &carriers))
             .map(|p| p.registry.as_ref());
         match carriers.build(nodes, previous) {
             Some((registry, reused)) => (Some(Published { registry, carriers }), reused),
             None => (None, HashSet::new()),
+        }
+    }
+
+    /// A registry for `nodes` with runtimes of its own, on carriers still current once it is
+    /// built; called with the table locked. A stop that ends the carriers under the first try
+    /// spoils it; the second goes on carriers made since, which no generation can end before
+    /// its `prepare`, and that waits for the table.
+    fn rebuilt(&self, nodes: &[Node]) -> (Option<Published>, HashSet<uuid::Uuid>) {
+        let first = self.registry_for(nodes, None);
+        let spoiled = match &first.0 {
+            Some(p) => !self.is_current(&p.carriers),
+            None => !nodes.is_empty(),
+        };
+        if spoiled {
+            self.registry_for(nodes, None)
+        } else {
+            first
         }
     }
 
@@ -341,13 +371,15 @@ impl Outbounds {
         let (old, reused) = {
             let mut table = self.table.write().unwrap_or_else(|e| e.into_inner());
             let published = table.published.as_ref().map(|p| &p.registry);
-            let current = built.published.as_ref().is_none_or(|p| {
-                self.is_current(&p.carriers) && same(built.base.as_ref(), published)
-            });
+            let current = match &built.published {
+                Some(p) => self.is_current(&p.carriers) && same(built.base.as_ref(), published),
+                // No registry for a set of nodes: its carriers may have been shut down under it.
+                None => built.nodes.is_empty(),
+            };
             let (published, reused) = if current {
                 (built.published, built.reused)
             } else {
-                self.registry_for(&built.nodes, None)
+                self.rebuilt(&built.nodes)
             };
             if let Some(p) = &published {
                 p.carriers.adopt(&p.registry);
@@ -388,7 +420,7 @@ impl Outbounds {
             .values()
             .map(|runtime| runtime.node.as_ref().clone())
             .collect();
-        let (published, _) = self.registry_for(&nodes, None);
+        let (published, _) = self.rebuilt(&nodes);
         let published = published.ok_or(ErrorCode::Internal)?;
         published.carriers.adopt(&published.registry);
         *table = Arc::new(Table {
@@ -434,6 +466,13 @@ impl Outbounds {
         Arc::clone(&read(&self.table))
     }
 
+    /// Runs `f` once in the next registry build, once it took its carriers and before it uses
+    /// them.
+    #[cfg(test)]
+    pub(crate) fn on_build(&self, f: impl FnOnce() + Send + 'static) {
+        *lock(&self.before_build) = Some(Box::new(f));
+    }
+
     /// How many registries the current carriers keep for their end, freed or not.
     #[cfg(test)]
     pub(crate) fn retained(&self) -> usize {
@@ -445,6 +484,8 @@ impl Outbounds {
 /// A registry for a new node set, not yet published.
 #[derive(Default)]
 pub(crate) struct Built {
+    /// None for no nodes, or when none could be made, as when the carriers it was built for
+    /// were shut down under it.
     published: Option<Published>,
     reused: HashSet<uuid::Uuid>,
     /// The registry whose runtimes it reuses, and its nodes: when that one is no longer
