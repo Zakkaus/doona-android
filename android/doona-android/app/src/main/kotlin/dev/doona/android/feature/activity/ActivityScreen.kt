@@ -119,6 +119,8 @@ private fun TrafficTiles(state: ActivityUiState, onAction: (ActivityAction) -> U
             MetricTile(R.drawable.ic_download, DoonaTheme.colors.c1, { TileCaption(stringResource(R.string.ui_download)) }, rateText(state.downRate), state.downHistory)
             MetricTile(R.drawable.ic_upload, DoonaTheme.colors.c4, { TileCaption(stringResource(R.string.ui_upload)) }, rateText(state.upRate), state.upHistory)
         }
+        // Direct traffic uses no node, so there is no latency to show.
+        if (state.mode == Mode.Direct) return@Column
         val node = state.node
         val latency = node?.latencyMs?.takeUnless { node.failed }
         MetricTile(

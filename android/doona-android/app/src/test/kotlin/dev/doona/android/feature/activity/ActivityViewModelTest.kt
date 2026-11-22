@@ -90,4 +90,11 @@ class ActivityViewModelTest {
         assertNull(vm.uiState.value.error)
         assertEquals(Mode.Direct, vm.uiState.value.mode)
     }
+
+    @Test
+    fun `direct mode shows no active node`() = runTest {
+        val vm = collected(FakeEngine(status = Status.Running(sinceEpochMs = 0)))
+        vm.onAction(ActivityAction.SetMode(Mode.Direct))
+        assertNull(vm.uiState.value.node)
+    }
 }

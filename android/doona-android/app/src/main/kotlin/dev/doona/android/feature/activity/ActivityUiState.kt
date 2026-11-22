@@ -17,7 +17,10 @@ data class ActivityUiState(
     /** The template's first group, which carries Global traffic, and the member it uses now. */
     val outboundGroupId: String? = null,
     val outbound: String? = null,
-    /** The node that carries traffic, found by following each selected group down to a node. */
+    /**
+     * The node that carries traffic, found by following each selected group down to a node; null in Direct, where
+     * traffic uses no node.
+     */
     val node: Member? = null,
     val downRate: Long = 0,
     val upRate: Long = 0,
@@ -48,7 +51,7 @@ fun activityUiState(status: Status, traffic: Traffic, settings: Settings, groups
         mode = settings.mode,
         outboundGroupId = outbound?.id,
         outbound = outbound?.members?.firstOrNull { it.id == outbound.selectedId }?.name,
-        node = outbound?.let { currentNode(it, groups) },
+        node = outbound?.takeIf { settings.mode == Mode.Global }?.let { currentNode(it, groups) },
         downRate = traffic.downRate,
         upRate = traffic.upRate,
         downHistory = traffic.downHistory.map(Long::toFloat),
