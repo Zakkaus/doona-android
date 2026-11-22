@@ -1,9 +1,9 @@
 //! Where a new flow goes: a function of the inbound it arrived on and the committed mode, never of
 //! an app or a uid (ARCH D24). Direct sends it straight out. Global sends it through the node the
-//! `Proxy` group selects when the flow opens, and refuses it while the group has none: a Global
-//! flow is never sent direct. A flow keeps the route it opened with, so a mode or selection
-//! change applies to new flows only. doona excludes its own package from the VPN, so these
-//! sockets need no `protect()`.
+//! `Proxy` group selects when the flow opens, dialed on that node's carriers (see `outbounds.rs`),
+//! and refuses it while the group has none: a Global flow is never sent direct. A flow keeps the
+//! route it opened with, so a mode or selection change applies to new flows only. doona excludes
+//! its own package from the VPN, so these sockets need no `protect()`.
 
 use super::udp::UdpUpstream;
 use crate::dto::Mode;
@@ -104,11 +104,14 @@ impl Route {
                 Ok(Box::new(s))
             }
             Route::Proxy(d) => {
-                let registry = Arc::clone(&d.registry);
-                let dial = d
-                    .proxies
-                    .dial_runtime(registry, d.node.id, dst, None, CONNECT_TIMEOUT);
-                Ok(within(dial).await?.map_err(refused)?.stream)
+                let (registry, proxies, id) =
+                    (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
+                let dial = async move {
+                    proxies
+                        .dial_runtime(registry, id, dst, None, CONNECT_TIMEOUT)
+                        .await
+                };
+                Ok(within(d.on_carriers(dial)).await??.map_err(refused)?.stream)
             }
             Route::Refuse => Err(ErrorKind::PermissionDenied.into()),
         }
@@ -127,18 +130,15 @@ impl Route {
                 Ok(UdpUpstream::Socket(s))
             }
             Route::Proxy(d) => {
-                let registry = Arc::clone(&d.registry);
-                let dial = d.proxies.dial_udp_transport_runtime(
-                    registry,
-                    d.node.id,
-                    dst,
-                    None,
-                    CONNECT_TIMEOUT,
-                );
-                Ok(UdpUpstream::Proxy(
-                    within(dial).await?.map_err(refused)?,
-                    dst,
-                ))
+                let (registry, proxies, id) =
+                    (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
+                let dial = async move {
+                    proxies
+                        .dial_udp_transport_runtime(registry, id, dst, None, CONNECT_TIMEOUT)
+                        .await
+                };
+                let transport = within(d.on_carriers(dial)).await??.map_err(refused)?;
+                Ok(UdpUpstream::Proxy(transport, dst))
             }
             Route::Refuse => Err(ErrorKind::PermissionDenied.into()),
         }
@@ -160,7 +160,6 @@ fn refused(_: anyhow::Error) -> io::Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::runtime::Handle;
 
     #[test]
     fn mode_cell_round_trips() {
@@ -172,7 +171,7 @@ mod tests {
 
     #[tokio::test]
     async fn global_without_a_node_is_refused_never_sent_direct() {
-        let outbounds = Outbounds::new(Handle::current()).unwrap();
+        let outbounds = Outbounds::new(Arc::default()).unwrap();
         let global = Route::of(Inbound::Tun, Mode::Global, &outbounds);
         assert!(global.refused() && !global.carries_udp());
         let direct = Route::of(Inbound::Tun, Mode::Direct, &outbounds);

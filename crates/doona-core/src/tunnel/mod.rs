@@ -1,10 +1,10 @@
 //! One tunnel generation: the duplicate tun fd, the tasks that serve it, and the [`Session`] that
 //! `snapshot` reads. Every task of a generation is spawned on its [`TaskTracker`] and stops at its
 //! [`CancellationToken`]; a task that panics, or a driver that fails, marks the session failed
-//! and cancels the rest. So does a panic in a task honk spawned for a carrier on the core's
-//! runtime, which never passes through [`Gen::spawn`]. Stopping a generation closes its tun at
-//! once (see `tun.rs`), so only tasks without tun access are ever left running, and shuts down
-//! the carrier runtimes it dialed through (see `outbounds.rs`).
+//! and cancels the rest. So does a panic in a task honk spawned for a carrier, which never passes
+//! through [`Gen::spawn`]. Stopping a generation closes its tun at once (see `tun.rs`), so only
+//! tasks without tun access are ever left running, and shuts down the carriers it dialed through
+//! within the same deadline (see `outbounds.rs`).
 
 mod driver;
 mod flow;
@@ -13,8 +13,9 @@ mod tcp;
 mod tun;
 mod udp;
 
+use crate::api::lock;
 use crate::dto::{ErrorCode, Traffic};
-use crate::outbounds::Outbounds;
+use crate::outbounds::{Ended, Outbounds};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use route::ModeCell;
@@ -246,6 +247,8 @@ impl Gen {
         let gen_ = self.clone();
         let task = async move {
             tokio::select! {
+                // A cancelled task never polls `fut` again: its carriers may be shut down.
+                biased;
                 () = gen_.cancel.cancelled() => {}
                 r = AssertUnwindSafe(fut).catch_unwind() => {
                     if r.is_err() {
@@ -271,6 +274,8 @@ pub struct Tunnel {
     outbounds: Arc<Outbounds>,
     /// Lets the driver serve once `start` commits (see [`StartSignal::committed`]).
     release: Option<oneshot::Sender<()>>,
+    /// The carriers the generation dialed through, taken out of use when it halted.
+    ended: Mutex<Option<Ended>>,
 }
 
 impl Tunnel {
@@ -296,6 +301,7 @@ impl Tunnel {
             tun: Arc::clone(&tun),
             outbounds: Arc::clone(&settings.outbounds),
             release: Some(release),
+            ended: Mutex::new(None),
         };
         let seen = settings.panics.load(Relaxed);
         let watch = watch(Arc::clone(&settings.panics), seen, tunnel.gen_.clone());
@@ -332,20 +338,22 @@ impl Tunnel {
         &self.tun
     }
 
-    /// Cancels every task, closes the tun and starts shutting down the carrier runtimes the
-    /// generation dialed through, which [`Tunnel::wait`] waits for with its tasks. Quick: it waits
-    /// for at most one tun syscall, and builds new runtimes for the nodes, which open nothing.
+    /// Cancels every task, takes the carriers the generation dialed through out of use, which
+    /// [`Tunnel::wait`] shuts down, and closes the tun. Quick: it waits for at most one tun
+    /// syscall, and builds nothing.
     pub fn halt(&self) {
         self.gen_.cancel.cancel();
-        let carriers = self.outbounds.renew();
-        self.gen_.tracker.spawn_on(carriers, &self.gen_.runtime);
+        if let Some(ended) = self.outbounds.end() {
+            *lock(&self.ended) = Some(ended);
+        }
         self.gen_.tracker.close();
         self.tun.revoke();
     }
 
-    /// Waits for the halted generation's tasks until `deadline`, for [`STOP_WAIT`] at most. A
-    /// task still running then is left to finish on its own: the tun is closed already, and a
-    /// flow owns its socket, so none can reach a descriptor number reused later.
+    /// Waits for the halted generation's tasks, then shuts its carriers down, all until
+    /// `deadline` and for [`STOP_WAIT`] at most. A task still running then is left to finish on
+    /// its own: the tun is closed already, and a flow owns its socket, so none can reach a
+    /// descriptor number reused later.
     pub fn wait(self, rt: &Handle, deadline: Instant) {
         let begun = Instant::now();
         let until = deadline.min(begun + STOP_WAIT);
@@ -362,22 +370,24 @@ impl Tunnel {
             rx.recv_timeout(until.saturating_duration_since(Instant::now()))
                 .is_ok()
         };
+        let ended = lock(&self.ended).take();
+        let closed = ended.is_none_or(|e| e.finish(rt, until));
         let ms = begun.elapsed().as_millis();
         let generation = g.session.generation;
-        if done {
+        if done && closed {
             log::info!("generation {generation} stopped in {ms} ms");
         } else {
             log::warn!(
-                "generation {generation}: {} tasks detached after {ms} ms",
+                "generation {generation}: {} tasks detached, carriers closed {closed}, {ms} ms",
                 g.tracker.len()
             );
         }
     }
 }
 
-/// Ends the generation once the core's runtime has had a panic since `seen`. Its own tasks report
-/// theirs through [`Gen::spawn`] at once; honk's tasks for its carriers run on the same threads
-/// but are spawned by honk, so their panics are only counted.
+/// Ends the generation once the core's threads have had a panic since `seen`. Its own tasks
+/// report theirs through [`Gen::spawn`] at once; honk's tasks for its carriers run on the
+/// carriers' threads and are spawned by honk, so their panics are only counted.
 async fn watch(panics: Arc<AtomicU64>, seen: u64, gen_: Gen) {
     loop {
         tokio::time::sleep(WATCH).await;

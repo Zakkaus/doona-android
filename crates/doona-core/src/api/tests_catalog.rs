@@ -222,9 +222,9 @@ fn a_refresh_publishes_its_registry_and_nodes_together() {
 }
 
 /// A refresh built while a generation ends would reuse runtimes that the end shuts down: it is
-/// published with runtimes of its own instead.
+/// published with runtimes of its own, on new carriers, instead.
 #[test]
-fn a_refresh_built_before_a_renew_shares_no_runtime_with_it() {
+fn a_refresh_built_before_an_end_shares_no_runtime_with_it() {
     let dir = TempDir::new("api-renew");
     let feeds = Feeds::new();
     feeds.set("/sub", b"socks5://127.0.0.1:1#a\nsocks5://127.0.0.1:2#b\n");
@@ -237,7 +237,9 @@ fn a_refresh_built_before_a_renew_shares_no_runtime_with_it() {
         let selected = c.model.leaves(&c.state.selections);
         (outbounds.build(&c.model.nodes), selected)
     };
-    core.runtime.block_on(outbounds.renew());
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
+    let ended_carriers = outbounds.end().unwrap();
+    assert!(ended_carriers.finish(core.runtime.handle(), deadline));
     assert!(ended.is_shutdown());
     outbounds.replace(built, selected);
     let published = outbounds.registry().unwrap();

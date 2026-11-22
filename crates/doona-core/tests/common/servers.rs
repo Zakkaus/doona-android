@@ -106,6 +106,21 @@ pub fn udp_echo() -> (SocketAddr, Arc<Seen>) {
     (addr, seen)
 }
 
+/// Counts the datagrams it receives and never answers: a QUIC handshake stalls there.
+pub fn udp_sink() -> (SocketAddr, Arc<Seen>) {
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let addr = socket.local_addr().unwrap();
+    let seen = Arc::new(Seen::default());
+    let s = Arc::clone(&seen);
+    std::thread::spawn(move || {
+        let mut buf = vec![0u8; 65535];
+        while socket.recv_from(&mut buf).is_ok() {
+            s.datagrams.fetch_add(1, Relaxed);
+        }
+    });
+    (addr, seen)
+}
+
 fn u16_at(m: &[u8], at: usize) -> usize {
     usize::from(u16::from_be_bytes([m[at], m[at + 1]]))
 }

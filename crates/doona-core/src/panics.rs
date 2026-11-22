@@ -1,7 +1,7 @@
-//! The panics on a core's runtime threads, wherever they are caught. A generation's own tasks
-//! report theirs through `Gen::spawn`; the tasks honk spawns for its carriers (a QUIC connection's
-//! driver, a session's reader) run on the same threads but never pass through it, so a generation
-//! learns of their panics from the count kept here (see `tunnel::watch`).
+//! The panics on a core's runtime threads and its carriers' (see `outbounds.rs`), wherever they
+//! are caught. A generation's own tasks report theirs through `Gen::spawn`; the tasks honk spawns
+//! for its carriers (a QUIC connection's driver, a session's reader) never pass through it, so a
+//! generation learns of their panics from the count kept here (see `tunnel::watch`).
 
 use std::cell::OnceCell;
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};

@@ -6,6 +6,7 @@
 
 use crate::api::lock;
 use crate::catalog::{Plan, Round, Shared, Target};
+use crate::outbounds::Carriers;
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use honk_config::node::Node;
@@ -64,19 +65,21 @@ impl Probes {
         }
     }
 
-    /// Runs the test `plan` on `rt`; `cancel` drops it with the tunnel generation it began in.
+    /// Runs the test `plan` on `rt`, each probe on the carriers of the registry it goes through;
+    /// `cancel` drops it with the tunnel generation it began in.
     pub fn spawn(&self, rt: &Handle, shared: &Arc<Shared>, plan: Plan, cancel: CancellationToken) {
         let round = plan.round();
-        let registry = shared.outbounds.registry();
+        let published = shared.outbounds.published();
         let proxies = shared.outbounds.proxies();
         let probes = plan.targets.into_iter().map(|target| {
             let job = ProbeJob {
                 node: Arc::clone(&target.entry.node),
-                registry: registry.clone(),
+                registry: published.as_ref().map(|(r, _)| Arc::clone(r)),
                 proxies: Arc::clone(&proxies),
                 url: Arc::clone(&self.url),
             };
-            self.one(Arc::clone(shared), job, target, cancel.clone())
+            let carriers = published.as_ref().map(|(_, c)| Arc::clone(c));
+            self.one(Arc::clone(shared), (job, carriers), target, cancel.clone())
         });
         let probes = futures_util::future::join_all(probes);
         let ended = Ended {
@@ -95,7 +98,7 @@ impl Probes {
     fn one(
         &self,
         shared: Arc<Shared>,
-        job: ProbeJob,
+        (job, carriers): (ProbeJob, Option<Arc<Carriers>>),
         target: Target,
         cancel: CancellationToken,
     ) -> impl Future<Output = ()> + Send + 'static {
@@ -105,7 +108,14 @@ impl Probes {
             let Ok(_permit) = permits.acquire_owned().await else {
                 return;
             };
-            let measured = tokio::time::timeout(PROBE_TIMEOUT, prober(job)).await;
+            let probe = prober(job);
+            let probe = async move {
+                match carriers {
+                    Some(carriers) => carriers.run(probe).await.ok().flatten(),
+                    None => probe.await,
+                }
+            };
+            let measured = tokio::time::timeout(PROBE_TIMEOUT, probe).await;
             let ms = measured
                 .ok()
                 .flatten()

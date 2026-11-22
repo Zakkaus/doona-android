@@ -31,6 +31,7 @@ impl Core {
     /// Starts probing the nodes of `group`, or of every group, and returns at once; the groups
     /// show `testing` until the test ends.
     pub(super) fn test_latency(&self, group: Option<String>) -> Result<(), ErrorCode> {
+        self.shared.outbounds.prepare()?;
         let (plan, cancel) = {
             let mut c = lock(&self.shared.catalog);
             let plan = c.model.plan(group.as_deref())?;

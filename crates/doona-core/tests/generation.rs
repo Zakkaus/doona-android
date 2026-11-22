@@ -1,7 +1,8 @@
 //! A generation with proxied flows open: `traffic` counts every byte through the tun and the
 //! open app flows, and `stop` keeps its 1 s bound with 100 proxied flows open, a carrier waiting
-//! in its pool and a dial stalled mid-handshake, and leaves no descriptor open that was not open
-//! before the first dial. The checks read /proc/self/fd, so these tests run one at a time.
+//! in its pool and dials stalled mid-handshake, closes every socket to a node before it returns,
+//! and leaves no descriptor open that was not open before the first dial. The checks read
+//! /proc/self/fd, so these tests run one at a time.
 
 mod common;
 
@@ -10,7 +11,8 @@ use common::global::{Global, WAIT, pattern, ping, socks_link};
 use common::servers::{self, Seen};
 use common::{anytls, socks, wait_for};
 use doonacore::dto::Traffic;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
+use std::net::SocketAddr;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -32,6 +34,49 @@ fn open_fds() -> BTreeSet<(String, String)> {
             (!listing).then(|| (path.display().to_string(), target))
         })
         .collect()
+}
+
+/// The local port of every TCP and UDP socket of this network namespace, by what a descriptor of
+/// it links to.
+fn inet_ports() -> HashMap<String, u16> {
+    let mut ports = HashMap::new();
+    for table in ["tcp", "tcp6", "udp", "udp6"] {
+        let Ok(text) = std::fs::read_to_string(format!("/proc/net/{table}")) else {
+            continue;
+        };
+        for line in text.lines().skip(1) {
+            let f: Vec<&str> = line.split_whitespace().collect();
+            let port = f.get(1).and_then(|a| a.rsplit(':').next());
+            let port = port.and_then(|p| u16::from_str_radix(p, 16).ok());
+            if let (Some(port), Some(inode)) = (port, f.get(9)) {
+                ports.insert(format!("socket:[{inode}]"), port);
+            }
+        }
+    }
+    ports
+}
+
+/// The TCP and UDP sockets opened since `before` on a port none of `servers` listens on: the
+/// core's sockets to them, when the servers open no connection of their own.
+fn client_sockets(
+    before: &BTreeSet<(String, String)>,
+    servers: &[SocketAddr],
+) -> Vec<(String, u16)> {
+    let ports = inet_ports();
+    open_fds()
+        .difference(before)
+        .filter_map(|(fd, target)| {
+            let port = *ports.get(target)?;
+            let server = servers.iter().any(|s| s.port() == port);
+            (!server).then(|| (fd.clone(), port))
+        })
+        .collect()
+}
+
+/// A TUIC node on `addr`; no handshake gets far enough to check its certificate.
+fn tuic_link(addr: SocketAddr, name: &str) -> String {
+    let user = "b831381d-6324-4d53-ad4f-8cda48b30811:doona-test";
+    format!("tuic://{user}@{addr}?sni=localhost&insecure=1#{name}")
 }
 
 fn traffic(g: &Global) -> Traffic {
@@ -113,17 +158,22 @@ fn stop_ends_100_proxied_flows_within_a_second_and_leaves_no_descriptor() {
     assert_fds(&before);
 }
 
-/// An AnyTLS session outlives the flow that opened it, waiting in its pool for the next stream,
-/// and a dial through another node is stuck at the SOCKS5 greeting when `stop` comes: both end.
+/// When `stop` comes, an AnyTLS session outlives the flow that opened it, waiting in its pool
+/// for the next stream, a dial through another node is stuck at the SOCKS5 greeting, and one
+/// through a third waits for a TUIC server that never answers its handshake. None of their
+/// sockets is open when `stop` returns.
 #[test]
-fn stop_closes_a_pooled_carrier_and_a_stalled_handshake() {
+fn stop_closes_every_carrier_before_it_returns() {
     let _s = serial();
     let (at, at_seen) = anytls::anytls();
     let (stall, stall_seen) = servers::stall();
-    let g = Global::new(
-        &[anytls::link(at, "at"), socks_link(stall, "stall")],
-        vec![],
-    );
+    let (sink, sink_seen) = servers::udp_sink();
+    let links = [
+        anytls::link(at, "at"),
+        socks_link(stall, "stall"),
+        tuic_link(sink, "tq"),
+    ];
+    let g = Global::new(&links, vec![]);
     let before = open_fds();
     let mut c = g.start();
     // The AnyTLS server echoes any stream; the destination is never dialed.
@@ -133,13 +183,21 @@ fn stop_closes_a_pooled_carrier_and_a_stalled_handshake() {
     g.select("stall");
     let _stalled = c.connect(servers::closed_port());
     assert!(c.until(WAIT, |_| stall_seen.connections.load(Relaxed) == 1));
+    g.select("tq");
+    let _handshake = c.connect(servers::closed_port());
+    assert!(c.until(WAIT, |_| sink_seen.datagrams.load(Relaxed) > 0));
     assert_eq!(at_seen.connections.load(Relaxed), 1);
     assert_eq!(
         at_seen.closed.load(Relaxed),
         0,
         "the session waits in its pool"
     );
+    let nodes = [at, stall, sink];
+    let open = client_sockets(&before, &nodes);
+    assert!(open.len() >= 3, "a socket to each node: {open:?}");
     stops_within_a_second(&g);
+    let open = client_sockets(&before, &nodes);
+    assert!(open.is_empty(), "open when stop returned: {open:?}");
     drop(c);
     assert!(wait_for(WAIT, || all_closed(&at_seen) && all_closed(&stall_seen)));
     assert_fds(&before);

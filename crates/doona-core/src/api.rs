@@ -149,7 +149,7 @@ impl Core {
         bootstrap::install();
         bootstrap::use_servers(options.bootstrap_fallback.clone());
         let model = catalog::load(&state);
-        let outbounds = Arc::new(Outbounds::new(runtime.handle().clone())?);
+        let outbounds = Arc::new(Outbounds::new(Arc::clone(&panics))?);
         let built = outbounds.build(&model.nodes);
         let mode = Arc::new(ModeCell::new(state.mode));
         let catalog = CatalogState::new(state, model);
@@ -216,14 +216,21 @@ impl Core {
         if let Some(old) = old {
             old.wait(rt, deadline);
         }
-        let started = Tunnel::start(
-            rt,
-            tun,
-            (settings, generation),
-            self.launch.0,
-            deadline,
-            &gate,
-        );
+        // The old generation's carriers ended with it: dial on new ones.
+        let started = match self.shared.outbounds.prepare() {
+            Ok(()) => Tunnel::start(
+                rt,
+                tun,
+                (settings, generation),
+                self.launch.0,
+                deadline,
+                &gate,
+            ),
+            Err(code) => {
+                tun.revoke();
+                Err(code)
+            }
+        };
         self.finish(started, &gate, deadline, resolvers)?;
         Ok(generation)
     }
