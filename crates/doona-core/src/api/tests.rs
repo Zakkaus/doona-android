@@ -483,6 +483,7 @@ fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
         core.start(second, CONFIG).unwrap();
         let route = Route::of(
             Inbound::Tun,
+            crate::tunnel::route::tests::ANYWHERE,
             Mode::Global,
             &core.shared.outbounds,
             &Arc::new(Session::new(0, std::sync::Weak::new())),

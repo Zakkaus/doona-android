@@ -344,3 +344,36 @@ fn measure_worst_sources() {
         &flows,
     );
 }
+
+/// The template's policy over the catalog's groups, as `Model::new` compiles it under the catalog
+/// lock on every node set: median of five, and the heap the policy keeps.
+#[test]
+#[ignore = "a release-mode measurement; see the module comment"]
+fn measure_the_template_over_a_catalog() {
+    use super::policy::Policy;
+    use super::template::Options;
+    for n in [200, crate::catalog::MAX_NODES] {
+        let ids: Vec<String> = (0..n).map(|i| format!("n-{i:016x}")).collect();
+        let named: Vec<(&str, &str)> = ids.iter().map(|id| (id.as_str(), "HK 01")).collect();
+        let groups = crate::groups::template(&named);
+        let known: HashSet<&str> = ids.iter().map(String::as_str).collect();
+        let node = |id: &str| known.contains(id);
+        let mut times: Vec<Duration> = (0..5)
+            .map(|_| {
+                let start = Instant::now();
+                let policy = black_box(Policy::template(&groups, &node, Options::default()));
+                let took = start.elapsed();
+                drop(policy);
+                took
+            })
+            .collect();
+        times.sort();
+        let (policy, _, kept) = peak(|| Policy::template(&groups, &node, Options::default()));
+        assert!(policy.wants_names());
+        println!(
+            "template over {n} nodes: compile {} µs, kept {:.1} KiB",
+            times[2].as_micros(),
+            kept as f64 / 1024.0
+        );
+    }
+}

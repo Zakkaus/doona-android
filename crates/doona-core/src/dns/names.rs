@@ -51,7 +51,6 @@ impl Names {
     }
 
     /// The name `ip` answered, while its mapping lasts.
-    #[cfg_attr(not(test), expect(dead_code, reason = "rule mode's routing reads it"))]
     pub fn name(&self, ip: IpAddr) -> Option<Arc<str>> {
         self.name_at(ip, sys::boot_ms())
     }
@@ -59,6 +58,14 @@ impl Names {
     #[cfg(test)]
     pub fn len(&self) -> usize {
         lock(&self.0).len()
+    }
+
+    /// Maps `ip` to `name` for an hour, as an answer would.
+    #[cfg(test)]
+    pub fn map(&self, ip: Ipv4Addr, name: &str) {
+        let until_ms = sys::boot_ms() + u64::from(MAX_TTL) * 1000;
+        let name = name.into();
+        lock(&self.0).put(ip, Entry { name, until_ms });
     }
 
     pub(super) fn learn_at(&self, m: &[u8], now_ms: u64) {

@@ -70,6 +70,7 @@ impl Index {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn runs(&self) -> usize {
         self.runs.len()
     }
