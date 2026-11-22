@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_settings_export_diagnostics">匯出診斷</string>
+    <string name="rv_settings_check_update">檢查更新</string>
+
+    <string name="rv_settings_group_connection">連線</string>
+    <string name="rv_settings_auto_connect">開機自動連線</string>
+    <string name="rv_settings_notify_drop">斷線時通知</string>
+    <string name="rv_settings_per_app">每個 App 的代理</string>
+    <string name="rv_settings_per_app_value">只代理 %1$d 個 App</string>
+    <string name="rv_settings_bypass_lan">區網不走代理</string>
+    <string name="rv_settings_bypass_lan_sub">10.0.0.0/8、192.168.0.0/16 等</string>
+    <string name="rv_settings_connection_footer">只有選取的 App 走代理，其餘 App 與區網位址直接連線。</string>
+
+    <string name="rv_settings_group_subscription">訂閱</string>
+    <string name="rv_settings_auto_update">自動更新</string>
+    <string name="rv_settings_update_interval">更新間隔</string>
+    <string name="rv_settings_update_interval_value">每 %1$d 小時</string>
+
+    <string name="rv_settings_group_appearance">外觀</string>
+    <string name="rv_settings_theme">主題</string>
+    <string name="rv_settings_theme_system">跟隨系統</string>
+    <string name="rv_settings_theme_light">淺色</string>
+    <string name="rv_settings_theme_dark">深色</string>
+    <string name="rv_settings_language">語言</string>
+
+    <string name="rv_settings_group_advanced">進階</string>
+    <string name="rv_settings_dns_value">自動</string>
+    <string name="rv_settings_log_level">日誌等級</string>
+    <string name="rv_settings_log_level_value">一般</string>
+
+    <string name="rv_settings_group_about">關於</string>
+    <string name="rv_settings_version">版本</string>
+    <string name="rv_settings_licenses">開放原始碼授權</string>
+
+    <string name="rv_settings_accent">強調色</string>
+    <string name="rv_settings_follow_wallpaper">跟隨桌布</string>
+    <string name="rv_settings_accent_blue">藍色</string>
+    <string name="rv_settings_accent_teal">青色</string>
+    <string name="rv_settings_accent_purple">紫色</string>
+    <string name="rv_settings_accent_orange">橘色</string>
+    <string name="rv_settings_accent_pink">粉紅色</string>
+    <string name="rv_settings_preview">預覽</string>
+</resources>
