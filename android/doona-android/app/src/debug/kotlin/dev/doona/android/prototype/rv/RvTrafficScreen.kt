@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -26,19 +27,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.prototype.rv.data.RV_RANGE_POINTS
+import dev.doona.android.prototype.rv.data.RV_RANGE_SECONDS
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvFormat
 import dev.doona.android.prototype.rv.data.RvSession
+import dev.doona.android.prototype.rv.data.RvSessionSeconds
 
 /**
  * The page a traffic tile opens, 流量詳情 on the bar beside the back disc, in the language of Revolut's stock page: 下載
  * or 上傳 picked at the top, each on its own scale; the rate as the hero with small decimals and when it was; the
- * minute's chart full-bleed; the range chips and two round buttons; and the connection's figures in a Key stats card. A
- * finger on the chart shows that second in the hero until it lifts. v0.1 keeps only the live 60-second window, so 1 分
- * is the one range offered. [initialScrub] starts the page scrubbed to that second, as the scrubbed golden shows it.
+ * range's chart full-bleed; the range chips and two round buttons; and the connection's figures in a Key stats card. A
+ * finger on the chart shows that point in the hero until it lifts. 1 分 is the live minute; 5 分, 15 分 and 1 小時 are
+ * [RvSessionSeconds]' windows ending now, derived from [session], and a new range cross-fades the chart (G5).
+ * [initialScrub] starts the page scrubbed to that second, as the scrubbed golden shows it.
  */
 @Composable
 internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack: () -> Unit, initialScrub: Int? = null) {
@@ -46,8 +50,16 @@ internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack:
     val format = rememberRvFormat()
     val rate: (Float) -> String = { format.rate(it.toDouble()).toString() }
     var upload by rememberSaveable { mutableStateOf(false) }
+    var range by rememberSaveable { mutableIntStateOf(0) }
     var scrub by remember { mutableStateOf(initialScrub) }
-    val values = if (upload) state.upHistory else state.downHistory
+    val seconds = remember(session) { RvSessionSeconds(session) }
+    val values = when {
+        range > 0 -> seconds.chart(range, upload)
+        upload -> state.upHistory
+        else -> state.downHistory
+    }
+    // How long one point of the chart spans: a second over 1 分, a minute over 1 小時.
+    val step = RV_RANGE_SECONDS[range] / RV_RANGE_POINTS * MS_PER_SECOND
     val live = if (upload) state.upRate else state.downRate
     RvScrollPage(stringResource(R.string.rv_traffic_title), insets, onBack = onBack, compact = true) {
         RvBarSpacer(insets)
@@ -57,14 +69,14 @@ internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack:
             RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 })
             Spacer(Modifier.height(RvSpace.chartGap))
             val shown = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
-            // A scrubbed second shows its rate and its time; lifting the finger brings back the live rate.
-            val at = shown?.let { format.clock(session.nowEpochMs - (values.lastIndex - it) * MS_PER_SECOND) }
+            // A scrubbed point shows its rate and when it ended; lifting the finger brings back the live rate.
+            val at = shown?.let { format.clock(session.nowEpochMs - (values.lastIndex - it) * step) }
             Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), at)
         }
         Spacer(Modifier.height(RvSpace.chartGap))
-        RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate, scrub, onScrub = { scrub = it })
+        RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate, scrub, onScrub = { scrub = it }, range = range)
         Spacer(Modifier.height(RvChartSize.pillClear))
-        Ranges()
+        Ranges(range) { range = it }
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             RvSectionTitle(stringResource(R.string.rv_this_connection))
             ConnectionCard(session, upload, format)
@@ -87,12 +99,15 @@ private fun Hero(rate: RvAmount, at: String?) {
     RvText(at ?: stringResource(R.string.rv_now), Rv.type.sub, color = Rv.colors.textSecondary)
 }
 
-/** The range chips, with no track behind them, then Revolut's two round buttons ending on the margin (measured §8). */
+/**
+ * The range chips, the [selected] one raised, with no track behind them, then Revolut's two round buttons ending on the
+ * margin (measured §8).
+ */
 @Composable
-private fun Ranges() {
+private fun Ranges(selected: Int, onSelect: (Int) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = RvSpace.gutter, end = RvSpace.gutter - rvToolOverhang), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-            RANGES.forEachIndexed { i, label -> RvRangePill(stringResource(label), selected = i == 0, onClick = NOT_WIRED) }
+            RANGES.forEachIndexed { i, label -> RvRangePill(stringResource(label), selected = i == selected, onClick = { onSelect(i) }) }
         }
         RvChartTools(R.drawable.rv_sym_candlestick_chart to stringResource(R.string.rv_chart_type), R.drawable.rv_sym_open_in_full to stringResource(R.string.rv_full_screen))
     }
@@ -114,7 +129,7 @@ private fun ConnectionCard(session: RvSession, upload: Boolean, format: RvFormat
     }
 }
 
-/** The ranges under the chart; the live minute, the first, is the one shown. */
+/** The ranges under the chart, in the order of [RV_RANGE_SECONDS]. */
 private val RANGES: List<Int> = listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h)
 
 private const val MS_PER_SECOND = 1000L

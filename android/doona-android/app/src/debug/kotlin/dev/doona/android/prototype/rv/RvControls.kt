@@ -217,17 +217,22 @@ internal class RvPillInk(val fill: Color, val shadow: Boolean)
 /** The size of the value pill round [text]. */
 internal fun DrawScope.rvPillSize(text: TextLayoutResult) = Size(text.size.width + 2 * RvChartSize.pillPadH.toPx(), RvChartSize.pill.toPx())
 
-/** The value pill drawn on a canvas at [topLeft], with [text] centred in it; the shadow is two soft steps under it. */
-internal fun DrawScope.rvValuePill(text: TextLayoutResult, topLeft: Offset, ink: RvPillInk) {
+/**
+ * The value pill drawn on a canvas at [topLeft], with [text] centred in it; the shadow is two soft steps under it. The
+ * whole pill fades by [alpha], as a chart's series does while its range changes.
+ */
+internal fun DrawScope.rvValuePill(text: TextLayoutResult, topLeft: Offset, ink: RvPillInk, alpha: Float = 1f) {
     val size = rvPillSize(text)
     val radius = CornerRadius(RvChartSize.pillRadius.toPx())
     if (ink.shadow) {
         val step = RvChartSize.pillShadow.toPx() / 2
-        drawRoundRect(Color.Black.copy(alpha = RvAlpha.PILL_SHADOW_FAR), topLeft + Offset(0f, step * 2), size, radius)
-        drawRoundRect(Color.Black.copy(alpha = RvAlpha.PILL_SHADOW_NEAR), topLeft + Offset(0f, step), size, radius)
+        drawRoundRect(Color.Black.copy(alpha = RvAlpha.PILL_SHADOW_FAR), topLeft + Offset(0f, step * 2), size, radius, alpha = alpha)
+        drawRoundRect(Color.Black.copy(alpha = RvAlpha.PILL_SHADOW_NEAR), topLeft + Offset(0f, step), size, radius, alpha = alpha)
     }
-    drawRoundRect(ink.fill, topLeft, size, radius)
-    drawText(text, topLeft = topLeft + Offset((size.width - text.size.width) / 2, (size.height - text.size.height) / 2))
+    drawRoundRect(ink.fill, topLeft, size, radius, alpha = alpha)
+    // NaN leaves the text's own colour as it is; only a fading pill changes it.
+    val center = topLeft + Offset((size.width - text.size.width) / 2, (size.height - text.size.height) / 2)
+    drawText(text, topLeft = center, alpha = if (alpha < 1f) alpha else Float.NaN)
 }
 
 /**

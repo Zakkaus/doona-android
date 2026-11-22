@@ -2,6 +2,8 @@ package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -20,9 +22,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,16 +45,22 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvFormat
+import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
@@ -170,6 +181,9 @@ internal fun RvGhostBars(heights: FloatArray, modifier: Modifier = Modifier) {
     }
 }
 
+/** The detail chart's test tag: where a test scrubs it and captures it. */
+internal const val RV_CHART = "rv-chart"
+
 /**
  * Revolut's stock chart (measured §10.1), full-bleed: [values] as a line in [series]'s colour on an axis from zero to
  * peak × 1.15, over a tint that fades out linearly to the plot's bottom, on a hairline grid that fades at its ends. A
@@ -177,44 +191,124 @@ internal fun RvGhostBars(heights: FloatArray, modifier: Modifier = Modifier) {
  * on its value where the line leaves room, else just above or under it, and the strip under the plot keeps room for a
  * pill under the bottom. The live point at the end carries a soft halo. A missing sample (NaN) breaks the line. A finger
  * on the chart moves [scrub] to the second under it, shows a line in the series' colour and a dot there and hides the
- * pills; lifting it calls [onScrub] with null.
+ * pills; lifting it calls [onScrub] with null. The scrub ticks as it reaches the peak sample or either end (G5). A new
+ * [range] cross-fades from the old series to the new one while the axis moves to the new peak, with no placeholder.
  */
 @Composable
-internal fun RvDetailChart(values: List<Float>, series: RvSeries, label: (Float) -> String, scrub: Int?, onScrub: (Int?) -> Unit, modifier: Modifier = Modifier) {
+internal fun RvDetailChart(values: List<Float>, series: RvSeries, label: (Float) -> String, scrub: Int?, onScrub: (Int?) -> Unit, modifier: Modifier = Modifier, range: Int = 0) {
     val colors = Rv.colors
-    val pillStyle = Rv.type.pill.copy(color = colors.textSecondary)
-    val ink = RvPillInk(colors.pill, colors.raisedShadow)
-    val measurer = rememberTextMeasurer()
+    val ink = DetailInk(series, colors, RvPillInk(colors.pill, colors.raisedShadow), Rv.type.pill.copy(color = colors.textSecondary), rememberTextMeasurer(), label)
     val glide = rememberRvGlide(values)
-    Canvas(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear).scrubbing(values.size, onScrub)) {
-        val plot = RvChartSize.detail.toPx()
-        hairlineGrid(colors.grid, plot)
-        val known = values.filterNot { it.isNaN() }
-        if (known.size < 2) return@Canvas
-        val stroke = RvChartSize.detailStroke.toPx()
-        val peak = known.max()
-        val scale = Scale(peak * RvChartSize.DETAIL_HEADROOM, 0f, plot - stroke)
-        val right = size.width - RvChartSize.detailEnd.toPx()
-        gliding(glide, values, right) { drawn, end ->
-            drawPath(areaUnder(drawn, scale, end, plot), Brush.verticalGradient(listOf(series.area, Color.Transparent), scale.y(peak), plot))
-        }
-        dottedAcross(colors.detailReference, scale.y(known.first()))
-        gliding(glide, values, right) { drawn, end -> drawPath(polyline(drawn, scale, end), series.line, style = lineStroke(stroke)) }
-        val live = liveValue(values, glide)?.let { Offset(right, scale.y(it)) }
-        live?.let {
-            drawCircle(series.line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, it)
-            drawCircle(series.line, RvChartSize.liveDot.toPx() / 2, it)
-        }
-        val i = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
-        if (i != null) {
-            scrubMarker(Offset(right * i / (values.size - 1), scale.y(values[i])), series.line, colors.page, plot)
-        } else {
-            val pills = PillPlacer(this, values, scale, right, live)
-            pills.place(measurer.measure(label(peak), pillStyle), scale.y(peak), end = true, ink)
-            pills.place(measurer.measure(label(known.min()), pillStyle), scale.y(known.min()), end = true, ink)
-            pills.place(measurer.measure(label(known.first()), pillStyle), scale.y(known.first()), end = false, ink)
-        }
+    val change = rememberRangeChange(values, range)
+    val haptics = LocalHapticFeedback.current
+    val ticks = remember(haptics) { ScrubTicks(haptics) }
+    val follow: (Int?) -> Unit = { i ->
+        ticks.follow(i, values)
+        onScrub(i)
     }
+    Canvas(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear).testTag(RV_CHART).scrubbing(values.size, follow)) {
+        hairlineGrid(colors.grid, RvChartSize.detail.toPx())
+        val top = if (change.moving) change.top.value else axisTop(values)
+        val fade = change.fade.value
+        change.before?.takeIf { fade < 1f }?.let { detailSeries(it, ink, top, AT_REST, 1f - fade, null) }
+        detailSeries(values, ink, top, glide, fade, scrub)
+    }
+}
+
+/** What the detail chart draws a series with: its colours, the pills' look and type, and how a value reads. */
+private class DetailInk(val series: RvSeries, colors: RvColors, val pill: RvPillInk, val pillStyle: TextStyle, val measurer: TextMeasurer, val label: (Float) -> String) {
+    val reference = colors.detailReference
+    val ring = colors.page
+}
+
+/**
+ * One series of the detail chart at [alpha] on an axis from zero to [top]: its fill, the dotted start line, the line, the
+ * live point, then the [scrub]bed second's marker or else the value pills.
+ */
+private fun DrawScope.detailSeries(values: List<Float>, ink: DetailInk, top: Float, glide: RvGlide, alpha: Float, scrub: Int?) {
+    val known = values.filterNot { it.isNaN() }
+    if (known.size < 2) return
+    val plot = RvChartSize.detail.toPx()
+    val stroke = RvChartSize.detailStroke.toPx()
+    val line = ink.series.line
+    val peak = known.max()
+    val scale = Scale(top, 0f, plot - stroke)
+    val right = size.width - RvChartSize.detailEnd.toPx()
+    gliding(glide, values, right) { drawn, end ->
+        drawPath(areaUnder(drawn, scale, end, plot), Brush.verticalGradient(listOf(ink.series.area, Color.Transparent), scale.y(peak), plot), alpha)
+    }
+    dottedAcross(ink.reference, scale.y(known.first()), alpha)
+    gliding(glide, values, right) { drawn, end -> drawPath(polyline(drawn, scale, end), line, alpha, lineStroke(stroke)) }
+    val live = liveValue(values, glide)?.let { Offset(right, scale.y(it)) }
+    live?.let {
+        drawCircle(line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, it, alpha)
+        drawCircle(line, RvChartSize.liveDot.toPx() / 2, it, alpha)
+    }
+    val i = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
+    if (i != null) return scrubMarker(Offset(right * i / (values.size - 1), scale.y(values[i])), line, ink.ring, plot)
+    val pills = PillPlacer(this, values, scale, right, live)
+    pills.place(ink.measurer.measure(ink.label(peak), ink.pillStyle), scale.y(peak), end = true, ink.pill, alpha)
+    pills.place(ink.measurer.measure(ink.label(known.min()), ink.pillStyle), scale.y(known.min()), end = true, ink.pill, alpha)
+    pills.place(ink.measurer.measure(ink.label(known.first()), ink.pillStyle), scale.y(known.first()), end = false, ink.pill, alpha)
+}
+
+/** The detail chart's axis for [values]: up to their peak × [RvChartSize.DETAIL_HEADROOM], or 0 with nothing known. */
+private fun axisTop(values: List<Float>): Float = (values.filterNot { it.isNaN() }.maxOrNull() ?: 0f) * RvChartSize.DETAIL_HEADROOM
+
+/** A series that does not glide: the one a range change fades out. */
+private val AT_REST = RvGlide(null, Animatable(0f))
+
+/**
+ * A change of range on the detail chart (G5): the series shown [before] fades out as the new one fades in ([fade], 0 to
+ * 1 over [RvMotion.FADE_MS]), and the axis's [top] moves from where it was to the new series' over [RvMotion.MOVE_MS],
+ * [moving] until it is there. With nothing before (the first range shown, or at animator scale 0) it is at rest at once.
+ */
+private class RangeChange(val before: List<Float>?, from: Float) {
+    val fade = Animatable(if (before == null) 1f else 0f)
+    val top = Animatable(from)
+    var moving by mutableStateOf(before != null)
+}
+
+/** The series last shown and the change that showed it, carried from one range to the next. */
+private class RangeHeld(var values: List<Float>? = null, var change: RangeChange? = null)
+
+@Composable
+private fun rememberRangeChange(values: List<Float>, range: Int): RangeChange {
+    val motion = Rv.motion
+    val held = remember { RangeHeld() }
+    val change = remember(range) {
+        val before = held.values?.takeIf { !motion.instant }
+        // A change caught on its way moves the axis on from where it is.
+        val from = held.change?.takeIf { it.moving }?.top?.value ?: before?.let(::axisTop) ?: 0f
+        RangeChange(before, from).also { held.change = it }
+    }
+    held.values = values
+    LaunchedEffect(change) {
+        if (change.before == null) return@LaunchedEffect
+        launch { change.fade.animateTo(1f, motion.tween(RvMotion.FADE_MS, LinearEasing)) }
+        change.top.animateTo(axisTop(values), motion.tween(RvMotion.MOVE_MS))
+        change.moving = false
+    }
+    return change
+}
+
+/**
+ * The scrub's haptic ticks (G5): one as the finger reaches the series' peak sample or either end, whether it lands on
+ * the sample or passes over it, and none while it stays there.
+ */
+private class ScrubTicks(private val haptics: HapticFeedback) {
+    private var at: Int? = null
+
+    fun follow(i: Int?, values: List<Float>) {
+        val from = at
+        at = i
+        if (i == null || i == from) return
+        val peak = values.indices.filterNot { values[it].isNaN() }.maxByOrNull { values[it] } ?: return
+        if (listOf(0, peak, values.lastIndex).any { reaches(from, i, it) }) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+    }
+
+    /** Whether a move from [from] (none: the finger just landed) to [to] arrives at or passes over [mark]. */
+    private fun reaches(from: Int?, to: Int, mark: Int) = if (from == null) to == mark else mark != from && mark in minOf(from, to)..maxOf(from, to)
 }
 
 /** The value the line crosses the chart's right edge at: the last sample, or while it glides in, on its way to it. */
@@ -236,7 +330,7 @@ private class PillPlacer(val scope: DrawScope, val values: List<Float>, val scal
         live?.let { taken += Rect(it, with(scope) { RvChartSize.liveHalo.toPx() / 2 }) }
     }
 
-    fun place(text: TextLayoutResult, y: Float, end: Boolean, ink: RvPillInk) = with(scope) {
+    fun place(text: TextLayoutResult, y: Float, end: Boolean, ink: RvPillInk, alpha: Float) = with(scope) {
         val pill = rvPillSize(text)
         val inset = RvChartSize.pillInset.toPx()
         val left = if (end) size.width - inset - pill.width else inset
@@ -244,7 +338,7 @@ private class PillPlacer(val scope: DrawScope, val values: List<Float>, val scal
         val top = tops.firstOrNull { free(Rect(Offset(left, it), pill)) } ?: tops.last()
         val rect = Rect(Offset(left, top), pill)
         taken += rect
-        rvValuePill(text, rect.topLeft, ink)
+        rvValuePill(text, rect.topLeft, ink, alpha)
     }
 
     /** Whether [rect], grown by the clearance, misses the other pills, the live point and every segment of the line. */
@@ -367,8 +461,8 @@ private fun lineStroke(width: Float) = Stroke(width, cap = StrokeCap.Round, join
 /** Round dots, as Revolut draws its reference lines. */
 private fun DrawScope.dots() = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH, RvChartSize.dottedPitch.toPx()))
 
-private fun DrawScope.dottedAcross(color: Color, y: Float) =
-    drawLine(color, Offset(0f, y), Offset(size.width, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots())
+private fun DrawScope.dottedAcross(color: Color, y: Float, alpha: Float = 1f) =
+    drawLine(color, Offset(0f, y), Offset(size.width, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots(), alpha)
 
 /** Ghost bar heights as shares of the chart's height: download's, and upload's of its own shape (S5-09). */
 internal val RV_GHOST_DOWN = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
