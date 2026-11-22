@@ -217,12 +217,15 @@ impl Core {
                 Err(code) => (None, code),
             }
         };
+        // Closed before the core shows stopped: a `stop` that sees `Stopped` returns at once.
+        if let Some(tunnel) = &late {
+            tunnel.halt();
+        }
         if !aborted {
             *life = Life::Stopped;
         }
         drop(life);
         if let Some(tunnel) = late {
-            tunnel.halt();
             tunnel.wait(self.runtime.handle(), deadline);
         }
         Err(code)

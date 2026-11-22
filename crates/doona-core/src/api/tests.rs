@@ -2,7 +2,7 @@
 //! never is on a host: the tun must be closed when `stop` (or a failed `start`) returns, and
 //! `start` must keep its deadline and answer `busy` when a `stop` or another `start` overlaps it.
 
-use super::Core;
+use super::{Core, Life, lock};
 use crate::dto::{ErrorCode, Mode, Snapshot};
 use crate::state::Store;
 use crate::testutil::{TempDir, closed, tun};
@@ -90,6 +90,16 @@ fn held_then_unready(
             Some(ready)
         };
         std::thread::sleep(HELD);
+    })
+}
+
+/// Ready after 100 ms, then idle.
+fn ready_soon(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = tun;
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        ready.send();
+        std::future::pending::<()>().await;
     })
 }
 
@@ -279,4 +289,45 @@ fn a_mode_is_live_while_its_directory_sync_stalls() {
     assert_eq!(core.mode.get(), Mode::Direct);
     drop(_release);
     assert_eq!(setter.join().unwrap(), r#"{"ok":{}}"#);
+}
+
+#[test]
+fn stop_waits_for_a_late_start_to_close_its_tun() {
+    let dir = TempDir::new("api-late-start");
+    let bound = Duration::from_millis(300);
+    let core = core(&dir, ready_soon, bound);
+    let (dup, probe) = tun();
+    let begun = Instant::now();
+    let starter = {
+        let core = Arc::clone(&core);
+        std::thread::spawn(move || core.start(dup, CONFIG))
+    };
+    std::thread::sleep(Duration::from_millis(50));
+    // Keep the start from publishing until its deadline has passed although the driver is
+    // ready: finish then finds it late and must close its tun.
+    let life = lock(&core.life);
+    let Life::Starting { tun, .. } = &*life else {
+        panic!("the start is not under way");
+    };
+    let tun = Arc::clone(tun);
+    std::thread::sleep((bound + Duration::from_millis(100)).saturating_sub(begun.elapsed()));
+    // Hold the tun's lock so the late start's revoke waits, as a slow deregistration would.
+    let slow_close = tun.hold();
+    drop(life);
+    std::thread::sleep(Duration::from_millis(50));
+    let stopper = {
+        let core = Arc::clone(&core);
+        std::thread::spawn(move || core.stop())
+    };
+    std::thread::sleep(Duration::from_millis(100));
+    if stopper.is_finished() {
+        assert!(
+            closed(&probe),
+            "stop returned with the late start's tun open"
+        );
+    }
+    drop(slow_close);
+    stopper.join().unwrap();
+    assert!(closed(&probe));
+    assert_eq!(starter.join().unwrap(), Err(ErrorCode::Internal));
 }

@@ -82,6 +82,12 @@ impl Tun {
         drop(fd);
     }
 
+    /// Holds the lock every operation and `revoke` take, as a slow syscall would.
+    #[cfg(test)]
+    pub(crate) fn hold(&self) -> MutexGuard<'_, Option<AsyncFd<OwnedFd>>> {
+        self.lock()
+    }
+
     /// A poisoned lock still holds a valid descriptor or none.
     fn lock(&self) -> MutexGuard<'_, Option<AsyncFd<OwnedFd>>> {
         self.fd.lock().unwrap_or_else(|e| e.into_inner())
