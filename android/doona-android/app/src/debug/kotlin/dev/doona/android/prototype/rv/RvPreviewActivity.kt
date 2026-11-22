@@ -71,6 +71,7 @@ class RvPreviewActivity : ComponentActivity() {
 private fun RvPreviewPage(route: String, policy: RvPolicyPreviewState, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
     val nodes = remember { sampleNodesPage() }
     var settings by remember { mutableStateOf(rvSampleSettings()) }
+    var query by remember { mutableStateOf<String?>(null) }
     val onTab: (Int) -> Unit = { i -> TABS[i]?.let(tab) }
     val base = route.substringBefore(':')
     if (base in RvPolicyPreviewRoutes.all) return RvPolicyPreview(route, policy, settings, push, pop, onTab)
@@ -98,7 +99,11 @@ private fun RvPreviewPage(route: String, policy: RvPolicyPreviewState, push: (St
 
         DNS -> RvDnsScreen(settings.dns, { settings = settings.copy(dns = it) }, onBack = pop)
 
-        CONNECTIONS -> RvConnectionsPage(RvPolicyData.connections, RvConnectionsRoutes(open = { push("$CONNECTION:$it") }, tab = onTab))
+        CONNECTIONS -> {
+            // `connections:off` shows the tab with the tunnel off; 連線 there opens it connected.
+            val routes = RvConnectionsRoutes(open = { push("$CONNECTION:$it") }, query = { query = it }, connect = { tab(CONNECTIONS) }, tab = onTab)
+            RvConnectionsPage(RvPolicyData.connections, routes, query, connected = !route.endsWith(":off"))
+        }
 
         CONNECTION -> {
             val i = route.substringAfter(':').toInt()

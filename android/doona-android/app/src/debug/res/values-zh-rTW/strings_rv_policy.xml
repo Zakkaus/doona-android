@@ -118,4 +118,23 @@
     <string name="rv_effective_source">來源</string>
     <string name="rv_effective_copy">複製</string>
     <string name="rv_effective_export">匯出</string>
+    <string name="rv_rule_edit_title">編輯規則</string>
+    <string name="rv_rule_edit_domain">網域</string>
+    <string name="rv_rule_edit_need_domain">請輸入網域</string>
+    <string name="rv_rule_edit_need_cidr">請輸入 IP 段</string>
+    <string name="rv_rule_edit_bad_domain">只能使用英文字母、數字、連字號和點</string>
+    <string name="rv_rule_edit_bad_cidr">IP 段的格式為 91.108.56.0/22</string>
+    <string name="rv_rule_edit_cidr_line">%1$s 內的位址</string>
+    <string name="rv_rule_edit_geoip_line">GeoIP 資料中屬於中國大陸的位址</string>
+    <string name="rv_rule_edit_private_line">私有位址不進通道，這條規則比對不到連線</string>
+    <string name="rv_rule_edit_enabled">啟用</string>
+    <string name="rv_rule_edit_delete">刪除規則</string>
+    <string name="rv_rule_delete_title">刪除這條規則？</string>
+    <string name="rv_rule_delete_body">「%1$s」會從清單移除，原本符合它的連線改由下一條符合的規則決定。</string>
+    <string name="rv_rule_delete_confirm">刪除</string>
+    <string name="rv_rule_delete_cancel">取消</string>
+    <string name="rv_rule_menu_edit">編輯</string>
+    <string name="rv_rule_menu_off">停用</string>
+    <string name="rv_rule_menu_on">啟用</string>
+    <string name="rv_rule_menu_delete">刪除</string>
 </resources>

@@ -17,4 +17,15 @@
     <string name="rv_conn_rule_index">Rule %1$d</string>
     <string name="rv_conn_no_domain">No domain, matched by address</string>
     <string name="rv_conn_close">Close connection</string>
+    <string name="rv_conn_search_end">End search</string>
+    <string name="rv_conn_search_hint">Host or app</string>
+    <plurals name="rv_conn_matches">
+        <item quantity="one">%1$d connection matches</item>
+        <item quantity="other">%1$d connections match</item>
+    </plurals>
+    <string name="rv_conn_search_clear">Clear search</string>
+    <string name="rv_conn_none_title">No connection matches</string>
+    <string name="rv_conn_none_line">Try another word, or clear the search</string>
+    <string name="rv_conn_off_title">Not connected</string>
+    <string name="rv_conn_off_line">Once connected, each app\'s connections show here</string>
 </resources>

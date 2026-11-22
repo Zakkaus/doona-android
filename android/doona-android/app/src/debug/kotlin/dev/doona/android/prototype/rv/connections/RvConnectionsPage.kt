@@ -26,6 +26,7 @@ import dev.doona.android.prototype.rv.RV_NAV_FOUR
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAppDisc
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvEmptyState
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvGlassButton
@@ -36,6 +37,7 @@ import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
+import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.policy.RvConnection
@@ -46,11 +48,15 @@ import dev.doona.android.prototype.rv.rvCollapsedOnScroll
 import dev.doona.android.prototype.rv.rvNavClearance
 import dev.doona.android.prototype.rv.rvSystemScheme
 
-/** Where the 連線 tab leads: a connection's page, the two filters, search, and the other tabs. */
+/**
+ * Where the 連線 tab leads: a connection's page, the two filters, the search ([query] null ends it), connecting when the
+ * tunnel is off, and the other tabs.
+ */
 internal class RvConnectionsRoutes(
     val open: (Int) -> Unit = {},
     val filter: () -> Unit = {},
-    val search: () -> Unit = {},
+    val query: (String?) -> Unit = {},
+    val connect: () -> Unit = {},
     val tab: (Int) -> Unit = {},
 )
 
@@ -58,37 +64,91 @@ internal class RvConnectionsRoutes(
  * 連線, the proposed fourth tab (features-gap Q5, option A), in the language of 節點: the large title with search in the
  * bar; a line counting the open connections and their bytes; the app and order chips; then one card of the connections
  * open now ([connections], newest first), each its app's icon, where it went and how long it has been open, over the
- * rule's group and its bytes down and up. A connection opens its page. The bar always has four tabs here. Host names are shown from
- * memory and never logged (D21).
+ * rule's group and its bytes down and up. A connection opens its page. While [query] is set, the search field replaces
+ * the line and the chips and the card keeps the connections whose host or app holds it. With the tunnel off
+ * ([connected] false), or nothing matching, the library's empty state says so and offers the way on. The bar always
+ * has four tabs here. Host names are shown from memory and never logged (D21).
  */
 @Composable
-internal fun RvConnectionsPage(connections: List<RvConnection>, routes: RvConnectionsRoutes = RvConnectionsRoutes(), nowEpochMs: Long = RV_NOW) {
+internal fun RvConnectionsPage(
+    connections: List<RvConnection>,
+    routes: RvConnectionsRoutes = RvConnectionsRoutes(),
+    query: String? = null,
+    connected: Boolean = true,
+    nowEpochMs: Long = RV_NOW,
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val title = stringResource(R.string.rv_nav_connections)
-    val search = stringResource(R.string.rv_conn_search)
+    val search = stringResource(if (query == null) R.string.rv_conn_search else R.string.rv_conn_search_end)
     CompositionLocalProvider(LocalRvNav provides RV_NAV_FOUR) {
         RvScrollPage(
             title,
             insets,
             scroll = scroll,
-            actions = { glass -> RvGlassButton(glass, R.drawable.rv_sym_search, search, routes.search) },
+            actions = if (connected) {
+                { glass -> RvGlassButton(glass, if (query == null) R.drawable.rv_sym_search else R.drawable.rv_sym_close, search) { routes.query(if (query == null) "" else null) } }
+            } else {
+                null
+            },
             overlay = { glass ->
                 RvFloatingNav(RV_NAV_CONNECTIONS, routes.tab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter))
             },
         ) { titleBlock ->
             RvLargeTitle(title, titleBlock, insets)
-            Summary(connections)
-            Row(Modifier.padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
-                RvFilterChip(stringResource(R.string.rv_conn_all_apps), routes.filter)
-                Spacer(Modifier.weight(1f))
-                RvFilterChip(stringResource(R.string.rv_conn_newest), routes.filter)
-            }
-            Spacer(Modifier.height(RvSpace.titleToCard))
-            RvGutter {
-                RvCard { connections.forEachIndexed { i, c -> RvConnectionRow(c, nowEpochMs) { routes.open(i) } } }
-            }
+            if (connected) Connections(connections, query, routes, nowEpochMs) else Disconnected(routes.connect)
             Spacer(Modifier.height(rvNavClearance(insets)))
+        }
+    }
+}
+
+/** The tunnel is off: nothing to list, and 連線 turns it on. */
+@Composable
+private fun Disconnected(onConnect: () -> Unit) {
+    RvGutter {
+        RvEmptyState(
+            R.drawable.rv_sym_sync_alt,
+            stringResource(R.string.rv_conn_off_title),
+            stringResource(R.string.rv_conn_off_line),
+            stringResource(R.string.rv_connect),
+            onConnect,
+        )
+    }
+}
+
+/** The line or the search field, the chips, and the card of connections, or the empty state when none match. */
+@Composable
+private fun Connections(connections: List<RvConnection>, query: String?, routes: RvConnectionsRoutes, nowEpochMs: Long) {
+    val shown = if (query.isNullOrBlank()) connections else connections.filter { it.host.contains(query, ignoreCase = true) || it.app.contains(query, ignoreCase = true) }
+    if (query == null) {
+        Summary(connections)
+        Row(Modifier.padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
+            RvFilterChip(stringResource(R.string.rv_conn_all_apps), routes.filter)
+            Spacer(Modifier.weight(1f))
+            RvFilterChip(stringResource(R.string.rv_conn_newest), routes.filter)
+        }
+    } else {
+        RvTextField(
+            query,
+            { routes.query(it) },
+            stringResource(R.string.rv_conn_search),
+            Modifier.padding(horizontal = RvSpace.gutter),
+            placeholder = stringResource(R.string.rv_conn_search_hint),
+            supporting = pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size),
+        )
+    }
+    Spacer(Modifier.height(RvSpace.titleToCard))
+    RvGutter {
+        if (shown.isEmpty()) {
+            RvEmptyState(
+                R.drawable.rv_sym_search,
+                stringResource(R.string.rv_conn_none_title),
+                stringResource(R.string.rv_conn_none_line),
+                stringResource(R.string.rv_conn_search_clear),
+                { routes.query(null) },
+            )
+        } else {
+            RvCard { shown.forEach { c -> RvConnectionRow(c, nowEpochMs) { routes.open(connections.indexOf(c)) } } }
         }
     }
 }

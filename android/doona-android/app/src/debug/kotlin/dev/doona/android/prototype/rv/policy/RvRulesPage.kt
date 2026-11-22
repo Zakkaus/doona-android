@@ -1,20 +1,20 @@
 package dev.doona.android.prototype.rv.policy
 
 import android.content.res.Configuration
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -26,11 +26,14 @@ import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvChevronSize
+import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvLongPressMenu
+import dev.doona.android.prototype.rv.RvMenuItem
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -38,12 +41,17 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 
-/** What the list of all rules can do: open a rule, its long-press menu, reorder, add, apply what is held, drop it. */
+/**
+ * What the list of all rules can do: open a rule, turn one off or on and delete one (its long-press menu), reorder, add,
+ * apply what is held, drop it, and open the effective config.
+ */
 internal class RvRulesRoutes(
     val open: (Int) -> Unit = {},
-    val menu: (Int) -> Unit = {},
+    val toggle: (Int) -> Unit = {},
+    val delete: (Int) -> Unit = {},
     val edit: (Boolean) -> Unit = {},
     val newRule: () -> Unit = {},
     val apply: () -> Unit = {},
@@ -58,6 +66,7 @@ internal class RvRulesRoutes(
  * effective config, which shows what the core compiled. The bar's
  * pencil turns on [editing]: each rule but the last shows a drag handle (first match wins, so order matters; the drag
  * itself is the gestures lane's), the line says how, and 完成 ends it. A rule opens its page; a long press its menu.
+ * 刪除 asks in the library's confirm sheet.
  */
 @Composable
 internal fun RvRulesPage(
@@ -113,26 +122,47 @@ private fun PendingCard(pending: List<RvPolicyRule>, onDiscard: () -> Unit) {
     }
 }
 
-/** Every rule in order; in edit mode each but the last carries a drag handle and nothing opens. */
+/**
+ * Every rule in order; in edit mode each but the last carries a drag handle and nothing opens. A tap opens a rule; a long
+ * press opens its menu (編輯, 停用 or 啟用, 刪除, which asks first). The last rule only routes the rest, so it has no menu.
+ */
 @Composable
 private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRulesRoutes) {
+    var deleting by rememberSaveable { mutableStateOf<Int?>(null) }
     RvCard {
         rules.forEachIndexed { i, rule ->
             val last = i == rules.lastIndex
-            val press = if (editing) {
-                Modifier
-            } else {
-                Modifier.combinedClickable(
-                    interactionSource = null,
-                    indication = ripple(color = Rv.colors.stateLayer),
-                    role = Role.Button,
-                    onLongClick = if (last) null else ({ routes.menu(i) }),
-                ) { routes.open(i) }
+            when {
+                editing -> RvRuleRow(rule, trailing = if (last) null else ({ RvGlyph(R.drawable.rv_sym_drag_handle, RvChevronSize.box, Rv.colors.textSecondary) }))
+                last -> RvRuleRow(rule, Modifier.rvPress(RectangleShape, Role.Button) { routes.open(i) })
+                else -> RvLongPressMenu(ruleMenu(rule, { routes.open(i) }, { routes.toggle(i) }, { deleting = i }), { routes.open(i) }) { RvRuleRow(rule, it) }
             }
-            val handle: (@Composable () -> Unit)? = if (editing && !last) ({ RvGlyph(R.drawable.rv_sym_drag_handle, RvChevronSize.box, Rv.colors.textSecondary) }) else null
-            RvRuleRow(rule, press, trailing = handle)
         }
     }
+    val target = deleting?.let(rules::getOrNull)
+    RvConfirmSheet(
+        visible = target != null,
+        title = stringResource(R.string.rv_rule_delete_title),
+        body = stringResource(R.string.rv_rule_delete_body, target?.match?.title().orEmpty()),
+        confirm = stringResource(R.string.rv_rule_delete_confirm),
+        dismiss = stringResource(R.string.rv_rule_delete_cancel),
+        onConfirm = {
+            deleting?.let(routes.delete)
+            deleting = null
+        },
+        onDismiss = { deleting = null },
+    )
+}
+
+/** A rule's long-press menu: 編輯, 停用 or 啟用, then 刪除 set apart and marked destructive. */
+@Composable
+private fun ruleMenu(rule: RvPolicyRule, onEdit: () -> Unit, onToggle: () -> Unit, onDelete: () -> Unit): List<RvMenuItem> {
+    val off = rule.state == RvRuleState.Off
+    return listOf(
+        RvMenuItem(stringResource(R.string.rv_rule_menu_edit), R.drawable.rv_sym_edit, onClick = onEdit),
+        RvMenuItem(stringResource(if (off) R.string.rv_rule_menu_on else R.string.rv_rule_menu_off), R.drawable.rv_sym_block, onClick = onToggle),
+        RvMenuItem(stringResource(R.string.rv_rule_menu_delete), R.drawable.rv_sym_delete, destructive = true, separated = true, onClick = onDelete),
+    )
 }
 
 /** How many rules route, how many the user turned off, and how many the core skips, with what skipping means. */

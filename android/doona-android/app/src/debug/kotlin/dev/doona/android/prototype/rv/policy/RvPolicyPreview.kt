@@ -16,6 +16,23 @@ internal class RvPolicyPreviewState(pending: List<RvPolicyRule> = emptyList()) {
     var template by mutableStateOf(RvTemplateData.cnDirect)
     var editing by mutableStateOf(false)
     var pending by mutableStateOf(pending)
+    var rules by mutableStateOf(RvPolicyData.allRules)
+    var draft: RvRuleDraft? by mutableStateOf(null)
+
+    /** Turns rule [i] off, or on again; a skipped rule stays skipped. */
+    fun toggle(i: Int) {
+        val r = rules[i]
+        val state = when (r.state) {
+            RvRuleState.On -> RvRuleState.Off
+            RvRuleState.Off -> RvRuleState.On
+            RvRuleState.Skipped -> RvRuleState.Skipped
+        }
+        rules = rules.toMutableList().also { it[i] = RvPolicyRule(r.match, r.group, r.bytes, state) }
+    }
+
+    fun delete(i: Int) {
+        rules = rules.filterIndexed { j, _ -> j != i }
+    }
 }
 
 /** The preview routes the 策略 tab owns; a group's route carries its id after a colon. */
@@ -27,7 +44,8 @@ internal object RvPolicyPreviewRoutes {
     const val TEMPLATE = "template"
     const val IMPACT = "impact"
     const val EFFECTIVE = "effective"
-    val all = setOf(POLICY, GROUP, RULE, RULES, TEMPLATE, IMPACT, EFFECTIVE)
+    const val EDIT = "edit"
+    val all = setOf(POLICY, GROUP, RULE, RULES, TEMPLATE, IMPACT, EFFECTIVE, EDIT)
 }
 
 /**
@@ -58,8 +76,31 @@ internal fun RvPolicyPreview(
         }
 
         r.RULES -> {
-            val routes = RvRulesRoutes(edit = { state.editing = it }, newRule = { push(r.RULE) }, apply = { state.pending = emptyList() }, discard = { state.pending = emptyList() }, effective = { push(r.EFFECTIVE) })
-            RvRulesPage(RvPolicyData.allRules, state.pending, state.editing, onBack = pop, routes = routes)
+            val routes = RvRulesRoutes(
+                // The last rule routes the rest to the main node, so it opens the main node's group.
+                open = { i -> if (i == state.rules.lastIndex) push("${r.GROUP}:${RvPolicyData.main.id}") else push("${r.EDIT}:$i") },
+                toggle = state::toggle,
+                delete = state::delete,
+                edit = { state.editing = it },
+                newRule = { push(r.RULE) },
+                apply = { state.pending = emptyList() },
+                discard = { state.pending = emptyList() },
+                effective = { push(r.EFFECTIVE) },
+            )
+            RvRulesPage(state.rules, state.pending, state.editing, onBack = pop, routes = routes)
+        }
+
+        r.EDIT -> {
+            val i = route.substringAfter(':').toInt()
+            val draft = state.draft ?: RvRuleDraft.of(state.rules[i])
+            val leave = {
+                state.draft = null
+                pop()
+            }
+            RvRuleEditPage(draft, { state.draft = it }, onBack = leave, onApply = leave, onDelete = {
+                state.delete(i)
+                leave()
+            })
         }
 
         r.TEMPLATE -> RvTemplatePage(RvTemplateData.cnDirect, state.template, { state.template = it }, onBack = pop, onReview = { push(r.IMPACT) })

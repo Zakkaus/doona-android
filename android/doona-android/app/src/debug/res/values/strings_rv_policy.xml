@@ -129,4 +129,25 @@
     <string name="rv_effective_source">Source</string>
     <string name="rv_effective_copy">Copy</string>
     <string name="rv_effective_export">Export</string>
+    <string name="rv_rule_edit_title">Edit rule</string>
+    <string name="rv_rule_edit_domain">Domain</string>
+    <string name="rv_rule_edit_domain_hint" translatable="false">example.com</string>
+    <string name="rv_rule_edit_cidr_hint" translatable="false">91.108.56.0/22</string>
+    <string name="rv_rule_edit_need_domain">Enter a domain</string>
+    <string name="rv_rule_edit_need_cidr">Enter an IP range</string>
+    <string name="rv_rule_edit_bad_domain">Use letters, digits, hyphens and dots only</string>
+    <string name="rv_rule_edit_bad_cidr">Write the range as 91.108.56.0/22</string>
+    <string name="rv_rule_edit_cidr_line">Addresses in %1$s</string>
+    <string name="rv_rule_edit_geoip_line">Addresses GeoIP places in mainland China</string>
+    <string name="rv_rule_edit_private_line">Private addresses stay outside the tunnel, so this rule matches nothing</string>
+    <string name="rv_rule_edit_enabled">On</string>
+    <string name="rv_rule_edit_delete">Delete rule</string>
+    <string name="rv_rule_delete_title">Delete this rule?</string>
+    <string name="rv_rule_delete_body">“%1$s” leaves the list. Connections it matched go to the next rule that matches.</string>
+    <string name="rv_rule_delete_confirm">Delete</string>
+    <string name="rv_rule_delete_cancel">Cancel</string>
+    <string name="rv_rule_menu_edit">Edit</string>
+    <string name="rv_rule_menu_off">Turn off</string>
+    <string name="rv_rule_menu_on">Turn on</string>
+    <string name="rv_rule_menu_delete">Delete</string>
 </resources>

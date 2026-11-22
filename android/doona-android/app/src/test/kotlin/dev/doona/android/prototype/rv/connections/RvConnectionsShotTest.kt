@@ -37,7 +37,8 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The 連線 tab with four tabs in the bar (`proto-rv-connections-*`), YouTube's connection page
- * (`proto-rv-connection-*`) and Telegram's, which has no domain (`proto-rv-connection-ip-*`), light and dark, each in
+ * (`proto-rv-connection-*`) and Telegram's, which has no domain (`proto-rv-connection-ip-*`); the tab searching for
+ * `google` (`proto-rv-connections-search-*`) and with the tunnel off (`proto-rv-connections-off-*`), light and dark, each in
  * one capture of the whole page; and the library's app disc (`proto-rv-app-disc-*`): an installed app's icon (the
  * test's own package, given the duck as its icon) over an app the phone does not have. The sample apps are not installed under Robolectric, so the pages show the
  * fallback glyph; on a phone each row shows the app's own icon.
@@ -75,6 +76,18 @@ class RvConnectionsShotTest {
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
     fun ipDark() = compose.rvShot("connection-ip", dark = true, before = { assertWhole() }) { Detail(TELEGRAM) }
+
+    @Test
+    fun searchLight() = compose.rvShot("connections-search", dark = false, before = { assertWhole() }) { RvConnectionsPage(RvPolicyData.connections, query = "google") }
+
+    @Test
+    fun searchDark() = compose.rvShot("connections-search", dark = true, before = { assertWhole() }) { RvConnectionsPage(RvPolicyData.connections, query = "google") }
+
+    @Test
+    fun offLight() = compose.rvShot("connections-off", dark = false, before = { assertWhole() }) { RvConnectionsPage(RvPolicyData.connections, connected = false) }
+
+    @Test
+    fun offDark() = compose.rvShot("connections-off", dark = true, before = { assertWhole() }) { RvConnectionsPage(RvPolicyData.connections, connected = false) }
 
     @Test
     fun appDiscLight() {
