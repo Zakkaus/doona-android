@@ -18,6 +18,9 @@ pub struct Client {
     udp: Option<FlowId>,
     /// Datagrams received: (source, payload).
     pub datagrams: Vec<(SocketAddr, Vec<u8>)>,
+    /// Bytes of the packets sent to the core's tun, and received from it.
+    pub sent: u64,
+    pub received: u64,
 }
 
 fn io_call(r: isize) -> std::io::Result<usize> {
@@ -40,6 +43,8 @@ impl Client {
             pkt: vec![0; usize::from(MTU) + 64],
             udp: None,
             datagrams: Vec::new(),
+            sent: 0,
+            received: 0,
         }
     }
 
@@ -49,7 +54,10 @@ impl Client {
             // SAFETY: `pkt` is valid for `len` bytes.
             let r = unsafe { libc::send(fd, self.pkt.as_ptr().cast(), len, libc::MSG_DONTWAIT) };
             match io_call(r) {
-                Ok(_) => return,
+                Ok(n) => {
+                    self.sent += n as u64;
+                    return;
+                }
                 // The core stops reading while its own write to us is blocked, so take its
                 // packets before waiting, or both sides wait for each other.
                 Err(e) if e.kind() == ErrorKind::WouldBlock => {
@@ -80,6 +88,7 @@ impl Client {
                 Ok(0) => return any,
                 Ok(n) => {
                     any = true;
+                    self.received += n as u64;
                     if let Rx::Datagram { src, payload, .. } = self.st.receive(now, &self.buf[..n])
                     {
                         self.datagrams.push((src, self.buf[payload].to_vec()));

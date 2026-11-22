@@ -1,6 +1,7 @@
 //! `start` and `stop` against stand-in drivers that are slow or stuck, which the real driver
 //! never is on a host: the tun must be closed when `stop` (or a failed `start`) returns, and
 //! `start` must keep its deadline and answer `busy` when a `stop` or another `start` overlaps it.
+//! A task of the real driver's generation that panics shows as `internal` in the snapshot.
 
 use super::{Core, Life, lock};
 use crate::dto::{ErrorCode, Mode, Snapshot};
@@ -114,6 +115,20 @@ fn slow(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'s
 }
 
 /// A core in Direct, which starts without nodes, whose generations run `launch`.
+/// The real driver, with a task of its generation that panics 200 ms in.
+fn panics_later(
+    tun: TunHandle,
+    settings: Settings,
+    gen_: Gen,
+    ready: StartSignal,
+) -> BoxFuture<'static, ()> {
+    gen_.spawn(async {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        panic!("a data-path task failed");
+    });
+    crate::tunnel::drive(tun, settings, gen_, ready)
+}
+
 fn core(dir: &TempDir, launch: crate::tunnel::Launch, bound: Duration) -> Arc<Core> {
     let core = Core::with_launch(dir.path().to_str().unwrap(), launch, bound);
     core.set_mode(Mode::Direct).unwrap();
@@ -356,4 +371,26 @@ fn stop_spends_one_second_on_teardown_and_waiting_together() {
     holder.join().unwrap();
     assert!(closed(&probe));
     assert!(took < Duration::from_secs(1), "{took:?}");
+}
+
+#[test]
+fn a_panicking_data_path_task_fails_the_generation() {
+    let dir = TempDir::new("api-panic");
+    let core = core(&dir, panics_later, Duration::from_secs(10));
+    let (dup, probe) = tun();
+    core.start(dup, CONFIG).unwrap();
+    let begun = Instant::now();
+    let failed = loop {
+        let s: Snapshot = serde_json::from_str(&core.snapshot(i64::MAX)).unwrap();
+        if s.error == Some(ErrorCode::Internal) {
+            break s;
+        }
+        assert!(begun.elapsed() < Duration::from_secs(10), "{s:?}");
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    assert!(!failed.running);
+    let begun = Instant::now();
+    core.stop();
+    assert!(begun.elapsed() < Duration::from_secs(1));
+    assert!(closed(&probe));
 }

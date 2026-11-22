@@ -6,109 +6,27 @@
 mod common;
 
 use common::client::Client;
+use common::global::{Global, WAIT, pattern, ping, socks_link, vmess_link};
 use common::servers::{self, Seen};
-use common::{TempDir, seqpacket_pair, socks, ss};
-use doonacore::api::{Core, Options};
-use doonacore::dto::Snapshot;
-use doonacore::sys;
-use honk_netstack::{FlowId, StreamError};
+use common::{socks, ss};
+use honk_netstack::StreamError;
 use std::net::{Ipv4Addr, SocketAddr};
-use std::os::fd::AsRawFd;
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::{Duration, Instant};
 
-const CONFIG: &str =
-    r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":["192.168.8.1"]}"#;
 const RESOLVER: SocketAddr =
     SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(172, 19, 0, 2)), 53);
-const WAIT: Duration = Duration::from_secs(5);
 
 struct Setup {
-    core: Core,
+    g: Global,
     client: Client,
-    subscription: String,
-    _dir: TempDir,
 }
 
-/// A core in Global with one subscription of `links`, started; its DNS goes to `upstreams`. The
-/// `Proxy` group starts on `Auto`, which before any probe carries the first link.
+/// A started core in Global with one subscription of `links`; its DNS goes to `upstreams`.
 fn setup(links: &[String], upstreams: Vec<SocketAddr>) -> Setup {
-    let dir = TempDir::new("proxied");
-    let options = Options {
-        dns_upstreams: upstreams,
-        ..Options::default()
-    };
-    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
-    let feed = servers::feed(links.join("\n"));
-    let reply = core.call(
-        "addSubscription",
-        &format!(r#"{{"url":"http://{feed}/sub","name":null}}"#),
-    );
-    let reply: serde_json::Value = serde_json::from_str(&reply).unwrap();
-    let subscription = reply["ok"]["id"].as_str().expect("added").to_owned();
-    let (tun, peer) = seqpacket_pair();
-    core.start(sys::dup_cloexec(tun.as_raw_fd()).unwrap(), CONFIG)
-        .unwrap();
-    drop(tun);
-    Setup {
-        core,
-        client: Client::new(peer),
-        subscription,
-        _dir: dir,
-    }
-}
-
-fn snapshot(core: &Core) -> Snapshot {
-    serde_json::from_str(&core.snapshot(-1)).unwrap()
-}
-
-fn call_ok(core: &Core, command: &str, args: &str) {
-    assert_eq!(core.call(command, args), r#"{"ok":{}}"#, "{command}");
-}
-
-/// Points the `Proxy` group at the node named `name`.
-fn select(core: &Core, name: &str) {
-    let catalog = snapshot(core).catalog.unwrap();
-    let member = catalog.groups[0]
-        .members
-        .iter()
-        .find(|m| m.name == name)
-        .expect("a member of Proxy");
-    let args = format!(r#"{{"group":"g-Proxy","memberId":"{}"}}"#, member.id);
-    call_ok(core, "select", &args);
-}
-
-fn socks_link(addr: SocketAddr, name: &str) -> String {
-    format!("socks5://{addr}#{name}")
-}
-
-/// A VMess node on `addr`, which may be a plain listener: VMess carries no UDP.
-fn vmess_link(addr: SocketAddr, name: &str) -> String {
-    use base64::Engine;
-    let json = format!(
-        r#"{{"v":"2","ps":"{name}","add":"{}","port":"{}","id":"b831381d-6324-4d53-ad4f-8cda48b30811","aid":"0","net":"tcp","type":"none","tls":""}}"#,
-        addr.ip(),
-        addr.port()
-    );
-    format!(
-        "vmess://{}",
-        base64::engine::general_purpose::STANDARD.encode(json)
-    )
-}
-
-fn pattern(len: usize) -> Vec<u8> {
-    (0..len).map(|i| (i * 31 % 251) as u8).collect()
-}
-
-/// Sends `msg` on an open flow and waits for the echo.
-fn ping(c: &mut Client, id: FlowId, msg: &[u8]) -> bool {
-    let mut sent = 0;
-    let mut got = Vec::new();
-    c.until(WAIT, |c| {
-        sent += c.write_now(id, &msg[sent..]);
-        got.extend(c.read_now(id).unwrap_or_default());
-        got == msg
-    })
+    let g = Global::new(links, upstreams);
+    let client = g.start();
+    Setup { g, client }
 }
 
 fn connections(seen: &Seen) -> usize {
@@ -146,7 +64,7 @@ fn direct_leaves_the_nodes_alone() {
     let (echo, echo_seen) = servers::tcp_echo();
     let (proxy, proxy_seen) = socks::socks5();
     let mut s = setup(&[socks_link(proxy, "s5")], vec![]);
-    call_ok(&s.core, "setMode", r#"{"mode":"Direct"}"#);
+    s.g.call_ok("setMode", r#"{"mode":"Direct"}"#);
     let id = s.client.connect(echo);
     assert_eq!(s.client.exchange(id, b"direct").unwrap(), b"direct");
     assert_eq!(connections(&echo_seen), 1);
@@ -160,14 +78,14 @@ fn a_mode_change_applies_to_new_flows_only() {
     let mut s = setup(&[socks_link(proxy, "s5")], vec![]);
     let proxied = s.client.connect(echo);
     assert!(ping(&mut s.client, proxied, b"one"));
-    call_ok(&s.core, "setMode", r#"{"mode":"Direct"}"#);
+    s.g.call_ok("setMode", r#"{"mode":"Direct"}"#);
     let direct = s.client.connect(echo);
     assert!(ping(&mut s.client, direct, b"two"));
     assert_eq!(connections(&proxy_seen), 1, "the new flow went direct");
     assert_eq!(connections(&echo_seen), 2);
     // The open flow keeps its node.
     assert!(ping(&mut s.client, proxied, b"three"));
-    call_ok(&s.core, "setMode", r#"{"mode":"Global"}"#);
+    s.g.call_ok("setMode", r#"{"mode":"Global"}"#);
     let again = s.client.connect(echo);
     assert!(ping(&mut s.client, again, b"four"));
     assert_eq!(connections(&proxy_seen), 2);
@@ -184,7 +102,7 @@ fn a_selection_change_applies_to_new_flows_only() {
     let mut s = setup(&links, vec![]);
     let first = s.client.connect(echo);
     assert!(ping(&mut s.client, first, b"one"));
-    select(&s.core, "ss");
+    s.g.select("ss");
     let second = s.client.connect(echo);
     assert!(ping(&mut s.client, second, b"two"));
     assert_eq!(connections(&ss_seen), 1);
@@ -226,7 +144,7 @@ fn udp_goes_through_a_node_that_carries_it() {
     }
     assert_eq!(proxy_seen.datagrams.load(Relaxed), 3);
     assert_eq!(udp_seen.datagrams.load(Relaxed), 3);
-    assert_eq!(snapshot(&s.core).traffic.active_flows, 1);
+    assert_eq!(s.g.snapshot().traffic.active_flows, 1);
 }
 
 #[test]
@@ -238,7 +156,7 @@ fn udp_is_dropped_through_a_node_without_it() {
     assert!(s.client.recv_udp(udp, Duration::from_millis(300)).is_none());
     assert_eq!(udp_seen.datagrams.load(Relaxed), 0);
     assert_eq!(connections(&stub_seen), 0);
-    assert_eq!(snapshot(&s.core).traffic.active_flows, 0);
+    assert_eq!(s.g.snapshot().traffic.active_flows, 0);
 }
 
 fn dns_over_udp(c: &mut Client, q: &[u8]) -> Vec<u8> {
@@ -275,8 +193,8 @@ fn a_global_flow_without_a_node_is_refused_never_sent_direct() {
     let (resolver, resolver_seen) = servers::dns_server();
     let (proxy, _) = socks::socks5();
     let mut s = setup(&[socks_link(proxy, "s5")], vec![resolver]);
-    let args = format!(r#"{{"id":"{}"}}"#, s.subscription);
-    call_ok(&s.core, "removeSubscription", &args);
+    let args = format!(r#"{{"id":"{}"}}"#, s.g.subscription);
+    s.g.call_ok("removeSubscription", &args);
     let id = s.client.connect(echo);
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
     s.client.send_udp(udp, b"hello");
@@ -288,5 +206,5 @@ fn a_global_flow_without_a_node_is_refused_never_sent_direct() {
     assert_eq!(connections(&echo_seen), 0);
     assert_eq!(udp_seen.datagrams.load(Relaxed), 0);
     assert_eq!(resolver_seen.datagrams.load(Relaxed), 0);
-    assert!(snapshot(&s.core).running, "the tunnel stays up");
+    assert!(s.g.snapshot().running, "the tunnel stays up");
 }
