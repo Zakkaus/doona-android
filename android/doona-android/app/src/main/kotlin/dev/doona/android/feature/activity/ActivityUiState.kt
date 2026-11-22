@@ -23,7 +23,7 @@ data class ActivityUiState(
     val upRate: Long = 0,
     val downHistory: List<Float> = emptyList(),
     val upHistory: List<Float> = emptyList(),
-    /** The last failed action, shown until dismissed. */
+    /** The last action's failure, shown until dismissed or until the next attempt succeeds. */
     val error: ErrorCode? = null,
 )
 

@@ -38,7 +38,7 @@ class ActivityViewModel(private val engine: Engine) : ViewModel() {
 
     private fun setMode(mode: Mode) {
         viewModelScope.launch {
-            engine.setMode(mode).onFailure { error.value = it.errorCode() }
+            error.value = engine.setMode(mode).exceptionOrNull()?.errorCode()
         }
     }
 

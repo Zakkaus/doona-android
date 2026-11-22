@@ -73,4 +73,21 @@ class ActivityViewModelTest {
         vm.onAction(ActivityAction.DismissError)
         assertNull(vm.uiState.value.error)
     }
+
+    @Test
+    fun `a later success clears the error`() = runTest {
+        var fail = true
+        val fake = FakeEngine()
+        val engine = object : Engine by fake {
+            override suspend fun setMode(mode: Mode): Result<Unit> =
+                if (fail) Result.failure(EngineException(ErrorCode.Busy)) else fake.setMode(mode)
+        }
+        val vm = collected(engine)
+        vm.onAction(ActivityAction.SetMode(Mode.Direct))
+        assertEquals(ErrorCode.Busy, vm.uiState.value.error)
+        fail = false
+        vm.onAction(ActivityAction.SetMode(Mode.Direct))
+        assertNull(vm.uiState.value.error)
+        assertEquals(Mode.Direct, vm.uiState.value.mode)
+    }
 }
