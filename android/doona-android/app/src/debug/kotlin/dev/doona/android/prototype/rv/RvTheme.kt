@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import android.os.Build
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -274,11 +275,16 @@ internal object Rv {
         get() = LocalRv.current.motion
 }
 
+/**
+ * The sample's tokens for [content], and its overscroll: the platform's stretch on Android 12 and later (Compose's
+ * default there), and none below, where the default is the old edge glow that Revolut never shows (brief rv-gestures G9).
+ */
 @Composable
 internal fun RvTheme(scheme: ColorScheme, dark: Boolean, content: @Composable () -> Unit) {
     val motion = rememberRvMotion()
     val tokens = remember(scheme, dark, motion) { RvTokens(RvColors(scheme, dark), RvType(), motion) }
-    CompositionLocalProvider(LocalRv provides tokens, content = content)
+    val overscroll = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) LocalOverscrollFactory.current else null
+    CompositionLocalProvider(LocalRv provides tokens, LocalOverscrollFactory provides overscroll, content = content)
 }
 
 /** The wallpaper's scheme on Android 12 and later; below that there is no wallpaper colour, so Material's baseline. */
