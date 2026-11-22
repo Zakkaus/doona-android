@@ -39,7 +39,7 @@ import dev.doona.android.designsystem.components.DoonaPicker
 import dev.doona.android.designsystem.components.DoonaRow
 import dev.doona.android.designsystem.components.DoonaSegmented
 import dev.doona.android.designsystem.components.DoonaStatusLight
-import dev.doona.android.designsystem.components.DoonaSwitch
+import dev.doona.android.designsystem.components.DoonaSwitchRow
 import dev.doona.android.designsystem.components.DoonaTagChip
 import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.components.Tone
@@ -173,7 +173,7 @@ fun GroupScreen(group: Group, onBack: () -> Unit) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(space.item), verticalArrangement = Arrangement.spacedBy(space.item)) {
             group.members.filter { it.isGroup }.forEach { DoonaTagChip(it.name) }
         }
-        DoonaGap(space.tight)
+        DoonaGap(space.item)
         DoonaText(stringResource(R.string.group_every_node), style = DoonaTheme.type.caption, color = c.text.secondary)
         DoonaGap(space.section)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -195,10 +195,8 @@ fun GroupScreen(group: Group, onBack: () -> Unit) {
             DoonaPicker(stringResource(R.string.policy_by_latency), onClick = {}, filled = true)
         }
         DoonaGap(space.block)
-        DoonaRow(Modifier.fillMaxWidth()) {
-            DoonaText(stringResource(R.string.policy_alive_only), style = DoonaTheme.type.body, color = c.text.primary, maxLines = 1, modifier = Modifier.weight(1f))
-            DoonaHGap(space.block)
-            DoonaSwitch(aliveOnly, { aliveOnly = it }, stringResource(R.string.policy_alive_only))
+        DoonaSwitchRow(aliveOnly, { aliveOnly = it }) {
+            DoonaText(stringResource(R.string.policy_alive_only), style = DoonaTheme.type.body, color = c.text.primary, maxLines = 1)
         }
         DoonaGap(space.block)
         Column(verticalArrangement = Arrangement.spacedBy(space.item)) {

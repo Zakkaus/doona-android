@@ -6,9 +6,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -18,9 +21,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
 /** Tag chip (§7): control height, padding 12, radius 8, overlay fill, 14/400. It is hit over 48 dp, as every control. */
@@ -29,7 +34,7 @@ fun DoonaTagChip(text: String, onClick: () -> Unit = {}) {
     Box(
         Modifier
             .layoutRole(LayoutRole.Control)
-            .height(DoonaTheme.size.control)
+            .heightIn(min = DoonaTheme.size.control)
             .clip(DoonaTheme.shape.control)
             .background(DoonaTheme.colors.control)
             .clickable(role = Role.Button, onClick = onClick)
@@ -52,7 +57,7 @@ fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, 
     Row(
         modifier
             .layoutRole(LayoutRole.Control)
-            .height(DoonaTheme.size.control)
+            .heightIn(min = DoonaTheme.size.control)
             .clip(DoonaTheme.shape.control)
             .background(c.control)
             .selectableGroup(),
@@ -62,7 +67,7 @@ fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, 
             val on = i == selected
             Box(
                 Modifier
-                    .height(DoonaTheme.size.control)
+                    .heightIn(min = DoonaTheme.size.control)
                     .widthIn(min = DoonaTheme.size.control)
                     .clip(DoonaTheme.shape.control)
                     .then(if (on) Modifier.background(c.surface).border(DoonaTheme.size.borderStrong, c.accent, DoonaTheme.shape.control) else Modifier)
@@ -76,34 +81,47 @@ fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, 
     }
 }
 
-/** Switch (§7): track 32 × 16, radius 8, hl-high off / accent on; 12 px surface knob inset 2, travels 16. */
+/**
+ * Switch row: [content] at the start, a switch at the end (§7: track 32 × 16, radius 8, hl-high off / accent on; 12 px
+ * surface knob inset 2, travels 16). The whole row is the switch: it toggles anywhere, is hit over its full 48 dp
+ * height, and a screen reader reads [content] as its name followed by On or Off.
+ */
 @Composable
-fun DoonaSwitch(checked: Boolean, onChange: (Boolean) -> Unit, label: String, modifier: Modifier = Modifier) {
+fun DoonaSwitchRow(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val state = stringResource(if (checked) R.string.ui_on else R.string.ui_off)
+    Row(
+        modifier
+            .layoutRole(LayoutRole.Row)
+            .fillMaxWidth()
+            .heightIn(min = DoonaRowDefaults.minHeight)
+            .toggleable(checked, role = Role.Switch, onValueChange = onChange)
+            .semantics { stateDescription = state },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.weight(1f)) { content() }
+        Spacer(Modifier.width(DoonaTheme.spacing.block))
+        SwitchTrack(checked)
+    }
+}
+
+@Composable
+private fun SwitchTrack(checked: Boolean) {
     val c = DoonaTheme.colors
     val s = DoonaTheme.size
     Box(
-        modifier
-            .size(s.touch)
-            .toggleable(checked, role = Role.Switch, onValueChange = onChange)
-            .semantics { contentDescription = label },
-        // The visible track keeps to the end of its 48 dp target, so it lines up with the content edge.
-        contentAlignment = Alignment.CenterEnd,
+        Modifier
+            .size(s.switchWidth, s.switchHeight)
+            .clip(DoonaTheme.shape.control)
+            .background(if (checked) c.accent else c.switchOff)
+            .padding(DoonaTheme.spacing.hairline),
+        contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         Box(
             Modifier
-                .size(s.switchWidth, s.switchHeight)
-                .clip(DoonaTheme.shape.control)
-                .background(if (checked) c.accent else c.switchOff)
-                .padding(DoonaTheme.spacing.hairline),
-            contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
-        ) {
-            Box(
-                Modifier
-                    .size(s.switchKnob)
-                    .clip(DoonaTheme.shape.pill)
-                    .background(c.switchKnob),
-            )
-        }
+                .size(s.switchKnob)
+                .clip(DoonaTheme.shape.pill)
+                .background(c.switchKnob),
+        )
     }
 }
 
@@ -117,7 +135,7 @@ fun DoonaPicker(value: String, onClick: () -> Unit, filled: Boolean = false, mod
     Row(
         modifier
             .layoutRole(LayoutRole.Control)
-            .height(DoonaTheme.size.control)
+            .heightIn(min = DoonaTheme.size.control)
             .clip(DoonaTheme.shape.control)
             .then(if (filled) Modifier.background(c.control) else Modifier)
             .clickable(role = Role.Button, onClick = onClick)

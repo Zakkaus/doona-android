@@ -8,13 +8,13 @@ import dev.doona.android.designsystem.tokens.DoonaPalette
 @Immutable
 class DoonaTextColors(p: DoonaPalette) {
     val primary = p.text
-    val secondary = p.subtle
+    val secondary = p.subtleText
     val disabled = p.muted
 
     /** Latency text: light keeps body text and shows the tone only in the dot. */
     val positive = if (p.dark) p.foam else p.text
     val notice = if (p.dark) p.gold else p.text
-    val negative = if (p.dark) p.love else p.text
+    val negative = if (p.dark) p.loveText else p.text
 }
 
 /** Semantic colour roles (§2, "Semantic roles and where they are used"). */

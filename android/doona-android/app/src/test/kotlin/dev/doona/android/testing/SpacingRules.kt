@@ -18,7 +18,7 @@ object SpacingRules {
     private val pageGaps = listOf(space.tight, space.item, space.block, space.afterTitle, space.section).map { it.value }
 
     fun check(root: LayoutBox, windowWidth: Float): List<String> =
-        scaleGaps(root) + sheet(root, windowWidth) + cards(root) + controls(root) + alikeControls(root) + rows(root) + touchTargets(root) +
+        scaleGaps(root) + sheet(root, windowWidth) + cards(root) + controls(root) + alikeControls(root) + rows(root) + touchTargets(root) + touchZones(root) +
             topBar(root, windowWidth) + hubBar(root) + valueColumns(root)
 
     private fun near(a: Float, b: Float) = abs(a - b) <= TOL
@@ -93,6 +93,27 @@ object SpacingRules {
         val (w, h) = node.touchSize ?: return@mapNotNull null
         "touch target of $node is %.1f × %.1f dp, under %.0f".format(w, h, sizes.touch.value).takeIf { w < sizes.touch.value - TOL || h < sizes.touch.value - TOL }
     }.toList()
+
+    /**
+     * A control smaller than 48 dp is still hit over 48 dp, and a screen reader reports that area as its bounds; the
+     * area must not reach into text or another control, or the reader trims it below 48.
+     */
+    fun touchZones(root: LayoutBox): List<String> {
+        // Blocks scrolled partly out of a sheet are not in reach, and so do not compete for it.
+        val scrolledOut = root.descendants().filter { it.role == LayoutRole.Sheet }.flatMap { sheet ->
+            sheet.descendants().filter { it !== sheet && (it.top < sheet.top - TOL || it.bottom > sheet.bottom + TOL) }
+        }.toSet()
+        val nodes = root.descendants().filter { it !in scrolledOut }.toList()
+        return nodes.filter { it.actionable }.flatMap { target ->
+            val (w, h) = target.touchSize ?: return@flatMap emptyList()
+            val skip = target.descendants().toSet() + nodes.filter { n -> n.descendants().any { it === target } }
+            nodes.filter { it !in skip && (it.text != null || it.actionable) }.filter { other ->
+                val across = minOf(other.right, target.centerX + w / 2) - maxOf(other.left, target.centerX - w / 2)
+                val down = minOf(other.bottom, target.centerY + h / 2) - maxOf(other.top, target.centerY - h / 2)
+                across > TOL && down > TOL
+            }.map { "touch area of $target reaches into $it" }
+        }
+    }
 
     /** Top bar: the first and last glyph sit on the content gutter, as the content below does. */
     fun topBar(root: LayoutBox, windowWidth: Float): List<String> = root.descendants().filter { it.role == LayoutRole.TopBar }.flatMap { bar ->

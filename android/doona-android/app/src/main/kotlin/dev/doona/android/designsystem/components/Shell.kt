@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -107,7 +108,7 @@ fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit)
             .fillMaxWidth()
             .background(c.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Bottom))
-            .height(DoonaTheme.size.bottomBar)
+            .heightIn(min = DoonaTheme.size.bottomBar)
             .padding(horizontal = DoonaTheme.spacing.item)
             .selectableGroup(),
     ) {
@@ -116,7 +117,7 @@ fun DoonaHubBar(tabs: List<DoonaHubTab>, selected: Int, onSelect: (Int) -> Unit)
             Column(
                 Modifier
                     .weight(1f)
-                    .fillMaxSize()
+                    .heightIn(min = DoonaTheme.size.bottomBar)
                     .selectable(on, role = Role.Tab, onClick = { onSelect(i) }),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight, Alignment.CenterVertically),

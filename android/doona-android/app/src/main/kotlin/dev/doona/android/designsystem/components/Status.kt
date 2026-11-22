@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -98,13 +99,13 @@ fun DoonaLatency(ms: Int?, style: TextStyle = DoonaTheme.type.bodyStrong, modifi
     )
 }
 
-/** Badge (§7): 20 high, padding 0 × 8, radius 6, 1 px hl-high border, 12/500 subtle. */
+/** Badge (§7): at least 20 high, growing with the font size, padding 0 × 8, radius 6, 1 px hl-high border, 12/500 subtle. */
 @Composable
 fun DoonaBadge(text: String) {
     val c = DoonaTheme.colors
     Box(
         Modifier
-            .height(DoonaTheme.size.badgeHeight)
+            .heightIn(min = DoonaTheme.size.badgeHeight)
             .border(DoonaTheme.size.border, c.badgeBorder, DoonaTheme.shape.badge)
             .padding(horizontal = DoonaTheme.spacing.item),
         contentAlignment = Alignment.Center,

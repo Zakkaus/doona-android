@@ -51,6 +51,8 @@
     <string name="policy_includes">選入條件</string>
     <string name="policy_filter">篩選節點</string>
     <string name="ui_dismiss">關閉</string>
+    <string name="ui_on">開啟</string>
+    <string name="ui_off">關閉</string>
     <string name="status_stopped">未連線</string>
     <string name="status_starting">連線中</string>
     <string name="status_stopping">正在中斷連線</string>

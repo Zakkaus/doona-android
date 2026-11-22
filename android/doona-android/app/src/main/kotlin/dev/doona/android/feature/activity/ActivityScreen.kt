@@ -41,7 +41,7 @@ import dev.doona.android.designsystem.components.DoonaRow
 import dev.doona.android.designsystem.components.DoonaSegmented
 import dev.doona.android.designsystem.components.DoonaSparkline
 import dev.doona.android.designsystem.components.DoonaStatusLight
-import dev.doona.android.designsystem.components.DoonaSwitch
+import dev.doona.android.designsystem.components.DoonaSwitchRow
 import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.components.DoonaTileCaption
 import dev.doona.android.designsystem.components.DoonaTileRow
@@ -142,15 +142,13 @@ private fun rateText(bytesPerSecond: Long): String =
 private fun ConnectionCard(status: Status, onSwitch: (Boolean) -> Unit) {
     val on = status is Status.Running || status is Status.Starting
     DoonaCard(Modifier.fillMaxWidth()) {
-        DoonaRow {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
+        DoonaSwitchRow(on, onSwitch) {
+            Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
                 DoonaStatusLight(status.tone, stringResource(status.label), style = DoonaTheme.type.cardTitle)
                 (status as? Status.Failed)?.let {
                     DoonaText(stringResource(it.reason.label), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
                 }
             }
-            DoonaHGap(DoonaTheme.spacing.block)
-            DoonaSwitch(on, onSwitch, stringResource(R.string.login_submit))
         }
     }
 }

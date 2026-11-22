@@ -30,6 +30,7 @@ class LayoutBox(
     val width get() = right - left
     val height get() = bottom - top
     val centerX get() = (left + right) / 2
+    val centerY get() = (top + bottom) / 2
     val role: LayoutRole? get() = semantics?.config?.getOrNull(LayoutRoleKey)
     val text: String? get() = semantics?.config?.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }
     val actionable get() = semantics?.config?.contains(SemanticsActions.OnClick) == true
