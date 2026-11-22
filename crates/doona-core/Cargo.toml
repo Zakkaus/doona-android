@@ -18,7 +18,7 @@ crate-type = ["cdylib", "rlib"]
 # honk-core's native API enables it, reports which node address each dial tried (ARCH D26).
 honk-config = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2" }
 honk-outbound = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2", features = ["rprx", "flow-observation"] }
-honk-netstack = { git = "https://github.com/Glassyiris/honk", rev = "c5b36a64d7f3c7d7ba234574e787f93b893a07aa" }
+honk-netstack = { git = "https://github.com/Glassyiris/honk", rev = "92211429afea6abb6ee834350d6ff9a5d8d331d2" }
 jni = { version = "=0.22.4", default-features = false }
 libc = "0.2"
 log = "0.4"
