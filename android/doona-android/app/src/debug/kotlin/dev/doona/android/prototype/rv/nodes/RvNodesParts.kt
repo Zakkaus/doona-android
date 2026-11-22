@@ -66,9 +66,6 @@ internal object RvNodesSize {
     val ctaShadow = 12.dp
     val ctaShadowDrop = 4.dp
     val ctaGlyph = 24.dp
-
-    /** A region card's 'See all' row (S7-12, Revolut's 56 dp). */
-    val seeAll = 56.dp
 }
 
 /** The pages' own type steps, set in Inter or Noto as [RvText] does. */

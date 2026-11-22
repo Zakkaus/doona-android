@@ -77,6 +77,9 @@ internal object RvSize {
 
     /** Every card's corners, 設定's and 主題's included (measured §2: 20 dp, N-06). */
     val cardRadius = 20.dp
+
+    /** A list card's 'See all' row (S7-12, Revolut's 56 dp). */
+    val seeAll = 56.dp
     val touch = 48.dp
     val navGlyph = 24.dp
     val progress = 5.dp
@@ -86,6 +89,22 @@ internal object RvSize {
     val badgeRing = 2.dp
     val badgeCheck = 1.5.dp
     val badgeOverhang = 2.dp
+}
+
+/**
+ * 活動's connection control (O1): a 56 dp glass capsule across the content width, the state 20 dp in from its start and a
+ * 40 dp button 8 dp in from its end; under it, 8 dp down, two 44 dp glass capsules 8 dp apart, as tall as the top bar's
+ * controls. The connect button is a filled pill as tall as the stop disc. The duck disc's 2 dp ring shows the connection (O5).
+ */
+internal object RvConnect {
+    val capsule = 56.dp
+    val start = 20.dp
+    val button = 40.dp
+    val buttonInset = 8.dp
+    val buttonPadH = 20.dp
+    val gap = 8.dp
+    val secondary = RvChrome.control
+    val markRing = 2.dp
 }
 
 /** The one chevron (measured §7): 6.7 x 12.2 dp of 2 dp stroke in a 24 dp box. */
@@ -134,18 +153,18 @@ internal object RvDots {
 
 /** Revolut's charts, from the owner's 2026 screenshots: the crypto home tiles and a stock's full-bleed chart. */
 internal object RvChartSize {
-    /** A square tile's inner padding, its 20 dp corner disc and the glyph in it (measured §10.2). */
-    val tilePad = 16.dp
-    val tileDisc = 20.dp
-    val tileGlyph = 14.dp
-
-    /** A tile's sparkline, across the tile's inner width at its bottom: Revolut's crypto tile plots 148 x 60 dp. */
+    /** The ghost bars' height: a tile's sparkline height (Revolut's crypto tile plots 148 x 60 dp). */
     val spark = 60.dp
-    val sparkStroke = 2.dp
 
     /** The ghost bars of a tile with no traffic, after Revolut's empty 'Income' card: twelve across the tile. */
     val ghostBar = 5.dp
     const val GHOST_BARS = 12
+
+    /**
+     * 活動's 即時速度 card (O3): no taller than the tile row it replaces (the tiles are square, 182 dp at 412 dp), its chart
+     * taking what the header, the legend and the padding leave.
+     */
+    val liveCard = 176.dp
 
     /** The detail chart: full width, about 190 dp (measured §10.1); its line ends on the gutter, so the live point stays whole. */
     val detail = 190.dp
@@ -191,8 +210,7 @@ internal object RvChartSize {
     val segment = 36.dp
     val segmentInset = 2.dp
 
-    /** The tile's curve keeps 10 % of its height free above the peak; the detail chart's axis runs to peak × 1.15. */
-    const val SPARK_HEADROOM = 1.1f
+    /** The detail and live charts' axis runs to peak × 1.15. */
     const val DETAIL_HEADROOM = 1.15f
 
     /** The detail chart's hairline grid (measured §10.1): a row every 24.7 dp and a column every 47 dp. */
@@ -208,9 +226,6 @@ internal object RvAlpha {
     const val GRID_LIGHT = 0.09f
     const val GRID_DARK = 0.09f
 
-    /** A tile's fill under its sparkline: neutral, the text colour, fading to nothing at the bottom. */
-    const val TILE_FILL = 0.08f
-
     /** The detail chart's fill under its line: the series colour at the line, linear to nothing at the plot's bottom. */
     const val AREA_LIGHT = 0.13f
     const val AREA_DARK = 0.22f
@@ -218,9 +233,6 @@ internal object RvAlpha {
     /** 今日用量's stacked bands: both directions at this one alpha, so only the hue tells them apart (S5-13). */
     const val BAND_LIGHT = 0.3f
     const val BAND_DARK = 0.36f
-
-    /** A tile's corner disc: its series' line colour at this alpha over the card, the same tone for both (S5-11). */
-    const val SERIES_DISC = 0.16f
 
     /** A latency's chip: its hue at this alpha over the card. */
     const val STATUS_CHIP = 0.14f

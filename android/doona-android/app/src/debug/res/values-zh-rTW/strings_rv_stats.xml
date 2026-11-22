@@ -15,7 +15,6 @@
     <string name="rv_stats_quota_left">剩餘 %1$s</string>
     <string name="rv_stats_no_quota">沒有訂閱提供流量額度</string>
     <string name="rv_stats_no_expiry">未提供到期日</string>
-    <string name="rv_stats_nodes">節點分布</string>
     <string name="rv_stats_latency">延遲分布</string>
     <string name="rv_stats_ms">毫秒</string>
     <string name="rv_stats_median">中位數 · 已測試 %1$d 個</string>
@@ -30,9 +29,6 @@
     <string name="rv_stats_export_detail">日誌與連線狀態</string>
     <plurals name="rv_stats_subscriptions">
         <item quantity="other">%1$d 個訂閱</item>
-    </plurals>
-    <plurals name="rv_stats_countries">
-        <item quantity="other">%1$d 個國家或地區</item>
     </plurals>
     <plurals name="rv_stats_node_count">
         <item quantity="other">%1$d 個節點</item>

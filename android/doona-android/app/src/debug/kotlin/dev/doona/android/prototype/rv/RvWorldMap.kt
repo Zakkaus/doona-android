@@ -20,7 +20,7 @@ import kotlin.math.tan
 private val shapes: Map<String, List<Path>> by lazy { RvWorld.countries.associate { it.code to decode(it.rings) } }
 
 /**
- * The sample's one world map, Revolut's 'Your trips' (節點 and 統計): the world as one solid light-grey shape across the
+ * The sample's one world map, Revolut's 'Your trips' (節點): the world as one solid light-grey shape across the
  * width, every country in [places] filled in the primary colour, with a 0.5 dp seam in the card's colour round each so
  * neighbours stay apart (S7-08). A place the 1:110m shapes leave out or draw in a box under [SMALL_AREA] dp² (Hong
  * Kong, Singapore, Taiwan) also gets a primary dot, ringed in the card's colour so it stands off the land around it (S7-04).

@@ -2,7 +2,6 @@ package dev.doona.android.prototype.rv.nodes
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,6 +39,7 @@ import dev.doona.android.prototype.rv.RvLatencyChange
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
+import dev.doona.android.prototype.rv.RvSeeAll
 import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
@@ -58,7 +57,7 @@ import dev.doona.android.prototype.rv.rvSystemScheme
  * as 'Your trips' (the world map with every country that has a node filled); then 全部節點 as 'All crypto' rows, one
  * card per part of the world, each node's latency over its change since the test before, five rows and then 查看全部. The
  * node in use carries the check badge on its flag wherever it is listed; a tap on a node opens its page and never
- * switches to it (Addendum A).
+ * switches to it (Addendum A). The line under the title says that the node chosen here is the main node (item 24).
  */
 @Composable
 internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: () -> Unit, onOpen: (String) -> Unit, onAllNodes: () -> Unit) {
@@ -67,6 +66,8 @@ internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: 
     val title = stringResource(R.string.rv_nodes_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
+        // The pull-down from 活動 picks the main node; groups with their own choice open from 活動's rule rows (item 24).
+        RvText(stringResource(R.string.rv_main_node_hint), Rv.type.rowSub, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.subGap * 2), color = Rv.colors.textSecondary)
         Chips(onFilter)
         RvGutter {
             TopCard(state.top(steadiest), state.currentId, steadiest, { steadiest = it }, onOpen, onAllNodes)
@@ -166,19 +167,7 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
                 onClick = { onOpen(node.id) },
             ) { RvLatencyChange(node.latencyMs, node.changeMs) }
         }
-        if (!all && nodes.size > REGION_ROWS) SeeAll(nodes.size) { all = true }
-    }
-}
-
-/** Revolut's 'See all' row at a list card's foot (measured §7): the count centred, 19 sp bold in the accent, in 56 dp. */
-@Composable
-private fun SeeAll(count: Int, onClick: () -> Unit) {
-    val shape = remember { RoundedCornerShape(bottomStart = RvSize.cardRadius, bottomEnd = RvSize.cardRadius) }
-    Box(
-        Modifier.fillMaxWidth().height(RvNodesSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
-        contentAlignment = Alignment.Center,
-    ) {
-        RvText(pluralStringResource(R.plurals.rv_nodes_see_all, count, count), Rv.type.seeAll, color = Rv.colors.positive, align = TextAlign.Center)
+        if (!all && nodes.size > REGION_ROWS) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, nodes.size, nodes.size)) { all = true }
     }
 }
 

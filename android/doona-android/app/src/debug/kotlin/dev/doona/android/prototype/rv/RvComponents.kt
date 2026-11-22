@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,7 +75,7 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
 /**
  * The screen's one tinted area: the dot map of the world in [dots] on the neutral page behind the header content,
  * centred on [focus] at [focusTop] from the header's top, none above [statusBar], and faint behind the hero's text at
- * [clear].
+ * [clear]. With [glass], the map alone is recorded for the glass controls over it.
  */
 @Composable
 internal fun RvHeader(
@@ -84,13 +85,14 @@ internal fun RvHeader(
     dots: Color,
     clear: Rect?,
     modifier: Modifier = Modifier,
+    glass: RvGlass? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        content = content,
-    )
+    Box(modifier.fillMaxWidth()) {
+        val source = glass?.let { Modifier.rvGlassSource(it) } ?: Modifier
+        Box(Modifier.matchParentSize().then(source).background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar))
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = content)
+    }
 }
 
 /**
@@ -183,6 +185,18 @@ internal fun RvRow(
 internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text) {
     Box(Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
         RvGlyph(icon, RvSize.rowGlyph, color)
+    }
+}
+
+/** Revolut's 'See all' row at a list card's foot (measured §7): [text] centred, 19 sp bold in the accent, in 56 dp. */
+@Composable
+internal fun RvSeeAll(text: String, onClick: () -> Unit) {
+    val shape = remember { RoundedCornerShape(bottomStart = RvSize.cardRadius, bottomEnd = RvSize.cardRadius) }
+    Box(
+        Modifier.fillMaxWidth().height(RvSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
+        contentAlignment = Alignment.Center,
+    ) {
+        RvText(text, Rv.type.seeAll, color = Rv.colors.positive, align = TextAlign.Center)
     }
 }
 

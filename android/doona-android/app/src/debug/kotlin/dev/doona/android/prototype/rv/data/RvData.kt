@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.data
 
 import androidx.compose.runtime.Immutable
+import dev.doona.android.R
 
 /** A subscription: its name, the nodes it gave, when it was refreshed, its quota used of total, and when it ends, if it does. */
 @Immutable
@@ -66,7 +67,8 @@ internal class RvSplit(val proxyBytes: Long, val directBytes: Long) {
  * earlier connection ran until 01:24 (a photo backup uploaded at 01:00) and another from 07:05 to 08:31; the current one
  * started at 08:42, so it has run 1 小時 42 分. Today's hours are those connections' bytes, so the session is part of
  * today, and its last minute is part of its last hour. The node in use is a Hong Kong node of Harbor Cloud, through the
- * auto group 自動. Every name and figure is invented.
+ * auto group 自動; it routes by rules, so that node is the main node and two rule groups use nodes of their own
+ * ([ruleOutbounds]). Every name and figure is invented.
  */
 internal object RvData {
     val nowEpochMs = RV_NOW
@@ -96,6 +98,20 @@ internal object RvData {
     const val YESTERDAY_BY_NOW = 2_862_000_000L
 
     val split = RvSplit(PROXY_BYTES, today.total - PROXY_BYTES)
+
+    /**
+     * The rule groups that sent traffic today other than to the main node, most bytes first: 串流 through Taipei 04, the
+     * domestic and LAN rule with every byte that went direct (分流比例's direct share), and AI through Tokyo 02. The main
+     * node carried the rest of the proxied bytes.
+     */
+    val ruleOutbounds: List<RvRuleOutbound> = listOf(
+        RvRuleOutbound(R.string.rv_rule_streaming, "tw-04", STREAMING_BYTES),
+        RvRuleOutbound(R.string.rv_rule_domestic, null, split.directBytes),
+        RvRuleOutbound(R.string.rv_rule_ai, "jp-02", AI_BYTES),
+    ).sortedByDescending { it.bytes }
+
+    /** The rules in the profile; 活動 lists the few that sent traffic today. */
+    const val RULES = 14
 
     /** The auto group the global outbound uses, by the name the subscription's template gives it. */
     const val AUTO_GROUP = "自動"
@@ -135,6 +151,10 @@ private const val PEAK_UP = 1_314_208f
 private val CONNECTIONS = listOf(96, 31, 0, 0, 0, 0, 0, 118, 142, 203, 84)
 
 private const val PROXY_BYTES = 1_641_870_000L
+
+/** Of the proxied bytes, what the streaming and AI rules sent to their own nodes. */
+private const val STREAMING_BYTES = 1_196_420_000L
+private const val AI_BYTES = 182_350_000L
 
 private const val MS_PER_SECOND = 1_000L
 private const val MS_PER_HOUR = 3_600_000f

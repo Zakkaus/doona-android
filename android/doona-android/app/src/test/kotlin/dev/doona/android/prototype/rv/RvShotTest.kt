@@ -1,11 +1,13 @@
 package dev.doona.android.prototype.rv
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvRouteMode
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,9 +17,9 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The Revolut-style samples, light and dark, in the scheme of the owner's wallpaper, for the owner to judge next to
- * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`, disconnected in
- * `proto-rv-activity-idle-*`, scrolled with the bottom bar collapsed in `proto-rv-activity-scrolled-*`, and the whole
- * page in one tall capture in `proto-rv-activity-full-*`) and the traffic page a tile opens (`proto-rv-traffic-*`, and
+ * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`, routing by rules; in 全域 in
+ * `proto-rv-activity-global-*`; disconnected in `proto-rv-activity-idle-*`, scrolled with the bottom bar collapsed in
+ * `proto-rv-activity-scrolled-*`, and the whole page in one tall capture in `proto-rv-activity-full-*`) and the traffic page a tile opens (`proto-rv-traffic-*`, and
  * held at one second in `proto-rv-traffic-scrub-*`).
  */
 @RunWith(RobolectricTestRunner::class)
@@ -35,6 +37,12 @@ class RvShotTest {
 
     @Test
     fun activityDark() = activity("activity", dark = true)
+
+    @Test
+    fun activityGlobalLight() = compose.rvShot("activity-global", dark = false) { Global() }
+
+    @Test
+    fun activityGlobalDark() = compose.rvShot("activity-global", dark = true) { Global() }
 
     @Test
     fun activityIdleLight() = compose.rvShot("activity-idle", dark = false) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}) }
@@ -71,6 +79,9 @@ class RvShotTest {
     private fun activity(screen: String, dark: Boolean, before: ComposeContentTestRule.() -> Unit = {}) =
         compose.rvShot(screen, dark, before) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
+    @Composable
+    private fun Global() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global)
+
     private fun traffic(screen: String, dark: Boolean, scrub: Int? = null) =
         compose.rvShot(screen, dark) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }
 
@@ -84,8 +95,8 @@ class RvShotTest {
         /** The scrolled golden moves the content this far, past the header, so the bottom bar collapses. */
         const val SCROLLED_DP = 400f
 
-        /** A screen as tall as the whole 活動 page, 915 dp plus the 832 dp it scrolls, for the full captures. */
-        const val FULL_PAGE = "+h1747dp"
+        /** A screen as tall as the whole 活動 page, for the full captures. */
+        const val FULL_PAGE = "+h2050dp"
 
         /** The second the scrubbed golden holds a finger on: inside the sustained download. */
         const val SCRUB = 30

@@ -68,45 +68,6 @@ internal fun rememberRvFormat(): RvFormat {
     return remember(locale) { RvFormat(locale) }
 }
 
-/**
- * One of Revolut's crypto home tiles, square as they are: [caption] at the top start, [icon] in the series' tinted 20 dp
- * disc at the top end, the [figure] in bold, a secondary [note] under it, and the sparkline of [values] at the bottom
- * (measured §10.2: 148 x 60 dp). With [quiet] (no
- * connection, or no traffic) the tile takes Revolut's empty chart card instead: a larger figure over ghost bars, and
- * [note] says why there is no line. The whole tile is one button.
- */
-@Composable
-internal fun RvSparkTile(
-    caption: String,
-    @DrawableRes icon: Int,
-    figure: RvFigure,
-    note: String,
-    values: List<Float>,
-    series: RvSeries,
-    quiet: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    ghost: FloatArray = RV_GHOST_DOWN,
-) {
-    val type = Rv.type
-    RvCard(modifier.aspectRatio(1f).rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, onClick)) {
-        Column(Modifier.fillMaxSize().padding(RvChartSize.tilePad)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // One tile layout in every state and on every page: the in-card header's 19 sp, the value at the tile's size (L-03).
-                RvText(caption, type.cardTitle, Modifier.weight(1f), color = Rv.colors.textSecondary)
-                Box(Modifier.size(RvChartSize.tileDisc).clip(CircleShape).background(series.disc), contentAlignment = Alignment.Center) {
-                    RvGlyph(icon, RvChartSize.tileGlyph, series.line)
-                }
-            }
-            Spacer(Modifier.height(RvSpace.tight))
-            RvFigureText(figure, type.tileValue, type.tileUnit)
-            RvText(note, type.tileCaption, color = Rv.colors.textSecondary)
-            Spacer(Modifier.weight(1f))
-            if (quiet) RvGhostBars(ghost) else RvSparkline(values, series.line)
-        }
-    }
-}
-
 /** A figure in [style], its unit in [unitStyle] on the same baseline; Latin only, as figures and units are. */
 @Composable
 internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextStyle, modifier: Modifier = Modifier) {
@@ -115,25 +76,6 @@ internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextSty
         withStyle(unitStyle.toSpanStyle()) { append(figure.unit) }
     }
     BasicText(text, modifier, style = style.copy(color = Rv.colors.text), maxLines = 1)
-}
-
-/**
- * A tile's sparkline, as Revolut's crypto tiles draw one: [values] as a 2 dp line in [color] from zero to 10 % above
- * their peak, over a neutral grey fill that fades to nothing at the bottom, and a light grey dotted line at the opening
- * value, the window's first. No axes and no labels.
- */
-@Composable
-internal fun RvSparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier) {
-    val colors = Rv.colors
-    Canvas(modifier.fillMaxWidth().height(RvChartSize.spark)) {
-        if (values.size < 2) return@Canvas
-        val stroke = RvChartSize.sparkStroke.toPx()
-        val scale = Scale(values.max() * RvChartSize.SPARK_HEADROOM, 0f, size.height - stroke / 2)
-        val line = polyline(values, scale, size.width)
-        drawPath(areaUnder(values, scale, size.width, size.height), Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), scale.y(values.max()), size.height))
-        dottedAcross(colors.reference, scale.y(values.first()))
-        drawPath(line, color, style = lineStroke(stroke))
-    }
 }
 
 /** Revolut's empty 'Income' card: twelve faint bars of made-up [heights] across the width, each fading out downward. */
@@ -148,6 +90,40 @@ internal fun RvGhostBars(heights: FloatArray, modifier: Modifier = Modifier) {
             val brush = Brush.verticalGradient(listOf(ghost, Color.Transparent), top, size.height)
             drawRoundRect(brush, Offset(i * pitch, top), Size(bar, size.height - top), CornerRadius(bar / 2))
         }
+    }
+}
+
+/**
+ * 活動's 即時速度 chart (O3): the last minute's [down] and [up] as two lines in their series' colours, the same teal and
+ * slate as 今日用量, on one axis from zero to the higher peak × 1.15 over the detail chart's hairline grid; each live
+ * point carries its halo. A finger scrubs as on 流量詳情: [scrub] moves to the second under it, a line in download's
+ * colour runs down the chart and each curve gets its dot, ringed in the card's colour; lifting it calls [onScrub] with null.
+ */
+@Composable
+internal fun RvLiveChart(down: List<Float>, up: List<Float>, scrub: Int?, onScrub: (Int?) -> Unit, modifier: Modifier = Modifier) {
+    val colors = Rv.colors
+    Canvas(modifier.fillMaxWidth().scrubbing(down.size, onScrub)) {
+        val plot = size.height
+        hairlineGrid(colors.grid, plot)
+        val known = (down + up).filterNot { it.isNaN() }
+        if (known.isEmpty() || down.size < 2 || up.size != down.size) return@Canvas
+        val stroke = RvChartSize.detailStroke.toPx()
+        val scale = Scale(known.max() * RvChartSize.DETAIL_HEADROOM, 0f, plot - stroke)
+        val right = size.width - RvChartSize.detailEnd.toPx()
+        // Download last, so it lies on top where the two cross.
+        val lines = listOf(up to colors.up.line, down to colors.down.line)
+        for ((values, color) in lines) {
+            drawPath(polyline(values, scale, right), color, style = lineStroke(stroke))
+            values.last().takeUnless { it.isNaN() }?.let {
+                val at = Offset(right, scale.y(it))
+                drawCircle(color.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, at)
+                drawCircle(color, RvChartSize.liveDot.toPx() / 2, at)
+            }
+        }
+        val i = scrub?.takeIf { it in down.indices } ?: return@Canvas
+        val x = right * i / (down.size - 1)
+        drawLine(colors.down.line, Offset(x, 0f), Offset(x, plot), RvChartSize.scrubLine.toPx())
+        for ((values, color) in lines) values[i].takeUnless { it.isNaN() }?.let { scrubDot(Offset(x, scale.y(it)), color, colors.card) }
     }
 }
 
@@ -287,6 +263,11 @@ private fun DrawScope.hairlineGrid(color: Color, plot: Float) {
 /** The scrubbed second: a 1 dp line down the [plot] in the series' [color], and a dot in it on the curve, ringed in [ring]. */
 private fun DrawScope.scrubMarker(at: Offset, color: Color, ring: Color, plot: Float) {
     drawLine(color, Offset(at.x, 0f), Offset(at.x, plot), RvChartSize.scrubLine.toPx())
+    scrubDot(at, color, ring)
+}
+
+/** The scrubbed second's dot on a curve: [color], ringed in [ring]. */
+private fun DrawScope.scrubDot(at: Offset, color: Color, ring: Color) {
     val dot = RvChartSize.scrubDot.toPx() / 2
     drawCircle(ring, dot + RvChartSize.scrubRing.toPx(), at)
     drawCircle(color, dot, at)
@@ -342,9 +323,8 @@ private fun DrawScope.dots() = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH
 private fun DrawScope.dottedAcross(color: Color, y: Float) =
     drawLine(color, Offset(0f, y), Offset(size.width, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots())
 
-/** Ghost bar heights as shares of the chart's height: download's, and upload's of its own shape (S5-09). */
-internal val RV_GHOST_DOWN = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
-internal val RV_GHOST_UP = floatArrayOf(0.3f, 0.22f, 0.48f, 0.34f, 0.6f, 0.4f, 0.26f, 0.52f, 0.72f, 0.44f, 0.58f, 0.38f)
+/** Ghost bar heights as shares of the chart's height (S5-09). */
+internal val RV_GHOST = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
 
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f
