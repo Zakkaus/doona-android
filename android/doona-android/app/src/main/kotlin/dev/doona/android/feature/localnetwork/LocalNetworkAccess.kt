@@ -15,9 +15,10 @@ enum class LocalNetworkPrompt { Ask, Denied }
  * process ends, and a later failure only shows [LocalNetworkPrompt.Denied], which leads to the app's settings. Closing
  * the reason with back or a tap outside it is no refusal. The refusal shown for the running tunnel's report and the one
  * shown for anything else are kept apart: the tunnel's comes down when its report clears, the other only when the user
- * closes it. An action whose failure showed the refusal waits on it: until the user closes it, or, when they go from
- * it to the app's settings, until the app is in front again (see [allowedInSettings]). The app shows [prompt] and
- * reports what the user did; [granted] reads the permission, true where Android has none.
+ * closes it. An action whose failure showed the refusal waits on it: until the user closes it, until the app is in
+ * front again with access allowed, or, when they go from it to the app's settings, until the app is in front again
+ * (see [allowedInSettings]). The app shows [prompt] and reports what the user did; [granted] reads the permission, true
+ * where Android has none.
  */
 class LocalNetworkAccess(private val granted: () -> Boolean) {
     private val shown = MutableStateFlow<LocalNetworkPrompt?>(null)
@@ -118,8 +119,9 @@ class LocalNetworkAccess(private val granted: () -> Boolean) {
 
     /**
      * Called after [ask] returned false. While the refusal shown for an action is up, waits for the user: true once they
-     * come back from the app's settings with access allowed, so the action is worth one more try; false when they close
-     * the refusal, or come back without allowing access. False at once when access is allowed or no such refusal is up.
+     * come back with access allowed, so the action is worth one more try; false when they close the refusal, or come
+     * back from its trip to the settings without allowing access. False at once when access is allowed or no such
+     * refusal is up.
      */
     suspend fun allowedInSettings(): Boolean {
         if (granted()) return false
@@ -136,14 +138,23 @@ class LocalNetworkAccess(private val granted: () -> Boolean) {
     /** The user went from the refusal to the app's settings: the actions waiting on it wait for [resumed]. */
     fun toSettings() = closeRefusal(toSettings = true)
 
-    /** The app is in front again; after a trip to the settings, the actions that waited learn whether access is allowed. */
+    /**
+     * The app is in front again. After a trip to the settings from the refusal, the actions that waited learn whether
+     * access is allowed. Without one, they run once more if it is allowed now, as when the user left by the launcher and
+     * allowed it on the app's info page, and the refusal comes down; otherwise they keep waiting on it.
+     */
     fun resumed() {
+        val allowed = granted()
         val answer = synchronized(lock) {
-            if (!away) return
+            if (!away && !(allowed && settings != null)) return
             away = false
+            if (allowed) {
+                refusal = false
+                show()
+            }
             settings.also { settings = null }
         }
-        answer?.complete(granted())
+        answer?.complete(allowed)
     }
 
     private fun closeRefusal(toSettings: Boolean) {

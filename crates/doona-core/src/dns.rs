@@ -177,10 +177,11 @@ pub(crate) async fn answer(
     Some(answer.unwrap_or_else(|| servfail(query)))
 }
 
-/// Answers the framed queries of one TCP/53 connection in turn until the client closes it, or
-/// until a query takes `idle` to arrive or an answer `idle` to be taken: a client that sends
-/// neither a query nor its FIN, or never reads, cannot hold the connection. Each wait has a fixed
-/// deadline on tokio's monotonic clock, so a late wakeup does not extend it.
+/// Answers the framed queries of one TCP/53 connection in turn until the client closes it. A query
+/// that takes `idle` to arrive, or an answer `idle` to be taken, ends it with `TimedOut`, so the
+/// driver resets the client and drops what it still holds for it: a client that sends neither a
+/// query nor its FIN, or never reads, cannot hold the connection or its buffers. Each wait has a
+/// fixed deadline on tokio's monotonic clock, so a late wakeup does not extend it.
 pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
     io: &mut S,
     upstreams: &[SocketAddr],
@@ -188,17 +189,13 @@ pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
     idle: Duration,
 ) -> io::Result<()> {
     loop {
-        let query = match tokio::time::timeout(idle, read_framed(io)).await {
-            Ok(Ok(q)) => q,
-            Ok(Err(e)) if e.kind() == ErrorKind::UnexpectedEof => break,
-            Ok(Err(e)) => return Err(e),
-            Err(_) => break,
+        let query = match tokio::time::timeout(idle, read_framed(io)).await? {
+            Ok(q) => q,
+            Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
+            Err(e) => return Err(e),
         };
         if let Some(a) = answer(upstreams, route, &query).await {
-            match tokio::time::timeout(idle, write_framed(io, &a)).await {
-                Ok(written) => written?,
-                Err(_) => break,
-            }
+            tokio::time::timeout(idle, write_framed(io, &a)).await??;
         }
     }
     io.shutdown().await
@@ -332,7 +329,7 @@ pub(crate) mod tests {
         tokio::spawn(async move { serve_tcp(&mut server, &[], &Route::Direct, IDLE).await })
     }
 
-    /// A client that sends no query and no FIN is closed `IDLE` after its last answer.
+    /// A client that sends no query and no FIN is cut, as a failure, `IDLE` after its last answer.
     #[tokio::test(start_paused = true)]
     async fn a_silent_tcp_client_is_closed_after_the_idle_time() {
         let (server, mut client) = tokio::io::duplex(4096);
@@ -346,14 +343,17 @@ pub(crate) mod tests {
         assert_eq!(read_framed(&mut client).await.unwrap()[..2], [0, 7]);
         // Without the bound this waits forever; the timeout turns that into a failure.
         let ended = tokio::time::timeout(2 * IDLE, serving).await;
-        assert!(matches!(ended, Ok(Ok(Ok(())))), "{ended:?}");
+        assert!(
+            matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == ErrorKind::TimedOut),
+            "{ended:?}"
+        );
         let took = begun.elapsed();
         assert!(took >= IDLE * 5 / 3, "{took:?}");
         assert!(took < IDLE * 5 / 3 + Duration::from_millis(10), "{took:?}");
         assert_eq!(client.read(&mut [0; 1]).await.unwrap(), 0, "closed");
     }
 
-    /// A client that sends a query and never takes the answer is closed after the idle time too.
+    /// A client that sends a query and never takes the answer is cut after the idle time too.
     #[tokio::test(start_paused = true)]
     async fn a_tcp_client_that_never_reads_is_closed_after_the_idle_time() {
         // One byte of room each way: the answer cannot leave while the client does not read.
@@ -364,7 +364,10 @@ pub(crate) mod tests {
             .await
             .unwrap();
         let ended = tokio::time::timeout(2 * IDLE, serving).await;
-        assert!(matches!(ended, Ok(Ok(Ok(())))), "{ended:?}");
+        assert!(
+            matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == ErrorKind::TimedOut),
+            "{ended:?}"
+        );
         let took = begun.elapsed();
         assert!(
             took >= IDLE && took < IDLE + Duration::from_millis(10),

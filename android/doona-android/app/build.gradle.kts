@@ -1,3 +1,6 @@
+import com.android.build.api.artifact.SingleArtifact
+import java.util.zip.ZipFile
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -14,6 +17,36 @@ abstract class CargoNdk : Exec() {
     abstract val outputDir: DirectoryProperty
 }
 
+// Fails when an APK's libdoonacore.so carries the fault hook of the debug core (`call("debugFault")`), whatever order or
+// overlap of builds produced it.
+abstract class CheckNoFaultHook : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val apks: DirectoryProperty
+
+    @get:OutputFile
+    abstract val report: RegularFileProperty
+
+    @TaskAction
+    fun check() {
+        val libraries = apks.get().asFile.walk().filter { it.extension == "apk" }.flatMap { apk ->
+            ZipFile(apk).use { zip ->
+                zip.entries().asSequence().filter { it.name.endsWith("/libdoonacore.so") }
+                    .map { "${apk.name}!${it.name}" to zip.getInputStream(it).readBytes() }
+                    .toList()
+            }
+        }.toList()
+        if (libraries.isEmpty()) throw GradleException("no libdoonacore.so in the APKs under ${apks.get().asFile}")
+        for ((name, bytes) in libraries) {
+            // The name the hook answers to; the release library has no string of it.
+            if ("debugFault" in String(bytes, Charsets.ISO_8859_1)) {
+                throw GradleException("$name is the debug core: it carries the fault hook")
+            }
+        }
+        report.get().asFile.writeText(libraries.joinToString("\n", postfix = "\n") { "${it.first}: no fault hook" })
+    }
+}
+
 val coreDir = rootProject.file("../../crates/doona-core")
 val coreNdk = "30.0.16248370"
 val coreSymbols = listOf("init", "start", "stop", "snapshot", "call")
@@ -23,6 +56,8 @@ val cargoBin = (System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home"
 // rustup's default location when present, so a Gradle daemon started without cargo on PATH works.
 val cargo = File(cargoBin, "cargo").takeIf { it.canExecute() }?.path ?: "cargo"
 val ndkDir = androidComponents.sdkComponents.ndkDirectory
+// Cargo's target directory as the environment sets it; each feature set builds in its own directory below it.
+val coreTarget = providers.environmentVariable("CARGO_TARGET_DIR").orNull?.let(::File) ?: coreDir.resolve("target")
 val skipCore = providers.gradleProperty("doona.skipCore").orNull.toBoolean()
 
 androidComponents {
@@ -30,6 +65,9 @@ androidComponents {
         if (skipCore) return@onVariants
         // The debug variant's core also takes `call("debugFault")`, the fault the core-failure check uses; release has none.
         val features = if (variant.buildType == "debug") listOf("--features", "fault-hook") else emptyList()
+        // One target directory per feature set: in a shared one, a build of the other set would overwrite the library
+        // that cargo-ndk copies, and each switch between debug and release would rebuild the core.
+        val targetDir = coreTarget.resolve(if (features.isEmpty()) "android" else "android-fault-hook")
         val buildCore = tasks.register<CargoNdk>("buildDoonaCore" + variant.name.replaceFirstChar { it.uppercase() }) {
             description = "Builds libdoonacore.so for arm64-v8a with cargo-ndk and checks its JNI exports."
             workingDir = coreDir // rustup reads rust-toolchain.toml from the working directory
@@ -44,6 +82,7 @@ androidComponents {
                 ) + features
             }
             environment("PATH", cargoBin + File.pathSeparator + System.getenv("PATH"))
+            environment("CARGO_TARGET_DIR", targetDir.path)
             // boring-sys runs bindgen, which needs the target's API level.
             environment("BINDGEN_EXTRA_CLANG_ARGS_aarch64-linux-android", "--target=aarch64-linux-android31")
             // Everything that changes the library, so an unchanged crate is not rebuilt. The release profile and
@@ -95,6 +134,15 @@ androidComponents {
             }
         }
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildCore, CargoNdk::outputDir)
+        if (variant.buildType != "debug") {
+            val name = variant.name.replaceFirstChar { it.uppercase() }
+            val check = tasks.register<CheckNoFaultHook>("checkNoFaultHook$name") {
+                description = "Checks that the APK's libdoonacore.so has no fault hook."
+                apks.set(variant.artifacts.get(SingleArtifact.APK))
+                report.set(layout.buildDirectory.file("intermediates/doona-core/${variant.name}-no-fault-hook.txt"))
+            }
+            tasks.named { it == "assemble$name" }.configureEach { dependsOn(check) }
+        }
     }
 }
 

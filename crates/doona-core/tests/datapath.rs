@@ -11,7 +11,7 @@ use common::{TempDir, seqpacket_pair, wait_for};
 use doonacore::api::{Core, Options};
 use doonacore::dto::Snapshot;
 use doonacore::sys;
-use honk_netstack::StreamError;
+use honk_netstack::{StreamError, TcpState};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::os::fd::AsRawFd;
 use std::sync::atomic::Ordering::Relaxed;
@@ -22,6 +22,8 @@ const CONFIG: &str =
 const RESOLVER: SocketAddr =
     SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(172, 19, 0, 2)), 53);
 const WAIT: Duration = Duration::from_secs(5);
+/// How long a test's TCP flow may stall after a FIN, so that a cut comes quickly.
+const DRAIN: Duration = Duration::from_millis(500);
 
 struct Setup {
     core: Core,
@@ -31,11 +33,15 @@ struct Setup {
 
 /// A started core in `mode` whose DNS goes to `upstreams`.
 fn setup(mode: &str, upstreams: Vec<SocketAddr>) -> Setup {
-    let dir = TempDir::new("datapath");
     let options = Options {
         dns_upstreams: upstreams,
         ..Options::default()
     };
+    setup_with(mode, options)
+}
+
+fn setup_with(mode: &str, options: Options) -> Setup {
+    let dir = TempDir::new("datapath");
     let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
     let reply = core.call("setMode", &format!(r#"{{"mode":"{mode}"}}"#));
     assert_eq!(reply, r#"{"ok":{}}"#);
@@ -214,4 +220,66 @@ fn dns_sessions_are_not_active_flows() {
     }));
     // The session stays open: the client has not closed it.
     assert_eq!(snapshot(&s.core).traffic.active_flows, 0);
+}
+
+/// A client that half-closes and then stops reading keeps the upstream's data queued in the core:
+/// its window stays shut while it answers the core's probes. Once the flow has moved no byte for
+/// the drain time it is reset, and the core no longer holds it or its buffers.
+#[test]
+fn a_client_that_stops_reading_after_its_fin_is_reset_after_the_drain_time() {
+    let flood = servers::flood();
+    let options = Options {
+        tcp_drain: DRAIN,
+        ..Options::default()
+    };
+    let mut s = setup_with("Direct", options);
+    let id = s.client.connect(flood);
+    assert!(s.client.until(WAIT, |c| c.write_now(id, b"GET") == 3));
+    s.client.shutdown(id);
+    let begun = Instant::now();
+    assert_eq!(snapshot(&s.core).traffic.active_flows, 1);
+    // The client turns without reading.
+    let core = &s.core;
+    let gone = s
+        .client
+        .until(DRAIN + WAIT, |_| snapshot(core).traffic.active_flows == 0);
+    assert!(gone, "the core still holds the flow");
+    assert!(begun.elapsed() >= DRAIN, "{:?}", begun.elapsed());
+    assert!(
+        s.client
+            .until(WAIT, |c| c.state(id) == Some(TcpState::Closed))
+    );
+    assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
+}
+
+/// A DNS client that sends its queries and never reads the answers is reset once they have not
+/// moved for the drain time, as a TCP flow is.
+#[test]
+fn a_dns_client_that_never_reads_is_reset_after_the_drain_time() {
+    let (resolver, _) = servers::dns_server();
+    let options = Options {
+        dns_upstreams: vec![resolver],
+        tcp_drain: DRAIN,
+        ..Options::default()
+    };
+    let mut s = setup_with("Direct", options);
+    let id = s.client.connect(RESOLVER);
+    // Answers of about 64 KB each: more than the client's window and the core's buffers hold.
+    let mut queries = Vec::new();
+    for i in 0..64 {
+        let q = servers::query(i, "huge.example", None);
+        queries.extend_from_slice(&(q.len() as u16).to_be_bytes());
+        queries.extend_from_slice(&q);
+    }
+    let mut sent = 0;
+    assert!(s.client.until(WAIT, |c| {
+        sent += c.write_now(id, &queries[sent..]);
+        sent == queries.len()
+    }));
+    // The client turns without reading.
+    let reset = s
+        .client
+        .until(DRAIN + WAIT, |c| c.state(id) == Some(TcpState::Closed));
+    assert!(reset, "the core still holds the session");
+    assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
 }

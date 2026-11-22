@@ -1,7 +1,7 @@
 //! The apps behind the VPN: an endpoint-mode honk Stack at the tun's address, on the far end of
 //! the socketpair the core uses as its tun, driven from the test thread.
 
-use honk_netstack::{Config, FlowId, Rx, Stack, StreamError};
+use honk_netstack::{Config, FlowId, Rx, Stack, StreamError, TcpState};
 use std::io::ErrorKind;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::os::fd::{AsRawFd, OwnedFd};
@@ -188,6 +188,17 @@ impl Client {
 
     pub fn write_now(&mut self, id: FlowId, data: &[u8]) -> usize {
         self.st.tcp_write(id, data).unwrap_or(0)
+    }
+
+    /// Sends FIN after what was written.
+    pub fn shutdown(&mut self, id: FlowId) {
+        self.st.tcp_shutdown(id).unwrap();
+        self.turn();
+    }
+
+    /// The flow's state, without reading from it.
+    pub fn state(&self, id: FlowId) -> Option<TcpState> {
+        self.st.tcp_state(id)
     }
 
     pub fn send_udp(&mut self, dst: SocketAddr, payload: &[u8]) {

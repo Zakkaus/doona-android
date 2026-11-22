@@ -98,6 +98,28 @@ class LocalNetworkRetryTest {
     }
 
     @Test
+    fun anImportWaitingWhenAccessIsAllowedFromTheAppInfoPageRunsOnceMoreOnResume() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            refusedImport()
+            // The user leaves through the launcher with the refusal still up, not by its button.
+            scenario.leaveAndReturn()
+            assertEquals(1, engine.adds)
+            assertTrue("still refused: the import keeps waiting", container.imports.state.value.busy)
+            assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+            // Next time they allow access on the app's info page before they come back.
+            scenario.leaveAndReturn(::allow)
+            assertEquals(2, engine.adds)
+            assertNull("allowed now: the refusal is gone", access.prompt.value)
+            val state = container.imports.state.value
+            assertFalse(state.busy)
+            assertNull(state.error)
+            assertEquals(1, state.imported)
+            scenario.leaveAndReturn()
+            assertEquals("one retry only", 2, engine.adds)
+        }
+    }
+
+    @Test
     fun noRetryWhenAccessIsStillRefused() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             refusedImport()

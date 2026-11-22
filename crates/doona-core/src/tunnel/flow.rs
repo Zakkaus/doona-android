@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering::AcqRel};
 use std::task::{Context, Poll, ready};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::sync::{OwnedSemaphorePermit, mpsc};
-use tokio_util::sync::PollSender;
+use tokio_util::sync::{CancellationToken, PollSender};
 
 /// The largest chunk either side puts in a channel.
 pub(crate) const CHUNK: usize = 32 * 1024;
@@ -82,6 +82,9 @@ pub(crate) struct Ends {
     pub up: Option<mpsc::Sender<Bytes>>,
     /// Upstream to client; closed by the task to pass on the upstream's FIN.
     pub down: mpsc::Receiver<Bytes>,
+    /// Cancelled once the client's FIN has arrived, which the task's reads reach only after the
+    /// data before it (see [`FlowIo::client_fin`]).
+    pub fin: CancellationToken,
 }
 
 /// The task's end of a TCP flow: the client, as an async stream.
@@ -90,22 +93,34 @@ pub(crate) struct FlowIo {
     unread: Bytes,
     down: PollSender<Bytes>,
     waker: Arc<Waker>,
+    fin: CancellationToken,
 }
 
 pub(crate) fn pair(waker: Arc<Waker>) -> (Ends, FlowIo) {
     let (up_tx, up_rx) = mpsc::channel(DEPTH);
     let (down_tx, down_rx) = mpsc::channel(DEPTH);
+    let fin = CancellationToken::new();
     let ends = Ends {
         up: Some(up_tx),
         down: down_rx,
+        fin: fin.clone(),
     };
     let io = FlowIo {
         up: up_rx,
         unread: Bytes::new(),
         down: PollSender::new(down_tx),
         waker,
+        fin,
     };
     (ends, io)
+}
+
+impl FlowIo {
+    /// Cancelled once the client's FIN has arrived, while the data before it may still wait in the
+    /// channel or the stack.
+    pub fn client_fin(&self) -> CancellationToken {
+        self.fin.clone()
+    }
 }
 
 impl AsyncRead for FlowIo {

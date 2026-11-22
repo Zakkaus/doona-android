@@ -28,6 +28,7 @@ use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+pub(crate) use tcp::DRAIN_DEADLINE as TCP_DRAIN;
 use tokio::runtime::Handle;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
@@ -50,6 +51,9 @@ pub struct Settings {
     pub dns_upstreams: Vec<SocketAddr>,
     /// A UDP association with no datagram either way for this long ends.
     pub udp_idle: Duration,
+    /// How long a TCP flow may move no byte after either side's FIN, and a TCP/53 connection to the
+    /// core's DNS may idle.
+    pub tcp_drain: Duration,
     /// The committed mode; each new flow reads it.
     pub mode: Arc<ModeCell>,
     /// Each group's current node and what dials it; a new Global flow goes through `g-Proxy`'s.

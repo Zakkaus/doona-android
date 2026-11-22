@@ -307,16 +307,17 @@ impl Driver {
         let (ends, io) = flow::pair(Arc::clone(&waker));
         let flow = TcpFlow::new(ends, waker, dst.is_none());
         let (events, cancel) = (self.events.clone(), flow.cancel.clone());
+        let drain = self.settings.tcp_drain;
         self.dns_flows += usize::from(flow.dns);
         self.tcp.insert(id, flow);
         match dst {
             Some(dst) => self
                 .gen_
-                .spawn(tcp::dial(io, id, dst, route, events, cancel)),
+                .spawn(tcp::dial(io, id, dst, route, drain, events, cancel)),
             None => {
                 let upstreams = Arc::clone(&self.upstreams);
-                self.gen_
-                    .spawn(tcp::serve_dns(io, id, route, upstreams, events, cancel));
+                let task = tcp::serve_dns(io, id, route, upstreams, drain, events, cancel);
+                self.gen_.spawn(task);
             }
         }
     }
