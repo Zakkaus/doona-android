@@ -234,4 +234,9 @@ private fun FieldsGalleryPreview() = DoonaTheme { FieldsGallery() }
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 1200)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
+private fun DialogGalleryPreview() = DoonaTheme { DialogGallery() }
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 1200)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 1200, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
 private fun FeedbackGalleryPreview() = DoonaTheme { FeedbackGallery() }
