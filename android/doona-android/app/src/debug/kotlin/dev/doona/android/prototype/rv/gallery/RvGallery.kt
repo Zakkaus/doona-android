@@ -23,7 +23,6 @@ import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLongPressMenu
-import dev.doona.android.prototype.rv.RvMenuItem
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -32,6 +31,7 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvSubscription
+import dev.doona.android.prototype.rv.subs.rvSubscriptionMenu
 
 /**
  * The library's new parts in one page, for the owner to try on a phone (route `gallery`): the text field in its states,
@@ -93,14 +93,6 @@ internal fun RvGalleryMenuCard(onDelete: (RvSubscription) -> Unit = {}) {
         }
     }
 }
-
-/** A subscription's menu: 更新, 編輯, then 刪除 set apart, its glyph in the error hue. */
-@Composable
-internal fun rvSubscriptionMenu(onUpdate: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit): List<RvMenuItem> = listOf(
-    RvMenuItem(stringResource(R.string.rv_menu_update), R.drawable.rv_stats_ic_sync, onClick = onUpdate),
-    RvMenuItem(stringResource(R.string.rv_menu_edit), R.drawable.rv_sym_edit, onClick = onEdit),
-    RvMenuItem(stringResource(R.string.rv_menu_delete), R.drawable.rv_sym_delete, destructive = true, separated = true, onClick = onDelete),
-)
 
 /** The banner for a subscription that did not update, for no network, and for a VPN another app took. */
 @Composable

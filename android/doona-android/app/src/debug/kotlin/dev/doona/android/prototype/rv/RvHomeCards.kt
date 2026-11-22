@@ -164,13 +164,13 @@ private fun DrawScope.hourGrid(color: Color, chart: StepChart) {
 /**
  * 訂閱 in the style of Revolut's Total wealth: the card's own header, the data left on every subscription, and a row
  * for each, with a neutral disc (colour means a direction on this page, L-17), its use against its quota, its end date
- * and what is left.
+ * and what is left. Its header opens 訂閱 ([onOpen]).
  */
 @Composable
-internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>) {
+internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>, onOpen: () -> Unit = NOT_WIRED) {
     val format = rememberRvFormat()
     RvCard {
-        RvCardHeader(stringResource(R.string.rv_subscriptions), NOT_WIRED)
+        RvCardHeader(stringResource(R.string.rv_subscriptions), onOpen)
         Row(Modifier.padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.Bottom) {
             RvFigureText(format.bytes(subscriptions.sumOf { it.leftBytes }).figure(), Rv.type.cardValue, Rv.type.cardUnit, Modifier.alignByBaseline())
             Spacer(Modifier.width(RvSpace.tight * 2))

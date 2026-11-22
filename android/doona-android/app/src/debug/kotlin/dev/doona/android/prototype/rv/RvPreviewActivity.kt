@@ -29,6 +29,9 @@ import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
 import dev.doona.android.prototype.rv.stats.rvStatsSample
+import dev.doona.android.prototype.rv.subs.RvImportSheet
+import dev.doona.android.prototype.rv.subs.RvSubsRoute
+import dev.doona.android.prototype.rv.subs.RvSubsRoutes
 
 /**
  * Debug builds only: the Revolut-style sample with its invented state, full screen on a phone, so the glass blur can be
@@ -63,7 +66,9 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
     var policy by remember { mutableStateOf(RvPolicyState()) }
     var quickRule by remember { mutableStateOf(RvQuickRule()) }
     val onTab: (Int) -> Unit = { i -> TABS[i]?.let(tab) }
-    when (route.substringBefore(':')) {
+    val name = route.substringBefore(':')
+    if (name in RvSubsRoutes.all) return RvSubsRoute(route, push, pop)
+    when (name) {
         TRAFFIC -> RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = pop)
 
         STATS -> RvStatsScreen(rvStatsSample(), onBack = pop)
@@ -97,8 +102,25 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
             // The outbound card's mode row and 查看全部 open 策略; a rule group opens its group's page there.
             val toPolicy = { tab(POLICY) }
             val rule = { name: Int -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { push("$GROUP:${it.id}") } ?: toPolicy() }
-            val routes = RvActivityRoutes({ push(TRAFFIC) }, { push(STATS) }, { push(NODES) }, { push("$NODE:${nodes.currentId}") }, onTab, toPolicy, rule, toPolicy)
+            val routes = RvActivityRoutes(
+                { push(TRAFFIC) },
+                { push(STATS) },
+                { push(NODES) },
+                { push("$NODE:${nodes.currentId}") },
+                onTab,
+                toPolicy,
+                rule,
+                toPolicy,
+                subscriptions = { push(RvSubsRoutes.LIST) },
+            )
             RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, routes)
+            // A deep link's question over 活動 (`sub-import`): 加入 opens the add page, which imports it.
+            var importing by remember { mutableStateOf(name == RvSubsRoutes.IMPORT) }
+            val sub = RvData.subscriptions.first()
+            RvImportSheet(importing, sub.name, sub.host, onAdd = {
+                importing = false
+                push("${RvSubsRoutes.ADD}:importing")
+            }, onDismiss = { importing = false })
         }
     }
 }

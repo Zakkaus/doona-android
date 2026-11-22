@@ -33,7 +33,7 @@ import dev.doona.android.prototype.rv.gallery.RvGalleryBanners
 import dev.doona.android.prototype.rv.gallery.RvGalleryEmpty
 import dev.doona.android.prototype.rv.gallery.RvGalleryFields
 import dev.doona.android.prototype.rv.gallery.RvGalleryMenuCard
-import dev.doona.android.prototype.rv.gallery.rvSubscriptionMenu
+import dev.doona.android.prototype.rv.subs.rvSubscriptionMenu
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

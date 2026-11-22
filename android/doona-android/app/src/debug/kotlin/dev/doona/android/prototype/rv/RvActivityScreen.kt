@@ -73,19 +73,19 @@ internal fun RvActivityScreen(
                 OutboundCard(state, mode, routes)
                 TrafficTiles(state, routes.traffic)
                 RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
-                RvSubscriptionsCard(RvData.subscriptions)
+                RvSubscriptionsCard(RvData.subscriptions, routes.subscriptions)
                 RvFastestCard(RvData.nodes.fastest(FASTEST), RvData.current.id, routes.nodes)
             }
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
-        RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.nodes, onStats = routes.stats, Modifier.align(Alignment.TopCenter))
+        RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.nodes, onStats = routes.stats, Modifier.align(Alignment.TopCenter), routes.subscriptions)
         RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter))
     }
 }
 
 /**
  * Where 活動 leads: a traffic tile, 統計, 節點 (the search pill), the node row, the nav's tabs, the mode picker, a rule
- * row (by its group) and the full list of rules.
+ * row (by its group), the full list of rules, and 訂閱 (the top bar's disc and the card's header).
  */
 internal class RvActivityRoutes(
     val traffic: () -> Unit = {},
@@ -96,6 +96,7 @@ internal class RvActivityRoutes(
     val mode: () -> Unit = {},
     val rule: (Int) -> Unit = {},
     val rules: () -> Unit = {},
+    val subscriptions: () -> Unit = {},
 )
 
 @Composable

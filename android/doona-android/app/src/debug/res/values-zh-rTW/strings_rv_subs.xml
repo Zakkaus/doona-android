@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_subs_nodes_updated">%1$s · %2$s 更新</string>
+    <string name="rv_subs_used">%1$s / %2$s</string>
+    <string name="rv_subs_no_expiry">無到期日</string>
+    <string name="rv_sub_update_now">立即更新</string>
+    <string name="rv_sub_node_count">節點數</string>
+    <string name="rv_sub_used">已用流量</string>
+    <string name="rv_sub_expires">到期日</string>
+    <string name="rv_sub_updated">上次更新</string>
+    <string name="rv_sub_format">格式</string>
+    <string name="rv_sub_format_clash">Clash YAML</string>
+    <string name="rv_sub_format_sing_box">sing-box JSON</string>
+    <string name="rv_sub_format_links">分享連結清單</string>
+    <string name="rv_sub_updates">更新</string>
+    <string name="rv_sub_auto_update">自動更新</string>
+    <string name="rv_sub_user_agent">User-Agent</string>
+    <string name="rv_sub_user_agent_default">與 Clash 相容（預設）</string>
+    <string name="rv_sub_user_agent_note">目前所有訂閱共用預設的 User-Agent，尚不能個別設定。</string>
+    <string name="rv_sub_section">訂閱</string>
+    <string name="rv_sub_name">名稱</string>
+    <string name="rv_sub_link">連結</string>
+    <string name="rv_sub_delete">刪除訂閱</string>
+    <string name="rv_sub_rename">重新命名</string>
+    <string name="rv_save">儲存</string>
+    <string name="rv_add_clipboard">使用剪貼簿的連結</string>
+    <string name="rv_add_import">匯入</string>
+    <string name="rv_add_importing">正在匯入…</string>
+    <string name="rv_add_downloaded">已下載 %1$s</string>
+    <string name="rv_add_done">已匯入 %1$s</string>
+    <string name="rv_done">完成</string>
+    <string name="rv_add_failed">無法匯入訂閱</string>
+    <string name="rv_add_unreachable">訂閱的伺服器沒有回應。請確認連結與網路連線後重試。</string>
+    <string name="rv_add_not_subscription_reason">這個連結傳回的內容不是訂閱。請確認這是服務商提供的訂閱連結。</string>
+    <string name="rv_add_too_large">訂閱內容超過 %1$s 的上限。</string>
+    <string name="rv_import_title">加入 %1$s</string>
+    <string name="rv_import_body">這個連結來自其他 App，來源為 %1$s。加入後，doona 會下載其中的節點清單。</string>
+    <string name="rv_import_add">加入</string>
+</resources>
