@@ -3,9 +3,12 @@
 //! [`PROBE_TIMEOUT`]. A probe waits on the network with no lock held and commits in a short
 //! section that checks the node still has the incarnation and probe generation it began with
 //! (core-api.md, Commit rule); a test that ends, cancelled or not, clears its groups' `testing`.
+//! A failed probe of a node whose server is on the local network records `local_network`
+//! (ARCH D26).
 
 use crate::api::lock;
 use crate::catalog::{Plan, Round, Shared, Target};
+use crate::dto::ErrorCode;
 use crate::outbounds::Carriers;
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
@@ -133,14 +136,22 @@ impl Probes {
                 .ok()
                 .flatten()
                 .map(|d| u32::try_from(d.as_millis()).unwrap_or(u32::MAX).max(1));
+            let error = failure(ms, &target);
             let mut c = lock(&shared.catalog);
             // `cancel` is cancelled under the catalog lock, so a stop that returned is never undone.
-            if !cancel.is_cancelled() && c.model.record(&target, ms) {
+            if !cancel.is_cancelled() && c.model.record(&target, ms, error) {
                 c.revision += 1;
                 shared.publish(&c);
             }
         }
     }
+}
+
+/// Why a probe measured nothing, when the core can tell: its node's server is on the local
+/// network, by address or by what its name last resolved to.
+fn failure(ms: Option<u32>, target: &Target) -> Option<ErrorCode> {
+    let local = ms.is_none() && crate::localnet::host_is_local(target.entry.node.host());
+    local.then_some(ErrorCode::LocalNetwork)
 }
 
 /// Ends a test when its task ends, finished or cancelled.

@@ -63,6 +63,7 @@ fn server(text: &str, port: u16) -> Option<SocketAddr> {
 }
 
 /// The addresses of `host`, from the first resolver that has any; an address literal is its own.
+/// Whether they are on the local network is noted, so a failed dial to `host` can say so.
 pub(crate) async fn lookup(host: &str) -> io::Result<Vec<IpAddr>> {
     let bare = host.trim_start_matches('[').trim_end_matches(']');
     if let Ok(ip) = bare.parse::<IpAddr>() {
@@ -79,6 +80,7 @@ pub(crate) async fn lookup(host: &str) -> io::Result<Vec<IpAddr>> {
         if let Ok(ips) = resolver.query(bare).await
             && !ips.is_empty()
         {
+            crate::localnet::note(bare, &ips);
             return Ok(ips);
         }
     }

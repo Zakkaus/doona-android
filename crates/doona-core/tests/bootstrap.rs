@@ -12,7 +12,7 @@ use common::{TempDir, seqpacket_pair, socks};
 use doonacore::api::{Core, Options};
 use doonacore::dto::ErrorCode;
 use doonacore::sys;
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::os::fd::AsRawFd;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Mutex, MutexGuard};
@@ -180,4 +180,54 @@ fn a_refused_start_keeps_the_running_list() {
             Some(ErrorCode::InvalidArgument)
         );
     }
+}
+
+/// A subscription host is classified by what it resolves to, never by its name: resolved to an
+/// address on the local network that never connects, the fetch is `local_network`; resolved to a
+/// loopback port with nothing on it, `fetch_failed`.
+#[test]
+fn a_subscription_host_on_the_local_network_is_local_network() {
+    let _s = serial();
+    let closed = servers::closed_port();
+    let cases = [
+        (Ipv4Addr::new(10, 255, 255, 1), ErrorCode::LocalNetwork),
+        (Ipv4Addr::LOCALHOST, ErrorCode::FetchFailed),
+    ];
+    for (answer, want) in cases {
+        let (resolver, seen) = servers::udp_resolver_to(answer);
+        let dir = TempDir::new("boot-lan");
+        let options = Options {
+            bootstrap_port: resolver.port(),
+            bootstrap_fallback: vec![resolver],
+            subscription_bound: Duration::from_secs(2),
+            ..Options::default()
+        };
+        let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+        let url = format!("http://192-168-8-161.lan.doona.test:{}/sub", closed.port());
+        assert_eq!(subscribe(&core, &url), Err(want), "{answer}");
+        assert!(queries(&seen) >= 1);
+    }
+}
+
+/// A node known only by name is classified by what the name resolved to: once it resolves to the
+/// local network and its dial fails, the snapshot carries the warning. Linux refuses TCP to a
+/// multicast address, which Android counts as local, at once.
+#[test]
+fn a_node_name_that_resolves_to_the_local_network_warns_when_its_dial_fails() {
+    let _s = serial();
+    let (resolver, _) = servers::udp_resolver_to(Ipv4Addr::new(224, 0, 0, 1));
+    let (echo, _) = servers::tcp_echo();
+    let feed = servers::feed("socks5://nas.lan.doona.test:1080#nas".to_owned());
+    let dir = TempDir::new("boot-lan-node");
+    let core = new_core(&dir, resolver.port(), vec![dead_resolver()]);
+    subscribe(&core, &format!("http://{feed}/sub")).unwrap();
+    let mut client = start(&core, r#"["127.0.0.1"]"#);
+    let warning = |core: &Core| {
+        let snapshot: serde_json::Value = serde_json::from_str(&core.snapshot(-1)).unwrap();
+        snapshot["warning"].clone()
+    };
+    assert_eq!(warning(&core), serde_json::Value::Null);
+    let id = client.connect(echo);
+    assert!(client.until(Duration::from_secs(15), |c| c.read_now(id).is_err()));
+    assert_eq!(warning(&core), "local_network");
 }

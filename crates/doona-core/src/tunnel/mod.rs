@@ -189,10 +189,12 @@ pub struct Session {
     down: AtomicU64,
     active: AtomicU32,
     failed: AtomicBool,
+    /// A dial to a node on the local network failed (ARCH D26).
+    local_network: AtomicBool,
 }
 
 impl Session {
-    fn new(generation: i64) -> Session {
+    pub(crate) fn new(generation: i64) -> Session {
         let since = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX));
@@ -203,6 +205,7 @@ impl Session {
             down: AtomicU64::new(0),
             active: AtomicU32::new(0),
             failed: AtomicBool::new(false),
+            local_network: AtomicBool::new(false),
         }
     }
 
@@ -221,6 +224,19 @@ impl Session {
 
     fn fail(&self) {
         self.failed.store(true, Relaxed);
+    }
+
+    /// What `snapshot` reports besides a dead data path: `local_network` once a dial to a node on
+    /// the local network failed in this generation.
+    pub fn warning(&self) -> Option<ErrorCode> {
+        self.local_network
+            .load(Relaxed)
+            .then_some(ErrorCode::LocalNetwork)
+    }
+
+    /// A dial to a node on the local network failed; Android 17 may have refused it.
+    pub(crate) fn note_local_network(&self) {
+        self.local_network.store(true, Relaxed);
     }
 
     /// Bytes read from and written to the tun since `start`, and the flows open now.

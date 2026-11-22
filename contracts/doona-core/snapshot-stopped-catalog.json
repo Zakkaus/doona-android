@@ -4,6 +4,7 @@
   "generation": 0,
   "sinceEpochMs": null,
   "error": null,
+  "warning": null,
   "traffic": {
     "upTotal": 0,
     "downTotal": 0,
@@ -25,6 +26,7 @@
             "name": "Auto",
             "latencyMs": null,
             "failed": false,
+            "error": null,
             "isGroup": true,
             "subscriptionId": null
           },
@@ -33,6 +35,7 @@
             "name": "HK",
             "latencyMs": null,
             "failed": false,
+            "error": null,
             "isGroup": true,
             "subscriptionId": null
           },
@@ -41,14 +44,16 @@
             "name": "hk-01",
             "latencyMs": 42,
             "failed": false,
+            "error": null,
             "isGroup": false,
             "subscriptionId": "s1"
           },
           {
             "id": "n-0c41be77",
             "name": "hk-01",
-            "latencyMs": 57,
-            "failed": false,
+            "latencyMs": null,
+            "failed": true,
+            "error": "local_network",
             "isGroup": false,
             "subscriptionId": "s1"
           }
@@ -67,14 +72,16 @@
             "name": "hk-01",
             "latencyMs": 42,
             "failed": false,
+            "error": null,
             "isGroup": false,
             "subscriptionId": "s1"
           },
           {
             "id": "n-0c41be77",
             "name": "hk-01",
-            "latencyMs": 57,
-            "failed": false,
+            "latencyMs": null,
+            "failed": true,
+            "error": "local_network",
             "isGroup": false,
             "subscriptionId": "s1"
           }
@@ -93,14 +100,16 @@
             "name": "hk-01",
             "latencyMs": 42,
             "failed": false,
+            "error": null,
             "isGroup": false,
             "subscriptionId": "s1"
           },
           {
             "id": "n-0c41be77",
             "name": "hk-01",
-            "latencyMs": 57,
-            "failed": false,
+            "latencyMs": null,
+            "failed": true,
+            "error": "local_network",
             "isGroup": false,
             "subscriptionId": "s1"
           }

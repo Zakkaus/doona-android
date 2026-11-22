@@ -130,8 +130,8 @@ fn the_fastest_node_wins_and_a_failed_round_keeps_the_choice() {
     let plan = model.plan(Some("g-Auto")).unwrap();
     assert_eq!(plan.targets.len(), 9);
     let (a, b) = (&plan.targets[3], &plan.targets[5]);
-    assert!(model.record(a, Some(80)));
-    assert!(model.record(b, Some(40)));
+    assert!(model.record(a, Some(80), None));
+    assert!(model.record(b, Some(40), None));
     let auto = |m: &Model| m.catalog(&s).groups[1].selected_id.clone();
     assert_eq!(auto(&model).as_deref(), Some(b.entry.id.as_str()));
     assert!(model.catalog(&s).groups[1].testing);
@@ -140,7 +140,7 @@ fn the_fastest_node_wins_and_a_failed_round_keeps_the_choice() {
     // A round where every probe fails keeps the current member.
     let plan = model.plan(None).unwrap();
     for t in &plan.targets {
-        assert!(model.record(t, None));
+        assert!(model.record(t, None, None));
     }
     assert_eq!(auto(&model).as_deref(), Some(b.entry.id.as_str()));
     assert_eq!(latency(&model, &s, &b.entry.id), (None, true));
@@ -153,8 +153,8 @@ fn overlapping_tests_keep_only_the_latest_result_and_test_until_both_end() {
     let early = model.plan(Some("g-HK")).unwrap();
     let late = model.plan(Some("g-HK")).unwrap();
     assert_eq!(early.targets.len(), 3);
-    assert!(!model.record(&early.targets[0], Some(10)));
-    assert!(model.record(&late.targets[0], Some(20)));
+    assert!(!model.record(&early.targets[0], Some(10), None));
+    assert!(model.record(&late.targets[0], Some(20), None));
     let node = &late.targets[0].entry.id;
     assert_eq!(latency(&model, &s, node), (Some(20), false));
     model.finish(&early.round());
@@ -176,7 +176,7 @@ fn a_probe_of_a_re_created_or_removed_node_is_dropped() {
     let mut gone = next.with(&shrunk, "s2", Vec::new());
     gone.carry(&next);
     for t in &plan.targets {
-        assert!(!gone.record(t, Some(5)), "{}", t.entry.id);
+        assert!(!gone.record(t, Some(5), None), "{}", t.entry.id);
     }
     // The testing mark survives until the test ends.
     assert!(gone.catalog(&shrunk).groups.iter().all(|g| g.testing));
@@ -190,7 +190,7 @@ fn latencies_carry_over_for_the_nodes_that_stay() {
     let mut model = load(&s);
     let plan = model.plan(None).unwrap();
     for t in &plan.targets {
-        assert!(model.record(t, Some(30)));
+        assert!(model.record(t, Some(30), None));
     }
     let mut shrunk = s.clone();
     shrunk.subscriptions.remove(0);
@@ -268,21 +268,21 @@ fn only_a_success_of_the_current_round_replaces_the_choice() {
             5 => 50,
             _ => 90,
         };
-        assert!(model.record(t, Some(ms)));
+        assert!(model.record(t, Some(ms), None));
     }
     assert_eq!(auto(&model), id(3));
     // The fastest fails first; the next fastest still has its earlier timing, then fails too.
     let round = model.plan(Some("g-Auto")).unwrap();
     for i in [3, 6, 5, 0, 1, 2, 4, 7, 8] {
-        assert!(model.record(&round.targets[i], None));
+        assert!(model.record(&round.targets[i], None, None));
         assert_eq!(auto(&model), id(3), "after target {i} failed");
     }
     // A success of this round replaces it; an earlier timing of a node still probing does not.
     let round = model.plan(Some("g-Auto")).unwrap();
-    assert!(model.record(&round.targets[3], None));
-    assert!(model.record(&round.targets[5], Some(60)));
+    assert!(model.record(&round.targets[3], None, None));
+    assert!(model.record(&round.targets[5], Some(60), None));
     assert_eq!(auto(&model), id(5));
-    assert!(model.record(&round.targets[6], Some(70)));
+    assert!(model.record(&round.targets[6], Some(70), None));
     assert_eq!(auto(&model), id(5));
 }
 
@@ -293,9 +293,9 @@ fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
     let hk = |m: &Model, s: &State| m.catalog(s).groups[2].selected_id.clone().unwrap();
     let plan = model.plan(Some("g-HK")).unwrap();
     let ids: Vec<_> = plan.targets.iter().map(|t| t.entry.id.clone()).collect();
-    assert!(model.record(&plan.targets[0], None));
-    assert!(model.record(&plan.targets[1], Some(20)));
-    assert!(model.record(&plan.targets[2], Some(10)));
+    assert!(model.record(&plan.targets[0], None, None));
+    assert!(model.record(&plan.targets[1], Some(20), None));
+    assert!(model.record(&plan.targets[2], Some(10), None));
     assert_eq!(hk(&model, &s), ids[2]);
     // HK-02 leaves the feed: the measured hk-01 takes over, not the failed first member.
     let mut next = s.clone();
@@ -308,7 +308,7 @@ fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
     // With nothing measured, a choice that is still a member stays.
     let round = refreshed.plan(Some("g-HK")).unwrap();
     for t in &round.targets {
-        assert!(refreshed.record(t, None));
+        assert!(refreshed.record(t, None, None));
     }
     let mut again = refreshed.with(&next, "s1", fresh(&next.subscriptions[0]));
     again.carry(&refreshed);
@@ -322,9 +322,9 @@ fn a_refresh_during_a_round_ranks_survivors_by_their_kept_times() {
     let hk = |m: &Model, s: &State| m.catalog(s).groups[2].selected_id.clone().unwrap();
     let plan = model.plan(Some("g-HK")).unwrap();
     let ids: Vec<_> = plan.targets.iter().map(|t| t.entry.id.clone()).collect();
-    assert!(model.record(&plan.targets[0], None));
-    assert!(model.record(&plan.targets[1], Some(20)));
-    assert!(model.record(&plan.targets[2], Some(10)));
+    assert!(model.record(&plan.targets[0], None, None));
+    assert!(model.record(&plan.targets[1], Some(20), None));
+    assert!(model.record(&plan.targets[2], Some(10), None));
     model.finish(&plan.round());
     assert_eq!(hk(&model, &s), ids[2]);
     // Another round starts, and HK-02 leaves the feed before its probes return.
@@ -338,7 +338,7 @@ fn a_refresh_during_a_round_ranks_survivors_by_their_kept_times() {
     assert_eq!(hk(&refreshed, &next), ids[1]);
     // The round's results are dropped, and its end changes nothing.
     for t in &round.targets {
-        assert!(!refreshed.record(t, Some(1)));
+        assert!(!refreshed.record(t, Some(1), None));
     }
     refreshed.finish(&round.round());
     assert_eq!(hk(&refreshed, &next), ids[1]);

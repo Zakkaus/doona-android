@@ -89,6 +89,8 @@ pub(crate) fn within_budget(others: usize, fresh: &[Node]) -> Result<(), ErrorCo
 struct Latency {
     ms: Option<u32>,
     failed: bool,
+    /// Why the failed probe failed, when the core knows (`local_network`).
+    error: Option<ErrorCode>,
     generation: u64,
     /// A probe of `generation` is under way, so `ms` is from an earlier round.
     probing: bool,
@@ -329,6 +331,7 @@ impl Model {
             name: String::new(),
             latency_ms: None,
             failed: false,
+            error: None,
             is_group: is_group(id),
             subscription_id: None,
         };
@@ -340,6 +343,7 @@ impl Model {
             member.name = entry.name.clone();
             member.latency_ms = latency.ms;
             member.failed = latency.failed;
+            member.error = latency.error;
             member.subscription_id = Some(entry.subscription.clone());
         }
         member
@@ -392,11 +396,12 @@ impl Model {
         }
     }
 
-    /// Commits a probe result if its node still has the incarnation and probe generation the
-    /// probe began with. A success lets the UrlTest groups with the node pick their fastest
-    /// member again; a failure changes no choice, so a round where every probe fails keeps the
-    /// current member whatever order the failures arrive in.
-    pub fn record(&mut self, target: &Target, ms: Option<u32>) -> bool {
+    /// Commits a probe result, a time or a failure with its `error` code when it has one, if its
+    /// node still has the incarnation and probe generation the probe began with. A success lets the
+    /// UrlTest groups with the node pick their fastest member again; a failure changes no choice,
+    /// so a round where every probe fails keeps the current member whatever order the failures
+    /// arrive in.
+    pub fn record(&mut self, target: &Target, ms: Option<u32>, error: Option<ErrorCode>) -> bool {
         let entry = &target.entry;
         let current = self.index.contains_key(&entry.id)
             && self.incarnations.get(&entry.subscription) == Some(&target.incarnation);
@@ -409,6 +414,7 @@ impl Model {
         };
         latency.ms = ms;
         latency.failed = ms.is_none();
+        latency.error = if ms.is_none() { error } else { None };
         latency.probing = false;
         if ms.is_some() {
             self.choose(&entry.id);

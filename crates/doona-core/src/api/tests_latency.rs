@@ -172,6 +172,56 @@ fn stop_drops_the_probes_under_way() {
     );
 }
 
+/// A failed probe of a node whose server is on the local network, by address or by what its name
+/// resolved to, carries `local_network`; one of a public server carries no code, and a probe that
+/// answers clears it.
+#[test]
+fn a_failed_probe_of_a_node_on_the_local_network_says_so() {
+    crate::localnet::note(
+        "nas.probe.localnet.test",
+        &["192.168.8.20".parse().unwrap()],
+    );
+    crate::localnet::note("far.probe.localnet.test", &["203.0.113.7".parse().unwrap()]);
+    let answer = Arc::new(AtomicBool::new(false));
+    let answering = Arc::clone(&answer);
+    let prober: Prober = Arc::new(move |_job: ProbeJob| {
+        let ms = answering.load(SeqCst).then(|| Duration::from_millis(9));
+        async move { ms }.boxed()
+    });
+    let dir = TempDir::new("api-latency-local");
+    let feeds = Feeds::new();
+    let feed = "socks5://192.168.8.161:1080#LAN\nsocks5://[fd00::2]:1080#ULA\n\
+                socks5://nas.probe.localnet.test:1080#NAS\nsocks5://192.0.2.9:1080#WAN\n\
+                socks5://far.probe.localnet.test:1080#FAR\nsocks5://127.0.0.1:1080#LO\n";
+    feeds.set("/lan", feed.as_bytes());
+    let core = Core::with_prober(dir.path().to_str().unwrap(), prober);
+    add(&core, &feeds, "/lan").unwrap();
+    let code = |c: &Catalog, name: &str| {
+        let m = c.groups[1].members.iter().find(|m| m.name == name).unwrap();
+        (m.failed, m.error)
+    };
+    call(&core, "testLatency", json!({"group": null})).unwrap();
+    let after = wait_for(&core, |c| {
+        !testing(c) && c.groups[1].members.iter().all(|m| m.failed)
+    });
+    for name in ["LAN", "ULA", "NAS"] {
+        assert_eq!(
+            code(&after, name),
+            (true, Some(ErrorCode::LocalNetwork)),
+            "{name}"
+        );
+    }
+    for name in ["WAN", "FAR", "LO"] {
+        assert_eq!(code(&after, name), (true, None), "{name}");
+    }
+    answer.store(true, SeqCst);
+    call(&core, "testLatency", json!({"group": null})).unwrap();
+    let after = wait_for(&core, |c| {
+        !testing(c) && c.groups[1].members.iter().all(|m| !m.failed)
+    });
+    assert_eq!(code(&after, "LAN"), (false, None));
+}
+
 #[test]
 fn at_most_32_probes_run_at_once() {
     let stand = Stand::new(false);

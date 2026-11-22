@@ -373,6 +373,7 @@ impl Core {
                 generation: s.generation,
                 since_epoch_ms: Some(s.since_epoch_ms),
                 error: s.failed().then_some(ErrorCode::Internal),
+                warning: s.warning(),
                 traffic: s.traffic(),
                 catalog,
             },
@@ -382,6 +383,7 @@ impl Core {
                 generation: self.generation.load(Relaxed),
                 since_epoch_ms: None,
                 error: None,
+                warning: None,
                 traffic: Traffic::default(),
                 catalog,
             },
@@ -522,6 +524,7 @@ pub fn snapshot_before_init() -> String {
         generation: 0,
         since_epoch_ms: None,
         error: None,
+        warning: None,
         traffic: Traffic::default(),
         catalog: None,
     })

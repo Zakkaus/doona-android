@@ -10,7 +10,7 @@ use super::flow::{self, Event, Events, Key, Waker};
 use super::route::{Inbound, Route};
 use super::tcp::{self, Step, TcpFlow};
 use super::udp::{self, Budget, Nat};
-use super::{Gen, Settings, StartSignal, Tun};
+use super::{Gen, Session, Settings, StartSignal, Tun};
 use crate::sys;
 use honk_netstack::{
     AcceptOpts, AcceptWhen, Config, ExcludeSet, FlowId, Mode, Ready, Refuse, Rx, Stack,
@@ -278,7 +278,7 @@ impl Driver {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
                 continue;
             }
-            let route = new_route(&self.settings);
+            let route = new_route(&self.settings, &self.gen_.session);
             if route.refused() {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
             } else {
@@ -368,13 +368,13 @@ impl Driver {
                 return;
             };
             let (upstreams, events) = (Arc::clone(&self.upstreams), self.events.clone());
-            let route = new_route(&self.settings);
+            let route = new_route(&self.settings, &self.gen_.session);
             let task =
                 udp::answer_dns(payload.to_vec(), (src, dst), route, upstreams, events, slot);
             self.gen_.spawn(task);
         } else if dst.ip() != IpAddr::V4(self.settings.dns) {
-            let settings = &self.settings;
-            let open = || Some(new_route(settings)).filter(Route::carries_udp);
+            let (settings, session) = (&self.settings, &self.gen_.session);
+            let open = || Some(new_route(settings, session)).filter(Route::carries_udp);
             if let Some((opened, route)) = self.nat.send((src, dst), payload, &self.events, open) {
                 self.gen_
                     .spawn(udp::relay(opened, dst, route, self.events.clone()));
@@ -422,9 +422,14 @@ impl Driver {
     }
 }
 
-/// The route of a new flow from the tun.
-fn new_route(settings: &Settings) -> Route {
-    Route::of(Inbound::Tun, settings.mode.get(), &settings.outbounds)
+/// The route of a new flow of `session`'s generation from the tun.
+fn new_route(settings: &Settings, session: &Arc<Session>) -> Route {
+    Route::of(
+        Inbound::Tun,
+        settings.mode.get(),
+        &settings.outbounds,
+        session,
+    )
 }
 
 /// A tun write that failed for lack of memory or room loses its packet, as hev does for

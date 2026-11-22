@@ -11,7 +11,7 @@ use crate::state::Store;
 use crate::testutil::client::Client;
 use crate::testutil::{TempDir, closed, tun};
 use crate::tunnel::route::{Inbound, Route, Upstream};
-use crate::tunnel::{Gen, Settings, StartSignal, TunHandle};
+use crate::tunnel::{Gen, Session, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
 use std::io;
 use std::path::Path;
@@ -481,7 +481,12 @@ fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
     let (second, _second_probe) = tun();
     core.hooks.on_before_finish(move |core| {
         core.start(second, CONFIG).unwrap();
-        let route = Route::of(Inbound::Tun, Mode::Global, &core.shared.outbounds);
+        let route = Route::of(
+            Inbound::Tun,
+            Mode::Global,
+            &core.shared.outbounds,
+            &Arc::new(Session::new(0)),
+        );
         let mut s = core.runtime.block_on(route.connect(echo)).unwrap();
         assert_eq!(ping(core, &mut s, b"before").unwrap(), b"before");
         *lock(&kept) = Some(s);

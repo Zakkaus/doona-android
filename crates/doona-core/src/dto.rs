@@ -18,6 +18,9 @@ pub enum ErrorCode {
     NoNodes,
     Busy,
     Internal,
+    /// A dial or a fetch failed and its target was an address on the local network, which
+    /// Android 17 lets doona reach only with `ACCESS_LOCAL_NETWORK` (ARCH D26).
+    LocalNetwork,
 }
 
 impl ErrorCode {
@@ -30,6 +33,7 @@ impl ErrorCode {
             ErrorCode::NoNodes => "no_nodes",
             ErrorCode::Busy => "busy",
             ErrorCode::Internal => "internal",
+            ErrorCode::LocalNetwork => "local_network",
         }
     }
 }
@@ -73,6 +77,9 @@ pub struct Snapshot {
     pub generation: i64,
     pub since_epoch_ms: Option<i64>,
     pub error: Option<ErrorCode>,
+    /// A problem that leaves the data path up: `local_network` once a dial to a node on the local
+    /// network failed in this generation. Cleared by the next `start`; null while stopped.
+    pub warning: Option<ErrorCode>,
     pub traffic: Traffic,
     pub catalog: Option<Catalog>,
 }
@@ -111,6 +118,9 @@ pub struct Member {
     pub name: String,
     pub latency_ms: Option<u32>,
     pub failed: bool,
+    /// Why the last probe failed, when the core knows: `local_network` for a node whose server is
+    /// on the local network. Null otherwise, and for groups.
+    pub error: Option<ErrorCode>,
     pub is_group: bool,
     pub subscription_id: Option<String>,
 }

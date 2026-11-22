@@ -189,3 +189,49 @@ fn a_redirect_never_downgrades_from_the_hop_it_leaves() {
     let next = next_hop(&origin, &origin, "http://u:p@feed.example/t").unwrap();
     assert!(next.username().is_empty() && next.password().is_none());
 }
+
+/// A dial that reaches no address is `local_network` when one of the addresses it tried is on the
+/// local network, by address and never by host name; loopback is not.
+#[test]
+fn a_dial_that_reached_nothing_is_local_network_when_it_tried_a_local_address() {
+    let cases: [(&[&str], ErrorCode); 5] = [
+        (&["192.168.8.161:80"], ErrorCode::LocalNetwork),
+        (&["[fd00::2]:443"], ErrorCode::LocalNetwork),
+        (&["203.0.113.7:80", "10.0.0.2:80"], ErrorCode::LocalNetwork),
+        (
+            &["203.0.113.7:80", "[2001:db8::1]:80"],
+            ErrorCode::FetchFailed,
+        ),
+        (&["127.0.0.1:80", "[::1]:80"], ErrorCode::FetchFailed),
+    ];
+    for (addrs, want) in cases {
+        let tried: Vec<SocketAddr> = addrs.iter().map(|a| a.parse().unwrap()).collect();
+        let got = run(Dials::default().first(tried, |_| async { None::<()> }));
+        assert_eq!(got.err(), Some(want), "{addrs:?}");
+    }
+}
+
+/// A connection made after a local address failed means the fetch got through: what fails later is
+/// not the local network's.
+#[test]
+fn a_connection_clears_a_local_address_tried_before_it() {
+    let dials = Dials::default();
+    let addrs = vec![
+        "192.168.8.161:80".parse().unwrap(),
+        "203.0.113.7:80".parse().unwrap(),
+    ];
+    let public = |a: SocketAddr| async move { (!crate::localnet::is_local(a.ip())).then_some(a) };
+    let reached = run(dials.first(addrs, public));
+    assert_eq!(reached, Ok("203.0.113.7:80".parse().unwrap()));
+    assert_eq!(dials.failure(), ErrorCode::FetchFailed);
+}
+
+/// A fetch from a local address that is refused or never answers is `local_network`, also when
+/// the bound runs out while the dial waits, as a dial Android 17 blocks does.
+#[test]
+fn a_fetch_from_a_local_address_that_never_connects_is_local_network() {
+    for url in ["http://10.255.255.1:9/sub", "http://[fd00::dead]:9/sub"] {
+        let got = run(fetch(parse_url(url).unwrap(), Duration::from_millis(300)));
+        assert_eq!(got.err(), Some(ErrorCode::LocalNetwork), "{url}");
+    }
+}

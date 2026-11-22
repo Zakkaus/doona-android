@@ -4,7 +4,8 @@
 //! rules and the `Subscription-Userinfo` reading follow honk-core's `src/subscription.rs`
 //! (`fetch_following`, `subscription_redirect_error`, `parse_subscription_userinfo`) and
 //! `src/marked_http.rs` (`basic_auth`), daeuniverse/honk 8919784a. Errors carry no detail: the URL
-//! may hold a token.
+//! may hold a token. A fetch that never connected, with an address on the local network among the
+//! ones it tried, is `local_network` (ARCH D26), so the app knows to ask for the permission.
 
 use crate::dto::ErrorCode;
 use crate::tunnel::route::CONNECT_TIMEOUT;
@@ -15,6 +16,7 @@ use boring::x509::store::X509StoreBuilder;
 use std::io::ErrorKind;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::time::Duration;
 use tokio::io::BufReader;
 use tokio::io::{
@@ -60,14 +62,51 @@ pub(crate) fn parse_url(text: &str) -> Result<Url, ErrorCode> {
     Ok(url)
 }
 
-/// Downloads `url` within `bound`, redirects included; every failure is `fetch_failed`.
+/// Downloads `url` within `bound`, redirects included. A failure is `fetch_failed`, or
+/// `local_network` while the dial that failed or ran out of time had a local address to try.
 pub(crate) async fn fetch(url: Url, bound: Duration) -> Result<Fetched, ErrorCode> {
-    tokio::time::timeout(bound, follow(url))
+    let dials = Dials::default();
+    tokio::time::timeout(bound, follow(url, &dials))
         .await
-        .map_err(|_| ErrorCode::FetchFailed)?
+        .unwrap_or_else(|_| Err(dials.failure()))
 }
 
-async fn follow(mut url: Url) -> Result<Fetched, ErrorCode> {
+/// Whether the fetch's last dial tried an address on the local network without connecting.
+#[derive(Default)]
+struct Dials {
+    local: AtomicBool,
+}
+
+impl Dials {
+    /// Connects to the first of `addrs` that `connect` reaches, in order. When none is reached the
+    /// failure is `local_network` if one of them was local, and `fetch_failed` otherwise.
+    async fn first<S, F: Future<Output = Option<S>>>(
+        &self,
+        addrs: Vec<SocketAddr>,
+        mut connect: impl FnMut(SocketAddr) -> F,
+    ) -> Result<S, ErrorCode> {
+        for addr in addrs {
+            if crate::localnet::is_local(addr.ip()) {
+                self.local.store(true, Relaxed);
+            }
+            if let Some(stream) = connect(addr).await {
+                self.local.store(false, Relaxed);
+                return Ok(stream);
+            }
+        }
+        Err(self.failure())
+    }
+
+    fn failure(&self) -> ErrorCode {
+        if self.local.load(Relaxed) {
+            ErrorCode::LocalNetwork
+        } else {
+            ErrorCode::FetchFailed
+        }
+    }
+}
+
+async fn follow(mut url: Url, dials: &Dials) -> Result<Fetched, ErrorCode> {
     // The URL's user information becomes Basic auth, sent only to the origin.
     let auth = basic_auth(&url);
     let _ = url.set_username("");
@@ -75,7 +114,7 @@ async fn follow(mut url: Url) -> Result<Fetched, ErrorCode> {
     let origin = url.clone();
     for hop in 0..=MAX_REDIRECTS {
         let same = same_origin(&origin, &url);
-        let location = match get(&url, auth.as_deref().filter(|_| same)).await? {
+        let location = match get(&url, auth.as_deref().filter(|_| same), dials).await? {
             Reply::Body(fetched) => return Ok(fetched),
             Reply::Redirect(location) => location,
         };
@@ -152,9 +191,9 @@ fn private_literal(url: &Url) -> bool {
     }
 }
 
-async fn get(url: &Url, auth: Option<&str>) -> Result<Reply, ErrorCode> {
+async fn get(url: &Url, auth: Option<&str>, dials: &Dials) -> Result<Reply, ErrorCode> {
     let port = url.port_or_known_default().ok_or(ErrorCode::FetchFailed)?;
-    let stream = connect(url, port).await?;
+    let stream = connect(url, port, dials).await?;
     let request = request(url, auth);
     if url.scheme() == "https" {
         let host = url.host_str().ok_or(ErrorCode::FetchFailed)?;
@@ -174,7 +213,7 @@ async fn get(url: &Url, auth: Option<&str>) -> Result<Reply, ErrorCode> {
 }
 
 /// Every address the bootstrap resolvers give, in their order, until one connects.
-async fn connect(url: &Url, port: u16) -> Result<TcpStream, ErrorCode> {
+async fn connect(url: &Url, port: u16, dials: &Dials) -> Result<TcpStream, ErrorCode> {
     let addrs: Vec<SocketAddr> = match url.host() {
         Some(Host::Ipv4(a)) => vec![(a, port).into()],
         Some(Host::Ipv6(a)) => vec![(a, port).into()],
@@ -186,14 +225,13 @@ async fn connect(url: &Url, port: u16) -> Result<TcpStream, ErrorCode> {
             .collect(),
         None => Vec::new(),
     };
-    for addr in addrs {
-        if let Ok(Ok(stream)) =
-            tokio::time::timeout(CONNECT_TIMEOUT, TcpStream::connect(addr)).await
-        {
-            return Ok(stream);
-        }
-    }
-    Err(ErrorCode::FetchFailed)
+    let connect = |addr| async move {
+        tokio::time::timeout(CONNECT_TIMEOUT, TcpStream::connect(addr))
+            .await
+            .ok()?
+            .ok()
+    };
+    dials.first(addrs, connect).await
 }
 
 /// BoringSSL with the webpki roots, as honk-outbound's TLS; built once.
