@@ -99,6 +99,13 @@ class ServiceEngine internal constructor(
         _ready.value = true
     }
 
+    /** The library lacks a function `init` did not need: the core is shown as if `init` had failed, and takes no more calls. */
+    private fun unlinked(name: String, e: LinkageError) {
+        VpnLog.warn("$name threw ${e.javaClass.simpleName}")
+        opener.disable()
+        unusable(FailureReason.StartFailed)
+    }
+
     /**
      * An unreadable policy fails each start on its own. Here the settings keep the policy shown last and read the file
      * again after a pause, so they follow it once it can be read, as after the save that repairs it.
@@ -184,6 +191,9 @@ class ServiceEngine internal constructor(
         } catch (e: Exception) {
             VpnLog.warn("$name reply unreadable: ${e.javaClass.simpleName}")
             Result.failure(EngineException(ErrorCode.Internal))
+        } catch (e: LinkageError) {
+            unlinked(name, e)
+            Result.failure(EngineException(ErrorCode.Internal))
         }
         val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
         VpnLog.info("$name: $code after ${(System.nanoTime() - begun) / 1_000_000} ms")
@@ -191,17 +201,24 @@ class ServiceEngine internal constructor(
     }
 
     /** Reads a snapshot and publishes its catalog, if it has one; null when the core cannot be read. */
-    private suspend fun poll(): SnapshotDto? = try {
-        withContext(io) {
-            CoreJson.snapshot(core.snapshot(revision)).also { snapshot ->
-                snapshot.catalog?.let { publish(Catalog.of(snapshot.revision, it)) }
+    private suspend fun poll(): SnapshotDto? {
+        // A core that lost a native function takes no further snapshot.
+        if (opener.schema() != CORE_SCHEMA) return null
+        return try {
+            withContext(io) {
+                CoreJson.snapshot(core.snapshot(revision)).also { snapshot ->
+                    snapshot.catalog?.let { publish(Catalog.of(snapshot.revision, it)) }
+                }
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            VpnLog.warn("snapshot unreadable: ${e.javaClass.simpleName}")
+            null
+        } catch (e: LinkageError) {
+            unlinked("snapshot", e)
+            null
         }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        VpnLog.warn("snapshot unreadable: ${e.javaClass.simpleName}")
-        null
     }
 
     /** Polls run concurrently and can finish out of order: a catalog older than the one shown is dropped. */

@@ -142,6 +142,28 @@ class ServiceEngineTest {
     }
 
     @Test
+    fun aMissingSnapshotSymbolFailsTheEngineAndEndsNativeCalls() = runBlocking {
+        core.snapshotError = UnsatisfiedLinkError("snapshot")
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
+        withTimeout(5_000) { engine.ready.first { it } }
+        assertEquals(Status.Failed(FailureReason.StartFailed), engine.status.value)
+        assertEquals(ErrorCode.Internal, (engine.setMode(Mode.Direct).exceptionOrNull() as EngineException).code)
+        assertTrue(core.calls.isEmpty())
+        assertEquals(1, core.snapshots.get())
+    }
+
+    @Test
+    fun aMissingCallSymbolFailsTheEngineAndEndsNativeCalls() = runBlocking {
+        core.callError = UnsatisfiedLinkError("call")
+        assertEquals(ErrorCode.Internal, (engine.setMode(Mode.Direct).exceptionOrNull() as EngineException).code)
+        assertTrue(engine.ready.value)
+        assertEquals(Status.Failed(FailureReason.StartFailed), engine.status.value)
+        assertEquals(ErrorCode.Internal, (engine.select("g-Proxy", null).exceptionOrNull() as EngineException).code)
+        assertEquals(1, core.calls.size)
+        assertEquals(0, core.snapshots.get())
+    }
+
+    @Test
     fun aCommandTheCallerCancelsStillRefreshesTheCatalog() = runBlocking {
         val release = CountDownLatch(1)
         core.callGate = release
@@ -229,6 +251,10 @@ class ServiceEngineTest {
         @Volatile var schema = CORE_SCHEMA
 
         @Volatile var callGate: CountDownLatch? = null
+
+        @Volatile var callError: Throwable? = null
+
+        @Volatile var snapshotError: Throwable? = null
         val callEntered = CountDownLatch(1)
         val calls = CopyOnWriteArrayList<Pair<String, String>>()
         val snapshots = AtomicInteger()
@@ -245,6 +271,7 @@ class ServiceEngineTest {
         // The catalog fixture is revision 7; the running fixture is the same revision without a catalog.
         override fun snapshot(sinceRevision: Long): String {
             snapshots.incrementAndGet()
+            snapshotError?.let { throw it }
             snapshotReplies.poll()?.let { return it() }
             return ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
         }
@@ -253,6 +280,7 @@ class ServiceEngineTest {
             callEntered.countDown()
             callGate?.await()
             calls += command to argsJson
+            callError?.let { throw it }
             return reply
         }
     }

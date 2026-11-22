@@ -11,9 +11,19 @@ internal class CoreOpener(private val core: CoreBridge, private val dataDir: Str
     private val mutex = Mutex()
     private var schema: Int? = null
 
-    /** The core's contract schema, or null when the library or `init` failed. */
-    suspend fun schema(): Int? = mutex.withLock {
-        schema ?: open()?.also { schema = it }
+    @Volatile
+    private var disabled = false
+
+    /** The core's contract schema, or null when the library or `init` failed, or since the core was [disable]d. */
+    suspend fun schema(): Int? = if (disabled) {
+        null
+    } else {
+        mutex.withLock { schema ?: open()?.also { schema = it } }
+    }
+
+    /** A native function failed to link: the core counts as one whose `init` failed from now on, without a retry. */
+    fun disable() {
+        disabled = true
     }
 
     private suspend fun open(): Int? = try {
