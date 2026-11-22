@@ -7,12 +7,33 @@ use std::sync::Weak;
 /// 2026-11-22 10:24 UTC.
 const NOW_MS: i64 = 1_795_343_040_000;
 
-fn clock(boot_s: u64, wall_ms: i64) -> Clock {
+/// `s` seconds after `base` on the boot and the monotonic clock, as an awake phone sees them, at
+/// `wall_ms`.
+fn clock(base: &Clock, s: u64, wall_ms: i64) -> Clock {
     Clock {
-        boot_ms: boot_s * 1000,
+        boot_ms: base.boot_ms + s * 1000,
+        mono_ms: base.mono_ms + s * 1000,
         wall_ms,
         offset_s: 0,
     }
+}
+
+/// The time the stores read by the wall clock only.
+fn wall(wall_ms: i64) -> Clock {
+    Clock {
+        boot_ms: 0,
+        mono_ms: 0,
+        wall_ms,
+        offset_s: 0,
+    }
+}
+
+/// A session whose counters are folded up to now, and that now.
+fn session() -> (Session, Clock) {
+    let session = Session::new(1, Weak::new());
+    let base = Clock::now();
+    session.fold(&base);
+    (session, base)
 }
 
 fn runtime() -> tokio::runtime::Runtime {
@@ -37,10 +58,9 @@ fn moved(session: &Session, (up, down, opened): (u64, u64, u64), outbound: u64) 
 fn a_fold_feeds_the_ring_the_day_and_the_peaks() {
     let (dir, rt) = (TempDir::new("stats-fold"), runtime());
     let stats = stats(&dir, &rt);
-    let session = Session::new(1, Weak::new());
-    let start = session.fold(0).to_s;
+    let (session, base) = session();
     moved(&session, (300, 3000, 2), 2500);
-    let at = clock(start + 3, NOW_MS);
+    let at = clock(&base, 3, NOW_MS);
     assert!(
         stats.fold(&session, &at, false),
         "the first change is written at once"
@@ -71,34 +91,33 @@ fn a_fold_feeds_the_ring_the_day_and_the_peaks() {
 fn usage_is_written_once_a_minute_at_most_and_at_the_end() {
     let (dir, rt) = (TempDir::new("stats-throttle"), runtime());
     let stats = stats(&dir, &rt);
-    let session = Session::new(1, Weak::new());
-    let s0 = session.fold(0).to_s;
+    let (session, base) = session();
+    let at = |s| clock(&base, s, NOW_MS);
     moved(&session, (1, 1, 0), 0);
-    assert!(stats.fold(&session, &clock(s0 + 1, NOW_MS), false));
+    assert!(stats.fold(&session, &at(1), false));
     moved(&session, (2, 2, 0), 0);
-    assert!(!stats.fold(&session, &clock(s0 + 30, NOW_MS), false));
+    assert!(!stats.fold(&session, &at(30), false));
     // Still within the minute, with or without new bytes.
-    assert!(!stats.fold(&session, &clock(s0 + 40, NOW_MS), false));
+    assert!(!stats.fold(&session, &at(40), false));
     // A minute after the last write, the change from second 30 is written.
-    assert!(stats.fold(&session, &clock(s0 + 61, NOW_MS), false));
+    assert!(stats.fold(&session, &at(61), false));
     // The generation's end writes what changed since, at once; with nothing new, nothing.
     moved(&session, (3, 3, 0), 0);
-    assert!(stats.fold(&session, &clock(s0 + 62, NOW_MS), true));
-    assert!(!stats.fold(&session, &clock(s0 + 63, NOW_MS), true));
+    assert!(stats.fold(&session, &at(62), true));
+    assert!(!stats.fold(&session, &at(63), true));
     // The first fold of a new local day writes, even with no byte.
     let midnight = (NOW_MS / 86_400_000 + 1) * 86_400_000;
-    assert!(stats.fold(&session, &clock(s0 + 64, midnight), false));
+    assert!(stats.fold(&session, &clock(&base, 64, midnight), false));
 }
 
 #[test]
 fn what_was_written_is_what_the_next_process_reads() {
     let dir = TempDir::new("stats-restart");
-    let at = clock(10, NOW_MS);
+    let at = wall(NOW_MS);
     {
         let rt = runtime();
         let stats = stats(&dir, &rt);
-        let session = Session::new(1, Weak::new());
-        session.fold(0);
+        let (session, _) = session();
         moved(&session, (40, 400, 1), 100);
         stats.finish(&session, &at);
         // Dropping the runtime waits for the write on its blocking thread.
@@ -121,7 +140,7 @@ fn an_unreadable_or_newer_file_is_set_aside() {
         std::fs::write(dir.path().join("stats.json"), text).unwrap();
         let rt = runtime();
         let stats = stats(&dir, &rt);
-        assert_eq!(stats.today(&clock(1, NOW_MS)), dto::Today::default());
+        assert_eq!(stats.today(&wall(NOW_MS)), dto::Today::default());
         assert_eq!(
             std::fs::read(dir.path().join("stats.json.unreadable")).unwrap(),
             text
@@ -140,8 +159,8 @@ fn a_file_with_odd_days_is_fixed_on_load() {
     std::fs::write(dir.path().join("stats.json"), text).unwrap();
     let rt = runtime();
     let stats = stats(&dir, &rt);
-    assert_eq!(stats.today(&clock(1, NOW_MS)).up_total, 5);
-    assert_eq!(stats.usage(&clock(1, NOW_MS)).today.down.len(), day::HOURS);
+    assert_eq!(stats.today(&wall(NOW_MS)).up_total, 5);
+    assert_eq!(stats.usage(&wall(NOW_MS)).today.down.len(), day::HOURS);
 }
 
 #[test]
@@ -165,4 +184,28 @@ fn latency_tests_are_kept_written_at_a_round_end_and_pruned() {
     // A new process drops the nodes its catalog no longer has.
     again.keep_nodes(|_| false);
     assert!(again.latency(["n-a"].into_iter())[0].is_empty());
+}
+
+#[test]
+fn bytes_moved_before_a_suspend_stay_out_of_the_sleep() {
+    let (dir, rt) = (TempDir::new("stats-suspend"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    moved(&session, (600, 6000, 0), 0);
+    // The phone suspends for ten minutes right after; the watch's next round comes on wake, a
+    // second later on the monotonic clock, and the boot clock counted the sleep.
+    let wake = Clock {
+        mono_ms: base.mono_ms + 1000,
+        ..clock(&base, 601, NOW_MS + 601_000)
+    };
+    stats.fold(&session, &wake, false);
+    let (last_minute, _) = stats.series(60, true, &wake);
+    assert!(
+        last_minute.down.iter().all(|&b| b == 0),
+        "the sleep shows no traffic: {:?}",
+        last_minute.down
+    );
+    let first = base.boot_s() + 1;
+    assert_eq!(lock(&stats.inner).ring.series(first, 1).down, [6000]);
+    assert_eq!(session.traffic().down_peak, 6000);
 }

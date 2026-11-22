@@ -225,6 +225,7 @@ struct Warned {
 
 impl Session {
     pub(crate) fn new(generation: i64, catalog: Weak<Shared>) -> Session {
+        let start = Clock::now();
         let since = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX));
@@ -239,7 +240,8 @@ impl Session {
             up_peak: AtomicU64::new(0),
             down_peak: AtomicU64::new(0),
             folded: Mutex::new(Fold {
-                to_s: Clock::now().boot_s(),
+                to_s: start.boot_s(),
+                mono_ms: start.mono_ms,
                 ..Fold::default()
             }),
             failed: AtomicBool::new(false),
@@ -260,14 +262,17 @@ impl Session {
     }
 
     /// What the session moved since the last fold, which covered up to the boot second it
-    /// returns as `from_s`, and up to `to_s` now.
-    pub(crate) fn fold(&self, to_s: u64) -> Fold {
+    /// returns as `from_s`, and up to `clock`'s now.
+    pub(crate) fn fold(&self, clock: &Clock) -> Fold {
         let mut folded = lock(&self.folded);
         let (up, down) = (self.up.load(Relaxed), self.down.load(Relaxed));
         let flows = self.opened.load(Relaxed);
+        let mono_ms = clock.mono_ms.max(folded.mono_ms);
         let fold = Fold {
             from_s: folded.to_s,
-            to_s: to_s.max(folded.to_s),
+            to_s: clock.boot_s().max(folded.to_s),
+            mono_ms,
+            awake_s: (mono_ms - folded.mono_ms).div_ceil(1000),
             up: up.saturating_sub(folded.up),
             down: down.saturating_sub(folded.down),
             flows: flows.saturating_sub(folded.flows),

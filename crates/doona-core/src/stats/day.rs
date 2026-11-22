@@ -211,6 +211,7 @@ mod tests {
     fn at(wall_ms: i64, offset_s: i32) -> Clock {
         Clock {
             boot_ms: 0,
+            mono_ms: 0,
             wall_ms,
             offset_s,
         }

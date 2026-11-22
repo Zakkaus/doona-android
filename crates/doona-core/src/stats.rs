@@ -32,6 +32,8 @@ const WRITE_EVERY_S: u64 = 60;
 pub(crate) struct Clock {
     /// `CLOCK_BOOTTIME`: keys the rate ring.
     pub boot_ms: u64,
+    /// `CLOCK_MONOTONIC`: what the boot clock counted beyond it, the phone slept.
+    pub mono_ms: u64,
     pub wall_ms: i64,
     /// The local zone's offset from UTC at `wall_ms`, in seconds.
     pub offset_s: i32,
@@ -44,6 +46,7 @@ impl Clock {
             .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX));
         Clock {
             boot_ms: sys::boot_ms(),
+            mono_ms: sys::mono_ms(),
             wall_ms,
             offset_s: sys::utc_offset(wall_ms.div_euclid(1000)),
         }
@@ -60,6 +63,10 @@ pub(crate) struct Fold {
     /// The second of the previous fold, or of the session's start.
     pub from_s: u64,
     pub to_s: u64,
+    /// The monotonic time at the fold.
+    pub mono_ms: u64,
+    /// The seconds of `from_s..to_s` the phone was awake, rounded up: fewer when it slept.
+    pub awake_s: u64,
     pub up: u64,
     pub down: u64,
     /// Flows the apps opened.
@@ -129,8 +136,8 @@ impl Stats {
     /// Folds, and answers whether a write is due; with `now`, one is whenever the usage changed.
     fn fold(&self, session: &Session, clock: &Clock, now: bool) -> bool {
         let mut inner = lock(&self.inner);
-        let fold = session.fold(clock.boot_s());
-        let (up, down) = inner.ring.add(fold.from_s, fold.to_s, fold.up, fold.down);
+        let fold = session.fold(clock);
+        let (up, down) = (inner.ring).add(fold.from_s, fold.to_s, fold.awake_s, fold.up, fold.down);
         session.note_peak(up, down);
         let moved = Moved {
             up: fold.up,

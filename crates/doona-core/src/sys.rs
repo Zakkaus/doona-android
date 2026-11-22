@@ -58,12 +58,22 @@ pub fn interface_index(name: &str) -> Option<u32> {
 /// Milliseconds on `CLOCK_BOOTTIME`: it never goes back, never jumps with the wall clock, and
 /// counts the time the phone slept. Zero if the clock cannot be read.
 pub fn boot_ms() -> u64 {
+    clock_ms(libc::CLOCK_BOOTTIME)
+}
+
+/// Milliseconds on `CLOCK_MONOTONIC`: as [`boot_ms`], but stopped while the phone sleeps, so the
+/// two apart are the time it slept.
+pub fn mono_ms() -> u64 {
+    clock_ms(libc::CLOCK_MONOTONIC)
+}
+
+fn clock_ms(id: libc::clockid_t) -> u64 {
     let mut ts = libc::timespec {
         tv_sec: 0,
         tv_nsec: 0,
     };
-    // SAFETY: `ts` is a valid timespec to write; Linux and Android have CLOCK_BOOTTIME.
-    if unsafe { libc::clock_gettime(libc::CLOCK_BOOTTIME, &mut ts) } != 0 {
+    // SAFETY: `ts` is a valid timespec to write; Linux and Android have both clocks.
+    if unsafe { libc::clock_gettime(id, &mut ts) } != 0 {
         return 0;
     }
     let (s, ns) = (u64::try_from(ts.tv_sec), u64::try_from(ts.tv_nsec));
