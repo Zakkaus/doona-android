@@ -89,8 +89,10 @@ impl std::fmt::Debug for Stats {
 struct Inner {
     ring: Ring,
     usage: Usage,
-    /// The local day the last fold counted on.
+    /// The local day the last fold counted on, and the one before the last change of day: the
+    /// outbound bytes that come late moved on it.
     day: Option<i64>,
+    previous: Option<i64>,
     /// The usage changed since the last write was asked for.
     dirty: bool,
     /// The boot second of the last write asked for.
@@ -109,6 +111,7 @@ impl Stats {
             ring: Ring::new(),
             usage: saved.usage.sane(),
             day: None,
+            previous: None,
             dirty: false,
             written_s: None,
             latency: Latency::from_saved(saved.latency),
@@ -140,18 +143,25 @@ impl Stats {
     fn fold(&self, session: &Session, clock: &Clock, now: bool) -> bool {
         let mut inner = lock(&self.inner);
         let day = day::local(clock).0;
-        let turned = inner.day.replace(day).is_some_and(|d| d != day);
+        let last = inner.day.replace(day);
+        let turned = last.is_some_and(|d| d != day);
+        if turned {
+            inner.previous = last;
+        }
         let fold = session.fold(clock);
         let (up, down) = (inner.ring).add(fold.from_s, fold.to_s, fold.awake_s, fold.up, fold.down);
         session.note_peak(up, down);
+        let taken = session.meters().take(turned);
         let moved = Moved {
             up: fold.up,
             down: fold.down,
             flows: fold.flows,
-            outbounds: session.meters().take(),
+            outbounds: taken.now,
         };
         inner.usage.add(clock, &moved);
-        inner.dirty |= turned || moved != Moved::default();
+        let moved_on = inner.previous.unwrap_or(day);
+        inner.usage.add_late(moved_on, day, &taken.late);
+        inner.dirty |= turned || moved != Moved::default() || !taken.late.is_empty();
         let stale = (inner.written_s).is_none_or(|w| clock.boot_s() >= w + WRITE_EVERY_S);
         let due = inner.dirty && (now || turned || stale);
         if due {

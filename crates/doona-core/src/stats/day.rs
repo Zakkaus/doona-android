@@ -251,6 +251,22 @@ impl Usage {
         }
     }
 
+    /// Adds outbound bytes that moved on local day `day` but reached the count after it ended,
+    /// to that day while it is kept and before `now`, else to `now`.
+    pub fn add_late(&mut self, day: i64, now: i64, outbounds: &[(String, u64, u64)]) {
+        if outbounds.is_empty() {
+            return;
+        }
+        let at = match self.full.iter().position(|d| d.day == day) {
+            Some(at) if day < now => at,
+            _ => self.settle(now),
+        };
+        let day = &mut self.full[at];
+        for (id, up, down) in outbounds {
+            day.count(id, *up, *down);
+        }
+    }
+
     /// Today's bytes each way, and yesterday's both ways together by the same local time when
     /// yesterday is kept, as of `clock`. Changes nothing.
     pub fn today(&self, clock: &Clock) -> (u64, u64, Option<u64>) {
@@ -502,6 +518,22 @@ mod tests {
         assert_eq!(kept(&usage), [DAY - 1, DAY]);
         // Two days on, no yesterday is kept.
         assert_eq!(usage.today(&at(MIDNIGHT_MS + 3 * DAY_MS, 0)), (0, 0, None));
+    }
+
+    #[test]
+    fn late_outbound_bytes_count_on_the_day_they_moved() {
+        let mut usage = Usage::default();
+        usage.add(&at(MIDNIGHT_MS - 1000, 0), &moved(1, 1));
+        usage.add(&at(MIDNIGHT_MS + 1000, 0), &moved(1, 1));
+        let late = [("g-Proxy".to_owned(), 30, 40)];
+        usage.add_late(DAY - 1, DAY, &late);
+        assert_eq!(usage.get(DAY - 1).unwrap().outbounds["g-Proxy"], [31, 41]);
+        assert_eq!(usage.get(DAY).unwrap().outbounds["g-Proxy"], [1, 1]);
+        // A day no longer kept, or not before today, takes none: they count on today.
+        usage.add_late(DAY - 5, DAY, &late);
+        usage.add_late(DAY + 1, DAY, &late);
+        assert_eq!(usage.get(DAY).unwrap().outbounds["g-Proxy"], [61, 81]);
+        assert_eq!(kept(&usage), [DAY - 1, DAY]);
     }
 
     #[test]

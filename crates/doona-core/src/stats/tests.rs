@@ -214,3 +214,49 @@ fn bytes_moved_before_a_suspend_stay_out_of_the_sleep() {
     assert_eq!(lock(&stats.inner).ring.series(first, 1).down, [6000]);
     assert_eq!(session.traffic().down_peak, 6000);
 }
+
+#[test]
+fn a_flow_across_midnight_counts_each_side_on_its_day() {
+    let (dir, rt) = (TempDir::new("stats-midnight"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    let midnight = (NOW_MS / 86_400_000 + 1) * 86_400_000;
+    let fold = |s: u64| {
+        stats.fold(
+            &session,
+            &clock(&base, s, midnight - 4000 + 1000 * s as i64),
+            false,
+        )
+    };
+    let proxy = |d: &dto::DayUsage| {
+        d.outbounds
+            .iter()
+            .find(|o| o.id == "g-Proxy")
+            .map(|o| (o.up, o.down))
+    };
+    let mut flow = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    // 32 KiB in 4 KiB chunks over the last seconds before midnight, folded each second.
+    fold(1);
+    (0..4).for_each(|_| flow.up(4096));
+    fold(2);
+    (0..4).for_each(|_| flow.up(4096));
+    fold(3);
+    // Midnight's fold comes before the flow's next chunk, then 32 KiB more on the new day.
+    fold(4);
+    (0..8).for_each(|_| flow.up(4096));
+    fold(5);
+    drop(flow);
+    fold(6);
+    let usage = stats.usage(&clock(&base, 6, midnight + 2000));
+    assert_eq!(proxy(&usage.today), Some((32_768, 0)));
+    assert_eq!(proxy(&usage.yesterday.unwrap()), Some((32_768, 0)));
+    // A flow that moves a little now and then shows at the next fold, while it is open.
+    let mut push = meter::Tally::new(Some(session.meters().get("g-Proxy")));
+    push.down(100);
+    fold(7);
+    assert_eq!(
+        proxy(&stats.usage(&clock(&base, 7, midnight + 3000)).today),
+        Some((32_768, 100))
+    );
+    drop(push);
+}
