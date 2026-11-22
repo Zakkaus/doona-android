@@ -1,5 +1,8 @@
 package dev.doona.android.testing
 
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.captureToImage
@@ -40,6 +43,16 @@ fun SemanticsNodeInteraction.inkInsets(density: Float): InkInsets? {
         width = image.width / density,
         height = image.height / density,
     )
+}
+
+/**
+ * The colour a node draws its ink in: the pixel inside [box], in pixels of the image, that lies farthest from
+ * [background]. A stroke wide enough to cover a pixel whole shows the colour it was drawn in exactly, where the edge
+ * pixels of a glyph are mixed with the background.
+ */
+fun PixelMap.inkColour(box: Rect, background: Color): Color {
+    val inside = (box.top.toInt() until box.bottom.toInt()).flatMap { y -> (box.left.toInt() until box.right.toInt()).map { x -> this[x, y] } }
+    return inside.maxBy { abs(it.red - background.red) + abs(it.green - background.green) + abs(it.blue - background.blue) }
 }
 
 private const val INK_THRESHOLD = 0.25f

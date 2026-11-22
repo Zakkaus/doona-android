@@ -150,11 +150,17 @@ object SpacingRules {
         }
     }.toList()
 
-    /** Control (segmented control, picker, chip) and button: exactly as high as its visible track; touch comes from the target size. */
-    fun controls(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Control || it.role == LayoutRole.Button }
-        .filter { !near(it.height, sizes.control.value) }
-        .map { "control $it is %.1f dp high, its track is %.0f".format(it.height, sizes.control.value) }
-        .toList()
+    /**
+     * Control (segmented control, picker, chip): exactly as high as its visible track; touch comes from the target size.
+     * A button is at least that high and grows to hold a label that wraps.
+     */
+    fun controls(root: LayoutBox): List<String> = root.descendants().mapNotNull { node ->
+        when {
+            node.role == LayoutRole.Control && !near(node.height, sizes.control.value) -> "control $node is %.1f dp high, its track is %.0f".format(node.height, sizes.control.value)
+            node.role == LayoutRole.Button && node.height < sizes.control.value - TOL -> "button $node is %.1f dp high, under the control's %.0f".format(node.height, sizes.control.value)
+            else -> null
+        }
+    }.toList()
 
     /** Row: at least 48 dp high, its content centred on its middle; [rowGapsOf] holds what it pads. */
     fun rows(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Row }.flatMap { row ->

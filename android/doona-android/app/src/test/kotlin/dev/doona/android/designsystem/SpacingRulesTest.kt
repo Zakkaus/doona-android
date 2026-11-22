@@ -166,6 +166,35 @@ class SpacingRulesTest {
         assertTrue(found.toString(), found.isNotEmpty())
     }
 
+    /** A control is as high as its track exactly; a button is at least that high, so a label that wrapped does not fail it. */
+    @Composable
+    private fun Controls(control: Dp, button: Dp) = Column(Modifier.padding(space.gutter), verticalArrangement = Arrangement.spacedBy(space.section)) {
+        Box(Modifier.layoutRole(LayoutRole.Control).fillMaxWidth().height(control).background(Color.Gray))
+        Box(Modifier.layoutRole(LayoutRole.Button).fillMaxWidth().height(button).background(Color.DarkGray))
+    }
+
+    @Test
+    fun aButtonTallerThanTheControlKeepsTheRule() {
+        compose.setDoonaContent { Controls(DoonaTheme.size.control, DoonaTheme.size.control * 2) }
+        assertEquals(emptyList<String>(), SpacingRules.controls(compose.layoutTree()))
+    }
+
+    @Test
+    fun aButtonShorterThanTheControlFails() {
+        compose.setDoonaContent { Controls(DoonaTheme.size.control, DoonaTheme.size.control - 4.dp) }
+        val found = SpacingRules.controls(compose.layoutTree())
+        assertEquals(found.toString(), 1, found.size)
+        assertTrue(found.single(), found.single().startsWith("button"))
+    }
+
+    @Test
+    fun aControlTallerThanItsTrackFails() {
+        compose.setDoonaContent { Controls(DoonaTheme.size.control + 8.dp, DoonaTheme.size.control) }
+        val found = SpacingRules.controls(compose.layoutTree())
+        assertEquals(found.toString(), 1, found.size)
+        assertTrue(found.single(), found.single().startsWith("control"))
+    }
+
     @Composable
     private fun IconRow(gap: Dp) = DoonaCard(Modifier.fillMaxWidth()) {
         DoonaRow {

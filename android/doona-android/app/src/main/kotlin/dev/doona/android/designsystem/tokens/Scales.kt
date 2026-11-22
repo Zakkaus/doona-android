@@ -122,6 +122,12 @@ object SizeScale {
     val compactHeight = 480.dp
 }
 
+/** Durations of the motion that has no input to follow. */
+object MotionScale {
+    /** The busy spinner's arc turns once in this many milliseconds. */
+    const val SPINNER_TURN_MS = 1000
+}
+
 /** Alpha of the colours doona derives from a palette colour (§2). */
 object AlphaScale {
     /** Light flag edge: black at 35 % (`--rp-node-flag-edge`, `src/ui/flags.css:8-13`). */
@@ -131,8 +137,11 @@ object AlphaScale {
     const val SCRIM_LIGHT = 0.32f
     const val SCRIM_DARK = 0.55f
 
-    /** The outline of a disabled outlined control, at half the strength of an enabled one, as its label is muted. */
-    const val DISABLED_LINE = 0.5f
+    /**
+     * The outline of a disabled outlined control: a third of an enabled one's strength, so that it is plainly fainter in
+     * both themes, where the strong line is only a step off the fill (at half it was 13 levels of 255 against 26 in dark).
+     */
+    const val DISABLED_LINE = 0.3f
 }
 
 /** Chart style (§7, Charts). */

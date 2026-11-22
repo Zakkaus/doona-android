@@ -104,7 +104,11 @@ class FeedbackTest {
         assertEquals("and ends one from the right", 300f * compose.density.density - inset, text.right, 1f)
     }
 
-    /** The spinner is one indeterminate progress named in words, in the size of an inline icon or of a touch icon. */
+    /**
+     * The spinner is one indeterminate progress in the size of an inline icon or of a touch icon. It sets no description
+     * of its own: Android names an indeterminate range "in progress" in the user's language, and a second description
+     * would be read beside it.
+     */
     @Test
     fun aSpinnerIsAnIndeterminateProgressInTheSizeAsked() {
         compose.setVariantContent(Light) {
@@ -114,9 +118,10 @@ class FeedbackTest {
             }
         }
         compose.onNodeWithTag("small").assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("處理中")))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
             .assertWidthIsEqualTo(DoonaTheme.size.icon).assertHeightIsEqualTo(DoonaTheme.size.icon)
         compose.onNodeWithTag("inline").assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
             .assertWidthIsEqualTo(DoonaTheme.size.iconInline).assertHeightIsEqualTo(DoonaTheme.size.iconInline)
     }
 }
