@@ -211,33 +211,27 @@ impl Core {
         let rt = self.runtime.handle();
         let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
         let gate = Gate::new();
-        let old = self.begin(&gate, &tun)?;
-        let generation = self.generation.fetch_add(1, Relaxed) + 1;
+        let (generation, old) = self.begin(&gate, &tun)?;
         if let Some(old) = old {
             old.wait(rt, deadline);
         }
-        // The old generation's carriers ended with it: dial on new ones.
-        let started = match self.shared.outbounds.prepare() {
-            Ok(()) => Tunnel::start(
-                rt,
-                tun,
-                (settings, generation),
-                self.launch.0,
-                deadline,
-                &gate,
-            ),
-            Err(code) => {
-                tun.revoke();
-                Err(code)
-            }
-        };
+        let started = Tunnel::start(
+            rt,
+            tun,
+            (settings, generation),
+            self.launch.0,
+            deadline,
+            &gate,
+        );
         self.finish(started, &gate, deadline, resolvers)?;
         Ok(generation)
     }
 
-    /// Marks a start under way, or answers `busy` (closing `tun`) while another is. Halts the
-    /// running generation, if any, and hands it back for the caller to wait for.
-    fn begin(&self, gate: &Arc<Gate>, tun: &Arc<Tun>) -> Result<Option<Tunnel>, ErrorCode> {
+    /// Marks a start under way and numbers its generation, or answers `busy` (closing `tun`)
+    /// while another is. Halts the running generation, if any, and hands it back for the caller
+    /// to wait for. The new generation claims the carriers here, in the order of the lifecycle:
+    /// a start that `stop` aborted cleans up later, and must not end a newer one's carriers.
+    fn begin(&self, gate: &Arc<Gate>, tun: &Arc<Tun>) -> Result<(i64, Option<Tunnel>), ErrorCode> {
         let mut life = lock(&self.life);
         if matches!(*life, Life::Starting { .. }) {
             drop(life);
@@ -254,55 +248,54 @@ impl Core {
         if let Some(mut c) = catalog {
             c.end_probes();
         }
-        match old {
+        let generation = self.generation.fetch_add(1, Relaxed) + 1;
+        let old = match old {
             Life::Running(old) => {
                 old.halt();
-                Ok(Some(old))
+                Some(old)
             }
-            _ => Ok(None),
-        }
+            _ => None,
+        };
+        self.shared.outbounds.claim(generation);
+        Ok((generation, old))
     }
 
-    /// Publishes the started generation with its config's `resolvers`, unless a `stop` aborted
-    /// the start meanwhile (that `stop` closed the tun already and left the core stopped, which a
-    /// newer `start` may have changed since) or the deadline passed as the driver became ready.
-    /// Its driver serves the tun only once the resolvers are in use; a refused one never does.
+    /// Publishes the started generation with its config's `resolvers`, unless it failed, a
+    /// `stop` aborted the start meanwhile (that `stop` closed the tun already and left the core
+    /// stopped, which a newer `start` may have changed since) or the deadline passed as the
+    /// driver became ready; then it halts and waits for the generation by the deadline. Its
+    /// driver serves the tun only once the resolvers are in use; a refused one never does.
     fn finish(
         &self,
-        started: Result<Tunnel, ErrorCode>,
+        (mut tunnel, ready): (Tunnel, Result<(), ErrorCode>),
         gate: &Gate,
         deadline: Instant,
         resolvers: Vec<SocketAddr>,
     ) -> Result<(), ErrorCode> {
+        #[cfg(test)]
+        self.hooks.before_finish(self);
         std::thread::sleep(self.options.commit_delay);
         let mut life = lock(&self.life);
         // `stop` aborts under the life lock, which is held here, so this cannot change below.
         let aborted = gate.aborted();
-        let (late, code) = if aborted {
-            (started.ok(), ErrorCode::Busy)
-        } else {
-            match started {
-                Ok(mut tunnel) if Instant::now() < deadline => {
-                    bootstrap::use_servers(resolvers);
-                    tunnel.release();
-                    *life = Life::Running(tunnel);
-                    return Ok(());
-                }
-                Ok(tunnel) => (Some(tunnel), ErrorCode::Internal),
-                Err(code) => (None, code),
+        let code = match ready {
+            _ if aborted => ErrorCode::Busy,
+            Ok(()) if Instant::now() < deadline => {
+                bootstrap::use_servers(resolvers);
+                tunnel.release();
+                *life = Life::Running(tunnel);
+                return Ok(());
             }
+            Ok(()) => ErrorCode::Internal,
+            Err(code) => code,
         };
         // Closed before the core shows stopped: a `stop` that sees `Stopped` returns at once.
-        if let Some(tunnel) = &late {
-            tunnel.halt();
-        }
+        tunnel.halt();
         if !aborted {
             *life = Life::Stopped;
         }
         drop(life);
-        if let Some(tunnel) = late {
-            tunnel.wait(self.runtime.handle(), deadline);
-        }
+        tunnel.wait(self.runtime.handle(), deadline);
         Err(code)
     }
 

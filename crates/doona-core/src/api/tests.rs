@@ -3,10 +3,12 @@
 //! `start` must keep its deadline and answer `busy` when a `stop` or another `start` overlaps it.
 //! A task of the real driver's generation that panics shows as `internal` in the snapshot.
 
+use super::tests_catalog::{Feeds, add, path};
 use super::{Core, Life, lock};
 use crate::dto::{ErrorCode, Mode, Snapshot};
 use crate::state::Store;
 use crate::testutil::{TempDir, closed, tun};
+use crate::tunnel::route::{Inbound, Route, Upstream};
 use crate::tunnel::{Gen, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
 use std::io;
@@ -412,4 +414,87 @@ fn failed_within_10s(core: &Core) -> Snapshot {
         assert!(begun.elapsed() < Duration::from_secs(10), "{s:?}");
         std::thread::sleep(Duration::from_millis(20));
     }
+}
+
+/// The first generation never becomes ready; later ones are ready at once, then idle.
+fn unready_then_ready(
+    tun: TunHandle,
+    _: Settings,
+    gen_: Gen,
+    ready: StartSignal,
+) -> BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = tun;
+        let _unsent = if gen_.session.generation == 1 {
+            Some(ready)
+        } else {
+            ready.send();
+            None
+        };
+        std::future::pending::<()>().await;
+    })
+}
+
+/// A loopback server that echoes each connection.
+fn echo() -> std::net::SocketAddr {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for conn in listener.incoming().flatten() {
+            std::thread::spawn(move || {
+                let mut read = conn.try_clone().unwrap();
+                let _ = std::io::copy(&mut read, &mut &conn);
+            });
+        }
+    });
+    addr
+}
+
+/// Sends `msg` on `s` and reads its echo.
+fn ping(core: &Core, s: &mut Upstream, msg: &[u8]) -> io::Result<Vec<u8>> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    core.runtime.block_on(async {
+        s.write_all(msg).await?;
+        let mut got = vec![0; msg.len()];
+        s.read_exact(&mut got).await?;
+        Ok(got)
+    })
+}
+
+/// `stop` makes a start under way busy and returns before that start has cleaned up. A start
+/// that comes then claims the carriers, and the first start's late cleanup leaves them alone: a
+/// stream the second generation opened through a node carries on.
+#[test]
+fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
+    let dir = TempDir::new("api-late-cleanup");
+    let (proxy, _) = crate::testutil::socks5();
+    let echo = echo();
+    let feeds = Feeds::new();
+    feeds.set("/sub", format!("socks5://{proxy}#s5\n").as_bytes());
+    let core = Core::with_launch(path(&dir), unready_then_ready, Duration::from_secs(10));
+    let core = Arc::new(core);
+    add(&core, &feeds, "/sub").unwrap();
+    let opened: Arc<Mutex<Option<Upstream>>> = Arc::default();
+    let kept = Arc::clone(&opened);
+    let (second, _second_probe) = tun();
+    core.hooks.on_before_finish(move |core| {
+        core.start(second, CONFIG).unwrap();
+        let route = Route::of(Inbound::Tun, Mode::Global, &core.shared.outbounds);
+        let mut s = core.runtime.block_on(route.connect(echo)).unwrap();
+        assert_eq!(ping(core, &mut s, b"before").unwrap(), b"before");
+        *lock(&kept) = Some(s);
+    });
+    let (first, _first_probe) = tun();
+    let starter = {
+        let core = Arc::clone(&core);
+        std::thread::spawn(move || core.start(first, CONFIG))
+    };
+    while !matches!(*lock(&core.life), Life::Starting { .. }) {
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    core.stop();
+    assert_eq!(starter.join().unwrap(), Err(ErrorCode::Busy));
+    let mut s = lock(&opened).take().expect("a stream on the carriers");
+    assert_eq!(ping(&core, &mut s, b"after").unwrap(), b"after");
+    assert!(matches!(*lock(&core.life), Life::Running(_)));
 }

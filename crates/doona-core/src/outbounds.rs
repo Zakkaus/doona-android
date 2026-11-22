@@ -9,9 +9,10 @@
 //! and honk spawns their drivers on whatever runtime dials, without keeping a handle to join. So
 //! every registry is built for one [`Carriers`], a runtime of its own on which every dial, probe
 //! and retirement through it runs: shutting that runtime down ends every task honk spawned there.
-//! The carriers belong to the tunnel generation that dials through them; when it ends,
-//! [`Outbounds::end`] takes them out of use and [`Ended::finish`] shuts them down by `stop`'s
-//! deadline. New carriers, and a registry for them, are made when next needed.
+//! The carriers belong to the tunnel generation that last claimed them, which dials through them
+//! and adopts what dialed while none ran; when it ends, [`Outbounds::end`] takes them out of use
+//! and [`Ended::finish`] shuts them down by `stop`'s deadline. The end of an earlier generation
+//! leaves them alone. New carriers, and a registry for them, are made when next needed.
 
 use crate::api::lock;
 use crate::catalog::NodeEntry;
@@ -34,9 +35,9 @@ const WORKERS: usize = 2;
 pub struct Outbounds {
     proxies: Arc<ProxyRegistry>,
     table: RwLock<Arc<Table>>,
-    /// The carriers new registries are built for; none until one is needed after the last
-    /// ended. Taken after the table lock when both are held.
-    current: Mutex<Option<Arc<Carriers>>>,
+    /// The carriers new registries are built for, and who ends them. Taken after the table lock
+    /// when both are held.
+    current: Mutex<Current>,
     /// The panics on the core's threads, the carriers' included (see `panics.rs`).
     panics: Arc<AtomicU64>,
 }
@@ -45,6 +46,14 @@ impl std::fmt::Debug for Outbounds {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Outbounds").finish_non_exhaustive()
     }
+}
+
+#[derive(Default)]
+struct Current {
+    /// None until needed after the last ended.
+    carriers: Option<Arc<Carriers>>,
+    /// The generation whose end ends them; 0 when none claimed them since.
+    owner: i64,
 }
 
 #[derive(Default)]
@@ -216,7 +225,7 @@ impl Outbounds {
         Ok(Outbounds {
             proxies: Arc::new(proxies),
             table: RwLock::new(Arc::default()),
-            current: Mutex::new(None),
+            current: Mutex::default(),
             panics,
         })
     }
@@ -294,11 +303,11 @@ impl Outbounds {
     /// The current carriers, made if there are none.
     fn carriers(&self) -> Option<Arc<Carriers>> {
         let mut current = lock(&self.current);
-        if let Some(carriers) = &*current {
+        if let Some(carriers) = &current.carriers {
             return Some(Arc::clone(carriers));
         }
         match Carriers::new(&self.panics) {
-            Ok(carriers) => Some(Arc::clone(current.insert(Arc::new(carriers)))),
+            Ok(carriers) => Some(Arc::clone(current.carriers.insert(Arc::new(carriers)))),
             Err(e) => {
                 log::error!("outbounds: no runtime for the carriers ({:?})", e.kind());
                 None
@@ -308,6 +317,7 @@ impl Outbounds {
 
     fn is_current(&self, carriers: &Arc<Carriers>) -> bool {
         lock(&self.current)
+            .carriers
             .as_ref()
             .is_some_and(|c| Arc::ptr_eq(c, carriers))
     }
@@ -376,10 +386,24 @@ impl Outbounds {
         Ok(())
     }
 
-    /// Takes the current carriers out of use: every registry built for them refuses new dials
-    /// at once, and the caller shuts them down with [`Ended::finish`].
-    pub(crate) fn end(&self) -> Option<Ended> {
-        let carriers = lock(&self.current).take()?;
+    /// Makes `generation` the one whose end ends the current carriers, and those made until it
+    /// ends; it adopts whatever dialed on them before.
+    pub(crate) fn claim(&self, generation: i64) {
+        lock(&self.current).owner = generation;
+    }
+
+    /// Takes the carriers `generation` claimed out of use, unless a later generation claimed
+    /// them since: every registry built for them refuses new dials at once, and the caller shuts
+    /// them down with [`Ended::finish`].
+    pub(crate) fn end(&self, generation: i64) -> Option<Ended> {
+        let carriers = {
+            let mut current = lock(&self.current);
+            if current.owner != generation {
+                return None;
+            }
+            current.owner = 0;
+            current.carriers.take()?
+        };
         let registries = lock(&carriers.registries).take().unwrap_or_default();
         for r in &registries {
             r.begin_retirement();

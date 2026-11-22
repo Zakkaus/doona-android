@@ -279,9 +279,9 @@ pub struct Tunnel {
 }
 
 impl Tunnel {
-    /// Serves `tun` and returns once `launch` does, by `deadline`, cleanup included. A `stop`
-    /// arriving meanwhile aborts `gate`, which ends the wait with `busy`. On any failure the
-    /// generation is halted, which closes `tun`.
+    /// Serves `tun` on the current carriers and waits until `launch` can serve it, by
+    /// `deadline`; a `stop` arriving meanwhile aborts `gate`, which ends the wait with `busy`. The
+    /// caller halts the generation after any failure, which closes `tun`.
     pub(crate) fn start(
         rt: &Handle,
         tun: Arc<Tun>,
@@ -289,7 +289,7 @@ impl Tunnel {
         launch: Launch,
         deadline: Instant,
         gate: &Arc<Gate>,
-    ) -> Result<Tunnel, ErrorCode> {
+    ) -> (Tunnel, Result<(), ErrorCode>) {
         let (release, commit) = oneshot::channel();
         let tunnel = Tunnel {
             gen_: Gen {
@@ -303,6 +303,10 @@ impl Tunnel {
             release: Some(release),
             ended: Mutex::new(None),
         };
+        // The previous generation's carriers ended with it: this one dials on new ones.
+        if let Err(code) = settings.outbounds.prepare() {
+            return (tunnel, Err(code));
+        }
         let seen = settings.panics.load(Relaxed);
         let watch = watch(Arc::clone(&settings.panics), seen, tunnel.gen_.clone());
         tunnel.gen_.spawn(watch);
@@ -312,14 +316,8 @@ impl Tunnel {
         };
         let gen_ = tunnel.gen_.clone();
         tunnel.gen_.spawn(launch(tun, settings, gen_, signal));
-        match gate.wait(deadline) {
-            Ok(()) => Ok(tunnel),
-            Err(code) => {
-                tunnel.halt();
-                tunnel.wait(rt, deadline);
-                Err(code)
-            }
-        }
+        let ready = gate.wait(deadline);
+        (tunnel, ready)
     }
 
     pub fn session(&self) -> &Arc<Session> {
@@ -338,12 +336,12 @@ impl Tunnel {
         &self.tun
     }
 
-    /// Cancels every task, takes the carriers the generation dialed through out of use, which
-    /// [`Tunnel::wait`] shuts down, and closes the tun. Quick: it waits for at most one tun
-    /// syscall, and builds nothing.
+    /// Cancels every task, takes the carriers the generation claimed out of use, which
+    /// [`Tunnel::wait`] shuts down, unless a later generation claimed them since, and closes the
+    /// tun. Quick: it waits for at most one tun syscall, and builds nothing.
     pub fn halt(&self) {
         self.gen_.cancel.cancel();
-        if let Some(ended) = self.outbounds.end() {
+        if let Some(ended) = self.outbounds.end(self.gen_.session.generation) {
             *lock(&self.ended) = Some(ended);
         }
         self.gen_.tracker.close();

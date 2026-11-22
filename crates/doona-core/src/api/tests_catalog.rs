@@ -116,7 +116,7 @@ fn node_ids(c: &Catalog) -> Vec<(String, String)> {
     ids
 }
 
-fn path(dir: &TempDir) -> &str {
+pub(super) fn path(dir: &TempDir) -> &str {
     dir.path().to_str().unwrap()
 }
 
@@ -238,7 +238,8 @@ fn a_refresh_built_before_an_end_shares_no_runtime_with_it() {
         (outbounds.build(&c.model.nodes), selected)
     };
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
-    let ended_carriers = outbounds.end().unwrap();
+    outbounds.claim(7);
+    let ended_carriers = outbounds.end(7).unwrap();
     assert!(ended_carriers.finish(core.runtime.handle(), deadline));
     assert!(ended.is_shutdown());
     outbounds.replace(built, selected);
