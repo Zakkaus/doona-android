@@ -55,6 +55,45 @@ pub fn interface_index(name: &str) -> Option<u32> {
     (index != 0).then_some(index)
 }
 
+/// Milliseconds on `CLOCK_BOOTTIME`: it never goes back, never jumps with the wall clock, and
+/// counts the time the phone slept. Zero if the clock cannot be read.
+pub fn boot_ms() -> u64 {
+    clock_ms(libc::CLOCK_BOOTTIME)
+}
+
+/// Milliseconds on `CLOCK_MONOTONIC`: as [`boot_ms`], but stopped while the phone sleeps, so the
+/// two apart are the time it slept.
+pub fn mono_ms() -> u64 {
+    clock_ms(libc::CLOCK_MONOTONIC)
+}
+
+fn clock_ms(id: libc::clockid_t) -> u64 {
+    let mut ts = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    // SAFETY: `ts` is a valid timespec to write; Linux and Android have both clocks.
+    if unsafe { libc::clock_gettime(id, &mut ts) } != 0 {
+        return 0;
+    }
+    let (s, ns) = (u64::try_from(ts.tv_sec), u64::try_from(ts.tv_nsec));
+    s.unwrap_or(0).saturating_mul(1000) + ns.unwrap_or(0) / 1_000_000
+}
+
+/// The device's time zone offset from UTC at `epoch_s`, in seconds, summer time included; zero
+/// when the zone cannot be read. Bionic reads the zone (`persist.sys.timezone`) again on every
+/// `localtime_r`, so a change of zone applies from the next call.
+pub fn utc_offset(epoch_s: i64) -> i32 {
+    let t = epoch_s as libc::time_t;
+    // SAFETY: an all-zero `tm` is a valid value of the plain C struct.
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    // SAFETY: both pointers are valid for the call; localtime_r keeps no reference to them.
+    if unsafe { libc::localtime_r(&t, &mut tm) }.is_null() {
+        return 0;
+    }
+    i32::try_from(tm.tm_gmtoff).unwrap_or(0)
+}
+
 /// 32 random bytes for the netstack's secret.
 pub fn random_secret() -> io::Result<[u8; 32]> {
     use std::io::Read;

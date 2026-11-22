@@ -8,7 +8,14 @@
   "traffic": {
     "upTotal": 0,
     "downTotal": 0,
-    "activeFlows": 0
+    "activeFlows": 0,
+    "upPeak": 0,
+    "downPeak": 0
+  },
+  "today": {
+    "upTotal": 2097152,
+    "downTotal": 104857600,
+    "yesterdayByNow": null
   },
   "catalog": {
     "mode": "Global",

@@ -2,7 +2,8 @@
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
 use doonacore::dto::{
-    Empty, ErrorCode, Init, Mode, Reply, SelectArgs, Snapshot, StartConfig, Subscription,
+    Empty, ErrorCode, Init, Mode, Nodes, NodesArgs, Reply, SelectArgs, Snapshot, StartConfig,
+    Subscription, TrafficSeries, Usage,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -27,10 +28,14 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 9] = [
+const COVERED: [&str; 13] = [
     "call-error.json",
+    "call-nodes-args.json",
     "call-ok-empty.json",
+    "call-ok-nodes.json",
     "call-ok-subscription.json",
+    "call-ok-traffic-series.json",
+    "call-ok-usage.json",
     "call-select-args.json",
     "init.json",
     "snapshot-died.json",
@@ -76,11 +81,16 @@ fn call_replies_and_args() {
 fn snapshots() {
     let running = round_trip::<Snapshot>("snapshot-running.json");
     assert!(running.running && running.error.is_none() && running.catalog.is_none());
+    assert!(running.traffic.down_peak <= running.traffic.down_total);
+    assert!(running.today.down_total >= running.traffic.down_total);
     // A warning leaves the data path up.
     assert_eq!(running.warning, Some(ErrorCode::LocalNetwork));
     let died = round_trip::<Snapshot>("snapshot-died.json");
     assert!(!died.running && died.error.is_some() && died.warning.is_none());
+    assert_eq!(running.today.yesterday_by_now, Some(1_610_612_736));
     let stopped = round_trip::<Snapshot>("snapshot-stopped-catalog.json");
+    // No yesterday was kept.
+    assert_eq!(stopped.today.yesterday_by_now, None);
     let catalog = stopped.catalog.unwrap();
     assert_eq!(catalog.mode, Mode::Global);
     assert_eq!(catalog.groups.len(), 3);
@@ -104,4 +114,43 @@ fn missing_required_fields_fail_and_unknown_ones_are_ignored() {
     .unwrap();
     assert_eq!(config.mtu, 1500);
     assert!(serde_json::from_str::<SelectArgs>(r#"{"memberId":null}"#).is_err());
+}
+
+fn ok<T>(reply: Reply<T>) -> T {
+    match reply {
+        Reply::Ok(value) => value,
+        Reply::Error(e) => panic!("an error reply: {e:?}"),
+    }
+}
+
+#[test]
+fn stats_replies() {
+    let series = ok(round_trip::<Reply<TrafficSeries>>(
+        "call-ok-traffic-series.json",
+    ));
+    assert_eq!(
+        (series.step_seconds, series.up.len()),
+        (1, series.down.len())
+    );
+    assert_eq!(series.down_peak, *series.down.iter().max().unwrap());
+    let usage = ok(round_trip::<Reply<Usage>>("call-ok-usage.json"));
+    for day in std::iter::once(&usage.today).chain(&usage.yesterday) {
+        assert_eq!(
+            (day.up.len(), day.down.len(), day.flows.len()),
+            (24, 24, 24)
+        );
+    }
+    // Yesterday is the last of the finished days.
+    let yesterday = usage.yesterday.unwrap();
+    let last = usage.days.last().unwrap();
+    assert_eq!(last.date, yesterday.date);
+    assert_eq!(last.down, yesterday.down.iter().sum::<u64>());
+    assert_eq!(usage.today.outbounds[0].id, "direct");
+    let nodes = ok(round_trip::<Reply<Nodes>>("call-ok-nodes.json")).nodes;
+    assert_eq!(nodes[0].tests[1].ms, None);
+    assert_eq!(nodes[1].transport, "quic");
+    let args = round_trip::<NodesArgs>("call-nodes-args.json");
+    assert_eq!(args.ids.unwrap().len(), nodes.len());
+    // `ids` is required, as every nullable argument key.
+    assert!(serde_json::from_str::<NodesArgs>("{}").is_err());
 }

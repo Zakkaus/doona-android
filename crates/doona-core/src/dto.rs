@@ -82,6 +82,8 @@ pub struct Snapshot {
     /// Null while stopped; each change raises `revision`.
     pub warning: Option<ErrorCode>,
     pub traffic: Traffic,
+    /// The local day's bytes so far, kept across restarts; also while stopped.
+    pub today: Today,
     pub catalog: Option<Catalog>,
 }
 
@@ -91,6 +93,74 @@ pub struct Traffic {
     pub up_total: u64,
     pub down_total: u64,
     pub active_flows: u32,
+    /// The session's fastest second each way, in bytes, whether or not a screen was open.
+    pub up_peak: u64,
+    pub down_peak: u64,
+}
+
+/// Today's bytes each way in the device's local time zone, and yesterday's both ways together by
+/// the same local time (exact to the quarter hour, the current quarter pro rata; null when the
+/// core kept no yesterday, so a screen can leave the comparison out).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Today {
+    pub up_total: u64,
+    pub down_total: u64,
+    pub yesterday_by_now: Option<u64>,
+}
+
+/// `usage`'s reply: today and yesterday by the hour of the local day, and the totals of the
+/// finished days of the last 31 that had any bytes, oldest first (today not among them).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Usage {
+    pub today: DayUsage,
+    pub yesterday: Option<DayUsage>,
+    pub days: Vec<DayTotal>,
+}
+
+/// One local day: 24 hours of bytes each way and of flows the apps opened, and the bytes of each
+/// outbound the day's flows went through.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DayUsage {
+    /// `2026-11-22`.
+    pub date: String,
+    pub up: Vec<u64>,
+    pub down: Vec<u64>,
+    pub flows: Vec<u64>,
+    pub outbounds: Vec<OutboundBytes>,
+}
+
+/// The payload one outbound carried: `id` is the route's target, the group a flow went through
+/// (`g-Proxy` in Global) or `direct`; a rule mode adds group and node ids; `other` holds what
+/// went past 64 targets in a day. Payload only, so the sum is under the tun's day total by the
+/// packet headers, and DNS the core answers itself is not in it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OutboundBytes {
+    pub id: String,
+    pub up: u64,
+    pub down: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DayTotal {
+    pub date: String,
+    pub up: u64,
+    pub down: u64,
+}
+
+/// `trafficSeries`' reply: the rate over a window that ends at most a second ago, oldest point
+/// first. Each point is the average bytes per second over `stepSeconds`; the peaks are the
+/// fastest single second of the window. `endEpochMs` is the wall time at the end of the last
+/// point; point `i` of `n` ends `(n - 1 - i) × stepSeconds` seconds before it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrafficSeries {
+    pub step_seconds: u64,
+    pub end_epoch_ms: i64,
+    pub up: Vec<u64>,
+    pub down: Vec<u64>,
+    pub up_peak: u64,
+    pub down_peak: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -189,4 +259,46 @@ pub struct IdArgs {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModeArgs {
     pub mode: Mode,
+}
+
+/// `nodes`' choice: every node in catalog order, or these ids (unknown ones are left out).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodesArgs {
+    #[serde(deserialize_with = "Option::deserialize")]
+    pub ids: Option<Vec<String>>,
+}
+
+/// `nodes`' reply.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Nodes {
+    pub nodes: Vec<NodeInfo>,
+}
+
+/// What a node's share link says, and its last latency tests (at most 8, oldest first). The
+/// protocol is honk's name (`trojan`, `vless`, `ss`, `hysteria2`, …); the transport is `quic` for
+/// the QUIC protocols, else the stream transport (`tcp`, `ws`, `grpc`, …).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodeInfo {
+    pub id: String,
+    pub protocol: String,
+    pub server: String,
+    pub port: u16,
+    pub transport: String,
+    pub tls: bool,
+    pub tests: Vec<LatencyTest>,
+}
+
+/// One latency test: when its round began, and the time it measured; none when the probe
+/// failed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LatencyTest {
+    pub at_epoch_ms: i64,
+    pub ms: Option<u32>,
+}
+
+/// `trafficSeries`' window: 1 to 3600 seconds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SeriesArgs {
+    pub seconds: u64,
 }

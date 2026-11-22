@@ -22,6 +22,7 @@ class CoreDtoTest {
         val checked = setOf(
             "init.json", "start-config.json", "snapshot-running.json", "snapshot-died.json", "snapshot-stopped-catalog.json",
             "call-ok-empty.json", "call-ok-subscription.json", "call-error.json", "call-select-args.json",
+            "call-ok-traffic-series.json", "call-ok-usage.json", "call-ok-nodes.json", "call-nodes-args.json",
         )
         val present = ContractFixtures.dir.listFiles { f -> f.extension == "json" }.orEmpty().map { it.name }.toSet()
         assertEquals(checked, present)
@@ -45,12 +46,19 @@ class CoreDtoTest {
         assertTrue(running.alive)
         assertEquals("local_network", running.warning)
         assertEquals(52428800L, running.traffic.downTotal)
+        assertEquals(7836412L, running.traffic.downPeak)
+        assertEquals(1288490188L, running.today.downTotal)
+        assertEquals(1610612736L, running.today.yesterdayByNow)
         assertNull(running.catalog)
 
         val died = CoreJson.snapshot(fixture("snapshot-died.json"))
         assertFalse(died.alive)
         assertEquals("internal", died.error)
         assertNull(died.warning)
+
+        // No yesterday was kept: the comparison has nothing to show.
+        val stopped = CoreJson.snapshot(fixture("snapshot-stopped-catalog.json"))
+        assertNull(stopped.today.yesterdayByNow)
     }
 
     @Test
@@ -89,6 +97,43 @@ class CoreDtoTest {
         } catch (e: EngineException) {
             assertEquals(ErrorCode.FetchFailed, e.code)
         }
+    }
+
+    @Test
+    fun anOlderSnapshotHasNoPeaksAndNoDay() {
+        val old = CoreJson.snapshot(
+            """{"revision":1,"running":false,"generation":0,"traffic":{"upTotal":0,"downTotal":0,"activeFlows":0}}""",
+        )
+        assertEquals(0L, old.traffic.upPeak)
+        assertEquals(TodayDto(), old.today)
+    }
+
+    @Test
+    fun statsReplies() {
+        val series = CoreJson.result(fixture("call-ok-traffic-series.json"), TrafficSeriesDto.serializer())
+        assertEquals(1L, series.stepSeconds)
+        assertEquals(series.down.max(), series.downPeak)
+
+        val usage = CoreJson.result(fixture("call-ok-usage.json"), UsageDto.serializer())
+        assertEquals("2026-11-22", usage.today.date)
+        assertEquals(24, usage.today.down.size)
+        assertEquals(listOf("direct", "g-Proxy"), usage.today.outbounds.map { it.id })
+        val yesterday = checkNotNull(usage.yesterday)
+        assertEquals(yesterday.down.sum(), usage.days.last().down)
+
+        val nodes = CoreJson.result(fixture("call-ok-nodes.json"), NodesDto.serializer()).nodes
+        assertEquals("trojan", nodes[0].protocol)
+        assertEquals(listOf(33, null, 31), nodes[0].tests.map { it.ms })
+        assertEquals("quic", nodes[1].transport)
+        assertTrue(nodes[1].tests.isEmpty())
+    }
+
+    @Test
+    fun statsArgsEncode() {
+        val encoded = CoreJson.encode(NodesArgs.serializer(), NodesArgs(listOf("n-0c41be77", "n-7f3a19c2")))
+        assertEquals(Json.parseToJsonElement(fixture("call-nodes-args.json")), Json.parseToJsonElement(encoded))
+        assertEquals("""{"ids":null}""", CoreJson.encode(NodesArgs.serializer(), NodesArgs(null)))
+        assertEquals("""{"seconds":60}""", CoreJson.encode(SeriesArgs.serializer(), SeriesArgs(60)))
     }
 
     @Test

@@ -18,6 +18,8 @@ use crate::catalog::Shared;
 use crate::dto::{ErrorCode, Traffic};
 use crate::localnet::Trace;
 use crate::outbounds::{Ended, Outbounds};
+use crate::stats::meter::Meters;
+use crate::stats::{Clock, Fold, Stats};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use route::ModeCell;
@@ -58,6 +60,8 @@ pub struct Settings {
     pub panics: Arc<AtomicU64>,
     /// The catalog whose revision announces a change of the session's warning.
     pub(crate) catalog: Weak<Shared>,
+    /// Where the generation's watch folds its counters once a second.
+    pub(crate) stats: Arc<Stats>,
 }
 
 /// The tun as the driver holds it.
@@ -193,6 +197,15 @@ pub struct Session {
     up: AtomicU64,
     down: AtomicU64,
     active: AtomicU32,
+    /// Flows the apps opened since `start`.
+    opened: AtomicU64,
+    /// Bytes per outbound not yet folded into the day.
+    meters: Meters,
+    /// The fastest second each way so far, in bytes.
+    up_peak: AtomicU64,
+    down_peak: AtomicU64,
+    /// The totals at the last [`Session::fold`], and the boot second it covered up to.
+    folded: Mutex<Fold>,
     failed: AtomicBool,
     /// Dials through a node begun so far, which numbers each in the order it began.
     dials: AtomicU64,
@@ -212,6 +225,7 @@ struct Warned {
 
 impl Session {
     pub(crate) fn new(generation: i64, catalog: Weak<Shared>) -> Session {
+        let start = Clock::now();
         let since = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX));
@@ -221,6 +235,15 @@ impl Session {
             up: AtomicU64::new(0),
             down: AtomicU64::new(0),
             active: AtomicU32::new(0),
+            opened: AtomicU64::new(0),
+            meters: Meters::default(),
+            up_peak: AtomicU64::new(0),
+            down_peak: AtomicU64::new(0),
+            folded: Mutex::new(Fold {
+                to_s: start.boot_s(),
+                mono_ms: start.mono_ms,
+                ..Fold::default()
+            }),
             failed: AtomicBool::new(false),
             dials: AtomicU64::new(0),
             local_network: Mutex::default(),
@@ -233,7 +256,45 @@ impl Session {
             up_total: self.up.load(Relaxed),
             down_total: self.down.load(Relaxed),
             active_flows: self.active.load(Relaxed),
+            up_peak: self.up_peak.load(Relaxed),
+            down_peak: self.down_peak.load(Relaxed),
         }
+    }
+
+    /// What the session moved since the last fold, which covered up to the boot second it
+    /// returns as `from_s`, and up to `clock`'s now.
+    pub(crate) fn fold(&self, clock: &Clock) -> Fold {
+        let mut folded = lock(&self.folded);
+        let (up, down) = (self.up.load(Relaxed), self.down.load(Relaxed));
+        let flows = self.opened.load(Relaxed);
+        let mono_ms = clock.mono_ms.max(folded.mono_ms);
+        let fold = Fold {
+            from_s: folded.to_s,
+            to_s: clock.boot_s().max(folded.to_s),
+            mono_ms,
+            awake_s: (mono_ms - folded.mono_ms).div_ceil(1000),
+            up: up.saturating_sub(folded.up),
+            down: down.saturating_sub(folded.down),
+            flows: flows.saturating_sub(folded.flows),
+        };
+        *folded = Fold {
+            up,
+            down,
+            flows,
+            ..fold
+        };
+        fold
+    }
+
+    /// The meters of the outbounds the session's flows use.
+    pub(crate) fn meters(&self) -> &Meters {
+        &self.meters
+    }
+
+    /// Raises the fastest second each way to `up` and `down` bytes, if they are faster.
+    pub(crate) fn note_peak(&self, up: u64, down: u64) {
+        self.up_peak.fetch_max(up, Relaxed);
+        self.down_peak.fetch_max(down, Relaxed);
     }
 
     /// The data path died after `start` returned.
@@ -310,11 +371,13 @@ impl Session {
         }
     }
 
-    /// Bytes read from and written to the tun since `start`, and the flows open now.
-    fn publish(&self, up: u64, down: u64, active: u32) {
+    /// Bytes read from and written to the tun since `start`, the flows open now, and the flows
+    /// opened since `start`.
+    pub(crate) fn publish(&self, up: u64, down: u64, active: u32, opened: u64) {
         self.up.store(up, Relaxed);
         self.down.store(down, Relaxed);
         self.active.store(active, Relaxed);
+        self.opened.store(opened, Relaxed);
     }
 }
 
@@ -395,7 +458,8 @@ impl Tunnel {
             return (tunnel, Err(code));
         }
         let seen = settings.panics.load(Relaxed);
-        let watch = watch(Arc::clone(&settings.panics), seen, tunnel.gen_.clone());
+        let (panics, stats) = (Arc::clone(&settings.panics), Arc::clone(&settings.stats));
+        let watch = watch(panics, seen, tunnel.gen_.clone(), stats);
         tunnel.gen_.spawn(watch);
         let signal = StartSignal {
             gate: Some(Arc::clone(gate)),
@@ -473,8 +537,9 @@ impl Tunnel {
 
 /// Ends the generation once the core's threads have had a panic since `seen`. Its own tasks
 /// report theirs through [`Gen::spawn`] at once; honk's tasks for its carriers run on the
-/// carriers' threads and are spawned by honk, so their panics are only counted.
-async fn watch(panics: Arc<AtomicU64>, seen: u64, gen_: Gen) {
+/// carriers' threads and are spawned by honk, so their panics are only counted. Each round also
+/// folds the session's counters into `stats`, so the rate history exists with no screen open.
+async fn watch(panics: Arc<AtomicU64>, seen: u64, gen_: Gen, stats: Arc<Stats>) {
     loop {
         tokio::time::sleep(WATCH).await;
         if panics.load(Relaxed) != seen {
@@ -485,5 +550,6 @@ async fn watch(panics: Arc<AtomicU64>, seen: u64, gen_: Gen) {
             gen_.die();
             return;
         }
+        stats.sample(&gen_.session, &Clock::now());
     }
 }

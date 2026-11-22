@@ -3,6 +3,7 @@
 //! the driver through one unbounded event channel. Each flow has at most one wake queued (its
 //! [`Waker`] remembers), so that channel stays as short as the number of flows.
 
+use crate::stats::meter::Tally;
 use bytes::{Buf, Bytes};
 use honk_netstack::FlowId;
 use std::io::{self, ErrorKind};
@@ -90,9 +91,12 @@ pub(crate) struct FlowIo {
     unread: Bytes,
     down: PollSender<Bytes>,
     waker: Arc<Waker>,
+    /// The payload the task took and gave, for its outbound's bytes of the day.
+    tally: Tally,
 }
 
-pub(crate) fn pair(waker: Arc<Waker>) -> (Ends, FlowIo) {
+/// The driver's ends and the task's [`FlowIo`] of a new flow, whose payload counts in `tally`.
+pub(crate) fn pair(waker: Arc<Waker>, tally: Tally) -> (Ends, FlowIo) {
     let (up_tx, up_rx) = mpsc::channel(DEPTH);
     let (down_tx, down_rx) = mpsc::channel(DEPTH);
     let ends = Ends {
@@ -104,6 +108,7 @@ pub(crate) fn pair(waker: Arc<Waker>) -> (Ends, FlowIo) {
         unread: Bytes::new(),
         down: PollSender::new(down_tx),
         waker,
+        tally,
     };
     (ends, io)
 }
@@ -128,6 +133,7 @@ impl AsyncRead for FlowIo {
         let n = buf.remaining().min(this.unread.len());
         buf.put_slice(&this.unread[..n]);
         this.unread.advance(n);
+        this.tally.up(n);
         Poll::Ready(Ok(()))
     }
 }
@@ -146,6 +152,7 @@ impl AsyncWrite for FlowIo {
             .send_item(Bytes::copy_from_slice(&data[..n]))
             .map_err(gone)?;
         this.waker.wake();
+        this.tally.down(n);
         Poll::Ready(Ok(n))
     }
 

@@ -11,6 +11,7 @@ use super::route::{Inbound, Route};
 use super::tcp::{self, Step, TcpFlow};
 use super::udp::{self, Budget, Nat};
 use super::{Gen, Session, Settings, StartSignal, Tun};
+use crate::stats::meter::Tally;
 use crate::sys;
 use honk_netstack::{
     AcceptOpts, AcceptWhen, Config, ExcludeSet, FlowId, Mode, Ready, Refuse, Rx, Stack,
@@ -80,6 +81,8 @@ struct Driver {
     pending_tx: Option<usize>,
     up: u64,
     down: u64,
+    /// Flows the apps opened: dialed TCP connections and UDP associations.
+    opened: u64,
 }
 
 impl Driver {
@@ -110,6 +113,7 @@ impl Driver {
             pending_tx: None,
             up: 0,
             down: 0,
+            opened: 0,
         })
     }
 
@@ -171,7 +175,8 @@ impl Driver {
         // DNS the core answers is not an app's flow, on either transport.
         let flows = self.tcp.len() - self.dns_flows + self.nat.len();
         let active = u32::try_from(flows).unwrap_or(u32::MAX);
-        self.gen_.session.publish(self.up, self.down, active);
+        let session = &self.gen_.session;
+        session.publish(self.up, self.down, active, self.opened);
         Ok(())
     }
 
@@ -304,7 +309,10 @@ impl Driver {
             return;
         }
         let waker = Waker::new(Key::Tcp(id), self.events.clone());
-        let (ends, io) = flow::pair(Arc::clone(&waker));
+        // The core's own DNS is not an app's flow, nor an outbound's bytes.
+        let meter = dst.and_then(|_| route.meter(&self.gen_.session));
+        self.opened += u64::from(dst.is_some());
+        let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(meter));
         let flow = TcpFlow::new(ends, waker, dst.is_none());
         let (events, cancel) = (self.events.clone(), flow.cancel.clone());
         self.dns_flows += usize::from(flow.dns);
@@ -376,8 +384,10 @@ impl Driver {
             let (settings, session) = (&self.settings, &self.gen_.session);
             let open = || Some(new_route(settings, session)).filter(Route::carries_udp);
             if let Some((opened, route)) = self.nat.send((src, dst), payload, &self.events, open) {
-                self.gen_
-                    .spawn(udp::relay(opened, dst, route, self.events.clone()));
+                self.opened += 1;
+                let meter = route.meter(&self.gen_.session);
+                let relay = udp::relay(opened, dst, (route, meter), self.events.clone());
+                self.gen_.spawn(relay);
             }
         }
     }

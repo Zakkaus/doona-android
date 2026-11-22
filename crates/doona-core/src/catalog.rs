@@ -8,6 +8,7 @@ use crate::groups::{self, GroupDef};
 use crate::ids::{self, is_group};
 use crate::outbounds::{Built, Outbounds};
 use crate::state::{State, StoredSubscription};
+use crate::stats::{Clock, Stats};
 use crate::subscription::parse;
 use honk_config::node::Node;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -111,6 +112,8 @@ pub(crate) struct Shared {
     /// What `snapshot` reads; held only to copy or assign, never across I/O.
     pub catalog: Mutex<CatalogState>,
     pub outbounds: Arc<Outbounds>,
+    /// Where the probes record each node's latency tests.
+    pub stats: Arc<Stats>,
 }
 
 impl Shared {
@@ -202,6 +205,8 @@ pub(crate) struct Target {
     pub entry: Arc<NodeEntry>,
     pub incarnation: u64,
     pub generation: u64,
+    /// When the test round began, epoch ms: its time in the node's latency history.
+    pub began_ms: i64,
 }
 
 impl Model {
@@ -248,6 +253,16 @@ impl Model {
             }
         }
         Model::new(nodes, incarnations)
+    }
+
+    /// Whether node `id` is in the catalog.
+    pub fn has(&self, id: &str) -> bool {
+        self.index.contains_key(id)
+    }
+
+    /// Node `id`, if it is in the catalog.
+    pub fn entry(&self, id: &str) -> Option<Arc<NodeEntry>> {
+        self.index.get(id).map(|&i| Arc::clone(&self.nodes[i]))
     }
 
     /// Takes over what only lives at run time from `old`, for the nodes and groups still here.
@@ -373,6 +388,7 @@ impl Model {
             self.reach(g, &mut wanted, 0);
         }
         let mut targets = Vec::with_capacity(wanted.len());
+        let began_ms = Clock::now().wall_ms;
         for entry in self.nodes.iter().filter(|n| wanted.contains(&n.id)) {
             self.next_probe += 1;
             let latency = self.latency.entry(entry.id.clone()).or_default();
@@ -386,6 +402,7 @@ impl Model {
                     .copied()
                     .unwrap_or(0),
                 generation: self.next_probe,
+                began_ms,
             });
         }
         for g in &groups {

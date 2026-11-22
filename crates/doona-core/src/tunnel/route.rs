@@ -12,6 +12,7 @@ use super::udp::UdpUpstream;
 use crate::dto::Mode;
 use crate::localnet::{self, Trace};
 use crate::outbounds::{Dialer, Outbounds};
+use crate::stats::meter::{DIRECT, Meter};
 use honk_outbound::proxy::AsyncReadWrite;
 use std::io::{self, ErrorKind};
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
@@ -94,6 +95,15 @@ impl Route {
 
     pub fn refused(&self) -> bool {
         matches!(self, Route::Refuse)
+    }
+
+    /// The meter of this route's target in `session`: the group it goes through, or `direct`.
+    pub fn meter(&self, session: &Session) -> Option<Arc<Meter>> {
+        match self {
+            Route::Direct => Some(session.meters().get(DIRECT)),
+            Route::Proxy(..) => Some(session.meters().get(PROXY_GROUP)),
+            Route::Refuse => None,
+        }
     }
 
     /// Whether datagrams can take this route; through a node without UDP they are dropped, so

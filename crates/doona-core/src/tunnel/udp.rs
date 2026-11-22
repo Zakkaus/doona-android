@@ -12,6 +12,7 @@ use super::Session;
 use super::flow::{DEPTH, Event, Events, Key, Waker};
 use super::route::Route;
 use crate::dns;
+use crate::stats::meter::{Meter, Tally};
 use bytes::Bytes;
 use honk_outbound::proxy::PacketTransport;
 use std::cell::RefCell;
@@ -266,11 +267,17 @@ impl UdpUpstream {
     }
 }
 
-/// Serves one association until it idles out or its upstream fails.
-pub(crate) async fn relay(o: Opened, remote: SocketAddr, route: Route, events: Events) {
+/// Serves one association until it idles out or its upstream fails; its payload counts on the
+/// route's meter.
+pub(crate) async fn relay(
+    o: Opened,
+    remote: SocketAddr,
+    (route, meter): (Route, Option<Arc<Meter>>),
+    events: Events,
+) {
     let id = o.id;
     if let Ok(upstream) = route.bind_udp(remote).await {
-        exchange(o, &upstream).await;
+        exchange(o, &upstream, meter).await;
     }
     let _ = events.send(Event::UdpEnded(id));
 }
@@ -278,7 +285,7 @@ pub(crate) async fn relay(o: Opened, remote: SocketAddr, route: Route, events: E
 /// Moves datagrams both ways until neither way moved one for the idle time or the upstream fails.
 /// Each way is one future polled to its end, never dropped mid-datagram, so a transport that
 /// frames datagrams on a stream is never cut inside a frame.
-async fn exchange(o: Opened, upstream: &UdpUpstream) {
+async fn exchange(o: Opened, upstream: &UdpUpstream, meter: Option<Arc<Meter>>) {
     let Opened {
         mut up,
         down,
@@ -291,7 +298,9 @@ async fn exchange(o: Opened, upstream: &UdpUpstream) {
     // When either way last moved a datagram, in milliseconds since `begun`.
     let last = AtomicU64::new(0);
     let moved = || last.store(millis(begun.elapsed()), Relaxed);
+    let sent_meter = meter.clone();
     let sending = async {
+        let mut tally = Tally::new(sent_meter);
         let mut first = upstream.first_send_to();
         while let Some(d) = up.recv().await {
             let began = first.map(Session::begin_dial);
@@ -302,14 +311,20 @@ async fn exchange(o: Opened, upstream: &UdpUpstream) {
             if let (Some(session), Some(began)) = (first.take(), began) {
                 session.first_sent(began, &sent);
             }
+            if sent.is_ok() {
+                tally.up(d.bytes.len());
+            }
             moved();
         }
     };
     let receiving = async {
+        let mut tally = Tally::new(meter);
         let mut own = Vec::new();
         while let Ok(d) = upstream.recv(&mut own, &budget).await {
             // None: over the budget, dropped.
+            let n = d.as_ref().map_or(0, |d| d.bytes.len());
             if d.is_some_and(|d| down.try_send(d).is_ok()) {
+                tally.down(n);
                 waker.wake();
             }
             moved();
@@ -444,7 +459,7 @@ mod tests {
             .send(pair, b"first", &events, || Some(Route::Direct))
             .unwrap();
         let upstream = UdpUpstream::Proxy(Arc::new(node), pair.1, Some(Arc::clone(&session)));
-        exchange(opened, &upstream).await;
+        exchange(opened, &upstream, None).await;
         session.warning()
     }
 
@@ -484,7 +499,8 @@ mod tests {
             .send((client, remote), b"go", &events, || Some(Route::Direct))
             .unwrap();
         let id = opened.id;
-        let task = tokio::spawn(relay(opened, remote, Route::Direct, events.clone()));
+        let route = (Route::Direct, None);
+        let task = tokio::spawn(relay(opened, remote, route, events.clone()));
         for _ in 0..200 {
             if burst.is_finished() && used(&budget) == 3 * REPLY {
                 break;
