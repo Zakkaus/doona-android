@@ -49,20 +49,14 @@ import dev.doona.android.engine.Status
 import dev.doona.android.feature.messageRes
 
 /**
- * The 活動 entry: builds the ViewModel, collects its state while the screen is started, and sends the actions the
- * ViewModel cannot take (consent, navigation) up to the shell.
+ * The 活動 entry: builds the ViewModel and collects its state while the screen is started. Connecting (which needs
+ * the activity for consent) and opening a group (navigation) go straight to the shell's callbacks.
  */
 @Composable
 fun ActivityRoute(engine: Engine, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
     val viewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.factory(engine))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ActivityScreen(state) { action ->
-        when (action) {
-            ActivityAction.Connect -> onConnect()
-            is ActivityAction.OpenGroup -> onOpenGroup(action.groupId)
-            else -> viewModel.onAction(action)
-        }
-    }
+    ActivityScreen(state, viewModel::onAction, onConnect, onOpenGroup)
 }
 
 /**
@@ -70,7 +64,7 @@ fun ActivityRoute(engine: Engine, onConnect: () -> Unit, onOpenGroup: (String) -
  * global outbound), then the traffic tiles two per row and the current node's latency across both columns.
  */
 @Composable
-fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit) {
+fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
     val space = DoonaTheme.space
     DoonaPage(
         actions = {
@@ -86,7 +80,7 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit) {
             state.error?.let { code ->
                 DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(ActivityAction.DismissError) })
             }
-            ConnectionCard(state.status, onAction)
+            ConnectionCard(state.status, onSwitch = { if (it) onConnect() else onAction(ActivityAction.Disconnect) })
             ControlCard(R.drawable.ic_shuffle, DoonaTheme.colors.c3, stringResource(R.string.act_mode)) {
                 Segmented(
                     Mode.entries.map { stringResource(it.label) },
@@ -95,11 +89,11 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit) {
                 )
             }
             ControlCard(R.drawable.ic_filter, DoonaTheme.colors.c2, stringResource(R.string.act_global)) {
-                PickerButton(state.outbound ?: NO_VALUE, onClick = { state.outboundGroupId?.let { onAction(ActivityAction.OpenGroup(it)) } })
+                PickerButton(state.outbound ?: NO_VALUE, onClick = { state.outboundGroupId?.let(onOpenGroup) })
             }
         }
         Gap(space.s6)
-        TrafficTiles(state, onAction)
+        TrafficTiles(state, onOpenGroup)
     }
 }
 
@@ -112,7 +106,7 @@ private val Mode.label: Int
     }
 
 @Composable
-private fun TrafficTiles(state: ActivityUiState, onAction: (ActivityAction) -> Unit) {
+private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.space.s3)) {
         TileRow {
             RateTile(R.drawable.ic_download, DoonaTheme.colors.c1, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
@@ -127,7 +121,7 @@ private fun TrafficTiles(state: ActivityUiState, onAction: (ActivityAction) -> U
             tint = DoonaTheme.colors.c5,
             caption = { NodeName(node?.name ?: stringResource(R.string.act_latency), DoonaTheme.type.caption, color = DoonaTheme.colors.textSecondary) },
             modifier = Modifier.fillMaxWidth(),
-            onClick = state.outboundGroupId?.let { id -> { onAction(ActivityAction.OpenGroup(id)) } },
+            onClick = state.outboundGroupId?.let { id -> { onOpenGroup(id) } },
         ) {
             Latency(latency, DoonaTheme.type.tileValue)
         }
@@ -140,7 +134,7 @@ private fun rateText(bytesPerSecond: Long): String =
 
 /** The client's own control: the connection state, and the on/off switch at the end. */
 @Composable
-private fun ConnectionCard(status: Status, onAction: (ActivityAction) -> Unit) {
+private fun ConnectionCard(status: Status, onSwitch: (Boolean) -> Unit) {
     val on = status is Status.Running || status is Status.Starting
     DoonaCard(Modifier.fillMaxWidth()) {
         Row(Modifier.heightIn(min = DoonaTheme.size.touch), verticalAlignment = Alignment.CenterVertically) {
@@ -151,7 +145,7 @@ private fun ConnectionCard(status: Status, onAction: (ActivityAction) -> Unit) {
                 }
             }
             HGap(DoonaTheme.space.s3)
-            DoonaSwitch(on, { onAction(if (it) ActivityAction.Connect else ActivityAction.Disconnect) }, stringResource(R.string.login_submit))
+            DoonaSwitch(on, onSwitch, stringResource(R.string.login_submit))
         }
     }
 }

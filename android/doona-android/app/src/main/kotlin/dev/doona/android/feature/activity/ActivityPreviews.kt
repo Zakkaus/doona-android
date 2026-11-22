@@ -18,11 +18,11 @@ fun sampleActivityState(error: ErrorCode? = null): ActivityUiState {
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun ActivityScreenPreview() {
-    DoonaTheme { ActivityScreen(sampleActivityState()) {} }
+    DoonaTheme { ActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}) }
 }
 
 @Preview(name = "Error", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Composable
 private fun ActivityScreenErrorPreview() {
-    DoonaTheme { ActivityScreen(sampleActivityState(error = ErrorCode.Busy)) {} }
+    DoonaTheme { ActivityScreen(sampleActivityState(error = ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {}) }
 }

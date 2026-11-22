@@ -23,10 +23,10 @@ tools/check-tokens.sh                                 # no dp, sp or colour lite
   ViewModel `combine`s the engine's flows into it with `stateIn(viewModelScope, WhileSubscribed(5_000), …)`, seeded
   from the flows' current values. It never touches `Context`, a service or an activity.
 - **Wiring:** `<Screen>Route(engine, callbacks)` gets the ViewModel with `viewModel(factory = <Screen>ViewModel.factory(engine))`,
-  collects with `collectAsStateWithLifecycle()`, and calls the stateless `<Screen>Screen(state, onAction)`. The shell
+  collects with `collectAsStateWithLifecycle()`, and calls the stateless `<Screen>Screen(state, onAction, …)`. The shell
   (`app/DoonaApp.kt`) adds a `@Serializable` key to `app/Navigation.kt`, carrying ids only, and an `entry<Key>`.
-- **Actions:** a `sealed interface <Screen>Action`. The route sends navigation and consent (`Connect`) up as
-  callbacks; everything else goes to `viewModel.onAction`.
+- **Actions:** a `sealed interface <Screen>Action` holds only what the ViewModel handles (`viewModel::onAction`).
+  Navigation and steps that need the activity (`onOpenGroup`, `onConnect`) are separate screen parameters.
 - **Errors:** engine actions return `Result`. On failure, store `it.errorCode()` in the state, show it with
   `DoonaErrorBanner(stringResource(code.messageRes()), …)` (`feature/ErrorText.kt`), and clear it on dismiss.
 - **UI:** components come from `designsystem/components` only; no `androidx.compose.material3`, `clickable` or

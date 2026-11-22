@@ -26,13 +26,8 @@ class ActivityViewModel(private val engine: Engine) : ViewModel() {
     fun onAction(action: ActivityAction) {
         when (action) {
             ActivityAction.Disconnect -> engine.disconnect()
-
             is ActivityAction.SetMode -> setMode(action.mode)
-
             ActivityAction.DismissError -> error.value = null
-
-            // The route sends these to the activity and the navigation shell.
-            ActivityAction.Connect, is ActivityAction.OpenGroup -> Unit
         }
     }
 

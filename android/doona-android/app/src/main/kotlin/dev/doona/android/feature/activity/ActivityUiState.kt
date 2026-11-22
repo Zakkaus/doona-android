@@ -30,16 +30,11 @@ data class ActivityUiState(
     val error: ErrorCode? = null,
 )
 
+/** What [ActivityViewModel] handles; connecting and navigation are separate callbacks of the screen. */
 sealed interface ActivityAction {
-    /** Handled by the activity, which asks for VPN consent first. */
-    data object Connect : ActivityAction
-
     data object Disconnect : ActivityAction
 
     data class SetMode(val mode: Mode) : ActivityAction
-
-    /** Handled by the navigation shell. */
-    data class OpenGroup(val groupId: String) : ActivityAction
 
     data object DismissError : ActivityAction
 }

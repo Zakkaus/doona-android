@@ -100,7 +100,9 @@ class SketchScreenshotTest {
 
     @Test
     @Config(qualifiers = LIGHT)
-    fun activityError() = shootContent("01-activity-error-light") { ActivityScreen(sampleActivityState(ErrorCode.Busy)) {} }
+    fun activityError() = shootContent("01-activity-error-light") {
+        ActivityScreen(sampleActivityState(ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {})
+    }
 
     @Test
     @Config(qualifiers = LIGHT)
