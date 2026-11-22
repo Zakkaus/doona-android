@@ -10,7 +10,7 @@ use crate::probe::{ProbeJob, Prober};
 use crate::testutil::{TempDir, fixture, socks5};
 use futures_util::FutureExt;
 use serde_json::json;
-use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::watch;
@@ -221,19 +221,22 @@ fn honk_probes_a_node_through_its_outbound() {
 }
 
 #[test]
-fn a_test_registered_while_stop_runs_is_dropped_with_it() {
+fn no_test_registers_between_the_probe_token_and_the_lifecycle_change() {
     let stand = Stand::new(false);
     let (_dir, _feeds, core) = setup(&stand);
-    std::thread::scope(|scope| {
-        // Holding the lifecycle lock stops `stop` where it changes the lifecycle.
-        let life = super::lock(&core.life);
-        let stopping = scope.spawn(|| core.stop());
-        std::thread::sleep(Duration::from_millis(200));
-        call(&core, "testLatency", json!({"group": "g-HK"})).unwrap();
-        wait_started(&stand, 3);
-        drop(life);
-        stopping.join().unwrap();
+    let ran = Arc::new(AtomicBool::new(false));
+    let seen = Arc::clone(&ran);
+    // Inside `stop`, once the probe token is new: a test registers here if the catalog lock,
+    // which registration takes, is free.
+    core.hooks.on_teardown(move |core| {
+        seen.store(true, SeqCst);
+        let free = core.shared.catalog.try_lock().is_ok();
+        if free {
+            core.test_latency(Some("g-HK".to_owned())).unwrap();
+        }
     });
+    core.stop();
+    assert!(ran.load(SeqCst));
     stand.open();
     let after = wait_for(&core, |c| !testing(c));
     assert!(
@@ -241,5 +244,14 @@ fn a_test_registered_while_stop_runs_is_dropped_with_it() {
             .members
             .iter()
             .all(|m| m.latency_ms.is_none() && !m.failed)
+    );
+    // A test registered after `stop` runs and commits.
+    call(&core, "testLatency", json!({"group": "g-HK"})).unwrap();
+    let after = wait_for(&core, |c| !testing(c));
+    assert!(
+        after.groups[2]
+            .members
+            .iter()
+            .all(|m| m.latency_ms.is_some())
     );
 }

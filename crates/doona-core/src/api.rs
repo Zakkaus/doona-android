@@ -77,6 +77,8 @@ pub struct Core {
     probes: Probes,
     /// Subscriptions with an update under way; a second update of one is `busy`.
     refreshing: Mutex<HashSet<String>>,
+    #[cfg(test)]
+    hooks: hooks::Hooks,
 }
 
 enum Life {
@@ -148,6 +150,8 @@ impl Core {
             launch,
             probes,
             refreshing: Mutex::new(HashSet::new()),
+            #[cfg(test)]
+            hooks: hooks::Hooks::default(),
         })
     }
 
@@ -215,9 +219,14 @@ impl Core {
             gate: Arc::clone(gate),
             tun: Arc::clone(tun),
         };
-        match std::mem::replace(&mut *life, starting) {
+        // As in `stop`: a running generation's probes end in the same step as its lifecycle.
+        let catalog = matches!(*life, Life::Running(_)).then(|| lock(&self.shared.catalog));
+        let old = std::mem::replace(&mut *life, starting);
+        if let Some(mut c) = catalog {
+            c.end_probes();
+        }
+        match old {
             Life::Running(old) => {
-                self.end_probes();
                 old.halt();
                 Ok(Some(old))
             }
@@ -284,8 +293,16 @@ impl Core {
         let deadline = Instant::now() + STOP_WAIT;
         let halted = {
             let mut life = lock(&self.life);
-            self.end_probes();
-            match std::mem::replace(&mut *life, Life::Stopped) {
+            // The probes end and the lifecycle changes under one catalog guard, taken after the
+            // lifecycle lock. Registration and probe commits take the catalog lock, so a test
+            // registers wholly before both, and is dropped, or after both.
+            let mut catalog = lock(&self.shared.catalog);
+            catalog.end_probes();
+            #[cfg(test)]
+            self.hooks.teardown(self);
+            let old = std::mem::replace(&mut *life, Life::Stopped);
+            drop(catalog);
+            match old {
                 Life::Running(tunnel) => {
                     tunnel.halt();
                     Some(tunnel)
@@ -301,13 +318,6 @@ impl Core {
         if let Some(tunnel) = halted {
             tunnel.wait(self.runtime.handle(), deadline);
         }
-    }
-
-    /// Drops the latency probes under way: a tunnel generation ends. Called with the lifecycle
-    /// lock held as the lifecycle changes, so a test that registers before the change is dropped
-    /// with it and no result of it commits after `stop` or the new `start` sees the change.
-    fn end_probes(&self) {
-        lock(&self.shared.catalog).end_probes();
     }
 
     pub fn snapshot(&self, since_revision: i64) -> String {
@@ -486,6 +496,8 @@ pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+#[cfg(test)]
+mod hooks;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
