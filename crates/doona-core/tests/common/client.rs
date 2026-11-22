@@ -43,25 +43,29 @@ impl Client {
         }
     }
 
-    fn send_packet(&self, len: usize) {
+    fn send_packet(&mut self, len: usize) {
         let fd = self.peer.as_raw_fd();
         loop {
             // SAFETY: `pkt` is valid for `len` bytes.
             let r = unsafe { libc::send(fd, self.pkt.as_ptr().cast(), len, libc::MSG_DONTWAIT) };
             match io_call(r) {
                 Ok(_) => return,
+                // The core stops reading while its own write to us is blocked, so take its
+                // packets before waiting, or both sides wait for each other.
                 Err(e) if e.kind() == ErrorKind::WouldBlock => {
-                    std::thread::sleep(Duration::from_micros(100))
+                    if !self.receive(Instant::now()) {
+                        std::thread::sleep(Duration::from_micros(100));
+                    }
                 }
                 Err(e) => panic!("peer send: {e}"),
             }
         }
     }
 
-    /// Moves packets both ways once, waiting up to a millisecond for input.
-    pub fn turn(&mut self) {
+    /// Feeds every packet waiting on the socketpair to the stack; true if there was one.
+    fn receive(&mut self, now: Instant) -> bool {
         let fd = self.peer.as_raw_fd();
-        let now = Instant::now();
+        let mut any = false;
         loop {
             // SAFETY: `buf` is valid for its length.
             let r = unsafe {
@@ -73,17 +77,25 @@ impl Client {
                 )
             };
             match io_call(r) {
-                Ok(0) => break,
+                Ok(0) => return any,
                 Ok(n) => {
+                    any = true;
                     if let Rx::Datagram { src, payload, .. } = self.st.receive(now, &self.buf[..n])
                     {
                         self.datagrams.push((src, self.buf[payload].to_vec()));
                     }
                 }
-                Err(e) if e.kind() == ErrorKind::WouldBlock => break,
+                Err(e) if e.kind() == ErrorKind::WouldBlock => return any,
                 Err(e) => panic!("peer recv: {e}"),
             }
         }
+    }
+
+    /// Moves packets both ways once, waiting up to a millisecond for input.
+    pub fn turn(&mut self) {
+        let fd = self.peer.as_raw_fd();
+        let now = Instant::now();
+        self.receive(now);
         if self.st.poll_timeout().is_some_and(|d| d <= now) {
             self.st.handle_timeout(now);
         }
