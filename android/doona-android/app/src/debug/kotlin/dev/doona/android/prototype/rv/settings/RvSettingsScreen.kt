@@ -54,7 +54,13 @@ import dev.doona.android.prototype.rv.rvSystemScheme
  * the nav's tabs [onTab].
  */
 @Composable
-internal fun RvSettingsScreen(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, onOpenTheme: () -> Unit, onTab: (Int) -> Unit = {}) {
+internal fun RvSettingsScreen(
+    state: RvSettingsState,
+    onChange: (RvSettingsState) -> Unit,
+    onOpenTheme: () -> Unit,
+    onTab: (Int) -> Unit = {},
+    routes: RvSettingsRoutes = RvSettingsRoutes(),
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     RvScrollPage(
@@ -65,10 +71,10 @@ internal fun RvSettingsScreen(state: RvSettingsState, onChange: (RvSettingsState
     ) { titleBlock ->
         Hero(titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            ConnectionGroup(state, onChange)
+            ConnectionGroup(state, onChange, routes.alwaysOn)
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme)
-            AdvancedGroup()
+            AdvancedGroup(state, routes)
             AboutGroup()
         }
         // The last card clears the floating nav over the page.
@@ -101,24 +107,32 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets) {
     }
 }
 
+/**
+ * Where 設定's rows lead beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that
+ * switch, D14), the DNS picker and the effective config.
+ */
+internal class RvSettingsRoutes(val alwaysOn: () -> Unit = NOT_WIRED, val dns: () -> Unit = NOT_WIRED, val effectiveConfig: () -> Unit = NOT_WIRED)
+
+/**
+ * 連線: always-on as a row that opens the system's VPN settings, since Android, not the app, turns it on; the drop
+ * notice; and the apps that use the tunnel. The LAN always stays outside the tunnel (D25), so there is no switch for it.
+ */
 @Composable
-private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit) {
+private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, onAlwaysOn: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_connection))
     RvSettingsCard {
-        RvSettingsSwitchRow(stringResource(R.string.rv_settings_auto_connect), R.drawable.rv_sym_power, state.connectAtBoot, { onChange(state.copy(connectAtBoot = it)) })
+        RvSettingsNavRow(
+            stringResource(R.string.rv_settings_always_on),
+            R.drawable.rv_sym_vpn_lock,
+            onAlwaysOn,
+            subtitle = stringResource(R.string.rv_settings_always_on_sub),
+        )
         RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
         RvSettingsNavRow(
             stringResource(R.string.rv_settings_per_app),
             R.drawable.rv_sym_apps,
             NOT_WIRED,
             stringResource(R.string.rv_settings_per_app_value, state.proxiedApps),
-        )
-        RvSettingsSwitchRow(
-            stringResource(R.string.rv_settings_bypass_lan),
-            R.drawable.rv_settings_ic_lan,
-            state.bypassLan,
-            { onChange(state.copy(bypassLan = it)) },
-            subtitle = stringResource(R.string.rv_settings_bypass_lan_sub),
         )
     }
     RvSettingsFooter(stringResource(R.string.rv_settings_connection_footer))
@@ -147,12 +161,14 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit) {
     }
 }
 
+/** 進階: the DNS server (the picker), the log level, and the effective config, read-only. */
 @Composable
-private fun AdvancedGroup() {
+private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_advanced))
     RvSettingsCard {
-        RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, NOT_WIRED, stringResource(R.string.rv_settings_dns_value))
+        RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, stringResource(state.dns.label))
         RvSettingsNavRow(stringResource(R.string.rv_settings_log_level), R.drawable.rv_settings_ic_description, NOT_WIRED, stringResource(R.string.rv_settings_log_level_value))
+        RvSettingsNavRow(stringResource(R.string.rv_effective_open), R.drawable.rv_sym_rule, routes.effectiveConfig)
     }
 }
 

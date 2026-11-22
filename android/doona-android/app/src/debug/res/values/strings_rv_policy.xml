@@ -111,4 +111,22 @@
     <string name="rv_policy_change_keep">Kept</string>
     <string name="rv_policy_change_change">Changed</string>
     <string name="rv_policy_change_remove">Removed</string>
+    <string name="rv_effective_title">Effective config</string>
+    <string name="rv_effective_open">View effective config</string>
+    <string name="rv_effective_mode">Mode</string>
+    <string name="rv_effective_members_more">%1$s and %2$d in all</string>
+    <string name="rv_effective_list_separator">",\u0020"</string>
+    <string name="rv_effective_dns_via">Through</string>
+    <string name="rv_effective_lan_value">Outside the tunnel</string>
+    <string name="rv_effective_apps_in">Apps in the tunnel</string>
+    <plurals name="rv_effective_apps">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <string name="rv_effective_apps_rest">Other apps</string>
+    <string name="rv_effective_apps_rest_value">Direct</string>
+    <string name="rv_effective_per_app">Per app</string>
+    <string name="rv_effective_source">Source</string>
+    <string name="rv_effective_copy">Copy</string>
+    <string name="rv_effective_export">Export</string>
 </resources>

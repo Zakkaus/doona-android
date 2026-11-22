@@ -106,10 +106,10 @@ private fun FirstLine(content: @Composable () -> Unit) {
     Box(Modifier.height(RvSettingsSize.titleLine), contentAlignment = Alignment.Center) { content() }
 }
 
-/** A row that opens something: an optional [value] in secondary text, then a chevron. */
+/** A row that opens something: an optional [subtitle] under the title, an optional [value] in secondary text, a chevron. */
 @Composable
-internal fun RvSettingsNavRow(title: String, @DrawableRes icon: Int, onClick: () -> Unit, value: String? = null) {
-    RvSettingsRow(title, Modifier.rvPress(RectangleShape, Role.Button, onClick), icon) {
+internal fun RvSettingsNavRow(title: String, @DrawableRes icon: Int, onClick: () -> Unit, value: String? = null, subtitle: String? = null) {
+    RvSettingsRow(title, Modifier.rvPress(RectangleShape, Role.Button, onClick), icon, subtitle) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             value?.let {
                 RvSettingsText(it, RvSettingsType.value, color = Rv.colors.textSecondary)
@@ -139,9 +139,9 @@ internal fun RvSettingsSwitchRow(title: String, @DrawableRes icon: Int, checked:
     RvSettingsRow(title, toggle, icon, subtitle) { RvSwitch(checked) }
 }
 
-/** A row of a radio list: the title, and the radio at the end. */
+/** A row of a radio list: the title over an optional [subtitle], and the radio at the end. */
 @Composable
-internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit) {
+internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit, subtitle: String? = null) {
     val choose = Modifier.selectable(
         selected = selected,
         interactionSource = null,
@@ -149,7 +149,7 @@ internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -
         role = Role.RadioButton,
         onClick = onSelect,
     )
-    RvSettingsRow(title, choose) { RvRadio(selected) }
+    RvSettingsRow(title, choose, subtitle = subtitle) { RvRadio(selected) }
 }
 
 private const val TITLE_LINES = 2

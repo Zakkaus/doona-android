@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv
 
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -14,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
@@ -25,6 +27,8 @@ import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
+import dev.doona.android.prototype.rv.settings.RvDnsScreen
+import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -36,8 +40,11 @@ import dev.doona.android.prototype.rv.stats.rvStatsSample
  * seen where the platform draws it (Robolectric's goldens cannot). 活動 pushes 流量詳情 (a traffic tile), 統計 (the top
  * bar), 節點 (the search pill and the outbound row) and the node in use (its row); 節點 pushes a node's page; the nav
  * switches to 設定, which pushes 主題, and to 策略, which pushes a group's page (its rows and the main node) and the quick
- * rule (新增規則); 活動's mode row and 查看全部 switch to 策略, and a rule group opens its group's page. Back returns. Start it from the launcher's "doona RV sample", or with
- * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`.
+ * rule (新增規則); 活動's mode row and 查看全部 switch to 策略, and a rule group opens its group's page. 策略 also pushes all
+ * rules (which open the effective config) and 範本 with its impact review; 設定 pushes DNS and the effective config, and
+ * its always-on row opens the system's VPN settings; 連線 (the fourth tab, see [EXTRA_FOUR_TABS]) pushes a connection's
+ * page, which opens the quick rule from it. Back returns. Start it from the launcher's "doona RV sample", or with
+ * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`, adding the extras below.
  */
 class RvPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,7 +72,7 @@ private fun RvPreviewPage(route: String, policy: RvPolicyPreviewState, push: (St
     var settings by remember { mutableStateOf(rvSampleSettings()) }
     val onTab: (Int) -> Unit = { i -> TABS[i]?.let(tab) }
     val base = route.substringBefore(':')
-    if (base in RvPolicyPreviewRoutes.all) return RvPolicyPreview(route, policy, push, pop, onTab)
+    if (base in RvPolicyPreviewRoutes.all) return RvPolicyPreview(route, policy, settings, push, pop, onTab)
     when (base) {
         TRAFFIC -> RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = pop)
 
@@ -78,7 +85,17 @@ private fun RvPreviewPage(route: String, policy: RvPolicyPreviewState, push: (St
             RvNodeDetail(node, current = node.id == nodes.currentId, nodes.testedAtEpochMs, onBack = pop, onUse = {}, onTest = {})
         }
 
-        SETTINGS -> RvSettingsScreen(settings, onChange = { settings = it }, onOpenTheme = { push(THEME) }, onTab = onTab)
+        SETTINGS -> {
+            val context = LocalContext.current
+            val routes = RvSettingsRoutes(
+                alwaysOn = { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
+                dns = { push(DNS) },
+                effectiveConfig = { push(RvPolicyPreviewRoutes.EFFECTIVE) },
+            )
+            RvSettingsScreen(settings, onChange = { settings = it }, onOpenTheme = { push(THEME) }, onTab = onTab, routes = routes)
+        }
+
+        DNS -> RvDnsScreen(settings.dns, { settings = settings.copy(dns = it) }, onBack = pop)
 
         CONNECTIONS -> RvConnectionsPage(RvPolicyData.connections, RvConnectionsRoutes(open = { push("$CONNECTION:$it") }, tab = onTab))
 
@@ -116,6 +133,7 @@ private const val EXTRA_PENDING = "rv.pending"
 /** `--ez rv.tabs4 true` shows the bar with the proposed fourth tab, 連線, on every tab home. */
 private const val EXTRA_FOUR_TABS = "rv.tabs4"
 private const val CONNECTIONS = "connections"
+private const val DNS = "dns"
 private const val CONNECTION = "connection"
 
 private fun startStack(intent: Intent): List<String> = intent.getStringExtra(EXTRA_ROUTE)?.split(',')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() } ?: listOf(ACTIVITY)

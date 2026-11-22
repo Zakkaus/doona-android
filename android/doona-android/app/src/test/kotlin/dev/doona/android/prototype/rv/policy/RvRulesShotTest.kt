@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,7 +16,8 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The rule pages 策略 pushes, light and dark, each in one capture of the whole page: all rules (`proto-rv-rules-*`), the
  * same in edit mode (`proto-rv-rules-edit-*`) and with two rules held (`proto-rv-rules-pending-*`), the template picker
- * with 依服務分流 picked (`proto-rv-template-*`) and its impact review (`proto-rv-template-impact-*`).
+ * with 依服務分流 picked (`proto-rv-template-*`), its impact review (`proto-rv-template-impact-*`) and the effective
+ * config (`proto-rv-effective-config-*`).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -65,6 +67,17 @@ class RvRulesShotTest {
     @Config(qualifiers = WHOLE_IMPACT)
     fun impactDark() = compose.rvShot("template-impact", dark = true, before = { assertWhole() }) { Impact() }
 
+    @Test
+    @Config(qualifiers = WHOLE_EFFECTIVE)
+    fun effectiveLight() = compose.rvShot("effective-config", dark = false, before = { assertWhole() }) { Effective() }
+
+    @Test
+    @Config(qualifiers = WHOLE_EFFECTIVE)
+    fun effectiveDark() = compose.rvShot("effective-config", dark = true, before = { assertWhole() }) { Effective() }
+
+    @Composable
+    private fun Effective() = RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {})
+
     @Composable
     private fun Rules(pending: List<RvPolicyRule> = emptyList(), editing: Boolean = false) =
         RvRulesPage(RvPolicyData.allRules, pending, editing, onBack = {})
@@ -77,9 +90,10 @@ class RvRulesShotTest {
 
     private companion object {
         /** Windows as tall as each whole page, so one capture holds it to its end. */
-        const val WHOLE_RULES = "+h1690dp"
+        const val WHOLE_RULES = "+h1764dp"
         const val WHOLE_EDIT = "+h1464dp"
-        const val WHOLE_PENDING = "+h1980dp"
+        const val WHOLE_PENDING = "+h2054dp"
         const val WHOLE_IMPACT = "+h1405dp"
+        const val WHOLE_EFFECTIVE = "+h2065dp"
     }
 }

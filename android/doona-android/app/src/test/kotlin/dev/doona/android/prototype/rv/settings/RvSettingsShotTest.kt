@@ -16,7 +16,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The Revolut-style settings sample, light and dark, in the scheme of the owner's wallpaper: the 設定 page captured in
  * one long frame (goldens `proto-rv-settings-light` and `-dark`), and the 主題 page it opens
- * (`proto-rv-settings-theme-light` and `-dark`).
+ * (`proto-rv-settings-theme-light` and `-dark`), and the DNS picker of 進階 (`proto-rv-settings-dns-*`).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -39,6 +39,15 @@ class RvSettingsShotTest {
     @Test
     fun themeDark() = compose.rvShot("settings-theme", dark = true) { Theme() }
 
+    @Test
+    fun dnsLight() = compose.rvShot("settings-dns", dark = false) { Dns() }
+
+    @Test
+    fun dnsDark() = compose.rvShot("settings-dns", dark = true) { Dns() }
+
+    @Composable
+    private fun Dns() = RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {})
+
     @Composable
     private fun Settings() = RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {})
 
@@ -48,6 +57,6 @@ class RvSettingsShotTest {
 
     private companion object {
         /** As tall as the whole 設定 page, so its end shows as the phone shows it: the last card 28 dp above the bottom navigation. */
-        const val LONG_PAGE = "+h1433dp"
+        const val LONG_PAGE = "+h1440dp"
     }
 }

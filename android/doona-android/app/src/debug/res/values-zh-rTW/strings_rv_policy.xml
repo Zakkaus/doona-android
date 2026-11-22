@@ -101,4 +101,21 @@
     <string name="rv_policy_change_keep">沿用</string>
     <string name="rv_policy_change_change">變更</string>
     <string name="rv_policy_change_remove">移除</string>
+    <string name="rv_effective_title">生效設定</string>
+    <string name="rv_effective_open">檢視生效設定</string>
+    <string name="rv_effective_mode">模式</string>
+    <string name="rv_effective_members_more">%1$s 等 %2$d 個</string>
+    <string name="rv_effective_list_separator">、</string>
+    <string name="rv_effective_dns_via">經由</string>
+    <string name="rv_effective_lan_value">不進通道</string>
+    <string name="rv_effective_apps_in">走通道的 App</string>
+    <plurals name="rv_effective_apps">
+        <item quantity="other">%1$d 個</item>
+    </plurals>
+    <string name="rv_effective_apps_rest">其餘 App</string>
+    <string name="rv_effective_apps_rest_value">直接連線</string>
+    <string name="rv_effective_per_app">依 App</string>
+    <string name="rv_effective_source">來源</string>
+    <string name="rv_effective_copy">複製</string>
+    <string name="rv_effective_export">匯出</string>
 </resources>

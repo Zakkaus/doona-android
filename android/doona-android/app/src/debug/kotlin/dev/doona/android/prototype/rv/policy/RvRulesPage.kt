@@ -24,6 +24,7 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
+import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvChevronSize
 import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGlyph
@@ -47,12 +48,14 @@ internal class RvRulesRoutes(
     val newRule: () -> Unit = {},
     val apply: () -> Unit = {},
     val discard: () -> Unit = {},
+    val effective: () -> Unit = {},
 )
 
 /**
  * All rules (查看全部 on 策略), in the 策略 card's grammar: the large title and one line on how rules are tried; any rules
  * held for a later 套用, with the button that applies them; every rule in order, each with where it sends and today's
- * bytes, an off or skipped rule saying so; and how many are in use, off and skipped, as D34 counts them. The bar's
+ * bytes, an off or skipped rule saying so; how many are in use, off and skipped, as D34 counts them; and the way to the
+ * effective config, which shows what the core compiled. The bar's
  * pencil turns on [editing]: each rule but the last shows a drag handle (first match wins, so order matters; the drag
  * itself is the gestures lane's), the line says how, and 完成 ends it. A rule opens its page; a long press its menu.
  */
@@ -81,7 +84,10 @@ internal fun RvRulesPage(
         RvGutter {
             if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
             RulesCard(rules, editing, routes)
-            if (!editing) CountsCard(rules)
+            if (!editing) {
+                CountsCard(rules)
+                RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_effective_open), null, onClick = routes.effective) { RvChevron() } }
+            }
         }
     }
 }

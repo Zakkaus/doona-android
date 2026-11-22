@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.doona.android.prototype.rv.RV_NAV_POLICY
+import dev.doona.android.prototype.rv.settings.RvSettingsState
 
 /** The preview's 策略 state across its pages: the tab's own state, the quick rule, the template picked, held rules. */
 @Stable
@@ -25,15 +26,24 @@ internal object RvPolicyPreviewRoutes {
     const val RULES = "rules"
     const val TEMPLATE = "template"
     const val IMPACT = "impact"
-    val all = setOf(POLICY, GROUP, RULE, RULES, TEMPLATE, IMPACT)
+    const val EFFECTIVE = "effective"
+    val all = setOf(POLICY, GROUP, RULE, RULES, TEMPLATE, IMPACT, EFFECTIVE)
 }
 
 /**
  * The 策略 tab's pages in the preview: the tab pushes a group's page, all rules, the template picker and the quick rule;
- * the picker pushes the impact review, whose 套用 returns to the tab; all rules opens the quick rule for a new rule.
+ * the picker pushes the impact review, whose 套用 returns to the tab; all rules opens the quick rule for a new rule and
+ * the effective config, which 設定 → 進階 also opens.
  */
 @Composable
-internal fun RvPolicyPreview(route: String, state: RvPolicyPreviewState, push: (String) -> Unit, pop: () -> Unit, onTab: (Int) -> Unit) {
+internal fun RvPolicyPreview(
+    route: String,
+    state: RvPolicyPreviewState,
+    settings: RvSettingsState,
+    push: (String) -> Unit,
+    pop: () -> Unit,
+    onTab: (Int) -> Unit,
+) {
     val r = RvPolicyPreviewRoutes
     when (route.substringBefore(':')) {
         r.GROUP -> {
@@ -48,11 +58,13 @@ internal fun RvPolicyPreview(route: String, state: RvPolicyPreviewState, push: (
         }
 
         r.RULES -> {
-            val routes = RvRulesRoutes(edit = { state.editing = it }, newRule = { push(r.RULE) }, apply = { state.pending = emptyList() }, discard = { state.pending = emptyList() })
+            val routes = RvRulesRoutes(edit = { state.editing = it }, newRule = { push(r.RULE) }, apply = { state.pending = emptyList() }, discard = { state.pending = emptyList() }, effective = { push(r.EFFECTIVE) })
             RvRulesPage(RvPolicyData.allRules, state.pending, state.editing, onBack = pop, routes = routes)
         }
 
         r.TEMPLATE -> RvTemplatePage(RvTemplateData.cnDirect, state.template, { state.template = it }, onBack = pop, onReview = { push(r.IMPACT) })
+
+        r.EFFECTIVE -> RvEffectiveConfigPage(state.policy, settings, onBack = pop, onRules = { push(r.RULES) })
 
         r.IMPACT -> RvTemplateImpactPage(RvTemplateData.impact, onBack = pop, onApply = { onTab(RV_NAV_POLICY) })
 
