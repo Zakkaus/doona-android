@@ -1,0 +1,13 @@
+{
+  "revision": 8,
+  "running": false,
+  "generation": 3,
+  "sinceEpochMs": 1795300000000,
+  "error": "internal",
+  "traffic": {
+    "upTotal": 1048576,
+    "downTotal": 52428800,
+    "activeFlows": 0
+  },
+  "catalog": null
+}

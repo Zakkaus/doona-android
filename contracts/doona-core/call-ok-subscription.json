@@ -1,0 +1,13 @@
+{
+  "ok": {
+    "id": "s1",
+    "name": "harbor",
+    "url": "https://example.invalid/sub?token=REDACTED",
+    "nodes": 2,
+    "updatedAtEpochMs": 1795300000000,
+    "error": null,
+    "usedBytes": 1073741824,
+    "totalBytes": 107374182400,
+    "expiresAtEpochMs": 1798000000000
+  }
+}

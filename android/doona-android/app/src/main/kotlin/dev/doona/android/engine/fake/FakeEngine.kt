@@ -37,16 +37,16 @@ class FakeEngine(
         status.value = Status.Stopped
     }
 
-    override suspend fun select(group: String, memberId: String?): Result<Unit> {
+    override suspend fun select(groupId: String, memberId: String?): Result<Unit> {
         groups.update { all ->
             all.map { g ->
-                if (g.name != group) g else g.copy(selectedId = memberId ?: g.members.firstOrNull()?.id, pinned = memberId != null)
+                if (g.id != groupId) g else g.copy(selectedId = memberId ?: g.members.firstOrNull()?.id, pinned = memberId != null)
             }
         }
         return Result.success(Unit)
     }
 
-    override suspend fun testLatency(group: String?): Result<Unit> = Result.success(Unit)
+    override suspend fun testLatency(groupId: String?): Result<Unit> = Result.success(Unit)
 
     override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
         val added = Subscription(id = "s${subscriptions.value.size + 1}", name = name ?: url, url = url, nodes = 0, updatedAtEpochMs = 0)
@@ -80,13 +80,14 @@ class FakeEngine(
 
         val SAMPLE_GROUPS = listOf(
             Group(
+                id = "g-Proxy",
                 name = "Proxy",
                 kind = GroupKind.Selector,
                 members = listOf(Member(id = "g-Auto", name = "Auto", isGroup = true), Member(id = "g-HK", name = "HK", isGroup = true)) + NODES,
                 selectedId = "g-Auto",
             ),
-            Group(name = "Auto", kind = GroupKind.UrlTest, members = NODES, selectedId = "n-hk1"),
-            Group(name = "HK", kind = GroupKind.UrlTest, members = NODES.take(2), selectedId = "n-hk1"),
+            Group(id = "g-Auto", name = "Auto", kind = GroupKind.UrlTest, members = NODES, selectedId = "n-hk1"),
+            Group(id = "g-HK", name = "HK", kind = GroupKind.UrlTest, members = NODES.take(2), selectedId = "n-hk1"),
         )
 
         val SAMPLE_SUBSCRIPTIONS = listOf(

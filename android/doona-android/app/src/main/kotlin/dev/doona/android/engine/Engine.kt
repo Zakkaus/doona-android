@@ -21,14 +21,14 @@ interface Engine {
 
     fun disconnect()
 
-    /** Pins the member [memberId] in [group]; null hands an automatic group back to its own choice. */
-    suspend fun select(group: String, memberId: String?): Result<Unit>
+    /** Pins the member [memberId] in the group [groupId]; null hands an automatic group back to its own choice. */
+    suspend fun select(groupId: String, memberId: String?): Result<Unit>
 
     /**
-     * Starts probing the members of [group], or of every group when null, and returns once started. [Group.testing]
-     * stays true until the last probe ends; results arrive through [groups].
+     * Starts probing the members of the group [groupId], or of every group when null, and returns once started.
+     * [Group.testing] stays true until the last probe ends; results arrive through [groups].
      */
-    suspend fun testLatency(group: String? = null): Result<Unit>
+    suspend fun testLatency(groupId: String? = null): Result<Unit>
 
     /** Fetches [url], decodes its nodes and adds them to the group template. */
     suspend fun addSubscription(url: String, name: String? = null): Result<Subscription>
@@ -105,6 +105,8 @@ data class Member(
 
 /** [selectedId] is the member carrying traffic now; [pinned] says the user chose it rather than the group's own test. */
 data class Group(
+    /** `g-` plus the group's name; stable. */
+    val id: String,
     val name: String,
     val kind: GroupKind,
     val members: List<Member>,

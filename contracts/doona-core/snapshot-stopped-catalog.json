@@ -1,0 +1,124 @@
+{
+  "revision": 7,
+  "running": false,
+  "generation": 0,
+  "sinceEpochMs": null,
+  "error": null,
+  "traffic": {
+    "upTotal": 0,
+    "downTotal": 0,
+    "activeFlows": 0
+  },
+  "catalog": {
+    "mode": "Global",
+    "groups": [
+      {
+        "id": "g-Proxy",
+        "name": "Proxy",
+        "kind": "Selector",
+        "selectedId": "g-Auto",
+        "pinned": false,
+        "testing": false,
+        "members": [
+          {
+            "id": "g-Auto",
+            "name": "Auto",
+            "latencyMs": null,
+            "failed": false,
+            "isGroup": true,
+            "subscriptionId": null
+          },
+          {
+            "id": "g-HK",
+            "name": "HK",
+            "latencyMs": null,
+            "failed": false,
+            "isGroup": true,
+            "subscriptionId": null
+          },
+          {
+            "id": "n-7f3a19c2",
+            "name": "hk-01",
+            "latencyMs": 42,
+            "failed": false,
+            "isGroup": false,
+            "subscriptionId": "s1"
+          },
+          {
+            "id": "n-0c41be77",
+            "name": "hk-01",
+            "latencyMs": 57,
+            "failed": false,
+            "isGroup": false,
+            "subscriptionId": "s1"
+          }
+        ]
+      },
+      {
+        "id": "g-Auto",
+        "name": "Auto",
+        "kind": "UrlTest",
+        "selectedId": "n-7f3a19c2",
+        "pinned": false,
+        "testing": true,
+        "members": [
+          {
+            "id": "n-7f3a19c2",
+            "name": "hk-01",
+            "latencyMs": 42,
+            "failed": false,
+            "isGroup": false,
+            "subscriptionId": "s1"
+          },
+          {
+            "id": "n-0c41be77",
+            "name": "hk-01",
+            "latencyMs": 57,
+            "failed": false,
+            "isGroup": false,
+            "subscriptionId": "s1"
+          }
+        ]
+      },
+      {
+        "id": "g-HK",
+        "name": "HK",
+        "kind": "UrlTest",
+        "selectedId": "n-7f3a19c2",
+        "pinned": false,
+        "testing": false,
+        "members": [
+          {
+            "id": "n-7f3a19c2",
+            "name": "hk-01",
+            "latencyMs": 42,
+            "failed": false,
+            "isGroup": false,
+            "subscriptionId": "s1"
+          },
+          {
+            "id": "n-0c41be77",
+            "name": "hk-01",
+            "latencyMs": 57,
+            "failed": false,
+            "isGroup": false,
+            "subscriptionId": "s1"
+          }
+        ]
+      }
+    ],
+    "subscriptions": [
+      {
+        "id": "s1",
+        "name": "harbor",
+        "url": "https://example.invalid/sub?token=REDACTED",
+        "nodes": 2,
+        "updatedAtEpochMs": 1795300000000,
+        "error": null,
+        "usedBytes": 1073741824,
+        "totalBytes": 107374182400,
+        "expiresAtEpochMs": 1798000000000
+      }
+    ]
+  }
+}
