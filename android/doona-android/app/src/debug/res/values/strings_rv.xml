@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Revolut-style sample of the 活動 screen (prototype/rv), debug builds only. -->
+<resources>
+    <string name="rv_connect">Connect</string>
+    <string name="rv_disconnect">Disconnect</string>
+    <string name="rv_test_latency">Test latency</string>
+    <string name="rv_more">More</string>
+    <string name="rv_seconds_ago">%1$d s ago</string>
+    <string name="rv_now">Now</string>
+</resources>

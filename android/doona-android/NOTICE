@@ -5,6 +5,11 @@ Subset and fixed-weight instances of the variable font in @fontsource-variable/n
 it, built by tools/fonts.py. Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
 SIL Open Font License 1.1: app/src/main/assets/licenses/noto-sans-tc-OFL.txt
 
+Inter 4.001 (app/src/debug/res/font/rv_inter_*.ttf, the prototype/rv sample only)
+Fixed-weight instances (opsz 14 and 32) and a Latin subset of Inter[opsz,wght].ttf from google/fonts ofl/inter.
+Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter).
+SIL Open Font License 1.1: app/src/debug/assets/licenses/inter-OFL.txt
+
 Adobe Spectrum 2 icons (app/src/main/res/drawable/ic_*.xml except ic_duck.xml)
 Copyright 2024 Adobe. Adapted from @react-spectrum/s2 through doona src/ui/icons; geometry unchanged, converted to
 vector drawables by tools/icons.py. Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0

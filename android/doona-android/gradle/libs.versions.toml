@@ -15,6 +15,9 @@ robolectric = "4.18.1"
 # https://github.com/takahirom/roborazzi/releases/tag/1.79.0
 roborazzi = "1.79.0"
 junit = "4.13.2"
+# Material Components for Android: only its color.utilities (material-color-utilities) in tests, to build the scheme
+# Android derives from a wallpaper colour. https://github.com/material-components/material-components-android/releases/tag/1.14.0
+material-components = "1.14.0"
 # Code style as in Now in Android: Spotless with ktlint, configured by .editorconfig.
 spotless = "8.12.0"
 ktlint = "1.8.0"
@@ -41,6 +44,7 @@ roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose"
 roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
 roborazzi-accessibility = { module = "io.github.takahirom.roborazzi:roborazzi-accessibility-check", version.ref = "roborazzi" }
 junit = { module = "junit:junit", version.ref = "junit" }
+material-components = { module = "com.google.android.material:material", version.ref = "material-components" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-ext-junit" }
 androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidx-test-espresso" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
