@@ -283,3 +283,66 @@ fn a_dns_client_that_never_reads_is_reset_after_the_drain_time() {
     assert!(reset, "the core still holds the session");
     assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
 }
+
+/// A client that half-closes and never reads, while the upstream sends a reply the client and the
+/// core's stack cannot hold, then closes: the relay's last chunk fits the queue to the driver, so
+/// the relay ends cleanly with part of the reply still waiting for the client. The driver keeps the
+/// drain time from there and resets the flow when it runs out.
+#[test]
+fn a_reply_the_client_never_takes_is_reset_after_the_drain_time() {
+    // More than the client's window and the stack's send buffer hold, less than the queue adds:
+    // 256 to 352 KiB stayed held forever before the fix.
+    let upstream = servers::sender(304 << 10);
+    let options = Options {
+        tcp_drain: DRAIN,
+        ..Options::default()
+    };
+    let mut s = setup_with("Direct", options);
+    let id = s.client.connect(upstream);
+    assert!(s.client.until(WAIT, |c| c.write_now(id, b"GET") == 3));
+    s.client.shutdown(id);
+    let begun = Instant::now();
+    let core = &s.core;
+    let gone = s
+        .client
+        .until(DRAIN + WAIT, |_| snapshot(core).traffic.active_flows == 0);
+    assert!(gone, "the core still holds the flow");
+    assert!(begun.elapsed() >= DRAIN, "{:?}", begun.elapsed());
+    assert!(
+        s.client
+            .until(WAIT, |c| c.state(id) == Some(TcpState::Closed))
+    );
+    assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
+}
+
+/// The same for DNS over TCP: the answers to queries sent with the client's FIN fit the queue, so
+/// the server ends cleanly while the client takes none of them.
+#[test]
+fn dns_answers_the_client_never_takes_are_reset_after_the_drain_time() {
+    let (resolver, _) = servers::dns_server();
+    let options = Options {
+        dns_upstreams: vec![resolver],
+        tcp_drain: DRAIN,
+        ..Options::default()
+    };
+    let mut s = setup_with("Direct", options);
+    let id = s.client.connect(RESOLVER);
+    // Five answers of about 64 KB, 313 KiB in all: the replies of the TCP test above.
+    let mut queries = Vec::new();
+    for i in 0..5 {
+        let q = servers::query(i, "huge.example", None);
+        queries.extend_from_slice(&(q.len() as u16).to_be_bytes());
+        queries.extend_from_slice(&q);
+    }
+    let mut sent = 0;
+    assert!(s.client.until(WAIT, |c| {
+        sent += c.write_now(id, &queries[sent..]);
+        sent == queries.len()
+    }));
+    s.client.shutdown(id);
+    let reset = s
+        .client
+        .until(DRAIN + WAIT, |c| c.state(id) == Some(TcpState::Closed));
+    assert!(reset, "the core still holds the session");
+    assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
+}

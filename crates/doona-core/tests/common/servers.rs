@@ -102,6 +102,26 @@ pub fn flood() -> SocketAddr {
     addr
 }
 
+/// Accepts connections and sends each `len` bytes, then its FIN; what the client sends is read and
+/// dropped until the client's FIN, so the connection never ends in a reset.
+pub fn sender(len: usize) -> SocketAddr {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(mut conn) = conn else { return };
+            let mut reader = conn.try_clone().unwrap();
+            std::thread::spawn(move || std::io::copy(&mut reader, &mut std::io::sink()));
+            std::thread::spawn(move || {
+                if conn.write_all(&vec![7u8; len]).is_ok() {
+                    let _ = conn.shutdown(Shutdown::Write);
+                }
+            });
+        }
+    });
+    addr
+}
+
 /// A loopback port with nothing listening.
 pub fn closed_port() -> SocketAddr {
     let l = TcpListener::bind("127.0.0.1:0").unwrap();

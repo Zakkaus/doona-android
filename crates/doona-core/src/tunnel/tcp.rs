@@ -1,28 +1,22 @@
 //! TCP flows: the driver's side of each accepted connection, and the task that serves it, either
 //! by dialing the original destination through the flow's route or by answering DNS itself.
 
-use super::flow::{CHUNK, Ends, Event, Events, FlowIo, Waker};
+use super::flow::{Ends, Event, Events, FlowIo, Waker};
 use super::route::Route;
+use super::splice::splice;
 use crate::dns;
 use bytes::{Buf, Bytes};
 use honk_netstack::{FlowId, Stack, StreamError, TcpState};
-use std::future::poll_fn;
-use std::io;
 use std::net::SocketAddr;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
-use std::task::{Poll, ready};
 use std::time::Duration;
-use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf};
-use tokio::sync::Notify;
 use tokio::sync::mpsc::error::{TryRecvError, TrySendError};
-use tokio::time::{Instant, sleep_until};
+use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 /// Once either side's FIN has arrived, a flow may go this long without a byte read or written in
-/// either direction before it is cut. honk's `DRAIN_DEADLINE` (honk 7cd8b13c). A TCP/53
-/// connection to the core's DNS may idle as long (see `dns::serve_tcp`).
+/// either direction before it is cut (see `flow::Drain`). honk's `DRAIN_DEADLINE` (honk
+/// 7cd8b13c). A TCP/53 connection to the core's DNS may idle as long (see `dns::serve_tcp`).
 pub(crate) const DRAIN_DEADLINE: Duration = Duration::from_secs(30);
 
 /// The driver's state for one accepted connection.
@@ -41,7 +35,8 @@ pub(crate) struct TcpFlow {
     down_shut: bool,
     /// The SYN was answered: the stack has data for us.
     pub connected: bool,
-    /// The task ended cleanly: both directions ended, and it closed its side of `down`.
+    /// The task ended cleanly: both directions ended, and it closed its side of `down`. The tail it
+    /// left in `down` must reach the stack by the drain's deadline (see [`TcpFlow::finish`]).
     pub finished: bool,
     /// Served by the core's DNS, not an app's connection: not counted in `activeFlows`.
     pub dns: bool,
@@ -53,6 +48,8 @@ pub(crate) enum Step {
     Close,
     /// The stack side failed: release the handle and end the task.
     Failed,
+    /// The drain's deadline passed: reset the client and end the task.
+    Expired,
 }
 
 impl TcpFlow {
@@ -73,8 +70,12 @@ impl TcpFlow {
         }
     }
 
-    /// Moves what can move in both directions without blocking.
+    /// Moves what can move in both directions without blocking; once the drain's deadline has
+    /// passed, nothing more.
     pub fn pump(&mut self, stack: &mut Stack, id: FlowId, scratch: &mut [u8]) -> Step {
+        if self.ends.drain.expired() {
+            return Step::Expired;
+        }
         if self.pump_up(stack, id, scratch).is_err() || self.pump_down(stack, id).is_err() {
             return Step::Failed;
         }
@@ -83,6 +84,18 @@ impl TcpFlow {
         } else {
             Step::Keep
         }
+    }
+
+    /// The task ended cleanly. From now on the driver keeps the drain's deadline: by then the tail
+    /// must be handed to the stack, or the flow is reset. Returns the deadline as it stands.
+    pub fn finish(&mut self) -> Instant {
+        self.finished = true;
+        // Begun already: the task's directions ended at FINs.
+        self.ends.drain.begin(Instant::now())
+    }
+
+    pub fn deadline(&self) -> Option<Instant> {
+        self.ends.drain.deadline()
     }
 
     fn pump_up(
@@ -94,7 +107,7 @@ impl TcpFlow {
         if !self.connected {
             return Ok(());
         }
-        if !self.ends.fin.is_cancelled()
+        if !self.ends.drain.has_begun()
             && matches!(
                 stack.tcp_state(id),
                 Some(
@@ -106,8 +119,8 @@ impl TcpFlow {
             )
         {
             // The client's FIN arrived; data before it may still wait here or in the channel, and
-            // the task's drain starts from it all the same.
-            self.ends.fin.cancel();
+            // the drain counts from now all the same, however late the task learns of it.
+            self.ends.drain.begin(Instant::now());
         }
         while let Some(tx) = &self.ends.up {
             if let Some(chunk) = self.up_pending.take() {
@@ -145,6 +158,9 @@ impl TcpFlow {
                 // for a WRITABLE event, so a remainder is retried at once.
                 match stack.tcp_write(id, &chunk) {
                     Ok(n) => {
+                        // Progress, though the chunk is not done: a slow client keeps the flow.
+                        // `pump` has checked the deadline.
+                        let _ = self.ends.drain.moved();
                         chunk.advance(n);
                         if !chunk.is_empty() {
                             self.down_pending = Some(chunk);
@@ -183,7 +199,6 @@ pub(crate) async fn dial(
     id: FlowId,
     dst: SocketAddr,
     route: Route,
-    drain: Duration,
     events: Events,
     cancel: CancellationToken,
 ) {
@@ -191,9 +206,9 @@ pub(crate) async fn dial(
         let failed = match route.connect(dst).await {
             Ok(mut upstream) => {
                 let _ = events.send(Event::Connected(id));
-                let fin = io.client_fin();
+                let drain = io.drain();
                 let mut io = io;
-                splice(&mut io, &mut upstream, &fin, drain).await.is_err()
+                splice(&mut io, &mut upstream, &drain).await.is_err()
             }
             Err(_) => {
                 drop(io);
@@ -205,134 +220,6 @@ pub(crate) async fn dial(
     tokio::select! {
         () = cancel.cancelled() => {}
         () = work => {}
-    }
-}
-
-/// Splices `client` and `upstream` until both directions end, each side's FIN passed on to the
-/// other, as `copy_bidirectional` does. From the first FIN on (the client's once `client_fin` is
-/// cancelled, even while the data before it waits behind a blocked write), a flow that moves no
-/// byte for `deadline` is cut with `TimedOut`: a peer that never closes, never reads or keeps its
-/// window shut cannot keep the flow, its buffers and its task. An error in either direction ends
-/// both.
-async fn splice<C, U>(
-    client: &mut C,
-    upstream: &mut U,
-    client_fin: &CancellationToken,
-    deadline: Duration,
-) -> io::Result<()>
-where
-    C: AsyncRead + AsyncWrite + Unpin + ?Sized,
-    U: AsyncRead + AsyncWrite + Unpin + ?Sized,
-{
-    let (mut client_rd, mut client_wr) = tokio::io::split(client);
-    let (mut upstream_rd, mut upstream_wr) = tokio::io::split(upstream);
-    let moved = Moved::new();
-    let eof = Notify::new();
-    let copy = async {
-        tokio::try_join!(
-            copy_way(&mut client_rd, &mut upstream_wr, &moved, &eof),
-            copy_way(&mut upstream_rd, &mut client_wr, &moved, &eof),
-        )
-        .map(drop)
-    };
-    let cutoff = async {
-        tokio::select! {
-            () = eof.notified() => {}
-            () = client_fin.cancelled() => {}
-        }
-        drain(&moved, deadline).await;
-    };
-    tokio::select! {
-        biased;
-        result = copy => result,
-        // A busy direction can spend the task's budget before the timer is polled.
-        () = tokio::task::unconstrained(cutoff) => Err(io::ErrorKind::TimedOut.into()),
-    }
-}
-
-/// When either direction last read or wrote a byte: nanoseconds after `base` on tokio's monotonic
-/// clock.
-struct Moved {
-    base: Instant,
-    at: AtomicU64,
-}
-
-impl Moved {
-    fn new() -> Moved {
-        Moved {
-            base: Instant::now(),
-            at: AtomicU64::new(0),
-        }
-    }
-
-    /// Records that a byte moved now.
-    fn mark(&self) {
-        let at = u64::try_from(self.base.elapsed().as_nanos()).unwrap_or(u64::MAX);
-        self.at.fetch_max(at, Relaxed);
-    }
-
-    fn last(&self) -> Instant {
-        self.base + Duration::from_nanos(self.at.load(Relaxed))
-    }
-}
-
-/// Copies `rd` to `wr` until `rd`'s FIN, then flushes `wr` and shuts its write side down. `eof`
-/// is woken at the FIN, before the final flush and shutdown, which may block.
-async fn copy_way<R, W>(rd: &mut R, wr: &mut W, moved: &Moved, eof: &Notify) -> io::Result<()>
-where
-    R: AsyncRead + Unpin,
-    W: AsyncWrite + Unpin,
-{
-    let mut buf = vec![0; CHUNK];
-    let mut unflushed = false;
-    loop {
-        let n = poll_fn(|cx| -> Poll<io::Result<usize>> {
-            let mut chunk = ReadBuf::new(&mut buf);
-            match Pin::new(&mut *rd).poll_read(cx, &mut chunk) {
-                Poll::Ready(result) => Poll::Ready(result.map(|()| chunk.filled().len())),
-                Poll::Pending => {
-                    // Nothing to read for now: a node's protocol may hold what it was given until
-                    // it is flushed.
-                    if unflushed {
-                        ready!(Pin::new(&mut *wr).poll_flush(cx))?;
-                        unflushed = false;
-                    }
-                    Poll::Pending
-                }
-            }
-        })
-        .await?;
-        if n == 0 {
-            eof.notify_one();
-            break;
-        }
-        moved.mark();
-        let mut rest = &buf[..n];
-        while !rest.is_empty() {
-            let written = wr.write(rest).await?;
-            if written == 0 {
-                return Err(io::ErrorKind::WriteZero.into());
-            }
-            moved.mark();
-            rest = &rest[written..];
-        }
-        unflushed = true;
-    }
-    wr.flush().await?;
-    wr.shutdown().await
-}
-
-/// Returns once no byte moved for `idle`, counted from the later of the drain's start and the last
-/// byte moved on the monotonic clock: a late wakeup, as after the process was stopped, does not
-/// extend it.
-async fn drain(moved: &Moved, idle: Duration) {
-    let start = Instant::now();
-    loop {
-        let deadline = moved.last().max(start) + idle;
-        if Instant::now() >= deadline {
-            return;
-        }
-        sleep_until(deadline).await;
     }
 }
 
@@ -363,134 +250,86 @@ pub(crate) async fn serve_dns(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tunnel::flow::{self, DEPTH, Key};
+    use crate::tunnel::flow::{self, CHUNK, DEPTH, Key};
     use honk_netstack::{AcceptOpts, AcceptWhen, Config, ExcludeSet, Mode};
-    use tokio::io::{AsyncReadExt, DuplexStream, duplex};
+    use std::io;
+    use tokio::io::{AsyncWriteExt, duplex};
     use tokio::sync::mpsc;
-    use tokio::task::JoinHandle;
 
     /// How late a timer of the paused clock may fire: tokio's timers count whole milliseconds.
     const LATE: Duration = Duration::from_millis(10);
 
-    /// A splice between a flow's client end and an in-memory upstream, after the client sent
-    /// `request` and its FIN; the server end of the upstream is returned with the driver's ends.
-    fn spliced(request: &'static [u8]) -> (Ends, DuplexStream, JoinHandle<io::Result<()>>) {
+    /// Lets the relay fill the queue to the driver, and the driver move what the stack takes.
+    async fn settle_all(wire: &mut Wire, flow: &mut TcpFlow, id: FlowId, scratch: &mut [u8]) {
+        for _ in 0..32 {
+            for _ in 0..4 {
+                tokio::task::yield_now().await;
+            }
+            assert!(matches!(flow.pump(&mut wire.core, id, scratch), Step::Keep));
+            wire.settle();
+        }
+    }
+
+    /// After its FIN the client reads a little every two thirds of the deadline. The stack takes
+    /// each piece from the chunk the driver holds, so the relay, waiting on the full queue, moves
+    /// nothing all that time; the pieces count as progress, and the flow is cut only a deadline
+    /// after the client stops.
+    #[tokio::test(start_paused = true)]
+    async fn a_client_that_reads_slowly_keeps_the_flow_in_the_middle_of_a_chunk() {
+        let (mut wire, app, id) = Wire::connected();
         let (events, _) = mpsc::unbounded_channel();
-        // The key only names the flow in its wakes, which nothing reads here.
-        let (mut ends, mut io) = flow::pair(Waker::new(Key::Udp(0), events));
-        let up = ends.up.take().unwrap();
-        up.try_send(Bytes::from_static(request)).unwrap();
-        drop(up);
-        let (mut upstream, server) = duplex(CHUNK);
-        let fin = io.client_fin();
-        let relay =
-            tokio::spawn(async move { splice(&mut io, &mut upstream, &fin, DRAIN_DEADLINE).await });
-        (ends, server, relay)
-    }
-
-    /// The upstream answers the client's request and FIN, then never closes: the flow is cut, as a
-    /// failure, [`DRAIN_DEADLINE`] after the answer, which reaches the client first.
-    #[tokio::test(start_paused = true)]
-    async fn an_upstream_that_never_closes_after_the_clients_fin_is_cut_at_the_deadline() {
-        let (mut ends, mut server, relay) = spliced(b"GET");
-        let mut request = Vec::new();
-        server.read_to_end(&mut request).await.unwrap();
-        assert_eq!(request, b"GET");
-        server.write_all(b"200").await.unwrap();
-        let answered = Instant::now();
-        // Without the bound the splice never ends; the timeout turns that into a failure.
-        let ended = tokio::time::timeout(2 * DRAIN_DEADLINE, relay).await;
-        assert!(
-            matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == io::ErrorKind::TimedOut),
-            "{ended:?}"
-        );
-        let idle = answered.elapsed();
-        assert!(idle >= DRAIN_DEADLINE, "{idle:?}");
-        assert!(idle <= DRAIN_DEADLINE + LATE, "{idle:?}");
-        assert_eq!(ends.down.recv().await.as_deref(), Some(&b"200"[..]));
-        assert_eq!(ends.down.recv().await, None, "the client's side is closed");
-        assert_eq!(
-            server.read(&mut [0; 1]).await.unwrap(),
-            0,
-            "so is the upstream"
-        );
-    }
-
-    /// An upstream that keeps sending after the client's FIN, each pause shorter than the
-    /// deadline, runs past it and ends when the upstream closes.
-    #[tokio::test(start_paused = true)]
-    async fn a_slow_upstream_that_keeps_sending_is_not_cut() {
-        let (mut ends, mut server, relay) = spliced(b"GET");
-        let mut request = Vec::new();
-        server.read_to_end(&mut request).await.unwrap();
-        let begun = Instant::now();
-        for part in [b"a", b"b", b"c"] {
+        let waker = Waker::new(Key::Tcp(id), events);
+        let (ends, mut io) = flow::pair(Arc::clone(&waker), DRAIN_DEADLINE);
+        let mut flow = TcpFlow::new(ends, waker, false);
+        flow.connected = true;
+        let drain = io.drain();
+        let (mut upstream, mut server) = duplex(CHUNK);
+        let relay = tokio::spawn(async move { splice(&mut io, &mut upstream, &drain).await });
+        // The upstream sends more than the client, the stack and the queue hold, and never closes.
+        tokio::spawn(async move {
+            let _ = server.write_all(&vec![7; 4 << 20]).await;
+            std::future::pending::<()>().await
+        });
+        wire.client.tcp_shutdown(app).unwrap();
+        wire.settle();
+        let mut scratch = vec![0; CHUNK];
+        settle_all(&mut wire, &mut flow, id, &mut scratch).await;
+        // Leave most of a chunk with the driver: the reads below never finish it.
+        let held = flow.down_pending.as_ref().map_or(0, Bytes::len);
+        if held < CHUNK / 2 {
+            wire.take(app, held + 4096);
+            settle_all(&mut wire, &mut flow, id, &mut scratch).await;
+        }
+        let mut held = flow.down_pending.as_ref().map_or(0, Bytes::len);
+        assert!(held >= CHUNK / 2, "{held}");
+        for _ in 0..3 {
             tokio::time::sleep(DRAIN_DEADLINE * 2 / 3).await;
-            server.write_all(part).await.unwrap();
+            assert!(!relay.is_finished(), "a client that reads was cut");
+            wire.take(app, 4096);
+            assert!(matches!(
+                flow.pump(&mut wire.core, id, &mut scratch),
+                Step::Keep
+            ));
+            wire.settle();
+            let now = flow.down_pending.as_ref().map_or(0, Bytes::len);
+            assert!(now > 0 && now < held, "{now} of {held}");
+            held = now;
         }
-        drop(server);
-        relay.await.unwrap().unwrap();
-        assert!(begun.elapsed() >= 2 * DRAIN_DEADLINE);
-        let mut got = Vec::new();
-        while let Some(chunk) = ends.down.recv().await {
-            got.extend_from_slice(&chunk);
-        }
-        assert_eq!(got, b"abc");
-    }
-
-    /// The client's FIN waits behind data the upstream does not take: the relay is stuck in a
-    /// write and never reads that far. The FIN still starts the drain once the driver signals it,
-    /// and the flow is cut a deadline after its last byte moved, as a failure.
-    #[tokio::test(start_paused = true)]
-    async fn a_fin_queued_behind_a_blocked_write_still_starts_the_drain() {
-        let (events, _) = mpsc::unbounded_channel();
-        let (mut ends, mut io) = flow::pair(Waker::new(Key::Udp(0), events));
-        let fin = io.client_fin();
-        // The upstream never reads, and one chunk fills its buffer.
-        let (mut upstream, _server) = duplex(CHUNK);
-        let relay =
-            tokio::spawn(async move { splice(&mut io, &mut upstream, &fin, DRAIN_DEADLINE).await });
-        // One chunk fills the upstream, the next blocks the relay's write, DEPTH more queue up.
-        let up = ends.up.take().unwrap();
-        for _ in 0..DEPTH + 2 {
-            up.send(Bytes::from(vec![7; CHUNK])).await.unwrap();
-        }
-        // What the driver does when the client's FIN arrives behind them.
-        drop(up);
-        ends.fin.cancel();
-        let fin_at = Instant::now();
+        let stopped = Instant::now();
         let ended = tokio::time::timeout(2 * DRAIN_DEADLINE, relay).await;
         assert!(
             matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == io::ErrorKind::TimedOut),
             "{ended:?}"
         );
-        let idle = fin_at.elapsed();
-        assert!(idle >= DRAIN_DEADLINE, "{idle:?}");
-        assert!(idle <= DRAIN_DEADLINE + LATE, "{idle:?}");
-        assert_eq!(ends.down.recv().await, None, "the client's side is closed");
-    }
-
-    /// The deadline counts from the last byte moved, not from when the drain noticed it: a flow
-    /// idle since before the process stopped for twice the deadline is cut when it runs again.
-    #[tokio::test(start_paused = true)]
-    async fn a_late_wakeup_does_not_extend_the_drain() {
-        let (_ends, mut server, relay) = spliced(b"GET");
-        let mut request = Vec::new();
-        server.read_to_end(&mut request).await.unwrap();
-        // Off the 100 ms grid on which a drain that samples counters would look.
-        tokio::time::sleep(DRAIN_DEADLINE / 2 + Duration::from_millis(50)).await;
-        server.write_all(b"200").await.unwrap();
-        // The relay moves the answer; no timer is due, so the drain does not look yet.
-        for _ in 0..8 {
-            tokio::task::yield_now().await;
-        }
-        // The process is stopped: the clock jumps, and every timer is late.
-        tokio::time::advance(2 * DRAIN_DEADLINE).await;
-        let ended = tokio::time::timeout(LATE, relay).await;
+        let idle = stopped.elapsed();
         assert!(
-            matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == io::ErrorKind::TimedOut),
-            "{ended:?}"
+            idle >= DRAIN_DEADLINE && idle <= DRAIN_DEADLINE + LATE,
+            "{idle:?}"
         );
+        assert!(matches!(
+            flow.pump(&mut wire.core, id, &mut scratch),
+            Step::Expired
+        ));
     }
 
     /// An app's stack and the core's, back to back, with one connection between them.
@@ -527,6 +366,16 @@ mod tests {
             (wire, app.unwrap(), syn.id)
         }
 
+        /// The app reads `n` bytes it has received, then the packets move.
+        fn take(&mut self, app: FlowId, n: usize) {
+            let mut buf = vec![0; n];
+            let mut got = 0;
+            while got < n {
+                got += self.client.tcp_read(app, &mut buf[got..]).unwrap();
+            }
+            self.settle();
+        }
+
         /// Moves packets both ways until neither stack has one to send.
         fn settle(&mut self) {
             let now = std::time::Instant::now();
@@ -546,13 +395,14 @@ mod tests {
     }
 
     /// The task has taken nothing, so the driver holds what it read and leaves the client's FIN
-    /// in the stack: the task learns of the FIN all the same (see [`splice`]).
+    /// in the stack: the drain begins all the same, from when the driver saw the FIN (see
+    /// [`splice`]).
     #[test]
     fn the_clients_fin_reaches_the_task_while_the_data_before_it_waits() {
         let (mut wire, app, id) = Wire::connected();
         let (events, _) = mpsc::unbounded_channel();
         let waker = Waker::new(Key::Tcp(id), events);
-        let (ends, io) = flow::pair(Arc::clone(&waker));
+        let (ends, io) = flow::pair(Arc::clone(&waker), DRAIN_DEADLINE);
         let up = ends.up.clone().unwrap();
         for _ in 0..DEPTH {
             up.try_send(Bytes::from_static(b"x")).unwrap();
@@ -563,12 +413,16 @@ mod tests {
         wire.client.tcp_shutdown(app).unwrap();
         wire.settle();
         let mut scratch = vec![0; CHUNK];
+        let seen = Instant::now();
         assert!(matches!(
             flow.pump(&mut wire.core, id, &mut scratch),
             Step::Keep
         ));
+        let pumped = Instant::now();
         assert_eq!(flow.up_pending.as_deref(), Some(&b"GET"[..]));
         assert!(!flow.up_eof, "the FIN is still in the stack");
-        assert!(io.client_fin().is_cancelled());
+        assert!(io.drain().has_begun());
+        let deadline = io.drain().deadline().unwrap();
+        assert!(seen + DRAIN_DEADLINE <= deadline && deadline <= pumped + DRAIN_DEADLINE);
     }
 }

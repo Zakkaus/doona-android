@@ -181,7 +181,8 @@ pub(crate) async fn answer(
 /// that takes `idle` to arrive, or an answer `idle` to be taken, ends it with `TimedOut`, so the
 /// driver resets the client and drops what it still holds for it: a client that sends neither a
 /// query nor its FIN, or never reads, cannot hold the connection or its buffers. Each wait has a
-/// fixed deadline on tokio's monotonic clock, so a late wakeup does not extend it.
+/// fixed deadline on tokio's monotonic clock, so a late wakeup does not extend it. Answers still
+/// queued for the client when this returns are bounded by the driver (see `TcpFlow::finish`).
 pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
     io: &mut S,
     upstreams: &[SocketAddr],

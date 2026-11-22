@@ -56,8 +56,12 @@ val cargoBin = (System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home"
 // rustup's default location when present, so a Gradle daemon started without cargo on PATH works.
 val cargo = File(cargoBin, "cargo").takeIf { it.canExecute() }?.path ?: "cargo"
 val ndkDir = androidComponents.sdkComponents.ndkDirectory
-// Cargo's target directory as the environment sets it; each feature set builds in its own directory below it.
+// Cargo's target directory as the environment sets it; each checkout and feature set builds in its own directory
+// below it. Cargo hashes a path package relative to its workspace, so two checkouts sharing one target directory
+// build the same unit: one whose sources are older than the other's last build takes that build as fresh, and
+// cargo-ndk packages the other checkout's library.
 val coreTarget = providers.environmentVariable("CARGO_TARGET_DIR").orNull?.let(::File) ?: coreDir.resolve("target")
+val coreCheckout = coreDir.canonicalFile.parentFile.parentFile.let { "${it.name}-%08x".format(it.path.hashCode()) }
 val skipCore = providers.gradleProperty("doona.skipCore").orNull.toBoolean()
 
 androidComponents {
@@ -67,7 +71,7 @@ androidComponents {
         val features = if (variant.buildType == "debug") listOf("--features", "fault-hook") else emptyList()
         // One target directory per feature set: in a shared one, a build of the other set would overwrite the library
         // that cargo-ndk copies, and each switch between debug and release would rebuild the core.
-        val targetDir = coreTarget.resolve(if (features.isEmpty()) "android" else "android-fault-hook")
+        val targetDir = coreTarget.resolve("android-$coreCheckout" + if (features.isEmpty()) "" else "-fault-hook")
         val buildCore = tasks.register<CargoNdk>("buildDoonaCore" + variant.name.replaceFirstChar { it.uppercase() }) {
             description = "Builds libdoonacore.so for arm64-v8a with cargo-ndk and checks its JNI exports."
             workingDir = coreDir // rustup reads rust-toolchain.toml from the working directory

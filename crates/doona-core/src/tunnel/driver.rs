@@ -15,13 +15,15 @@ use crate::sys;
 use honk_netstack::{
     AcceptOpts, AcceptWhen, Config, ExcludeSet, FlowId, Mode, Ready, Refuse, Rx, Stack,
 };
-use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 use std::io::{self, ErrorKind};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::io::Interest;
 use tokio::sync::{Semaphore, mpsc};
+use tokio::time;
 
 /// Packets read per wakeup before the stack's output gets a turn (the stack's batch limit).
 const TUN_BATCH: usize = 64;
@@ -70,6 +72,8 @@ struct Driver {
     tcp: HashMap<FlowId, TcpFlow>,
     /// How many of `tcp` the core's DNS serves.
     dns_flows: usize,
+    /// The flows of `tcp` whose task ended while their tail still waits for the client.
+    tails: BinaryHeap<Due>,
     nat: Nat,
     dns_slots: Arc<Semaphore>,
     /// Tun input, stack output, and the buffer flows are read into.
@@ -102,6 +106,7 @@ impl Driver {
             events,
             tcp: HashMap::new(),
             dns_flows: 0,
+            tails: BinaryHeap::new(),
             nat: Nat::new(Budget::new(udp::QUEUED_BYTES), idle),
             dns_slots: Arc::new(Semaphore::new(DNS_IN_FLIGHT)),
             rx: vec![0; mtu.max(1500) + 64],
@@ -119,9 +124,9 @@ impl Driver {
         events: &mut mpsc::UnboundedReceiver<Event>,
     ) -> io::Result<()> {
         loop {
-            let deadline = self.stack.poll_timeout();
+            let deadline = self.next_deadline();
             let blocked = self.pending_tx.is_some();
-            let far = Instant::now() + Duration::from_secs(3600);
+            let far = time::Instant::now() + Duration::from_secs(3600);
             tokio::select! {
                 ev = events.recv() => {
                     // The driver holds a sender, so the channel never closes.
@@ -141,10 +146,17 @@ impl Driver {
                     r?;
                     self.retry_tx(tun)?;
                 }
-                () = tokio::time::sleep_until(deadline.unwrap_or(far).into()), if deadline.is_some() => {}
+                () = time::sleep_until(deadline.unwrap_or(far)), if deadline.is_some() => {}
             }
             self.settle(tun)?;
         }
+    }
+
+    /// The stack's next timer or the first tail's deadline, whichever comes first.
+    fn next_deadline(&self) -> Option<time::Instant> {
+        let stack = self.stack.poll_timeout().map(time::Instant::from_std);
+        let tail = self.tails.peek().map(|due| due.0);
+        stack.into_iter().chain(tail).min()
     }
 
     /// Timers, new connections, stack events, output, and the counters `snapshot` reads.
@@ -153,6 +165,7 @@ impl Driver {
         if self.stack.poll_timeout().is_some_and(|d| d <= now) {
             self.stack.handle_timeout(now);
         }
+        self.expire_tails();
         self.accept();
         while let Some((id, ready)) = self.stack.poll_event() {
             if ready.contains(Ready::ERROR) {
@@ -249,16 +262,8 @@ impl Driver {
                     }
                 }
             }
-            Event::Finished { id, failed } => {
-                if let Some(f) = self.tcp.get_mut(&id) {
-                    f.finished = true;
-                    if failed {
-                        self.reset_tcp(id);
-                    } else {
-                        self.service_tcp(id);
-                    }
-                }
-            }
+            Event::Finished { id, failed: true } => self.reset_tcp(id),
+            Event::Finished { id, failed: false } => self.finish_tcp(id),
             Event::UdpEnded(n) => self.nat.remove(n),
             Event::DnsAnswer {
                 from, to, payload, ..
@@ -304,16 +309,16 @@ impl Driver {
             return;
         }
         let waker = Waker::new(Key::Tcp(id), self.events.clone());
-        let (ends, io) = flow::pair(Arc::clone(&waker));
+        let drain = self.settings.tcp_drain;
+        let (ends, io) = flow::pair(Arc::clone(&waker), drain);
         let flow = TcpFlow::new(ends, waker, dst.is_none());
         let (events, cancel) = (self.events.clone(), flow.cancel.clone());
-        let drain = self.settings.tcp_drain;
         self.dns_flows += usize::from(flow.dns);
         self.tcp.insert(id, flow);
         match dst {
             Some(dst) => self
                 .gen_
-                .spawn(tcp::dial(io, id, dst, route, drain, events, cancel)),
+                .spawn(tcp::dial(io, id, dst, route, events, cancel)),
             None => {
                 let upstreams = Arc::clone(&self.upstreams);
                 let task = tcp::serve_dns(io, id, route, upstreams, drain, events, cancel);
@@ -329,7 +334,37 @@ impl Driver {
         flow.waker.rearm();
         match flow.pump(&mut self.stack, id, &mut self.scratch) {
             Step::Keep => {}
+            Step::Expired => self.reset_tcp(id),
             step => self.end_tcp(id, step),
+        }
+    }
+
+    /// The task ended cleanly. The flow closes once its tail is handed to the stack; until then the
+    /// driver keeps the drain's deadline, and resets the flow when it passes.
+    fn finish_tcp(&mut self, id: FlowId) {
+        let Some(deadline) = self.tcp.get_mut(&id).map(TcpFlow::finish) else {
+            return;
+        };
+        self.service_tcp(id);
+        if self.tcp.contains_key(&id) {
+            self.tails.push(Due(deadline, id));
+        }
+    }
+
+    /// Resets each finished flow whose drain has run out with its tail not handed to the stack.
+    /// A flow that moved since its entry was queued is queued again for its new deadline.
+    fn expire_tails(&mut self) {
+        let now = time::Instant::now();
+        while let Some(&Due(at, id)) = self.tails.peek()
+            && at <= now
+        {
+            self.tails.pop();
+            // Gone already: closed, or reset by a pump that found it expired.
+            match self.tcp.get(&id).and_then(TcpFlow::deadline) {
+                Some(deadline) if deadline > now => self.tails.push(Due(deadline, id)),
+                Some(_) => self.reset_tcp(id),
+                None => {}
+            }
         }
     }
 
@@ -349,9 +384,11 @@ impl Driver {
         }
     }
 
-    /// The upstream failed: reset the client, or refuse its SYN if it was never answered.
+    /// The upstream failed, or the drain ran out: reset the client, or refuse its SYN if it was
+    /// never answered, and end the task if it still runs.
     fn reset_tcp(&mut self, id: FlowId) {
         if let Some(flow) = self.remove_tcp(id) {
+            flow.cancel.cancel();
             if flow.connected {
                 self.stack.tcp_abort(id);
             } else {
@@ -422,6 +459,30 @@ impl Driver {
         }
     }
 }
+
+/// A finished TCP flow's drain deadline as queued; the earliest is the heap's greatest.
+#[derive(Clone, Copy)]
+struct Due(time::Instant, FlowId);
+
+impl Ord for Due {
+    fn cmp(&self, other: &Due) -> Ordering {
+        other.0.cmp(&self.0)
+    }
+}
+
+impl PartialOrd for Due {
+    fn partial_cmp(&self, other: &Due) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Due {
+    fn eq(&self, other: &Due) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl Eq for Due {}
 
 /// The route of a new flow of `session`'s generation from the tun.
 fn new_route(settings: &Settings, session: &Arc<Session>) -> Route {

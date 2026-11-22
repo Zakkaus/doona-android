@@ -9,6 +9,7 @@
 mod driver;
 mod flow;
 pub mod route;
+mod splice;
 mod tcp;
 mod tun;
 mod udp;
