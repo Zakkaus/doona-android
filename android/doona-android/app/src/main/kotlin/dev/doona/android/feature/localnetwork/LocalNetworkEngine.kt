@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
 /**
  * The [Engine] the screens use: the same engine, with the local network permission asked for where an action of the
  * user's failed with [ErrorCode.LocalNetwork] (ARCH D26). Adding or updating a subscription asks and, once allowed,
- * runs once more; a latency test, whose results arrive after it returns, asks when it ends with a node that failed on the
+ * runs once more; refused, it waits on the refusal and runs once more if the user goes from it to the app's settings
+ * and comes back with access allowed. A latency test, whose results arrive after it returns, asks when it ends with a node that failed on the
  * local network, and tests the groups that failed once more. Every other call passes straight through. [scope] outlives
  * the screens, and the asking and the retry run in it, so they go on after the page that started them is left.
  */
@@ -51,7 +52,7 @@ class LocalNetworkEngine(
     private suspend fun <T> retried(action: suspend () -> Result<T>): Result<T> = scope.async {
         val first = action()
         val blocked = (first.exceptionOrNull() as? EngineException)?.code == ErrorCode.LocalNetwork
-        if (blocked && access.ask()) action() else first
+        if (blocked && (access.ask() || access.allowedInSettings())) action() else first
     }.await()
 
     /** One follower at a time: tests started while it waits add their groups to the ones it may test again. */

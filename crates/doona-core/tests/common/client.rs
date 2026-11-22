@@ -1,7 +1,7 @@
 //! The apps behind the VPN: an endpoint-mode honk Stack at the tun's address, on the far end of
 //! the socketpair the core uses as its tun, driven from the test thread.
 
-use honk_netstack::{Config, FlowId, Rx, Stack, StreamError};
+use honk_netstack::{Config, FlowId, Rx, Stack, StreamError, TcpState};
 use std::io::ErrorKind;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::os::fd::{AsRawFd, OwnedFd};
@@ -173,6 +173,24 @@ impl Client {
         }
     }
 
+    /// Reads until EOF without writing. Returns what was read, or the error that ended the flow.
+    pub fn read_to_end(&mut self, id: FlowId) -> Result<Vec<u8>, StreamError> {
+        let mut got = Vec::new();
+        let end = Instant::now() + Duration::from_secs(20);
+        loop {
+            assert!(Instant::now() < end, "read timed out: got {}", got.len());
+            loop {
+                match self.st.tcp_read(id, &mut self.buf) {
+                    Ok(0) => return Ok(got),
+                    Ok(n) => got.extend_from_slice(&self.buf[..n]),
+                    Err(StreamError::WouldBlock) => break,
+                    Err(e) => return Err(e),
+                }
+            }
+            self.turn();
+        }
+    }
+
     /// Reads whatever is buffered; Err once the flow failed or closed.
     pub fn read_now(&mut self, id: FlowId) -> Result<Vec<u8>, StreamError> {
         let mut got = Vec::new();
@@ -188,6 +206,17 @@ impl Client {
 
     pub fn write_now(&mut self, id: FlowId, data: &[u8]) -> usize {
         self.st.tcp_write(id, data).unwrap_or(0)
+    }
+
+    /// Sends FIN after what was written.
+    pub fn shutdown(&mut self, id: FlowId) {
+        self.st.tcp_shutdown(id).unwrap();
+        self.turn();
+    }
+
+    /// The flow's state, without reading from it.
+    pub fn state(&self, id: FlowId) -> Option<TcpState> {
+        self.st.tcp_state(id)
     }
 
     pub fn send_udp(&mut self, dst: SocketAddr, payload: &[u8]) {

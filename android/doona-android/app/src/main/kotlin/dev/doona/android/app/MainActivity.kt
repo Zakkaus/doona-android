@@ -69,6 +69,12 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null && !fromHistory) handle(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Back from the app's settings, where a fetch waiting on the local network refusal may have been allowed.
+        container.localNetwork.resumed()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(KEY_CONNECTING, connecting)

@@ -10,11 +10,13 @@ use std::io::{self, ErrorKind};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering::AcqRel};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering::AcqRel, Ordering::Relaxed};
 use std::task::{Context, Poll, ready};
+use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::sync::{OwnedSemaphorePermit, mpsc};
-use tokio_util::sync::PollSender;
+use tokio::time::Instant;
+use tokio_util::sync::{CancellationToken, PollSender};
 
 /// The largest chunk either side puts in a channel.
 pub(crate) const CHUNK: usize = 32 * 1024;
@@ -77,12 +79,90 @@ impl Waker {
     }
 }
 
+/// A TCP flow's drain: from the first FIN either way, the flow may go `idle` without a byte moved
+/// before it is cut. The task and the driver share it: either begins it, the driver when it sees
+/// the client's FIN (while the data before it may still wait in the channel or the stack), both
+/// count progress, and once the task has ended the driver keeps its deadline. Times are on
+/// tokio's monotonic clock, as nanoseconds after `base`.
+pub(crate) struct Drain {
+    idle: Duration,
+    base: Instant,
+    /// When the drain began; `u64::MAX` before.
+    began: AtomicU64,
+    /// When a byte last moved.
+    moved: AtomicU64,
+    /// Cancelled once the drain has begun.
+    begun: CancellationToken,
+}
+
+impl Drain {
+    fn new(idle: Duration) -> Drain {
+        Drain {
+            idle,
+            base: Instant::now(),
+            began: AtomicU64::new(u64::MAX),
+            moved: AtomicU64::new(0),
+            begun: CancellationToken::new(),
+        }
+    }
+
+    fn nanos(&self, at: Instant) -> u64 {
+        let since = at.saturating_duration_since(self.base).as_nanos();
+        u64::try_from(since).unwrap_or(u64::MAX - 1)
+    }
+
+    fn due(&self, began: u64) -> Instant {
+        let from = began.max(self.moved.load(Relaxed));
+        self.base + Duration::from_nanos(from) + self.idle
+    }
+
+    /// Begins the drain at `at`, when a FIN was first seen, unless it began earlier; returns the
+    /// deadline.
+    pub fn begin(&self, at: Instant) -> Instant {
+        let at = self.nanos(at);
+        let began = self.began.fetch_min(at, Relaxed).min(at);
+        self.begun.cancel();
+        self.due(began)
+    }
+
+    pub fn has_begun(&self) -> bool {
+        self.begun.is_cancelled()
+    }
+
+    /// Returns once the drain has begun.
+    pub async fn begun(&self) {
+        self.begun.cancelled().await;
+    }
+
+    /// When the flow is cut unless a byte moves first; `None` before the drain begins.
+    pub fn deadline(&self) -> Option<Instant> {
+        let began = self.began.load(Relaxed);
+        (began != u64::MAX).then(|| self.due(began))
+    }
+
+    pub fn expired(&self) -> bool {
+        self.deadline().is_some_and(|d| Instant::now() >= d)
+    }
+
+    /// Counts a byte moved now. Past the deadline nothing is counted and the flow is to be cut: a
+    /// read or write after a stop of the process cannot revive a flow whose time ran out during it.
+    pub fn moved(&self) -> io::Result<()> {
+        let now = Instant::now();
+        if self.deadline().is_some_and(|d| now >= d) {
+            return Err(ErrorKind::TimedOut.into());
+        }
+        self.moved.fetch_max(self.nanos(now), Relaxed);
+        Ok(())
+    }
+}
+
 /// The driver's ends of a TCP flow's channels.
 pub(crate) struct Ends {
     /// Client to upstream; dropped to pass on the client's FIN.
     pub up: Option<mpsc::Sender<Bytes>>,
     /// Upstream to client; closed by the task to pass on the upstream's FIN.
     pub down: mpsc::Receiver<Bytes>,
+    pub drain: Arc<Drain>,
 }
 
 /// The task's end of a TCP flow: the client, as an async stream.
@@ -93,15 +173,19 @@ pub(crate) struct FlowIo {
     waker: Arc<Waker>,
     /// The payload the task took and gave, for its outbound's bytes of the day.
     tally: Tally,
+    drain: Arc<Drain>,
 }
 
-/// The driver's ends and the task's [`FlowIo`] of a new flow, whose payload counts in `tally`.
-pub(crate) fn pair(waker: Arc<Waker>, tally: Tally) -> (Ends, FlowIo) {
+/// A TCP flow's channels: the payload counts in `tally`, and the drain cuts the flow after `idle`
+/// without progress.
+pub(crate) fn pair(waker: Arc<Waker>, tally: Tally, idle: Duration) -> (Ends, FlowIo) {
     let (up_tx, up_rx) = mpsc::channel(DEPTH);
     let (down_tx, down_rx) = mpsc::channel(DEPTH);
+    let drain = Arc::new(Drain::new(idle));
     let ends = Ends {
         up: Some(up_tx),
         down: down_rx,
+        drain: Arc::clone(&drain),
     };
     let io = FlowIo {
         up: up_rx,
@@ -109,8 +193,15 @@ pub(crate) fn pair(waker: Arc<Waker>, tally: Tally) -> (Ends, FlowIo) {
         down: PollSender::new(down_tx),
         waker,
         tally,
+        drain,
     };
     (ends, io)
+}
+
+impl FlowIo {
+    pub fn drain(&self) -> Arc<Drain> {
+        Arc::clone(&self.drain)
+    }
 }
 
 impl AsyncRead for FlowIo {

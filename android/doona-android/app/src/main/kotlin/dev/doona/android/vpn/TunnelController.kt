@@ -192,9 +192,11 @@ internal class TunnelController(
         val schema = opener.schema() ?: return Status.Failed(FailureReason.StartFailed)
         if (schema != CORE_SCHEMA) return Status.Failed(FailureReason.IncompatibleCore)
         val routing = AppRouting.resolve(perApp(), host.selfPackage, host::installed) ?: return Status.Failed(FailureReason.NoAllowedApps)
-        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(host.bootstrapDns()))
+        val mtu = host.mtu
+        VpnLog.info("start $g: mtu $mtu")
+        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(host.bootstrapDns(), mtu))
         if (!isCurrent(g)) return null
-        val tun = host.establish(routing) ?: return Status.Failed(FailureReason.StartFailed)
+        val tun = host.establish(routing, mtu) ?: return Status.Failed(FailureReason.StartFailed)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
         tun.use {
             try {

@@ -21,6 +21,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
+#[cfg(feature = "fault-hook")]
+mod fault;
 mod selection;
 mod snapshot;
 mod subscriptions;
@@ -49,6 +51,8 @@ pub struct Options {
     pub bootstrap_fallback: Vec<SocketAddr>,
     /// How long a UDP association lasts without traffic.
     pub udp_idle: Duration,
+    /// How long a TCP flow may stall after a FIN, and a TCP/53 connection to the core's DNS idle.
+    pub tcp_drain: Duration,
 }
 
 impl Default for Options {
@@ -60,6 +64,7 @@ impl Default for Options {
             bootstrap_port: 53,
             bootstrap_fallback: bootstrap::FALLBACK.to_vec(),
             udp_idle: tunnel::UDP_IDLE,
+            tcp_drain: tunnel::TCP_DRAIN,
         }
     }
 }
@@ -333,6 +338,7 @@ impl Core {
             dns: config.dns,
             dns_upstreams: self.options.dns_upstreams.clone(),
             udp_idle: self.options.udp_idle,
+            tcp_drain: self.options.tcp_drain,
             mode: Arc::clone(&self.mode),
             outbounds: Arc::clone(&self.shared.outbounds),
             panics: Arc::clone(&self.panics),
@@ -398,6 +404,8 @@ impl Core {
             "trafficSeries" => self.traffic_series(args),
             "usage" => self.usage(args),
             "nodes" => self.nodes(args),
+            #[cfg(feature = "fault-hook")]
+            "debugFault" => self.fault().map(empty),
             _ => Err(ErrorCode::InvalidArgument),
         };
         reply.unwrap_or_else(|code| {

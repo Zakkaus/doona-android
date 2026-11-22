@@ -177,20 +177,26 @@ pub(crate) async fn answer(
     Some(answer.unwrap_or_else(|| servfail(query)))
 }
 
-/// Answers the framed queries of one TCP/53 connection in turn until the client closes it.
+/// Answers the framed queries of one TCP/53 connection in turn until the client closes it. A query
+/// that takes `idle` to arrive, or an answer `idle` to be taken, ends it with `TimedOut`, so the
+/// driver resets the client and drops what it still holds for it: a client that sends neither a
+/// query nor its FIN, or never reads, cannot hold the connection or its buffers. Each wait has a
+/// fixed deadline on tokio's monotonic clock, so a late wakeup does not extend it. Answers still
+/// queued for the client when this returns are bounded by the driver (see `TcpFlow::finish`).
 pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
     io: &mut S,
     upstreams: &[SocketAddr],
     route: &Route,
+    idle: Duration,
 ) -> io::Result<()> {
     loop {
-        let query = match read_framed(io).await {
+        let query = match tokio::time::timeout(idle, read_framed(io)).await? {
             Ok(q) => q,
             Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
             Err(e) => return Err(e),
         };
         if let Some(a) = answer(upstreams, route, &query).await {
-            write_framed(io, &a).await?;
+            tokio::time::timeout(idle, write_framed(io, &a)).await??;
         }
     }
     io.shutdown().await
@@ -315,5 +321,59 @@ pub(crate) mod tests {
         assert_eq!(skip_name(&[3, b'a'], 0), None);
         assert!(!is_query(&answer_to(&q, 1)));
         assert!(is_query(&q));
+    }
+
+    const IDLE: Duration = Duration::from_secs(30);
+
+    /// Serves `server` with no upstream, so every query is answered SERVFAIL at once.
+    fn served(mut server: tokio::io::DuplexStream) -> tokio::task::JoinHandle<io::Result<()>> {
+        tokio::spawn(async move { serve_tcp(&mut server, &[], &Route::Direct, IDLE).await })
+    }
+
+    /// A client that sends no query and no FIN is cut, as a failure, `IDLE` after its last answer.
+    #[tokio::test(start_paused = true)]
+    async fn a_silent_tcp_client_is_closed_after_the_idle_time() {
+        let (server, mut client) = tokio::io::duplex(4096);
+        let serving = served(server);
+        let begun = tokio::time::Instant::now();
+        // A query within the idle time is answered, and the idle time starts again.
+        tokio::time::sleep(IDLE * 2 / 3).await;
+        write_framed(&mut client, &query(7, "example.com", None))
+            .await
+            .unwrap();
+        assert_eq!(read_framed(&mut client).await.unwrap()[..2], [0, 7]);
+        // Without the bound this waits forever; the timeout turns that into a failure.
+        let ended = tokio::time::timeout(2 * IDLE, serving).await;
+        assert!(
+            matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == ErrorKind::TimedOut),
+            "{ended:?}"
+        );
+        let took = begun.elapsed();
+        assert!(took >= IDLE * 5 / 3, "{took:?}");
+        assert!(took < IDLE * 5 / 3 + Duration::from_millis(10), "{took:?}");
+        assert_eq!(client.read(&mut [0; 1]).await.unwrap(), 0, "closed");
+    }
+
+    /// A client that sends a query and never takes the answer is cut after the idle time too.
+    #[tokio::test(start_paused = true)]
+    async fn a_tcp_client_that_never_reads_is_closed_after_the_idle_time() {
+        // One byte of room each way: the answer cannot leave while the client does not read.
+        let (server, mut client) = tokio::io::duplex(1);
+        let serving = served(server);
+        let begun = tokio::time::Instant::now();
+        write_framed(&mut client, &query(7, "example.com", None))
+            .await
+            .unwrap();
+        let ended = tokio::time::timeout(2 * IDLE, serving).await;
+        assert!(
+            matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == ErrorKind::TimedOut),
+            "{ended:?}"
+        );
+        let took = begun.elapsed();
+        assert!(
+            took >= IDLE && took < IDLE + Duration::from_millis(10),
+            "{took:?}"
+        );
+        drop(client);
     }
 }

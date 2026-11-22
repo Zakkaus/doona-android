@@ -8,8 +8,8 @@ mod common;
 use common::client::Client;
 use common::servers;
 use common::{TempDir, seqpacket_pair, wait_for};
-use doonacore::api::Core;
-use doonacore::dto::{Reply, Snapshot, Traffic, TrafficSeries, Usage};
+use doonacore::api::{Core, Options};
+use doonacore::dto::{OutboundBytes, Reply, Snapshot, Traffic, TrafficSeries, Usage};
 use doonacore::sys;
 use std::os::fd::AsRawFd;
 use std::time::Duration;
@@ -30,7 +30,11 @@ fn setup() -> Setup {
 }
 
 fn setup_in(dir: TempDir) -> Setup {
-    let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    setup_with(dir, Options::default())
+}
+
+fn setup_with(dir: TempDir, options: Options) -> Setup {
+    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
     assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
     let (tun, peer) = seqpacket_pair();
     core.start(sys::dup_cloexec(tun.as_raw_fd()).unwrap(), CONFIG)
@@ -136,6 +140,51 @@ fn the_day_counts_the_session_its_outbound_and_flows_and_outlives_the_process() 
     drop(core);
     let again = setup_in(dir);
     assert_eq!(usage(&again.core).today, day.today);
+}
+
+/// The bytes `direct` carried today, as the last fold left them.
+fn direct(core: &Core) -> Option<OutboundBytes> {
+    let today = usage(core).today.outbounds;
+    today.into_iter().find(|o| o.id == "direct")
+}
+
+/// A flow draining after the client's FIN goes through the stats folds: the client half-closes and
+/// reads nothing while the upstream's reply fills the core's queue, a fold takes the bytes the
+/// relay has given while the core holds the flow, and the client then reads the rest and the
+/// upstream's FIN within the drain time. The day holds the flow's payload exactly.
+#[test]
+fn a_draining_flow_counts_its_bytes_through_the_folds() {
+    // More than the client's window, the stack and the queue hold: the relay waits on the client.
+    const REPLY: usize = 2 << 20;
+    let options = Options {
+        tcp_drain: Duration::from_secs(10),
+        ..Options::default()
+    };
+    let mut s = setup_with(TempDir::new("stats"), options);
+    let date = usage(&s.core).today.date;
+    let id = s.client.connect(servers::sender(REPLY));
+    assert!(s.client.until(WAIT, |c| c.write_now(id, b"GET") == 3));
+    s.client.shutdown(id);
+    // The client turns without reading until a fold has taken part of the reply.
+    let core = &s.core;
+    let taken = s
+        .client
+        .until(WAIT, |_| direct(core).is_some_and(|d| d.down > 0));
+    assert!(taken, "no fold took the draining flow's bytes");
+    let held = direct(core).unwrap();
+    assert!(held.down < REPLY as u64, "{held:?}");
+    assert_eq!(snapshot(core).traffic.active_flows, 1);
+    // The drain holds the flow for the client, which now reads the reply to its end.
+    assert_eq!(s.client.read_to_end(id).unwrap().len(), REPLY);
+    assert!(wait_for(WAIT, || snapshot(&s.core).traffic.active_flows == 0));
+    s.core.stop();
+    let day = usage(&s.core);
+    if day.today.date != date {
+        return; // Local midnight passed during the test: the day split the bytes.
+    }
+    assert_eq!(day.today.flows.iter().sum::<u64>(), 1);
+    let carried = direct(&s.core).unwrap();
+    assert_eq!((carried.up, carried.down), (3, REPLY as u64));
 }
 
 #[test]

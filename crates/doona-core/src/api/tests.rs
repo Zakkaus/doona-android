@@ -405,6 +405,39 @@ fn a_panic_in_a_task_honk_spawned_fails_the_generation() {
     assert!(closed(&probe));
 }
 
+/// A debug build's fault ends the running data path as a panicking task does.
+#[cfg(feature = "fault-hook")]
+#[test]
+fn the_debug_fault_fails_the_running_generation() {
+    let dir = TempDir::new("api-fault");
+    let core = core(&dir, crate::tunnel::drive, Duration::from_secs(10));
+    let not_found = r#"{"error":{"code":"not_found"}}"#;
+    assert_eq!(core.call("debugFault", "{}"), not_found);
+    let (dup, probe) = tun();
+    core.start(dup, CONFIG).unwrap();
+    assert_eq!(core.call("debugFault", "{}"), r#"{"ok":{}}"#);
+    assert!(!failed_within_10s(&core).running);
+    core.stop();
+    assert!(closed(&probe));
+}
+
+/// Without the `fault-hook` feature, as in a release build, the fault is an unknown command.
+#[cfg(not(feature = "fault-hook"))]
+#[test]
+fn without_the_feature_there_is_no_debug_fault() {
+    let dir = TempDir::new("api-no-fault");
+    let core = core(&dir, crate::tunnel::drive, Duration::from_secs(10));
+    let (dup, probe) = tun();
+    core.start(dup, CONFIG).unwrap();
+    let unknown = r#"{"error":{"code":"invalid_argument"}}"#;
+    assert_eq!(core.call("debugFault", "{}"), unknown);
+    std::thread::sleep(Duration::from_millis(300));
+    let s: Snapshot = serde_json::from_str(&core.snapshot(i64::MAX)).unwrap();
+    assert!(s.running && s.error.is_none(), "{s:?}");
+    core.stop();
+    assert!(closed(&probe));
+}
+
 /// The snapshot once it reports `internal`, which must be within 10 s.
 fn failed_within_10s(core: &Core) -> Snapshot {
     let begun = Instant::now();

@@ -14,9 +14,11 @@ enum class LocalNetworkPrompt { Ask, Denied }
  * question comes at most once per process: a refusal, in doona's reason or in the system's dialog, is final until the
  * process ends, and a later failure only shows [LocalNetworkPrompt.Denied], which leads to the app's settings. Closing
  * the reason with back or a tap outside it is no refusal. The refusal shown for the running tunnel's report and the one
- * shown for anything else are kept apart: the tunnel's comes down when its report clears, the other only when the user
- * closes it. The app shows [prompt] and reports what the user did; [granted] reads the permission, true where Android
- * has none.
+ * shown for anything else are kept apart: the tunnel's comes down when its report clears, the other when the user
+ * closes it, and both when the app finds access allowed on the user's return (see [resumed]). An action whose failure
+ * showed the refusal waits on it: until the user closes it, until the app is in front again with access allowed, or,
+ * when they go from it to the app's settings, until the app is in front again (see [allowedInSettings]). The app shows
+ * [prompt] and reports what the user did; [granted] reads the permission, true where Android has none.
  */
 class LocalNetworkAccess(private val granted: () -> Boolean) {
     private val shown = MutableStateFlow<LocalNetworkPrompt?>(null)
@@ -37,6 +39,12 @@ class LocalNetworkAccess(private val granted: () -> Boolean) {
 
     /** The refusal shown for an action or the system's answer, until the user closes it. */
     private var refusal = false
+
+    /** The answer the actions waiting on [refusal] share: whether access was allowed in the settings. */
+    private var settings: CompletableDeferred<Boolean>? = null
+
+    /** The user went to the settings from the refusal while an action waited on it; [resumed] ends the trip. */
+    private var away = false
 
     /**
      * Called after a user's action failed on the local network. Returns true when the user has just allowed access, so
@@ -109,13 +117,57 @@ class LocalNetworkAccess(private val granted: () -> Boolean) {
     /** The user closed doona's reason with back or a tap outside it: no retry now, and the next failure asks again. */
     fun closed() = settle(allowed = false, refused = false, showRefusal = false)
 
-    /** The user closed the refusal, or went to the settings from it. */
-    fun dismissed() {
-        synchronized(lock) {
+    /**
+     * Called after [ask] returned false. While the refusal shown for an action is up, waits for the user: true once they
+     * come back with access allowed, so the action is worth one more try; false when they close the refusal, or come
+     * back from its trip to the settings without allowing access. False at once when access is allowed or no such
+     * refusal is up.
+     */
+    suspend fun allowedInSettings(): Boolean {
+        if (granted()) return false
+        val answer = synchronized(lock) {
+            if (!refusal && !away) return false
+            settings ?: CompletableDeferred<Boolean>().also { settings = it }
+        }
+        return answer.await()
+    }
+
+    /** The user closed the refusal: the actions waiting on it keep their failure. */
+    fun dismissed() = closeRefusal(toSettings = false)
+
+    /** The user went from the refusal to the app's settings: the actions waiting on it wait for [resumed]. */
+    fun toSettings() = closeRefusal(toSettings = true)
+
+    /**
+     * The app is in front again. After a trip to the settings from the refusal, the actions that waited learn whether
+     * access is allowed. Without one, they run once more if it is allowed now, as when the user left by the launcher and
+     * allowed it on the app's info page; otherwise they keep waiting on it. Access allowed takes down every refusal,
+     * the one shown for the tunnel's report too.
+     */
+    fun resumed() {
+        val allowed = granted()
+        val answer = synchronized(lock) {
+            if (!away && !(allowed && settings != null)) return
+            away = false
+            if (allowed) {
+                refusal = false
+                tunnelRefusal = false
+                show()
+            }
+            settings.also { settings = null }
+        }
+        answer?.complete(allowed)
+    }
+
+    private fun closeRefusal(toSettings: Boolean) {
+        val answer = synchronized(lock) {
             tunnelRefusal = false
             refusal = false
             show()
+            if (toSettings && settings != null) away = true
+            if (away) null else settings.also { settings = null }
         }
+        answer?.complete(false)
     }
 
     private fun settle(allowed: Boolean, refused: Boolean, showRefusal: Boolean) {

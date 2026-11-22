@@ -21,6 +21,11 @@ use uuid::Uuid;
 /// the registry builds a runtime for each endpoint, so a list over this is `parse_failed` whole.
 pub(crate) const MAX_NODES_PER_SUBSCRIPTION: usize = 2_000;
 
+/// The longest `vmess://` payload decoded. It is base64 of a JSON object whose unknown fields
+/// honk-config keeps as `serde_json::Value`, about 20 times the link (a 7.6 MB link costs 146 MB);
+/// real ones are under 1 KiB. A longer link is skipped undecoded, as any invalid link is.
+const MAX_VMESS_PAYLOAD: usize = 16 << 10;
+
 /// The admitted nodes of a body and what `state.json` keeps to parse them again: the share link
 /// of each node, or for a structured body, the document of the entries they came from.
 #[derive(Debug, Default)]
@@ -69,7 +74,7 @@ pub(crate) fn admit<'a>(lines: impl Iterator<Item = &'a str>) -> Result<Parsed, 
     let mut links = Vec::new();
     for line in lines {
         let link = line.trim();
-        if skipped(link) {
+        if skipped(link) || oversized_vmess(link) {
             continue;
         }
         let Ok(node) = Node::from_share_link_with_detailed_diagnostics_emit(link, &mut |_| {})
@@ -120,6 +125,18 @@ fn skipped(link: &str) -> bool {
     link.is_empty()
         || ["#", ";", "//"].iter().any(|p| link.starts_with(p))
         || ["REMARKS=", "STATUS="].iter().any(|p| link.starts_with(p))
+}
+
+/// A `vmess://` link whose payload is over [`MAX_VMESS_PAYLOAD`]. honk-config reads a link up to its
+/// first `->` only.
+fn oversized_vmess(link: &str) -> bool {
+    let first = link
+        .split_once("->")
+        .map_or(link, |(first, _)| first)
+        .trim();
+    first.split_once("://").is_some_and(|(scheme, payload)| {
+        scheme.eq_ignore_ascii_case("vmess") && payload.len() > MAX_VMESS_PAYLOAD
+    })
 }
 
 /// honk drops Shadowsocks nodes that need a plugin. doona also drops a node honk's outbound
@@ -245,7 +262,10 @@ fn decode_base64_flexible(input: &str) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testutil::alloc::allocated;
     use crate::testutil::fixture;
+    use base64::Engine;
+    use base64::engine::general_purpose::STANDARD;
 
     fn names(p: &Parsed) -> Vec<&str> {
         p.nodes.iter().map(|n| n.name.as_str()).collect()
@@ -287,6 +307,32 @@ mod tests {
             parse(&fixture("unusable.txt")).err(),
             Some(ErrorCode::NoNodes)
         );
+    }
+
+    /// A VMess link of `json_len` bytes of JSON, padded with spaces.
+    fn vmess(json_len: usize) -> String {
+        let json = r#"{"v":"2","ps":"vm","add":"example.com","port":"443","id":"00000000-0000-0000-0000-000000000001","aid":"0","scy":"auto","net":"tcp"}"#;
+        format!("vmess://{}", STANDARD.encode(format!("{json:json_len$}")))
+    }
+
+    #[test]
+    fn a_vmess_link_over_the_cap_is_skipped_before_it_is_decoded() {
+        // 12 KiB of JSON is 16 KiB of base64: the longest payload decoded.
+        let at_cap = vmess(MAX_VMESS_PAYLOAD / 4 * 3);
+        assert_eq!(at_cap.len(), "vmess://".len() + MAX_VMESS_PAYLOAD);
+        assert_eq!(names(&parse(at_cap.as_bytes()).unwrap()), ["vm"]);
+        let over = vmess(MAX_VMESS_PAYLOAD / 4 * 3 + 1);
+        assert_eq!(parse(over.as_bytes()).err(), Some(ErrorCode::NoNodes));
+        // The review's link: 7.6 MB, its JSON an unknown field of 2.85 million numbers.
+        let numbers = "0,".repeat(2_850_000);
+        let json = format!(
+            r#"{{"add":"example.com","port":"443","id":"00000000-0000-0000-0000-000000000001","pad":[{numbers}0]}}"#
+        );
+        let big = format!("vmess://{}", STANDARD.encode(json));
+        assert!(big.len() > 7_600_000, "{}", big.len());
+        let (parsed, bytes) = allocated(|| parse(big.as_bytes()));
+        assert_eq!(parsed.err(), Some(ErrorCode::NoNodes));
+        assert!(bytes < 64 << 10, "{bytes} bytes allocated");
     }
 
     #[test]

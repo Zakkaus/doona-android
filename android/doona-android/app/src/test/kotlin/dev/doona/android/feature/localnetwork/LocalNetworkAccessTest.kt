@@ -160,6 +160,25 @@ class LocalNetworkAccessTest {
     }
 
     @Test
+    fun accessAllowedOnTheInfoPageTakesTheTunnelsRefusalDownToo() = runTest(UnconfinedTestDispatcher()) {
+        val answer = async { access.ask() }
+        access.declined()
+        assertFalse(answer.await())
+        // The tunnel's report and an import both show the refusal; the import waits on it.
+        val report = launch { access.noticed() }
+        assertFalse(access.ask())
+        val retry = async { access.allowedInSettings() }
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+        // The user leaves by the launcher, allows access on the app's info page and comes back.
+        granted = true
+        access.resumed()
+        assertTrue("the import runs once more", retry.await())
+        assertNull("access is allowed: no refusal stays", access.prompt.value)
+        report.cancel()
+        assertNull(access.prompt.value)
+    }
+
+    @Test
     fun continuingAWithdrawnReasonAsksTheSystemNothing() = runTest(UnconfinedTestDispatcher()) {
         var requests = 0
         val host = LocalNetworkHost(access, request = { requests++ }, openSettings = {})

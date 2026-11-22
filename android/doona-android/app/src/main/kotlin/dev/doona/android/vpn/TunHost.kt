@@ -11,6 +11,9 @@ internal interface Tun : Closeable {
 internal interface TunHost {
     val selfPackage: String
 
+    /** The tun's MTU, which the core's start config repeats; only a debug build may set another than the default. */
+    val mtu: Int get() = StartConfigDto.MTU
+
     /** The subset of [packages] installed for this user and visible to doona. */
     fun installed(packages: Set<String>): Set<String>
 
@@ -18,5 +21,5 @@ internal interface TunHost {
     fun bootstrapDns(): List<String>
 
     /** Null when the service is not in the foreground or VPN consent is missing. */
-    fun establish(routing: AppRouting): Tun?
+    fun establish(routing: AppRouting, mtu: Int): Tun?
 }

@@ -85,6 +85,43 @@ pub fn stall() -> (SocketAddr, Arc<Seen>) {
     (addr, seen)
 }
 
+/// Accepts connections and sends each one bytes without end, never reading and never closing: a
+/// download its client may stop reading. A connection's thread ends when the core closes it.
+pub fn flood() -> SocketAddr {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(mut conn) = conn else { return };
+            std::thread::spawn(move || {
+                let chunk = vec![7u8; 64 << 10];
+                while conn.write_all(&chunk).is_ok() {}
+            });
+        }
+    });
+    addr
+}
+
+/// Accepts connections and sends each `len` bytes, then its FIN; what the client sends is read and
+/// dropped until the client's FIN, so the connection never ends in a reset.
+pub fn sender(len: usize) -> SocketAddr {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(mut conn) = conn else { return };
+            let mut reader = conn.try_clone().unwrap();
+            std::thread::spawn(move || std::io::copy(&mut reader, &mut std::io::sink()));
+            std::thread::spawn(move || {
+                if conn.write_all(&vec![7u8; len]).is_ok() {
+                    let _ = conn.shutdown(Shutdown::Write);
+                }
+            });
+        }
+    });
+    addr
+}
+
 /// A loopback port with nothing listening.
 pub fn closed_port() -> SocketAddr {
     let l = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -170,7 +207,8 @@ pub fn truncated(m: &[u8]) -> bool {
     m[2] & 0x02 != 0
 }
 
-/// A DNS-over-TCP resolver: a name containing "big" gets 60 records, any other one.
+/// A DNS-over-TCP resolver: a name containing "big" gets 60 records, one containing "huge" 4000
+/// (about 64 KB), any other one.
 pub fn dns_server() -> (SocketAddr, Arc<Seen>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
@@ -194,8 +232,14 @@ fn serve_dns(mut conn: TcpStream, seen: &Seen) {
             return;
         }
         seen.datagrams.fetch_add(1, Relaxed);
-        let big = q.windows(3).any(|w| w == b"big");
-        let a = answer_to(&q, if big { 60 } else { 1 });
+        let records = if q.windows(4).any(|w| w == b"huge") {
+            4000
+        } else if q.windows(3).any(|w| w == b"big") {
+            60
+        } else {
+            1
+        };
+        let a = answer_to(&q, records);
         let mut framed = (a.len() as u16).to_be_bytes().to_vec();
         framed.extend_from_slice(&a);
         if conn.write_all(&framed).is_err() {
