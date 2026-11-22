@@ -127,8 +127,9 @@ fn question(m: &[u8]) -> Option<(String, usize)> {
     (u16_at(m, end - 4)? == TYPE_A && u16_at(m, end - 2)? == CLASS_IN).then_some((name, end))
 }
 
-/// Whether `answer` answers the question of `query`: one question each, with the same name in any
-/// case (DNS 0x20), type and class.
+/// Whether `answer` answers the question of `query`: one question each, with the same name as each
+/// reads it, pointers followed and in any case (DNS 0x20), and the same type and class. The same
+/// bytes are not enough: a pointer reads as whatever its own message holds where it points.
 fn same_question(query: &[u8], answer: &[u8]) -> bool {
     if count(query, 4) != 1 || count(answer, 4) != 1 {
         return false;
@@ -136,10 +137,8 @@ fn same_question(query: &[u8], answer: &[u8]) -> bool {
     let (Some(q), Some(a)) = (question_end(query), question_end(answer)) else {
         return false;
     };
-    // A label's length (at most 63) and a pointer (0xc0 and up) are never ASCII letters, so case
-    // is ignored in the labels only.
-    query[HEADER..q - 4].eq_ignore_ascii_case(&answer[HEADER..a - 4])
-        && query[q - 4..q] == answer[a - 4..a]
+    let asked = read_name(query, HEADER);
+    asked.is_some() && asked == read_name(answer, HEADER) && query[q - 4..q] == answer[a - 4..a]
 }
 
 /// What an A or CNAME record in IN holds.

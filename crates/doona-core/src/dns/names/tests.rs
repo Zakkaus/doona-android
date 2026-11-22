@@ -308,6 +308,34 @@ fn a_cname_whose_data_is_not_one_name_maps_nothing() {
     }
 }
 
+/// The question is compared by the name it reads, not its bytes: a query and an answer whose
+/// question is the same pointer, to a name further on in each, match only when the names do.
+#[test]
+fn questions_match_by_the_names_they_read() {
+    // A header, a question whose name points past it, then at 18 the name it points to.
+    let message = |flags: [u8; 2], answers: u8, rest: &[u8]| {
+        let mut m = vec![0x12, 0x34, flags[0], flags[1], 0, 1, 0, answers, 0, 0, 0, 0];
+        m.extend_from_slice(&[0xc0, 18, 0, 1, 0, 1]);
+        m.extend_from_slice(rest);
+        m
+    };
+    let query = message([0x01, 0x00], 0, &wire("asked.example"));
+    // The answer's record owner sits at 18, so the answer's question reads as that name.
+    let answer_for = |owner: &str| {
+        let mut rest = wire(owner);
+        rest.extend_from_slice(&[0, 1, 0, 1, 0, 0, 1, 44, 0, 4, 203, 0, 113, 9]);
+        message([0x81, 0x80], 1, &rest)
+    };
+    let names = Names::new();
+    names.learn(&query, &answer_for("other.example"));
+    assert_eq!(names.len(), 0, "a question of another name maps");
+    names.learn(&query, &answer_for("Asked.Example"));
+    assert_eq!(
+        names.name(v4(203, 0, 113, 9)).as_deref(),
+        Some("asked.example")
+    );
+}
+
 #[test]
 fn a_ttl_is_held_to_one_minute_and_one_hour() {
     let names = Names::new();
