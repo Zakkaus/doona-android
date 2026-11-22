@@ -28,6 +28,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,12 +89,14 @@ internal fun RvActivityScreen(
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val glass = rememberRvGlass()
+    // While the pull or the picker covers 活動 the map's pulse rests, so 活動 does not change under the blur.
+    val covered = remember(pull) { derivedStateOf { pull.progress() > 0f } }
     Box(Modifier.fillMaxSize()) {
         // The pull blurs and fades the page; the bars stay sharp, so the search pill, the picker's anchor, can grow.
         Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
             // The map stretches with the pull, and what lies under it moves down as far.
             val pushed = pull.stretch?.let { stretch -> Modifier.graphicsLayer { translationY = stretch() } }
-            Header(state, mode, HeaderMotion(pull.stretch, pushed), insets, HeroLook(hero, nodes)) { HeroActions(state, onAction, onConnect, routes.test) }
+            Header(state, mode, HeaderMotion(pull.stretch, pushed) { covered.value }, insets, HeroLook(hero, nodes)) { HeroActions(state, onAction, onConnect, routes.test) }
             RvGutter(pushed ?: Modifier) {
                 OutboundCard(state, mode, routes, nodes)
                 TrafficTiles(state, routes.traffic)
@@ -125,8 +128,11 @@ internal class RvActivityRoutes(
     val test: () -> Unit = NOT_WIRED,
 )
 
-/** The pull: [stretch] lengthens the map, [pushed] moves the header's text and everything under it down as far. */
-private class HeaderMotion(val stretch: (() -> Float)?, val pushed: Modifier?)
+/**
+ * The pull: [stretch] lengthens the map, [pushed] moves the header's text and everything under it down as far, and the
+ * map's pulse rests while [resting].
+ */
+private class HeaderMotion(val stretch: (() -> Float)?, val pushed: Modifier?, val resting: () -> Boolean)
 
 /** Whether the hero [swipe]s to the main node, one of [nodes] (H1). */
 private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>)
@@ -139,7 +145,7 @@ private fun Header(state: ActivityUiState, mode: RvRouteMode, motion: HeaderMoti
     val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
     var heroBounds by remember { mutableStateOf<Rect?>(null) }
     val pan = rvMapPan(place)
-    val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null), pan?.first, pan?.second)
+    val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null, motion.resting), pan?.first, pan?.second)
     // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected.
     RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds, live = live) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
@@ -268,12 +274,15 @@ private fun rvMapPan(place: RvPlace?): Pair<() -> Float, () -> Float>? {
     }
 }
 
-/** The marker's pulse while [on] (connected, with a place to mark): 0 to 1 each [RvMotion.PULSE_MS]; 0 off or without motion. */
+/**
+ * The marker's pulse while [on] (connected, with a place to mark): 0 to 1 each [RvMotion.PULSE_MS]; 0 off, without
+ * motion, or while [resting] (read where it is drawn, so resting redraws nothing but the ring, once).
+ */
 @Composable
-private fun rvPulse(on: Boolean): () -> Float {
+private fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
     if (!on || Rv.motion.instant) return { 0f }
     val phase = rememberInfiniteTransition(label = "pulse").animateFloat(0f, 1f, infiniteRepeatable(tween(RvMotion.PULSE_MS, easing = RvMotion.Decelerate), RepeatMode.Restart), label = "ring")
-    return { phase.value }
+    return { if (resting()) 0f else phase.value }
 }
 
 /**

@@ -3,7 +3,7 @@ package dev.doona.android.prototype.rv
 import android.os.Build
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -25,8 +25,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
@@ -227,7 +229,14 @@ internal fun RvPullDown(variant: RvPullMotion, state: RvPullState, activity: @Co
         Box(Modifier.fillMaxSize().graphicsLayer { if (drop) translationY = state.opening.pulled + state.shown.value * state.height }) {
             activity(look)
             if (variant == RvPullMotion.Sheet && state.drawn) {
-                Canvas(Modifier.fillMaxSize()) { drawRect(Color.Black, alpha = RvMotion.DIM * state.shown.value) }
+                // The dim is a layer's alpha, so its frames redraw nothing: drawn, it made this box, 活動 and its bars
+                // with their glass, record again on every frame of the sheet.
+                Box(
+                    Modifier.fillMaxSize().graphicsLayer {
+                        alpha = RvMotion.DIM * state.shown.value
+                        compositingStrategy = CompositingStrategy.ModulateAlpha
+                    }.background(Color.Black),
+                )
             }
         }
         if (state.drawn) {
@@ -282,9 +291,12 @@ private fun ThresholdTick(stretch: RvStretch) {
 
 /**
  * 活動 under the pull as [progress] runs to 1: a blur of a fixed radius cross-fades in (from API 31; the radius is never
- * animated, only the blurred copy's alpha), then the page colour fades over it by [RvMotion.PULL_FADE]. What it draws
- * is a layer of its own, so a frame of the pull records only a reference to it here, not 活動 again (whose glass source
- * records everything it draws each time it is drawn).
+ * animated, only the blurred copy's alpha), then the page colour fades over it by [RvMotion.PULL_FADE].
+ *
+ * A frame of the pull costs no blur. What it draws is a layer of its own, which keeps itself up to date, and the sharp
+ * and blurred copies hold references to it, recorded once a pull (again only if the size changes): a frame sets the
+ * blurred copy's alpha, and the blur, drawn once, is drawn again only when 活動 itself changes. This draw is a layer of
+ * its own too, so a frame records it alone, not the bars beside 活動 with their glass.
  */
 @Composable
 internal fun Modifier.rvPullBlur(progress: () -> Float): Modifier {
@@ -294,21 +306,33 @@ internal fun Modifier.rvPullBlur(progress: () -> Float): Modifier {
     val page = Rv.colors.page
     val blurs = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val blur = remember(radius) { BlurEffect(radius, radius, TileMode.Clamp) }
-    return drawWithContent {
+    val recorded = remember { RvRecorded() }
+    return graphicsLayer {}.drawWithContent {
         val p = progress()
-        if (p <= 0f) return@drawWithContent drawContent()
+        if (p <= 0f) {
+            recorded.size = Size.Unspecified
+            return@drawWithContent drawContent()
+        }
         if (blurs) {
-            sharp.record { this@drawWithContent.drawContent() }
-            drawLayer(sharp)
-            soft.renderEffect = blur
+            if (recorded.size != size) {
+                sharp.record { this@drawWithContent.drawContent() }
+                soft.renderEffect = blur
+                soft.record { drawLayer(sharp) }
+                recorded.size = size
+            }
             soft.alpha = p
-            soft.record { drawLayer(sharp) }
+            drawLayer(sharp)
             drawLayer(soft)
         } else {
             drawContent()
         }
         drawRect(page, alpha = RvMotion.PULL_FADE * p)
     }.graphicsLayer {}
+}
+
+/** The size [rvPullBlur]'s copies were recorded at; unspecified when they are to be recorded again. */
+private class RvRecorded {
+    var size = Size.Unspecified
 }
 
 /** P3: section [index] drops in from [RvMotion.drop] above as [shown] runs, [RvMotion.STAGGER_MS] after the one before. */
