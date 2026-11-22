@@ -170,6 +170,17 @@ pub(crate) fn selected<'a>(
     (own.or(group.members.first().map(String::as_str)), false)
 }
 
+/// The member with the lowest latency, the first of equals; `None` when no member has one, so
+/// the group keeps its current choice.
+pub(crate) fn fastest(group: &GroupDef, latency: impl Fn(&str) -> Option<u32>) -> Option<&String> {
+    group
+        .members
+        .iter()
+        .filter_map(|m| latency(m).map(|ms| (ms, m)))
+        .min_by_key(|(ms, _)| *ms)
+        .map(|(_, m)| m)
+}
+
 /// Drops the choices whose group or member is gone, so those groups return to their own choice.
 pub(crate) fn prune(selections: &mut BTreeMap<String, String>, groups: &[GroupDef]) {
     selections.retain(|group, member| {
@@ -240,6 +251,18 @@ mod tests {
         assert_eq!(selected(auto, None, None), (Some("n-1"), false));
         assert_eq!(selected(auto, None, Some(&n2)), (Some("n-2"), false));
         assert_eq!(selected(auto, None, Some(&gone)), (Some("n-1"), false));
+    }
+
+    #[test]
+    fn the_fastest_member_wins_and_none_without_results() {
+        let groups = template(&[("n-1", "a"), ("n-2", "b"), ("n-3", "c")]);
+        let auto = &groups[1];
+        let ms = |m: &str| match m {
+            "n-2" | "n-3" => Some(40),
+            _ => None,
+        };
+        assert_eq!(fastest(auto, ms).map(String::as_str), Some("n-2"));
+        assert_eq!(fastest(auto, |_| None), None);
     }
 
     #[test]

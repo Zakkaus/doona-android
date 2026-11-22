@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Condvar, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// Feeds served by path; a held server keeps every request waiting until released.
 pub(super) struct Feeds {
@@ -82,6 +82,19 @@ pub(super) fn call(core: &Core, command: &str, args: Value) -> Result<Value, Err
 pub(super) fn catalog(core: &Core) -> Catalog {
     let snapshot: Snapshot = serde_json::from_str(&core.snapshot(-1)).unwrap();
     snapshot.catalog.unwrap()
+}
+
+/// Polls the catalog until `done` holds, for 10 s at most.
+pub(super) fn wait_for(core: &Core, done: impl Fn(&Catalog) -> bool) -> Catalog {
+    let begun = Instant::now();
+    loop {
+        let c = catalog(core);
+        if done(&c) {
+            return c;
+        }
+        assert!(begun.elapsed() < Duration::from_secs(10), "{c:?}");
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
 
 pub(super) fn add(core: &Core, feeds: &Feeds, path: &str) -> Result<Value, ErrorCode> {

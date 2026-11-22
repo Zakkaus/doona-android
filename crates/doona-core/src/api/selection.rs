@@ -1,4 +1,4 @@
-//! `select`.
+//! `select` and `testLatency`.
 
 use super::{Core, lock};
 use crate::dto::{ErrorCode, SelectArgs};
@@ -26,5 +26,20 @@ impl Core {
             None => next.selections.remove(&args.group),
         };
         self.commit_state(next, "select")
+    }
+
+    /// Starts probing the nodes of `group`, or of every group, and returns at once; the groups
+    /// show `testing` until the test ends.
+    pub(super) fn test_latency(&self, group: Option<String>) -> Result<(), ErrorCode> {
+        let (plan, cancel) = {
+            let mut c = lock(&self.shared.catalog);
+            let plan = c.model.plan(group.as_deref())?;
+            c.revision += 1;
+            (plan, c.probes.clone())
+        };
+        log::info!("testLatency: {} probes", plan.targets.len());
+        self.probes
+            .spawn(self.runtime.handle(), &self.shared, plan, cancel);
+        Ok(())
     }
 }

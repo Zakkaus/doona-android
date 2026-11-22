@@ -121,9 +121,10 @@ impl Core {
         Ok((parse::parse(&fetched.body)?, fetched.userinfo))
     }
 
-    /// Commits `next`, in which `changed` has `fresh` nodes or is gone; choices whose member
-    /// went are dropped. Returns `changed` as the catalog shows it, or an empty one when it was
-    /// removed.
+    /// Commits `next`, in which `changed` has `fresh` nodes or is gone: choices whose member
+    /// went are dropped, the data path gets a registry for the new node set, and runtime state
+    /// (latencies, automatic choices) carries over for the nodes that stay. Returns `changed`
+    /// as the catalog shows it, or an empty one when it was removed.
     fn commit_nodes(
         &self,
         mut next: State,
@@ -131,14 +132,17 @@ impl Core {
         fresh: Vec<Arc<NodeEntry>>,
         command: &str,
     ) -> Result<dto::Subscription, ErrorCode> {
-        let model = lock(&self.shared.catalog).model.with(&next, changed, fresh);
+        let mut model = lock(&self.shared.catalog).model.with(&next, changed, fresh);
         groups::prune(&mut next.selections, &model.groups);
+        let built = self.shared.outbounds.build(&model.nodes);
         self.write(&next, command)?;
         let shown = {
             let mut c = lock(&self.shared.catalog);
+            model.carry(&c.model);
             c.model = model;
             c.state = next;
             c.revision += 1;
+            self.shared.outbounds.replace(built);
             let s = c.state.subscriptions.iter().find(|s| s.id == changed);
             s.map(|s| c.model.subscription(s))
         };

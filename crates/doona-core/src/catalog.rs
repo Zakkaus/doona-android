@@ -1,16 +1,22 @@
-//! The catalog behind `snapshot`: what `state.json` holds, the nodes parsed from it and the group
-//! template over them. It changes only under the core's catalog lock, in sections that never
-//! wait on I/O.
+//! The catalog behind `snapshot`: what `state.json` holds, the nodes parsed from it, the group
+//! template over them, and what lives only as long as the process: latencies, the automatic
+//! choices of UrlTest groups, and which groups are testing. It changes only under the core's
+//! catalog lock, in sections that never wait on I/O.
 
-use crate::dto::{self, Catalog, Member};
+use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member};
 use crate::groups::{self, GroupDef};
 use crate::ids::{self, is_group};
+use crate::outbounds::Outbounds;
 use crate::state::{State, StoredSubscription};
 use crate::subscription::parse;
 use honk_config::node::Node;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
+use tokio_util::sync::CancellationToken;
+
+/// Nested groups are followed this deep; the template nests one level.
+const MAX_DEPTH: u8 = 4;
 
 /// Incarnations are unique in the process: a re-created subscription never matches old work.
 static NEXT_INCARNATION: AtomicU64 = AtomicU64::new(1);
@@ -25,6 +31,7 @@ pub(crate) struct NodeEntry {
     pub id: String,
     pub name: String,
     pub subscription: String,
+    pub node: Arc<Node>,
 }
 
 /// Entries for the nodes `subscription` holds, in feed order.
@@ -41,6 +48,7 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
                 id: ids::node_id(subscription, node.id),
                 name,
                 subscription: subscription.to_owned(),
+                node: Arc::new(node),
             })
         })
         .collect()
@@ -58,10 +66,19 @@ pub(crate) fn load(state: &State) -> Model {
     Model::new(nodes, incarnations)
 }
 
+/// A node's last probe result, and the probe whose result it waits for.
+#[derive(Clone, Copy, Debug, Default)]
+struct Latency {
+    ms: Option<u32>,
+    failed: bool,
+    generation: u64,
+}
+
 /// What the core shares with the tasks it spawns.
 pub(crate) struct Shared {
     /// What `snapshot` reads; held only to copy or assign, never across I/O.
     pub catalog: Mutex<CatalogState>,
+    pub outbounds: Arc<Outbounds>,
 }
 
 pub(crate) struct CatalogState {
@@ -70,6 +87,8 @@ pub(crate) struct CatalogState {
     /// Rises with every change Kotlin must re-read; starts above Kotlin's initial -1 and 0.
     pub revision: i64,
     pub model: Model,
+    /// Cancelled when a tunnel generation ends; probes begun before then are dropped.
+    pub probes: CancellationToken,
 }
 
 impl CatalogState {
@@ -78,7 +97,13 @@ impl CatalogState {
             state,
             revision: 1,
             model,
+            probes: CancellationToken::new(),
         }
+    }
+
+    /// Cancels the probes under way; their results are dropped.
+    pub fn end_probes(&mut self) {
+        std::mem::replace(&mut self.probes, CancellationToken::new()).cancel();
     }
 }
 
@@ -91,6 +116,26 @@ pub(crate) struct Model {
     /// The incarnation each subscription's nodes belong to; a refresh gives a new one.
     pub incarnations: HashMap<String, u64>,
     pub groups: Vec<GroupDef>,
+    latency: HashMap<String, Latency>,
+    /// The automatic choice of each UrlTest group that has had a successful probe.
+    auto: HashMap<String, String>,
+    /// How many latency tests of each group are under way.
+    testing: HashMap<String, u32>,
+    next_probe: u64,
+}
+
+/// What one latency test probes, and which groups show `testing` until it ends.
+pub(crate) struct Plan {
+    pub groups: Vec<String>,
+    pub targets: Vec<Target>,
+}
+
+/// One probe: its result counts only while the node keeps this incarnation and generation.
+#[derive(Clone)]
+pub(crate) struct Target {
+    pub entry: Arc<NodeEntry>,
+    pub incarnation: u64,
+    pub generation: u64,
 }
 
 impl Model {
@@ -110,6 +155,7 @@ impl Model {
             index,
             incarnations,
             groups,
+            ..Model::default()
         }
     }
 
@@ -136,6 +182,25 @@ impl Model {
             }
         }
         Model::new(nodes, incarnations)
+    }
+
+    /// Takes over what only lives at run time from `old`, for the nodes and groups still here.
+    pub fn carry(&mut self, old: &Model) {
+        self.latency = old
+            .latency
+            .iter()
+            .filter(|(id, _)| self.index.contains_key(*id))
+            .map(|(id, l)| (id.clone(), *l))
+            .collect();
+        self.auto = old
+            .auto
+            .iter()
+            .filter(|(g, _)| self.group(g).is_some())
+            .map(|(g, m)| (g.clone(), m.clone()))
+            .collect();
+        // Every test under way ends with a decrement, whatever happened to its groups.
+        self.testing = old.testing.clone();
+        self.next_probe = old.next_probe;
     }
 
     pub fn group(&self, id: &str) -> Option<&GroupDef> {
@@ -180,14 +245,14 @@ impl Model {
     }
 
     fn group_dto(&self, g: &GroupDef, selections: &BTreeMap<String, String>) -> dto::Group {
-        let (selected, pinned) = groups::selected(g, selections.get(&g.id), None);
+        let (selected, pinned) = groups::selected(g, selections.get(&g.id), self.auto.get(&g.id));
         dto::Group {
             id: g.id.clone(),
             name: g.name.clone(),
             kind: g.kind,
             selected_id: selected.map(str::to_owned),
             pinned,
-            testing: false,
+            testing: self.testing.contains_key(&g.id),
             members: g.members.iter().map(|m| self.member(m)).collect(),
         }
     }
@@ -205,10 +270,94 @@ impl Model {
             member.name = self.group(id).map(|g| g.name.clone()).unwrap_or_default();
         } else if let Some(&i) = self.index.get(id) {
             let entry = &self.nodes[i];
+            let latency = self.latency.get(id).copied().unwrap_or_default();
             member.name = entry.name.clone();
+            member.latency_ms = latency.ms;
+            member.failed = latency.failed;
             member.subscription_id = Some(entry.subscription.clone());
         }
         member
+    }
+
+    /// Starts a latency test of `group`, or of every group: gives each of its nodes a new probe
+    /// generation, so a result of an earlier test still under way is dropped, and marks the
+    /// groups testing.
+    pub fn plan(&mut self, group: Option<&str>) -> Result<Plan, ErrorCode> {
+        let groups: Vec<String> = match group {
+            Some(id) => vec![self.group(id).ok_or(ErrorCode::NotFound)?.id.clone()],
+            None if self.nodes.is_empty() => return Err(ErrorCode::NoNodes),
+            None => self.groups.iter().map(|g| g.id.clone()).collect(),
+        };
+        let mut wanted = HashSet::new();
+        for g in &groups {
+            self.reach(g, &mut wanted, 0);
+        }
+        let mut targets = Vec::with_capacity(wanted.len());
+        for entry in self.nodes.iter().filter(|n| wanted.contains(&n.id)) {
+            self.next_probe += 1;
+            self.latency.entry(entry.id.clone()).or_default().generation = self.next_probe;
+            targets.push(Target {
+                entry: Arc::clone(entry),
+                incarnation: self
+                    .incarnations
+                    .get(&entry.subscription)
+                    .copied()
+                    .unwrap_or(0),
+                generation: self.next_probe,
+            });
+        }
+        for g in &groups {
+            *self.testing.entry(g.clone()).or_default() += 1;
+        }
+        Ok(Plan { groups, targets })
+    }
+
+    /// The node ids `group` reaches through its members.
+    fn reach(&self, group: &str, out: &mut HashSet<String>, depth: u8) {
+        let Some(g) = self.group(group) else { return };
+        for m in &g.members {
+            if !is_group(m) {
+                out.insert(m.clone());
+            } else if depth < MAX_DEPTH {
+                self.reach(m, out, depth + 1);
+            }
+        }
+    }
+
+    /// Commits a probe result if its node still has the incarnation and probe generation the
+    /// probe began with, and lets every UrlTest group pick its fastest member again.
+    pub fn record(&mut self, target: &Target, ms: Option<u32>) -> bool {
+        let entry = &target.entry;
+        let current = self.index.contains_key(&entry.id)
+            && self.incarnations.get(&entry.subscription) == Some(&target.incarnation);
+        let Some(latency) = self
+            .latency
+            .get_mut(&entry.id)
+            .filter(|l| current && l.generation == target.generation)
+        else {
+            return false;
+        };
+        latency.ms = ms;
+        latency.failed = ms.is_none();
+        let known = &self.latency;
+        for g in self.groups.iter().filter(|g| g.kind == GroupKind::UrlTest) {
+            if let Some(best) = groups::fastest(g, |m| known.get(m).and_then(|l| l.ms)) {
+                self.auto.insert(g.id.clone(), best.clone());
+            }
+        }
+        true
+    }
+
+    /// A latency test of `groups` ended.
+    pub fn finish(&mut self, groups: &[String]) {
+        for g in groups {
+            if let Some(n) = self.testing.get_mut(g) {
+                *n = n.saturating_sub(1);
+                if *n == 0 {
+                    self.testing.remove(g);
+                }
+            }
+        }
     }
 }
 

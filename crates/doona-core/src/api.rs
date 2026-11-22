@@ -6,6 +6,8 @@ use crate::dto::{
     self, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply, Snapshot, StartConfig,
     Traffic,
 };
+use crate::outbounds::{self, Outbounds};
+use crate::probe::{self, Prober, Probes};
 use crate::state::{Loaded, State, Store};
 use crate::tunnel::route::ModeCell;
 use crate::tunnel::{self, Gate, Launch, STOP_WAIT, Settings, Tun, Tunnel};
@@ -36,12 +38,15 @@ const MIN_MTU: u16 = 1280;
 pub struct Options {
     /// Where DNS the core answers is forwarded, in order.
     pub dns_upstreams: Vec<SocketAddr>,
+    /// What a latency probe fetches through each node.
+    pub probe_url: String,
 }
 
 impl Default for Options {
     fn default() -> Options {
         Options {
             dns_upstreams: crate::dns::UPSTREAMS.to_vec(),
+            probe_url: probe::DEFAULT_PROBE_URL.to_owned(),
         }
     }
 }
@@ -50,7 +55,7 @@ pub struct Core {
     runtime: Runtime,
     options: Options,
     store: Store,
-    /// The catalog, shared with the tasks the core spawns.
+    /// The catalog and the data path's view of it, shared with probe tasks.
     shared: Arc<Shared>,
     /// Serializes the commands that write `state.json`, so a slow write never holds the
     /// catalog. Only they change the node set, so what one reads stays current until it commits.
@@ -65,6 +70,7 @@ pub struct Core {
     /// What serves a generation, and how long `start` may take: the driver and [`START_BOUND`]
     /// in the app, stand-ins in unit tests.
     launch: (Launch, Duration),
+    probes: Probes,
     /// Subscriptions with an update under way; a second update of one is `busy`.
     refreshing: Mutex<HashSet<String>>,
 }
@@ -87,13 +93,19 @@ impl Core {
 
     pub fn with_options(data_dir: &str, options: Options) -> Result<Core, ErrorCode> {
         let store = Store::new(Path::new(data_dir));
-        Core::build(store, options, (tunnel::drive, START_BOUND))
+        Core::build(
+            store,
+            options,
+            (tunnel::drive, START_BOUND),
+            probe::urltest(),
+        )
     }
 
     fn build(
         store: Store,
         options: Options,
         launch: (Launch, Duration),
+        prober: Prober,
     ) -> Result<Core, ErrorCode> {
         let (state, loaded) = store.load().map_err(|e| {
             log::error!("init: state unreadable ({:?})", e.kind());
@@ -108,12 +120,17 @@ impl Core {
             .enable_all()
             .build()
             .map_err(|_| ErrorCode::Internal)?;
+        outbounds::install_resolvers();
         let model = catalog::load(&state);
+        let outbounds = Arc::new(Outbounds::new(runtime.handle().clone())?);
+        outbounds.replace(outbounds.build(&model.nodes));
         let mode = Arc::new(ModeCell::new(state.mode));
         let catalog = CatalogState::new(state, model);
         let shared = Arc::new(Shared {
             catalog: Mutex::new(catalog),
+            outbounds,
         });
+        let probes = Probes::new(prober, &options.probe_url);
         Ok(Core {
             runtime,
             options,
@@ -124,6 +141,7 @@ impl Core {
             life: Mutex::new(Life::Stopped),
             generation: AtomicI64::new(0),
             launch,
+            probes,
             refreshing: Mutex::new(HashSet::new()),
         })
     }
@@ -165,6 +183,7 @@ impl Core {
         let old = self.begin(&gate, &tun)?;
         let generation = self.generation.fetch_add(1, Relaxed) + 1;
         if let Some(old) = old {
+            self.end_probes();
             old.wait(rt, deadline);
         }
         let started = Tunnel::start(
@@ -257,6 +276,7 @@ impl Core {
     pub fn stop(&self) {
         // Taken first, so the teardown below spends the same second as the wait after it.
         let deadline = Instant::now() + STOP_WAIT;
+        self.end_probes();
         let halted = {
             let mut life = lock(&self.life);
             match std::mem::replace(&mut *life, Life::Stopped) {
@@ -275,6 +295,11 @@ impl Core {
         if let Some(tunnel) = halted {
             tunnel.wait(self.runtime.handle(), deadline);
         }
+    }
+
+    /// Drops the latency probes under way: a tunnel generation ended.
+    fn end_probes(&self) {
+        lock(&self.shared.catalog).end_probes();
     }
 
     pub fn snapshot(&self, since_revision: i64) -> String {
@@ -314,11 +339,9 @@ impl Core {
         let reply = match command {
             "setMode" => parse(args).and_then(|a: ModeArgs| self.set_mode(a.mode).map(empty)),
             "select" => parse(args).and_then(|a| self.select(a).map(empty)),
-            // Latency tests arrive with the next change.
-            "testLatency" => parse(args).and_then(|a: GroupArgs| match a.group {
-                Some(_) => Err(ErrorCode::NotFound),
-                None => Err(ErrorCode::NoNodes),
-            }),
+            "testLatency" => {
+                parse(args).and_then(|a: GroupArgs| self.test_latency(a.group).map(empty))
+            }
             "addSubscription" => parse(args).and_then(|a| self.add_subscription(a).map(ok)),
             "updateSubscription" => {
                 parse(args).and_then(|a: IdArgs| self.update_subscription(&a.id).map(ok))
@@ -375,12 +398,20 @@ impl Core {
     /// `bound`.
     pub(crate) fn with_launch(data_dir: &str, launch: Launch, bound: Duration) -> Core {
         let store = Store::new(Path::new(data_dir));
-        Core::build(store, Options::default(), (launch, bound)).unwrap()
+        Core::build(store, Options::default(), (launch, bound), probe::urltest()).unwrap()
     }
 
     /// A core that keeps its state through `store`.
     pub(crate) fn with_store(store: Store) -> Core {
-        Core::build(store, Options::default(), (tunnel::drive, START_BOUND)).unwrap()
+        let launch = (tunnel::drive as Launch, START_BOUND);
+        Core::build(store, Options::default(), launch, probe::urltest()).unwrap()
+    }
+
+    /// A core whose latency probes run `prober`.
+    pub(crate) fn with_prober(data_dir: &str, prober: Prober) -> Core {
+        let store = Store::new(Path::new(data_dir));
+        let launch = (tunnel::drive as Launch, START_BOUND);
+        Core::build(store, Options::default(), launch, prober).unwrap()
     }
 }
 
@@ -450,3 +481,5 @@ pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 mod tests;
 #[cfg(test)]
 mod tests_catalog;
+#[cfg(test)]
+mod tests_latency;

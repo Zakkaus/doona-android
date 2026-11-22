@@ -124,3 +124,73 @@ pub fn fixture(name: &str) -> Vec<u8> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     std::fs::read(dir.join(name)).unwrap()
 }
+
+/// A loopback SOCKS5 server without authentication that relays each CONNECT; counts the
+/// connections it accepted.
+pub fn socks5() -> (std::net::SocketAddr, std::sync::Arc<AtomicU32>) {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let count = std::sync::Arc::new(AtomicU32::new(0));
+    let c = std::sync::Arc::clone(&count);
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(conn) = conn else { return };
+            c.fetch_add(1, Relaxed);
+            std::thread::spawn(move || {
+                let _ = relay_socks(conn);
+            });
+        }
+    });
+    (addr, count)
+}
+
+fn relay_socks(mut client: std::net::TcpStream) -> std::io::Result<()> {
+    use std::io::{Read, Write};
+    let mut greeting = [0u8; 2];
+    client.read_exact(&mut greeting)?;
+    let mut methods = vec![0u8; usize::from(greeting[1])];
+    client.read_exact(&mut methods)?;
+    client.write_all(&[5, 0])?;
+    let upstream = std::net::TcpStream::connect(socks_target(&mut client)?)?;
+    client.write_all(&[5, 0, 0, 1, 0, 0, 0, 0, 0, 0])?;
+    let (mut from_client, mut to_upstream) = (client.try_clone()?, upstream.try_clone()?);
+    let up = std::thread::spawn(move || {
+        let _ = std::io::copy(&mut from_client, &mut to_upstream);
+        let _ = to_upstream.shutdown(std::net::Shutdown::Write);
+    });
+    let (mut from_upstream, mut to_client) = (upstream, client);
+    let _ = std::io::copy(&mut from_upstream, &mut to_client);
+    let _ = to_client.shutdown(std::net::Shutdown::Write);
+    let _ = up.join();
+    Ok(())
+}
+
+/// The `host:port` of a SOCKS5 CONNECT request.
+fn socks_target(client: &mut std::net::TcpStream) -> std::io::Result<String> {
+    use std::io::Read;
+    let mut request = [0u8; 4];
+    client.read_exact(&mut request)?;
+    let host = match request[3] {
+        1 => {
+            let mut a = [0u8; 4];
+            client.read_exact(&mut a)?;
+            std::net::Ipv4Addr::from(a).to_string()
+        }
+        3 => {
+            let mut n = [0u8; 1];
+            client.read_exact(&mut n)?;
+            let mut name = vec![0u8; usize::from(n[0])];
+            client.read_exact(&mut name)?;
+            String::from_utf8_lossy(&name).into_owned()
+        }
+        4 => {
+            let mut a = [0u8; 16];
+            client.read_exact(&mut a)?;
+            format!("[{}]", std::net::Ipv6Addr::from(a))
+        }
+        _ => return Err(std::io::ErrorKind::InvalidData.into()),
+    };
+    let mut port = [0u8; 2];
+    client.read_exact(&mut port)?;
+    Ok(format!("{host}:{}", u16::from_be_bytes(port)))
+}
