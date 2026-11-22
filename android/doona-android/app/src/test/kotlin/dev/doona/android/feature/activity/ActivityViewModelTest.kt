@@ -19,7 +19,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -108,5 +110,14 @@ class ActivityViewModelTest {
         val vm = collected(FakeEngine(groups = listOf(a, b), status = Status.Running(sinceEpochMs = 0)))
         assertNull(vm.uiState.value.node)
         assertEquals("B", vm.uiState.value.outbound)
+    }
+
+    @Test
+    fun `the screen knows whether a subscription exists to start from`() = runTest {
+        val engine = FakeEngine()
+        val vm = collected(engine)
+        assertTrue(vm.uiState.value.hasSubscriptions)
+        engine.subscriptions.value = emptyList()
+        assertFalse(vm.uiState.value.hasSubscriptions)
     }
 }

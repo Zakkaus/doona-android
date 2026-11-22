@@ -29,6 +29,11 @@ data class ActivityUiState(
     val upHistory: List<Float> = emptyList(),
     /** The last action's failure, shown until dismissed or until the next attempt succeeds. */
     val error: ErrorCode? = null,
+    /**
+     * Whether a subscription exists to start from. Without one the core has no node, so the screen offers no way to start:
+     * it shows the status, and the way to stop while the tunnel is up.
+     */
+    val hasSubscriptions: Boolean = true,
 )
 
 /** What [ActivityViewModel] handles; connecting and navigation are separate callbacks of the screen. */
@@ -40,7 +45,14 @@ sealed interface ActivityAction {
     data object DismissError : ActivityAction
 }
 
-fun activityUiState(status: Status, traffic: Traffic, settings: Settings, groups: List<Group>, error: ErrorCode?): ActivityUiState {
+fun activityUiState(
+    status: Status,
+    traffic: Traffic,
+    settings: Settings,
+    groups: List<Group>,
+    error: ErrorCode?,
+    hasSubscriptions: Boolean = true,
+): ActivityUiState {
     val outbound = groups.firstOrNull()
     return ActivityUiState(
         status = status,
@@ -53,6 +65,7 @@ fun activityUiState(status: Status, traffic: Traffic, settings: Settings, groups
         downHistory = traffic.downHistory.map(Long::toFloat),
         upHistory = traffic.upHistory.map(Long::toFloat),
         error = error,
+        hasSubscriptions = hasSubscriptions,
     )
 }
 

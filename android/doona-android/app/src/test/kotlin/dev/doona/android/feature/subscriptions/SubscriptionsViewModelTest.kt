@@ -8,6 +8,7 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.feature.onboarding.FirstRunViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -352,6 +353,26 @@ class SubscriptionsViewModelTest {
         vm.onAction(SubscriptionsAction.DismissError)
         assertNull(vm.uiState.value.error)
         assertNull(imports.state.value.error)
+    }
+
+    @Test
+    fun `a success from another form leaves this form's draft alone, and its own form is emptied`() = runTest {
+        val engine = FakeEngine(subscriptions = emptyList())
+        val imports = imports(engine)
+        val onboarding = FirstRunViewModel(engine, imports)
+        val page = collected(engine, imports)
+        onboarding.fields.url.setTextAndPlaceCursorAtEnd("https://example.invalid/draft")
+        onboarding.fields.name.setTextAndPlaceCursorAtEnd("draft")
+
+        page.onAction(SubscriptionsAction.OpenForm)
+        page.type("https://example.invalid/x", "mine")
+        page.onAction(SubscriptionsAction.Add)
+
+        assertEquals(listOf("https://example.invalid/x"), engine.subscriptions.value.map { it.url })
+        assertEquals("https://example.invalid/draft", onboarding.fields.url.text.toString())
+        assertEquals("draft", onboarding.fields.name.text.toString())
+        assertEquals("", page.fields.url.text.toString())
+        assertFalse(page.uiState.value.adding)
     }
 
     @Test

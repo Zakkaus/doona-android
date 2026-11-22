@@ -50,12 +50,26 @@ class SubscriptionImportsTest {
     }
 
     @Test
+    fun `start hands over the id of the import it began, and does nothing while one runs`() = runTest {
+        val engine = Gated()
+        val imports = SubscriptionImports(engine, appScope())
+        val ids = mutableListOf<Long>()
+        assertTrue(imports.start("https://example.invalid/a", null) { ids += it })
+        assertFalse(imports.start("https://example.invalid/b", null) { ids += it })
+        engine.answer.complete(Result.success(sub("s1")))
+        engine.answer = CompletableDeferred()
+        assertTrue(imports.start("https://example.invalid/c", null) { ids += it })
+        assertEquals(listOf(1L, 2L), ids)
+        assertEquals(2L, imports.state.value.lastId)
+    }
+
+    @Test
     fun `a failed import keeps its code until dismissed, and the next one starts clean`() = runTest {
         val engine = Gated()
         val imports = SubscriptionImports(engine, appScope())
         imports.start("https://example.invalid/a", null)
         engine.answer.complete(Result.failure(EngineException(ErrorCode.FetchFailed)))
-        assertEquals(ImportState(busy = false, error = ErrorCode.FetchFailed, imported = 0), imports.state.value)
+        assertEquals(ImportState(busy = false, error = ErrorCode.FetchFailed, imported = 0, lastId = 1), imports.state.value)
         imports.dismissError()
         assertNull(imports.state.value.error)
         engine.answer = CompletableDeferred()
@@ -72,7 +86,7 @@ class SubscriptionImportsTest {
         engine.answer.complete(Result.failure(EngineException(ErrorCode.ParseFailed)))
         engine.answer = CompletableDeferred()
         imports.start("https://example.invalid/a", null)
-        assertEquals(ImportState(busy = true, error = null, imported = 0), imports.state.value)
+        assertEquals(ImportState(busy = true, error = null, imported = 0, lastId = 2), imports.state.value)
     }
 
     @Test

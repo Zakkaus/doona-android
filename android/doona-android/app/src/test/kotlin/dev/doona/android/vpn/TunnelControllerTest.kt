@@ -118,6 +118,15 @@ class TunnelControllerTest {
     }
 
     @Test
+    fun anAndroidFailureWhileBuildingTheTunCarriesNoCoreCode() {
+        // The message is a core code, but it comes from the system, not from the core.
+        host.establishError = IllegalStateException("no_nodes")
+        start()
+        assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
+        assertTrue(core.events.isEmpty())
+    }
+
+    @Test
     fun aCodeFromANewerCoreIsInternal() {
         core.startError = IllegalStateException("from_the_future")
         start()
@@ -396,11 +405,15 @@ class TunnelControllerTest {
         val routings = CopyOnWriteArrayList<AppRouting>()
         val tuns = CopyOnWriteArrayList<FakeTun>()
 
+        /** What the system's `Builder.establish()` throws, if anything. */
+        @Volatile var establishError: Throwable? = null
+
         override fun installed(packages: Set<String>) = packages intersect setOf(FIREFOX)
 
         override fun bootstrapDns() = listOf("192.168.8.1")
 
         override fun establish(routing: AppRouting): Tun {
+            establishError?.let { throw it }
             routings += routing
             return FakeTun(fd = 40 + tuns.size).also { tuns += it }
         }

@@ -166,8 +166,7 @@ internal class TunnelController(
             throw e
         } catch (e: Exception) {
             VpnLog.warn("start $g threw ${e.javaClass.simpleName}")
-            // The core reports its error code as the message of an IllegalStateException; any other exception has none.
-            Status.Failed(FailureReason.StartFailed, (e as? IllegalStateException)?.let { errorCodeOf(it.message.orEmpty()) })
+            Status.Failed(FailureReason.StartFailed)
         } catch (e: LinkageError) {
             VpnLog.warn("start $g threw ${e.javaClass.simpleName}")
             Status.Failed(FailureReason.StartFailed)
@@ -197,7 +196,15 @@ internal class TunnelController(
         if (!isCurrent(g)) return null
         val tun = host.establish(routing) ?: return Status.Failed(FailureReason.StartFailed)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
-        tun.use { core.start(it.fd, config) }
+        tun.use {
+            try {
+                core.start(it.fd, config)
+            } catch (e: IllegalStateException) {
+                // Only the core speaks in codes: it reports its own as the message of this exception.
+                VpnLog.warn("start $g: the core refused with ${e.message}")
+                return Status.Failed(FailureReason.StartFailed, errorCodeOf(e.message.orEmpty()))
+            }
+        }
         coreRunning = true
         return null
     }

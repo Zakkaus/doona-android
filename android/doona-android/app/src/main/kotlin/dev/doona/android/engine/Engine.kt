@@ -21,7 +21,11 @@ interface Engine {
 
     fun disconnect()
 
-    /** Pins the member [memberId] in the group [groupId]; null hands an automatic group back to its own choice. */
+    /**
+     * Pins the member [memberId] in the group [groupId]; null hands an automatic group back to its own choice. This and
+     * [testLatency] reach the core in the order they are called, from any caller, and a caller that stops waiting does not
+     * cancel its call.
+     */
     suspend fun select(groupId: String, memberId: String?): Result<Unit>
 
     /**

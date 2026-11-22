@@ -16,10 +16,11 @@ import kotlinx.coroutines.launch
 
 /**
  * The import in flight and how the last one ended. [imported] counts the ones that succeeded, so a screen that watches
- * it sees a success it did not start; [error] stays until dismissed or until the next import starts.
+ * it sees a success it did not start; [lastId] names the latest import started, which a screen compares with the one it
+ * started itself; [error] stays until dismissed or until the next import starts.
  */
 @Immutable
-data class ImportState(val busy: Boolean = false, val error: ErrorCode? = null, val imported: Int = 0)
+data class ImportState(val busy: Boolean = false, val error: ErrorCode? = null, val imported: Int = 0, val lastId: Long = 0)
 
 /**
  * The one subscription import in flight, kept above the screens that add one: the core's fetch cannot be cancelled, so
@@ -30,22 +31,28 @@ class SubscriptionImports(private val engine: Engine, private val scope: Corouti
     private val current = MutableStateFlow(ImportState())
     val state: StateFlow<ImportState> = current.asStateFlow()
 
-    /** Starts importing [url], unless an import is running, which makes this a no-op. */
-    fun start(url: String, name: String?) {
-        if (!claim()) return
+    /**
+     * Starts importing [url] and returns true, or does nothing and returns false while an import is running. [claimed]
+     * gets the import's id before the import can end, so the caller knows which success is its own.
+     */
+    fun start(url: String, name: String?, claimed: (Long) -> Unit = {}): Boolean {
+        val id = claim() ?: return false
+        claimed(id)
         scope.launch {
             val failure = engine.addSubscription(url, name).exceptionOrNull()
             current.update { it.copy(busy = false, error = failure?.errorCode(), imported = it.imported + if (failure == null) 1 else 0) }
         }
+        return true
     }
 
     fun dismissError() = current.update { it.copy(error = null) }
 
-    private fun claim(): Boolean {
+    private fun claim(): Long? {
         while (true) {
             val seen = current.value
-            if (seen.busy) return false
-            if (current.compareAndSet(seen, seen.copy(busy = true, error = null))) return true
+            if (seen.busy) return null
+            val id = seen.lastId + 1
+            if (current.compareAndSet(seen, seen.copy(busy = true, error = null, lastId = id))) return id
         }
     }
 }

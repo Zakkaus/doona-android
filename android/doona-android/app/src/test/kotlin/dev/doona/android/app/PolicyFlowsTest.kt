@@ -157,6 +157,32 @@ class PolicyFlowsTest {
     }
 
     @Test
+    fun `with no subscription a tunnel that is stopping offers no way to start`() {
+        val fake = FakeEngine(status = Status.Running(sinceEpochMs = 0))
+        val engine = object : Engine by fake {
+            // The engine takes a moment to stop: it holds Stopping until the test lets it go.
+            override fun disconnect() {
+                fake.status.value = Status.Stopping
+            }
+        }
+        var starts = 0
+        compose.setContent { DoonaTheme { DoonaApp(engine, onConnect = { starts++ }) } }
+        compose.runOnIdle { fake.subscriptions.value = emptyList() }
+
+        // The one switch is the one that stops the tunnel; a tap on it is the user's Stop.
+        compose.onAllNodes(isToggleable()).assertCountEquals(1)
+        compose.onAllNodes(isToggleable())[0].performClick()
+        compose.runOnIdle { assertEquals(Status.Stopping, fake.status.value) }
+
+        compose.onNodeWithText("Add your first subscription").assertDoesNotExist()
+        compose.onAllNodes(isToggleable()).assertCountEquals(0)
+        compose.runOnIdle { assertEquals("no start was requested", 0, starts) }
+
+        compose.runOnIdle { fake.status.value = Status.Stopped }
+        compose.onNodeWithText("Add your first subscription").assertExists()
+    }
+
+    @Test
     fun `leaving the subscriptions page during a slow add and retrying imports once`() {
         val gate = CompletableDeferred<Unit>()
         val fake = FakeEngine(subscriptions = emptyList())

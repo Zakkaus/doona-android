@@ -16,9 +16,11 @@ import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.Traffic
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -142,10 +144,10 @@ class ServiceEngine internal constructor(
     override fun disconnect() = controller.stop()
 
     override suspend fun select(groupId: String, memberId: String?): Result<Unit> =
-        command("select", SelectArgs.serializer(), SelectArgs(groupId, memberId), Unit.serializer())
+        command("select", SelectArgs.serializer(), SelectArgs(groupId, memberId), Unit.serializer(), ordered = true)
 
     override suspend fun testLatency(groupId: String?): Result<Unit> =
-        command("testLatency", GroupArgs.serializer(), GroupArgs(groupId), Unit.serializer())
+        command("testLatency", GroupArgs.serializer(), GroupArgs(groupId), Unit.serializer(), ordered = true)
 
     override suspend fun addSubscription(url: String, name: String?): Result<Subscription> =
         command("addSubscription", AddSubscriptionArgs.serializer(), AddSubscriptionArgs(url, name), SubscriptionDto.serializer())
@@ -173,17 +175,40 @@ class ServiceEngine internal constructor(
         Result.failure(EngineException(ErrorCode.Internal))
     }
 
+    /** A place in the queue of ordered commands: [before] is the call ahead, [done] is completed when this one's call has returned. */
+    private class Turn(val before: Job, val done: CompletableJob)
+
+    private val turns = Any()
+    private var lastTurn: Job = Job().apply { complete() } // Guarded by turns.
+
+    /** Takes the next place in the queue. The caller's order is the queue's, so this must be the first thing a command does. */
+    private fun takeTurn(): Turn = synchronized(turns) { Turn(lastTurn, Job()).also { lastTurn = it.done } }
+
+    /**
+     * Runs a command in the engine's scope. An [ordered] one waits for the ordered commands taken before it, whoever sent
+     * them: the core keeps the last choice it is given, so taps from any screen must reach it in tap order, and a screen
+     * that is left before its tap's turn comes does not take the tap with it. Only the core calls are queued; the
+     * refresh after one is not.
+     */
     private suspend fun <A, R> command(
         name: String,
         argsSerializer: SerializationStrategy<A>,
         args: A,
         result: DeserializationStrategy<R>,
+        ordered: Boolean = false,
     ): Result<R> {
-        // A core whose init failed or speaks another schema takes no call and no snapshot.
-        if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
-        val argsJson = CoreJson.encode(argsSerializer, args)
+        val turn = if (ordered) takeTurn() else null
         // The core commits a command it has begun, so the refresh after it must run even if the caller is cancelled.
-        return scope.async { call(name, argsJson, result).also { poll() } }.await()
+        return scope.async {
+            val outcome = try {
+                turn?.before?.join()
+                // A core whose init failed or speaks another schema takes no call and no snapshot.
+                if (opener.schema() != CORE_SCHEMA) null else call(name, CoreJson.encode(argsSerializer, args), result)
+            } finally {
+                turn?.done?.complete()
+            }
+            if (outcome == null) Result.failure<R>(EngineException(ErrorCode.Internal)) else outcome.also { poll() }
+        }.await()
     }
 
     private suspend fun <R> call(name: String, argsJson: String, result: DeserializationStrategy<R>): Result<R> {

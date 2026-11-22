@@ -1,5 +1,7 @@
 package dev.doona.android.feature.policies
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -204,29 +206,40 @@ class GroupViewModelTest {
     }
 
     @Test
-    fun `taps reach the engine in order, each after the one before has answered`() = runTest {
+    fun `taps are handed to the engine at once and in tap order`() = runTest {
         val gate = CompletableDeferred<Unit>()
         val engine = SlowFirstSelect(gate)
         val vm = collected(engine, "g-Proxy")
         vm.onAction(GroupAction.Select("n-hk1"))
         vm.onAction(GroupAction.Select("n-us1"))
-        assertEquals(listOf("start n-hk1"), engine.log)
+        assertEquals(listOf("start n-hk1", "start n-us1"), engine.log.filter { it.startsWith("start") })
         gate.complete(Unit)
-        assertEquals(listOf("start n-hk1", "end n-hk1", "start n-us1", "end n-us1"), engine.log)
-        assertEquals("n-us1", vm.uiState.value.detail!!.group.selectedId)
     }
 
     @Test
-    fun `a select, a return to automatic and a test run in tap order`() = runTest {
+    fun `a select, a return to automatic and a test are handed over in tap order`() = runTest {
         val gate = CompletableDeferred<Unit>()
         val engine = SlowFirstSelect(gate)
         val vm = collected(engine, "g-Auto")
         vm.onAction(GroupAction.Select("n-jp1"))
         vm.onAction(GroupAction.ReturnToAutomatic)
         vm.onAction(GroupAction.Test)
+        assertEquals(listOf("start n-jp1", "start null", "test g-Auto"), engine.log.filter { !it.startsWith("end") })
         gate.complete(Unit)
-        assertEquals(listOf("start n-jp1", "end n-jp1", "start null", "end null", "test g-Auto"), engine.log)
-        assertFalse(vm.uiState.value.detail!!.group.pinned)
+    }
+
+    @Test
+    fun `leaving the screen with a tap waiting does not lose it`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val engine = SlowFirstSelect(gate)
+        val store = ViewModelStore()
+        val vm = ViewModelProvider(store, GroupViewModel.factory(engine, "g-Proxy"))[GroupViewModel::class.java]
+        vm.onAction(GroupAction.Select("n-hk1"))
+        vm.onAction(GroupAction.Select("n-us1"))
+        store.clear()
+        // The engine has both, in order, whether or not the screen is still there to see the answers.
+        assertEquals(listOf("start n-hk1", "start n-us1"), engine.log.filter { it.startsWith("start") })
+        gate.complete(Unit)
     }
 
     @Test

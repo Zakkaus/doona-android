@@ -23,20 +23,27 @@ data class AddFormState(val attempted: Boolean = false, val busy: Boolean = fals
 /**
  * The logic behind the add form, shared by the subscriptions page and the first-run page: validate, hand the import to
  * [imports], and keep the fields when it fails so the user can correct them. The import and its outcome are the
- * holder's, so they outlast this screen; the adder only follows them. [onImported] runs when an import succeeds, one
- * that was started by an earlier visit included. It is not a ViewModel; the owner's ViewModel hands it its scope.
+ * holder's, so they outlast this screen; the adder only follows them. When this form's own import succeeds, the fields
+ * are emptied and [onImported] runs; the own import is the one it started, or the one already running when it was
+ * created, which an earlier visit started and this form shows as busy. A success from another form leaves the draft
+ * alone. It is not a ViewModel; the owner's ViewModel hands it its scope.
  */
 class SubscriptionAdder(private val imports: SubscriptionImports, scope: CoroutineScope, private val onImported: () -> Unit = {}) {
     val fields = AddFormFields()
     private val attempted = MutableStateFlow(false)
     val state: Flow<AddFormState> = combine(attempted, imports.state) { attempted, import -> AddFormState(attempted, import.busy, import.error) }
 
+    /** The id of the import this form is waiting for; null when it has none. */
+    private var own: Long? = imports.state.value.takeIf { it.busy }?.lastId
+
     init {
         var handled = imports.state.value.imported
         scope.launch {
             imports.state.collect {
-                if (it.imported != handled) {
-                    handled = it.imported
+                if (it.imported == handled) return@collect
+                handled = it.imported
+                if (it.lastId == own) {
+                    own = null
                     reset()
                     onImported()
                 }
@@ -52,7 +59,7 @@ class SubscriptionAdder(private val imports: SubscriptionImports, scope: Corouti
         val address = fields.url.text.toString().trim()
         attempted.value = true
         imports.dismissError()
-        if (urlProblem(address) == null) imports.start(address, fields.name.text.toString().trim().ifEmpty { null })
+        if (urlProblem(address) == null) imports.start(address, fields.name.text.toString().trim().ifEmpty { null }) { own = it }
     }
 
     fun dismissError() = imports.dismissError()
