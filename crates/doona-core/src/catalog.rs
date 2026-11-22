@@ -22,7 +22,7 @@ use tokio_util::sync::CancellationToken;
 pub(crate) const MAX_NODES: usize = 5_000;
 
 /// Nested groups are followed this deep; the template nests one level.
-const MAX_DEPTH: u8 = 4;
+pub(crate) const MAX_DEPTH: u8 = 4;
 
 /// Incarnations are unique in the process: a re-created subscription never matches old work.
 static NEXT_INCARNATION: AtomicU64 = AtomicU64::new(1);

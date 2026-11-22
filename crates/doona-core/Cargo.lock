@@ -595,6 +595,7 @@ dependencies = [
 name = "doona-core"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "android_logger",
  "anyhow",
  "base64",
