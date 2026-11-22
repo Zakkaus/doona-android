@@ -190,7 +190,7 @@ impl Core {
     fn start_generation(
         &self,
         tun: OwnedFd,
-        settings: Settings,
+        (settings, resolvers): (Settings, Vec<SocketAddr>),
         deadline: Instant,
     ) -> Result<i64, ErrorCode> {
         let rt = self.runtime.handle();
@@ -209,7 +209,7 @@ impl Core {
             deadline,
             &gate,
         );
-        self.finish(started, &gate, deadline)?;
+        self.finish(started, &gate, deadline, resolvers)?;
         Ok(generation)
     }
 
@@ -241,14 +241,15 @@ impl Core {
         }
     }
 
-    /// Publishes the started generation, unless a `stop` aborted the start meanwhile (that
-    /// `stop` closed the tun already and left the core stopped, which a newer `start` may have
-    /// changed since) or the deadline passed as the driver became ready.
+    /// Publishes the started generation with its config's `resolvers`, unless a `stop` aborted
+    /// the start meanwhile (that `stop` closed the tun already and left the core stopped, which a
+    /// newer `start` may have changed since) or the deadline passed as the driver became ready.
     fn finish(
         &self,
         started: Result<Tunnel, ErrorCode>,
         gate: &Gate,
         deadline: Instant,
+        resolvers: Vec<SocketAddr>,
     ) -> Result<(), ErrorCode> {
         let mut life = lock(&self.life);
         // `stop` aborts under the life lock, which is held here, so this cannot change below.
@@ -259,6 +260,7 @@ impl Core {
             match started {
                 Ok(tunnel) if Instant::now() < deadline => {
                     *life = Life::Running(tunnel);
+                    bootstrap::use_servers(resolvers);
                     return Ok(());
                 }
                 Ok(tunnel) => (Some(tunnel), ErrorCode::Internal),
@@ -279,10 +281,10 @@ impl Core {
         Err(code)
     }
 
-    /// What a generation runs with. The config's resolvers serve host lookups from here on, also
-    /// after `stop`. Global with no node in the `Proxy` group is `no_nodes`: the tunnel would
-    /// carry nothing.
-    fn settings(&self, config: &str) -> Result<Settings, ErrorCode> {
+    /// What a generation runs with, and the resolvers that serve host lookups once it is up (also
+    /// after `stop`). A resolver that is not an address is `invalid_argument`; Global with no node
+    /// in the `Proxy` group is `no_nodes`: the tunnel would carry nothing.
+    fn settings(&self, config: &str) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
         let config: StartConfig = parse(config)?;
         if config.mtu < MIN_MTU {
             return Err(ErrorCode::InvalidArgument);
@@ -291,17 +293,19 @@ impl Core {
             self.options.bootstrap_port,
             &self.options.bootstrap_fallback,
         );
-        bootstrap::use_servers(bootstrap::servers(&config.bootstrap_dns, port, fallback));
+        let resolvers = bootstrap::servers(&config.bootstrap_dns, port, fallback)
+            .ok_or(ErrorCode::InvalidArgument)?;
         if self.mode.get() == Mode::Global && self.shared.outbounds.dialer(PROXY_GROUP).is_none() {
             return Err(ErrorCode::NoNodes);
         }
-        Ok(Settings {
+        let settings = Settings {
             mtu: config.mtu,
             dns: config.dns,
             dns_upstreams: self.options.dns_upstreams.clone(),
             mode: Arc::clone(&self.mode),
             outbounds: Arc::clone(&self.shared.outbounds),
-        })
+        };
+        Ok((settings, resolvers))
     }
 
     /// Ends the running generation, if any, within 1 s, and cancels a `start` under way. Every

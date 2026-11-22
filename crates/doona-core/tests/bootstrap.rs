@@ -45,14 +45,17 @@ fn subscribe(core: &Core, url: &str) -> Result<(), ErrorCode> {
     }
 }
 
-fn start(core: &Core, bootstrap: &str) -> Client {
+fn try_start(core: &Core, bootstrap: &str) -> Result<Client, ErrorCode> {
     let config = format!(
         r#"{{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":{bootstrap}}}"#
     );
     let (tun, peer) = seqpacket_pair();
-    core.start(sys::dup_cloexec(tun.as_raw_fd()).unwrap(), &config)
-        .unwrap();
-    Client::new(peer)
+    core.start(sys::dup_cloexec(tun.as_raw_fd()).unwrap(), &config)?;
+    Ok(Client::new(peer))
+}
+
+fn start(core: &Core, bootstrap: &str) -> Client {
+    try_start(core, bootstrap).unwrap()
 }
 
 fn queries(seen: &Seen) -> usize {
@@ -144,4 +147,35 @@ fn subscription_hosts_use_the_fallback_then_the_last_list() {
     let before = queries(&seen);
     assert_eq!(subscribe(&core, &by_name), Ok(()));
     assert!(queries(&seen) > before);
+}
+
+/// Only an accepted `start` changes the resolvers: one refused with `no_nodes` leaves the running
+/// generation's list in use, and a list with an entry that is not an address is
+/// `invalid_argument`, never the fallback.
+#[test]
+fn a_refused_start_keeps_the_running_list() {
+    let _s = serial();
+    let (resolver, seen) = servers::udp_resolver();
+    let feed = servers::feed("socks5://127.0.0.1:1#s5".to_owned());
+    let by_name = format!("http://feed.doona.test:{}/sub", feed.port());
+    let dir = TempDir::new("boot-refused");
+    let core = new_core(&dir, resolver.port(), vec![resolver]);
+    assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
+    let _running = start(&core, r#"["127.0.0.1"]"#);
+    // Global with no node: refused before the running generation is touched. Nothing answers
+    // on 127.0.0.2.
+    assert_eq!(core.call("setMode", r#"{"mode":"Global"}"#), r#"{"ok":{}}"#);
+    assert_eq!(
+        try_start(&core, r#"["127.0.0.2"]"#).err(),
+        Some(ErrorCode::NoNodes)
+    );
+    let before = queries(&seen);
+    assert_eq!(subscribe(&core, &by_name), Ok(()));
+    assert!(queries(&seen) > before);
+    for junk in [r#"["not an address"]"#, r#"["127.0.0.2", "dns.example"]"#] {
+        assert_eq!(
+            try_start(&core, junk).err(),
+            Some(ErrorCode::InvalidArgument)
+        );
+    }
 }

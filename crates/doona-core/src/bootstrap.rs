@@ -1,8 +1,9 @@
 //! The host names the core resolves itself: proxy servers (through honk's node-host hook),
 //! latency-probe hosts and subscription hosts (core-api.md, "start config"). Each is asked of the
 //! underlying network's resolvers that `start` passes as `bootstrapDns`, in order, over the direct
-//! path (doona is outside its own VPN); with none, of 1.1.1.1 and 8.8.8.8. The list `start` gave
-//! stays in use after `stop`; before the first `start` the fallback is used. honk keeps its hooks
+//! path (doona is outside its own VPN); with none, of 1.1.1.1 and 8.8.8.8. The list of the last
+//! accepted `start` stays in use after `stop`; before the first `start` the fallback is used. A list
+//! with an entry that is not an address is refused, never replaced. honk keeps its hooks
 //! per process, so the list is per process too. `/etc/resolv.conf` is never read: the hook claims
 //! every name, and the record lookups honk makes itself (a TLS node's ECH configuration, from its
 //! server name's HTTPS record) go to honk's global resolver, which is always the first of the list.
@@ -30,15 +31,17 @@ pub(crate) fn use_servers(servers: Vec<SocketAddr>) {
     *SERVERS.write().unwrap_or_else(|e| e.into_inner()) = servers;
 }
 
-/// `start`'s `bootstrapDns` on `port`, or `fallback` when none of them is an address. An entry
-/// may carry a scope (`fe80::1%wlan0`), by number or interface name.
-pub(crate) fn servers(config: &[String], port: u16, fallback: &[SocketAddr]) -> Vec<SocketAddr> {
-    let listed: Vec<SocketAddr> = config.iter().filter_map(|s| server(s, port)).collect();
-    if listed.is_empty() {
-        fallback.to_vec()
-    } else {
-        listed
+/// `start`'s `bootstrapDns` on `port`, or `fallback` when it is empty; `None` when an entry is not
+/// an address. An entry may carry a scope (`fe80::1%wlan0`), by number or interface name.
+pub(crate) fn servers(
+    config: &[String],
+    port: u16,
+    fallback: &[SocketAddr],
+) -> Option<Vec<SocketAddr>> {
+    if config.is_empty() {
+        return Some(fallback.to_vec());
     }
+    config.iter().map(|s| server(s, port)).collect()
 }
 
 fn server(text: &str, port: u16) -> Option<SocketAddr> {
@@ -117,21 +120,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn entries_are_addresses_on_the_port_or_the_fallback() {
-        let config = ["192.168.8.1", " 10.0.0.1 ", "fe80::1%2", "not an address"].map(String::from);
+    fn entries_are_addresses_on_the_port_or_refused() {
+        let config = ["192.168.8.1", " 10.0.0.1 ", "fe80::1%2"].map(String::from);
         let got = servers(&config, 53, &FALLBACK);
         let want: Vec<SocketAddr> = vec![
             "192.168.8.1:53".parse().unwrap(),
             "10.0.0.1:53".parse().unwrap(),
             SocketAddrV6::new("fe80::1".parse().unwrap(), 53, 0, 2).into(),
         ];
-        assert_eq!(got, want);
-        assert_eq!(servers(&[], 53, &FALLBACK), FALLBACK.to_vec());
-        let junk = ["x".to_owned(), "fe80::1%no-such-interface".to_owned()];
-        assert_eq!(servers(&junk, 53, &FALLBACK), FALLBACK.to_vec());
-        assert_eq!(
-            servers(&["10.0.0.1".to_owned()], 5353, &FALLBACK)[0].port(),
-            5353
-        );
+        assert_eq!(got, Some(want));
+        assert_eq!(servers(&[], 53, &FALLBACK), Some(FALLBACK.to_vec()));
+        for junk in ["x", "fe80::1%no-such-interface", ""] {
+            let config = ["10.0.0.1".to_owned(), junk.to_owned()];
+            assert_eq!(servers(&config, 53, &FALLBACK), None, "{junk:?}");
+        }
+        let one = servers(&["10.0.0.1".to_owned()], 5353, &FALLBACK).unwrap();
+        assert_eq!(one[0].port(), 5353);
     }
 }
