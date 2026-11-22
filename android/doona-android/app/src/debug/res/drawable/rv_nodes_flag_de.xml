@@ -1,19 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Twemoji flag DE (CC-BY 4.0) from doona src/ui/assets/TwemojiCountryFlags.woff2. -->
+<!-- HatScripts circle-flags de (MIT), flags/de.svg at 379588b5; its circular mask is left to the
+     circle clip the sample draws every flag through. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="16.6dp"
-    android:height="12dp"
+    android:width="24dp"
+    android:height="24dp"
     android:viewportWidth="512"
-    android:viewportHeight="370">
-    <group android:scaleY="-1" android:translateX="0" android:translateY="377">
-        <path
-            android:pathData="M0 64V121H512V64Q512 40 495.5 23.5Q479 7 455 7H57Q33 7 16.5 23.5Q0 40 0 64Z"
-            android:fillColor="#FFFFCD05" />
-        <path
-            android:pathData="M0 249H512V121H0Z"
-            android:fillColor="#FFED1F24" />
-        <path
-            android:pathData="M455 377Q479 377 495.5 360.5Q512 344 512 320V249H0V320Q0 344 16.5 360.5Q33 377 57 377Z"
-            android:fillColor="#FF141414" />
-    </group>
+    android:viewportHeight="512">
+    <path
+        android:fillColor="#FFFFDA44"
+        android:pathData="m0 345 256.7-25.5L512 345v167H0z" />
+    <path
+        android:fillColor="#FFD80027"
+        android:pathData="m0 167 255-23 257 23v178H0z" />
+    <path
+        android:fillColor="#FF333333"
+        android:pathData="M0 0h512v167H0z" />
 </vector>

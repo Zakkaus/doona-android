@@ -18,12 +18,12 @@ internal enum class RvNodesRegion(@StringRes val label: Int) {
 
 /** A country or region a node is in: its flag, its name, its part of the world and where it is, in degrees. */
 internal enum class RvNodesPlace(@DrawableRes val flag: Int, @StringRes val label: Int, val region: RvNodesRegion, val lat: Float, val lon: Float) {
-    HK(R.drawable.flag_hk, R.string.rv_nodes_place_hk, RvNodesRegion.Asia, 22.35f, 114.15f),
-    TW(R.drawable.flag_tw, R.string.rv_nodes_place_tw, RvNodesRegion.Asia, 23.7f, 120.96f),
-    JP(R.drawable.flag_jp, R.string.rv_nodes_place_jp, RvNodesRegion.Asia, 36.2f, 138.25f),
-    KR(R.drawable.flag_kr, R.string.rv_nodes_place_kr, RvNodesRegion.Asia, 35.9f, 127.8f),
-    SG(R.drawable.flag_sg, R.string.rv_nodes_place_sg, RvNodesRegion.Asia, 1.35f, 103.82f),
-    US(R.drawable.flag_us, R.string.rv_nodes_place_us, RvNodesRegion.Americas, 39.83f, -98.58f),
+    HK(R.drawable.rv_nodes_flag_hk, R.string.rv_nodes_place_hk, RvNodesRegion.Asia, 22.35f, 114.15f),
+    TW(R.drawable.rv_nodes_flag_tw, R.string.rv_nodes_place_tw, RvNodesRegion.Asia, 23.7f, 120.96f),
+    JP(R.drawable.rv_nodes_flag_jp, R.string.rv_nodes_place_jp, RvNodesRegion.Asia, 36.2f, 138.25f),
+    KR(R.drawable.rv_nodes_flag_kr, R.string.rv_nodes_place_kr, RvNodesRegion.Asia, 35.9f, 127.8f),
+    SG(R.drawable.rv_nodes_flag_sg, R.string.rv_nodes_place_sg, RvNodesRegion.Asia, 1.35f, 103.82f),
+    US(R.drawable.rv_nodes_flag_us, R.string.rv_nodes_place_us, RvNodesRegion.Americas, 39.83f, -98.58f),
     CA(R.drawable.rv_nodes_flag_ca, R.string.rv_nodes_place_ca, RvNodesRegion.Americas, 56.13f, -106.35f),
     GB(R.drawable.rv_nodes_flag_gb, R.string.rv_nodes_place_gb, RvNodesRegion.Europe, 54f, -2f),
     DE(R.drawable.rv_nodes_flag_de, R.string.rv_nodes_place_de, RvNodesRegion.Europe, 51.17f, 10.45f),
