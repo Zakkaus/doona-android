@@ -18,7 +18,7 @@ use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::os::fd::OwnedFd;
 use std::path::Path;
-use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
+use std::sync::atomic::{AtomicI64, AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
@@ -83,6 +83,8 @@ pub struct Core {
     probes: Probes,
     /// Subscriptions with an update under way; a second update of one is `busy`.
     refreshing: Mutex<HashSet<String>>,
+    /// The panics on the runtime's threads so far; a generation ends when it rises.
+    panics: Arc<AtomicU64>,
     #[cfg(test)]
     hooks: hooks::Hooks,
 }
@@ -126,9 +128,13 @@ impl Core {
         if loaded == Loaded::SetAside {
             log::warn!("init: state.json was unusable; set aside, defaults in use");
         }
+        let panics = Arc::new(AtomicU64::new(0));
+        crate::panics::install();
+        let counted = Arc::clone(&panics);
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(WORKERS)
             .thread_name("doona-core")
+            .on_thread_start(move || crate::panics::count_on_this_thread(&counted))
             .enable_all()
             .build()
             .map_err(|_| ErrorCode::Internal)?;
@@ -157,6 +163,7 @@ impl Core {
             launch,
             probes,
             refreshing: Mutex::new(HashSet::new()),
+            panics,
             #[cfg(test)]
             hooks: hooks::Hooks::default(),
         })
@@ -304,6 +311,7 @@ impl Core {
             dns_upstreams: self.options.dns_upstreams.clone(),
             mode: Arc::clone(&self.mode),
             outbounds: Arc::clone(&self.shared.outbounds),
+            panics: Arc::clone(&self.panics),
         };
         Ok((settings, resolvers))
     }

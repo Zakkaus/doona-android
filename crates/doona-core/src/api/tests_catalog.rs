@@ -2,7 +2,7 @@
 //! and shown, the error codes, ids across refreshes and restarts, and an update that finishes
 //! after its subscription was removed.
 
-use super::{Core, Options};
+use super::{Core, Options, lock};
 use crate::dto::{Catalog, ErrorCode, Snapshot};
 use crate::testutil::{TempDir, fixture, http, response, target};
 use serde_json::{Value, json};
@@ -219,6 +219,32 @@ fn a_refresh_publishes_its_registry_and_nodes_together() {
         0,
         "flows saw a node without its registry"
     );
+}
+
+/// A refresh built while a generation ends would reuse runtimes that the end shuts down: it is
+/// published with runtimes of its own instead.
+#[test]
+fn a_refresh_built_before_a_renew_shares_no_runtime_with_it() {
+    let dir = TempDir::new("api-renew");
+    let feeds = Feeds::new();
+    feeds.set("/sub", b"socks5://127.0.0.1:1#a\nsocks5://127.0.0.1:2#b\n");
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    let outbounds = &core.shared.outbounds;
+    let ended = outbounds.registry().unwrap();
+    let (built, selected) = {
+        let c = lock(&core.shared.catalog);
+        let selected = c.model.leaves(&c.state.selections);
+        (outbounds.build(&c.model.nodes), selected)
+    };
+    core.runtime.block_on(outbounds.renew());
+    assert!(ended.is_shutdown());
+    outbounds.replace(built, selected);
+    let published = outbounds.registry().unwrap();
+    assert_eq!(published.len(), 2);
+    assert!(!published.is_shutdown());
+    let shared = |r| ended.values().any(|e| Arc::ptr_eq(e, r));
+    assert!(!published.values().any(shared));
 }
 
 #[test]

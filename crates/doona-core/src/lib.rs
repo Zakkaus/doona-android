@@ -11,6 +11,7 @@ mod groups;
 mod ids;
 mod jni;
 pub mod outbounds;
+mod panics;
 mod probe;
 pub mod state;
 mod subscription;

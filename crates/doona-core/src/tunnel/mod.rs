@@ -1,8 +1,10 @@
 //! One tunnel generation: the duplicate tun fd, the tasks that serve it, and the [`Session`] that
 //! `snapshot` reads. Every task of a generation is spawned on its [`TaskTracker`] and stops at its
 //! [`CancellationToken`]; a task that panics, or a driver that fails, marks the session failed
-//! and cancels the rest. Stopping a generation closes its tun at once (see `tun.rs`), so only
-//! tasks without tun access are ever left running.
+//! and cancels the rest. So does a panic in a task honk spawned for a carrier on the core's
+//! runtime, which never passes through [`Gen::spawn`]. Stopping a generation closes its tun at
+//! once (see `tun.rs`), so only tasks without tun access are ever left running, and shuts down
+//! the carrier runtimes it dialed through (see `outbounds.rs`).
 
 mod driver;
 mod flow;
@@ -29,6 +31,8 @@ pub(crate) use tun::Tun;
 
 /// How long `stop` waits for a halted generation's tasks; it returns within 1 s.
 pub(crate) const STOP_WAIT: Duration = Duration::from_millis(900);
+/// How often a generation looks for a panic outside its own tasks.
+const WATCH: Duration = Duration::from_secs(1);
 
 /// What a generation runs with: `start`'s config and the core's own settings.
 #[derive(Clone, Debug)]
@@ -42,6 +46,8 @@ pub struct Settings {
     pub mode: Arc<ModeCell>,
     /// Each group's current node and what dials it; a new Global flow goes through `g-Proxy`'s.
     pub outbounds: Arc<Outbounds>,
+    /// The panics on the core's runtime threads so far (see `panics.rs`).
+    pub panics: Arc<AtomicU64>,
 }
 
 /// The tun as the driver holds it.
@@ -243,6 +249,7 @@ impl Gen {
 pub struct Tunnel {
     gen_: Gen,
     tun: Arc<Tun>,
+    outbounds: Arc<Outbounds>,
 }
 
 impl Tunnel {
@@ -265,7 +272,11 @@ impl Tunnel {
                 runtime: rt.clone(),
             },
             tun: Arc::clone(&tun),
+            outbounds: Arc::clone(&settings.outbounds),
         };
+        let seen = settings.panics.load(Relaxed);
+        let watch = watch(Arc::clone(&settings.panics), seen, tunnel.gen_.clone());
+        tunnel.gen_.spawn(watch);
         let signal = StartSignal(Some(Arc::clone(gate)));
         let gen_ = tunnel.gen_.clone();
         tunnel.gen_.spawn(launch(tun, settings, gen_, signal));
@@ -288,9 +299,13 @@ impl Tunnel {
         &self.tun
     }
 
-    /// Cancels every task and closes the tun. Quick: it waits for at most one tun syscall.
+    /// Cancels every task, closes the tun and starts shutting down the carrier runtimes the
+    /// generation dialed through, which [`Tunnel::wait`] waits for with its tasks. Quick: it waits
+    /// for at most one tun syscall, and builds new runtimes for the nodes, which open nothing.
     pub fn halt(&self) {
         self.gen_.cancel.cancel();
+        let carriers = self.outbounds.renew();
+        self.gen_.tracker.spawn_on(carriers, &self.gen_.runtime);
         self.gen_.tracker.close();
         self.tun.revoke();
     }
@@ -323,6 +338,23 @@ impl Tunnel {
                 "generation {generation}: {} tasks detached after {ms} ms",
                 g.tracker.len()
             );
+        }
+    }
+}
+
+/// Ends the generation once the core's runtime has had a panic since `seen`. Its own tasks report
+/// theirs through [`Gen::spawn`] at once; honk's tasks for its carriers run on the same threads
+/// but are spawned by honk, so their panics are only counted.
+async fn watch(panics: Arc<AtomicU64>, seen: u64, gen_: Gen) {
+    loop {
+        tokio::time::sleep(WATCH).await;
+        if panics.load(Relaxed) != seen {
+            log::error!(
+                "generation {}: a task on the core's runtime panicked",
+                gen_.session.generation
+            );
+            gen_.die();
+            return;
         }
     }
 }

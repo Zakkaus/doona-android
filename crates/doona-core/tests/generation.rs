@@ -1,14 +1,16 @@
 //! A generation with proxied flows open: `traffic` counts every byte through the tun and the
-//! open app flows, and `stop` keeps its 1 s bound with 100 proxied flows open and leaves no
-//! descriptor behind. The fd counts read /proc/self/fd, so these tests run one at a time.
+//! open app flows, and `stop` keeps its 1 s bound with 100 proxied flows open, a carrier waiting
+//! in its pool and a dial stalled mid-handshake, and leaves no descriptor open that was not open
+//! before the first dial. The checks read /proc/self/fd, so these tests run one at a time.
 
 mod common;
 
 use common::client::Client;
 use common::global::{Global, WAIT, pattern, ping, socks_link};
 use common::servers::{self, Seen};
-use common::{socks, wait_for};
+use common::{anytls, socks, wait_for};
 use doonacore::dto::Traffic;
+use std::collections::BTreeSet;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -18,8 +20,18 @@ fn serial() -> MutexGuard<'static, ()> {
     SERIAL.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn open_fds() -> usize {
-    std::fs::read_dir("/proc/self/fd").unwrap().count()
+/// Each open descriptor with what it refers to (a socket's inode, say), so a number reused by a
+/// new descriptor still counts as new; the listing's own descriptor is left out.
+fn open_fds() -> BTreeSet<(String, String)> {
+    std::fs::read_dir("/proc/self/fd")
+        .unwrap()
+        .filter_map(|e| {
+            let path = e.ok()?.path();
+            let target = std::fs::read_link(&path).ok()?.display().to_string();
+            let listing = target.starts_with("/proc/");
+            (!listing).then(|| (path.display().to_string(), target))
+        })
+        .collect()
 }
 
 fn traffic(g: &Global) -> Traffic {
@@ -80,17 +92,7 @@ fn stop_ends_100_proxied_flows_within_a_second_and_leaves_no_descriptor() {
     let (udp, _) = servers::udp_echo();
     let (proxy, proxy_seen) = socks::socks5();
     let g = Global::new(&[socks_link(proxy, "s5")], vec![]);
-    // Warm up whatever the runtime, honk and the servers open lazily.
-    let mut c = g.start();
-    let id = c.connect(echo);
-    assert!(ping(&mut c, id, b"warm"));
-    c.send_udp(udp, b"warm");
-    assert!(c.recv_udp(udp, WAIT).is_some());
-    g.core.stop();
-    drop(c);
-    assert!(wait_for(WAIT, || all_closed(&proxy_seen) && all_closed(&echo_seen)));
     let before = open_fds();
-
     let mut c = g.start();
     let ids: Vec<_> = (0..100).map(|_| c.connect(echo)).collect();
     for id in &ids {
@@ -99,18 +101,63 @@ fn stop_ends_100_proxied_flows_within_a_second_and_leaves_no_descriptor() {
     c.send_udp(udp, b"x");
     assert!(c.recv_udp(udp, WAIT).is_some());
     assert_eq!(traffic(&g).active_flows, 101);
-    assert!(open_fds() > before + 100, "the flows hold their sockets");
+    assert!(
+        open_fds().difference(&before).count() > 100,
+        "the flows hold their sockets"
+    );
+    stops_within_a_second(&g);
+    drop(c);
+    // 100 flows and the UDP association's control connection.
+    assert_eq!(proxy_seen.connections.load(Relaxed), 101);
+    assert!(wait_for(WAIT, || all_closed(&proxy_seen) && all_closed(&echo_seen)));
+    assert_fds(&before);
+}
+
+/// An AnyTLS session outlives the flow that opened it, waiting in its pool for the next stream,
+/// and a dial through another node is stuck at the SOCKS5 greeting when `stop` comes: both end.
+#[test]
+fn stop_closes_a_pooled_carrier_and_a_stalled_handshake() {
+    let _s = serial();
+    let (at, at_seen) = anytls::anytls();
+    let (stall, stall_seen) = servers::stall();
+    let g = Global::new(
+        &[anytls::link(at, "at"), socks_link(stall, "stall")],
+        vec![],
+    );
+    let before = open_fds();
+    let mut c = g.start();
+    // The AnyTLS server echoes any stream; the destination is never dialed.
+    let id = c.connect(servers::closed_port());
+    assert_eq!(c.exchange(id, b"pooled").unwrap(), b"pooled");
+    assert!(c.until(WAIT, |_| traffic(&g).active_flows == 0));
+    g.select("stall");
+    let _stalled = c.connect(servers::closed_port());
+    assert!(c.until(WAIT, |_| stall_seen.connections.load(Relaxed) == 1));
+    assert_eq!(at_seen.connections.load(Relaxed), 1);
+    assert_eq!(
+        at_seen.closed.load(Relaxed),
+        0,
+        "the session waits in its pool"
+    );
+    stops_within_a_second(&g);
+    drop(c);
+    assert!(wait_for(WAIT, || all_closed(&at_seen) && all_closed(&stall_seen)));
+    assert_fds(&before);
+}
+
+fn stops_within_a_second(g: &Global) {
     let begun = Instant::now();
     g.core.stop();
     let took = begun.elapsed();
     assert!(took < Duration::from_secs(1), "{took:?}");
-    drop(c);
-    // The warm-up's flow and UDP control connection, then 100 flows and one control connection.
-    assert_eq!(proxy_seen.connections.load(Relaxed), 103);
-    assert!(wait_for(WAIT, || all_closed(&proxy_seen) && all_closed(&echo_seen)));
+}
+
+/// No descriptor is open that was not open at `before`. Other tests of this binary may close
+/// theirs meanwhile, so the count can only fall.
+fn assert_fds(before: &BTreeSet<(String, String)>) {
     assert!(
-        wait_for(WAIT, || open_fds() == before),
-        "{} open, {before} before",
-        open_fds()
+        wait_for(WAIT, || open_fds().is_subset(before)),
+        "left open: {:?}",
+        open_fds().difference(before).collect::<Vec<_>>()
     );
 }

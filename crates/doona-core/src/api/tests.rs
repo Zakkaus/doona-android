@@ -114,7 +114,6 @@ fn slow(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'s
     })
 }
 
-/// A core in Direct, which starts without nodes, whose generations run `launch`.
 /// The real driver, with a task of its generation that panics 200 ms in.
 fn panics_later(
     tun: TunHandle,
@@ -129,6 +128,7 @@ fn panics_later(
     crate::tunnel::drive(tun, settings, gen_, ready)
 }
 
+/// A core in Direct, which starts without nodes, whose generations run `launch`.
 fn core(dir: &TempDir, launch: crate::tunnel::Launch, bound: Duration) -> Arc<Core> {
     let core = Core::with_launch(dir.path().to_str().unwrap(), launch, bound);
     core.set_mode(Mode::Direct).unwrap();
@@ -379,18 +379,37 @@ fn a_panicking_data_path_task_fails_the_generation() {
     let core = core(&dir, panics_later, Duration::from_secs(10));
     let (dup, probe) = tun();
     core.start(dup, CONFIG).unwrap();
-    let begun = Instant::now();
-    let failed = loop {
-        let s: Snapshot = serde_json::from_str(&core.snapshot(i64::MAX)).unwrap();
-        if s.error == Some(ErrorCode::Internal) {
-            break s;
-        }
-        assert!(begun.elapsed() < Duration::from_secs(10), "{s:?}");
-        std::thread::sleep(Duration::from_millis(20));
-    };
-    assert!(!failed.running);
+    assert!(!failed_within_10s(&core).running);
     let begun = Instant::now();
     core.stop();
     assert!(begun.elapsed() < Duration::from_secs(1));
     assert!(closed(&probe));
+}
+
+/// honk spawns its carriers' tasks (a QUIC connection's driver, a session's reader) on the core's
+/// runtime itself, never through the generation: a panic in one fails the generation too.
+#[test]
+fn a_panic_in_a_task_honk_spawned_fails_the_generation() {
+    let dir = TempDir::new("api-worker-panic");
+    let core = core(&dir, crate::tunnel::drive, Duration::from_secs(10));
+    let (dup, probe) = tun();
+    core.start(dup, CONFIG).unwrap();
+    core.runtime
+        .spawn(async { panic!("a carrier's task failed") });
+    assert!(!failed_within_10s(&core).running);
+    core.stop();
+    assert!(closed(&probe));
+}
+
+/// The snapshot once it reports `internal`, which must be within 10 s.
+fn failed_within_10s(core: &Core) -> Snapshot {
+    let begun = Instant::now();
+    loop {
+        let s: Snapshot = serde_json::from_str(&core.snapshot(i64::MAX)).unwrap();
+        if s.error == Some(ErrorCode::Internal) {
+            return s;
+        }
+        assert!(begun.elapsed() < Duration::from_secs(10), "{s:?}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
 }

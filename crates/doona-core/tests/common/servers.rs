@@ -64,6 +64,27 @@ pub fn half_closer() -> (SocketAddr, mpsc::Receiver<Vec<u8>>) {
     (addr, rx)
 }
 
+/// Accepts connections and reads each until the client closes it, never answering: a dial stalled
+/// at its first reply.
+pub fn stall() -> (SocketAddr, Arc<Seen>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let seen = Arc::new(Seen::default());
+    let s = Arc::clone(&seen);
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(mut conn) = conn else { return };
+            s.connections.fetch_add(1, Relaxed);
+            let s = Arc::clone(&s);
+            std::thread::spawn(move || {
+                let _ = std::io::copy(&mut conn, &mut std::io::sink());
+                s.closed.fetch_add(1, Relaxed);
+            });
+        }
+    });
+    (addr, seen)
+}
+
 /// A loopback port with nothing listening.
 pub fn closed_port() -> SocketAddr {
     let l = TcpListener::bind("127.0.0.1:0").unwrap();
