@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering::AcqRel};
 use std::task::{Context, Poll, ready};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-use tokio::sync::mpsc;
+use tokio::sync::{OwnedSemaphorePermit, mpsc};
 use tokio_util::sync::PollSender;
 
 /// The largest chunk either side puts in a channel.
@@ -35,11 +35,13 @@ pub(crate) enum Event {
     Finished { id: FlowId, failed: bool },
     /// A UDP association ended (idle, or its socket failed).
     UdpEnded(u64),
-    /// A DNS answer to send back from `from` (the address the query went to) to `to`.
+    /// A DNS answer to send back from `from` (the address the query went to) to `to`. It keeps
+    /// its query's slot until the driver writes it, so queued answers stay bounded too.
     DnsAnswer {
         from: SocketAddr,
         to: SocketAddr,
         payload: Vec<u8>,
+        _slot: OwnedSemaphorePermit,
     },
 }
 

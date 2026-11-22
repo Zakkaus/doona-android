@@ -9,7 +9,7 @@
 use super::flow::{self, Event, Events, Key, Waker};
 use super::route::Route;
 use super::tcp::{self, Step, TcpFlow};
-use super::udp::{self, Nat};
+use super::udp::{self, Budget, Nat};
 use super::{Gen, Settings, Tun};
 use crate::sys;
 use honk_netstack::{
@@ -27,6 +27,8 @@ use tokio::sync::{Semaphore, mpsc, oneshot};
 const TUN_BATCH: usize = 64;
 /// Events handled per wakeup before the tun gets a turn.
 const EVENT_BATCH: usize = 256;
+/// Replies of one UDP association forwarded per wake before other events get a turn.
+const UDP_DRAIN: usize = 32;
 /// A SYN waits this long for its upstream dial (the stack's ceiling is 25 s).
 const DIAL_DEADLINE: Duration = Duration::from_secs(15);
 /// DNS datagrams answered at once; more are dropped and the client retries.
@@ -92,7 +94,7 @@ impl Driver {
             gen_,
             events,
             tcp: HashMap::new(),
-            nat: Nat::default(),
+            nat: Nat::new(Budget::new(udp::QUEUED_BYTES)),
             dns_slots: Arc::new(Semaphore::new(DNS_IN_FLIGHT)),
             rx: vec![0; mtu.max(1500) + 64],
             tx: vec![0; mtu + 64],
@@ -248,9 +250,9 @@ impl Driver {
                 }
             }
             Event::UdpEnded(n) => self.nat.remove(n),
-            Event::DnsAnswer { from, to, payload } => {
-                return self.send_udp(from, to, &payload, tun);
-            }
+            Event::DnsAnswer {
+                from, to, payload, ..
+            } => return self.send_udp(from, to, &payload, tun),
         }
         Ok(())
     }
@@ -367,12 +369,18 @@ impl Driver {
         };
         flow.waker.rearm();
         let (from, to) = (flow.remote, flow.client);
-        let mut replies = Vec::new();
-        while let Ok(d) = flow.down.try_recv() {
+        let mut replies = Vec::with_capacity(UDP_DRAIN);
+        while replies.len() < UDP_DRAIN
+            && let Ok(d) = flow.down.try_recv()
+        {
             replies.push(d);
         }
+        if replies.len() == UDP_DRAIN {
+            // More may be queued: come back after the events already waiting.
+            flow.waker.wake();
+        }
         for d in replies {
-            self.send_udp(from, to, &d, tun)?;
+            self.send_udp(from, to, &d.bytes, tun)?;
         }
         Ok(())
     }
