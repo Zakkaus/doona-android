@@ -24,7 +24,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 
 /**
  * A checkable row for a long list, an app per row: an optional [leading] (an app icon, laid out in a box of
- * [DoonaSize.appIcon]), the [title] over an optional [subtitle], each on one line that ends in an ellipsis, and a
+ * [DoonaSize.appIcon]), the [title] over an optional [subtitle], each on up to two lines before an ellipsis, and a
  * checkbox at the end (§7, S2 Checkbox: a 2 dp outline, filled with the accent and a checkmark when checked). The whole
  * row toggles and is hit over its full width and at least 48 dp of height; a screen reader reads the title, the
  * subtitle and On or Off, as it does for [DoonaSwitchRow].
@@ -54,9 +54,9 @@ fun DoonaCheckRow(
             DoonaHGap(DoonaTheme.spacing.block)
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = DoonaTheme.type.label, color = c.text.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, style = DoonaTheme.type.label, color = c.text.primary, maxLines = LABEL_LINES, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
-                Text(subtitle, style = DoonaTheme.type.caption, color = c.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, style = DoonaTheme.type.caption, color = c.text.secondary, maxLines = LABEL_LINES, overflow = TextOverflow.Ellipsis)
             }
         }
         DoonaHGap(DoonaTheme.spacing.block)

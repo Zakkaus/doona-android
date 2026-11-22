@@ -3,21 +3,26 @@ package dev.doona.android.designsystem
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.DoonaEmptyAction
 import dev.doona.android.designsystem.components.DoonaEmptyState
 import dev.doona.android.designsystem.components.DoonaMeter
+import dev.doona.android.designsystem.components.DoonaProgress
+import dev.doona.android.designsystem.components.DoonaProgressSize
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.Light
@@ -30,7 +35,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The meter and the empty state: what a reader hears, the room between the meter's text and its bar, and the empty state's action. */
+/** The meter, the empty state and the spinner: what a reader hears, the room between the meter's text and its bar, the empty state's action and inset. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "zh-rTW-w412dp-h915dp-notnight-xhdpi")
@@ -40,8 +45,9 @@ class FeedbackTest {
 
     private fun hasRange(fraction: Float) = SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(fraction, 0f..1f))
 
+    /** The value text is read once: as the merged text of the progress, with no state description saying it again beside it. */
     @Test
-    fun aMeterIsOneProgressWithItsValueTextAsItsState() {
+    fun aMeterIsOneProgressAndItsValueTextIsReadOnce() {
         compose.setVariantContent(Light) {
             Column {
                 DoonaMeter(0.25f, "25 / 100 GB")
@@ -49,7 +55,8 @@ class FeedbackTest {
                 DoonaMeter(-1f, "under")
             }
         }
-        compose.onNodeWithText("25 / 100 GB").assert(hasRange(0.25f))
+        compose.onNodeWithText("25 / 100 GB").assert(hasRange(0.25f)).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+        assertEquals(listOf("25 / 100 GB"), compose.onNodeWithText("25 / 100 GB").fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text })
         compose.onNodeWithText("over").assert(hasRange(1f))
         compose.onNodeWithText("under").assert(hasRange(0f))
     }
@@ -67,7 +74,7 @@ class FeedbackTest {
     fun theEmptyStateActionTakesATapAndTheTitleIsAHeading() {
         var taps = 0
         compose.setVariantContent(Light) {
-            DoonaEmptyState(R.drawable.ic_link, "Nothing here", "Add one.", action = DoonaEmptyAction("Add", onClick = { taps++ }))
+            DoonaEmptyState(R.drawable.ic_link, "Nothing here", "Add one.", actionLabel = "Add", onAction = { taps++ })
         }
         compose.onNodeWithText("Add").performClick()
         assertEquals(1, taps)
@@ -76,8 +83,40 @@ class FeedbackTest {
 
     @Test
     fun anEmptyStateWithoutAnActionHasNoButton() {
-        compose.setVariantContent(Light) { DoonaEmptyState(R.drawable.ic_search, "No match", "Try another name.") }
+        compose.setVariantContent(Light) {
+            Column {
+                DoonaEmptyState(R.drawable.ic_search, "No match", "Try another name.")
+                DoonaEmptyState(R.drawable.ic_search, "Half", "A label without a tap.", actionLabel = "Add")
+                DoonaEmptyState(R.drawable.ic_search, "Other half", "A tap without a label.", onAction = {})
+            }
+        }
         compose.onAllNodesWithText("Add").assertCountEquals(0)
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsActions.OnClick)).assertCountEquals(0)
+    }
+
+    /** The texts keep the inset of a card from the edges of the space they are given, which is not the gutter alone. */
+    @Test
+    fun theEmptyStateKeepsTheInsetOfACardAtItsSides() {
+        compose.setVariantContent(Light) { Column(Modifier.width(300.dp)) { DoonaEmptyState(R.drawable.ic_search, "No match", "Try another name.") } }
+        val inset = DoonaTheme.spacing.cardInset.value * compose.density.density
+        val text = compose.onNodeWithText("No match").fetchSemanticsNode().boundsInRoot
+        assertEquals("the title starts a card inset from the left", inset, text.left, 1f)
+        assertEquals("and ends one from the right", 300f * compose.density.density - inset, text.right, 1f)
+    }
+
+    /** The spinner is one indeterminate progress named in words, in the size of an inline icon or of a touch icon. */
+    @Test
+    fun aSpinnerIsAnIndeterminateProgressInTheSizeAsked() {
+        compose.setVariantContent(Light) {
+            Column {
+                DoonaProgress(Modifier.testTag("small"))
+                DoonaProgress(Modifier.testTag("inline"), DoonaProgressSize.Inline)
+            }
+        }
+        compose.onNodeWithTag("small").assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("處理中")))
+            .assertWidthIsEqualTo(DoonaTheme.size.icon).assertHeightIsEqualTo(DoonaTheme.size.icon)
+        compose.onNodeWithTag("inline").assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate))
+            .assertWidthIsEqualTo(DoonaTheme.size.iconInline).assertHeightIsEqualTo(DoonaTheme.size.iconInline)
     }
 }

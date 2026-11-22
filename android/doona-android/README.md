@@ -38,11 +38,12 @@ always interactive takes a required callback; one that can be static takes a nul
 | Group things | `DoonaCard`; `DoonaControlCard` for an icon, a label and a control; `DoonaMetricTile` for a figure | Gaps are `DoonaTheme.spacing` roles: `DoonaGap(...)` between blocks |
 | The one action of a page or dialog | `DoonaButton` (primary) | A pill. Never two primary buttons in one place |
 | An alternative next to it | `DoonaButton(style = Secondary)` | Outlined |
+| The one action that removes something | `DoonaButton(style = Destructive)` | A primary pill in the destructive fill; the confirmation of a removal, not a general warning colour |
 | A minor action, or a dismiss | `DoonaButton(style = Text)` | No fill. In a dialog it is the dismiss |
 | An action in progress | `DoonaButton(busy = true)` | Swaps the icon for a spinner and ignores taps; keep the label. `enabled = false` is for an action that cannot run yet |
 | An action that is only an icon | `DoonaIconAction` (or `DoonaBarAction` in the top bar) | 48 dp target, needs a label for the reader |
 | Several buttons | A `block` apart when stacked, an `item` apart side by side | Each is 36 dp high and hit over 48, so a smaller gap makes the hit areas overlap, which `SpacingRules.touch` fails |
-| One line of typed text | `DoonaTextField(state, label, …)` | `TextFieldState` from `rememberTextFieldState()`, or held by the view model. Show an error with `error = …` (words, not only the colour); pass `keyboardOptions` and `onImeAction` for the keyboard's type and action |
+| One line of typed text | `DoonaTextField(state, label, …)` | `TextFieldState` from `rememberTextFieldState()`, or held by the view model. Show an error with `error = …` (words, not only the colour); `supportingText` says what the field wants and gives way to an error; `trailing` takes an icon action at the end of the box; pass `keyboardOptions` and `onImeAction` for the keyboard's type and action |
 | Filtering a list by typing | `DoonaSearchField(state, placeholder)` | Search icon and a clear action; the keyboard's action is Search |
 | Pick one of two to five short options | `DoonaSegmented` | Tabular figures. More options, or long labels: `DoonaPicker` |
 | Pick from a list of values | `DoonaPicker`; `DoonaFilterPicker` in a filter bar | |
@@ -50,7 +51,7 @@ always interactive takes a required callback; one that can be static takes a nul
 | Choose many from a long list (apps) | `DoonaCheckRow` | Leading slot of `DoonaTheme.size.appIcon`, title, optional subtitle; put the rows in a `LazyColumn`. A single setting is a switch, not a check |
 | Work with no known end | `DoonaProgress` | `Small` alone, `Inline` on a line of text |
 | How much of a quota is used | `DoonaMeter(fraction, valueText)` | The value text goes above the bar and wraps; do not draw a bar beside it yourself |
-| A list or page with nothing in it | `DoonaEmptyState(icon, title, line, action = …)` | One line that says what to do; the action is the next step |
+| A list or page with nothing in it | `DoonaEmptyState(icon, title, line, actionLabel, onAction)` | One line that says what to do; the action is the next step, shown when both are given |
 | An error that the user should see | `DoonaErrorBanner`; a field's own error for one input | The banner dismisses on tap |
 | Ask before a removal or a choice | `DoonaConfirmDialog` | `kind = Destructive` for removing. The caller stops showing it on confirm or dismiss |
 | Status as a colour | `DoonaStatusLight`, `DoonaLatency`, `DoonaBadge` | Say it in words as well |
