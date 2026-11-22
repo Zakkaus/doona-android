@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -130,11 +130,11 @@ internal fun RvFilterChip(label: String, menu: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .minimumInteractiveComponentSize()
-            .height(RvNodesSize.chip)
+            .heightIn(min = RvNodesSize.chip)
             .clip(CircleShape)
             .background(Rv.colors.segmentTrack)
             .rvPress(CircleShape, Role.Button, onClick)
-            .padding(start = RvNodesSize.chipStart, end = if (menu) RvNodesSize.chipEnd else RvNodesSize.chipStart),
+            .padding(start = RvNodesSize.chipStart, end = if (menu) RvNodesSize.chipEnd else RvNodesSize.chipStart, top = RvSpace.tight, bottom = RvSpace.tight),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(RvSpace.tight),
     ) {
@@ -197,7 +197,7 @@ internal fun RvDeltaTriangle(up: Boolean, color: Color) {
 @Composable
 internal fun RvStatusChip(@DrawableRes icon: Int, label: String, color: Color) {
     Row(
-        Modifier.height(RvNodesSize.status).clip(CircleShape).background(color.copy(alpha = STATUS_TINT)).padding(horizontal = RvNodesSize.statusPad),
+        Modifier.heightIn(min = RvNodesSize.status).clip(CircleShape).background(color.copy(alpha = STATUS_TINT)).padding(horizontal = RvNodesSize.statusPad, vertical = RvSpace.tight),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(RvSpace.tight + RvSpace.tight / 2),
     ) {
@@ -216,7 +216,7 @@ internal fun RvFloatingActions(label: String, onClick: () -> Unit, @DrawableRes 
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(RvNodesSize.ctaGap)) {
         val lift = if (colors.raisedShadow) Modifier.shadow(RvNodesSize.ctaShadow, CircleShape) else Modifier
         Box(
-            Modifier.weight(1f).height(RvNodesSize.cta).then(lift).clip(CircleShape).background(colors.text).rvPress(CircleShape, Role.Button, onClick),
+            Modifier.weight(1f).heightIn(min = RvNodesSize.cta).then(lift).clip(CircleShape).background(colors.text).rvPress(CircleShape, Role.Button, onClick).padding(vertical = RvSpace.tight),
             contentAlignment = Alignment.Center,
         ) { RvText(label, RvNodesType.cta, color = colors.page, align = TextAlign.Center) }
         Box(
