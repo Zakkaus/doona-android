@@ -35,6 +35,7 @@ always interactive takes a required callback; one that can be static takes a nul
 | You need | Use | Notes |
 | --- | --- | --- |
 | A page with a top bar and a sheet | `DoonaPage`, `DoonaPageTitle`, `DoonaPageTabs` | `DoonaHubShell` puts the hub bar, or a rail on a short window, around it. The column is 600 dp at most, centred, and at the rail's edge on a short window |
+| A page whose content is a long list, such as the apps of a device | `DoonaTopBar` over `DoonaLazyPageSheet { items(...) }` in a column, as `DoonaPage` builds its own | The same chrome as `DoonaPageSheet`, with a `LazyListScope` for content, so only the rows in view are composed. A `LazyColumn` inside `DoonaPageSheet` throws: its scroll gives the list no height limit |
 | Group things | `DoonaCard`; `DoonaControlCard` for an icon, a label and a control; `DoonaMetricTile` for a figure | Gaps are `DoonaTheme.spacing` roles: `DoonaGap(...)` between blocks |
 | The one action of a page or dialog | `DoonaButton` (primary) | A pill. Never two primary buttons in one place |
 | An alternative next to it | `DoonaButton(style = Secondary)` | Outlined |
@@ -44,16 +45,16 @@ always interactive takes a required callback; one that can be static takes a nul
 | An action that is only an icon | `DoonaIconAction` (or `DoonaBarAction` in the top bar) | 48 dp target, needs a label for the reader |
 | Several buttons | A `block` apart when stacked, an `item` apart side by side | Each is 36 dp high and hit over 48, so a smaller gap makes the hit areas overlap, which `SpacingRules.touch` fails |
 | One line of typed text | `DoonaTextField(state, label, …)` | `TextFieldState` from `rememberTextFieldState()`, or held by the view model. Show an error with `error = …` (words, not only the colour); `supportingText` says what the field wants and gives way to an error; `trailing` takes an icon action at the end of the box; pass `keyboardOptions` and `onImeAction` for the keyboard's type and action |
-| Filtering a list by typing | `DoonaSearchField(state, placeholder)` | Search icon and a clear action; the keyboard's action is Search |
+| Filtering a list by typing | `DoonaSearchField(state, placeholder)` | Search icon and a clear action; the keyboard's action is Search. The placeholder is the field's label for a screen reader, also after typing |
 | Pick one of two to five short options | `DoonaSegmented` | Tabular figures. More options, or long labels: `DoonaPicker` |
 | Pick from a list of values | `DoonaPicker`; `DoonaFilterPicker` in a filter bar | |
 | An on/off setting | `DoonaSwitchRow` | The whole row toggles |
-| Choose many from a long list (apps) | `DoonaCheckRow` | Leading slot of `DoonaTheme.size.appIcon`, title, optional subtitle; put the rows in a `LazyColumn`. A single setting is a switch, not a check |
+| Choose many from a long list (apps) | `DoonaCheckRow` | Leading slot of `DoonaTheme.size.appIcon`, title, optional subtitle; put the rows in the `items` of a `DoonaLazyPageSheet`. A single setting is a switch, not a check |
 | Work with no known end | `DoonaProgress` | `Small` alone, `Inline` on a line of text |
 | How much of a quota is used | `DoonaMeter(fraction, valueText)` | The value text goes above the bar and wraps; do not draw a bar beside it yourself |
 | A list or page with nothing in it | `DoonaEmptyState(icon, title, line, actionLabel, onAction)` | One line that says what to do; the action is the next step, shown when both are given |
 | An error that the user should see | `DoonaErrorBanner`; a field's own error for one input | The banner dismisses on tap |
-| Ask before a removal or a choice | `DoonaConfirmDialog` | `kind = Destructive` for removing. The caller stops showing it on confirm or dismiss |
+| Ask before a removal or a choice | `DoonaConfirmDialog` | `kind = Destructive` for removing. A tap on the underlay around the card dismisses; the card scrolls in a window too short for it, and button labels wrap whole. The caller stops showing it on confirm or dismiss |
 | Status as a colour | `DoonaStatusLight`, `DoonaLatency`, `DoonaBadge` | Say it in words as well |
 | A series over time | `DoonaSparkline`; series colours are `DoonaTheme.colors.series1` and `series2`, which no status shares | |
 

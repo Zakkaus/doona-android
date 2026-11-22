@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +26,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -266,6 +272,40 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
                     top = DoonaTheme.spacing.sheetTop,
                     bottom = DoonaTheme.spacing.sheetBottom,
                 ),
+            content = content,
+        )
+    }
+}
+
+/**
+ * The page sheet for a long list, such as the apps on a device: the same chrome as [DoonaPageSheet] (surface fill, 16 px
+ * top corners, the column at most 600 dp wide and placed by [columnAlignment], padding 20 top, 16 sides and below the
+ * last row, and the gesture bar's inset at the end), with [content] a lazy list that scrolls in it and composes the rows
+ * in view only. [DoonaPageSheet] scrolls its blocks in a vertical scroll, which gives a lazy list unbounded height and
+ * throws, so a list of more than a screenful goes here. Put it under a [DoonaTopBar], as [DoonaPage] does the other.
+ */
+@Composable
+fun DoonaLazyPageSheet(modifier: Modifier = Modifier, state: LazyListState = rememberLazyListState(), content: LazyListScope.() -> Unit) {
+    val bottomBar = DoonaTheme.insets.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
+    Box(
+        modifier
+            .fillMaxSize()
+            .clip(DoonaTheme.shape.sheet)
+            .background(DoonaTheme.colors.surface),
+        contentAlignment = columnAlignment(),
+    ) {
+        LazyColumn(
+            Modifier
+                .layoutRole(LayoutRole.Sheet)
+                .widthIn(max = DoonaTheme.size.contentMax)
+                .fillMaxSize(),
+            state = state,
+            contentPadding = PaddingValues(
+                start = DoonaTheme.spacing.gutter,
+                end = DoonaTheme.spacing.gutter,
+                top = DoonaTheme.spacing.sheetTop,
+                bottom = DoonaTheme.spacing.sheetBottom + bottomBar,
+            ),
             content = content,
         )
     }
