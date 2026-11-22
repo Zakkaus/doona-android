@@ -106,3 +106,34 @@ jobs:
           kt=android/tunbench/app/src/main/kotlin/dev/tunbench
           diff <(for c in HonkEngine Bench; do grep -oP '\bexternal fun \K\w+' "$kt/$c.kt" | sed "s/^/Java_dev_tunbench_${c}_/"; done | sort) \
             <("$readelf" --dyn-syms -W "$RUNNER_TEMP/apk/lib/arm64-v8a/libhonkengine.so" | awk '$7 != "UND" && $8 ~ /^Java_dev_tunbench_/ { print $8 }' | sort)
+
+  doona-android:
+    name: doona-android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install the API 37.1 platform
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.1"'
+      - name: Check the layers and the design tokens
+        working-directory: android/doona-android
+        run: |
+          set -euo pipefail
+          tools/check-tokens.sh
+          tools/check-layers.sh
+      - name: Check Kotlin format, lint, run the JVM tests and the screenshots
+        working-directory: android/doona-android
+        run: ./gradlew spotlessCheck :app:lintDebug :app:testDebugUnitTest :app:verifyRoborazziDebug
+      - name: Build the release APK and check its 16 KiB page alignment
+        working-directory: android/doona-android
+        run: |
+          set -euo pipefail
+          ./gradlew assembleRelease
+          apk=app/build/outputs/apk/release/app-release.apk
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/zipalign" -c -P 16 4 "$apk"
