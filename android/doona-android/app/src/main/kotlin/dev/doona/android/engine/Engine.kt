@@ -23,6 +23,12 @@ interface Engine {
      */
     val perAppLoaded: StateFlow<Boolean>
 
+    /**
+     * A problem the running tunnel reports without stopping: [ErrorCode.LocalNetwork] once a connection through a node on
+     * the local network failed in this run (ARCH D26). Null otherwise, and whenever the tunnel is not running.
+     */
+    val warning: StateFlow<ErrorCode?>
+
     /** Starts the tunnel. The caller has already obtained VPN consent: `VpnService.prepare` returned null. */
     fun connect()
 
@@ -59,8 +65,12 @@ interface Engine {
     suspend fun setPerApp(perApp: PerApp): Result<Unit>
 }
 
-/** Codes shared with the core (`plans/v1/core-api.md`). Raw details never reach the UI: they may hold subscription URLs. */
-enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, ParseFailed, NoNodes, Busy, Internal }
+/**
+ * Codes shared with the core (`plans/v1/core-api.md`). Raw details never reach the UI: they may hold subscription URLs.
+ * [LocalNetwork]: the failed connection or download went to an address on the local network, which Android 17 lets doona
+ * reach only with the `ACCESS_LOCAL_NETWORK` permission (ARCH D26).
+ */
+enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, ParseFailed, NoNodes, Busy, Internal, LocalNetwork }
 
 class EngineException(val code: ErrorCode) : Exception(code.name)
 
@@ -111,7 +121,8 @@ enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Fall
 
 /**
  * A node or a nested group. [id] stays the same across subscription refreshes; [name] is only for display and may
- * repeat. [latencyMs] is null before the first probe and after a failed one; [failed] tells them apart.
+ * repeat. [latencyMs] is null before the first probe and after a failed one; [failed] tells them apart, and [error] says
+ * why the probe failed when the core knows: [ErrorCode.LocalNetwork] for a node on the local network.
  */
 data class Member(
     val id: String,
@@ -121,6 +132,7 @@ data class Member(
     val isGroup: Boolean = false,
     /** The subscription a node came from; null for groups. */
     val subscriptionId: String? = null,
+    val error: ErrorCode? = null,
 )
 
 /** [selectedId] is the member carrying traffic now; [pinned] says the user chose it rather than the group's own test. */

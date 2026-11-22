@@ -1,6 +1,7 @@
 package dev.doona.android.engine.fake
 
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
@@ -32,6 +33,9 @@ class FakeEngine(
 
     /** True: the fake's policy is there from the start; a test sets false to stand for a stored policy still being read. */
     override val perAppLoaded = MutableStateFlow(true)
+
+    /** None: the fake's tunnel never dials. A test sets one to stand for the core's report. */
+    override val warning = MutableStateFlow<ErrorCode?>(null)
 
     override fun connect() {
         status.value = Status.Running(sinceEpochMs = 0)

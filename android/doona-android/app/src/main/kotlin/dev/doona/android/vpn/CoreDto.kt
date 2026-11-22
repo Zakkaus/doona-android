@@ -40,6 +40,8 @@ internal data class SnapshotDto(
     val sinceEpochMs: Long? = null,
     /** An error code, set when the data path died after `start` returned. */
     val error: String? = null,
+    /** An error code for a problem that leaves the data path up: `local_network`. */
+    val warning: String? = null,
     val traffic: TrafficDto,
     val catalog: CatalogDto? = null,
 ) {
@@ -71,10 +73,12 @@ internal data class MemberDto(
     val name: String,
     val latencyMs: Int? = null,
     val failed: Boolean,
+    /** Why the last probe failed, when the core knows: `local_network`. */
+    val error: String? = null,
     val isGroup: Boolean,
     val subscriptionId: String? = null,
 ) {
-    fun toMember() = Member(id, name, latencyMs, failed, isGroup, subscriptionId)
+    fun toMember() = Member(id, name, latencyMs, failed, isGroup, subscriptionId, error?.let(::errorCodeOf))
 }
 
 @Serializable
@@ -132,6 +136,7 @@ private val ERROR_CODES = mapOf(
     "no_nodes" to ErrorCode.NoNodes,
     "busy" to ErrorCode.Busy,
     "internal" to ErrorCode.Internal,
+    "local_network" to ErrorCode.LocalNetwork,
 )
 
 /** An unknown code from a newer core is [ErrorCode.Internal]. */

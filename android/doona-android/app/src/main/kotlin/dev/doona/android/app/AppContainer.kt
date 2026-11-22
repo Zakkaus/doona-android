@@ -1,8 +1,13 @@
 package dev.doona.android.app
 
+import android.Manifest
 import android.app.Application
+import android.content.pm.PackageManager
+import android.os.Build
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
+import dev.doona.android.feature.localnetwork.LocalNetworkAccess
+import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +24,22 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     /** The apps per-app routing can name; read on demand, so nothing queries the device until that page opens. */
     val installedApps: InstalledApps by lazy(createInstalledApps)
 
+    /** Outlives every screen: imports and local network prompts that a page started go on when it is left. */
+    private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+
+    /** The local network permission, asked for only when something on the local network failed (ARCH D26). */
+    val localNetwork: LocalNetworkAccess by lazy { LocalNetworkAccess(::localNetworkGranted) }
+
+    /**
+     * The engine the screens use: [engine], asking for the local network permission where an action failed for want
+     * of it. The service and the tile use [engine] itself.
+     */
+    val uiEngine: Engine by lazy { LocalNetworkEngine(engine, localNetwork, uiScope).also { it.watch() } }
+
     /** The subscription import in flight, above every screen that can start one: a slow fetch survives leaving the page. */
-    val imports: SubscriptionImports by lazy { SubscriptionImports(engine, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)) }
+    val imports: SubscriptionImports by lazy { SubscriptionImports(uiEngine, uiScope) }
+
+    /** Below Android 17 no permission guards the local network. */
+    private fun localNetworkGranted(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN ||
+        application.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED
 }

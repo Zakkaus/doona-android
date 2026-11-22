@@ -4,23 +4,27 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.feature.localnetwork.LocalNetworkHost
 
 /**
- * The only activity. It owns the steps that need an activity before the engine may connect: the notification
- * permission and VPN consent. Every connect request, from the UI or from [connectIntent], goes through [connect].
+ * The only activity. It owns the steps that need an activity: before the engine may connect, the notification
+ * permission and VPN consent; and the local network permission's system dialog and the app's settings page, which the
+ * screens' engine asks for after a failure (ARCH D26). Every connect request, from the UI or from [connectIntent], goes
+ * through [connect].
  */
 class MainActivity : ComponentActivity() {
-    private val engine get() = (application as DoonaApplication).container.engine
-    private val installedApps get() = (application as DoonaApplication).container.installedApps
-    private val imports get() = (application as DoonaApplication).container.imports
+    private val container get() = (application as DoonaApplication).container
+    private val engine get() = container.engine
 
     /**
      * True from a connect request until it connects or consent is refused, so a repeated tap or a redelivered intent
@@ -37,13 +41,28 @@ class MainActivity : ComponentActivity() {
         if (result.resultCode == RESULT_OK) engine.connect()
     }
 
+    private val localNetworkPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { container.localNetwork.answered(it) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         connecting = savedInstanceState?.getBoolean(KEY_CONNECTING) ?: false
         // Read here, once, so the settings page never asks the package manager while it composes.
         val version = versionName()
-        setContent { DoonaTheme { DoonaApp(engine, installedApps, onConnect = ::connect, imports = imports, version = version) } }
+        val localNetwork = LocalNetworkHost(container.localNetwork, ::requestLocalNetwork, ::openAppSettings)
+        setContent {
+            DoonaTheme {
+                DoonaApp(
+                    container.uiEngine,
+                    container.installedApps,
+                    onConnect = ::connect,
+                    imports = container.imports,
+                    version = version,
+                    localNetwork = localNetwork,
+                )
+            }
+        }
         // A recreated activity or one reopened from recents must not repeat the request that first launched it.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (savedInstanceState == null && !fromHistory) handle(intent)
@@ -95,6 +114,20 @@ class MainActivity : ComponentActivity() {
         if (consent != null) return vpnConsent.launch(consent)
         connecting = false
         engine.connect()
+    }
+
+    /** The system's question; below Android 17 there is no permission to ask for, so access counts as allowed. */
+    private fun requestLocalNetwork() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+            localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+        } else {
+            container.localNetwork.answered(true)
+        }
+    }
+
+    /** The app's page in the system settings, where a refused permission can still be allowed. */
+    private fun openAppSettings() {
+        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
     }
 
     companion object {

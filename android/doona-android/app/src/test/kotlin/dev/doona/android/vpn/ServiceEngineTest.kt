@@ -300,6 +300,21 @@ class ServiceEngineTest {
     }
 
     @Test
+    fun aSnapshotWarningShowsOnlyWhileTheTunnelRuns() = runBlocking {
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
+        withTimeout(5_000) { engine.ready.first { it } }
+        // The refresh after the command reads the running fixture, which carries `local_network`.
+        assertTrue(engine.setMode(Mode.Direct).isSuccess)
+        assertEquals(null, engine.warning.value)
+        engine.connect()
+        assertTrue(engine.controller.start(StartHost(installed = setOf("a")), requested.single()))
+        withTimeout(5_000) { engine.warning.first { it == ErrorCode.LocalNetwork } }
+        engine.disconnect()
+        withTimeout(5_000) { engine.warning.first { it == null } }
+        Unit
+    }
+
+    @Test
     fun aSaveWhoseRebuildFailsIsStoredAndReportsWhy() = runBlocking {
         engine.launch(Dispatchers.IO.limitedParallelism(1))
         engine.connect()
