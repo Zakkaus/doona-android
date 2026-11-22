@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Revolut-style sample's subscription pages, first run, error and empty states, and its component gallery (prototype/rv), debug builds only. -->
+<resources>
+    <string name="rv_gallery_title">Components</string>
+    <string name="rv_gallery_fields">Text field</string>
+    <string name="rv_gallery_menu">Menu</string>
+    <string name="rv_gallery_banner">Error banner</string>
+    <string name="rv_gallery_empty">Empty state</string>
+    <string name="rv_gallery_sheet">Confirm sheet</string>
+    <string name="rv_menu_update">Update</string>
+    <string name="rv_menu_edit">Edit</string>
+    <string name="rv_menu_delete">Delete</string>
+    <string name="rv_cancel">Cancel</string>
+    <string name="rv_sub_delete_title">Delete %1$s?</string>
+    <plurals name="rv_sub_delete_body">
+        <item quantity="one">Its node is removed with it.</item>
+        <item quantity="other">Its %1$d nodes are removed with it.</item>
+    </plurals>
+    <string name="rv_add_link">Subscription link</string>
+    <string name="rv_add_link_hint">Clash, sing-box and share-link lists.</string>
+    <string name="rv_add_name">Name (optional)</string>
+    <string name="rv_add_name_hint">The name is shown only in doona.</string>
+    <string name="rv_add_not_subscription">This link did not return a subscription.</string>
+    <string name="rv_sub_failed_title">Could not update %1$s</string>
+    <plurals name="rv_sub_failed_reason">
+        <item quantity="one">Its server did not answer. The node from the last update stays in use.</item>
+        <item quantity="other">Its server did not answer. The %1$d nodes from the last update stay in use.</item>
+    </plurals>
+    <string name="rv_retry">Try again</string>
+    <string name="rv_empty_subscription">No subscription yet</string>
+    <string name="rv_empty_subscription_line">Add a subscription to pick a node and connect.</string>
+    <string name="rv_add_subscription">Add subscription</string>
+    <string name="rv_offline">No network</string>
+    <string name="rv_offline_reason">The phone is not on a network. Once it is, doona can connect and update subscriptions.</string>
+    <string name="rv_network_settings">Network settings</string>
+    <string name="rv_vpn_taken">Another app took over the VPN</string>
+    <string name="rv_vpn_taken_reason">Android runs one VPN at a time, so doona disconnected.</string>
+    <string name="rv_reconnect">Reconnect</string>
+</resources>

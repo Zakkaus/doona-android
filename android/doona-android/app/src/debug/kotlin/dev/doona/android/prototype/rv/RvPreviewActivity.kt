@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.gallery.RvGalleryScreen
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
@@ -35,7 +36,8 @@ import dev.doona.android.prototype.rv.stats.rvStatsSample
  * bar), 節點 (the search pill and the outbound row) and the node in use (its row); 節點 pushes a node's page; the nav
  * switches to 設定, which pushes 主題, and to 策略, which pushes a group's page (its rows and the main node) and the quick
  * rule (新增規則); 活動's mode row and 查看全部 switch to 策略, and a rule group opens its group's page. Back returns. Start it from the launcher's "doona RV sample", or with
- * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`.
+ * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`; `--es route <route>` opens a
+ * route over 活動, such as `gallery`, the library's new parts.
  */
 class RvPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,7 +47,8 @@ class RvPreviewActivity : ComponentActivity() {
             val dark = isSystemInDarkTheme()
             RvTheme(rvSystemScheme(dark), dark) {
                 // The pages pushed over the tab home, last on top: a route's name, and a node's id after a colon.
-                var stack by rememberSaveable { mutableStateOf(listOf(ACTIVITY)) }
+                val start = intent.getStringExtra(EXTRA_ROUTE)?.let { listOf(ACTIVITY, it) } ?: listOf(ACTIVITY)
+                var stack by rememberSaveable { mutableStateOf(start) }
                 BackHandler(enabled = stack.size > 1) { stack = stack.dropLast(1) }
                 RvPreviewPage(stack.last(), push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
             }
@@ -86,6 +89,8 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
 
         RULE -> RvPolicyRulePage(RvPolicyData.connection, quickRule, { quickRule = it }, onBack = pop, onApply = pop)
 
+        GALLERY -> RvGalleryScreen(onBack = pop)
+
         THEME -> RvThemeScreen(settings.appearance, { settings = settings.copy(appearance = it) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pop)
 
         else -> {
@@ -108,4 +113,8 @@ private const val THEME = "theme"
 private const val POLICY = "policy"
 private const val GROUP = "group"
 private const val RULE = "rule"
+private const val GALLERY = "gallery"
+
+/** The launch extra naming a route to open over 活動. */
+private const val EXTRA_ROUTE = "route"
 private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS)
