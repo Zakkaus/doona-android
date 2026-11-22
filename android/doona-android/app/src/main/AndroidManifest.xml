@@ -18,5 +18,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- The only way in that may connect: not exported, so other apps cannot start a connection. -->
+        <activity-alias
+            android:name=".app.ConnectEntry"
+            android:exported="false"
+            android:targetActivity=".app.MainActivity" />
     </application>
 </manifest>

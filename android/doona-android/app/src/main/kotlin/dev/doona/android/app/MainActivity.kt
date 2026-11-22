@@ -1,6 +1,7 @@
 package dev.doona.android.app
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.VpnService
@@ -14,7 +15,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 
 /**
  * The only activity. It owns the steps that need an activity before the engine may connect: the notification
- * permission and VPN consent. Every connect request, from the UI or from [ACTION_CONNECT], goes through [connect].
+ * permission and VPN consent. Every connect request, from the UI or from [connectIntent], goes through [connect].
  */
 class MainActivity : ComponentActivity() {
     private val engine get() = (application as DoonaApplication).container.engine
@@ -41,8 +42,10 @@ class MainActivity : ComponentActivity() {
         handle(intent)
     }
 
+    // The activity itself is exported for the launcher, so any app can send it this action; only the non-exported
+    // alias proves the request came from this app.
     private fun handle(intent: Intent) {
-        if (intent.action == ACTION_CONNECT) connect()
+        if (intent.action == ACTION_CONNECT && intent.component?.className == CONNECT_ENTRY) connect()
     }
 
     /**
@@ -67,7 +70,16 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        /** Sent by the Quick Settings tile when VPN consent is missing; runs the same path as the connect switch. */
         const val ACTION_CONNECT = "dev.doona.android.action.CONNECT"
+
+        /** The `<activity-alias>` in the manifest; not exported. */
+        private const val CONNECT_ENTRY = "dev.doona.android.app.ConnectEntry"
+
+        /**
+         * Opens the app and runs the same path as the connect switch, asking for consent first where needed. For this
+         * app's own components only, such as the Quick Settings tile when VPN consent is missing.
+         */
+        fun connectIntent(context: Context): Intent =
+            Intent(ACTION_CONNECT).setClassName(context, CONNECT_ENTRY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 }
