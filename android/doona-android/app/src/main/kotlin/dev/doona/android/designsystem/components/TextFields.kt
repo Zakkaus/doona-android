@@ -1,5 +1,6 @@
 package dev.doona.android.designsystem.components
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.KeyboardActionHandler
@@ -27,11 +29,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 import androidx.compose.ui.semantics.error as semanticsError
@@ -47,10 +59,12 @@ import androidx.compose.ui.semantics.error as semanticsError
 /**
  * Labelled single-line field (§7, `.rp-field`): the label above in the caption style, then a [DoonaTheme] control-fill
  * box at least 48 dp high with 12 of padding at the sides, where the typed text, or the [placeholder] while there is
- * none, sits; then the [error] line, if any. Focus draws a 2 dp accent ring, an error a 2 dp negative one, and the error
- * line names the error in words with a dot, so colour is not all it says. The label, the text and the error are one
- * node to a screen reader. [keyboardOptions] and [onImeAction] pass the keyboard's type and action through; the
- * action's default (hide the keyboard, move the focus) runs after [onImeAction].
+ * none, sits, and the optional [trailing] content (an icon action, say) at its end; then the [error] line, or, when
+ * there is no error, the [supportingText] line that tells what the field wants. Focus draws a 2 dp accent ring, an
+ * error a 2 dp negative one, and the error line names the error in words with a dot, so colour is not all it says. The
+ * label, the text, the placeholder and the line under the box are one node to a screen reader. Text that runs on past
+ * the box fades out at the edge where it is cut off. [keyboardOptions] and [onImeAction] pass the keyboard's type and
+ * action through; the action's default (hide the keyboard, move the focus) runs after [onImeAction].
  */
 @Composable
 fun DoonaTextField(
@@ -58,26 +72,37 @@ fun DoonaTextField(
     label: String,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
+    supportingText: String? = null,
     error: String? = null,
     enabled: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     onImeAction: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val c = DoonaTheme.colors
-    FieldInput(state, modifier, enabled, keyboardOptions, onImeAction, error) { inner, focused ->
+    FieldInput(state, modifier, enabled, keyboardOptions, onImeAction, error) { inner, focused, scroll ->
         Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
             Text(label, style = DoonaTheme.type.caption, color = c.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             FieldBox(error != null, focused) {
-                Box(Modifier.fillMaxWidth().padding(horizontal = DoonaTheme.spacing.fillInset)) { Typed(state, placeholder, enabled, inner) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    val end = if (trailing == null) DoonaTheme.spacing.fillInset else DoonaTheme.spacing.item
+                    Box(Modifier.weight(1f).padding(start = DoonaTheme.spacing.fillInset, end = end)) { Typed(state, placeholder, enabled, scroll, inner) }
+                    trailing?.invoke()
+                }
             }
-            if (error != null) FieldError(error)
+            if (error != null) {
+                FieldError(error)
+            } else if (supportingText != null) {
+                Text(supportingText, style = DoonaTheme.type.caption, color = c.text.secondary)
+            }
         }
     }
 }
 
 /**
  * Search field: the same box with a leading search icon and, once there is text, a clear action at its end that empties
- * the state. [placeholder] says what is searched and names the field to a screen reader. The keyboard's action is
+ * the state. While the field is empty, [placeholder] shows in it and says what is searched; a screen reader reads it
+ * then as the field's text. The text keeps clear of the clear action and fades out before it. The keyboard's action is
  * Search unless [keyboardOptions] says otherwise.
  */
 @Composable
@@ -89,29 +114,57 @@ fun DoonaSearchField(
     onImeAction: (() -> Unit)? = null,
 ) {
     val c = DoonaTheme.colors
-    FieldInput(state, modifier, enabled = true, keyboardOptions, onImeAction, error = null) { inner, focused ->
+    FieldInput(state, modifier, enabled = true, keyboardOptions, onImeAction, error = null) { inner, focused, scroll ->
         FieldBox(invalid = false, focused) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.width(DoonaTheme.spacing.fillInset))
                 // The icon grows with the text beside it, as a button's glyph does.
                 DoonaIcon(R.drawable.ic_search, c.icon, size = dotSizeFor(DoonaTheme.type.body, DoonaTheme.size.iconSmall))
                 Spacer(Modifier.width(DoonaTheme.spacing.item))
-                Box(Modifier.weight(1f).padding(end = DoonaTheme.spacing.item)) { Typed(state, placeholder, enabled = true, inner) }
+                Box(Modifier.weight(1f).padding(end = DoonaTheme.spacing.item)) { Typed(state, placeholder, enabled = true, scroll, inner) }
                 if (state.text.isNotEmpty()) DoonaIconAction(R.drawable.ic_close, stringResource(R.string.ui_clear), onClick = { state.clearText() })
             }
         }
     }
 }
 
-/** The text of a field, or its placeholder while there is none; [inner] is the field's own editable text. */
+/** The text of a field, or its placeholder while there is none; [inner] is the field's own editable text, which fades where [scroll] has more of it out of sight. */
 @Composable
-private fun Typed(state: TextFieldState, placeholder: String?, enabled: Boolean, inner: @Composable () -> Unit) {
+private fun Typed(state: TextFieldState, placeholder: String?, enabled: Boolean, scroll: ScrollState, inner: @Composable () -> Unit) {
     val c = DoonaTheme.colors
-    Box(contentAlignment = Alignment.CenterStart) {
+    Box(Modifier.fadedAtEdges(scroll), contentAlignment = Alignment.CenterStart) {
         if (state.text.isEmpty() && placeholder != null) {
             Text(placeholder, style = DoonaTheme.type.body, color = if (enabled) c.text.secondary else c.text.disabled, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         inner()
+    }
+}
+
+/**
+ * Fades the edge of a scrolled line of text where more of it lies out of sight, over the width of `fieldFade`, so a
+ * long value ends in a soft edge and not in a half glyph: the end when [scroll] has more to show after, the start when
+ * it has some before. The mask is drawn into the content's own layer, so what is behind the text is untouched.
+ */
+@Composable
+private fun Modifier.fadedAtEdges(scroll: ScrollState): Modifier {
+    val fade = DoonaTheme.size.fieldFade
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    return graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
+        drawContent()
+        val width = minOf(fade.toPx(), size.width / 2)
+        val moreBefore = scroll.value > 0
+        val moreAfter = scroll.value < scroll.maxValue
+        if (if (rtl) moreAfter else moreBefore) {
+            drawRect(Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), startX = 0f, endX = width), size = Size(width, size.height), blendMode = BlendMode.DstIn)
+        }
+        if (if (rtl) moreBefore else moreAfter) {
+            drawRect(
+                Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = size.width - width, endX = size.width),
+                topLeft = Offset(size.width - width, 0f),
+                size = Size(width, size.height),
+                blendMode = BlendMode.DstIn,
+            )
+        }
     }
 }
 
@@ -148,7 +201,7 @@ private fun FieldError(message: String) {
     }
 }
 
-/** The editable text over a state, in the body style on one line, with [decoration] drawn around it. */
+/** The editable text over a state, in the body style on one line, with [decoration] drawn around it; it gets the text's scroll, to fade by. */
 @Composable
 private fun FieldInput(
     state: TextFieldState,
@@ -157,11 +210,12 @@ private fun FieldInput(
     keyboardOptions: KeyboardOptions,
     onImeAction: (() -> Unit)?,
     error: String?,
-    decoration: @Composable (inner: @Composable () -> Unit, focused: Boolean) -> Unit,
+    decoration: @Composable (inner: @Composable () -> Unit, focused: Boolean, scroll: ScrollState) -> Unit,
 ) {
     val c = DoonaTheme.colors
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    val scroll = rememberScrollState()
     BasicTextField(
         state = state,
         modifier = modifier.semantics { if (error != null) semanticsError(error) },
@@ -177,6 +231,7 @@ private fun FieldInput(
         lineLimits = TextFieldLineLimits.SingleLine,
         interactionSource = interaction,
         cursorBrush = SolidColor(c.accent),
-        decorator = TextFieldDecorator { inner -> decoration(inner, focused) },
+        scrollState = scroll,
+        decorator = TextFieldDecorator { inner -> decoration(inner, focused, scroll) },
     )
 }

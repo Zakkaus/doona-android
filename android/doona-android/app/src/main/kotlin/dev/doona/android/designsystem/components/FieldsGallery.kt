@@ -20,12 +20,30 @@ internal fun FieldsGallery() = GalleryPage("Fields") {
             DoonaTextField(rememberTextFieldState("https://example.com/sub"), label = "Subscription URL", enabled = false)
         }
     }
+    Section("DoonaTextField: supporting text, trailing action") {
+        Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
+            DoonaTextField(rememberTextFieldState(), label = "Subscription URL", placeholder = "https://", supportingText = "The link your provider gave you")
+            DoonaTextField(
+                rememberTextFieldState("https://example.com/sub"),
+                label = "Subscription URL",
+                trailing = { DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = {}) },
+            )
+        }
+    }
     Section("DoonaTextField: long text") {
-        DoonaTextField(
-            rememberTextFieldState("https://example.com/api/v1/client/subscribe?token=0123456789abcdef0123456789abcdef"),
-            label = "訂閱網址與用來辨識這份訂閱的名稱，過長時在這裡換行或截斷",
-            error = "無法下載訂閱：伺服器回應逾時，請確認網址與目前的網路連線後再試一次",
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
+            DoonaTextField(
+                rememberTextFieldState("https://example.com/api/v1/client/subscribe?token=0123456789abcdef0123456789abcdef"),
+                label = "訂閱網址",
+                supportingText = "訂閱網址與用來辨識這份訂閱的名稱，過長時在這裡換行，不在欄位裡截斷",
+            )
+            DoonaTextField(
+                rememberTextFieldState("https://example.com/api/v1/client/subscribe?token=0123456789abcdef0123456789abcdef"),
+                label = "訂閱網址",
+                error = "無法下載訂閱：伺服器回應逾時，請確認網址與目前的網路連線後再試一次",
+                trailing = { DoonaIconAction(R.drawable.ic_more_vertical, stringResource(R.string.ui_more_options), onClick = {}) },
+            )
+        }
     }
     Section("DoonaSearchField: empty, filled, long") {
         Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
