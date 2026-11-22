@@ -135,19 +135,25 @@ internal class DoonaVpnService :
 
     override fun establish(routing: AppRouting): Tun? {
         if (!foreground) return null
+        return tunBuilder(routing).establish()?.let(::ParcelTun)
+    }
+
+    /** The tun's configuration, apart from [establish] so that a test can read what the builder receives. */
+    internal fun tunBuilder(routing: AppRouting): Builder {
         val builder = Builder()
             .setSession(getString(R.string.app_name))
             .setMtu(StartConfigDto.MTU)
-            .addAddress(StartConfigDto.IPV4, StartConfigDto.IPV4_PREFIX)
-            .addRoute("0.0.0.0", 0)
-            .addDnsServer(StartConfigDto.DNS)
+            .addAddress(ipv4(StartConfigDto.IPV4), StartConfigDto.IPV4_PREFIX)
+            .addDnsServer(ipv4(StartConfigDto.DNS))
             // Since API 29 a VPN counts as metered unless told otherwise; this makes it follow the underlying network.
             .setMetered(false)
+        // LAN, link-local, loopback and multicast stay outside the tunnel (Android 17 local-network permission).
+        TunRoutes.IPV4.forEach { builder.addRoute(it.inetAddress, it.length) }
         when (routing) {
             is AppRouting.Exclude -> routing.packages.forEach { builder.addDisallowedApplication(it) }
             is AppRouting.Allow -> routing.packages.forEach { builder.addAllowedApplication(it) }
         }
-        return builder.establish()?.let(::ParcelTun)
+        return builder
     }
 
     private class ParcelTun(private val pfd: ParcelFileDescriptor) : Tun {
