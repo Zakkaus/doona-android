@@ -18,8 +18,8 @@ interface Engine {
 
     fun disconnect()
 
-    /** Pins [member] in [group]; null hands an automatic group back to its own choice. */
-    suspend fun select(group: String, member: String?)
+    /** Pins the member [memberId] in [group]; null hands an automatic group back to its own choice. */
+    suspend fun select(group: String, memberId: String?)
 
     /** Probes the members of [group], or of every group when null. Results arrive through [groups]. */
     suspend fun testLatency(group: String? = null)
@@ -65,8 +65,12 @@ enum class Mode { Global, Direct }
 
 enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Fallback(false) }
 
-/** A node or a nested group. [latencyMs] is null before the first probe and after a failed one; [failed] tells them apart. */
+/**
+ * A node or a nested group. [id] stays the same across subscription refreshes; [name] is only for display and may
+ * repeat. [latencyMs] is null before the first probe and after a failed one; [failed] tells them apart.
+ */
 data class Member(
+    val id: String,
     val name: String,
     val latencyMs: Int? = null,
     val failed: Boolean = false,
@@ -75,12 +79,12 @@ data class Member(
     val subscriptionId: String? = null,
 )
 
-/** [selected] carries traffic now; [pinned] says the user chose it rather than the group's own test. */
+/** [selectedId] is the member carrying traffic now; [pinned] says the user chose it rather than the group's own test. */
 data class Group(
     val name: String,
     val kind: GroupKind,
     val members: List<Member>,
-    val selected: String?,
+    val selectedId: String?,
     val pinned: Boolean = false,
 )
 
