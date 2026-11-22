@@ -50,6 +50,7 @@ always interactive takes a required callback; one that can be static takes a nul
 | Pick from a list of values | `DoonaPicker`; `DoonaFilterPicker` in a filter bar | |
 | An on/off setting | `DoonaSwitchRow` | The whole row toggles |
 | Choose many from a long list (apps) | `DoonaCheckRow` | Leading slot of `DoonaTheme.size.appIcon`, title, optional subtitle; put the rows in the `items` of a `DoonaLazyPageSheet`. A single setting is a switch, not a check |
+| An installed app's launcher icon | `DoonaAppIcon(packageName)` | The leading slot of an app's `DoonaCheckRow`. Read off the main thread and cached; a neutral box of the same size until it has loaded and for a package that is gone |
 | Work with no known end | `DoonaProgress` | `Small` alone, `Inline` on a line of text |
 | How much of a quota is used | `DoonaMeter(fraction, valueText)` | The value text goes above the bar and wraps; do not draw a bar beside it yourself |
 | A list or page with nothing in it | `DoonaEmptyState(icon, title, line, actionLabel, onAction)` | One line that says what to do; the action is the next step, shown when both are given |
