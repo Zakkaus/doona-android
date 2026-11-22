@@ -262,8 +262,9 @@ impl Driver {
         Ok(())
     }
 
-    /// Answers each new SYN: DNS to the virtual resolver is served here, anything else to it is
-    /// reset (TCP/853, so Private DNS falls back at once), and other flows follow their route.
+    /// Answers each new SYN: anything to the virtual resolver but DNS is reset (TCP/853, so
+    /// Private DNS falls back at once), as is any flow its route refuses, DNS included; DNS to the
+    /// virtual resolver is served here, and other flows follow their route.
     fn accept(&mut self) {
         while let Some(syn) = self.stack.poll_accept() {
             let dst = syn.original_dst;
@@ -273,12 +274,10 @@ impl Driver {
                 continue;
             }
             let route = new_route(&self.settings);
-            if to_resolver {
-                self.open_tcp(syn.id, route, None);
-            } else if route.refused() {
+            if route.refused() {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
             } else {
-                self.open_tcp(syn.id, route, Some(dst));
+                self.open_tcp(syn.id, route, (!to_resolver).then_some(dst));
             }
         }
     }

@@ -203,6 +203,15 @@ fn a_global_flow_without_a_node_is_refused_never_sent_direct() {
     let a = dns_over_udp(&mut s.client, &servers::query(9, "a.example", None));
     assert_eq!(servers::answers_and_rcode(&a), (0, 2), "SERVFAIL");
     assert!(begun.elapsed() < Duration::from_secs(1));
+    // DNS over TCP is a new flow like any other: refused, where a datagram gets SERVFAIL.
+    let begun = Instant::now();
+    let tcp_dns = s.client.connect(RESOLVER);
+    assert!(s.client.until(WAIT, |c| c.read_now(tcp_dns).is_err()));
+    assert!(matches!(
+        s.client.read_now(tcp_dns),
+        Err(StreamError::Reset)
+    ));
+    assert!(begun.elapsed() < Duration::from_secs(1));
     assert_eq!(connections(&echo_seen), 0);
     assert_eq!(udp_seen.datagrams.load(Relaxed), 0);
     assert_eq!(resolver_seen.datagrams.load(Relaxed), 0);
