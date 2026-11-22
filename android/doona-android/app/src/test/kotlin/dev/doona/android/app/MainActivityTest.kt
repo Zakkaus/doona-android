@@ -15,9 +15,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowVpnService
 
 @RunWith(AndroidJUnit4::class)
+@Config(application = FakeEngineApplication::class)
 class MainActivityTest {
     private val app = ApplicationProvider.getApplicationContext<DoonaApplication>()
     private val connect = MainActivity.connectIntent(app)
