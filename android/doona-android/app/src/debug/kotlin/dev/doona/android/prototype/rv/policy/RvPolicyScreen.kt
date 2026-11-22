@@ -36,6 +36,7 @@ import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvFloatingNav
+import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
@@ -83,13 +84,17 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val title = stringResource(R.string.nav_policies)
-    val actions = rvPolicyActions(routes.testAll, routes.update)
+    val testAll = stringResource(R.string.rv_policy_test_all)
+    val update = stringResource(R.string.rv_policy_update_subscriptions)
     RvScrollPage(
         title,
         insets,
         scroll = scroll,
+        actions = { glass ->
+            RvGlassButton(glass, R.drawable.rv_sym_speed, testAll, routes.testAll)
+            RvGlassButton(glass, R.drawable.rv_stats_ic_sync, update, routes.update)
+        },
         overlay = { glass ->
-            RvPolicyBarActions(glass, insets, actions, Modifier.align(Alignment.TopEnd))
             RvFloatingNav(RV_NAV_POLICY, routes.tab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter))
         },
     ) { titleBlock ->
@@ -198,7 +203,7 @@ private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit,
         RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_policy_template), null, onClick = routes.template) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RvText(stringResource(R.string.rv_policy_template_value), Rv.type.rowSub, color = Rv.colors.textSecondary)
-                Spacer(Modifier.width(RvPolicySize.chevronGap))
+                Spacer(Modifier.width(RvSpace.tight))
                 RvChevron()
             }
         }

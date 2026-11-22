@@ -2,16 +2,22 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -38,7 +45,10 @@ import kotlin.math.roundToInt
  * [RvLargeTitle]; as that block's bottom edge passes under the bar, the 20 sp [title] fades in on the bar. A [compact]
  * page (流量詳情, a node) has only the bar's title, from the start. [onBack] adds the back disc and puts the title beside
  * it; without it (a tab home) the title is centred. The content starts at the screen's top, so it begins with
- * [RvBarSpacer]. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's floating actions).
+ * [RvBarSpacer]. [actions] puts round glass buttons ([RvGlassButton]) at the bar's end, on its row and in 48 dp
+ * targets, as 活動's top bar has them. [bottomAction] floats a page's one action (an [RvPrimaryButton]) on the gutter,
+ * 16 dp above the inset, with no scrim; the page keeps its room under the content, so the last card scrolls clear of
+ * it. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's floating actions).
  */
 @Composable
 internal fun RvScrollPage(
@@ -48,6 +58,8 @@ internal fun RvScrollPage(
     onBack: (() -> Unit)? = null,
     compact: Boolean = false,
     scroll: ScrollState = rememberScrollState(),
+    actions: (@Composable (RvGlass) -> Unit)? = null,
+    bottomAction: (@Composable () -> Unit)? = null,
     overlay: @Composable BoxScope.(RvGlass) -> Unit = {},
     content: @Composable ColumnScope.(titleBlock: Modifier) -> Unit,
 ) {
@@ -58,9 +70,12 @@ internal fun RvScrollPage(
     // 0 while the large title is clear of the bar, 1 once its bottom edge is under it.
     val collapse = if (compact) ({ 1f }) else ({ ((barBottom + fade - titleBottom) / fade).coerceIn(0f, 1f) })
     val glass = rememberRvGlass()
+    var actionHeight by remember { mutableIntStateOf(0) }
     Box(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
             content(Modifier.onGloballyPositioned { titleBottom = it.boundsInWindow().bottom.roundToInt() })
+            // The bottom action's room: the gap above it, then the action with its 16 dp over the inset.
+            if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() }))
         }
         RvBar(glass, insets, rvShade(scroll), Modifier.align(Alignment.TopStart)) {
             // A large title is the heading for a screen reader, and the bar's only repeats it.
@@ -76,6 +91,23 @@ internal fun RvScrollPage(
                 align = if (onBack == null) TextAlign.Center else TextAlign.Start,
             )
             onBack?.let { RvBackDisc(it) }
+        }
+        actions?.let {
+            // Each disc keeps its 48 dp target, so the gap between targets is the gap between discs less the overhangs.
+            Row(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(insets.only(WindowInsetsSides.Top))
+                    .padding(top = RvChrome.barTop - RvChrome.touchPad, end = RvSpace.gutter - RvChrome.touchPad),
+                horizontalArrangement = Arrangement.spacedBy(RvChrome.buttonGap - RvChrome.touchPad * 2),
+            ) { it(glass) }
+        }
+        bottomAction?.let {
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { size -> actionHeight = size.height }.padding(horizontal = RvSpace.gutter)) {
+                it()
+                Spacer(Modifier.height(RvSpace.gutter))
+                Spacer(Modifier.windowInsetsBottomHeight(insets))
+            }
         }
         overlay(glass)
     }

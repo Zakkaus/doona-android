@@ -88,6 +88,6 @@ class RvPolicyShotTest {
         const val WHOLE_RULE = "+h1962dp"
         const val WHOLE_SELECT = "+h1120dp"
         const val WHOLE_AUTO = "+h1145dp"
-        const val WHOLE_FLOW = "+h1185dp"
+        const val WHOLE_FLOW = "+h1209dp"
     }
 }

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -17,7 +16,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -36,6 +34,7 @@ import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvInline
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSeeAll
@@ -55,7 +54,7 @@ import dev.doona.android.prototype.rv.rvSystemScheme
  * status chip; then its nodes fastest first in 節點's rows, the chosen one badged. In a selector a tap picks the node; a
  * url-test group picks for itself, so its rows do not respond, a note says how it picks and its choice's line begins
  * with 自動.
- * 測試此組 floats at the bottom as node detail's pill.
+ * 測試此組 floats at the bottom as the page's primary button.
  */
 @Composable
 internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelect: (String) -> Unit, onTest: () -> Unit) {
@@ -65,13 +64,11 @@ internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelec
         name,
         insets,
         onBack = onBack,
-        overlay = { RvPolicyBottomAction(stringResource(R.string.rv_policy_test_group), onTest, insets, Modifier.align(Alignment.BottomCenter)) },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), onTest) },
     ) { titleBlock ->
         RvLargeTitle(name, titleBlock, insets)
         Header(group)
         RvGutter { NodesCard(group, onSelect) }
-        Spacer(Modifier.height(rvPillRoom))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

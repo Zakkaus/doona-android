@@ -79,8 +79,8 @@ internal object RvControlSize {
     val chipGlyph = 16.dp
 
     /**
-     * The primary button: node detail's floating pill (§8, N06: 52 dp, over the 48 dp target) and its soft shadow, cast
-     * from its own shape (S7-16).
+     * The primary button, node detail's approved floating pill moved here (§8, N06: 52 dp, over the 48 dp target), and
+     * its soft shadow, cast from its own shape (S7-16).
      */
     val primary = 52.dp
     val primaryShadow = 12.dp
@@ -196,8 +196,9 @@ internal fun RvRoundButton(@DrawableRes icon: Int, label: String, onClick: () ->
 }
 
 /**
- * The page's one main action, Revolut's full-width pill (§8): one style, the ink's fill (white in dark) with the page's
- * colour as its label, the soft shadow under it. Pressed, the label's colour lies over the fill as the state layer;
+ * The page's one main action, Revolut's full-width pill (§8): node detail's approved 'Get started' pill, moved here. One
+ * style, the ink's fill (white in dark, Addendum A) with the page's colour as its label, the soft shadow under it in
+ * light. Pressed, the label's colour lies over the fill as the state layer;
  * disabled, the button stays flat at [RvAlpha.DISABLED] and takes no press. At least [RvControlSize.primary] tall, so the
  * whole pill is the target. [interactionSource] lets a caller (or a test) observe or drive the press.
  */

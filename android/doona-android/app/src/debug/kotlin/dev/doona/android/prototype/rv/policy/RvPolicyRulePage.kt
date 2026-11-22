@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -34,6 +33,7 @@ import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
+import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRadio
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -67,7 +67,7 @@ internal fun RvPolicyRulePage(
         insets,
         onBack = onBack,
         compact = true,
-        overlay = { RvPolicyBottomAction(stringResource(R.string.rv_policy_apply), onApply, insets, Modifier.align(Alignment.BottomCenter)) },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply) },
     ) {
         RvBarSpacer(insets)
         Spacer(Modifier.height(RvSpace.gutter))
@@ -79,8 +79,6 @@ internal fun RvPolicyRulePage(
             TargetCard(rule.targetId) { onChange(rule.copy(targetId = it)) }
             PositionCard(connection.rule)
         }
-        Spacer(Modifier.height(rvPillRoom))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 
@@ -142,13 +140,12 @@ private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Uni
 private fun PositionCard(matched: RvPolicyRule) {
     val before = matched.match.title()
     RvCard {
-        RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_policy_position), null, onClick = NOT_WIRED) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RvText(stringResource(R.string.rv_policy_position_value, before), Rv.type.rowSub, color = Rv.colors.textSecondary)
-                Spacer(Modifier.width(RvPolicySize.chevronGap))
-                RvChevron()
-            }
-        }
+        RvRow(
+            { RvIconDisc(R.drawable.rv_sym_rule) },
+            stringResource(R.string.rv_policy_position),
+            stringResource(R.string.rv_policy_position_value, before),
+            onClick = NOT_WIRED,
+        ) { RvChevron() }
     }
 }
 
