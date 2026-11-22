@@ -20,6 +20,7 @@ import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.gallery.RvGalleryScreen
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
@@ -104,6 +105,8 @@ private fun RvPreviewPage(route: String, policy: RvPolicyPreviewState, push: (St
             RvConnectionDetail(RvPolicyData.connections[i], onBack = pop, onClose = pop, onNewRule = { push("${RvPolicyPreviewRoutes.RULE}:$i") })
         }
 
+        GALLERY -> RvGalleryScreen(onBack = pop)
+
         THEME -> RvThemeScreen(settings.appearance, { settings = settings.copy(appearance = it) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pop)
 
         else -> {
@@ -134,7 +137,13 @@ private const val EXTRA_PENDING = "rv.pending"
 private const val EXTRA_FOUR_TABS = "rv.tabs4"
 private const val CONNECTIONS = "connections"
 private const val DNS = "dns"
+private const val GALLERY = "gallery"
+
+/** rv-pages-a's launch extra: one route to open over 活動, such as `gallery`, the library's new parts. */
+private const val EXTRA_ONE_ROUTE = "route"
 private const val CONNECTION = "connection"
 
-private fun startStack(intent: Intent): List<String> = intent.getStringExtra(EXTRA_ROUTE)?.split(',')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() } ?: listOf(ACTIVITY)
+private fun startStack(intent: Intent): List<String> = intent.getStringExtra(EXTRA_ROUTE)?.split(',')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
+    ?: intent.getStringExtra(EXTRA_ONE_ROUTE)?.let { listOf(ACTIVITY, it) }
+    ?: listOf(ACTIVITY)
 private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS, RV_NAV_CONNECTIONS to CONNECTIONS)

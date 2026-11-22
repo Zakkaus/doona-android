@@ -114,6 +114,16 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val track = discOnCard
 
     /**
+     * An error's glyph, message and field ring: the slow latency's red, the scheme's one red (Revolut's negative,
+     * measured §1), already readable on page, card and its chip. A destructive row keeps its title in ink and only its
+     * glyph in this hue (measured §13.2).
+     */
+    val error = slow
+
+    /** The scrim under a modal sheet (measured §2). */
+    val scrim = Color.Black.copy(alpha = RvAlpha.SCRIM)
+
+    /**
      * The switch (Addendum A, item 1): off, Revolut's light thumb (#fafafa in both themes) over the [control] track; on,
      * the accent thumb over a tint of it between the card and the accent. Each thumb keeps 3:1 against its track, and each
      * track, or its outline, 3:1 against the card. The on track is the first tint that passes both; where none does (a dark
@@ -239,6 +249,7 @@ internal class RvType {
     val section = RvTypeScale.section.style()
     val statLabel = RvTypeScale.statLabel.style()
     val stat = RvTypeScale.stat.style(tabular = true)
+    val field = RvTypeScale.field.style()
     val largeTitle = RvTypeScale.largeTitle.style()
     val barTitle = RvTypeScale.barTitle.style()
     val navLabel = RvTypeScale.navLabel.style()
