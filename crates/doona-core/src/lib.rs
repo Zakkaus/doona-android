@@ -7,6 +7,7 @@ pub mod dto;
 mod jni;
 pub mod state;
 pub mod sys;
+pub mod tunnel;
 
 #[cfg(test)]
 pub(crate) mod testutil;

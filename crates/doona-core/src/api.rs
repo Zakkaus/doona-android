@@ -6,20 +6,35 @@ use crate::dto::{
     SelectArgs, Snapshot, StartConfig, Traffic,
 };
 use crate::state::{Loaded, State, Store};
+use crate::tunnel::{Session, Settings, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::os::fd::OwnedFd;
 use std::path::Path;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Instant;
 use tokio::runtime::Runtime;
+use tokio_util::sync::CancellationToken;
 
 /// The tokio runtime's worker threads; flows are I/O bound and the phone has few big cores.
 const WORKERS: usize = 2;
+/// The smallest MTU an IPv4 link may have.
+const MIN_MTU: u16 = 576;
 
 pub struct Core {
     runtime: Runtime,
     store: Store,
     catalog: Mutex<CatalogState>,
+    /// The running generation. Held through a whole `start` (at most 10 s) or `stop` (1 s);
+    /// Kotlin runs those one at a time, and `snapshot` and `call` never take it.
+    tunnel: Mutex<Option<Tunnel>>,
+    /// Cancels the `start` in progress, so a `stop` need not wait for it.
+    starting: Mutex<Option<CancellationToken>>,
+    /// What `snapshot` reads about the running generation.
+    session: Mutex<Option<Arc<Session>>>,
+    /// The last generation `start` began; it stays in snapshots after `stop`.
+    generation: AtomicI64,
 }
 
 struct CatalogState {
@@ -50,6 +65,10 @@ impl Core {
             runtime,
             store,
             catalog: Mutex::new(CatalogState { state, revision: 1 }),
+            tunnel: Mutex::new(None),
+            starting: Mutex::new(None),
+            session: Mutex::new(None),
+            generation: AtomicI64::new(0),
         })
     }
 
@@ -60,30 +79,86 @@ impl Core {
         })
     }
 
-    /// Takes ownership of `tun`, the duplicate of Kotlin's descriptor.
+    /// Starts a new generation on `tun`, the duplicate of Kotlin's descriptor, which it owns
+    /// from here on: every failure closes it. A generation still running is stopped first.
     pub fn start(&self, tun: OwnedFd, config: &str) -> Result<(), ErrorCode> {
-        let _config: StartConfig =
-            serde_json::from_str(config).map_err(|_| ErrorCode::InvalidArgument)?;
-        let _ = (&self.runtime, tun);
-        Err(ErrorCode::Internal)
+        let begun = Instant::now();
+        let settings = settings(config)?;
+        let abort = CancellationToken::new();
+        *lock(&self.starting) = Some(abort.clone());
+        let result = self.start_generation(tun, settings, &abort);
+        *lock(&self.starting) = None;
+        let ms = begun.elapsed().as_millis();
+        match result {
+            Ok(g) => log::info!("start {g}: up in {ms} ms"),
+            Err(code) => log::warn!("start failed: {} after {ms} ms", code.as_str()),
+        }
+        result.map(drop)
     }
 
-    pub fn stop(&self) {}
+    fn start_generation(
+        &self,
+        tun: OwnedFd,
+        settings: Settings,
+        abort: &CancellationToken,
+    ) -> Result<i64, ErrorCode> {
+        let mut slot = lock(&self.tunnel);
+        if abort.is_cancelled() {
+            return Err(ErrorCode::Busy);
+        }
+        if let Some(old) = slot.take() {
+            *lock(&self.session) = None;
+            old.stop(self.runtime.handle());
+        }
+        let generation = self.generation.fetch_add(1, Relaxed) + 1;
+        let tunnel = Tunnel::start(self.runtime.handle(), tun, settings, generation, abort)?;
+        *lock(&self.session) = Some(Arc::clone(tunnel.session()));
+        *slot = Some(tunnel);
+        Ok(generation)
+    }
+
+    /// Ends the running generation, if any, within 1 s. Also cancels a `start` in progress.
+    pub fn stop(&self) {
+        if let Some(abort) = lock(&self.starting).as_ref() {
+            abort.cancel();
+        }
+        let mut slot = lock(&self.tunnel);
+        *lock(&self.session) = None;
+        if let Some(tunnel) = slot.take() {
+            tunnel.stop(self.runtime.handle());
+        }
+    }
 
     pub fn snapshot(&self, since_revision: i64) -> String {
-        let catalog = lock(&self.catalog);
-        let snapshot = Snapshot {
-            revision: catalog.revision,
-            running: false,
-            generation: 0,
-            since_epoch_ms: None,
-            error: None,
-            traffic: Traffic::default(),
-            catalog: (catalog.revision > since_revision).then(|| Catalog {
-                mode: catalog.state.mode,
+        let (revision, catalog) = {
+            let c = lock(&self.catalog);
+            let catalog = (c.revision > since_revision).then(|| Catalog {
+                mode: c.state.mode,
                 groups: Vec::new(),
                 subscriptions: Vec::new(),
-            }),
+            });
+            (c.revision, catalog)
+        };
+        let session = lock(&self.session).clone();
+        let snapshot = match session {
+            Some(s) => Snapshot {
+                revision,
+                running: !s.failed(),
+                generation: s.generation,
+                since_epoch_ms: Some(s.since_epoch_ms),
+                error: s.failed().then_some(ErrorCode::Internal),
+                traffic: s.traffic(),
+                catalog,
+            },
+            None => Snapshot {
+                revision,
+                running: false,
+                generation: self.generation.load(Relaxed),
+                since_epoch_ms: None,
+                error: None,
+                traffic: Traffic::default(),
+                catalog,
+            },
         };
         to_json(&snapshot)
     }
@@ -131,6 +206,20 @@ impl Core {
         catalog.revision += 1;
         Ok(())
     }
+}
+
+impl Drop for Core {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+fn settings(config: &str) -> Result<Settings, ErrorCode> {
+    let config: StartConfig = parse(config)?;
+    if config.mtu < MIN_MTU {
+        return Err(ErrorCode::InvalidArgument);
+    }
+    Ok(Settings { mtu: config.mtu })
 }
 
 /// `{"error":{"code":…}}`.

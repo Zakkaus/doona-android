@@ -596,6 +596,7 @@ name = "doona-core"
 version = "0.1.0"
 dependencies = [
  "android_logger",
+ "futures-util",
  "honk-config",
  "honk-netstack",
  "honk-outbound",
@@ -605,6 +606,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -2156,6 +2158,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "libc",
  "pin-project-lite",
  "tokio",
