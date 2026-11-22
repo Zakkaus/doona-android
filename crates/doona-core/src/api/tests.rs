@@ -16,8 +16,9 @@ use futures_util::future::BoxFuture;
 use std::io;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, mpsc};
 use std::time::{Duration, Instant};
+use tokio_util::sync::CancellationToken;
 
 const CONFIG: &str =
     r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":["192.168.8.1"]}"#;
@@ -98,12 +99,21 @@ fn held_then_unready(
     })
 }
 
-/// Ready after 100 ms, then idle.
-fn ready_soon(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'static, ()> {
+static LATE_START: Mutex<Option<(mpsc::Sender<CancellationToken>, mpsc::Receiver<()>)>> =
+    Mutex::new(None);
+
+fn ready_soon(
+    tun: TunHandle,
+    _: Settings,
+    gen_: Gen,
+    ready: StartSignal,
+) -> BoxFuture<'static, ()> {
+    let (entered, release) = lock(&LATE_START).take().unwrap();
+    entered.send(gen_.cancel).unwrap();
+    release.recv().unwrap();
+    ready.send();
     Box::pin(async move {
         let _held = tun;
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        ready.send();
         std::future::pending::<()>().await;
     })
 }
@@ -315,24 +325,29 @@ fn stop_waits_for_a_late_start_to_close_its_tun() {
     let bound = Duration::from_millis(300);
     let core = core(&dir, ready_soon, bound);
     let (dup, probe) = tun();
-    let begun = Instant::now();
+    let (entered, starting) = mpsc::channel();
+    let (release, released) = mpsc::channel();
+    *lock(&LATE_START) = Some((entered, released));
     let starter = {
         let core = Arc::clone(&core);
         std::thread::spawn(move || core.start(dup, CONFIG))
     };
-    std::thread::sleep(Duration::from_millis(50));
-    // Keep the start from publishing until its deadline has passed although the driver is
-    // ready: finish then finds it late and must close its tun.
+    let cancelled = starting.recv_timeout(Duration::from_secs(5)).unwrap();
     let life = lock(&core.life);
     let Life::Starting { tun, .. } = &*life else {
         panic!("the start is not under way");
     };
     let tun = Arc::clone(tun);
-    std::thread::sleep((bound + Duration::from_millis(100)).saturating_sub(begun.elapsed()));
+    drop(life);
     // Hold the tun's lock so the late start's revoke waits, as a slow deregistration would.
     let slow_close = tun.hold();
-    drop(life);
-    std::thread::sleep(Duration::from_millis(50));
+    std::thread::sleep(bound);
+    release.send(()).unwrap();
+    core.runtime.block_on(async {
+        tokio::time::timeout(Duration::from_secs(5), cancelled.cancelled())
+            .await
+            .unwrap();
+    });
     let stopper = {
         let core = Arc::clone(&core);
         std::thread::spawn(move || core.stop())
