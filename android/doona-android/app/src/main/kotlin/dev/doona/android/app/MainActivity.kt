@@ -19,6 +19,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
  */
 class MainActivity : ComponentActivity() {
     private val engine get() = (application as DoonaApplication).container.engine
+    private val imports get() = (application as DoonaApplication).container.imports
 
     /**
      * True from a connect request until it connects or consent is refused, so a repeated tap or a redelivered intent
@@ -39,7 +40,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         connecting = savedInstanceState?.getBoolean(KEY_CONNECTING) ?: false
-        setContent { DoonaTheme { DoonaApp(engine, onConnect = ::connect) } }
+        setContent { DoonaTheme { DoonaApp(engine, onConnect = ::connect, imports = imports) } }
         // A recreated activity or one reopened from recents must not repeat the request that first launched it.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (savedInstanceState == null && !fromHistory) handle(intent)

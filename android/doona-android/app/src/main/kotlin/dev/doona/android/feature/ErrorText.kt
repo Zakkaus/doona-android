@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import dev.doona.android.R
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.FailureReason
 
 /** The localized message for an engine error code; every screen shows engine errors through this. */
 @StringRes
@@ -19,3 +20,12 @@ fun ErrorCode.messageRes(): Int = when (this) {
 
 /** The code of a failed engine action; anything that is not an [EngineException] is a bug, shown as internal. */
 fun Throwable.errorCode(): ErrorCode = (this as? EngineException)?.code ?: ErrorCode.Internal
+
+/** The localized message for why a start failed. */
+@StringRes
+fun FailureReason.messageRes(): Int = when (this) {
+    FailureReason.NoAllowedApps -> R.string.status_failed_no_allowed_apps
+    FailureReason.StartFailed -> R.string.status_failed_start
+    FailureReason.CoreStopped -> R.string.status_failed_core_stopped
+    FailureReason.IncompatibleCore -> R.string.status_failed_incompatible_core
+}

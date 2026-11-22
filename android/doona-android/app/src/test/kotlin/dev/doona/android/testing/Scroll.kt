@@ -3,6 +3,7 @@ package dev.doona.android.testing
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.designsystem.components.LayoutRole
 import kotlin.math.abs
@@ -26,7 +27,7 @@ fun <T> ComposeContentTestRule.readWhileScrolling(read: (LayoutBox) -> T): List<
         val viewport = tree.viewportOf(sheet).height
         val tallest = tree.descendants().filter { it.actionable }.maxOfOrNull { it.height } ?: 0f
         val step = maxOf((viewport - tallest) * STEP, viewport * MIN_STEP) * density.density
-        onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, step) }
+        onAllNodes(hasScrollAction()).onFirst().performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, step) }
         waitForIdle()
         val after = layoutTree()
         if (abs(after.descendants().first { it.role == LayoutRole.Sheet }.top - sheet.top) < MOVED) return reads

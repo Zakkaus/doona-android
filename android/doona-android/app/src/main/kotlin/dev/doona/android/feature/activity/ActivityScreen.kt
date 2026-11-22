@@ -48,7 +48,6 @@ import dev.doona.android.designsystem.components.DoonaTileRow
 import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
@@ -86,7 +85,7 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
             state.error?.let { code ->
                 DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(ActivityAction.DismissError) })
             }
-            ConnectionCard(state.status, onSwitch = { if (it) onConnect() else onAction(ActivityAction.Disconnect) })
+            ConnectionCard(state.status, state.hasSubscriptions, onSwitch = { if (it) onConnect() else onAction(ActivityAction.Disconnect) })
             DoonaControlCard(R.drawable.ic_shuffle, stringResource(R.string.act_mode)) {
                 DoonaSegmented(
                     Mode.entries.map { stringResource(it.label) },
@@ -137,18 +136,25 @@ private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
 private fun rateText(bytesPerSecond: Long): String =
     stringResource(R.string.act_rate, Formatter.formatShortFileSize(LocalContext.current, bytesPerSecond))
 
-/** The client's own control: the connection state, and the on/off switch at the end. */
+/**
+ * The client's own control: the connection state, and the on/off switch at the end. Without a subscription there is
+ * nothing to start from, so the switch is there only while the tunnel is up, to stop it; in any other state, a tunnel that
+ * is stopping included, the card shows the state alone.
+ */
 @Composable
-private fun ConnectionCard(status: Status, onSwitch: (Boolean) -> Unit) {
+private fun ConnectionCard(status: Status, canStart: Boolean, onSwitch: (Boolean) -> Unit) {
     val on = status is Status.Running || status is Status.Starting
     DoonaCard(Modifier.fillMaxWidth()) {
-        DoonaSwitchRow(on, onSwitch) {
-            Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
-                DoonaStatusLight(status.tone, stringResource(status.label), style = DoonaTheme.type.cardTitle)
-                (status as? Status.Failed)?.let {
-                    DoonaText(stringResource(it.reason.label), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
-                }
-            }
+        if (on || canStart) DoonaSwitchRow(on, onSwitch) { ConnectionState(status) } else ConnectionState(status)
+    }
+}
+
+@Composable
+private fun ConnectionState(status: Status) {
+    Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
+        DoonaStatusLight(status.tone, stringResource(status.label), style = DoonaTheme.type.cardTitle)
+        (status as? Status.Failed)?.let {
+            DoonaText(stringResource(it.reason.messageRes()), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary)
         }
     }
 }
@@ -167,14 +173,6 @@ private val Status.label: Int
         Status.Starting -> R.string.status_starting
         Status.Stopping -> R.string.status_stopping
         Status.Stopped, is Status.Failed -> R.string.status_stopped
-    }
-
-private val FailureReason.label: Int
-    get() = when (this) {
-        FailureReason.NoAllowedApps -> R.string.status_failed_no_allowed_apps
-        FailureReason.StartFailed -> R.string.status_failed_start
-        FailureReason.CoreStopped -> R.string.status_failed_core_stopped
-        FailureReason.IncompatibleCore -> R.string.status_failed_incompatible_core
     }
 
 /** A rate tile: the value and the last minute's series as a sparkline across the tile. */

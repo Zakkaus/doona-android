@@ -166,16 +166,16 @@ internal class TunnelController(
             throw e
         } catch (e: Exception) {
             VpnLog.warn("start $g threw ${e.javaClass.simpleName}")
-            FailureReason.StartFailed
+            Status.Failed(FailureReason.StartFailed)
         } catch (e: LinkageError) {
             VpnLog.warn("start $g threw ${e.javaClass.simpleName}")
-            FailureReason.StartFailed
+            Status.Failed(FailureReason.StartFailed)
         }
         val ms = (System.nanoTime() - begun) / 1_000_000
         when {
             failure != null -> {
                 VpnLog.warn("start $g failed: $failure after $ms ms")
-                publish(g, Status.Failed(failure))
+                publish(g, failure)
             }
 
             publish(g, Status.Running(clock())) -> VpnLog.info("start $g up after $ms ms")
@@ -188,15 +188,23 @@ internal class TunnelController(
     }
 
     /** Null once the core runs the tunnel, or when a newer command superseded [g] before the tun was built. */
-    private suspend fun startCore(g: Long, host: TunHost): FailureReason? {
-        val schema = opener.schema() ?: return FailureReason.StartFailed
-        if (schema != CORE_SCHEMA) return FailureReason.IncompatibleCore
-        val routing = AppRouting.resolve(perApp(), host.selfPackage, host::installed) ?: return FailureReason.NoAllowedApps
+    private suspend fun startCore(g: Long, host: TunHost): Status.Failed? {
+        val schema = opener.schema() ?: return Status.Failed(FailureReason.StartFailed)
+        if (schema != CORE_SCHEMA) return Status.Failed(FailureReason.IncompatibleCore)
+        val routing = AppRouting.resolve(perApp(), host.selfPackage, host::installed) ?: return Status.Failed(FailureReason.NoAllowedApps)
         val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(host.bootstrapDns()))
         if (!isCurrent(g)) return null
-        val tun = host.establish(routing) ?: return FailureReason.StartFailed
+        val tun = host.establish(routing) ?: return Status.Failed(FailureReason.StartFailed)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
-        tun.use { core.start(it.fd, config) }
+        tun.use {
+            try {
+                core.start(it.fd, config)
+            } catch (e: IllegalStateException) {
+                // Only the core speaks in codes: it reports its own as the message of this exception.
+                VpnLog.warn("start $g: the core refused with ${e.message}")
+                return Status.Failed(FailureReason.StartFailed, errorCodeOf(e.message.orEmpty()))
+            }
+        }
         coreRunning = true
         return null
     }
