@@ -1,6 +1,6 @@
 //! UDP through the route: one association per (client, destination) pair, served by a task with
-//! its own upstream (a socket, or a node's packet transport) and ended after [`IDLE`] without
-//! traffic. The route is chosen when the association opens and kept: a route that carries no UDP
+//! its own upstream (a socket, or a node's packet transport) and ended after an idle time without
+//! traffic ([`IDLE`] in the app). The route is chosen when the association opens and kept: a route that carries no UDP
 //! opens none, so the datagram is dropped. Memory stays bounded for a phone: every queued
 //! datagram holds part of one [`Budget`] per generation, taken before the copy; sockets read into
 //! one buffer per worker thread, and a node's transport into its association's own. Datagrams are
@@ -26,7 +26,8 @@ use tokio::net::UdpSocket;
 use tokio::sync::{OwnedSemaphorePermit, mpsc};
 use tokio::time::Instant;
 
-/// An association with no datagram either way for this long ends.
+/// An association with no datagram either way for this long ends, unless the core's options set
+/// another time.
 pub(crate) const IDLE: Duration = Duration::from_secs(60);
 /// Bytes of datagrams queued between the driver and the associations, both ways, per generation.
 pub(crate) const QUEUED_BYTES: usize = 4 << 20;
@@ -113,6 +114,7 @@ pub(crate) struct Nat {
     pub flows: HashMap<u64, Association>,
     next: u64,
     budget: Arc<Budget>,
+    idle: Duration,
 }
 
 /// What a new association's task needs; the driver spawns it.
@@ -122,15 +124,18 @@ pub(crate) struct Opened {
     pub down: mpsc::Sender<Datagram>,
     pub waker: Arc<Waker>,
     budget: Arc<Budget>,
+    idle: Duration,
 }
 
 impl Nat {
-    pub fn new(budget: Arc<Budget>) -> Nat {
+    /// Associations that end after `idle` without traffic.
+    pub fn new(budget: Arc<Budget>, idle: Duration) -> Nat {
         Nat {
             by_pair: HashMap::new(),
             flows: HashMap::new(),
             next: 0,
             budget,
+            idle,
         }
     }
 
@@ -191,6 +196,7 @@ impl Nat {
             down: down_tx,
             waker,
             budget: Arc::clone(&self.budget),
+            idle: self.idle,
         }
     }
 
@@ -258,7 +264,7 @@ pub(crate) async fn relay(o: Opened, remote: SocketAddr, route: Route, events: E
     let _ = events.send(Event::UdpEnded(id));
 }
 
-/// Moves datagrams both ways until neither way moved one for [`IDLE`] or the upstream fails.
+/// Moves datagrams both ways until neither way moved one for the idle time or the upstream fails.
 /// Each way is one future polled to its end, never dropped mid-datagram, so a transport that
 /// frames datagrams on a stream is never cut inside a frame.
 async fn exchange(o: Opened, upstream: &UdpUpstream) {
@@ -267,6 +273,7 @@ async fn exchange(o: Opened, upstream: &UdpUpstream) {
         down,
         waker,
         budget,
+        idle,
         ..
     } = o;
     let begun = Instant::now();
@@ -275,8 +282,8 @@ async fn exchange(o: Opened, upstream: &UdpUpstream) {
     let moved = || last.store(millis(begun.elapsed()), Relaxed);
     let sending = async {
         while let Some(d) = up.recv().await {
-            // A failed send is a lost datagram; one still blocked after IDLE ends the association.
-            if tokio::time::timeout(IDLE, upstream.send(&d.bytes))
+            // A failed send is a lost datagram; one still blocked after `idle` ends the association.
+            if tokio::time::timeout(idle, upstream.send(&d.bytes))
                 .await
                 .is_err()
             {
@@ -295,9 +302,9 @@ async fn exchange(o: Opened, upstream: &UdpUpstream) {
             moved();
         }
     };
-    let idle = async {
+    let idled = async {
         loop {
-            let until = begun + Duration::from_millis(last.load(Relaxed)) + IDLE;
+            let until = begun + Duration::from_millis(last.load(Relaxed)) + idle;
             if Instant::now() >= until {
                 return;
             }
@@ -307,7 +314,7 @@ async fn exchange(o: Opened, upstream: &UdpUpstream) {
     tokio::select! {
         () = sending => {}
         () = receiving => {}
-        () = idle => {}
+        () = idled => {}
     }
 }
 
@@ -383,7 +390,7 @@ mod tests {
         });
         let budget = Budget::new(3 * REPLY + REPLY / 2);
         let (events, _wakes) = mpsc::unbounded_channel();
-        let mut nat = Nat::new(Arc::clone(&budget));
+        let mut nat = Nat::new(Arc::clone(&budget), IDLE);
         let client: SocketAddr = "172.19.0.1:40000".parse().unwrap();
         let (opened, _) = nat
             .send((client, remote), b"go", &events, || Some(Route::Direct))

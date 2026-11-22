@@ -28,6 +28,7 @@ use tokio::runtime::Handle;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 pub(crate) use tun::Tun;
+pub(crate) use udp::IDLE as UDP_IDLE;
 
 /// How long `stop` waits for a halted generation's tasks; it returns within 1 s.
 pub(crate) const STOP_WAIT: Duration = Duration::from_millis(900);
@@ -42,6 +43,8 @@ pub struct Settings {
     pub dns: Ipv4Addr,
     /// Where DNS the core answers is forwarded, in order.
     pub dns_upstreams: Vec<SocketAddr>,
+    /// A UDP association with no datagram either way for this long ends.
+    pub udp_idle: Duration,
     /// The committed mode; each new flow reads it.
     pub mode: Arc<ModeCell>,
     /// Each group's current node and what dials it; a new Global flow goes through `g-Proxy`'s.

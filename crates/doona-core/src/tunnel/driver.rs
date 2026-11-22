@@ -89,6 +89,7 @@ impl Driver {
         cfg.tcp_rcv_buf_max = TCP_BUF;
         cfg.memory_limit = STACK_MEMORY;
         let mtu = usize::from(settings.mtu);
+        let idle = settings.udp_idle;
         Ok(Driver {
             stack: Stack::new(cfg, Instant::now()),
             upstreams: settings.dns_upstreams.clone().into(),
@@ -97,7 +98,7 @@ impl Driver {
             events,
             tcp: HashMap::new(),
             dns_flows: 0,
-            nat: Nat::new(Budget::new(udp::QUEUED_BYTES)),
+            nat: Nat::new(Budget::new(udp::QUEUED_BYTES), idle),
             dns_slots: Arc::new(Semaphore::new(DNS_IN_FLIGHT)),
             rx: vec![0; mtu.max(1500) + 64],
             tx: vec![0; mtu + 64],

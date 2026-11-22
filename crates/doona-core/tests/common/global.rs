@@ -26,11 +26,16 @@ impl Global {
     /// A stopped core in Global with one subscription of `links`, its DNS going to `upstreams`.
     /// The `Proxy` group starts on `Auto`, which before any probe carries the first link.
     pub fn new(links: &[String], upstreams: Vec<SocketAddr>) -> Global {
-        let dir = TempDir::new("global");
         let options = Options {
             dns_upstreams: upstreams,
             ..Options::default()
         };
+        Global::with_options(links, options)
+    }
+
+    /// [`Global::new`] with the core's `options`.
+    pub fn with_options(links: &[String], options: Options) -> Global {
+        let dir = TempDir::new("global");
         let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
         let feed = servers::feed(links.join("\n"));
         let reply = core.call(

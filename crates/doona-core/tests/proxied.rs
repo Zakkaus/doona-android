@@ -9,6 +9,7 @@ use common::client::Client;
 use common::global::{Global, WAIT, pattern, ping, socks_link, vmess_link};
 use common::servers::{self, Seen};
 use common::{socks, ss};
+use doonacore::api::Options;
 use honk_netstack::StreamError;
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::sync::atomic::Ordering::Relaxed;
@@ -177,6 +178,34 @@ fn udp_replies_from_another_peer_are_dropped() {
     assert!(s.client.datagrams.is_empty(), "{:?}", s.client.datagrams);
 }
 
+/// An association keeps the node it opened with when the selection changes, until it idles out;
+/// the next datagram then opens one through the node selected now.
+#[test]
+fn a_udp_association_keeps_its_node_until_it_idles_out() {
+    let (udp, _) = servers::udp_echo();
+    let (one, one_seen) = socks::socks5();
+    let (two, two_seen) = socks::socks5();
+    let options = Options {
+        udp_idle: Duration::from_millis(500),
+        ..Options::default()
+    };
+    let g = Global::with_options(&[socks_link(one, "one"), socks_link(two, "two")], options);
+    let mut c = g.start();
+    c.send_udp(udp, b"first");
+    assert_eq!(c.recv_udp(udp, WAIT).as_deref(), Some(&b"first"[..]));
+    g.select("two");
+    c.send_udp(udp, b"kept");
+    assert_eq!(c.recv_udp(udp, WAIT).as_deref(), Some(&b"kept"[..]));
+    assert_eq!(one_seen.datagrams.load(Relaxed), 2);
+    assert_eq!(two_seen.datagrams.load(Relaxed), 0);
+    let idled = c.until(WAIT, |_| g.snapshot().traffic.active_flows == 0);
+    assert!(idled, "the association idled out");
+    c.send_udp(udp, b"moved");
+    assert_eq!(c.recv_udp(udp, WAIT).as_deref(), Some(&b"moved"[..]));
+    assert_eq!(two_seen.datagrams.load(Relaxed), 1);
+    assert_eq!(one_seen.datagrams.load(Relaxed), 2);
+}
+
 #[test]
 fn udp_is_dropped_through_a_node_without_it() {
     let (udp, udp_seen) = servers::udp_echo();
@@ -196,6 +225,8 @@ fn dns_over_udp(c: &mut Client, q: &[u8]) -> Vec<u8> {
     a
 }
 
+/// DNS to the virtual resolver, over UDP or TCP, is forwarded over TCP through the node, one
+/// connection per query; TCP/853 is reset at once and dials nothing.
 #[test]
 fn dns_goes_through_the_node_over_tcp() {
     let (resolver, resolver_seen) = servers::dns_server();
@@ -209,11 +240,21 @@ fn dns_goes_through_the_node_over_tcp() {
         1,
         "the query went through the node"
     );
-    // Private DNS to the virtual resolver is still reset at once.
+    let id = s.client.connect(RESOLVER);
+    let q = servers::query(2, "b.example", None);
+    let mut framed = (q.len() as u16).to_be_bytes().to_vec();
+    framed.extend_from_slice(&q);
+    let reply = s.client.exchange(id, &framed).unwrap();
+    assert_eq!(&reply[2..4], &q[..2], "answer id");
+    assert_eq!(servers::answers_and_rcode(&reply[2..]), (1, 0));
+    assert_eq!(resolver_seen.datagrams.load(Relaxed), 2);
+    assert_eq!(connections(&proxy_seen), 2, "so did the one over TCP");
     let begun = Instant::now();
     let id = s.client.connect(SocketAddr::new(RESOLVER.ip(), 853));
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
+    assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
     assert!(begun.elapsed() < Duration::from_secs(1));
+    assert_eq!(connections(&proxy_seen), 2);
 }
 
 #[test]
