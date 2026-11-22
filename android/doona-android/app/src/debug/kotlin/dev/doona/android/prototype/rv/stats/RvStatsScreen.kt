@@ -43,10 +43,10 @@ import java.text.NumberFormat
 
 /**
  * The 統計 page in the language of Revolut's Analytics page: the back disc and the large title, the subscription
- * and range chips, then the cards. Each card names its v0.1 source at its foot, and a card whose data v0.1 lacks carries
- * a `v0.2` tag: 已用流量 and the paged tiles (the app-side daily history; 連線次數 is v0.2), 訂閱流量 (the subscriptions'
- * quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 (v0.2) and the tools. The chips and the
- * tools are not wired in the sample.
+ * and range chips, then the cards: 已用流量 and the paged tiles (the app-side daily history), 訂閱流量 (the
+ * subscriptions' quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 and the tools. A card
+ * whose data v0.1 lacks (連線次數, 分流比例) carries a `v0.2` tag. Where each figure comes from is noted on
+ * [RvStatsState], not on the page (N-14). The chips and the tools are not wired in the sample.
  */
 @Composable
 internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
@@ -84,15 +84,13 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
 private fun DayTiles(day: RvDay) {
     val locale = LocalConfiguration.current.locales[0]
     val format = rememberRvFormat()
-    val source = stringResource(R.string.rv_stats_source, stringResource(R.string.rv_stats_source_traffic))
     val count = day.connections?.sum()?.let { NumberFormat.getIntegerInstance(locale).format(it) }
     val tiles = listOf(
-        RvDayTile(stringResource(R.string.ui_download), format.bytes(day.downTotal).figure(), source, day.down, Rv.colors.down.line, v02 = false),
-        RvDayTile(stringResource(R.string.ui_upload), format.bytes(day.upTotal).figure(), source, day.up, Rv.colors.up.line, v02 = false),
+        RvDayTile(stringResource(R.string.ui_download), format.bytes(day.downTotal).figure(), day.down, Rv.colors.down.line, v02 = false),
+        RvDayTile(stringResource(R.string.ui_upload), format.bytes(day.upTotal).figure(), day.up, Rv.colors.up.line, v02 = false),
         RvDayTile(
             stringResource(R.string.rv_stats_connections),
             RvFigure(count ?: RV_NO_VALUE, ""),
-            stringResource(R.string.rv_stats_needs, stringResource(R.string.rv_stats_needs_connections)),
             day.connections?.map { it.toLong() },
             Rv.colors.textSecondary,
             v02 = true,
@@ -127,7 +125,7 @@ private fun tools(state: RvStatsState): List<RvStatsTool> {
     return listOf(
         RvStatsTool(R.drawable.rv_sym_speed, stringResource(R.string.rv_stats_test_all), nodes),
         RvStatsTool(R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), listOfNotNull(subscriptions, refreshed).joinToString(" · ")),
-        RvStatsTool(R.drawable.rv_stats_ic_bug_report, stringResource(R.string.rv_stats_export), stringResource(R.string.rv_stats_export_detail)),
+        RvStatsTool(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_stats_export), stringResource(R.string.rv_stats_export_detail)),
     )
 }
 

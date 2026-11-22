@@ -54,18 +54,26 @@ internal fun RvUsageCard(day: RvDay, nowHour: Float, yesterdayByNow: Long) {
     RvCard(Modifier.height(RvUsageSize.card)) {
         Box(Modifier.fillMaxSize().padding(RvUsageSize.pad)) {
             val legend = with(LocalDensity.current) { type.tileCaption.lineHeight.toDp() }
-            UsageChart(day, nowHour, Modifier.align(Alignment.TopEnd).fillMaxWidth(CHART_SHARE).fillMaxHeight().padding(bottom = RvUsageSize.chartAboveLegend + legend))
+            RvUsageChart(day, nowHour, Modifier.align(Alignment.TopEnd).fillMaxWidth(CHART_SHARE).fillMaxHeight().padding(bottom = RvUsageSize.chartAboveLegend + legend))
             Column {
                 RvText(stringResource(R.string.rv_today_usage), type.cardTitle, color = colors.textSecondary)
                 Spacer(Modifier.height(RvSpace.tight))
                 RvFigureText(format.bytes(day.total).figure(), type.cardValue, type.cardUnit)
                 RvText(stringResource(compare, format.bytes(abs(change)).toString()), type.tileCaption, color = colors.textSecondary)
             }
-            Row(Modifier.align(Alignment.BottomStart), horizontalArrangement = Arrangement.spacedBy(RvUsageSize.legendItemGap)) {
-                LegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${format.bytes(day.downTotal)}")
-                LegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${format.bytes(day.upTotal)}")
-            }
+            RvUsageLegend(day, Modifier.align(Alignment.BottomStart))
         }
+    }
+}
+
+/** The usage chart's legend: download and upload, each with its line's colour and the day's bytes. */
+@Composable
+internal fun RvUsageLegend(day: RvDay, modifier: Modifier = Modifier) {
+    val format = rememberRvFormat()
+    val colors = Rv.colors
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(RvUsageSize.legendItemGap)) {
+        LegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${format.bytes(day.downTotal)}")
+        LegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${format.bytes(day.upTotal)}")
     }
 }
 
@@ -82,10 +90,10 @@ private fun LegendItem(color: Color, text: String) {
  * The day from 00:00 to 24:00 across the canvas and the total × [RvUsageSize.HEADROOM] up it: download's running total as
  * a stepped band, upload's stacked on it, both at one alpha in their own hue, each with a thin line on its top edge, over
  * a hairline grid every 4 hours that the steps share. The steps stop at the current time, where a 5 dp dot on a halo
- * marks the total so far (S5-14).
+ * marks the total so far (S5-14). 活動's 今日用量 and 統計's 已用流量 both draw the day with it (N-11).
  */
 @Composable
-private fun UsageChart(day: RvDay, nowHour: Float, modifier: Modifier) {
+internal fun RvUsageChart(day: RvDay, nowHour: Float, modifier: Modifier) {
     val colors = Rv.colors
     Canvas(modifier) {
         // A day with no bytes yet keeps a top of one byte, so every step lies on the bottom rather than at 0 / 0.

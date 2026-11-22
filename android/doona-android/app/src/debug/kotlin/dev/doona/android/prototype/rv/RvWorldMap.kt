@@ -16,14 +16,15 @@ import kotlin.math.PI
 import kotlin.math.ln
 import kotlin.math.tan
 
-/** Every country of [RvWorld] as one path on its plane, decoded once. */
-private val shapes: Map<String, Path> by lazy { RvWorld.countries.associate { it.code to decode(it.rings) } }
+/** Every country of [RvWorld] as its rings, one path each on its plane, decoded once. */
+private val shapes: Map<String, List<Path>> by lazy { RvWorld.countries.associate { it.code to decode(it.rings) } }
 
 /**
  * The sample's one world map, Revolut's 'Your trips' (節點 and 統計): the world as one solid light-grey shape across the
  * width, every country in [places] filled in the primary colour, with a 0.5 dp seam in the card's colour round each so
  * neighbours stay apart (S7-08). A place the 1:110m shapes leave out or draw in a box under [SMALL_AREA] dp² (Hong
  * Kong, Singapore, Taiwan) also gets a primary dot, ringed in the card's colour so it stands off the land around it (S7-04).
+ * A ring under [MIN_RING] across is left out, so no island shows as a lone speck (N-03: Hawaii).
  */
 @Composable
 internal fun RvWorldMap(places: Set<RvPlace>, modifier: Modifier = Modifier) {
@@ -34,12 +35,15 @@ internal fun RvWorldMap(places: Set<RvPlace>, modifier: Modifier = Modifier) {
     Spacer(
         modifier.fillMaxWidth().aspectRatio(RvWorld.WIDTH / RvWorld.HEIGHT).drawWithCache {
             val codes = places.mapTo(mutableSetOf()) { it.name }
-            val rest = Path()
-            val marked = places.mapNotNull { shapes[it.name] }
-            for ((code, path) in shapes) if (code !in codes) rest.addPath(path)
             val k = size.width / RvWorld.WIDTH
+            val least = MIN_RING.toPx() / k
+            val seen = { rings: List<Path> -> Path().apply { rings.filter { it.getBounds().maxDimension >= least }.forEach { addPath(it) } } }
+            val rest = Path()
+            for ((code, rings) in shapes) if (code !in codes) rest.addPath(seen(rings))
+            val marked = places.mapNotNull { shapes[it.name] }.map(seen)
             val small = SMALL_AREA * density * density
-            val tiny = places.filter { place -> shapes[place.name]?.getBounds()?.let { it.width * it.height * k * k < small } ?: true }
+            val whole = { rings: List<Path> -> Path().apply { rings.forEach { addPath(it) } }.getBounds() }
+            val tiny = places.filter { place -> shapes[place.name]?.let(whole)?.let { it.width * it.height * k * k < small } ?: true }
             val dots = tiny.map { project(it.lat, it.lon) * k }
             val dot = DOT.toPx()
             val halo = dot + HALO.toPx()
@@ -68,8 +72,8 @@ private fun project(lat: Float, lon: Float): Offset {
 private fun miller(lat: Float): Double = MILLER_K * ln(tan(PI / 4 + MILLER_LAT * Math.toRadians(lat.toDouble())))
 
 /** Google's encoded polylines, one per ring, separated by spaces: each point a zigzag delta from the one before. */
-private fun decode(rings: String): Path = Path().apply {
-    for (ring in rings.split(' ')) {
+private fun decode(rings: String): List<Path> = rings.split(' ').map { ring ->
+    Path().apply {
         val reader = PolylineReader(ring)
         var x = 0
         var y = 0
@@ -111,6 +115,9 @@ private val SEAM = 0.5.dp
  * of land; the box is about twice the land). Taiwan's box is 6 dp²; the Netherlands', 12 dp², still shows as a shape.
  */
 private const val SMALL_AREA = 8f
+
+/** A ring narrower and shorter than this draws as a speck, not a shape. */
+private val MIN_RING = 2.dp
 
 private const val HALF_TURN = 180f
 private const val FULL_TURN = 360f

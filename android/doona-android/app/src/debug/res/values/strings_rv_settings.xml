@@ -44,5 +44,6 @@
     <string name="rv_settings_accent_purple">Purple</string>
     <string name="rv_settings_accent_orange">Orange</string>
     <string name="rv_settings_accent_pink">Pink</string>
+    <string name="rv_settings_mode">Mode</string>
     <string name="rv_settings_preview">Preview</string>
 </resources>

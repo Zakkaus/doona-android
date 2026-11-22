@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.nodes
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,7 +33,6 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
-import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
@@ -170,16 +170,15 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
     }
 }
 
-/** Revolut's 'See all' row at a list card's foot: the count in the accent, the chevron at the end. */
+/** Revolut's 'See all' row at a list card's foot (measured §7): the count centred, 19 sp bold in the accent, in 56 dp. */
 @Composable
 private fun SeeAll(count: Int, onClick: () -> Unit) {
     val shape = remember { RoundedCornerShape(bottomStart = RvSize.cardRadius, bottomEnd = RvSize.cardRadius) }
-    Row(
+    Box(
         Modifier.fillMaxWidth().height(RvNodesSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
-        verticalAlignment = Alignment.CenterVertically,
+        contentAlignment = Alignment.Center,
     ) {
-        RvText(pluralStringResource(R.plurals.rv_nodes_see_all, count, count), Rv.type.rowTitle, Modifier.weight(1f), color = Rv.colors.positive)
-        RvChevron()
+        RvText(pluralStringResource(R.plurals.rv_nodes_see_all, count, count), Rv.type.seeAll, color = Rv.colors.positive, align = TextAlign.Center)
     }
 }
 

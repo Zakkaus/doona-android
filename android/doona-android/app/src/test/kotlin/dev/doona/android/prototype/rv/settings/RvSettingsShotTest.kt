@@ -47,7 +47,7 @@ class RvSettingsShotTest {
         RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), onBack = {})
 
     private companion object {
-        /** Tall enough that the whole 設定 page shows, down to the bottom navigation. */
-        const val LONG_PAGE = "+h1464dp"
+        /** As tall as the whole 設定 page, so its end shows as the phone shows it: the last card 28 dp above the bottom navigation. */
+        const val LONG_PAGE = "+h1433dp"
     }
 }

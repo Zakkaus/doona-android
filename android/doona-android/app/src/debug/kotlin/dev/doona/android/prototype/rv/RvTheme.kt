@@ -52,17 +52,19 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val dotsIdle = s.outlineVariant
 
     /**
-     * Glass over the content. The floating capsule: white 65 % over the blur in light, as Revolut's 35 to 65 % white
-     * (measured §9); white 11 % in dark with a rim of white 8 %, so it does not dissolve into the black page (S5-20). Its
-     * solid fill is what it shows collapsed and where the platform cannot blur. The top bar's controls are a step darker,
-     * so they read on the light page.
+     * Glass over the content. The floating capsule's solid fill is white in light and white 11 % over the page in dark,
+     * one step above the black page as Revolut's dark controls are (#232325 on #000000), with a rim of white 8 % (S5-20,
+     * item 8). It shows that fill collapsed and where the platform cannot blur; over the blur it shows the fill at
+     * [navGlass]'s alpha. The top bar's controls are a step darker in light, so they read on the light page; in dark they
+     * are white 11 % over the blur with the same rim (L-02).
      */
     private val navSolid = if (dark) Color.White.copy(alpha = RvAlpha.NAV_DARK).compositeOver(page) else Color.White
-    val navGlass = RvGlassTint(Color.White.copy(alpha = if (dark) RvAlpha.NAV_DARK else RvAlpha.NAV_LIGHT), navSolid.copy(alpha = RvAlpha.GLASS_SOLID))
     val navRim: Color? = if (dark) Color.White.copy(alpha = RvAlpha.NAV_RIM) else null
-    val controlGlass = if (dark) navGlass else RvGlassTint(s.surfaceContainerHigh.copy(alpha = RvAlpha.CONTROL_GLASS), s.surfaceContainerHigh)
-
-    /** In dark the top bar's controls are the capsule's glass, rim included, so they stand off the black page (L-02). */
+    val controlGlass = if (dark) {
+        RvGlassTint(Color.White.copy(alpha = RvAlpha.NAV_DARK), navSolid.copy(alpha = RvAlpha.GLASS_SOLID))
+    } else {
+        RvGlassTint(s.surfaceContainerHigh.copy(alpha = RvAlpha.CONTROL_GLASS), s.surfaceContainerHigh)
+    }
     val controlRim: Color? = navRim
 
     /** The strip behind any bar once content scrolls under it: the page at 85 % over the blur. */
@@ -96,6 +98,13 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     /** The marks of controls that are not text: chevrons, a switch's off track, a radio's ring; 3:1 on page and card. */
     val control = firstPassing(s.outlineVariant, s.outline, RvContrast.MARK, listOf(page, card))
 
+    /**
+     * The capsule over the blur: its solid fill at the lightest alpha from [RvAlpha.NAV_GLASS_MIN] up at which its labels
+     * keep 4.5:1 even where the page's text colour lies under it at full strength, so no row shows through under the
+     * labels while the capsule moves over the content (item 22). Collapsed it shows the solid fill.
+     */
+    val navGlass = RvGlassTint(navOver(navSolid, s.onSurface), navSolid.copy(alpha = RvAlpha.GLASS_SOLID))
+
     /** Latency qualities: the only fixed hues, darkened (light) or lightened (dark) until they read on the card and their chip. */
     val good = readableHue(Color(if (dark) 0xFF5BC49A else 0xFF13795B))
     val fair = readableHue(Color(if (dark) 0xFFE7B04E else 0xFF94600A))
@@ -104,10 +113,16 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     /** A progress bar's empty part. */
     val track = discOnCard
 
-    /** The switch (Addendum A): on, an accent thumb over its tint at 3:1 on the card; off, a light thumb over [control]. */
+    /**
+     * The switch (Addendum A, item 1): off, Revolut's light thumb (#fafafa in both themes) over the [control] track; on,
+     * the accent thumb over a tint of it between the card and the accent. Each thumb keeps 3:1 against its track, and each
+     * track, or its outline, 3:1 against the card. The on track is the first tint that passes both; where none does (a dark
+     * accent on a white card), the deepest tint that keeps the thumb at 3:1, outlined in the accent.
+     */
     val switchOnThumb = s.primary
-    val switchOnTrack = firstPassing(card, s.primary, RvContrast.MARK, listOf(card))
-    val switchOffThumb = Color(if (dark) 0xFF525254 else 0xFFFAFAFA)
+    val switchOnTrack = switchTrack(s.primary)
+    val switchOnRim: Color? = s.primary.takeIf { rvContrast(switchOnTrack, card) < RvContrast.MARK }
+    val switchOffThumb = SWITCH_OFF_THUMB
 
     /** Categories that are not a direction (統計's quota ring, per subscription): ink and the control grey, never [down] or [up]. */
     val categories = listOf(s.onSurface, control)
@@ -147,6 +162,13 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
         band = line.copy(alpha = if (dark) RvAlpha.BAND_DARK else RvAlpha.BAND_LIGHT),
     )
 
+    /** The on track for [thumb]: see [switchOnTrack]. */
+    private fun switchTrack(thumb: Color): Color {
+        val tints = (0..RvContrast.STEPS).map { lerp(card, thumb, it.toFloat() / RvContrast.STEPS) }
+        val keepsThumb = tints.filter { rvContrast(thumb, it) >= RvContrast.MARK }
+        return keepsThumb.firstOrNull { rvContrast(it, card) >= RvContrast.MARK } ?: keepsThumb.lastOrNull() ?: card
+    }
+
     /**
      * [hue], or the first step from it toward black (light) or white (dark) that reads at 4.5:1 on page, card and its
      * chip on either (node detail's status chip sits on the page, N02).
@@ -171,6 +193,14 @@ internal object RvContrast {
     const val MARK = 3f
     const val STEPS = 20
 }
+
+/** [solid] at the first alpha from [RvAlpha.NAV_GLASS_MIN] to [RvAlpha.GLASS_SOLID] whose labels read at 4.5:1 over [under]. */
+private fun RvColors.navOver(solid: Color, under: Color): Color =
+    (0..RvContrast.STEPS).map { solid.copy(alpha = RvAlpha.NAV_GLASS_MIN + (RvAlpha.GLASS_SOLID - RvAlpha.NAV_GLASS_MIN) * it / RvContrast.STEPS) }
+        .firstOrNull { rvContrast(textSecondary, it.compositeOver(under)) >= RvContrast.TEXT_MIN } ?: solid.copy(alpha = RvAlpha.GLASS_SOLID)
+
+/** Revolut's off thumb, in both themes (its dark theme's off switch is #fafafa on #525254). */
+private val SWITCH_OFF_THUMB = Color(0xFFFAFAFA)
 
 /** The WCAG contrast ratio of two opaque colours. */
 internal fun rvContrast(a: Color, b: Color): Float {
@@ -215,6 +245,7 @@ internal class RvType {
     val flagCode = RvTypeScale.flagCode.style()
     val search = RvTypeScale.search.style()
     val cardTitle = RvTypeScale.cardTitle.style()
+    val seeAll = RvTypeScale.seeAll.style()
 
     // Tabular figures only where figures line up or change in place: Inter's tnum also widens the hyphen of a name.
     private fun RvTypeStep.style(tabular: Boolean = false) = TextStyle(

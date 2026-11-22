@@ -47,6 +47,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvFormat
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 /** Where values sit in a chart's canvas, in pixels: 0 on [bottom], [high] on [top]. */
@@ -347,3 +348,9 @@ internal val RV_GHOST_UP = floatArrayOf(0.3f, 0.22f, 0.48f, 0.34f, 0.6f, 0.4f, 0
 
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f
+
+/** A latency chart's axis (node detail and 統計): up to the first whole 100 ms that leaves the slowest 5 % below the top. */
+internal fun rvLatencyAxisTop(slowest: Int): Int = ceil(maxOf(slowest, 1) * LATENCY_HEADROOM / LATENCY_STEP).toInt() * LATENCY_STEP
+
+private const val LATENCY_HEADROOM = 1.05f
+private const val LATENCY_STEP = 100

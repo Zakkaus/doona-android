@@ -120,9 +120,12 @@ internal fun rvNavBottom(insets: WindowInsets): Dp {
     return max(RvChrome.navBottom, bar + RvChrome.navAboveInset)
 }
 
-/** The space the content keeps free at its end, so its last card clears the capsule. */
+/**
+ * The space every page with the capsule keeps free at its end: the capsule, and [RvChrome.navGap] between it and the
+ * last card once the page is scrolled to its end (item 3).
+ */
 @Composable
-internal fun rvNavClearance(insets: WindowInsets): Dp = rvNavBottom(insets) + RvChrome.navHeight + RvSpace.cardGap
+internal fun rvNavClearance(insets: WindowInsets): Dp = rvNavBottom(insets) + RvChrome.navHeight + RvChrome.navGap
 
 /**
  * Whether the capsule is collapsed: from the moment [scroll] moves the content up until it moves it back down or

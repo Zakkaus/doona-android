@@ -44,7 +44,7 @@ import dev.doona.android.prototype.rv.data.fastest
 
 /**
  * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
- * hero figure and both rates under it on a dot map of the world that marks the node's country (#07, #08), four round
+ * hero figure and the upload rate under it on a dot map of the world that marks the node's country (#07, #08), four round
  * actions, then a grouped card with the global outbound and the node it uses, download and upload as two of Revolut's
  * square home tiles (either opens the traffic page), and three more cards as Revolut's home goes on: 今日用量, 訂閱 and
  * 最快節點. Over the content sit the glass top bar (measured §4) and the floating glass bottom bar (§9), which shrinks
@@ -98,10 +98,8 @@ private fun Header(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
             Spacer(Modifier.height(RvSpace.tight))
             RvHero(format.rate(state.downRate.toDouble()))
             Spacer(Modifier.height(RvSpace.subGap))
-            Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.rowPadding)) {
-                RvInline(R.drawable.rv_sym_arrow_downward, format.rate(state.downRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
-                RvInline(R.drawable.rv_sym_arrow_upward, format.rate(state.upRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
-            }
+            // The hero is the download rate, so the line under it carries the other direction only (N-10).
+            RvInline(R.drawable.rv_sym_arrow_upward, format.rate(state.upRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
         }
         Spacer(Modifier.height(RvSpace.heroToActions))
         Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
@@ -141,16 +139,17 @@ private fun OutboundCard(state: ActivityUiState, routes: RvActivityRoutes) {
 }
 
 /**
- * Download and upload as two tiles side by side, each on its own scale: the rate, the session's peak (the same 峰值 as
- * 流量詳情's, from [RvData.session], L-18), and the minute's sparkline. Disconnected, or with no traffic in the window,
- * both tiles say so over ghost bars instead.
+ * Download and upload as two tiles side by side, each on its own scale: the rate, and the last minute's sparkline with
+ * that minute's peak, so the label and the curve beside it cover the same window (S01; 流量詳情 marks the same peak on
+ * the same minute). The session's peak is shown only where it is labelled 本次. Disconnected, or with no traffic in the
+ * window, both tiles say so over ghost bars instead.
  */
 @Composable
 private fun TrafficTiles(state: ActivityUiState, onOpenTraffic: () -> Unit) {
     val quiet = state.status !is Status.Running || (state.downHistory.all { it == 0f } && state.upHistory.all { it == 0f })
     Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tileGap)) {
-        TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.downRate, RvData.session.peakDown, state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
-        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, RvData.session.peakUp, state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
+        TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.downRate, minutePeak(state.downHistory), state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
+        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, minutePeak(state.upHistory), state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
     }
 }
 
@@ -171,6 +170,9 @@ private fun TrafficTile(
     val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, format.rate(peak.toDouble()).toString())
     RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier, ghost)
 }
+
+/** The fastest second of a minute's samples; a missing sample (NaN, a gap in the line) is not a rate. */
+private fun minutePeak(history: List<Float>): Float = history.filterNot { it.isNaN() }.maxOrNull() ?: 0f
 
 /** The 最快節點 card lists the first three of the 節點 page's fastest. */
 private const val FASTEST = 3

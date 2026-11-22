@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -59,6 +58,7 @@ internal object RvControlSize {
     val switchThumb = 19.dp
     val switchThumbShadow = 1.dp
     val switchThumbRing = 1.dp
+    val switchTrackRim = 1.dp
     val radio = 24.dp
     val radioStroke = 2.dp
     val radioDot = 12.dp
@@ -175,16 +175,16 @@ internal fun RvRoundButton(@DrawableRes icon: Int, label: String, onClick: () ->
     ) { RvGlyph(icon, RvChartSize.roundGlyph, Rv.colors.text) }
 }
 
-/** The one value pill (measured §10.1) as a composable: 28 dp tall, 8 dp round, opaque, on a soft shadow in light. */
+/**
+ * A tag chip on a card's header (`v0.2`), Revolut's tag chips (measured §8): full round, the pill's fill and ink, flat.
+ * It is not the floating readout pill: tags cast no shadow (N-04).
+ */
 @Composable
-internal fun RvValuePill(text: String, modifier: Modifier = Modifier) {
-    val colors = Rv.colors
-    val shape = RoundedCornerShape(RvChartSize.pillRadius)
-    val lift = if (colors.raisedShadow) Modifier.shadow(RvChartSize.pillShadow, shape) else Modifier
+internal fun RvTag(text: String, modifier: Modifier = Modifier) {
     Box(
-        modifier.height(RvChartSize.pill).then(lift).clip(shape).background(colors.pill).padding(horizontal = RvChartSize.pillPadH),
+        modifier.height(RvChartSize.pill).clip(CircleShape).background(Rv.colors.pill).padding(horizontal = RvChartSize.pillPadH),
         contentAlignment = Alignment.Center,
-    ) { RvText(text, Rv.type.pill, color = colors.textSecondary) }
+    ) { RvText(text, Rv.type.pill, color = Rv.colors.textSecondary) }
 }
 
 /** The pill's look for a canvas: its fill, and whether it casts the soft shadow. */
@@ -208,8 +208,8 @@ internal fun DrawScope.rvValuePill(text: TextLayoutResult, topLeft: Offset, ink:
 
 /**
  * Revolut's switch (§13.4, Addendum A): a 50 × 27 dp node holding a thin 34 dp track and a 19 dp thumb taller than it.
- * On, the thumb is the accent over a track of its tint at 3:1 on the card; off, a light thumb over the [RvColors.control]
- * track. The row around it owns the toggling.
+ * On, the thumb is the accent over a tint of it, outlined in the accent where the tint alone would not show on the card;
+ * off, a light thumb over the [RvColors.control] track. The row around it owns the toggling.
  */
 @Composable
 internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
@@ -223,7 +223,8 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
                 .align(Alignment.Center)
                 .size(size.switchTrackWidth, size.switchTrackHeight)
                 .clip(CircleShape)
-                .background(if (checked) colors.switchOnTrack else colors.control),
+                .background(if (checked) colors.switchOnTrack else colors.control)
+                .then(colors.switchOnRim?.takeIf { checked }?.let { Modifier.border(size.switchTrackRim, it, CircleShape) } ?: Modifier),
         )
         Box(
             Modifier

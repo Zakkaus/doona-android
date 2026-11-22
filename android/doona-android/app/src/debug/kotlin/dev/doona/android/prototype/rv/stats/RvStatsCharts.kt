@@ -17,7 +17,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -31,50 +30,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvAlpha
 import dev.doona.android.prototype.rv.RvChartSize
+import dev.doona.android.prototype.rv.RvPillInk
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvUsageSize
-
-/**
- * Revolut's 'Spent' chart: the day's running total as a grey stepped line over a grey tint, on a hairline grid from the
- * chart's left edge with a column every [RvUsageSize.GRID_HOURS] hours, so the steps rise on it as on 活動's 今日用量;
- * a 5 dp dot on its halo ends the line now (S5-14, L-05). [hours] are the day's bytes per hour from midnight; the last one
- * runs to [now], in hours from midnight. With no bytes the grid stands alone.
- */
-@Composable
-internal fun RvSteppedArea(hours: List<Long>, now: Float, modifier: Modifier = Modifier) {
-    val colors = Rv.colors
-    val line = colors.textSecondary.copy(alpha = colors.textSecondary.alpha * RvStatsAlpha.STEP_LINE)
-    Canvas(modifier) {
-        hourGrid(colors.grid)
-        val total = hours.sum()
-        if (total == 0L) return@Canvas
-        val stroke = RvStatsSize.stepStroke.toPx()
-        val bottom = size.height - stroke / 2
-        val y = { bytes: Long -> bottom - (bottom - stroke) * bytes / (total * STEP_HEADROOM) }
-        val x = { hour: Float -> size.width * hour / HOURS }
-        val path = Path().apply {
-            moveTo(0f, bottom)
-            var sum = 0L
-            hours.forEachIndexed { h, bytes ->
-                lineTo(x(if (h == hours.lastIndex) now else h + 1f), y(sum))
-                sum += bytes
-                lineTo(x(if (h == hours.lastIndex) now else h + 1f), y(sum))
-            }
-        }
-        val area = Path().apply {
-            addPath(path)
-            lineTo(x(now), size.height)
-            close()
-        }
-        drawPath(area, Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), y(total), size.height))
-        drawPath(path, line, style = Stroke(stroke, cap = StrokeCap.Round))
-        val end = Offset(x(now), y(total))
-        drawCircle(line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, end)
-        drawCircle(line, RvChartSize.liveDot.toPx() / 2, end)
-    }
-}
+import dev.doona.android.prototype.rv.rvLatencyAxisTop
+import dev.doona.android.prototype.rv.rvPillSize
+import dev.doona.android.prototype.rv.rvValuePill
+import dev.doona.android.prototype.rv.scripted
+import kotlin.math.abs
 
 /** An empty chart (Addendum A): the grid alone with a short [line] on it; never bars that were not measured. */
 @Composable
@@ -120,13 +84,14 @@ internal fun RvHourBars(values: List<Long>, color: Color, modifier: Modifier = M
     }
 }
 
-/** One subscription in the quota ring: its colour, what it used and what it has. */
-internal class RvRingSegment(val color: Color, val used: Long, val total: Long)
+/** One subscription in the quota ring: its colour, the lighter step of it for what is left, what it used and what it has. */
+internal class RvRingSegment(val color: Color, val rest: Color, val used: Long, val total: Long)
 
 /**
- * Revolut's 'Total assets' ring: an 8 dp ring with butt ends and a segment per subscription, each as long as its share of all the
- * quota; the used part is solid and the rest a tint of the same colour. With nothing to show it is a full ring on the
- * track, as Revolut draws a single category.
+ * Revolut's 'Total assets' ring: an 8 dp ring with butt ends and a segment per subscription, each as long as its share of
+ * all the quota: the used part in the subscription's colour, then what is left in a lighter step of it, every two parts
+ * [RvStatsSize.ringGap] apart in the card's colour (S05). With nothing to show it is a full ring on the track, as Revolut
+ * draws a single category.
  */
 @Composable
 internal fun RvQuotaRing(segments: List<RvRingSegment>, modifier: Modifier = Modifier) {
@@ -140,63 +105,82 @@ internal fun RvQuotaRing(segments: List<RvRingSegment>, modifier: Modifier = Mod
             drawArc(track, 0f, FULL_TURN, false, inset, box, style = Stroke(stroke))
             return@Canvas
         }
-        val radius = box.width / 2
-        val gap = Math.toDegrees(RvStatsSize.ringGap.toPx() / radius.toDouble()).toFloat()
+        val gap = Math.toDegrees(RvStatsSize.ringGap.toPx() / (box.width / 2).toDouble()).toFloat()
+        val arc = { color: Color, from: Float, sweep: Float -> if (sweep > 0f) drawArc(color, from, sweep, false, inset, box, style = Stroke(stroke)) }
         var start = START_ANGLE
         segments.forEach { s ->
             val sweep = FULL_TURN * s.total / sum
-            val usable = (sweep - gap).coerceAtLeast(0f)
-            val used = usable * (s.used.toFloat() / s.total).coerceIn(0f, 1f)
             val begin = start + gap / 2
-            drawArc(s.color.copy(alpha = RvStatsAlpha.RING_REST), begin, usable, false, inset, box, style = Stroke(stroke))
-            drawArc(s.color, begin, used, false, inset, box, style = Stroke(stroke))
+            val usable = (sweep - gap).coerceAtLeast(0f)
+            val share = (s.used.toFloat() / s.total).coerceIn(0f, 1f)
+            when {
+                share >= 1f -> arc(s.color, begin, usable)
+
+                share <= 0f -> arc(s.rest, begin, usable)
+
+                else -> {
+                    // The used part and the rest each give up half a gap where they meet.
+                    val used = usable * share
+                    arc(s.color, begin, used - gap / 2)
+                    arc(s.rest, begin + used + gap / 2, usable - used - gap / 2)
+                }
+            }
             start += sweep
         }
     }
 }
 
 /**
- * Revolut's EPS chart turned to latency: a dot per tested node in its quality's hue, sorted from the fastest, on
- * hairlines every 100 ms labelled at the right, the top one with its [unit] as node detail's chart labels it, over a
- * dotted zero line. The current node ([selected], an index into
- * [values]) stands in a column of the primary colour's pale tint, with [label] in a chip of the same tint under it, as
- * Revolut marks the selected year.
+ * Revolut's EPS chart turned to latency, in node detail's grammar (S04): a dot per tested node in its quality's hue,
+ * sorted from the fastest, on hairlines at the top, the middle and zero, labelled at the right with the unit on the top
+ * one, and a dotted line at the [median] with its value in the value pill at the line's end, which hides a label it would
+ * cover. The axis leaves the slowest dot 5 % under the top. The current node ([selected], an index into [values]) stands
+ * in a column of the primary colour's pale tint that stops [RvStatsSize.columnBelow] under the plot, apart from [label]'s
+ * chip of the same tint. The dots are small enough that neighbours keep a gap at 47 nodes; the selected one is a step
+ * larger and still clear of its neighbours.
  */
 @Composable
-internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, unit: String, modifier: Modifier = Modifier) {
+internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, median: Int?, unit: String, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val measurer = rememberTextMeasurer()
     val axisStyle = Rv.type.pill.copy(color = colors.textSecondary)
     // A node's name keeps its own figures: Inter's tabular figures widen the hyphen of `hk-01`.
     val chipStyle = Rv.type.pill.copy(color = colors.down.line, fontWeight = FontWeight.SemiBold, fontFeatureSettings = null)
-    val top = (((values.maxOrNull() ?: 0) + STEP_MS - 1) / STEP_MS).coerceAtLeast(1) * STEP_MS
-    val ticks = (0..top step STEP_MS).map { it to if (it == top) "$it $unit" else "$it" }
+    val top = rvLatencyAxisTop(values.maxOrNull() ?: 0)
+    val ticks = listOf(top to "$top $unit", top / 2 to "${top / 2}", 0 to "0")
+    val pillInk = RvPillInk(colors.pill, colors.raisedShadow)
     Canvas(modifier.fillMaxWidth().height(RvStatsSize.latency)) {
-        val axis = ticks.map { (ms, text) -> ms to measurer.measure(text, axisStyle) }
+        val axis = ticks.map { (ms, text) -> ms to measurer.measure(scripted(text), axisStyle) }
+        val pill = median?.let { measurer.measure(scripted("$it $unit"), axisStyle) }
+        val strip = maxOf(axis.maxOf { it.second.size.width }.toFloat(), pill?.let { rvPillSize(it).width } ?: 0f) + RvStatsSize.axisLabelGap.toPx()
         // At a large font scale the label could outgrow the chart: it ends in an ellipsis instead.
         val chipMax = (size.width - 2 * RvStatsSize.labelChipPadH.toPx()).toInt().coerceAtLeast(0)
         val chip = measurer.measure(label, chipStyle, TextOverflow.Ellipsis, maxLines = 1, constraints = Constraints(maxWidth = chipMax))
         val chipH = chip.size.height + 2 * RvStatsSize.labelChipPadV.toPx()
         val plot = Plot(
-            right = size.width - axis.maxOf { it.second.size.width } - RvStatsSize.axisLabelGap.toPx(),
-            top = axis.last().second.size.height / 2f,
+            right = size.width - strip,
+            top = axis.first().second.size.height / 2f,
             bottom = size.height - chipH - RvStatsSize.labelChipGap.toPx(),
             topMs = top,
         )
-        axis.forEach { (ms, text) -> axisLine(plot, ms, text, colors.grid, colors.reference) }
+        val medianY = median?.let { plot.y(it) }
+        axis.forEach { (ms, text) ->
+            val covered = pill != null && medianY != null && abs(medianY - plot.y(ms)) <= (rvPillSize(pill).height + text.size.height) / 2
+            axisLine(plot, plot.y(ms), text.takeUnless { covered }, colors.grid)
+        }
+        if (pill != null && medianY != null) medianLine(plot, medianY, pill, colors.reference, pillInk)
         if (values.isEmpty()) return@Canvas
         val pitch = plot.right / values.size
+        val x = { i: Int -> pitch * (i + 0.5f) }
         selected?.let { i ->
-            val x = pitch * (i + 0.5f)
             val w = RvStatsSize.column.toPx()
-            drawRoundRect(colors.down.area, Offset(x - w / 2, 0f), Size(w, plot.bottom + w / 2), CornerRadius(w / 2))
-            labelChip(chip, x, chipH, colors.down.area)
+            drawRoundRect(colors.down.area, Offset(x(i) - w / 2, 0f), Size(w, plot.bottom + RvStatsSize.columnBelow.toPx()), CornerRadius(w / 2))
+            labelChip(chip, x(i), chipH, colors.down.area)
         }
         values.forEachIndexed { i, ms ->
-            val big = i == selected
-            val radius = (if (big) RvStatsSize.latencyDotSelected else RvStatsSize.latencyDot).toPx() / 2
-            drawCircle(colors.quality(latencyTone(ms)), radius, Offset(pitch * (i + 0.5f), plot.y(ms)))
+            if (i != selected) drawCircle(colors.quality(latencyTone(ms)), RvStatsSize.latencyDot.toPx() / 2, Offset(x(i), plot.y(ms)))
         }
+        selected?.let { i -> drawCircle(colors.quality(latencyTone(values[i])), RvStatsSize.latencyDotSelected.toPx() / 2, Offset(x(i), plot.y(values[i]))) }
     }
 }
 
@@ -205,16 +189,18 @@ private class Plot(val right: Float, val top: Float, val bottom: Float, val topM
     fun y(ms: Int) = bottom - (bottom - top) * ms.coerceAtMost(topMs) / topMs
 }
 
-/** A hairline at [ms] across the plot with its label after it; the zero line is dotted, as Revolut's EPS baseline. */
-private fun DrawScope.axisLine(plot: Plot, ms: Int, text: TextLayoutResult, grid: Color, zero: Color) {
-    val y = plot.y(ms)
-    if (ms == 0) {
-        val dots = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH, RvChartSize.dottedPitch.toPx()))
-        drawLine(zero, Offset(0f, y), Offset(plot.right, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots)
-    } else {
-        drawLine(grid, Offset(0f, y), Offset(plot.right, y), 1f)
-    }
-    drawText(text, topLeft = Offset(size.width - text.size.width, y - text.size.height / 2f))
+/** A hairline at [y] across the plot, and its label, if any, at the strip's end. */
+private fun DrawScope.axisLine(plot: Plot, y: Float, text: TextLayoutResult?, grid: Color) {
+    drawLine(grid, Offset(0f, y), Offset(plot.right, y), 1f)
+    text?.let { drawText(it, topLeft = Offset(size.width - it.size.width, y - it.size.height / 2f)) }
+}
+
+/** The dotted median across the plot, its value in the value pill at the strip's end, as node detail draws it. */
+private fun DrawScope.medianLine(plot: Plot, y: Float, text: TextLayoutResult, color: Color, ink: RvPillInk) {
+    val dots = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH, RvChartSize.dottedPitch.toPx()))
+    drawLine(color, Offset(0f, y), Offset(plot.right, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots)
+    val pill = rvPillSize(text)
+    rvValuePill(text, Offset(size.width - pill.width, (y - pill.height / 2).coerceIn(0f, plot.bottom - pill.height)), ink)
 }
 
 /** [text] in a chip centred under [x] at the bottom of the chart, kept inside it. */
@@ -236,13 +222,9 @@ internal fun RvRatingBar(fraction: Float, color: Color, modifier: Modifier = Mod
     }
 }
 
-/** The day's hours on the x axis of the stepped area and the hour bars. */
+/** The day's hours on the x axis of the empty grid and the hour bars. */
 internal const val HOURS = 24
-
-/** The running total ends this far under the top, so the grid shows above it. */
-private const val STEP_HEADROOM = 1.25f
 
 private const val FULL_TURN = 360f
 private const val START_ANGLE = -90f
-private const val STEP_MS = 100
 private const val DOT_LENGTH = 0.01f

@@ -28,14 +28,7 @@ import androidx.compose.ui.unit.Dp
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvFigure
 import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.scripted
-
-/** The line at a card's foot that names where its data comes from. */
-@Composable
-internal fun RvStatsSource(text: String, modifier: Modifier = Modifier) {
-    RvText(text, Rv.type.tileCaption, modifier, color = Rv.colors.textSecondary)
-}
 
 /** A card's figure: the number in [style], its unit in [unitStyle] on the same baseline. */
 @Composable
@@ -88,14 +81,14 @@ internal fun RvStatsSwatch(color: Color) {
     Box(Modifier.size(RvStatsSize.legendSquare).clip(RoundedCornerShape(RvStatsSize.legendRadius)).background(color))
 }
 
-/** The pager's dots under the tiles: the current one larger and darker, centred under the row. */
+/** The pager's dots under the tiles: the current one larger and darker, the others in the control grey (3:1 on the page, S06). */
 @Composable
 internal fun RvStatsDots(count: Int, current: Int) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         repeat(count) { i ->
             Box(Modifier.width(RvStatsSize.dotPitch), contentAlignment = Alignment.Center) {
                 val size = if (i == current) RvStatsSize.dot else RvStatsSize.dotIdle
-                Box(Modifier.size(size).clip(CircleShape).background(if (i == current) Rv.colors.textSecondary else Rv.colors.reference))
+                Box(Modifier.size(size).clip(CircleShape).background(if (i == current) Rv.colors.textSecondary else Rv.colors.control))
             }
         }
     }

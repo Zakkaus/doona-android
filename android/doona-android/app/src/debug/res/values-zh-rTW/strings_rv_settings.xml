@@ -40,5 +40,6 @@
     <string name="rv_settings_accent_purple">紫色</string>
     <string name="rv_settings_accent_orange">橘色</string>
     <string name="rv_settings_accent_pink">粉紅色</string>
+    <string name="rv_settings_mode">模式</string>
     <string name="rv_settings_preview">預覽</string>
 </resources>

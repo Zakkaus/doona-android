@@ -75,9 +75,8 @@ internal object RvSize {
     val inlineGlyph = 16.dp
     val dot = 8.dp
 
-    /** Every card's corners (measured §2: 20 dp); 設定's group cards alone are rounder (re-measured: 24 dp). */
+    /** Every card's corners, 設定's and 主題's included (measured §2: 20 dp, N-06). */
     val cardRadius = 20.dp
-    val groupRadius = 24.dp
     val touch = 48.dp
     val navGlyph = 24.dp
     val progress = 5.dp
@@ -256,10 +255,13 @@ internal object RvAlpha {
     /** The strip behind a bar: the page at 85 % over the blur (S5-24). */
     const val BAR_GLASS = 0.85f
 
-    /** The capsule: white 65 % over the blur in light (S5-22), white 11 % with a rim of white 8 % in dark (S5-20). */
-    const val NAV_LIGHT = 0.65f
+    /**
+     * The capsule's solid fill in dark: white 11 % over the page, with a rim of white 8 % (S5-20, item 8). Over the blur
+     * its fill starts from Revolut's 65 % (measured §9) and rises until its labels read over any row (item 22).
+     */
     const val NAV_DARK = 0.11f
     const val NAV_RIM = 0.08f
+    const val NAV_GLASS_MIN = 0.65f
 
     /** The selected pill: the capsule's solid fill with the text colour at 8 % on it, flat and opaque (S5-19). */
     const val NAV_PILL = 0.08f
@@ -287,9 +289,6 @@ internal object RvChrome {
     val stripBelow = 8.dp
     val stripFade = 12.dp
 
-    /** The blur itself ends over this last bit of the strip, so it has no hard edge either. */
-    val stripEdge = 4.dp
-
     /** The strip is fully in once the content has scrolled this far; a large title hands over to the bar's over this. */
     val shadeAfter = 48.dp
     val collapse = 32.dp
@@ -313,6 +312,12 @@ internal object RvChrome {
     val navInset = 16.dp
     val navBottom = 40.dp
 
+    /**
+     * From the last card to the capsule at a page's end, the same on every page with the capsule: Revolut's measures give
+     * none, so it is 活動's, as the round-2 audits measured it (S02, S-01: 28 dp).
+     */
+    val navGap = 28.dp
+
     /** The capsule's bottom stays this far above a taller system bar, so it never sits on the gesture handle. */
     val navAboveInset = 16.dp
     val navHeight = 60.dp
@@ -329,8 +334,12 @@ internal object RvChrome {
     val navLabel = 18.dp
     val navRim = 1.dp
 
-    /** The glass blur's radius, and the shadows under the capsule and the top bar's controls (light only). */
+    /**
+     * The glass blur's radius, and how far past a glass surface's edges the blur reads the content, so its edges blur
+     * what lies there; then the shadows under the capsule and the top bar's controls (light only).
+     */
     val blur = 20.dp
+    val blurReach = 40.dp
     val navShadow = 12.dp
     val navShadowDrop = 4.dp
     val controlShadow = 6.dp
@@ -429,6 +438,9 @@ internal object RvTypeScale {
     /** The search pill's placeholder (measured §4: 17 sp) and a card's in-card header (measured §7: 19 sp medium). */
     val search = RvTypeStep(17, 22, FontWeight.Normal)
     val cardTitle = RvTypeStep(19, 26, FontWeight.Medium)
+
+    /** A list card's 'See all' row (measured §7: centred, 19 sp bold). */
+    val seeAll = RvTypeStep(19, 26, FontWeight.Bold)
     const val TABULAR = "tnum"
 }
 

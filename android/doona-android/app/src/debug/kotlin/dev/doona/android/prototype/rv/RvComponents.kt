@@ -225,7 +225,7 @@ internal fun RvChevron(modifier: Modifier = Modifier, color: Color = Rv.colors.c
 
 /**
  * A card's in-card header (measured §7 `listSubheader`), for a card that is a widget on a home or overview page: 19 sp
- * medium secondary text in a 48 dp row, then an optional [tag] in the value pill, and, only when it opens something, a
+ * medium secondary text in a 48 dp row, then an optional [tag] chip, and, only when it opens something, a
  * chevron in the header's colour; then the whole row is the button.
  */
 @Composable
@@ -241,7 +241,7 @@ internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: Str
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RvText(title, Rv.type.cardTitle, Modifier.weight(1f, fill = false).semantics { heading() }, color = Rv.colors.textSecondary)
-        tag?.let { RvValuePill(it, Modifier.padding(start = RvSpace.subGap)) }
+        tag?.let { RvTag(it, Modifier.padding(start = RvSpace.subGap)) }
         if (onClick != null) RvChevron(color = Rv.colors.textSecondary)
     }
 }

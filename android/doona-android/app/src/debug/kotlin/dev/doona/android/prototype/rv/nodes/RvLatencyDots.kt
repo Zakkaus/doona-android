@@ -31,11 +31,11 @@ import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvChartSize
 import dev.doona.android.prototype.rv.RvPillInk
+import dev.doona.android.prototype.rv.rvLatencyAxisTop
 import dev.doona.android.prototype.rv.rvPillSize
 import dev.doona.android.prototype.rv.rvValuePill
 import dev.doona.android.prototype.rv.scripted
 import kotlin.math.abs
-import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 /**
@@ -51,7 +51,7 @@ import kotlin.math.roundToInt
 @Composable
 internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val colors = Rv.colors
-    val top = axisTop(history.filterNotNull().maxOrNull() ?: 0)
+    val top = rvLatencyAxisTop(history.filterNotNull().maxOrNull() ?: 0)
     // The unit on the top label only, as 統計's latency chart labels its axis (L-11).
     val axis = listOf(stringResource(R.string.latency_ms, top), "${top / 2}", "0")
     val medianText = median?.let { stringResource(R.string.latency_ms, it) }
@@ -183,11 +183,6 @@ private class Plot(private val scope: DrawScope, private val columns: Columns, s
     }
 }
 
-/** The axis runs to the first whole 100 ms that leaves the slowest test 5 % below the top. */
-private fun axisTop(slowest: Int) = ceil(maxOf(slowest, 1) * HEADROOM / STEP).toInt() * STEP
-
-private const val HEADROOM = 1.05f
-private const val STEP = 100
 private const val CHIP_LIGHT = 0.1f
 private const val CHIP_DARK = 0.16f
 

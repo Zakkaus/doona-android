@@ -57,9 +57,9 @@ import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
- * The page 主題 opens, after Revolut's Appearance page (Addendum A): a large title that collapses into the bar, the
- * preview of the choice first, then the three modes side by side, each a small picture of the page over its label and
- * radio, then a 強調色 group with the wallpaper switch and five colour discs. The first disc is the scheme's own primary;
+ * The page 主題 opens, after Revolut's Appearance page (Addendum A): a large title that collapses into the bar, then three
+ * titled cards: 預覽, the preview of the choice; 模式, the three modes side by side, each a small picture of the page over
+ * its label and radio; and 強調色, the wallpaper switch and five colour discs. The first disc is the scheme's own primary;
  * the page itself wears the chosen accent, so its radio, switch and preview agree with the ringed disc (S8-10, S07).
  * [light] and [dark] are the two schemes the page and the preview wear; the discs are dimmed and inert while the
  * wallpaper's colour is followed, since the accent then comes from it.
@@ -78,11 +78,12 @@ internal fun RvThemeScreen(
     RvTheme(appearance.scheme(if (pageDark) dark else light, pageDark), pageDark) {
         RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
             RvLargeTitle(title, titleBlock, insets)
-            Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin), verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap)) {
-                RvThemePreview(appearance, light, dark)
-                ModeCard(appearance, light, dark, onChange)
-            }
+            // Each card has its outside title, as 強調色 has (N-07).
             Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+                RvSettingsSection(stringResource(R.string.rv_settings_preview))
+                RvThemePreview(appearance, light, dark)
+                RvSettingsSection(stringResource(R.string.rv_settings_mode))
+                ModeCard(appearance, light, dark, onChange)
                 RvSettingsSection(stringResource(R.string.rv_settings_accent))
                 AccentCard(appearance, if (pageDark) dark.primary else light.primary, onChange)
             }
@@ -104,7 +105,7 @@ private fun ModeCard(appearance: RvAppearance, light: ColorScheme, dark: ColorSc
                 Column(
                     Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(RvSize.groupRadius))
+                        .clip(RoundedCornerShape(RvSize.cardRadius))
                         .selectable(selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton) {
                             onChange(appearance.copy(mode = mode))
                         }

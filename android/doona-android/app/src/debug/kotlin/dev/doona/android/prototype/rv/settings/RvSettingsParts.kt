@@ -50,10 +50,10 @@ internal fun RvSettingsText(
     BasicText(scripted(text), modifier, style.copy(color = color, textAlign = align), overflow = TextOverflow.Ellipsis, maxLines = maxLines)
 }
 
-/** A settings group card, 24 dp round (Addendum A, re-measured): rows run edge to edge, with no divider, border or shadow. */
+/** A settings group card, 20 dp round as every card (N-06): rows run edge to edge, with no divider, border or shadow. */
 @Composable
 internal fun RvSettingsCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(RvSize.groupRadius)).background(Rv.colors.card), content = content)
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
 }
 
 /** The title of a group of cards: the shared outside section title, 24 dp above, 12 dp between it and its card. */
