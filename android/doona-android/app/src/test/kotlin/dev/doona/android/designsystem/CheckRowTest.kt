@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -20,16 +22,20 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.DoonaCheckRow
 import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.tokens.Dawn
+import dev.doona.android.designsystem.tokens.TypeScale
 import dev.doona.android.testing.SpacingRules
 import dev.doona.android.testing.layoutTree
 import dev.doona.android.testing.setDoonaContent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -92,6 +98,38 @@ class CheckRowTest {
         assertEquals(emptyList<String>(), SpacingRules.rows(tree))
         assertEquals(emptyList<String>(), SpacingRules.contained(tree))
         assertEquals(emptyList<String>(), SpacingRules.touch(tree).violations)
+    }
+
+    private fun lines(text: String): TextLayoutResult {
+        val results = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+        return results.single()
+    }
+
+    /**
+     * A title too long for one line takes a second, which an application's name needs on a narrow row, and the two lines
+     * fit the row's 48 dp; a title that needs a third ends in an ellipsis on the second line.
+     */
+    @Test
+    fun aLongTitleWrapsOntoTwoLinesAndOnlyAThirdIsCutOff() {
+        val two = "A long application name that cannot fit on one line of the row"
+        val many = "A long application name that cannot fit on one line of the row, nor on two, because it goes on and on about what the application does and who made it"
+        compose.setDoonaContent {
+            Column(Modifier.width(260.dp).background(Color.Gray)) {
+                DoonaCheckRow(checked = false, onChange = {}, title = "Short")
+                DoonaCheckRow(checked = false, onChange = {}, title = two)
+                DoonaCheckRow(checked = false, onChange = {}, title = many)
+            }
+        }
+        assertEquals(1, lines("Short").lineCount)
+        assertEquals("a title that wraps takes two lines", 2, lines(two).lineCount)
+        assertFalse("and none of it is cut", (0 until 2).any { lines(two).isLineEllipsized(it) })
+        assertEquals("a title that needs a third is held to two", 2, lines(many).lineCount)
+        assertTrue("and ends in an ellipsis", lines(many).isLineEllipsized(1))
+        val line = TypeScale.label.line.value
+        assertEquals("the two lines are drawn whole, one under the other", 2 * line, lines(two).size.height / compose.density.density, 1f)
+        compose.onNodeWithText(two).assertHeightIsEqualTo(48.dp)
+        assertEquals(emptyList<String>(), SpacingRules.rows(compose.layoutTree()))
     }
 
     private fun hex(c: Color) = "#%08X".format(c.toArgb())

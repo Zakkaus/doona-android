@@ -1,8 +1,13 @@
 package dev.doona.android.designsystem
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -11,10 +16,12 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -24,11 +31,19 @@ import dev.doona.android.designsystem.components.DoonaMeter
 import dev.doona.android.designsystem.components.DoonaProgress
 import dev.doona.android.designsystem.components.DoonaProgressSize
 import dev.doona.android.designsystem.components.LayoutRole
+import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.tokens.Dawn
+import dev.doona.android.designsystem.tokens.DoonaPalette
+import dev.doona.android.designsystem.tokens.Moon
+import dev.doona.android.testing.Dark
 import dev.doona.android.testing.Light
+import dev.doona.android.testing.Variant
+import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.layoutTree
 import dev.doona.android.testing.setVariantContent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -69,6 +84,41 @@ class FeedbackTest {
         assertEquals("the fill is 40 % of the track", 0.4f, fill.width / bar.width, 0.01f)
         assertEquals("the track is 4 dp", DoonaTheme.size.meterTrack.value, bar.height, 0.5f)
     }
+
+    private fun contrast(a: Color, b: Color): Float {
+        val (hi, lo) = listOf(a.luminance(), b.luminance()).sortedDescending()
+        return (hi + 0.05f) / (lo + 0.05f)
+    }
+
+    private fun hex(c: Color) = "#%08X".format(c.toArgb())
+
+    /**
+     * What the meter draws, read off the rendered pixels: the fill in the meter fill role and the rest of the bar in the
+     * track role, the fill 3:1 on its track and on the card, so a palette role that is right on paper but not the one the
+     * meter paints cannot pass.
+     */
+    private fun meterDraws(variant: Variant, palette: DoonaPalette) {
+        val c = DoonaColors(palette)
+        compose.setVariantContent(variant) { Column(Modifier.width(300.dp).background(c.card)) { DoonaMeter(0.5f, "50 %") } }
+        compose.drawFully()
+        val bar = compose.layoutTree().descendants().first { it.role == LayoutRole.Bar }
+        val density = compose.density.density
+        val image = compose.onRoot().captureToImage().toPixelMap()
+        fun at(share: Float) = image[((bar.left + bar.width * share) * density).toInt(), (bar.centerY * density).toInt()]
+        val fill = at(0.25f)
+        val track = at(0.75f)
+        assertEquals("the filled half", hex(c.meterFill), hex(fill))
+        assertEquals("the rest of the bar", hex(c.track), hex(track))
+        assertTrue("the fill is %.2f:1 on its track".format(contrast(fill, track)), contrast(fill, track) >= 3f)
+        assertTrue("the fill is %.2f:1 on the card".format(contrast(fill, c.card)), contrast(fill, c.card) >= 3f)
+        assertTrue("the track is %.2f:1 on the card".format(contrast(track, c.card)), contrast(track, c.card) >= 1.4f)
+    }
+
+    @Test
+    fun theMeterDrawsItsFillAndTrackInLight() = meterDraws(Light, Dawn)
+
+    @Test
+    fun theMeterDrawsItsFillAndTrackInDark() = meterDraws(Dark, Moon)
 
     @Test
     fun theEmptyStateActionTakesATapAndTheTitleIsAHeading() {

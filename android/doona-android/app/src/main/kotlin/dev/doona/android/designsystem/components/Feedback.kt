@@ -23,9 +23,10 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 
 /**
  * A used/total bar for traffic (§7, the kv meter): the [valueText] over a 4 dp track in the track colour, [fraction] of
- * it filled with the accent. The text is on its own lines above the bar and wraps when it is long, so it never touches
- * the bar: a `tight` gap lies between the last line and the track at any font size. [fraction] outside 0 to 1 is held
- * to it. A screen reader hears one progress: its range and, merged into it, the value text once.
+ * it filled with the meter fill, a lighter accent in dark that holds 3:1 on the track. The text is on its own lines
+ * above the bar and wraps when it is long, so it never touches the bar: a `tight` gap lies between the last line and
+ * the track at any font size. [fraction] outside 0 to 1 is held to it. A screen reader hears one progress: its range
+ * and, merged into it, the value text once.
  */
 @Composable
 fun DoonaMeter(fraction: Float, valueText: String, modifier: Modifier = Modifier) {
@@ -44,7 +45,7 @@ fun DoonaMeter(fraction: Float, valueText: String, modifier: Modifier = Modifier
                 .clip(DoonaTheme.shape.pill)
                 .background(c.track),
         ) {
-            Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(c.accent))
+            Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(c.meterFill))
         }
     }
 }

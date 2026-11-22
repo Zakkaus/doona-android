@@ -63,6 +63,12 @@ class DoonaColors(p: DoonaPalette) {
     /** The unfilled part of a bar (the meter's track): a step past the control fill, so it shows on the card, the sheet and the window. */
     val track = p.hlHigh
 
+    /**
+     * The filled part of a bar: 3:1 against the track as well as against the card and the sheet. The accent is 2.0:1 on
+     * Moon's track, so Moon takes the lightened pine of text and Dawn, whose pine reaches 3.8:1, keeps it.
+     */
+    val meterFill = p.pineText
+
     /** An unchecked checkbox's outline, 3:1 on the card and the sheet like the off switch's. */
     val boxLine = p.subtleText
 
