@@ -22,6 +22,7 @@ use tokio_util::sync::CancellationToken;
 
 /// Once either side's FIN is read, the other direction may go this long without a byte read or
 /// written in either direction before both sides close. honk's `DRAIN_DEADLINE` (honk 7cd8b13c).
+/// A TCP/53 connection to the core's DNS may idle as long (see `dns::serve_tcp`).
 const DRAIN_DEADLINE: Duration = Duration::from_secs(30);
 /// How often an idle drain looks at the counters.
 const DRAIN_CHECK: Duration = Duration::from_millis(100);
@@ -304,7 +305,8 @@ async fn drain(up: &Progress, down: &Progress) {
     }
 }
 
-/// Answers the framed DNS queries of a TCP/53 connection to the virtual resolver.
+/// Answers the framed DNS queries of a TCP/53 connection to the virtual resolver; an idle one is
+/// closed after [`DRAIN_DEADLINE`].
 pub(crate) async fn serve_dns(
     mut io: FlowIo,
     id: FlowId,
@@ -314,7 +316,9 @@ pub(crate) async fn serve_dns(
     cancel: CancellationToken,
 ) {
     let work = async {
-        let failed = dns::serve_tcp(&mut io, &upstreams, &route).await.is_err();
+        let failed = dns::serve_tcp(&mut io, &upstreams, &route, DRAIN_DEADLINE)
+            .await
+            .is_err();
         drop(io);
         let _ = events.send(Event::Finished { id, failed });
     };
