@@ -1,12 +1,13 @@
 //! The plain Rust API behind the five JNI functions. Host tests drive it without a JVM; `jni.rs`
 //! only converts arguments, holds the process's one [`Core`] and throws.
 
+use crate::bootstrap;
 use crate::catalog::{self, CatalogState, Shared};
 use crate::dto::{
     self, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply, Snapshot, StartConfig,
     Traffic,
 };
-use crate::outbounds::{self, Outbounds};
+use crate::outbounds::Outbounds;
 use crate::probe::{self, Prober, Probes};
 use crate::state::{Loaded, State, Store};
 use crate::tunnel::route::{ModeCell, PROXY_GROUP};
@@ -42,6 +43,9 @@ pub struct Options {
     pub probe_url: String,
     /// How long `addSubscription` and `updateSubscription` may take up to their commit.
     pub subscription_bound: Duration,
+    /// The port `start`'s `bootstrapDns` resolvers listen on, and the resolvers used without them.
+    pub bootstrap_port: u16,
+    pub bootstrap_fallback: Vec<SocketAddr>,
 }
 
 impl Default for Options {
@@ -50,6 +54,8 @@ impl Default for Options {
             dns_upstreams: crate::dns::UPSTREAMS.to_vec(),
             probe_url: probe::DEFAULT_PROBE_URL.to_owned(),
             subscription_bound: subscriptions::SUBSCRIPTION_BOUND,
+            bootstrap_port: 53,
+            bootstrap_fallback: bootstrap::FALLBACK.to_vec(),
         }
     }
 }
@@ -126,7 +132,8 @@ impl Core {
             .enable_all()
             .build()
             .map_err(|_| ErrorCode::Internal)?;
-        outbounds::install_resolvers();
+        bootstrap::install();
+        bootstrap::use_servers(options.bootstrap_fallback.clone());
         let model = catalog::load(&state);
         let outbounds = Arc::new(Outbounds::new(runtime.handle().clone())?);
         outbounds.replace(outbounds.build(&model.nodes));
@@ -272,13 +279,19 @@ impl Core {
         Err(code)
     }
 
-    /// What a generation runs with. Global with no node in the `Proxy` group is `no_nodes`: the
-    /// tunnel would carry nothing.
+    /// What a generation runs with. The config's resolvers serve host lookups from here on, also
+    /// after `stop`. Global with no node in the `Proxy` group is `no_nodes`: the tunnel would
+    /// carry nothing.
     fn settings(&self, config: &str) -> Result<Settings, ErrorCode> {
         let config: StartConfig = parse(config)?;
         if config.mtu < MIN_MTU {
             return Err(ErrorCode::InvalidArgument);
         }
+        let (port, fallback) = (
+            self.options.bootstrap_port,
+            &self.options.bootstrap_fallback,
+        );
+        bootstrap::use_servers(bootstrap::servers(&config.bootstrap_dns, port, fallback));
         if self.mode.get() == Mode::Global && self.shared.outbounds.dialer(PROXY_GROUP).is_none() {
             return Err(ErrorCode::NoNodes);
         }

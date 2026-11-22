@@ -1,5 +1,5 @@
-//! Loopback upstreams for the data-path tests: a TCP echo, a UDP echo, a DNS-over-TCP resolver
-//! and a subscription feed, each on its own threads.
+//! Loopback upstreams for the data-path tests: a TCP echo, a UDP echo, a DNS-over-TCP resolver,
+//! a UDP resolver and a subscription feed, each on its own threads.
 
 use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, UdpSocket};
@@ -186,4 +186,31 @@ pub fn feed(body: String) -> SocketAddr {
         }
     });
     addr
+}
+
+/// A UDP resolver for one-question queries without other records: A gets 127.0.0.1, any other
+/// type no record. Counts the queries in `datagrams`.
+pub fn udp_resolver() -> (SocketAddr, Arc<Seen>) {
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let addr = socket.local_addr().unwrap();
+    let seen = Arc::new(Seen::default());
+    let s = Arc::clone(&seen);
+    std::thread::spawn(move || {
+        let mut buf = vec![0u8; 512];
+        while let Ok((n, from)) = socket.recv_from(&mut buf) {
+            if n < 17 {
+                continue;
+            }
+            s.datagrams.fetch_add(1, Relaxed);
+            let mut a = buf[..n].to_vec();
+            a[2] |= 0x80;
+            a[3] = 0x80;
+            if u16_at(&a, n - 4) == 1 {
+                a[7] = 1;
+                a.extend_from_slice(&[0xc0, 12, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 127, 0, 0, 1]);
+            }
+            let _ = socket.send_to(&a, from);
+        }
+    });
+    (addr, seen)
 }
