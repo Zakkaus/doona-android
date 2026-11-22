@@ -25,12 +25,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,6 +55,8 @@ class ServiceEngine internal constructor(
     private val io: CoroutineDispatcher,
     /** Owns the engine's own work: polling, and commands the core has begun. */
     private val scope: CoroutineScope,
+    /** The pause before the settings read a per-app policy again after a read failed. */
+    private val perAppRetryMs: Long = PER_APP_RETRY_MS,
 ) : Engine {
     private val _ready = MutableStateFlow(false)
     override val ready: StateFlow<Boolean> = _ready.asStateFlow()
@@ -97,11 +99,23 @@ class ServiceEngine internal constructor(
         _ready.value = true
     }
 
-    /** An unreadable policy fails each start on its own; here it only stops updating the settings shown. */
+    /**
+     * An unreadable policy fails each start on its own. Here the settings keep the policy shown last and read the file
+     * again after a pause, so they follow it once it can be read, as after the save that repairs it.
+     */
     private suspend fun followPerApp() {
+        var failing = false
         perAppSettings.perApp
-            .catch { e -> VpnLog.warn("per-app policy unreadable: ${e.javaClass.simpleName}") }
-            .collect { perApp -> _settings.update { it.copy(perApp = perApp) } }
+            .retryWhen { e, _ ->
+                if (!failing) VpnLog.warn("per-app policy unreadable: ${e.javaClass.simpleName}")
+                failing = true
+                delay(perAppRetryMs)
+                true
+            }
+            .collect { perApp ->
+                failing = false
+                _settings.update { it.copy(perApp = perApp) }
+            }
     }
 
     override fun connect() {
@@ -136,7 +150,9 @@ class ServiceEngine internal constructor(
     override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> = try {
-        perAppSettings.update { perApp }
+        val saved = perAppSettings.update { perApp }
+        // Shown at once: after a failed read the collector reads the file again only after a pause.
+        _settings.update { it.copy(perApp = saved) }
         controller.rebuild()
         Result.success(Unit)
     } catch (e: IOException) {
@@ -260,6 +276,7 @@ class ServiceEngine internal constructor(
     companion object {
         private const val HEALTH_INTERVAL_MS = 5_000L
         private const val SAMPLE_INTERVAL_MS = 1_000L
+        private const val PER_APP_RETRY_MS = 5_000L
 
         /** The process-wide engine. The app container calls this once; the core library loads later, on IO. */
         fun create(context: Context): ServiceEngine {

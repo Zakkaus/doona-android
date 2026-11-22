@@ -1,9 +1,11 @@
 package dev.doona.android.vpn
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.PerAppSettings
+import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
@@ -14,7 +16,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -27,9 +32,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
+import java.io.IOException
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -45,11 +52,29 @@ class ServiceEngineTest {
     /** Sends a requested start to the service; the system may find none or refuse it. */
     @Volatile
     private var dispatch: (Long) -> Boolean = { requested.add(it) }
+    private val perAppFile by lazy { folder.root.resolve("per_app.preferences_pb") }
+    private val perAppStore by lazy { PerAppSettings.store(scope) { perAppFile } }
+
+    /** Fails the next read of the per-app policy, as a disk error would. */
+    @Volatile
+    private var failNextRead = false
+
+    /** Released for each per-app policy the store hands the engine, before the engine decodes it. */
+    private val perAppReads = Semaphore(0)
+
     private val engine by lazy {
         val opener = CoreOpener(core, "/data", Dispatchers.IO)
-        val settings = PerAppSettings(PreferenceDataStoreFactory.create(scope = scope) { folder.root.resolve("per_app.preferences_pb") })
+        val store = object : DataStore<Preferences> by perAppStore {
+            override val data = flow {
+                if (failNextRead) {
+                    failNextRead = false
+                    throw IOException("read")
+                }
+                emitAll(perAppStore.data.onEach { perAppReads.release() })
+            }
+        }
         val controller = TunnelController(core, opener, { PerApp() }, scope, killProcess = {})
-        ServiceEngine(core, opener, controller, settings, startService = { dispatch(it) }, io = Dispatchers.IO, scope = scope)
+        ServiceEngine(core, opener, controller, PerAppSettings(store), { dispatch(it) }, Dispatchers.IO, scope, perAppRetryMs = 50)
     }
 
     @After
@@ -148,6 +173,26 @@ class ServiceEngineTest {
         olderRelease.countDown()
         first.join()
         assertEquals(Mode.Direct, engine.settings.value.mode)
+    }
+
+    @Test
+    fun aSaveShowsThePolicyThatRepairedTheFile() = runBlocking {
+        perAppFile.writeBytes(ByteArray(0))
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
+        assertTrue("the settings read the damaged file", perAppReads.tryAcquire(5, TimeUnit.SECONDS))
+        val saved = PerApp(AppPolicy.OnlyListed, setOf("a"))
+        assertTrue(engine.setPerApp(saved).isSuccess)
+        assertEquals(saved, engine.settings.value.perApp)
+    }
+
+    @Test
+    fun theSettingsFollowThePolicyAgainAfterAFailedRead() = runBlocking {
+        val stored = PerApp(AppPolicy.OnlyListed, setOf("a"))
+        PerAppSettings(perAppStore).update { stored }
+        failNextRead = true
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
+        withTimeout(5_000) { engine.settings.first { it.perApp == stored } }
+        Unit
     }
 
     @Test
