@@ -3,10 +3,14 @@
 //! without a JVM.
 
 pub mod api;
+mod catalog;
 mod dns;
 pub mod dto;
+mod groups;
+mod ids;
 mod jni;
 pub mod state;
+mod subscription;
 pub mod sys;
 pub mod tunnel;
 

@@ -1,15 +1,17 @@
 //! The plain Rust API behind the five JNI functions. Host tests drive it without a JVM; `jni.rs`
 //! only converts arguments, holds the process's one [`Core`] and throws.
 
+use crate::catalog::{self, CatalogState, Shared};
 use crate::dto::{
-    self, AddSubscriptionArgs, Catalog, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply,
-    SelectArgs, Snapshot, StartConfig, Traffic,
+    self, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply, Snapshot, StartConfig,
+    Traffic,
 };
 use crate::state::{Loaded, State, Store};
 use crate::tunnel::route::ModeCell;
 use crate::tunnel::{self, Gate, Launch, STOP_WAIT, Settings, Tun, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::os::fd::OwnedFd;
 use std::path::Path;
@@ -17,6 +19,9 @@ use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
+
+mod selection;
+mod subscriptions;
 
 /// The tokio runtime's worker threads; flows are I/O bound and the phone has few big cores.
 const WORKERS: usize = 2;
@@ -45,9 +50,10 @@ pub struct Core {
     runtime: Runtime,
     options: Options,
     store: Store,
-    /// What `snapshot` reads; held only to copy or assign, never across file I/O.
-    catalog: Mutex<CatalogState>,
-    /// Serializes the commands that write `state.json`, so a slow write never holds `catalog`.
+    /// The catalog, shared with the tasks the core spawns.
+    shared: Arc<Shared>,
+    /// Serializes the commands that write `state.json`, so a slow write never holds the
+    /// catalog. Only they change the node set, so what one reads stays current until it commits.
     writer: Mutex<()>,
     /// The committed mode, shared with the running generation.
     mode: Arc<ModeCell>,
@@ -59,6 +65,8 @@ pub struct Core {
     /// What serves a generation, and how long `start` may take: the driver and [`START_BOUND`]
     /// in the app, stand-ins in unit tests.
     launch: (Launch, Duration),
+    /// Subscriptions with an update under way; a second update of one is `busy`.
+    refreshing: Mutex<HashSet<String>>,
 }
 
 enum Life {
@@ -69,13 +77,6 @@ enum Life {
         tun: Arc<Tun>,
     },
     Running(Tunnel),
-}
-
-struct CatalogState {
-    /// What `state.json` holds; changed only after the file is written.
-    state: State,
-    /// Rises with every change Kotlin must re-read; starts above Kotlin's initial -1 and 0.
-    revision: i64,
 }
 
 impl Core {
@@ -107,16 +108,23 @@ impl Core {
             .enable_all()
             .build()
             .map_err(|_| ErrorCode::Internal)?;
+        let model = catalog::load(&state);
+        let mode = Arc::new(ModeCell::new(state.mode));
+        let catalog = CatalogState::new(state, model);
+        let shared = Arc::new(Shared {
+            catalog: Mutex::new(catalog),
+        });
         Ok(Core {
             runtime,
             options,
             store,
-            mode: Arc::new(ModeCell::new(state.mode)),
-            catalog: Mutex::new(CatalogState { state, revision: 1 }),
+            shared,
+            mode,
             writer: Mutex::new(()),
             life: Mutex::new(Life::Stopped),
             generation: AtomicI64::new(0),
             launch,
+            refreshing: Mutex::new(HashSet::new()),
         })
     }
 
@@ -271,12 +279,8 @@ impl Core {
 
     pub fn snapshot(&self, since_revision: i64) -> String {
         let (revision, catalog) = {
-            let c = lock(&self.catalog);
-            let catalog = (c.revision > since_revision).then(|| Catalog {
-                mode: c.state.mode,
-                groups: Vec::new(),
-                subscriptions: Vec::new(),
-            });
+            let c = lock(&self.shared.catalog);
+            let catalog = (c.revision > since_revision).then(|| c.model.catalog(&c.state));
             (c.revision, catalog)
         };
         let session = match &*lock(&self.life) {
@@ -308,52 +312,60 @@ impl Core {
 
     pub fn call(&self, command: &str, args: &str) -> String {
         let reply = match command {
-            "setMode" => parse(args).and_then(|a: ModeArgs| self.set_mode(a.mode)),
-            // Groups, members and subscriptions arrive with the subscription lane; until then
-            // nothing they address exists.
-            "select" => parse::<SelectArgs>(args).and(Err(ErrorCode::NotFound)),
+            "setMode" => parse(args).and_then(|a: ModeArgs| self.set_mode(a.mode).map(empty)),
+            "select" => parse(args).and_then(|a| self.select(a).map(empty)),
+            // Latency tests arrive with the next change.
             "testLatency" => parse(args).and_then(|a: GroupArgs| match a.group {
                 Some(_) => Err(ErrorCode::NotFound),
                 None => Err(ErrorCode::NoNodes),
             }),
-            "addSubscription" => parse::<AddSubscriptionArgs>(args).and(Err(ErrorCode::NoNodes)),
-            "updateSubscription" | "removeSubscription" => {
-                parse::<IdArgs>(args).and(Err(ErrorCode::NotFound))
+            "addSubscription" => parse(args).and_then(|a| self.add_subscription(a).map(ok)),
+            "updateSubscription" => {
+                parse(args).and_then(|a: IdArgs| self.update_subscription(&a.id).map(ok))
+            }
+            "removeSubscription" => {
+                parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
             _ => Err(ErrorCode::InvalidArgument),
         };
-        match reply {
-            Ok(()) => to_json(&Reply::Ok(Empty {})),
-            Err(code) => {
-                log::info!("call {}: {}", command_name(command), code.as_str());
-                error_reply(code)
-            }
-        }
+        reply.unwrap_or_else(|code| {
+            log::info!("call {}: {}", command_name(command), code.as_str());
+            error_reply(code)
+        })
     }
 
-    /// Commits the mode to `state.json` first; new flows read it from then on. Only writers
-    /// change `catalog.state`, and they run one at a time, so the copy read here stays current.
+    /// Commits the mode to `state.json` first; new flows read it from then on.
     fn set_mode(&self, mode: Mode) -> Result<(), ErrorCode> {
         let _writer = lock(&self.writer);
-        let current = lock(&self.catalog).state.clone();
+        let current = lock(&self.shared.catalog).state.clone();
         if current.mode == mode {
             return Ok(());
         }
-        let next = State { mode, ..current };
-        self.store.commit(&next).map_err(|e| {
-            log::error!("setMode: state not written ({:?})", e.kind());
-            ErrorCode::Internal
-        })?;
+        self.commit_state(State { mode, ..current }, "setMode")
+    }
+
+    /// Writes `next`, then makes it what `snapshot` and new flows see.
+    /// The caller holds the writer lock and read the current state under it, so nothing else
+    /// changed the file meanwhile.
+    fn commit_state(&self, next: State, command: &str) -> Result<(), ErrorCode> {
+        self.write(&next, command)?;
         {
-            let mut catalog = lock(&self.catalog);
-            catalog.state = next;
-            catalog.revision += 1;
-            self.mode.set(mode);
+            let mut c = lock(&self.shared.catalog);
+            c.state = next;
+            c.revision += 1;
+            self.mode.set(c.state.mode);
         }
         // A restart reads the new file already, so new flows and `snapshot` must too; the
         // directory sync that follows holds only the writer lock.
         self.store.sync();
         Ok(())
+    }
+
+    fn write(&self, next: &State, command: &str) -> Result<(), ErrorCode> {
+        self.store.commit(next).map_err(|e| {
+            log::error!("{command}: state not written ({:?})", e.kind());
+            ErrorCode::Internal
+        })
     }
 }
 
@@ -376,6 +388,14 @@ impl Drop for Core {
     fn drop(&mut self) {
         self.stop();
     }
+}
+
+fn empty((): ()) -> String {
+    to_json(&Reply::Ok(Empty {}))
+}
+
+fn ok<T: Serialize>(value: T) -> String {
+    to_json(&Reply::Ok(value))
 }
 
 /// `{"error":{"code":…}}`.
@@ -422,9 +442,11 @@ fn to_json<T: Serialize>(value: &T) -> String {
 }
 
 /// A poisoned lock still holds consistent data here: every critical section only assigns.
-fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_catalog;

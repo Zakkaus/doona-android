@@ -74,3 +74,53 @@ pub fn closed(p: &Probe) -> bool {
     let open = unsafe { libc::fcntl(p.raw, libc::F_GETFD) } != -1;
     !open || identity(p.raw) != Some(p.identity)
 }
+
+/// A loopback HTTP server. `respond` gets each request's head and returns the whole response;
+/// it may block to hold one back.
+pub fn http(respond: impl Fn(&str) -> Vec<u8> + Send + Sync + 'static) -> std::net::SocketAddr {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let respond = std::sync::Arc::new(respond);
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(mut conn) = conn else { return };
+            let respond = std::sync::Arc::clone(&respond);
+            std::thread::spawn(move || {
+                let mut head = Vec::new();
+                let mut byte = [0u8; 1];
+                while !head.ends_with(b"\r\n\r\n") {
+                    match conn.read(&mut byte) {
+                        Ok(1) => head.push(byte[0]),
+                        _ => return,
+                    }
+                }
+                let _ = conn.write_all(&respond(&String::from_utf8_lossy(&head)));
+            });
+        }
+    });
+    addr
+}
+
+/// The request target of a head `http` received.
+pub fn target(head: &str) -> &str {
+    head.split(' ').nth(1).unwrap_or_default()
+}
+
+/// A response with a length, `headers` and `body`.
+pub fn response(status: &str, headers: &[(&str, &str)], body: &[u8]) -> Vec<u8> {
+    let mut out = format!("HTTP/1.1 {status}\r\nContent-Length: {}\r\n", body.len());
+    for (name, value) in headers {
+        out.push_str(&format!("{name}: {value}\r\n"));
+    }
+    out.push_str("\r\n");
+    let mut out = out.into_bytes();
+    out.extend_from_slice(body);
+    out
+}
+
+/// A fixture body from `tests/fixtures`.
+pub fn fixture(name: &str) -> Vec<u8> {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    std::fs::read(dir.join(name)).unwrap()
+}

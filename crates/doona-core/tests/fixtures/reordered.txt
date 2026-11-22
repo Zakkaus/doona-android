@@ -1,0 +1,8 @@
+anytls://secret@192.0.2.10:443#HK-02
+trojan://secret@192.0.2.7:443#US-West
+trojan://other@192.0.2.2:443#hk-01
+trojan://secret@192.0.2.1:443#hk-01%20renamed
+ss://YWVzLTI1Ni1nY206cGFzcw@192.0.2.3:8388#%F0%9F%87%AF%F0%9F%87%B5%20Tokyo%2001
+hysteria2://secret@192.0.2.5:443#%E5%8F%B0%E6%B9%BE%20TW01
+trojan://secret@192.0.2.6:443#SG%2001
+vless://00000000-0000-4000-8000-000000000001@192.0.2.8:443#KR%20Seoul

@@ -2,7 +2,7 @@
 //! core owns this file (Kotlin's DataStore holds only the per-app policy). Writes replace it
 //! atomically: a temp file is written and synced, then renamed over the old one.
 
-use crate::dto::Mode;
+use crate::dto::{ErrorCode, Mode};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -27,6 +27,24 @@ pub struct State {
     /// Group id to the member id chosen by hand.
     #[serde(default)]
     pub selections: BTreeMap<String, String>,
+    /// The number in the next subscription's id; an id is never given twice.
+    #[serde(default)]
+    pub next_subscription: u64,
+}
+
+impl State {
+    /// A new subscription id: `s` and a number above every id given before.
+    pub fn take_subscription_id(&mut self) -> String {
+        let used = self
+            .subscriptions
+            .iter()
+            .filter_map(|s| s.id.strip_prefix('s')?.parse::<u64>().ok())
+            .max()
+            .unwrap_or(0);
+        let n = self.next_subscription.max(used + 1);
+        self.next_subscription = n + 1;
+        format!("s{n}")
+    }
 }
 
 impl Default for State {
@@ -36,11 +54,12 @@ impl Default for State {
             mode: Mode::Global,
             subscriptions: Vec::new(),
             selections: BTreeMap::new(),
+            next_subscription: 1,
         }
     }
 }
 
-/// A subscription as stored; its nodes and status are derived at run time.
+/// A subscription as stored. Its nodes are parsed from `links` at load.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredSubscription {
@@ -51,6 +70,12 @@ pub struct StoredSubscription {
     pub used_bytes: Option<u64>,
     pub total_bytes: Option<u64>,
     pub expires_at_epoch_ms: Option<i64>,
+    /// The code of the last failed update; a successful one clears it.
+    #[serde(default)]
+    pub error: Option<ErrorCode>,
+    /// The share links of its nodes as last fetched, one per node, in feed order.
+    #[serde(default)]
+    pub links: Vec<String>,
 }
 
 /// How [`Store::load`] found the file.
@@ -182,6 +207,21 @@ mod tests {
         assert_eq!(how, Loaded::Read);
         assert_eq!(state.mode, Mode::Direct);
         assert!(state.subscriptions.is_empty() && state.selections.is_empty());
+    }
+
+    #[test]
+    fn subscription_ids_are_never_given_twice() {
+        let mut state = State::default();
+        let first = state.take_subscription_id();
+        assert_eq!(first, "s1");
+        assert_eq!(state.take_subscription_id(), "s2");
+        // A file written without the counter still avoids the ids it holds.
+        let mut old: State = serde_json::from_str(
+            r#"{"stateVersion":1,"mode":"Global","subscriptions":[{"id":"s7","name":"a","url":"https://a.invalid/","updatedAtEpochMs":null,"usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null}]}"#,
+        )
+        .unwrap();
+        assert!(old.subscriptions[0].links.is_empty() && old.subscriptions[0].error.is_none());
+        assert_eq!(old.take_subscription_id(), "s8");
     }
 
     #[test]

@@ -596,18 +596,27 @@ name = "doona-core"
 version = "0.1.0"
 dependencies = [
  "android_logger",
+ "base64",
+ "boring",
  "bytes",
  "futures-util",
  "honk-config",
  "honk-netstack",
  "honk-outbound",
+ "httparse",
  "jni",
  "libc",
  "log",
+ "percent-encoding",
  "serde",
  "serde_json",
+ "serde_yaml",
  "tokio",
+ "tokio-boring",
  "tokio-util",
+ "url",
+ "uuid",
+ "webpki-root-certs",
 ]
 
 [[package]]
