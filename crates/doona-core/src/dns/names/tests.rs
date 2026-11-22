@@ -309,18 +309,12 @@ fn bench_cache_memory() {
     for (what, len) in [("names of 24 bytes", 24), ("names of 253 bytes", 253)] {
         let answers: Vec<Vec<u8>> = (0..CAPACITY as u32)
             .map(|i| {
-                let label = format!("{i:0>8}");
-                let tail = "x".repeat(len - 9 - 8);
-                let name = if len > 63 {
-                    let parts: Vec<String> = tail
-                        .as_bytes()
-                        .chunks(60)
-                        .map(|c| String::from_utf8(c.to_vec()).unwrap())
-                        .collect();
-                    format!("{label}.{}.ex", parts.join("."))
-                } else {
-                    format!("{label}.{tail}.ex")
-                };
+                // A distinct first label, then labels of up to 63 bytes to the length.
+                let mut name = format!("{i:0>8}");
+                while name.len() < len {
+                    let room = (len - name.len() - 1).min(63);
+                    name = format!("{name}.{}", "x".repeat(room));
+                }
                 answer(&name, &[a(&host(i), 3_600)])
             })
             .collect();
@@ -332,9 +326,9 @@ fn bench_cache_memory() {
             names
         });
         assert_eq!(names.len(), CAPACITY);
-        let longest = names.name_at(IpAddr::from(host(0)), 1).unwrap().len();
+        assert_eq!(names.name_at(IpAddr::from(host(0)), 1).unwrap().len(), len);
         println!(
-            "names cache, {what} (longest {longest}): {} entries, kept {:.1} KiB, peak {:.1} KiB",
+            "names cache, {what}: {} entries, kept {:.1} KiB, peak {:.1} KiB",
             names.len(),
             kept as f64 / 1024.0,
             peak_b as f64 / 1024.0

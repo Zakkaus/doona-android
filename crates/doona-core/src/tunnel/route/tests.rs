@@ -287,4 +287,14 @@ fn bench_route_per_flow() {
         "route, the name lookup alone: {} ns/flow",
         per_flow(lookup, &flows)
     );
+    // What the rules' groups add to the catalog a snapshot carries (these node names are short).
+    let catalog = model.catalog(&crate::state::State::default());
+    let ruled: usize = (catalog.groups.iter())
+        .filter(|g| g.id == "g-Streaming" || g.id == "g-AI")
+        .map(|g| serde_json::to_vec(g).unwrap().len())
+        .sum();
+    let total = serde_json::to_vec(&catalog).unwrap().len();
+    println!(
+        "route, catalog over 200 nodes: {total} bytes of JSON, {ruled} of them Streaming and AI"
+    );
 }

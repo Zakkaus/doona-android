@@ -555,3 +555,5 @@ mod tests_catalog;
 mod tests_latency;
 #[cfg(test)]
 mod tests_localnet;
+#[cfg(test)]
+mod tests_rules;
