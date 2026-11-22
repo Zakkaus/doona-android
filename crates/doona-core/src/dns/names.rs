@@ -24,9 +24,9 @@ pub(crate) const CAPACITY: usize = 8_192;
 /// The shortest and longest an answer's address keeps its name, in seconds.
 pub(crate) const MIN_TTL: u32 = 60;
 pub(crate) const MAX_TTL: u32 = 3_600;
-/// The most addresses one answer maps: a real one holds a few, and a larger one would only push
-/// the other names out of the cache.
-const PER_ANSWER: usize = 64;
+/// The most addresses mapped while the lock is held: a lookup waits for one batch at most, and an
+/// answer of thousands of addresses (one over TCP may hold some 4,000) maps all of them.
+const BATCH: usize = 64;
 const TYPE_A: u16 = 1;
 const TYPE_CNAME: u16 = 5;
 const CLASS_IN: u16 = 1;
@@ -81,20 +81,21 @@ impl Names {
             return;
         };
         // Read before the lock is taken, so a new flow's lookup never waits on a long answer.
-        let mut found = reached(m, &name, at);
-        found.truncate(PER_ANSWER);
+        let found = reached(m, &name, at);
         if found.is_empty() {
             return;
         }
         let name: Arc<str> = name.into();
-        let mut cache = lock(&self.0);
-        for (addr, ttl) in found {
-            if cache.len() >= CAPACITY && !cache.contains(&addr) {
-                cache.pop_lru();
+        for batch in found.chunks(BATCH) {
+            let mut cache = lock(&self.0);
+            for &(addr, ttl) in batch {
+                if cache.len() >= CAPACITY && !cache.contains(&addr) {
+                    cache.pop_lru();
+                }
+                let until_ms = now_ms + u64::from(ttl) * 1000;
+                let name = Arc::clone(&name);
+                cache.put(addr, Entry { name, until_ms });
             }
-            let until_ms = now_ms + u64::from(ttl) * 1000;
-            let name = Arc::clone(&name);
-            cache.put(addr, Entry { name, until_ms });
         }
     }
 

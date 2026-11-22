@@ -357,17 +357,49 @@ fn the_last_answer_for_an_address_wins() {
     assert_eq!(name_of(&names, v4(192, 0, 2, 1), 60_010), None);
 }
 
-#[test]
-fn one_answer_maps_at_most_its_share() {
-    let octets: Vec<[u8; 4]> = (0..100u8).map(|i| [192, 0, 2, i]).collect();
-    let records: Vec<Rr<'_>> = octets.iter().map(|o| a(o, 60)).collect();
-    let names = Names::new();
-    names.learn_at(&answer("many.example", &records), 0);
-    assert_eq!(names.len(), PER_ANSWER);
-}
-
 fn host(i: u32) -> [u8; 4] {
     (0x0a00_0000 + i).to_be_bytes()
+}
+
+/// An answer maps every address it gives: EDNS's 1,232 bytes hold 65 compressed A records, and an
+/// answer over TCP some 4,000.
+#[test]
+fn one_answer_maps_every_address_it_gives() {
+    let octets: Vec<[u8; 4]> = (0..4_000).map(host).collect();
+    let records: Vec<Rr<'_>> = octets.iter().map(|o| a(o, 60)).collect();
+    let m = answer("many.example", &records);
+    assert!(m.len() <= usize::from(u16::MAX), "{}", m.len());
+    let names = Names::new();
+    names.learn_at(&m, 0);
+    assert_eq!(names.len(), 4_000);
+    for i in [0, 64, 3_999] {
+        let ip = IpAddr::from(host(i));
+        assert_eq!(
+            name_of(&names, ip, 1).as_deref(),
+            Some("many.example"),
+            "{i}"
+        );
+    }
+}
+
+/// A large answer into a full cache pushes out as many of the least recently used.
+#[test]
+fn a_large_answer_into_a_full_cache_pushes_out_the_least_recently_used() {
+    let names = Names::new();
+    for i in 0..CAPACITY as u32 {
+        names.learn_at(&answer(&format!("h{i}.example"), &[a(&host(i), 3_600)]), 0);
+    }
+    let octets: Vec<[u8; 4]> = (0..300).map(|i| host(CAPACITY as u32 + i)).collect();
+    let records: Vec<Rr<'_>> = octets.iter().map(|o| a(o, 3_600)).collect();
+    names.learn_at(&answer("many.example", &records), 1);
+    assert_eq!(names.len(), CAPACITY);
+    for o in &octets {
+        let ip = IpAddr::from(*o);
+        assert_eq!(name_of(&names, ip, 2).as_deref(), Some("many.example"));
+    }
+    assert_eq!(name_of(&names, IpAddr::from(host(299)), 2), None);
+    let kept = IpAddr::from(host(300));
+    assert_eq!(name_of(&names, kept, 2).as_deref(), Some("h300.example"));
 }
 
 #[test]
