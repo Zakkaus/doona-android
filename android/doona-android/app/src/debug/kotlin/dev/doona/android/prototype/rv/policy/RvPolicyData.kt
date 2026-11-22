@@ -40,11 +40,30 @@ internal sealed interface RvRuleMatch {
 
     /** The last rule: whatever no rule above matched. */
     data object Rest : RvRuleMatch
+
+    /** One value of a kind a rule can be written in: a full domain, a suffix, a keyword or an IP range. */
+    class Value(val kind: RvMatchKind, val value: String) : RvRuleMatch
+
+    /** A GeoSite category: the core has no GeoSite data yet, so such a rule is skipped and counted (D34). */
+    class GeoSite(val category: String) : RvRuleMatch
 }
+
+/** The ways a rule can match, as the rule page offers them. */
+internal enum class RvMatchKind(@StringRes val label: Int) {
+    Full(R.string.rv_policy_match_full),
+    Suffix(R.string.rv_policy_match_suffix),
+    Keyword(R.string.rv_policy_match_keyword),
+    Cidr(R.string.rv_policy_match_cidr),
+    GeoIpCn(R.string.rv_policy_match_geoip_cn),
+    Private(R.string.rv_policy_lan_kind),
+}
+
+/** Whether a rule routes: in use, turned off by the user, or skipped because the core cannot match it yet (D34). */
+internal enum class RvRuleState { On, Off, Skipped }
 
 /** A rule as the 策略 page lists it: what it matches, the group it sends to (null is 直連), and its bytes today. */
 @Immutable
-internal class RvPolicyRule(val match: RvRuleMatch, val group: RvPolicyGroup?, val bytes: Long)
+internal class RvPolicyRule(val match: RvRuleMatch, val group: RvPolicyGroup?, val bytes: Long, val state: RvRuleState = RvRuleState.On)
 
 /** A connection the quick rule starts from: where it went, from which app, the rule it matched and the group it used. */
 @Immutable
@@ -82,6 +101,29 @@ internal object RvPolicyData {
     )
 
     const val RULES = RvData.RULES
+
+    /**
+     * All [RULES] rules in the profile's order: the card's first four; nine the user added before the last rule, where
+     * the quick rule puts them, among them one turned off and two GeoSite rules the core skips; then the last rule. The
+     * card's five carry all of today's bytes, so the nine carried none.
+     */
+    val allRules: List<RvPolicyRule> = rules.dropLast(1) + listOf(
+        RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Full, SAMPLE_HOST), ai, 0),
+        RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Suffix, "github.com"), main, 0),
+        RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Keyword, "gamer"), group("tw"), 0),
+        RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Cidr, "91.108.56.0/22"), main, 0),
+        RvPolicyRule(RvRuleMatch.GeoSite("google"), main, 0, RvRuleState.Skipped),
+        RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Suffix, "icloud.com"), null, 0, RvRuleState.Off),
+        RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Suffix, "steamcontent.com"), null, 0),
+        RvPolicyRule(RvRuleMatch.GeoSite("apple-cn"), null, 0, RvRuleState.Skipped),
+        RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Suffix, "nintendo.net"), group("jp"), 0),
+    ) + rules.last()
+
+    /** Two quick rules held for a later 套用, as doona web holds them: the page shows them above the list. */
+    val pending: List<RvPolicyRule> = listOf(
+        RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Suffix, "claude.ai"), ai, 0),
+        RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Full, "ani.gamer.com.tw"), group("tw"), 0),
+    )
 
     /** The quick rule's sample: a connection the last rule sent through the main node. */
     val connection = RvConnection(SAMPLE_HOST, HTTPS, SAMPLE_APP, rules.last())

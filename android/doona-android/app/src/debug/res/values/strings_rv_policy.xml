@@ -63,4 +63,52 @@
     <string name="rv_policy_position">Position</string>
     <string name="rv_policy_position_value">Before “%1$s”</string>
     <string name="rv_policy_apply">Apply</string>
+    <string name="rv_policy_match_cidr">IP range</string>
+    <string name="rv_policy_match_geoip_cn" translatable="false">GEOIP CN</string>
+    <string name="rv_policy_rule_off">Off</string>
+    <string name="rv_policy_rule_skipped">Not supported, skipped</string>
+    <string name="rv_rules_reorder">Reorder</string>
+    <string name="rv_rules_edit_line">Drag a handle to reorder; long-press to delete</string>
+    <string name="rv_rules_done">Done</string>
+    <plurals name="rv_rules_apply_held">
+        <item quantity="one">Apply %1$d rule</item>
+        <item quantity="other">Apply %1$d rules</item>
+    </plurals>
+    <string name="rv_rules_pending">Not applied yet</string>
+    <string name="rv_rules_held">Held</string>
+    <string name="rv_rules_discard">Discard held rules</string>
+    <string name="rv_rules_in_use">In use</string>
+    <string name="rv_rules_off">Off</string>
+    <string name="rv_rules_skipped">Skipped</string>
+    <string name="rv_rules_skipped_line">GEOSITE is not supported yet, so its rules are skipped</string>
+    <plurals name="rv_rules_count">
+        <item quantity="one">%1$d rule</item>
+        <item quantity="other">%1$d rules</item>
+    </plurals>
+    <string name="rv_template_cn_direct_line">Mainland China sites go direct</string>
+    <string name="rv_template_services">By service</string>
+    <string name="rv_template_services_line">Streaming, AI and more each get a group</string>
+    <string name="rv_template_regions">By region</string>
+    <string name="rv_template_regions_line">One group for each region</string>
+    <string name="rv_template_homebound">Homebound</string>
+    <string name="rv_template_homebound_line">Abroad: mainland China sites use the proxy</string>
+    <string name="rv_template_gfw">Blocked sites only</string>
+    <string name="rv_template_gfw_line">Only blocked sites use the proxy</string>
+    <string name="rv_template_needs_geosite">Needs GEOSITE, not supported yet</string>
+    <string name="rv_template_in_use">In use</string>
+    <string name="rv_template_review">Review changes</string>
+    <string name="rv_template_note">Changes are listed before anything is applied</string>
+    <string name="rv_template_from_to">%1$s → %2$s</string>
+    <string name="rv_template_added">Rules added</string>
+    <string name="rv_template_changed">Rules changed</string>
+    <string name="rv_template_removed">Rules removed</string>
+    <string name="rv_template_kept">Your rules kept</string>
+    <string name="rv_template_group_youtube" translatable="false">YouTube</string>
+    <string name="rv_template_group_telegram" translatable="false">Telegram</string>
+    <string name="rv_template_ai_was">was 6 domains</string>
+    <string name="rv_template_new_flows">Only new connections follow the new rules</string>
+    <string name="rv_policy_change_add">New</string>
+    <string name="rv_policy_change_keep">Kept</string>
+    <string name="rv_policy_change_change">Changed</string>
+    <string name="rv_policy_change_remove">Removed</string>
 </resources>

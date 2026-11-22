@@ -36,6 +36,17 @@ class RvPolicyDataTest {
     }
 
     @Test
+    fun theListHoldsEveryRuleWithTheCardsInPlace() {
+        val all = RvPolicyData.allRules
+        assertEquals(RvPolicyData.RULES, all.size)
+        assertEquals(RvPolicyData.rules.dropLast(1), all.take(4))
+        assertEquals(RvPolicyData.rules.last(), all.last())
+        // The card's five carry all of today's bytes, so the rest carried none.
+        assertEquals(RvPolicyData.rules.sumOf { it.bytes }, all.sumOf { it.bytes })
+        assertEquals(listOf(11, 1, 2), RvRuleState.entries.map { s -> all.count { it.state == s } })
+    }
+
+    @Test
     fun theRulesCarryTodaysBytes() {
         val rules = RvPolicyData.rules
         assertTrue(rules.all { it.bytes > 0 })

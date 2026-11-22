@@ -54,7 +54,6 @@ import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.nodes.latencyColor
 import dev.doona.android.prototype.rv.nodes.latencyText
-import dev.doona.android.prototype.rv.rememberRvFormat
 import dev.doona.android.prototype.rv.rvCollapsedOnScroll
 import dev.doona.android.prototype.rv.rvNavClearance
 import dev.doona.android.prototype.rv.rvPress
@@ -179,21 +178,9 @@ private fun RulesCard(onAll: () -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_policy_rules))
         RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = Rv.colors.textSecondary)
-        RvPolicyData.rules.forEach { RuleRow(it) }
+        RvPolicyData.rules.forEach { RvRuleRow(it) }
         RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_rules, RvPolicyData.RULES, RvPolicyData.RULES), onAll)
     }
-}
-
-@Composable
-private fun RuleRow(rule: RvPolicyRule) {
-    val format = rememberRvFormat()
-    RvRow(
-        { RvPolicyTarget(rule.group) },
-        rule.match.title(),
-        rule.match.kind(),
-        titleEnd = { RvText(rule.group?.let { stringResource(it.name) } ?: stringResource(R.string.mode_direct), Rv.type.rowValue, align = TextAlign.End) },
-        subtitleEnd = { RvText(format.bytes(rule.bytes).toString(), Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) },
-    )
 }
 
 /** What shapes the rules: the template they come from, a new rule, and the two switches doona web offers with it. */

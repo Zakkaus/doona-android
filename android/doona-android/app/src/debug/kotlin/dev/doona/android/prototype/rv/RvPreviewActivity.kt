@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -17,12 +18,9 @@ import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
-import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
-import dev.doona.android.prototype.rv.policy.RvPolicyRoutes
-import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
-import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
-import dev.doona.android.prototype.rv.policy.RvQuickRule
+import dev.doona.android.prototype.rv.policy.RvPolicyPreview
+import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
+import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -45,22 +43,23 @@ class RvPreviewActivity : ComponentActivity() {
             val dark = isSystemInDarkTheme()
             RvTheme(rvSystemScheme(dark), dark) {
                 // The pages pushed over the tab home, last on top: a route's name, and a node's id after a colon.
-                var stack by rememberSaveable { mutableStateOf(listOf(ACTIVITY)) }
+                var stack by rememberSaveable { mutableStateOf(startStack(intent)) }
+                val policy = remember { RvPolicyPreviewState(if (intent.getBooleanExtra(EXTRA_PENDING, false)) RvPolicyData.pending else emptyList()) }
                 BackHandler(enabled = stack.size > 1) { stack = stack.dropLast(1) }
-                RvPreviewPage(stack.last(), push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
+                RvPreviewPage(stack.last(), policy, push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
             }
         }
     }
 }
 
 @Composable
-private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
+private fun RvPreviewPage(route: String, policy: RvPolicyPreviewState, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
     val nodes = remember { sampleNodesPage() }
     var settings by remember { mutableStateOf(rvSampleSettings()) }
-    var policy by remember { mutableStateOf(RvPolicyState()) }
-    var quickRule by remember { mutableStateOf(RvQuickRule()) }
     val onTab: (Int) -> Unit = { i -> TABS[i]?.let(tab) }
-    when (route.substringBefore(':')) {
+    val base = route.substringBefore(':')
+    if (base in RvPolicyPreviewRoutes.all) return RvPolicyPreview(route, policy, push, pop, onTab)
+    when (base) {
         TRAFFIC -> RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = pop)
 
         STATS -> RvStatsScreen(rvStatsSample(), onBack = pop)
@@ -73,18 +72,6 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
         }
 
         SETTINGS -> RvSettingsScreen(settings, onChange = { settings = it }, onOpenTheme = { push(THEME) }, onTab = onTab)
-
-        POLICY -> {
-            val routes = RvPolicyRoutes(group = { push("$GROUP:$it") }, newRule = { push(RULE) }, tab = onTab)
-            RvPolicyScreen(policy, { policy = it }, routes)
-        }
-
-        GROUP -> {
-            val group = policy.group(RvPolicyData.group(route.substringAfter(':')))
-            RvPolicyGroupPage(group, onBack = pop, onSelect = { policy = policy.choose(group.id, it) }, onTest = {})
-        }
-
-        RULE -> RvPolicyRulePage(RvPolicyData.connection, quickRule, { quickRule = it }, onBack = pop, onApply = pop)
 
         THEME -> RvThemeScreen(settings.appearance, { settings = settings.copy(appearance = it) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pop)
 
@@ -105,7 +92,12 @@ private const val NODES = "nodes"
 private const val NODE = "node"
 private const val SETTINGS = "settings"
 private const val THEME = "theme"
-private const val POLICY = "policy"
-private const val GROUP = "group"
-private const val RULE = "rule"
+private const val POLICY = RvPolicyPreviewRoutes.POLICY
+private const val GROUP = RvPolicyPreviewRoutes.GROUP
+
+/** `am start … --es rv.route policy,rules` opens that stack of pages; `--ez rv.pending true` holds two quick rules. */
+private const val EXTRA_ROUTE = "rv.route"
+private const val EXTRA_PENDING = "rv.pending"
+
+private fun startStack(intent: Intent): List<String> = intent.getStringExtra(EXTRA_ROUTE)?.split(',')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() } ?: listOf(ACTIVITY)
 private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS)
