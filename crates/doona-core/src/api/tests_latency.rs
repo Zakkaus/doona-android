@@ -219,3 +219,27 @@ fn honk_probes_a_node_through_its_outbound() {
     let dialer = core.shared.outbounds.dialer("g-Proxy").unwrap();
     assert_eq!(dialer.node.name, "local");
 }
+
+#[test]
+fn a_test_registered_while_stop_runs_is_dropped_with_it() {
+    let stand = Stand::new(false);
+    let (_dir, _feeds, core) = setup(&stand);
+    std::thread::scope(|scope| {
+        // Holding the lifecycle lock stops `stop` where it changes the lifecycle.
+        let life = super::lock(&core.life);
+        let stopping = scope.spawn(|| core.stop());
+        std::thread::sleep(Duration::from_millis(200));
+        call(&core, "testLatency", json!({"group": "g-HK"})).unwrap();
+        wait_started(&stand, 3);
+        drop(life);
+        stopping.join().unwrap();
+    });
+    stand.open();
+    let after = wait_for(&core, |c| !testing(c));
+    assert!(
+        after.groups[2]
+            .members
+            .iter()
+            .all(|m| m.latency_ms.is_none() && !m.failed)
+    );
+}

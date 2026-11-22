@@ -63,7 +63,8 @@ pub struct Core {
     /// The committed mode, shared with the running generation.
     mode: Arc<ModeCell>,
     /// Which generation runs, or that one is starting. Held only to read or swap it, never
-    /// across a wait, so `stop` and `snapshot` never wait for a `start`.
+    /// across a wait, so `stop` and `snapshot` never wait for a `start`. Taken before the catalog
+    /// lock when both are held.
     life: Mutex<Life>,
     /// The last generation `start` began; it stays in snapshots after `stop`.
     generation: AtomicI64,
@@ -184,7 +185,6 @@ impl Core {
         let old = self.begin(&gate, &tun)?;
         let generation = self.generation.fetch_add(1, Relaxed) + 1;
         if let Some(old) = old {
-            self.end_probes();
             old.wait(rt, deadline);
         }
         let started = Tunnel::start(
@@ -214,6 +214,7 @@ impl Core {
         };
         match std::mem::replace(&mut *life, starting) {
             Life::Running(old) => {
+                self.end_probes();
                 old.halt();
                 Ok(Some(old))
             }
@@ -278,9 +279,9 @@ impl Core {
     pub fn stop(&self) {
         // Taken first, so the teardown below spends the same second as the wait after it.
         let deadline = Instant::now() + STOP_WAIT;
-        self.end_probes();
         let halted = {
             let mut life = lock(&self.life);
+            self.end_probes();
             match std::mem::replace(&mut *life, Life::Stopped) {
                 Life::Running(tunnel) => {
                     tunnel.halt();
@@ -299,7 +300,9 @@ impl Core {
         }
     }
 
-    /// Drops the latency probes under way: a tunnel generation ended.
+    /// Drops the latency probes under way: a tunnel generation ends. Called with the lifecycle
+    /// lock held as the lifecycle changes, so a test that registers before the change is dropped
+    /// with it and no result of it commits after `stop` or the new `start` sees the change.
     fn end_probes(&self) {
         lock(&self.shared.catalog).end_probes();
     }
