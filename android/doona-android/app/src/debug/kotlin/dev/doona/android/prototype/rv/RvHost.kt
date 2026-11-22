@@ -117,7 +117,13 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
     } else {
         LaunchedEffect(stack) {
             if (state.currentState != stack) {
-                state.animateTo(stack)
+                val gesture = stackGesture(state.currentState, stack)
+                RvFrames.begin(gesture)
+                try {
+                    state.animateTo(stack)
+                } finally {
+                    RvFrames.end(gesture)
+                }
             } else if (state.targetState != stack) {
                 // A cancelled back gesture: the pop runs back from where the finger left it, then the page is at rest.
                 if (!motion.instant) {
@@ -265,3 +271,10 @@ private fun axis(motion: RvMotionScale, shift: Int, forward: Boolean): ContentTr
 }
 
 private const val TRACE_PAGE = "RvPage"
+
+/** [RvFrames]' name for the move from [from] to [to]: `tab`, or `push-` or `pop-` and the route of the page that moves. */
+private fun stackGesture(from: List<String>, to: List<String>): String = when {
+    from.first() != to.first() -> "tab"
+    to.size > from.size -> "push-" + to.last().substringBefore(':')
+    else -> "pop-" + from.last().substringBefore(':')
+}

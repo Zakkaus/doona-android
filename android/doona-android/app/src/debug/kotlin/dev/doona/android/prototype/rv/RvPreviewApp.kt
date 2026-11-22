@@ -222,18 +222,22 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
         if (status is Status.Running || status == Status.Starting) return
         link?.cancel()
         link = scope.launch {
-            status = Status.Starting
-            delay(RV_CONNECT_MS)
-            status = if (fails) Status.Failed(FailureReason.StartFailed) else Status.Running(RvData.nowEpochMs)
+            timed("connect") {
+                status = Status.Starting
+                delay(RV_CONNECT_MS)
+                status = if (fails) Status.Failed(FailureReason.StartFailed) else Status.Running(RvData.nowEpochMs)
+            }
         }
     }
 
     fun disconnect() {
         link?.cancel()
         link = scope.launch {
-            status = Status.Stopping
-            delay(RV_STOP_MS)
-            status = Status.Stopped
+            timed("disconnect") {
+                status = Status.Stopping
+                delay(RV_STOP_MS)
+                status = Status.Stopped
+            }
         }
     }
 
@@ -241,10 +245,12 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
         if (testing) return
         testing = true
         scope.launch {
-            delay(RV_TEST_MS)
-            rounds++
-            nodes = nodes.map { it.retested(rounds) }
-            testing = false
+            timed("latency-test") {
+                delay(RV_TEST_MS)
+                rounds++
+                nodes = nodes.map { it.retested(rounds) }
+                testing = false
+            }
         }
     }
 
@@ -252,10 +258,26 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
         if (testing || id in testingNodes) return
         testingNodes += id
         scope.launch {
-            delay(RV_TEST_MS)
-            rounds++
-            nodes = nodes.map { if (it.id == id) it.retested(rounds) else it }
-            testingNodes -= id
+            timed("latency-test-node") {
+                delay(RV_TEST_MS)
+                rounds++
+                nodes = nodes.map { if (it.id == id) it.retested(rounds) else it }
+                testingNodes -= id
+            }
+        }
+    }
+
+    /**
+     * Runs [work] as [gesture] for [RvFrames], and on for the longest transition its last change of state starts (a
+     * card's size, the hero's fade), so the frames those draw are counted too.
+     */
+    private suspend fun timed(gesture: String, work: suspend () -> Unit) {
+        RvFrames.begin(gesture)
+        try {
+            work()
+            delay(maxOf(RvMotion.MOVE_MS, RvMotion.HERO_FADE_MS).toLong())
+        } finally {
+            RvFrames.end(gesture)
         }
     }
 

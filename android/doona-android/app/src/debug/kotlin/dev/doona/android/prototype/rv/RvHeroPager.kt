@@ -96,13 +96,20 @@ internal class RvHeroPager(view: Int, private val count: Int, private val scope:
     }
 
     /** Shows [view] (a dot's tap, a TalkBack action), from wherever the views are. */
-    fun show(view: Int) = settle(view, 0f, RvMotion.SLIDE_MS)
+    fun show(view: Int) = settle(view, 0f, RvMotion.SLIDE_MS, DOTS)
 
-    /** Springs to [view], starting at [velocity] in views per second. */
-    private fun settle(view: Int, velocity: Float, ms: Int) {
+    /** Springs to [view], starting at [velocity] in views per second; [RvFrames] times it as [gesture]. */
+    private fun settle(view: Int, velocity: Float, ms: Int, gesture: String = SETTLE) {
         target = view
         travel = 0f
-        scope.launch(start = CoroutineStart.UNDISPATCHED) { at.animateTo(view.toFloat(), motion.settle(ms, FRACTION), velocity) }
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            RvFrames.begin(gesture)
+            try {
+                at.animateTo(view.toFloat(), motion.settle(ms, FRACTION), velocity)
+            } finally {
+                RvFrames.end(gesture)
+            }
+        }
     }
 
     /** Finger travel to position, in pixels: 1:1 between the first and the last view, a rubber band past either. */
@@ -139,6 +146,8 @@ internal class RvHeroPager(view: Int, private val count: Int, private val scope:
         const val FRACTION = 0.001f
         const val MAX_SHARE = 0.99f
         const val GESTURE = "hero-swipe"
+        const val SETTLE = "hero-settle"
+        const val DOTS = "hero-dots"
     }
 }
 
