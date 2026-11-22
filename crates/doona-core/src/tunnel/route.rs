@@ -111,29 +111,31 @@ impl Route {
         session: &Arc<Session>,
     ) -> Route {
         let Inbound::Tun = inbound;
+        // Direct reads no routing, so it never waits for a catalog swap that holds the table.
+        if mode == Mode::Direct {
+            return Route::Direct;
+        }
         let view = outbounds.view();
         let policy = view.policy();
-        let group = match mode {
-            Mode::Direct => return Route::Direct,
-            Mode::Global => policy.main(),
-            Mode::Rule => {
-                // A name is looked up only when a rule could match it.
-                let name = (policy.wants_names())
-                    .then(|| session.names().name(dst.ip()))
-                    .flatten();
-                let flow = Flow {
-                    domain: name.as_deref(),
-                    ip: dst.ip(),
-                    port: dst.port(),
-                    network,
-                };
-                match policy.choose(&flow) {
-                    Choice::Direct => return Route::Direct,
-                    Choice::Reject => return Route::Refuse,
-                    Choice::Blocked => return Route::Blocked,
-                    Choice::Group(group) => group,
-                }
+        let group = if mode == Mode::Rule {
+            // A name is looked up only when a rule could match it.
+            let name = (policy.wants_names())
+                .then(|| session.names().name(dst.ip()))
+                .flatten();
+            let flow = Flow {
+                domain: name.as_deref(),
+                ip: dst.ip(),
+                port: dst.port(),
+                network,
+            };
+            match policy.choose(&flow) {
+                Choice::Direct => return Route::Direct,
+                Choice::Reject => return Route::Refuse,
+                Choice::Blocked => return Route::Blocked,
+                Choice::Group(group) => group,
             }
+        } else {
+            policy.main()
         };
         Route::through(&view, group, session)
     }

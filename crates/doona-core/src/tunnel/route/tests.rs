@@ -193,6 +193,38 @@ fn without_a_node_rule_keeps_its_direct_rows_and_refuses_the_rest() {
     assert!(Route::dns(Inbound::Tun, Mode::Rule, &outbounds, &session).refused());
 }
 
+/// A Direct flow is routed while a catalog swap holds the routing table's write lock, here
+/// rebuilding a registry built on a table published since: Direct reads no table.
+#[test]
+fn direct_routes_while_a_swap_holds_the_table() {
+    let (outbounds, model) = published(Options::default());
+    let stale = outbounds.build(&model.nodes);
+    let newer = outbounds.build(&model.nodes);
+    outbounds.replace(newer, model.routing(&BTreeMap::new()));
+    let (inside, entered) = std::sync::mpsc::channel();
+    let (release, released) = std::sync::mpsc::channel::<()>();
+    outbounds.on_build(move || {
+        inside.send(()).unwrap();
+        let _ = released.recv();
+    });
+    let session = session();
+    let (routed, got) = std::sync::mpsc::channel();
+    std::thread::scope(|s| {
+        s.spawn(|| outbounds.replace(stale, model.routing(&BTreeMap::new())));
+        let wait = Duration::from_secs(10);
+        entered
+            .recv_timeout(wait)
+            .expect("the swap rebuilds under the lock");
+        s.spawn(|| {
+            let route = Route::of(Inbound::Tun, ANYWHERE, Mode::Direct, &outbounds, &session);
+            routed.send(target(&route).to_owned()).unwrap();
+        });
+        let direct = got.recv_timeout(Duration::from_secs(2));
+        release.send(()).unwrap();
+        assert_eq!(direct.as_deref(), Ok("direct"));
+    });
+}
+
 #[test]
 fn block_quic_refuses_quic_bound_for_a_group() {
     let (outbounds, _model) = published(Options { block_quic: true });
