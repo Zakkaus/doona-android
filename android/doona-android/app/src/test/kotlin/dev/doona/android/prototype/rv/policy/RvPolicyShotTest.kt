@@ -15,7 +15,8 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The 策略 tab and the pages it pushes, light and dark, each in one capture of the whole page: 策略 in 規則
- * (`proto-rv-policy-*`) and in 全域 (`proto-rv-policy-global-*`), a selector's page (串流, `proto-rv-policy-group-select-*`),
+ * (`proto-rv-policy-*`), in 全域 (`proto-rv-policy-global-*`, the main node alone) and in 直連 (`proto-rv-policy-direct-*`,
+ * the mode alone; both fit the phone's window), a selector's page (串流, `proto-rv-policy-group-select-*`),
  * a url-test group's page (自動, `proto-rv-policy-group-auto-*`), and the quick rule opened from a connection
  * (`proto-rv-policy-flow-*`).
  */
@@ -38,12 +39,16 @@ class RvPolicyShotTest {
     fun ruleDark() = compose.rvShot("policy", dark = true, before = { assertWhole() }) { Policy(RvRouteMode.Rule) }
 
     @Test
-    @Config(qualifiers = WHOLE_GLOBAL)
     fun globalLight() = compose.rvShot("policy-global", dark = false, before = { assertWhole() }) { Policy(RvRouteMode.Global) }
 
     @Test
-    @Config(qualifiers = WHOLE_GLOBAL)
     fun globalDark() = compose.rvShot("policy-global", dark = true, before = { assertWhole() }) { Policy(RvRouteMode.Global) }
+
+    @Test
+    fun directLight() = compose.rvShot("policy-direct", dark = false, before = { assertWhole() }) { Policy(RvRouteMode.Direct) }
+
+    @Test
+    fun directDark() = compose.rvShot("policy-direct", dark = true, before = { assertWhole() }) { Policy(RvRouteMode.Direct) }
 
     @Test
     @Config(qualifiers = WHOLE_SELECT)
@@ -76,12 +81,11 @@ class RvPolicyShotTest {
     private fun Group(group: RvPolicyGroup) = RvPolicyGroupPage(group, onBack = {}, onSelect = {}, onTest = {})
 
     @Composable
-    private fun Flow() = RvPolicyRulePage(RvPolicyData.connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}, onHold = {})
+    private fun Flow() = RvPolicyRulePage(RvPolicyData.connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {})
 
     private companion object {
         /** Windows as tall as each whole page, so one capture holds it to its end (the tab's last card 28 dp above the nav). */
         const val WHOLE_RULE = "+h1962dp"
-        const val WHOLE_GLOBAL = "+h1300dp"
         const val WHOLE_SELECT = "+h1120dp"
         const val WHOLE_AUTO = "+h1145dp"
         const val WHOLE_FLOW = "+h1185dp"

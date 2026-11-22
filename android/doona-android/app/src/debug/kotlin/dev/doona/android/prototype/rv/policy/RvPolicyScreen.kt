@@ -73,9 +73,10 @@ internal class RvPolicyRoutes(
 /**
  * The 策略 tab, a control page in the language of 設定 and 節點 (rv-policy-STATE.md has the synthesis behind it): the
  * large title with two glass actions in the bar; the mode as FlClash's three segments with one line saying what it does;
- * the main node, which carries whatever no rule sends elsewhere and, in 全域, everything, as a line under it says; the groups, each with how it
- * picks and the node it uses; the rules in order with today's bytes, as Karing lists them (v0.3); and the template and
- * the switches that shape the rules. Group rows and the main node push the group's page.
+ * the main node, which carries whatever no rule sends elsewhere and, in 全域, everything, as a line under it says; in
+ * 規則 only, the groups, each with how it picks and the node it uses; the rules in order with today's bytes, as Karing
+ * lists them; and the template and the switches that shape the rules. 全域 keeps the main node alone, 直連 only the
+ * mode. Group rows and the main node push the group's page.
  */
 @Composable
 internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes = RvPolicyRoutes()) {
@@ -94,11 +95,14 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         ModePicker(state.mode) { onChange(state.copy(mode = it)) }
+        // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
         RvGutter {
-            MainCard(state.group(RvPolicyData.main), state.mode, routes.group)
-            GroupsCard(state, routes.group)
-            RulesCard(state.mode, routes.rules)
-            if (state.mode == RvRouteMode.Rule) OptionsCard(state, onChange, routes)
+            if (state.mode != RvRouteMode.Direct) MainCard(state.group(RvPolicyData.main), state.mode, routes.group)
+            if (state.mode == RvRouteMode.Rule) {
+                GroupsCard(state, routes.group)
+                RulesCard(routes.rules)
+                OptionsCard(state, onChange, routes)
+            }
         }
         // The last card clears the floating nav, as on 設定.
         Spacer(Modifier.height(rvNavClearance(insets)))
@@ -150,35 +154,25 @@ private fun GroupsCard(state: RvPolicyState, onOpen: (String) -> Unit) {
 private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit) {
     val node = group.selected
     val count = pluralStringResource(R.plurals.rv_policy_node_count, group.members.size, group.members.size)
-    RvPolicyRow(
+    RvRow(
         { RvIconDisc(group.kind.glyph) },
         stringResource(group.name),
         stringResource(group.kind.label) + SEPARATOR + count,
         Modifier.rvPress(RectangleShape, Role.Button) { onOpen(group.id) },
         titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End) },
         subtitleEnd = { RvText(latencyText(node.latencyMs), Rv.type.rowSub, color = latencyColor(node.latencyMs), align = TextAlign.End) },
-        chevron = true,
+        trailing = { RvChevron() },
     )
 }
 
 /**
- * The rules, v0.3: how they are tried, then each one as what it matches over its kind, where the traffic ends (the
- * group's node, or 直連's arrow) and the group over today's bytes; then the rest of the list. In 全域 and 直連 no rule
- * applies, and the card says so in one line.
+ * The rules (規則 only): how they are tried, then each one as what it matches over its kind, where the traffic ends
+ * (the group's node, or 直連's arrow) and the group over today's bytes; then the rest of the list.
  */
 @Composable
-private fun RulesCard(mode: RvRouteMode, onAll: () -> Unit) {
+private fun RulesCard(onAll: () -> Unit) {
     RvCard {
-        RvCardHeader(stringResource(R.string.rv_policy_rules), tag = RV_V03)
-        val off = when (mode) {
-            RvRouteMode.Rule -> null
-            RvRouteMode.Global -> R.string.rv_policy_rules_global
-            RvRouteMode.Direct -> R.string.rv_policy_rules_direct
-        }
-        if (off != null) {
-            RvText(stringResource(off), Rv.type.rowSub, Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding), color = Rv.colors.textSecondary)
-            return@RvCard
-        }
+        RvCardHeader(stringResource(R.string.rv_policy_rules))
         RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = Rv.colors.textSecondary)
         RvPolicyData.rules.forEach { RuleRow(it) }
         RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_rules, RvPolicyData.RULES, RvPolicyData.RULES), onAll)
@@ -188,7 +182,7 @@ private fun RulesCard(mode: RvRouteMode, onAll: () -> Unit) {
 @Composable
 private fun RuleRow(rule: RvPolicyRule) {
     val format = rememberRvFormat()
-    RvPolicyRow(
+    RvRow(
         { RvPolicyTarget(rule.group) },
         rule.match.title(),
         rule.match.kind(),

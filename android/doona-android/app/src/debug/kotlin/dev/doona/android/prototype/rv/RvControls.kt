@@ -5,8 +5,10 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -35,19 +37,26 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
 
-// The sample's controls, one of each: range chip, segmented control, chart tool disc, value pill, switch and radio.
+// The sample's controls, one of each: range chip, segmented control, chart tool disc, value pill, primary button, switch
+// and radio.
 
 /** The geometry of the switch and the radio (measured §13.4; Addendum A: a thinner track under the 19 dp thumb). */
 internal object RvControlSize {
@@ -68,7 +77,18 @@ internal object RvControlSize {
     val chipStart = 16.dp
     val chipEnd = 12.dp
     val chipGlyph = 16.dp
+
+    /**
+     * The primary button: node detail's floating pill (§8, N06: 52 dp, over the 48 dp target) and its soft shadow, cast
+     * from its own shape (S7-16).
+     */
+    val primary = 52.dp
+    val primaryShadow = 12.dp
+    val primaryShadowDrop = 4.dp
 }
+
+/** The primary button's label (§8: 22 sp on a 423 dp screen, 20 sp on ours). */
+private val primaryLabel = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp)
 
 /**
  * A filter chip under a pushed page's large title, Revolut's small action button (`Personal ▾`, `This month ▾`): the
@@ -173,6 +193,41 @@ internal fun RvRoundButton(@DrawableRes icon: Int, label: String, onClick: () ->
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) { RvGlyph(icon, RvChartSize.roundGlyph, Rv.colors.text) }
+}
+
+/**
+ * The page's one main action, Revolut's full-width pill (§8): one style, the ink's fill (white in dark) with the page's
+ * colour as its label, the soft shadow under it. Pressed, the label's colour lies over the fill as the state layer;
+ * disabled, the button stays flat at [RvAlpha.DISABLED] and takes no press. At least [RvControlSize.primary] tall, so the
+ * whole pill is the target. [interactionSource] lets a caller (or a test) observe or drive the press.
+ */
+@Composable
+internal fun RvPrimaryButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    interactionSource: MutableInteractionSource? = null,
+) {
+    val colors = Rv.colors
+    val size = RvControlSize
+    val fill = if (colors.dark) Color.White else colors.text
+    val source = interactionSource ?: remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val shown = if (pressed && enabled) colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill) else fill
+    val lift = if (enabled) Modifier.rvSoftShadow(CircleShape, size.primaryShadow, size.primaryShadowDrop, RvAlpha.CTA_SHADOW) else Modifier
+    Box(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = size.primary)
+            .graphicsLayer { alpha = if (enabled) 1f else RvAlpha.DISABLED }
+            .then(lift)
+            .clip(CircleShape)
+            .background(shown)
+            .clickable(interactionSource = source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
+        contentAlignment = Alignment.Center,
+    ) { RvText(label, primaryLabel, color = colors.page, align = TextAlign.Center) }
 }
 
 /**

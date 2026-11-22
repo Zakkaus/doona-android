@@ -16,8 +16,6 @@
     </plurals>
     <string name="rv_policy_rules">Routing rules</string>
     <string name="rv_policy_rules_order">Rules are tried from the top; the first match wins</string>
-    <string name="rv_policy_rules_global">Global mode applies no rules</string>
-    <string name="rv_policy_rules_direct">Direct mode applies no rules</string>
     <plurals name="rv_policy_see_all_rules">
         <item quantity="one">See all %1$d rule</item>
         <item quantity="other">See all %1$d rules</item>
@@ -65,5 +63,4 @@
     <string name="rv_policy_position">Position</string>
     <string name="rv_policy_position_value">Before “%1$s”</string>
     <string name="rv_policy_apply">Apply</string>
-    <string name="rv_policy_hold">Apply later</string>
 </resources>

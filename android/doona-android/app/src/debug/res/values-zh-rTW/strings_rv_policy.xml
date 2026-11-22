@@ -15,8 +15,6 @@
     </plurals>
     <string name="rv_policy_rules">分流規則</string>
     <string name="rv_policy_rules_order">由上而下比對，第一條符合的規則生效</string>
-    <string name="rv_policy_rules_global">全域模式不套用分流規則</string>
-    <string name="rv_policy_rules_direct">直連模式不套用分流規則</string>
     <plurals name="rv_policy_see_all_rules">
         <item quantity="other">查看全部 %1$d 條</item>
     </plurals>
@@ -60,5 +58,4 @@
     <string name="rv_policy_position">位置</string>
     <string name="rv_policy_position_value">「%1$s」之前</string>
     <string name="rv_policy_apply">套用</string>
-    <string name="rv_policy_hold">稍後套用</string>
 </resources>

@@ -36,6 +36,7 @@ import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvInline
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSeeAll
 import dev.doona.android.prototype.rv.RvSize
@@ -64,7 +65,7 @@ internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelec
         name,
         insets,
         onBack = onBack,
-        overlay = { RvPolicyFloatingPill(stringResource(R.string.rv_policy_test_group), onTest, insets, Modifier.align(Alignment.BottomCenter)) },
+        overlay = { RvPolicyBottomAction(stringResource(R.string.rv_policy_test_group), onTest, insets, Modifier.align(Alignment.BottomCenter)) },
     ) { titleBlock ->
         RvLargeTitle(name, titleBlock, insets)
         Header(group)
@@ -114,7 +115,7 @@ private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Un
     } else {
         Modifier.selectable(chosen, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton) { onSelect(node.id) }
     }
-    RvPolicyRow(
+    RvRow(
         { RvFlag(node.place.name, RvSize.rowDisc, current = chosen) },
         node.name,
         listOfNotNull(stringResource(R.string.rv_policy_auto).takeIf { chosen && auto }, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),

@@ -44,7 +44,6 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.nodes.RvFloatingActions
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rvSystemScheme
 
@@ -52,8 +51,7 @@ import dev.doona.android.prototype.rv.rvSystemScheme
  * The quick rule, opened from a connection (doona web's one rule dialog, Karing's 選擇分流類型), in node detail's
  * grammar: the compact title beside the back disc; the connection as a key-stats card, with the rule it matched and the
  * node it went through; how the new rule matches, with what that choice covers; where it sends, the groups drawn as 活動
- * draws a destination; where it goes in the list, before the rule that matched; and 套用 floating at the bottom, with
- * 稍後套用 beside it, which holds the rule until one apply.
+ * draws a destination; where it goes in the list, before the rule that matched; and 套用 floating at the bottom.
  */
 @Composable
 internal fun RvPolicyRulePage(
@@ -62,7 +60,6 @@ internal fun RvPolicyRulePage(
     onChange: (RvQuickRule) -> Unit,
     onBack: () -> Unit,
     onApply: () -> Unit,
-    onHold: () -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     RvScrollPage(
@@ -70,7 +67,7 @@ internal fun RvPolicyRulePage(
         insets,
         onBack = onBack,
         compact = true,
-        overlay = { Actions(onApply, onHold, insets, Modifier.align(Alignment.BottomCenter)) },
+        overlay = { RvPolicyBottomAction(stringResource(R.string.rv_policy_apply), onApply, insets, Modifier.align(Alignment.BottomCenter)) },
     ) {
         RvBarSpacer(insets)
         Spacer(Modifier.height(RvSpace.gutter))
@@ -155,16 +152,6 @@ private fun PositionCard(matched: RvPolicyRule) {
     }
 }
 
-/** 套用 and, beside it, 稍後套用, floating with no scrim; the page keeps their room under its last card. */
-@Composable
-private fun Actions(onApply: () -> Unit, onHold: () -> Unit, insets: WindowInsets, modifier: Modifier) {
-    Column(modifier.padding(horizontal = RvSpace.gutter)) {
-        RvFloatingActions(stringResource(R.string.rv_policy_apply), onApply, R.drawable.rv_sym_schedule, stringResource(R.string.rv_policy_hold), onHold)
-        Spacer(Modifier.height(RvSpace.gutter))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
-    }
-}
-
 /** The groups listed before 其他 N 個策略組: the main node, 自動, 串流 and AI. */
 private const val TARGETS = 4
 private const val PORT = ":"
@@ -175,5 +162,5 @@ private const val PORT = ":"
 private fun RvPolicyRulePagePreview() {
     val dark = isSystemInDarkTheme()
     var rule by remember { mutableStateOf(RvQuickRule()) }
-    RvTheme(rvSystemScheme(dark), dark) { RvPolicyRulePage(RvPolicyData.connection, rule, { rule = it }, onBack = {}, onApply = {}, onHold = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvPolicyRulePage(RvPolicyData.connection, rule, { rule = it }, onBack = {}, onApply = {}) }
 }

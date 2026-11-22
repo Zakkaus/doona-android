@@ -84,7 +84,7 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
             RvPolicyGroupPage(group, onBack = pop, onSelect = { policy = policy.choose(group.id, it) }, onTest = {})
         }
 
-        RULE -> RvPolicyRulePage(RvPolicyData.connection, quickRule, { quickRule = it }, onBack = pop, onApply = pop, onHold = pop)
+        RULE -> RvPolicyRulePage(RvPolicyData.connection, quickRule, { quickRule = it }, onBack = pop, onApply = pop)
 
         THEME -> RvThemeScreen(settings.appearance, { settings = settings.copy(appearance = it) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pop)
 

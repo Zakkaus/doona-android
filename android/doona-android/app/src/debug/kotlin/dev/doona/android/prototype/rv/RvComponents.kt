@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -48,6 +49,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.data.RvAmount
@@ -55,6 +57,8 @@ import dev.doona.android.prototype.rv.data.RvPlace
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 /** One line of text in a role; CJK runs in Noto, the rest in Inter. */
 @Composable
@@ -146,7 +150,15 @@ internal fun RvCard(modifier: Modifier = Modifier, content: @Composable ColumnSc
     Column(modifier.fillMaxWidth().clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
 }
 
-/** A row of a grouped card: a disc at the start, a title over an optional subtitle, and trailing content at the end. */
+/**
+ * A row of a grouped card: a disc at the start, a title over an optional subtitle, and trailing content at the end.
+ *
+ * [titleEnd] and [subtitleEnd] put a value at the end of the title's line and of the subtitle's line instead of one
+ * trailing column beside both: each line then shares its width only with its own end. The start keeps its width up to
+ * [TITLE_SHARE] of the line, the end takes what it needs of the rest, and the start gets what is left, so a long name
+ * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
+ * text column to its widest end. [trailing] (a chevron) still follows after both lines.
+ */
 @Composable
 internal fun RvRow(
     leading: @Composable () -> Unit,
@@ -154,10 +166,13 @@ internal fun RvRow(
     subtitle: String?,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    titleEnd: (@Composable () -> Unit)? = null,
+    subtitleEnd: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     // The card clips the layer of its first and last row to its corners.
     val press = onClick?.let { Modifier.rvPress(RectangleShape, Role.Button, it) } ?: Modifier
+    val lineWise = titleEnd != null || subtitleEnd != null
     Row(
         modifier
             .fillMaxWidth()
@@ -169,12 +184,44 @@ internal fun RvRow(
         leading()
         Spacer(Modifier.width(RvSpace.rowGap))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-            RvText(title, Rv.type.rowTitle)
-            subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) }
+            if (lineWise) {
+                RowLine(titleEnd) { RvText(title, Rv.type.rowTitle) }
+                subtitle?.let { RowLine(subtitleEnd) { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) } }
+            } else {
+                RvText(title, Rv.type.rowTitle)
+                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) }
+            }
         }
         trailing?.let {
             Spacer(Modifier.width(RvSpace.trailingGap))
             it()
+        }
+    }
+}
+
+/** The share of a line a row's title keeps, if it needs it, before the end of the line takes the rest. */
+private const val TITLE_SHARE = 0.4f
+
+/**
+ * One line of a line-wise [RvRow]: [start] keeps its own width up to [TITLE_SHARE] of the line, [end] takes what it
+ * needs of the rest, and [start] then gets what the end leaves; either ends in an ellipsis only when both are long.
+ */
+@Composable
+private fun RowLine(end: (@Composable () -> Unit)?, start: @Composable () -> Unit) {
+    Layout({
+        start()
+        end?.invoke()
+    }) { parts, constraints ->
+        val width = constraints.maxWidth
+        val gap = if (parts.size > 1) RvSpace.trailingGap.roundToPx() else 0
+        val keep = min(parts[0].maxIntrinsicWidth(constraints.maxHeight), (width * TITLE_SHARE).toInt())
+        val endPart = parts.getOrNull(1)?.measure(Constraints(maxWidth = max(0, width - keep - gap)))
+        val endWidth = endPart?.width ?: 0
+        val startPart = parts[0].measure(Constraints(maxWidth = max(0, width - endWidth - gap)))
+        val height = max(startPart.height, endPart?.height ?: 0)
+        layout(width, height) {
+            startPart.place(0, (height - startPart.height) / 2)
+            endPart?.let { it.place(width - it.width, (height - it.height) / 2) }
         }
     }
 }

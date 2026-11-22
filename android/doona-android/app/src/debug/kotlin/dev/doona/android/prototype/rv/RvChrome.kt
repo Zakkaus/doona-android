@@ -104,9 +104,9 @@ internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, 
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
             SearchPill(glass, onSearch, Modifier.weight(1f))
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-            GlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
+            RvGlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
             Spacer(Modifier.width(RvChrome.buttonGap - RvChrome.touchPad * 2))
-            GlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), NOT_WIRED)
+            RvGlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), NOT_WIRED)
         }
     }
 }
@@ -128,8 +128,12 @@ private fun SearchPill(glass: RvGlass, onClick: () -> Unit, modifier: Modifier) 
     }
 }
 
+/**
+ * A top bar's round action (活動's 統計 and 訂閱): a 44 dp glass disc with the soft shadow and, in dark, its rim, in a 48 dp
+ * target; [label] is for the screen reader.
+ */
 @Composable
-private fun GlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, onClick: () -> Unit) {
+internal fun RvGlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, onClick: () -> Unit) {
     Box(
         Modifier
             .minimumInteractiveComponentSize()
