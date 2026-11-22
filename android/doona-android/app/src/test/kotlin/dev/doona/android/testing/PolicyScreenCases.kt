@@ -13,6 +13,7 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.feature.policies.GroupScreen
 import dev.doona.android.feature.policies.PoliciesScreen
 import dev.doona.android.feature.policies.SAMPLE_PINNED_GROUPS
@@ -33,6 +34,7 @@ import dev.doona.android.feature.subscriptions.sampleSubscriptionsState
  */
 internal fun policyScreenCases(): List<ScreenCase> {
     val engine = sampleEngine()
+    val apps = FakeInstalledApps()
     val noSubscriptions = FakeEngine(subscriptions = emptyList())
     val noSubscriptionsFailed = FakeEngine(subscriptions = emptyList(), status = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes))
     val noSubscriptionsStopped = FakeEngine(subscriptions = emptyList(), status = Status.Failed(FailureReason.CoreStopped))
@@ -48,13 +50,13 @@ internal fun policyScreenCases(): List<ScreenCase> {
     val form = subscriptions + setOf(LayoutRole.Field, LayoutRole.Dot)
     val firstRun = bars + setOf(LayoutRole.Card, LayoutRole.Button, LayoutRole.Field)
     return listOf(
-        ScreenCase("policies", PageLayout(list, listRhythm)) { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, PoliciesKey)) },
+        ScreenCase("policies", PageLayout(list, listRhythm)) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, PoliciesKey)) },
         ScreenCase("policies-error", PageLayout(list + LayoutRole.Dot, listRhythm)) {
             DoonaAppShell(Tab.Policies, onSelect = {}) {
                 PoliciesScreen(samplePoliciesState(SAMPLE_TESTING_GROUPS, ErrorCode.Busy), onAction = {}, onOpenGroup = {}, onOpenSubscriptions = {})
             }
         },
-        ScreenCase("group", PageLayout(group, groupRhythm + space.block)) { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))) },
+        ScreenCase("group", PageLayout(group, groupRhythm + space.block)) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))) },
         ScreenCase("group-automatic", PageLayout(flatGroup, groupRhythm)) {
             DoonaAppShell(Tab.Policies, onSelect = {}) {
                 GroupScreen(sampleGroupDetail("g-Auto", SAMPLE_TESTING_GROUPS.map { it.copy(testing = false) }), null, {}, {}, {})
@@ -77,13 +79,13 @@ internal fun policyScreenCases(): List<ScreenCase> {
             val state = sampleSubscriptionsState(adding = true, form = AddFormState(attempted = true, error = ErrorCode.FetchFailed))
             DoonaAppShell(Tab.Policies, onSelect = {}) { SubscriptionsScreen(state, remember { sampleAddFields() }, {}, {}) }
         },
-        ScreenCase("first-run", PageLayout(firstRun, listOf(space.section, space.section))) { DoonaApp(noSubscriptions, onConnect = {}, listOf(ActivityKey)) },
+        ScreenCase("first-run", PageLayout(firstRun, listOf(space.section, space.section))) { DoonaApp(noSubscriptions, apps, onConnect = {}, listOf(ActivityKey)) },
         ScreenCase("first-run-hint", PageLayout(firstRun, listOf(space.section, space.section))) {
-            DoonaApp(noSubscriptionsFailed, onConnect = {}, listOf(ActivityKey))
+            DoonaApp(noSubscriptionsFailed, apps, onConnect = {}, listOf(ActivityKey))
         },
         ScreenCase("first-run-failed", PageLayout(firstRun, listOf(space.section, space.section))) {
-            DoonaApp(noSubscriptionsStopped, onConnect = {}, listOf(ActivityKey))
+            DoonaApp(noSubscriptionsStopped, apps, onConnect = {}, listOf(ActivityKey))
         },
-        ScreenCase("activity-loading", PageLayout(bars, listOf(space.section))) { DoonaApp(loading, onConnect = {}, listOf(ActivityKey)) },
+        ScreenCase("activity-loading", PageLayout(bars, listOf(space.section))) { DoonaApp(loading, apps, onConnect = {}, listOf(ActivityKey)) },
     )
 }

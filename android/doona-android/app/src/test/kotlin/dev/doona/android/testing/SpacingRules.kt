@@ -53,7 +53,9 @@ object SpacingRules {
     fun contained(root: LayoutBox): List<String> {
         val viewports = root.descendants().filter { it.role == LayoutRole.Sheet }.map { root.viewportOf(it) }.toList()
         return root.descendants().filter { it.role != LayoutRole.Chevron && viewports.none { v -> v === it } }.flatMap { parent ->
-            parent.content.filter { it.left < parent.left - TOL || it.right > parent.right + TOL || it.top < parent.top - TOL || it.bottom > parent.bottom + TOL }
+            // A lazy sheet is not a column and is its own viewport: the rows it places past its top or bottom are clipped by it.
+            val clips = parent.role == LayoutRole.Sheet && !parent.vertical
+            parent.content.filter { it.left < parent.left - TOL || it.right > parent.right + TOL || (!clips && (it.top < parent.top - TOL || it.bottom > parent.bottom + TOL)) }
                 .map { "$it draws outside its parent $parent" }
         }.toList()
     }
@@ -201,16 +203,17 @@ object SpacingRules {
     }
 
     /**
-     * What [touch] saw at one scroll offset: the violations, the positions in the tree of the actions it saw whole, and
-     * every action's position with its description.
+     * What [touch] saw at one scroll offset: the violations, the names of the actions it saw whole, and every action's
+     * name with its description.
      */
-    class TouchReport(val violations: List<String>, val seen: Set<Int>, val actions: Map<Int, String>)
+    class TouchReport(val violations: List<String>, val seen: Set<String>, val actions: Map<String, String>)
 
     /**
      * The pointer rules at one scroll offset, for the nodes in view whole: every action is hit over at least 48 × 48 dp,
      * and a control smaller than that, which is still hit over 48 dp, has a hit area that reaches into no text and no
      * other control (a screen reader reports that area as its bounds and trims it below 48 otherwise). The tree is the
-     * same at every offset, so a node is named by its position in it: an action that no offset showed whole is in
+     * same at every offset, except for the rows a lazy list composes as they come into view, so an action is named by its
+     * text and its place among the actions of that text: an action that no offset showed whole is in
      * [TouchReport.actions] but in no [TouchReport.seen], and the caller fails it ([unseen]).
      */
     fun touch(root: LayoutBox): TouchReport {
@@ -218,8 +221,17 @@ object SpacingRules {
         val all = root.descendants().toList()
         val nodes = all.filter { it !in hidden }
         val violations = touchTargets(nodes) + touchZones(nodes)
-        val actions = all.indices.filter { all[it].actionable }.associateWith { all[it].toString() }
-        return TouchReport(violations, nodes.mapNotNull { n -> all.indexOfFirst { it === n }.takeIf { n.actionable } }.toSet(), actions)
+        val names = actionNames(all)
+        return TouchReport(violations, nodes.mapNotNull { names[it] }.toSet(), all.mapNotNull { n -> names[n]?.let { it to n.toString() } }.toMap())
+    }
+
+    /** The names of the actions among [all], by identity: the text of the action and how many actions before it have the same text. */
+    private fun actionNames(all: List<LayoutBox>): Map<LayoutBox, String> {
+        val before = HashMap<String, Int>()
+        return all.filter { it.actionable }.associateWith { node ->
+            val text = node.text.orEmpty()
+            "$text#${before.merge(text, 1, Int::plus)!! - 1}"
+        }
     }
 
     /** The actions that no scroll offset showed whole: they were never checked for touch. */

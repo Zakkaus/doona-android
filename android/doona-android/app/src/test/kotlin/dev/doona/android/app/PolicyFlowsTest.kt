@@ -23,6 +23,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.engine.fake.FakeInstalledApps
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -39,7 +40,7 @@ class PolicyFlowsTest {
     private val url = "https://example.invalid/x"
 
     private fun show(engine: Engine, vararg start: NavKey) {
-        compose.setContent { DoonaTheme { DoonaApp(engine, onConnect = {}, start = start.toList().ifEmpty { listOf(ActivityKey) }) } }
+        compose.setContent { DoonaTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = start.toList().ifEmpty { listOf(ActivityKey) }) } }
     }
 
     private fun typeUrl() {
@@ -166,7 +167,7 @@ class PolicyFlowsTest {
             }
         }
         var starts = 0
-        compose.setContent { DoonaTheme { DoonaApp(engine, onConnect = { starts++ }) } }
+        compose.setContent { DoonaTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = { starts++ }) } }
         compose.runOnIdle { fake.subscriptions.value = emptyList() }
 
         // The one switch is the one that stops the tunnel; a tap on it is the user's Stop.

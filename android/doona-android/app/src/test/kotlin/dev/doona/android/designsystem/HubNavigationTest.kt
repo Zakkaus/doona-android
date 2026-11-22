@@ -3,7 +3,6 @@ package dev.doona.android.designsystem
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -17,6 +16,7 @@ import dev.doona.android.testing.SpacingRules
 import dev.doona.android.testing.layoutTree
 import dev.doona.android.testing.screenCases
 import dev.doona.android.testing.setVariantContent
+import dev.doona.android.testing.sheetScroll
 import dev.doona.android.testing.tall
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -91,7 +91,7 @@ class HubNavigationTest {
         val density = compose.density.density
         val title = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         val before = title.fetchSemanticsNode().boundsInRoot
-        compose.onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
+        compose.onNode(sheetScroll()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
         compose.waitForIdle()
         val tree = compose.layoutTree()
         val viewport = tree.viewportOf(tree.descendants().first { it.role == LayoutRole.Sheet })
@@ -103,7 +103,7 @@ class HubNavigationTest {
     @Test
     fun besideARailTheSheetClearsTheGestureBar() {
         compose.setVariantContent(Landscape) { screenCases().first { it.name == "group" }.content() }
-        compose.onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
+        compose.onNode(sheetScroll()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
         compose.waitForIdle()
         val sheet = compose.layoutTree().descendants().first { it.role == LayoutRole.Sheet }
         assertEquals("space below the last block: the sheet's end and the gesture bar's inset", 40f + 24f, sheet.bottom - sheet.content.last().bottom, TOL)

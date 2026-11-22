@@ -13,11 +13,13 @@ import androidx.navigation3.ui.NavDisplay
 import dev.doona.android.designsystem.components.DoonaHubShell
 import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.activity.ActivityRoute
 import dev.doona.android.feature.onboarding.FirstRunGate
+import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
-import dev.doona.android.feature.settings.SettingsScreen
+import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
@@ -40,14 +42,16 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
  * The app shell: one back stack shown by [NavDisplay] in the [DoonaAppShell]. The back stack is saved with the activity,
  * so it survives configuration changes and process death; each entry gets its own ViewModels and saved state.
  * [start] must begin with [ActivityKey]. [imports] is the app-wide subscription import in flight; the default lives
- * as long as the composition.
+ * as long as the composition. [version] is the app's version name for the settings, read by the activity.
  */
 @Composable
 fun DoonaApp(
     engine: Engine,
+    installedApps: InstalledApps,
     onConnect: () -> Unit,
     start: List<NavKey> = listOf(ActivityKey),
     imports: SubscriptionImports = rememberSubscriptionImports(engine),
+    version: String = "",
 ) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
     DoonaAppShell(current = currentTab(backStack), onSelect = { backStack.selectTab(it) }) {
@@ -67,7 +71,10 @@ fun DoonaApp(
                     GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.add(GroupKey(it)) })
                 }
                 entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
-                entry<SettingsKey> { SettingsScreen() }
+                entry<SettingsKey> {
+                    SettingsRoute(engine, version, onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
+                }
+                entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
             },
         )
     }

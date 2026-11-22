@@ -15,7 +15,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
-/** Inputs: the buttons in every style and state, and the check rows. */
+/** Inputs: the buttons in every style and state, the app icon and the check rows. */
 @Composable
 internal fun InputsGallery() = GalleryPage("Inputs") {
     val space = DoonaTheme.spacing
@@ -66,6 +66,10 @@ internal fun InputsGallery() = GalleryPage("Inputs") {
         DoonaCheckRow(checked = false, onChange = {}, title = "Telegram", subtitle = "org.telegram.messenger", leading = { SampleAppIcon() })
         DoonaCheckRow(checked = true, onChange = {}, title = "計算機", leading = { SampleAppIcon() })
         DoonaCheckRow(checked = false, onChange = {}, title = "Without an icon")
+    }
+    // The screenshot tests run on a device with no apps, so this is the box every row shows until its icon has loaded.
+    Section("DoonaAppIcon: the placeholder, for an icon still loading or a package that is not installed") {
+        DoonaAppIcon("com.example.not.installed")
     }
     Section("DoonaCheckRow: long text") {
         DoonaCheckRow(

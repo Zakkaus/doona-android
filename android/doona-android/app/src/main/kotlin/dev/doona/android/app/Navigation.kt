@@ -23,6 +23,9 @@ data class GroupKey(val groupId: String) : NavKey
 @Serializable
 data object SubscriptionsKey : NavKey
 
+@Serializable
+data object PerAppKey : NavKey
+
 /** The hub bar's tabs. Each opens its root key; 活動 is always the bottom of the back stack. */
 enum class Tab(val key: NavKey, @StringRes val label: Int, @DrawableRes val icon: Int) {
     // Each tab shows its first page's icon (doona `src/shell/HubBar.tsx:33`, `src/shell/registry.ts`).

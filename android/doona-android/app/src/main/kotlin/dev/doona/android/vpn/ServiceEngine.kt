@@ -11,6 +11,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
@@ -74,6 +75,8 @@ class ServiceEngine internal constructor(
     private val _settings = MutableStateFlow(Settings())
     private val perAppEdits = Mutex()
     override val settings: StateFlow<Settings> = _settings.asStateFlow()
+    private val _perAppLoaded = MutableStateFlow(false)
+    override val perAppLoaded: StateFlow<Boolean> = _perAppLoaded.asStateFlow()
 
     private val publishing = Any()
 
@@ -121,12 +124,15 @@ class ServiceEngine internal constructor(
             .retryWhen { e, _ ->
                 if (!failing) VpnLog.warn("per-app policy unreadable: ${e.javaClass.simpleName}")
                 failing = true
+                // An answer all the same: nothing readable is stored, so a save is what repairs the file.
+                _perAppLoaded.value = true
                 delay(perAppRetryMs)
                 true
             }
             .collect { perApp ->
                 failing = false
                 _settings.update { it.copy(perApp = perApp) }
+                _perAppLoaded.value = true
             }
     }
 
@@ -161,18 +167,32 @@ class ServiceEngine internal constructor(
 
     override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
 
-    override suspend fun setPerApp(perApp: PerApp): Result<Unit> = try {
-        // One save and its publication at a time, so an older save cannot show its policy after a newer one.
-        perAppEdits.withLock {
-            val saved = perAppSettings.update { perApp }
-            // Shown at once: after a failed read the collector reads the file again only after a pause.
-            _settings.update { it.copy(perApp = saved) }
+    override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
+        // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
+        scope.async { savePerApp(perApp) }.await()
+
+    private suspend fun savePerApp(perApp: PerApp): Result<Unit> {
+        val rebuild = try {
+            // One save and its publication at a time, so an older save cannot show its policy after a newer one.
+            perAppEdits.withLock {
+                val saved = perAppSettings.update { perApp }
+                // Shown at once: after a failed read the collector reads the file again only after a pause.
+                _settings.update { it.copy(perApp = saved) }
+                _perAppLoaded.value = true
+            }
+            controller.rebuild()
+        } catch (e: IOException) {
+            VpnLog.warn("setPerApp threw ${e.javaClass.simpleName}")
+            return Result.failure(EngineException(ErrorCode.Internal))
         }
-        controller.rebuild()
-        Result.success(Unit)
-    } catch (e: IOException) {
-        VpnLog.warn("setPerApp threw ${e.javaClass.simpleName}")
-        Result.failure(EngineException(ErrorCode.Internal))
+        return if (rebuild == null) Result.success(Unit) else awaitRebuilt(rebuild)
+    }
+
+    /** The outcome of the rebuild [generation]; a newer command that replaced it, such as a stop, is not its failure. */
+    private suspend fun awaitRebuilt(generation: Long): Result<Unit> {
+        val settled = controller.session.first { it.generation != generation || it.status != Status.Starting }
+        val failed = settled.status as? Status.Failed
+        return if (settled.generation == generation && failed != null) Result.failure(RebuildFailedException(failed.reason)) else Result.success(Unit)
     }
 
     /** A place in the queue of ordered commands: [before] is the call ahead, [done] is completed when this one's call has returned. */

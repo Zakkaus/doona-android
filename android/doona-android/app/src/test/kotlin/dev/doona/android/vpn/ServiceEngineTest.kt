@@ -11,8 +11,10 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.Status
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -64,6 +67,10 @@ class ServiceEngineTest {
     /** Released for each per-app policy the store hands the engine, before the engine decodes it. */
     private val perAppReads = Semaphore(0)
 
+    /** Runs once the store has written, then the writer reaches a cancellation point, as when its caller leaves meanwhile. */
+    @Volatile
+    private var afterWrite: (() -> Unit)? = null
+
     private val engine by lazy {
         val opener = CoreOpener(core, "/data", Dispatchers.IO)
         val store = object : DataStore<Preferences> by perAppStore {
@@ -74,9 +81,20 @@ class ServiceEngineTest {
                 }
                 emitAll(perAppStore.data.onEach { perAppReads.release() })
             }
+
+            override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences {
+                val written = perAppStore.updateData(transform)
+                afterWrite?.let { hook ->
+                    afterWrite = null
+                    hook()
+                    yield()
+                }
+                return written
+            }
         }
-        val controller = TunnelController(core, opener, { PerApp() }, scope, killProcess = {})
-        ServiceEngine(core, opener, controller, PerAppSettings(store), { dispatch(it) }, Dispatchers.IO, scope, perAppRetryMs = 50)
+        val perAppSettings = PerAppSettings(store)
+        val controller = TunnelController(core, opener, { perAppSettings.perApp.first() }, scope, killProcess = {})
+        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, Dispatchers.IO, scope, perAppRetryMs = 50)
     }
 
     @After
@@ -249,6 +267,84 @@ class ServiceEngineTest {
     }
 
     @Test
+    fun aSaveTheCallerLeavesAfterTheWriteIsStillShownAndRebuilt() = runBlocking {
+        engine.connect()
+        val requestedStart = requested.single()
+        // The controller does not run: a session that took a host is all a rebuild needs to be requested.
+        assertTrue(engine.controller.start(NoHost, requestedStart))
+        val saved = PerApp(AppPolicy.OnlyListed, setOf("a"))
+        val caller = launch(Dispatchers.IO, start = CoroutineStart.LAZY) { engine.setPerApp(saved) }
+        afterWrite = { caller.cancel() }
+        caller.start()
+        caller.join()
+
+        assertEquals(saved, PerAppSettings(perAppStore).perApp.first())
+        withTimeout(5_000) { engine.settings.first { it.perApp == saved } }
+        val rebuild = withTimeout(5_000) { engine.controller.session.first { it.generation > requestedStart } }
+        assertEquals("the rebuild was requested", requestedStart + 1, rebuild.generation)
+    }
+
+    @Test
+    fun aSaveWaitsForTheRebuildItAsksFor() = runBlocking {
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
+        engine.connect()
+        assertTrue(engine.controller.start(StartHost(installed = setOf("a")), requested.single()))
+        withTimeout(5_000) { engine.status.first { it is Status.Running } }
+        val before = engine.controller.session.value.generation
+
+        assertTrue(engine.setPerApp(PerApp(AppPolicy.OnlyListed, setOf("a"))).isSuccess)
+        // The tunnel was Running before the save too, so only a newer session that is Running shows the save waited for it.
+        val after = engine.controller.session.value
+        assertTrue("the save rebuilt the session: generation ${after.generation} after $before", after.generation > before)
+        assertTrue("the rebuilt tunnel is up when the save returns, not still ${after.status}", after.status is Status.Running)
+    }
+
+    @Test
+    fun aSaveWhoseRebuildFailsIsStoredAndReportsWhy() = runBlocking {
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
+        engine.connect()
+        assertTrue(engine.controller.start(StartHost(installed = emptySet()), requested.single()))
+        withTimeout(5_000) { engine.status.first { it is Status.Running } }
+
+        val saved = PerApp(AppPolicy.OnlyListed, setOf("gone"))
+        val failure = engine.setPerApp(saved).exceptionOrNull()
+        assertEquals(FailureReason.NoAllowedApps, (failure as RebuildFailedException).reason)
+        assertEquals("the policy was stored all the same", saved, engine.settings.value.perApp)
+        assertEquals(Status.Failed(FailureReason.NoAllowedApps), engine.status.value)
+    }
+
+    @Test
+    fun aSaveWithNoTunnelToRebuildSucceedsAtOnce() = runBlocking {
+        assertTrue(engine.setPerApp(PerApp(AppPolicy.ExceptListed, setOf("a"))).isSuccess)
+    }
+
+    @Test
+    fun thePolicyIsLoadedOnceItHasBeenRead() = runBlocking {
+        val stored = PerApp(AppPolicy.OnlyListed, setOf("a"))
+        PerAppSettings(perAppStore).update { stored }
+        assertFalse("before the engine reads it", engine.perAppLoaded.value)
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
+        withTimeout(5_000) { engine.perAppLoaded.first { it } }
+        assertEquals(stored, engine.settings.value.perApp)
+    }
+
+    @Test
+    fun anUnreadablePolicyIsLoadedToo() = runBlocking {
+        // A save has to be possible then: it is what repairs the file.
+        perAppFile.writeBytes(ByteArray(0))
+        engine.launch(Dispatchers.IO.limitedParallelism(1))
+        withTimeout(5_000) { engine.perAppLoaded.first { it } }
+        assertEquals(PerApp(), engine.settings.value.perApp)
+    }
+
+    @Test
+    fun aSaveLoadsThePolicyToo() = runBlocking {
+        assertFalse(engine.perAppLoaded.value)
+        assertTrue(engine.setPerApp(PerApp(AppPolicy.ExceptListed)).isSuccess)
+        assertTrue(engine.perAppLoaded.value)
+    }
+
+    @Test
     fun theSettingsFollowThePolicyAgainAfterAFailedRead() = runBlocking {
         val stored = PerApp(AppPolicy.OnlyListed, setOf("a"))
         PerAppSettings(perAppStore).update { stored }
@@ -274,6 +370,21 @@ class ServiceEngineTest {
     fun aSubscriptionReplyMapsToTheEngineType() = runBlocking {
         core.reply = ContractFixtures.read("call-ok-subscription.json")
         assertEquals(1073741824L, engine.addSubscription("https://example.invalid/sub").getOrThrow().usedBytes)
+    }
+
+    /** A host that builds a tun for any routing; [installed] are the packages the device has. */
+    private class StartHost(private val installed: Set<String>) : TunHost {
+        override val selfPackage = "dev.doona.android"
+
+        override fun installed(packages: Set<String>) = packages intersect installed
+
+        override fun bootstrapDns() = emptyList<String>()
+
+        override fun establish(routing: AppRouting): Tun = object : Tun {
+            override val fd = 3
+
+            override fun close() = Unit
+        }
     }
 
     private object NoHost : TunHost {

@@ -21,6 +21,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.feature.activity.ActivityScreen
 import dev.doona.android.feature.activity.sampleActivityState
 
@@ -50,20 +51,24 @@ internal fun screenCases(): List<ScreenCase> = appScreenCases() + policyScreenCa
 
 private fun appScreenCases(): List<ScreenCase> {
     val engine = sampleEngine()
+    val apps = FakeInstalledApps()
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar)
     val withHub = bars + LayoutRole.HubBar
     val activity = setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Control, LayoutRole.Value, LayoutRole.Chevron)
     return listOf(
         ScreenCase("activity", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
-            DoonaApp(engine, onConnect = {}, listOf(ActivityKey))
+            DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey))
         },
         ScreenCase("activity-error", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
             // The error state sits in the frame of every other screen: the hub bar under it and the gesture bar's inset.
             DoonaAppShell(Tab.Activity, onSelect = {}) { ActivityScreen(sampleActivityState(ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {}) }
         },
-        ScreenCase("settings", PageLayout(withHub, emptyList())) { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
-    )
+        ScreenCase(
+            "settings",
+            PageLayout(withHub + setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Chevron), listOf(space.afterTitle)),
+        ) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
+    ) + perAppCases()
 }
 
 /**
