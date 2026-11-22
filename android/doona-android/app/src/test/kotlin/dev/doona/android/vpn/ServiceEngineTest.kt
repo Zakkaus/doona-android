@@ -26,6 +26,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -105,6 +106,28 @@ class ServiceEngineTest {
     }
 
     @Test
+    fun aSlowSnapshotNeitherHoldsBackNorReplacesANewerCatalog() = runBlocking {
+        val older = ContractFixtures.read("snapshot-stopped-catalog.json")
+        val newer = older.replace("\"revision\": 7", "\"revision\": 8").replace("\"mode\": \"Global\"", "\"mode\": \"Direct\"")
+        val olderEntered = CountDownLatch(1)
+        val olderRelease = CountDownLatch(1)
+        core.snapshotReplies += {
+            olderEntered.countDown()
+            olderRelease.await()
+            older
+        }
+        core.snapshotReplies += { newer }
+        val first = launch(Dispatchers.IO) { engine.select("g-Proxy", null) }
+        assertTrue(olderEntered.await(5, TimeUnit.SECONDS))
+
+        withTimeout(5_000) { engine.setMode(Mode.Direct) }
+        assertEquals(Mode.Direct, engine.settings.value.mode)
+        olderRelease.countDown()
+        first.join()
+        assertEquals(Mode.Direct, engine.settings.value.mode)
+    }
+
+    @Test
     fun anErrorReplyFailsWithItsCode() = runBlocking {
         core.reply = """{"error":{"code":"busy"}}"""
         assertEquals(ErrorCode.Busy, (engine.select("g-Proxy", null).exceptionOrNull() as EngineException).code)
@@ -142,6 +165,9 @@ class ServiceEngineTest {
         val calls = CopyOnWriteArrayList<Pair<String, String>>()
         val snapshots = AtomicInteger()
 
+        /** Served first, in order, before the fixtures. */
+        val snapshotReplies = ConcurrentLinkedQueue<() -> String>()
+
         override fun init(dataDir: String) = """{"schema":$schema}"""
 
         override fun start(tunFd: Int, configJson: String) = Unit
@@ -151,6 +177,7 @@ class ServiceEngineTest {
         // The catalog fixture is revision 7; the running fixture is the same revision without a catalog.
         override fun snapshot(sinceRevision: Long): String {
             snapshots.incrementAndGet()
+            snapshotReplies.poll()?.let { return it() }
             return ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
         }
 

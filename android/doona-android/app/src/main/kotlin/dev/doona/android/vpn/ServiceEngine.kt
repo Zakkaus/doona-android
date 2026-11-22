@@ -33,8 +33,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
@@ -70,8 +68,10 @@ class ServiceEngine internal constructor(
     private val _settings = MutableStateFlow(Settings())
     override val settings: StateFlow<Settings> = _settings.asStateFlow()
 
-    private val reads = Mutex()
-    private var revision = -1L // Guarded by reads.
+    private val publishing = Any()
+
+    @Volatile
+    private var revision = -1L // Written under publishing: the revision of the catalog the flows show.
 
     /** [lane] is the controller's single thread. */
     internal fun launch(lane: CoroutineDispatcher) {
@@ -175,25 +175,37 @@ class ServiceEngine internal constructor(
     }
 
     /** Reads a snapshot and publishes its catalog, if it has one; null when the core cannot be read. */
-    private suspend fun poll(): SnapshotDto? = reads.withLock {
-        try {
-            withContext(io) { CoreJson.snapshot(core.snapshot(revision)) }.also { snapshot ->
-                snapshot.catalog?.let { publish(snapshot.revision, it) }
+    private suspend fun poll(): SnapshotDto? = try {
+        withContext(io) {
+            CoreJson.snapshot(core.snapshot(revision)).also { snapshot ->
+                snapshot.catalog?.let { publish(Catalog.of(snapshot.revision, it)) }
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            VpnLog.warn("snapshot unreadable: ${e.javaClass.simpleName}")
-            null
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        VpnLog.warn("snapshot unreadable: ${e.javaClass.simpleName}")
+        null
+    }
+
+    /** Polls run concurrently and can finish out of order: a catalog older than the one shown is dropped. */
+    private fun publish(catalog: Catalog) {
+        synchronized(publishing) {
+            if (catalog.revision <= revision) return
+            revision = catalog.revision
+            _groups.value = catalog.groups
+            _subscriptions.value = catalog.subscriptions
+            _settings.update { it.copy(mode = catalog.mode) }
+            _ready.value = true
         }
     }
 
-    private fun publish(newRevision: Long, catalog: CatalogDto) {
-        revision = newRevision
-        _groups.value = catalog.groups.map(GroupDto::toGroup)
-        _subscriptions.value = catalog.subscriptions.map(SubscriptionDto::toSubscription)
-        _settings.update { it.copy(mode = catalog.mode) }
-        _ready.value = true
+    /** One snapshot's catalog, mapped before it is published, and published whole. */
+    private data class Catalog(val revision: Long, val mode: Mode, val groups: List<Group>, val subscriptions: List<Subscription>) {
+        companion object {
+            fun of(revision: Long, dto: CatalogDto) =
+                Catalog(revision, dto.mode, dto.groups.map(GroupDto::toGroup), dto.subscriptions.map(SubscriptionDto::toSubscription))
+        }
     }
 
     /** Runs whatever the screen does, so a core that dies with the screen off is noticed (ARCH D10). */
