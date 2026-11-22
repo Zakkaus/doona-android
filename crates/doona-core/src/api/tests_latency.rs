@@ -255,3 +255,41 @@ fn no_test_registers_between_the_probe_token_and_the_lifecycle_change() {
             .all(|m| m.latency_ms.is_some())
     );
 }
+
+/// Never becomes ready.
+fn never_ready(
+    tun: crate::tunnel::TunHandle,
+    _: crate::tunnel::Settings,
+    _: crate::tunnel::Gen,
+    ready: crate::tunnel::StartSignal,
+) -> futures_util::future::BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = (tun, ready);
+        std::future::pending::<()>().await;
+    })
+}
+
+/// Probes begun while no generation runs go on the carriers the next start claims. When that
+/// start fails, its carriers end under the probes, which measured nothing: no node is shown as
+/// failed.
+#[test]
+fn probes_whose_carriers_end_under_them_record_nothing() {
+    let stand = Stand::new(false);
+    let dir = TempDir::new("api-latency-ended");
+    let feeds = Feeds::new();
+    feeds.set("/sub", &fixture("links.txt"));
+    let store = crate::state::Store::new(dir.path());
+    let bound = Duration::from_millis(300);
+    let launch = (never_ready as crate::tunnel::Launch, bound);
+    let core = Core::build(store, Options::default(), launch, stand.prober()).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    call(&core, "testLatency", json!({"group": null})).unwrap();
+    wait_started(&stand, 9);
+    let (tun, _probe) = crate::testutil::tun();
+    let config = r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":[]}"#;
+    assert_eq!(core.start(tun, config), Err(ErrorCode::Internal));
+    let after = wait_for(&core, |c| !testing(c));
+    let members = &after.groups[1].members;
+    let failed: Vec<_> = members.iter().filter(|m| m.failed).collect();
+    assert!(failed.is_empty(), "{failed:?}");
+}

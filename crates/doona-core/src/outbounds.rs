@@ -173,7 +173,8 @@ impl Carriers {
         }
     }
 
-    fn ended(&self) -> bool {
+    /// Whether a generation's end took the carriers out of use.
+    pub(crate) fn ended(&self) -> bool {
         lock(&self.registries).is_none()
     }
 }
@@ -400,15 +401,18 @@ impl Outbounds {
     /// them since: every registry built for them refuses new dials at once, and the caller shuts
     /// them down with [`Ended::finish`].
     pub(crate) fn end(&self, generation: i64) -> Option<Ended> {
-        let carriers = {
+        let (carriers, registries) = {
             let mut current = lock(&self.current);
             if current.owner != generation {
                 return None;
             }
             current.owner = 0;
-            current.carriers.take()?
+            let carriers = current.carriers.take()?;
+            // Ended in the same step as they stop being current, so a `prepare` sees one or the
+            // other.
+            let registries = lock(&carriers.registries).take().unwrap_or_default();
+            (carriers, registries)
         };
-        let registries = lock(&carriers.registries).take().unwrap_or_default();
         let registries: Vec<_> = registries.iter().filter_map(Weak::upgrade).collect();
         for r in &registries {
             r.begin_retirement();

@@ -109,13 +109,17 @@ impl Probes {
                 return;
             };
             let probe = prober(job);
-            let probe = async move {
-                match carriers {
+            let probe = async {
+                match &carriers {
                     Some(carriers) => carriers.run(probe).await.ok().flatten(),
                     None => probe.await,
                 }
             };
             let measured = tokio::time::timeout(PROBE_TIMEOUT, probe).await;
+            // Carriers that ended under the probe cut it short: it measured nothing.
+            if carriers.is_some_and(|c| c.ended()) {
+                return;
+            }
             let ms = measured
                 .ok()
                 .flatten()
