@@ -41,8 +41,12 @@ impl Core {
             // the `prepare` above are replaced first.
             let _life = lock(&self.life);
             self.shared.outbounds.prepare()?;
-            let published = self.shared.outbounds.published();
+            #[cfg(test)]
+            self.hooks.registering(self);
             let mut c = lock(&self.shared.catalog);
+            // A refresh publishes its nodes and their registry under the catalog lock, so the
+            // registry taken here holds every node of the plan.
+            let published = self.shared.outbounds.published();
             let plan = c.model.plan(group.as_deref())?;
             c.revision += 1;
             (plan, c.probes.clone(), published)

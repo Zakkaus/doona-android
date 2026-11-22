@@ -312,3 +312,34 @@ fn a_test_prepared_before_a_stop_runs_on_new_carriers() {
         "{members:?}"
     );
 }
+
+/// A stand-in probe that, as honk's does, reaches a node only through the registry it is given:
+/// a node that registry lacks fails, any other answers in 7 ms.
+fn through_registry() -> Prober {
+    Arc::new(|job: ProbeJob| {
+        let found = job.registry.as_ref().and_then(|r| r.get(&job.node.id));
+        async move { found.map(|_| Duration::from_millis(7)) }.boxed()
+    })
+}
+
+/// A refresh that replaces node A with B while a test registers: the test probes B through the
+/// registry published with B, so B gets a latency.
+#[test]
+fn a_test_registered_across_a_refresh_probes_the_new_nodes_through_their_registry() {
+    let dir = TempDir::new("api-latency-refresh");
+    let feeds = Feeds::new();
+    feeds.set("/sub", b"trojan://secret@192.0.2.1:443#A\n");
+    let core = Core::with_prober(dir.path().to_str().unwrap(), through_registry());
+    add(&core, &feeds, "/sub").unwrap();
+    feeds.set("/sub", b"trojan://secret@192.0.2.2:443#B\n");
+    core.hooks.on_registering(|core| {
+        call(core, "updateSubscription", json!({"id": "s1"})).unwrap();
+    });
+    call(&core, "testLatency", json!({"group": "g-Auto"})).unwrap();
+    let after = wait_for(&core, |c| !testing(c));
+    let members = &after.groups[1].members;
+    assert_eq!(members.len(), 1, "{members:?}");
+    let b = &members[0];
+    assert_eq!(b.name, "B");
+    assert!(b.latency_ms.is_some() && !b.failed, "{b:?}");
+}
