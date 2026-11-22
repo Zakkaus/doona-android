@@ -2,7 +2,8 @@
 //! credentials and echoes each stream once it has read its CONNECT header, instead of relaying
 //! it: all a test of the carrier's lifetime needs, since the client keeps the QUIC connection
 //! for its next stream. It records the address each client connected from, whose port is the
-//! client's QUIC socket.
+//! client's QUIC socket, and the ALPN each connection agreed on: it takes `tuic` and `h3`, so a
+//! client that offers one of them shows which.
 
 use super::cert;
 use quinn::rustls;
@@ -19,6 +20,28 @@ pub fn link(addr: SocketAddr, name: &str) -> String {
 pub fn tuic() -> (SocketAddr, Arc<Mutex<Vec<SocketAddr>>>) {
     let clients = Arc::new(Mutex::new(Vec::new()));
     let seen = Arc::clone(&clients);
+    let addr = serve_tuic(move |conn| seen.lock().unwrap().push(conn.remote_address()));
+    (addr, clients)
+}
+
+/// The server's address, and the ALPN each connection agreed on so far.
+pub fn tuic_alpns() -> (SocketAddr, Arc<Mutex<Vec<String>>>) {
+    let alpns = Arc::new(Mutex::new(Vec::new()));
+    let seen = Arc::clone(&alpns);
+    let addr = serve_tuic(move |conn| {
+        let data = conn.handshake_data();
+        let data = data.and_then(|d| d.downcast::<quinn::crypto::rustls::HandshakeData>().ok());
+        let alpn = data.and_then(|d| d.protocol).unwrap_or_default();
+        seen.lock()
+            .unwrap()
+            .push(String::from_utf8_lossy(&alpn).into_owned());
+    });
+    (addr, alpns)
+}
+
+/// Starts the server; `record` sees each connection it accepts before it is served.
+fn serve_tuic(record: impl Fn(&quinn::Connection) + Send + Sync + 'static) -> SocketAddr {
+    let record = Arc::new(record);
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let rt = tokio::runtime::Builder::new_current_thread()
@@ -29,16 +52,16 @@ pub fn tuic() -> (SocketAddr, Arc<Mutex<Vec<SocketAddr>>>) {
             let endpoint = quinn::Endpoint::server(config(), ([127, 0, 0, 1], 0).into()).unwrap();
             tx.send(endpoint.local_addr().unwrap()).unwrap();
             while let Some(incoming) = endpoint.accept().await {
-                let seen = Arc::clone(&seen);
+                let record = Arc::clone(&record);
                 tokio::spawn(async move {
                     let Ok(conn) = incoming.await else { return };
-                    seen.lock().unwrap().push(conn.remote_address());
+                    record(&conn);
                     serve(&conn).await;
                 });
             }
         });
     });
-    (rx.recv().unwrap(), clients)
+    rx.recv().unwrap()
 }
 
 fn config() -> quinn::ServerConfig {
@@ -52,7 +75,7 @@ fn config() -> quinn::ServerConfig {
         .with_no_client_auth()
         .with_single_cert(vec![cert], key.into())
         .unwrap();
-    tls.alpn_protocols = vec![b"tuic".to_vec()];
+    tls.alpn_protocols = vec![b"tuic".to_vec(), b"h3".to_vec()];
     let crypto = quinn::crypto::rustls::QuicServerConfig::try_from(tls).unwrap();
     quinn::ServerConfig::with_crypto(Arc::new(crypto))
 }

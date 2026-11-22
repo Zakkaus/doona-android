@@ -334,14 +334,34 @@ fn selections_pin_and_unpin_and_survive_a_restart() {
 }
 
 #[test]
+fn a_clash_subscription_keeps_its_ids_across_an_update_and_a_restart() {
+    let dir = TempDir::new("api-clash");
+    let feeds = Feeds::new();
+    feeds.set("/clash", &fixture("clash.yaml"));
+    let core = Core::new(path(&dir)).unwrap();
+    assert_eq!(add(&core, &feeds, "/clash").unwrap()["nodes"], 10);
+    let shown = node_ids(&catalog(&core));
+    call(&core, "updateSubscription", json!({"id": "s1"})).unwrap();
+    assert_eq!(node_ids(&catalog(&core)), shown);
+    let saved = std::fs::read(dir.path().join("state.json")).unwrap();
+    let saved: Value = serde_json::from_slice(&saved).unwrap();
+    let saved = &saved["subscriptions"][0];
+    assert!(saved["links"].as_array().unwrap().is_empty());
+    assert!(saved["document"].as_str().unwrap().starts_with("proxies:"));
+    drop(core);
+    let again = Core::new(path(&dir)).unwrap();
+    assert_eq!(node_ids(&catalog(&again)), shown);
+}
+
+#[test]
 fn failures_have_their_codes_and_a_failed_update_keeps_the_nodes() {
     let dir = TempDir::new("api-sub-errors");
     let feeds = Feeds::new();
-    feeds.set("/clash", &fixture("clash.yaml"));
+    feeds.set("/broken", b"proxies:\n  - {name: a, type: trojan\n");
     feeds.set("/unusable", &fixture("unusable.txt"));
     let core = Core::new(path(&dir)).unwrap();
     assert_eq!(add(&core, &feeds, "/missing"), Err(ErrorCode::FetchFailed));
-    assert_eq!(add(&core, &feeds, "/clash"), Err(ErrorCode::ParseFailed));
+    assert_eq!(add(&core, &feeds, "/broken"), Err(ErrorCode::ParseFailed));
     assert_eq!(add(&core, &feeds, "/unusable"), Err(ErrorCode::NoNodes));
     let bad = json!({"url": "ftp://example.org/s", "name": null});
     assert_eq!(

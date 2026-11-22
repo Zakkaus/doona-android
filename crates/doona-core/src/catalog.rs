@@ -60,20 +60,30 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
 }
 
 /// The nodes `state.json` lists, each subscription with a new incarnation. Only a file edited
-/// by hand holds a subscription over a node budget; that one is shown without nodes.
+/// by hand holds a subscription over a node budget, or a document that gives no node; that one is
+/// shown without nodes.
 pub(crate) fn load(state: &State) -> Model {
     let mut nodes = Vec::new();
     let mut incarnations = HashMap::new();
     for s in &state.subscriptions {
-        let parsed = parse::admit(s.links.iter().map(String::as_str))
-            .and_then(|p| within_budget(nodes.len(), &p.nodes).map(|()| p));
+        let parsed = stored_nodes(s).and_then(|p| within_budget(nodes.len(), &p).map(|()| p));
         match parsed {
-            Ok(parsed) => nodes.extend(entries(&s.id, parsed.nodes)),
-            Err(_) => log::warn!("load: a subscription is over the node budget"),
+            Ok(parsed) => nodes.extend(entries(&s.id, parsed)),
+            Err(code) => log::warn!("load: a subscription's nodes are not shown ({code:?})"),
         }
         incarnations.insert(s.id.clone(), incarnation());
     }
     Model::new(nodes, incarnations)
+}
+
+/// The nodes `state.json` keeps for `s`, parsed again: from its structured document when it has
+/// one, else from its share links.
+pub(crate) fn stored_nodes(s: &StoredSubscription) -> Result<Vec<Node>, ErrorCode> {
+    let parsed = match &s.document {
+        Some(document) => parse::parse(document.as_bytes()),
+        None => parse::admit(s.links.iter().map(String::as_str)),
+    };
+    parsed.map(|p| p.nodes)
 }
 
 /// `parse_failed` when `fresh` nodes and `others` already kept are more than [`MAX_NODES`].

@@ -5,6 +5,7 @@ use crate::subscription::parse;
 use crate::testutil::fixture;
 
 fn stored(id: &str, body: &str) -> StoredSubscription {
+    let parsed = parse::parse(&fixture(body)).unwrap();
     StoredSubscription {
         id: id.to_owned(),
         name: id.to_owned(),
@@ -14,7 +15,8 @@ fn stored(id: &str, body: &str) -> StoredSubscription {
         total_bytes: None,
         expires_at_epoch_ms: None,
         error: None,
-        links: parse::parse(&fixture(body)).unwrap().links,
+        links: parsed.links,
+        document: parsed.document,
     }
 }
 
@@ -26,12 +28,7 @@ fn state(subs: &[(&str, &str)]) -> State {
 }
 
 fn fresh(s: &StoredSubscription) -> Vec<Arc<NodeEntry>> {
-    entries(
-        &s.id,
-        parse::admit(s.links.iter().map(String::as_str))
-            .unwrap()
-            .nodes,
-    )
+    entries(&s.id, stored_nodes(s).unwrap())
 }
 
 fn ids(model: &Model) -> Vec<(String, String)> {
@@ -342,4 +339,18 @@ fn a_refresh_during_a_round_ranks_survivors_by_their_kept_times() {
     }
     refreshed.finish(&round.round());
     assert_eq!(hk(&refreshed, &next), ids[1]);
+}
+
+#[test]
+fn a_structured_subscription_keeps_its_ids_across_a_refetch_and_a_restart() {
+    for body in ["clash.yaml", "singbox.json", "sip008.json"] {
+        let fetch = || entries("s1", parse::parse(&fixture(body)).unwrap().nodes);
+        let ids = |nodes: &[Arc<NodeEntry>]| -> Vec<String> {
+            nodes.iter().map(|n| n.id.clone()).collect()
+        };
+        let fetched = ids(&fetch());
+        assert_eq!(ids(&fetch()), fetched, "{body}");
+        let restarted = load(&state(&[("s1", body)]));
+        assert_eq!(ids(&restarted.nodes), fetched, "{body}");
+    }
 }

@@ -1,14 +1,15 @@
 //! The carriers against `stop`: their sockets are closed when it returns, even while a task of
 //! the generation holds each of the core's workers, and a registry built on carriers it ended
-//! is built again on new ones before it is published.
+//! is built again on new ones before it is published; two registries, for nodes of one honk id
+//! that dial differently, through probes, a restart and `prepare`.
 
-use super::Core;
 use super::tests::ping;
-use super::tests_catalog::{Feeds, add, call, path};
+use super::tests_catalog::{Feeds, add, call, catalog, path, wait_for};
+use super::{Core, Options};
 use crate::dto::Mode;
-use crate::testutil::{TempDir, closed, tuic, tun};
+use crate::testutil::{TempDir, closed, one_dial_ceiling, tuic, tun};
 use crate::tunnel::route::{Inbound, Route};
-use crate::tunnel::{Gen, Session, Settings, StartSignal, TunHandle};
+use crate::tunnel::{Gen, Launch, Session, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
 use serde_json::json;
 use std::net::SocketAddr;
@@ -132,4 +133,81 @@ fn a_refresh_whose_carriers_a_stop_ended_is_built_again() {
     call(&core, "updateSubscription", json!({"id": added["id"]})).unwrap();
     let (second, _second) = tun();
     assert_eq!(core.start(second, CONFIG), Ok(()));
+}
+
+/// Opens a stream through the Proxy group's node, as a flow from the tun would in Global mode,
+/// and checks that it echoes.
+fn dial_proxy(core: &Core) {
+    let destination: SocketAddr = ([127, 0, 0, 1], 9).into();
+    let session = Arc::new(Session::new(0, std::sync::Weak::new()));
+    let route = Route::of(Inbound::Tun, Mode::Global, &core.shared.outbounds, &session);
+    let mut stream = core.runtime.block_on(route.connect(destination)).unwrap();
+    assert_eq!(ping(core, &mut stream, b"echo").unwrap(), b"echo");
+    let _entered = core.runtime.enter();
+    drop(stream);
+}
+
+/// Two subscriptions bring a TUIC node of one honk id, one with ALPN `h3` and one with none,
+/// which offers `tuic`; honk's id leaves the TUIC ALPN out, so each is in a registry of its own.
+/// A latency test probes each through its own runtime. After a stop and a start, whose `prepare`
+/// builds both registries again on new carriers within one dial ceiling, a flow through each
+/// node offers that node's ALPN, and so does a probe of a test prepared after the next stop.
+#[test]
+fn nodes_of_one_id_keep_their_own_alpn_through_probes_and_a_restart() {
+    let dir = TempDir::new("api-two-registries");
+    let (server, alpns) = tuic::tuic_alpns();
+    let feeds = Feeds::new();
+    let link = tuic::link(server, "tuic");
+    feeds.set(
+        "/h3",
+        format!("{}\n", link.replace("#tuic", "&alpn=h3#h3")).as_bytes(),
+    );
+    feeds.set("/tuic", format!("{link}\n").as_bytes());
+    // The server echoes each request instead of relaying it, so every probe fails, after the
+    // handshake the test reads.
+    let options = Options {
+        probe_url: "http://127.0.0.1:9/generate_204".into(),
+        ..Options::default()
+    };
+    let store = crate::state::Store::new(dir.path());
+    let launch = (idle as Launch, Duration::from_secs(10));
+    let core = Core::build(store, options, launch, crate::probe::urltest()).unwrap();
+    add(&core, &feeds, "/h3").unwrap();
+    add(&core, &feeds, "/tuic").unwrap();
+    let registries = || core.shared.outbounds.registries();
+    assert_eq!(registries().len(), 2);
+    // The ALPN of each connection the server took while `f` ran, sorted.
+    let offered = |f: &dyn Fn()| {
+        let from = alpns.lock().unwrap().len();
+        f();
+        let mut offered = alpns.lock().unwrap()[from..].to_vec();
+        offered.sort();
+        offered
+    };
+    let probe = || {
+        call(&core, "testLatency", json!({"group": null})).unwrap();
+        wait_for(&core, |c| !c.groups.iter().any(|g| g.testing));
+    };
+    assert_eq!(offered(&probe), ["h3", "tuic"]);
+
+    let (first, _first) = tun();
+    core.start(first, CONFIG).unwrap();
+    core.stop();
+    let (second, _second) = tun();
+    core.start(second, CONFIG).unwrap();
+    assert_eq!(registries().len(), 2);
+    assert!(one_dial_ceiling(&registries()));
+    let proxy = catalog(&core)
+        .groups
+        .into_iter()
+        .find(|g| g.id == "g-Proxy");
+    for member in proxy.unwrap().members.iter().filter(|m| !m.is_group) {
+        let pin = json!({"group": "g-Proxy", "memberId": member.id});
+        assert_eq!(call(&core, "select", pin), Ok(json!({})));
+        let dial = || dial_proxy(&core);
+        assert_eq!(offered(&dial), [member.name.as_str()], "{}", member.name);
+    }
+
+    core.stop();
+    assert_eq!(offered(&probe), ["h3", "tuic"]);
 }

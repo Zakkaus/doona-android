@@ -1,32 +1,38 @@
 //! Subscription bodies, extracted from honk-core's `src/subscription.rs` (daeuniverse/honk
 //! 8919784a): the BOM and base64 handling of `parse_subscription_content_attempt`,
-//! `decode_base64_flexible`, the structured-body detection of `parse_structured_subscription`, and
-//! the share-link list path of `parse_auto_subscription` and `parse_uri_subscription` with the
-//! admission rules of `AdmissionOwner::emit` (no proxy plugins; the first entry of an endpoint
-//! identity wins). Nodes are built by honk-config's `Node::from_share_link`.
+//! `decode_base64_flexible`, and the share-link list path of `parse_auto_subscription` and
+//! `parse_uri_subscription` with the admission rules of `AdmissionOwner::emit` (no proxy plugins;
+//! the first entry of an endpoint identity wins). Nodes are built by honk-config's
+//! `Node::from_share_link`.
 //!
-//! v0.1 takes share-link lists, plain or base64. Structured bodies (Clash YAML, SIP008 and
-//! sing-box JSON) and Surge-style records are refused as `parse_failed`, told by syntax a
-//! share-link list never has, so that refusing one builds no tree.
+//! A body is a share-link list, plain or base64, or a structured document: Clash or Mihomo YAML,
+//! sing-box JSON or SIP008 JSON, which [`super::structured`] reads. A body whose first line is a
+//! share link is a list and builds no tree; any other is a document when it builds a YAML or JSON
+//! mapping or sequence, as upstream decides. Surge-style records are `parse_failed`.
 
+use super::structured;
 use crate::dto::ErrorCode;
 use honk_config::node::Node;
 use std::borrow::Cow;
 use std::collections::HashSet;
+use uuid::Uuid;
 
 /// The most nodes one subscription brings. The 8 MiB download bound does not bound the nodes, and
 /// the registry builds a runtime for each endpoint, so a list over this is `parse_failed` whole.
 pub(crate) const MAX_NODES_PER_SUBSCRIPTION: usize = 2_000;
 
-/// The admitted nodes of a body and the share link each was parsed from.
+/// The admitted nodes of a body and what `state.json` keeps to parse them again: the share link
+/// of each node, or for a structured body, the document of the entries they came from.
 #[derive(Debug, Default)]
 pub(crate) struct Parsed {
     pub links: Vec<String>,
     pub nodes: Vec<Node>,
+    pub document: Option<String>,
 }
 
-/// Parses a downloaded body: `parse_failed` when it is not a share-link list or holds more than
-/// [`MAX_NODES_PER_SUBSCRIPTION`] nodes, `no_nodes` when none of its links gives a usable node.
+/// Parses a downloaded body, or a stored [`Parsed::document`]: `parse_failed` when it is neither a
+/// share-link list nor a document [`super::structured`] reads, or holds more than
+/// [`MAX_NODES_PER_SUBSCRIPTION`] nodes; `no_nodes` when none of its entries gives a usable node.
 pub(crate) fn parse(body: &[u8]) -> Result<Parsed, ErrorCode> {
     let text = std::str::from_utf8(body).map_err(|_| ErrorCode::ParseFailed)?;
     let text = strip_bom(text);
@@ -40,10 +46,15 @@ pub(crate) fn parse(body: &[u8]) -> Result<Parsed, ErrorCode> {
     if text.trim().is_empty() {
         return Err(ErrorCode::NoNodes);
     }
-    if structured(text) || !has_uri(text) {
+    let parsed = if starts_with_link(text) {
+        admit(text.lines())?
+    } else if let Some(parsed) = structured::parse(text)? {
+        parsed
+    } else if has_uri(text) {
+        admit(text.lines())?
+    } else {
         return Err(ErrorCode::ParseFailed);
-    }
-    let parsed = admit(text.lines())?;
+    };
     if parsed.nodes.is_empty() {
         return Err(ErrorCode::NoNodes);
     }
@@ -54,8 +65,8 @@ pub(crate) fn parse(body: &[u8]) -> Result<Parsed, ErrorCode> {
 /// keeps. Diagnostics are dropped unread: they would quote the links. Stops with `parse_failed`
 /// at the first node over [`MAX_NODES_PER_SUBSCRIPTION`].
 pub(crate) fn admit<'a>(lines: impl Iterator<Item = &'a str>) -> Result<Parsed, ErrorCode> {
-    let mut seen = HashSet::new();
-    let mut parsed = Parsed::default();
+    let mut admission = Admission::default();
+    let mut links = Vec::new();
     for line in lines {
         let link = line.trim();
         if skipped(link) {
@@ -65,15 +76,39 @@ pub(crate) fn admit<'a>(lines: impl Iterator<Item = &'a str>) -> Result<Parsed, 
         else {
             continue;
         };
-        if usable(&node) && seen.insert(node.id) {
-            if parsed.nodes.len() == MAX_NODES_PER_SUBSCRIPTION {
-                return Err(ErrorCode::ParseFailed);
-            }
-            parsed.links.push(link.to_owned());
-            parsed.nodes.push(node);
+        if admission.admit(node)? {
+            links.push(link.to_owned());
         }
     }
-    Ok(parsed)
+    Ok(Parsed {
+        links,
+        nodes: admission.nodes,
+        document: None,
+    })
+}
+
+/// honk's admission of a body's nodes (`AdmissionOwner::emit`), for share links and structured
+/// entries alike: a node that is not [`usable`] is skipped, and the first entry of an endpoint
+/// identity wins.
+#[derive(Default)]
+pub(super) struct Admission {
+    seen: HashSet<Uuid>,
+    pub nodes: Vec<Node>,
+}
+
+impl Admission {
+    /// Whether `node` is admitted; `parse_failed` when it would be one over
+    /// [`MAX_NODES_PER_SUBSCRIPTION`].
+    pub(super) fn admit(&mut self, node: Node) -> Result<bool, ErrorCode> {
+        if !usable(&node) || !self.seen.insert(node.id) {
+            return Ok(false);
+        }
+        if self.nodes.len() == MAX_NODES_PER_SUBSCRIPTION {
+            return Err(ErrorCode::ParseFailed);
+        }
+        self.nodes.push(node);
+        Ok(true)
+    }
 }
 
 fn strip_bom(text: &str) -> &str {
@@ -107,26 +142,45 @@ fn usable(node: &Node) -> bool {
 /// honk's top-level keys of a Clash, sing-box or SIP008 body.
 const DOCUMENT_KEYS: [&str; 3] = ["proxies:", "outbounds:", "servers:"];
 
-/// A JSON or YAML document, which honk reads as a Clash, SIP008 or sing-box body, told without
-/// building a tree and only by syntax a share-link list never has: a JSON object or array that
-/// opens (`{"`, `{}`, `[{`, `[]`) after any comment lines, or a line that starts with one of
-/// [`DOCUMENT_KEYS`] followed by whitespace or the end of the line, as a YAML key is. A
-/// provider's header line above the links (`[Premium / EU]`, `updated: …`, `servers:12`) is
-/// neither. Any other document has no line that starts with a scheme and fails
-/// as records.
-fn structured(text: &str) -> bool {
-    let mut chars = document_start(text).chars();
+/// Whether the first line that is not blank or a `#` or `;` comment is a share link. Upstream reads
+/// such a body as links unless it builds a YAML or JSON mapping or sequence, which only a list of
+/// links with `: ` in each line does; doona reads it as links without trying a tree. A document
+/// key on a later line (`servers: 2`) does not make it a document.
+fn starts_with_link(text: &str) -> bool {
+    document_start(text).lines().next().is_some_and(is_link)
+}
+
+/// Upstream's test of a body that does not parse, on its first line that is not blank or a `#` or
+/// `;` comment: when that line opens a document, the body is a malformed one, not links. Upstream
+/// takes a line that starts with a brace, a bracket (but an INI header) or a document key. doona
+/// takes a brace or a bracket only before JSON (`{"`, `{}`, `[{`, `[]`) or, for a brace, a document
+/// key; a document key only before whitespace or the line end; and a document start marker
+/// (`---`). A provider's header line above the links (`[Premium / EU]`, `{Premium}`, `servers:12`)
+/// is then not one.
+pub(super) fn opens_like_a_document(text: &str) -> bool {
+    let start = document_start(text);
+    let first = start.lines().next().unwrap_or_default().trim_end();
+    let mut chars = start.chars();
     let open = chars.next();
     let inner = chars.find(|c| !c.is_whitespace());
     let json = matches!(
         (open, inner),
         (Some('{'), Some('"' | '}')) | (Some('['), Some('{' | ']'))
     );
-    json || text.lines().any(|line| {
-        DOCUMENT_KEYS.iter().any(|key| {
-            line.strip_prefix(key)
-                .is_some_and(|rest| rest.is_empty() || rest.starts_with(char::is_whitespace))
-        })
+    json || is_document_key(first)
+        || first
+            .strip_prefix('{')
+            .is_some_and(|rest| is_document_key(rest.trim_start()))
+        || first == "---"
+        || first.starts_with("--- ")
+}
+
+/// A line that starts with one of [`DOCUMENT_KEYS`] followed by whitespace or the end of the line,
+/// as a YAML key is.
+fn is_document_key(line: &str) -> bool {
+    DOCUMENT_KEYS.iter().any(|key| {
+        line.strip_prefix(key)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with(char::is_whitespace))
     })
 }
 
@@ -144,13 +198,16 @@ fn document_start(text: &str) -> &str {
 
 /// A line starting with a URI scheme; without one honk reads the body as Surge-style records.
 fn has_uri(text: &str) -> bool {
-    text.lines().map(str::trim).any(|line| {
-        line.split_once("://").is_some_and(|(scheme, _)| {
-            !scheme.is_empty()
-                && scheme
-                    .bytes()
-                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'-' | b'.'))
-        })
+    text.lines().any(is_link)
+}
+
+/// A line that starts with a URI scheme, as a share link does.
+fn is_link(line: &str) -> bool {
+    line.trim().split_once("://").is_some_and(|(scheme, _)| {
+        !scheme.is_empty()
+            && scheme
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'-' | b'.'))
     })
 }
 
@@ -219,14 +276,11 @@ mod tests {
     }
 
     #[test]
-    fn other_formats_fail_to_parse_and_empty_lists_have_no_nodes() {
-        for name in ["clash.yaml", "sip008.json", "records.conf"] {
-            assert_eq!(
-                parse(&fixture(name)).err(),
-                Some(ErrorCode::ParseFailed),
-                "{name}"
-            );
-        }
+    fn records_fail_to_parse_and_empty_lists_have_no_nodes() {
+        assert_eq!(
+            parse(&fixture("records.conf")).err(),
+            Some(ErrorCode::ParseFailed)
+        );
         assert_eq!(parse(b"\xff\xfe").err(), Some(ErrorCode::ParseFailed));
         assert_eq!(parse(b" \n").err(), Some(ErrorCode::NoNodes));
         assert_eq!(
@@ -264,21 +318,32 @@ mod tests {
     }
 
     #[test]
-    fn structured_bodies_are_known_without_a_tree() {
-        for body in [
-            "port: 7890\nproxies:\n  - {name: a, server: 192.0.2.1}\nrules:\n  - MATCH,trojan://x@h:1",
-            "# exported\n\nproxies:\n- name: a\n  url: trojan://x@h:1",
-            "---\nproxies: []\ntrojan://x@h:1",
-            "- name: a\n  link: trojan://x@h:1",
-            "[{\"server\": \"trojan://x@h:1\"}]",
-            "{\"outbounds\": []}\ntrojan://x@h:1",
-            "# exported\n[\n  {\"server\": \"192.0.2.1\"}\n]\ntrojan://x@h:1",
+    fn a_body_that_looks_structured_is_read_only_as_a_document() {
+        // The share link in each is never taken: these are documents with no node, or that do
+        // not parse.
+        for (body, code) in [
+            (
+                "port: 7890\nproxies:\n  - {name: a, server: 192.0.2.1}\nrules:\n  - MATCH,trojan://x@h:1",
+                ErrorCode::NoNodes,
+            ),
+            (
+                "# exported\n\nproxies:\n- name: a\n  url: trojan://x@h:1",
+                ErrorCode::NoNodes,
+            ),
+            ("[{\"server\": \"trojan://x@h:1\"}]", ErrorCode::NoNodes),
+            ("---\nproxies: []\ntrojan://x@h:1", ErrorCode::ParseFailed),
+            (
+                "{\"outbounds\": []}\ntrojan://x@h:1",
+                ErrorCode::ParseFailed,
+            ),
+            (
+                "# exported\n[\n  {\"server\": \"192.0.2.1\"}\n]\ntrojan://x@h:1",
+                ErrorCode::ParseFailed,
+            ),
+            // A YAML sequence is a bare SIP008 array, here of an entry that is not a server.
+            ("- name: a\n  link: trojan://x@h:1", ErrorCode::NoNodes),
         ] {
-            assert_eq!(
-                parse(body.as_bytes()).err(),
-                Some(ErrorCode::ParseFailed),
-                "{body}"
-            );
+            assert_eq!(parse(body.as_bytes()).err(), Some(code), "{body}");
         }
         // A provider's header line above the links is not a document.
         for links in [
@@ -317,5 +382,31 @@ mod tests {
                 "{body:?}"
             );
         }
+    }
+
+    #[test]
+    fn a_list_is_told_by_its_first_line_and_a_document_by_its_tree() {
+        // A document key on a later line does not make a list a document.
+        for links in [
+            "trojan://secret@192.0.2.1:443#a\nservers: 2\n",
+            "# list\ntrojan://secret@192.0.2.1:443#a\nproxies:\n  - x\n",
+        ] {
+            assert_eq!(parse(links.as_bytes()).unwrap().nodes.len(), 1, "{links:?}");
+        }
+        // Flow style and an indented key are documents.
+        let trojan = "{name: t, type: trojan, server: 192.0.2.1, port: 443, password: p}";
+        for body in [
+            format!("{{proxies: [{trojan}]}}"),
+            format!("  proxies:\n    - {trojan}\n"),
+        ] {
+            assert_eq!(names(&parse(body.as_bytes()).unwrap()), ["t"], "{body:?}");
+        }
+        // A Clash document with no proxies has no nodes, whatever links its other fields hold.
+        let notes = "'proxies': []\nnotes: |\n  trojan://p@192.0.2.1:443\n";
+        assert_eq!(parse(notes.as_bytes()).err(), Some(ErrorCode::NoNodes));
+        // A bare SIP008 array skips an entry that is not a server, as any document does.
+        let sip008 = r#"[null, {"server": "192.0.2.1", "server_port": 8388, "password": "p",
+            "method": "aes-256-gcm"}]"#;
+        assert_eq!(parse(sip008.as_bytes()).unwrap().nodes.len(), 1);
     }
 }
