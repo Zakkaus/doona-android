@@ -6,4 +6,7 @@
     <string name="rv_more">更多</string>
     <string name="rv_seconds_ago">%1$d 秒前</string>
     <string name="rv_now">現在</string>
+    <string name="rv_test_all">全部測試</string>
+    <string name="rv_expires">%1$s 到期</string>
+    <string name="rv_updated">%1$s 更新</string>
 </resources>

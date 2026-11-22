@@ -12,9 +12,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -22,11 +20,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
+import dev.doona.android.designsystem.components.Tone
 
 /**
- * Colour roles of the sample. Every hue is the dynamic scheme's: the surfaces are its neutral roles, and the one tinted
- * area of a screen, the header, fades from [tint] into the page. Dark is Revolut's black page with cards one step up;
- * light is the same steps from white, with light grey cards.
+ * Colour roles of the sample. Every hue but the latency qualities is the dynamic scheme's: the surfaces are its neutral
+ * roles, and the one tinted area of a screen, the activity header's dot map, is drawn in [dots] on the neutral page.
+ * Dark is Revolut's black page with cards one step up; light is the same steps from white, with light grey cards.
  */
 @Immutable
 internal class RvColors(s: ColorScheme, val dark: Boolean) {
@@ -41,17 +40,35 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val text = s.onSurface
     val textSecondary = s.onSurfaceVariant
     val positive = s.primary
-    val notice = s.tertiary
-    val negative = s.error
+    val onPositive = s.onPrimary
 
-    /** The header's tint: the primary tone 80 in both themes, as bright as Revolut's header tops. */
-    val tint = s.primaryFixedDim
+    /** The dot map and its marker. */
+    val dots = s.primary
+
+    /** Latency qualities: the only fixed hues, so good, fair and slow read the same on every wallpaper. */
+    val good = Color(if (dark) 0xFF5BC49A else 0xFF13795B)
+    val fair = Color(if (dark) 0xFFE7B04E else 0xFF94600A)
+    val slow = Color(if (dark) 0xFFFF8A80 else 0xFFB3261E)
+
+    /** A progress bar's empty part. */
+    val track = discOnCard
+
+    /** An unselected destination of the bottom navigation: a step under the secondary text, as Revolut's grey tabs. */
+    val navIdle = s.outline
+
+    /** A hairline round a flag in light, where white fields meet the light grey card; dark needs none. */
+    val flagEdge: Color? = if (dark) null else s.outlineVariant
     val seriesDown = s.primary
     val seriesUp = s.onSurfaceVariant
     val grid = s.outlineVariant
     val stateLayer = s.onSurface
 
-    val headerBrush: Brush = Brush.verticalGradient(*RvAlpha.HEADER_FADE.map { (at, share) -> at to lerp(page, tint, share) }.toTypedArray())
+    fun quality(tone: Tone): Color = when (tone) {
+        Tone.Ok -> good
+        Tone.Warn -> fair
+        Tone.Err -> slow
+        Tone.Neutral -> textSecondary
+    }
 }
 
 @Immutable
@@ -67,6 +84,8 @@ internal class RvType {
     val rowSub = RvTypeScale.rowSub.style()
     val action = RvTypeScale.action.style()
     val axis = RvTypeScale.axis.style(tabular = true)
+    val title = RvTypeScale.title.style()
+    val navLabel = RvTypeScale.navLabel.style()
 
     // Tabular figures only where figures line up or change in place: Inter's tnum also widens the hyphen of a name.
     private fun RvTypeStep.style(tabular: Boolean = false) = TextStyle(

@@ -27,11 +27,19 @@ internal object RvSpace {
     val tight = 4.dp
     val legendGap = 16.dp
     val axisGap = 8.dp
+
+    /** From a screen's title block to its first card. */
+    val titleToCard = 24.dp
+
+    /** Between a card's lines of text and its progress bar. */
+    val barGap = 14.dp
 }
 
 internal object RvSize {
     val actionDisc = 52.dp
-    val actionGlyph = 22.dp
+
+    /** Material Symbols draw in a 20 dp live area of their 24 dp box, the width of #11's '+'. */
+    val actionGlyph = 24.dp
     val rowDisc = 44.dp
     val rowGlyph = 20.dp
     val rowTwoLine = 84.dp
@@ -44,17 +52,43 @@ internal object RvSize {
     val dot = 8.dp
     val dotRing = 2.dp
     val cardRadius = 18.dp
+    val touch = 48.dp
+    val topBar = 56.dp
+    val navBar = 64.dp
+    val navGlyph = 24.dp
+    val progress = 5.dp
+
+    /** The check on a selected node's flag, #13's badge: a disc in a ring of the card's colour. */
+    val badge = 20.dp
+    val badgeRing = 2.dp
+    val badgeGlyph = 14.dp
+    val badgeOverhang = 4.dp
+}
+
+/** The activity header's dot map, after #07 and #08, whose dots sit 7 px (5.3 dp) apart and 2 px (1.5 dp) across. */
+internal object RvDots {
+    val pitch = 5.5.dp
+    val dot = 2.dp
+
+    /** The selected node's place: centred, this far under the status bar, above the connection state. */
+    val focusTop = 40.dp
+    val marker = 6.dp
+    val ring = 11.dp
+    val ringStroke = 1.5.dp
+    val glow = 26.dp
+
+    const val ALPHA = 0.62f
+    const val RING_ALPHA = 0.55f
+    const val GLOW_ALPHA = 0.28f
+
+    /** Dots keep their strength down to this share of the header's height, then fade out by [FADE_END]. */
+    const val FADE_START = 0.45f
+    const val FADE_END = 0.86f
 }
 
 internal object RvAlpha {
     /** The state layer: the content colour over the visible shape while pressed. */
     const val PRESSED = 0.1f
-
-    /**
-     * The header's fade from the tint to the page, as (position, share of the tint): #11's cyan measured every 50 px
-     * from the screen's top to its round actions.
-     */
-    val HEADER_FADE = listOf(0f to 1f, 0.27f to 0.72f, 0.4f to 0.45f, 0.53f to 0.24f, 0.66f to 0.1f, 0.79f to 0.035f, 1f to 0f)
 
     /** The chart's grid lines. */
     const val GRID = 0.6f
@@ -75,6 +109,8 @@ internal object RvTypeScale {
     val rowSub = RvTypeStep(15, 20, FontWeight.Normal)
     val action = RvTypeStep(15, 20, FontWeight.Medium)
     val axis = RvTypeStep(13, 16, FontWeight.Normal)
+    val title = RvTypeStep(34, 40, FontWeight.Bold, display = true)
+    val navLabel = RvTypeStep(12, 16, FontWeight.Medium)
     const val TABULAR = "tnum"
 }
 

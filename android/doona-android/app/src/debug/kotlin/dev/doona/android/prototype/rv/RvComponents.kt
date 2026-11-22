@@ -1,8 +1,10 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,12 +12,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -24,12 +32,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -38,6 +47,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import dev.doona.android.R
+import dev.doona.android.designsystem.components.Tone
+import dev.doona.android.designsystem.components.latencyTone
 
 /** One line of text in a role; CJK runs in Noto, the rest in Inter. */
 @Composable
@@ -51,14 +63,21 @@ internal fun Modifier.rvPress(shape: Shape, role: Role, onClick: () -> Unit): Mo
     clip(shape).clickable(interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = role, onClick = onClick)
 
 @Composable
-internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: Modifier = Modifier, rotation: Float = 0f) {
-    Image(painterResource(icon), contentDescription = null, modifier.size(size).rotate(rotation), colorFilter = ColorFilter.tint(color))
+internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: Modifier = Modifier) {
+    Image(painterResource(icon), contentDescription = null, modifier.size(size), colorFilter = ColorFilter.tint(color))
 }
 
-/** The screen's one tinted area: the scheme's tint fading into the page behind the header content. */
+/**
+ * The screen's one tinted area: the dot map of the world on the neutral page behind the header content, centred on
+ * [focus] at [focusTop] from the header's top.
+ */
 @Composable
-internal fun RvHeader(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().background(Rv.colors.headerBrush), horizontalAlignment = Alignment.CenterHorizontally, content = content)
+internal fun RvHeader(focus: RvPlace?, focusTop: Dp, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, Rv.colors.dots, focusTop),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        content = content,
+    )
 }
 
 /** The hero figure: [whole] large, [part] (decimals or a unit) small on the same baseline, as Revolut sets a balance. */
@@ -74,7 +93,7 @@ internal fun RvHero(whole: String, part: String, modifier: Modifier = Modifier) 
 
 /** A round action: a disc with a glyph and its label under it; only the disc lights up when pressed. */
 @Composable
-internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, iconRotation: Float = 0f) {
+internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
@@ -84,7 +103,7 @@ internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit
                 .rvPress(CircleShape, Role.Button, onClick),
             contentAlignment = Alignment.Center,
         ) {
-            RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text, rotation = iconRotation)
+            RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)
         }
         Spacer(Modifier.height(RvSpace.discToLabel))
         RvText(label, Rv.type.action, align = TextAlign.Center)
@@ -97,10 +116,10 @@ internal fun RvCard(modifier: Modifier = Modifier, content: @Composable ColumnSc
     Column(modifier.fillMaxWidth().clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
 }
 
-/** A row of a grouped card: an icon disc, a title over an optional subtitle, and trailing content at the end. */
+/** A row of a grouped card: a disc at the start, a title over an optional subtitle, and trailing content at the end. */
 @Composable
 internal fun RvRow(
-    @DrawableRes icon: Int,
+    leading: @Composable () -> Unit,
     title: String,
     subtitle: String?,
     modifier: Modifier = Modifier,
@@ -117,9 +136,7 @@ internal fun RvRow(
             .padding(horizontal = RvSpace.rowPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
-            RvGlyph(icon, RvSize.rowGlyph, Rv.colors.text)
-        }
+        leading()
         Spacer(Modifier.width(RvSpace.rowGap))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
             RvText(title, Rv.type.rowTitle)
@@ -129,6 +146,77 @@ internal fun RvRow(
             Spacer(Modifier.width(RvSpace.trailingGap))
             it()
         }
+    }
+}
+
+/** A row's leading disc: a glyph on the raised fill. */
+@Composable
+internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text) {
+    Box(Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
+        RvGlyph(icon, RvSize.rowGlyph, color)
+    }
+}
+
+/** A node's flag filling the row's disc, or a globe when its name names no country; [selected] adds #13's check. */
+@Composable
+internal fun RvFlagDisc(place: RvPlace?, selected: Boolean) {
+    Box(Modifier.size(RvSize.rowDisc)) {
+        if (place == null) {
+            RvIconDisc(R.drawable.rv_ic_globe, Rv.colors.textSecondary)
+        } else {
+            val edge = Rv.colors.flagEdge?.let { Modifier.border(Dp.Hairline, it, CircleShape) } ?: Modifier
+            Image(painterResource(place.flag), contentDescription = null, Modifier.fillMaxSize().clip(CircleShape).then(edge), contentScale = ContentScale.Crop)
+        }
+        if (selected) {
+            val ring = Modifier.size(RvSize.badge).clip(CircleShape).background(Rv.colors.card).padding(RvSize.badgeRing)
+            Box(
+                Modifier.align(Alignment.BottomEnd).offset(RvSize.badgeOverhang, RvSize.badgeOverhang).then(ring).clip(CircleShape).background(Rv.colors.positive),
+                contentAlignment = Alignment.Center,
+            ) { RvGlyph(R.drawable.rv_ic_check, RvSize.badgeGlyph, Rv.colors.onPositive) }
+        }
+    }
+}
+
+/** A node's latency over its quality word, the word in the quality's fixed hue. */
+@Composable
+internal fun RvLatency(ms: Int?) {
+    val tone = latencyTone(ms)
+    RvTrailingValue(ms?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, stringResource(tone.quality), Rv.colors.quality(tone))
+}
+
+/** A thin pill bar, #13's goal progress: [fraction] of it in the positive colour on the raised track. */
+@Composable
+internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().height(RvSize.progress).clip(CircleShape).background(Rv.colors.track)) {
+        Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(Rv.colors.positive))
+    }
+}
+
+/** A destination of the bottom navigation. */
+internal class RvNavItem(@DrawableRes val icon: Int, @StringRes val label: Int)
+
+/** The bottom navigation on the page: a glyph over a label each, the current one in the text colour, the rest grey. */
+@Composable
+internal fun RvBottomNav(items: List<RvNavItem>, selected: Int, onSelect: (Int) -> Unit, insets: WindowInsets) {
+    Column(Modifier.fillMaxWidth().background(Rv.colors.page)) {
+        Row(Modifier.fillMaxWidth().height(RvSize.navBar)) {
+            items.forEachIndexed { i, item ->
+                val color = if (i == selected) Rv.colors.text else Rv.colors.navIdle
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .selectable(i == selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.Tab) { onSelect(i) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    RvGlyph(item.icon, RvSize.navGlyph, color)
+                    Spacer(Modifier.height(RvSpace.tight))
+                    RvText(stringResource(item.label), Rv.type.navLabel, color = color, align = TextAlign.Center)
+                }
+            }
+        }
+        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 
@@ -154,3 +242,13 @@ internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style:
 internal fun RvGutter(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap), content = content)
 }
+
+internal const val RV_NO_VALUE = "—"
+
+private val Tone.quality: Int
+    get() = when (this) {
+        Tone.Ok -> R.string.latency_good
+        Tone.Warn -> R.string.latency_fair
+        Tone.Err -> R.string.latency_slow
+        Tone.Neutral -> R.string.latency_untested
+    }

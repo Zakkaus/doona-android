@@ -17,22 +17,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.Tone
-import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
@@ -40,26 +40,30 @@ import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.feature.activity.sampleActivityState
+import java.text.NumberFormat
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
 
 /**
- * The 活動 screen in Revolut's home structure (#11, #15): a tinted header with the connection state, the download rate
- * as the hero figure and the upload beside it, four round actions, then a grouped card with the global outbound and the
- * node it uses, and the traffic chart. It renders [ActivityUiState] unchanged.
+ * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
+ * hero figure and both rates under it on a dot map of the world that marks the node's country (#07, #08), four round
+ * actions, then a grouped card with the global outbound and the node it uses, the traffic chart, and the bottom
+ * navigation. It renders [ActivityUiState] unchanged.
  */
 @Composable
 internal fun RvActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    Column(Modifier.fillMaxSize().background(Rv.colors.page).verticalScroll(rememberScrollState())) {
-        Header(state, onAction, onConnect, insets)
-        RvGutter {
-            OutboundCard(state, onOpenGroup)
-            TrafficCard(state)
+    Column(Modifier.fillMaxSize().background(Rv.colors.page)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            Header(state, onAction, onConnect, insets)
+            RvGutter {
+                OutboundCard(state, onOpenGroup)
+                TrafficCard(state)
+            }
+            Spacer(Modifier.height(RvSpace.cardGap))
         }
-        Spacer(Modifier.height(RvSpace.cardGap))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
+        RvBottomNav(NAV, selected = 0, onSelect = { NOT_WIRED() }, insets)
     }
 }
 
@@ -68,8 +72,11 @@ private fun Header(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
     val context = LocalContext.current
     val running = state.status is Status.Running || state.status is Status.Starting
     val (whole, unit) = rateParts(context, state.downRate)
-    // The tint runs up behind the status bar, as Revolut's header does.
-    RvHeader {
+    // Direct traffic uses no node, so the map marks no place.
+    val place = state.node?.name?.takeIf { state.mode != Mode.Direct }?.let(::placeOf)
+    val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
+    // The dots run up behind the status bar, as Revolut's texture does.
+    RvHeader(place, statusBar + RvDots.focusTop) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
         Spacer(Modifier.height(RvSpace.headerTop))
         RvText("${stringResource(state.status.label)} · ${stringResource(state.mode.label)}", Rv.type.caption)
@@ -77,17 +84,17 @@ private fun Header(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
         RvHero(whole, unit)
         Spacer(Modifier.height(RvSpace.subGap))
         Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.rowPadding)) {
-            RvInline(R.drawable.ic_download, stringResource(R.string.ui_download), Rv.colors.textSecondary, Rv.type.sub)
+            RvInline(R.drawable.ic_download, rateText(context, state.downRate), Rv.colors.textSecondary, Rv.type.sub)
             RvInline(R.drawable.ic_upload, rateText(context, state.upRate), Rv.colors.textSecondary, Rv.type.sub)
         }
         Spacer(Modifier.height(RvSpace.heroToActions))
         Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
             val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
             val toggle = if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect
-            RvAction(R.drawable.ic_link, stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect), toggle, Modifier.weight(1f))
-            RvAction(R.drawable.ic_shuffle, stringResource(R.string.act_mode), { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f))
-            RvAction(R.drawable.ic_speed_fast, stringResource(R.string.rv_test_latency), NOT_WIRED, Modifier.weight(1f))
-            RvAction(R.drawable.ic_more_vertical, stringResource(R.string.rv_more), NOT_WIRED, Modifier.weight(1f), iconRotation = QUARTER_TURN)
+            RvAction(R.drawable.rv_ic_power, stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect), toggle, Modifier.weight(1f))
+            RvAction(R.drawable.rv_ic_route, stringResource(R.string.act_mode), { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f))
+            RvAction(R.drawable.rv_ic_speed, stringResource(R.string.rv_test_latency), NOT_WIRED, Modifier.weight(1f))
+            RvAction(R.drawable.rv_ic_more, stringResource(R.string.rv_more), NOT_WIRED, Modifier.weight(1f))
         }
         Spacer(Modifier.height(RvSpace.actionsToCard))
     }
@@ -97,28 +104,16 @@ private fun Header(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
 private fun OutboundCard(state: ActivityUiState, onOpenGroup: (String) -> Unit) {
     RvCard {
         RvRow(
-            R.drawable.ic_filter,
+            { RvIconDisc(R.drawable.ic_filter) },
             stringResource(R.string.act_global),
-            state.outbound ?: NO_VALUE,
+            state.outbound ?: RV_NO_VALUE,
             onClick = state.outboundGroupId?.let { id -> { onOpenGroup(id) } },
         ) { RvGlyph(R.drawable.ic_chevron_right, RvSize.chevron, Rv.colors.textSecondary) }
         // Direct traffic uses no node, so there is no node or latency to show.
         if (state.mode == Mode.Direct) return@RvCard
         val node = state.node
-        val latency = node?.latencyMs?.takeUnless { node.failed }
-        val tone = latencyTone(latency)
-        RvRow(R.drawable.ic_clock, node?.name ?: NO_VALUE, stringResource(R.string.nav_nodes)) {
-            RvTrailingValue(
-                latency?.let { stringResource(R.string.latency_ms, it) } ?: NO_VALUE,
-                stringResource(tone.quality),
-                if (tone == Tone.Err) {
-                    Rv.colors.negative
-                } else if (tone == Tone.Ok) {
-                    Rv.colors.positive
-                } else {
-                    Rv.colors.notice
-                },
-            )
+        RvRow({ RvIconDisc(R.drawable.ic_clock) }, node?.name ?: RV_NO_VALUE, stringResource(R.string.nav_nodes)) {
+            RvLatency(node?.latencyMs?.takeUnless { node.failed })
         }
     }
 }
@@ -126,6 +121,9 @@ private fun OutboundCard(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
 @Composable
 private fun TrafficCard(state: ActivityUiState) {
     val context = LocalContext.current
+    // The axis reads in MB/s whatever the range, so its labels line up with the hero's usual unit.
+    val locale = LocalConfiguration.current.locales[0]
+    val megabytes = remember(locale) { NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 } }
     RvCard {
         Column(Modifier.padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.legendGap)) {
             Row(Modifier.fillMaxWidth()) {
@@ -137,7 +135,7 @@ private fun TrafficCard(state: ActivityUiState) {
                 state.downHistory,
                 state.upHistory,
                 top,
-                axis = { if (it == 0f) ZERO else Formatter.formatShortFileSize(context, it.toLong()) },
+                axis = { if (it == 0f) ZERO else megabytes.format(it / BYTES_PER_MB) + MB_PER_SECOND },
                 start = stringResource(R.string.rv_seconds_ago, state.downHistory.size),
                 end = stringResource(R.string.rv_now),
             )
@@ -173,10 +171,18 @@ private fun niceMax(value: Float): Float {
 }
 
 private val NICE_STEPS = listOf(1f, 2f, 2.5f, 5f, 10f)
-private const val NO_VALUE = "—"
 private const val ZERO = "0"
 private const val PER_SECOND = "/s"
-private const val QUARTER_TURN = 90f
+
+/** Android's file sizes are decimal (formatShortFileSize), so the axis is too. */
+private const val BYTES_PER_MB = 1_000_000f
+private const val MB_PER_SECOND = " MB/s"
+
+private val NAV = listOf(
+    RvNavItem(R.drawable.rv_ic_nav_activity, R.string.hub_activity),
+    RvNavItem(R.drawable.rv_ic_nav_policies, R.string.nav_policies),
+    RvNavItem(R.drawable.rv_ic_nav_settings, R.string.hub_settings),
+)
 
 private val Status.label: Int
     get() = when (this) {
@@ -190,14 +196,6 @@ private val Mode.label: Int
     get() = when (this) {
         Mode.Global -> R.string.mode_global
         Mode.Direct -> R.string.mode_direct
-    }
-
-private val Tone.quality: Int
-    get() = when (this) {
-        Tone.Ok -> R.string.latency_good
-        Tone.Warn -> R.string.latency_fair
-        Tone.Err -> R.string.latency_slow
-        Tone.Neutral -> R.string.latency_untested
     }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
