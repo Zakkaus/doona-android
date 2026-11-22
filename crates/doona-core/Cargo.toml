@@ -44,6 +44,9 @@ unsafe-libyaml = "0.2.11"
 url = "2"
 uuid = { version = "1", features = ["v5"] }
 webpki-root-certs = "1"
+# Rule mode's DOMAIN-KEYWORD: one automaton over every keyword of a source. Already in the graph
+# through regex.
+aho-corasick = "1"
 
 [dev-dependencies]
 # The loopback TUIC server of the carrier tests: honk's Quinn (patched below) with its default

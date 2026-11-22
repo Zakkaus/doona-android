@@ -14,6 +14,7 @@ mod localnet;
 pub mod outbounds;
 mod panics;
 mod probe;
+mod rules;
 pub mod state;
 mod subscription;
 pub mod sys;
