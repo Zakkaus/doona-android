@@ -15,7 +15,6 @@ import dev.doona.android.testing.inkInsets
 import dev.doona.android.testing.layoutTree
 import dev.doona.android.testing.screenCases
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,7 +27,6 @@ private const val DENSITY = 3f
 private const val INK_TOLERANCE = 0.67f
 
 /** Renders each screen on [dev.doona.android.engine.fake.FakeEngine] data and asserts [SpacingRules] on its layout. */
-@Ignore("red on the sketch: segmented items and pickers sit in 48 dp boxes, top bar glyphs 6 to 8 dp off the gutter, a latency dot pushes its value, pickers differ, chevrons carry 2.7 dp of padding, the sheet ends 24 dp below its last block; U1 step 3 fixes them and removes this")
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = PHONE)
@@ -45,19 +43,22 @@ class SpacingCheckTest {
         assertTrue("$name breaks the spacing rules:\n" + violations.joinToString("\n"), violations.isEmpty())
     }
 
-    /** A chevron is drawn to the edges of its box, so that the box can sit on a content edge or a padding. */
-    @Test
-    fun chevronsHaveNoInset() {
+    private fun checkChevrons(name: String) {
         compose.setContent {
-            CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { DoonaTheme { screenCases().first { it.name == "group" }.content() } }
+            CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { DoonaTheme { screenCases().first { it.name == name }.content() } }
         }
         val chevrons = compose.onAllNodes(SemanticsMatcher("is a chevron") { it.config.getOrNull(LayoutRoleKey) == LayoutRole.Chevron }, useUnmergedTree = true)
         val count = chevrons.fetchSemanticsNodes().size
-        assertTrue("the group page shows pickers", count > 0)
+        assertTrue("$name shows chevrons", count > 0)
         val insets = (0 until count).mapNotNull { chevrons[it].inkInsets(DENSITY)?.let { ink -> "chevron $it: ${ink.describe()}" to ink.max() } }
         val off = insets.filter { it.second > INK_TOLERANCE }.map { it.first }
-        assertTrue("chevrons draw inside their box:\n" + off.joinToString("\n"), off.isEmpty())
+        assertTrue("chevrons of $name draw inside their box:\n" + off.joinToString("\n"), off.isEmpty())
     }
+
+    /** A chevron is drawn to the edges of its box, so that the box can sit on a content edge or a padding. */
+    @Test fun pickerChevronsHaveNoInset() = checkChevrons("group")
+
+    @Test fun cardChevronsHaveNoInset() = checkChevrons("policies")
 
     @Test fun activity() = check("activity")
 

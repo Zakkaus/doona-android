@@ -12,13 +12,13 @@ import kotlin.math.abs
 object SpacingRules {
     private const val TOL = 0.5f
     private val space = DoonaTheme.spacing
-    private val size = DoonaTheme.size
+    private val sizes = DoonaTheme.size
 
     /** Gaps between blocks of a page: the roles `tight`, `item`, `block`, `afterTitle` and `section`. */
     private val pageGaps = listOf(space.tight, space.item, space.block, space.afterTitle, space.section).map { it.value }
 
     fun check(root: LayoutBox, windowWidth: Float): List<String> =
-        scaleGaps(root) + sheet(root, windowWidth) + cards(root) + controls(root) + alikeControls(root) + touchTargets(root) +
+        scaleGaps(root) + sheet(root, windowWidth) + cards(root) + controls(root) + alikeControls(root) + rows(root) + touchTargets(root) +
             topBar(root, windowWidth) + hubBar(root) + valueColumns(root)
 
     private fun near(a: Float, b: Float) = abs(a - b) <= TOL
@@ -64,9 +64,18 @@ object SpacingRules {
 
     /** Control (segmented control, picker, chip): exactly as high as its visible track; touch comes from the target size. */
     fun controls(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Control }
-        .filter { !near(it.height, size.control.value) }
-        .map { "control $it is %.1f dp high, its track is %.0f".format(it.height, size.control.value) }
+        .filter { !near(it.height, sizes.control.value) }
+        .map { "control $it is %.1f dp high, its track is %.0f".format(it.height, sizes.control.value) }
         .toList()
+
+    /** Row: at least 48 dp high, its content centred on its middle. */
+    fun rows(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Row }.flatMap { row ->
+        buildList {
+            if (row.height < sizes.touch.value - TOL) add("row $row is %.1f dp high, under %.0f".format(row.height, sizes.touch.value))
+            row.content.filter { !near(it.top + it.height / 2, row.top + row.height / 2) }
+                .forEach { add("row $row: $it is not centred vertically") }
+        }
+    }.toList()
 
     /** Controls side by side are alike: all filled or all quiet. */
     fun alikeControls(root: LayoutBox): List<String> = root.descendants().flatMap { parent ->
@@ -82,7 +91,7 @@ object SpacingRules {
     /** Every actionable node can be hit over at least 48 × 48 dp. */
     fun touchTargets(root: LayoutBox): List<String> = root.descendants().filter { it.actionable }.mapNotNull { node ->
         val (w, h) = node.touchSize ?: return@mapNotNull null
-        "touch target of $node is %.1f × %.1f dp, under %.0f".format(w, h, size.touch.value).takeIf { w < size.touch.value - TOL || h < size.touch.value - TOL }
+        "touch target of $node is %.1f × %.1f dp, under %.0f".format(w, h, sizes.touch.value).takeIf { w < sizes.touch.value - TOL || h < sizes.touch.value - TOL }
     }.toList()
 
     /** Top bar: the first and last glyph sit on the content gutter, as the content below does. */

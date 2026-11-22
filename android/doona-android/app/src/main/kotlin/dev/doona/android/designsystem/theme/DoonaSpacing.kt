@@ -20,7 +20,7 @@ object DoonaSpacing {
     val sheetTop = SpaceScale.s5
 
     /** Space below the last block of a sheet, so it scrolls clear of the bar below. */
-    val sheetBottom = SpaceScale.s6
+    val sheetBottom = SpaceScale.s10
 
     /** Between the sections of a page. */
     val section = SpaceScale.s6

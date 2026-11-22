@@ -58,9 +58,17 @@ fun DoonaIconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit =
     }
 }
 
+internal object DoonaTopBarDefaults {
+    /**
+     * Padding at the ends of the bar. An icon action holds its 25 dp icon centred in a 48 dp target, so the icon reaches
+     * the gutter when the target starts this far inside it.
+     */
+    val edgeInset get() = DoonaTheme.spacing.gutter - (DoonaTheme.size.touch - DoonaTheme.size.icon) / 2
+}
+
 /**
  * Top app bar (§8): 64 high on the base fill, drawn under the status bar. The start holds the duck mark on a hub
- * page and the back arrow on a pushed page; icon actions sit at the end.
+ * page and the back arrow on a pushed page; icon actions sit at the end. The first and last glyph sit on the gutter.
  */
 @Composable
 fun DoonaTopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit) {
@@ -71,13 +79,13 @@ fun DoonaTopBar(onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -
             .background(DoonaTheme.colors.window)
             .windowInsetsPadding(DoonaTheme.insets.only(WindowInsetsSides.Top))
             .height(DoonaTheme.size.topBar)
-            .padding(horizontal = DoonaTheme.spacing.block),
+            .padding(horizontal = DoonaTopBarDefaults.edgeInset),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
             DoonaIconAction(R.drawable.ic_arrow_back, stringResource(R.string.ui_back), onBack)
         } else {
-            Box(Modifier.size(DoonaTheme.size.touch), contentAlignment = Alignment.Center) {
+            Box(Modifier.padding(start = (DoonaTheme.size.touch - DoonaTheme.size.icon) / 2)) {
                 Image(painterResource(R.drawable.ic_duck), contentDescription = stringResource(R.string.app_name), modifier = Modifier.size(DoonaTheme.size.logo))
             }
         }

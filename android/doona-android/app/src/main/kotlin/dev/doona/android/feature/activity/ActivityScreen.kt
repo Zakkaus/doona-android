@@ -30,17 +30,21 @@ import dev.doona.android.designsystem.components.DoonaHGap
 import dev.doona.android.designsystem.components.DoonaIcon
 import dev.doona.android.designsystem.components.DoonaIconAction
 import dev.doona.android.designsystem.components.DoonaLatency
+import dev.doona.android.designsystem.components.DoonaMetricTile
 import dev.doona.android.designsystem.components.DoonaMetricValue
 import dev.doona.android.designsystem.components.DoonaNodeName
 import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaPageTabs
 import dev.doona.android.designsystem.components.DoonaPageTitle
 import dev.doona.android.designsystem.components.DoonaPicker
+import dev.doona.android.designsystem.components.DoonaRow
 import dev.doona.android.designsystem.components.DoonaSegmented
 import dev.doona.android.designsystem.components.DoonaSparkline
 import dev.doona.android.designsystem.components.DoonaStatusLight
 import dev.doona.android.designsystem.components.DoonaSwitch
 import dev.doona.android.designsystem.components.DoonaText
+import dev.doona.android.designsystem.components.DoonaTileCaption
+import dev.doona.android.designsystem.components.DoonaTileRow
 import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
@@ -109,7 +113,7 @@ private val Mode.label: Int
 @Composable
 private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
-        TileRow {
+        DoonaTileRow {
             RateTile(R.drawable.ic_download, DoonaTheme.colors.c1, stringResource(R.string.ui_download), rateText(state.downRate), state.downHistory)
             RateTile(R.drawable.ic_upload, DoonaTheme.colors.c4, stringResource(R.string.ui_upload), rateText(state.upRate), state.upHistory)
         }
@@ -117,7 +121,7 @@ private fun TrafficTiles(state: ActivityUiState, onOpenGroup: (String) -> Unit) 
         if (state.mode == Mode.Direct) return@Column
         val node = state.node
         val latency = node?.latencyMs?.takeUnless { node.failed }
-        MetricTile(
+        DoonaMetricTile(
             icon = R.drawable.ic_clock,
             tint = DoonaTheme.colors.c5,
             caption = { DoonaNodeName(node?.name ?: stringResource(R.string.act_latency), DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary) },
@@ -138,7 +142,7 @@ private fun rateText(bytesPerSecond: Long): String =
 private fun ConnectionCard(status: Status, onSwitch: (Boolean) -> Unit) {
     val on = status is Status.Running || status is Status.Starting
     DoonaCard(Modifier.fillMaxWidth()) {
-        Row(Modifier.heightIn(min = DoonaTheme.size.touch), verticalAlignment = Alignment.CenterVertically) {
+        DoonaRow {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
                 DoonaStatusLight(status.tone, stringResource(status.label), style = DoonaTheme.type.cardTitle)
                 (status as? Status.Failed)?.let {
@@ -175,44 +179,11 @@ private val FailureReason.label: Int
         FailureReason.IncompatibleCore -> R.string.status_failed_incompatible_core
     }
 
-@Composable
-private fun TileRow(content: @Composable RowScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block), content = content)
-}
-
-/** `.rp-tile-head`: 12/16 subtle caption. */
-@Composable
-private fun TileCaption(text: String) {
-    DoonaText(text, style = DoonaTheme.type.caption, color = DoonaTheme.colors.text.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-}
-
-/** A rate tile: the value and the last minute's series as a sparkline across the tile, 32 high. */
+/** A rate tile: the value and the last minute's series as a sparkline across the tile. */
 @Composable
 private fun RowScope.RateTile(@DrawableRes icon: Int, tint: Color, caption: String, value: String, series: List<Float>) {
-    MetricTile(icon, tint, { TileCaption(caption) }, Modifier.weight(1f).fillMaxHeight()) {
+    DoonaMetricTile(icon, tint, { DoonaTileCaption(caption) }, Modifier.weight(1f).fillMaxHeight()) {
         DoonaMetricValue(value)
-        if (series.isNotEmpty()) DoonaSparkline(series, tint, Modifier.fillMaxWidth().height(DoonaTheme.size.spark))
-    }
-}
-
-/** Dashboard tile (§7): metric header (tinted icon and caption, control height), then the 22/28/700 value. */
-@Composable
-private fun MetricTile(
-    @DrawableRes icon: Int,
-    tint: Color,
-    caption: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    value: @Composable () -> Unit,
-) {
-    // The whole tile is the touch target (the latency tile opens its group's page), so the header keeps doona's
-    // control height.
-    DoonaCard(modifier, onClick = onClick) {
-        Row(Modifier.heightIn(min = DoonaTheme.size.control), verticalAlignment = Alignment.CenterVertically) {
-            DoonaIcon(icon, tint)
-            DoonaHGap(DoonaTheme.spacing.item)
-            caption()
-        }
-        value()
+        if (series.isNotEmpty()) DoonaSparkline(series, tint, Modifier.fillMaxWidth())
     }
 }

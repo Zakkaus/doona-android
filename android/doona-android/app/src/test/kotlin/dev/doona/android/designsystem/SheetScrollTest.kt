@@ -13,7 +13,6 @@ import dev.doona.android.testing.FrameInsets
 import dev.doona.android.testing.layoutTree
 import dev.doona.android.testing.screenCases
 import org.junit.Assert.assertEquals
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,7 +20,6 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /** A window short enough that every screen scrolls, so the end of the sheet can be measured. */
-@Ignore("red on the sketch: segmented items and pickers sit in 48 dp boxes, top bar glyphs 6 to 8 dp off the gutter, a latency dot pushes its value, pickers differ, chevrons carry 2.7 dp of padding, the sheet ends 24 dp below its last block; U1 step 3 fixes them and removes this")
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "zh-rTW-w412dp-h500dp-notnight-xxhdpi")

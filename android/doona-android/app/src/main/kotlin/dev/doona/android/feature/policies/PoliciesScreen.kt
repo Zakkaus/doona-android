@@ -1,10 +1,12 @@
 package dev.doona.android.feature.policies
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,8 +21,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.ChevronDirection
 import dev.doona.android.designsystem.components.DoonaBadge
 import dev.doona.android.designsystem.components.DoonaCard
+import dev.doona.android.designsystem.components.DoonaChevron
 import dev.doona.android.designsystem.components.DoonaGap
 import dev.doona.android.designsystem.components.DoonaHGap
 import dev.doona.android.designsystem.components.DoonaIcon
@@ -32,12 +36,14 @@ import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaPageTabs
 import dev.doona.android.designsystem.components.DoonaPageTitle
 import dev.doona.android.designsystem.components.DoonaPicker
+import dev.doona.android.designsystem.components.DoonaRow
 import dev.doona.android.designsystem.components.DoonaSegmented
 import dev.doona.android.designsystem.components.DoonaStatusLight
 import dev.doona.android.designsystem.components.DoonaSwitch
 import dev.doona.android.designsystem.components.DoonaTagChip
 import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.components.Tone
+import dev.doona.android.designsystem.components.lineHeightOf
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
@@ -114,7 +120,10 @@ private fun GroupCard(group: Group, onOpen: () -> Unit) {
                 GroupFacts(group)
             }
             DoonaHGap(DoonaTheme.spacing.block)
-            DoonaIcon(R.drawable.ic_chevron_right, c.text.secondary, size = DoonaTheme.size.iconSmall)
+            // The chevron is centred on the title's first line.
+            Box(Modifier.height(lineHeightOf(DoonaTheme.type.cardTitle)), contentAlignment = Alignment.Center) {
+                DoonaChevron(ChevronDirection.Right, c.text.secondary)
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             CurrentSummary(group, DoonaTheme.type.label, Modifier.weight(1f))
@@ -161,20 +170,18 @@ fun GroupScreen(group: Group, onBack: () -> Unit) {
         DoonaGap(space.section)
         CurrentSummary(group, DoonaTheme.type.label)
         DoonaGap(space.block)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(space.item)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(space.item), verticalArrangement = Arrangement.spacedBy(space.item)) {
             group.members.filter { it.isGroup }.forEach { DoonaTagChip(it.name) }
         }
         DoonaGap(space.tight)
         DoonaText(stringResource(R.string.group_every_node), style = DoonaTheme.type.caption, color = c.text.secondary)
         DoonaGap(space.section)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             DoonaSegmented(
                 listOf(stringResource(R.string.policy_both), stringResource(R.string.ui_tcp), stringResource(R.string.ui_udp)),
                 selected = net,
                 onSelect = { net = it },
-                modifier = Modifier.weight(1f),
             )
-            DoonaHGap(space.block)
             DoonaText(
                 pluralStringResource(R.plurals.policy_members, members.size, members.size),
                 style = DoonaTheme.type.body.copy(fontFeatureSettings = DoonaTheme.type.tabular),
@@ -182,11 +189,13 @@ fun GroupScreen(group: Group, onBack: () -> Unit) {
                 maxLines = 1,
             )
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(space.block)) {
-            DoonaPicker(stringResource(R.string.policy_all_regions), onClick = {})
+        DoonaGap(space.block)
+        Row(horizontalArrangement = Arrangement.spacedBy(space.block)) {
+            DoonaPicker(stringResource(R.string.policy_all_regions), onClick = {}, filled = true)
             DoonaPicker(stringResource(R.string.policy_by_latency), onClick = {}, filled = true)
         }
-        Row(Modifier.fillMaxWidth().heightIn(min = DoonaTheme.size.touch), verticalAlignment = Alignment.CenterVertically) {
+        DoonaGap(space.block)
+        DoonaRow(Modifier.fillMaxWidth()) {
             DoonaText(stringResource(R.string.policy_alive_only), style = DoonaTheme.type.body, color = c.text.primary, maxLines = 1, modifier = Modifier.weight(1f))
             DoonaHGap(space.block)
             DoonaSwitch(aliveOnly, { aliveOnly = it }, stringResource(R.string.policy_alive_only))
