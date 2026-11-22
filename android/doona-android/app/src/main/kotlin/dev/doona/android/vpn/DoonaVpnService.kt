@@ -44,13 +44,13 @@ internal class DoonaVpnService :
         notifications.createChannel()
         session = ServiceSession(engine.controller)
         scope.launch { session.follow(::end) }
-        scope.launch { notifications.keepCurrent(engine.status, ratesWhileScreenOn()) }
+        scope.launch { notifications.keepCurrent(engine.status, ratesWhileSeen()) }
     }
 
-    /** Rates for the notification, collected only with the screen on, so sampling pauses with the screen off. */
+    /** Rates for the notification, collected only while someone can read it, so a hidden one requests no samples. */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun ratesWhileScreenOn(): Flow<Traffic?> =
-        screenOn(this).flatMapLatest { on -> if (on) engine.traffic else flowOf(null) }
+    private fun ratesWhileSeen(): Flow<Traffic?> =
+        notifications.seen().flatMapLatest { seen -> if (seen) engine.traffic else flowOf(null) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         lastStartId = startId

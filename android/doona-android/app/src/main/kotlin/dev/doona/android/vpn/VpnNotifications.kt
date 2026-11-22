@@ -71,6 +71,9 @@ internal class VpnNotifications(private val context: Context) {
 
     fun cancel() = manager.cancel(ID)
 
+    /** Whether the ongoing notification can be read now; see [isNotificationSeen]. */
+    fun seen(): Flow<Boolean> = notificationSeen(context, CHANNEL)
+
     /** Keeps the ongoing notification current, at most every 2 s and only when its text changes. */
     suspend fun keepCurrent(status: StateFlow<Status>, traffic: Flow<Traffic?>) {
         combine(status, traffic, ::text)
