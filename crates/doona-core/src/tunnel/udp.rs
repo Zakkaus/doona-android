@@ -5,8 +5,10 @@
 //! datagram holds part of one [`Budget`] per generation, taken before the copy; sockets read into
 //! one buffer per worker thread, and a node's transport into its association's own. Datagrams are
 //! dropped, as a network would, when the budget or a queue is full or too many associations are
-//! open.
+//! open. Android 17 refuses a datagram to a node on the local network with `EPERM` while doona
+//! lacks the permission, so the first send through such a node reports how it went (ARCH D26).
 
+use super::Session;
 use super::flow::{DEPTH, Event, Events, Key, Waker};
 use super::route::Route;
 use crate::dns;
@@ -213,14 +215,23 @@ pub(crate) enum UdpUpstream {
     Socket(UdpSocket),
     /// A node's transport to the destination, which it names. The node relays a reply from any
     /// peer; one from another than the destination is dropped, as a connected socket drops it.
-    Proxy(Arc<dyn PacketTransport>, SocketAddr),
+    /// The session hears how the first send went when the node is on the local network.
+    Proxy(Arc<dyn PacketTransport>, SocketAddr, Option<Arc<Session>>),
 }
 
 impl UdpUpstream {
     async fn send(&self, payload: &[u8]) -> io::Result<()> {
         match self {
             UdpUpstream::Socket(s) => s.send(payload).await.map(drop),
-            UdpUpstream::Proxy(t, _) => t.send_packet(payload).await,
+            UdpUpstream::Proxy(t, ..) => t.send_packet(payload).await,
+        }
+    }
+
+    /// Who hears how the first send went: the session, through a node on the local network.
+    pub(crate) fn first_send_to(&self) -> Option<&Session> {
+        match self {
+            UdpUpstream::Proxy(_, _, session) => session.as_deref(),
+            UdpUpstream::Socket(_) => None,
         }
     }
 
@@ -240,7 +251,7 @@ impl UdpUpstream {
                     r => return r,
                 }
             },
-            UdpUpstream::Proxy(t, remote) => {
+            UdpUpstream::Proxy(t, remote, _) => {
                 if own.is_empty() {
                     own.resize(DATAGRAM, 0);
                 }
@@ -281,13 +292,15 @@ async fn exchange(o: Opened, upstream: &UdpUpstream) {
     let last = AtomicU64::new(0);
     let moved = || last.store(millis(begun.elapsed()), Relaxed);
     let sending = async {
+        let mut first = upstream.first_send_to();
         while let Some(d) = up.recv().await {
+            let began = first.map(Session::begin_dial);
             // A failed send is a lost datagram; one still blocked after `idle` ends the association.
-            if tokio::time::timeout(idle, upstream.send(&d.bytes))
-                .await
-                .is_err()
-            {
+            let Ok(sent) = tokio::time::timeout(idle, upstream.send(&d.bytes)).await else {
                 return;
+            };
+            if let (Some(session), Some(began)) = (first.take(), began) {
+                session.first_sent(began, &sent);
             }
             moved();
         }
@@ -357,6 +370,9 @@ pub(crate) async fn answer_dns(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dto::ErrorCode;
+    use std::pin::Pin;
+    use std::sync::Weak;
 
     fn used(budget: &Budget) -> usize {
         budget.used.load(Acquire)
@@ -373,6 +389,78 @@ mod tests {
         assert!(budget.take(50).is_some());
         drop(b);
         assert_eq!(used(&budget), 0);
+    }
+
+    /// A node that answers each send with `sent` and never with a datagram: one on the local
+    /// network as Android 17 treats it without the permission (`PermissionDenied`) and with it.
+    #[derive(Debug)]
+    struct Node(Option<ErrorKind>);
+
+    impl PacketTransport for Node {
+        fn relay_addr(&self) -> SocketAddr {
+            ([192, 168, 8, 2], 8388).into()
+        }
+
+        fn send_packet<'a, 'b, 't>(
+            &'a self,
+            _: &'b [u8],
+        ) -> Pin<Box<dyn Future<Output = io::Result<()>> + Send + 't>>
+        where
+            'a: 't,
+            'b: 't,
+            Self: 't,
+        {
+            let sent = self.0.map_or(Ok(()), |kind| Err(kind.into()));
+            Box::pin(async move { sent })
+        }
+
+        fn recv_packet<'a, 'b, 't>(
+            &'a self,
+            _: &'b mut [u8],
+        ) -> Pin<Box<dyn Future<Output = io::Result<(usize, SocketAddr)>> + Send + 't>>
+        where
+            'a: 't,
+            'b: 't,
+            Self: 't,
+        {
+            Box::pin(std::future::pending())
+        }
+    }
+
+    /// The session's warning after one datagram through `node`, warned before it or not.
+    async fn after_first_send(node: Node, warned: bool) -> Option<ErrorCode> {
+        let session = Arc::new(Session::new(0, Weak::new()));
+        if warned {
+            let began = session.begin_dial();
+            session.first_sent(began, &Err(ErrorKind::PermissionDenied.into()));
+        }
+        let (events, _wakes) = mpsc::unbounded_channel();
+        let mut nat = Nat::new(Budget::new(QUEUED_BYTES), Duration::from_millis(100));
+        let pair = (
+            "172.19.0.1:40000".parse().unwrap(),
+            "1.1.1.1:53".parse().unwrap(),
+        );
+        let (opened, _) = nat
+            .send(pair, b"first", &events, || Some(Route::Direct))
+            .unwrap();
+        let upstream = UdpUpstream::Proxy(Arc::new(node), pair.1, Some(Arc::clone(&session)));
+        exchange(opened, &upstream).await;
+        session.warning()
+    }
+
+    /// A transport to a node on the local network binds a socket and sends nothing until its
+    /// first datagram, which Android 17 refuses with `EPERM` without the permission: refused, it
+    /// warns; sent, it clears the warning; any other failure says nothing about the permission.
+    #[tokio::test]
+    async fn the_first_send_through_a_node_on_the_local_network_says_how_it_went() {
+        let refused = Node(Some(ErrorKind::PermissionDenied));
+        assert_eq!(
+            after_first_send(refused, false).await,
+            Some(ErrorCode::LocalNetwork)
+        );
+        assert_eq!(after_first_send(Node(None), true).await, None);
+        let unreachable = Node(Some(ErrorKind::NetworkUnreachable));
+        assert_eq!(after_first_send(unreachable, false).await, None);
     }
 
     #[tokio::test]

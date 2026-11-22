@@ -108,4 +108,12 @@
     <string name="error_no_nodes">訂閱裡沒有節點</string>
     <string name="error_busy">另一項變更正在進行，請稍後再試</string>
     <string name="error_internal">發生內部錯誤</string>
+    <string name="error_local_network">無法連到區網上的位址</string>
+    <string name="local_network_ask_title">允許存取區網</string>
+    <string name="local_network_ask_body">連到區網上的訂閱和節點需要這項權限。</string>
+    <string name="local_network_ask_continue">繼續</string>
+    <string name="local_network_ask_not_now">暫時不要</string>
+    <string name="local_network_denied_title">未允許存取區網</string>
+    <string name="local_network_denied_body">無法連到區網上的訂閱和節點。請在 App 設定中允許 doona 存取區網。</string>
+    <string name="local_network_open_settings">開啟設定</string>
 </resources>

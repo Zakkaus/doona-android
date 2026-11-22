@@ -1,7 +1,9 @@
 //! Every example payload in `contracts/doona-core/` parses into its DTO and serializes back to the
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
-use doonacore::dto::{Empty, Init, Mode, Reply, SelectArgs, Snapshot, StartConfig, Subscription};
+use doonacore::dto::{
+    Empty, ErrorCode, Init, Mode, Reply, SelectArgs, Snapshot, StartConfig, Subscription,
+};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -74,8 +76,10 @@ fn call_replies_and_args() {
 fn snapshots() {
     let running = round_trip::<Snapshot>("snapshot-running.json");
     assert!(running.running && running.error.is_none() && running.catalog.is_none());
+    // A warning leaves the data path up.
+    assert_eq!(running.warning, Some(ErrorCode::LocalNetwork));
     let died = round_trip::<Snapshot>("snapshot-died.json");
-    assert!(!died.running && died.error.is_some());
+    assert!(!died.running && died.error.is_some() && died.warning.is_none());
     let stopped = round_trip::<Snapshot>("snapshot-stopped-catalog.json");
     let catalog = stopped.catalog.unwrap();
     assert_eq!(catalog.mode, Mode::Global);
@@ -84,6 +88,11 @@ fn snapshots() {
     let proxy = &catalog.groups[0];
     assert_eq!(proxy.members[2].name, proxy.members[3].name);
     assert_ne!(proxy.members[2].id, proxy.members[3].id);
+    // A node on the local network whose probe failed says why; the others carry no code.
+    let lan = &proxy.members[3];
+    assert!(lan.failed && lan.latency_ms.is_none());
+    assert_eq!(lan.error, Some(ErrorCode::LocalNetwork));
+    assert!(proxy.members[..3].iter().all(|m| m.error.is_none()));
 }
 
 #[test]

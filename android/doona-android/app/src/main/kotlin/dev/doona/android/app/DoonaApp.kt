@@ -15,6 +15,8 @@ import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.activity.ActivityRoute
+import dev.doona.android.feature.localnetwork.LocalNetworkHost
+import dev.doona.android.feature.localnetwork.LocalNetworkPrompts
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
@@ -43,6 +45,7 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
  * so it survives configuration changes and process death; each entry gets its own ViewModels and saved state.
  * [start] must begin with [ActivityKey]. [imports] is the app-wide subscription import in flight; the default lives
  * as long as the composition. [version] is the app's version name for the settings, read by the activity.
+ * [localNetwork] shows the local network prompts over every page; a host without one never asks.
  */
 @Composable
 fun DoonaApp(
@@ -52,6 +55,7 @@ fun DoonaApp(
     start: List<NavKey> = listOf(ActivityKey),
     imports: SubscriptionImports = rememberSubscriptionImports(engine),
     version: String = "",
+    localNetwork: LocalNetworkHost? = null,
 ) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
     DoonaAppShell(current = currentTab(backStack), onSelect = { backStack.selectTab(it) }) {
@@ -78,4 +82,5 @@ fun DoonaApp(
             },
         )
     }
+    localNetwork?.let { LocalNetworkPrompts(it) }
 }

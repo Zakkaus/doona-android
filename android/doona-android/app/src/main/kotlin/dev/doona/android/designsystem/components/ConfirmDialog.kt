@@ -29,14 +29,14 @@ enum class DoonaConfirmKind { Default, Destructive }
 
 /**
  * A confirmation: a modal [title] over a [body], with a text-style dismiss button and a primary confirm button at the
- * end (§7, `.rp-dialog`: surface fill, radius 16, padding 24 on a phone). Back, a tap on the underlay around the card
- * and the dismiss button call [onDismiss]; the confirm button calls [onConfirm] and does not close the dialog, the
- * caller stops showing it. [DoonaConfirmKind.Destructive] fills the confirm button with the destructive colour, for
- * removing a subscription. The underlay is doona's: black at 32 % in light and 55 % in dark. The card keeps a gutter
- * from the window's edges, which belongs to the underlay, not to the dialog. The buttons sit side by side at the end
- * when both fit; when a long label or a large font leaves no room, they stack at the full width, the confirm button
- * last, and their labels wrap whole, so no label is cut off. In a window too short for the title, the body and the
- * buttons, the card scrolls.
+ * end (§7, `.rp-dialog`: surface fill, radius 16, padding 24 on a phone). The dismiss button calls [onDismiss], and so
+ * do back and a tap on the underlay around the card unless [onDismissRequest] says otherwise; the confirm button calls
+ * [onConfirm] and does not close the dialog, the caller stops showing it. [DoonaConfirmKind.Destructive] fills the
+ * confirm button with the destructive colour, for removing a subscription. The underlay is doona's: black at 32 % in
+ * light and 55 % in dark. The card keeps a gutter from the window's edges, which belongs to the underlay, not to the
+ * dialog. The buttons sit side by side at the end when both fit; when a long label or a large font leaves no room, they
+ * stack at the full width, the confirm button last, and their labels wrap whole, so no label is cut off. In a window
+ * too short for the title, the body and the buttons, the card scrolls.
  */
 @Composable
 fun DoonaConfirmDialog(
@@ -48,8 +48,9 @@ fun DoonaConfirmDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     kind: DoonaConfirmKind = DoonaConfirmKind.Default,
+    onDismissRequest: () -> Unit = onDismiss,
 ) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, scrimAlpha = DoonaTheme.colors.scrim.alpha)) {
+    Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false, scrimAlpha = DoonaTheme.colors.scrim.alpha)) {
         DoonaConfirmPanel(title, body, confirmLabel, dismissLabel, onConfirm, onDismiss, kind, modifier.leaveToUnderlay(DoonaTheme.spacing.gutter), rememberScrollState())
     }
 }

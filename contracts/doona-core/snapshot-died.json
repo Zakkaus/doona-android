@@ -4,6 +4,7 @@
   "generation": 3,
   "sinceEpochMs": 1795300000000,
   "error": "internal",
+  "warning": null,
   "traffic": {
     "upTotal": 1048576,
     "downTotal": 52428800,

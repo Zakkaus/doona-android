@@ -26,6 +26,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -77,6 +79,16 @@ class ServiceEngine internal constructor(
     override val settings: StateFlow<Settings> = _settings.asStateFlow()
     private val _perAppLoaded = MutableStateFlow(false)
     override val perAppLoaded: StateFlow<Boolean> = _perAppLoaded.asStateFlow()
+
+    /**
+     * The last snapshot's warning and the session that ran as it was taken. [warning] shows it only while that session
+     * runs, so a run shows nothing an earlier run reported before its own first snapshot.
+     */
+    private val lastWarning = MutableStateFlow<Pair<Session, ErrorCode?>?>(null)
+    override val warning: StateFlow<ErrorCode?> =
+        combine(controller.session, lastWarning) { session, last ->
+            last?.second.takeIf { session.status is Status.Running && last?.first == session }
+        }.stateIn(scope, SharingStarted.Eagerly, null)
 
     private val publishing = Any()
 
@@ -255,10 +267,12 @@ class ServiceEngine internal constructor(
     private suspend fun poll(): SnapshotDto? {
         // A core that lost a native function takes no further snapshot.
         if (opener.schema() != CORE_SCHEMA) return null
+        val during = controller.session.value
         return try {
             withContext(io) {
                 CoreJson.snapshot(core.snapshot(revision)).also { snapshot ->
                     snapshot.catalog?.let { publish(Catalog.of(snapshot.revision, it)) }
+                    lastWarning.value = during to snapshot.warning?.let(::errorCodeOf)
                 }
             }
         } catch (e: CancellationException) {

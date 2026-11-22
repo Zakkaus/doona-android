@@ -10,6 +10,7 @@ pub mod dto;
 mod groups;
 mod ids;
 mod jni;
+mod localnet;
 pub mod outbounds;
 mod panics;
 mod probe;

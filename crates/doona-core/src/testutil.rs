@@ -143,7 +143,24 @@ pub fn fixture(name: &str) -> Vec<u8> {
 /// A loopback SOCKS5 server without authentication that relays each CONNECT; counts the
 /// connections it accepted.
 pub fn socks5() -> (std::net::SocketAddr, std::sync::Arc<AtomicU32>) {
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    socks5_on([127, 0, 0, 1])
+}
+
+/// [`socks5`] on `ip`; one on `127.77.0.0/16` is a node on the local network (see `localnet.rs`).
+/// A CONNECT whose destination refuses closes the client's connection without a reply.
+pub fn socks5_on(ip: [u8; 4]) -> (std::net::SocketAddr, std::sync::Arc<AtomicU32>) {
+    socks5_with(ip, |target| std::net::TcpStream::connect(target))
+}
+
+/// How a SOCKS5 stand-in reaches a CONNECT's `host:port`.
+pub type Connect = fn(&str) -> std::io::Result<std::net::TcpStream>;
+
+/// [`socks5_on`] reaching each destination through `connect`, so a test decides how one answers.
+pub fn socks5_with(
+    ip: [u8; 4],
+    connect: Connect,
+) -> (std::net::SocketAddr, std::sync::Arc<AtomicU32>) {
+    let listener = std::net::TcpListener::bind(std::net::SocketAddr::from((ip, 0))).unwrap();
     let addr = listener.local_addr().unwrap();
     let count = std::sync::Arc::new(AtomicU32::new(0));
     let c = std::sync::Arc::clone(&count);
@@ -152,21 +169,21 @@ pub fn socks5() -> (std::net::SocketAddr, std::sync::Arc<AtomicU32>) {
             let Ok(conn) = conn else { return };
             c.fetch_add(1, Relaxed);
             std::thread::spawn(move || {
-                let _ = relay_socks(conn);
+                let _ = relay_socks(conn, connect);
             });
         }
     });
     (addr, count)
 }
 
-fn relay_socks(mut client: std::net::TcpStream) -> std::io::Result<()> {
+fn relay_socks(mut client: std::net::TcpStream, connect: Connect) -> std::io::Result<()> {
     use std::io::{Read, Write};
     let mut greeting = [0u8; 2];
     client.read_exact(&mut greeting)?;
     let mut methods = vec![0u8; usize::from(greeting[1])];
     client.read_exact(&mut methods)?;
     client.write_all(&[5, 0])?;
-    let upstream = std::net::TcpStream::connect(socks_target(&mut client)?)?;
+    let upstream = connect(&socks_target(&mut client)?)?;
     client.write_all(&[5, 0, 0, 1, 0, 0, 0, 0, 0, 0])?;
     let (mut from_client, mut to_upstream) = (client.try_clone()?, upstream.try_clone()?);
     let up = std::thread::spawn(move || {

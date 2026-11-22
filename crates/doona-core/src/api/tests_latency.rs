@@ -172,6 +172,41 @@ fn stop_drops_the_probes_under_way() {
     );
 }
 
+/// A probe that failed after it went on to dial its node at an address on the local network
+/// carries `local_network`: Linux refuses TCP to a multicast address, which Android counts as
+/// local, at once. One whose node is on loopback carries no code.
+#[test]
+fn a_probe_refused_on_its_way_to_a_local_node_says_so() {
+    let dir = TempDir::new("api-latency-local");
+    let closed = {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.local_addr().unwrap()
+    };
+    let feeds = Feeds::new();
+    let feed = format!("socks5://224.0.0.1:1080#LAN\nsocks5://{closed}#LO\n");
+    feeds.set("/lan", feed.as_bytes());
+    let options = Options {
+        probe_url: format!("http://{closed}/generate_204"),
+        ..Options::default()
+    };
+    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    add(&core, &feeds, "/lan").unwrap();
+    call(&core, "testLatency", json!({"group": null})).unwrap();
+    let after = wait_for(&core, |c| {
+        !testing(c) && c.groups[1].members.iter().all(|m| m.failed)
+    });
+    let code = |name: &str| {
+        let m = after.groups[1]
+            .members
+            .iter()
+            .find(|m| m.name == name)
+            .unwrap();
+        m.error
+    };
+    assert_eq!(code("LAN"), Some(ErrorCode::LocalNetwork));
+    assert_eq!(code("LO"), None);
+}
+
 #[test]
 fn at_most_32_probes_run_at_once() {
     let stand = Stand::new(false);

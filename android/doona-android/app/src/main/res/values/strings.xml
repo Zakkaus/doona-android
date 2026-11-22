@@ -114,4 +114,12 @@
     <string name="error_no_nodes">The subscription has no nodes</string>
     <string name="error_busy">Another change is in progress. Try again.</string>
     <string name="error_internal">Something went wrong</string>
+    <string name="error_local_network">Could not reach an address on the local network</string>
+    <string name="local_network_ask_title">Allow local network access</string>
+    <string name="local_network_ask_body">doona needs this permission to reach subscriptions and nodes on your local network.</string>
+    <string name="local_network_ask_continue">Continue</string>
+    <string name="local_network_ask_not_now">Not now</string>
+    <string name="local_network_denied_title">Local network access is off</string>
+    <string name="local_network_denied_body">doona cannot reach subscriptions or nodes on your local network. Allow local network access for doona in the app settings.</string>
+    <string name="local_network_open_settings">Open settings</string>
 </resources>

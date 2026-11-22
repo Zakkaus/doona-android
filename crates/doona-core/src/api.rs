@@ -92,6 +92,12 @@ pub struct Core {
     hooks: hooks::Hooks,
 }
 
+/// Whether `life` runs a generation whose snapshot carries a warning; leaving it clears the
+/// warning, which raises the revision like any other change of it.
+fn warned(life: &Life) -> bool {
+    matches!(life, Life::Running(tunnel) if tunnel.session().warning().is_some())
+}
+
 enum Life {
     Stopped,
     /// A `start` is under way; a `stop` cancels it and closes its tun.
@@ -242,6 +248,9 @@ impl Core {
         let old = std::mem::replace(&mut *life, starting);
         if let Some(mut c) = catalog {
             c.end_probes();
+            if warned(&old) {
+                c.revision += 1;
+            }
         }
         let generation = self.generation.fetch_add(1, Relaxed) + 1;
         let old = match old {
@@ -318,6 +327,7 @@ impl Core {
             mode: Arc::clone(&self.mode),
             outbounds: Arc::clone(&self.shared.outbounds),
             panics: Arc::clone(&self.panics),
+            catalog: Arc::downgrade(&self.shared),
         };
         Ok((settings, resolvers))
     }
@@ -337,6 +347,9 @@ impl Core {
             #[cfg(test)]
             self.hooks.teardown(self);
             let old = std::mem::replace(&mut *life, Life::Stopped);
+            if warned(&old) {
+                catalog.revision += 1;
+            }
             drop(catalog);
             match old {
                 Life::Running(tunnel) => {
@@ -357,14 +370,18 @@ impl Core {
     }
 
     pub fn snapshot(&self, since_revision: i64) -> String {
-        let (revision, catalog) = {
+        // One moment of the lifecycle, the catalog and the warning: the locks in the order `stop`
+        // takes them, and the warning read under the catalog lock its changes take.
+        let (revision, catalog, session, warning) = {
+            let life = lock(&self.life);
             let c = lock(&self.shared.catalog);
             let catalog = (c.revision > since_revision).then(|| c.model.catalog(&c.state));
-            (c.revision, catalog)
-        };
-        let session = match &*lock(&self.life) {
-            Life::Running(tunnel) => Some(Arc::clone(tunnel.session())),
-            _ => None,
+            let session = match &*life {
+                Life::Running(tunnel) => Some(Arc::clone(tunnel.session())),
+                _ => None,
+            };
+            let warning = session.as_ref().and_then(|s| s.warning());
+            (c.revision, catalog, session, warning)
         };
         let snapshot = match session {
             Some(s) => Snapshot {
@@ -373,6 +390,7 @@ impl Core {
                 generation: s.generation,
                 since_epoch_ms: Some(s.since_epoch_ms),
                 error: s.failed().then_some(ErrorCode::Internal),
+                warning,
                 traffic: s.traffic(),
                 catalog,
             },
@@ -382,6 +400,7 @@ impl Core {
                 generation: self.generation.load(Relaxed),
                 since_epoch_ms: None,
                 error: None,
+                warning: None,
                 traffic: Traffic::default(),
                 catalog,
             },
@@ -522,6 +541,7 @@ pub fn snapshot_before_init() -> String {
         generation: 0,
         since_epoch_ms: None,
         error: None,
+        warning: None,
         traffic: Traffic::default(),
         catalog: None,
     })
@@ -567,3 +587,5 @@ mod tests_carriers;
 mod tests_catalog;
 #[cfg(test)]
 mod tests_latency;
+#[cfg(test)]
+mod tests_localnet;

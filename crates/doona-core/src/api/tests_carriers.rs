@@ -8,7 +8,7 @@ use super::tests_catalog::{Feeds, add, call, path};
 use crate::dto::Mode;
 use crate::testutil::{TempDir, closed, tuic, tun};
 use crate::tunnel::route::{Inbound, Route};
-use crate::tunnel::{Gen, Settings, StartSignal, TunHandle};
+use crate::tunnel::{Gen, Session, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
 use serde_json::json;
 use std::net::SocketAddr;
@@ -22,7 +22,12 @@ const CONFIG: &str =
 const HELD: Duration = Duration::from_millis(2500);
 
 /// Ready at once, then idle.
-fn idle(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'static, ()> {
+pub(super) fn idle(
+    tun: TunHandle,
+    _: Settings,
+    _: Gen,
+    ready: StartSignal,
+) -> BoxFuture<'static, ()> {
     Box::pin(async move {
         let _held = tun;
         ready.send();
@@ -84,7 +89,12 @@ fn stop_closes_an_established_quic_connection_while_the_workers_are_held() {
     core.start(dup, CONFIG).unwrap();
     // The server echoes; the destination is never dialed.
     let destination: SocketAddr = ([127, 0, 0, 1], 9).into();
-    let route = Route::of(Inbound::Tun, Mode::Global, &core.shared.outbounds);
+    let route = Route::of(
+        Inbound::Tun,
+        Mode::Global,
+        &core.shared.outbounds,
+        &Arc::new(Session::new(0, std::sync::Weak::new())),
+    );
     let mut stream = core.runtime.block_on(route.connect(destination)).unwrap();
     assert_eq!(ping(&core, &mut stream, b"kept").unwrap(), b"kept");
     {

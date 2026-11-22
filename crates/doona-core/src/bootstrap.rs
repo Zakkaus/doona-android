@@ -63,6 +63,8 @@ fn server(text: &str, port: u16) -> Option<SocketAddr> {
 }
 
 /// The addresses of `host`, from the first resolver that has any; an address literal is its own.
+/// Inside a traced dial honk reports each query, so the dial can name the address it took
+/// (`localnet::Trace`).
 pub(crate) async fn lookup(host: &str) -> io::Result<Vec<IpAddr>> {
     let bare = host.trim_start_matches('[').trim_end_matches(']');
     if let Ok(ip) = bare.parse::<IpAddr>() {
@@ -100,7 +102,11 @@ struct NodeHosts;
 impl NodeHostResolver for NodeHosts {
     fn lookup(&self, host: &str) -> Option<NodeHostLookup> {
         let host = host.to_owned();
-        Some(Box::pin(async move { lookup(&host).await }))
+        Some(Box::pin(async move {
+            let ips = lookup(&host).await?;
+            crate::localnet::looked_up(false, &ips);
+            Ok(ips)
+        }))
     }
 }
 
@@ -109,6 +115,7 @@ type Resolved = Pin<Box<dyn Future<Output = anyhow::Result<Vec<SocketAddr>>> + S
 fn probe_host(host: String, port: u16) -> Resolved {
     Box::pin(async move {
         let ips = lookup(&host).await?;
+        crate::localnet::looked_up(true, &ips);
         Ok(ips
             .into_iter()
             .map(|ip| SocketAddr::new(ip, port))

@@ -16,6 +16,7 @@ fun ErrorCode.messageRes(): Int = when (this) {
     ErrorCode.NoNodes -> R.string.error_no_nodes
     ErrorCode.Busy -> R.string.error_busy
     ErrorCode.Internal -> R.string.error_internal
+    ErrorCode.LocalNetwork -> R.string.error_local_network
 }
 
 /** The code of a failed engine action; anything that is not an [EngineException] is a bug, shown as internal. */

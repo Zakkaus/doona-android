@@ -10,6 +10,7 @@ use common::global::{Global, WAIT, pattern, ping, socks_link, vmess_link};
 use common::servers::{self, Seen};
 use common::{socks, ss};
 use doonacore::api::Options;
+use doonacore::dto::ErrorCode;
 use honk_netstack::StreamError;
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::sync::atomic::Ordering::Relaxed;
@@ -131,6 +132,31 @@ fn a_failed_dial_resets_the_flow_at_once() {
         "{:?}",
         begun.elapsed()
     );
+    assert_eq!(connections(&echo_seen), 0, "never sent direct");
+}
+
+/// A failed dial through a node on the local network leaves the data path up and says so in the
+/// snapshot (ARCH D26); one through any other node says nothing. Linux refuses TCP to a multicast
+/// address, which Android counts as local, at once.
+#[test]
+fn a_failed_dial_through_a_node_on_the_local_network_is_a_warning() {
+    let (echo, echo_seen) = servers::tcp_echo();
+    let mut s = setup(&[socks_link(servers::closed_port(), "gone")], vec![]);
+    let id = s.client.connect(echo);
+    assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
+    assert_eq!(s.g.snapshot().warning, None);
+
+    let local = SocketAddr::from((Ipv4Addr::new(224, 0, 0, 1), 1080));
+    let mut s = setup(&[socks_link(local, "lan")], vec![]);
+    assert_eq!(s.g.snapshot().warning, None);
+    let id = s.client.connect(echo);
+    assert!(
+        s.client
+            .until(Duration::from_secs(15), |c| c.read_now(id).is_err())
+    );
+    let snapshot = s.g.snapshot();
+    assert!(snapshot.running && snapshot.error.is_none());
+    assert_eq!(snapshot.warning, Some(ErrorCode::LocalNetwork));
     assert_eq!(connections(&echo_seen), 0, "never sent direct");
 }
 

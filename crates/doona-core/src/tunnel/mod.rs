@@ -14,16 +14,19 @@ mod tun;
 mod udp;
 
 use crate::api::lock;
+use crate::catalog::Shared;
 use crate::dto::{ErrorCode, Traffic};
+use crate::localnet::Trace;
 use crate::outbounds::{Ended, Outbounds};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use route::ModeCell;
 use std::future::Future;
+use std::io::{self, ErrorKind};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering::Relaxed};
-use std::sync::{Arc, Condvar, Mutex, MutexGuard};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Handle;
 use tokio::sync::oneshot;
@@ -53,6 +56,8 @@ pub struct Settings {
     pub outbounds: Arc<Outbounds>,
     /// The panics on the core's runtime threads so far (see `panics.rs`).
     pub panics: Arc<AtomicU64>,
+    /// The catalog whose revision announces a change of the session's warning.
+    pub(crate) catalog: Weak<Shared>,
 }
 
 /// The tun as the driver holds it.
@@ -189,10 +194,24 @@ pub struct Session {
     down: AtomicU64,
     active: AtomicU32,
     failed: AtomicBool,
+    /// Dials through a node begun so far, which numbers each in the order it began.
+    dials: AtomicU64,
+    /// The warning, and the dial that last showed it (ARCH D26).
+    local_network: Mutex<Warned>,
+    /// Whose revision rises when the warning changes; none in tests that do not read it.
+    catalog: Weak<Shared>,
+}
+
+/// Whether a dial through a node was refused at an address on the local network, with none that
+/// began later reaching a node there; `began` numbers the dial that showed it.
+#[derive(Default)]
+struct Warned {
+    on: bool,
+    began: u64,
 }
 
 impl Session {
-    fn new(generation: i64) -> Session {
+    pub(crate) fn new(generation: i64, catalog: Weak<Shared>) -> Session {
         let since = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX));
@@ -203,6 +222,9 @@ impl Session {
             down: AtomicU64::new(0),
             active: AtomicU32::new(0),
             failed: AtomicBool::new(false),
+            dials: AtomicU64::new(0),
+            local_network: Mutex::default(),
+            catalog,
         }
     }
 
@@ -221,6 +243,71 @@ impl Session {
 
     fn fail(&self) {
         self.failed.store(true, Relaxed);
+    }
+
+    /// What `snapshot` reports besides a dead data path: `local_network` while the latest dial
+    /// through a node on the local network that showed anything was refused there.
+    pub fn warning(&self) -> Option<ErrorCode> {
+        lock(&self.local_network)
+            .on
+            .then_some(ErrorCode::LocalNetwork)
+    }
+
+    /// Numbers a dial through a node, or a first datagram through one, as it begins.
+    pub(crate) fn begin_dial(&self) -> u64 {
+        self.dials.fetch_add(1, Relaxed) + 1
+    }
+
+    /// What the dial numbered `began` showed on its way to its node (`ok` when it succeeded):
+    /// refused at an address on the local network, as Android 17 refuses one without the
+    /// permission, it warns; a transport that came up on one, as once the permission is granted,
+    /// clears the warning.
+    pub(crate) fn dialed(&self, began: u64, trace: &Trace, ok: bool) {
+        if !ok && trace.refused_locally() {
+            self.warn(began, true);
+        } else if trace.reached_locally() {
+            self.warn(began, false);
+        }
+    }
+
+    /// How the first datagram through a node on the local network, numbered `began`, went:
+    /// refused (`EPERM`) warns, sent clears; any other failure says nothing about the permission.
+    pub(crate) fn first_sent(&self, began: u64, sent: &io::Result<()>) {
+        match sent {
+            Ok(()) => self.warn(began, false),
+            Err(e) if e.kind() == ErrorKind::PermissionDenied => self.warn(began, true),
+            Err(_) => {}
+        }
+    }
+
+    /// Sets the warning as the dial numbered `began` showed it, unless a dial that began later
+    /// already showed it: a dial that waited out its timeout from before a grant does not undo
+    /// what one after the grant showed. A change raises the catalog's revision, under the catalog
+    /// lock, so a snapshot of the new revision shows it.
+    fn warn(&self, began: u64, on: bool) {
+        {
+            let mut warned = lock(&self.local_network);
+            if began < warned.began {
+                return;
+            }
+            if warned.on == on {
+                warned.began = began;
+                return;
+            }
+        }
+        let shared = self.catalog.upgrade();
+        let mut catalog = shared.as_ref().map(|s| lock(&s.catalog));
+        let mut warned = lock(&self.local_network);
+        if began < warned.began {
+            return;
+        }
+        warned.began = began;
+        if warned.on != on {
+            warned.on = on;
+            if let Some(c) = &mut catalog {
+                c.revision += 1;
+            }
+        }
     }
 
     /// Bytes read from and written to the tun since `start`, and the flows open now.
@@ -293,7 +380,7 @@ impl Tunnel {
         let (release, commit) = oneshot::channel();
         let tunnel = Tunnel {
             gen_: Gen {
-                session: Arc::new(Session::new(generation)),
+                session: Arc::new(Session::new(generation, settings.catalog.clone())),
                 cancel: CancellationToken::new(),
                 tracker: TaskTracker::new(),
                 runtime: rt.clone(),

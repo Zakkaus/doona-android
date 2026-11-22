@@ -41,13 +41,16 @@ class CoreDtoTest {
     @Test
     fun snapshots() {
         val running = CoreJson.snapshot(fixture("snapshot-running.json"))
+        // A warning leaves the data path up.
         assertTrue(running.alive)
+        assertEquals("local_network", running.warning)
         assertEquals(52428800L, running.traffic.downTotal)
         assertNull(running.catalog)
 
         val died = CoreJson.snapshot(fixture("snapshot-died.json"))
         assertFalse(died.alive)
         assertEquals("internal", died.error)
+        assertNull(died.warning)
     }
 
     @Test
@@ -63,6 +66,11 @@ class CoreDtoTest {
         assertEquals(listOf("hk-01", "hk-01"), auto.members.map { it.name })
         assertEquals(2, auto.members.map { it.id }.toSet().size)
         assertTrue(groups[0].members.first().isGroup)
+        // A node on the local network whose probe failed says why; the others carry no code.
+        val lan = auto.members[1]
+        assertTrue(lan.failed)
+        assertEquals(ErrorCode.LocalNetwork, lan.error)
+        assertNull(auto.members[0].error)
 
         val subscription = catalog.subscriptions.single().toSubscription()
         assertEquals("s1", subscription.id)
@@ -94,6 +102,7 @@ class CoreDtoTest {
     @Test
     fun unknownErrorCodeIsInternal() {
         assertEquals(ErrorCode.NoNodes, errorCodeOf("no_nodes"))
+        assertEquals(ErrorCode.LocalNetwork, errorCodeOf("local_network"))
         assertEquals(ErrorCode.Internal, errorCodeOf("from_a_newer_core"))
     }
 }
