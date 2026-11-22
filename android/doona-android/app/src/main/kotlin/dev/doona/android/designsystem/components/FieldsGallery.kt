@@ -35,7 +35,7 @@ internal fun FieldsGallery() = GalleryPage("Fields") {
             DoonaTextField(
                 rememberTextFieldState("https://example.com/api/v1/client/subscribe?token=0123456789abcdef0123456789abcdef"),
                 label = "訂閱網址",
-                supportingText = "訂閱網址與用來辨識這份訂閱的名稱，過長時在這裡換行，不在欄位裡截斷",
+                supportingText = "訂閱網址與用來辨識這份訂閱的名稱，過長時會換行顯示，不截斷",
             )
             DoonaTextField(
                 rememberTextFieldState("https://example.com/api/v1/client/subscribe?token=0123456789abcdef0123456789abcdef"),
