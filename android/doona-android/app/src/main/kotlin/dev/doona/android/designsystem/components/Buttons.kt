@@ -39,7 +39,7 @@ enum class DoonaButtonStyle { Primary, Secondary, Text, Destructive }
  * leading [icon] of 16 if given, which grows with the label's font. Hit over 48 dp like every control, so stacked
  * buttons are a `block` apart. [enabled] false mutes it and ignores taps; [busy] swaps the icon for a spinner, ignores
  * taps and tells a screen reader it is in progress, for the time between the tap and the result. A label too long for
- * the room wraps onto a second line, then ends in an ellipsis; the button grows to hold both lines.
+ * the room wraps onto a second line, then ends in an ellipsis; the button grows to hold both lines, a `tight` gap above and below them.
  */
 @Composable
 fun DoonaButton(
@@ -65,7 +65,7 @@ fun DoonaButton(
             .then(if (skin.outline != null) Modifier.border(DoonaTheme.size.borderStrong, skin.outline, skin.shape) else Modifier)
             .clickable(enabled = enabled && !busy, role = Role.Button, onClick = onClick)
             .semantics { if (busy) stateDescription = state }
-            .padding(horizontal = DoonaTheme.spacing.fillInset),
+            .padding(horizontal = DoonaTheme.spacing.fillInset, vertical = DoonaTheme.spacing.tight),
         horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -89,7 +89,7 @@ fun DoonaButton(
 /** What a button draws for its look and state: the fill, the outline, the label's colour, shape and type. */
 private class ButtonSkin(val fill: Color?, val outline: Color?, val label: Color, val shape: Shape, val type: TextStyle)
 
-/** A disabled button's label and outline are one muted ink, so the outline is dimmed with the label. */
+/** A disabled button's label is muted and its outline dimmed with it. */
 @Composable
 private fun skinOf(style: DoonaButtonStyle, enabled: Boolean): ButtonSkin {
     val c = DoonaTheme.colors
@@ -97,7 +97,7 @@ private fun skinOf(style: DoonaButtonStyle, enabled: Boolean): ButtonSkin {
     return when (style) {
         DoonaButtonStyle.Primary -> ButtonSkin(if (enabled) c.accent else c.control, null, ink ?: c.onAccent, DoonaTheme.shape.pill, DoonaTheme.type.bodyStrong)
         DoonaButtonStyle.Destructive -> ButtonSkin(if (enabled) c.destructive else c.control, null, ink ?: c.onAccent, DoonaTheme.shape.pill, DoonaTheme.type.bodyStrong)
-        DoonaButtonStyle.Secondary -> ButtonSkin(null, ink ?: c.strongLine, ink ?: c.text.primary, DoonaTheme.shape.control, DoonaTheme.type.label)
+        DoonaButtonStyle.Secondary -> ButtonSkin(null, if (enabled) c.strongLine else c.disabledLine, ink ?: c.text.primary, DoonaTheme.shape.control, DoonaTheme.type.label)
         DoonaButtonStyle.Text -> ButtonSkin(null, null, ink ?: c.text.accent, DoonaTheme.shape.control, DoonaTheme.type.label)
     }
 }

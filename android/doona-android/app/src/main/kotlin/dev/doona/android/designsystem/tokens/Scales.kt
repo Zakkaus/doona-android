@@ -130,6 +130,9 @@ object AlphaScale {
     /** The modal underlay: black at 32 % in light, 55 % in dark (`--rp-underlay`, `foundations.css:6`, `:185`). */
     const val SCRIM_LIGHT = 0.32f
     const val SCRIM_DARK = 0.55f
+
+    /** The outline of a disabled outlined control, at half the strength of an enabled one, as its label is muted. */
+    const val DISABLED_LINE = 0.5f
 }
 
 /** Chart style (§7, Charts). */

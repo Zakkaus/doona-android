@@ -37,6 +37,7 @@ import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.tokens.Dawn
 import dev.doona.android.testing.SpacingRules
+import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.layoutTree
 import dev.doona.android.testing.setDoonaContent
 import org.junit.Assert.assertEquals
@@ -46,6 +47,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.math.abs
 
 /** What a button does and shows: its taps, its disabled and busy states, its size and the fill of each look. */
 @RunWith(AndroidJUnit4::class)
@@ -120,6 +122,7 @@ class ButtonTest {
     }
 
     private fun fillAt(label: String, inset: Float): Color {
+        compose.drawFully()
         val node = compose.onNodeWithText(label).fetchSemanticsNode().boundsInRoot
         val density = compose.density.density
         return compose.onRoot().captureToImage().toPixelMap()[(node.left + inset * density).toInt(), node.center.y.toInt()]
@@ -146,7 +149,7 @@ class ButtonTest {
         assertEquals(hex(c.destructive), hex(fills.getValue("Destructive")))
     }
 
-    /** A disabled secondary button draws its outline in the muted label colour, not at the strength of an enabled one. */
+    /** A disabled secondary button draws its outline fainter than an enabled one's, not at the same strength beside a muted label. */
     @Test
     fun aDisabledSecondaryButtonHasADimmedOutline() {
         val c = DoonaColors(Dawn)
@@ -156,9 +159,14 @@ class ButtonTest {
                 DoonaButton("Disabled", onClick = {}, style = DoonaButtonStyle.Secondary, enabled = false)
             }
         }
-        assertEquals(hex(c.strongLine), hex(fillAt("Enabled", OUTLINE_INSET)))
-        assertEquals(hex(c.text.disabled), hex(fillAt("Disabled", OUTLINE_INSET)))
+        val enabled = fillAt("Enabled", OUTLINE_INSET)
+        val disabled = fillAt("Disabled", OUTLINE_INSET)
+        assertEquals(hex(c.strongLine), hex(enabled))
+        assertTrue("the dimmed outline still shows against the sheet", hex(disabled) != hex(c.surface))
+        assertTrue("and is fainter than the enabled one", disabled.apart(c.surface) < enabled.apart(c.surface))
     }
+
+    private fun Color.apart(o: Color) = maxOf(abs(red - o.red), abs(green - o.green), abs(blue - o.blue))
 
     private fun lines(label: String): TextLayoutResult {
         val results = mutableListOf<TextLayoutResult>()

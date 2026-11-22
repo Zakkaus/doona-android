@@ -34,6 +34,7 @@ import dev.doona.android.designsystem.components.DoonaTextField
 import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.tokens.Dawn
+import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.setDoonaContent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -172,6 +173,7 @@ class TextFieldTest {
     fun aLongValueFadesAtTheEdgeInsteadOfBeingCut() {
         val c = DoonaColors(Dawn)
         compose.setDoonaContent { Column(Modifier.background(c.surface)) { DoonaTextField(TextFieldState("W".repeat(LONG)), label = "URL") } }
+        compose.drawFully()
         val page = compose.onRoot().fetchSemanticsNode().boundsInRoot
         val density = compose.density.density
         val image = compose.onRoot().captureToImage().toPixelMap()

@@ -31,6 +31,9 @@ class DoonaColors(p: DoonaPalette) {
     val control = p.overlay
     val line = if (p.dark) p.hlMed else p.hlLow
     val strongLine = p.hlMed
+
+    /** The outline of a disabled secondary button: [strongLine] at half strength, dimmed with its label. */
+    val disabledLine = p.hlMed.copy(alpha = AlphaScale.DISABLED_LINE)
     val text = DoonaTextColors(p)
     val accent = p.pine
 
