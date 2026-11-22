@@ -130,6 +130,7 @@ impl Core {
             catalog: Mutex::new(catalog),
             outbounds,
         });
+        shared.publish(&lock(&shared.catalog));
         let probes = Probes::new(prober, &options.probe_url);
         Ok(Core {
             runtime,
@@ -268,6 +269,7 @@ impl Core {
             dns: config.dns,
             dns_upstreams: self.options.dns_upstreams.clone(),
             mode: Arc::clone(&self.mode),
+            outbounds: Arc::clone(&self.shared.outbounds),
         })
     }
 
@@ -367,7 +369,7 @@ impl Core {
         self.commit_state(State { mode, ..current }, "setMode")
     }
 
-    /// Writes `next`, then makes it what `snapshot` and new flows see.
+    /// Writes `next`, then makes it what `snapshot`, new flows and the data path's groups see.
     /// The caller holds the writer lock and read the current state under it, so nothing else
     /// changed the file meanwhile.
     fn commit_state(&self, next: State, command: &str) -> Result<(), ErrorCode> {
@@ -377,6 +379,7 @@ impl Core {
             c.state = next;
             c.revision += 1;
             self.mode.set(c.state.mode);
+            self.shared.publish(&c);
         }
         // A restart reads the new file already, so new flows and `snapshot` must too; the
         // directory sync that follows holds only the writer lock.

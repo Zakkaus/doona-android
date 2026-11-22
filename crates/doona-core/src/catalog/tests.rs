@@ -208,3 +208,16 @@ fn a_test_needs_a_group_that_exists_and_some_node() {
     let mut model = load(&state(&[("s1", "links.txt")]));
     assert_eq!(model.plan(Some("g-DE")).err(), Some(ErrorCode::NotFound));
 }
+
+#[test]
+fn leaves_follow_pins_and_nested_groups() {
+    let s = state(&[("s1", "links.txt")]);
+    let model = load(&s);
+    let first = &model.nodes[0];
+    let leaves = model.leaves(&s.selections);
+    assert_eq!(leaves["g-Proxy"].id, first.node.id);
+    let last = &model.nodes[8];
+    let pinned = BTreeMap::from([("g-Proxy".to_owned(), last.id.clone())]);
+    assert_eq!(model.leaves(&pinned)["g-Proxy"].id, last.node.id);
+    assert!(load(&State::default()).leaves(&s.selections).is_empty());
+}

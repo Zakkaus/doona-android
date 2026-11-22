@@ -143,6 +143,7 @@ impl Core {
             c.state = next;
             c.revision += 1;
             self.shared.outbounds.replace(built);
+            self.shared.publish(&c);
             let s = c.state.subscriptions.iter().find(|s| s.id == changed);
             s.map(|s| c.model.subscription(s))
         };

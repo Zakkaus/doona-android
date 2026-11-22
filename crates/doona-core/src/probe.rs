@@ -113,6 +113,7 @@ impl Probes {
             // `cancel` is cancelled under the catalog lock, so a stop that returned is never undone.
             if !cancel.is_cancelled() && c.model.record(&target, ms) {
                 c.revision += 1;
+                shared.publish(&c);
             }
         }
     }

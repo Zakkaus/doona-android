@@ -81,6 +81,13 @@ pub(crate) struct Shared {
     pub outbounds: Arc<Outbounds>,
 }
 
+impl Shared {
+    /// Publishes each group's current node to the data path; called with `c` locked.
+    pub fn publish(&self, c: &CatalogState) {
+        self.outbounds.select(c.model.leaves(&c.state.selections));
+    }
+}
+
 pub(crate) struct CatalogState {
     /// What `state.json` holds; changed only after the file is written.
     pub state: State,
@@ -358,6 +365,31 @@ impl Model {
                 }
             }
         }
+    }
+
+    /// The node each group sends traffic to now, following nested groups.
+    pub fn leaves(&self, selections: &BTreeMap<String, String>) -> HashMap<String, Arc<Node>> {
+        self.groups
+            .iter()
+            .filter_map(|g| Some((g.id.clone(), self.leaf(g, selections, 0)?)))
+            .collect()
+    }
+
+    fn leaf(
+        &self,
+        g: &GroupDef,
+        selections: &BTreeMap<String, String>,
+        depth: u8,
+    ) -> Option<Arc<Node>> {
+        let member = groups::selected(g, selections.get(&g.id), self.auto.get(&g.id)).0?;
+        if is_group(member) {
+            if depth >= MAX_DEPTH {
+                return None;
+            }
+            return self.leaf(self.group(member)?, selections, depth + 1);
+        }
+        let &i = self.index.get(member)?;
+        Some(Arc::clone(&self.nodes[i].node))
     }
 }
 

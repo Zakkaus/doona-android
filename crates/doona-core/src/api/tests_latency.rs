@@ -215,4 +215,7 @@ fn honk_probes_a_node_through_its_outbound() {
     let after = wait_for(&core, |c| !testing(c));
     let node = &after.groups[1].members[0];
     assert!(node.latency_ms.is_some() && !node.failed, "{node:?}");
+    // The data path's view of the groups names the node.
+    let dialer = core.shared.outbounds.dialer("g-Proxy").unwrap();
+    assert_eq!(dialer.node.name, "local");
 }

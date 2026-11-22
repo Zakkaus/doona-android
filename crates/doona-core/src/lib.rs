@@ -9,7 +9,7 @@ pub mod dto;
 mod groups;
 mod ids;
 mod jni;
-mod outbounds;
+pub mod outbounds;
 mod probe;
 pub mod state;
 mod subscription;

@@ -1,5 +1,8 @@
-//! honk's protocol handlers and its runtime registry for the nodes of every subscription, which
-//! latency probes dial through.
+//! The hand-off from the catalog to the data path: for each group, the node it sends traffic to
+//! now, with honk's runtime registry that dials it and the protocol handlers. The catalog
+//! publishes a new table whenever a selection, a latency or the node set changes; a flow reads
+//! one with [`Outbounds::dialer`]. The data path does not route through it yet, so Global still
+//! refuses every flow.
 //!
 //! The registry is rebuilt when the node set changes, reusing the runtimes of the nodes that
 //! stay; the previous one then retires the rest without cutting streams that use them.
@@ -10,7 +13,7 @@ use honk_config::node::Node;
 use honk_outbound::bootstrap::{NodeHostLookup, NodeHostResolver};
 use honk_outbound::proxy::ProxyRegistry;
 use honk_outbound::runtime::OutboundRuntimeRegistry;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -23,9 +26,25 @@ pub struct Outbounds {
     table: RwLock<Arc<Table>>,
 }
 
+impl std::fmt::Debug for Outbounds {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Outbounds").finish_non_exhaustive()
+    }
+}
+
 #[derive(Default)]
 struct Table {
     registry: Option<Arc<OutboundRuntimeRegistry>>,
+    /// Group id to the node it sends traffic to, nested groups followed.
+    selected: HashMap<String, Arc<Node>>,
+}
+
+/// What a flow needs to go through one group: its current node, and the registry and handlers
+/// that dial it (`ProxyRegistry::dial_runtime` with `node.id`).
+pub struct Dialer {
+    pub node: Arc<Node>,
+    pub registry: Arc<OutboundRuntimeRegistry>,
+    pub proxies: Arc<ProxyRegistry>,
 }
 
 /// A registry built for a new node set, not yet published.
@@ -42,6 +61,17 @@ impl Outbounds {
             proxies: Arc::new(proxies),
             runtime,
             table: RwLock::new(Arc::default()),
+        })
+    }
+
+    /// The node `group` (an id such as `g-Proxy`) sends traffic to now, and what dials it;
+    /// `None` while the group does not exist or has no node.
+    pub fn dialer(&self, group: &str) -> Option<Dialer> {
+        let table = self.table();
+        Some(Dialer {
+            node: Arc::clone(table.selected.get(group)?),
+            registry: Arc::clone(table.registry.as_ref()?),
+            proxies: Arc::clone(&self.proxies),
         })
     }
 
@@ -91,6 +121,7 @@ impl Outbounds {
             let old = table.registry.clone();
             *table = Arc::new(Table {
                 registry: built.registry,
+                selected: table.selected.clone(),
             });
             old
         };
@@ -99,6 +130,15 @@ impl Outbounds {
             self.runtime
                 .spawn(async move { old.retire_reusable_state().await });
         }
+    }
+
+    /// Publishes each group's current node.
+    pub(crate) fn select(&self, selected: HashMap<String, Arc<Node>>) {
+        let mut table = self.table.write().unwrap_or_else(|e| e.into_inner());
+        *table = Arc::new(Table {
+            registry: table.registry.clone(),
+            selected,
+        });
     }
 
     fn table(&self) -> Arc<Table> {
