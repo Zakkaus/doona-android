@@ -76,7 +76,7 @@ fn a_fold_feeds_the_ring_the_day_and_the_peaks() {
         dto::Today {
             up_total: 300,
             down_total: 3000,
-            yesterday_by_now: 0
+            yesterday_by_now: None
         }
     );
     let usage = stats.usage(&at);

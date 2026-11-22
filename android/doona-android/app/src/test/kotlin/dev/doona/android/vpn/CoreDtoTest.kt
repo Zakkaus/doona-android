@@ -55,6 +55,10 @@ class CoreDtoTest {
         assertFalse(died.alive)
         assertEquals("internal", died.error)
         assertNull(died.warning)
+
+        // No yesterday was kept: the comparison has nothing to show.
+        val stopped = CoreJson.snapshot(fixture("snapshot-stopped-catalog.json"))
+        assertNull(stopped.today.yesterdayByNow)
     }
 
     @Test

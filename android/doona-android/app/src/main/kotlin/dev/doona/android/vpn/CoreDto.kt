@@ -60,9 +60,9 @@ internal data class TrafficDto(
     val downPeak: Long = 0,
 )
 
-/** Today's bytes each way in local time, and yesterday's both ways together by the same time (0: none kept). */
+/** Today's bytes each way in local time, and yesterday's both ways together by the same time (null: none kept). */
 @Serializable
-internal data class TodayDto(val upTotal: Long = 0, val downTotal: Long = 0, val yesterdayByNow: Long = 0)
+internal data class TodayDto(val upTotal: Long = 0, val downTotal: Long = 0, val yesterdayByNow: Long? = null)
 
 /**
  * `trafficSeries`' reply: average bytes a second per point of [stepSeconds], oldest first, the fastest second of the

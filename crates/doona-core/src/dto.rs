@@ -99,14 +99,14 @@ pub struct Traffic {
 }
 
 /// Today's bytes each way in the device's local time zone, and yesterday's both ways together by
-/// the same local time (exact to the quarter hour, the current quarter pro rata; 0 when the core
-/// kept no yesterday).
+/// the same local time (exact to the quarter hour, the current quarter pro rata; null when the
+/// core kept no yesterday, so a screen can leave the comparison out).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Today {
     pub up_total: u64,
     pub down_total: u64,
-    pub yesterday_by_now: u64,
+    pub yesterday_by_now: Option<u64>,
 }
 
 /// `usage`'s reply: today and yesterday by the hour of the local day, and the totals of the

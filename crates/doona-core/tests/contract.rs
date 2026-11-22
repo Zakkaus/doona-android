@@ -87,7 +87,10 @@ fn snapshots() {
     assert_eq!(running.warning, Some(ErrorCode::LocalNetwork));
     let died = round_trip::<Snapshot>("snapshot-died.json");
     assert!(!died.running && died.error.is_some() && died.warning.is_none());
+    assert_eq!(running.today.yesterday_by_now, Some(1_610_612_736));
     let stopped = round_trip::<Snapshot>("snapshot-stopped-catalog.json");
+    // No yesterday was kept.
+    assert_eq!(stopped.today.yesterday_by_now, None);
     let catalog = stopped.catalog.unwrap();
     assert_eq!(catalog.mode, Mode::Global);
     assert_eq!(catalog.groups.len(), 3);

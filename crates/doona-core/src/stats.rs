@@ -291,11 +291,11 @@ impl Stats {
 
     /// Today's bytes each way and yesterday's by the same local time, for `snapshot`.
     pub fn today(&self, clock: &Clock) -> dto::Today {
-        let (up_total, down_total, yesterday) = lock(&self.inner).usage.today(clock);
+        let (up_total, down_total, yesterday_by_now) = lock(&self.inner).usage.today(clock);
         dto::Today {
             up_total,
             down_total,
-            yesterday_by_now: yesterday.unwrap_or(0),
+            yesterday_by_now,
         }
     }
 
