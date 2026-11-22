@@ -336,16 +336,16 @@ impl Tunnel {
         &self.tun
     }
 
-    /// Cancels every task, takes the carriers the generation claimed out of use, which
-    /// [`Tunnel::wait`] shuts down, unless a later generation claimed them since, and closes the
-    /// tun. Quick: it waits for at most one tun syscall, and builds nothing.
+    /// Cancels every task, closes the tun, and takes the carriers the generation claimed out of
+    /// use, which [`Tunnel::wait`] shuts down, unless a later generation claimed them since.
+    /// Quick: it waits for at most one tun syscall, and builds nothing.
     pub fn halt(&self) {
         self.gen_.cancel.cancel();
+        self.tun.revoke();
         if let Some(ended) = self.outbounds.end(self.gen_.session.generation) {
             *lock(&self.ended) = Some(ended);
         }
         self.gen_.tracker.close();
-        self.tun.revoke();
     }
 
     /// Waits for the halted generation's tasks, then shuts its carriers down, all until

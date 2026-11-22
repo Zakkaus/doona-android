@@ -221,6 +221,32 @@ fn a_refresh_publishes_its_registry_and_nodes_together() {
     );
 }
 
+/// Refreshes while no generation runs keep only the registries still in use: after 200 of them
+/// the carriers keep at most three, and the first is freed.
+#[test]
+fn refreshes_keep_only_the_registries_in_use() {
+    let dir = TempDir::new("api-bounded");
+    let feeds = Feeds::new();
+    let sets: [&[u8]; 2] = [b"socks5://127.0.0.1:1#a\n", b"socks5://127.0.0.1:2#b\n"];
+    feeds.set("/sub", sets[0]);
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    let outbounds = &core.shared.outbounds;
+    let first = Arc::downgrade(&outbounds.registry().unwrap());
+    for i in 1..=200 {
+        feeds.set("/sub", sets[i % 2]);
+        call(&core, "updateSubscription", json!({"id": "s1"})).unwrap();
+    }
+    let end = Instant::now() + Duration::from_secs(5);
+    while first.strong_count() > 0 && Instant::now() < end {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert_eq!(first.strong_count(), 0, "the first registry is still held");
+    // The published registry, and those it replaced that were still retiring then.
+    let kept = outbounds.retained();
+    assert!(kept <= 3, "{kept} registries kept");
+}
+
 /// A refresh built while a generation ends would reuse runtimes that the end shuts down: it is
 /// published with runtimes of its own, on new carriers, instead.
 #[test]

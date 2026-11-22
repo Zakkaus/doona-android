@@ -23,7 +23,7 @@ use honk_outbound::runtime::OutboundRuntimeRegistry;
 use std::collections::{HashMap, HashSet};
 use std::io::{self, ErrorKind};
 use std::sync::atomic::AtomicU64;
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 use std::time::Instant;
 use tokio::runtime::{Handle, Runtime};
 use tokio_util::task::AbortOnDropHandle;
@@ -100,9 +100,10 @@ impl Dialer {
 pub(crate) struct Carriers {
     /// Taken when the carriers are shut down.
     runtime: RwLock<Option<Runtime>>,
-    /// Every registry published for these carriers, which may hold an endpoint or a session;
-    /// `None` once they ended.
-    registries: Mutex<Option<Vec<Arc<OutboundRuntimeRegistry>>>>,
+    /// The registries published for these carriers that are still in use, and so may hold an
+    /// endpoint or a session; `None` once they ended. A registry nothing uses any more is freed,
+    /// and what it dialed is ended with the runtime.
+    registries: Mutex<Option<Vec<Weak<OutboundRuntimeRegistry>>>>,
 }
 
 impl Carriers {
@@ -160,11 +161,14 @@ impl Carriers {
         }
     }
 
-    /// Records a published registry, to be shut down with the carriers; one published after
-    /// they ended refuses new dials at once.
+    /// Records a published registry, to be shut down with the carriers, and forgets those
+    /// freed since; one published after they ended refuses new dials at once.
     fn adopt(&self, registry: &Arc<OutboundRuntimeRegistry>) {
         match &mut *lock(&self.registries) {
-            Some(registries) => registries.push(Arc::clone(registry)),
+            Some(registries) => {
+                registries.retain(|r| r.strong_count() > 0);
+                registries.push(Arc::downgrade(registry));
+            }
             None => registry.begin_retirement(),
         }
     }
@@ -405,6 +409,7 @@ impl Outbounds {
             current.carriers.take()?
         };
         let registries = lock(&carriers.registries).take().unwrap_or_default();
+        let registries: Vec<_> = registries.iter().filter_map(Weak::upgrade).collect();
         for r in &registries {
             r.begin_retirement();
         }
@@ -416,6 +421,13 @@ impl Outbounds {
 
     fn table(&self) -> Arc<Table> {
         Arc::clone(&read(&self.table))
+    }
+
+    /// How many registries the current carriers keep for their end, freed or not.
+    #[cfg(test)]
+    pub(crate) fn retained(&self) -> usize {
+        let carriers = lock(&self.current).carriers.clone();
+        carriers.map_or(0, |c| lock(&c.registries).as_ref().map_or(0, Vec::len))
     }
 }
 
