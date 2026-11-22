@@ -23,6 +23,7 @@ mod ports;
 
 use crate::dto::ErrorCode;
 use crate::groups::GroupDef;
+use limits::Origin;
 use std::net::IpAddr;
 
 /// No row: the indexes' "nothing matched".
@@ -159,15 +160,25 @@ pub(crate) struct RuleSet {
 }
 
 impl RuleSet {
-    /// Compiles a source of `groups` and `rules`, or refuses all of it. `is_node` tells whether a
-    /// member that is not a group (`n-…`) is a node the catalog holds; one that is not refuses
-    /// the source, as a missing group does.
+    /// Compiles an imported source of `groups` and `rules`, or refuses all of it. `is_node` tells
+    /// whether a member that is not a group (`n-…`) is a node the catalog holds; one that is not
+    /// refuses the source, as a missing group does.
     pub(crate) fn compile(
         groups: &[GroupDef],
         is_node: &dyn Fn(&str) -> bool,
         rules: &[RuleSpec],
     ) -> Result<RuleSet, ErrorCode> {
-        compile::compile(groups, is_node, rules)
+        compile::compile(Origin::Imported, groups, is_node, rules)
+    }
+
+    /// Compiles doona's template as [`RuleSet::compile`] does an imported source, but its groups
+    /// follow the node cap instead of [`limits::MAX_MEMBERS`] ([`Origin::Template`]).
+    pub(crate) fn compile_template(
+        groups: &[GroupDef],
+        is_node: &dyn Fn(&str) -> bool,
+        rules: &[RuleSpec],
+    ) -> Result<RuleSet, ErrorCode> {
+        compile::compile(Origin::Template, groups, is_node, rules)
     }
 
     /// The first row that matches `flow`, `None` when no row does: the caller's main group then.

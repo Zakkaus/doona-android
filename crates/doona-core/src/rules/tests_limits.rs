@@ -1,7 +1,7 @@
 //! Each limit at its bound and one past it, as C1d's guard tests: past it the source is
 //! `parse_failed`, refused before anything is built.
 
-use super::limits::{MAX_DEPTH, MAX_GROUPS, MAX_KEYWORDS, MAX_LINES, MAX_VALUE};
+use super::limits::{MAX_DEPTH, MAX_GROUPS, MAX_KEYWORDS, MAX_LINES, MAX_PORT_VALUE, MAX_VALUE};
 use super::tests::{group, rule};
 use super::*;
 use crate::catalog::MAX_NODES;
@@ -111,6 +111,51 @@ fn members_at_the_plans_bound_compile_and_one_more_is_refused() {
     with_group.push("g-Sub");
     let past = [group("Proxy", &with_group), group("Sub", &["n-1"])];
     assert_eq!(compiles(&past, &[]), Err(ErrorCode::ParseFailed));
+}
+
+/// The R1 review's case: a full catalog of nodes no region claims, and `Auto`, give the template's
+/// `Proxy` one member past the bound. Its groups follow the node cap instead.
+#[test]
+fn the_templates_groups_follow_the_node_cap_instead() {
+    let nodes: Vec<String> = (0..MAX_NODES).map(|i| format!("n-{i}")).collect();
+    let mut members: Vec<&str> = vec!["g-Auto"];
+    members.extend(nodes.iter().map(String::as_str));
+    let groups = [group("Proxy", &members), group("Auto", &members[1..])];
+    let node = |id: &str| id.starts_with("n-");
+    assert!(RuleSet::compile_template(&groups, &node, &[]).is_ok());
+    assert_eq!(compiles(&groups, &[]), Err(ErrorCode::ParseFailed));
+    // Every other bound still holds.
+    let long = "a".repeat(MAX_VALUE + 1);
+    let past = [rule("DOMAIN", &[&long], "Proxy")];
+    assert!(RuleSet::compile_template(&groups, &node, &past).is_err());
+}
+
+/// The R1 review's case: a `DST-PORT` value of 1 MiB of leading zeros and `80` compiled, each
+/// piece scanned in full. The text is bounded before it is split, with room for 28 full ranges.
+#[test]
+fn a_port_value_is_bounded_before_it_is_split() {
+    let full = vec!["[65535-65535]"; 28].join(" / ");
+    assert!(full.len() <= MAX_PORT_VALUE);
+    assert_eq!(
+        compiles(&proxy(), &[rule("DST-PORT", &[&full], "Proxy")]),
+        Ok(())
+    );
+    let at = format!("{}80", "0".repeat(MAX_PORT_VALUE - 2));
+    let set = RuleSet::compile(&proxy(), &|_| true, &[rule("DST-PORT", &[&at], "Proxy")]);
+    let flow = |port| Flow {
+        domain: None,
+        ip: std::net::Ipv4Addr::new(192, 0, 2, 1).into(),
+        port,
+        network: Network::Tcp,
+    };
+    assert_eq!(set.unwrap().matched(&flow(80)), Some(0));
+    for value in [format!("0{at}"), format!("{}80", "0".repeat(1 << 20))] {
+        let rules = [rule("DST-PORT", &[&value], "Proxy")];
+        let groups = proxy();
+        let (result, bytes) = allocated(|| compiles(&groups, &rules));
+        assert_eq!(result, Err(ErrorCode::ParseFailed));
+        assert_eq!(bytes, 0);
+    }
 }
 
 /// A chain G0 -> G1 -> ... -> G`edges`, the last over a node.

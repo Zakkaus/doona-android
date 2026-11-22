@@ -7,6 +7,7 @@
 use super::tests::{Rng, group, rule};
 use super::*;
 use crate::testutil::alloc::peak;
+use std::collections::HashSet;
 use std::hint::black_box;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::time::{Duration, Instant};
@@ -43,8 +44,12 @@ fn target(rng: &mut Rng) -> &'static str {
     }
 }
 
-fn groups() -> Vec<GroupDef> {
-    let nodes: Vec<String> = (0..200).map(|i| format!("n-{i:016x}")).collect();
+/// The catalog's nodes, by id.
+fn nodes() -> Vec<String> {
+    (0..200).map(|i| format!("n-{i:016x}")).collect()
+}
+
+fn groups(nodes: &[String]) -> Vec<GroupDef> {
     let nodes: Vec<&str> = nodes.iter().map(String::as_str).collect();
     let mut groups = vec![group("Proxy", &["g-Auto"]), group("Auto", &nodes)];
     for g in &GROUPS[2..] {
@@ -232,9 +237,16 @@ fn per_flow(set: &RuleSet, samples: &[Sample]) -> Duration {
 }
 
 /// Compiles `rows` five times; prints the median time, the peak and what the set keeps, and the
-/// match time per flow over `samples`.
-fn measure(what: &str, groups: &[GroupDef], rows: &[RuleSpec], samples: &[Sample]) {
-    let node = |id: &str| id.starts_with("n-");
+/// match time per flow over `samples`. Members are looked up among the catalog's `nodes`, as the
+/// catalog looks them up; the set is built before the clock starts.
+fn measure(
+    what: &str,
+    (groups, nodes): (&[GroupDef], &[String]),
+    rows: &[RuleSpec],
+    samples: &[Sample],
+) {
+    let ids: HashSet<&str> = nodes.iter().map(String::as_str).collect();
+    let node = |id: &str| ids.contains(id);
     let mut times: Vec<Duration> = (0..5)
         .map(|_| {
             let start = Instant::now();
@@ -267,19 +279,21 @@ fn measure(what: &str, groups: &[GroupDef], rows: &[RuleSpec], samples: &[Sample
 #[ignore = "a release-mode measurement; see the module comment"]
 fn measure_profiles() {
     let mut rng = Rng(0x00b0_0c5e);
-    let groups = groups();
+    let nodes = nodes();
+    let groups = groups(&nodes);
+    let catalog = (groups.as_slice(), nodes.as_slice());
     // The data file's size; what the `.so` holds is measured on the library (rules-STATE.md).
     println!("CN data file: {} bytes", geoip::cn_ranges().count() * 8);
     let (rows, hits) = template();
     let flows = samples(&mut rng, &hits, 100_000);
-    measure("template", &groups, &rows, &flows);
+    measure("template", catalog, &rows, &flows);
     let (rows, hits) = profile(&mut rng);
     let flows = samples(&mut rng, &hits, 100_000);
-    measure("20,000-line profile", &groups, &rows, &flows);
+    measure("20,000-line profile", catalog, &rows, &flows);
     let named: Vec<Sample> = flows.into_iter().filter(|s| s.domain.is_some()).collect();
     measure(
         "20,000-line profile, named flows only",
-        &groups,
+        catalog,
         &rows,
         &named,
     );
@@ -289,7 +303,9 @@ fn measure_profiles() {
 #[ignore = "a release-mode measurement; see the module comment"]
 fn measure_worst_sources() {
     let mut rng = Rng(0x0bad_5eed);
-    let groups = groups();
+    let nodes = nodes();
+    let groups = groups(&nodes);
+    let catalog = (groups.as_slice(), nodes.as_slice());
     let hits = Hits {
         suffixes: vec!["example.com".to_owned()],
         exact: Vec::new(),
@@ -300,7 +316,7 @@ fn measure_worst_sources() {
         .map(|_| format!("{}/128", Ipv6Addr::from(rng.u128())))
         .collect();
     lines(&mut v6, &mut rng, "IP-CIDR6", hosts);
-    measure("20,000 IPv6 /128", &groups, &v6, &flows);
+    measure("20,000 IPv6 /128", catalog, &v6, &flows);
     let mut long = Vec::new();
     let names = (0..20_000)
         .map(|_| {
@@ -310,7 +326,7 @@ fn measure_worst_sources() {
         })
         .collect();
     lines(&mut long, &mut rng, "DOMAIN-SUFFIX", names);
-    measure("20,000 suffixes of 253 bytes", &groups, &long, &flows);
+    measure("20,000 suffixes of 253 bytes", catalog, &long, &flows);
     let mut mixed = Vec::new();
     let words = (0..1_000).map(|_| label(&mut rng, 253)).collect();
     lines(&mut mixed, &mut rng, "DOMAIN-KEYWORD", words);
@@ -323,7 +339,7 @@ fn measure_worst_sources() {
     lines(&mut mixed, &mut rng, "DST-PORT", ports);
     measure(
         "1,000 keywords of 253 bytes and 19,000 port ranges",
-        &groups,
+        catalog,
         &mixed,
         &flows,
     );

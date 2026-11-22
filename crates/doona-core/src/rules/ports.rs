@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 /// The most pieces one value may have, as Mihomo counts them, empty ones included
 /// (`common/utils/ranges.go:25-28`, Mihomo `100ff73a`).
-const MAX_PIECES: usize = 28;
+pub(super) const MAX_PIECES: usize = 28;
 
 #[derive(Clone, Debug, Default)]
 pub(super) struct Index {
