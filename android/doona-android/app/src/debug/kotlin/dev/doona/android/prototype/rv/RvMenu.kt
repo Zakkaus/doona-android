@@ -7,6 +7,7 @@ import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -96,8 +97,8 @@ internal fun RvMenuAnchor(items: List<RvMenuItem>, modifier: Modifier = Modifier
 
 /**
  * The menu, as Revolut's More popup built from the RV set's parts: a card of one-line rows ([RvRow], each with its
- * [RvIconDisc]) on the raised fill under the floating nav's shadow, its end on the row's end, below the row or above it
- * when there is no room. It scales from [RvMotion.MENU_FROM] and fades in from that corner in [RvMotion.MENU_MS] and goes
+ * [RvIconDisc]) on the raised fill, under the floating nav's shadow in light and inside the raised rim in dark, its end
+ * on the row's end, below the row or above it when there is no room. It scales from [RvMotion.MENU_FROM] and fades in from that corner in [RvMotion.MENU_MS] and goes
  * in [RvMotion.MENU_OUT_MS]; a tap outside or back closes it. An item that asks first turns the card into its question
  * over that item and 取消.
  */
@@ -123,6 +124,9 @@ private fun RvMenu(state: RvMenuState, items: List<RvMenuItem>) {
         val transition = rememberTransition(shown, label = "menu")
         val p by transition.animateFloat({ motion.tween(if (targetState) RvMotion.MENU_MS else RvMotion.MENU_OUT_MS) }, label = "in") { if (it) 1f else 0f }
         val shape = RoundedCornerShape(RvSize.cardRadius)
+        val colors = Rv.colors
+        // In dark the shadow is not drawn (as under every raised control): the raised fill and its rim set it apart.
+        val rim = colors.raisedRim?.let { Modifier.border(RvChrome.ring, it, shape) } ?: Modifier
         Column(
             Modifier
                 .testTag(RV_MENU)
@@ -136,7 +140,8 @@ private fun RvMenu(state: RvMenuState, items: List<RvMenuItem>) {
                 .width(RvSize.menuWidth)
                 .rvSoftShadow(shape, RvChrome.navShadow, RvChrome.navShadowDrop, RvChrome.NAV_SHADOW_ALPHA)
                 .clip(shape)
-                .background(Rv.colors.raised)
+                .background(colors.raised)
+                .then(rim)
                 .animateContentSize(motion.tween(RvMotion.MOVE_MS)),
         ) {
             Crossfade(state.asking, animationSpec = motion.tween(RvMotion.FADE_MS), label = "question") { asking ->
