@@ -85,15 +85,15 @@ impl Core {
     }
 
     pub fn with_options(data_dir: &str, options: Options) -> Result<Core, ErrorCode> {
-        Core::build(data_dir, options, (tunnel::drive, START_BOUND))
+        let store = Store::new(Path::new(data_dir));
+        Core::build(store, options, (tunnel::drive, START_BOUND))
     }
 
     fn build(
-        data_dir: &str,
+        store: Store,
         options: Options,
         launch: (Launch, Duration),
     ) -> Result<Core, ErrorCode> {
-        let store = Store::new(Path::new(data_dir));
         let (state, loaded) = store.load().map_err(|e| {
             log::error!("init: state unreadable ({:?})", e.kind());
             ErrorCode::Internal
@@ -335,14 +335,19 @@ impl Core {
             return Ok(());
         }
         let next = State { mode, ..current };
-        self.store.save(&next).map_err(|e| {
+        self.store.commit(&next).map_err(|e| {
             log::error!("setMode: state not written ({:?})", e.kind());
             ErrorCode::Internal
         })?;
-        let mut catalog = lock(&self.catalog);
-        catalog.state = next;
-        catalog.revision += 1;
-        self.mode.set(mode);
+        {
+            let mut catalog = lock(&self.catalog);
+            catalog.state = next;
+            catalog.revision += 1;
+            self.mode.set(mode);
+        }
+        // A restart reads the new file already, so new flows and `snapshot` must too; the
+        // directory sync that follows holds only the writer lock.
+        self.store.sync();
         Ok(())
     }
 }
@@ -352,7 +357,13 @@ impl Core {
     /// A core whose generations run `launch` instead of the driver and must start within
     /// `bound`.
     pub(crate) fn with_launch(data_dir: &str, launch: Launch, bound: Duration) -> Core {
-        Core::build(data_dir, Options::default(), (launch, bound)).unwrap()
+        let store = Store::new(Path::new(data_dir));
+        Core::build(store, Options::default(), (launch, bound)).unwrap()
+    }
+
+    /// A core that keeps its state through `store`.
+    pub(crate) fn with_store(store: Store) -> Core {
+        Core::build(store, Options::default(), (tunnel::drive, START_BOUND)).unwrap()
     }
 }
 

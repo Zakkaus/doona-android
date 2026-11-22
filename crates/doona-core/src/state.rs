@@ -64,12 +64,23 @@ pub enum Loaded {
 
 pub struct Store {
     dir: PathBuf,
+    /// Syncs the directory after a rename; a unit test stands in for a slow disk.
+    sync_dir: fn(&Path) -> io::Result<()>,
 }
 
 impl Store {
     pub fn new(dir: &Path) -> Store {
         Store {
             dir: dir.to_path_buf(),
+            sync_dir,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_dir_sync(dir: &Path, sync_dir: fn(&Path) -> io::Result<()>) -> Store {
+        Store {
+            dir: dir.to_path_buf(),
+            sync_dir,
         }
     }
 
@@ -94,22 +105,30 @@ impl Store {
     }
 
     /// Writes `state` to a synced temporary file and renames it over the state file. The
-    /// rename is the commit: once it succeeds, a restart reads the new state, so a failure to
-    /// sync the directory afterwards is only logged.
-    pub fn save(&self, state: &State) -> io::Result<()> {
+    /// rename is the commit: once it succeeds, a restart reads the new state. [`Store::sync`]
+    /// then makes the rename durable.
+    pub fn commit(&self, state: &State) -> io::Result<()> {
         let bytes = serde_json::to_vec_pretty(state).map_err(io::Error::other)?;
         let temp = self.dir.join(TEMP);
         let committed =
             write_synced(&temp, &bytes).and_then(|()| fs::rename(&temp, self.dir.join(FILE)));
         if committed.is_err() {
             let _ = fs::remove_file(&temp);
-            return committed;
         }
-        if let Err(e) = File::open(&self.dir).and_then(|d| d.sync_all()) {
+        committed
+    }
+
+    /// Syncs the directory after a [`Store::commit`]. A failure is only logged: the state is
+    /// committed already.
+    pub fn sync(&self) {
+        if let Err(e) = (self.sync_dir)(&self.dir) {
             log::warn!("state: directory not synced ({:?})", e.kind());
         }
-        Ok(())
     }
+}
+
+fn sync_dir(dir: &Path) -> io::Result<()> {
+    File::open(dir)?.sync_all()
 }
 
 fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
@@ -143,7 +162,8 @@ mod tests {
         state
             .selections
             .insert("g-Proxy".into(), "n-0c41be77".into());
-        store.save(&state).unwrap();
+        store.commit(&state).unwrap();
+        store.sync();
         assert!(!dir.path().join(TEMP).exists());
         let (loaded, how) = store.load().unwrap();
         assert_eq!(how, Loaded::Read);

@@ -3,11 +3,15 @@
 //! `start` must keep its deadline and answer `busy` when a `stop` or another `start` overlaps it.
 
 use super::Core;
-use crate::dto::ErrorCode;
+use crate::dto::{ErrorCode, Mode, Snapshot};
+use crate::state::Store;
 use crate::testutil::{TempDir, closed, tun};
 use crate::tunnel::{Gen, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
-use std::sync::Arc;
+use std::io;
+use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 const CONFIG: &str =
@@ -220,4 +224,59 @@ fn stop_keeps_its_bound_while_both_workers_are_held() {
     let took = begun.elapsed();
     assert!(closed(&running));
     assert!(took < Duration::from_secs(1), "{took:?}");
+}
+
+static SYNC_STARTED: AtomicBool = AtomicBool::new(false);
+static SYNC_RELEASED: (Mutex<bool>, Condvar) = (Mutex::new(false), Condvar::new());
+
+/// A directory sync that blocks until the test releases it.
+fn stalled_sync(_: &Path) -> io::Result<()> {
+    SYNC_STARTED.store(true, SeqCst);
+    let (released, cv) = &SYNC_RELEASED;
+    let mut released = released.lock().unwrap_or_else(|e| e.into_inner());
+    while !*released {
+        released = cv.wait(released).unwrap_or_else(|e| e.into_inner());
+    }
+    Ok(())
+}
+
+/// Releases the stalled sync when dropped, even when the test fails first.
+struct Release;
+
+impl Drop for Release {
+    fn drop(&mut self) {
+        let (released, cv) = &SYNC_RELEASED;
+        *released.lock().unwrap_or_else(|e| e.into_inner()) = true;
+        cv.notify_all();
+    }
+}
+
+#[test]
+fn a_mode_is_live_while_its_directory_sync_stalls() {
+    let _release = Release;
+    let dir = TempDir::new("api-stalled-sync");
+    let core = Arc::new(Core::with_store(Store::with_dir_sync(
+        dir.path(),
+        stalled_sync,
+    )));
+    let before: Snapshot = serde_json::from_str(&core.snapshot(-1)).unwrap();
+    let setter = {
+        let core = Arc::clone(&core);
+        std::thread::spawn(move || core.call("setMode", r#"{"mode":"Direct"}"#))
+    };
+    let begun = Instant::now();
+    while !SYNC_STARTED.load(SeqCst) {
+        assert!(
+            begun.elapsed() < Duration::from_secs(5),
+            "the sync never started"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    // The file is renamed into place: new flows and snapshot must see the mode already.
+    let during: Snapshot = serde_json::from_str(&core.snapshot(-1)).unwrap();
+    assert_eq!(during.revision, before.revision + 1);
+    assert_eq!(during.catalog.unwrap().mode, Mode::Direct);
+    assert_eq!(core.mode.get(), Mode::Direct);
+    drop(_release);
+    assert_eq!(setter.join().unwrap(), r#"{"ok":{}}"#);
 }
