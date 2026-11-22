@@ -6,6 +6,7 @@ import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.components.LayoutRoleKey
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.Light
+import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.inkInsets
 import dev.doona.android.testing.screenCases
 import dev.doona.android.testing.setVariantContent
@@ -35,6 +36,7 @@ class TopBarInkTest(private val name: String, private val hasActions: Boolean) {
     fun theVisibleEdgesOfTheBarSitOnTheGutter() {
         val case = screenCases().first { it.name == name }
         compose.setVariantContent(Light) { case.content() }
+        compose.drawFully()
         val ink = compose.onNode(SemanticsMatcher.expectValue(LayoutRoleKey, LayoutRole.TopBar)).inkInsets(compose.density.density)
         assertNotNull("$name: the top bar draws nothing", ink)
         val gutter = DoonaTheme.spacing.gutter.value
@@ -45,6 +47,6 @@ class TopBarInkTest(private val name: String, private val hasActions: Boolean) {
     companion object {
         @JvmStatic
         @Parameters(name = "{0}")
-        fun parameters(): List<Array<Any>> = listOf(arrayOf("activity", true), arrayOf("policies", true), arrayOf("group", true), arrayOf("settings", false))
+        fun parameters(): List<Array<Any>> = listOf(arrayOf("activity", true), arrayOf("policies", true), arrayOf("group", false), arrayOf("subscriptions", true), arrayOf("settings", false))
     }
 }

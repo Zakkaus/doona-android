@@ -7,8 +7,6 @@ import androidx.compose.ui.unit.dp
 import dev.doona.android.app.ActivityKey
 import dev.doona.android.app.DoonaApp
 import dev.doona.android.app.DoonaAppShell
-import dev.doona.android.app.GroupKey
-import dev.doona.android.app.PoliciesKey
 import dev.doona.android.app.SettingsKey
 import dev.doona.android.app.Tab
 import dev.doona.android.designsystem.components.CardsGallery
@@ -49,7 +47,9 @@ fun sampleEngine() = FakeEngine(status = Status.Running(sinceEpochMs = 0), traff
  * Every screen of the app. A screen lane adds its screens here and so gets the spacing check and the goldens; it also
  * states the screen's [PageLayout], which the check holds the rendered page to.
  */
-internal fun screenCases(): List<ScreenCase> {
+internal fun screenCases(): List<ScreenCase> = appScreenCases() + policyScreenCases()
+
+private fun appScreenCases(): List<ScreenCase> {
     val engine = sampleEngine()
     val apps = FakeInstalledApps()
     val space = DoonaTheme.spacing
@@ -64,17 +64,6 @@ internal fun screenCases(): List<ScreenCase> {
             // The error state sits in the frame of every other screen: the hub bar under it and the gesture bar's inset.
             DoonaAppShell(Tab.Activity, onSelect = {}) { ActivityScreen(sampleActivityState(ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {}) }
         },
-        ScreenCase(
-            "policies",
-            PageLayout(withHub + setOf(LayoutRole.Card, LayoutRole.Control, LayoutRole.Chevron), listOf(space.afterTitle, space.section, space.section)),
-        ) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, PoliciesKey)) },
-        ScreenCase(
-            "group",
-            PageLayout(
-                withHub + setOf(LayoutRole.Control, LayoutRole.Row, LayoutRole.Chevron),
-                listOf(space.item, space.section, space.block, space.item, space.section, space.block, space.block, space.block),
-            ),
-        ) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))) },
         ScreenCase(
             "settings",
             PageLayout(withHub + setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Chevron), listOf(space.afterTitle)),

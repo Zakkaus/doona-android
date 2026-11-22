@@ -1,15 +1,19 @@
 //! The plain Rust API behind the five JNI functions. Host tests drive it without a JVM; `jni.rs`
 //! only converts arguments, holds the process's one [`Core`] and throws.
 
+use crate::catalog::{self, CatalogState, Shared};
 use crate::dto::{
-    self, AddSubscriptionArgs, Catalog, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply,
-    SelectArgs, Snapshot, StartConfig, Traffic,
+    self, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply, Snapshot, StartConfig,
+    Traffic,
 };
+use crate::outbounds::{self, Outbounds};
+use crate::probe::{self, Prober, Probes};
 use crate::state::{Loaded, State, Store};
 use crate::tunnel::route::ModeCell;
 use crate::tunnel::{self, Gate, Launch, STOP_WAIT, Settings, Tun, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::os::fd::OwnedFd;
 use std::path::Path;
@@ -17,6 +21,9 @@ use std::sync::atomic::{AtomicI64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
+
+mod selection;
+mod subscriptions;
 
 /// The tokio runtime's worker threads; flows are I/O bound and the phone has few big cores.
 const WORKERS: usize = 2;
@@ -31,12 +38,18 @@ const MIN_MTU: u16 = 1280;
 pub struct Options {
     /// Where DNS the core answers is forwarded, in order.
     pub dns_upstreams: Vec<SocketAddr>,
+    /// What a latency probe fetches through each node.
+    pub probe_url: String,
+    /// How long `addSubscription` and `updateSubscription` may take up to their commit.
+    pub subscription_bound: Duration,
 }
 
 impl Default for Options {
     fn default() -> Options {
         Options {
             dns_upstreams: crate::dns::UPSTREAMS.to_vec(),
+            probe_url: probe::DEFAULT_PROBE_URL.to_owned(),
+            subscription_bound: subscriptions::SUBSCRIPTION_BOUND,
         }
     }
 }
@@ -45,20 +58,27 @@ pub struct Core {
     runtime: Runtime,
     options: Options,
     store: Store,
-    /// What `snapshot` reads; held only to copy or assign, never across file I/O.
-    catalog: Mutex<CatalogState>,
-    /// Serializes the commands that write `state.json`, so a slow write never holds `catalog`.
+    /// The catalog and the data path's view of it, shared with probe tasks.
+    shared: Arc<Shared>,
+    /// Serializes the commands that write `state.json`, so a slow write never holds the
+    /// catalog. Only they change the node set, so what one reads stays current until it commits.
     writer: Mutex<()>,
     /// The committed mode, shared with the running generation.
     mode: Arc<ModeCell>,
     /// Which generation runs, or that one is starting. Held only to read or swap it, never
-    /// across a wait, so `stop` and `snapshot` never wait for a `start`.
+    /// across a wait, so `stop` and `snapshot` never wait for a `start`. Taken before the catalog
+    /// lock when both are held.
     life: Mutex<Life>,
     /// The last generation `start` began; it stays in snapshots after `stop`.
     generation: AtomicI64,
     /// What serves a generation, and how long `start` may take: the driver and [`START_BOUND`]
     /// in the app, stand-ins in unit tests.
     launch: (Launch, Duration),
+    probes: Probes,
+    /// Subscriptions with an update under way; a second update of one is `busy`.
+    refreshing: Mutex<HashSet<String>>,
+    #[cfg(test)]
+    hooks: hooks::Hooks,
 }
 
 enum Life {
@@ -71,13 +91,6 @@ enum Life {
     Running(Tunnel),
 }
 
-struct CatalogState {
-    /// What `state.json` holds; changed only after the file is written.
-    state: State,
-    /// Rises with every change Kotlin must re-read; starts above Kotlin's initial -1 and 0.
-    revision: i64,
-}
-
 impl Core {
     /// Reads `data_dir/state.json` and builds the runtime.
     pub fn new(data_dir: &str) -> Result<Core, ErrorCode> {
@@ -86,13 +99,19 @@ impl Core {
 
     pub fn with_options(data_dir: &str, options: Options) -> Result<Core, ErrorCode> {
         let store = Store::new(Path::new(data_dir));
-        Core::build(store, options, (tunnel::drive, START_BOUND))
+        Core::build(
+            store,
+            options,
+            (tunnel::drive, START_BOUND),
+            probe::urltest(),
+        )
     }
 
     fn build(
         store: Store,
         options: Options,
         launch: (Launch, Duration),
+        prober: Prober,
     ) -> Result<Core, ErrorCode> {
         let (state, loaded) = store.load().map_err(|e| {
             log::error!("init: state unreadable ({:?})", e.kind());
@@ -107,16 +126,32 @@ impl Core {
             .enable_all()
             .build()
             .map_err(|_| ErrorCode::Internal)?;
+        outbounds::install_resolvers();
+        let model = catalog::load(&state);
+        let outbounds = Arc::new(Outbounds::new(runtime.handle().clone())?);
+        outbounds.replace(outbounds.build(&model.nodes));
+        let mode = Arc::new(ModeCell::new(state.mode));
+        let catalog = CatalogState::new(state, model);
+        let shared = Arc::new(Shared {
+            catalog: Mutex::new(catalog),
+            outbounds,
+        });
+        shared.publish(&lock(&shared.catalog));
+        let probes = Probes::new(prober, &options.probe_url);
         Ok(Core {
             runtime,
             options,
             store,
-            mode: Arc::new(ModeCell::new(state.mode)),
-            catalog: Mutex::new(CatalogState { state, revision: 1 }),
+            shared,
+            mode,
             writer: Mutex::new(()),
             life: Mutex::new(Life::Stopped),
             generation: AtomicI64::new(0),
             launch,
+            probes,
+            refreshing: Mutex::new(HashSet::new()),
+            #[cfg(test)]
+            hooks: hooks::Hooks::default(),
         })
     }
 
@@ -184,7 +219,13 @@ impl Core {
             gate: Arc::clone(gate),
             tun: Arc::clone(tun),
         };
-        match std::mem::replace(&mut *life, starting) {
+        // As in `stop`: a running generation's probes end in the same step as its lifecycle.
+        let catalog = matches!(*life, Life::Running(_)).then(|| lock(&self.shared.catalog));
+        let old = std::mem::replace(&mut *life, starting);
+        if let Some(mut c) = catalog {
+            c.end_probes();
+        }
+        match old {
             Life::Running(old) => {
                 old.halt();
                 Ok(Some(old))
@@ -241,6 +282,7 @@ impl Core {
             dns: config.dns,
             dns_upstreams: self.options.dns_upstreams.clone(),
             mode: Arc::clone(&self.mode),
+            outbounds: Arc::clone(&self.shared.outbounds),
         })
     }
 
@@ -251,7 +293,16 @@ impl Core {
         let deadline = Instant::now() + STOP_WAIT;
         let halted = {
             let mut life = lock(&self.life);
-            match std::mem::replace(&mut *life, Life::Stopped) {
+            // The probes end and the lifecycle changes under one catalog guard, taken after the
+            // lifecycle lock. Registration and probe commits take the catalog lock, so a test
+            // registers wholly before both, and is dropped, or after both.
+            let mut catalog = lock(&self.shared.catalog);
+            catalog.end_probes();
+            #[cfg(test)]
+            self.hooks.teardown(self);
+            let old = std::mem::replace(&mut *life, Life::Stopped);
+            drop(catalog);
+            match old {
                 Life::Running(tunnel) => {
                     tunnel.halt();
                     Some(tunnel)
@@ -271,12 +322,8 @@ impl Core {
 
     pub fn snapshot(&self, since_revision: i64) -> String {
         let (revision, catalog) = {
-            let c = lock(&self.catalog);
-            let catalog = (c.revision > since_revision).then(|| Catalog {
-                mode: c.state.mode,
-                groups: Vec::new(),
-                subscriptions: Vec::new(),
-            });
+            let c = lock(&self.shared.catalog);
+            let catalog = (c.revision > since_revision).then(|| c.model.catalog(&c.state));
             (c.revision, catalog)
         };
         let session = match &*lock(&self.life) {
@@ -308,52 +355,84 @@ impl Core {
 
     pub fn call(&self, command: &str, args: &str) -> String {
         let reply = match command {
-            "setMode" => parse(args).and_then(|a: ModeArgs| self.set_mode(a.mode)),
-            // Groups, members and subscriptions arrive with the subscription lane; until then
-            // nothing they address exists.
-            "select" => parse::<SelectArgs>(args).and(Err(ErrorCode::NotFound)),
-            "testLatency" => parse(args).and_then(|a: GroupArgs| match a.group {
-                Some(_) => Err(ErrorCode::NotFound),
-                None => Err(ErrorCode::NoNodes),
-            }),
-            "addSubscription" => parse::<AddSubscriptionArgs>(args).and(Err(ErrorCode::NoNodes)),
-            "updateSubscription" | "removeSubscription" => {
-                parse::<IdArgs>(args).and(Err(ErrorCode::NotFound))
+            "setMode" => parse(args).and_then(|a: ModeArgs| self.set_mode(a.mode).map(empty)),
+            "select" => parse(args).and_then(|a| self.select(a).map(empty)),
+            "testLatency" => {
+                parse(args).and_then(|a: GroupArgs| self.test_latency(a.group).map(empty))
+            }
+            "addSubscription" => parse(args).and_then(|a| self.add_subscription(a).map(ok)),
+            "updateSubscription" => {
+                parse(args).and_then(|a: IdArgs| self.update_subscription(&a.id).map(ok))
+            }
+            "removeSubscription" => {
+                parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
             _ => Err(ErrorCode::InvalidArgument),
         };
-        match reply {
-            Ok(()) => to_json(&Reply::Ok(Empty {})),
-            Err(code) => {
-                log::info!("call {}: {}", command_name(command), code.as_str());
-                error_reply(code)
-            }
-        }
+        reply.unwrap_or_else(|code| {
+            log::info!("call {}: {}", command_name(command), code.as_str());
+            error_reply(code)
+        })
     }
 
-    /// Commits the mode to `state.json` first; new flows read it from then on. Only writers
-    /// change `catalog.state`, and they run one at a time, so the copy read here stays current.
+    /// Commits the mode to `state.json` first; new flows read it from then on.
     fn set_mode(&self, mode: Mode) -> Result<(), ErrorCode> {
         let _writer = lock(&self.writer);
-        let current = lock(&self.catalog).state.clone();
+        let current = lock(&self.shared.catalog).state.clone();
         if current.mode == mode {
             return Ok(());
         }
-        let next = State { mode, ..current };
-        self.store.commit(&next).map_err(|e| {
-            log::error!("setMode: state not written ({:?})", e.kind());
-            ErrorCode::Internal
-        })?;
+        self.commit_state(State { mode, ..current }, "setMode", None)
+    }
+
+    /// Writes `next`, then makes it what `snapshot`, new flows and the data path's groups see.
+    /// The caller holds the writer lock and read the current state under it, so nothing else
+    /// changed the file meanwhile. Past `deadline`, as [`Core::write`] checks it, nothing changes.
+    fn commit_state(
+        &self,
+        next: State,
+        command: &str,
+        deadline: Option<Instant>,
+    ) -> Result<(), ErrorCode> {
+        self.write(&next, command, deadline)?;
         {
-            let mut catalog = lock(&self.catalog);
-            catalog.state = next;
-            catalog.revision += 1;
-            self.mode.set(mode);
+            let mut c = lock(&self.shared.catalog);
+            c.state = next;
+            c.revision += 1;
+            self.mode.set(c.state.mode);
+            self.shared.publish(&c);
         }
         // A restart reads the new file already, so new flows and `snapshot` must too; the
         // directory sync that follows holds only the writer lock.
         self.store.sync();
         Ok(())
+    }
+
+    /// Writes `next` to `state.json`. A `deadline` is checked once the state is serialized,
+    /// right before the first write to the file system: past it nothing is written and the
+    /// command is `busy`.
+    fn write(
+        &self,
+        next: &State,
+        command: &str,
+        deadline: Option<Instant>,
+    ) -> Result<(), ErrorCode> {
+        let mut late = false;
+        let written = self.store.commit(next, || {
+            #[cfg(test)]
+            if let Some(deadline) = deadline {
+                self.hooks.before_write(deadline);
+            }
+            late = deadline.is_some_and(|d| Instant::now() >= d);
+            !late
+        });
+        if late {
+            return Err(ErrorCode::Busy);
+        }
+        written.map_err(|e| {
+            log::error!("{command}: state not written ({:?})", e.kind());
+            ErrorCode::Internal
+        })
     }
 }
 
@@ -363,12 +442,20 @@ impl Core {
     /// `bound`.
     pub(crate) fn with_launch(data_dir: &str, launch: Launch, bound: Duration) -> Core {
         let store = Store::new(Path::new(data_dir));
-        Core::build(store, Options::default(), (launch, bound)).unwrap()
+        Core::build(store, Options::default(), (launch, bound), probe::urltest()).unwrap()
     }
 
     /// A core that keeps its state through `store`.
     pub(crate) fn with_store(store: Store) -> Core {
-        Core::build(store, Options::default(), (tunnel::drive, START_BOUND)).unwrap()
+        let launch = (tunnel::drive as Launch, START_BOUND);
+        Core::build(store, Options::default(), launch, probe::urltest()).unwrap()
+    }
+
+    /// A core whose latency probes run `prober`.
+    pub(crate) fn with_prober(data_dir: &str, prober: Prober) -> Core {
+        let store = Store::new(Path::new(data_dir));
+        let launch = (tunnel::drive as Launch, START_BOUND);
+        Core::build(store, Options::default(), launch, prober).unwrap()
     }
 }
 
@@ -376,6 +463,14 @@ impl Drop for Core {
     fn drop(&mut self) {
         self.stop();
     }
+}
+
+fn empty((): ()) -> String {
+    to_json(&Reply::Ok(Empty {}))
+}
+
+fn ok<T: Serialize>(value: T) -> String {
+    to_json(&Reply::Ok(value))
 }
 
 /// `{"error":{"code":…}}`.
@@ -422,9 +517,15 @@ fn to_json<T: Serialize>(value: &T) -> String {
 }
 
 /// A poisoned lock still holds consistent data here: every critical section only assigns.
-fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 #[cfg(test)]
+mod hooks;
+#[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_catalog;
+#[cfg(test)]
+mod tests_latency;

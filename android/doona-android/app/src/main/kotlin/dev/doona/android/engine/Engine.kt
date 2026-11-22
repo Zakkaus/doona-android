@@ -28,7 +28,11 @@ interface Engine {
 
     fun disconnect()
 
-    /** Pins the member [memberId] in the group [groupId]; null hands an automatic group back to its own choice. */
+    /**
+     * Pins the member [memberId] in the group [groupId]; null hands an automatic group back to its own choice. This and
+     * [testLatency] reach the core in the order they are called, from any caller, and a caller that stops waiting does not
+     * cancel its call.
+     */
     suspend fun select(groupId: String, memberId: String?): Result<Unit>
 
     /**
@@ -72,7 +76,8 @@ sealed interface Status {
 
     data object Stopping : Status
 
-    data class Failed(val reason: FailureReason) : Status
+    /** [code] is the core's own answer when it refused the start, such as [ErrorCode.NoNodes]; null for any other failure. */
+    data class Failed(val reason: FailureReason, val code: ErrorCode? = null) : Status
 }
 
 enum class FailureReason {

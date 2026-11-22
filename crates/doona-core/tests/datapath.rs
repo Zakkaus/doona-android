@@ -34,6 +34,7 @@ fn setup(mode: &str, upstreams: Vec<SocketAddr>) -> Setup {
     let dir = TempDir::new("datapath");
     let options = Options {
         dns_upstreams: upstreams,
+        ..Options::default()
     };
     let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
     let reply = core.call("setMode", &format!(r#"{{"mode":"{mode}"}}"#));

@@ -74,8 +74,8 @@ fn bad_arguments_and_unknown_commands_are_invalid() {
 }
 
 #[test]
-fn commands_of_later_lanes_find_nothing() {
-    let dir = TempDir::new("api-later");
+fn commands_on_an_empty_catalog_find_nothing() {
+    let dir = TempDir::new("api-empty");
     let core = Core::new(dir.path().to_str().unwrap()).unwrap();
     let cases = [
         (
@@ -85,10 +85,11 @@ fn commands_of_later_lanes_find_nothing() {
         ),
         ("testLatency", r#"{"group":"g-Auto"}"#, ErrorCode::NotFound),
         ("testLatency", r#"{"group":null}"#, ErrorCode::NoNodes),
+        // Nothing listens on port 1.
         (
             "addSubscription",
-            r#"{"url":"https://example.invalid/s","name":null}"#,
-            ErrorCode::NoNodes,
+            r#"{"url":"http://127.0.0.1:1/s","name":null}"#,
+            ErrorCode::FetchFailed,
         ),
         ("updateSubscription", r#"{"id":"s1"}"#, ErrorCode::NotFound),
         ("removeSubscription", r#"{"id":"s1"}"#, ErrorCode::NotFound),

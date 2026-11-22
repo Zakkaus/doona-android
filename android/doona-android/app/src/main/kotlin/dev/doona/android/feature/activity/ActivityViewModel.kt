@@ -19,9 +19,12 @@ import kotlinx.coroutines.launch
 class ActivityViewModel(private val engine: Engine) : ViewModel() {
     private val error = MutableStateFlow<ErrorCode?>(null)
 
+    private val catalog = combine(engine.groups, engine.subscriptions) { groups, subscriptions -> groups to subscriptions.isNotEmpty() }
+
     val uiState: StateFlow<ActivityUiState> =
-        combine(engine.status, engine.traffic, engine.settings, engine.groups, error, ::activityUiState)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
+        combine(engine.status, engine.traffic, engine.settings, catalog, error) { status, traffic, settings, (groups, subscribed), error ->
+            activityUiState(status, traffic, settings, groups, error, subscribed)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
 
     fun onAction(action: ActivityAction) {
         when (action) {
@@ -38,8 +41,14 @@ class ActivityViewModel(private val engine: Engine) : ViewModel() {
     }
 
     /** The engine's flows are StateFlows, so the first frame already shows real values. */
-    private fun current() =
-        activityUiState(engine.status.value, engine.traffic.value, engine.settings.value, engine.groups.value, error.value)
+    private fun current() = activityUiState(
+        engine.status.value,
+        engine.traffic.value,
+        engine.settings.value,
+        engine.groups.value,
+        error.value,
+        engine.subscriptions.value.isNotEmpty(),
+    )
 
     companion object {
         fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {

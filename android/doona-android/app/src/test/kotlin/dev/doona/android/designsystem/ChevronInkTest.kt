@@ -64,7 +64,7 @@ class ChevronInkTest {
         assertTrue("chevrons of $name draw inside their box:\n" + off.joinToString("\n"), off.isEmpty())
     }
 
-    @Test fun pickerChevronsHaveNoInset() = checkChevrons("group")
+    @Test fun pickerChevronsHaveNoInset() = checkChevrons("activity")
 
     @Test fun cardChevronsHaveNoInset() = checkChevrons("policies")
 

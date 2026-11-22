@@ -2,6 +2,7 @@ package dev.doona.android.vpn
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
@@ -102,10 +103,41 @@ class TunnelControllerTest {
     fun startFailureIsReportedOnceAndClosesTheTun() {
         core.startError = IllegalStateException("internal")
         start()
-        assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
+        assertEquals(Status.Failed(FailureReason.StartFailed, ErrorCode.Internal), awaitStatus { it is Status.Failed })
         assertEquals(listOf("start"), core.events)
         assertTrue(host.tuns.single().closed)
         assertFalse(seen.any { it is Status.Running })
+    }
+
+    @Test
+    fun theCoresOwnErrorCodeSurvivesTheStartFailure() {
+        core.startError = IllegalStateException("no_nodes")
+        start()
+        assertEquals(Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes), awaitStatus { it is Status.Failed })
+        assertTrue(host.tuns.single().closed)
+    }
+
+    @Test
+    fun anAndroidFailureWhileBuildingTheTunCarriesNoCoreCode() {
+        // The message is a core code, but it comes from the system, not from the core.
+        host.establishError = IllegalStateException("no_nodes")
+        start()
+        assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
+        assertTrue(core.events.isEmpty())
+    }
+
+    @Test
+    fun aCodeFromANewerCoreIsInternal() {
+        core.startError = IllegalStateException("from_the_future")
+        start()
+        assertEquals(Status.Failed(FailureReason.StartFailed, ErrorCode.Internal), awaitStatus { it is Status.Failed })
+    }
+
+    @Test
+    fun anExceptionThatIsNotACoreCodeCarriesNone() {
+        core.startError = IOException("socket")
+        start()
+        assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
     }
 
     @Test
@@ -373,11 +405,15 @@ class TunnelControllerTest {
         val routings = CopyOnWriteArrayList<AppRouting>()
         val tuns = CopyOnWriteArrayList<FakeTun>()
 
+        /** What the system's `Builder.establish()` throws, if anything. */
+        @Volatile var establishError: Throwable? = null
+
         override fun installed(packages: Set<String>) = packages intersect setOf(FIREFOX)
 
         override fun bootstrapDns() = listOf("192.168.8.1")
 
         override fun establish(routing: AppRouting): Tun {
+            establishError?.let { throw it }
             routings += routing
             return FakeTun(fd = 40 + tuns.size).also { tuns += it }
         }

@@ -21,9 +21,9 @@ fun ErrorCode.messageRes(): Int = when (this) {
 /** The code of a failed engine action; anything that is not an [EngineException] is a bug, shown as internal. */
 fun Throwable.errorCode(): ErrorCode = (this as? EngineException)?.code ?: ErrorCode.Internal
 
-/** Why the tunnel is not running, as the activity page and the per-app page both say it. */
+/** The localized message for why the tunnel is not running; the activity page and the per-app page both show it. */
 @StringRes
-fun FailureReason.labelRes(): Int = when (this) {
+fun FailureReason.messageRes(): Int = when (this) {
     FailureReason.NoAllowedApps -> R.string.status_failed_no_allowed_apps
     FailureReason.StartFailed -> R.string.status_failed_start
     FailureReason.CoreStopped -> R.string.status_failed_core_stopped

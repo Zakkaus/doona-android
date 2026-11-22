@@ -188,12 +188,19 @@ object SpacingRules {
     /**
      * What a scrolling sheet does not show whole: the blocks that reach out of its viewport. A pointer reaches only the
      * visible part of them, so their touch bounds say nothing about the design at this offset; a scroll to the offset
-     * that shows them whole checks them (see [touch]).
+     * that shows them whole checks them (see [touch]). An action counts with the area a pointer hits over it, which
+     * is taller than the control: the part of it outside the viewport is not hit, so it must not be held against the
+     * bar that starts there.
      */
     private fun scrolledOut(root: LayoutBox): Set<LayoutBox> = root.descendants().filter { it.role == LayoutRole.Sheet }.flatMap { sheet ->
         val viewport = root.viewportOf(sheet)
-        sheet.descendants().filter { it !== sheet && (it.top < viewport.top - TOL || it.bottom > viewport.bottom + TOL) }
+        sheet.descendants().filter { it !== sheet && reachesOut(it, viewport) }
     }.toSet()
+
+    private fun reachesOut(node: LayoutBox, viewport: LayoutBox): Boolean {
+        val reach = if (node.actionable) maxOf(0f, ((node.touchSize?.second ?: node.height) - node.height) / 2) else 0f
+        return node.top - reach < viewport.top - TOL || node.bottom + reach > viewport.bottom + TOL
+    }
 
     /**
      * What [touch] saw at one scroll offset: the violations, the names of the actions it saw whole, and every action's

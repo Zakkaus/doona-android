@@ -20,6 +20,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 class MainActivity : ComponentActivity() {
     private val engine get() = (application as DoonaApplication).container.engine
     private val installedApps get() = (application as DoonaApplication).container.installedApps
+    private val imports get() = (application as DoonaApplication).container.imports
 
     /**
      * True from a connect request until it connects or consent is refused, so a repeated tap or a redelivered intent
@@ -42,7 +43,7 @@ class MainActivity : ComponentActivity() {
         connecting = savedInstanceState?.getBoolean(KEY_CONNECTING) ?: false
         // Read here, once, so the settings page never asks the package manager while it composes.
         val version = versionName()
-        setContent { DoonaTheme { DoonaApp(engine, installedApps, onConnect = ::connect, version = version) } }
+        setContent { DoonaTheme { DoonaApp(engine, installedApps, onConnect = ::connect, imports = imports, version = version) } }
         // A recreated activity or one reopened from recents must not repeat the request that first launched it.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (savedInstanceState == null && !fromHistory) handle(intent)

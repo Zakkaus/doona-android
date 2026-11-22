@@ -55,6 +55,7 @@ internal object DoonaIconInk {
         R.drawable.ic_search to Ink(0.05f, 0.047f),
         R.drawable.ic_edit to Ink(0.05f, 0.051f),
         R.drawable.ic_add_circle to Ink(0.075f, 0.075f),
+        R.drawable.ic_link to Ink(0.0625f, 0.0625f),
         R.drawable.ic_more_vertical to Ink(0.425f, 0.425f),
         R.drawable.ic_duck to Ink(0.089f, 0.089f),
     )

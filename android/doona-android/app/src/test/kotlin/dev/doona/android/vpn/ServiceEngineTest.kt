@@ -16,8 +16,10 @@ import dev.doona.android.engine.Status
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -194,6 +196,45 @@ class ServiceEngineTest {
     }
 
     @Test
+    fun tapsReachTheCoreInTapOrderEvenFromAScreenThatHasLeft() = runBlocking {
+        val release = CountDownLatch(1)
+        core.callGate = release
+        val screen = CoroutineScope(Dispatchers.IO + Job())
+        screen.launch(Dispatchers.Unconfined) { engine.select("g-Proxy", "n-hk1") }
+        assertTrue(core.callEntered.await(5, TimeUnit.SECONDS))
+        // The second tap waits behind the first, and its screen is left before its turn comes.
+        screen.launch(Dispatchers.Unconfined) { engine.select("g-Proxy", "n-us1") }
+        screen.cancel()
+        // The screen is opened again and taps: that tap queues behind the other two instead of overtaking them.
+        val reopened = CoroutineScope(Dispatchers.IO + Job())
+        reopened.launch(Dispatchers.Unconfined) { engine.select("g-Proxy", "n-jp1") }
+        delay(200)
+        assertEquals("only the first call is in the core", 1, core.entered.size)
+
+        release.countDown()
+        withTimeout(5_000) { while (core.calls.size < 3) delay(10) }
+        assertEquals(listOf("n-hk1", "n-us1", "n-jp1"), core.calls.map { Regex("n-[a-z0-9]+").find(it.second)!!.value })
+        reopened.cancel()
+    }
+
+    @Test
+    fun aTapAndATestShareOneQueueButOtherCommandsDoNotWaitInIt() = runBlocking {
+        val release = CountDownLatch(1)
+        core.callGate = release
+        val tap = launch(Dispatchers.Unconfined) { engine.select("g-Proxy", "n-hk1") }
+        assertTrue(core.callEntered.await(5, TimeUnit.SECONDS))
+        val test = launch(Dispatchers.Unconfined) { engine.testLatency("g-Proxy") }
+        val mode = launch(Dispatchers.Unconfined) { engine.setMode(Mode.Direct) }
+        delay(200)
+        assertEquals("the tap, and the command that is not queued", listOf("select", "setMode"), core.entered.toList())
+        release.countDown()
+        tap.join()
+        test.join()
+        mode.join()
+        assertEquals(listOf("select", "testLatency"), core.calls.map { it.first }.filter { it != "setMode" })
+    }
+
+    @Test
     fun aSlowSnapshotNeitherHoldsBackNorReplacesANewerCatalog() = runBlocking {
         val older = ContractFixtures.read("snapshot-stopped-catalog.json")
         val newer = older.replace("\"revision\": 7", "\"revision\": 8").replace("\"mode\": \"Global\"", "\"mode\": \"Direct\"")
@@ -363,6 +404,9 @@ class ServiceEngineTest {
 
         @Volatile var snapshotError: Throwable? = null
         val callEntered = CountDownLatch(1)
+
+        /** Every call that reached the core, logged before [callGate] holds it. */
+        val entered = CopyOnWriteArrayList<String>()
         val calls = CopyOnWriteArrayList<Pair<String, String>>()
         val snapshots = AtomicInteger()
 
@@ -384,6 +428,7 @@ class ServiceEngineTest {
         }
 
         override fun call(command: String, argsJson: String): String {
+            entered += command
             callEntered.countDown()
             callGate?.await()
             calls += command to argsJson

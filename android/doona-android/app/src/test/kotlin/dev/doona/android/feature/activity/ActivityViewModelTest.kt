@@ -3,6 +3,9 @@ package dev.doona.android.feature.activity
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
@@ -16,7 +19,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -96,5 +101,23 @@ class ActivityViewModelTest {
         val vm = collected(FakeEngine(status = Status.Running(sinceEpochMs = 0)))
         vm.onAction(ActivityAction.SetMode(Mode.Direct))
         assertNull(vm.uiState.value.node)
+    }
+
+    @Test
+    fun `groups that select each other leave the node unknown instead of hanging`() = runTest {
+        val a = Group("g-A", "A", GroupKind.Selector, listOf(Member("g-B", "B", isGroup = true)), selectedId = "g-B")
+        val b = Group("g-B", "B", GroupKind.Selector, listOf(Member("g-A", "A", isGroup = true)), selectedId = "g-A")
+        val vm = collected(FakeEngine(groups = listOf(a, b), status = Status.Running(sinceEpochMs = 0)))
+        assertNull(vm.uiState.value.node)
+        assertEquals("B", vm.uiState.value.outbound)
+    }
+
+    @Test
+    fun `the screen knows whether a subscription exists to start from`() = runTest {
+        val engine = FakeEngine()
+        val vm = collected(engine)
+        assertTrue(vm.uiState.value.hasSubscriptions)
+        engine.subscriptions.value = emptyList()
+        assertFalse(vm.uiState.value.hasSubscriptions)
     }
 }

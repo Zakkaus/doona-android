@@ -124,7 +124,7 @@ private fun Failures(state: PerAppUiState, onAction: (PerAppAction) -> Unit) {
     val dismiss = stringResource(R.string.ui_dismiss)
     val messages = listOfNotNull(
         state.error?.let { stringResource(it.messageRes()) },
-        state.rebuildFailure?.let { stringResource(R.string.perapp_rebuild_failed, stringResource(it.labelRes())) },
+        state.rebuildFailure?.let { stringResource(R.string.perapp_rebuild_failed, stringResource(it.messageRes())) },
     )
     for (message in messages) {
         DoonaErrorBanner(message, dismiss, { onAction(PerAppAction.DismissError) })
