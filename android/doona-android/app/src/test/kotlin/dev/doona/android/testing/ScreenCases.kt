@@ -79,7 +79,7 @@ internal fun screenCases(): List<ScreenCase> {
             "settings",
             PageLayout(withHub + setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Chevron), listOf(space.afterTitle)),
         ) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
-    )
+    ) + perAppCases()
 }
 
 /**

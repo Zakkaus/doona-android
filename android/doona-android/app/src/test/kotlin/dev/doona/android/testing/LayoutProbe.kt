@@ -136,7 +136,8 @@ private fun box(info: LayoutInfo, parent: LayoutInfo?, semantics: Map<Int, Seman
         painted = info.getModifierInfo().any { it.modifier.javaClass.simpleName in PAINTING },
         filled = info.getModifierInfo().any { it.modifier.javaClass.simpleName == "BackgroundElement" },
         vertical = isColumn(info),
-        children = children(info).map { box(it, info, semantics) },
+        // A lazy list keeps the rows it has scrolled away for reuse: they are in the tree but placed nowhere, so they are not on the page.
+        children = children(info).filter { it.isPlaced }.map { box(it, info, semantics) },
         density = density,
     )
 }
