@@ -30,6 +30,9 @@ class FakeEngine(
     override val settings: StateFlow<Settings> get() = settingsFlow
     private val settingsFlow = MutableStateFlow(Settings())
 
+    /** True: the fake's policy is there from the start; a test sets false to stand for a stored policy still being read. */
+    override val perAppLoaded = MutableStateFlow(true)
+
     override fun connect() {
         status.value = Status.Running(sinceEpochMs = 0)
     }

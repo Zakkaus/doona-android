@@ -16,6 +16,13 @@ interface Engine {
     val subscriptions: StateFlow<List<Subscription>>
     val settings: StateFlow<Settings>
 
+    /**
+     * False until the stored per-app policy has been read, or found unreadable: until then `settings.perApp` is the
+     * default, not what the user saved, and an edit that starts from it would overwrite the saved policy. Apart from
+     * [ready], which waits for the core's catalog.
+     */
+    val perAppLoaded: StateFlow<Boolean>
+
     /** Starts the tunnel. The caller has already obtained VPN consent: `VpnService.prepare` returned null. */
     fun connect()
 
@@ -39,7 +46,12 @@ interface Engine {
 
     suspend fun setMode(mode: Mode): Result<Unit>
 
-    /** A running tunnel is rebuilt to apply it, which drops open connections. */
+    /**
+     * Stores [perApp] and applies it: a running tunnel is rebuilt, which drops open connections, and the call returns
+     * once the rebuilt tunnel is up or failed. The policy is committed whatever the caller does meanwhile. Fails with
+     * an [EngineException] when it could not be stored, and with a [RebuildFailedException] when it was stored but the
+     * tunnel could not be rebuilt with it.
+     */
     suspend fun setPerApp(perApp: PerApp): Result<Unit>
 }
 
@@ -47,6 +59,9 @@ interface Engine {
 enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, ParseFailed, NoNodes, Busy, Internal }
 
 class EngineException(val code: ErrorCode) : Exception(code.name)
+
+/** A policy that was stored, but the tunnel rebuilt with it failed to start for [reason]; the tunnel is [Status.Failed]. */
+class RebuildFailedException(val reason: FailureReason) : Exception(reason.name)
 
 sealed interface Status {
     data object Stopped : Status
