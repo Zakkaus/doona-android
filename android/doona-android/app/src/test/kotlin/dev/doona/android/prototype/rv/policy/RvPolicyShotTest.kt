@@ -1,11 +1,25 @@
 package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvRouteMode
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
+import dev.doona.android.prototype.rv.rvScrollBy
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.rvSystemScheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,10 +29,11 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The 策略 tab and the pages it pushes, light and dark, each in one capture of the whole page: 策略 in 規則
- * (`proto-rv-policy-*`), in 全域 (`proto-rv-policy-global-*`, the main node alone) and in 直連 (`proto-rv-policy-direct-*`,
- * the mode alone; both fit the phone's window), a selector's page (串流, `proto-rv-policy-group-select-*`),
- * a url-test group's page (自動, `proto-rv-policy-group-auto-*`), and the quick rule opened from a connection
- * (`proto-rv-policy-flow-*`).
+ * (`proto-rv-policy-*`), in 全域 (`proto-rv-policy-global-*`, the node picker under the mode, in the phone's window, and
+ * `proto-rv-policy-global-scrolled-*`, scrolled to the second subscription) and in 直連 (`proto-rv-policy-direct-*`, the
+ * mode alone), a selector's page (串流, `proto-rv-policy-group-select-*`), a url-test group's page (自動,
+ * `proto-rv-policy-group-auto-*`), the main node's picker (`proto-rv-policy-picker-*`, the phone's window) and the quick
+ * rule opened from a connection (`proto-rv-policy-flow-*`). A tap on a node in 全域 moves the check to it.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -39,10 +54,36 @@ class RvPolicyShotTest {
     fun ruleDark() = compose.rvShot("policy", dark = true, before = { assertWhole() }) { Policy(RvRouteMode.Rule) }
 
     @Test
-    fun globalLight() = compose.rvShot("policy-global", dark = false, before = { assertWhole() }) { Policy(RvRouteMode.Global) }
+    fun globalLight() = compose.rvShot("policy-global", dark = false) { Policy(RvRouteMode.Global) }
 
     @Test
-    fun globalDark() = compose.rvShot("policy-global", dark = true, before = { assertWhole() }) { Policy(RvRouteMode.Global) }
+    fun globalDark() = compose.rvShot("policy-global", dark = true) { Policy(RvRouteMode.Global) }
+
+    @Test
+    fun globalScrolledLight() = compose.rvShot("policy-global-scrolled", dark = false, before = { rvScrollBy(GLOBAL_SCROLL) }) { Policy(RvRouteMode.Global) }
+
+    @Test
+    fun globalScrolledDark() = compose.rvShot("policy-global-scrolled", dark = true, before = { rvScrollBy(GLOBAL_SCROLL) }) { Policy(RvRouteMode.Global) }
+
+    @Test
+    fun pickerLight() = compose.rvShot("policy-picker", dark = false) { Picker() }
+
+    @Test
+    fun pickerDark() = compose.rvShot("policy-picker", dark = true) { Picker() }
+
+    @Test
+    fun aTapInGlobalMovesTheCheck() {
+        compose.setContent {
+            RvTheme(rvSystemScheme(false), false) {
+                var state by remember { mutableStateOf(RvPolicyState(mode = RvRouteMode.Global)) }
+                RvPolicyScreen(state, onChange = { state = it })
+            }
+        }
+        compose.onNodeWithText(MAIN_NODE).assertIsSelected()
+        compose.onNodeWithText(OTHER_NODE).performScrollTo().assertIsNotSelected().performClick()
+        compose.onNodeWithText(OTHER_NODE).assertIsSelected()
+        compose.onNodeWithText(MAIN_NODE).assertIsNotSelected()
+    }
 
     @Test
     fun directLight() = compose.rvShot("policy-direct", dark = false, before = { assertWhole() }) { Policy(RvRouteMode.Direct) }
@@ -78,6 +119,9 @@ class RvPolicyShotTest {
     private fun Policy(mode: RvRouteMode) = RvPolicyScreen(RvPolicyState(mode = mode), onChange = {})
 
     @Composable
+    private fun Picker() = RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onBack = {}, onTest = {})
+
+    @Composable
     private fun Group(group: RvPolicyGroup) = RvPolicyGroupPage(group, onBack = {}, onSelect = {}, onTest = {})
 
     @Composable
@@ -89,5 +133,12 @@ class RvPolicyShotTest {
         const val WHOLE_SELECT = "+h1136dp"
         const val WHOLE_AUTO = "+h1161dp"
         const val WHOLE_FLOW = "+h1237dp"
+
+        /** 全域 scrolled this far shows the second subscription's card under the bar. */
+        const val GLOBAL_SCROLL = 1000f
+
+        /** The main node in the sample, and another node of the first subscription that a tap makes the main node. */
+        const val MAIN_NODE = "Hong Kong 02 IPLC"
+        const val OTHER_NODE = "Taipei 04"
     }
 }

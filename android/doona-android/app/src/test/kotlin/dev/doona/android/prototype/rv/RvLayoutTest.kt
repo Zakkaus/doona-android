@@ -17,6 +17,7 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RV_NODES_DETAIL
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
@@ -81,6 +82,9 @@ class RvLayoutTest {
 
     @Test
     fun groupAuto() = measure("policy-group-auto", Top.Title) { RvPolicyGroupPage(RvPolicyData.auto, onBack = {}, onSelect = {}, onTest = {}) }
+
+    @Test
+    fun picker() = measure("policy-picker", Top.Title) { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onBack = {}, onTest = {}) }
 
     @Test
     fun ruleFlow() = measure("policy-flow", Top.Compact) { RvPolicyRulePage(RvPolicyData.connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
@@ -266,6 +270,7 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
             (RvPart.CONTROL to RvPart.SECTION) to RvSpace.controlGap,
             (RvPart.CARD to RvPart.CARD) to RvSpace.cardGap,
             (RvPart.CARD to RvPart.SECTION) to RvSpace.sectionAbove,
+            (RvPart.CARD to RvPart.CONTROL) to RvSpace.controlGap,
             (RvPart.CARD to RvPart.FOOTER) to RvSettingsSpace.footerAbove,
             (RvPart.FOOTER to RvPart.SECTION) to RvSpace.sectionAbove,
             (RvPart.SECTION to RvPart.CARD) to RvSpace.sectionBelow,

@@ -5,7 +5,6 @@
     <string name="rv_policy_mode_rule">依規則分流，其餘走主節點</string>
     <string name="rv_policy_mode_global">全部流量走主節點</string>
     <string name="rv_policy_mode_direct">全部流量不經代理</string>
-    <string name="rv_policy_all_traffic">全部流量經此節點</string>
     <string name="rv_policy_groups">策略組</string>
     <string name="rv_policy_group_auto">自動</string>
     <string name="rv_policy_kind_select">手動選擇</string>

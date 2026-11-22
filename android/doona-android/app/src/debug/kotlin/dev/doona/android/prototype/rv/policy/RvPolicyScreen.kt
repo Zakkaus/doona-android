@@ -34,6 +34,7 @@ import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvControlCard
+import dev.doona.android.prototype.rv.RvControlRow
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvGlassButton
@@ -50,7 +51,11 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvRouteMode
+import dev.doona.android.prototype.rv.data.rvNodeGroups
+import dev.doona.android.prototype.rv.nodes.RvNodeGroups
+import dev.doona.android.prototype.rv.nodes.RvNodeListControls
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.nodes.latencyColor
 import dev.doona.android.prototype.rv.nodes.latencyText
@@ -60,9 +65,13 @@ import dev.doona.android.prototype.rv.rvNavClearance
 import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 
-/** Where the 策略 tab leads: a group's page, all rules, the template, a new rule, the other tabs, its two bar actions. */
+/**
+ * Where the 策略 tab leads: a group's page, the main node's picker, all rules, the template, a new rule, the other tabs,
+ * its two bar actions.
+ */
 internal class RvPolicyRoutes(
     val group: (String) -> Unit = {},
+    val mainNode: () -> Unit = {},
     val rules: () -> Unit = {},
     val template: () -> Unit = {},
     val newRule: () -> Unit = {},
@@ -73,11 +82,11 @@ internal class RvPolicyRoutes(
 
 /**
  * The 策略 tab, a control page in the language of 設定 and 節點 (rv-policy-STATE.md has the synthesis behind it): the
- * large title with two glass actions in the bar; the mode as FlClash's three segments with one line saying what it does;
- * the main node, which carries whatever no rule sends elsewhere and, in 全域, everything, as a line under it says; in
- * 規則 only, the groups, each with how it picks and the node it uses; the rules in order with today's bytes, as Karing
- * lists them; and the template and the switches that shape the rules. 全域 keeps the main node alone, 直連 only the
- * mode. Group rows and the main node push the group's page.
+ * large title with two glass actions in the bar; the mode as FlClash's three segments in a card with one line saying
+ * what it does. 規則: the main node, which carries whatever no rule sends elsewhere (its card opens the main node's
+ * picker); the groups, each with how it picks and the node it uses (a row pushes its page); the rules in order with
+ * today's bytes, as Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
+ * the node everything goes through, so under the mode the page is the node picker itself; 直連 shows the mode alone.
  */
 @Composable
 internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes = RvPolicyRoutes()) {
@@ -102,13 +111,14 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
         // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
         RvGutter {
             ModeCard(state.mode) { onChange(state.copy(mode = it)) }
-            if (state.mode != RvRouteMode.Direct) MainCard(state.group(RvPolicyData.main), state.mode, routes.group)
             if (state.mode == RvRouteMode.Rule) {
+                MainCard(state.group(RvPolicyData.main), routes.mainNode)
                 GroupsCard(state, routes.group)
                 RulesCard(routes.rules)
                 OptionsCard(state, onChange, routes)
             }
         }
+        if (state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
         // The last card clears the floating nav, as on 設定.
         Spacer(Modifier.height(rvNavClearance(insets)))
     }
@@ -122,26 +132,28 @@ private fun ModeCard(mode: RvRouteMode, onMode: (RvRouteMode) -> Unit) {
     }
 }
 
-/**
- * The main node: the final group's choice, flagged as the node in use unless nothing goes through a node. In 全域 it is
- * the only node in use, and a line under it says so, as 活動's card notes 直連.
- */
+/** The main node (規則): the final group's choice, flagged as the node in use; the card opens the main node's picker. */
 @Composable
-private fun MainCard(main: RvPolicyGroup, mode: RvRouteMode, onOpen: (String) -> Unit) {
+private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
     val node = main.selected
     RvCard {
-        RvCardHeader(stringResource(R.string.rv_main_node), onClick = { onOpen(main.id) })
+        RvCardHeader(stringResource(R.string.rv_main_node), onClick = onOpen)
         RvRow(
-            { RvFlag(node.place.name, RvSize.rowDisc, current = mode != RvRouteMode.Direct) },
+            { RvFlag(node.place.name, RvSize.rowDisc, current = true) },
             node.name,
             listOf(stringResource(main.kind.label), node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
-            onClick = { onOpen(main.id) },
+            onClick = onOpen,
         ) { RvLatencyChange(node.latencyMs, node.changeMs) }
-        if (mode == RvRouteMode.Global) {
-            // 活動's outbound card states a mode's effect in a line under the row; so does this card.
-            RvText(stringResource(R.string.rv_policy_all_traffic), Rv.type.rowSub, Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding), color = Rv.colors.textSecondary)
-        }
     }
+}
+
+/** 全域's node picker: the node list's search, then every subscription's nodes; a tap makes the node the main node. */
+@Composable
+private fun GlobalPicker(state: RvPolicyState, onChange: (RvPolicyState) -> Unit) {
+    val main = state.group(RvPolicyData.main)
+    val groups = remember { rvNodeGroups(RvData.nodes, RvData.subscriptions) }
+    RvControlRow { RvNodeListControls() }
+    RvNodeGroups(groups, main.selectedId) { onChange(state.choose(main.id, it)) }
 }
 
 /** Every other group: its kind's glyph, its name over how it picks and how many nodes it has, and the node it uses. */

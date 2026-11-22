@@ -102,7 +102,7 @@ internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, 
                 Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvChrome.markGlyph))
             }
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-            SearchPill(glass, onSearch, Modifier.weight(1f))
+            RvSearchPill(onSearch, Modifier.weight(1f), glass)
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
             RvGlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
             Spacer(Modifier.width(RvChrome.buttonGap - RvChrome.touchPad * 2))
@@ -111,13 +111,18 @@ internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, 
     }
 }
 
+/**
+ * The search pill (measured §4: 44 dp, full round, the 24 dp magnifier 8 dp in, the 17 sp placeholder): on 活動's bar in
+ * the controls' [glass] and a 48 dp target; without glass, on the page in the filter chips' fill, its 44 dp the layout
+ * box, as a node list's first row.
+ */
 @Composable
-private fun SearchPill(glass: RvGlass, onClick: () -> Unit, modifier: Modifier) {
+internal fun RvSearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, glass: RvGlass? = null) {
+    val fill = glass?.let { Modifier.minimumInteractiveComponentSize().height(RvChrome.control).rvControl(it, CircleShape) }
+        ?: Modifier.height(RvChrome.control).clip(CircleShape).background(Rv.colors.segmentTrack)
     Row(
         modifier
-            .minimumInteractiveComponentSize()
-            .height(RvChrome.control)
-            .rvControl(glass, CircleShape)
+            .then(fill)
             .rvPress(CircleShape, Role.Button, onClick)
             .padding(start = RvChrome.searchInset),
         verticalAlignment = Alignment.CenterVertically,

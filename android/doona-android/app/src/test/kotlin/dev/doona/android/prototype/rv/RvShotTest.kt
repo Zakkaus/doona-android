@@ -1,11 +1,8 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import org.junit.Rule
@@ -51,10 +48,10 @@ class RvShotTest {
     fun activityIdleDark() = compose.rvShot("activity-idle", dark = true) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}) }
 
     @Test
-    fun activityScrolledLight() = activity("activity-scrolled", dark = false) { scrollBy(SCROLLED_DP) }
+    fun activityScrolledLight() = activity("activity-scrolled", dark = false) { rvScrollBy(SCROLLED_DP) }
 
     @Test
-    fun activityScrolledDark() = activity("activity-scrolled", dark = true) { scrollBy(SCROLLED_DP) }
+    fun activityScrolledDark() = activity("activity-scrolled", dark = true) { rvScrollBy(SCROLLED_DP) }
 
     @Test
     @Config(qualifiers = FULL_PAGE)
@@ -84,12 +81,6 @@ class RvShotTest {
 
     private fun traffic(screen: String, dark: Boolean, scrub: Int? = null) =
         compose.rvShot(screen, dark) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }
-
-    /** Scrolls the page's content up by [dp], as a finger would, and lets the bottom bar finish collapsing. */
-    private fun ComposeContentTestRule.scrollBy(dp: Float) {
-        onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, dp * density.density) }
-        waitForIdle()
-    }
 
     private companion object {
         /** The scrolled golden moves the content this far, past the header, so the bottom bar collapses. */

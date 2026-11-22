@@ -158,10 +158,18 @@ internal fun RvPageHeader(
             content = it,
         )
     }
-    control?.let {
-        Box(Modifier.padding(start = RvSpace.gutter, top = RvSpace.controlGap, end = RvSpace.gutter).testTag(RvPart.CONTROL)) { it() }
-    }
-    Spacer(Modifier.height(if (control == null) RvSpace.headerGap else RvSpace.controlGap))
+    if (control != null) RvControlRow(control) else Spacer(Modifier.height(RvSpace.headerGap))
+}
+
+/**
+ * A control row on the page (filter chips, a status chip, a list's search and order), on the gutter with
+ * [RvSpace.controlGap] above and below it, as Revolut's Analytics sets its chips between its title and its first card.
+ */
+@Composable
+internal fun RvControlRow(control: @Composable () -> Unit) {
+    Spacer(Modifier.height(RvSpace.controlGap))
+    Box(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CONTROL)) { control() }
+    Spacer(Modifier.height(RvSpace.controlGap))
 }
 
 /** A pushed page's large title alone: [RvPageHeader] with no caption and no control. */

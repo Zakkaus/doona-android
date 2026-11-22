@@ -14,6 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
@@ -33,8 +34,8 @@ import dev.doona.android.prototype.rv.stats.rvStatsSample
  * Debug builds only: the Revolut-style sample with its invented state, full screen on a phone, so the glass blur can be
  * seen where the platform draws it (Robolectric's goldens cannot). 活動 pushes 流量詳情 (a traffic tile), 統計 (the top
  * bar), 節點 (the search pill and the outbound row) and the node in use (its row); 節點 pushes a node's page; the nav
- * switches to 設定, which pushes 主題, and to 策略, which pushes a group's page (its rows and the main node) and the quick
- * rule (新增規則); 活動's mode row and 查看全部 switch to 策略, and a rule group opens its group's page. Back returns. Start it from the launcher's "doona RV sample", or with
+ * switches to 設定, which pushes 主題, and to 策略, which pushes a group's page (its rows), the main node's picker (its
+ * card) and the quick rule (新增規則); 活動's mode row and 查看全部 switch to 策略, and a rule group opens its group's page. Back returns. Start it from the launcher's "doona RV sample", or with
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`.
  */
 class RvPreviewActivity : ComponentActivity() {
@@ -75,8 +76,13 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
         SETTINGS -> RvSettingsScreen(settings, onChange = { settings = it }, onOpenTheme = { push(THEME) }, onTab = onTab)
 
         POLICY -> {
-            val routes = RvPolicyRoutes(group = { push("$GROUP:$it") }, newRule = { push(RULE) }, tab = onTab)
+            val routes = RvPolicyRoutes(group = { push("$GROUP:$it") }, mainNode = { push(PICKER) }, newRule = { push(RULE) }, tab = onTab)
             RvPolicyScreen(policy, { policy = it }, routes)
+        }
+
+        PICKER -> {
+            val main = policy.group(RvPolicyData.main)
+            RvNodePickerPage(RvData.nodes, RvData.subscriptions, main.selectedId, onPick = { policy = policy.choose(main.id, it) }, onBack = pop, onTest = {})
         }
 
         GROUP -> {
@@ -108,4 +114,5 @@ private const val THEME = "theme"
 private const val POLICY = "policy"
 private const val GROUP = "group"
 private const val RULE = "rule"
+private const val PICKER = "picker"
 private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS)

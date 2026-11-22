@@ -5,7 +5,6 @@
     <string name="rv_policy_mode_rule">Rules route traffic; the rest goes to the main node</string>
     <string name="rv_policy_mode_global">All traffic goes to the main node</string>
     <string name="rv_policy_mode_direct">No traffic goes through a proxy</string>
-    <string name="rv_policy_all_traffic">All traffic uses this node</string>
     <string name="rv_policy_groups">Groups</string>
     <string name="rv_policy_group_auto">Auto</string>
     <string name="rv_policy_kind_select">Manual</string>
