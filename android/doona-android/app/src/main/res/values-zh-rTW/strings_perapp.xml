@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="perapp_title">依 App</string>
+    <string name="perapp_policy_all">全部 App</string>
+    <string name="perapp_policy_only">只有勾選的</string>
+    <string name="perapp_policy_except">勾選的以外</string>
+    <string name="perapp_summary_all">所有 App 都經過 VPN。</string>
+    <string name="perapp_summary_only">只有勾選的 App 經過 VPN，其他 App 直接連線。</string>
+    <string name="perapp_summary_except">勾選的 App 直接連線，其他 App 經過 VPN。</string>
+    <string name="perapp_needs_app">至少要勾選一個 App 才能儲存，否則沒有任何 App 會經過 VPN。</string>
+    <string name="perapp_save">儲存</string>
+    <string name="perapp_reconnect_note">VPN 已連線時，儲存會讓它重新連線，目前的連線會中斷。</string>
+    <string name="perapp_search">搜尋 App</string>
+    <string name="perapp_no_apps">沒有可勾選的 App</string>
+    <string name="perapp_no_apps_line">裝置上找不到可從主畫面開啟的 App。</string>
+    <string name="perapp_no_match">找不到符合的 App</string>
+    <string name="perapp_no_match_line">換個關鍵字，或清除搜尋。</string>
+    <string name="settings_subscriptions">訂閱</string>
+    <string name="settings_version">版本</string>
+</resources>

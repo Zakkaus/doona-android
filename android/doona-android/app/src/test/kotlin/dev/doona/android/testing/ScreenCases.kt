@@ -23,6 +23,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.feature.activity.ActivityScreen
 import dev.doona.android.feature.activity.sampleActivityState
 
@@ -50,13 +51,14 @@ fun sampleEngine() = FakeEngine(status = Status.Running(sinceEpochMs = 0), traff
  */
 internal fun screenCases(): List<ScreenCase> {
     val engine = sampleEngine()
+    val apps = FakeInstalledApps()
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar)
     val withHub = bars + LayoutRole.HubBar
     val activity = setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Control, LayoutRole.Value, LayoutRole.Chevron)
     return listOf(
         ScreenCase("activity", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
-            DoonaApp(engine, onConnect = {}, listOf(ActivityKey))
+            DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey))
         },
         ScreenCase("activity-error", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
             // The error state sits in the frame of every other screen: the hub bar under it and the gesture bar's inset.
@@ -65,15 +67,18 @@ internal fun screenCases(): List<ScreenCase> {
         ScreenCase(
             "policies",
             PageLayout(withHub + setOf(LayoutRole.Card, LayoutRole.Control, LayoutRole.Chevron), listOf(space.afterTitle, space.section, space.section)),
-        ) { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, PoliciesKey)) },
+        ) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, PoliciesKey)) },
         ScreenCase(
             "group",
             PageLayout(
                 withHub + setOf(LayoutRole.Control, LayoutRole.Row, LayoutRole.Chevron),
                 listOf(space.item, space.section, space.block, space.item, space.section, space.block, space.block, space.block),
             ),
-        ) { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))) },
-        ScreenCase("settings", PageLayout(withHub, emptyList())) { DoonaApp(engine, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
+        ) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))) },
+        ScreenCase(
+            "settings",
+            PageLayout(withHub + setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Chevron), listOf(space.afterTitle)),
+        ) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
     )
 }
 

@@ -13,10 +13,13 @@ import androidx.navigation3.ui.NavDisplay
 import dev.doona.android.designsystem.components.DoonaHubShell
 import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.InstalledApps
+import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityRoute
+import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
-import dev.doona.android.feature.settings.SettingsScreen
+import dev.doona.android.feature.settings.SettingsRoute
 
 /**
  * The frame every page of the app sits in: the hub bar below it, or the hub rail beside it in a short window (see
@@ -38,7 +41,7 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
  * [start] must begin with [ActivityKey].
  */
 @Composable
-fun DoonaApp(engine: Engine, onConnect: () -> Unit, start: List<NavKey> = listOf(ActivityKey)) {
+fun DoonaApp(engine: Engine, installedApps: InstalledApps, onConnect: () -> Unit, start: List<NavKey> = listOf(ActivityKey)) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
     DoonaAppShell(current = currentTab(backStack), onSelect = { backStack.selectTab(it) }) {
         NavDisplay(
@@ -50,7 +53,11 @@ fun DoonaApp(engine: Engine, onConnect: () -> Unit, start: List<NavKey> = listOf
                 entry<ActivityKey> { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.add(GroupKey(it)) }) }
                 entry<PoliciesKey> { PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }) }
                 entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
-                entry<SettingsKey> { SettingsScreen() }
+                entry<SettingsKey> {
+                    // 訂閱 is the policies-and-subscriptions lane's page; its row opens nothing until that lane wires it.
+                    SettingsRoute(engine, onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = NOT_WIRED)
+                }
+                entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
             },
         )
     }
