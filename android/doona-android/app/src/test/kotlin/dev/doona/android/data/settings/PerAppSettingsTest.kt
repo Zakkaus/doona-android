@@ -52,6 +52,21 @@ class PerAppSettingsTest {
     }
 
     @Test
+    fun anEmptyFileIsNotReadAsAll() {
+        // Zero bytes parse as an empty map, which would decode as the default.
+        file.writeBytes(ByteArray(0))
+        assertThrows(IOException::class.java) { runBlocking { settings.perApp.first() } }
+    }
+
+    @Test
+    fun aSaveRepairsAnEmptyFile() = runBlocking {
+        file.writeBytes(ByteArray(0))
+        val saved = PerApp(AppPolicy.OnlyListed, setOf("a"))
+        assertEquals(saved, settings.update { saved })
+        assertEquals(saved, settings.perApp.first())
+    }
+
+    @Test
     fun anUnknownPolicyIsNotReadAsAll() {
         runBlocking { store.edit { it[stringPreferencesKey("policy")] = "Everything" } }
         assertThrows(IOException::class.java) { runBlocking { settings.perApp.first() } }
