@@ -14,12 +14,12 @@ import androidx.compose.ui.test.performScrollTo
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
-import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvRouteMode
-import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.rvScrollBy
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvSystemScheme
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,8 +32,8 @@ import org.robolectric.annotation.GraphicsMode
  * (`proto-rv-policy-*`), in 全域 (`proto-rv-policy-global-*`, the node picker under the mode, in the phone's window, and
  * `proto-rv-policy-global-scrolled-*`, scrolled to the second subscription) and in 直連 (`proto-rv-policy-direct-*`, the
  * mode alone), a selector's page (串流, `proto-rv-policy-group-select-*`), a url-test group's page (自動,
- * `proto-rv-policy-group-auto-*`), the main node's picker (`proto-rv-policy-picker-*`, the phone's window) and the quick
- * rule opened from a connection (`proto-rv-policy-flow-*`). A tap on a node in 全域 moves the check to it.
+ * `proto-rv-policy-group-auto-*`) and the quick rule opened from a connection (`proto-rv-policy-flow-*`); the main node's
+ * picker is RvNodeListShotTest's. A tap on a node in 全域 moves the check to it, and its order stays in the tab's state.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -66,12 +66,6 @@ class RvPolicyShotTest {
     fun globalScrolledDark() = compose.rvShot("policy-global-scrolled", dark = true, before = { rvScrollBy(GLOBAL_SCROLL) }) { Policy(RvRouteMode.Global) }
 
     @Test
-    fun pickerLight() = compose.rvShot("policy-picker", dark = false) { Picker() }
-
-    @Test
-    fun pickerDark() = compose.rvShot("policy-picker", dark = true) { Picker() }
-
-    @Test
     fun aTapInGlobalMovesTheCheck() {
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
@@ -83,6 +77,24 @@ class RvPolicyShotTest {
         compose.onNodeWithText(OTHER_NODE).performScrollTo().assertIsNotSelected().performClick()
         compose.onNodeWithText(OTHER_NODE).assertIsSelected()
         compose.onNodeWithText(MAIN_NODE).assertIsNotSelected()
+    }
+
+    @Test
+    fun anOrderInGlobalStaysInTheTabsState() {
+        var state = RvPolicyState(mode = RvRouteMode.Global)
+        compose.setContent {
+            RvTheme(rvSystemScheme(false), false) {
+                var shown by remember { mutableStateOf(state) }
+                RvPolicyScreen(shown, onChange = {
+                    shown = it
+                    state = it
+                })
+            }
+        }
+        compose.onNodeWithText(LATENCY).assertIsSelected()
+        compose.onNodeWithText(NAME).performClick().assertIsSelected()
+        compose.onNodeWithText(LATENCY).assertIsNotSelected()
+        assertEquals(RvNodeSort.Name, state.nodeSort)
     }
 
     @Test
@@ -119,9 +131,6 @@ class RvPolicyShotTest {
     private fun Policy(mode: RvRouteMode) = RvPolicyScreen(RvPolicyState(mode = mode), onChange = {})
 
     @Composable
-    private fun Picker() = RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onBack = {}, onTest = {})
-
-    @Composable
     private fun Group(group: RvPolicyGroup) = RvPolicyGroupPage(group, onBack = {}, onSelect = {}, onTest = {})
 
     @Composable
@@ -135,10 +144,14 @@ class RvPolicyShotTest {
         const val WHOLE_FLOW = "+h1237dp"
 
         /** 全域 scrolled this far shows the second subscription's card under the bar. */
-        const val GLOBAL_SCROLL = 1000f
+        const val GLOBAL_SCROLL = 1048f
 
         /** The main node in the sample, and another node of the first subscription that a tap makes the main node. */
         const val MAIN_NODE = "Hong Kong 02 IPLC"
         const val OTHER_NODE = "Taipei 04"
+
+        /** Two of the node list's order chips. */
+        const val LATENCY = "延遲"
+        const val NAME = "名稱"
     }
 }

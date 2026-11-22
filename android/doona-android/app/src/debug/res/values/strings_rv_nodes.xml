@@ -49,4 +49,9 @@
     <string name="rv_nodes_subscription">From subscription</string>
     <string name="rv_nodes_last_test">Last tested</string>
     <string name="rv_nodes_use">Use this node</string>
+    <string name="rv_nodes_sort_latency">Latency</string>
+    <string name="rv_nodes_sort_stability">Stability</string>
+    <string name="rv_nodes_sort_name">Name</string>
+    <string name="rv_nodes_sort_region">Region</string>
+    <string name="rv_nodes_stability">Steady %1$d/%2$d</string>
 </resources>

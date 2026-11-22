@@ -45,4 +45,9 @@
     <string name="rv_nodes_subscription">來自訂閱</string>
     <string name="rv_nodes_last_test">上次測試</string>
     <string name="rv_nodes_use">設為目前節點</string>
+    <string name="rv_nodes_sort_latency">延遲</string>
+    <string name="rv_nodes_sort_stability">穩定</string>
+    <string name="rv_nodes_sort_name">名稱</string>
+    <string name="rv_nodes_sort_region">地區</string>
+    <string name="rv_nodes_stability">穩定 %1$d/%2$d</string>
 </resources>

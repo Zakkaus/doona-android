@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
@@ -59,6 +60,8 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
     val nodes = remember { sampleNodesPage() }
     var settings by remember { mutableStateOf(rvSampleSettings()) }
     var policy by remember { mutableStateOf(RvPolicyState()) }
+    // The main node's picker keeps its own order, apart from 全域's (in the policy state), as each screen remembers its last.
+    var pickerSort by remember { mutableStateOf(RvNodeSort.Latency) }
     var quickRule by remember { mutableStateOf(RvQuickRule()) }
     val onTab: (Int) -> Unit = { i -> TABS[i]?.let(tab) }
     when (route.substringBefore(':')) {
@@ -82,7 +85,16 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
 
         PICKER -> {
             val main = policy.group(RvPolicyData.main)
-            RvNodePickerPage(RvData.nodes, RvData.subscriptions, main.selectedId, onPick = { policy = policy.choose(main.id, it) }, onBack = pop, onTest = {})
+            RvNodePickerPage(
+                RvData.nodes,
+                RvData.subscriptions,
+                main.selectedId,
+                pickerSort,
+                onSort = { pickerSort = it },
+                onPick = { policy = policy.choose(main.id, it) },
+                onBack = pop,
+                onTest = {},
+            )
         }
 
         GROUP -> {

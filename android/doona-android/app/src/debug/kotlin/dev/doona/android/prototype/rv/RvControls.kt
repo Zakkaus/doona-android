@@ -115,13 +115,17 @@ internal fun RvFilterChip(label: String, onClick: () -> Unit, modifier: Modifier
     }
 }
 
-/** A range under a chart, Revolut's chip (measured §8): only the selected one has a fill, raised off the page; no track. */
+/**
+ * One of a few choices in a row, Revolut's range chip (measured §8): only the selected one has a fill, raised off the
+ * page; no track. Under a chart it picks the range; under a node list's search it picks the order. The 36 dp pill is its
+ * layout box, so a row of them measures from its visible edge; its target reaches 48 dp through Compose's touch target
+ * expansion, which does not move the layout.
+ */
 @Composable
 internal fun RvRangePill(label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = Rv.colors
     Box(
         Modifier
-            .minimumInteractiveComponentSize()
             .height(RvChartSize.range)
             .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
             .selectable(selected, interactionSource = null, indication = ripple(color = colors.stateLayer), role = Role.Tab, onClick = onClick)

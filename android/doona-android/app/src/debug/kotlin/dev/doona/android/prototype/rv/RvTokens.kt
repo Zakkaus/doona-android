@@ -73,6 +73,9 @@ internal object RvSpace {
      */
     val controlGap = 24.dp
 
+    /** Between two control rows stacked in one (a node list's search, then its order), as a section title to its card. */
+    val controlStack = 12.dp
+
     /** From a page's mark (a node's flag) to the large title under it. */
     val markToTitle = 12.dp
 

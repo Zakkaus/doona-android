@@ -6,6 +6,7 @@ import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvPlace
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.data.fastest
@@ -91,13 +92,17 @@ internal object RvPolicyData {
     private fun List<RvNode>.inPlaces(places: Set<RvPlace>) = filter { it.place in places }
 }
 
-/** The page's own state: the mode, the two switches, and each selector's choice where the user changed it. */
+/**
+ * The page's own state: the mode, the two switches, each selector's choice where the user changed it, and the order of
+ * 全域's node list, kept here so the tab shows its last choice when the user comes back.
+ */
 @Immutable
 internal data class RvPolicyState(
     val mode: RvRouteMode = RvRouteMode.Rule,
     val blockAds: Boolean = true,
     val blockQuic: Boolean = false,
     val choices: Map<String, String> = emptyMap(),
+    val nodeSort: RvNodeSort = RvNodeSort.Latency,
 ) {
     fun group(group: RvPolicyGroup): RvPolicyGroup = choices[group.id]?.let(group::choosing) ?: group
 

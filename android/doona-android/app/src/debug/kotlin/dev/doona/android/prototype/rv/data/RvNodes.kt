@@ -33,14 +33,22 @@ internal data class RvNode(
     /** The middle of the answered tests ([rvMedian]). */
     val medianMs: Int? get() = rvMedian(history.filterNotNull())
 
-    /** How far the answered tests stray from their mean, in ms; a node that ever timed out is the least steady. */
-    val jitterMs: Double
+    /** How many of the kept tests answered. */
+    val answered: Int get() = history.count { it != null }
+
+    /**
+     * How far the answered tests stray from their mean: their standard deviation in ms. Null with fewer than two answered
+     * tests, which say nothing about spread.
+     */
+    val spreadMs: Double?
         get() {
-            if (history.any { it == null }) return Double.MAX_VALUE
-            val values = history.filterNotNull()
+            val values = history.filterNotNull().takeIf { it.size >= 2 } ?: return null
             val mean = values.average()
             return sqrt(values.sumOf { (it - mean) * (it - mean) } / values.size)
         }
+
+    /** [spreadMs] over all tests; a node that ever timed out is the least steady. */
+    val jitterMs: Double get() = if (answered < history.size) Double.MAX_VALUE else spreadMs ?: 0.0
 
     /** The same node before any test ran. */
     fun untested(): RvNode = copy(history = List(history.size) { null })

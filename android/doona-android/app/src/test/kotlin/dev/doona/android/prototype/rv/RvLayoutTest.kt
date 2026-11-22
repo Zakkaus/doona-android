@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.toSize
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RV_NODES_DETAIL
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
@@ -84,7 +85,9 @@ class RvLayoutTest {
     fun groupAuto() = measure("policy-group-auto", Top.Title) { RvPolicyGroupPage(RvPolicyData.auto, onBack = {}, onSelect = {}, onTest = {}) }
 
     @Test
-    fun picker() = measure("policy-picker", Top.Title) { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onBack = {}, onTest = {}) }
+    fun picker() = measure("policy-picker", Top.Title) {
+        RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {})
+    }
 
     @Test
     fun ruleFlow() = measure("policy-flow", Top.Compact) { RvPolicyRulePage(RvPolicyData.connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
