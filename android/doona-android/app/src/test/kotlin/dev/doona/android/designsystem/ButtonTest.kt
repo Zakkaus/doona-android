@@ -5,15 +5,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
@@ -21,12 +26,13 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaButton
 import dev.doona.android.designsystem.components.DoonaButtonStyle
-import dev.doona.android.designsystem.components.DoonaDestructiveButton
 import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.tokens.Dawn
@@ -130,7 +136,7 @@ class ButtonTest {
                 DoonaButton("Primary", onClick = {})
                 DoonaButton("Disabled", onClick = {}, enabled = false)
                 DoonaButton("Secondary", onClick = {}, style = DoonaButtonStyle.Secondary)
-                DoonaDestructiveButton("Destructive", onClick = {})
+                DoonaButton("Destructive", onClick = {}, style = DoonaButtonStyle.Destructive)
             }
         }
         listOf("Primary", "Disabled", "Secondary", "Destructive").forEach { fills[it] = fillAt(it, FILL_INSET) }
@@ -140,7 +146,54 @@ class ButtonTest {
         assertEquals(hex(c.destructive), hex(fills.getValue("Destructive")))
     }
 
+    /** A disabled secondary button draws its outline in the muted label colour, not at the strength of an enabled one. */
+    @Test
+    fun aDisabledSecondaryButtonHasADimmedOutline() {
+        val c = DoonaColors(Dawn)
+        compose.setDoonaContent {
+            Column(Modifier.fillMaxSize().background(c.surface).padding(space.gutter), verticalArrangement = Arrangement.spacedBy(space.block)) {
+                DoonaButton("Enabled", onClick = {}, style = DoonaButtonStyle.Secondary)
+                DoonaButton("Disabled", onClick = {}, style = DoonaButtonStyle.Secondary, enabled = false)
+            }
+        }
+        assertEquals(hex(c.strongLine), hex(fillAt("Enabled", OUTLINE_INSET)))
+        assertEquals(hex(c.text.disabled), hex(fillAt("Disabled", OUTLINE_INSET)))
+    }
+
+    private fun lines(label: String): TextLayoutResult {
+        val results = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(label, useUnmergedTree = true).fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+        return results.single()
+    }
+
+    /** A label too long for one line takes a second, and ends in an ellipsis only past that: the button grows to hold both lines. */
+    @Test
+    fun aLongLabelWrapsOntoASecondLineBeforeItIsCut() {
+        val two = "Add the subscription and test every node in it"
+        val many = "Add the subscription and test every node in it, then remove the old one and every group that used it"
+        compose.setDoonaContent {
+            Column(Modifier.width(CROWDED)) {
+                DoonaButton("Short", onClick = {}, Modifier.fillMaxWidth())
+                DoonaButton(two, onClick = {}, Modifier.fillMaxWidth())
+                DoonaButton(many, onClick = {}, Modifier.fillMaxWidth())
+            }
+        }
+        assertEquals(1, lines("Short").lineCount)
+        assertEquals(2, lines(two).lineCount)
+        assertEquals("wrapped, not cut", false, lines(two).hasVisualOverflow)
+        assertEquals(2, lines(many).lineCount)
+        assertEquals("a third line is an ellipsis", true, lines(many).isLineEllipsized(1))
+        compose.onNodeWithText(two).assertHeightIsAtLeast(40.dp)
+        compose.onNodeWithText("Short").assertHeightIsEqualTo(DoonaTheme.size.control)
+    }
+
     private companion object {
+        /** On the outline, 2 dp wide, at the middle of the button's start edge. */
+        const val OUTLINE_INSET = 1f
+
+        /** Narrow enough for a long label to need a second line. */
+        val CROWDED = 240.dp
+
         /** Inside a pill's round end, where the fill is: a primary button is 36 high with a 18 dp radius. */
         const val FILL_INSET = 6f
     }

@@ -22,22 +22,24 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 
 /**
  * How loud a button is: [Primary] is the one action of a page or dialog (accent pill, bold), [Secondary] an alternative
- * next to it (outlined), [Text] a minor one (no fill, no outline).
+ * next to it (outlined), [Text] a minor one (no fill, no outline), [Destructive] the one action that removes something
+ * (a primary pill in the destructive fill).
  */
-enum class DoonaButtonStyle { Primary, Secondary, Text }
+enum class DoonaButtonStyle { Primary, Secondary, Text, Destructive }
 
 /**
- * Button (§7): 36 high, 12 of padding at the sides, the label on one line (14/500, a primary 14/700), a leading [icon]
- * of 16 if given, which grows with the label's font. Hit over 48 dp like every control, so stacked buttons are a
- * `block` apart. [enabled] false mutes it and ignores taps; [busy] swaps the icon for a spinner, ignores taps and tells
- * a screen reader it is in progress, for the time between the tap and the result. A label too long for the room ends
- * in an ellipsis.
+ * Button (§7): 36 high, 12 of padding at the sides, the label centred (14/500, a primary or destructive 14/700), a
+ * leading [icon] of 16 if given, which grows with the label's font. Hit over 48 dp like every control, so stacked
+ * buttons are a `block` apart. [enabled] false mutes it and ignores taps; [busy] swaps the icon for a spinner, ignores
+ * taps and tells a screen reader it is in progress, for the time between the tap and the result. A label too long for
+ * the room wraps onto a second line, then ends in an ellipsis; the button grows to hold both lines.
  */
 @Composable
 fun DoonaButton(
@@ -48,53 +50,8 @@ fun DoonaButton(
     @DrawableRes icon: Int? = null,
     enabled: Boolean = true,
     busy: Boolean = false,
-) = ActionButton(label, onClick, modifier, style, destructive = false, icon, enabled, busy)
-
-/** The primary button in the destructive fill, for the confirmation of a removal ([DoonaConfirmDialog]); not a style of its own. */
-@Composable
-internal fun DoonaDestructiveButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) =
-    ActionButton(label, onClick, modifier, DoonaButtonStyle.Primary, destructive = true, icon = null, enabled = true, busy = false)
-
-/** What a button draws for its look and state: the fill, the outline, the label's colour, shape and type. */
-private class ButtonSkin(val fill: Color?, val outline: Color?, val label: Color, val shape: Shape, val type: TextStyle)
-
-@Composable
-private fun skinOf(style: DoonaButtonStyle, destructive: Boolean, enabled: Boolean): ButtonSkin {
-    val c = DoonaTheme.colors
-    val ink = if (enabled) null else c.text.disabled
-    return when (style) {
-        DoonaButtonStyle.Primary -> ButtonSkin(
-            fill = if (!enabled) {
-                c.control
-            } else if (destructive) {
-                c.destructive
-            } else {
-                c.accent
-            },
-            outline = null,
-            label = ink ?: c.onAccent,
-            shape = DoonaTheme.shape.pill,
-            type = DoonaTheme.type.bodyStrong,
-        )
-
-        DoonaButtonStyle.Secondary -> ButtonSkin(null, c.strongLine, ink ?: c.text.primary, DoonaTheme.shape.control, DoonaTheme.type.label)
-
-        DoonaButtonStyle.Text -> ButtonSkin(null, null, ink ?: c.text.accent, DoonaTheme.shape.control, DoonaTheme.type.label)
-    }
-}
-
-@Composable
-private fun ActionButton(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier,
-    style: DoonaButtonStyle,
-    destructive: Boolean,
-    @DrawableRes icon: Int?,
-    enabled: Boolean,
-    busy: Boolean,
 ) {
-    val skin = skinOf(style, destructive, enabled)
+    val skin = skinOf(style, enabled)
     // The glyph grows with the label as the label's line does, so it does not stay a speck beside a large font.
     val glyph = dotSizeFor(skin.type, DoonaTheme.size.iconInline)
     val state = stringResource(R.string.ui_in_progress)
@@ -117,6 +74,30 @@ private fun ActionButton(
         } else if (icon != null) {
             DoonaIcon(icon, skin.label, size = glyph)
         }
-        Text(label, style = skin.type, color = skin.label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Text(
+            label,
+            style = skin.type,
+            color = skin.label,
+            textAlign = TextAlign.Center,
+            maxLines = LABEL_LINES,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+    }
+}
+
+/** What a button draws for its look and state: the fill, the outline, the label's colour, shape and type. */
+private class ButtonSkin(val fill: Color?, val outline: Color?, val label: Color, val shape: Shape, val type: TextStyle)
+
+/** A disabled button's label and outline are one muted ink, so the outline is dimmed with the label. */
+@Composable
+private fun skinOf(style: DoonaButtonStyle, enabled: Boolean): ButtonSkin {
+    val c = DoonaTheme.colors
+    val ink = if (enabled) null else c.text.disabled
+    return when (style) {
+        DoonaButtonStyle.Primary -> ButtonSkin(if (enabled) c.accent else c.control, null, ink ?: c.onAccent, DoonaTheme.shape.pill, DoonaTheme.type.bodyStrong)
+        DoonaButtonStyle.Destructive -> ButtonSkin(if (enabled) c.destructive else c.control, null, ink ?: c.onAccent, DoonaTheme.shape.pill, DoonaTheme.type.bodyStrong)
+        DoonaButtonStyle.Secondary -> ButtonSkin(null, ink ?: c.strongLine, ink ?: c.text.primary, DoonaTheme.shape.control, DoonaTheme.type.label)
+        DoonaButtonStyle.Text -> ButtonSkin(null, null, ink ?: c.text.accent, DoonaTheme.shape.control, DoonaTheme.type.label)
     }
 }

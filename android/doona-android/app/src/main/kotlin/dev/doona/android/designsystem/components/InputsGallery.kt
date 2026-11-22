@@ -22,12 +22,14 @@ internal fun InputsGallery() = GalleryPage("Inputs") {
     val add = stringResource(R.string.group_new_group)
     val cancel = stringResource(R.string.ui_dismiss)
     val edit = stringResource(R.string.policy_edit)
+    val remove = "Remove"
     // The buttons wrap onto a new line when a larger font leaves no room for them side by side.
-    Section("DoonaButton: primary, secondary, text") {
+    Section("DoonaButton: primary, secondary, text, destructive") {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(space.item), verticalArrangement = Arrangement.spacedBy(space.block)) {
             DoonaButton(add, onClick = {})
             DoonaButton(cancel, onClick = {}, style = DoonaButtonStyle.Secondary)
             DoonaButton(edit, onClick = {}, style = DoonaButtonStyle.Text)
+            DoonaButton(remove, onClick = {}, style = DoonaButtonStyle.Destructive)
         }
     }
     Section("With an icon") {
@@ -42,6 +44,7 @@ internal fun InputsGallery() = GalleryPage("Inputs") {
             DoonaButton(add, onClick = {}, enabled = false)
             DoonaButton(cancel, onClick = {}, style = DoonaButtonStyle.Secondary, enabled = false)
             DoonaButton(edit, onClick = {}, style = DoonaButtonStyle.Text, enabled = false)
+            DoonaButton(remove, onClick = {}, style = DoonaButtonStyle.Destructive, enabled = false)
         }
     }
     Section("Busy") {
@@ -49,6 +52,7 @@ internal fun InputsGallery() = GalleryPage("Inputs") {
             DoonaButton(add, onClick = {}, busy = true)
             DoonaButton(cancel, onClick = {}, style = DoonaButtonStyle.Secondary, busy = true)
             DoonaButton(edit, onClick = {}, style = DoonaButtonStyle.Text, icon = R.drawable.ic_edit, busy = true)
+            DoonaButton(remove, onClick = {}, style = DoonaButtonStyle.Destructive, busy = true)
         }
     }
     Section("Long label, full width") {
