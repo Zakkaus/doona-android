@@ -148,6 +148,9 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val roundButton = discOnHeader
     val stateLayer = s.onSurface
 
+    /** What a round disc lightens toward while pressed (measured: Revolut's discs lighten): see [RvAlpha.DISC_LIT_LIGHT]. */
+    val discLit = if (dark) s.onSurface.copy(alpha = RvAlpha.DISC_LIT_DARK) else s.surfaceContainerLowest.copy(alpha = RvAlpha.DISC_LIT_LIGHT)
+
     fun quality(tone: Tone): Color = when (tone) {
         Tone.Ok -> good
         Tone.Warn -> fair

@@ -213,6 +213,13 @@ internal object RvAlpha {
     /** The state layer: the content colour over the visible shape while pressed. */
     const val PRESSED = 0.1f
 
+    /**
+     * A round disc lightening while pressed: the card's white at 60 % over it in light; in dark, where the disc is
+     * already the lightest container, the text colour at 10 %, as strong as the state layer.
+     */
+    const val DISC_LIT_LIGHT = 0.6f
+    const val DISC_LIT_DARK = 0.1f
+
     /** Every chart's hairline grid, in the text colour: about 1.2:1 against the card in both themes (L-11). */
     const val GRID_LIGHT = 0.09f
     const val GRID_DARK = 0.09f

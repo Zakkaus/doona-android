@@ -195,14 +195,13 @@ internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> U
     }
 }
 
+/** A round glass button of the top bar: a 44 dp disc in a 48 dp target, with a disc's press ([rvDiscPress]). */
 @Composable
 private fun GlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, onClick: () -> Unit) {
     Box(
         Modifier
             .minimumInteractiveComponentSize()
-            .size(RvChrome.control)
-            .rvControl(glass, CircleShape)
-            .rvPress(CircleShape, Role.Button, onClick)
+            .rvDiscPress(Modifier.size(RvChrome.control).rvControl(glass, CircleShape), onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) { RvGlyph(icon, RvChrome.controlGlyph, Rv.colors.text) }

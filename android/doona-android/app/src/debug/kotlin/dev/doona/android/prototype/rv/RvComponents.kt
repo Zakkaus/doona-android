@@ -2,12 +2,15 @@ package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -43,6 +47,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -81,6 +86,30 @@ internal fun Modifier.rvPress(shape: Shape, role: Role, onClick: () -> Unit, onL
     } else {
         clip(shape).combinedClickable(interactionSource = null, indication = rvPressIndication(), role = role, onLongClick = onLongClick, onClick = onClick)
     }
+
+/**
+ * A round disc's press, as Revolut's discs take one (measured: they lighten and grow slightly while held): the disc
+ * grows by [RvMotion.DISC_GROW] and lightens toward [RvColors.discLit], both in [RvMotion.PRESS_MS], and goes back on
+ * release; at animator scale 0 at once. [fill] is the disc's size and fill (a background, or the controls' glass), drawn
+ * inside the growing layer under the lightening. The scale is the layer's and both read the press in the draw phase,
+ * so a frame lays nothing out and allocates nothing. Rows and pills keep [rvPressIndication].
+ */
+@Composable
+internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit): Modifier {
+    val motion = Rv.motion
+    val lit = Rv.colors.discLit
+    val source = remember { MutableInteractionSource() }
+    val press = remember { Animatable(0f) }
+    LaunchedEffect(source, motion) { source.rvFollowPress { press.animateTo(it, motion.tween(RvMotion.PRESS_MS, LinearEasing)) } }
+    return graphicsLayer {
+        val grow = 1f + RvMotion.DISC_GROW * press.value
+        scaleX = grow
+        scaleY = grow
+    }.then(fill)
+        .drawBehind { if (press.value > 0f) drawCircle(lit, alpha = press.value) }
+        .clip(CircleShape)
+        .clickable(source, indication = null, role = Role.Button, onClick = onClick)
+}
 
 @Composable
 internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: Modifier = Modifier) {
@@ -137,18 +166,11 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
     return if (cut < 0) figure to "" else figure.substring(0, cut) to figure.substring(cut)
 }
 
-/** A round action: a disc with a glyph and its label under it; only the disc lights up when pressed. [busy] swaps the glyph for [RvBusy]. */
+/** A round action: a disc with a glyph and its label under it; only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy]. */
 @Composable
 internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier
-                .size(RvSize.actionDisc)
-                .clip(CircleShape)
-                .background(Rv.colors.discOnHeader)
-                .rvPress(CircleShape, Role.Button, onClick),
-            contentAlignment = Alignment.Center,
-        ) {
+        Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
             // While [busy] (connecting) the disc shows a busy bar instead of its glyph.
             Crossfade(busy, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "busy") { working ->
                 if (working) RvBusy(Modifier.width(RvSize.busy)) else RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)

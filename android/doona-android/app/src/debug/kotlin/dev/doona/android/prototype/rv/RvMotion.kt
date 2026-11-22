@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -64,6 +65,9 @@ import kotlinx.coroutines.launch
 internal object RvMotion {
     /** The state layer under a finger comes up, and goes, in about 60 ms (measured). */
     const val PRESS_MS = 60
+
+    /** A round disc under a finger grows by 4 % as it lightens, in [PRESS_MS] (measured: slightly). */
+    const val DISC_GROW = 0.04f
 
     /** The floating nav collapsing or expanding (measured about 130 ms). */
     const val NAV_MS = 130
@@ -211,29 +215,9 @@ private class PressNode(private val source: InteractionSource, private val color
     Modifier.Node(),
     DrawModifierNode {
     private val shown = Animatable(0f)
-    private var held = 0
-    private var rising: Job? = null
 
     override fun onAttach() {
-        coroutineScope.launch {
-            source.interactions.collect { interaction ->
-                when (interaction) {
-                    is PressInteraction.Press -> {
-                        held++
-                        rising = coroutineScope.launch { to(1f) }
-                    }
-
-                    is PressInteraction.Release, is PressInteraction.Cancel -> {
-                        held = (held - 1).coerceAtLeast(0)
-                        val up = rising
-                        coroutineScope.launch {
-                            up?.join()
-                            if (held == 0) to(0f)
-                        }
-                    }
-                }
-            }
-        }
+        coroutineScope.launch { source.rvFollowPress(::to) }
     }
 
     private suspend fun to(target: Float) {
@@ -245,6 +229,32 @@ private class PressNode(private val source: InteractionSource, private val color
         drawContent()
         val a = shown.value
         if (a > 0f) drawRect(color, alpha = RvAlpha.PRESSED * a)
+    }
+}
+
+/**
+ * Runs [to] with 1 as a press on this source begins, and with 0 once the last press has ended and the rise to 1 has
+ * finished, so a short tap still shows its press fully before it goes.
+ */
+internal suspend fun InteractionSource.rvFollowPress(to: suspend (Float) -> Unit): Unit = coroutineScope {
+    var held = 0
+    var rising: Job? = null
+    interactions.collect { interaction ->
+        when (interaction) {
+            is PressInteraction.Press -> {
+                held++
+                rising = launch { to(1f) }
+            }
+
+            is PressInteraction.Release, is PressInteraction.Cancel -> {
+                held = (held - 1).coerceAtLeast(0)
+                val up = rising
+                launch {
+                    up?.join()
+                    if (held == 0) to(0f)
+                }
+            }
+        }
     }
 }
 
