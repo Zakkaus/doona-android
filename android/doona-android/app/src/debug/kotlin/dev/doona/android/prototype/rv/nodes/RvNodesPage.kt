@@ -42,6 +42,8 @@ import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.prototype.rv.data.RvRegion
 import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 
@@ -155,7 +157,7 @@ private fun Heading(onAllNodes: () -> Unit) {
 
 /** One part of the world: its name as the card's header, then its nodes, fastest first. */
 @Composable
-private fun RegionCard(region: RvNodesRegion, nodes: List<RvNode>, currentId: String, onOpen: (String) -> Unit) {
+private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String, onOpen: (String) -> Unit) {
     val tint = selectedRowTint()
     RvCard {
         RvCardHeader(stringResource(region.label))

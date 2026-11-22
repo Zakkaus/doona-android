@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv.settings
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
+import dev.doona.android.prototype.rv.data.RvData
 
 /** Which theme the app wears: the system's, or one of the two. */
 internal enum class RvThemeMode(@StringRes val label: Int) {
@@ -29,12 +30,13 @@ internal data class RvSettingsState(
 
 internal fun rvSampleAppearance() = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0)
 
+/** The settings page as [RvData] has it. */
 internal fun rvSampleSettings() = RvSettingsState(
     connectAtBoot = true,
     notifyOnDrop = true,
-    proxiedApps = 12,
+    proxiedApps = RvData.PROXIED_APPS,
     bypassLan = true,
     autoUpdate = true,
-    updateHours = 12,
+    updateHours = RvData.UPDATE_HOURS,
     appearance = rvSampleAppearance(),
 )

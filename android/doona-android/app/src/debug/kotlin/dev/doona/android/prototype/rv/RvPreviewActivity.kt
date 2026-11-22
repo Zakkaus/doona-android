@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
@@ -51,7 +52,7 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
     // 策略 has no sample page yet.
     val onTab: (Int) -> Unit = { i -> TABS[i]?.let(tab) }
     when (route.substringBefore(':')) {
-        TRAFFIC -> RvTrafficScreen(rvSampleActivity(), RV_SAMPLE_CONNECTION, onBack = pop)
+        TRAFFIC -> RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = pop)
 
         STATS -> RvStatsScreen(rvStatsSample(), onBack = pop)
 

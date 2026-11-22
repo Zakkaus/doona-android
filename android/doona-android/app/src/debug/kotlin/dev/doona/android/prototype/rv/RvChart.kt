@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +37,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -43,6 +45,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
+import dev.doona.android.prototype.rv.data.RvAmount
+import dev.doona.android.prototype.rv.data.RvFormat
 import kotlin.math.roundToInt
 
 /** Where values sit in a chart's canvas, in pixels: 0 on [bottom], [high] on [top]. */
@@ -52,6 +56,16 @@ private class Scale(val high: Float, val top: Float, val bottom: Float) {
 
 /** A tile's figure: the number large, its unit small on the same baseline. */
 internal class RvFigure(val whole: String, val unit: String)
+
+/** An amount as a figure: the number large, the unit small. */
+internal fun RvAmount.figure() = RvFigure(number, unit)
+
+/** [RvFormat] in the current locale: how every page writes bytes, rates, durations and dates. */
+@Composable
+internal fun rememberRvFormat(): RvFormat {
+    val locale = LocalConfiguration.current.locales[0]
+    return remember(locale) { RvFormat(locale) }
+}
 
 /**
  * One of Revolut's crypto home tiles, square as they are: [caption] at the top start, [icon] in the series' tinted 20 dp

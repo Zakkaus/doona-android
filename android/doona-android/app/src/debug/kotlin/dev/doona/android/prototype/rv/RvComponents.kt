@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.components.latencyTone
+import dev.doona.android.prototype.rv.data.RvPlace
 
 /** One line of text in a role; CJK runs in Noto, the rest in Inter. */
 @Composable

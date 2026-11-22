@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.unit.dp
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.data.RvPlace
 import kotlin.math.PI
 import kotlin.math.ln
 import kotlin.math.tan
@@ -24,7 +25,7 @@ private val shapes: Map<String, Path> by lazy { RvNodesWorld.countries.associate
  * in the card's colour so it stands off the land around it.
  */
 @Composable
-internal fun RvNodesMap(places: Set<RvNodesPlace>, modifier: Modifier = Modifier) {
+internal fun RvNodesMap(places: Set<RvPlace>, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val land = colors.text.copy(alpha = if (colors.dark) LAND_DARK else LAND_LIGHT)
     val mark = colors.positive

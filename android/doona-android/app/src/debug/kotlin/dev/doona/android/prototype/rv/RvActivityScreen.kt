@@ -1,8 +1,6 @@
 package dev.doona.android.prototype.rv
 
-import android.content.Context
 import android.content.res.Configuration
-import android.text.format.Formatter
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -22,10 +20,8 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,6 +32,8 @@ import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.fastest
 
 /**
  * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
@@ -43,7 +41,7 @@ import dev.doona.android.feature.activity.ActivityUiState
  * actions, then a grouped card with the global outbound and the node it uses, download and upload as two of Revolut's
  * square home tiles (either opens the traffic page), and three more cards as Revolut's home goes on: 今日用量, 訂閱 and
  * 最快節點. Over the content sit the glass top bar (measured §4) and the floating glass bottom bar (§9), which shrinks
- * while the content scrolls up. It renders [ActivityUiState] unchanged; the three lower cards show invented data.
+ * while the content scrolls up. It renders [ActivityUiState] unchanged; the three lower cards read [RvData].
  */
 @Composable
 internal fun RvActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, routes: RvActivityRoutes = RvActivityRoutes()) {
@@ -56,9 +54,9 @@ internal fun RvActivityScreen(state: ActivityUiState, onAction: (ActivityAction)
             RvGutter {
                 OutboundCard(state, routes)
                 TrafficTiles(state, routes.traffic)
-                RvUsageCard(remember { RvUsageSample.today() })
-                RvSubscriptionsCard(RV_SAMPLE_SUBSCRIPTIONS)
-                RvFastestCard(RV_SAMPLE_FASTEST)
+                RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
+                RvSubscriptionsCard(RvData.subscriptions)
+                RvFastestCard(RvData.nodes.fastest(FASTEST))
             }
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
@@ -78,11 +76,11 @@ internal class RvActivityRoutes(
 
 @Composable
 private fun Header(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, insets: WindowInsets) {
-    val context = LocalContext.current
+    val format = rememberRvFormat()
     val running = state.status is Status.Running || state.status is Status.Starting
-    val (whole, unit) = rateParts(context, state.downRate)
+    val hero = format.rate(state.downRate.toDouble())
     // Direct traffic uses no node, so the map marks no place.
-    val place = state.node?.name?.takeIf { state.mode != Mode.Direct }?.let(::placeOf)
+    val place = state.node?.takeIf { state.mode != Mode.Direct }?.let { RvData.node(it.id)?.place }
     val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
     // The dots run up behind the status bar, as Revolut's texture does.
     RvHeader(place, statusBar + RvDots.focusTop) {
@@ -90,11 +88,11 @@ private fun Header(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
         Spacer(Modifier.height(RvSpace.headerTop))
         RvText("${stringResource(state.status.label)} · ${stringResource(state.mode.label)}", Rv.type.caption)
         Spacer(Modifier.height(RvSpace.tight))
-        RvHero(whole, unit)
+        RvHero(hero.number, hero.unit)
         Spacer(Modifier.height(RvSpace.subGap))
         Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.rowPadding)) {
-            RvInline(R.drawable.rv_sym_arrow_downward, rateText(context, state.downRate), Rv.colors.textSecondary, Rv.type.sub)
-            RvInline(R.drawable.rv_sym_arrow_upward, rateText(context, state.upRate), Rv.colors.textSecondary, Rv.type.sub)
+            RvInline(R.drawable.rv_sym_arrow_downward, format.rate(state.downRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
+            RvInline(R.drawable.rv_sym_arrow_upward, format.rate(state.upRate.toDouble()).toString(), Rv.colors.textSecondary, Rv.type.sub)
         }
         Spacer(Modifier.height(RvSpace.heroToActions))
         Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
@@ -122,8 +120,8 @@ private fun OutboundCard(state: ActivityUiState, routes: RvActivityRoutes) {
         if (state.mode == Mode.Direct) return@RvCard
         val node = state.node
         RvRow(
-            { RvFlag(node?.name?.let(::placeOf)?.name, RvSize.rowDisc) },
-            node?.name?.let(::withoutFlag) ?: RV_NO_VALUE,
+            { RvFlag(node?.let { RvData.node(it.id) }?.place?.name, RvSize.rowDisc) },
+            node?.name ?: RV_NO_VALUE,
             stringResource(R.string.nav_nodes),
             onClick = routes.node,
         ) { RvLatency(node?.latencyMs?.takeUnless { node.failed }) }
@@ -154,22 +152,14 @@ private fun TrafficTile(
     onClick: () -> Unit,
     modifier: Modifier,
 ) {
-    val context = LocalContext.current
-    val (whole, unit) = rateParts(context, rate)
-    val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, rateText(context, history.maxOrNull()?.toLong() ?: 0L))
-    RvSparkTile(stringResource(caption), icon, RvFigure(whole, unit), note, history, series, quiet, onClick, modifier)
+    val format = rememberRvFormat()
+    val peak = format.rate((history.maxOrNull() ?: 0f).toDouble())
+    val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, peak.toString())
+    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier)
 }
 
-/** A rate split for the hero: the figure, and its unit with "/s" set small after it. */
-private fun rateParts(context: Context, bytesPerSecond: Long): Pair<String, String> {
-    val size = Formatter.formatShortFileSize(context, bytesPerSecond)
-    val cut = size.lastIndexOf(' ')
-    return if (cut < 0) size to PER_SECOND else size.substring(0, cut) to size.substring(cut) + PER_SECOND
-}
-
-private fun rateText(context: Context, bytesPerSecond: Long) = Formatter.formatShortFileSize(context, bytesPerSecond) + PER_SECOND
-
-private const val PER_SECOND = "/s"
+/** The 最快節點 card lists the first three of the 節點 page's fastest. */
+private const val FASTEST = 3
 
 private val Status.label: Int
     get() = when (this) {

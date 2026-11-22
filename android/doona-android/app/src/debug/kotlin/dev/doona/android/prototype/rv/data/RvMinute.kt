@@ -1,41 +1,19 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.prototype.rv.data
 
-import dev.doona.android.engine.Status
-import dev.doona.android.feature.activity.ActivityUiState
-import dev.doona.android.feature.activity.sampleActivityState
 import kotlin.math.exp
 import kotlin.random.Random
 
-/** What the traffic page's card says about the connection as a whole: bytes each way and how long it has run. */
-internal class RvConnection(val downTotal: Long, val upTotal: Long, val seconds: Long)
-
-/** The sample's connection: invented totals for an hour and three quarters of use. */
-internal val RV_SAMPLE_CONNECTION = RvConnection(downTotal = 1_840_000_000, upTotal = 126_000_000, seconds = 6_135)
-
-/** The second the scrubbed golden holds a finger on: inside the sustained download. */
-internal const val RV_SAMPLE_SCRUB = 30
-
-/** The connected sample with [RvTrafficSample]'s minute; the last second is the current rate. */
-internal fun rvSampleActivity(): ActivityUiState {
-    val down = RvTrafficSample.down
-    val up = RvTrafficSample.up
-    return sampleActivityState().copy(downRate = down.last().toLong(), upRate = up.last().toLong(), downHistory = down, upHistory = up)
-}
-
-/** The same screen disconnected: no rates and no history. */
-internal fun rvIdleActivity(): ActivityUiState =
-    sampleActivityState().copy(status = Status.Stopped, downRate = 0, upRate = 0, downHistory = emptyList(), upHistory = emptyList())
-
 /**
- * An invented minute of traffic, one sample a second, the last one now, drawn from a fixed seed so every render shows
- * the same minute. Download idles on a noisy 20 to 80 kB/s floor; three page loads rise to 3 to 6 MB/s within a second
- * and decay over 3 to 5 (the last one is still decaying now), two of them with a smaller second bump; and one download
- * holds about 3.5 MB/s for eleven seconds, jittering 15 % from second to second, with a 2 s ramp up and a 3 s ramp down.
- * Upload has its own events and never follows download's curve: a short request burst as each download starts, an
- * 8 s upload of 600 to 900 kB/s while download is quiet, and an ACK-like trickle of 3 to 5 % under the sustained
- * download, each with its own noise from a second seed, over a 3 to 12 kB/s floor. Every term is non-negative.
+ * The current session's last minute, one sample a second from 10:23:01 to 10:24:00 (the last one now), drawn from a
+ * fixed seed so every render shows the same minute. Download idles on a noisy 20 to 80 kB/s floor; three page loads
+ * rise to 3 to 6 MB/s within a second and decay over 3 to 5 (the last one is still decaying now), two of them with a
+ * smaller second bump; and one download holds about 3.5 MB/s for eleven seconds, jittering 15 % from second to second,
+ * with a 2 s ramp up and a 3 s ramp down. Upload has its own events and never follows download's curve: a short
+ * request burst as each download starts, an 8 s upload of 600 to 900 kB/s while download is quiet, and an ACK-like
+ * trickle of 3 to 5 % under the sustained download, each with its own noise from a second seed, over a 3 to 12 kB/s
+ * floor. Every term is non-negative.
  */
-internal object RvTrafficSample {
+internal object RvMinute {
     // Declared before init, which reads them.
     private val PAGE_LOADS = listOf(
         Burst(start = 7, peak = 4_200_000f, seconds = 4f, echo = 0.35f),

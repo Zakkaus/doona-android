@@ -36,8 +36,6 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.scripted
-import java.text.NumberFormat
-import java.util.Locale
 
 /**
  * A filter chip on the page, Revolut's small action button (`Personal ▾`, `This year`): a 40 dp pill on the container
@@ -156,39 +154,4 @@ internal fun RvStatsChevron() {
 /** A row of the tools card: its glyph, title and subtitle. */
 internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String)
 
-/** Bytes in decimal units as Android sizes files, split so the unit can be set small: `3.44 GB`, `870 MB`. */
-internal fun bytesFigure(bytes: Long, locale: Locale, fixed: Boolean = true): RvFigure {
-    val (value, unit) = when {
-        bytes >= GB -> bytes / GB to " GB"
-        bytes >= MB -> bytes / MB to " MB"
-        else -> bytes / KB to " kB"
-    }
-    return RvFigure(decimal(value, locale, fixed), unit)
-}
-
-/** How many bytes one of [unit] holds, for a figure set in another figure's unit. */
-internal fun bytesPer(unit: String): Double = when (unit) {
-    " GB" -> GB
-    " MB" -> MB
-    else -> KB
-}
-
-/** Two decimals under 10, one under 100, none above, as Android rounds a short file size; [fixed] keeps trailing zeros. */
-internal fun decimal(value: Double, locale: Locale, fixed: Boolean): String {
-    val digits = when {
-        value < TEN -> 2
-        value < HUNDRED -> 1
-        else -> 0
-    }
-    return NumberFormat.getNumberInstance(locale).apply {
-        minimumFractionDigits = if (fixed) digits else 0
-        maximumFractionDigits = digits
-    }.format(value)
-}
-
-private const val GB = 1e9
-private const val MB = 1e6
-private const val KB = 1e3
-private const val TEN = 10.0
-private const val HUNDRED = 100.0
 private const val V02 = "v0.2"

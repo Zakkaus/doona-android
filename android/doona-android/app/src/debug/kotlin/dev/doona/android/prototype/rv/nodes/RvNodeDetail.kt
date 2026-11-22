@@ -40,11 +40,10 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.prototype.rv.rememberRvFormat
 import dev.doona.android.prototype.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.scripted
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * A node's page, its name on the bar beside the back disc, in the language of Revolut's stock page: the flag, its
@@ -55,7 +54,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<Long>, onBack: () -> Unit, onUse: () -> Unit, onTest: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val times = testedAtEpochMs.map { TIME.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())) }
+    val format = rememberRvFormat()
+    val times = testedAtEpochMs.map(format::time)
     var picked by rememberSaveable(node.id) { mutableIntStateOf(node.history.lastIndex) }
     RvScrollPage(
         node.name,
@@ -161,7 +161,6 @@ private fun Actions(current: Boolean, onUse: () -> Unit, onTest: () -> Unit, ins
     }
 }
 
-private val TIME = DateTimeFormatter.ofPattern("HH:mm")
 private const val TLS = "TLS"
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

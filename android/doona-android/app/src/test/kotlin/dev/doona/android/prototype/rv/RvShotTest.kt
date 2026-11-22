@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.testing.PhoneFrame
 import dev.doona.android.testing.drawFully
 import org.junit.After
@@ -76,14 +77,14 @@ class RvShotTest {
     }
 
     @Test
-    fun trafficLight() = shot("traffic", dark = false) { RvTrafficScreen(rvSampleActivity(), RV_SAMPLE_CONNECTION, onBack = {}) }
+    fun trafficLight() = shot("traffic", dark = false) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
 
     @Test
-    fun trafficDark() = shot("traffic", dark = true) { RvTrafficScreen(rvSampleActivity(), RV_SAMPLE_CONNECTION, onBack = {}) }
+    fun trafficDark() = shot("traffic", dark = true) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
 
     @Test
     fun trafficScrubDark() = shot("traffic-scrub", dark = true) {
-        RvTrafficScreen(rvSampleActivity(), RV_SAMPLE_CONNECTION, onBack = {}, initialScrub = RV_SAMPLE_SCRUB)
+        RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = SCRUB)
     }
 
     /** Scrolls the page's content up by [dp], as a finger would, and lets the bottom bar finish collapsing. */
@@ -118,5 +119,8 @@ class RvShotTest {
 
         /** A screen as tall as the whole 活動 page, 915 dp plus the 777.5 dp it scrolls, for the full captures. */
         const val FULL_PAGE = "+h1693dp"
+
+        /** The second the scrubbed golden holds a finger on: inside the sustained download. */
+        const val SCRUB = 30
     }
 }

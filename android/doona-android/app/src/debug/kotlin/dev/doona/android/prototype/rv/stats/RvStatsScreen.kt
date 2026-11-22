@@ -34,11 +34,11 @@ import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.data.RvDay
+import dev.doona.android.prototype.rv.figure
+import dev.doona.android.prototype.rv.rememberRvFormat
 import dev.doona.android.prototype.rv.rvSystemScheme
 import java.text.NumberFormat
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * The 統計 page in the language of Revolut's Analytics page: the back disc and the large title, the subscription
@@ -64,7 +64,7 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, initialTile:
         DayTiles(state.today, initialTile)
         Spacer(Modifier.height(RvSpace.cardGap))
         RvGutter {
-            RvQuotaCard(state.subscriptions)
+            RvQuotaCard(state.subscriptions, state.nowEpochMs)
             RvNodeMapCard(state)
             RvLatencyCard(state)
             RvSplitCard(state.split)
@@ -80,13 +80,14 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, initialTile:
  * Download and upload come from the daily history; a count of opened connections needs the core, so that tile is v0.2.
  */
 @Composable
-private fun DayTiles(day: RvStatsDay, initialTile: Int) {
+private fun DayTiles(day: RvDay, initialTile: Int) {
     val locale = LocalConfiguration.current.locales[0]
+    val format = rememberRvFormat()
     val source = stringResource(R.string.rv_stats_source, stringResource(R.string.rv_stats_source_traffic))
     val count = day.connections?.sum()?.let { NumberFormat.getIntegerInstance(locale).format(it) }
     val tiles = listOf(
-        RvDayTile(stringResource(R.string.ui_download), bytesFigure(day.downTotal, locale), source, day.down, Rv.colors.down.line, v02 = false),
-        RvDayTile(stringResource(R.string.ui_upload), bytesFigure(day.upTotal, locale), source, day.up, Rv.colors.up.line, v02 = false),
+        RvDayTile(stringResource(R.string.ui_download), format.bytes(day.downTotal).figure(), source, day.down, Rv.colors.down.line, v02 = false),
+        RvDayTile(stringResource(R.string.ui_upload), format.bytes(day.upTotal).figure(), source, day.up, Rv.colors.up.line, v02 = false),
         RvDayTile(
             stringResource(R.string.rv_stats_connections),
             RvFigure(count ?: RV_NO_VALUE, ""),
@@ -116,10 +117,11 @@ private fun DayTiles(day: RvStatsDay, initialTile: Int) {
 /** The tools card's rows: test every node, refresh every subscription, export what a bug report needs. */
 @Composable
 private fun tools(state: RvStatsState): List<RvStatsTool> {
+    val format = rememberRvFormat()
     val nodes = pluralStringResource(R.plurals.rv_stats_node_count, state.nodes.size, state.nodes.size)
     val subscriptions = pluralStringResource(R.plurals.rv_stats_subscriptions, state.subscriptions.size, state.subscriptions.size)
     val refreshed = state.subscriptions.mapNotNull { it.updatedAtEpochMs }.maxOrNull()?.let {
-        stringResource(R.string.rv_updated, TIME.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())))
+        stringResource(R.string.rv_updated, format.time(it))
     }
     return listOf(
         RvStatsTool(R.drawable.rv_sym_speed, stringResource(R.string.rv_stats_test_all), nodes),
@@ -127,8 +129,6 @@ private fun tools(state: RvStatsState): List<RvStatsTool> {
         RvStatsTool(R.drawable.rv_stats_ic_bug_report, stringResource(R.string.rv_stats_export), stringResource(R.string.rv_stats_export_detail)),
     )
 }
-
-private val TIME = DateTimeFormatter.ofPattern("HH:mm")
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 2200)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 2200, uiMode = Configuration.UI_MODE_NIGHT_YES)

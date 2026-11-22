@@ -2,14 +2,16 @@ package dev.doona.android.prototype.rv.stats
 
 import androidx.annotation.StringRes
 import dev.doona.android.R
-import dev.doona.android.engine.Member
-import dev.doona.android.engine.Subscription
+import dev.doona.android.prototype.rv.data.RvDay
+import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.prototype.rv.data.RvSplit
+import dev.doona.android.prototype.rv.data.RvSubscription
 
 /**
  * What the 統計 page shows, and where v0.1 gets it:
  * - [today] and [yesterdaySoFar]: a new app-side store that keeps a day in hours by sampling the snapshot's `traffic`
  *   totals (bytes since `start`, so the store adds the change between two samples). It is Kotlin only; the core does not
- *   change. Its [RvStatsDay.connections] would need a count of opened connections, which the snapshot lacks
+ *   change. Its [RvDay.connections] would need a count of opened connections, which the snapshot lacks
  *   (`activeFlows` is only the current number), so it is v0.2 and comes from the sample.
  * - [subscriptions]: `usedBytes`, `totalBytes` and `expiresAtEpochMs` of the snapshot's subscriptions, real today.
  * - [nodes] and [selectedId]: the catalog's members with their latencies, and the node carrying traffic.
@@ -17,10 +19,10 @@ import dev.doona.android.engine.Subscription
  */
 internal class RvStatsState(
     val range: RvStatsRange,
-    val today: RvStatsDay,
+    val today: RvDay,
     val yesterdaySoFar: Long?,
-    val subscriptions: List<Subscription>,
-    val nodes: List<Member>,
+    val subscriptions: List<RvSubscription>,
+    val nodes: List<RvNode>,
     val selectedId: String?,
     val split: RvSplit?,
     val nowEpochMs: Long,
@@ -31,21 +33,4 @@ internal enum class RvStatsRange(@StringRes val label: Int) {
     Today(R.string.rv_stats_today),
     Week(R.string.rv_stats_week),
     Month(R.string.rv_stats_month),
-}
-
-/** One day by the hour from midnight, oldest first; the last hour is the current one, still filling. */
-internal class RvStatsDay(val down: List<Long>, val up: List<Long>, val connections: List<Int>?) {
-    val downTotal = down.sum()
-    val upTotal = up.sum()
-    val total = downTotal + upTotal
-
-    /** Both directions together, hour by hour. */
-    val hours: List<Long> = down.zip(up) { d, u -> d + u }
-
-    val quiet = total == 0L
-}
-
-/** Bytes that left through a proxy and directly, for the 分流比例 card. */
-internal class RvSplit(val proxyBytes: Long, val directBytes: Long) {
-    val proxyShare = if (proxyBytes + directBytes == 0L) 0f else proxyBytes.toFloat() / (proxyBytes + directBytes)
 }

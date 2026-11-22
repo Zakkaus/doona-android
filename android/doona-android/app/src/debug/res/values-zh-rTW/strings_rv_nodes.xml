@@ -8,7 +8,7 @@
     <string name="rv_nodes_steadiest">最穩</string>
     <string name="rv_nodes_spread">節點分佈</string>
     <plurals name="rv_nodes_countries">
-        <item quantity="other">%1$d 個國家</item>
+        <item quantity="other">%1$d 個國家或地區</item>
     </plurals>
     <plurals name="rv_nodes_nodes">
         <item quantity="other">%1$d 個節點</item>
@@ -19,7 +19,7 @@
     <string name="rv_nodes_region_americas">美洲</string>
     <string name="rv_nodes_region_europe">歐洲</string>
     <string name="rv_nodes_place_hk">香港</string>
-    <string name="rv_nodes_place_tw">台灣</string>
+    <string name="rv_nodes_place_tw">臺灣</string>
     <string name="rv_nodes_place_jp">日本</string>
     <string name="rv_nodes_place_kr">韓國</string>
     <string name="rv_nodes_place_sg">新加坡</string>

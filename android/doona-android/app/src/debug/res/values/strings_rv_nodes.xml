@@ -9,8 +9,8 @@
     <string name="rv_nodes_steadiest">Steadiest</string>
     <string name="rv_nodes_spread">Where the nodes are</string>
     <plurals name="rv_nodes_countries">
-        <item quantity="one">%1$d country</item>
-        <item quantity="other">%1$d countries</item>
+        <item quantity="one">%1$d country or region</item>
+        <item quantity="other">%1$d countries or regions</item>
     </plurals>
     <plurals name="rv_nodes_nodes">
         <item quantity="one">%1$d node</item>

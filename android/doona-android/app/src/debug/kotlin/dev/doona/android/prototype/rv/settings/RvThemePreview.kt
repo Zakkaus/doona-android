@@ -28,8 +28,8 @@ import dev.doona.android.R
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvHero
-import dev.doona.android.prototype.rv.RvPlace
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.data.RvPlace
 import dev.doona.android.prototype.rv.rvDotMap
 
 /** One accent: its name for a screen reader and its primary in the light theme. */

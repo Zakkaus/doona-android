@@ -32,14 +32,7 @@
     <string name="rv_less_than_yesterday">%1$s less than yesterday by now</string>
     <string name="rv_more_than_yesterday">%1$s more than yesterday by now</string>
     <string name="rv_remaining">left</string>
-    <string name="rv_subscription_name">Provider %1$s</string>
-    <string name="rv_subscription_usage">%1$d of %2$d GB used · ends %3$s</string>
+    <string name="rv_subscription_usage">%1$s / %2$s · ends %3$s</string>
     <string name="rv_fastest_nodes">Fastest nodes</string>
-    <string name="rv_region_hk">Hong Kong</string>
-    <string name="rv_region_jp">Japan</string>
-    <string name="rv_region_kr">Korea</string>
-    <string name="rv_region_sg">Singapore</string>
-    <string name="rv_region_tw">Taiwan</string>
-    <string name="rv_region_us">United States</string>
     <string name="rv_preview_label" translatable="false">doona RV sample</string>
 </resources>

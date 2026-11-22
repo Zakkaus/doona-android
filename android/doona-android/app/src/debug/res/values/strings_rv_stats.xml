@@ -41,8 +41,8 @@
         <item quantity="other">%1$d subscriptions</item>
     </plurals>
     <plurals name="rv_stats_countries">
-        <item quantity="one">%1$d country</item>
-        <item quantity="other">%1$d countries</item>
+        <item quantity="one">%1$d country or region</item>
+        <item quantity="other">%1$d countries or regions</item>
     </plurals>
     <plurals name="rv_stats_node_count">
         <item quantity="one">%1$d node</item>

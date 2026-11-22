@@ -1,7 +1,5 @@
 package dev.doona.android.prototype.rv
 
-import android.content.Context
-import android.text.format.Formatter
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -31,13 +29,16 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvDay
+import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.prototype.rv.data.RvSubscription
 import kotlin.math.abs
 
 /**
@@ -47,25 +48,25 @@ import kotlin.math.abs
  * bad direction.
  */
 @Composable
-internal fun RvUsageCard(day: RvUsageDay) {
-    val context = LocalContext.current
+internal fun RvUsageCard(day: RvDay, nowHour: Float, yesterdayByNow: Long) {
+    val format = rememberRvFormat()
     val colors = Rv.colors
     val type = Rv.type
-    val change = day.total - day.yesterdayByNow
+    val change = day.total - yesterdayByNow
     val compare = if (change < 0) R.string.rv_less_than_yesterday else R.string.rv_more_than_yesterday
     RvCard(Modifier.height(RvUsageSize.card)) {
         Box(Modifier.fillMaxSize().padding(RvUsageSize.pad)) {
             val legend = with(LocalDensity.current) { type.tileCaption.lineHeight.toDp() }
-            UsageChart(day, Modifier.align(Alignment.TopEnd).fillMaxWidth(CHART_SHARE).fillMaxHeight().padding(bottom = RvUsageSize.chartAboveLegend + legend))
+            UsageChart(day, nowHour, Modifier.align(Alignment.TopEnd).fillMaxWidth(CHART_SHARE).fillMaxHeight().padding(bottom = RvUsageSize.chartAboveLegend + legend))
             Column {
                 RvText(stringResource(R.string.rv_today_usage), type.cardTitle, color = colors.textSecondary)
                 Spacer(Modifier.height(RvSpace.tight))
-                RvFigureText(figure(context, day.total), type.cardValue, type.cardUnit)
-                RvText(stringResource(compare, size(context, abs(change))), type.tileCaption, color = colors.textSecondary)
+                RvFigureText(format.bytes(day.total).figure(), type.cardValue, type.cardUnit)
+                RvText(stringResource(compare, format.bytes(abs(change)).toString()), type.tileCaption, color = colors.textSecondary)
             }
             Row(Modifier.align(Alignment.BottomStart), horizontalArrangement = Arrangement.spacedBy(RvUsageSize.legendItemGap)) {
-                LegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${size(context, day.downTotal)}")
-                LegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${size(context, day.upTotal)}")
+                LegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${format.bytes(day.downTotal)}")
+                LegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${format.bytes(day.upTotal)}")
             }
         }
     }
@@ -86,12 +87,12 @@ private fun LegendItem(color: Color, text: String) {
  * toward the start and the bottom. The steps stop at the current time.
  */
 @Composable
-private fun UsageChart(day: RvUsageDay, modifier: Modifier) {
+private fun UsageChart(day: RvDay, nowHour: Float, modifier: Modifier) {
     val colors = Rv.colors
     Canvas(modifier) {
         fadingGrid(colors.grid)
         val high = day.total * RvUsageSize.HEADROOM
-        val chart = StepChart(size.width, size.height, high, day.nowHour)
+        val chart = StepChart(size.width, size.height, high, nowHour)
         val downTop = chart.steps(day.down.runningSum())
         val totalTop = chart.steps(day.down.zip(day.up) { down, up -> down + up }.runningSum())
         drawPath(chart.band(totalTop, downTop), colors.up.area)
@@ -154,23 +155,25 @@ private fun DrawScope.fadingGrid(color: Color) {
  * for each, with a coloured disc, its use against its quota, its end date and what is left.
  */
 @Composable
-internal fun RvSubscriptionsCard(subscriptions: List<RvSubscriptionUse>) {
+internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>) {
     val colors = Rv.colors
+    val format = rememberRvFormat()
     RvCard {
         RvCardHeader(R.string.rv_subscriptions)
         Row(Modifier.padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.Bottom) {
-            RvFigureText(RvFigure(subscriptions.sumOf { it.leftGb }.toString(), GB), Rv.type.cardValue, Rv.type.cardUnit, Modifier.alignByBaseline())
+            RvFigureText(format.bytes(subscriptions.sumOf { it.leftBytes }).figure(), Rv.type.cardValue, Rv.type.cardUnit, Modifier.alignByBaseline())
             Spacer(Modifier.width(RvSpace.tight * 2))
             RvText(stringResource(R.string.rv_remaining), Rv.type.cardUnit, Modifier.alignByBaseline(), color = colors.textSecondary)
         }
         Spacer(Modifier.height(RvSpace.tight))
         subscriptions.forEachIndexed { i, sub ->
             val (disc, glyph) = colors.accents[i % colors.accents.size]
+            val total = format.bytes(sub.totalBytes)
             RvRow(
                 { AccentDisc(disc, glyph) },
-                stringResource(R.string.rv_subscription_name, sub.letter),
-                stringResource(R.string.rv_subscription_usage, sub.usedGb, sub.totalGb, sub.ends),
-            ) { RvText("${sub.leftGb}$GB", Rv.type.rowValue, align = TextAlign.End) }
+                sub.name,
+                stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
+            ) { RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
         }
         Spacer(Modifier.height(RvSpace.tight * 2))
     }
@@ -188,16 +191,14 @@ private fun AccentDisc(disc: Color, glyph: Color) {
  * latency over the change since the test before, a falling latency in the good hue and a rising one in the slow hue.
  */
 @Composable
-internal fun RvFastestCard(nodes: List<RvFastNode>) {
+internal fun RvFastestCard(nodes: List<RvNode>) {
     RvCard {
         RvCardHeader(R.string.rv_fastest_nodes)
         nodes.forEach { node ->
-            val place = placeOf(node.name)
-            val region = place?.let { stringResource(it.label) }
-            RvRow({ RvFlag(place?.name, RvSize.rowDisc) }, withoutFlag(node.name), listOfNotNull(node.protocol, region).joinToString(" · ")) {
+            RvRow({ RvFlag(node.place.name, RvSize.rowDisc) }, node.name, node.protocol + " · " + stringResource(node.place.label)) {
                 Column(horizontalAlignment = Alignment.End) {
-                    RvText(stringResource(R.string.latency_ms, node.latencyMs), Rv.type.rowValue, align = TextAlign.End)
-                    RvDelta(node.changeMs)
+                    RvText(node.latencyMs?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
+                    node.changeMs?.let { RvDelta(it) }
                 }
             }
         }
@@ -205,9 +206,11 @@ internal fun RvFastestCard(nodes: List<RvFastNode>) {
     }
 }
 
-/** A change in milliseconds as Revolut writes one: a filled triangle pointing its way, then the amount, in one hue. */
+/** A change in milliseconds as Revolut writes one: a filled triangle pointing its way, then the amount, in one hue; no change is a dash. */
 @Composable
 private fun RvDelta(changeMs: Int) {
+    // No change is not a measurement, so it shows a dash and no triangle.
+    if (changeMs == 0) return RvText(RV_NO_VALUE, Rv.type.rowSub, color = Rv.colors.textSecondary)
     val color = if (changeMs <= 0) Rv.colors.good else Rv.colors.slow
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvHomeSize.deltaGap)) {
         Canvas(Modifier.size(RvHomeSize.delta)) {
@@ -242,14 +245,6 @@ private fun RvCardHeader(@StringRes title: Int) {
     }
 }
 
-private fun figure(context: Context, bytes: Long): RvFigure {
-    val text = size(context, bytes)
-    val cut = text.lastIndexOf(' ')
-    return if (cut < 0) RvFigure(text, "") else RvFigure(text.substring(0, cut), text.substring(cut))
-}
-
-private fun size(context: Context, bytes: Long): String = Formatter.formatShortFileSize(context, bytes)
-
 private fun List<Long>.runningSum(): List<Long> = runningReduce { sum, bytes -> sum + bytes }
 
 /** The chart takes the card's right half. */
@@ -257,4 +252,3 @@ private const val CHART_SHARE = 0.5f
 
 /** The delta triangle leaves this share of its box free above and below; the outline rounds its corners. */
 private const val TRIANGLE_INSET = 0.1f
-private const val GB = " GB"

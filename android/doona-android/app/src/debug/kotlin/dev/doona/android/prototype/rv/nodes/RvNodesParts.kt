@@ -38,6 +38,7 @@ import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvInter
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
+import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.rvPress
 import kotlin.math.abs
 
@@ -137,7 +138,7 @@ internal fun latencyColor(ms: Int?): Color = Rv.colors.quality(latencyTone(ms))
 @Composable
 internal fun latencyText(ms: Int?): String = ms?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE
 
-/** The latency over its change since the test before: ▲ in the slow hue when it rose, ▼ in the good hue when it fell. */
+/** The latency over its change since the test before: ▲ in the slow hue when it rose, ▼ in the good hue when it fell, a dash when it held. */
 @Composable
 internal fun RvLatencyChange(node: RvNode) {
     Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
@@ -150,7 +151,8 @@ internal fun RvLatencyChange(node: RvNode) {
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.tight)) {
                 if (change != 0) RvDeltaTriangle(up = change > 0, color = color)
-                RvText(stringResource(R.string.latency_ms, abs(change)), Rv.type.rowSub, color = color)
+                // No change is not a measurement, so it shows a dash.
+                RvText(if (change == 0) RV_NO_VALUE else stringResource(R.string.latency_ms, abs(change)), Rv.type.rowSub, color = color)
             }
         }
     }

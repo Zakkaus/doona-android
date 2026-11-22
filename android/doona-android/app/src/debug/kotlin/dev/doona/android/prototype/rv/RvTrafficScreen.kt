@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv
 
 import android.content.res.Configuration
-import android.text.format.Formatter
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,16 +21,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.prototype.rv.data.RvAmount
+import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvFormat
+import dev.doona.android.prototype.rv.data.RvSession
 import java.text.DecimalFormatSymbols
-import java.text.NumberFormat
 import java.util.Locale
 
 /**
@@ -42,9 +42,10 @@ import java.util.Locale
  * is the one range offered. [initialScrub] starts the page scrubbed to that second, as the scrubbed golden shows it.
  */
 @Composable
-internal fun RvTrafficScreen(state: ActivityUiState, connection: RvConnection, onBack: () -> Unit, initialScrub: Int? = null) {
+internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack: () -> Unit, initialScrub: Int? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val rate = rateFormat()
+    val format = rememberRvFormat()
+    val rate: (Float) -> String = { format.rate(it.toDouble()).toString() }
     var upload by rememberSaveable { mutableStateOf(false) }
     var scrub by remember { mutableStateOf(initialScrub) }
     val values = if (upload) state.upHistory else state.downHistory
@@ -57,17 +58,17 @@ internal fun RvTrafficScreen(state: ActivityUiState, connection: RvConnection, o
             RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 })
             Spacer(Modifier.height(RvSpace.chartGap))
             val shown = scrub?.takeIf { it in values.indices }
-            Hero(shown?.let { values[it] } ?: live.toFloat(), shown?.let { values.size - 1 - it } ?: 0, rate.number)
+            Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), shown?.let { values.size - 1 - it } ?: 0, format.locale)
         }
         Spacer(Modifier.height(RvSpace.chartGap))
-        RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate.label, scrub, onScrub = { scrub = it })
+        RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate, scrub, onScrub = { scrub = it })
         Spacer(Modifier.height(RvSpace.chipGap))
         Ranges()
         Spacer(Modifier.height(RvSpace.sectionGap))
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             RvText(stringResource(R.string.rv_this_connection), Rv.type.section)
             Spacer(Modifier.height(RvSpace.headingGap))
-            ConnectionCard(values, connection, rate.label)
+            ConnectionCard(session, upload, format)
         }
         Spacer(Modifier.height(RvSpace.cardGap))
         Spacer(Modifier.windowInsetsBottomHeight(insets))
@@ -76,10 +77,9 @@ internal fun RvTrafficScreen(state: ActivityUiState, connection: RvConnection, o
 
 /** The rate as the hero, its decimals small, then when it was: now, or [secondsAgo] seconds before now. */
 @Composable
-private fun Hero(bytesPerSecond: Float, secondsAgo: Int, number: NumberFormat) {
-    val locale = LocalConfiguration.current.locales[0]
-    val (whole, decimals) = heroParts(number.format(bytesPerSecond / BYTES_PER_MB), locale)
-    RvHero(whole, decimals + MB_PER_SECOND)
+private fun Hero(rate: RvAmount, secondsAgo: Int, locale: Locale) {
+    val (whole, decimals) = heroParts(rate.number, locale)
+    RvHero(whole, decimals + rate.unit)
     Spacer(Modifier.height(RvSpace.subGap))
     val line = if (secondsAgo == 0) stringResource(R.string.rv_now) else stringResource(R.string.rv_seconds_ago, secondsAgo)
     RvText(line, Rv.type.sub, color = Rv.colors.textSecondary)
@@ -98,36 +98,19 @@ private fun Ranges() {
     }
 }
 
-/** Revolut's Key stats card for this connection: the shown direction's peak and average, the totals and how long. */
+/**
+ * Revolut's Key stats card for this connection: the shown direction's fastest second and its average over the whole
+ * session (its bytes over its seconds), the totals each way and how long it has run.
+ */
 @Composable
-private fun ConnectionCard(values: List<Float>, connection: RvConnection, rate: (Float) -> String) {
-    val context = LocalContext.current
-    val hours = connection.seconds / SECONDS_PER_HOUR
-    val minutes = connection.seconds % SECONDS_PER_HOUR / SECONDS_PER_MINUTE
+private fun ConnectionCard(session: RvSession, upload: Boolean, format: RvFormat) {
+    val duration = format.duration(session.seconds)
     RvCard {
-        RvStatRow(stringResource(R.string.rv_stat_peak), rate(values.maxOrNull() ?: 0f))
-        RvStatRow(stringResource(R.string.rv_stat_average), rate(if (values.isEmpty()) 0f else values.average().toFloat()))
-        RvStatRow(stringResource(R.string.rv_downloaded), Formatter.formatShortFileSize(context, connection.downTotal))
-        RvStatRow(stringResource(R.string.rv_uploaded), Formatter.formatShortFileSize(context, connection.upTotal))
-        RvStatRow(stringResource(R.string.rv_connected_for), stringResource(R.string.rv_duration, hours, minutes))
-    }
-}
-
-/** The page's number format, two decimals in the locale's style, and a rate in it in MB/s. */
-private class RateFormat(val number: NumberFormat) {
-    val label: (Float) -> String = { bytesPerSecond -> number.format(bytesPerSecond / BYTES_PER_MB) + MB_PER_SECOND }
-}
-
-@Composable
-private fun rateFormat(): RateFormat {
-    val locale = LocalConfiguration.current.locales[0]
-    return remember(locale) {
-        RateFormat(
-            NumberFormat.getNumberInstance(locale).apply {
-                minimumFractionDigits = DECIMALS
-                maximumFractionDigits = DECIMALS
-            },
-        )
+        RvStatRow(stringResource(R.string.rv_stat_peak), format.rate((if (upload) session.peakUp else session.peakDown).toDouble()).toString())
+        RvStatRow(stringResource(R.string.rv_stat_average), format.rate(if (upload) session.averageUp else session.averageDown).toString())
+        RvStatRow(stringResource(R.string.rv_downloaded), format.bytes(session.downTotal).toString())
+        RvStatRow(stringResource(R.string.rv_uploaded), format.bytes(session.upTotal).toString())
+        RvStatRow(stringResource(R.string.rv_connected_for), stringResource(R.string.rv_duration, duration.hours, duration.minutes))
     }
 }
 
@@ -145,19 +128,10 @@ private val RANGES: List<Pair<Int, Boolean>> = listOf(
     R.string.rv_range_1h to false,
 )
 
-/** Android's file sizes are decimal (formatShortFileSize), so the page's rates are too, all in MB/s. */
-private const val BYTES_PER_MB = 1_000_000f
-private const val MB_PER_SECOND = " MB/s"
-
-/** Two decimals, as Revolut prices a stock: the hero's small part and every rate on the page. */
-private const val DECIMALS = 2
-private const val SECONDS_PER_HOUR = 3_600
-private const val SECONDS_PER_MINUTE = 60
-
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun RvTrafficScreenPreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvTrafficScreen(rvSampleActivity(), RV_SAMPLE_CONNECTION, onBack = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
 }

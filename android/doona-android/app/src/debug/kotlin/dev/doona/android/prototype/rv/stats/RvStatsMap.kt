@@ -17,8 +17,7 @@ import androidx.compose.ui.graphics.vector.toPath
 import androidx.compose.ui.res.vectorResource
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvPlace
-import dev.doona.android.prototype.rv.placeOf
+import dev.doona.android.prototype.rv.data.RvPlace
 import kotlin.math.PI
 import kotlin.math.ln
 import kotlin.math.tan
@@ -88,15 +87,3 @@ private const val HALF_TURN = 180f
 private const val MILLER_Y = 1.25
 private const val MILLER_LAT = 0.4
 private val TOP = miller(NORTH)
-
-/**
- * The country a node's name points at, as an ISO code: its flag emoji (`🇩🇪 Frankfurt 01`), else a place the activity
- * sample's detection knows by name or region code (`Tokyo 01`, `hk-01`).
- */
-internal fun countryOf(name: String): String? =
-    FLAG.find(name)?.value?.codePoints()?.toArray()?.joinToString("") { Char(it - REGIONAL_A + 'A'.code).toString() }
-        ?: placeOf(name)?.name
-
-/** Two regional indicator symbols: a flag emoji. */
-private val FLAG = Regex("[\\x{1F1E6}-\\x{1F1FF}]{2}")
-private const val REGIONAL_A = 0x1F1E6
