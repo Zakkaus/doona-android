@@ -8,6 +8,7 @@ use crate::testutil::{TempDir, fixture, http, response, target};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -183,6 +184,41 @@ fn an_update_keeps_ids_and_drops_choices_whose_node_went() {
     // "Other" left the feed: Proxy is back to its first member.
     assert!(!after.groups[0].pinned);
     assert_eq!(after.groups[0].selected_id.as_deref(), Some("g-Auto"));
+}
+
+/// A refresh publishes its registry and each group's node in one step: a flow that opens
+/// meanwhile never gets a node its registry lacks.
+#[test]
+fn a_refresh_publishes_its_registry_and_nodes_together() {
+    let dir = TempDir::new("api-swap");
+    let feeds = Feeds::new();
+    let sets: [&[u8]; 2] = [b"socks5://127.0.0.1:1#a\n", b"socks5://127.0.0.1:2#b\n"];
+    feeds.set("/sub", sets[0]);
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    let outbounds = Arc::clone(&core.shared.outbounds);
+    let done = Arc::new(AtomicBool::new(false));
+    let reader = {
+        let done = Arc::clone(&done);
+        std::thread::spawn(move || {
+            let mut torn = 0usize;
+            while !done.load(Relaxed) {
+                let d = outbounds.dialer("g-Proxy").expect("Proxy has a node");
+                torn += usize::from(d.registry.get(&d.node.id).is_none());
+            }
+            torn
+        })
+    };
+    for i in 1..=100 {
+        feeds.set("/sub", sets[i % 2]);
+        call(&core, "updateSubscription", json!({"id": "s1"})).unwrap();
+    }
+    done.store(true, Relaxed);
+    assert_eq!(
+        reader.join().unwrap(),
+        0,
+        "flows saw a node without its registry"
+    );
 }
 
 #[test]

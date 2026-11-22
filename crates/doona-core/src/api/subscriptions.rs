@@ -193,8 +193,7 @@ impl Core {
             c.model = model;
             c.state = next;
             c.revision += 1;
-            self.shared.outbounds.replace(built);
-            self.shared.publish(&c);
+            self.shared.publish_nodes(&c, built);
             let s = c.state.subscriptions.iter().find(|s| s.id == changed);
             s.map(|s| c.model.subscription(s))
         };

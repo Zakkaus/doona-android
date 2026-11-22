@@ -116,14 +116,15 @@ impl Outbounds {
         }
     }
 
-    /// Publishes `built`; the previous registry hands over the runtimes it shares and retires.
-    pub(crate) fn replace(&self, built: Built) {
+    /// Publishes `built` and each group's node for its node set in one swap; the previous
+    /// registry hands over the runtimes it shares and retires.
+    pub(crate) fn replace(&self, built: Built, selected: HashMap<String, Arc<Node>>) {
         let old = {
             let mut table = self.table.write().unwrap_or_else(|e| e.into_inner());
             let old = table.registry.clone();
             *table = Arc::new(Table {
                 registry: built.registry,
-                selected: table.selected.clone(),
+                selected,
             });
             old
         };

@@ -136,14 +136,14 @@ impl Core {
         bootstrap::use_servers(options.bootstrap_fallback.clone());
         let model = catalog::load(&state);
         let outbounds = Arc::new(Outbounds::new(runtime.handle().clone())?);
-        outbounds.replace(outbounds.build(&model.nodes));
+        let built = outbounds.build(&model.nodes);
         let mode = Arc::new(ModeCell::new(state.mode));
         let catalog = CatalogState::new(state, model);
         let shared = Arc::new(Shared {
             catalog: Mutex::new(catalog),
             outbounds,
         });
-        shared.publish(&lock(&shared.catalog));
+        shared.publish_nodes(&lock(&shared.catalog), built);
         let probes = Probes::new(prober, &options.probe_url);
         Ok(Core {
             runtime,
