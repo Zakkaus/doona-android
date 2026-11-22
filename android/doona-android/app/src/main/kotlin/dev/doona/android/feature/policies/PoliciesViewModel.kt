@@ -13,13 +13,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Engine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 // Only as far as the shell needs: the 策略 lane adds the actions and selection.
 class PoliciesViewModel(engine: Engine) : ViewModel() {
-    val uiState: StateFlow<PoliciesUiState> = engine.groups.map(::PoliciesUiState)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PoliciesUiState(engine.groups.value))
+    val uiState: StateFlow<PoliciesUiState> = combine(engine.groups, engine.ready, ::PoliciesUiState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PoliciesUiState(engine.groups.value, engine.ready.value))
 
     companion object {
         fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {
@@ -35,11 +35,17 @@ fun PoliciesRoute(engine: Engine, onOpenGroup: (String) -> Unit) {
     PoliciesScreen(state.groups, onOpenGroup)
 }
 
-/** A group removed while its page is open, such as by a subscription update, leaves the page. */
+/**
+ * A group removed while its page is open, such as by a subscription update, leaves the page. Before the engine has
+ * loaded, as after process death, a missing group is only not loaded yet.
+ */
 @Composable
 fun GroupRoute(engine: Engine, groupId: String, onBack: () -> Unit) {
     val viewModel: PoliciesViewModel = viewModel(factory = PoliciesViewModel.factory(engine))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val group = state.groups.firstOrNull { it.id == groupId }
-    if (group == null) LaunchedEffect(Unit) { onBack() } else GroupScreen(group, onBack)
+    when {
+        group != null -> GroupScreen(group, onBack)
+        state.loaded -> LaunchedEffect(Unit) { onBack() }
+    }
 }

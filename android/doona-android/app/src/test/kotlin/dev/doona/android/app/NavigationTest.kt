@@ -77,6 +77,19 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").assertDoesNotExist()
         compose.onNodeWithText("Manual 0").assertExists()
     }
+
+    @Test
+    fun `a restored group page waits for the engine before it leaves`() {
+        val engine = FakeEngine(groups = emptyList()).apply { ready.value = false }
+        compose.setContent { DoonaTheme { DoonaApp(engine, onConnect = {}, start = GROUP) } }
+        compose.waitForIdle()
+
+        engine.groups.value = FakeEngine.SAMPLE_GROUPS
+        engine.ready.value = true
+
+        compose.onNodeWithText("Proxy").assertExists()
+        compose.onNodeWithContentDescription("Back").assertExists()
+    }
 }
 
 private val GROUP = listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
