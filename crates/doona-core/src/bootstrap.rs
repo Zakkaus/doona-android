@@ -4,7 +4,8 @@
 //! path (doona is outside its own VPN); with none, of 1.1.1.1 and 8.8.8.8. The list `start` gave
 //! stays in use after `stop`; before the first `start` the fallback is used. honk keeps its hooks
 //! per process, so the list is per process too. `/etc/resolv.conf` is never read: the hook claims
-//! every name, so honk's own fallback to it is never reached.
+//! every name, and the record lookups honk makes itself (a TLS node's ECH configuration, from its
+//! server name's HTTPS record) go to honk's global resolver, which is always the first of the list.
 
 use honk_outbound::bootstrap::{BootstrapResolver, NodeHostLookup, NodeHostResolver};
 use std::io;
@@ -21,8 +22,11 @@ pub const FALLBACK: [SocketAddr; 2] = [
 /// The resolvers in use, in order; none until a core sets them, and then the fallback serves.
 static SERVERS: RwLock<Vec<SocketAddr>> = RwLock::new(Vec::new());
 
-/// Makes `servers` the resolvers every lookup asks from now on.
+/// Makes `servers` the resolvers every lookup asks from now on, and the first of them honk's
+/// global resolver: without one, honk would read `/etc/resolv.conf` for the records it looks up.
 pub(crate) fn use_servers(servers: Vec<SocketAddr>) {
+    let first = servers.first().unwrap_or(&FALLBACK[0]).to_string();
+    honk_outbound::bootstrap::set_global(BootstrapResolver::parse(&first));
     *SERVERS.write().unwrap_or_else(|e| e.into_inner()) = servers;
 }
 

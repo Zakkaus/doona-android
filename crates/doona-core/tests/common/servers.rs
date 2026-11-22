@@ -12,6 +12,8 @@ pub struct Seen {
     pub connections: AtomicUsize,
     pub closed: AtomicUsize,
     pub datagrams: AtomicUsize,
+    /// HTTPS-record queries (type 65) a resolver received.
+    pub https: AtomicUsize,
 }
 
 /// Echoes every byte of each connection, then closes it after the client's FIN.
@@ -189,7 +191,7 @@ pub fn feed(body: String) -> SocketAddr {
 }
 
 /// A UDP resolver for one-question queries without other records: A gets 127.0.0.1, any other
-/// type no record. Counts the queries in `datagrams`.
+/// type no record. Counts the queries in `datagrams`, those for an HTTPS record also in `https`.
 pub fn udp_resolver() -> (SocketAddr, Arc<Seen>) {
     let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
     let addr = socket.local_addr().unwrap();
@@ -205,9 +207,15 @@ pub fn udp_resolver() -> (SocketAddr, Arc<Seen>) {
             let mut a = buf[..n].to_vec();
             a[2] |= 0x80;
             a[3] = 0x80;
-            if u16_at(&a, n - 4) == 1 {
-                a[7] = 1;
-                a.extend_from_slice(&[0xc0, 12, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 127, 0, 0, 1]);
+            match u16_at(&a, n - 4) {
+                1 => {
+                    a[7] = 1;
+                    a.extend_from_slice(&[0xc0, 12, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 127, 0, 0, 1]);
+                }
+                65 => {
+                    s.https.fetch_add(1, Relaxed);
+                }
+                _ => {}
             }
             let _ = socket.send_to(&a, from);
         }

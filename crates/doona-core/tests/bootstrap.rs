@@ -16,6 +16,7 @@ use std::net::SocketAddr;
 use std::os::fd::AsRawFd;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Mutex, MutexGuard};
+use std::time::Duration;
 
 fn serial() -> MutexGuard<'static, ()> {
     static SERIAL: Mutex<()> = Mutex::new(());
@@ -81,6 +82,25 @@ fn node_hosts_are_resolved_with_the_start_config() {
     assert_eq!(client.exchange(id, b"by name").unwrap(), b"by name");
     assert_eq!(proxy_seen.connections.load(Relaxed), 1);
     assert!(queries(&seen) >= 1);
+}
+
+/// A TLS node with ECH on and no ECH configuration looks up its server name's HTTPS record, and
+/// asks the first resolver `start` names for it, never the system's.
+#[test]
+fn ech_discovery_asks_the_start_config_resolvers() {
+    let _s = serial();
+    let (resolver, seen) = servers::udp_resolver();
+    // Not a TLS server: the handshake fails once the lookup is done.
+    let (stub, _) = servers::tcp_echo();
+    let link = format!("trojan://pw@{stub}?security=tls&sni=ech.doona.test&ech=1#tj");
+    let feed = servers::feed(link);
+    let dir = TempDir::new("boot-ech");
+    let core = new_core(&dir, resolver.port(), vec![dead_resolver()]);
+    subscribe(&core, &format!("http://{feed}/sub")).unwrap();
+    let mut client = start(&core, r#"["127.0.0.1"]"#);
+    let id = client.connect(servers::closed_port());
+    assert!(client.until(Duration::from_secs(10), |c| c.read_now(id).is_err()));
+    assert_eq!(seen.https.load(Relaxed), 1);
 }
 
 /// With no resolver in the config, the fallback list serves.
