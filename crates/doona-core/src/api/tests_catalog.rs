@@ -297,3 +297,24 @@ fn an_update_that_finishes_after_a_removal_is_dropped() {
     let saved = std::fs::read_to_string(dir.path().join("state.json")).unwrap();
     assert!(!saved.contains("192.0.2."));
 }
+
+#[test]
+fn an_update_over_the_node_budget_fails_and_keeps_the_nodes() {
+    let dir = TempDir::new("api-budget");
+    let feeds = Feeds::new();
+    feeds.set("/sub", &fixture("links.txt"));
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    let big: String = (0..=2_000)
+        .map(|i| format!("trojan://p{i}@192.0.2.1:443#n{i}\n"))
+        .collect();
+    feeds.set("/sub", big.as_bytes());
+    assert_eq!(
+        call(&core, "updateSubscription", json!({"id": "s1"})),
+        Err(ErrorCode::ParseFailed)
+    );
+    let shown = catalog(&core);
+    assert_eq!(shown.subscriptions[0].nodes, 9);
+    assert_eq!(shown.subscriptions[0].error, Some(ErrorCode::ParseFailed));
+    assert_eq!(shown.groups[1].members.len(), 9);
+}

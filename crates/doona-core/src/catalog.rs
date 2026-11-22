@@ -15,6 +15,11 @@ use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
+/// The most nodes of all subscriptions together, on top of
+/// [`parse::MAX_NODES_PER_SUBSCRIPTION`]: a subscription that would take the catalog over it is
+/// `parse_failed`.
+pub(crate) const MAX_NODES: usize = 5_000;
+
 /// Nested groups are followed this deep; the template nests one level.
 const MAX_DEPTH: u8 = 4;
 
@@ -54,16 +59,29 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
         .collect()
 }
 
-/// The nodes `state.json` lists, each subscription with a new incarnation.
+/// The nodes `state.json` lists, each subscription with a new incarnation. Only a file edited
+/// by hand holds a subscription over a node budget; that one is shown without nodes.
 pub(crate) fn load(state: &State) -> Model {
     let mut nodes = Vec::new();
     let mut incarnations = HashMap::new();
     for s in &state.subscriptions {
-        let parsed = parse::admit(s.links.iter().map(String::as_str));
-        nodes.extend(entries(&s.id, parsed.nodes));
+        let parsed = parse::admit(s.links.iter().map(String::as_str))
+            .and_then(|p| within_budget(nodes.len(), &p.nodes).map(|()| p));
+        match parsed {
+            Ok(parsed) => nodes.extend(entries(&s.id, parsed.nodes)),
+            Err(_) => log::warn!("load: a subscription is over the node budget"),
+        }
         incarnations.insert(s.id.clone(), incarnation());
     }
     Model::new(nodes, incarnations)
+}
+
+/// `parse_failed` when `fresh` nodes and `others` already kept are more than [`MAX_NODES`].
+pub(crate) fn within_budget(others: usize, fresh: &[Node]) -> Result<(), ErrorCode> {
+    if others + fresh.len() > MAX_NODES {
+        return Err(ErrorCode::ParseFailed);
+    }
+    Ok(())
 }
 
 /// A node's last probe result, and the probe whose result it waits for.

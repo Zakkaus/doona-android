@@ -31,7 +31,11 @@ impl Core {
             .unwrap_or_else(|| url.host_str().unwrap_or_default().to_owned());
         let (parsed, userinfo) = self.download(url)?;
         let _writer = lock(&self.writer);
-        let mut next = lock(&self.shared.catalog).state.clone();
+        let mut next = {
+            let c = lock(&self.shared.catalog);
+            catalog::within_budget(c.model.nodes.len(), &parsed.nodes)?;
+            c.state.clone()
+        };
         let id = next.take_subscription_id();
         let mut stored = StoredSubscription {
             id: id.clone(),
@@ -66,16 +70,20 @@ impl Core {
         let _refreshing = Refreshing::begin(&self.refreshing, id)?;
         let downloaded = fetch::parse_url(&url).and_then(|url| self.download(url));
         let _writer = lock(&self.writer);
-        let mut next = {
+        let (mut next, others) = {
             let c = lock(&self.shared.catalog);
             // Removed meanwhile: the result is dropped. Ids are never reused.
             if c.model.incarnations.get(id).copied() != incarnation {
                 return Err(ErrorCode::NotFound);
             }
-            c.state.clone()
+            (c.state.clone(), c.model.nodes.len() - c.model.nodes_of(id))
         };
         let stored = next.subscriptions.iter_mut().find(|s| s.id == id);
         let stored = stored.ok_or(ErrorCode::NotFound)?;
+        let downloaded = downloaded.and_then(|(parsed, userinfo)| {
+            catalog::within_budget(others, &parsed.nodes)?;
+            Ok((parsed, userinfo))
+        });
         let (parsed, userinfo) = match downloaded {
             Ok(downloaded) => downloaded,
             Err(code) => {

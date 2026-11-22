@@ -35,7 +35,6 @@ base64 = "0.23"
 boring = "5"
 httparse = "1"
 percent-encoding = "2"
-serde_yaml = "0.9"
 tokio-boring = "5"
 url = "2"
 uuid = { version = "1", features = ["v5"] }

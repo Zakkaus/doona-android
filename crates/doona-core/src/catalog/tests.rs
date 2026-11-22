@@ -28,7 +28,9 @@ fn state(subs: &[(&str, &str)]) -> State {
 fn fresh(s: &StoredSubscription) -> Vec<Arc<NodeEntry>> {
     entries(
         &s.id,
-        parse::admit(s.links.iter().map(String::as_str)).nodes,
+        parse::admit(s.links.iter().map(String::as_str))
+            .unwrap()
+            .nodes,
     )
 }
 
@@ -220,4 +222,34 @@ fn leaves_follow_pins_and_nested_groups() {
     let pinned = BTreeMap::from([("g-Proxy".to_owned(), last.id.clone())]);
     assert_eq!(model.leaves(&pinned)["g-Proxy"].id, last.node.id);
     assert!(load(&State::default()).leaves(&s.selections).is_empty());
+}
+
+#[test]
+fn a_subscription_that_takes_the_catalog_over_its_budget_loads_empty() {
+    let links = |from: usize| -> Vec<String> {
+        (from..from + parse::MAX_NODES_PER_SUBSCRIPTION)
+            .map(|i| format!("trojan://p{i}@192.0.2.1:443#n{i}"))
+            .collect()
+    };
+    let mut s = state(&[
+        ("s1", "links.txt"),
+        ("s2", "links.txt"),
+        ("s3", "links.txt"),
+    ]);
+    for (i, sub) in s.subscriptions.iter_mut().enumerate() {
+        sub.links = links(i * parse::MAX_NODES_PER_SUBSCRIPTION);
+    }
+    let model = load(&s);
+    assert_eq!(model.nodes.len(), 2 * parse::MAX_NODES_PER_SUBSCRIPTION);
+    assert_eq!(model.nodes_of("s3"), 0);
+    let kept = model.nodes.len();
+    assert_eq!(
+        within_budget(
+            kept,
+            &parse::admit(s.subscriptions[2].links.iter().map(String::as_str))
+                .unwrap()
+                .nodes
+        ),
+        Err(ErrorCode::ParseFailed)
+    );
 }

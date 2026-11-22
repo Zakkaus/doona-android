@@ -6,12 +6,17 @@
 //! identity wins). Nodes are built by honk-config's `Node::from_share_link`.
 //!
 //! v0.1 takes share-link lists, plain or base64. Structured bodies (Clash YAML, SIP008 and
-//! sing-box JSON) and Surge-style records are refused as `parse_failed`.
+//! sing-box JSON) and Surge-style records are refused as `parse_failed`, judged by their first
+//! lines so that refusing one builds no tree.
 
 use crate::dto::ErrorCode;
 use honk_config::node::Node;
 use std::borrow::Cow;
 use std::collections::HashSet;
+
+/// The most nodes one subscription brings. The 8 MiB download bound does not bound the nodes, and
+/// the registry builds a runtime for each endpoint, so a list over this is `parse_failed` whole.
+pub(crate) const MAX_NODES_PER_SUBSCRIPTION: usize = 2_000;
 
 /// The admitted nodes of a body and the share link each was parsed from.
 #[derive(Debug, Default)]
@@ -20,8 +25,8 @@ pub(crate) struct Parsed {
     pub nodes: Vec<Node>,
 }
 
-/// Parses a downloaded body: `parse_failed` when it is not a share-link list, `no_nodes` when
-/// none of its links gives a usable node.
+/// Parses a downloaded body: `parse_failed` when it is not a share-link list or holds more than
+/// [`MAX_NODES_PER_SUBSCRIPTION`] nodes, `no_nodes` when none of its links gives a usable node.
 pub(crate) fn parse(body: &[u8]) -> Result<Parsed, ErrorCode> {
     let text = std::str::from_utf8(body).map_err(|_| ErrorCode::ParseFailed)?;
     let text = strip_bom(text);
@@ -38,7 +43,7 @@ pub(crate) fn parse(body: &[u8]) -> Result<Parsed, ErrorCode> {
     if structured(text) || !has_uri(text) {
         return Err(ErrorCode::ParseFailed);
     }
-    let parsed = admit(text.lines());
+    let parsed = admit(text.lines())?;
     if parsed.nodes.is_empty() {
         return Err(ErrorCode::NoNodes);
     }
@@ -46,8 +51,9 @@ pub(crate) fn parse(body: &[u8]) -> Result<Parsed, ErrorCode> {
 }
 
 /// The nodes of a share-link list, as honk admits them; also re-reads the links `state.json`
-/// keeps. Diagnostics are dropped unread: they would quote the links.
-pub(crate) fn admit<'a>(lines: impl Iterator<Item = &'a str>) -> Parsed {
+/// keeps. Diagnostics are dropped unread: they would quote the links. Stops with `parse_failed`
+/// at the first node over [`MAX_NODES_PER_SUBSCRIPTION`].
+pub(crate) fn admit<'a>(lines: impl Iterator<Item = &'a str>) -> Result<Parsed, ErrorCode> {
     let mut seen = HashSet::new();
     let mut parsed = Parsed::default();
     for line in lines {
@@ -60,11 +66,14 @@ pub(crate) fn admit<'a>(lines: impl Iterator<Item = &'a str>) -> Parsed {
             continue;
         };
         if usable(&node) && seen.insert(node.id) {
+            if parsed.nodes.len() == MAX_NODES_PER_SUBSCRIPTION {
+                return Err(ErrorCode::ParseFailed);
+            }
             parsed.links.push(link.to_owned());
             parsed.nodes.push(node);
         }
     }
-    parsed
+    Ok(parsed)
 }
 
 fn strip_bom(text: &str) -> &str {
@@ -95,30 +104,31 @@ fn usable(node: &Node) -> bool {
         && honk_config::node::validate_node_collection(std::slice::from_ref(node)).is_ok()
 }
 
-/// A JSON or YAML document (a mapping or a sequence), or text that starts like one but does not
-/// parse: honk reads these as Clash, SIP008 or sing-box bodies.
+/// A JSON or YAML document, which honk reads as a Clash, SIP008 or sing-box body, judged by its
+/// first line that is not blank or a comment, so no tree is built: an object, an array, a quoted
+/// key, a document marker, a list item, or honk's `proxies:`, `outbounds:` and `servers:` keys.
+/// Any other `key:` line is not enough: some providers put one above their share links, and a
+/// mapping such as a whole Clash config has no line that starts with a scheme, so it fails as
+/// records.
 fn structured(text: &str) -> bool {
-    let content = text.trim_start().trim_start_matches('\u{feff}');
-    // YAML's quoted-scalar decoder does not accept JSON UTF-16 surrogate pairs.
-    let value = serde_json::from_str::<serde_yaml::Value>(content)
-        .or_else(|_| serde_yaml::from_str::<serde_yaml::Value>(content));
-    match value {
-        Ok(value) => matches!(
-            value,
-            serde_yaml::Value::Mapping(_) | serde_yaml::Value::Sequence(_)
-        ),
-        Err(_) => looks_structured(text),
-    }
-}
-
-fn looks_structured(text: &str) -> bool {
     let first = text
         .lines()
         .map(str::trim)
         .find(|line| !line.is_empty() && !line.starts_with('#') && !line.starts_with(';'))
         .unwrap_or_default();
-    let ini_header = first
-        .strip_prefix('[')
+    first.starts_with(['{', '"', '\''])
+        || (first.starts_with('[') && !ini_header(first))
+        || first == "---"
+        || first == "-"
+        || first.starts_with("- ")
+        || ["proxies:", "outbounds:", "servers:"]
+            .iter()
+            .any(|key| first.starts_with(key))
+}
+
+/// `[Proxy]`: a section of Surge-style records, not a JSON array.
+fn ini_header(line: &str) -> bool {
+    line.strip_prefix('[')
         .and_then(|line| line.strip_suffix(']'))
         .is_some_and(|name| {
             !name.is_empty()
@@ -127,12 +137,7 @@ fn looks_structured(text: &str) -> bool {
                         || ch.is_ascii_whitespace()
                         || matches!(ch, '_' | '-')
                 })
-        });
-    first.starts_with('{')
-        || (first.starts_with('[') && !ini_header)
-        || ["proxies:", "outbounds:", "servers:"]
-            .iter()
-            .any(|key| first.starts_with(key))
+        })
 }
 
 /// A line starting with a URI scheme; without one honk reads the body as Surge-style records.
@@ -207,7 +212,7 @@ mod tests {
             .collect();
         // Two endpoints share this name; the third entry repeats the first endpoint.
         assert_eq!(hk, ["hk-01", "hk-01"]);
-        let again = admit(parsed.links.iter().map(String::as_str));
+        let again = admit(parsed.links.iter().map(String::as_str)).unwrap();
         assert_eq!(names(&again), names(&parsed));
     }
 
@@ -237,5 +242,47 @@ mod tests {
             Some(&b"hi"[..])
         );
         assert_eq!(decode_base64_flexible("trojan://x@h:1"), None);
+    }
+
+    fn links(n: usize) -> String {
+        (0..n)
+            .map(|i| format!("trojan://p{i}@192.0.2.1:443#n{i}\n"))
+            .collect()
+    }
+
+    #[test]
+    fn a_list_over_the_node_budget_is_refused() {
+        let full = parse(links(MAX_NODES_PER_SUBSCRIPTION).as_bytes()).unwrap();
+        assert_eq!(full.nodes.len(), MAX_NODES_PER_SUBSCRIPTION);
+        let over = parse(links(MAX_NODES_PER_SUBSCRIPTION + 1).as_bytes());
+        assert_eq!(over.err(), Some(ErrorCode::ParseFailed));
+        // A repeated endpoint counts once.
+        let repeated = links(MAX_NODES_PER_SUBSCRIPTION) + &links(10);
+        assert!(parse(repeated.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn structured_bodies_are_known_by_their_first_lines() {
+        for body in [
+            "port: 7890\nproxies:\n  - {name: a, server: 192.0.2.1}\nrules:\n  - MATCH,trojan://x@h:1",
+            "# exported\n\nproxies:\n- name: a\n  url: trojan://x@h:1",
+            "---\nproxies: []\ntrojan://x@h:1",
+            "- name: a\n  link: trojan://x@h:1",
+            "[{\"server\": \"trojan://x@h:1\"}]",
+            "\"outbounds\": []\ntrojan://x@h:1",
+        ] {
+            assert_eq!(
+                parse(body.as_bytes()).err(),
+                Some(ErrorCode::ParseFailed),
+                "{body}"
+            );
+        }
+        // A provider's header line above the links is not a document.
+        for links in [
+            "STATUS=expires: 2027\ntrojan://secret@192.0.2.1:443#a",
+            "updated: 2026-11-01\ntrojan://secret@192.0.2.1:443#a",
+        ] {
+            assert_eq!(parse(links.as_bytes()).unwrap().nodes.len(), 1, "{links}");
+        }
     }
 }
