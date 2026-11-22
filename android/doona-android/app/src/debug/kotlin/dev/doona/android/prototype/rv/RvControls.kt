@@ -1,7 +1,9 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,9 +24,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.minimumInteractiveComponentSize
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,13 +39,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.roundToIntRect
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
 
@@ -102,7 +111,7 @@ internal fun RvRangePill(label: String, selected: Boolean, onClick: () -> Unit) 
             .minimumInteractiveComponentSize()
             .height(RvChartSize.range)
             .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
-            .selectable(selected, interactionSource = null, indication = ripple(color = colors.stateLayer), role = Role.Tab, onClick = onClick)
+            .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick)
             .padding(horizontal = RvChartSize.rangePad),
         contentAlignment = Alignment.Center,
     ) { RvText(label, Rv.type.action, color = if (selected) colors.text else colors.textSecondary) }
@@ -124,11 +133,19 @@ internal fun Modifier.rvRaised(shape: Shape): Modifier {
 @Composable
 internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val colors = Rv.colors
+    val motion = Rv.motion
+    // Each segment's pill as the row lays it out; one raised pill rests there and slides to the next selection.
+    val slots = remember(options.size) { mutableStateListOf<IntRect?>().apply { repeat(options.size) { add(null) } } }
     Box(modifier.fillMaxWidth().height(RvSize.touch), contentAlignment = Alignment.Center) {
         Box(Modifier.fillMaxWidth().height(RvChartSize.segment).clip(CircleShape).background(colors.segmentTrack))
+        slots.getOrNull(selected)?.let { slot ->
+            val x by animateIntAsState(slot.left, motion.tween(RvMotion.SLIDE_MS), label = "segment")
+            Box(Modifier.align(Alignment.TopStart).offset { IntOffset(x, slot.top) }.exactSize(slot.width, slot.height).rvRaised(CircleShape))
+        }
         Row(Modifier.fillMaxSize()) {
             options.forEachIndexed { i, label ->
                 val source = remember { MutableInteractionSource() }
+                val ink by animateColorAsState(if (i == selected) colors.text else colors.textSecondary, motion.tween(RvMotion.SLIDE_MS), label = "ink")
                 Box(
                     Modifier
                         .weight(1f)
@@ -136,13 +153,20 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
                         .selectable(i == selected, interactionSource = source, indication = null, role = Role.Tab) { onSelect(i) }
                         .padding(vertical = (RvSize.touch - RvChartSize.segment) / 2)
                         .padding(RvChartSize.segmentInset)
-                        .then(if (i == selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
-                        .indication(source, ripple(color = colors.stateLayer)),
+                        .onPlaced { placed -> placed.boundsInParent().roundToIntRect().let { if (slots[i] != it) slots[i] = it } }
+                        .clip(CircleShape)
+                        .indication(source, rvPressIndication()),
                     contentAlignment = Alignment.Center,
-                ) { RvText(label, Rv.type.segment, color = if (i == selected) colors.text else colors.textSecondary) }
+                ) { RvText(label, Rv.type.segment, color = ink) }
             }
         }
     }
+}
+
+/** Exactly [width] by [height] pixels, so a part placed from another's measured bounds matches it to the pixel. */
+private fun Modifier.exactSize(width: Int, height: Int): Modifier = layout { measurable, _ ->
+    val placeable = measurable.measure(Constraints.fixed(width, height))
+    layout(width, height) { placeable.place(0, 0) }
 }
 
 /**
@@ -216,7 +240,7 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val size = RvControlSize
     val off = (size.switchWidth - size.switchTrackWidth) / 2 - (size.switchThumb - size.switchTrackHeight) / 2
-    val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, label = "thumb")
+    val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, Rv.motion.tween(RvMotion.SWITCH_MS), label = "thumb")
     Box(modifier.size(size.switchWidth, size.switchHeight).clearAndSetSemantics {}) {
         Box(
             Modifier

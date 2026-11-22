@@ -258,7 +258,7 @@ internal class RvType {
 }
 
 @Immutable
-internal class RvTokens(val colors: RvColors, val type: RvType)
+internal class RvTokens(val colors: RvColors, val type: RvType, val motion: RvMotionScale)
 
 private val LocalRv = staticCompositionLocalOf<RvTokens> { error("RvTheme is not set") }
 
@@ -269,11 +269,15 @@ internal object Rv {
     val type: RvType
         @Composable @ReadOnlyComposable
         get() = LocalRv.current.type
+    val motion: RvMotionScale
+        @Composable @ReadOnlyComposable
+        get() = LocalRv.current.motion
 }
 
 @Composable
 internal fun RvTheme(scheme: ColorScheme, dark: Boolean, content: @Composable () -> Unit) {
-    val tokens = remember(scheme, dark) { RvTokens(RvColors(scheme, dark), RvType()) }
+    val motion = rememberRvMotion()
+    val tokens = remember(scheme, dark, motion) { RvTokens(RvColors(scheme, dark), RvType(), motion) }
     CompositionLocalProvider(LocalRv provides tokens, content = content)
 }
 

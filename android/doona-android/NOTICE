@@ -12,10 +12,11 @@ SIL Open Font License 1.1: app/src/debug/assets/licenses/inter-OFL.txt
 
 Material Symbols Rounded (app/src/debug/res/drawable/rv_sym_*.xml, rv_nodes_ic_*.xml, rv_settings_ic_*.xml and
 rv_stats_ic_*.xml, the prototype/rv sample only; rv_ic_analytics.xml is the sample's own)
-Copyright Google LLC. rv_sym_*: filled 24 px Android vector drawables at weight 500 or 600 from
-google/material-design-icons (symbols/android/<name>/materialsymbolsrounded, commit 10ecc147), paths unchanged; the
-theme tint attribute is removed and each file names its source. rv_nodes_ic_*, rv_settings_ic_* and rv_stats_ic_*:
-filled 24 px glyphs from the same set, converted to vector drawables; each file names its glyph and weight.
+Copyright Google LLC. rv_sym_*: filled 24 px Android vector drawables at weight 500 or 600 (rv_sym_info outlined, at
+weight 500) from google/material-design-icons (symbols/android/<name>/materialsymbolsrounded, commit 10ecc147), paths
+unchanged; the theme tint attribute is removed and each file names its source. rv_nodes_ic_*, rv_settings_ic_* and
+rv_stats_ic_*: filled 24 px glyphs from the same set, converted to vector drawables; each file names its glyph and
+weight.
 Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
 
 Natural Earth land (app/src/debug/kotlin/dev/doona/android/prototype/rv/RvLandMask.kt, the prototype/rv sample only)

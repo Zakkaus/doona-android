@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -196,9 +197,12 @@ internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>) {
 internal fun RvFastestCard(nodes: List<RvNode>, currentId: String, onOpen: () -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_fastest_nodes), onOpen)
-        nodes.forEach { node ->
-            RvRow({ RvFlag(node.place.name, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + " · " + stringResource(node.place.label)) {
-                RvLatencyChange(node.latencyMs, node.changeMs)
+        // A new test re-sorts the rows: each moves to its new place, keyed by its node.
+        nodes.forEachIndexed { order, node ->
+            key(node.id) {
+                RvRow({ RvFlag(node.place.name, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + " · " + stringResource(node.place.label), Modifier.rvMoves()) {
+                    RvLatencyChange(node.latencyMs, node.changeMs, order)
+                }
             }
         }
     }

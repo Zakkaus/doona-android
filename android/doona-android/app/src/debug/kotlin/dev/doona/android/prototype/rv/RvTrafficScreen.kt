@@ -1,6 +1,8 @@
 package dev.doona.android.prototype.rv
 
 import android.content.res.Configuration
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -78,7 +80,9 @@ internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack:
  */
 @Composable
 private fun Hero(rate: RvAmount, at: String?) {
-    RvFigureText(rate.figure(), Rv.type.detailFigure, Rv.type.detailUnit)
+    // Each second's live rate cross-fades in; a scrubbed second follows the finger at once.
+    val fade = if (at == null) Rv.motion.tween<Float>(RvMotion.FADE_MS) else snap()
+    Crossfade(rate.number to rate.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvFigureText(RvFigure(number, unit), Rv.type.detailFigure, Rv.type.detailUnit) }
     Spacer(Modifier.height(RvSpace.subGap))
     RvText(at ?: stringResource(R.string.rv_now), Rv.type.sub, color = Rv.colors.textSecondary)
 }

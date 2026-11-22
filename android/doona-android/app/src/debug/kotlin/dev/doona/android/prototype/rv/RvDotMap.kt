@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.prototype.rv.data.RvPlace
 import kotlin.math.floor
@@ -62,25 +63,34 @@ private class DotRow(val y: Float, val dots: List<Offset>)
  * and they fade in over [RvDots.topFade] under it. Inside [clear] (the hero's text, in this element's coordinates) grown by
  * [RvDots.clearPad] they are kept faint, so no dot runs through the figures (S5-02).
  */
-internal fun Modifier.rvDotMap(focus: RvPlace?, color: Color, focusTop: Dp, clear: Rect? = null, fadeTop: Dp? = null): Modifier = drawWithCache {
+internal fun Modifier.rvDotMap(focus: RvPlace?, color: Color, focusTop: Dp, clear: Rect? = null, fadeTop: Dp? = null, live: RvDotMotion = RV_STILL): Modifier = drawWithCache {
     val pitch = RvDots.pitch.toPx()
     val centre = Offset(size.width / 2f, focusTop.toPx())
-    val rows = dotRows(focus?.lat ?: DEFAULT_LAT, focus?.lon ?: DEFAULT_LON, centre, pitch, size.height)
+    val rows = dotRows(live.lat?.invoke() ?: focus?.lat ?: DEFAULT_LAT, live.lon?.invoke() ?: focus?.lon ?: DEFAULT_LON, centre, pitch, size.height)
     val zone = clear?.inflate(RvDots.clearPad.toPx())
     val topFade = RvDots.topFade.toPx()
     val fadeFrom = fadeTop?.toPx()
     onDrawBehind {
+        val art = live.art()
+        // P2 stretches the map downward from its top: each band moves down in proportion to its height.
+        val stretch = live.stretch() / size.height
         for (row in rows) {
             val bottom = ((RvDots.FADE_END - row.y / size.height) / (RvDots.FADE_END - RvDots.FADE_START)).coerceIn(0f, 1f)
             val top = fadeFrom?.let { ((row.y - it) / topFade).coerceIn(0f, 1f) } ?: 1f
-            val alpha = RvDots.ALPHA * bottom * top
+            val alpha = RvDots.ALPHA * bottom * top * art
             if (alpha <= 0f) continue
             val inZone = zone != null && row.y in zone.top..zone.bottom
             val (faint, full) = if (inZone) row.dots.partition { it.x in zone.left..zone.right } else emptyList<Offset>() to row.dots
-            drawPoints(full, PointMode.Points, color.copy(alpha = alpha), RvDots.dot.toPx(), StrokeCap.Round)
-            drawPoints(faint, PointMode.Points, color.copy(alpha = minOf(alpha, RvDots.CLEAR_ALPHA)), RvDots.dot.toPx(), StrokeCap.Round)
+            translate(top = row.y * stretch) {
+                drawPoints(full, PointMode.Points, color.copy(alpha = alpha), RvDots.dot.toPx(), StrokeCap.Round)
+                drawPoints(faint, PointMode.Points, color.copy(alpha = minOf(alpha, RvDots.CLEAR_ALPHA)), RvDots.dot.toPx(), StrokeCap.Round)
+            }
         }
-        if (focus != null) marker(centre, color)
+        if (focus != null) {
+            val at = centre.copy(y = centre.y * (1 + stretch))
+            marker(at, color, art)
+            pulse(at, color, art, live.pulse())
+        }
     }
 }
 
@@ -98,12 +108,36 @@ private fun dotRows(lat: Float, lon: Float, centre: Offset, pitch: Float, height
     }
 }
 
-/** The selected node's place: a soft glow, a thin ring and one bright dot, all in the map's colour. */
-private fun DrawScope.marker(at: Offset, color: Color) {
+/**
+ * What moves on the dot map: [art] scales its alpha (a tab's hero fade), [stretch] pulls it that many pixels longer from
+ * its top (P2), [pulse] (0 to 1, 0 none) runs a copy of the marker's ring out to the glow's edge while connected, and
+ * [lat] and [lon] centre the map where a node switch has panned it so far (null: on the focus).
+ */
+internal class RvDotMotion(
+    val art: () -> Float = { 1f },
+    val stretch: () -> Float = { 0f },
+    val pulse: () -> Float = { 0f },
+    val lat: (() -> Float)? = null,
+    val lon: (() -> Float)? = null,
+)
+
+private val RV_STILL = RvDotMotion()
+
+/** The marker's ring again, [phase] of the way out to the glow's edge and fading as it goes; nothing at 0. */
+private fun DrawScope.pulse(at: Offset, color: Color, art: Float, phase: Float) {
+    if (phase <= 0f || phase >= 1f) return
+    val radius = RvDots.ring.toPx() + (RvDots.glow.toPx() - RvDots.ring.toPx()) * phase
+    drawCircle(color.copy(alpha = RvDots.RING_ALPHA * (1 - phase) * art), radius, at, style = Stroke(RvDots.ringStroke.toPx()))
+}
+
+/**
+ * The selected node's place: a soft glow, a thin ring and one bright dot, all in the map's colour, at [art]'s alpha.
+ */
+private fun DrawScope.marker(at: Offset, color: Color, art: Float) {
     val glow = RvDots.glow.toPx()
-    drawCircle(Brush.radialGradient(listOf(color.copy(alpha = RvDots.GLOW_ALPHA), color.copy(alpha = 0f)), at, glow), glow, at)
-    drawCircle(color.copy(alpha = RvDots.RING_ALPHA), RvDots.ring.toPx(), at, style = Stroke(RvDots.ringStroke.toPx()))
-    drawCircle(color, RvDots.marker.toPx() / 2f, at)
+    drawCircle(Brush.radialGradient(listOf(color.copy(alpha = RvDots.GLOW_ALPHA * art), color.copy(alpha = 0f)), at, glow), glow, at)
+    drawCircle(color.copy(alpha = RvDots.RING_ALPHA * art), RvDots.ring.toPx(), at, style = Stroke(RvDots.ringStroke.toPx()))
+    drawCircle(color, RvDots.marker.toPx() / 2f, at, alpha = art)
 }
 
 /** Land of fewer cells than this is left out of the map. */

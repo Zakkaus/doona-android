@@ -84,6 +84,9 @@ internal object RvSize {
     val navGlyph = 24.dp
     val progress = 5.dp
 
+    /** A busy bar ([RvBusy]) in a row's trailing slot or in a round action's disc: a glyph's width. */
+    val busy = 24.dp
+
     /** The current node's check (measured §7 `avatar_badgeBottom`): a 16 dp disc, its ring in the card's colour. */
     val badge = 16.dp
     val badgeRing = 2.dp
@@ -353,7 +356,6 @@ internal object RvChrome {
 
     const val NAV_SHADOW_ALPHA = 0.16f
     const val CONTROL_SHADOW_ALPHA = 0.06f
-    const val COLLAPSE_MS = 220
 }
 
 /**

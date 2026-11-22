@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,7 +61,7 @@ internal const val RV_NAV_SETTINGS = 2
  */
 @Composable
 internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlass, collapsed: Boolean, insets: WindowInsets, modifier: Modifier = Modifier) {
-    val shrink by animateFloatAsState(if (collapsed) 1f else 0f, tween(RvChrome.COLLAPSE_MS), label = "nav")
+    val shrink by animateFloatAsState(if (collapsed) 1f else 0f, Rv.motion.tween(RvMotion.NAV_MS), label = "nav")
     BoxWithConstraints(modifier.fillMaxWidth().padding(bottom = rvNavBottom(insets)), contentAlignment = Alignment.BottomCenter) {
         val width = lerp(maxWidth - RvChrome.navInset * 2, RvChrome.navCollapsedWidth, shrink)
         val height = lerp(RvChrome.navHeight, RvChrome.navCollapsedHeight, shrink)
@@ -94,7 +92,7 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, modifier:
             .fillMaxHeight()
             .clip(CircleShape)
             .then(pill)
-            .selectable(selected, interactionSource = null, indication = ripple(color = colors.stateLayer), role = Role.Tab, onClick = onClick),
+            .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

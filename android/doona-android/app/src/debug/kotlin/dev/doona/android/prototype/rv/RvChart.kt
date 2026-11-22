@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -37,6 +38,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
@@ -99,7 +102,8 @@ internal fun RvSparkTile(
                 }
             }
             Spacer(Modifier.height(RvSpace.tight))
-            RvFigureText(figure, type.tileValue, type.tileUnit)
+            // Each second's rate cross-fades in instead of jumping.
+            Crossfade(figure.whole to figure.unit, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "tile") { (whole, unit) -> RvFigureText(RvFigure(whole, unit), type.tileValue, type.tileUnit) }
             RvText(note, type.tileCaption, color = Rv.colors.textSecondary)
             Spacer(Modifier.weight(1f))
             if (quiet) RvGhostBars(ghost) else RvSparkline(values, series.line)
@@ -125,14 +129,29 @@ internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextSty
 @Composable
 internal fun RvSparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier) {
     val colors = Rv.colors
+    val glide = rememberRvGlide(values)
     Canvas(modifier.fillMaxWidth().height(RvChartSize.spark)) {
         if (values.size < 2) return@Canvas
         val stroke = RvChartSize.sparkStroke.toPx()
         val scale = Scale(values.max() * RvChartSize.SPARK_HEADROOM, 0f, size.height - stroke / 2)
-        val line = polyline(values, scale, size.width)
-        drawPath(areaUnder(values, scale, size.width, size.height), Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), scale.y(values.max()), size.height))
+        gliding(glide, values, size.width) { drawn, right ->
+            drawPath(areaUnder(drawn, scale, right, size.height), Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), scale.y(values.max()), size.height))
+        }
         dottedAcross(colors.reference, scale.y(values.first()))
-        drawPath(line, color, style = lineStroke(stroke))
+        gliding(glide, values, size.width) { drawn, right -> drawPath(polyline(drawn, scale, right), color, style = lineStroke(stroke)) }
+    }
+}
+
+/**
+ * Draws [draw] with [values] at rest, or, while [glide] runs, with the sample that just left in front and the whole
+ * moved right by what is left of a step, clipped to [right]: the window scrolls on by one sample each second.
+ */
+private inline fun DrawScope.gliding(glide: RvGlide, values: List<Float>, right: Float, draw: DrawScope.(List<Float>, Float) -> Unit) {
+    val lead = glide.lead
+    if (lead == null) return draw(values, right)
+    val step = right / (values.size - 1)
+    clipRect(right = right) {
+        translate(left = (glide.shift.value - 1f) * step) { draw(listOf(lead) + values, right + step) }
     }
 }
 
@@ -166,6 +185,7 @@ internal fun RvDetailChart(values: List<Float>, series: RvSeries, label: (Float)
     val pillStyle = Rv.type.pill.copy(color = colors.textSecondary)
     val ink = RvPillInk(colors.pill, colors.raisedShadow)
     val measurer = rememberTextMeasurer()
+    val glide = rememberRvGlide(values)
     Canvas(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear).scrubbing(values.size, onScrub)) {
         val plot = RvChartSize.detail.toPx()
         hairlineGrid(colors.grid, plot)
@@ -175,11 +195,12 @@ internal fun RvDetailChart(values: List<Float>, series: RvSeries, label: (Float)
         val peak = known.max()
         val scale = Scale(peak * RvChartSize.DETAIL_HEADROOM, 0f, plot - stroke)
         val right = size.width - RvChartSize.detailEnd.toPx()
-        val line = polyline(values, scale, right)
-        drawPath(areaUnder(values, scale, right, plot), Brush.verticalGradient(listOf(series.area, Color.Transparent), scale.y(peak), plot))
+        gliding(glide, values, right) { drawn, end ->
+            drawPath(areaUnder(drawn, scale, end, plot), Brush.verticalGradient(listOf(series.area, Color.Transparent), scale.y(peak), plot))
+        }
         dottedAcross(colors.detailReference, scale.y(known.first()))
-        drawPath(line, series.line, style = lineStroke(stroke))
-        val live = values.lastOrNull()?.takeUnless { it.isNaN() }?.let { Offset(right, scale.y(it)) }
+        gliding(glide, values, right) { drawn, end -> drawPath(polyline(drawn, scale, end), series.line, style = lineStroke(stroke)) }
+        val live = liveValue(values, glide)?.let { Offset(right, scale.y(it)) }
         live?.let {
             drawCircle(series.line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, it)
             drawCircle(series.line, RvChartSize.liveDot.toPx() / 2, it)
@@ -194,6 +215,13 @@ internal fun RvDetailChart(values: List<Float>, series: RvSeries, label: (Float)
             pills.place(measurer.measure(label(known.first()), pillStyle), scale.y(known.first()), end = false, ink)
         }
     }
+}
+
+/** The value the line crosses the chart's right edge at: the last sample, or while it glides in, on its way to it. */
+private fun liveValue(values: List<Float>, glide: RvGlide): Float? {
+    val last = values.lastOrNull()?.takeUnless { it.isNaN() } ?: return null
+    val before = values.getOrNull(values.size - 2)?.takeUnless { it.isNaN() || glide.lead == null } ?: return last
+    return last + (before - last) * glide.shift.value
 }
 
 /**

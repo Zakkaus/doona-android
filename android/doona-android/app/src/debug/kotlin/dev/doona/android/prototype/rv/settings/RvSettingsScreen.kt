@@ -43,6 +43,7 @@ import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvBarHeight
 import dev.doona.android.prototype.rv.rvCollapsedOnScroll
 import dev.doona.android.prototype.rv.rvDotMap
+import dev.doona.android.prototype.rv.rvHeroArt
 import dev.doona.android.prototype.rv.rvNavClearance
 import dev.doona.android.prototype.rv.rvSystemScheme
 
@@ -83,7 +84,9 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets) {
     Box(Modifier.fillMaxWidth()) {
         // No dot on the status bar's clock (S8-08): the map starts under it, as 活動's does.
         val dots = Modifier.rvDotMap(null, Rv.colors.dots, status + rvBarHeight() + RvSettingsSpace.mapDrop, fadeTop = status)
-        Box(Modifier.matchParentSize().graphicsLayer { alpha = RvSettingsAlpha.HERO_DOTS }.then(dots))
+        // After a hard-cut tab switch the dots fade in ([rvHeroArt]).
+        val art = rvHeroArt()
+        Box(Modifier.matchParentSize().graphicsLayer { alpha = RvSettingsAlpha.HERO_DOTS * art() }.then(dots))
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             RvBarSpacer(insets)
             Spacer(Modifier.height(RvSettingsSpace.heroTop))

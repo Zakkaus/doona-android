@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalDensity
@@ -42,6 +44,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -125,6 +129,42 @@ private fun SearchPill(glass: RvGlass, onClick: () -> Unit, modifier: Modifier) 
     ) {
         RvGlyph(R.drawable.rv_sym_search, RvChrome.searchGlyph, Rv.colors.text)
         RvText(stringResource(R.string.rv_search_nodes), Rv.type.search, color = Rv.colors.textSecondary)
+    }
+}
+
+/**
+ * The search pill as a field (the node picker's bar): the same glass, glyph and type, with [query] typed in it and the
+ * pill's 搜尋節點 as the placeholder; CJK runs set in Noto as everywhere else.
+ */
+@Composable
+internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier) {
+    val colors = Rv.colors
+    val hint = stringResource(R.string.rv_search_nodes)
+    Row(
+        modifier
+            .minimumInteractiveComponentSize()
+            .height(RvChrome.control)
+            .rvControl(glass, CircleShape)
+            .padding(horizontal = RvChrome.searchInset),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(RvChrome.searchInset),
+    ) {
+        RvGlyph(R.drawable.rv_sym_search, RvChrome.searchGlyph, colors.text)
+        BasicTextField(
+            query,
+            onQuery,
+            Modifier.weight(1f).semantics { contentDescription = hint },
+            textStyle = Rv.type.search.copy(color = colors.text),
+            singleLine = true,
+            cursorBrush = SolidColor(colors.positive),
+            visualTransformation = { TransformedText(scripted(it.text), OffsetMapping.Identity) },
+            decorationBox = { field ->
+                Box(contentAlignment = Alignment.CenterStart) {
+                    if (query.isEmpty()) RvText(hint, Rv.type.search, color = colors.textSecondary)
+                    field()
+                }
+            },
+        )
     }
 }
 

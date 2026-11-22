@@ -21,7 +21,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +53,7 @@ import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.rvPressIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -106,7 +106,7 @@ private fun ModeCard(appearance: RvAppearance, light: ColorScheme, dark: ColorSc
                     Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(RvSize.cardRadius))
-                        .selectable(selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton) {
+                        .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.RadioButton) {
                             onChange(appearance.copy(mode = mode))
                         }
                         .padding(vertical = RvSettingsSpace.modePad),
@@ -183,7 +183,7 @@ private fun AccentDisc(name: String, colour: Color, selected: Boolean, enabled: 
         Modifier
             .size(RvSize.touch)
             .clip(CircleShape)
-            .selectable(selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .selectable(selected, interactionSource = null, indication = rvPressIndication(), enabled = enabled, role = Role.RadioButton, onClick = onClick)
             .semantics { contentDescription = name },
         contentAlignment = Alignment.Center,
     ) {

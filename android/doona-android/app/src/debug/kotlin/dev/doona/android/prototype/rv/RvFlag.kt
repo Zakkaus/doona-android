@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,6 +20,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
@@ -27,7 +30,8 @@ import dev.doona.android.R
  * A country's flag as a disc of [size], wherever the sample draws one: HatScripts' circle-flags for [code] (ISO 3166
  * alpha-2, either case) with a 1 dp ring of black 8 % in light or white 10 % in dark (X-18). A code without artwork, or
  * none, gets the fallback disc with the code on it. The [current] node's flag carries a check badge at its bottom end,
- * so the current node is never marked by tint alone; its ring takes [ring], the colour the flag sits on.
+ * so the current node is never marked by tint alone; its ring takes [ring], the colour the flag sits on. It grows in and
+ * shrinks out over [RvMotion.FADE_MS] as the current node changes.
  */
 @Composable
 internal fun RvFlag(code: String?, size: Dp, modifier: Modifier = Modifier, current: Boolean = false, ring: Color = Rv.colors.card) {
@@ -42,7 +46,20 @@ internal fun RvFlag(code: String?, size: Dp, modifier: Modifier = Modifier, curr
                 RvText(code?.uppercase() ?: RV_NO_VALUE, Rv.type.flagCode, color = colors.textSecondary)
             }
         }
-        if (current) CurrentBadge(ring, Modifier.align(Alignment.BottomEnd).offset(RvSize.badgeOverhang, RvSize.badgeOverhang))
+        // The check leaves the old node and comes to the new one by scale and fade as the current node changes.
+        val shown by animateFloatAsState(if (current) 1f else 0f, Rv.motion.tween(RvMotion.FADE_MS), label = "check")
+        if (shown > 0f) {
+            val grow = if (shown < 1f) {
+                Modifier.graphicsLayer {
+                    scaleX = shown
+                    scaleY = shown
+                    alpha = shown
+                }
+            } else {
+                Modifier
+            }
+            CurrentBadge(ring, Modifier.align(Alignment.BottomEnd).offset(RvSize.badgeOverhang, RvSize.badgeOverhang).then(grow))
+        }
     }
 }
 
