@@ -127,14 +127,18 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
             seen += shown.last()
             val entering = options.tab == RvTabMotion.Cut && shown == transition.targetState && transition.currentState.first() != shown.first()
             holder.SaveableStateProvider(shown.last()) {
-                CompositionLocalProvider(LocalRvTabEntry provides entering, LocalRvShared provides RvShared(this@SharedTransitionLayout, this)) { page(shown.last()) }
+                val shared = RvShared(this@SharedTransitionLayout, this, popMs(options.push))
+                CompositionLocalProvider(LocalRvTabEntry provides entering, LocalRvShared provides shared) { page(shown.last()) }
             }
         }
     }
 }
 
-/** The host's shared-element scopes: the [layout] over every page and the [page]'s own coming and going. */
-internal class RvShared(val layout: SharedTransitionScope, val page: AnimatedVisibilityScope)
+/**
+ * The host's shared-element scopes: the [layout] over every page and the [page]'s own coming and going; a push or pop
+ * takes [pushMs].
+ */
+internal class RvShared(val layout: SharedTransitionScope, val page: AnimatedVisibilityScope, val pushMs: Int)
 
 internal val LocalRvShared = compositionLocalOf<RvShared?> { null }
 
@@ -160,6 +164,29 @@ internal fun Modifier.rvSharedSearch(): Modifier {
         )
     }
 }
+
+/**
+ * Makes a node row's flag and its page's header flag one element (rule 4): pushing the node's page, the flag moves and
+ * grows from the row into the header with the push, and goes back with the pop. Only one flag per node may carry it on
+ * a page, so 節點's top tiles and 活動's rows do not. Outside the host it does nothing.
+ */
+@Composable
+internal fun Modifier.rvSharedFlag(node: String): Modifier {
+    val shared = LocalRvShared.current ?: return this
+    val motion = Rv.motion
+    return with(shared.layout) {
+        this@rvSharedFlag.sharedBounds(
+            rememberSharedContentState(FLAG + node),
+            shared.page,
+            enter = fadeIn(motion.tween(shared.pushMs)),
+            exit = fadeOut(motion.tween(shared.pushMs)),
+            boundsTransform = { _, _ -> motion.tween(shared.pushMs) },
+            clipInOverlayDuringTransition = OverlayClip(CircleShape),
+        )
+    }
+}
+
+private const val FLAG = "flag:"
 
 /** Whether the page this is in has finished coming in (at once outside the host). */
 @Composable

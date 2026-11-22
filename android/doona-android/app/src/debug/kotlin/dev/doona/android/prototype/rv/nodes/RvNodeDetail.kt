@@ -42,6 +42,7 @@ import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.rememberRvFormat
+import dev.doona.android.prototype.rv.rvSharedFlag
 import dev.doona.android.prototype.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.scripted
 
@@ -82,7 +83,8 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
 @Composable
 private fun Top(node: RvNode, current: Boolean) {
     Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-        RvFlag(node.place.name, RvNodesSize.detailFlag)
+        // The flag of the row this page was opened from grows into this one (rule 4).
+        RvFlag(node.place.name, RvNodesSize.detailFlag, Modifier.rvSharedFlag(node.id))
         Spacer(Modifier.height(RvSpace.sectionBelow))
         RvText(node.protocol + SEPARATOR + stringResource(node.place.label), Rv.type.rowSub, color = Rv.colors.textSecondary)
         val high = latencyTone(node.latencyMs).let { it == Tone.Warn || it == Tone.Err }

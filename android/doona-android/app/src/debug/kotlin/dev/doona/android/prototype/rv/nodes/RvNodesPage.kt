@@ -56,6 +56,7 @@ import dev.doona.android.prototype.rv.data.RvRegion
 import dev.doona.android.prototype.rv.rvMoves
 import dev.doona.android.prototype.rv.rvNodeMenu
 import dev.doona.android.prototype.rv.rvPress
+import dev.doona.android.prototype.rv.rvSharedFlag
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -172,7 +173,7 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
                 // A long press opens the row's menu; the box round the row moves when a test re-sorts the card.
                 RvMenuAnchor(rvNodeMenu(node, current, LocalRvRowActions.current.useNode, onOpen), Modifier.rvMoves()) { menu, actions ->
                     RvRow(
-                        { RvFlag(node.place.name, RvNodesSize.rowFlag, current = current) },
+                        { RvFlag(node.place.name, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
                         node.name,
                         node.protocol + SEPARATOR + stringResource(node.place.label),
                         (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),

@@ -90,6 +90,7 @@ import dev.doona.android.prototype.rv.rvNodeMenu
 import dev.doona.android.prototype.rv.rvPageArrived
 import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.rvShade
+import dev.doona.android.prototype.rv.rvSharedFlag
 import dev.doona.android.prototype.rv.rvSharedSearch
 import dev.doona.android.prototype.rv.rvSubscriptionMenu
 import dev.doona.android.prototype.rv.rvSystemScheme
@@ -258,7 +259,7 @@ private fun NodeRow(node: RvNode, label: String, current: Boolean, order: Int, o
     val details = stringResource(R.string.rv_nodes_details)
     RvMenuAnchor(rvNodeMenu(node, current, onPick, onDetail)) { menu, actions ->
         RvRow(
-            { RvFlag(node.place.name, RvNodesSize.rowFlag, current = current) },
+            { RvFlag(node.place.name, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
             node.name,
             node.protocol + SEPARATOR + label,
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
