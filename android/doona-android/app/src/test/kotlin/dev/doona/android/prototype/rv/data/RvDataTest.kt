@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv.data
 import dev.doona.android.engine.Status
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
+import dev.doona.android.prototype.rv.rvOutboundParts
 import dev.doona.android.prototype.rv.rvSampleActivity
 import dev.doona.android.prototype.rv.stats.rvStatsSample
 import org.junit.Assert.assertEquals
@@ -86,6 +87,18 @@ class RvDataTest {
         assertNull(shares.first().group)
         val routes = RvData.ruleOutbounds.associate { it.group to it.nodeId }
         for (share in shares.drop(1)) assertEquals(routes.getValue(share.group!!), share.nodeId)
+    }
+
+    @Test
+    fun theOutboundCardsPartsAreTodayAndTheirSharesAddUpTo100() {
+        val parts = rvOutboundParts(RvRouteMode.Rule, RvData.CURRENT_ID)
+        // The main node, two rule groups and the rest folded: four at most, as the owner set the card's rows.
+        assertEquals(4, parts.size)
+        assertEquals(RvData.today.total, parts.sumOf { it.bytes })
+        assertSumShown(parts.map { it.bytes }, RvData.today.total)
+        assertEquals(100, rvPercents(parts.map { it.bytes }).sum())
+        assertEquals(listOf(100, 0), rvPercents(listOf(5L, 0L)))
+        assertEquals(listOf(0, 0), rvPercents(listOf(0L, 0L)))
     }
 
     @Test

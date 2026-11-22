@@ -42,4 +42,10 @@
     <plurals name="rv_see_all_rules">
         <item quantity="other">查看全部 %1$d 條分流</item>
     </plurals>
+    <string name="rv_outbound_other">其他</string>
+    <string name="rv_route_rest">其餘</string>
+    <string name="rv_route_all">全部流量</string>
+    <plurals name="rv_rule_count">
+        <item quantity="other">%1$d 條分流</item>
+    </plurals>
 </resources>

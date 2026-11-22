@@ -53,8 +53,8 @@ import dev.doona.android.prototype.rv.data.fastest
  * download and upload as two of Revolut's square home tiles (either opens the traffic page), and three more cards as
  * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
  * floating glass bottom bar (§9), which shrinks while the content scrolls up. It renders [ActivityUiState]; the engine
- * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. [hero] picks the dot map or
- * one of the alternatives the owner compares ([RvHeroVariant]).
+ * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. [hero] and [outbound] pick
+ * the dot map and the rule list, or the alternatives the owner compares ([RvHeroVariant], [RvOutboundVariant]).
  */
 @Composable
 internal fun RvActivityScreen(
@@ -64,6 +64,7 @@ internal fun RvActivityScreen(
     routes: RvActivityRoutes = RvActivityRoutes(),
     mode: RvRouteMode = if (state.mode == Mode.Direct) RvRouteMode.Direct else RvRouteMode.Rule,
     hero: RvHeroVariant = RvHeroVariant.Map,
+    outbound: RvOutboundVariant = RvOutboundVariant.List,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -73,7 +74,7 @@ internal fun RvActivityScreen(
             val actions: @Composable () -> Unit = { RvHeroActions(state, onAction, onConnect) }
             if (hero == RvHeroVariant.Map) MapHeader(state, mode, insets, actions) else RvVariantHeader(hero, state, mode, routes, insets, actions)
             RvGutter {
-                OutboundCard(state, mode, routes)
+                if (outbound == RvOutboundVariant.List) OutboundCard(state, mode, routes) else RvOutboundVariantCard(outbound, state, mode, routes)
                 TrafficTiles(state, routes.traffic)
                 RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
                 RvSubscriptionsCard(RvData.subscriptions)
@@ -162,9 +163,9 @@ internal fun RvHeroActions(state: ActivityUiState, onAction: (ActivityAction) ->
 @Composable
 private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvActivityRoutes) {
     RvCard {
-        RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = routes.mode) { RvChevron() }
+        RvModeRow(mode, routes.mode)
         if (mode == RvRouteMode.Direct) {
-            RvText(stringResource(R.string.rv_direct_note), Rv.type.rowSub, Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding), color = Rv.colors.textSecondary)
+            RvDirectNote()
             return@RvCard
         }
         val node = state.node
@@ -179,9 +180,25 @@ private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvAc
         ) { RvLatencyChange(node?.latencyMs?.takeUnless { node.failed }, listed?.changeMs?.takeUnless { node.failed }) }
         if (mode != RvRouteMode.Rule) return@RvCard
         RvData.ruleOutbounds.take(RULE_ROWS).forEach { RuleRow(it, routes.rule) }
-        RvSeeAll(pluralStringResource(R.plurals.rv_see_all_rules, RvData.RULES, RvData.RULES), routes.rules)
+        RvSeeAllRules(routes.rules)
     }
 }
+
+/** The outbound card's first row: the mode, which opens the mode picker ([onClick]). */
+@Composable
+internal fun RvModeRow(mode: RvRouteMode, onClick: () -> Unit) {
+    RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = onClick) { RvChevron() }
+}
+
+/** In 直連 the outbound card says, under the mode, that no node is in use. */
+@Composable
+internal fun RvDirectNote() {
+    RvText(stringResource(R.string.rv_direct_note), Rv.type.rowSub, Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding), color = Rv.colors.textSecondary)
+}
+
+/** The outbound card's last row in 規則: every rule, past the few the card shows. */
+@Composable
+internal fun RvSeeAllRules(onClick: () -> Unit) = RvSeeAll(pluralStringResource(R.plurals.rv_see_all_rules, RvData.RULES, RvData.RULES), onClick)
 
 /**
  * A rule group that sent traffic today: the node's flag, or for 直連 its own straight arrow (the diamond is the mode's), the
@@ -237,7 +254,7 @@ private fun minutePeak(history: List<Float>): Float = history.filterNot { it.isN
 
 /** The 最快節點 card lists the first three of the 節點 page's fastest; the outbound card, two rule groups after the main node. */
 private const val FASTEST = 3
-private const val RULE_ROWS = 2
+internal const val RULE_ROWS = 2
 private const val MS_PER_SECOND = 1_000L
 
 private val Status.label: Int
