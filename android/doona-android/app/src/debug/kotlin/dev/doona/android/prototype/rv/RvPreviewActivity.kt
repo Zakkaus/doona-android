@@ -16,6 +16,13 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
+import dev.doona.android.prototype.rv.policy.RvPolicyData
+import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
+import dev.doona.android.prototype.rv.policy.RvPolicyRoutes
+import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
+import dev.doona.android.prototype.rv.policy.RvPolicyScreen
+import dev.doona.android.prototype.rv.policy.RvPolicyState
+import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -26,7 +33,8 @@ import dev.doona.android.prototype.rv.stats.rvStatsSample
  * Debug builds only: the Revolut-style sample with its invented state, full screen on a phone, so the glass blur can be
  * seen where the platform draws it (Robolectric's goldens cannot). 活動 pushes 流量詳情 (a traffic tile), 統計 (the top
  * bar), 節點 (the search pill and the outbound row) and the node in use (its row); 節點 pushes a node's page; the nav
- * switches to 設定, which pushes 主題. Back returns. Start it from the launcher's "doona RV sample", or with
+ * switches to 設定, which pushes 主題, and to 策略, which pushes a group's page (its rows and the main node) and the quick
+ * rule (新增規則); 活動's mode row and 查看全部 switch to 策略, and a rule group opens its group's page. Back returns. Start it from the launcher's "doona RV sample", or with
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`.
  */
 class RvPreviewActivity : ComponentActivity() {
@@ -49,7 +57,8 @@ class RvPreviewActivity : ComponentActivity() {
 private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
     val nodes = remember { sampleNodesPage() }
     var settings by remember { mutableStateOf(rvSampleSettings()) }
-    // 策略 has no sample page yet.
+    var policy by remember { mutableStateOf(RvPolicyState()) }
+    var quickRule by remember { mutableStateOf(RvQuickRule()) }
     val onTab: (Int) -> Unit = { i -> TABS[i]?.let(tab) }
     when (route.substringBefore(':')) {
         TRAFFIC -> RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = pop)
@@ -65,10 +74,25 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
 
         SETTINGS -> RvSettingsScreen(settings, onChange = { settings = it }, onOpenTheme = { push(THEME) }, onTab = onTab)
 
+        POLICY -> {
+            val routes = RvPolicyRoutes(group = { push("$GROUP:$it") }, newRule = { push(RULE) }, tab = onTab)
+            RvPolicyScreen(policy, { policy = it }, routes)
+        }
+
+        GROUP -> {
+            val group = policy.group(RvPolicyData.group(route.substringAfter(':')))
+            RvPolicyGroupPage(group, onBack = pop, onSelect = { policy = policy.choose(group.id, it) }, onTest = {})
+        }
+
+        RULE -> RvPolicyRulePage(RvPolicyData.connection, quickRule, { quickRule = it }, onBack = pop, onApply = pop, onHold = pop)
+
         THEME -> RvThemeScreen(settings.appearance, { settings = settings.copy(appearance = it) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pop)
 
         else -> {
-            val routes = RvActivityRoutes({ push(TRAFFIC) }, { push(STATS) }, { push(NODES) }, { push("$NODE:${nodes.currentId}") }, onTab)
+            // The outbound card's mode row and 查看全部 open 策略; a rule group opens its group's page there.
+            val toPolicy = { tab(POLICY) }
+            val rule = { name: Int -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { push("$GROUP:${it.id}") } ?: toPolicy() }
+            val routes = RvActivityRoutes({ push(TRAFFIC) }, { push(STATS) }, { push(NODES) }, { push("$NODE:${nodes.currentId}") }, onTab, toPolicy, rule, toPolicy)
             RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, routes)
         }
     }
@@ -81,4 +105,7 @@ private const val NODES = "nodes"
 private const val NODE = "node"
 private const val SETTINGS = "settings"
 private const val THEME = "theme"
-private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_SETTINGS to SETTINGS)
+private const val POLICY = "policy"
+private const val GROUP = "group"
+private const val RULE = "rule"
+private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS)

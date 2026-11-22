@@ -53,6 +53,7 @@ internal val RV_NAV = listOf(
     RvNavItem(R.drawable.rv_sym_settings, R.string.hub_settings),
 )
 internal const val RV_NAV_ACTIVITY = 0
+internal const val RV_NAV_POLICY = 1
 internal const val RV_NAV_SETTINGS = 2
 
 /**
