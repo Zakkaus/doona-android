@@ -8,7 +8,7 @@ use super::tests_carriers::idle;
 use super::tests_catalog::{Feeds, add, call, catalog, path};
 use super::{Core, Life, lock};
 use crate::dto::{ErrorCode, Mode, Snapshot};
-use crate::testutil::{TempDir, http, socks5_on, tun};
+use crate::testutil::{TempDir, http, socks5_with, tun};
 use crate::tunnel::Session;
 use crate::tunnel::route::{Inbound, Route};
 use base64::Engine;
@@ -52,18 +52,16 @@ fn through(core: &Core, name: &str) {
     call(core, "select", select).unwrap();
 }
 
-fn closed_port() -> SocketAddr {
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    listener.local_addr().unwrap()
-}
-
 /// A dial refused on its way to a node on the local network warns. A node there that came up
 /// clears the warning, also when it then fails to reach the destination: only the hop to the node
 /// is Android's to refuse. Each change raises the revision; `stop` clears the warning too.
 #[test]
 fn the_warning_follows_the_hop_to_a_node_on_the_local_network() {
     let dir = TempDir::new("api-lan-warning");
-    let (lan, _) = socks5_on([127, 77, 0, 1]);
+    // The node on the local network comes up and refuses every destination.
+    let (lan, _) = socks5_with([127, 77, 0, 1], |_| {
+        Err(std::io::ErrorKind::ConnectionRefused.into())
+    });
     let target = http(|_| b"HTTP/1.1 204 No Content\r\n\r\n".to_vec());
     let core = started(
         &dir,
@@ -74,10 +72,7 @@ fn the_warning_follows_the_hop_to_a_node_on_the_local_network() {
 
     through(&core, "lan");
     let before = revision();
-    assert!(
-        !dial(closed_port()),
-        "the node came up, the destination refused"
-    );
+    assert!(!dial(target), "the node came up, the destination refused");
     assert_eq!(snapshot(&core).warning, None);
     assert_eq!(revision(), before);
 
@@ -93,7 +88,7 @@ fn the_warning_follows_the_hop_to_a_node_on_the_local_network() {
 
     through(&core, "lan");
     let before = revision();
-    assert!(!dial(closed_port()));
+    assert!(!dial(target));
     let cleared = snapshot(&core);
     assert_eq!(cleared.warning, None);
     assert!(cleared.revision > before);

@@ -155,7 +155,9 @@ impl Route {
                 let dialed = flatten(within(d.on_carriers(dial)).await);
                 session.dialed(began, &trace, dialed.is_ok());
                 // A transport that only bound a socket to the node has sent nothing yet: its first
-                // send says whether the node's address is reachable.
+                // send says whether the node's address is reachable. honk does not say where a
+                // SOCKS5 node's UDP relay is (its server names it in a reply), so such a session
+                // goes by the control connection's address; v0.1 leaves that limit.
                 let peer = trace.peer().or_else(|| localnet::literal(d.node.host()));
                 let local = peer.is_some_and(localnet::is_local);
                 Ok(UdpUpstream::Proxy(

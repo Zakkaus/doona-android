@@ -71,9 +71,6 @@ pub(crate) fn literal(host: &str) -> Option<IpAddr> {
         .ok()
 }
 
-/// The node addresses a trace keeps at most; a node has a few.
-const MAX_CHOSEN: usize = 16;
-
 /// What honk reports a traced dial's events under; nothing reads the ids.
 const CONTEXT: FlowContext = FlowContext {
     flow_id: uuid::Uuid::nil(),
@@ -92,7 +89,10 @@ pub(crate) struct Trace(Arc<Mutex<Seen>>);
 
 #[derive(Default)]
 struct Seen {
-    chosen: Vec<IpAddr>,
+    /// Whether an address it chose for the node, any of them, is local.
+    chose_local: bool,
+    /// The node address it chose last.
+    last: Option<IpAddr>,
     /// `Some` once a transport to the node came up (connected, or an existing one reused), with
     /// its address when honk knows it.
     reached: Option<Option<IpAddr>>,
@@ -120,7 +120,7 @@ impl Trace {
     /// failed before it chose one, as when the node's name did not resolve, did not.
     pub fn refused_locally(&self) -> bool {
         let seen = lock(&self.0);
-        seen.reached.is_none() && seen.chosen.iter().any(|&ip| is_local(ip))
+        seen.reached.is_none() && seen.chose_local
     }
 
     /// Whether a transport to the node came up on an address on the local network.
@@ -132,9 +132,7 @@ impl Trace {
     /// one chosen, as for a UDP transport that only binds a socket to it.
     pub fn peer(&self) -> Option<IpAddr> {
         let seen = lock(&self.0);
-        seen.reached
-            .flatten()
-            .or_else(|| seen.chosen.last().copied())
+        seen.reached.flatten().or(seen.last)
     }
 
     /// Records `event` as honk reports it; for tests that stand in for honk.
@@ -152,15 +150,16 @@ impl Seen {
                 status,
                 ..
             } => {
-                if let Some(a) = server_addr {
-                    self.choose(a.ip());
+                let ip = server_addr.map(|a| a.ip());
+                if let Some(ip) = ip {
+                    self.choose(ip);
                 }
                 if *status == TransportStatus::Succeeded {
-                    self.reached = Some(server_addr.map(|a| a.ip()));
+                    self.reach(ip);
                 }
             }
             FlowEvent::TransportAttached { server_addr, .. } => {
-                self.reached = Some(server_addr.map(|a| a.ip()));
+                self.reach(server_addr.map(|a| a.ip()));
             }
             // The address honk took from a lookup of the node's name.
             FlowEvent::Dns(lookup) => {
@@ -173,9 +172,15 @@ impl Seen {
     }
 
     fn choose(&mut self, ip: IpAddr) {
-        if self.chosen.len() < MAX_CHOSEN && !self.chosen.contains(&ip) {
-            self.chosen.push(ip);
-        }
+        self.chose_local |= is_local(ip);
+        self.last = Some(ip);
+    }
+
+    /// A transport to the node came up, at `ip` when honk says. honk reports a session it shares,
+    /// as AnyTLS does, with no address, also right after the connect that opened it came up at
+    /// one: that address stays known.
+    fn reach(&mut self, ip: Option<IpAddr>) {
+        self.reached = Some(ip.or(self.reached.flatten()));
     }
 }
 
@@ -187,7 +192,8 @@ pub(crate) struct Lookups(Arc<Mutex<Looked>>);
 #[derive(Default)]
 struct Looked {
     target: bool,
-    node: Vec<IpAddr>,
+    /// Whether every answer the node's name resolved to is local; `None` before the first.
+    node: Option<bool>,
 }
 
 impl Lookups {
@@ -207,7 +213,7 @@ impl Lookups {
         let looked = lock(&self.0);
         let local = match literal(host) {
             Some(ip) => is_local(ip),
-            None => !looked.node.is_empty() && looked.node.iter().all(|&ip| is_local(ip)),
+            None => looked.node == Some(true),
         };
         looked.target && local
     }
@@ -220,12 +226,9 @@ pub(crate) fn looked_up(target: bool, ips: &[IpAddr]) {
         let mut looked = lock(&probe.0);
         if target {
             looked.target = true;
-        } else {
-            for &ip in ips.iter().take(MAX_CHOSEN) {
-                if !looked.node.contains(&ip) {
-                    looked.node.push(ip);
-                }
-            }
+        } else if !ips.is_empty() {
+            let all = ips.iter().all(|&ip| is_local(ip));
+            looked.node = Some(looked.node.unwrap_or(true) && all);
         }
     });
 }

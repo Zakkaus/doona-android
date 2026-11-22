@@ -370,14 +370,18 @@ impl Core {
     }
 
     pub fn snapshot(&self, since_revision: i64) -> String {
-        let (revision, catalog) = {
+        // One moment of the lifecycle, the catalog and the warning: the locks in the order `stop`
+        // takes them, and the warning read under the catalog lock its changes take.
+        let (revision, catalog, session, warning) = {
+            let life = lock(&self.life);
             let c = lock(&self.shared.catalog);
             let catalog = (c.revision > since_revision).then(|| c.model.catalog(&c.state));
-            (c.revision, catalog)
-        };
-        let session = match &*lock(&self.life) {
-            Life::Running(tunnel) => Some(Arc::clone(tunnel.session())),
-            _ => None,
+            let session = match &*life {
+                Life::Running(tunnel) => Some(Arc::clone(tunnel.session())),
+                _ => None,
+            };
+            let warning = session.as_ref().and_then(|s| s.warning());
+            (c.revision, catalog, session, warning)
         };
         let snapshot = match session {
             Some(s) => Snapshot {
@@ -386,7 +390,7 @@ impl Core {
                 generation: s.generation,
                 since_epoch_ms: Some(s.since_epoch_ms),
                 error: s.failed().then_some(ErrorCode::Internal),
-                warning: s.warning(),
+                warning,
                 traffic: s.traffic(),
                 catalog,
             },

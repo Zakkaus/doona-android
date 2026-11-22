@@ -246,3 +246,61 @@ async fn a_probe_through_a_name_with_a_public_answer_was_not_refused_locally() {
         .await;
     assert!(!probe.refused_locally("nas.localnet.test"));
 }
+
+/// Every address a dial chose counts, however many came before: a node whose only local address
+/// honk tried after sixteen public ones was refused there, and that address is the one it sends to.
+#[test]
+fn every_address_a_dial_chose_counts() {
+    let trace = Trace::default();
+    for host in 1..=16 {
+        trace.record(&transport(
+            &format!("203.0.113.{host}:443"),
+            TransportStatus::Failed,
+        ));
+    }
+    assert!(!trace.refused_locally());
+    trace.record(&transport("192.168.8.2:443", TransportStatus::Failed));
+    assert!(trace.refused_locally());
+    assert_eq!(trace.peer(), Some("192.168.8.2".parse().unwrap()));
+}
+
+/// Every answer of the node's name counts: one public answer after sixteen local ones may be the
+/// address honk dialed, so the probe was not refused on the local network.
+#[tokio::test]
+async fn every_answer_of_a_probe_s_node_name_counts() {
+    let mut answers: Vec<IpAddr> = (1..=16)
+        .map(|host| IpAddr::V4(Ipv4Addr::new(192, 168, 8, host)))
+        .collect();
+    for (public, refused) in [(None, true), (Some("203.0.113.7"), false)] {
+        answers.extend(public.map(|a| a.parse::<IpAddr>().unwrap()));
+        let probe = Lookups::default();
+        probe
+            .scope(async {
+                looked_up(true, &["203.0.113.9".parse().unwrap()]);
+                looked_up(false, &answers);
+            })
+            .await;
+        assert_eq!(probe.refused_locally("nas.localnet.test"), refused);
+    }
+}
+
+/// honk reports a shared session, as AnyTLS opens one, without an address, also right after the
+/// connect that opened it came up at one: the node was still reached there, which clears the
+/// warning. One reused with no address known reached the node, but nowhere the trace knows.
+#[test]
+fn a_session_attached_without_an_address_keeps_the_one_it_came_up_at() {
+    let attached = FlowEvent::TransportAttached {
+        server_addr: None,
+        resolution_location: ResolutionLocation::Unknown,
+    };
+    let trace = Trace::default();
+    trace.record(&transport("192.168.8.2:443", TransportStatus::Succeeded));
+    trace.record(&attached);
+    assert!(trace.reached_locally() && !trace.refused_locally());
+    assert_eq!(trace.peer(), Some("192.168.8.2".parse().unwrap()));
+
+    let reused = Trace::default();
+    reused.record(&attached);
+    assert!(!reused.reached_locally() && !reused.refused_locally());
+    assert_eq!(reused.peer(), None);
+}
