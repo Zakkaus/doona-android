@@ -25,7 +25,7 @@ DROP = ["vhea", "vmtx", "BASE", "STAT", "HVAR", "VORG"]
 
 def used_chars(main):
     chars = {chr(c) for c in range(0x20, 0x7F)}
-    for path in list(main.glob("res/values*/strings.xml")) + list(main.glob("kotlin/**/*.kt")):
+    for path in list(main.glob("res/values*/strings*.xml")) + list(main.glob("kotlin/**/*.kt")):
         chars |= {ch for ch in path.read_text() if ord(ch) > 0x7F}
     return chars
 
