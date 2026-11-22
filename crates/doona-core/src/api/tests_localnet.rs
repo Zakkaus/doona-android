@@ -41,7 +41,13 @@ fn route(core: &Core) -> Route {
         Life::Running(tunnel) => Arc::clone(tunnel.session()),
         _ => panic!("not running"),
     };
-    Route::of(Inbound::Tun, Mode::Global, &core.shared.outbounds, &session)
+    Route::of(
+        Inbound::Tun,
+        crate::tunnel::route::tests::ANYWHERE,
+        Mode::Global,
+        &core.shared.outbounds,
+        &session,
+    )
 }
 
 /// Makes the node named `name` the one `g-Proxy` sends traffic to.

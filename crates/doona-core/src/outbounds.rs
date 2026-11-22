@@ -27,7 +27,7 @@ use futures_util::FutureExt;
 use honk_config::node::Node;
 use honk_outbound::proxy::ProxyRegistry;
 use honk_outbound::runtime::OutboundRuntimeRegistry;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::io::{self, ErrorKind};
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
@@ -36,9 +36,12 @@ use tokio::runtime::{Handle, Runtime};
 use tokio_util::task::AbortOnDropHandle;
 
 mod layers;
+mod routing;
 
 pub(crate) use self::layers::Registries;
 use self::layers::layers;
+use self::routing::Table;
+pub(crate) use self::routing::{Routing, View};
 
 /// Threads of a carriers runtime: the protocol work of every proxied flow (TLS, QUIC, session
 /// framing) runs there.
@@ -73,13 +76,6 @@ struct Current {
     owner: i64,
 }
 
-#[derive(Default)]
-struct Table {
-    published: Option<Published>,
-    /// Group id to the node it sends traffic to, nested groups followed.
-    selected: HashMap<String, Arc<Node>>,
-}
-
 /// Registries and the carriers they were built for.
 #[derive(Clone)]
 struct Published {
@@ -90,6 +86,8 @@ struct Published {
 /// What a flow needs to go through one group: its current node, and the registry and handlers
 /// that dial it (`ProxyRegistry::dial_runtime` with `node.id`) on its carriers.
 pub struct Dialer {
+    /// The group the node was chosen through: the flow's outbound.
+    pub group: Arc<str>,
     pub node: Arc<Node>,
     pub registry: Arc<OutboundRuntimeRegistry>,
     pub proxies: Arc<ProxyRegistry>,
@@ -280,18 +278,18 @@ impl Outbounds {
         })
     }
 
+    /// What new flows are routed by now.
+    pub(crate) fn view(&self) -> View<'_> {
+        View {
+            outbounds: self,
+            table: self.table(),
+        }
+    }
+
     /// The node `group` (an id such as `g-Proxy`) sends traffic to now, and what dials it;
     /// `None` while the group does not exist or has no node.
     pub fn dialer(&self, group: &str) -> Option<Dialer> {
-        let table = self.table();
-        let published = table.published.as_ref()?;
-        let node = table.selected.get(group)?;
-        Some(Dialer {
-            node: Arc::clone(node),
-            registry: Arc::clone(published.registries.of(node)?),
-            proxies: Arc::clone(&self.proxies),
-            carriers: Arc::clone(&published.carriers),
-        })
+        self.view().dialer(group)
     }
 
     /// The published registries and the carriers they dial on.
@@ -404,10 +402,10 @@ impl Outbounds {
             .is_some_and(|c| Arc::ptr_eq(c, carriers))
     }
 
-    /// Publishes `built` and each group's node for its node set in one swap; the previous
-    /// registries hand over the runtimes they share and retire. One built on carriers that ended
-    /// since, or from registries no longer published, is built again with runtimes of its own.
-    pub(crate) fn replace(&self, built: Built, selected: HashMap<String, Arc<Node>>) {
+    /// Publishes `built` and the routing of its node set in one swap; the previous registries
+    /// hand over the runtimes they share and retire. One built on carriers that ended since, or
+    /// from registries no longer published, is built again with runtimes of its own.
+    pub(crate) fn replace(&self, built: Built, routing: Routing) {
         let (old, reused) = {
             let mut table = self.table.write().unwrap_or_else(|e| e.into_inner());
             let published = table.published.as_ref().map(|p| &p.registries);
@@ -425,10 +423,7 @@ impl Outbounds {
                 p.registries.0.iter().for_each(|r| p.carriers.adopt(r));
             }
             let old = table.published.clone();
-            *table = Arc::new(Table {
-                published,
-                selected,
-            });
+            *table = Arc::new(Table::new(published, routing));
             (old, reused)
         };
         if let Some(old) = old.filter(|old| !old.carriers.ended()) {
@@ -447,13 +442,10 @@ impl Outbounds {
         }
     }
 
-    /// Publishes each group's current node.
-    pub(crate) fn select(&self, selected: HashMap<String, Arc<Node>>) {
+    /// Publishes each group's current node and the policy.
+    pub(crate) fn select(&self, routing: Routing) {
         let mut table = self.table.write().unwrap_or_else(|e| e.into_inner());
-        *table = Arc::new(Table {
-            published: table.published.clone(),
-            selected,
-        });
+        *table = Arc::new(Table::new(table.published.clone(), routing));
     }
 
     /// Builds the published registry again, for the same nodes on new carriers, when its own
@@ -476,6 +468,7 @@ impl Outbounds {
         *table = Arc::new(Table {
             published: Some(published),
             selected: table.selected.clone(),
+            policy: Arc::clone(&table.policy),
         });
         Ok(())
     }

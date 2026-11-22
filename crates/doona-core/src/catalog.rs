@@ -6,7 +6,9 @@
 use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member};
 use crate::groups::{self, GroupDef};
 use crate::ids::{self, is_group};
-use crate::outbounds::{Built, Outbounds};
+use crate::outbounds::{Built, Outbounds, Routing};
+use crate::rules::policy::Policy;
+use crate::rules::template;
 use crate::state::{State, StoredSubscription};
 use crate::stats::{Clock, Stats};
 use crate::subscription::parse;
@@ -117,16 +119,18 @@ pub(crate) struct Shared {
 }
 
 impl Shared {
-    /// Publishes each group's current node to the data path; called with `c` locked.
+    /// Publishes each group's current node, and the policy, to the data path; called with `c`
+    /// locked.
     pub fn publish(&self, c: &CatalogState) {
-        self.outbounds.select(c.model.leaves(&c.state.selections));
+        self.outbounds.select(c.model.routing(&c.state.selections));
     }
 
-    /// Publishes `built`, the registry for `c`'s node set, and each group's current node in one
-    /// step, so a new flow never pairs a node with a registry that lacks it; `c` is locked.
+    /// Publishes `built`, the registry for `c`'s node set, each group's current node and the
+    /// policy in one step, so a new flow never pairs a node with a registry that lacks it, nor a
+    /// rule with groups of another node set; `c` is locked.
     pub fn publish_nodes(&self, c: &CatalogState, built: Built) {
         self.outbounds
-            .replace(built, c.model.leaves(&c.state.selections));
+            .replace(built, c.model.routing(&c.state.selections));
     }
 }
 
@@ -165,6 +169,8 @@ pub(crate) struct Model {
     /// The incarnation each subscription's nodes belong to; a refresh gives a new one.
     pub incarnations: HashMap<String, u64>,
     pub groups: Vec<GroupDef>,
+    /// What chooses a new flow's group: the main group, and the template's rules over `groups`.
+    pub policy: Arc<Policy>,
     latency: HashMap<String, Latency>,
     /// The automatic choice of each UrlTest group that has had a successful probe.
     auto: HashMap<String, String>,
@@ -211,7 +217,7 @@ pub(crate) struct Target {
 
 impl Model {
     pub fn new(nodes: Vec<Arc<NodeEntry>>, incarnations: HashMap<String, u64>) -> Model {
-        let index = nodes
+        let index: HashMap<String, usize> = nodes
             .iter()
             .enumerate()
             .map(|(i, n)| (n.id.clone(), i))
@@ -221,11 +227,14 @@ impl Model {
             .map(|n| (n.id.as_str(), n.name.as_str()))
             .collect();
         let groups = groups::template(&named);
+        let is_node = |id: &str| index.contains_key(id);
+        let policy = Policy::template(&groups, &is_node, template::Options::default());
         Model {
             nodes,
             index,
             incarnations,
             groups,
+            policy: Arc::new(policy),
             ..Model::default()
         }
     }
@@ -482,6 +491,14 @@ impl Model {
                     self.testing.remove(g);
                 }
             }
+        }
+    }
+
+    /// What the data path routes new flows by: each group's node now, and the policy.
+    pub fn routing(&self, selections: &BTreeMap<String, String>) -> Routing {
+        Routing {
+            selected: self.leaves(selections),
+            policy: Arc::clone(&self.policy),
         }
     }
 

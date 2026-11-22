@@ -92,6 +92,7 @@ fn stop_closes_an_established_quic_connection_while_the_workers_are_held() {
     let destination: SocketAddr = ([127, 0, 0, 1], 9).into();
     let route = Route::of(
         Inbound::Tun,
+        crate::tunnel::route::tests::ANYWHERE,
         Mode::Global,
         &core.shared.outbounds,
         &Arc::new(Session::new(0, std::sync::Weak::new())),
@@ -140,7 +141,13 @@ fn a_refresh_whose_carriers_a_stop_ended_is_built_again() {
 fn dial_proxy(core: &Core) {
     let destination: SocketAddr = ([127, 0, 0, 1], 9).into();
     let session = Arc::new(Session::new(0, std::sync::Weak::new()));
-    let route = Route::of(Inbound::Tun, Mode::Global, &core.shared.outbounds, &session);
+    let route = Route::of(
+        Inbound::Tun,
+        crate::tunnel::route::tests::ANYWHERE,
+        Mode::Global,
+        &core.shared.outbounds,
+        &session,
+    );
     let mut stream = core.runtime.block_on(route.connect(destination)).unwrap();
     assert_eq!(ping(core, &mut stream, b"echo").unwrap(), b"echo");
     let _entered = core.runtime.enter();

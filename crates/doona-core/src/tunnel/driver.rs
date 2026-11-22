@@ -11,6 +11,7 @@ use super::route::{Inbound, Route};
 use super::tcp::{self, Step, TcpFlow};
 use super::udp::{self, Budget, Nat};
 use super::{Gen, Session, Settings, StartSignal, Tun};
+use crate::rules::Network;
 use crate::stats::meter::Tally;
 use crate::sys;
 use honk_netstack::{
@@ -288,7 +289,12 @@ impl Driver {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
                 continue;
             }
-            let route = new_route(&self.settings, &self.gen_.session);
+            let (settings, session) = (&self.settings, &self.gen_.session);
+            let route = if to_resolver {
+                dns_route(settings, session)
+            } else {
+                new_route(settings, session, (dst, Network::Tcp))
+            };
             if route.refused() {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
             } else {
@@ -329,7 +335,8 @@ impl Driver {
                 .spawn(tcp::dial(io, id, dst, route, events, cancel)),
             None => {
                 let upstreams = Arc::clone(&self.upstreams);
-                let task = tcp::serve_dns(io, id, route, upstreams, drain, events, cancel);
+                let via = (route, Arc::clone(&self.gen_.session));
+                let task = tcp::serve_dns(io, id, via, upstreams, drain, events, cancel);
                 self.gen_.spawn(task);
             }
         }
@@ -414,13 +421,14 @@ impl Driver {
                 return;
             };
             let (upstreams, events) = (Arc::clone(&self.upstreams), self.events.clone());
-            let route = new_route(&self.settings, &self.gen_.session);
-            let task =
-                udp::answer_dns(payload.to_vec(), (src, dst), route, upstreams, events, slot);
+            let route = dns_route(&self.settings, &self.gen_.session);
+            let via = (route, Arc::clone(&self.gen_.session));
+            let task = udp::answer_dns(payload.to_vec(), (src, dst), via, upstreams, events, slot);
             self.gen_.spawn(task);
         } else if dst.ip() != IpAddr::V4(self.settings.dns) {
             let (settings, session) = (&self.settings, &self.gen_.session);
-            let open = || Some(new_route(settings, session)).filter(Route::carries_udp);
+            let udp = (dst, Network::Udp);
+            let open = || Some(new_route(settings, session, udp)).filter(Route::carries_udp);
             if let Some((opened, route)) = self.nat.send((src, dst), payload, &self.events, open) {
                 self.opened += 1;
                 let meter = route.meter(&self.gen_.session);
@@ -494,14 +502,16 @@ impl PartialEq for Due {
 
 impl Eq for Due {}
 
-/// The route of a new flow of `session`'s generation from the tun.
-fn new_route(settings: &Settings, session: &Arc<Session>) -> Route {
-    Route::of(
-        Inbound::Tun,
-        settings.mode.get(),
-        &settings.outbounds,
-        session,
-    )
+/// The route of a new flow of `session`'s generation from the tun to `dst`.
+fn new_route(settings: &Settings, session: &Arc<Session>, dst: (SocketAddr, Network)) -> Route {
+    let mode = settings.mode.get();
+    Route::of(Inbound::Tun, dst, mode, &settings.outbounds, session)
+}
+
+/// The route of DNS the core answers for `session`'s generation.
+fn dns_route(settings: &Settings, session: &Arc<Session>) -> Route {
+    let mode = settings.mode.get();
+    Route::dns(Inbound::Tun, mode, &settings.outbounds, session)
 }
 
 /// A tun write that failed for lack of memory or room loses its packet, as hev does for

@@ -1,6 +1,6 @@
-//! Rule mode's rules (`plans/v1/rule-mode.md`, slice R1): the model of a rule source, its limits,
-//! and the compiled set a flow is matched against. Nothing routes by it yet; R2 feeds
-//! `Route::of` from it.
+//! Rule mode's rules (`plans/v1/rule-mode.md`, slices R1 and R2): the model of a rule source, its
+//! limits, the compiled set a flow is matched against, doona's template and the policy
+//! `Route::of` chooses a group by.
 //!
 //! A source is groups ([`GroupDef`]) and rows of rules ([`RuleSpec`]). [`RuleSet::compile`]
 //! checks the whole source before it builds anything ([`limits`]) and refuses it as
@@ -10,19 +10,19 @@
 //! matches; the smallest of them is the first rule that matches the flow. A flow is matched once,
 //! when it opens, never per packet, in time that does not grow with the number of rules.
 
-// R2 wires the module into routing; until then only its tests reach it.
-#![cfg_attr(not(test), allow(dead_code))]
-
 mod compile;
 mod domain;
 mod geoip;
 mod graph;
 pub(crate) mod limits;
 mod lpm;
+pub(crate) mod policy;
 mod ports;
+pub(crate) mod template;
 
 use crate::dto::ErrorCode;
 use crate::groups::GroupDef;
+use limits::Origin;
 use std::net::IpAddr;
 
 /// No row: the indexes' "nothing matched".
@@ -54,6 +54,10 @@ pub(crate) enum Kind {
 impl Kind {
     /// The kind a Clash rule `name` names, in any case. Kinds that need geodata, an app or a
     /// feature not built yet are skipped with the reason the contract shows.
+    #[cfg_attr(
+        not(test),
+        allow(dead_code, reason = "R4's Clash importer reads rules with it")
+    )]
     pub(crate) fn clash(name: &str) -> Kind {
         let upper = name.to_ascii_uppercase();
         let skipped = |reason| Kind::Skipped {
@@ -92,6 +96,10 @@ pub(crate) enum Skip {
 }
 
 impl Skip {
+    #[cfg_attr(
+        not(test),
+        allow(dead_code, reason = "R3's rules call names the reason")
+    )]
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Skip::UnsupportedKind => "unsupported_kind",
@@ -105,6 +113,7 @@ impl Skip {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Target {
     Direct,
+    #[cfg_attr(not(test), allow(dead_code, reason = "R4's importer reads REJECT"))]
     Reject,
     /// A group of the source, by id (`g-` and its name).
     Group(String),
@@ -159,15 +168,29 @@ pub(crate) struct RuleSet {
 }
 
 impl RuleSet {
-    /// Compiles a source of `groups` and `rules`, or refuses all of it. `is_node` tells whether a
-    /// member that is not a group (`n-…`) is a node the catalog holds; one that is not refuses
-    /// the source, as a missing group does.
+    /// Compiles an imported source of `groups` and `rules`, or refuses all of it. `is_node` tells
+    /// whether a member that is not a group (`n-…`) is a node the catalog holds; one that is not
+    /// refuses the source, as a missing group does.
+    #[cfg_attr(
+        not(test),
+        allow(dead_code, reason = "R4's importer compiles a subscription's")
+    )]
     pub(crate) fn compile(
         groups: &[GroupDef],
         is_node: &dyn Fn(&str) -> bool,
         rules: &[RuleSpec],
     ) -> Result<RuleSet, ErrorCode> {
-        compile::compile(groups, is_node, rules)
+        compile::compile(Origin::Imported, groups, is_node, rules)
+    }
+
+    /// Compiles doona's template as [`RuleSet::compile`] does an imported source, but its groups
+    /// follow the node cap instead of [`limits::MAX_MEMBERS`] ([`Origin::Template`]).
+    pub(crate) fn compile_template(
+        groups: &[GroupDef],
+        is_node: &dyn Fn(&str) -> bool,
+        rules: &[RuleSpec],
+    ) -> Result<RuleSet, ErrorCode> {
+        compile::compile(Origin::Template, groups, is_node, rules)
     }
 
     /// The first row that matches `flow`, `None` when no row does: the caller's main group then.
@@ -192,7 +215,13 @@ impl RuleSet {
         &self.rows
     }
 
+    /// Whether a row matches names: without one, a flow's name changes nothing.
+    pub(crate) fn has_names(&self) -> bool {
+        self.domains.len() > 0
+    }
+
     /// The lines skipped in all rows.
+    #[cfg_attr(not(test), allow(dead_code, reason = "R3's ruleSource shows it"))]
     pub(crate) fn skipped(&self) -> usize {
         self.rows.iter().map(|r| r.skipped as usize).sum()
     }
@@ -206,3 +235,5 @@ pub(crate) mod tests;
 mod tests_limits;
 #[cfg(test)]
 mod tests_mihomo;
+#[cfg(test)]
+mod tests_template;

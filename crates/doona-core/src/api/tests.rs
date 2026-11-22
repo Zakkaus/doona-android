@@ -486,7 +486,7 @@ fn unready_then_ready(
 }
 
 /// A loopback server that echoes each connection.
-fn echo() -> std::net::SocketAddr {
+pub(super) fn echo() -> std::net::SocketAddr {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     std::thread::spawn(move || {
@@ -531,6 +531,7 @@ fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
         core.start(second, CONFIG).unwrap();
         let route = Route::of(
             Inbound::Tun,
+            crate::tunnel::route::tests::ANYWHERE,
             Mode::Global,
             &core.shared.outbounds,
             &Arc::new(Session::new(0, std::sync::Weak::new())),

@@ -16,6 +16,7 @@ mod udp;
 
 use crate::api::lock;
 use crate::catalog::Shared;
+use crate::dns::names::Names;
 use crate::dto::{ErrorCode, Traffic};
 use crate::localnet::Trace;
 use crate::outbounds::{Ended, Outbounds};
@@ -218,6 +219,8 @@ pub struct Session {
     local_network: Mutex<Warned>,
     /// Whose revision rises when the warning changes; none in tests that do not read it.
     catalog: Weak<Shared>,
+    /// The names the generation's DNS answers gave addresses (ARCH D33).
+    names: Names,
 }
 
 /// Whether a dial through a node was refused at an address on the local network, with none that
@@ -254,6 +257,7 @@ impl Session {
             dials: AtomicU64::new(0),
             local_network: Mutex::default(),
             catalog,
+            names: Names::new(),
         }
     }
 
@@ -293,6 +297,11 @@ impl Session {
             ..fold
         };
         fold
+    }
+
+    /// The names the generation's DNS answers gave addresses; a new generation starts with none.
+    pub(crate) fn names(&self) -> &Names {
+        &self.names
     }
 
     /// The meters of the outbounds the session's flows use.

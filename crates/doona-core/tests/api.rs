@@ -53,7 +53,7 @@ fn bad_arguments_and_unknown_commands_are_invalid() {
     let dir = TempDir::new("api-invalid");
     let core = Core::new(dir.path().to_str().unwrap()).unwrap();
     for (command, args) in [
-        ("setMode", r#"{"mode":"Rule"}"#),
+        ("setMode", r#"{"mode":"Fallback"}"#),
         ("setMode", "{}"),
         ("setMode", "not json"),
         ("select", r#"{"memberId":"n-1"}"#),

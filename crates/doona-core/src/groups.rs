@@ -1,7 +1,8 @@
 //! The group template over the nodes of every subscription (core-api.md, Identity and group
-//! template): `Proxy`, a Selector over `Auto`, the region groups and every node; `Auto`, a UrlTest
-//! over every node; then one UrlTest per region found in node names. And the selection rules each
-//! group follows.
+//! template), version 2: `Proxy`, a Selector over `Auto`, the region groups and every node; `Auto`,
+//! a UrlTest over every node; `Streaming` and `AI`, Selectors over `Proxy` and Proxy's members, for
+//! the template's rules (`rules/template.rs`); then one UrlTest per region found in node names.
+//! And the selection rules each group follows.
 
 use crate::dto::GroupKind;
 use crate::ids::group_id;
@@ -9,6 +10,8 @@ use std::collections::BTreeMap;
 
 pub(crate) const PROXY: &str = "Proxy";
 pub(crate) const AUTO: &str = "Auto";
+pub(crate) const STREAMING: &str = "Streaming";
+pub(crate) const AI: &str = "AI";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct GroupDef {
@@ -101,17 +104,26 @@ pub(crate) fn template(nodes: &[(&str, &str)]) -> Vec<GroupDef> {
     let mut proxy = vec![group_id(AUTO)];
     proxy.extend(regions.iter().map(|g| g.id.clone()));
     proxy.extend(all.iter().cloned());
+    // The rules' groups start with Proxy, so until the user picks they follow its choice.
+    let mut ruled = vec![group_id(PROXY)];
+    ruled.extend(proxy.iter().cloned());
     let mut groups = vec![
-        GroupDef {
-            id: group_id(PROXY),
-            name: PROXY.to_owned(),
-            kind: GroupKind::Selector,
-            members: proxy,
-        },
+        selector(PROXY, proxy),
         url_test(AUTO, all),
+        selector(STREAMING, ruled.clone()),
+        selector(AI, ruled),
     ];
     groups.extend(regions);
     groups
+}
+
+fn selector(name: &str, members: Vec<String>) -> GroupDef {
+    GroupDef {
+        id: group_id(name),
+        name: name.to_owned(),
+        kind: GroupKind::Selector,
+        members,
+    }
 }
 
 fn url_test(name: &str, members: Vec<String>) -> GroupDef {
@@ -227,15 +239,26 @@ mod tests {
         ];
         let groups = template(&nodes);
         let ids: Vec<&str> = groups.iter().map(|g| g.id.as_str()).collect();
-        assert_eq!(ids, ["g-Proxy", "g-Auto", "g-HK", "g-JP"]);
+        assert_eq!(
+            ids,
+            ["g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK", "g-JP"]
+        );
         assert_eq!(groups[0].kind, GroupKind::Selector);
         assert_eq!(
             groups[0].members,
             ["g-Auto", "g-HK", "g-JP", "n-1", "n-2", "n-3", "n-4"]
         );
         assert_eq!(groups[1].members, ["n-1", "n-2", "n-3", "n-4"]);
-        assert_eq!(groups[2].members, ["n-2", "n-3"]);
-        assert!(groups[1..].iter().all(|g| g.kind == GroupKind::UrlTest));
+        // The rules' groups: Selectors whose first member is Proxy, then Proxy's own.
+        for ruled in &groups[2..4] {
+            assert_eq!(ruled.kind, GroupKind::Selector);
+            assert_eq!(ruled.members[0], "g-Proxy");
+            assert_eq!(ruled.members[1..], groups[0].members);
+            assert_eq!(selected(ruled, None, None), (Some("g-Proxy"), false));
+        }
+        assert_eq!(groups[4].members, ["n-2", "n-3"]);
+        assert!(groups[4..].iter().all(|g| g.kind == GroupKind::UrlTest));
+        assert_eq!(groups[1].kind, GroupKind::UrlTest);
         assert!(template(&[]).is_empty());
     }
 

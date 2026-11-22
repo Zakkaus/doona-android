@@ -363,16 +363,18 @@ fn receive(socket: &UdpSocket, budget: &Arc<Budget>) -> io::Result<Option<Datagr
     })
 }
 
-/// Answers one DNS datagram from `client` to `server`, through `route`.
+/// Answers one DNS datagram from `client` to `server`, through `route`; `session`'s names learn
+/// what the answer maps.
 pub(crate) async fn answer_dns(
     query: Vec<u8>,
     (client, server): (SocketAddr, SocketAddr),
-    route: Route,
+    (route, session): (Route, Arc<Session>),
     upstreams: Arc<[SocketAddr]>,
     events: Events,
     slot: OwnedSemaphorePermit,
 ) {
-    if let Some(a) = dns::answer(&upstreams, &route, &query).await {
+    let via = (&route, session.names());
+    if let Some(a) = dns::answer(&upstreams, via, &query).await {
         let _ = events.send(Event::DnsAnswer {
             from: server,
             to: client,

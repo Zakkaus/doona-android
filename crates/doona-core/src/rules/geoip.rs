@@ -125,6 +125,7 @@ fn within(a: u128, net: u128, len: u8, width: u32) -> bool {
 }
 
 /// The CN table's ranges.
+#[cfg(test)]
 pub(super) fn cn_ranges() -> impl Iterator<Item = (u32, u32)> {
     let (ranges, rest) = CN_V4.as_chunks::<8>();
     debug_assert!(rest.is_empty());

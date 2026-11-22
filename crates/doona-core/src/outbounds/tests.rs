@@ -1,7 +1,7 @@
 //! Nodes of one honk id that dial differently, from two subscriptions, and the count of registry
 //! retirements that tests wait on.
 
-use super::{Outbounds, Registries};
+use super::{Outbounds, Registries, Routing};
 use crate::api::lock;
 use crate::catalog::{NodeEntry, entries};
 use crate::subscription::parse::parse;
@@ -69,7 +69,8 @@ fn published() -> (Outbounds, Vec<Arc<NodeEntry>>) {
         .iter()
         .map(|n| (n.id.clone(), Arc::clone(&n.node)))
         .collect();
-    outbounds.replace(built, selected);
+    let policy = Arc::default();
+    outbounds.replace(built, Routing { selected, policy });
     (outbounds, nodes)
 }
 

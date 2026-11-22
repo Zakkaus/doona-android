@@ -93,6 +93,7 @@ impl Trie {
     }
 
     /// The nodes of both families, the roots included.
+    #[cfg(test)]
     pub(super) fn nodes(&self) -> usize {
         self.v4.len() + self.v6.len()
     }

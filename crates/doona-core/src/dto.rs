@@ -43,6 +43,9 @@ pub enum Mode {
     #[default]
     Global,
     Direct,
+    /// Each new flow takes its first matching rule's target (rule-mode.md); R3 adds it to the
+    /// contract.
+    Rule,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

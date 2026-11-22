@@ -4,9 +4,13 @@
 //!
 //! An answer too large for the client's UDP buffer goes back truncated (TC set, question only),
 //! so the client retries over TCP/53, which the core also serves. A query that no upstream
-//! answers, or whose route refuses it, gets SERVFAIL at once instead of a client timeout.
+//! answers, or whose route refuses it, gets SERVFAIL at once instead of a client timeout. What an
+//! answer maps goes to the generation's [`Names`] before the client sees it.
+
+pub(crate) mod names;
 
 use crate::tunnel::route::Route;
+use names::Names;
 use std::io::{self, ErrorKind};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
@@ -160,10 +164,12 @@ async fn read_framed<S: AsyncRead + Unpin>(s: &mut S) -> io::Result<Vec<u8>> {
     Ok(m)
 }
 
-/// The answer to `query`, or SERVFAIL; None when `query` is not a query.
+/// The answer to `query`, or SERVFAIL; None when `query` is not a query. The addresses an answer
+/// gives are mapped in `names` before it is returned, so a flow the client opens to one finds its
+/// name.
 pub(crate) async fn answer(
     upstreams: &[SocketAddr],
-    route: &Route,
+    (route, names): (&Route, &Names),
     query: &[u8],
 ) -> Option<Vec<u8>> {
     if !is_query(query) {
@@ -174,6 +180,9 @@ pub(crate) async fn answer(
     } else {
         exchange(upstreams, route, query).await
     };
+    if let Some(a) = &answer {
+        names.learn(a);
+    }
     Some(answer.unwrap_or_else(|| servfail(query)))
 }
 
@@ -186,7 +195,7 @@ pub(crate) async fn answer(
 pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
     io: &mut S,
     upstreams: &[SocketAddr],
-    route: &Route,
+    route: (&Route, &Names),
     idle: Duration,
 ) -> io::Result<()> {
     loop {
@@ -311,6 +320,48 @@ pub(crate) mod tests {
         assert_eq!(udp_limit(&query(1, "a.example", Some(65507))), 65507);
     }
 
+    /// A DNS-over-TCP server on loopback that answers each query with two A records.
+    fn upstream() -> SocketAddr {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            use std::io::{Read, Write};
+            for mut s in listener.incoming().flatten() {
+                let mut len = [0; 2];
+                while s.read_exact(&mut len).is_ok() {
+                    let mut q = vec![0; usize::from(u16::from_be_bytes(len))];
+                    s.read_exact(&mut q).unwrap();
+                    let a = answer_to(&q, 2);
+                    s.write_all(&(a.len() as u16).to_be_bytes()).unwrap();
+                    s.write_all(&a).unwrap();
+                }
+            }
+        });
+        addr
+    }
+
+    #[tokio::test]
+    async fn an_answer_maps_its_addresses_before_the_client_gets_it() {
+        let names = Names::new();
+        let upstreams = [upstream()];
+        let q = query(3, "Learn.Example", Some(1232));
+        let a = answer(&upstreams, (&Route::Direct, &names), &q)
+            .await
+            .unwrap();
+        assert_eq!(count(&a, 6), 2);
+        for host in [0, 1] {
+            let ip = std::net::IpAddr::from([10, 0, 0, host]);
+            assert_eq!(names.name(ip).as_deref(), Some("learn.example"));
+        }
+        // A refused route answers SERVFAIL and maps nothing.
+        let names = Names::new();
+        let a = answer(&upstreams, (&Route::Refuse, &names), &q)
+            .await
+            .unwrap();
+        assert_eq!(a[3] & 0x0f, 2);
+        assert_eq!(names.len(), 0);
+    }
+
     #[test]
     fn names_with_pointers_and_bad_lengths() {
         let q = query(1, "x.y.example", None);
@@ -327,7 +378,10 @@ pub(crate) mod tests {
 
     /// Serves `server` with no upstream, so every query is answered SERVFAIL at once.
     fn served(mut server: tokio::io::DuplexStream) -> tokio::task::JoinHandle<io::Result<()>> {
-        tokio::spawn(async move { serve_tcp(&mut server, &[], &Route::Direct, IDLE).await })
+        tokio::spawn(async move {
+            let via = (&Route::Direct, &Names::new());
+            serve_tcp(&mut server, &[], via, IDLE).await
+        })
     }
 
     /// A client that sends no query and no FIN is cut, as a failure, `IDLE` after its last answer.

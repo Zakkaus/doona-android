@@ -1,17 +1,26 @@
-//! Where a new flow goes: a function of the inbound it arrived on and the committed mode, never of
-//! an app or a uid (ARCH D24). Direct sends it straight out. Global sends it through the node the
-//! `Proxy` group selects when the flow opens, dialed on that node's carriers (see `outbounds.rs`),
-//! and refuses it while the group has none: a Global flow is never sent direct. A flow keeps the
-//! route it opened with, so a mode or selection change applies to new flows only. doona excludes
-//! its own package from the VPN, so these sockets need no `protect()`. What a dial through a node
-//! showed on its way to the node goes to the generation's [`Session`] (ARCH D26): one refused at an
-//! address on the local network warns, one that came up there clears the warning.
+//! Where a new flow goes: a function of the inbound it arrived on, the committed mode and the flow's
+//! destination, never of an app or a uid (ARCH D24). Direct sends it straight out. Global sends it
+//! through the node the main group (`mainGroupId`, `g-Proxy` under the template) selects when the
+//! flow opens, dialed on that node's carriers (see `outbounds.rs`), and refuses it while the group
+//! has none: a Global flow is never sent direct. Rule matches the flow once, by the name the
+//! generation's DNS answers gave its address, its address, port and transport, and takes the first
+//! matching rule's target: direct, reject, or a group, refused while that group has no node and
+//! never sent direct instead (rule-mode.md decision 9). DNS the core answers goes through the main
+//! group in Rule as in Global (decision 10).
+//!
+//! A flow keeps the route it opened with, so a mode or selection change applies to new flows only.
+//! doona excludes its own package from the VPN, so these sockets need no `protect()`. What a dial
+//! through a node showed on its way to the node goes to the generation's [`Session`] (ARCH D26):
+//! one refused at an address on the local network warns, one that came up there clears the
+//! warning.
 
 use super::Session;
 use super::udp::UdpUpstream;
 use crate::dto::Mode;
 use crate::localnet::{self, Trace};
-use crate::outbounds::{Dialer, Outbounds};
+use crate::outbounds::{Dialer, Outbounds, View};
+use crate::rules::policy::Choice;
+use crate::rules::{Flow, Network};
 use crate::stats::meter::{DIRECT, Meter};
 use honk_outbound::proxy::AsyncReadWrite;
 use std::io::{self, ErrorKind};
@@ -23,8 +32,6 @@ use tokio::net::{TcpStream, UdpSocket};
 
 /// A dial, through a node or straight out, gives up after this long.
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-/// The group Global sends every flow through.
-pub const PROXY_GROUP: &str = "g-Proxy";
 
 /// The committed mode, read by every new flow.
 #[derive(Debug)]
@@ -40,6 +47,7 @@ impl ModeCell {
     pub fn get(&self) -> Mode {
         match self.0.load(Relaxed) {
             1 => Mode::Direct,
+            2 => Mode::Rule,
             _ => Mode::Global,
         }
     }
@@ -49,6 +57,7 @@ impl ModeCell {
             match mode {
                 Mode::Global => 0,
                 Mode::Direct => 1,
+                Mode::Rule => 2,
             },
             Relaxed,
         );
@@ -68,7 +77,8 @@ pub(crate) enum Route {
     Direct,
     /// Through this node; what each dial showed on its way to the node goes to the session.
     Proxy(Arc<Dialer>, Arc<Session>),
-    /// Global while the `Proxy` group has no node.
+    /// A rule's reject; Global or a rule's group while it has no node. TCP is reset, datagrams
+    /// are dropped.
     Refuse,
 }
 
@@ -76,21 +86,65 @@ pub(crate) enum Route {
 pub(crate) type Upstream = Box<dyn AsyncReadWrite>;
 
 impl Route {
-    /// The route of a new flow of `session`'s generation from `inbound` under `mode`.
+    /// The route of a new flow of `session`'s generation from `inbound` to `dst` over `network`,
+    /// under `mode`. Called once a flow, when it opens.
     pub fn of(
+        inbound: Inbound,
+        (dst, network): (SocketAddr, Network),
+        mode: Mode,
+        outbounds: &Outbounds,
+        session: &Arc<Session>,
+    ) -> Route {
+        let Inbound::Tun = inbound;
+        let view = outbounds.view();
+        let policy = view.policy();
+        let group = match mode {
+            Mode::Direct => return Route::Direct,
+            Mode::Global => policy.main(),
+            Mode::Rule => {
+                // A name is looked up only when a rule could match it.
+                let name = (policy.wants_names())
+                    .then(|| session.names().name(dst.ip()))
+                    .flatten();
+                let flow = Flow {
+                    domain: name.as_deref(),
+                    ip: dst.ip(),
+                    port: dst.port(),
+                    network,
+                };
+                match policy.choose(&flow) {
+                    Choice::Direct => return Route::Direct,
+                    Choice::Reject => return Route::Refuse,
+                    Choice::Group(group) => group,
+                }
+            }
+        };
+        Route::through(&view, group, session)
+    }
+
+    /// The route of DNS the core answers for `session`'s generation: straight out in Direct, else
+    /// through the main group, whatever server the query was sent to.
+    pub fn dns(
         inbound: Inbound,
         mode: Mode,
         outbounds: &Outbounds,
         session: &Arc<Session>,
     ) -> Route {
-        match (inbound, mode) {
-            (Inbound::Tun, Mode::Direct) => Route::Direct,
-            (Inbound::Tun, Mode::Global) => {
-                outbounds.dialer(PROXY_GROUP).map_or(Route::Refuse, |d| {
-                    Route::Proxy(Arc::new(d), Arc::clone(session))
-                })
+        let Inbound::Tun = inbound;
+        match mode {
+            Mode::Direct => Route::Direct,
+            Mode::Global | Mode::Rule => {
+                let view = outbounds.view();
+                Route::through(&view, view.policy().main(), session)
             }
         }
+    }
+
+    /// Through the node `group` selects in `view`; refused while it has none, never direct.
+    fn through(view: &View<'_>, group: &str, session: &Arc<Session>) -> Route {
+        view.dialer(group).map_or(Route::Refuse, |d| {
+            Route::Proxy(Arc::new(d), Arc::clone(session))
+        })
     }
 
     pub fn refused(&self) -> bool {
@@ -101,7 +155,7 @@ impl Route {
     pub fn meter(&self, session: &Session) -> Option<Arc<Meter>> {
         match self {
             Route::Direct => Some(session.meters().get(DIRECT)),
-            Route::Proxy(..) => Some(session.meters().get(PROXY_GROUP)),
+            Route::Proxy(d, _) => Some(session.meters().get(&d.group)),
             Route::Refuse => None,
         }
     }
@@ -195,24 +249,4 @@ fn flatten<T>(dialed: io::Result<io::Result<anyhow::Result<T>>>) -> io::Result<T
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn mode_cell_round_trips() {
-        let cell = ModeCell::new(Mode::Direct);
-        assert_eq!(cell.get(), Mode::Direct);
-        cell.set(Mode::Global);
-        assert_eq!(cell.get(), Mode::Global);
-    }
-
-    #[tokio::test]
-    async fn global_without_a_node_is_refused_never_sent_direct() {
-        let outbounds = Outbounds::new(Arc::default()).unwrap();
-        let session = Arc::new(Session::new(1, std::sync::Weak::new()));
-        let global = Route::of(Inbound::Tun, Mode::Global, &outbounds, &session);
-        assert!(global.refused() && !global.carries_udp());
-        let direct = Route::of(Inbound::Tun, Mode::Direct, &outbounds, &session);
-        assert!(matches!(direct, Route::Direct) && direct.carries_udp());
-    }
-}
+pub(crate) mod tests;

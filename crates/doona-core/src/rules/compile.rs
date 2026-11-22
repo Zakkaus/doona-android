@@ -1,18 +1,20 @@
 //! From a source to a [`RuleSet`]: the limits and the group graph first, then every target, then
 //! each row's values into the index of its kind. Any failure refuses the whole source.
 
-use super::{Kind, NONE, Network, Row, RuleSet, RuleSpec, Target, domain, geoip, graph, limits};
+use super::limits::{self, Origin};
+use super::{Kind, NONE, Network, Row, RuleSet, RuleSpec, Target, domain, geoip, graph};
 use super::{lpm, ports};
 use crate::dto::ErrorCode;
 use crate::groups::GroupDef;
 use std::net::IpAddr;
 
 pub(super) fn compile(
+    origin: Origin,
     groups: &[GroupDef],
     is_node: &dyn Fn(&str) -> bool,
     rules: &[RuleSpec],
 ) -> Result<RuleSet, ErrorCode> {
-    limits::check(groups, rules)?;
+    limits::check(origin, groups, rules)?;
     let ids = graph::check(groups, is_node)?;
     let missing = |t: &Target| matches!(t, Target::Group(id) if !ids.contains_key(id.as_str()));
     if rules.iter().any(|r| missing(&r.target)) {
