@@ -53,18 +53,18 @@ internal class TunnelController(
 
     private var coreRunning = false // Touched only by run().
 
-    @Volatile
-    private var handled = 0L // Written only by run(): the generation of the last command it finished.
+    private var handled = 0L // Guarded by lock; written only by run(): the generation of the last command it finished.
 
     /** Executes commands in order until cancelled. The owner launches it once, off the main thread. */
     suspend fun run() {
         for (command in commands) {
             stopCore()
-            when (command) {
-                is Command.Open -> if (isCurrent(command.generation)) open(command.generation, command.host)
-                is Command.Close -> publish(command.generation, command.terminal)
+            if (command is Command.Open && isCurrent(command.generation)) open(command.generation, command.host)
+            // A close's status and its completion are recorded together, so its watchdog never sees one without the other.
+            synchronized(lock) {
+                if (command is Command.Close) publish(command.generation, command.terminal)
+                handled = command.generation
             }
-            handled = command.generation
         }
     }
 
@@ -120,9 +120,12 @@ internal class TunnelController(
         // the start's bound plus the stop deadline to reach this command; past that only ending the process frees the tun.
         scope.launch {
             delay(startBoundMs + stopDeadlineMs)
-            if (handled < g) {
-                VpnLog.warn("stop $g not reached in ${startBoundMs + stopDeadlineMs} ms; ending the process")
-                killProcess()
+            // Under the lock, so the stop cannot publish its status between this check and the kill.
+            synchronized(lock) {
+                if (handled < g) {
+                    VpnLog.warn("stop $g not reached in ${startBoundMs + stopDeadlineMs} ms; ending the process")
+                    killProcess()
+                }
             }
         }
     }

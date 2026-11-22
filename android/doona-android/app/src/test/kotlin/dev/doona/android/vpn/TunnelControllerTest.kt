@@ -136,6 +136,19 @@ class TunnelControllerTest {
     }
 
     @Test
+    fun aStopThatEndsAsItsDeadlinePassesDoesNotEndTheProcess() {
+        startRunning()
+        // Runs inside the publication of Stopped and holds the runner there past the start bound plus the stop deadline.
+        scope.launch(Dispatchers.Unconfined) {
+            controller.status.first { it == Status.Stopped }
+            Thread.sleep(900)
+        }
+        controller.stop()
+        awaitStatus { it == Status.Stopped }
+        assertFalse(killed.await(1_000, TimeUnit.MILLISECONDS))
+    }
+
+    @Test
     fun aStopDuringAStartThatNeverReturnsEndsTheProcess() {
         val release = CountDownLatch(1)
         core.startGate = release
