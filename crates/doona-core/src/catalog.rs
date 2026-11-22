@@ -239,15 +239,24 @@ impl Model {
             .filter(|(id, _)| self.index.contains_key(*id))
             .map(|(id, l)| (id.clone(), *l))
             .collect();
-        // The members changed: each UrlTest group picks again from the results kept, and keeps a
-        // choice that is still a member when none of them has a result.
+        // The members changed. A choice that is still a member stays; a group whose choice left
+        // ranks its members by the results kept, including those of nodes being probed: the
+        // refresh drops the probes of the nodes it re-creates, and `finish` never chooses.
         self.auto = old
             .auto
             .iter()
             .filter(|(g, m)| self.group(g).is_some_and(|g| g.members.contains(m)))
             .map(|(g, m)| (g.clone(), m.clone()))
             .collect();
-        self.choose(None);
+        let latency = &self.latency;
+        let kept = |m: &str| latency.get(m).and_then(|l| l.ms);
+        let picks: Vec<(String, String)> = self
+            .groups
+            .iter()
+            .filter(|g| g.kind == GroupKind::UrlTest && !self.auto.contains_key(&g.id))
+            .filter_map(|g| Some((g.id.clone(), groups::fastest(g, kept)?.clone())))
+            .collect();
+        self.auto.extend(picks);
         // Every test under way ends with a decrement, whatever happened to its groups.
         self.testing = old.testing.clone();
         self.next_probe = old.next_probe;
@@ -395,19 +404,19 @@ impl Model {
         latency.failed = ms.is_none();
         latency.probing = false;
         if ms.is_some() {
-            self.choose(Some(&entry.id));
+            self.choose(&entry.id);
         }
         true
     }
 
-    /// Lets each UrlTest group, or each one with `member`, pick its fastest member. Only results
-    /// of nodes with no probe under way count: an earlier round's time of a node being probed
-    /// again never wins. A group with no such result keeps its choice.
-    fn choose(&mut self, member: Option<&str>) {
+    /// Lets each UrlTest group with `member` pick its fastest member. Only results of nodes with
+    /// no probe under way count: an earlier round's time of a node being probed again never
+    /// wins. A group with no such result keeps its choice.
+    fn choose(&mut self, member: &str) {
         let latency = &self.latency;
         let known = |m: &str| latency.get(m).filter(|l| !l.probing).and_then(|l| l.ms);
         for g in self.groups.iter().filter(|g| g.kind == GroupKind::UrlTest) {
-            if member.is_some_and(|m| !g.members.iter().any(|x| x == m)) {
+            if !g.members.iter().any(|m| m == member) {
                 continue;
             }
             if let Some(best) = groups::fastest(g, known) {

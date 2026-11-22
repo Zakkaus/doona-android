@@ -314,3 +314,32 @@ fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
     again.carry(&refreshed);
     assert_eq!(hk(&again, &next), ids[1]);
 }
+
+#[test]
+fn a_refresh_during_a_round_ranks_survivors_by_their_kept_times() {
+    let s = state(&[("s1", "links.txt")]);
+    let mut model = load(&s);
+    let hk = |m: &Model, s: &State| m.catalog(s).groups[2].selected_id.clone().unwrap();
+    let plan = model.plan(Some("g-HK")).unwrap();
+    let ids: Vec<_> = plan.targets.iter().map(|t| t.entry.id.clone()).collect();
+    assert!(model.record(&plan.targets[0], None));
+    assert!(model.record(&plan.targets[1], Some(20)));
+    assert!(model.record(&plan.targets[2], Some(10)));
+    model.finish(&plan.round());
+    assert_eq!(hk(&model, &s), ids[2]);
+    // Another round starts, and HK-02 leaves the feed before its probes return.
+    let round = model.plan(Some("g-HK")).unwrap();
+    let mut next = s.clone();
+    next.subscriptions[0]
+        .links
+        .retain(|l| !l.ends_with("#HK-02"));
+    let mut refreshed = model.with(&next, "s1", fresh(&next.subscriptions[0]));
+    refreshed.carry(&model);
+    assert_eq!(hk(&refreshed, &next), ids[1]);
+    // The round's results are dropped, and its end changes nothing.
+    for t in &round.targets {
+        assert!(!refreshed.record(t, Some(1)));
+    }
+    refreshed.finish(&round.round());
+    assert_eq!(hk(&refreshed, &next), ids[1]);
+}
