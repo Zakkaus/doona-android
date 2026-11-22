@@ -24,7 +24,8 @@ internal object RvSubsRoutes {
 /**
  * The subscription pages with invented behaviour: 訂閱 (`subs`, or `subs:failed` with Harbor Cloud's failed update), a
  * subscription (`sub:<id>`), and 新增訂閱 (`sub-add`, or `sub-add:<phase>`: `importing`, `done`, `unreachable`,
- * `not-subscription`, `too-large`). An import runs for [IMPORT_MS] and then lists Harbor Cloud's nodes.
+ * `not-subscription`, `too-large`, and `lan-ask` or `lan-denied` with a link on the local network). An import runs for
+ * [IMPORT_MS] and then lists Harbor Cloud's nodes.
  */
 @Composable
 internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit) {
@@ -64,6 +65,10 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
                 onPaste = { state = state.copy(link = RV_SAMPLE_LINK) },
                 onImport = { state = state.copy(phase = RvAddPhase.Importing(IMPORTED_BYTES, IMPORTED_SHARE)) },
                 onBack = pop,
+                // 繼續 stands for Android's dialog answered yes, and the import runs; 開啟設定 leaves the page as it was.
+                onLanConfirm = {
+                    state = if (state.lan == RvLanPrompt.Ask) state.copy(lan = null, phase = RvAddPhase.Importing(IMPORTED_BYTES, IMPORTED_SHARE)) else state.copy(lan = null)
+                },
             )
         }
     }
@@ -78,11 +83,16 @@ internal fun rvAddSample(phase: String): RvAddState {
         "unreachable" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.Unreachable))
         "not-subscription" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.NotSubscription))
         "too-large" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.TooLarge))
+        "lan-ask" -> typed.copy(link = RV_LAN_LINK, name = "", lan = RvLanPrompt.Ask)
+        "lan-denied" -> typed.copy(link = RV_LAN_LINK, name = "", lan = RvLanPrompt.Denied)
         else -> RvAddState()
     }
 }
 
 private const val FAILED = "failed"
+
+/** A subscription served on the local network, which needs the local network permission. */
+internal const val RV_LAN_LINK = "http://192.168.1.20/sub.yaml"
 private const val IMPORT_MS = 1_500L
 
 /** Halfway through Harbor Cloud's body: 1.24 MB of about 3.1 MB. */

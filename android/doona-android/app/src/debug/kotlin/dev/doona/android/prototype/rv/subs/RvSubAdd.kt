@@ -53,7 +53,8 @@ internal sealed interface RvAddPhase {
 
 /**
  * The add page's state: the link and the optional name typed so far, whether the clipboard's description says it holds
- * a link (read from the description only, so Android shows no paste notice until the row is tapped), and the phase.
+ * a link (read from the description only, so Android shows no paste notice until the row is tapped), the phase, and
+ * the local network prompt a link on the local network raises at 匯入.
  */
 @Immutable
 internal data class RvAddState(
@@ -61,16 +62,25 @@ internal data class RvAddState(
     val name: String = "",
     val clipboardHasLink: Boolean = true,
     val phase: RvAddPhase = RvAddPhase.Editing,
+    val lan: RvLanPrompt? = null,
 )
 
 /**
  * 新增訂閱, a compact pushed page. While nothing is typed and the clipboard holds a link, a row offers it (the content
  * is read only when the row is tapped). Then the link and an optional name, and 匯入. While importing, the fields rest
  * and a card shows the download over the bar; when done, a card says what came in (nodes, format, protocols) and 完成
- * returns; when it fails, the banner gives the reason and 重試, and the fields keep what was typed.
+ * returns; when it fails, the banner gives the reason and 重試, and the fields keep what was typed. A link on the local
+ * network asks first ([RvLanSheet]); its confirmation runs [onLanConfirm].
  */
 @Composable
-internal fun RvSubAdd(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () -> Unit, onImport: () -> Unit, onBack: () -> Unit) {
+internal fun RvSubAdd(
+    state: RvAddState,
+    onChange: (RvAddState) -> Unit,
+    onPaste: () -> Unit,
+    onImport: () -> Unit,
+    onBack: () -> Unit,
+    onLanConfirm: () -> Unit = {},
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val phase = state.phase
     RvScrollPage(
@@ -101,6 +111,7 @@ internal fun RvSubAdd(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste
             }
         }
     }
+    RvLanSheet(state.lan, onLanConfirm, onDismiss = { onChange(state.copy(lan = null)) })
 }
 
 @Composable

@@ -27,11 +27,15 @@ import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
+import dev.doona.android.prototype.rv.states.RvActivityNotice
+import dev.doona.android.prototype.rv.states.RvActivityNoticeCard
+import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
 import dev.doona.android.prototype.rv.stats.rvStatsSample
 import dev.doona.android.prototype.rv.subs.RvImportSheet
 import dev.doona.android.prototype.rv.subs.RvSubsRoute
 import dev.doona.android.prototype.rv.subs.RvSubsRoutes
+import dev.doona.android.prototype.rv.welcome.RvWelcome
 
 /**
  * Debug builds only: the Revolut-style sample with its invented state, full screen on a phone, so the glass blur can be
@@ -40,7 +44,8 @@ import dev.doona.android.prototype.rv.subs.RvSubsRoutes
  * switches to 設定, which pushes 主題, and to 策略, which pushes a group's page (its rows and the main node) and the quick
  * rule (新增規則); 活動's mode row and 查看全部 switch to 策略, and a rule group opens its group's page. Back returns. Start it from the launcher's "doona RV sample", or with
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`; `--es route <route>` opens a
- * route over 活動, such as `gallery`, the library's new parts.
+ * route over 活動, such as `gallery` (the library's new parts), `welcome` (the first run), `state:<notice>` (活動 empty
+ * or under a banner) or `subs` (訂閱).
  */
 class RvPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,31 +103,54 @@ private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit
 
         THEME -> RvThemeScreen(settings.appearance, { settings = settings.copy(appearance = it) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pop)
 
-        else -> {
-            // The outbound card's mode row and 查看全部 open 策略; a rule group opens its group's page there.
-            val toPolicy = { tab(POLICY) }
-            val rule = { name: Int -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { push("$GROUP:${it.id}") } ?: toPolicy() }
-            val routes = RvActivityRoutes(
-                { push(TRAFFIC) },
-                { push(STATS) },
-                { push(NODES) },
-                { push("$NODE:${nodes.currentId}") },
-                onTab,
-                toPolicy,
-                rule,
-                toPolicy,
-                subscriptions = { push(RvSubsRoutes.LIST) },
-            )
-            RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, routes)
-            // A deep link's question over 活動 (`sub-import`): 加入 opens the add page, which imports it.
-            var importing by remember { mutableStateOf(name == RvSubsRoutes.IMPORT) }
-            val sub = RvData.subscriptions.first()
-            RvImportSheet(importing, sub.name, sub.host, onAdd = {
-                importing = false
-                push("${RvSubsRoutes.ADD}:importing")
-            }, onDismiss = { importing = false })
-        }
+        WELCOME -> RvWelcome(onAdd = { push(RvSubsRoutes.ADD) })
+
+        else -> ActivityHome(route, nodes.currentId, push, pop, tab)
     }
+}
+
+/**
+ * 活動 with the sample's routes. `state:<notice>` puts a notice on it ([RvActivityNotice.route]); its action clears it
+ * (back to 活動), but the empty state's 新增訂閱 opens the add page. `sub-import` puts the deep link's sheet over it.
+ */
+@Composable
+private fun ActivityHome(route: String, currentNode: String, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
+    val name = route.substringBefore(':')
+    // The outbound card's mode row and 查看全部 open 策略; a rule group opens its group's page there.
+    val toPolicy = { tab(POLICY) }
+    val rule = { group: Int -> RvPolicyData.groups.firstOrNull { it.name == group }?.let { push("$GROUP:${it.id}") } ?: toPolicy() }
+    val routes = RvActivityRoutes(
+        { push(TRAFFIC) },
+        { push(STATS) },
+        { push(NODES) },
+        { push("$NODE:$currentNode") },
+        { i -> TABS[i]?.let(tab) },
+        toPolicy,
+        rule,
+        toPolicy,
+        subscriptions = { push(RvSubsRoutes.LIST) },
+    )
+    val notice = RvActivityNotice.entries.firstOrNull { name == STATE && it.route == route.substringAfter(':') }
+    if (notice == null) {
+        RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, routes)
+    } else {
+        val onNotice = if (notice == RvActivityNotice.NoSubscription) ({ push(RvSubsRoutes.ADD) }) else pop
+        RvActivityScreen(
+            rvNoticeActivity(notice),
+            onAction = {},
+            onConnect = {},
+            routes,
+            notice = { RvActivityNoticeCard(notice, onNotice) },
+            noticeOnly = notice == RvActivityNotice.NoSubscription,
+        )
+    }
+    // A deep link's question over 活動 (`sub-import`): 加入 opens the add page, which imports it.
+    var importing by remember { mutableStateOf(name == RvSubsRoutes.IMPORT) }
+    val sub = RvData.subscriptions.first()
+    RvImportSheet(importing, sub.name, sub.host, onAdd = {
+        importing = false
+        push("${RvSubsRoutes.ADD}:importing")
+    }, onDismiss = { importing = false })
 }
 
 private const val ACTIVITY = "activity"
@@ -136,6 +164,8 @@ private const val POLICY = "policy"
 private const val GROUP = "group"
 private const val RULE = "rule"
 private const val GALLERY = "gallery"
+private const val WELCOME = "welcome"
+private const val STATE = "state"
 
 /** The launch extra naming a route to open over 活動. */
 private const val EXTRA_ROUTE = "route"

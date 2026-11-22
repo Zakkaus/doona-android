@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_welcome_title">歡迎使用 doona</string>
+    <string name="rv_welcome_line">doona 經由訂閱提供的節點轉送流量，並依規則決定哪些流量直連。</string>
+    <string name="rv_welcome_subs_sub">Clash、sing-box 與分享連結清單</string>
+    <string name="rv_welcome_rules">規則</string>
+    <string name="rv_welcome_rules_sub">每個連線依規則經過節點或直連</string>
+    <string name="rv_welcome_vpn">VPN</string>
+    <string name="rv_welcome_vpn_sub">App 的流量經過 doona 的 VPN</string>
+    <string name="rv_welcome_note">第一次連線時，Android 會先詢問是否允許 doona 建立 VPN，再詢問是否允許傳送通知。</string>
+    <string name="rv_no_node">沒有可用的節點</string>
+    <string name="rv_no_node_reason">所有節點的延遲測試都失敗。請確認網路連線，或更新訂閱後重新測試。</string>
+    <string name="rv_retest">重新測試</string>
+    <string name="rv_core_stopped">連線已中斷</string>
+    <string name="rv_core_stopped_reason">doona 的核心已停止運作，流量不再經過節點。</string>
+    <string name="rv_lan_ask_title">允許存取區網</string>
+    <string name="rv_lan_ask_body">連到區網上的訂閱和節點需要這項權限。</string>
+    <string name="rv_lan_ask_continue">繼續</string>
+    <string name="rv_lan_ask_not_now">暫時不要</string>
+    <string name="rv_lan_denied_title">未允許存取區網</string>
+    <string name="rv_lan_denied_body">無法連到區網上的訂閱和節點。請在 App 設定中允許 doona 存取區網。</string>
+    <string name="rv_lan_open_settings">開啟設定</string>
+</resources>

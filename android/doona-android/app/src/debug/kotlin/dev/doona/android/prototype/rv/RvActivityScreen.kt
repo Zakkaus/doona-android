@@ -53,7 +53,8 @@ import dev.doona.android.prototype.rv.data.fastest
  * download and upload as two of Revolut's square home tiles (either opens the traffic page), and three more cards as
  * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
  * floating glass bottom bar (§9), which shrinks while the content scrolls up. It renders [ActivityUiState]; the engine
- * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData].
+ * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. A [notice] (a banner) heads
+ * the cards; with [noticeOnly] (the empty state) it stands in their place.
  */
 @Composable
 internal fun RvActivityScreen(
@@ -62,6 +63,8 @@ internal fun RvActivityScreen(
     onConnect: () -> Unit,
     routes: RvActivityRoutes = RvActivityRoutes(),
     mode: RvRouteMode = if (state.mode == Mode.Direct) RvRouteMode.Direct else RvRouteMode.Rule,
+    notice: (@Composable () -> Unit)? = null,
+    noticeOnly: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -70,11 +73,14 @@ internal fun RvActivityScreen(
         Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
             Header(state, mode, onAction, onConnect, insets)
             RvGutter {
-                OutboundCard(state, mode, routes)
-                TrafficTiles(state, routes.traffic)
-                RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
-                RvSubscriptionsCard(RvData.subscriptions, routes.subscriptions)
-                RvFastestCard(RvData.nodes.fastest(FASTEST), RvData.current.id, routes.nodes)
+                notice?.invoke()
+                if (!noticeOnly) {
+                    OutboundCard(state, mode, routes)
+                    TrafficTiles(state, routes.traffic)
+                    RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
+                    RvSubscriptionsCard(RvData.subscriptions, routes.subscriptions)
+                    RvFastestCard(RvData.nodes.fastest(FASTEST), RvData.current.id, routes.nodes)
+                }
             }
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
