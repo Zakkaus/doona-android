@@ -23,6 +23,8 @@ const EXCHANGE: Duration = Duration::from_secs(5);
 const HEADER: usize = 12;
 /// RFC 1035's UDP limit without EDNS.
 const UDP_PLAIN: usize = 512;
+/// The largest UDP payload an IPv4 packet carries.
+const UDP_MAX: usize = 65_507;
 const TYPE_OPT: u16 = 41;
 
 fn u16_at(m: &[u8], at: usize) -> Option<u16> {
@@ -70,7 +72,8 @@ fn skip_record(m: &[u8], at: usize) -> Option<(usize, u16, u16)> {
     (end <= m.len()).then_some((end, kind, class))
 }
 
-/// The largest UDP answer the client takes: its EDNS buffer size, else 512.
+/// The largest UDP answer the client takes: its EDNS buffer size, else 512; never more than an
+/// IPv4 datagram holds.
 pub fn udp_limit(query: &[u8]) -> usize {
     let Some(mut at) = question_end(query) else {
         return UDP_PLAIN;
@@ -81,7 +84,7 @@ pub fn udp_limit(query: &[u8]) -> usize {
             break;
         };
         if kind == TYPE_OPT && i >= count(query, 6) + count(query, 8) {
-            return usize::from(class).max(UDP_PLAIN);
+            return usize::from(class).clamp(UDP_PLAIN, UDP_MAX);
         }
         at = end;
     }
@@ -108,12 +111,18 @@ pub fn servfail(query: &[u8]) -> Vec<u8> {
     r
 }
 
-/// `answer` as it may go back over UDP to the sender of `query`.
+/// `answer` as it may go back over UDP to the sender of `query`: whole, else truncated (TC set)
+/// to its question, else to its header when even the question does not fit.
 pub fn fit_udp(answer: Vec<u8>, query: &[u8]) -> Vec<u8> {
-    if answer.len() <= udp_limit(query) {
+    let limit = udp_limit(query);
+    if answer.len() <= limit {
         return answer;
     }
     let mut r = bare_reply(&answer);
+    if r.len() > limit {
+        r.truncate(HEADER);
+        r[4..6].fill(0);
+    }
     r[2] |= 0x02;
     r
 }
@@ -261,6 +270,38 @@ pub(crate) mod tests {
         let q = query(7, "big.example", Some(4096));
         let big = answer_to(&q, 40);
         assert_eq!(fit_udp(big.clone(), &q), big);
+    }
+
+    /// A query with one A question per name.
+    fn questions(id: u16, names: &[&str]) -> Vec<u8> {
+        let mut m = query(id, names[0], None);
+        m[5] = names.len() as u8;
+        for name in &names[1..] {
+            for label in name.split('.') {
+                m.push(label.len() as u8);
+                m.extend_from_slice(label.as_bytes());
+            }
+            m.extend_from_slice(&[0, 0, 1, 0, 1]);
+        }
+        m
+    }
+
+    #[test]
+    fn a_question_too_large_for_udp_is_dropped_from_the_truncated_reply() {
+        let long = ["a", "b", "c"].map(|c| [c.repeat(63), c.repeat(63), c.repeat(63)].join("."));
+        let q = questions(9, &long.each_ref().map(String::as_str));
+        assert!(question_end(&q).unwrap() > UDP_PLAIN);
+        let t = fit_udp(answer_to(&q, 1), &q);
+        assert_eq!(t.len(), HEADER);
+        assert_eq!(t[2] & 0x82, 0x82, "QR and TC");
+        assert_eq!(count(&t, 4), 0);
+        assert_eq!(&t[..2], &q[..2]);
+    }
+
+    #[test]
+    fn the_udp_limit_stops_at_the_largest_ipv4_payload() {
+        assert_eq!(udp_limit(&query(1, "a.example", Some(65535))), 65507);
+        assert_eq!(udp_limit(&query(1, "a.example", Some(65507))), 65507);
     }
 
     #[test]
