@@ -27,6 +27,16 @@ offset), `ContrastTest` and `ReachabilityTest`; `SpacingRulesTest`, `ProbeDetect
 rebuild it when either gains a character: `uv run --offline --no-project --with fonttools --with brotli python -I
 tools/fonts.py <doona checkout> app/src/main`. A character the font lacks falls back to a system face, in another weight.
 
+## Icons and flags
+
+`:icons` holds the complete Material Symbols Rounded set (Apache-2.0): filled, weight 500, 24 px, one vector drawable
+`sym_<name>` each, and the weight-600 variants `sym_add_w600` and `sym_close_w600`. `tools/gen_icons.py` regenerates the
+module from a pinned commit of google/material-design-icons; `--work` is a new directory outside the repository, on
+the desktop one under `/scratch/ssd`. The app names an icon only by a static `dev.doona.android.icons.R.drawable.sym_*`
+field, so the release build's resource shrinker keeps the ones the code uses and strips the rest;
+`tools/check-layers.sh` fails on `getIdentifier(` anywhere, which would keep them all. `NOTICE` and `icons/NOTICE`
+list the licence.
+
 ## Components: which one to use
 
 All in `designsystem/components`; a screen builds none of these itself (`tools/check-layers.sh`). A component that is

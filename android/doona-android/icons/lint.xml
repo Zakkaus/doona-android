@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- The set is upstream's artwork, generated as it ships: 81 of its symbols have a path over 800 characters, and
+         redrawing them would be a fork of the set. -->
+    <issue id="VectorPath" severity="ignore" />
+</lint>

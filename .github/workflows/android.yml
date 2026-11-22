@@ -154,7 +154,7 @@ jobs:
       - name: Check Kotlin format, lint, run the JVM tests and the screenshots
         working-directory: android/doona-android
         # The JVM checks need no native library; the release step below builds and checks it.
-        run: ./gradlew -Pdoona.skipCore=true spotlessCheck :app:lintDebug :app:testDebugUnitTest :app:verifyRoborazziDebug
+        run: ./gradlew -Pdoona.skipCore=true spotlessCheck :app:lintDebug :icons:lintDebug :app:testDebugUnitTest :app:verifyRoborazziDebug
       - name: Build the release APK with the core and check its 16 KiB page alignment
         working-directory: android/doona-android
         run: |
