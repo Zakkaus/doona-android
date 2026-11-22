@@ -44,6 +44,7 @@ import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.feature.messageRes
+import dev.doona.android.icons.R as IconsR
 
 /** The 策略 entry: builds the ViewModel and collects its state while the screen is started. */
 @Composable
@@ -62,8 +63,8 @@ fun PoliciesScreen(state: PoliciesUiState, onAction: (PoliciesAction) -> Unit, o
     val space = DoonaTheme.spacing
     DoonaPage(
         actions = listOf(
-            DoonaBarAction(R.drawable.ic_clock, stringResource(R.string.policy_test_all)) { onAction(PoliciesAction.TestAll) },
-            DoonaBarAction(R.drawable.ic_link, stringResource(R.string.sub_title), onOpenSubscriptions),
+            DoonaBarAction(IconsR.drawable.sym_schedule, stringResource(R.string.policy_test_all)) { onAction(PoliciesAction.TestAll) },
+            DoonaBarAction(IconsR.drawable.sym_link, stringResource(R.string.sub_title), onOpenSubscriptions),
         ),
     ) {
         DoonaPageTitle(stringResource(R.string.nav_policies))
@@ -76,7 +77,7 @@ fun PoliciesScreen(state: PoliciesUiState, onAction: (PoliciesAction) -> Unit, o
             state.items.isEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
                 ErrorBanner(state, onAction)
                 DoonaEmptyState(
-                    icon = R.drawable.ic_share,
+                    icon = IconsR.drawable.sym_share,
                     title = stringResource(R.string.policy_empty_title),
                     line = stringResource(R.string.policy_empty_line),
                     actionLabel = stringResource(R.string.sub_add),

@@ -24,6 +24,7 @@ import dev.doona.android.designsystem.components.DoonaProgress
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.messageRes
+import dev.doona.android.icons.R as IconsR
 
 /** The 訂閱 entry: builds the ViewModel and collects its state while the page is started. */
 @Composable
@@ -41,7 +42,7 @@ fun SubscriptionsRoute(engine: Engine, imports: SubscriptionImports, onBack: () 
 fun SubscriptionsScreen(state: SubscriptionsUiState, fields: AddFormFields, onAction: (SubscriptionsAction) -> Unit, onBack: () -> Unit) {
     DoonaPage(
         onBack = onBack,
-        actions = listOf(DoonaBarAction(R.drawable.ic_add_circle, stringResource(R.string.sub_add)) { onAction(SubscriptionsAction.OpenForm) }),
+        actions = listOf(DoonaBarAction(IconsR.drawable.sym_add_circle, stringResource(R.string.sub_add)) { onAction(SubscriptionsAction.OpenForm) }),
     ) {
         DoonaPageTitle(stringResource(R.string.sub_title))
         DoonaGap(DoonaTheme.spacing.section)
@@ -80,7 +81,7 @@ private fun Content(state: SubscriptionsUiState, fields: AddFormFields, onAction
             )
         } else if (state.items.isEmpty()) {
             DoonaEmptyState(
-                icon = R.drawable.ic_link,
+                icon = IconsR.drawable.sym_link,
                 title = stringResource(R.string.sub_empty_title),
                 line = stringResource(R.string.sub_empty_line),
                 actionLabel = stringResource(R.string.sub_add),

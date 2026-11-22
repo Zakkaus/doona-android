@@ -31,6 +31,7 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.messageRes
+import dev.doona.android.icons.R as IconsR
 
 /**
  * A group's page, pushed over the list. A group removed while its page is open, such as by a subscription update, leaves
@@ -107,7 +108,7 @@ private fun Actions(detail: GroupDetail, onAction: (GroupAction) -> Unit) {
             stringResource(R.string.policy_test_group),
             { onAction(GroupAction.Test) },
             style = DoonaButtonStyle.Secondary,
-            icon = R.drawable.ic_clock,
+            icon = IconsR.drawable.sym_schedule,
             busy = detail.group.testing,
         )
         if (detail.canReturnToAutomatic) {

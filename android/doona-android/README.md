@@ -22,8 +22,8 @@ Google's accessibility checks. Spacing, contrast and reachability are asserted b
 offset), `ContrastTest` and `ReachabilityTest`; `SpacingRulesTest`, `ProbeDetectionTest`, `BlankContentTest` and
 `AccessibilityCheckTest` plant a defect in each rule and keep the case, so a check that stops seeing its defect fails.
 
-`tools/icons.py` and `tools/fonts.py` rebuild the drawables and fonts from a doona checkout (fontTools and brotli);
-`NOTICE` lists their licences. The font holds only the characters the string resources and Kotlin sources use, so
+`tools/duck.py` and `tools/fonts.py` rebuild the duck mark and the fonts from a doona checkout (fontTools and brotli for
+the fonts); `NOTICE` lists their licences. The font holds only the characters the string resources and Kotlin sources use, so
 rebuild it when either gains a character: `uv run --offline --no-project --with fonttools --with brotli python -I
 tools/fonts.py <doona checkout> app/src/main`. A character the font lacks falls back to a system face, in another weight.
 

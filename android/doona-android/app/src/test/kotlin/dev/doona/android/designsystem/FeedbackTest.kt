@@ -25,7 +25,6 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaEmptyState
 import dev.doona.android.designsystem.components.DoonaMeter
 import dev.doona.android.designsystem.components.DoonaProgress
@@ -49,6 +48,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import dev.doona.android.icons.R as IconsR
 
 /** The meter, the empty state and the spinner: what a reader hears, the room between the meter's text and its bar, the empty state's action and inset. */
 @RunWith(AndroidJUnit4::class)
@@ -124,7 +124,7 @@ class FeedbackTest {
     fun theEmptyStateActionTakesATapAndTheTitleIsAHeading() {
         var taps = 0
         compose.setVariantContent(Light) {
-            DoonaEmptyState(R.drawable.ic_link, "Nothing here", "Add one.", actionLabel = "Add", onAction = { taps++ })
+            DoonaEmptyState(IconsR.drawable.sym_link, "Nothing here", "Add one.", actionLabel = "Add", onAction = { taps++ })
         }
         compose.onNodeWithText("Add").performClick()
         assertEquals(1, taps)
@@ -135,9 +135,9 @@ class FeedbackTest {
     fun anEmptyStateWithoutAnActionHasNoButton() {
         compose.setVariantContent(Light) {
             Column {
-                DoonaEmptyState(R.drawable.ic_search, "No match", "Try another name.")
-                DoonaEmptyState(R.drawable.ic_search, "Half", "A label without a tap.", actionLabel = "Add")
-                DoonaEmptyState(R.drawable.ic_search, "Other half", "A tap without a label.", onAction = {})
+                DoonaEmptyState(IconsR.drawable.sym_search, "No match", "Try another name.")
+                DoonaEmptyState(IconsR.drawable.sym_search, "Half", "A label without a tap.", actionLabel = "Add")
+                DoonaEmptyState(IconsR.drawable.sym_search, "Other half", "A tap without a label.", onAction = {})
             }
         }
         compose.onAllNodesWithText("Add").assertCountEquals(0)
@@ -147,7 +147,7 @@ class FeedbackTest {
     /** The texts keep the inset of a card from the edges of the space they are given, which is not the gutter alone. */
     @Test
     fun theEmptyStateKeepsTheInsetOfACardAtItsSides() {
-        compose.setVariantContent(Light) { Column(Modifier.width(300.dp)) { DoonaEmptyState(R.drawable.ic_search, "No match", "Try another name.") } }
+        compose.setVariantContent(Light) { Column(Modifier.width(300.dp)) { DoonaEmptyState(IconsR.drawable.sym_search, "No match", "Try another name.") } }
         val inset = DoonaTheme.spacing.cardInset.value * compose.density.density
         val text = compose.onNodeWithText("No match").fetchSemanticsNode().boundsInRoot
         assertEquals("the title starts a card inset from the left", inset, text.left, 1f)

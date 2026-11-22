@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.icons.R as IconsR
 
 /**
  * A checkable row for a long list, an app per row: an optional [leading] (an app icon, laid out in a box of
@@ -75,6 +76,6 @@ private fun CheckBox(checked: Boolean) {
             .then(if (checked) Modifier.background(c.accent) else Modifier.border(DoonaTheme.size.borderStrong, c.boxLine, shape)),
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) DoonaIcon(R.drawable.ic_checkmark, c.onAccent, size = DoonaTheme.size.iconInline)
+        if (checked) DoonaIcon(IconsR.drawable.sym_check, c.onAccent, size = DoonaTheme.size.iconInline)
     }
 }

@@ -22,7 +22,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaCard
 import dev.doona.android.designsystem.components.DoonaGap
 import dev.doona.android.designsystem.components.DoonaHGap
@@ -51,6 +50,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import dev.doona.android.icons.R as IconsR
 
 /**
  * The spacing rules on small pages with a defect planted in each, so that a rule which stops seeing its defect fails
@@ -198,7 +198,7 @@ class SpacingRulesTest {
     @Composable
     private fun IconRow(gap: Dp) = DoonaCard(Modifier.fillMaxWidth()) {
         DoonaRow {
-            DoonaIcon(R.drawable.ic_search, DoonaTheme.colors.accent)
+            DoonaIcon(IconsR.drawable.sym_search, DoonaTheme.colors.accent)
             DoonaHGap(gap)
             DoonaText("label", DoonaTheme.type.body)
         }
@@ -252,7 +252,7 @@ class SpacingRulesTest {
         assertEquals(1, SpacingRules.unseen(blind).size)
     }
 
-    private val rail = listOf(DoonaHubTab("One", R.drawable.ic_speed_fast), DoonaHubTab("Two", R.drawable.ic_link))
+    private val rail = listOf(DoonaHubTab("One", IconsR.drawable.sym_speed), DoonaHubTab("Two", IconsR.drawable.sym_link))
 
     /** A window shorter than the compact height swaps the bottom bar for a rail, and the page's column starts next to it. */
     @Test

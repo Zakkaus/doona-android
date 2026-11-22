@@ -94,7 +94,8 @@ object SizeScale {
     val tabUnderline = 2.dp
     val spark = 32.dp
     val sparkStroke = 1.5.dp
-    val flagHeight = 12.dp
+    val flag = 12.dp
+    val flagLetters = 5.dp
     val flagEdge = 0.5.dp
     val chartInset = 2.dp
 

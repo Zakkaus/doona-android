@@ -41,6 +41,7 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.labelRes
 import dev.doona.android.feature.messageRes
+import dev.doona.android.icons.R as IconsR
 
 /** The 依 App entry: builds the ViewModel and collects its state while the screen is started. */
 @Composable
@@ -144,9 +145,9 @@ private fun LazyListScope.appList(state: PerAppUiState, onAction: (PerAppAction)
 
         state.apps.isEmpty() -> item(key = EMPTY, contentType = EMPTY) {
             if (state.hasApps) {
-                DoonaEmptyState(R.drawable.ic_search, stringResource(R.string.perapp_no_match), stringResource(R.string.perapp_no_match_line))
+                DoonaEmptyState(IconsR.drawable.sym_search, stringResource(R.string.perapp_no_match), stringResource(R.string.perapp_no_match_line))
             } else {
-                DoonaEmptyState(R.drawable.ic_filter, stringResource(R.string.perapp_no_apps), stringResource(R.string.perapp_no_apps_line))
+                DoonaEmptyState(IconsR.drawable.sym_filter_alt, stringResource(R.string.perapp_no_apps), stringResource(R.string.perapp_no_apps_line))
             }
         }
 

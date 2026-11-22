@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 import androidx.compose.ui.semantics.error as semanticsError
+import dev.doona.android.icons.R as IconsR
 
 /*
  * The text is a TextFieldState, which Compose's text guide now recommends over a value and a callback: the state holds
@@ -123,10 +124,10 @@ fun DoonaSearchField(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.width(DoonaTheme.spacing.fillInset))
                 // The icon grows with the text beside it, as a button's glyph does.
-                DoonaIcon(R.drawable.ic_search, c.icon, size = dotSizeFor(DoonaTheme.type.body, DoonaTheme.size.iconSmall))
+                DoonaIcon(IconsR.drawable.sym_search, c.icon, size = dotSizeFor(DoonaTheme.type.body, DoonaTheme.size.iconSmall))
                 Spacer(Modifier.width(DoonaTheme.spacing.item))
                 Box(Modifier.weight(1f).padding(end = DoonaTheme.spacing.item)) { Typed(state, placeholder, enabled = true, readPlaceholder = false, scroll, inner) }
-                if (state.text.isNotEmpty()) DoonaIconAction(R.drawable.ic_close, stringResource(R.string.ui_clear), onClick = { state.clearText() })
+                if (state.text.isNotEmpty()) DoonaIconAction(IconsR.drawable.sym_close, stringResource(R.string.ui_clear), onClick = { state.clearText() })
             }
         }
     }

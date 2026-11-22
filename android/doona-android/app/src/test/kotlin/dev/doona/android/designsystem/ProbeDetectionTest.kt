@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.R
 import dev.doona.android.designsystem.components.DoonaIcon
 import dev.doona.android.designsystem.components.DoonaSegmented
 import dev.doona.android.designsystem.components.DoonaText
@@ -32,6 +31,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import dev.doona.android.icons.R as IconsR
 
 /**
  * The layout probe reads Compose internals (the child list of a layout node, the class name of its measure policy and of
@@ -56,7 +56,7 @@ class ProbeDetectionTest {
                 }
                 Spacer(Modifier.height(12.dp))
                 DoonaSegmented(listOf("A", "B"), selected = 0, onSelect = {})
-                DoonaIcon(R.drawable.ic_search, DoonaTheme.colors.accent)
+                DoonaIcon(IconsR.drawable.sym_search, DoonaTheme.colors.accent)
                 DoonaText("hello", DoonaTheme.type.body)
             }
         }
