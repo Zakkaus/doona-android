@@ -83,6 +83,12 @@ internal object RvMotion {
     /** The segmented control's pill sliding to the chosen segment (as long as S2's shared axis). */
     const val SLIDE_MS = 250
 
+    /**
+     * The search page (measured): it follows the search pill, which becomes its field, in 270 ms; the keyboard rises
+     * only after that, with the IME's own animation.
+     */
+    const val SEARCH_MS = 270
+
     /** A tab's hero art fades in after the hard cut (measured 330 ms); a theme change cross-fades as long. */
     const val HERO_FADE_MS = 330
 

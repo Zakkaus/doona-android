@@ -131,6 +131,20 @@ private fun RvSamplePage(
 
         STATS -> RvStatsScreen(rvStatsSample(), onBack = pages.pop)
 
+        // The search page: the node picker, its field the search pill's; a picked node becomes the main one.
+        SEARCH -> RvNodePicker(
+            run.nodes,
+            RvData.subscriptions,
+            run.currentId,
+            onPick = {
+                run.currentId = it
+                pages.pop()
+            },
+            onDetail = { pages.push("$NODE:$it") },
+            onClose = pages.pop,
+            searchPage = true,
+        )
+
         NODES -> RvNodesPage(RvNodesPageState(run.nodes, run.currentId, RvData.testTimes), onBack = pages.pop, onFilter = {}, onOpen = { pages.push("$NODE:$it") }, onAllNodes = {})
 
         NODE -> {
@@ -156,6 +170,7 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
     val routes = RvActivityRoutes(
         traffic = { pages.push(TRAFFIC) },
         stats = { pages.push(STATS) },
+        search = { pages.push(SEARCH) },
         nodes = { pages.push(NODES) },
         node = { pages.push("$NODE:${run.currentId}") },
         tab = pages.tab,
@@ -286,6 +301,7 @@ private const val SWING_STEP = 7
 internal const val ACTIVITY = "activity"
 internal const val TRAFFIC = "traffic"
 internal const val STATS = "stats"
+internal const val SEARCH = "search"
 internal const val NODES = "nodes"
 internal const val NODE = "node"
 internal const val SETTINGS = "settings"

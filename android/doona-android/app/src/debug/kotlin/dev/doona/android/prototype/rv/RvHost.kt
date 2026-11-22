@@ -3,9 +3,13 @@ package dev.doona.android.prototype.rv
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.SeekableTransitionState
@@ -16,12 +20,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -114,13 +122,50 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
         }
     }
     val shift = with(LocalDensity.current) { RvMotion.axisShift.roundToPx() }
-    transition.AnimatedContent(modifier, transitionSpec = { move(options, motion, shift) }, contentKey = { it.last() }) { shown ->
-        seen += shown.last()
-        val entering = options.tab == RvTabMotion.Cut && shown == transition.targetState && transition.currentState.first() != shown.first()
-        holder.SaveableStateProvider(shown.last()) {
-            CompositionLocalProvider(LocalRvTabEntry provides entering) { page(shown.last()) }
+    SharedTransitionLayout(modifier) {
+        transition.AnimatedContent(transitionSpec = { move(options, motion, shift) }, contentKey = { it.last() }) { shown ->
+            seen += shown.last()
+            val entering = options.tab == RvTabMotion.Cut && shown == transition.targetState && transition.currentState.first() != shown.first()
+            holder.SaveableStateProvider(shown.last()) {
+                CompositionLocalProvider(LocalRvTabEntry provides entering, LocalRvShared provides RvShared(this@SharedTransitionLayout, this)) { page(shown.last()) }
+            }
         }
     }
+}
+
+/** The host's shared-element scopes: the [layout] over every page and the [page]'s own coming and going. */
+internal class RvShared(val layout: SharedTransitionScope, val page: AnimatedVisibilityScope)
+
+internal val LocalRvShared = compositionLocalOf<RvShared?> { null }
+
+/**
+ * Makes the search pill and the search page's field one element (brief rv-gestures G7): with the push it moves and
+ * reshapes from one into the other in [RvMotion.SEARCH_MS], its content laid out afresh at each size, clipped to the
+ * pill's shape. Outside the host (goldens, previews) it does nothing.
+ */
+@Composable
+internal fun Modifier.rvSharedSearch(): Modifier {
+    val shared = LocalRvShared.current ?: return this
+    val motion = Rv.motion
+    return with(shared.layout) {
+        this@rvSharedSearch.sharedBounds(
+            rememberSharedContentState(SEARCH),
+            shared.page,
+            // The pill's and the field's own content cross-fade as the bounds move, in the same time.
+            enter = fadeIn(motion.tween(RvMotion.SEARCH_MS)),
+            exit = fadeOut(motion.tween(RvMotion.SEARCH_MS)),
+            boundsTransform = { _, _ -> motion.tween(RvMotion.SEARCH_MS) },
+            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+            clipInOverlayDuringTransition = OverlayClip(CircleShape),
+        )
+    }
+}
+
+/** Whether the page this is in has finished coming in (at once outside the host). */
+@Composable
+internal fun rvPageArrived(): () -> Boolean {
+    val page = LocalRvShared.current?.page ?: return { true }
+    return { page.transition.currentState == EnterExitState.Visible && page.transition.targetState == EnterExitState.Visible }
 }
 
 private fun popMs(push: RvPushMotion) = if (push == RvPushMotion.Zoom) RvMotion.PUSH_MS else RvMotion.AXIS_MS
@@ -131,6 +176,7 @@ private fun AnimatedContentTransitionScope<List<String>>.move(options: RvMotionO
     return when {
         motion.instant -> EnterTransition.None togetherWith ExitTransition.None
         from.first() != to.first() -> tabSwitch(options.tab, motion)
+        to.last() == SEARCH || from.last() == SEARCH -> search(motion, shift, forward = to.size > from.size)
         options.push == RvPushMotion.Zoom -> zoom(motion, forward = to.size > from.size)
         else -> axis(motion, shift, forward = to.size > from.size)
     }
@@ -139,6 +185,19 @@ private fun AnimatedContentTransitionScope<List<String>>.move(options: RvMotionO
 private fun tabSwitch(tab: RvTabMotion, motion: RvMotionScale): ContentTransform = when (tab) {
     RvTabMotion.Cut -> EnterTransition.None togetherWith ExitTransition.None
     RvTabMotion.Fade -> fadeIn(motion.tween(RvMotion.FADE_MS)) togetherWith fadeOut(motion.tween(RvMotion.FADE_MS))
+}
+
+/**
+ * The search page (G7), whichever push option is set: it fades in rising [shift] px while the pill becomes its field,
+ * in [RvMotion.SEARCH_MS]; on the way back it sinks and fades out over the page it came from.
+ */
+private fun search(motion: RvMotionScale, shift: Int, forward: Boolean): ContentTransform {
+    val ms = RvMotion.SEARCH_MS
+    return if (forward) {
+        (fadeIn(motion.tween(ms)) + slideInVertically(motion.tween(ms)) { shift }) togetherWith fadeOut(motion.tween(ms))
+    } else {
+        ContentTransform(fadeIn(motion.tween(ms)), fadeOut(motion.tween(ms)) + slideOutVertically(motion.tween(ms)) { shift }, targetContentZIndex = -1f)
+    }
 }
 
 /** S1: the new page fades in growing from 96 %; on a pop the leaving page, on top, fades out shrinking to 96 %. */

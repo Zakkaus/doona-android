@@ -101,18 +101,19 @@ internal fun RvActivityScreen(
             }
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
-        RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.nodes, onStats = routes.stats, Modifier.align(Alignment.TopCenter), pull)
+        RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.search, onStats = routes.stats, Modifier.align(Alignment.TopCenter), pull)
         RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter))
     }
 }
 
 /**
- * Where 活動 leads: a traffic tile, 統計, 節點 (the search pill), the node row, the nav's tabs, the mode picker, a rule
- * row (by its group) and the full list of rules.
+ * Where 活動 leads: a traffic tile, 統計, the search page (the search pill), 節點 (最快節點's header), the node row, the
+ * nav's tabs, the mode picker, a rule row (by its group) and the full list of rules.
  */
 internal class RvActivityRoutes(
     val traffic: () -> Unit = {},
     val stats: () -> Unit = {},
+    val search: () -> Unit = {},
     val nodes: () -> Unit = {},
     val node: () -> Unit = {},
     val tab: (Int) -> Unit = {},

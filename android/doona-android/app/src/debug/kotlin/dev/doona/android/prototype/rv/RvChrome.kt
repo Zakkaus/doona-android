@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -127,6 +129,8 @@ private fun SearchPill(glass: RvGlass, onClick: () -> Unit, pull: RvPullLook, mo
     val label = stringResource(R.string.rv_nodes_title)
     Row(
         modifier
+            // A tap pushes the search page, and the pill becomes its field.
+            .rvSharedSearch()
             .graphicsLayer {
                 val grow = 1f + RvMotion.ANCHOR_GROW * pull.progress()
                 scaleX = grow
@@ -156,10 +160,11 @@ private fun SearchPill(glass: RvGlass, onClick: () -> Unit, pull: RvPullLook, mo
 
 /**
  * The search pill as a field (the node picker's bar): the same glass, glyph and type, with [query] typed in it and the
- * pill's 搜尋節點 as the placeholder; CJK runs set in Noto as everywhere else.
+ * pill's 搜尋節點 as the placeholder; CJK runs set in Noto as everywhere else. [focus], when given, can put the cursor
+ * (and the keyboard) in it.
  */
 @Composable
-internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier) {
+internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier, focus: FocusRequester? = null) {
     val colors = Rv.colors
     val hint = stringResource(R.string.rv_search_nodes)
     Row(
@@ -175,7 +180,7 @@ internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> U
         BasicTextField(
             query,
             onQuery,
-            Modifier.weight(1f).semantics { contentDescription = hint },
+            Modifier.weight(1f).then(focus?.let { Modifier.focusRequester(it) } ?: Modifier).semantics { contentDescription = hint },
             textStyle = Rv.type.search.copy(color = colors.text),
             singleLine = true,
             cursorBrush = SolidColor(colors.positive),

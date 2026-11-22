@@ -18,24 +18,31 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -80,10 +87,13 @@ import dev.doona.android.prototype.rv.rememberRvFormat
 import dev.doona.android.prototype.rv.rememberRvGlass
 import dev.doona.android.prototype.rv.rvGlassSource
 import dev.doona.android.prototype.rv.rvNodeMenu
+import dev.doona.android.prototype.rv.rvPageArrived
 import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.rvShade
+import dev.doona.android.prototype.rv.rvSharedSearch
 import dev.doona.android.prototype.rv.rvSubscriptionMenu
 import dev.doona.android.prototype.rv.rvSystemScheme
+import kotlinx.coroutines.flow.first
 
 /** The picker's root, for tests. */
 internal const val RV_PICKER = "rv-picker"
@@ -95,7 +105,8 @@ internal const val RV_PICKER = "rv-picker"
  * ([onPick]: the caller switches and closes); a long press or the row's info mark opens its page ([onDetail]). Typing
  * filters by name, code, protocol or place; rows and groups that stop matching fold away and come back. [section] gives
  * the n-th section (0 the bar, 1 the title, then each group) its modifier, for P3's staggered drop; [stretch] moves the
- * list down by that many pixels while a pull at its top would close the picker.
+ * list down by that many pixels while a pull at its top would close the picker. As the [searchPage] (brief rv-gestures
+ * G7) its field is the search pill's, and the keyboard comes up once the page has arrived.
  */
 @Composable
 internal fun RvNodePicker(
@@ -107,8 +118,20 @@ internal fun RvNodePicker(
     onClose: () -> Unit,
     section: (Int) -> Modifier = { Modifier },
     stretch: () -> Float = { 0f },
+    searchPage: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val focus = remember { FocusRequester() }
+    val arrived = rvPageArrived()
+    // The search page (G7): the keyboard comes up once the page has arrived, and the list's end follows it as it rises.
+    LaunchedEffect(searchPage) {
+        if (!searchPage) return@LaunchedEffect
+        snapshotFlow { arrived() }.first { it }
+        // One frame later the field is placed and can take the focus.
+        withFrameNanos {}
+        focus.requestFocus()
+    }
+    val bottom = if (searchPage) insets.union(WindowInsets.ime) else insets
     val scroll = rememberScrollState()
     val glass = rememberRvGlass()
     var query by rememberSaveable { mutableStateOf("") }
@@ -126,13 +149,14 @@ internal fun RvNodePicker(
                     val members = nodes.filter { it.subscription == sub.name }
                     Group(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, section(2 + i))
                 }
-                Spacer(Modifier.windowInsetsBottomHeight(insets))
+                Spacer(Modifier.windowInsetsBottomHeight(bottom))
             }
             RvBar(glass, insets, rvShade(scroll), section(0)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     RvBackDisc(onClose)
                     Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-                    RvSearchField(glass, query, { query = it }, Modifier.weight(1f).padding(end = RvSpace.gutter - RvChrome.touchPad))
+                    val field = Modifier.weight(1f).padding(end = RvSpace.gutter - RvChrome.touchPad)
+                    RvSearchField(glass, query, { query = it }, if (searchPage) field.rvSharedSearch() else field, focus)
                 }
             }
         }
