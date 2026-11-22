@@ -58,11 +58,40 @@ fn target(route: &Route) -> &str {
     }
 }
 
+/// A reader always gets a mode with the count of the set that left it, however fast the sets come:
+/// a refusal held under a count cannot outlive a switch that new flows already follow.
+#[test]
+fn the_mode_and_its_count_are_read_together() {
+    let cell = Arc::new(ModeCell::new(Mode::Global));
+    let (_, first) = cell.snapshot();
+    let setter = {
+        let cell = Arc::clone(&cell);
+        std::thread::spawn(move || {
+            for i in 0..200_000_usize {
+                cell.set([Mode::Direct, Mode::Rule][i % 2]);
+            }
+        })
+    };
+    // Odd sets after the first leave Direct, even ones Rule.
+    let mode_of = |count: u64| match count - first {
+        0 => Mode::Global,
+        n if n % 2 == 1 => Mode::Direct,
+        _ => Mode::Rule,
+    };
+    let mut reads = 0u64;
+    while !setter.is_finished() {
+        let (mode, count) = cell.snapshot();
+        assert_eq!(mode, mode_of(count), "set {count}, after {reads} reads");
+        reads += 1;
+    }
+    setter.join().unwrap();
+}
+
 /// Each set counts as a change, so a decision taken under the mode can tell it was set since.
 #[test]
 fn mode_cell_round_trips() {
     let cell = ModeCell::new(Mode::Direct);
-    let first = cell.changes();
+    let (_, first) = cell.snapshot();
     for (n, mode) in [
         Mode::Global,
         Mode::Rule,
@@ -75,7 +104,7 @@ fn mode_cell_round_trips() {
     {
         cell.set(mode);
         assert_eq!(cell.get(), mode);
-        assert_eq!(cell.changes(), first + n as u64 + 1);
+        assert_eq!(cell.snapshot(), (mode, first + n as u64 + 1));
     }
 }
 

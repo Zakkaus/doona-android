@@ -26,53 +26,51 @@ use honk_outbound::proxy::AsyncReadWrite;
 use std::io::{self, ErrorKind};
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU8, AtomicU64, Ordering::Relaxed};
+use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::time::Duration;
 use tokio::net::{TcpStream, UdpSocket};
 
 /// A dial, through a node or straight out, gives up after this long.
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// The committed mode, read by every new flow, and how many times it was set.
+/// The committed mode, read by every new flow, and how many times it was set, in one word: the
+/// low [`MODE_BITS`] hold the mode, the rest the count.
 #[derive(Debug)]
-pub struct ModeCell {
-    mode: AtomicU8,
-    changes: AtomicU64,
-}
+pub struct ModeCell(AtomicU64);
+
+const MODE_BITS: u32 = 2;
 
 impl ModeCell {
     pub fn new(mode: Mode) -> ModeCell {
-        let cell = ModeCell {
-            mode: AtomicU8::new(0),
-            changes: AtomicU64::new(0),
-        };
+        let cell = ModeCell(AtomicU64::new(0));
         cell.set(mode);
         cell
     }
 
     pub fn get(&self) -> Mode {
-        match self.mode.load(Relaxed) {
-            1 => Mode::Direct,
-            2 => Mode::Rule,
-            _ => Mode::Global,
-        }
+        self.snapshot().0
     }
 
     pub fn set(&self, mode: Mode) {
-        self.mode.store(
-            match mode {
-                Mode::Global => 0,
-                Mode::Direct => 1,
-                Mode::Rule => 2,
-            },
-            Relaxed,
-        );
-        self.changes.fetch_add(1, Relaxed);
+        let code = match mode {
+            Mode::Global => 0,
+            Mode::Direct => 1,
+            Mode::Rule => 2,
+        };
+        let next = |word: u64| (((word >> MODE_BITS) + 1) << MODE_BITS) | code;
+        self.0.update(Relaxed, Relaxed, next);
     }
 
-    /// How many times the mode was set, so a decision taken under it can tell it changed since.
-    pub fn changes(&self) -> u64 {
-        self.changes.load(Relaxed)
+    /// The mode and how many times it was set, from one read: a decision taken under the mode can
+    /// tell it was set since, and never pairs one set's mode with another's count.
+    pub fn snapshot(&self) -> (Mode, u64) {
+        let word = self.0.load(Relaxed);
+        let mode = match word & ((1 << MODE_BITS) - 1) {
+            1 => Mode::Direct,
+            2 => Mode::Rule,
+            _ => Mode::Global,
+        };
+        (mode, word >> MODE_BITS)
     }
 }
 

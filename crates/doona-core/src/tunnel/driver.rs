@@ -317,7 +317,8 @@ impl Driver {
             let route = if to_resolver {
                 dns_route(settings, session)
             } else {
-                new_route(settings, session, (dst, Network::Tcp))
+                let (to, mode) = ((dst, Network::Tcp), settings.mode.get());
+                Route::of(Inbound::Tun, to, mode, &settings.outbounds, session)
             };
             if route.refused() {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
@@ -438,7 +439,8 @@ impl Driver {
 
     /// A datagram from an app: UDP/53 to any address is DNS the core answers; nothing else
     /// listens on the virtual resolver; other datagrams follow the route their association
-    /// opened with. A five-tuple blockQuic refused lately is refused again without a route.
+    /// opened with. A five-tuple blockQuic refused lately is refused again without a route, unless
+    /// the mode was set, a routing published or an answer put in the names since.
     fn on_datagram(&mut self, src: SocketAddr, dst: SocketAddr, payload: &[u8]) {
         if dst.port() == 53 {
             let Ok(slot) = Arc::clone(&self.dns_slots).try_acquire_owned() else {
@@ -453,12 +455,16 @@ impl Driver {
             let (settings, session) = (&self.settings, &self.gen_.session);
             let blocked = &mut self.blocked;
             let open = || {
-                let stamp = (settings.mode.changes(), settings.outbounds.routings());
+                // Read before the route looks anything up, and its mode from the same read.
+                let (mode, sets) = settings.mode.snapshot();
+                let (routings, names) = (settings.outbounds.routings(), session.names());
+                let stamp = (sets, routings, names.version());
                 let now = Instant::now();
                 if blocked.holds((src, dst), stamp, now) {
                     return None;
                 }
-                let route = new_route(settings, session, (dst, Network::Udp));
+                let to = (dst, Network::Udp);
+                let route = Route::of(Inbound::Tun, to, mode, &settings.outbounds, session);
                 if let Route::Blocked = route {
                     blocked.refuse((src, dst), stamp, now);
                 }
@@ -565,12 +571,6 @@ impl PartialEq for Due {
 }
 
 impl Eq for Due {}
-
-/// The route of a new flow of `session`'s generation from the tun to `dst`.
-fn new_route(settings: &Settings, session: &Arc<Session>, dst: (SocketAddr, Network)) -> Route {
-    let mode = settings.mode.get();
-    Route::of(Inbound::Tun, dst, mode, &settings.outbounds, session)
-}
 
 /// The route of DNS the core answers for `session`'s generation.
 fn dns_route(settings: &Settings, session: &Arc<Session>) -> Route {

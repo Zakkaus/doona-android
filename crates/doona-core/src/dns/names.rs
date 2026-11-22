@@ -23,6 +23,7 @@ use crate::sys;
 use lru::LruCache;
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// The most addresses one generation keeps a name for.
@@ -39,7 +40,12 @@ const CLASS_IN: u16 = 1;
 /// The longest name, without its final dot.
 const MAX_NAME: usize = 253;
 
-pub(crate) struct Names(Mutex<LruCache<Ipv4Addr, Entry>>);
+pub(crate) struct Names {
+    cache: Mutex<LruCache<Ipv4Addr, Entry>>,
+    /// How many answers were put: a decision taken under one count can tell a name may have come
+    /// since.
+    puts: AtomicU64,
+}
 
 struct Entry {
     name: Arc<str>,
@@ -77,7 +83,10 @@ impl Learned {
 
 impl Names {
     pub fn new() -> Names {
-        Names(Mutex::new(LruCache::unbounded()))
+        Names {
+            cache: Mutex::new(LruCache::unbounded()),
+            puts: AtomicU64::new(0),
+        }
     }
 
     /// Maps what an answer gave, from now on.
@@ -98,9 +107,15 @@ impl Names {
         self.name_at(ip, sys::boot_ms())
     }
 
+    /// How many answers were put so far. Read before a lookup, it tells a decision taken on what
+    /// the lookup found whether an answer was put since: a count that moved on means one was.
+    pub fn version(&self) -> u64 {
+        self.puts.load(Ordering::Acquire)
+    }
+
     #[cfg(test)]
     pub fn len(&self) -> usize {
-        lock(&self.0).len()
+        lock(&self.cache).len()
     }
 
     /// Maps `ip` to `name` for an hour, as an answer would.
@@ -108,7 +123,8 @@ impl Names {
     pub fn map(&self, ip: Ipv4Addr, name: &str) {
         let until_ms = sys::boot_ms() + u64::from(MAX_TTL) * 1000;
         let name = name.into();
-        lock(&self.0).put(ip, Entry { name, until_ms });
+        lock(&self.cache).put(ip, Entry { name, until_ms });
+        self.puts.fetch_add(1, Ordering::Release);
     }
 
     /// Maps what `m` gives, whatever question it was sent for.
@@ -121,7 +137,7 @@ impl Names {
 
     fn put_at(&self, Learned { name, found }: Learned, now_ms: u64) {
         for batch in found.chunks(BATCH) {
-            let mut cache = lock(&self.0);
+            let mut cache = lock(&self.cache);
             for &(addr, ttl) in batch {
                 if cache.len() >= CAPACITY && !cache.contains(&addr) {
                     cache.pop_lru();
@@ -131,13 +147,15 @@ impl Names {
                 cache.put(addr, Entry { name, until_ms });
             }
         }
+        // Counted once every address can be looked up: a reader that sees the new count finds them.
+        self.puts.fetch_add(1, Ordering::Release);
     }
 
     pub(super) fn name_at(&self, ip: IpAddr, now_ms: u64) -> Option<Arc<str>> {
         let IpAddr::V4(addr) = ip.to_canonical() else {
             return None;
         };
-        let mut cache = lock(&self.0);
+        let mut cache = lock(&self.cache);
         let live = cache
             .get(&addr)
             .map(|e| (e.until_ms > now_ms).then(|| Arc::clone(&e.name)))?;
