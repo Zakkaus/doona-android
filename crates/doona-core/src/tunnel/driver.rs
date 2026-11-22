@@ -1,4 +1,4 @@
-//! The generation's driver: the one task that owns the tun fd and the honk-netstack `Stack` (a
+//! The generation's driver: the one task that uses the tun and owns the honk-netstack `Stack` (a
 //! transparent terminator: every flow's local end is the address the app dialed). It feeds tun
 //! packets into the stack, answers the stack's new connections and datagrams by spawning flow
 //! tasks, moves data between the stack and those tasks, and writes the stack's output back.
@@ -10,7 +10,7 @@ use super::flow::{self, Event, Events, Key, Waker};
 use super::route::Route;
 use super::tcp::{self, Step, TcpFlow};
 use super::udp::{self, Nat};
-use super::{Gen, Settings};
+use super::{Gen, Settings, Tun};
 use crate::sys;
 use honk_netstack::{
     AcceptOpts, AcceptWhen, Config, ExcludeSet, FlowId, Mode, Ready, Refuse, Rx, Stack,
@@ -18,10 +18,9 @@ use honk_netstack::{
 use std::collections::HashMap;
 use std::io::{self, ErrorKind};
 use std::net::{IpAddr, SocketAddr};
-use std::os::fd::{AsRawFd, OwnedFd};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::io::unix::{AsyncFd, AsyncFdReadyGuard};
+use tokio::io::Interest;
 use tokio::sync::{Semaphore, mpsc, oneshot};
 
 /// Packets read per wakeup before the stack's output gets a turn (the stack's batch limit).
@@ -36,21 +35,17 @@ const DNS_IN_FLIGHT: usize = 64;
 const TCP_BUF: usize = 4 << 20;
 const STACK_MEMORY: usize = 128 << 20;
 
-pub(crate) async fn run(
-    tun: AsyncFd<OwnedFd>,
-    settings: Settings,
-    gen_: Gen,
-    ready: oneshot::Sender<()>,
-) {
+pub(crate) async fn run(tun: Arc<Tun>, settings: Settings, gen_: Gen, ready: oneshot::Sender<()>) {
     let (events_tx, mut events) = mpsc::unbounded_channel();
     let Ok(mut d) = Driver::new(settings, gen_.clone(), events_tx) else {
         // `ready` drops unsent: start fails with internal.
         return;
     };
     let _ = ready.send(());
-    // Cancellation drops this future, and `tun` with it: the duplicate fd is closed by the task
-    // that used it.
-    if let Err(e) = d.serve(&tun, &mut events).await {
+    // A stopped generation's tun is revoked; the error that follows is not a failure.
+    if let Err(e) = d.serve(&tun, &mut events).await
+        && !gen_.cancel.is_cancelled()
+    {
         log::error!(
             "generation {}: tun failed ({:?})",
             gen_.session.generation,
@@ -110,7 +105,7 @@ impl Driver {
 
     async fn serve(
         &mut self,
-        tun: &AsyncFd<OwnedFd>,
+        tun: &Tun,
         events: &mut mpsc::UnboundedReceiver<Event>,
     ) -> io::Result<()> {
         loop {
@@ -128,8 +123,14 @@ impl Driver {
                         self.on_event(ev, tun)?;
                     }
                 }
-                r = tun.readable(), if !blocked => self.read_tun(&mut r?)?,
-                r = tun.writable(), if blocked => self.retry_tx(&mut r?)?,
+                r = tun.ready(Interest::READABLE), if !blocked => {
+                    r?;
+                    self.read_tun(tun)?;
+                }
+                r = tun.ready(Interest::WRITABLE), if blocked => {
+                    r?;
+                    self.retry_tx(tun)?;
+                }
                 () = tokio::time::sleep_until(deadline.unwrap_or(far).into()), if deadline.is_some() => {}
             }
             self.settle(tun)?;
@@ -137,7 +138,7 @@ impl Driver {
     }
 
     /// Timers, new connections, stack events, output, and the counters `snapshot` reads.
-    fn settle(&mut self, tun: &AsyncFd<OwnedFd>) -> io::Result<()> {
+    fn settle(&mut self, tun: &Tun) -> io::Result<()> {
         let now = Instant::now();
         if self.stack.poll_timeout().is_some_and(|d| d <= now) {
             self.stack.handle_timeout(now);
@@ -162,26 +163,22 @@ impl Driver {
         Ok(())
     }
 
-    fn read_tun(&mut self, guard: &mut AsyncFdReadyGuard<'_, OwnedFd>) -> io::Result<()> {
+    fn read_tun(&mut self, tun: &Tun) -> io::Result<()> {
         let mut rx = std::mem::take(&mut self.rx);
-        let result = self.read_batch(guard, &mut rx);
+        let result = self.read_batch(tun, &mut rx);
         self.rx = rx;
         result
     }
 
-    fn read_batch(
-        &mut self,
-        guard: &mut AsyncFdReadyGuard<'_, OwnedFd>,
-        rx: &mut [u8],
-    ) -> io::Result<()> {
+    fn read_batch(&mut self, tun: &Tun, rx: &mut [u8]) -> io::Result<()> {
         let now = Instant::now();
         for _ in 0..TUN_BATCH {
-            let n = match guard.try_io(|fd| sys::read(fd.as_raw_fd(), rx)) {
-                Ok(Ok(0)) => return Err(ErrorKind::UnexpectedEof.into()),
-                Ok(Ok(n)) => n,
-                Ok(Err(e)) if e.kind() == ErrorKind::Interrupted => continue,
-                Ok(Err(e)) => return Err(e),
-                Err(_would_block) => break,
+            let n = match tun.read(rx) {
+                Ok(0) => return Err(ErrorKind::UnexpectedEof.into()),
+                Ok(n) => n,
+                Err(e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) if e.kind() == ErrorKind::WouldBlock => break,
+                Err(e) => return Err(e),
             };
             self.up += n as u64;
             match self.stack.receive(now, &rx[..n]) {
@@ -202,8 +199,8 @@ impl Driver {
     }
 
     /// Writes the packet in `tx[..len]`; a full tun keeps it for [`Driver::retry_tx`].
-    fn write_tun(&mut self, tun: &AsyncFd<OwnedFd>, len: usize) -> io::Result<()> {
-        match sys::write(tun.as_raw_fd(), &self.tx[..len]) {
+    fn write_tun(&mut self, tun: &Tun, len: usize) -> io::Result<()> {
+        match tun.write(&self.tx[..len]) {
             Ok(_) => self.down += len as u64,
             Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::Interrupted) => {
                 self.pending_tx = Some(len);
@@ -213,22 +210,22 @@ impl Driver {
         Ok(())
     }
 
-    fn retry_tx(&mut self, guard: &mut AsyncFdReadyGuard<'_, OwnedFd>) -> io::Result<()> {
+    fn retry_tx(&mut self, tun: &Tun) -> io::Result<()> {
         let Some(len) = self.pending_tx else {
             return Ok(());
         };
-        let tx = &self.tx[..len];
-        match guard.try_io(|fd| sys::write(fd.as_raw_fd(), tx)) {
-            Ok(Ok(_)) => self.down += len as u64,
-            Ok(Err(e)) if e.kind() == ErrorKind::Interrupted => return Ok(()),
-            Ok(Err(e)) => dropped_or_fatal(e)?,
-            Err(_would_block) => return Ok(()),
+        match tun.write(&self.tx[..len]) {
+            Ok(_) => self.down += len as u64,
+            Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::Interrupted) => {
+                return Ok(());
+            }
+            Err(e) => dropped_or_fatal(e)?,
         }
         self.pending_tx = None;
         Ok(())
     }
 
-    fn on_event(&mut self, ev: Event, tun: &AsyncFd<OwnedFd>) -> io::Result<()> {
+    fn on_event(&mut self, ev: Event, tun: &Tun) -> io::Result<()> {
         match ev {
             Event::Wake(Key::Tcp(id)) => self.service_tcp(id),
             Event::Wake(Key::Udp(n)) => return self.service_udp(n, tun),
@@ -364,7 +361,7 @@ impl Driver {
         }
     }
 
-    fn service_udp(&mut self, n: u64, tun: &AsyncFd<OwnedFd>) -> io::Result<()> {
+    fn service_udp(&mut self, n: u64, tun: &Tun) -> io::Result<()> {
         let Some(flow) = self.nat.flows.get_mut(&n) else {
             return Ok(());
         };
@@ -386,7 +383,7 @@ impl Driver {
         from: SocketAddr,
         to: SocketAddr,
         payload: &[u8],
-        tun: &AsyncFd<OwnedFd>,
+        tun: &Tun,
     ) -> io::Result<()> {
         if self.pending_tx.is_some() {
             return Ok(());

@@ -1,31 +1,31 @@
 //! One tunnel generation: the duplicate tun fd, the tasks that serve it, and the [`Session`] that
 //! `snapshot` reads. Every task of a generation is spawned on its [`TaskTracker`] and stops at its
 //! [`CancellationToken`]; a task that panics, or a driver that fails, marks the session failed
-//! and cancels the rest.
+//! and cancels the rest. Stopping a generation closes its tun at once (see `tun.rs`), so only
+//! tasks without tun access are ever left running.
 
 mod driver;
 mod flow;
 pub mod route;
 mod tcp;
+mod tun;
 mod udp;
 
 use crate::dto::{ErrorCode, Traffic};
-use crate::sys;
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use route::ModeCell;
 use std::future::Future;
 use std::net::{Ipv4Addr, SocketAddr};
-use std::os::fd::{AsRawFd, OwnedFd};
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering::Relaxed};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use tokio::io::unix::AsyncFd;
 use tokio::runtime::Handle;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
+pub(crate) use tun::Tun;
 
 /// `stop` returns within 1 s; the rest is left for the locks around it.
 const STOP_WAIT: Duration = Duration::from_millis(900);
@@ -43,7 +43,7 @@ pub struct Settings {
 }
 
 /// The tun as the driver holds it.
-pub(crate) type TunHandle = AsyncFd<OwnedFd>;
+pub(crate) type TunHandle = Arc<Tun>;
 
 /// What serves a generation's tun: the netstack driver, or a stand-in in unit tests. It sends on
 /// `ready` once it serves the tun.
@@ -147,27 +147,21 @@ impl Gen {
 
 pub struct Tunnel {
     gen_: Gen,
+    tun: Arc<Tun>,
 }
 
 impl Tunnel {
-    /// Takes ownership of `tun` and returns once `launch` serves it, at most `bound` later.
-    /// `abort` (a `stop` arriving meanwhile) ends the wait with `busy`. On any failure the
-    /// generation is stopped, which closes `tun`.
+    /// Serves `tun` and returns once `launch` does, at most `bound` later. `abort` (a `stop`
+    /// arriving meanwhile) ends the wait with `busy`. On any failure the generation is stopped,
+    /// which closes `tun`.
     pub(crate) fn start(
         rt: &Handle,
-        tun: OwnedFd,
+        tun: Arc<Tun>,
         settings: Settings,
         generation: i64,
         (launch, bound): (Launch, Duration),
         abort: &CancellationToken,
     ) -> Result<Tunnel, ErrorCode> {
-        sys::set_nonblocking(tun.as_raw_fd()).map_err(|_| ErrorCode::Internal)?;
-        let tun = {
-            let _rt = rt.enter();
-            // SAFETY: an OwnedFd is open, and it returns the same descriptor until it is
-            // dropped, which only the AsyncFd can do now.
-            unsafe { AsyncFd::register(tun) }.map_err(|_| ErrorCode::Internal)?
-        };
         let tunnel = Tunnel {
             gen_: Gen {
                 session: Arc::new(Session::new(generation)),
@@ -175,6 +169,7 @@ impl Tunnel {
                 tracker: TaskTracker::new(),
                 runtime: rt.clone(),
             },
+            tun: Arc::clone(&tun),
         };
         let (ready_tx, ready_rx) = oneshot::channel();
         let gen_ = tunnel.gen_.clone();
@@ -199,14 +194,15 @@ impl Tunnel {
         &self.gen_.session
     }
 
-    /// Cancels the generation and waits up to [`STOP_WAIT`] for its tasks. A task still running
-    /// then is left to finish on its own: each owns what it touches (the driver owns the tun fd,
-    /// a flow its socket), so none can reach a descriptor number reused later.
+    /// Cancels the generation, closes its tun, and waits up to [`STOP_WAIT`] for its tasks. A
+    /// task still running then is left to finish on its own: the tun is closed already, and a
+    /// flow owns its socket, so none can reach a descriptor number reused later.
     pub fn stop(self, rt: &Handle) {
         let begun = Instant::now();
         let g = &self.gen_;
         g.cancel.cancel();
         g.tracker.close();
+        self.tun.revoke();
         // The timer must be created inside block_on, where the runtime's context is set.
         let done = rt
             .block_on(async { tokio::time::timeout(STOP_WAIT, g.tracker.wait()).await })

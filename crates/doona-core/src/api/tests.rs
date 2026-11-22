@@ -15,8 +15,25 @@ use tokio::sync::oneshot;
 
 const CONFIG: &str =
     r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":["192.168.8.1"]}"#;
+/// How long a stuck driver blocks its worker thread.
+const STUCK: Duration = Duration::from_millis(1500);
 /// What a returning call may take beyond its bound.
 const SLACK: Duration = Duration::from_millis(250);
+
+/// Ready at once, then blocks its worker without yielding, as a driver caught in a long
+/// operation would.
+fn stuck(
+    tun: TunHandle,
+    _: Settings,
+    _: Gen,
+    ready: oneshot::Sender<()>,
+) -> BoxFuture<'static, ()> {
+    Box::pin(async move {
+        let _held = tun;
+        let _ = ready.send(());
+        std::thread::sleep(STUCK);
+    })
+}
 
 /// Ready after a second, then idle.
 fn slow(tun: TunHandle, _: Settings, _: Gen, ready: oneshot::Sender<()>) -> BoxFuture<'static, ()> {
@@ -102,4 +119,17 @@ fn stop_during_a_start_makes_it_busy_and_closes_its_tun() {
     let (result, took) = starter.join().unwrap();
     assert_eq!(result, Err(ErrorCode::Busy));
     assert!(took < Duration::from_secs(1) + SLACK, "{took:?}");
+}
+
+#[test]
+fn stop_closes_the_tun_while_the_driver_is_stuck() {
+    let dir = TempDir::new("api-stuck-stop");
+    let core = core(&dir, stuck, Duration::from_secs(10));
+    let (dup, probe) = tun();
+    core.start(dup, CONFIG).unwrap();
+    let begun = Instant::now();
+    core.stop();
+    let took = begun.elapsed();
+    assert!(closed(&probe), "stop returned with the tun open");
+    assert!(took < Duration::from_secs(1), "{took:?}");
 }

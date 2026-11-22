@@ -7,7 +7,7 @@ use crate::dto::{
 };
 use crate::state::{Loaded, State, Store};
 use crate::tunnel::route::ModeCell;
-use crate::tunnel::{self, Launch, Session, Settings, Tunnel};
+use crate::tunnel::{self, Launch, Session, Settings, Tun, Tunnel};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::net::SocketAddr;
@@ -150,8 +150,9 @@ impl Core {
             *lock(&self.session) = None;
             old.stop(self.runtime.handle());
         }
-        let generation = self.generation.fetch_add(1, Relaxed) + 1;
         let rt = self.runtime.handle();
+        let generation = self.generation.fetch_add(1, Relaxed) + 1;
+        let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
         let tunnel = Tunnel::start(rt, tun, settings, generation, self.launch, abort)?;
         *lock(&self.session) = Some(Arc::clone(tunnel.session()));
         *slot = Some(tunnel);
