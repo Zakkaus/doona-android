@@ -34,8 +34,16 @@ tools/fonts.py <doona checkout> app/src/main`. A character the font lacks falls 
 module from a pinned commit of google/material-design-icons; `--work` is a new directory outside the repository, on
 the desktop one under `/scratch/ssd`. The app names an icon only by a static `dev.doona.android.icons.R.drawable.sym_*`
 field, so the release build's resource shrinker keeps the ones the code uses and strips the rest;
-`tools/check-layers.sh` fails on `getIdentifier(` anywhere, which would keep them all. `NOTICE` and `icons/NOTICE`
-list the licence.
+`tools/check-layers.sh` fails on `getIdentifier(` anywhere, which would keep them all. `NOTICE` and the modules'
+`NOTICE` files list the licences.
+
+`:flags` holds the complete circle-flags set (MIT): every flag of upstream's `flags/*.svg` as a vector drawable
+`flag_<code>` (a `-` in the code written `_`), and `flagResource(code)`, the generated `when` from a code (any case, with
+upstream's links such as `uk` and `un`) to its drawable, or null. A flag is chosen by code at run time, so a release
+build keeps all of them once the table is reachable. `tools/gen_flags.py` regenerates it from a pinned commit of
+HatScripts/circle-flags with its own SVG converter, which accepts only the shapes upstream uses; language flags and the
+non-geographic ones in `flags/other` are not included. `:flags:testDebugUnitTest` checks that the table reaches every
+drawable.
 
 ## Components: which one to use
 
