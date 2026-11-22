@@ -64,6 +64,8 @@ struct Driver {
     gen_: Gen,
     events: Events,
     tcp: HashMap<FlowId, TcpFlow>,
+    /// How many of `tcp` the core's DNS serves.
+    dns_flows: usize,
     nat: Nat,
     dns_slots: Arc<Semaphore>,
     /// Tun input, stack output, and the buffer flows are read into.
@@ -94,6 +96,7 @@ impl Driver {
             gen_,
             events,
             tcp: HashMap::new(),
+            dns_flows: 0,
             nat: Nat::new(Budget::new(udp::QUEUED_BYTES)),
             dns_slots: Arc::new(Semaphore::new(DNS_IN_FLIGHT)),
             rx: vec![0; mtu.max(1500) + 64],
@@ -160,7 +163,9 @@ impl Driver {
             };
             self.write_tun(tun, len)?;
         }
-        let active = u32::try_from(self.tcp.len() + self.nat.len()).unwrap_or(u32::MAX);
+        // DNS the core answers is not an app's flow, on either transport.
+        let flows = self.tcp.len() - self.dns_flows + self.nat.len();
+        let active = u32::try_from(flows).unwrap_or(u32::MAX);
         self.gen_.session.publish(self.up, self.down, active);
         Ok(())
     }
@@ -297,6 +302,7 @@ impl Driver {
         let (ends, io) = flow::pair(Arc::clone(&waker));
         let flow = TcpFlow::new(ends, waker, dst.is_none());
         let (events, cancel) = (self.events.clone(), flow.cancel.clone());
+        self.dns_flows += usize::from(flow.dns);
         self.tcp.insert(id, flow);
         match dst {
             Some(dst) => self
@@ -321,9 +327,15 @@ impl Driver {
         }
     }
 
+    fn remove_tcp(&mut self, id: FlowId) -> Option<TcpFlow> {
+        let flow = self.tcp.remove(&id)?;
+        self.dns_flows -= usize::from(flow.dns);
+        Some(flow)
+    }
+
     /// Releases a flow whose directions are done, or whose stack side failed.
     fn end_tcp(&mut self, id: FlowId, step: Step) {
-        if let Some(flow) = self.tcp.remove(&id) {
+        if let Some(flow) = self.remove_tcp(id) {
             if matches!(step, Step::Failed) {
                 flow.cancel.cancel();
             }
@@ -333,7 +345,7 @@ impl Driver {
 
     /// The upstream failed: reset the client, or refuse its SYN if it was never answered.
     fn reset_tcp(&mut self, id: FlowId) {
-        if let Some(flow) = self.tcp.remove(&id) {
+        if let Some(flow) = self.remove_tcp(id) {
             if flow.connected {
                 self.stack.tcp_abort(id);
             } else {

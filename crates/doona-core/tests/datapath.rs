@@ -229,3 +229,24 @@ fn an_upstream_fin_before_the_handshake_ends_still_lets_the_client_send() {
     }));
     assert_eq!(got.unwrap(), b"late");
 }
+
+#[test]
+fn dns_sessions_are_not_active_flows() {
+    let (resolver, _) = servers::dns_server();
+    let mut s = setup("Direct", vec![resolver]);
+    let id = s.client.connect(RESOLVER);
+    let q = servers::query(1, "a.example", None);
+    let mut framed = (q.len() as u16).to_be_bytes().to_vec();
+    framed.extend_from_slice(&q);
+    assert!(
+        s.client
+            .until(WAIT, |c| c.write_now(id, &framed) == framed.len())
+    );
+    let mut reply = Vec::new();
+    assert!(s.client.until(WAIT, |c| {
+        reply.extend(c.read_now(id).unwrap_or_default());
+        reply.len() > 2 && reply.len() == 2 + usize::from(u16::from_be_bytes([reply[0], reply[1]]))
+    }));
+    // The session stays open: the client has not closed it.
+    assert_eq!(snapshot(&s.core).traffic.active_flows, 0);
+}

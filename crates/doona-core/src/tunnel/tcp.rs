@@ -29,6 +29,8 @@ pub(crate) struct TcpFlow {
     pub connected: bool,
     /// The task ended cleanly: it read the client's FIN and closed its side of `down`.
     pub finished: bool,
+    /// Served by the core's DNS, not an app's connection: not counted in `activeFlows`.
+    pub dns: bool,
 }
 
 pub(crate) enum Step {
@@ -40,7 +42,9 @@ pub(crate) enum Step {
 }
 
 impl TcpFlow {
-    pub fn new(ends: Ends, waker: Arc<Waker>, connected: bool) -> TcpFlow {
+    /// A flow whose task dials out, or with `dns` one the core's DNS serves; the DNS flow's
+    /// SYN is answered at once.
+    pub fn new(ends: Ends, waker: Arc<Waker>, dns: bool) -> TcpFlow {
         TcpFlow {
             ends,
             waker,
@@ -49,8 +53,9 @@ impl TcpFlow {
             up_eof: false,
             down_pending: None,
             down_shut: false,
-            connected,
+            connected: dns,
             finished: false,
+            dns,
         }
     }
 
