@@ -1,14 +1,18 @@
 package dev.doona.android.feature.subscriptions
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -33,10 +37,14 @@ class SubscriptionsViewModelTest {
 
     private val now = 1_000_000L
 
+    /** The holder every page shares, in a scope of its own: it outlives the view models. */
+    private fun TestScope.imports(engine: Engine) = SubscriptionImports(engine, CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler)))
+
     /** `WhileSubscribed` only follows the engine while someone collects, as the screen does. */
-    private fun TestScope.collected(engine: Engine) = SubscriptionsViewModel(engine) { now }.also { vm ->
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-    }
+    private fun TestScope.collected(engine: Engine, imports: SubscriptionImports = imports(engine)) =
+        SubscriptionsViewModel(engine, imports) { now }.also { vm ->
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        }
 
     private fun sub(id: String, error: String? = null, expiresAt: Long? = null) =
         Subscription(id, "name-$id", "https://example.invalid/$id", nodes = 3, updatedAtEpochMs = 0, error = error, expiresAtEpochMs = expiresAt)
@@ -46,6 +54,22 @@ class SubscriptionsViewModelTest {
     private fun SubscriptionsViewModel.type(url: String, name: String = "") {
         fields.url.setTextAndPlaceCursorAtEnd(url)
         fields.name.setTextAndPlaceCursorAtEnd(name)
+    }
+
+    /** An engine that logs the updates and removals it is asked for, and answers them like [FakeEngine]. */
+    private class Recording(val base: FakeEngine = FakeEngine()) : Engine by base {
+        val updated = mutableListOf<String>()
+        val removed = mutableListOf<String>()
+
+        override suspend fun updateSubscription(id: String): Result<Subscription> {
+            updated += id
+            return base.updateSubscription(id)
+        }
+
+        override suspend fun removeSubscription(id: String): Result<Unit> {
+            removed += id
+            return base.removeSubscription(id)
+        }
     }
 
     @Test
@@ -67,17 +91,23 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
-    fun `update shows its busy state until the engine answers`() = runTest {
+    fun `update shows its busy state until the engine answers, and asks for it once`() = runTest {
         val answer = CompletableDeferred<Result<Subscription>>()
-        val engine = object : Engine by FakeEngine() {
-            override suspend fun updateSubscription(id: String) = answer.await()
+        val recording = Recording()
+        val engine = object : Engine by recording {
+            override suspend fun updateSubscription(id: String): Result<Subscription> {
+                recording.updated += id
+                return answer.await()
+            }
         }
         val vm = collected(engine)
         vm.onAction(SubscriptionsAction.Update("s1"))
         assertTrue(vm.uiState.value.items.single().updating)
         vm.onAction(SubscriptionsAction.Update("s1"))
+        assertEquals(listOf("s1"), recording.updated)
         answer.complete(Result.success(sub("s1")))
         assertFalse(vm.uiState.value.items.single().updating)
+        assertEquals(listOf("s1"), recording.updated)
         assertNull(vm.uiState.value.error)
     }
 
@@ -103,16 +133,17 @@ class SubscriptionsViewModelTest {
 
     @Test
     fun `remove asks first and only the confirmation removes`() = runTest {
-        val engine = FakeEngine(subscriptions = listOf(sub("a"), sub("b")))
+        val engine = Recording(FakeEngine(subscriptions = listOf(sub("a"), sub("b"))))
         val vm = collected(engine)
         vm.onAction(SubscriptionsAction.AskRemove("a"))
         assertEquals("a", vm.uiState.value.removing?.id)
-        assertEquals(2, engine.subscriptions.value.size)
+        assertEquals(emptyList<String>(), engine.removed)
         vm.onAction(SubscriptionsAction.CancelRemove)
         assertNull(vm.uiState.value.removing)
-        assertEquals(2, engine.subscriptions.value.size)
+        assertEquals(emptyList<String>(), engine.removed)
         vm.onAction(SubscriptionsAction.AskRemove("a"))
         vm.onAction(SubscriptionsAction.ConfirmRemove)
+        assertEquals(listOf("a"), engine.removed)
         assertNull(vm.uiState.value.removing)
         assertEquals(listOf("b"), vm.uiState.value.items.map { it.subscription.id })
         assertNull(vm.uiState.value.error)
@@ -133,9 +164,10 @@ class SubscriptionsViewModelTest {
 
     @Test
     fun `confirming with nothing asked removes nothing`() = runTest {
-        val engine = FakeEngine()
+        val engine = Recording()
         collected(engine).onAction(SubscriptionsAction.ConfirmRemove)
-        assertEquals(1, engine.subscriptions.value.size)
+        assertEquals(emptyList<String>(), engine.removed)
+        assertEquals(1, engine.base.subscriptions.value.size)
     }
 
     @Test
@@ -240,5 +272,104 @@ class SubscriptionsViewModelTest {
         assertEquals("mine", vm.fields.name.text.toString())
         vm.onAction(SubscriptionsAction.DismissFormError)
         assertNull(vm.uiState.value.form.error)
+    }
+
+    /** A page left and entered again is a new view model over the same holder, collected while it is shown. */
+    private fun TestScope.page(store: ViewModelStore, engine: Engine, imports: SubscriptionImports) =
+        ViewModelProvider(store, SubscriptionsViewModel.factory(engine, imports))[SubscriptionsViewModel::class.java].also { vm ->
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        }
+
+    private class SlowAdd(val base: FakeEngine = FakeEngine(subscriptions = emptyList())) : Engine by base {
+        var calls = 0
+        var answer = CompletableDeferred<Result<Subscription>>()
+
+        override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+            calls++
+            val result = answer.await()
+            if (result.isSuccess) base.addSubscription(url, name)
+            return result
+        }
+    }
+
+    @Test
+    fun `an import left running blocks a second one from the page entered again, and commits once`() = runTest {
+        val engine = SlowAdd()
+        val imports = imports(engine)
+        val first = ViewModelStore()
+        val before = page(first, engine, imports)
+        before.onAction(SubscriptionsAction.OpenForm)
+        before.type("https://example.invalid/x")
+        before.onAction(SubscriptionsAction.Add)
+        first.clear()
+
+        val second = ViewModelStore()
+        val after = page(second, engine, imports)
+        assertTrue("the form comes back with the import still running", after.uiState.value.adding)
+        assertTrue(after.uiState.value.form.busy)
+        after.type("https://example.invalid/x")
+        after.onAction(SubscriptionsAction.Add)
+        assertEquals(1, engine.calls)
+
+        engine.answer.complete(Result.success(sub("s1")))
+        assertEquals(1, engine.base.subscriptions.value.size)
+        assertFalse(after.uiState.value.form.busy)
+        assertFalse("the form closes when the import ends", after.uiState.value.adding)
+        assertEquals("", after.fields.url.text.toString())
+        second.clear()
+    }
+
+    @Test
+    fun `an import that failed while the page was left shows its error when the page is entered again`() = runTest {
+        val engine = SlowAdd()
+        val imports = imports(engine)
+        val first = ViewModelStore()
+        val before = page(first, engine, imports)
+        before.type("https://example.invalid/x")
+        before.onAction(SubscriptionsAction.Add)
+        first.clear()
+        engine.answer.complete(Result.failure(engineException(ErrorCode.FetchFailed)))
+
+        val second = ViewModelStore()
+        val after = page(second, engine, imports)
+        assertEquals(ErrorCode.FetchFailed, after.uiState.value.form.error)
+        assertTrue(after.uiState.value.adding)
+        after.onAction(SubscriptionsAction.DismissFormError)
+        assertNull(after.uiState.value.form.error)
+        second.clear()
+    }
+
+    @Test
+    fun `an import error with the form closed is shown on the page, and dismissing it clears the holder`() = runTest {
+        val engine = SlowAdd()
+        val imports = imports(engine)
+        val vm = collected(engine, imports)
+        vm.type("https://example.invalid/x")
+        vm.onAction(SubscriptionsAction.Add)
+        engine.answer.complete(Result.failure(engineException(ErrorCode.ParseFailed)))
+        vm.onAction(SubscriptionsAction.CloseForm)
+        assertEquals(ErrorCode.ParseFailed, vm.uiState.value.error)
+        vm.onAction(SubscriptionsAction.DismissError)
+        assertNull(vm.uiState.value.error)
+        assertNull(imports.state.value.error)
+    }
+
+    @Test
+    fun `an import that succeeded while the page was left leaves the page entered again plain`() = runTest {
+        val engine = SlowAdd()
+        val imports = imports(engine)
+        val first = ViewModelStore()
+        val before = page(first, engine, imports)
+        before.type("https://example.invalid/x")
+        before.onAction(SubscriptionsAction.Add)
+        first.clear()
+        engine.answer.complete(Result.success(sub("s1")))
+
+        val second = ViewModelStore()
+        val after = page(second, engine, imports)
+        assertFalse(after.uiState.value.adding)
+        assertEquals(AddFormState(), after.uiState.value.form)
+        assertEquals(1, engine.base.subscriptions.value.size)
+        second.clear()
     }
 }

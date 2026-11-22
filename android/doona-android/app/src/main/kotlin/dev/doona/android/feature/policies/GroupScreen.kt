@@ -1,6 +1,7 @@
 package dev.doona.android.feature.policies
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import dev.doona.android.designsystem.components.DoonaHGap
 import dev.doona.android.designsystem.components.DoonaNodeTile
 import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaPageTitle
+import dev.doona.android.designsystem.components.DoonaProgress
 import dev.doona.android.designsystem.components.DoonaTagChip
 import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.theme.DoonaTheme
@@ -42,6 +44,15 @@ fun GroupRoute(engine: Engine, groupId: String, onBack: () -> Unit, onOpenGroup:
     when {
         detail != null -> GroupScreen(detail, state.error, viewModel::onAction, onOpenGroup, onBack)
         state.ready -> LaunchedEffect(Unit) { onBack() }
+        else -> GroupLoading(onBack)
+    }
+}
+
+/** The page's frame over progress: the engine has not loaded, so the group is not known to exist yet. */
+@Composable
+private fun GroupLoading(onBack: () -> Unit) {
+    DoonaPage(onBack = onBack) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { DoonaProgress() }
     }
 }
 

@@ -2,6 +2,7 @@ package dev.doona.android.vpn
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
@@ -102,10 +103,32 @@ class TunnelControllerTest {
     fun startFailureIsReportedOnceAndClosesTheTun() {
         core.startError = IllegalStateException("internal")
         start()
-        assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
+        assertEquals(Status.Failed(FailureReason.StartFailed, ErrorCode.Internal), awaitStatus { it is Status.Failed })
         assertEquals(listOf("start"), core.events)
         assertTrue(host.tuns.single().closed)
         assertFalse(seen.any { it is Status.Running })
+    }
+
+    @Test
+    fun theCoresOwnErrorCodeSurvivesTheStartFailure() {
+        core.startError = IllegalStateException("no_nodes")
+        start()
+        assertEquals(Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes), awaitStatus { it is Status.Failed })
+        assertTrue(host.tuns.single().closed)
+    }
+
+    @Test
+    fun aCodeFromANewerCoreIsInternal() {
+        core.startError = IllegalStateException("from_the_future")
+        start()
+        assertEquals(Status.Failed(FailureReason.StartFailed, ErrorCode.Internal), awaitStatus { it is Status.Failed })
+    }
+
+    @Test
+    fun anExceptionThatIsNotACoreCodeCarriesNone() {
+        core.startError = IOException("socket")
+        start()
+        assertEquals(Status.Failed(FailureReason.StartFailed), awaitStatus { it is Status.Failed })
     }
 
     @Test

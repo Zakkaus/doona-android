@@ -12,6 +12,11 @@ class SubscriptionUrlTest {
     }
 
     @Test
+    fun `a name with characters beyond ASCII is left to the core`() {
+        listOf("https://bücher.example/sub", "https://例え.jp/a?t=1", "http://xn--bcher-kva.example/").forEach { assertNull(it, urlProblem(it)) }
+    }
+
+    @Test
     fun `a pasted trailing space or newline is ignored`() {
         assertNull(urlProblem("  https://example.invalid/sub\n"))
     }

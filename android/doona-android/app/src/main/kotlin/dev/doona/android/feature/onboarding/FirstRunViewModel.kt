@@ -8,13 +8,14 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.subscriptions.AddFormFields
 import dev.doona.android.feature.subscriptions.SubscriptionAdder
+import dev.doona.android.feature.subscriptions.SubscriptionImports
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-class FirstRunViewModel(private val engine: Engine) : ViewModel() {
-    private val adder = SubscriptionAdder(engine, viewModelScope)
+class FirstRunViewModel(private val engine: Engine, imports: SubscriptionImports) : ViewModel() {
+    private val adder = SubscriptionAdder(imports, viewModelScope)
 
     /** The add form's text, which the route hands the screen. */
     val fields: AddFormFields get() = adder.fields
@@ -33,11 +34,11 @@ class FirstRunViewModel(private val engine: Engine) : ViewModel() {
     }
 
     /** The engine's flows are StateFlows, so the first frame already shows real values. */
-    private fun current() = firstRunUiState(engine.ready.value, engine.subscriptions.value.size, engine.status.value, adder.state.value)
+    private fun current() = firstRunUiState(engine.ready.value, engine.subscriptions.value.size, engine.status.value, adder.snapshot())
 
     companion object {
-        fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {
-            initializer { FirstRunViewModel(engine) }
+        fun factory(engine: Engine, imports: SubscriptionImports): ViewModelProvider.Factory = viewModelFactory {
+            initializer { FirstRunViewModel(engine, imports) }
         }
     }
 }

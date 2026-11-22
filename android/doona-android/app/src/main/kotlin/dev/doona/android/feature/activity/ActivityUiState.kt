@@ -8,6 +8,7 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Traffic
+import dev.doona.android.feature.leafOf
 
 /** Everything the 活動 screen shows, in engine terms; the screen formats and localizes it. */
 @Immutable
@@ -56,12 +57,6 @@ fun activityUiState(status: Status, traffic: Traffic, settings: Settings, groups
 }
 
 private fun currentNode(start: Group, groups: List<Group>): Member? {
-    val byId = groups.associateBy { it.id }
-    var group = start
-    // Bounded by the number of groups, so a cycle in a broken template cannot hang the screen.
-    repeat(groups.size) {
-        val member = group.members.firstOrNull { it.id == group.selectedId } ?: return null
-        group = if (member.isGroup) byId[member.id] ?: return null else return member
-    }
-    return null
+    val selected = start.members.firstOrNull { it.id == start.selectedId } ?: return null
+    return leafOf(selected, groups.associateBy { it.id })
 }

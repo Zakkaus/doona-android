@@ -27,8 +27,8 @@ import dev.doona.android.feature.messageRes
 
 /** The 訂閱 entry: builds the ViewModel and collects its state while the page is started. */
 @Composable
-fun SubscriptionsRoute(engine: Engine, onBack: () -> Unit) {
-    val viewModel: SubscriptionsViewModel = viewModel(factory = SubscriptionsViewModel.factory(engine))
+fun SubscriptionsRoute(engine: Engine, imports: SubscriptionImports, onBack: () -> Unit) {
+    val viewModel: SubscriptionsViewModel = viewModel(factory = SubscriptionsViewModel.factory(engine, imports))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SubscriptionsScreen(state, viewModel.fields, viewModel::onAction, onBack)
 }

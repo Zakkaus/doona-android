@@ -81,5 +81,6 @@ fun subscriptionsUiState(
     adding = local.adding,
     form = form,
     removing = subscriptions.firstOrNull { it.id == local.removingId },
-    error = local.error,
+    // An import that failed while the form was closed has no form to show it.
+    error = local.error ?: form.error.takeUnless { local.adding },
 )

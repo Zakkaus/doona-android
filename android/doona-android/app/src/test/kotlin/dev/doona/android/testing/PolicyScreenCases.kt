@@ -34,7 +34,8 @@ import dev.doona.android.feature.subscriptions.sampleSubscriptionsState
 internal fun policyScreenCases(): List<ScreenCase> {
     val engine = sampleEngine()
     val noSubscriptions = FakeEngine(subscriptions = emptyList())
-    val noSubscriptionsFailed = FakeEngine(subscriptions = emptyList(), status = Status.Failed(FailureReason.StartFailed))
+    val noSubscriptionsFailed = FakeEngine(subscriptions = emptyList(), status = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes))
+    val noSubscriptionsStopped = FakeEngine(subscriptions = emptyList(), status = Status.Failed(FailureReason.CoreStopped))
     val loading = FakeEngine().apply { ready.value = false }
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
@@ -79,6 +80,9 @@ internal fun policyScreenCases(): List<ScreenCase> {
         ScreenCase("first-run", PageLayout(firstRun, listOf(space.section, space.section))) { DoonaApp(noSubscriptions, onConnect = {}, listOf(ActivityKey)) },
         ScreenCase("first-run-hint", PageLayout(firstRun, listOf(space.section, space.section))) {
             DoonaApp(noSubscriptionsFailed, onConnect = {}, listOf(ActivityKey))
+        },
+        ScreenCase("first-run-failed", PageLayout(firstRun, listOf(space.section, space.section))) {
+            DoonaApp(noSubscriptionsStopped, onConnect = {}, listOf(ActivityKey))
         },
         ScreenCase("activity-loading", PageLayout(bars, listOf(space.section))) { DoonaApp(loading, onConnect = {}, listOf(ActivityKey)) },
     )

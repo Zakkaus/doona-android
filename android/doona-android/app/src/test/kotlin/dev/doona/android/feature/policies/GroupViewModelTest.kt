@@ -7,6 +7,7 @@ import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.fake.FakeEngine
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -183,5 +184,63 @@ class GroupViewModelTest {
         assertFalse(vm.uiState.value.detail!!.group.testing)
         engine.groups.value = engine.groups.value.map { it.copy(testing = it.id == "g-Auto") }
         assertTrue(vm.uiState.value.detail!!.group.testing)
+    }
+
+    /** An engine whose first select waits for [gate]; every call is logged as start and end. */
+    private class SlowFirstSelect(val gate: CompletableDeferred<Unit>, val base: FakeEngine = FakeEngine()) : Engine by base {
+        val log = mutableListOf<String>()
+        private var calls = 0
+
+        override suspend fun select(groupId: String, memberId: String?): Result<Unit> {
+            log += "start $memberId"
+            if (calls++ == 0) gate.await()
+            return base.select(groupId, memberId).also { log += "end $memberId" }
+        }
+
+        override suspend fun testLatency(groupId: String?): Result<Unit> {
+            log += "test $groupId"
+            return Result.success(Unit)
+        }
+    }
+
+    @Test
+    fun `taps reach the engine in order, each after the one before has answered`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val engine = SlowFirstSelect(gate)
+        val vm = collected(engine, "g-Proxy")
+        vm.onAction(GroupAction.Select("n-hk1"))
+        vm.onAction(GroupAction.Select("n-us1"))
+        assertEquals(listOf("start n-hk1"), engine.log)
+        gate.complete(Unit)
+        assertEquals(listOf("start n-hk1", "end n-hk1", "start n-us1", "end n-us1"), engine.log)
+        assertEquals("n-us1", vm.uiState.value.detail!!.group.selectedId)
+    }
+
+    @Test
+    fun `a select, a return to automatic and a test run in tap order`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val engine = SlowFirstSelect(gate)
+        val vm = collected(engine, "g-Auto")
+        vm.onAction(GroupAction.Select("n-jp1"))
+        vm.onAction(GroupAction.ReturnToAutomatic)
+        vm.onAction(GroupAction.Test)
+        gate.complete(Unit)
+        assertEquals(listOf("start n-jp1", "end n-jp1", "start null", "end null", "test g-Auto"), engine.log)
+        assertFalse(vm.uiState.value.detail!!.group.pinned)
+    }
+
+    @Test
+    fun `a failed tap does not stop the taps behind it`() = runTest {
+        var calls = 0
+        val fake = FakeEngine()
+        val engine = object : Engine by fake {
+            override suspend fun select(groupId: String, memberId: String?): Result<Unit> =
+                if (calls++ == 0) failure(ErrorCode.Busy) else fake.select(groupId, memberId)
+        }
+        val vm = collected(engine, "g-Proxy")
+        vm.onAction(GroupAction.Select("n-hk1"))
+        vm.onAction(GroupAction.Select("n-us1"))
+        assertEquals("n-us1", vm.uiState.value.detail!!.group.selectedId)
+        assertNull(vm.uiState.value.error)
     }
 }

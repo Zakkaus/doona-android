@@ -3,13 +3,11 @@ package dev.doona.android.feature.subscriptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.Immutable
-import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.feature.errorCode
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** The two fields of the add form. A view model holds them so what was typed survives a rotation. */
@@ -17,48 +15,52 @@ class AddFormFields(val url: TextFieldState = TextFieldState(), val name: TextFi
 
 /**
  * What the add form shows besides its fields. [attempted] turns the URL's validation on, so an untouched form is not
- * accused of an empty URL; [busy] is the time between the tap and the engine's answer; [error] is that answer when it
- * failed.
+ * accused of an empty URL; [busy] is an import running, wherever it was started; [error] is how the last one failed.
  */
 @Immutable
 data class AddFormState(val attempted: Boolean = false, val busy: Boolean = false, val error: ErrorCode? = null)
 
 /**
- * The logic behind the add form, shared by the subscriptions page and the first-run page: validate, add, and keep the
- * fields when the add fails so the user can correct them. It is not a ViewModel; the owner's ViewModel hands it its scope.
+ * The logic behind the add form, shared by the subscriptions page and the first-run page: validate, hand the import to
+ * [imports], and keep the fields when it fails so the user can correct them. The import and its outcome are the
+ * holder's, so they outlast this screen; the adder only follows them. [onImported] runs when an import succeeds, one
+ * that was started by an earlier visit included. It is not a ViewModel; the owner's ViewModel hands it its scope.
  */
-class SubscriptionAdder(private val engine: Engine, private val scope: CoroutineScope) {
+class SubscriptionAdder(private val imports: SubscriptionImports, scope: CoroutineScope, private val onImported: () -> Unit = {}) {
     val fields = AddFormFields()
-    private val form = MutableStateFlow(AddFormState())
-    val state: StateFlow<AddFormState> = form
+    private val attempted = MutableStateFlow(false)
+    val state: Flow<AddFormState> = combine(attempted, imports.state) { attempted, import -> AddFormState(attempted, import.busy, import.error) }
 
-    /** Adds the subscription the fields describe; [onAdded] runs once the engine has taken it. */
-    fun submit(onAdded: () -> Unit = {}) {
-        if (form.value.busy) return
-        val address = fields.url.text.toString().trim()
-        if (urlProblem(address) != null) {
-            form.value = AddFormState(attempted = true)
-            return
-        }
-        form.value = AddFormState(attempted = true, busy = true)
-        val name = fields.name.text.toString().trim().ifEmpty { null }
+    init {
+        var handled = imports.state.value.imported
         scope.launch {
-            engine.addSubscription(address, name).fold(
-                onSuccess = {
+            imports.state.collect {
+                if (it.imported != handled) {
+                    handled = it.imported
                     reset()
-                    onAdded()
-                },
-                onFailure = { e -> form.update { it.copy(busy = false, error = e.errorCode()) } },
-            )
+                    onImported()
+                }
+            }
         }
     }
 
-    fun dismissError() = form.update { it.copy(error = null) }
+    /** [state] as it is now, for a view model's first frame. */
+    fun snapshot() = AddFormState(attempted.value, imports.state.value.busy, imports.state.value.error)
 
-    /** Empties the form, as after a successful add or when the user closes it. */
+    /** Imports the subscription the fields describe, or marks the URL as attempted when it is not one. While an import runs this does nothing. */
+    fun submit() {
+        val address = fields.url.text.toString().trim()
+        attempted.value = true
+        imports.dismissError()
+        if (urlProblem(address) == null) imports.start(address, fields.name.text.toString().trim().ifEmpty { null })
+    }
+
+    fun dismissError() = imports.dismissError()
+
+    /** Empties the form, as after a successful import or when the user closes it. */
     fun reset() {
         fields.url.clearText()
         fields.name.clearText()
-        form.value = AddFormState()
+        attempted.value = false
     }
 }

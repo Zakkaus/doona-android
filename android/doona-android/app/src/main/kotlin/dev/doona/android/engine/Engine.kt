@@ -57,7 +57,8 @@ sealed interface Status {
 
     data object Stopping : Status
 
-    data class Failed(val reason: FailureReason) : Status
+    /** [code] is the core's own answer when it refused the start, such as [ErrorCode.NoNodes]; null for any other failure. */
+    data class Failed(val reason: FailureReason, val code: ErrorCode? = null) : Status
 }
 
 enum class FailureReason {

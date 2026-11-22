@@ -17,10 +17,12 @@ import kotlinx.coroutines.launch
 
 class SubscriptionsViewModel(
     private val engine: Engine,
+    imports: SubscriptionImports,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
-    private val adder = SubscriptionAdder(engine, viewModelScope)
-    private val local = MutableStateFlow(SubscriptionsLocal())
+    // An import that is running, or that failed while the page was left, brings the form back, as it was left.
+    private val local = MutableStateFlow(SubscriptionsLocal(adding = imports.state.value.let { it.busy || it.error != null }))
+    private val adder = SubscriptionAdder(imports, viewModelScope, onImported = { local.update { it.copy(adding = false) } })
 
     /** The add form's text, which the route hands the screen. */
     val fields: AddFormFields get() = adder.fields
@@ -38,10 +40,15 @@ class SubscriptionsViewModel(
             SubscriptionsAction.CancelRemove -> local.update { it.copy(removingId = null) }
             SubscriptionsAction.OpenForm -> local.update { it.copy(adding = true) }
             SubscriptionsAction.CloseForm -> closeForm()
-            SubscriptionsAction.Add -> adder.submit(onAdded = { local.update { it.copy(adding = false) } })
+            SubscriptionsAction.Add -> adder.submit()
             SubscriptionsAction.DismissFormError -> adder.dismissError()
-            SubscriptionsAction.DismissError -> local.update { it.copy(error = null) }
+            SubscriptionsAction.DismissError -> dismissError()
         }
+    }
+
+    private fun dismissError() {
+        local.update { it.copy(error = null) }
+        adder.dismissError()
     }
 
     private fun closeForm() {
@@ -68,11 +75,11 @@ class SubscriptionsViewModel(
     }
 
     /** The engine's flows are StateFlows, so the first frame already shows real values. */
-    private fun current() = subscriptionsUiState(engine.ready.value, engine.subscriptions.value, adder.state.value, local.value, clock())
+    private fun current() = subscriptionsUiState(engine.ready.value, engine.subscriptions.value, adder.snapshot(), local.value, clock())
 
     companion object {
-        fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {
-            initializer { SubscriptionsViewModel(engine) }
+        fun factory(engine: Engine, imports: SubscriptionImports): ViewModelProvider.Factory = viewModelFactory {
+            initializer { SubscriptionsViewModel(engine, imports) }
         }
     }
 }

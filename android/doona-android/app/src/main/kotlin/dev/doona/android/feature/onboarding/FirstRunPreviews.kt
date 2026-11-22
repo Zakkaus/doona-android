@@ -4,16 +4,18 @@ import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.subscriptions.AddFormFields
 import dev.doona.android.feature.subscriptions.AddFormState
 
-/** The page as an engine with no subscription shows it; [startFailed] is a start that failed for want of a node. */
-fun sampleFirstRunState(startFailed: Boolean = false): FirstRunUiState {
-    val status = if (startFailed) Status.Failed(FailureReason.StartFailed) else Status.Stopped
-    return firstRunUiState(ready = true, subscriptionCount = 0, status = status, form = AddFormState())
-}
+/** The page as an engine with no subscription shows it; [status] is the tunnel's. */
+fun sampleFirstRunState(status: Status = Status.Stopped): FirstRunUiState =
+    firstRunUiState(ready = true, subscriptionCount = 0, status = status, form = AddFormState())
+
+/** A start that the core refused for want of a node. */
+val NO_NODES_STATUS = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes)
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -25,5 +27,5 @@ private fun FirstRunScreenPreview() {
 @Preview(name = "Start failed", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Composable
 private fun FirstRunScreenStartFailedPreview() {
-    DoonaTheme { FirstRunScreen(sampleFirstRunState(startFailed = true), AddFormFields(), onAction = {}) }
+    DoonaTheme { FirstRunScreen(sampleFirstRunState(NO_NODES_STATUS), AddFormFields(), onAction = {}) }
 }
