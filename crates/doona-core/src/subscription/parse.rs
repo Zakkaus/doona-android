@@ -110,8 +110,9 @@ const DOCUMENT_KEYS: [&str; 3] = ["proxies:", "outbounds:", "servers:"];
 /// A JSON or YAML document, which honk reads as a Clash, SIP008 or sing-box body, told without
 /// building a tree and only by syntax a share-link list never has: a JSON object or array that
 /// opens (`{"`, `{}`, `[{`, `[]`) after any comment lines, or a line that starts with one of
-/// [`DOCUMENT_KEYS`]. A provider's header line above the links (`[Premium / EU]`,
-/// `updated: …`) is neither. Any other document has no line that starts with a scheme and fails
+/// [`DOCUMENT_KEYS`] followed by whitespace or the end of the line, as a YAML key is. A
+/// provider's header line above the links (`[Premium / EU]`, `updated: …`, `servers:12`) is
+/// neither. Any other document has no line that starts with a scheme and fails
 /// as records.
 fn structured(text: &str) -> bool {
     let mut chars = document_start(text).chars();
@@ -121,9 +122,12 @@ fn structured(text: &str) -> bool {
         (open, inner),
         (Some('{'), Some('"' | '}')) | (Some('['), Some('{' | ']'))
     );
-    json || text
-        .lines()
-        .any(|line| DOCUMENT_KEYS.iter().any(|key| line.starts_with(key)))
+    json || text.lines().any(|line| {
+        DOCUMENT_KEYS.iter().any(|key| {
+            line.strip_prefix(key)
+                .is_some_and(|rest| rest.is_empty() || rest.starts_with(char::is_whitespace))
+        })
+    })
 }
 
 /// `text` from its first line that is not blank or a `#` or `;` comment.
@@ -293,6 +297,25 @@ mod tests {
             "{Premium}\ntrojan://secret@192.0.2.1:443#a",
         ] {
             assert_eq!(parse(links.as_bytes()).unwrap().nodes.len(), 1, "{links}");
+        }
+    }
+
+    #[test]
+    fn a_header_that_only_starts_like_a_document_key_is_not_yaml() {
+        for links in [
+            "servers:12\ntrojan://secret@192.0.2.1:443#a",
+            "proxies:EU\ntrojan://secret@192.0.2.1:443#a",
+            "outbounds:-\ntrojan://secret@192.0.2.1:443#a",
+        ] {
+            assert_eq!(parse(links.as_bytes()).unwrap().nodes.len(), 1, "{links}");
+        }
+        // A key followed by a space, a carriage return or the end of the line is one.
+        for body in ["servers: []\ntrojan://x@h:1", "proxies:\r\ntrojan://x@h:1"] {
+            assert_eq!(
+                parse(body.as_bytes()).err(),
+                Some(ErrorCode::ParseFailed),
+                "{body:?}"
+            );
         }
     }
 }
