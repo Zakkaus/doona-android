@@ -48,6 +48,10 @@ pub struct Options {
     pub bootstrap_fallback: Vec<SocketAddr>,
     /// How long a UDP association lasts without traffic.
     pub udp_idle: Duration,
+    /// How long `start` waits between the data path becoming ready and committing the
+    /// generation; none in the app. A test widens the window a data path that served before the
+    /// commit would use.
+    pub commit_delay: Duration,
 }
 
 impl Default for Options {
@@ -59,6 +63,7 @@ impl Default for Options {
             bootstrap_port: 53,
             bootstrap_fallback: bootstrap::FALLBACK.to_vec(),
             udp_idle: tunnel::UDP_IDLE,
+            commit_delay: Duration::ZERO,
         }
     }
 }
@@ -254,6 +259,7 @@ impl Core {
     /// Publishes the started generation with its config's `resolvers`, unless a `stop` aborted
     /// the start meanwhile (that `stop` closed the tun already and left the core stopped, which a
     /// newer `start` may have changed since) or the deadline passed as the driver became ready.
+    /// Its driver serves the tun only once the resolvers are in use; a refused one never does.
     fn finish(
         &self,
         started: Result<Tunnel, ErrorCode>,
@@ -261,6 +267,7 @@ impl Core {
         deadline: Instant,
         resolvers: Vec<SocketAddr>,
     ) -> Result<(), ErrorCode> {
+        std::thread::sleep(self.options.commit_delay);
         let mut life = lock(&self.life);
         // `stop` aborts under the life lock, which is held here, so this cannot change below.
         let aborted = gate.aborted();
@@ -268,9 +275,10 @@ impl Core {
             (started.ok(), ErrorCode::Busy)
         } else {
             match started {
-                Ok(tunnel) if Instant::now() < deadline => {
-                    *life = Life::Running(tunnel);
+                Ok(mut tunnel) if Instant::now() < deadline => {
                     bootstrap::use_servers(resolvers);
+                    tunnel.release();
+                    *life = Life::Running(tunnel);
                     return Ok(());
                 }
                 Ok(tunnel) => (Some(tunnel), ErrorCode::Internal),

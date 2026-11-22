@@ -45,12 +45,14 @@ fn subscribe(core: &Core, url: &str) -> Result<(), ErrorCode> {
     }
 }
 
+fn config(bootstrap: &str) -> String {
+    format!(r#"{{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":{bootstrap}}}"#)
+}
+
 fn try_start(core: &Core, bootstrap: &str) -> Result<Client, ErrorCode> {
-    let config = format!(
-        r#"{{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":{bootstrap}}}"#
-    );
     let (tun, peer) = seqpacket_pair();
-    core.start(sys::dup_cloexec(tun.as_raw_fd()).unwrap(), &config)?;
+    let tun = sys::dup_cloexec(tun.as_raw_fd()).unwrap();
+    core.start(tun, &config(bootstrap))?;
     Ok(Client::new(peer))
 }
 
@@ -84,6 +86,42 @@ fn node_hosts_are_resolved_with_the_start_config() {
     let id = client.connect(echo);
     assert_eq!(client.exchange(id, b"by name").unwrap(), b"by name");
     assert_eq!(proxy_seen.connections.load(Relaxed), 1);
+    assert!(queries(&seen) >= 1);
+}
+
+/// A flow whose SYN waits in the tun before the data path is ready looks its node up with the
+/// resolvers `start` names: nothing is read from the tun before they are installed, however long
+/// the commit takes.
+#[test]
+fn a_queued_flow_waits_for_the_start_config_resolvers() {
+    let _s = serial();
+    let (previous, previous_seen) = servers::udp_resolver();
+    let (resolver, seen) = servers::udp_resolver();
+    let (proxy, proxy_seen) = socks::socks5();
+    let (echo, _) = servers::tcp_echo();
+    let feed = servers::feed(format!("socks5://proxy.doona.test:{}#s5", proxy.port()));
+    let dir = TempDir::new("boot-queued");
+    let options = Options {
+        bootstrap_port: resolver.port(),
+        bootstrap_fallback: vec![previous],
+        commit_delay: Duration::from_millis(300),
+        ..Options::default()
+    };
+    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    subscribe(&core, &format!("http://{feed}/sub")).unwrap();
+    let asked_before = queries(&previous_seen);
+    let (tun, peer) = seqpacket_pair();
+    let mut client = Client::new(peer);
+    let id = client.connect(echo);
+    let tun = sys::dup_cloexec(tun.as_raw_fd()).unwrap();
+    core.start(tun, &config(r#"["127.0.0.1"]"#)).unwrap();
+    assert_eq!(client.exchange(id, b"queued").unwrap(), b"queued");
+    assert_eq!(proxy_seen.connections.load(Relaxed), 1);
+    assert_eq!(
+        queries(&previous_seen),
+        asked_before,
+        "the node was looked up before the start's resolvers were installed"
+    );
     assert!(queries(&seen) >= 1);
 }
 

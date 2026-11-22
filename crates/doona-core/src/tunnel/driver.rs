@@ -43,7 +43,11 @@ pub(crate) async fn run(tun: Arc<Tun>, settings: Settings, gen_: Gen, ready: Sta
         // `ready` drops unsent: start fails with internal.
         return;
     };
-    ready.send();
+    // Nothing is read from the tun before `start` commits the generation: a SYN queued there
+    // would have its node looked up, or its ECH configuration, with the previous resolvers.
+    if !ready.committed().await {
+        return;
+    }
     // A stopped generation's tun is revoked; the error that follows is not a failure.
     if let Err(e) = d.serve(&tun, &mut events).await
         && !gen_.cancel.is_cancelled()

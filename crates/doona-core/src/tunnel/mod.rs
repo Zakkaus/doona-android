@@ -25,6 +25,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Handle;
+use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 pub(crate) use tun::Tun;
@@ -57,7 +58,7 @@ pub struct Settings {
 pub(crate) type TunHandle = Arc<Tun>;
 
 /// What serves a generation's tun: the netstack driver, or a stand-in in unit tests. It sends on
-/// its [`StartSignal`] once it serves the tun.
+/// its [`StartSignal`] once it can serve the tun.
 pub(crate) type Launch = fn(TunHandle, Settings, Gen, StartSignal) -> BoxFuture<'static, ()>;
 
 /// The [`Launch`] the app runs.
@@ -144,21 +145,36 @@ impl Gate {
     }
 }
 
-/// The driver's side of a [`Gate`]: `send` reports the tun served; dropped unsent, it reports
-/// that the driver gave up.
-pub(crate) struct StartSignal(Option<Arc<Gate>>);
+/// The driver's side of a [`Gate`]: `send` reports the tun ready to serve; dropped unsent, it
+/// reports that the driver gave up.
+pub(crate) struct StartSignal {
+    gate: Option<Arc<Gate>>,
+    /// Fires when `start` commits the generation; dropped unfired when it is refused.
+    commit: Option<oneshot::Receiver<()>>,
+}
 
 impl StartSignal {
     pub fn send(mut self) {
-        if let Some(gate) = self.0.take() {
+        if let Some(gate) = self.gate.take() {
             gate.report(true);
+        }
+    }
+
+    /// Reports the tun ready, then waits until `start` commits the generation with its config's
+    /// resolvers installed. False when `start` refuses it instead, which also cancels it.
+    pub async fn committed(mut self) -> bool {
+        let commit = self.commit.take();
+        self.send();
+        match commit {
+            Some(commit) => commit.await.is_ok(),
+            None => false,
         }
     }
 }
 
 impl Drop for StartSignal {
     fn drop(&mut self) {
-        if let Some(gate) = self.0.take() {
+        if let Some(gate) = self.gate.take() {
             gate.report(false);
         }
     }
@@ -253,6 +269,8 @@ pub struct Tunnel {
     gen_: Gen,
     tun: Arc<Tun>,
     outbounds: Arc<Outbounds>,
+    /// Lets the driver serve once `start` commits (see [`StartSignal::committed`]).
+    release: Option<oneshot::Sender<()>>,
 }
 
 impl Tunnel {
@@ -267,6 +285,7 @@ impl Tunnel {
         deadline: Instant,
         gate: &Arc<Gate>,
     ) -> Result<Tunnel, ErrorCode> {
+        let (release, commit) = oneshot::channel();
         let tunnel = Tunnel {
             gen_: Gen {
                 session: Arc::new(Session::new(generation)),
@@ -276,11 +295,15 @@ impl Tunnel {
             },
             tun: Arc::clone(&tun),
             outbounds: Arc::clone(&settings.outbounds),
+            release: Some(release),
         };
         let seen = settings.panics.load(Relaxed);
         let watch = watch(Arc::clone(&settings.panics), seen, tunnel.gen_.clone());
         tunnel.gen_.spawn(watch);
-        let signal = StartSignal(Some(Arc::clone(gate)));
+        let signal = StartSignal {
+            gate: Some(Arc::clone(gate)),
+            commit: Some(commit),
+        };
         let gen_ = tunnel.gen_.clone();
         tunnel.gen_.spawn(launch(tun, settings, gen_, signal));
         match gate.wait(deadline) {
@@ -295,6 +318,13 @@ impl Tunnel {
 
     pub fn session(&self) -> &Arc<Session> {
         &self.gen_.session
+    }
+
+    /// Lets the driver serve the tun: `start` committed the generation.
+    pub fn release(&mut self) {
+        if let Some(release) = self.release.take() {
+            let _ = release.send(());
+        }
     }
 
     #[cfg(test)]
