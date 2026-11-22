@@ -174,6 +174,6 @@ impl Drop for Ended {
         let mut c = lock(&self.shared.catalog);
         c.model.finish(&self.round);
         c.revision += 1;
-        self.shared.stats.end_round(|id| c.model.has(id));
+        self.shared.stats.end_round();
     }
 }

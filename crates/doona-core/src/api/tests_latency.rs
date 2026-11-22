@@ -458,3 +458,29 @@ fn a_node_says_what_its_share_link_says() {
         Err(ErrorCode::InvalidArgument)
     );
 }
+
+/// A subscription that goes from A to B and back between tests: A comes back with no tests, and
+/// the file no longer holds them.
+#[test]
+fn the_tests_of_nodes_that_left_go_with_the_catalog_that_drops_them() {
+    let stand = Stand::new(true);
+    let dir = TempDir::new("api-latency-left");
+    let feeds = Feeds::new();
+    let a = b"trojan://secret@192.0.2.1:443#A\n";
+    feeds.set("/sub", a);
+    let core = Core::with_prober(dir.path().to_str().unwrap(), stand.prober());
+    add(&core, &feeds, "/sub").unwrap();
+    call(&core, "testLatency", json!({"group": null})).unwrap();
+    wait_for(&core, |c| !testing(c));
+    let id = catalog(&core).groups[1].members[0].id.clone();
+    let tests = |core: &Core| nodes(core, json!([id]))[0].1["tests"].clone();
+    assert_eq!(tests(&core).as_array().unwrap().len(), 1);
+    for feed in [&b"trojan://secret@192.0.2.2:443#B\n"[..], a] {
+        feeds.set("/sub", feed);
+        call(&core, "updateSubscription", json!({"id": "s1"})).unwrap();
+    }
+    assert_eq!(tests(&core), json!([]));
+    drop(core);
+    let saved = std::fs::read_to_string(dir.path().join("latency.json")).unwrap();
+    assert!(!saved.contains(&id), "{saved}");
+}

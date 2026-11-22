@@ -256,23 +256,32 @@ impl Stats {
         inner.latency_writes.changes += 1;
     }
 
-    /// A latency round ended: forgets the nodes `keep` does not keep (they left the catalog), and
-    /// writes the tests if they changed.
-    pub fn end_round(self: &Arc<Self>, keep: impl Fn(&str) -> bool) {
-        let latency = {
-            let mut inner = lock(&self.inner);
-            inner.latency.retain(keep);
-            inner.latency_writes.due(Clock::now().boot_s(), true)
-        };
+    /// A latency round ended: writes the tests if they changed.
+    pub fn end_round(self: &Arc<Self>) {
+        let latency = lock(&self.inner)
+            .latency_writes
+            .due(Clock::now().boot_s(), true);
         self.save(Writes {
             usage: false,
             latency,
         });
     }
 
-    /// Forgets the tests of nodes `keep` does not keep, as a new process loads the catalog.
-    pub fn keep_nodes(&self, keep: impl Fn(&str) -> bool) {
-        lock(&self.inner).latency.retain(keep);
+    /// Forgets the tests of the nodes `keep` does not keep, as a catalog without them is
+    /// committed or loaded, and writes that at once, so a node that comes back starts with none.
+    /// The caller holds the catalog lock, as every caller that nests the two does.
+    pub fn keep_nodes(self: &Arc<Self>, keep: impl Fn(&str) -> bool) {
+        let latency = {
+            let mut inner = lock(&self.inner);
+            if inner.latency.retain(keep) {
+                inner.latency_writes.changes += 1;
+            }
+            inner.latency_writes.due(Clock::now().boot_s(), true)
+        };
+        self.save(Writes {
+            usage: false,
+            latency,
+        });
     }
 
     /// The tests of each node of `ids`, oldest first.

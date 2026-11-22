@@ -195,6 +195,8 @@ impl Core {
             c.state = next;
             c.revision += 1;
             self.shared.publish_nodes(&c, built);
+            // The tests of the nodes that left go with them, so a node that comes back has none.
+            self.shared.stats.keep_nodes(|id| c.model.has(id));
             let s = c.state.subscriptions.iter().find(|s| s.id == changed);
             s.map(|s| c.model.subscription(s))
         };

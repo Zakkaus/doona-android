@@ -50,9 +50,12 @@ impl Latency {
         tests.push_back(Test(at_ms, ms));
     }
 
-    /// Keeps the nodes `keep` answers yes for; the others left the catalog.
-    pub fn retain(&mut self, keep: impl Fn(&str) -> bool) {
+    /// Keeps the nodes `keep` answers yes for; the others left the catalog. Answers whether any
+    /// left.
+    pub fn retain(&mut self, keep: impl Fn(&str) -> bool) -> bool {
+        let before = self.0.len();
         self.0.retain(|id, _| keep(id));
+        self.0.len() < before
     }
 }
 
@@ -79,7 +82,8 @@ mod tests {
         let mut latency = Latency::default();
         latency.record("n-a", 1, Some(1));
         latency.record("n-b", 1, None);
-        latency.retain(|id| id == "n-b");
+        assert!(latency.retain(|id| id == "n-b"));
+        assert!(!latency.retain(|id| id == "n-b"));
         assert_eq!(latency.all().keys().collect::<Vec<_>>(), ["n-b"]);
         let long: Tests = (0..20).map(|i| Test(i, Some(5))).collect();
         let saved = Latency::from_saved(BTreeMap::from([("n-c".to_owned(), long)]));

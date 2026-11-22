@@ -192,13 +192,14 @@ fn latency_tests_are_kept_written_at_a_round_end_and_pruned() {
         moved(&session, (1, 1, 0), 0);
         stats.finish(&session, &clock(&base, 1, NOW_MS));
         assert!(!dir.path().join("latency.json").exists());
-        stats.end_round(|id| id != "n-b");
+        stats.end_round();
+        stats.keep_nodes(|id| id != "n-b");
         let tests = stats.latency(["n-a", "n-b", "n-c"].into_iter());
         let a: Vec<_> = tests[0].iter().map(|t| (t.at_epoch_ms, t.ms)).collect();
         assert_eq!(a, [(1_000, Some(38)), (2_000, Some(35))]);
         assert!(tests[1].is_empty() && tests[2].is_empty());
     }
-    // The round's end wrote the tests to their own file.
+    // The round's end wrote the tests to their own file, and the node that left is gone from it.
     let read = |name| {
         let text = std::fs::read(dir.path().join(name)).unwrap();
         serde_json::from_slice::<serde_json::Value>(&text).unwrap()
@@ -207,6 +208,7 @@ fn latency_tests_are_kept_written_at_a_round_end_and_pruned() {
         read("latency.json")["latency"]["n-a"][1],
         serde_json::json!([2_000, 35])
     );
+    assert!(read("latency.json")["latency"].get("n-b").is_none());
     assert!(read("stats.json").get("latency").is_none());
     let rt = runtime();
     let again = stats(&dir, &rt);
