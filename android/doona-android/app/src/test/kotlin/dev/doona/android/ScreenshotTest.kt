@@ -3,6 +3,7 @@ package dev.doona.android
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
@@ -14,8 +15,11 @@ import dev.doona.android.testing.PhoneFrame
 import dev.doona.android.testing.ScreenCase
 import dev.doona.android.testing.ScreenVariants
 import dev.doona.android.testing.Variant
+import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.galleryCases
 import dev.doona.android.testing.screenCases
+import dev.doona.android.testing.showsSomething
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,6 +48,8 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
         RuntimeEnvironment.setQualifiers(variant.qualifiers)
         val case = (screenCases() + galleryCases()).first { it.name == name }
         compose.setContent { Framed(case, variant) }
+        compose.drawFully()
+        assertTrue("$name-${variant.name} rendered blank", compose.onRoot().captureToImage().showsSomething())
         compose.onRoot().captureRoboImage("$dir/$name-${variant.name}.png")
         compose.onRoot().checkRoboAccessibility()
     }

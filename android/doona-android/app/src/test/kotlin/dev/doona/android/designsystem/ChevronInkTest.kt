@@ -10,6 +10,7 @@ import dev.doona.android.designsystem.components.LayoutRoleKey
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.testing.FrameInsets
+import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.inkInsets
 import dev.doona.android.testing.screenCases
 import org.junit.Assert.assertTrue
@@ -34,10 +35,12 @@ class ChevronInkTest {
         compose.setContent {
             CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { DoonaTheme { screenCases().first { it.name == name }.content() } }
         }
+        compose.drawFully()
         val chevrons = compose.onAllNodes(SemanticsMatcher("is a chevron") { it.config.getOrNull(LayoutRoleKey) == LayoutRole.Chevron }, useUnmergedTree = true)
         val count = chevrons.fetchSemanticsNodes().size
         assertTrue("$name shows chevrons", count > 0)
         val insets = (0 until count).mapNotNull { chevrons[it].inkInsets(DENSITY)?.let { ink -> "chevron $it: ${ink.describe()}" to ink.max() } }
+        assertTrue("$name: only ${insets.size} of $count chevrons drew anything", insets.size == count)
         val off = insets.filter { it.second > INK_TOLERANCE }.map { it.first }
         assertTrue("chevrons of $name draw inside their box:\n" + off.joinToString("\n"), off.isEmpty())
     }
