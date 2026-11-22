@@ -108,8 +108,11 @@ object SizeScale {
     /** The width of the busy spinner's stroke. */
     val spinnerStroke = 2.dp
 
-    /** The edge of a field's text that fades where the text runs on past the box. */
-    val fieldFade = 16.dp
+    /**
+     * The edge of a field's text that fades where the text runs on past the box, at the normal font size: more than
+     * twice a glyph, so that the glyph cut at the edge, and the one before it, are already faint. It grows with the text line.
+     */
+    val fieldFade = 32.dp
     val emptyIcon = 48.dp
 
     /** Widest dialog; a narrower window leaves the gutter at both sides. */

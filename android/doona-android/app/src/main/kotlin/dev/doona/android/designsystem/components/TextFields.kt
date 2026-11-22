@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.hintText
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,7 +88,7 @@ fun DoonaTextField(
             FieldBox(error != null, focused) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     val end = if (trailing == null) DoonaTheme.spacing.fillInset else DoonaTheme.spacing.item
-                    Box(Modifier.weight(1f).padding(start = DoonaTheme.spacing.fillInset, end = end)) { Typed(state, placeholder, enabled, scroll, inner) }
+                    Box(Modifier.weight(1f).padding(start = DoonaTheme.spacing.fillInset, end = end)) { Typed(state, placeholder, enabled, readPlaceholder = true, scroll, inner) }
                     trailing?.invoke()
                 }
             }
@@ -101,9 +103,11 @@ fun DoonaTextField(
 
 /**
  * Search field: the same box with a leading search icon and, once there is text, a clear action at its end that empties
- * the state. While the field is empty, [placeholder] shows in it and says what is searched; a screen reader reads it
- * then as the field's text. The text keeps clear of the clear action and fades out before it. The keyboard's action is
- * Search unless [keyboardOptions] says otherwise.
+ * the state. While the field is empty, [placeholder] shows in it and says what is searched. It is also the field's label
+ * to a screen reader, as the hint of the editable text, so it is there after the user has typed, when the visible
+ * placeholder is gone, and the picture of it is not read a second time. The clear action is an action of its own. The
+ * text keeps clear of the clear action and fades out before it. The keyboard's action is Search unless
+ * [keyboardOptions] says otherwise.
  */
 @Composable
 fun DoonaSearchField(
@@ -114,40 +118,52 @@ fun DoonaSearchField(
     onImeAction: (() -> Unit)? = null,
 ) {
     val c = DoonaTheme.colors
-    FieldInput(state, modifier, enabled = true, keyboardOptions, onImeAction, error = null) { inner, focused, scroll ->
+    FieldInput(state, modifier, enabled = true, keyboardOptions, onImeAction, error = null, hint = placeholder) { inner, focused, scroll ->
         FieldBox(invalid = false, focused) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.width(DoonaTheme.spacing.fillInset))
                 // The icon grows with the text beside it, as a button's glyph does.
                 DoonaIcon(R.drawable.ic_search, c.icon, size = dotSizeFor(DoonaTheme.type.body, DoonaTheme.size.iconSmall))
                 Spacer(Modifier.width(DoonaTheme.spacing.item))
-                Box(Modifier.weight(1f).padding(end = DoonaTheme.spacing.item)) { Typed(state, placeholder, enabled = true, scroll, inner) }
+                Box(Modifier.weight(1f).padding(end = DoonaTheme.spacing.item)) { Typed(state, placeholder, enabled = true, readPlaceholder = false, scroll, inner) }
                 if (state.text.isNotEmpty()) DoonaIconAction(R.drawable.ic_close, stringResource(R.string.ui_clear), onClick = { state.clearText() })
             }
         }
     }
 }
 
-/** The text of a field, or its placeholder while there is none; [inner] is the field's own editable text, which fades where [scroll] has more of it out of sight. */
+/**
+ * The text of a field, or its placeholder while there is none; [inner] is the field's own editable text, which fades
+ * where [scroll] has more of it out of sight. A screen reader hears the placeholder as text while the field is empty if
+ * [readPlaceholder], and not at all otherwise, where the field says it in another way.
+ */
 @Composable
-private fun Typed(state: TextFieldState, placeholder: String?, enabled: Boolean, scroll: ScrollState, inner: @Composable () -> Unit) {
+private fun Typed(state: TextFieldState, placeholder: String?, enabled: Boolean, readPlaceholder: Boolean, scroll: ScrollState, inner: @Composable () -> Unit) {
     val c = DoonaTheme.colors
     Box(Modifier.fadedAtEdges(scroll), contentAlignment = Alignment.CenterStart) {
         if (state.text.isEmpty() && placeholder != null) {
-            Text(placeholder, style = DoonaTheme.type.body, color = if (enabled) c.text.secondary else c.text.disabled, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                placeholder,
+                style = DoonaTheme.type.body,
+                color = if (enabled) c.text.secondary else c.text.disabled,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = if (readPlaceholder) Modifier else Modifier.clearAndSetSemantics {},
+            )
         }
         inner()
     }
 }
 
 /**
- * Fades the edge of a scrolled line of text where more of it lies out of sight, over the width of `fieldFade`, so a
- * long value ends in a soft edge and not in a half glyph: the end when [scroll] has more to show after, the start when
- * it has some before. The mask is drawn into the content's own layer, so what is behind the text is untouched.
+ * Fades the edge of a scrolled line of text where more of it lies out of sight, over the width of `fieldFade` taken
+ * at the size of the text, so a long value ends in a soft edge and no part of a glyph shows at full strength at the
+ * cut, at any font size: the end when [scroll] has more to show after, the start when it has some before. The mask is
+ * drawn into the content's own layer, so what is behind the text is untouched.
  */
 @Composable
 private fun Modifier.fadedAtEdges(scroll: ScrollState): Modifier {
-    val fade = DoonaTheme.size.fieldFade
+    val fade = dotSizeFor(DoonaTheme.type.body, DoonaTheme.size.fieldFade)
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     return graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
         drawContent()
@@ -182,6 +198,7 @@ private fun FieldBox(invalid: Boolean, focused: Boolean, content: @Composable ()
     }
     Box(
         Modifier
+            .layoutRole(LayoutRole.Field)
             .fillMaxWidth()
             .heightIn(min = DoonaTheme.size.touch)
             .clip(shape)
@@ -201,7 +218,10 @@ private fun FieldError(message: String) {
     }
 }
 
-/** The editable text over a state, in the body style on one line, with [decoration] drawn around it; it gets the text's scroll, to fade by. */
+/**
+ * The editable text over a state, in the body style on one line, with [decoration] drawn around it; it gets the text's
+ * scroll, to fade by. [hint] is the field's label for a screen reader where the decoration has no text of its own to give.
+ */
 @Composable
 private fun FieldInput(
     state: TextFieldState,
@@ -210,6 +230,7 @@ private fun FieldInput(
     keyboardOptions: KeyboardOptions,
     onImeAction: (() -> Unit)?,
     error: String?,
+    hint: String? = null,
     decoration: @Composable (inner: @Composable () -> Unit, focused: Boolean, scroll: ScrollState) -> Unit,
 ) {
     val c = DoonaTheme.colors
@@ -218,7 +239,10 @@ private fun FieldInput(
     val scroll = rememberScrollState()
     BasicTextField(
         state = state,
-        modifier = modifier.semantics { if (error != null) semanticsError(error) },
+        modifier = modifier.semantics {
+            if (error != null) semanticsError(error)
+            if (hint != null) hintText = hint
+        },
         enabled = enabled,
         textStyle = DoonaTheme.type.body.copy(color = if (enabled) c.text.primary else c.text.disabled),
         keyboardOptions = keyboardOptions,
