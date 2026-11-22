@@ -48,10 +48,6 @@ pub struct Options {
     pub bootstrap_fallback: Vec<SocketAddr>,
     /// How long a UDP association lasts without traffic.
     pub udp_idle: Duration,
-    /// How long `start` waits between the data path becoming ready and committing the
-    /// generation; none in the app. A test widens the window a data path that served before the
-    /// commit would use.
-    pub commit_delay: Duration,
 }
 
 impl Default for Options {
@@ -63,7 +59,6 @@ impl Default for Options {
             bootstrap_port: 53,
             bootstrap_fallback: bootstrap::FALLBACK.to_vec(),
             udp_idle: tunnel::UDP_IDLE,
-            commit_delay: Duration::ZERO,
         }
     }
 }
@@ -274,7 +269,6 @@ impl Core {
     ) -> Result<(), ErrorCode> {
         #[cfg(test)]
         self.hooks.before_finish(self);
-        std::thread::sleep(self.options.commit_delay);
         let mut life = lock(&self.life);
         // `stop` aborts under the life lock, which is held here, so this cannot change below.
         let aborted = gate.aborted();

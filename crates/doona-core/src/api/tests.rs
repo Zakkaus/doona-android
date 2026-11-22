@@ -1,19 +1,21 @@
 //! `start` and `stop` against stand-in drivers that are slow or stuck, which the real driver
 //! never is on a host: the tun must be closed when `stop` (or a failed `start`) returns, and
 //! `start` must keep its deadline and answer `busy` when a `stop` or another `start` overlaps it.
-//! A task of the real driver's generation that panics shows as `internal` in the snapshot.
+//! A task of the real driver's generation that panics shows as `internal` in the snapshot, and the
+//! real driver serves a flow queued before `start` only once the generation is committed.
 
 use super::tests_catalog::{Feeds, add, path};
 use super::{Core, Life, lock};
 use crate::dto::{ErrorCode, Mode, Snapshot};
 use crate::state::Store;
+use crate::testutil::client::Client;
 use crate::testutil::{TempDir, closed, tun};
 use crate::tunnel::route::{Inbound, Route, Upstream};
 use crate::tunnel::{Gen, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
 use std::io;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering::SeqCst};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -497,4 +499,30 @@ fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
     let mut s = lock(&opened).take().expect("a stream on the carriers");
     assert_eq!(ping(&core, &mut s, b"after").unwrap(), b"after");
     assert!(matches!(*lock(&core.life), Life::Running(_)));
+}
+
+/// A flow whose SYN waits in the tun before the data path is ready is served only once `start`
+/// commits the generation, with its config's resolvers installed: however long the commit
+/// takes, nothing reaches the flow's node before.
+#[test]
+fn a_queued_flow_waits_for_the_commit() {
+    let dir = TempDir::new("api-queued");
+    let (proxy, dials) = crate::testutil::socks5();
+    let echo = echo();
+    let feeds = Feeds::new();
+    feeds.set("/sub", format!("socks5://{proxy}#s5\n").as_bytes());
+    let core = Core::with_launch(path(&dir), crate::tunnel::drive, Duration::from_secs(10));
+    add(&core, &feeds, "/sub").unwrap();
+    let (tun, peer) = crate::testutil::tun_and_peer();
+    let mut client = Client::new(peer);
+    let id = client.connect(echo);
+    let before_commit = Arc::new(AtomicU32::new(u32::MAX));
+    let seen = Arc::clone(&before_commit);
+    core.hooks.on_before_finish(move |_| {
+        std::thread::sleep(Duration::from_millis(300));
+        seen.store(dials.load(SeqCst), SeqCst);
+    });
+    core.start(tun, CONFIG).unwrap();
+    assert_eq!(before_commit.load(SeqCst), 0, "the node was dialed first");
+    assert_eq!(client.exchange(id, b"queued").unwrap(), b"queued");
 }
