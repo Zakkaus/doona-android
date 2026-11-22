@@ -1,6 +1,8 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -13,6 +15,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.FrameRateCategory
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.preferredFrameRate
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
@@ -78,9 +83,14 @@ internal data class RvSampleStart(
 internal fun RvPreviewApp(options: RvMotionOptions = RvMotionOptions(), start: RvSampleStart = RvSampleStart()) {
     var settings by remember { mutableStateOf(rvSampleSettings()) }
     val systemDark = isSystemInDarkTheme()
-    RvLookFade(settings.appearance.previewDark(systemDark) to settings.appearance) { (dark, appearance) ->
-        RvTheme(appearance.scheme(rvSystemScheme(dark), dark), dark) {
-            RvSample(options, start, settings) { settings = it }
+    // Every layer that moves votes for the display's high rate while it moves: with no vote, an adaptive-rate panel
+    // (API 35 and later) runs the app at its normal rate, 60 Hz. Ambient loops vote normal where they run (RvBusy, the
+    // map's pulse); a frame where nothing moves votes nothing.
+    Box(Modifier.fillMaxSize().preferredFrameRate(FrameRateCategory.High), propagateMinConstraints = true) {
+        RvLookFade(settings.appearance.previewDark(systemDark) to settings.appearance) { (dark, appearance) ->
+            RvTheme(appearance.scheme(rvSystemScheme(dark), dark), dark) {
+                RvSample(options, start, settings) { settings = it }
+            }
         }
     }
 }

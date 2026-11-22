@@ -31,11 +31,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onPlaced
@@ -47,6 +49,7 @@ import androidx.compose.ui.platform.InfiniteAnimationPolicy
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
+import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
@@ -315,7 +318,8 @@ internal fun Modifier.rvMoves(): Modifier {
 internal fun RvBusy(modifier: Modifier = Modifier) {
     if (Rv.motion.instant) return RvProgress(RvMotion.BUSY_STILL, modifier)
     val fill by rememberInfiniteTransition(label = "busy").animateFloat(0f, 1f, infiniteRepeatable(tween(RvMotion.BUSY_MS, easing = RvMotion.Standard), RepeatMode.Restart), label = "fill")
-    RvProgress(fill, modifier)
+    // An ambient loop: a layer of its own, so a frame of it redraws the bar alone, voting the normal rate.
+    RvProgress(fill, modifier.preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {})
 }
 
 /**

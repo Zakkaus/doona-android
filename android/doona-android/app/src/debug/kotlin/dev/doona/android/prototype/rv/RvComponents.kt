@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -49,6 +50,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -132,11 +134,14 @@ internal fun RvHeader(
     live: RvDotMotion = RvDotMotion(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar, live),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        content = content,
-    )
+    Box(modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar, live)) {
+        // The marker's pulse, an ambient loop: its own layer, voting the normal rate, so a frame of it redraws the ring
+        // alone and not the page it lies on.
+        if (focus != null) {
+            Spacer(Modifier.matchParentSize().preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {}.rvDotPulse(focus, dots, focusTop, live))
+        }
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = content)
+    }
 }
 
 /**

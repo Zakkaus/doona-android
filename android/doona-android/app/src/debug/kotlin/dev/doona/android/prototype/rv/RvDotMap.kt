@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -12,6 +13,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.util.fastForEach
 import dev.doona.android.prototype.rv.data.RvPlace
 import kotlin.math.floor
 
@@ -70,29 +72,45 @@ internal fun Modifier.rvDotMap(focus: RvPlace?, color: Color, focusTop: Dp, clea
     val zone = clear?.inflate(RvDots.clearPad.toPx())
     val topFade = RvDots.topFade.toPx()
     val fadeFrom = fadeTop?.toPx()
+    // Split once here, not on each frame of a stretch: the dots kept faint under the hero's text, and the rest.
+    val bands = rows.map { row ->
+        val inZone = zone != null && row.y in zone.top..zone.bottom
+        val (faint, full) = if (inZone) row.dots.partition { it.x in zone.left..zone.right } else emptyList<Offset>() to row.dots
+        DotBand(row.y, full, faint)
+    }
     onDrawBehind {
         val art = live.art()
         // P2 stretches the map downward from its top: each band moves down in proportion to its height.
         val stretch = live.stretch() / size.height
-        for (row in rows) {
-            val bottom = ((RvDots.FADE_END - row.y / size.height) / (RvDots.FADE_END - RvDots.FADE_START)).coerceIn(0f, 1f)
-            val top = fadeFrom?.let { ((row.y - it) / topFade).coerceIn(0f, 1f) } ?: 1f
+        bands.fastForEach { band ->
+            val bottom = ((RvDots.FADE_END - band.y / size.height) / (RvDots.FADE_END - RvDots.FADE_START)).coerceIn(0f, 1f)
+            val top = fadeFrom?.let { ((band.y - it) / topFade).coerceIn(0f, 1f) } ?: 1f
             val alpha = RvDots.ALPHA * bottom * top * art
-            if (alpha <= 0f) continue
-            val inZone = zone != null && row.y in zone.top..zone.bottom
-            val (faint, full) = if (inZone) row.dots.partition { it.x in zone.left..zone.right } else emptyList<Offset>() to row.dots
-            translate(top = row.y * stretch) {
-                drawPoints(full, PointMode.Points, color.copy(alpha = alpha), RvDots.dot.toPx(), StrokeCap.Round)
-                drawPoints(faint, PointMode.Points, color.copy(alpha = minOf(alpha, RvDots.CLEAR_ALPHA)), RvDots.dot.toPx(), StrokeCap.Round)
+            if (alpha <= 0f) return@fastForEach
+            translate(top = band.y * stretch) {
+                drawPoints(band.full, PointMode.Points, color.copy(alpha = alpha), RvDots.dot.toPx(), StrokeCap.Round)
+                drawPoints(band.faint, PointMode.Points, color.copy(alpha = minOf(alpha, RvDots.CLEAR_ALPHA)), RvDots.dot.toPx(), StrokeCap.Round)
             }
         }
-        if (focus != null) {
-            val at = centre.copy(y = centre.y * (1 + stretch))
-            marker(at, color, art)
-            pulse(at, color, art, live.pulse())
-        }
+        if (focus != null) marker(centre.copy(y = centre.y * (1 + stretch)), color, art)
     }
 }
+
+/**
+ * The marker's pulse for the [rvDotMap] with the same [focus], [focusTop] and [live]: given an element of its own over
+ * the map (in a layer of its own), a frame of the loop redraws the ring alone, not the map and what lies on it. It
+ * reads nothing else while the pulse is at 0.
+ */
+internal fun Modifier.rvDotPulse(focus: RvPlace?, color: Color, focusTop: Dp, live: RvDotMotion): Modifier = drawBehind {
+    val phase = live.pulse()
+    if (focus == null || phase <= 0f) return@drawBehind
+    val stretch = live.stretch() / size.height
+    val y = focusTop.toPx()
+    pulse(Offset(size.width / 2f, y * (1 + stretch)), color, live.art(), phase)
+}
+
+/** A band of the map: its [y], its dots drawn [full], and those kept [faint] under the hero's text. */
+private class DotBand(val y: Float, val full: List<Offset>, val faint: List<Offset>)
 
 /** The land dots of every band between the top and [height], placed so the cell at [lat], [lon] sits on [centre]. */
 private fun dotRows(lat: Float, lon: Float, centre: Offset, pitch: Float, height: Float): List<DotRow> {

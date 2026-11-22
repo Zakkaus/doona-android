@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
@@ -31,6 +32,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -130,6 +132,8 @@ private fun RvMenu(state: RvMenuState, items: List<RvMenuItem>) {
         Column(
             Modifier
                 .testTag(RV_MENU)
+                // The menu is a window of its own, outside the sample's vote: it asks the high rate as it scales.
+                .preferredFrameRate(FrameRateCategory.High)
                 .graphicsLayer {
                     val scale = RvMotion.MENU_FROM + (1f - RvMotion.MENU_FROM) * p
                     scaleX = scale
