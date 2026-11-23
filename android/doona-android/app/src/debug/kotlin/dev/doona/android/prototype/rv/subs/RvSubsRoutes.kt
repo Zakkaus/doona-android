@@ -46,9 +46,9 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
         }
 
         RvSubsRoutes.DETAIL -> {
-            val sub = RvData.subscriptions.firstOrNull { it.id == arg } ?: RvData.subscriptions.first()
+            var sub by remember { mutableStateOf(RvData.subscriptions.firstOrNull { it.id == arg } ?: RvData.subscriptions.first()) }
             var state by remember { mutableStateOf(RvSubDetailState()) }
-            RvSubDetail(sub, state, { state = it }, onBack = pop, onUpdate = {})
+            RvSubDetail(sub, state, { state = it }, onBack = pop, onUpdate = {}, onUserAgent = { sub = sub.copy(userAgent = it) })
         }
 
         else -> {

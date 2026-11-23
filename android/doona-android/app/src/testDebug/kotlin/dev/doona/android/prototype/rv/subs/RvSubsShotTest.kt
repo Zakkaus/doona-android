@@ -4,12 +4,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.RvActivityScreen
@@ -125,6 +130,27 @@ class RvSubsShotTest {
         assertEquals("https://x.example/s", state.link)
     }
 
+    @Test
+    fun theUserAgentRowShowsTheSubscriptionsOwnAndItsSheetSavesToIt() {
+        var state by mutableStateOf(RvSubDetailState())
+        val saved = mutableListOf<String?>()
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                RvSubDetail(HARBOR.copy(userAgent = OWN_AGENT), state, { state = it }, onBack = {}, onUpdate = {}, onUserAgent = { saved += it })
+            }
+        }
+        compose.onNodeWithText(OWN_AGENT).performClick()
+        assertEquals(RvSubDetailState(RvSubSheet.UserAgent, userAgent = OWN_AGENT), state)
+        compose.onNode(hasSetTextAction()).performTextReplacement(TYPED_AGENT)
+        compose.onNodeWithText(SAVE).performClick()
+        // An empty field saves null: the subscription goes back to the default.
+        compose.onNodeWithText(OWN_AGENT).performClick()
+        compose.onNode(hasSetTextAction()).performTextReplacement("")
+        compose.onNodeWithText(SAVE).performClick()
+        assertEquals(listOf(TYPED_AGENT, null), saved)
+        assertEquals(null, state.sheet)
+    }
+
     private fun shot(name: String, dark: Boolean, whole: Boolean = true, content: @Composable () -> Unit) =
         compose.rvShot(name, dark, before = { if (whole) assertWhole() }, content = content)
 
@@ -204,5 +230,8 @@ class RvSubsShotTest {
         val MENU_Y = 210.dp
         const val IMPORT = "匯入"
         const val CLIPBOARD = "使用剪貼簿的連結"
+        const val SAVE = "儲存"
+        const val OWN_AGENT = "clash.meta"
+        const val TYPED_AGENT = "doona-test/1"
     }
 }

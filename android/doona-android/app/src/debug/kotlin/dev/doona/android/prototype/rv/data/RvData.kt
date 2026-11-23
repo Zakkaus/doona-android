@@ -5,10 +5,11 @@ import dev.doona.android.R
 
 /**
  * A subscription: its name, the nodes it gave, when it was refreshed, its quota used of total, when it ends, if it does,
- * the host of its link (the page shows only the host: the rest of a link carries its token), and how its body is written.
+ * the host of its link (the page shows only the host: the rest of a link carries its token), how its body is written,
+ * and the User-Agent it is fetched with, null for doona's default.
  */
 @Immutable
-internal class RvSubscription(
+internal data class RvSubscription(
     val id: String,
     val name: String,
     val nodes: Int,
@@ -18,6 +19,7 @@ internal class RvSubscription(
     val expiresAtEpochMs: Long?,
     val host: String = "",
     val format: RvSubFormat = RvSubFormat.Links,
+    val userAgent: String? = null,
 ) {
     /** What is left, never below nothing when a subscription has gone over its quota. */
     val leftBytes: Long get() = (totalBytes - usedBytes).coerceAtLeast(0L)

@@ -40,12 +40,20 @@ internal enum class RvSubSheet { Rename, UserAgent, Delete }
 /**
  * A subscription's page, pushed from 訂閱: the name as the large title; its key stats (nodes, used of its quota, end
  * date, last update, format); 更新 with the auto-update interval and the subscription's own User-Agent (預設 until it
- * has one; a sheet with a field, as 重新命名, sets it, and an empty field goes back to the default); 訂閱 with the name
+ * has one; a sheet with a field, as 重新命名, opens on it and saves it to this subscription through [onUserAgent], and
+ * an empty field goes back to the default, null); 訂閱 with the name
  * (重新命名 in a sheet with a field) and the link's host; then 刪除訂閱 alone in its card, its glyph in the error hue,
  * asking in the confirm sheet. 立即更新 floats at the bottom.
  */
 @Composable
-internal fun RvSubDetail(sub: RvSubscription, state: RvSubDetailState, onChange: (RvSubDetailState) -> Unit, onBack: () -> Unit, onUpdate: () -> Unit) {
+internal fun RvSubDetail(
+    sub: RvSubscription,
+    state: RvSubDetailState,
+    onChange: (RvSubDetailState) -> Unit,
+    onBack: () -> Unit,
+    onUpdate: () -> Unit,
+    onUserAgent: (String?) -> Unit = {},
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     RvScrollPage(
         sub.name,
@@ -56,7 +64,7 @@ internal fun RvSubDetail(sub: RvSubscription, state: RvSubDetailState, onChange:
         RvLargeTitle(sub.name, titleBlock, insets)
         RvGutter { KeyStats(sub) }
         RvSectionTitle(stringResource(R.string.rv_sub_updates), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { UpdatesCard { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = "")) } }
+        RvGutter { UpdatesCard(sub.userAgent) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
         RvSectionTitle(stringResource(R.string.rv_sub_section), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvCard {
@@ -85,7 +93,10 @@ internal fun RvSubDetail(sub: RvSubscription, state: RvSubDetailState, onChange:
         body = null,
         confirm = stringResource(R.string.rv_save),
         dismiss = stringResource(R.string.rv_cancel),
-        onConfirm = close,
+        onConfirm = {
+            onUserAgent(state.userAgent.takeUnless { it.isBlank() })
+            close()
+        },
         onDismiss = close,
     ) { RvUserAgentField(state.userAgent) { onChange(state.copy(userAgent = it)) } }
     RvConfirmSheet(
@@ -129,9 +140,9 @@ private fun KeyStats(sub: RvSubscription) {
     }
 }
 
-/** The auto-update interval, and the User-Agent, whose row opens its sheet ([onUserAgent]). */
+/** The auto-update interval, and the subscription's [userAgent] (預設 while null), whose row opens its sheet ([onUserAgent]). */
 @Composable
-private fun UpdatesCard(onUserAgent: () -> Unit) {
+private fun UpdatesCard(userAgent: String?, onUserAgent: () -> Unit) {
     RvCard {
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_schedule) },
@@ -142,7 +153,7 @@ private fun UpdatesCard(onUserAgent: () -> Unit) {
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_dns) },
             stringResource(R.string.rv_sub_user_agent),
-            stringResource(R.string.rv_sub_user_agent_default),
+            userAgent ?: stringResource(R.string.rv_sub_user_agent_default),
             onClick = onUserAgent,
         ) { RvChevron() }
     }
