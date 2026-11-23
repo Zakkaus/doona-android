@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertTouchHeightIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithText
@@ -149,7 +150,8 @@ class RvLibraryShotTest {
             }
         }
         compose.onNodeWithText(DELETE).assertHeightIsAtLeast(RvSize.touch).performClick()
-        compose.onNodeWithText(CANCEL).assertHeightIsAtLeast(RvSize.touch).performClick()
+        // The secondary pill is 40 dp, its target 48 dp through Compose's touch target expansion.
+        compose.onNodeWithText(CANCEL).assertTouchHeightIsEqualTo(RvSize.touch).performClick()
         compose.waitForIdle()
         assertEquals(1, confirmed)
         assertEquals(1, dismissed)

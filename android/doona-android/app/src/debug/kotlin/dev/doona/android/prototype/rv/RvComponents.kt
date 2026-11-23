@@ -383,7 +383,10 @@ internal fun RvAppDisc(packageName: String, label: String? = null) {
     Image(icon, contentDescription = label, Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard))
 }
 
-/** Revolut's 'See all' row at a list card's foot (measured §7): [text] centred, 19 sp bold in the accent, in 56 dp. */
+/**
+ * Revolut's 'See all' row at a list card's foot (measured §7): [text] centred, 19 sp bold in ink, in 56 dp. Ink, as
+ * Revolut sets its 'see all' (revolut-ux3 §1): no action in a card is a coloured text link (the owner, 2026-11-23).
+ */
 @Composable
 internal fun RvSeeAll(text: String, onClick: () -> Unit) {
     val shape = remember { RoundedCornerShape(bottomStart = RvSize.cardRadius, bottomEnd = RvSize.cardRadius) }
@@ -391,7 +394,7 @@ internal fun RvSeeAll(text: String, onClick: () -> Unit) {
         Modifier.fillMaxWidth().height(RvSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
         contentAlignment = Alignment.Center,
     ) {
-        RvText(text, Rv.type.seeAll, color = Rv.colors.positive, align = TextAlign.Center)
+        RvText(text, Rv.type.seeAll, color = Rv.colors.text, align = TextAlign.Center)
     }
 }
 

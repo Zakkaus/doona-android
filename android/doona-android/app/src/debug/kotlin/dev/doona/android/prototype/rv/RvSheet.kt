@@ -35,10 +35,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -62,6 +60,9 @@ internal object RvSheetSize {
     val titleTop = 20.dp
     val titleToBody = 8.dp
     val bodyToActions = RvSpace.chartGap
+
+    /** Between the primary button and the secondary pill under it: two controls stacked, as a list's search and order. */
+    val actionGap = RvSpace.controlStack
     val lastPad = 8.dp
 
     /** From the sheet's side to the page's edge line: the gutter less the sheet's own inset. */
@@ -157,7 +158,8 @@ internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable Co
 
 /**
  * A question before something that cannot be taken back or needs the user's yes: [title], [body], an optional [extra]
- * (stat rows, a field), then [confirm] as the primary button and [dismiss] as the accent text action under it.
+ * (stat rows, a field), then [confirm] as the primary button and [dismiss] as the neutral secondary pill under it, as a
+ * card's notice sets its action: no action of the sheet is a coloured text link (the owner, 2026-11-23).
  */
 @Composable
 internal fun RvConfirmSheet(
@@ -198,20 +200,8 @@ internal fun ColumnScope.RvConfirmContent(
     }
     Spacer(Modifier.height(RvSheetSize.bodyToActions))
     RvPrimaryButton(confirm, onConfirm, enabled = confirmEnabled)
-    Spacer(Modifier.height(RvSpace.tight))
-    RvTextAction(dismiss, onDismiss)
-}
-
-/**
- * A text action beside a primary button, in the form of Revolut's 'See all' row (measured §7): [text] centred, 19 sp bold
- * in the accent, in a 56 dp row; its press is a pill, as it is not a card's foot.
- */
-@Composable
-internal fun RvTextAction(text: String, onClick: () -> Unit) {
-    Box(
-        Modifier.fillMaxWidth().height(RvSize.seeAll).rvPress(CircleShape, Role.Button, onClick),
-        contentAlignment = Alignment.Center,
-    ) { RvText(text, Rv.type.seeAll, color = Rv.colors.positive, align = TextAlign.Center) }
+    Spacer(Modifier.height(RvSheetSize.actionGap))
+    RvSecondaryButton(dismiss, onDismiss)
 }
 
 private const val TITLE_LINES = 2
