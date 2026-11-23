@@ -139,22 +139,47 @@ internal fun rvShrinkToFit(style: TextStyle): TextAutoSize {
 }
 
 /**
- * [size] when the label fits at it, else the largest step of [TextAutoSize.StepBased] down to half of it that fits. The
- * steps count up from the smallest size, so on their own they stop under a size off their grid (19.55 sp at 1.15×)
- * and move a label that fits.
+ * A figure kept to one line in its width (a tile's rate): [style]'s size when it and each of [widest] fit at it, else
+ * the largest step of [rvShrinkToFit]'s range at which all of them do. [widest] are the widest figures the place shows
+ * (each set as the figure is), so a figure that changes every second keeps its size, and figures side by side, fitting
+ * the same widest in the same width, take one size.
  */
-private class RvFit(private val size: TextUnit) : TextAutoSize {
+@Composable
+internal fun rvFigureFit(style: TextStyle, widest: List<AnnotatedString>): TextAutoSize {
+    val size = style.fontSize
+    return remember(size, widest) { RvFit(size, widest) }
+}
+
+/**
+ * [size] when the label (and each of [widest]) fits at it, else the largest step down to half of it at which all do.
+ * Alone, the label takes [TextAutoSize.StepBased]'s step: those count up from the smallest size, so on their own they
+ * stop under a size off their grid (19.55 sp at 1.15×) and move a label that fits.
+ */
+private class RvFit(private val size: TextUnit, private val widest: List<AnnotatedString> = emptyList()) : TextAutoSize {
     private val steps = TextAutoSize.StepBased(size * FIT_MIN, size)
 
     override fun TextAutoSizeLayoutScope.getFontSize(constraints: Constraints, text: AnnotatedString): TextUnit {
-        val whole = performLayout(constraints, text, size)
-        val fits = !whole.hasVisualOverflow && !whole.isLineEllipsized(whole.lineCount - 1)
-        return if (fits) size else with(steps) { this@getFontSize.getFontSize(constraints, text) }
+        val fits = { at: TextUnit -> (widest + text).all { rvWhole(performLayout(constraints, it, at)) } }
+        val full = size.value
+        return when {
+            fits(size) -> size
+            widest.isEmpty() -> with(steps) { this@getFontSize.getFontSize(constraints, text) }
+            else -> rvSteps(full).firstOrNull { it < full && fits(size * (it / full)) }?.let { size * (it / full) } ?: size * FIT_MIN
+        }
     }
 
-    override fun equals(other: Any?) = other is RvFit && other.size == size
+    override fun equals(other: Any?) = other is RvFit && other.size == size && other.widest == widest
 
-    override fun hashCode() = size.hashCode()
+    override fun hashCode() = 31 * size.hashCode() + widest.hashCode()
+}
+
+/** Whether [layout] shows its text whole: nothing past its box, no line ending in an ellipsis. */
+private fun rvWhole(layout: TextLayoutResult) = !layout.hasVisualOverflow && !layout.isLineEllipsized(layout.lineCount - 1)
+
+/** The sizes a fit tries for a [full] size, largest first: [FIT_STEP] apart, down to [FIT_MIN] of it. */
+private fun rvSteps(full: Float): List<Float> {
+    val min = full * FIT_MIN
+    return (((full - min) / FIT_STEP).toInt() downTo 0).map { min + it * FIT_STEP }
 }
 
 /**
@@ -207,9 +232,7 @@ private fun rvLargestFit(style: TextStyle, fits: (TextStyle) -> Boolean): TextSt
     val full = style.fontSize.value
     val at = { size: Float -> style.copy(fontSize = style.fontSize * (size / full), lineHeight = style.lineHeight * (size / full)) }
     if (fits(style)) return style
-    val min = full * FIT_MIN
-    val steps = ((full - min) / FIT_STEP).toInt()
-    return at((steps downTo 0).map { min + it * FIT_STEP }.firstOrNull { it < full && fits(at(it)) } ?: min)
+    return at(rvSteps(full).firstOrNull { it < full && fits(at(it)) } ?: full * FIT_MIN)
 }
 
 /** Whether [text] in [style] fits on one line [width] px wide, whole: no ellipsis, nothing past the edge. */

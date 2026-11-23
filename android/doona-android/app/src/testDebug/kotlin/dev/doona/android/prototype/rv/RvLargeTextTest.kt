@@ -8,9 +8,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.text.TextLayoutResult
@@ -19,6 +21,7 @@ import androidx.compose.ui.unit.IntSize
 import dev.doona.android.R
 import dev.doona.android.engine.Mode
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvFormat
 import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
@@ -148,6 +151,47 @@ class RvLargeTextTest {
     }
 
     /**
+     * 活動's traffic tiles (X4): each tile's every text whole, its figure on one line, both figures at one size, the two
+     * tiles one height, and the sparkline under the note inside the tile.
+     */
+    @Test
+    fun trafficTilesAreWhole() {
+        val state = rvSampleActivity()
+        large { RvActivityScreen(state, onAction = {}, onConnect = {}) }
+        val format = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0])
+        val figures = listOf(state.downRate, state.upRate).map { format.rate(it.toDouble()).toString() }
+        val tiles = listOf(R.string.ui_download, R.string.ui_upload).map { caption ->
+            compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button).and(hasAnyDescendant(shows(rvText(caption)))), useUnmergedTree = true)
+                .fetchSemanticsNodes().single()
+        }
+        val sizes = tiles.zip(figures).map { (tile, figure) ->
+            val texts = texts(tile)
+            texts.forEach { assertWhole(it, it.config[SemanticsProperties.Text].joinToString()) }
+            val shown = texts.single { it.config[SemanticsProperties.Text].any { line -> line.text == figure } }
+            assertEquals("$figure takes one line", 1, layout(shown).lineCount)
+            val room = (RvChartSize.spark + RvChartSize.tilePad).value * shown.layoutInfo.density.density
+            val under = texts.maxOf(::bottom) + room
+            assertTrue("$figure's tile ends at ${bottom(tile)}, its sparkline at $under", under <= bottom(tile) + 1)
+            layout(shown).layoutInput.style.fontSize
+        }
+        assertEquals("one figure size for the row: $sizes", 1, sizes.toSet().size)
+        assertEquals("the tiles' heights", 1, tiles.map { it.size.height }.toSet().size)
+    }
+
+    /** Where [node] ends, in px from the top of the page, unclipped: the tiles lie below the window at 2.0. */
+    private fun bottom(node: SemanticsNode) = node.positionInRoot.y + node.size.height
+
+    /** The text nodes under [node], in the unmerged tree. */
+    private fun texts(node: SemanticsNode): List<SemanticsNode> =
+        node.children.flatMap { child -> listOfNotNull(child.takeIf { SemanticsProperties.Text in it.config }) + texts(child) }
+
+    private fun layout(node: SemanticsNode): TextLayoutResult {
+        val layouts = mutableListOf<TextLayoutResult>()
+        node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+        return layouts.single()
+    }
+
+    /**
      * Each of the chip [labels] whole and inside its pill, [RvChartSize.rangeInset] clear of its top and bottom, and all of
      * them laid out at one size (one label size per row).
      */
@@ -158,9 +202,7 @@ class RvLargeTextTest {
             val pill = text.parent!!.size.height
             val room = text.size.height + 2 * RvChartSize.rangeInset.value * text.layoutInfo.density.density
             assertTrue("$label: its pill is $pill px for a $room px label and its room", pill >= room - 1)
-            val layouts = mutableListOf<TextLayoutResult>()
-            text.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
-            layouts.single().layoutInput.style.fontSize
+            layout(text).layoutInput.style.fontSize
         }
         labels.forEach(::assertWhole)
         assertEquals("one label size for the row: $sizes", 1, sizes.values.toSet().size)
@@ -194,16 +236,16 @@ class RvLargeTextTest {
     private fun assertWhole(text: String) {
         val nodes = compose.onAllNodes(shows(text), useUnmergedTree = true).fetchSemanticsNodes()
         assertTrue("$text is not shown", nodes.isNotEmpty())
-        for (node in nodes) {
-            val layouts = mutableListOf<TextLayoutResult>()
-            node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
-            val layout = layouts.single()
-            val cut = (0 until layout.lineCount).any(layout::isLineEllipsized) || layout.hasVisualOverflow
-            assertFalse("$text is cut: ${layout.lineCount} lines in ${node.size.width} px", cut)
-            val last = layout.lineCount - 1
-            val line = layout.layoutInput.text.text.substring(layout.getLineStart(last), layout.getLineEnd(last))
-            assertFalse("$text ends on one letter: '$line'", last > 0 && line.count(Char::isLetterOrDigit) == 1)
-        }
+        nodes.forEach { assertWhole(it, text) }
+    }
+
+    private fun assertWhole(node: SemanticsNode, text: String) {
+        val layout = layout(node)
+        val cut = (0 until layout.lineCount).any(layout::isLineEllipsized) || layout.hasVisualOverflow
+        assertFalse("$text is cut: ${layout.lineCount} lines in ${node.size.width} px", cut)
+        val last = layout.lineCount - 1
+        val line = layout.layoutInput.text.text.substring(layout.getLineStart(last), layout.getLineEnd(last))
+        assertFalse("$text ends on one letter: '$line'", last > 0 && line.count(Char::isLetterOrDigit) == 1)
     }
 
     /** A text node showing [text], whatever word joiner the widow rule put in it. */
