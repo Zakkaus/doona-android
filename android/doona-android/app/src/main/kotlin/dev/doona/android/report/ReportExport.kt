@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -64,10 +66,12 @@ interface Reports {
 /**
  * The diagnostic report export: a zip in [outDir] of `report.json` ([reportJson]) and the crash files, which the activity
  * shares through the share sheet. Nothing is sent anywhere: the user picks where it goes. Each export has a token, kept
- * in [tokens] with the names and the mark of the core's listing, which its sheet's callback carries; once that sheet
- * reports that the user picked an app ([picked]), those crash files are cleared, so a crash written meanwhile stays, and
- * a late pick in an earlier sheet clears only its own export's. A sheet closed without a pick keeps them. Without the
- * core's listing (the core is unavailable) the zip takes the app's own, and nothing is cleared. Process-wide, so a build
+ * in [tokens] with the names and the mark of the core's listing before its sheet opens, which its sheet's callback
+ * carries; once that sheet reports that the user picked an app ([picked]), those crash files are cleared, so a crash
+ * written meanwhile stays, and a late pick in an earlier sheet clears only its own export's. A clear that does not
+ * succeed is sent again at the next start ([sweep]). A sheet closed without a pick keeps them. Without the core's
+ * listing (the core is unavailable) the zip takes the app's own, and nothing is cleared. App crash files are checked
+ * again as they go into the zip ([exportedCrash]), for those written before the check. Process-wide, so a build
  * in progress outlives the page that started it. Each zip is written under a part name and then takes a name of its own;
  * one the sheet took is deleted [SHARE_GRACE_MS] after the sheet returns, which leaves the app picked time to read it,
  * and one it did not take at once; [sweep] removes what an earlier run left.
@@ -87,6 +91,9 @@ class ReportExport(
 
     /** Held while a zip is written and published, and while [sweep] removes parts: it never takes one being written. */
     private val zips = Any()
+
+    /** One clear at a time, so a pick reported twice, or one that comes while a start sends the pending ones, clears once. */
+    private val clearing = Mutex()
     override val export: StateFlow<ExportState> = state.asStateFlow()
     override val crashOffered: StateFlow<Boolean> get() = offer.offered
 
@@ -124,11 +131,16 @@ class ReportExport(
     fun picked(token: String, done: () -> Unit = {}) {
         scope.launch {
             try {
-                withContext(io) { tokens.take(token) }?.let { engine.clearCrashes(it.names, it.mark) }
+                clearing.withLock { withContext(io) { tokens.picked(token) }?.let { clear(token, it) } }
             } finally {
                 done()
             }
         }
+    }
+
+    /** Sends the clear of the export [token]. The export is forgotten only once the clear succeeds; until then each start sends it again. */
+    private suspend fun clear(token: String, crashes: ExportedCrashes) {
+        if (engine.clearCrashes(crashes.names, crashes.mark).isSuccess) withContext(io) { tokens.forget(token) }
     }
 
     /** The share sheet returned, whatever the user did there. The zip goes after [SHARE_GRACE_MS]. */
@@ -147,18 +159,24 @@ class ReportExport(
         if (!state.compareAndSet(sharing, ExportState.Failed)) return
         scope.launch(io) {
             sharing.file.delete()
-            tokens.take(sharing.token)
+            tokens.forget(sharing.token)
         }
     }
 
     /**
-     * Removes what an earlier run left: every zip it was writing, and the zips older than [SHARE_GRACE_MS]. It reads the
-     * disk, so call it off the main thread.
+     * Once per process, at its start: removes what an earlier run left, every zip it was writing and the zips older than
+     * [SHARE_GRACE_MS], and sends again the clears picks asked for that did not succeed, idempotent as they are. It reads
+     * the disk, so call it off the main thread.
      */
     fun sweep() {
         val before = clock() - SHARE_GRACE_MS
         synchronized(zips) {
             outDir().listFiles { file -> file.isPart() || (file.isZip() && file.lastModified() < before) }.orEmpty().forEach { it.delete() }
+        }
+        scope.launch {
+            clearing.withLock {
+                for ((token, crashes) in withContext(io) { tokens.pending() }) clear(token, crashes)
+            }
         }
     }
 
@@ -176,17 +194,24 @@ class ReportExport(
         scope.launch(io) { offer.shown() }
     }
 
+    /** The zip, and the export's token saved before any sheet can open for it: a token that cannot be saved fails the export. */
     private fun build(core: Result<CoreDiagnostics>, engineView: EngineView): ExportState.Ready {
         val listing = core.getOrNull()
         val names = listing?.crashes?.map { it.name } ?: crashes.list().map { it.name }
-        // A file gone since the listing is left out, and so is its name.
-        val files = names.mapNotNull { name -> crashes.read(name)?.let { name to it } }
+        // A file gone since the listing is left out, and so is its name; so is an empty one, which is no crash file.
+        val known = KnownNames()
+        val files = names.mapNotNull { name -> crashes.read(name)?.let { name to exportedCrash(it, known) } }
         val at = clock()
         val json = reportJson(at, app(), engineView, core, AppEvents.snapshot(), files.map { it.first })
         val zip = publishZip(STAMP.format(Instant.ofEpochMilli(at)), json, files)
         val token = UUID.randomUUID().toString()
         val cleared = listing?.let { l -> files.map { it.first }.takeIf { it.isNotEmpty() }?.let { ExportedCrashes(it, l.crashMark) } }
-        cleared?.let { tokens.add(token, it) }
+        try {
+            cleared?.let { tokens.add(token, it) }
+        } catch (e: IOException) {
+            zip.delete()
+            throw e
+        }
         return ExportState.Ready(zip, cleared, token)
     }
 

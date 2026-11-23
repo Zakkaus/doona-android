@@ -69,9 +69,9 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     private val launched = AtomicBoolean(false)
 
     /**
-     * Once per process: looks for a crash to offer the report for, and removes what earlier runs left, parts of crash
-     * files and old report zips. Not again for an activity created later, whose share sheet may hold a zip. Reads the
-     * disk on another thread.
+     * Once per process: looks for a crash to offer the report for, removes what earlier runs left, parts of crash files
+     * and old report zips, and sends again the clears of picks that did not succeed. Not again for an activity created
+     * later, whose share sheet may hold a zip. Reads the disk on another thread.
      */
     fun checkCrashes() {
         if (!launched.compareAndSet(false, true)) return

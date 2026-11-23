@@ -47,7 +47,7 @@ class CrashCaptureTest {
         val trace = text.substringAfter("\n\nbacktrace:\n").lines().filter { it.isNotEmpty() }
         assertEquals("exception: java.lang.IllegalStateException", trace.first())
         assertEquals("the cause is not read", 1, trace.count { !it.startsWith("  at ") })
-        // A test's own name, spaces and all, is no identifier.
+        // The test's own frames are code the app holds, written as they are; any other is redacted.
         assertTrue(trace.filter { it.startsWith("  at ") }.all { it.startsWith("  at dev.doona.") || it == "  at $REDACTED" })
         for (leak in listOf("https", "example", "tk_5ecret", "203.0.113.45", "refused", "org.junit", "java.lang.reflect")) {
             assertFalse(leak, leak in text)
@@ -65,12 +65,8 @@ class CrashCaptureTest {
 
     @Test
     fun `an exception's cause is never asked for`() {
-        // Asking takes the exception's lock (Throwable.getCause is synchronized).
-        val guarded = object : RuntimeException() {
-            override val cause: Throwable get() = error("asked")
-        }
-        CrashHandler(files, "v", { _, _ -> }, waitMs = SURE_MS) { false }.uncaughtException(Thread.currentThread(), guarded)
-        assertTrue(files.list().single().readText().contains("\nexception: dev.doona.android.report.CrashCaptureTest"))
+        CrashHandler(files, "v", { _, _ -> }, waitMs = SURE_MS) { false }.uncaughtException(Thread.currentThread(), GuardedCause())
+        assertTrue(files.list().single().readText().contains("\nexception: dev.doona.android.report.GuardedCause\n"))
     }
 
     @Test
@@ -85,9 +81,9 @@ class CrashCaptureTest {
     fun `installing again replaces the handler instead of stacking one`() {
         val before = Thread.getDefaultUncaughtExceptionHandler()
         try {
-            CrashCapture.install(files, "v")
+            CrashCapture.install(files, "v", main = Thread.currentThread())
             val first = Thread.getDefaultUncaughtExceptionHandler() as CrashHandler
-            CrashCapture.install(files, "v")
+            CrashCapture.install(files, "v", main = Thread.currentThread())
             val second = Thread.getDefaultUncaughtExceptionHandler() as CrashHandler
             assertSame(before, first.previous)
             assertSame(before, second.previous)
@@ -144,16 +140,67 @@ class CrashCaptureTest {
             stackTrace = arrayOf(
                 StackTraceElement("dev.doona.android.Forged", "https://user:hunter2@sub.example.net/api", "Forged.kt", 7),
                 StackTraceElement("dev.doona.android.https://user:hunter2@sub.example.net", "run", "Forged.kt", 8),
-                StackTraceElement("dev.doona.android.report.Real\$Inner", "write\$lambda\$0", "Real.kt", 9),
-                StackTraceElement("dev.doona.android.report.Real", "<init>", "Real.kt", 10),
+                StackTraceElement("dev.doona.android.report.CrashFiles\$Step", "valueOf", "CrashFiles.kt", 9),
+                StackTraceElement("dev.doona.android.report.CrashFiles", "<init>", "CrashFiles.kt", 10),
             )
         }
         CrashHandler(files, "v", { _, _ -> }, waitMs = SURE_MS) { false }.uncaughtException(Thread.currentThread(), error)
         val text = files.list().single().readText()
         for (leak in listOf("hunter2", "example", "https", "user:")) assertFalse(leak, leak in text)
         val frames = text.lines().filter { it.startsWith("  at ") }
-        val own = listOf("dev.doona.android.report.Real\$Inner.write\$lambda\$0:9", "dev.doona.android.report.Real.<init>:10")
+        val own = listOf("dev.doona.android.report.CrashFiles\$Step.valueOf:9", "dev.doona.android.report.CrashFiles.<init>:10")
         assertEquals(listOf("<redacted>", "<redacted>") + own, frames.map { it.removePrefix("  at ") })
         assertTrue("location: <redacted>\n" in text)
     }
+
+    @Test
+    fun `a frame is written only when the app loads its class and that class declares its method`() {
+        val error = IllegalStateException().apply {
+            stackTrace = arrayOf(
+                // Identifiers, as a customer's host or a password can be.
+                StackTraceElement("dev.doona.customer.example", "run", "Forged.kt", 7),
+                StackTraceElement("dev.doona.android.report.CrashFiles", "hunter2", "Forged.kt", 8),
+                StackTraceElement("dev.doona.android.report.CrashFiles", "write", "CrashFiles.kt", 66),
+            )
+        }
+        CrashHandler(files, "v", { _, _ -> }, waitMs = SURE_MS) { false }.uncaughtException(Thread.currentThread(), error)
+        val text = files.list().single().readText()
+        for (leak in listOf("customer", "hunter2")) assertFalse(leak, leak in text)
+        val frames = text.lines().filter { it.startsWith("  at ") }.map { it.removePrefix("  at ") }
+        assertEquals(listOf(REDACTED, REDACTED, "dev.doona.android.report.CrashFiles.write:66"), frames)
+    }
+
+    @Test
+    fun `the exception's class is written only when the app loads it`() {
+        val text = crashText("dev.doona.customer.example.Leak", emptyList(), false, "v", 1_795_300_150_000)
+        assertFalse(text, "customer" in text)
+        assertTrue(text, "\nexception: $REDACTED\n" in text)
+        assertTrue("exception: java.lang.IllegalStateException\n" in crashText("java.lang.IllegalStateException", emptyList(), false, "v", 1))
+    }
+
+    @Test
+    fun `the wait starts when the handler is entered`() {
+        val release = CountDownLatch(1)
+        val handed = CountDownLatch(1)
+        // Asking whether the thread is the main one blocks, as the Looper's monitor can.
+        val handler = CrashHandler(files, "v", { _, _ -> handed.countDown() }) {
+            release.await()
+            true
+        }
+        val crashing = Thread { handler.uncaughtException(Thread.currentThread(), leaky()) }
+        try {
+            val begun = System.nanoTime()
+            crashing.start()
+            assertTrue("the crash was not handed on", handed.await(5, TimeUnit.SECONDS))
+            assertTrue("handed on late", System.nanoTime() - begun < TimeUnit.SECONDS.toNanos(1))
+        } finally {
+            release.countDown()
+            crashing.join()
+        }
+    }
+}
+
+/** Asking for its cause throws: asking takes the exception's lock (Throwable.getCause is synchronized). */
+private class GuardedCause : RuntimeException() {
+    override val cause: Throwable get() = error("asked")
 }

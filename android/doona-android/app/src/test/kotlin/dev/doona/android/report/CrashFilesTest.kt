@@ -164,6 +164,66 @@ class CrashFilesTest {
         val name = files(946_684_800_000).write("x")
         assertEquals(13, name?.removeSuffix(".txt")?.length)
     }
+
+    @Test
+    fun `an empty file is a placeholder an earlier version claimed, never a crash file`() {
+        dir.mkdirs()
+        dir.resolve("1795300150000.txt").writeText("source: core")
+        dir.resolve("1795300150001.txt").writeText("")
+        assertEquals(listOf("1795300150000.txt"), files(0).list().map { it.name })
+        assertEquals(1_795_300_150_000, files(0).newest())
+    }
+
+    /** Six crash files and an empty placeholder above them, as earlier versions could leave. */
+    private fun leftByEarlierVersions() {
+        dir.mkdirs()
+        for (n in 1..6) dir.resolve("179530015000$n.txt").writeText("old $n")
+        dir.resolve("1795300150009.txt").writeText("")
+    }
+
+    @Test
+    fun `under the lock the placeholders go and six files are trimmed to five, then a name above them all is taken`() {
+        leftByEarlierVersions()
+        assertEquals("1795300150010.txt", files(1_795_300_100_000).write("app"))
+        assertEquals((3..6).map { "179530015000$it.txt" } + "1795300150010.txt", dir.list()!!.filter { it != ".lock" }.sorted())
+    }
+
+    @Test
+    fun `a placeholder goes only once a file above it holds its number`() {
+        leftByEarlierVersions()
+        // A sweep publishes nothing: removed there, the highest placeholder's number would be free again.
+        files(0).sweep()
+        assertTrue(dir.resolve("1795300150009.txt").exists())
+        // A write whose part fails to become a file takes nothing away either.
+        dir.resolve("1795300150010.txt").mkdirs()
+        dir.resolve("1795300150010.txt").resolve("kept").createNewFile()
+        assertNull(files(1_795_300_100_000).write("app"))
+        assertTrue(dir.resolve("1795300150009.txt").exists())
+    }
+
+    @Test
+    fun `a mark that cannot be read, or holds no number, stops the write`() {
+        dir.resolve(".core.mark").mkdirs()
+        assertNull("a mark that is a directory", files(1_795_300_150_000).write("app"))
+        dir.resolve(".core.mark").delete()
+        dir.resolve(".core.mark").writeText("17953001x\n")
+        assertNull("a mark that holds no number", files(1_795_300_150_000).write("app"))
+        assertTrue(files(0).list().isEmpty())
+    }
+
+    @Test
+    fun `a directory that cannot be listed stops the write`() {
+        dir.mkdirs()
+        dir.resolve("1795300160000.txt").writeText("source: core")
+        assertTrue(dir.setReadable(false))
+        val name = try {
+            files(1_795_300_150_000).write("app")
+        } finally {
+            dir.setReadable(true)
+        }
+        assertNull(name)
+        assertEquals(listOf("1795300160000.txt"), dir.list()!!.filter { it != ".lock" })
+    }
 }
 
 /** Thrown to end a write at a step, as the system ending the process would: no IOException, so nothing is cleaned up. */

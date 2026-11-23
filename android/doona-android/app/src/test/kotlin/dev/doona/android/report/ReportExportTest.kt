@@ -13,7 +13,11 @@ import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -85,10 +89,10 @@ class ReportExportTest {
 
     private val app = AppInfo("0.1", 1, "debug", listOf("arm64-v8a"), "16", 36, "Google", "Pixel 9")
 
-    private fun TestScope.export(engine: Engine, now: Long = 1_795_300_200_000): ReportExport {
+    private fun TestScope.export(engine: Engine, now: Long = 1_795_300_200_000, scope: CoroutineScope = this): ReportExport {
         val files = CrashFiles(crashDir)
         val dispatcher = StandardTestDispatcher(testScheduler)
-        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, this, dispatcher) { now }
+        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher) { now }
     }
 
     /** Every entry of the zip, by name. */
@@ -133,8 +137,13 @@ class ReportExportTest {
         assertTrue(report["diagnostics"] is JsonObject)
     }
 
-    /** Records the clears it is sent. */
-    private class Recording(private val fake: FakeEngine, private val coreUp: Boolean = true) : Engine by fake {
+    /** Records the clears it is sent; the first [failures] fail, and with [hangs] none returns, as in a process that ends. */
+    private class Recording(
+        private val fake: FakeEngine,
+        private val coreUp: Boolean = true,
+        private var failures: Int = 0,
+        private val hangs: Boolean = false,
+    ) : Engine by fake {
         val cleared = mutableListOf<Pair<List<String>, Long>>()
 
         override suspend fun diagnostics(level: LogLevel?) =
@@ -142,6 +151,11 @@ class ReportExportTest {
 
         override suspend fun clearCrashes(names: List<String>, mark: Long): Result<Unit> {
             cleared += names to mark
+            if (hangs) awaitCancellation()
+            if (failures > 0) {
+                failures--
+                return Result.failure(EngineException(ErrorCode.Internal))
+            }
             return fake.clearCrashes(names, mark)
         }
     }
@@ -347,5 +361,158 @@ class ReportExportTest {
         val half = outDir.resolve(".doona-report-1234.part").apply { writeText("x") }
         export(fixtureEngine()).sweep()
         assertFalse(half.exists())
+    }
+
+    @Test
+    fun `an export whose token cannot be saved fails, and leaves no zip to share`() = runTest {
+        // A directory holds the tokens' name, so the save cannot rename onto it.
+        tmp.root.resolve("report-exports.json").resolve("kept").apply { parentFile!!.mkdirs() }.writeText("x")
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(crash, 1))
+        val export = export(Recording(fake))
+        export.startExport()
+        advanceUntilIdle()
+        assertEquals(ExportState.Failed, export.export.value)
+        assertNull(export.take())
+        assertTrue(outDir.list().orEmpty().none { it.endsWith(".zip") })
+    }
+
+    @Test
+    fun `a clear that failed is sent again at the next start, and its export is forgotten only once one succeeds`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(crash, 1))
+        val engine = Recording(fake, failures = 1)
+        val export = export(engine)
+        export.startExport()
+        advanceUntilIdle()
+        export.picked(export.take()!!.token)
+        advanceUntilIdle()
+        assertEquals(1, engine.cleared.size)
+        export(engine).sweep()
+        advanceUntilIdle()
+        assertEquals(List(2) { listOf(crash) to 1_795_300_150_000L }, engine.cleared)
+        export(engine).sweep()
+        advanceUntilIdle()
+        assertEquals("sent again after it succeeded", 2, engine.cleared.size)
+    }
+
+    @Test
+    fun `a tokens file that cannot be read fails the export rather than losing the clears it holds`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(crash, 1))
+        val engine = Recording(fake, failures = 1)
+        val export = export(engine)
+        export.startExport()
+        advanceUntilIdle()
+        export.picked(export.take()!!.token)
+        export.shared()
+        advanceUntilIdle()
+        val saved = tmp.root.resolve("report-exports.json")
+        assertTrue(saved.setReadable(false))
+        try {
+            export.startExport()
+            advanceUntilIdle()
+            assertEquals(ExportState.Failed, export.export.value)
+        } finally {
+            saved.setReadable(true)
+        }
+        export(engine).sweep()
+        advanceUntilIdle()
+        assertEquals(List(2) { listOf(crash) to 1_795_300_150_000L }, engine.cleared)
+    }
+
+    @Test
+    fun `a process that ends during the clear leaves it to the next start`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(crash, 1))
+        val dying = Recording(fake, hangs = true)
+        val process = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
+        val before = export(dying, scope = process)
+        before.startExport()
+        advanceUntilIdle()
+        before.picked(before.take()!!.token)
+        advanceUntilIdle()
+        assertEquals(1, dying.cleared.size)
+        process.cancel()
+        val engine = Recording(fake)
+        export(engine).sweep()
+        advanceUntilIdle()
+        assertEquals(listOf(listOf(crash) to 1_795_300_150_000L), engine.cleared)
+    }
+
+    @Test
+    fun `a pick in the first of nine sheets still clears that export's crash files`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(crash, 1))
+        val engine = Recording(fake)
+        val export = export(engine)
+        val tokens = (1..9).map {
+            export.startExport()
+            advanceUntilIdle()
+            export.take()!!.token.also { export.shared() }
+        }
+        export.picked(tokens.first())
+        advanceUntilIdle()
+        assertEquals(listOf(listOf(crash) to 1_795_300_150_000L), engine.cleared)
+    }
+
+    @Test
+    fun `an empty file the core lists is neither exported nor cleared`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        crashDir.resolve("1795300140000.txt").writeText("")
+        fake.crashes = listOf(CrashFile("1795300140000.txt", 0), CrashFile(crash, 1))
+        val engine = Recording(fake)
+        val export = export(engine)
+        export.startExport()
+        advanceUntilIdle()
+        val ready = export.take()!!
+        assertEquals(setOf("crash/$crash"), entries(ready.file).keys - ReportExport.REPORT_ENTRY)
+        export.picked(ready.token)
+        advanceUntilIdle()
+        assertEquals(listOf(listOf(crash) to 1_795_300_150_000L), engine.cleared)
+    }
+
+    @Test
+    fun `an app crash file written before frames were checked is filtered as it is exported, a core one is not`() = runTest {
+        crashDir.mkdirs()
+        val core = "1795300140000.txt"
+        val coreText = "source: core\natEpochMs: 1795300140000\nmessage: panic in doonacore::api\n\nbacktrace:\n0 libdoonacore.so+0x1f2e\n"
+        crashDir.resolve(core).writeText(coreText)
+        val old = "1795300150000.txt"
+        crashDir.resolve(old).writeText(
+            """
+            source: app
+            atEpochMs: 1795300150000
+            version: 0.1 debug arm64-v8a-android
+            thread: main
+            location: dev.doona.customer.example.run:7
+            message: uncaught exception
+
+            backtrace:
+            exception: dev.doona.customer.example.Leak
+              at dev.doona.customer.example.run:7
+              at dev.doona.android.report.CrashFiles.hunter2:8
+              at dev.doona.android.report.CrashFiles.write:66
+            """.trimIndent() + "\n",
+        )
+        val fake = fixtureEngine()
+        fake.crashes = listOf(CrashFile(core, 1), CrashFile(old, 1))
+        val export = export(fake)
+        export.startExport()
+        advanceUntilIdle()
+        val zip = entries(export.take()!!.file)
+        val text = zip.getValue("crash/$old")
+        for (leak in listOf("customer", "hunter2")) assertFalse(leak, leak in text)
+        assertTrue(text, text.startsWith("source: app\natEpochMs: 1795300150000\nversion: 0.1 debug arm64-v8a-android\nthread: main\n"))
+        assertTrue(text, "\nlocation: $REDACTED\n" in text)
+        assertTrue(text, "\nexception: $REDACTED\n" in text)
+        assertTrue(text, text.endsWith("  at $REDACTED\n  at $REDACTED\n  at dev.doona.android.report.CrashFiles.write:66\n"))
+        assertEquals(coreText, zip.getValue("crash/$core"))
     }
 }
