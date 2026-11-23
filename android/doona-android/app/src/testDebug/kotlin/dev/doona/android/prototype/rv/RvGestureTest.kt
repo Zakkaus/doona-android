@@ -29,7 +29,6 @@ import dev.doona.android.R
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -39,10 +38,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The sample's gestures (brief rv-gestures), on a clock the test drives where they move: the stretch overscroll where
- * Android has it and no glow below (活動's pull-down still wins at the top over the stretch: [RvPullTest] runs on an SDK
- * that has it); tapping the tab already shown glides its page back to the top; a held disc grows by about 4 % and
- * lightens, and goes back on release, at once at animator scale 0.
+ * The sample's gestures (brief rv-gestures), on a clock the test drives where they move: the stretch overscroll, which
+ * every supported Android has (活動's pull-down still wins at the top over the stretch: [RvPullTest]); tapping the tab
+ * already shown glides its page back to the top; a held disc grows by about 4 % and lightens, and goes back on release,
+ * at once at animator scale 0.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -53,10 +52,6 @@ class RvGestureTest {
 
     @After
     fun animatorScaleBack() = rvAnimatorScale(1f)
-
-    @Test
-    @Config(sdk = [Build.VERSION_CODES.R])
-    fun belowAndroid12NothingGlows() = assertNull("no overscroll effect at all", overscroll())
 
     @Test
     @Config(sdk = [Build.VERSION_CODES.S])

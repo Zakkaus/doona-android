@@ -110,9 +110,9 @@ class RvRulesShotTest {
 
     private companion object {
         /** Windows as tall as each whole page, so one capture holds it to its end. */
-        const val WHOLE_RULES = "+h1764dp"
-        const val WHOLE_EDIT = "+h1464dp"
-        const val WHOLE_PENDING = "+h2054dp"
+        const val WHOLE_RULES = "+h1772dp"
+        const val WHOLE_EDIT = "+h1475dp"
+        const val WHOLE_PENDING = "+h2062dp"
         const val WHOLE_IMPACT = "+h1405dp"
         const val WHOLE_EDIT_RULE = "+h1090dp"
         const val WHOLE_ERROR_RULE = "+h1094dp"
