@@ -113,7 +113,7 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = progress() }
-                .background(Rv.colors.scrim)
+                .background(Rv.colors.sheetScrim)
                 .clickable(interactionSource = null, indication = null, onClickLabel = label, onClick = onDismiss),
         )
         RvSheetPanel(

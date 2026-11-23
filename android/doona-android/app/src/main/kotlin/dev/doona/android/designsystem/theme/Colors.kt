@@ -97,6 +97,9 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
     val fair = readableHue(if (dark) HueScale.fairDark else HueScale.fairLight)
     val slow = readableHue(if (dark) HueScale.slowDark else HueScale.slowLight)
 
+    /** An error's glyph, message and field ring: the slow latency's red, the scheme's one red. */
+    val error = slow
+
     /**
      * The old node tile's ink: its fills ([discOnCard], and [navPill] when current) are surfaces the sample never puts
      * text on, so its secondary text and latency hues take the first steps that also read at 4.5:1 there. The sample's
@@ -151,6 +154,9 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
     val roundButton = discOnHeader
     val stateLayer = s.onSurface
 
+    /** What a round disc lightens toward while pressed: see [AlphaScale.DISC_LIT_LIGHT]. */
+    val discLit = if (dark) s.onSurface.copy(alpha = AlphaScale.DISC_LIT_DARK) else s.surfaceContainerLowest.copy(alpha = AlphaScale.DISC_LIT_LIGHT)
+
     // Roles of the old components that the sample has no match for, derived from the scheme with the same contrast rules.
 
     /** A text button's label: the accent, or the first step from it toward the text colour that reads at 4.5:1 on every fill it sits on. */
@@ -177,6 +183,9 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
 
     /** The underlay of a modal: the scheme's scrim at doona's alpha for the theme. */
     val scrim: Color = s.scrim.copy(alpha = if (dark) AlphaScale.SCRIM_DARK else AlphaScale.SCRIM_LIGHT)
+
+    /** The underlay of a modal sheet, darker than a dialog's (Revolut's sheet, measured). */
+    val sheetScrim = Color.Black.copy(alpha = AlphaScale.SHEET_SCRIM)
 
     /** A direction's roles: its line, its tile's disc (the line at one alpha over the card), the detail fill and the band. */
     private fun series(line: Color) = DoonaSeries(

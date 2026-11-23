@@ -308,7 +308,7 @@ internal object RvAlpha {
     const val DISABLED = 0.38f
 
     /** The scrim under a modal sheet (measured §2: #333333 over the page, about black at 80 %). */
-    const val SCRIM = 0.8f
+    const val SHEET_SCRIM = 0.8f
 
     /** Glass tints: the top bar's controls over the blur in light, dense enough that a title under them stays a blur (L-08), and any glass's solid fill. */
     const val GLASS_SOLID = 0.94f

@@ -32,6 +32,9 @@ object TypeScale {
     /** A round action's label and a range chip (measured §6, §8: 17 sp semibold); a segment (19 sp semibold). */
     val action = TypeStep(17, 24, FontWeight.SemiBold)
     val segment = TypeStep(19, 26, FontWeight.SemiBold)
+
+    /** What a text field holds and its placeholder: the stat value's 19 sp regular. */
+    val field = TypeStep(19, 26, FontWeight.Normal)
     val tileCaption = TypeStep(13, 18, FontWeight.Normal)
     val tileValue = TypeStep(24, 30, FontWeight.Bold, display = true)
     val tileUnit = TypeStep(15, 20, FontWeight.SemiBold, display = true)

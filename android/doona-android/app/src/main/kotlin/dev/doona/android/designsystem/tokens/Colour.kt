@@ -55,6 +55,13 @@ object AlphaScale {
     /** A raised segment or chip's 1 dp rim in dark, so it reads on a card's track (L-07). */
     const val RAISED_RIM = 0.12f
 
+    /**
+     * What a round disc lightens toward while pressed: in light the lightest container at 60 %, in dark the text colour
+     * at 10 %, as strong as the state layer.
+     */
+    const val DISC_LIT_LIGHT = 0.6f
+    const val DISC_LIT_DARK = 0.1f
+
     /** The strip behind a bar: the page at 85 % over the blur (S5-24). */
     const val BAR_GLASS = 0.85f
 
@@ -83,6 +90,9 @@ object AlphaScale {
     /** The modal underlay: black at 32 % in light, 55 % in dark (`--rp-underlay`, `foundations.css:6`, `:185`). */
     const val SCRIM_LIGHT = 0.32f
     const val SCRIM_DARK = 0.55f
+
+    /** A modal sheet's underlay: black at 80 % (Revolut's #333333 over the page). */
+    const val SHEET_SCRIM = 0.8f
 
     /**
      * The outline of a disabled outlined control: a third of an enabled one's strength, so that it is plainly fainter in

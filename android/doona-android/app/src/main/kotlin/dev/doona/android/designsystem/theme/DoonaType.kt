@@ -33,6 +33,7 @@ class DoonaType {
     val rowSub = TypeScale.rowSub.style()
     val action = TypeScale.action.style()
     val segment = TypeScale.segment.style()
+    val field = TypeScale.field.style()
     val tileCaption = TypeScale.tileCaption.style()
     val tileValue = TypeScale.tileValue.style(tabular = true)
     val tileUnit = TypeScale.tileUnit.style()

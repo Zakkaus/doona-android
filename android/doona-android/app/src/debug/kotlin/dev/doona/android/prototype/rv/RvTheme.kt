@@ -121,8 +121,8 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
      */
     val error = slow
 
-    /** The scrim under a modal sheet (measured §2). */
-    val scrim = Color.Black.copy(alpha = RvAlpha.SCRIM)
+    /** The scrim under a modal sheet (measured §2), darker than a dialog's. */
+    val sheetScrim = Color.Black.copy(alpha = RvAlpha.SHEET_SCRIM)
 
     /**
      * The switch (Addendum A, item 1): off, Revolut's light thumb (#fafafa in both themes) over the [control] track; on,
