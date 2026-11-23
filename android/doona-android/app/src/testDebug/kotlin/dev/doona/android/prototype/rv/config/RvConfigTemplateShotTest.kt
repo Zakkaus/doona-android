@@ -98,6 +98,17 @@ class RvConfigTemplateShotTest {
     }
 
     @Test
+    fun anOptionAloneCanBeReviewedAndTurningItBackCannot() {
+        compose.setContent { Themed { Chooser(RvConfigTemplateData.bypass, RvConfigTemplateData.bypass) } }
+        compose.onNodeWithText(REVIEW).assertIsNotEnabled()
+        // Semantics clicks: scrolled into view, a row's foot may sit under the floating 檢視變更.
+        compose.onNodeWithText("擋廣告").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText(REVIEW).assertIsEnabled()
+        compose.onNodeWithText("擋廣告").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText(REVIEW).assertIsNotEnabled()
+    }
+
+    @Test
     fun optionsStartAsDoonasDefaults() {
         compose.setContent { Themed { Chooser(null, RvConfigTemplateData.regions) } }
         compose.onNodeWithText("擋廣告").performScrollTo().assertIsOff()
