@@ -57,7 +57,7 @@ impl Tree {
         Ok(())
     }
 
-    fn edit_path(&self, relative: &Path) -> Result<PathBuf, StoreError> {
+    pub(super) fn edit_path(&self, relative: &Path) -> Result<PathBuf, StoreError> {
         if relative.as_os_str().is_empty()
             || !relative
                 .components()
@@ -166,6 +166,16 @@ impl HonkStore {
             return Err(StoreError::InvalidEditPath);
         }
         fs::create_dir_all(path.parent().unwrap())?;
+        self.write_edit(id, &path, tree.entry.parent().unwrap(), text)
+    }
+
+    pub(super) fn write_edit(
+        &mut self,
+        id: u64,
+        path: &Path,
+        root: &Path,
+        text: &str,
+    ) -> Result<(), StoreError> {
         // Select before replacing bytes: a crash must not collect a draft containing the edit.
         if self.current_draft().is_none_or(|d| d.id != id || !d.edited) {
             let mut next = self.manifest.clone();
@@ -177,8 +187,8 @@ impl HonkStore {
         }
         let temp = self.root.join(STAGING).join(EDIT_TEMP);
         write_synced(&temp, text.as_bytes())?;
-        fs::rename(temp, &path)?;
-        parents(&path, tree.entry.parent().unwrap()).try_for_each(sync_dir)?;
+        fs::rename(temp, path)?;
+        parents(path, root).try_for_each(sync_dir)?;
         Ok(())
     }
 
