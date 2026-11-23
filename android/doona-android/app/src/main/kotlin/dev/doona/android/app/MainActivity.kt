@@ -1,6 +1,7 @@
 package dev.doona.android.app
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,14 +14,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
+import dev.doona.android.report.ExportState
+import dev.doona.android.report.reportShareIntent
+import kotlinx.coroutines.launch
 
 /**
  * The only activity. It owns the steps that need an activity: before the engine may connect, the notification
  * permission and VPN consent; and the local network permission's system dialog and the app's settings page, which the
- * screens' engine asks for after a failure (ARCH D26). Every connect request, from the UI or from [connectIntent], goes
- * through [connect].
+ * screens' engine asks for after a failure (ARCH D26); and the share sheet of the diagnostic report. Every connect
+ * request, from the UI or from [connectIntent], goes through [connect].
  */
 class MainActivity : ComponentActivity() {
     private val container get() = (application as DoonaApplication).container
@@ -45,6 +53,10 @@ class MainActivity : ComponentActivity() {
     private val localNetworkPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { container.localNetwork.answered(it) }
 
+    /** The share sheet's only launcher: its return, to this activity or a recreated one, clears what the report holds. */
+    private val reportShare =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { container.reports.shared() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -61,7 +73,14 @@ class MainActivity : ComponentActivity() {
                     imports = container.imports,
                     version = version,
                     localNetwork = localNetwork,
+                    reports = container.reports,
                 )
+            }
+        }
+        container.checkCrashes()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                container.reports.export.collect { if (it is ExportState.Ready) shareReport() }
             }
         }
         // A recreated activity or one reopened from recents must not repeat the request that first launched it.
@@ -129,6 +148,18 @@ class MainActivity : ComponentActivity() {
             localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
         } else {
             container.localNetwork.answered(true)
+        }
+    }
+
+    /** Opens the share sheet for the report that is ready, once; nothing is sent unless the user picks an app there. */
+    private fun shareReport() {
+        val ready = container.reports.take() ?: return
+        try {
+            reportShare.launch(reportShareIntent(this, ready.file, getString(R.string.report_share_title)))
+        } catch (_: ActivityNotFoundException) {
+            container.reports.shareFailed()
+        } catch (_: IllegalArgumentException) {
+            container.reports.shareFailed()
         }
     }
 

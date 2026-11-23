@@ -10,5 +10,5 @@ import dev.doona.android.engine.AppPolicy
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun SettingsScreenPreview() {
-    DoonaTheme { SettingsScreen(SettingsUiState(AppPolicy.OnlyListed), version = "0.1", onOpenPerApp = {}, onOpenSubscriptions = {}) }
+    DoonaTheme { SettingsScreen(SettingsUiState(AppPolicy.OnlyListed), version = "0.1", onOpenPerApp = {}, onOpenSubscriptions = {}, onOpenReport = {}) }
 }

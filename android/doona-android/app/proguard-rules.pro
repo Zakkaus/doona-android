@@ -19,3 +19,9 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 -keep class dev.doona.android.**$$serializer { *; }
+
+# Crash files (report/CrashCapture.kt) keep only the app's own frames, picked by package, as `class.method:line`:
+# the package names and line numbers stay, so a release build's frames are found and retrace with the mapping.
+-keeppackagenames dev.doona.android.**
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

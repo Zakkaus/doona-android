@@ -9,9 +9,16 @@ import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.subscriptions.SubscriptionImports
+import dev.doona.android.report.AppInfo
+import dev.doona.android.report.CrashFiles
+import dev.doona.android.report.CrashOffer
+import dev.doona.android.report.ReportExport
+import dev.doona.android.report.reportDir
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Process-wide objects, created once by [DoonaApplication] (manual dependency injection, ARCH D6). Activities,
@@ -38,6 +45,22 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
 
     /** The subscription import in flight, above every screen that can start one: a slow fetch survives leaving the page. */
     val imports: SubscriptionImports by lazy { SubscriptionImports(uiEngine, uiScope) }
+
+    /** The crash files of the core and the app: the core's `crash/` directory under the data directory it is given. */
+    val crashFiles: CrashFiles by lazy { CrashFiles(File(application.noBackupFilesDir, "crash")) }
+
+    /** The report offered after a crash, once per crash; the number it last offered is kept beside the crash files. */
+    val crashOffer: CrashOffer by lazy { CrashOffer(crashFiles, File(application.noBackupFilesDir, "crash-offered")) }
+
+    /** The diagnostic report export, above every screen: a zip being written survives leaving the page. */
+    val reports: ReportExport by lazy {
+        ReportExport(engine, crashFiles, crashOffer, reportDir(application), { AppInfo.of(application) }, uiScope, Dispatchers.IO)
+    }
+
+    /** Looks for a crash to offer the report for; the first call in a process reads the disk, later ones do nothing. */
+    fun checkCrashes() {
+        uiScope.launch(Dispatchers.IO) { crashOffer.check() }
+    }
 
     /** Below Android 17 no permission guards the local network. */
     private fun localNetworkGranted(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN ||

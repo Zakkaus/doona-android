@@ -2,6 +2,7 @@ package dev.doona.android.testing
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.doona.android.app.ActivityKey
@@ -24,6 +25,7 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.feature.activity.ActivityScreen
 import dev.doona.android.feature.activity.sampleActivityState
+import dev.doona.android.report.fake.FakeReports
 
 /** Robolectric draws no system bars, so tests give the app the insets of a phone's status bar and gesture bar. */
 val StatusBar = 40.dp
@@ -47,7 +49,7 @@ fun sampleEngine() = FakeEngine(groups = FakeEngine.SAMPLE_GROUPS, status = Stat
  * Every screen of the app. A screen lane adds its screens here and so gets the spacing check and the goldens; it also
  * states the screen's [PageLayout], which the check holds the rendered page to.
  */
-internal fun screenCases(): List<ScreenCase> = appScreenCases() + policyScreenCases()
+internal fun screenCases(): List<ScreenCase> = appScreenCases() + policyScreenCases() + reportCases()
 
 private fun appScreenCases(): List<ScreenCase> {
     val engine = sampleEngine()
@@ -63,6 +65,10 @@ private fun appScreenCases(): List<ScreenCase> {
         ScreenCase("activity-error", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
             // The error state sits in the frame of every other screen: the hub bar under it and the gesture bar's inset.
             DoonaAppShell(Tab.Activity, onSelect = {}) { ActivityScreen(sampleActivityState(ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {}) }
+        },
+        // The crash offer over the page the app opens on, as the launch after a crash shows it.
+        ScreenCase("activity-crash", PageLayout(withHub + activity + LayoutRole.Button, listOf(space.afterTitle, space.section, space.section))) {
+            DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey), reports = remember { FakeReports(crashOffered = true) })
         },
         ScreenCase(
             "settings",

@@ -135,7 +135,18 @@ internal fun CardsGallery() = GalleryPage("Cards") {
             DoonaNodeTile("us-01", null, current = false, groupLabel = null, onClick = {})
         }
     }
-    Section("DoonaErrorBanner") { DoonaErrorBanner(stringResource(R.string.error_busy), stringResource(R.string.ui_dismiss), onDismiss = {}) }
+    Section("DoonaErrorBanner: plain, with an action") {
+        Column(verticalArrangement = Arrangement.spacedBy(space.item)) {
+            DoonaErrorBanner(stringResource(R.string.error_busy), stringResource(R.string.ui_dismiss), onDismiss = {})
+            DoonaErrorBanner(
+                stringResource(R.string.report_crash_banner),
+                stringResource(R.string.ui_dismiss),
+                onDismiss = {},
+                actionLabel = stringResource(R.string.report_crash_action),
+                onAction = {},
+            )
+        }
+    }
 }
 
 @Composable

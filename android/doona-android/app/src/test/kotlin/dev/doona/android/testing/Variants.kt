@@ -13,6 +13,7 @@ val Dark = Variant("dark", WINDOW.format(412, 915, "night"))
 val FontScale115 = Variant("fs115", WINDOW.format(412, 915, "notnight"), 1.15f)
 val FontScale200 = Variant("fs200", WINDOW.format(412, 915, "notnight"), 2f)
 val FontScale200Dark = Variant("fs200-dark", WINDOW.format(412, 915, "night"), 2f)
+val FontScale115Dark = Variant("fs115-dark", WINDOW.format(412, 915, "night"), 1.15f)
 
 /** A tablet-width window: the content column stays at most 600 dp wide and centred. */
 val Wide = Variant("wide", WINDOW.format(840, 915, "notnight"))
@@ -22,6 +23,9 @@ val Landscape = Variant("landscape", WINDOW.format(915, 412, "notnight"))
 
 val PhoneVariants = listOf(Light, Dark, FontScale115, FontScale200)
 val ScreenVariants = PhoneVariants + listOf(Wide, Landscape)
+
+/** Dark at the two larger font scales as well, for the screens the owner reviews before a release ([reviewedScreens]). */
+val ReviewVariants = listOf(FontScale115Dark, FontScale200Dark)
 
 /** The same variant in a window [height] dp high, for subjects taller than a phone. */
 fun Variant.tall(height: Int) = Variant(name, qualifiers.replace(Regex("-h\\d+dp-"), "-h${height}dp-"), fontScale)

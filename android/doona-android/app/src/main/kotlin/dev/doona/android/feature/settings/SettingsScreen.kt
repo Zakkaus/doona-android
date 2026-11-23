@@ -22,26 +22,33 @@ import dev.doona.android.icons.R as IconsR
 
 /** The 設定 entry; [version] is the app's version name, which the shell reads once and passes on. */
 @Composable
-fun SettingsRoute(engine: Engine, version: String, onOpenPerApp: () -> Unit, onOpenSubscriptions: () -> Unit) {
+fun SettingsRoute(engine: Engine, version: String, onOpenPerApp: () -> Unit, onOpenSubscriptions: () -> Unit, onOpenReport: () -> Unit) {
     val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(engine))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state, version, onOpenPerApp, onOpenSubscriptions)
+    SettingsScreen(state, version, onOpenPerApp, onOpenSubscriptions, onOpenReport)
 }
 
 private const val NO_VALUE = "—"
 
 /**
- * 設定: one card per setting, a block apart. 依 App and 訂閱 open their pages; the version is only shown. Nothing else
- * is set in v0.1.
+ * 設定: one card per setting, a block apart. 依 App, 訂閱 and 回報問題 open their pages; the version is only shown.
+ * Nothing else is set in v0.1.
  */
 @Composable
-fun SettingsScreen(state: SettingsUiState, version: String, onOpenPerApp: () -> Unit, onOpenSubscriptions: () -> Unit) {
+fun SettingsScreen(
+    state: SettingsUiState,
+    version: String,
+    onOpenPerApp: () -> Unit,
+    onOpenSubscriptions: () -> Unit,
+    onOpenReport: () -> Unit,
+) {
     DoonaPage {
         DoonaPageTitle(stringResource(R.string.hub_settings))
         DoonaGap(DoonaTheme.spacing.afterTitle)
         Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
             SettingCard(IconsR.drawable.sym_filter_alt, stringResource(R.string.perapp_title), stringResource(state.appPolicy.labelRes()), onOpenPerApp)
             SettingCard(IconsR.drawable.sym_link, stringResource(R.string.settings_subscriptions), value = null, onOpenSubscriptions)
+            SettingCard(IconsR.drawable.sym_bug_report, stringResource(R.string.report_title), value = null, onOpenReport)
             SettingCard(IconsR.drawable.sym_memory, stringResource(R.string.settings_version), version.ifBlank { NO_VALUE }, onClick = null)
         }
     }

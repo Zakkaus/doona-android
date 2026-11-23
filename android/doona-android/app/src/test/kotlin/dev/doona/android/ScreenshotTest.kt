@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.testing.GalleryVariants
 import dev.doona.android.testing.PhoneFrame
+import dev.doona.android.testing.ReviewVariants
 import dev.doona.android.testing.RvGalleryVariants
 import dev.doona.android.testing.ScreenCase
 import dev.doona.android.testing.ScreenVariants
@@ -19,6 +20,7 @@ import dev.doona.android.testing.Variant
 import dev.doona.android.testing.checkAccessibility
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.galleryCases
+import dev.doona.android.testing.reviewedScreens
 import dev.doona.android.testing.rvGalleryScreenCases
 import dev.doona.android.testing.screenCases
 import dev.doona.android.testing.showsContent
@@ -65,6 +67,7 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
         @Parameters(name = "{0}-{1}")
         fun parameters(): List<Array<Any>> =
             screenCases().flatMap { case -> ScreenVariants.map { arrayOf(case.name, it) } } +
+                screenCases().filter { it.name in reviewedScreens }.flatMap { case -> ReviewVariants.map { arrayOf(case.name, it) } } +
                 galleryCases().flatMap { case -> GalleryVariants.map { arrayOf(case.name, it) } } +
                 rvGalleryScreenCases().flatMap { case -> RvGalleryVariants.map { arrayOf(case.name, it) } }
     }
