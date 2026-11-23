@@ -3,7 +3,7 @@
 //! (the client's channels and the upstream) runs inside the gate's lock, and so do the driver's
 //! readings and its give-up. Under the lock, with the clock read there, a poll is refused once the
 //! driver gave the flow up or the drain's deadline has passed; otherwise it runs, and what it did
-//! (a byte moved, a FIN read) is recorded before anyone else looks.
+//! (a byte moved, a FIN read, a side shut) is recorded before anyone else looks.
 //!
 //! From the first FIN either way, a flow may go `idle` without a byte moved before it is cut. The
 //! driver alone decides: it queues each begun drain's deadline in its one timer ([`Drains`]), and
@@ -25,9 +25,21 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
+/// What serves a TCP flow, as its gate needs to know.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Task {
+    /// A relay to the dialed destination: it ends cleanly once it shut both the client's side and
+    /// the upstream's.
+    Relay,
+    /// The core's DNS: it ends cleanly once it shut the client's side.
+    Dns,
+}
+
 /// One flow's gate, shared by the driver and the task.
 pub(crate) struct Gate {
     idle: Duration,
+    /// Shutdowns that make a clean end.
+    ways: u8,
     /// Wakes the driver when the drain begins, so that it queues the deadline.
     waker: Arc<Waker>,
     /// Wakes the task once the driver gave the flow up.
@@ -41,8 +53,8 @@ struct State {
     begun: Option<Instant>,
     /// When a byte last moved.
     moved: Option<Instant>,
-    /// The task ended cleanly: both directions ended, each FIN passed on.
-    ended: bool,
+    /// Sides the task shut cleanly, each with its FIN passed on.
+    shut: u8,
     /// The driver gave the flow up: no I/O of the task runs again.
     given_up: bool,
 }
@@ -64,9 +76,14 @@ pub(crate) struct Reading {
 }
 
 impl Gate {
-    pub fn new(idle: Duration, waker: Arc<Waker>) -> Gate {
+    pub fn new(idle: Duration, waker: Arc<Waker>, task: Task) -> Gate {
+        let ways = match task {
+            Task::Relay => 2,
+            Task::Dns => 1,
+        };
         Gate {
             idle,
+            ways,
             waker,
             cancel: CancellationToken::new(),
             state: Mutex::default(),
@@ -100,11 +117,6 @@ impl Gate {
         }
     }
 
-    /// The task ended cleanly.
-    pub fn ended(&self) {
-        lock(&self.state).ended = true;
-    }
-
     /// When the flow is cut unless a byte moves first; `None` before the drain begins.
     pub fn deadline(&self) -> Option<Instant> {
         lock(&self.state).deadline(self.idle)
@@ -114,7 +126,7 @@ impl Gate {
         let state = lock(&self.state);
         let deadline = state.deadline(self.idle);
         Reading {
-            ended: state.ended,
+            ended: state.shut >= self.ways,
             expired: deadline.is_some_and(|deadline| Instant::now() >= deadline),
         }
     }
@@ -193,15 +205,20 @@ impl Gate {
         }
     }
 
-    /// Shuts a side down with `poll`, inside the gate.
+    /// Shuts a side down with `poll`, inside the gate: the last side shut ends the task cleanly
+    /// in the same critical section, so the driver never sees that FIN passed on before the end.
     pub fn poll_shutdown(
         &self,
         poll: impl FnOnce() -> Poll<io::Result<()>>,
     ) -> Poll<io::Result<()>> {
-        match self.enter() {
-            Some(_entry) => poll(),
-            None => Poll::Pending,
+        let Some(mut entry) = self.enter() else {
+            return Poll::Pending;
+        };
+        let polled = poll();
+        if let Poll::Ready(Ok(())) = polled {
+            entry.state.shut += 1;
         }
+        polled
     }
 }
 

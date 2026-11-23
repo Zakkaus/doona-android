@@ -9,6 +9,7 @@
 use super::blocked::Blocked;
 use super::flow::{self, Event, Events, Key, Waker};
 use super::gate::Drains;
+use super::gate::Task;
 use super::route::{Inbound, Route};
 use super::tcp::{self, Step, TcpFlow};
 use super::udp::{self, Budget, Nat};
@@ -350,7 +351,12 @@ impl Driver {
         let meter = dst.and_then(|_| route.meter(&self.gen_.session));
         self.opened += u64::from(dst.is_some());
         let drain = self.settings.tcp_drain;
-        let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(meter), drain);
+        let serves = if dst.is_some() {
+            Task::Relay
+        } else {
+            Task::Dns
+        };
+        let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(meter), drain, serves);
         let flow = TcpFlow::new(ends, waker, dst.is_none());
         let events = self.events.clone();
         self.dns_flows += usize::from(flow.dns);

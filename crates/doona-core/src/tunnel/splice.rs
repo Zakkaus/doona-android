@@ -71,6 +71,7 @@ mod tests {
     use super::*;
     use crate::stats::meter::Tally;
     use crate::tunnel::flow::{self, DEPTH, Ends, Event, FlowIo, Key, Waker};
+    use crate::tunnel::gate::Task;
     use crate::tunnel::tcp::{DRAIN_DEADLINE, until_given_up};
     use bytes::Bytes;
     use std::sync::Arc;
@@ -95,7 +96,12 @@ mod tests {
     fn relay(request: Option<&'static [u8]>) -> (Ends, DuplexStream, Relay) {
         let (events, wakes) = mpsc::unbounded_channel();
         let waker = Waker::new(Key::Udp(0), events);
-        let (mut ends, mut io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE);
+        let (mut ends, mut io) = flow::pair(
+            Arc::clone(&waker),
+            Tally::new(None),
+            DRAIN_DEADLINE,
+            Task::Relay,
+        );
         if let Some(request) = request {
             let up = ends.up.take().unwrap();
             up.try_send(Bytes::from_static(request)).unwrap();
@@ -265,6 +271,7 @@ mod tests {
                 Waker::new(Key::Udp(0), events),
                 Tally::new(None),
                 DRAIN_DEADLINE,
+                Task::Relay,
             );
             let gate = io.gate();
             let given_up = Arc::clone(&gate);
@@ -358,7 +365,7 @@ mod tests {
     fn asked() -> (Ends, FlowIo, Arc<Gate>) {
         let (events, _) = mpsc::unbounded_channel();
         let waker = Waker::new(Key::Udp(0), events);
-        let (ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE);
+        let (ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE, Task::Relay);
         let up = ends.up.as_ref().unwrap();
         up.try_send(Bytes::from_static(b"GET")).unwrap();
         let gate = io.gate();
@@ -424,7 +431,7 @@ mod tests {
     async fn a_relay_writes_nothing_upstream_after_the_deadline_though_not_given_up() {
         let (events, _) = mpsc::unbounded_channel();
         let waker = Waker::new(Key::Udp(0), events);
-        let (mut ends, mut io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE);
+        let (mut ends, mut io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE, Task::Relay);
         let gate = io.gate();
         let (mut upstream, mut server) = duplex(CHUNK);
         let relay = tokio::spawn(async move {

@@ -235,8 +235,8 @@ pub(super) async fn until_given_up<F: Future>(gate: &Gate, task: F) -> Option<F:
 }
 
 /// Dials `dst` through `route` and splices the two streams (see [`splice`]); both sides close when
-/// the splice ends. A clean end goes to the gate before the driver hears of it, so that its timer
-/// releases the flow rather than resets it, however late the event comes.
+/// the splice ends. The relay's last shutdown publishes its clean end in the gate, so the driver
+/// releases the flow rather than resets it, however late this task runs again or its event comes.
 pub(crate) async fn dial(io: FlowIo, id: FlowId, dst: SocketAddr, route: Route, events: Events) {
     let gate = io.gate();
     let work = async {
@@ -251,9 +251,6 @@ pub(crate) async fn dial(io: FlowIo, id: FlowId, dst: SocketAddr, route: Route, 
                 true
             }
         };
-        if !failed {
-            gate.ended();
-        }
         let _ = events.send(Event::Finished { id, failed });
     };
     until_given_up(&gate, work).await;
@@ -261,7 +258,8 @@ pub(crate) async fn dial(io: FlowIo, id: FlowId, dst: SocketAddr, route: Route, 
 
 /// Answers the framed DNS queries of a TCP/53 connection to the virtual resolver; `session`'s
 /// names learn what the answers map. One that sends no query or takes no answer for `idle` fails,
-/// so the driver resets the client; after the client's FIN the drain bounds it as any flow.
+/// so the driver resets the client; after the client's FIN the drain bounds it as any flow. The
+/// shutdown that passes the FIN on publishes the clean end in the gate, as the relay's does.
 pub(crate) async fn serve_dns(
     mut io: FlowIo,
     id: FlowId,
@@ -277,9 +275,8 @@ pub(crate) async fn serve_dns(
             .await
             .is_err();
         drop(io);
-        if !failed {
-            gate.ended();
-        }
+        #[cfg(test)]
+        super::pause::at(super::pause::Point::Served).await;
         let _ = events.send(Event::Finished { id, failed });
     };
     until_given_up(&gate, work).await;

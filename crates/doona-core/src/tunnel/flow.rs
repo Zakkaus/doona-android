@@ -3,7 +3,7 @@
 //! the driver through one unbounded event channel. Each flow has at most one wake queued (its
 //! [`Waker`] remembers), so that channel stays as short as the number of flows.
 
-use super::gate::Gate;
+use super::gate::{Gate, Task};
 use crate::dns::ToClient;
 use crate::dns::names::{Learned, Mapping};
 use crate::stats::meter::Tally;
@@ -139,12 +139,12 @@ struct Chan {
     tally: Tally,
 }
 
-/// A TCP flow's channels: the payload counts in `tally`, and after a FIN the driver cuts the flow
-/// once it has gone `idle` without progress (see `gate.rs`).
-pub(crate) fn pair(waker: Arc<Waker>, tally: Tally, idle: Duration) -> (Ends, FlowIo) {
+/// A TCP flow's channels, for the `task` that serves it: the payload counts in `tally`, and after
+/// a FIN the driver cuts the flow once it has gone `idle` without progress (see `gate.rs`).
+pub(crate) fn pair(waker: Arc<Waker>, tally: Tally, idle: Duration, task: Task) -> (Ends, FlowIo) {
     let (up_tx, up_rx) = mpsc::channel(DEPTH);
     let (down_tx, down_rx) = mpsc::channel(DEPTH);
-    let gate = Arc::new(Gate::new(idle, Arc::clone(&waker)));
+    let gate = Arc::new(Gate::new(idle, Arc::clone(&waker), task));
     let ends = Ends {
         up: Some(up_tx),
         down: Down(down_rx),

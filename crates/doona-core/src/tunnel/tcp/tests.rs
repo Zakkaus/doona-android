@@ -3,6 +3,7 @@
 use super::*;
 use crate::stats::meter::Tally;
 use crate::tunnel::flow::{self, CHUNK, DEPTH, Key};
+use crate::tunnel::gate::Task;
 use honk_netstack::{AcceptOpts, AcceptWhen, Config, ExcludeSet, Mode};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, duplex};
 use tokio::sync::mpsc;
@@ -30,7 +31,8 @@ async fn a_client_that_reads_slowly_keeps_the_flow_in_the_middle_of_a_chunk() {
     let (mut wire, app, id) = Wire::connected();
     let (events, _) = mpsc::unbounded_channel();
     let waker = Waker::new(Key::Tcp(id), events);
-    let (ends, mut io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE);
+    let relay = Task::Relay;
+    let (ends, mut io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE, relay);
     let mut flow = TcpFlow::new(ends, waker, false);
     flow.connected = true;
     let gate = io.gate();
@@ -153,13 +155,15 @@ fn the_clients_fin_reaches_the_task_while_the_data_before_it_waits() {
     let (mut wire, app, id) = Wire::connected();
     let (events, _) = mpsc::unbounded_channel();
     let waker = Waker::new(Key::Tcp(id), events);
-    let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE);
+    let relay = Task::Relay;
+    let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE, relay);
     let up = ends.up.clone().unwrap();
     for _ in 0..DEPTH {
         up.try_send(Bytes::from_static(b"x")).unwrap();
     }
     drop(up);
-    let mut flow = TcpFlow::new(ends, waker, true);
+    let mut flow = TcpFlow::new(ends, waker, false);
+    flow.connected = true;
     wire.client.tcp_write(app, b"GET").unwrap();
     wire.client.tcp_shutdown(app).unwrap();
     wire.settle();
@@ -176,18 +180,22 @@ fn the_clients_fin_reaches_the_task_while_the_data_before_it_waits() {
     assert!(seen + DRAIN_DEADLINE <= deadline && deadline <= pumped + DRAIN_DEADLINE);
 }
 
-/// The task passes the upstream's reply and FIN on and ends cleanly; the driver hands both to
-/// the stack, and hears of the end only after the drain's deadline (the process stopped). The
-/// tail is the client's: the flow is released, not reset, whether the driver's timer or the
-/// task's event comes first.
+/// The relay passes the upstream's reply and FIN on and ends cleanly; the driver hands both to
+/// the stack. Nothing after the relay tells the driver it ended (its task is descheduled there,
+/// past the deadline): the end is published by the relay's last shutdown, so the flow is released
+/// at once, and its timer finds it released too.
 #[tokio::test(start_paused = true)]
 async fn a_tail_handed_over_is_released_however_late_the_end_is_heard_of() {
     let (mut wire, app, id) = Wire::connected();
     let (events, _) = mpsc::unbounded_channel();
     let waker = Waker::new(Key::Tcp(id), events);
-    let (ends, mut io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE);
+    let relay = Task::Relay;
+    let (ends, mut io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE, relay);
     let mut flow = TcpFlow::new(ends, waker, false);
     flow.connected = true;
+    let gate = io.gate();
+    let (mut upstream, mut server) = duplex(CHUNK);
+    let relay = tokio::spawn(async move { splice(&mut io, &mut upstream, &gate).await });
     let mut scratch = vec![0; CHUNK];
     wire.client.tcp_write(app, b"GET").unwrap();
     wire.client.tcp_shutdown(app).unwrap();
@@ -197,25 +205,17 @@ async fn a_tail_handed_over_is_released_however_late_the_end_is_heard_of() {
         Step::Keep
     ));
     let mut request = Vec::new();
-    io.read_to_end(&mut request).await.unwrap();
+    server.read_to_end(&mut request).await.unwrap();
     assert_eq!(request, b"GET");
-    io.write_all(b"200").await.unwrap();
-    io.shutdown().await.unwrap();
-    let gate = io.gate();
-    drop(io);
-    assert!(matches!(
-        flow.pump(&mut wire.core, id, &mut scratch),
-        Step::Keep
-    ));
+    server.write_all(b"200").await.unwrap();
+    drop(server);
+    relay.await.unwrap().unwrap();
+    let step = flow.pump(&mut wire.core, id, &mut scratch);
     wire.settle();
     assert!(flow.down_shut && flow.down_pending.is_none());
-    // What the task does as it ends, before it sends `Finished`.
-    gate.ended();
+    assert!(matches!(step, Step::Close), "not released");
     tokio::time::advance(2 * DRAIN_DEADLINE).await;
-    // The driver's timer settles the flow without I/O, the event with a pump: either releases.
     assert!(matches!(flow.verdict(), Some(Step::Close)), "reset");
-    let step = flow.pump(&mut wire.core, id, &mut scratch);
-    assert!(matches!(step, Step::Close), "reset");
 }
 
 /// A query arrives as the driver gives the DNS flow up: the task does not answer it, though it
@@ -228,7 +228,7 @@ async fn a_flow_given_up_moves_nothing_more_though_its_io_is_ready() {
     for _ in 0..32 {
         let (events, _) = mpsc::unbounded_channel();
         let waker = Waker::new(Key::Tcp(id), events.clone());
-        let (mut ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE);
+        let (mut ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE, Task::Dns);
         let gate = io.gate();
         let via = (Route::Direct, Arc::clone(&session));
         let none: Arc<[SocketAddr]> = Arc::from([]);
@@ -255,7 +255,8 @@ async fn the_first_fin_from_the_task_wakes_the_driver_to_queue_the_drain() {
     let (_wire, _app, id) = Wire::connected();
     let (events, mut woken) = mpsc::unbounded_channel();
     let waker = Waker::new(Key::Tcp(id), events);
-    let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE);
+    let relay = Task::Relay;
+    let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE, relay);
     let mut flow = TcpFlow::new(ends, waker, false);
     assert_eq!(flow.due(), None, "no drain before a FIN");
     let gate = io.gate();
@@ -293,6 +294,48 @@ fn serve(io: FlowIo, id: FlowId, events: Events) -> tokio::task::JoinHandle<()> 
     tokio::spawn(serve_dns(io, id, via, none, DRAIN_DEADLINE, events))
 }
 
+/// The client sends a query and its FIN; the core's DNS answers and ends cleanly, and the driver
+/// hands the answer and the FIN to the stack. The task is descheduled before it reports its end,
+/// past the deadline: the session is released, not reset.
+#[tokio::test(start_paused = true)]
+async fn a_dns_session_that_ended_cleanly_is_released_however_late_its_task_runs() {
+    let (mut wire, app, id) = Wire::connected();
+    let (events, _got) = mpsc::unbounded_channel();
+    let waker = Waker::new(Key::Tcp(id), events.clone());
+    let (ends, io) = flow::pair(
+        Arc::clone(&waker),
+        Tally::new(None),
+        DRAIN_DEADLINE,
+        Task::Dns,
+    );
+    let mut flow = TcpFlow::new(ends, waker, true);
+    let served = crate::tunnel::pause::hold(crate::tunnel::pause::Point::Served);
+    let task = serve(io, id, events);
+    wire.client
+        .tcp_write(app, &framed(7, "example.com"))
+        .unwrap();
+    wire.client.tcp_shutdown(app).unwrap();
+    wire.settle();
+    let mut scratch = vec![0; CHUNK];
+    assert!(matches!(
+        flow.pump(&mut wire.core, id, &mut scratch),
+        Step::Keep
+    ));
+    served.reached().await;
+    let step = flow.pump(&mut wire.core, id, &mut scratch);
+    wire.settle();
+    assert!(flow.down_shut && flow.down_pending.is_none());
+    tokio::time::advance(2 * DRAIN_DEADLINE).await;
+    // Settled by the pump, or else by the driver's timer.
+    let settled = match step {
+        Step::Keep => flow.verdict(),
+        step => Some(step),
+    };
+    assert!(matches!(settled, Some(Step::Close)), "reset");
+    served.release();
+    task.await.unwrap();
+}
+
 /// After the client's FIN the upstream is slow to answer; the answer is queued for the client, and
 /// the stack cannot take it yet. Queuing it moved the answer: the deadline counts from there.
 #[tokio::test(start_paused = true)]
@@ -300,7 +343,7 @@ async fn after_the_fin_a_dns_answer_queued_puts_the_deadline_off() {
     let (_wire, _app, id) = Wire::connected();
     let (events, _got) = mpsc::unbounded_channel();
     let waker = Waker::new(Key::Tcp(id), events.clone());
-    let (mut ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE);
+    let (mut ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE, Task::Dns);
     let answered = crate::tunnel::pause::hold(crate::tunnel::pause::Point::Answered);
     let _task = serve(io, id, events);
     // What the driver passes on: the query, then the client's FIN.
