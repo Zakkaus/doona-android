@@ -106,7 +106,7 @@ class ServiceEngineTest {
         assertTrue(engine.setMode(Mode.Direct).isSuccess)
         assertEquals("setMode" to """{"mode":"Direct"}""", core.calls.single())
         assertTrue(engine.ready.value)
-        assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), engine.groups.value.map { it.id })
+        assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), engine.groups.value.map { it.id })
         assertEquals(listOf("s1"), engine.subscriptions.value.map { it.id })
     }
 
@@ -192,7 +192,7 @@ class ServiceEngineTest {
         caller.cancel()
         release.countDown()
         withTimeout(5_000) { engine.ready.first { it } }
-        assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), engine.groups.value.map { it.id })
+        assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), engine.groups.value.map { it.id })
     }
 
     @Test
@@ -232,6 +232,20 @@ class ServiceEngineTest {
         test.join()
         mode.join()
         assertEquals(listOf("select", "testLatency"), core.calls.map { it.first }.filter { it != "setMode" })
+    }
+
+    @Test
+    fun aRuleModeCatalogShowsAsGlobal() = runBlocking {
+        val direct = ContractFixtures.read("snapshot-stopped-catalog.json").replace("\"mode\": \"Global\"", "\"mode\": \"Direct\"")
+        val rule = direct.replace("\"revision\": 7", "\"revision\": 8").replace("\"mode\": \"Direct\"", "\"mode\": \"Rule\"")
+        core.snapshotReplies += { direct }
+        assertTrue(engine.setMode(Mode.Direct).isSuccess)
+        assertEquals(Mode.Direct, engine.settings.value.mode)
+
+        core.snapshotReplies += { rule }
+        assertTrue(engine.setMode(Mode.Global).isSuccess)
+        assertEquals("setMode" to """{"mode":"Global"}""", core.calls.last())
+        assertEquals(Mode.Global, engine.settings.value.mode)
     }
 
     @Test

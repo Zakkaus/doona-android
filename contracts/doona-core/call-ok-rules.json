@@ -1,0 +1,63 @@
+{
+  "ok": {
+    "rulesRevision": 91044300313602,
+    "total": 5,
+    "rows": [
+      {
+        "id": "r-bcd21d2c53a25096",
+        "index": 0,
+        "kind": "GeoIp",
+        "sample": "private",
+        "count": 1,
+        "target": "direct",
+        "targetKind": "direct",
+        "skipped": null,
+        "skippedLines": 0
+      },
+      {
+        "id": "r-a5a7859d51595d08",
+        "index": 1,
+        "kind": "DomainSuffix",
+        "sample": "netflix.com",
+        "count": 14,
+        "target": "g-Streaming",
+        "targetKind": "group",
+        "skipped": null,
+        "skippedLines": 0
+      },
+      {
+        "id": "r-20f4fbe9f4a75cef",
+        "index": 2,
+        "kind": "DomainSuffix",
+        "sample": "openai.com",
+        "count": 6,
+        "target": "g-AI",
+        "targetKind": "group",
+        "skipped": null,
+        "skippedLines": 0
+      },
+      {
+        "id": "r-8d066c6f0b6552cd",
+        "index": 3,
+        "kind": "GeoIp",
+        "sample": "CN",
+        "count": 1,
+        "target": "direct",
+        "targetKind": "direct",
+        "skipped": null,
+        "skippedLines": 0
+      },
+      {
+        "id": "r-6e59b550be7e592b",
+        "index": 4,
+        "kind": "Match",
+        "sample": null,
+        "count": 0,
+        "target": "g-Proxy",
+        "targetKind": "group",
+        "skipped": null,
+        "skippedLines": 0
+      }
+    ]
+  }
+}

@@ -2,8 +2,9 @@
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
 use doonacore::dto::{
-    Empty, ErrorCode, Init, Mode, Nodes, NodesArgs, Reply, SelectArgs, Snapshot, StartConfig,
-    Subscription, TrafficSeries, Usage,
+    EffectiveConfig, Empty, ErrorCode, Init, Mode, ModeArgs, Nodes, NodesArgs, Reply,
+    RuleSourceSpec, Rules, RulesArgs, SelectArgs, Snapshot, SourceKind, StartConfig, Subscription,
+    TargetKind, TrafficSeries, Usage,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -28,15 +29,20 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 13] = [
+const COVERED: [&str; 18] = [
     "call-error.json",
     "call-nodes-args.json",
+    "call-ok-effective-config.json",
     "call-ok-empty.json",
     "call-ok-nodes.json",
+    "call-ok-rules.json",
     "call-ok-subscription.json",
     "call-ok-traffic-series.json",
     "call-ok-usage.json",
+    "call-rules-args.json",
     "call-select-args.json",
+    "call-set-mode-args.json",
+    "call-set-rule-source-args.json",
     "init.json",
     "snapshot-died.json",
     "snapshot-running.json",
@@ -57,7 +63,10 @@ fn every_fixture_is_covered() {
 
 #[test]
 fn init_and_start_config() {
-    assert_eq!(round_trip::<Init>("init.json").schema, 1);
+    assert_eq!(
+        round_trip::<Init>("init.json").schema,
+        doonacore::dto::SCHEMA
+    );
     let config = round_trip::<StartConfig>("start-config.json");
     assert_eq!(config.mtu, 8500);
     assert_eq!(config.dns.to_string(), "172.19.0.2");
@@ -73,6 +82,8 @@ fn call_replies_and_args() {
     );
     let sub = round_trip::<Reply<Subscription>>("call-ok-subscription.json");
     assert!(matches!(sub, Reply::Ok(s) if s.id == "s1" && s.nodes == 2));
+    let mode = round_trip::<ModeArgs>("call-set-mode-args.json");
+    assert_eq!(mode.mode, Mode::Rule);
     let select = round_trip::<SelectArgs>("call-select-args.json");
     assert_eq!(select.member_id.as_deref(), Some("n-0c41be77"));
 }
@@ -93,7 +104,7 @@ fn snapshots() {
     assert_eq!(stopped.today.yesterday_by_now, None);
     let catalog = stopped.catalog.unwrap();
     assert_eq!(catalog.mode, Mode::Global);
-    assert_eq!(catalog.groups.len(), 3);
+    assert_eq!(catalog.groups.len(), 5);
     // Two members share a display name but not an id.
     let proxy = &catalog.groups[0];
     assert_eq!(proxy.members[2].name, proxy.members[3].name);
@@ -103,6 +114,13 @@ fn snapshots() {
     assert!(lan.failed && lan.latency_ms.is_none());
     assert_eq!(lan.error, Some(ErrorCode::LocalNetwork));
     assert!(proxy.members[..3].iter().all(|m| m.error.is_none()));
+    // The template's rules, all compiled.
+    assert_eq!(catalog.main_group_id, "g-Proxy");
+    let source = catalog.rule_source;
+    assert_eq!(source.kind, SourceKind::Template);
+    assert_eq!(source.template.as_deref(), Some("cn-direct"));
+    assert_eq!((source.rules, source.lines, source.skipped), (5, 23, 0));
+    assert!(source.error.is_none() && source.subscription_id.is_none());
 }
 
 #[test]
@@ -146,6 +164,33 @@ fn stats_replies() {
     assert_eq!(last.date, yesterday.date);
     assert_eq!(last.down, yesterday.down.iter().sum::<u64>());
     assert_eq!(usage.today.outbounds[0].id, "direct");
+    // Today's rules are rows of the template's listing, and carry its outbounds' bytes: the
+    // GEOIP,CN row the direct bytes, MATCH the g-Proxy bytes. Yesterday was a Global day.
+    let rows = ok(round_trip::<Reply<Rules>>("call-ok-rules.json")).rows;
+    let target = |id: &str| {
+        let row = rows.iter().find(|r| r.id == id);
+        row.unwrap_or_else(|| panic!("{id} is not a template row"))
+            .target
+            .clone()
+    };
+    for rule in &usage.today.by_rule {
+        let outbound = usage
+            .today
+            .outbounds
+            .iter()
+            .find(|o| o.id == target(&rule.id));
+        let outbound = outbound.unwrap();
+        assert_eq!(
+            (rule.up, rule.down),
+            (outbound.up, outbound.down),
+            "{}",
+            rule.id
+        );
+    }
+    assert_eq!(usage.today.by_rule.len(), usage.today.outbounds.len());
+    let flows: u64 = usage.today.by_rule.iter().map(|r| r.flows).sum();
+    assert_eq!(flows, usage.today.flows.iter().sum::<u64>());
+    assert!(yesterday.by_rule.is_empty());
     let nodes = ok(round_trip::<Reply<Nodes>>("call-ok-nodes.json")).nodes;
     assert_eq!(nodes[0].tests[1].ms, None);
     assert_eq!(nodes[1].transport, "quic");
@@ -153,4 +198,56 @@ fn stats_replies() {
     assert_eq!(args.ids.unwrap().len(), nodes.len());
     // `ids` is required, as every nullable argument key.
     assert!(serde_json::from_str::<NodesArgs>("{}").is_err());
+}
+
+#[test]
+fn rule_replies_and_args() {
+    let args = round_trip::<RulesArgs>("call-rules-args.json");
+    assert_eq!((args.offset, args.limit), (0, 50));
+    let rules = ok(round_trip::<Reply<Rules>>("call-ok-rules.json"));
+    assert_eq!((rules.total, rules.rows.len()), (5, 5));
+    let r#match = &rules.rows[4];
+    assert_eq!(
+        (r#match.kind.as_str(), r#match.sample.as_ref()),
+        ("Match", None)
+    );
+    assert_eq!((r#match.target_kind, r#match.count), (TargetKind::Group, 0));
+    assert!(
+        rules
+            .rows
+            .iter()
+            .all(|r| r.id.len() == 18 && r.skipped.is_none())
+    );
+    // `offset` and `limit` are both required.
+    assert!(serde_json::from_str::<RulesArgs>(r#"{"limit":50}"#).is_err());
+}
+
+#[test]
+fn rule_source_args_and_the_effective_config() {
+    let spec = round_trip::<RuleSourceSpec>("call-set-rule-source-args.json");
+    let RuleSourceSpec::Template { template, options } = spec;
+    assert_eq!(template, "cn-direct");
+    assert!(options.block_quic);
+    // Schema 2 knows the template only, and `options` is required.
+    for other in [
+        r#"{"kind":"subscription","subscriptionId":"s1","options":{"blockQuic":false}}"#,
+        r#"{"kind":"template","template":"cn-direct"}"#,
+    ] {
+        assert!(
+            serde_json::from_str::<RuleSourceSpec>(other).is_err(),
+            "{other}"
+        );
+    }
+    let config = ok(round_trip::<Reply<EffectiveConfig>>(
+        "call-ok-effective-config.json",
+    ));
+    assert_eq!(
+        (config.mode, config.dns_via.as_str()),
+        (Mode::Rule, "g-Proxy")
+    );
+    assert_eq!(config.main_group_id, "g-Proxy");
+    assert!(config.text.ends_with("MATCH,Proxy\n") && !config.truncated);
+    // Nodes by code only, never by display name or endpoint (ARCH D21).
+    assert!(config.text.contains("now n-369a8a63)") && !config.text.contains("hk-01"));
+    assert!(!config.text.contains("192.0.2."));
 }

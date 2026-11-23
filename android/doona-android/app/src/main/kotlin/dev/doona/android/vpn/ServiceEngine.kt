@@ -177,7 +177,7 @@ class ServiceEngine internal constructor(
     override suspend fun removeSubscription(id: String): Result<Unit> =
         command("removeSubscription", IdArgs.serializer(), IdArgs(id), Unit.serializer())
 
-    override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
+    override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(CoreMode.of(mode)), Unit.serializer())
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
@@ -298,11 +298,11 @@ class ServiceEngine internal constructor(
         }
     }
 
-    /** One snapshot's catalog, mapped before it is published, and published whole. */
+    /** One snapshot's catalog, mapped before it is published, and published whole. Until K1, Rule shows as Global. */
     private data class Catalog(val revision: Long, val mode: Mode, val groups: List<Group>, val subscriptions: List<Subscription>) {
         companion object {
             fun of(revision: Long, dto: CatalogDto) =
-                Catalog(revision, dto.mode, dto.groups.map(GroupDto::toGroup), dto.subscriptions.map(SubscriptionDto::toSubscription))
+                Catalog(revision, dto.mode.toMode(), dto.groups.map(GroupDto::toGroup), dto.subscriptions.map(SubscriptionDto::toSubscription))
         }
     }
 

@@ -1,0 +1,393 @@
+//! The rule source through `call`: `rules` pages and ids, `setRuleSource` from the file to new
+//! flows, `effectiveConfig` without a node's endpoint, and the contract fixtures held to what the
+//! core answers.
+
+use super::rules::effective;
+use super::tests_catalog::{Feeds, add, call, catalog, path};
+use super::{Core, lock};
+use crate::dto::{ErrorCode, Snapshot};
+use crate::rules::policy::Choice;
+use crate::rules::{Flow, Network};
+use crate::testutil::TempDir;
+use serde_json::{Value, json};
+use std::os::unix::fs::MetadataExt;
+
+/// Two trojan nodes of one subscription, by display name `hk-01` and `jp-01`.
+const TWO_NODES: &[u8] =
+    b"trojan://secret@192.0.2.1:443#hk-01\ntrojan://other@192.0.2.2:443#jp-01\n";
+
+fn contract_text(name: &str) -> String {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../contracts/doona-core/");
+    std::fs::read_to_string(format!("{dir}{name}")).unwrap()
+}
+
+fn contract(name: &str) -> Value {
+    serde_json::from_str(&contract_text(name)).unwrap()
+}
+
+/// Asserts `fixture` is `actual`, showing the core's JSON when it is not.
+fn same(actual: &Value, fixture: &Value, name: &str) {
+    let shown = serde_json::to_string_pretty(actual).unwrap();
+    assert!(
+        actual == fixture,
+        "{name} differs from the core's:\n{shown}"
+    );
+}
+
+#[test]
+fn rules_pages_and_refuses_a_limit_out_of_bounds() {
+    let dir = TempDir::new("rules-page");
+    let core = Core::new(path(&dir)).unwrap();
+    for args in [
+        json!({"offset": 0, "limit": 0}),
+        json!({"offset": 0, "limit": 501}),
+        json!({"offset": -1, "limit": 5}),
+        json!({"limit": 5}),
+        json!({"offset": 0}),
+    ] {
+        let refused = call(&core, "rules", args.clone());
+        assert_eq!(refused, Err(ErrorCode::InvalidArgument), "{args}");
+    }
+    let page = call(&core, "rules", json!({"offset": 2, "limit": 2})).unwrap();
+    assert_eq!(page["total"], 5);
+    let rows = page["rows"].as_array().unwrap();
+    let indexes: Vec<u64> = rows.iter().map(|r| r["index"].as_u64().unwrap()).collect();
+    assert_eq!(indexes, [2, 3]);
+    let all = call(&core, "rules", json!({"offset": 0, "limit": 500})).unwrap();
+    assert_eq!(all["rows"].as_array().unwrap().len(), 5);
+    assert_eq!(all["rows"][2], page["rows"][0]);
+    let past = call(&core, "rules", json!({"offset": 5, "limit": 500})).unwrap();
+    assert_eq!(past["rows"], json!([]));
+    assert_eq!(past["rulesRevision"], all["rulesRevision"]);
+}
+
+#[test]
+fn rule_ids_and_the_revision_stay_while_subscriptions_come_and_go() {
+    let dir = TempDir::new("rules-stable");
+    let feeds = Feeds::new();
+    feeds.set("/sub", TWO_NODES);
+    let core = Core::new(path(&dir)).unwrap();
+    let page = || call(&core, "rules", json!({"offset": 0, "limit": 50})).unwrap();
+    let before = page();
+    let revision = catalog(&core).rule_source.rules_revision;
+    assert_eq!(before["rulesRevision"], revision);
+    add(&core, &feeds, "/sub").unwrap();
+    assert_eq!(page(), before);
+    assert_eq!(catalog(&core).rule_source.rules_revision, revision);
+    assert_eq!(
+        call(&core, "removeSubscription", json!({"id": "s1"})),
+        Ok(json!({}))
+    );
+    assert_eq!(page(), before);
+    drop(core);
+    let again = Core::new(path(&dir)).unwrap();
+    assert_eq!(
+        call(&again, "rules", json!({"offset": 0, "limit": 50})),
+        Ok(before)
+    );
+}
+
+#[test]
+fn the_rules_fixtures_are_what_the_core_answers() {
+    let dir = TempDir::new("rules-fixture");
+    let core = Core::new(path(&dir)).unwrap();
+    let reply = core.call("rules", &contract_text("call-rules-args.json"));
+    let reply: Value = serde_json::from_str(&reply).unwrap();
+    same(
+        &reply,
+        &contract("call-ok-rules.json"),
+        "call-ok-rules.json",
+    );
+}
+
+#[test]
+fn the_catalog_fixture_shows_the_template_as_the_core_does() {
+    let dir = TempDir::new("rules-catalog-fixture");
+    let core = Core::new(path(&dir)).unwrap();
+    let shown = serde_json::to_value(catalog(&core)).unwrap();
+    let fixture = contract("snapshot-stopped-catalog.json");
+    for key in ["mainGroupId", "ruleSource"] {
+        same(&shown[key], &fixture["catalog"][key], key);
+    }
+}
+
+fn revision(core: &Core) -> i64 {
+    serde_json::from_str::<Snapshot>(&core.snapshot(-1))
+        .unwrap()
+        .revision
+}
+
+/// Where the published policy sends QUIC to an address abroad, which the template leaves to Proxy.
+fn quic_abroad(core: &Core) -> String {
+    let view = core.shared.outbounds.view();
+    let flow = Flow {
+        domain: None,
+        ip: [104, 16, 0, 1].into(),
+        port: 443,
+        network: Network::Udp,
+    };
+    match view.policy().choose(&flow) {
+        Choice::Blocked => "blocked".to_owned(),
+        Choice::Group(id) => id.to_owned(),
+        other => format!("{other:?}"),
+    }
+}
+
+fn block_quic(on: bool) -> Value {
+    json!({"kind": "template", "template": "cn-direct", "options": {"blockQuic": on}})
+}
+
+#[test]
+fn block_quic_is_written_published_and_kept_across_a_restart() {
+    let dir = TempDir::new("rules-set-source");
+    let core = Core::new(path(&dir)).unwrap();
+    let before = revision(&core);
+    assert_eq!(quic_abroad(&core), "g-Proxy");
+    assert_eq!(
+        call(&core, "setRuleSource", block_quic(true)),
+        Ok(json!({}))
+    );
+    assert!(revision(&core) > before);
+    assert_eq!(quic_abroad(&core), "blocked");
+    assert!(catalog(&core).rule_source.options.block_quic);
+    let saved = std::fs::read_to_string(dir.path().join("state.json")).unwrap();
+    let saved: Value = serde_json::from_str(&saved).unwrap();
+    assert_eq!(saved["ruleSource"], block_quic(true));
+    drop(core);
+    let again = Core::new(path(&dir)).unwrap();
+    assert_eq!(quic_abroad(&again), "blocked");
+    assert!(catalog(&again).rule_source.options.block_quic);
+    assert_eq!(
+        call(&again, "setRuleSource", block_quic(false)),
+        Ok(json!({}))
+    );
+    assert_eq!(quic_abroad(&again), "g-Proxy");
+}
+
+#[test]
+fn an_unchanged_rule_source_writes_nothing() {
+    let dir = TempDir::new("rules-set-same");
+    let core = Core::new(path(&dir)).unwrap();
+    let state = dir.path().join("state.json");
+    // The default source, on a core that has written no file yet.
+    assert_eq!(
+        call(&core, "setRuleSource", block_quic(false)),
+        Ok(json!({}))
+    );
+    assert!(!state.exists());
+    assert_eq!(
+        call(&core, "setRuleSource", block_quic(true)),
+        Ok(json!({}))
+    );
+    let (written, shown) = (std::fs::metadata(&state).unwrap().ino(), revision(&core));
+    assert_eq!(
+        call(&core, "setRuleSource", block_quic(true)),
+        Ok(json!({}))
+    );
+    assert_eq!(std::fs::metadata(&state).unwrap().ino(), written);
+    assert_eq!(revision(&core), shown);
+}
+
+#[test]
+fn set_rule_source_refuses_another_kind_or_template_and_missing_options() {
+    let dir = TempDir::new("rules-set-refused");
+    let core = Core::new(path(&dir)).unwrap();
+    let other = json!({"kind": "template", "template": "later", "options": {"blockQuic": true}});
+    assert_eq!(
+        call(&core, "setRuleSource", other),
+        Err(ErrorCode::NotFound)
+    );
+    for args in [
+        json!({"kind": "subscription", "subscriptionId": "s1", "options": {"blockQuic": true}}),
+        json!({"kind": "template", "template": "cn-direct"}),
+        json!({"kind": "template", "template": "cn-direct", "options": {}}),
+        json!({"template": "cn-direct", "options": {"blockQuic": true}}),
+    ] {
+        let refused = call(&core, "setRuleSource", args.clone());
+        assert_eq!(refused, Err(ErrorCode::InvalidArgument), "{args}");
+    }
+    assert!(!dir.path().join("state.json").exists());
+    assert!(!catalog(&core).rule_source.options.block_quic);
+}
+
+/// A core in Rule over [`TWO_NODES`].
+fn two_nodes(tag: &str) -> (Core, TempDir, Feeds) {
+    let dir = TempDir::new(tag);
+    let feeds = Feeds::new();
+    feeds.set("/sub", TWO_NODES);
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    assert_eq!(
+        call(&core, "setMode", json!({"mode": "Rule"})),
+        Ok(json!({}))
+    );
+    (core, dir, feeds)
+}
+
+#[test]
+fn the_effective_config_shows_the_header_but_no_node_endpoint() {
+    let (core, _dir, _feeds) = two_nodes("rules-effective");
+    let mut reply = call(&core, "effectiveConfig", json!({})).unwrap();
+    let text = reply["text"].as_str().unwrap().to_owned();
+    assert!(text.contains("\nMATCH,Proxy\n") && reply["truncated"] == false);
+    assert_eq!(
+        (&reply["mode"], &reply["dnsVia"]),
+        (&json!("Rule"), &json!("g-Proxy"))
+    );
+    // The revision is a number whose digits are no endpoint.
+    reply["ruleSource"]["rulesRevision"] = json!(0);
+    let whole = reply.to_string();
+    for secret in ["192.0.2.", "secret", "443"] {
+        assert!(
+            !text.contains(secret) && !whole.contains(secret),
+            "{secret}: {whole}"
+        );
+    }
+    assert_eq!(
+        call(&core, "setMode", json!({"mode": "Direct"})),
+        Ok(json!({}))
+    );
+    let direct = call(&core, "effectiveConfig", json!({})).unwrap();
+    assert_eq!(direct["dnsVia"], "direct");
+    assert_eq!(
+        call(&core, "effectiveConfig", json!(null)),
+        Err(ErrorCode::InvalidArgument)
+    );
+}
+
+#[test]
+fn the_effective_config_text_ends_at_a_line_boundary_past_its_cap() {
+    let (core, _dir, _feeds) = two_nodes("rules-effective-cap");
+    let (catalog, policy) = {
+        let c = lock(&core.shared.catalog);
+        (
+            c.model.catalog(&c.state),
+            std::sync::Arc::clone(&c.model.policy),
+        )
+    };
+    let full = effective(catalog.clone(), &policy, &[], usize::MAX);
+    assert!(!full.truncated);
+    let cap = full.text.len() / 2;
+    let cut = effective(catalog, &policy, &[], cap);
+    assert!(cut.truncated && cut.text.len() <= cap);
+    assert!(cut.text.ends_with('\n') && full.text.starts_with(&cut.text));
+    assert!(full.text.len() > cut.text.len());
+}
+
+#[test]
+fn the_effective_config_fixture_is_what_the_core_answers() {
+    let (core, _dir, _feeds) = two_nodes("rules-effective-fixture");
+    let reply: Value = serde_json::from_str(&core.call("effectiveConfig", "{}")).unwrap();
+    let name = "call-ok-effective-config.json";
+    same(&reply, &contract(name), name);
+}
+
+#[test]
+fn the_set_rule_source_fixture_turns_block_quic_on() {
+    let dir = TempDir::new("rules-set-fixture");
+    let core = Core::new(path(&dir)).unwrap();
+    let args = contract_text("call-set-rule-source-args.json");
+    assert_eq!(core.call("setRuleSource", &args), r#"{"ok":{}}"#);
+    assert_eq!(quic_abroad(&core), "blocked");
+}
+
+/// Nodes whose display names a filter on names would let through (ARCH D21): an expanded IPv6
+/// address, a punycode host spelt in Unicode, a port without its colon, a percent-encoded host, a
+/// node's own password, a credential's name, and no name at all; with two plain names.
+const LEAKY_NODES: &[u8] = b"trojan://p1@192.0.2.1:443#hk-01
+trojan://p2@192.0.2.2:443#jp-01
+trojan://p3@[2001:db8::1]:8003#%5B2001%3A0db8%3A0%3A0%3A0%3A0%3A0%3A1%5D
+trojan://p4@xn--bcher-kva.example:8004#b%C3%BCcher.example
+trojan://p5@192.0.2.5:9443#HK%209443
+trojan://p6@edge.example:8006#edge%252Eexample
+trojan://secret123@192.0.2.7:8007#secret123
+trojan://p8@192.0.2.8:8008#x%20UUID%20z
+trojan://p9@192.0.2.9:8009
+";
+
+/// A Clash node without a name, which Clash names after its server and port.
+const CLASH_UNNAMED: &[u8] =
+    b"proxies:\n  - {type: trojan, server: 198.51.100.7, port: 9443, password: pw}\n";
+
+/// The text names every node by its code, never by its display name, whatever the name holds;
+/// a group keeps its name.
+#[test]
+fn the_effective_config_names_every_node_by_its_code() {
+    let dir = TempDir::new("rules-effective-leaky");
+    let feeds = Feeds::new();
+    feeds.set("/leaky", LEAKY_NODES);
+    feeds.set("/clash", CLASH_UNNAMED);
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/leaky").unwrap();
+    add(&core, &feeds, "/clash").unwrap();
+    let mut nodes: Vec<(String, String)> = catalog(&core)
+        .groups
+        .iter()
+        .flat_map(|g| &g.members)
+        .filter(|m| !m.is_group)
+        .map(|m| (m.id.clone(), m.name.clone()))
+        .collect();
+    nodes.sort();
+    nodes.dedup();
+    assert_eq!(nodes.len(), 10, "{nodes:?}");
+    assert!(nodes.iter().any(|(_, n)| n == "trojan-198.51.100.7:9443"));
+    let mut reply = call(&core, "effectiveConfig", json!({})).unwrap();
+    let text = reply["text"].as_str().unwrap().to_owned();
+    let named: Vec<&str> = (nodes.iter().map(|(_, name)| name.as_str()))
+        .filter(|name| text.contains(name))
+        .collect();
+    assert!(named.is_empty(), "names in the text: {named:?}\n{text}");
+    for (id, name) in &nodes {
+        let code = format!("n-{}", &id[2..10]);
+        assert!(text.contains(&code), "{name} as {code}: {text}");
+    }
+    assert!(text.contains("# group HK (UrlTest, now n-"), "{text}");
+    reply["ruleSource"]["rulesRevision"] = json!(0);
+    let whole = reply.to_string().to_lowercase();
+    let forbidden = [
+        "192.0.2.",
+        "198.51.100.",
+        "2001:",
+        "0db8",
+        "xn--",
+        "bücher",
+        "edge",
+        "9443",
+        "secret",
+        "uuid",
+        "://",
+        "@",
+    ];
+    for leak in forbidden {
+        assert!(!whole.contains(leak), "{leak}: {whole}");
+    }
+}
+
+/// The stopped catalog's groups are the template's over its two `hk-01` nodes, ids, names, kinds
+/// and members in order, and a member shows the same values in every group.
+#[test]
+fn the_stopped_catalog_fixture_has_the_template_groups() {
+    let fixture = contract("snapshot-stopped-catalog.json");
+    let snapshot: Snapshot = serde_json::from_value(fixture).unwrap();
+    let groups = snapshot.catalog.unwrap().groups;
+    let shown: Vec<_> = groups
+        .iter()
+        .map(|g| {
+            let members: Vec<String> = g.members.iter().map(|m| m.id.clone()).collect();
+            (g.id.clone(), g.name.clone(), g.kind, members)
+        })
+        .collect();
+    let nodes = [("n-7f3a19c2", "hk-01"), ("n-0c41be77", "hk-01")];
+    let template: Vec<_> = crate::groups::template(&nodes)
+        .into_iter()
+        .map(|g| (g.id, g.name, g.kind, g.members))
+        .collect();
+    assert_eq!(shown, template);
+    let mut seen = std::collections::HashMap::new();
+    for m in groups.iter().flat_map(|g| &g.members) {
+        assert_eq!(*seen.entry(&m.id).or_insert(m), m);
+        if let Some(g) = groups.iter().find(|g| g.id == m.id) {
+            assert!(m.is_group && m.name == g.name, "{m:?}");
+        }
+    }
+}

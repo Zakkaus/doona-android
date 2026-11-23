@@ -134,6 +134,8 @@ fn the_day_counts_the_session_its_outbound_and_flows_and_outlives_the_process() 
         (direct[0].up, direct[0].down),
         (ECHOED as u64, ECHOED as u64)
     );
+    // No rule routes a flow in Direct.
+    assert!(day.today.by_rule.is_empty());
     assert!(totals.down_total > ECHOED as u64);
     // A new process on the same directory reads the day back.
     let Setup { core, dir, .. } = s;

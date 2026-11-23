@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 
 /** The contract schema this app speaks (`plans/v1/core-api.md`). */
-internal const val CORE_SCHEMA = 1
+internal const val CORE_SCHEMA = 2
 
 @Serializable
 internal data class InitDto(val schema: Int)
@@ -90,11 +90,16 @@ internal data class DayUsageDto(
     val down: List<Long>,
     val flows: List<Long>,
     val outbounds: List<OutboundBytesDto>,
+    /** Each rule's payload and flows in Rule mode, in id order: a row id, `unmatched`, or `other` past 64 in a day. */
+    val byRule: List<RuleBytesDto> = emptyList(),
 )
 
 /** An outbound's payload: [id] is a group (`g-Proxy`), a node, `direct`, or `other` past 64 in a day. */
 @Serializable
 internal data class OutboundBytesDto(val id: String, val up: Long, val down: Long)
+
+@Serializable
+internal data class RuleBytesDto(val id: String, val up: Long, val down: Long, val flows: Long)
 
 @Serializable
 internal data class DayTotalDto(val date: String, val up: Long, val down: Long)
@@ -119,8 +124,96 @@ internal data class NodeInfoDto(
 @Serializable
 internal data class LatencyTestDto(val atEpochMs: Long, val ms: Int? = null)
 
+/** A mode as the core's JSON carries it; the engine has no Rule yet. */
 @Serializable
-internal data class CatalogDto(val mode: Mode, val groups: List<GroupDto>, val subscriptions: List<SubscriptionDto>)
+internal enum class CoreMode {
+    Global,
+    Direct,
+    Rule,
+    ;
+
+    /** Until K1, Rule shows as Global: the node card keeps the main group's node, which carries the flows no rule matched. */
+    fun toMode(): Mode = when (this) {
+        Global, Rule -> Mode.Global
+        Direct -> Mode.Direct
+    }
+
+    companion object {
+        fun of(mode: Mode): CoreMode = when (mode) {
+            Mode.Global -> Global
+            Mode.Direct -> Direct
+        }
+    }
+}
+
+/** [mainGroupId] is the group Global sends every flow through, and Rule the flows no rule matched. */
+@Serializable
+internal data class CatalogDto(
+    val mode: CoreMode,
+    val groups: List<GroupDto>,
+    val subscriptions: List<SubscriptionDto>,
+    val mainGroupId: String,
+    val ruleSource: RuleSourceDto,
+)
+
+/**
+ * Where Rule mode's rules come from and what compiled of them: [rules] rows, [lines] values, [skipped] lines not
+ * compiled. [rulesRevision] is compared for equality only; [error] is `parse_failed` when the source did not compile.
+ */
+@Serializable
+internal data class RuleSourceDto(
+    val kind: String,
+    /** The template's name and version; null for a source that is no template. */
+    val template: String? = null,
+    val version: Int? = null,
+    /** The subscription the source came from; null for the template. */
+    val subscriptionId: String? = null,
+    val options: RuleOptionsDto,
+    val rules: Int,
+    val lines: Int,
+    val skipped: Int,
+    val rulesRevision: Long,
+    val error: String? = null,
+)
+
+/** What a user can change in a template. No default: an argument must carry every option. */
+@Serializable
+internal data class RuleOptionsDto(val blockQuic: Boolean)
+
+/** `rules`' reply: [total] rows in the source, [rows] the page asked for. */
+@Serializable
+internal data class RulesDto(val rulesRevision: Long, val total: Int, val rows: List<RuleRowDto>)
+
+/**
+ * One row of rules: [kind] is `DomainSuffix`, `GeoIp`, `Match` and the like, or the source's own name for a kind not
+ * compiled; [sample] is the first value, null for `Match`. [targetKind] is `direct`, `reject` or `group`. [skipped]
+ * says why [skippedLines] of the row's lines were not compiled.
+ */
+@Serializable
+internal data class RuleRowDto(
+    val id: String,
+    val index: Int,
+    val kind: String,
+    val sample: String? = null,
+    val count: Int,
+    val target: String,
+    val targetKind: String,
+    val skipped: String? = null,
+    val skippedLines: Int,
+)
+
+/** `effectiveConfig`'s reply: where flows and DNS go, and the rules as Clash-style text, capped at 1 MiB ([truncated]). */
+@Serializable
+internal data class EffectiveConfigDto(
+    val mode: CoreMode,
+    val mainGroupId: String,
+    /** `direct` in Direct, else the main group's id. */
+    val dnsVia: String,
+    val dnsUpstreams: List<String>,
+    val ruleSource: RuleSourceDto,
+    val text: String,
+    val truncated: Boolean,
+)
 
 @Serializable
 internal data class GroupDto(
@@ -188,7 +281,15 @@ internal data class AddSubscriptionArgs(val url: String, val name: String?)
 internal data class IdArgs(val id: String)
 
 @Serializable
-internal data class ModeArgs(val mode: Mode)
+internal data class ModeArgs(val mode: CoreMode)
+
+/** `rules`' page: [limit] is 1 to 500. */
+@Serializable
+internal data class RulesArgs(val offset: Int, val limit: Int)
+
+/** `setRuleSource`: schema 2 knows [kind] `template` only. */
+@Serializable
+internal data class RuleSourceArgs(val kind: String, val template: String, val options: RuleOptionsDto)
 
 /** `trafficSeries`' window, 1 to 3600 seconds. */
 @Serializable

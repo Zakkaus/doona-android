@@ -8,6 +8,7 @@ use crate::rules::policy::Policy;
 use crate::rules::template::Options;
 use crate::rules::tests::{group, rule};
 use crate::rules::{Network, RuleSet};
+use crate::stats::meter::Tally;
 use crate::subscription::parse::parse;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Weak;
@@ -67,7 +68,7 @@ fn udp(ip: [u8; 4], port: u16) -> (SocketAddr, Network) {
 /// The group a route goes through, `direct`, or `refused`.
 fn target(route: &Route) -> &str {
     match route {
-        Route::Direct => "direct",
+        Route::Direct | Route::RuleDirect(_) => "direct",
         Route::Proxy(d, _) => &d.group,
         Route::Refuse => "refused",
         Route::Blocked => "blocked",
@@ -126,9 +127,53 @@ fn direct_and_global_route_as_before_and_rule_follows_the_rules() {
         assert_eq!(target(&route(dst, Mode::Rule)), to, "{dst:?}");
     }
     // A route is metered by the group it goes through.
-    let streaming = route(tcp(ABROAD, 443), Mode::Rule);
+    let streaming = route(tcp(ABROAD, 443), Mode::Global);
     let meter = streaming.meter(&session).unwrap();
-    assert!(Arc::ptr_eq(&meter, &session.meters().get("g-Streaming")));
+    assert!(Arc::ptr_eq(&meter, &session.meters().get("g-Proxy")));
+}
+
+/// Rule meters a flow under the row that routed it as well as under its target, so a fold gives
+/// `byRule` each row's bytes, equal to its target's, and its flows; Global, Direct and DNS give
+/// none.
+#[test]
+fn rule_flows_are_metered_under_the_row_that_routed_them() {
+    let (outbounds, model) = published(Options::default());
+    let session = session();
+    session.names().map(ABROAD.into(), "www.netflix.com");
+    let flow = |route: Route, up, down| {
+        let tally = Tally::new(route.meter(&session));
+        tally.up(up);
+        tally.down(down);
+    };
+    let route = |dst, mode| Route::of(Inbound::Tun, dst, mode, &outbounds, &session);
+    flow(route(tcp(CN, 443), Mode::Rule), 10, 20);
+    flow(route(tcp(ABROAD, 443), Mode::Rule), 30, 40);
+    // The template's rows: 1 sends streaming names to g-Streaming, 3 China's addresses direct.
+    let rows = &model.policy.listing().rows;
+    let (streaming, cn) = (rows[1].id.to_string(), rows[3].id.to_string());
+    let mut taken = session.meters().take();
+    taken.rules.sort();
+    taken.outbounds.sort();
+    let mut rules = vec![(cn, [10, 20, 1]), (streaming, [30, 40, 1])];
+    rules.sort();
+    assert_eq!(taken.rules, rules);
+    let targets = [
+        ("direct".to_owned(), 10, 20),
+        ("g-Streaming".to_owned(), 30, 40),
+    ];
+    assert_eq!(taken.outbounds, targets);
+    flow(
+        Route::dns(Inbound::Tun, Mode::Rule, &outbounds, &session),
+        5,
+        6,
+    );
+    // The published routing's mode decides, so Global is published before its flow.
+    publish(&outbounds, &model, Mode::Global);
+    flow(route(tcp(ABROAD, 443), Mode::Global), 1, 2);
+    flow(route(tcp(CN, 443), Mode::Direct), 3, 4);
+    let taken = session.meters().take();
+    assert!(taken.rules.is_empty(), "{taken:?}");
+    assert_eq!(taken.outbounds.len(), 2, "{taken:?}");
 }
 
 /// One cache per generation: a name a previous generation's answers gave is unknown to the next.

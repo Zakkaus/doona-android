@@ -209,11 +209,13 @@ impl Stats {
         let fold = session.fold(clock);
         let (up, down) = (inner.ring).add(fold.from_s, fold.to_s, fold.slept, fold.up, fold.down);
         session.note_peak(up, down);
+        let taken = session.meters().take();
         let moved = Moved {
             up: fold.up,
             down: fold.down,
             flows: fold.flows,
-            outbounds: session.meters().take(),
+            outbounds: taken.outbounds,
+            rules: taken.rules,
         };
         inner.usage.add(clock, &moved);
         let changed = turned || moved != Moved::default();
@@ -457,6 +459,14 @@ fn day_usage(d: &Day) -> dto::DayUsage {
                 id: id.clone(),
                 up: *up,
                 down: *down,
+            })
+            .collect(),
+        by_rule: (d.rules.iter())
+            .map(|(id, [up, down, flows])| dto::RuleBytes {
+                id: id.clone(),
+                up: *up,
+                down: *down,
+                flows: *flows,
             })
             .collect(),
     }

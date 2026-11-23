@@ -19,7 +19,18 @@ fn code(reply: &str) -> Option<ErrorCode> {
 
 #[test]
 fn init_replies_with_the_schema() {
-    assert_eq!(Core::schema(), r#"{"schema":1}"#);
+    assert_eq!(Core::schema(), r#"{"schema":2}"#);
+}
+
+#[test]
+fn rule_mode_is_accepted_and_kept_across_a_restart() {
+    let dir = TempDir::new("api-rule-mode");
+    let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    assert_eq!(code(&core.call("setMode", r#"{"mode":"Rule"}"#)), None);
+    assert_eq!(snapshot(&core, -1).catalog.unwrap().mode, Mode::Rule);
+    drop(core);
+    let again = Core::new(dir.path().to_str().unwrap()).unwrap();
+    assert_eq!(snapshot(&again, -1).catalog.unwrap().mode, Mode::Rule);
 }
 
 #[test]

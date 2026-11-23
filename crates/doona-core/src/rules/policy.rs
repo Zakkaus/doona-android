@@ -2,15 +2,21 @@
 //! Global sends every flow through, and in Rule the compiled rules, whose first match decides and
 //! which leave the main group to a flow none matches. The catalog compiles it with its groups and
 //! publishes it with each group's node (`Outbounds`), so a flow reads both from one publication.
+//! It also keeps the rows as `rules` and `effectiveConfig` list them, and where they came from.
 
+use super::listing::Listing;
 use super::template::{self, Options};
 use super::{Flow, Network, RuleSet, RuleSpec, Target};
-use crate::dto::GroupKind;
+use crate::dto::{ErrorCode, GroupKind, RuleOptions, RuleSource, SourceKind};
 use crate::groups::{self, GroupDef};
 use crate::ids::group_id;
+use std::sync::{Arc, LazyLock};
 
 /// QUIC's port, which `blockQuic` refuses over UDP.
 const QUIC_PORT: u16 = 443;
+
+/// The rule of a flow no row matched, which went to the main group.
+static UNMATCHED: LazyLock<Arc<str>> = LazyLock::new(|| "unmatched".into());
 
 #[derive(Debug)]
 pub(crate) struct Policy {
@@ -19,6 +25,8 @@ pub(crate) struct Policy {
     /// None before the catalog publishes, or when the rules failed to compile.
     rules: Option<RuleSet>,
     block_quic: bool,
+    /// The source's rows with their ids.
+    listing: Listing,
 }
 
 /// Where the rules send a flow.
@@ -38,6 +46,7 @@ impl Default for Policy {
             main: group_id(groups::PROXY),
             rules: None,
             block_quic: false,
+            listing: Listing::default(),
         }
     }
 }
@@ -64,7 +73,9 @@ impl Policy {
         let rules = RuleSet::compile_template(groups, is_node, &rows)
             .inspect_err(|code| log::error!("rules: template refused ({})", code.as_str()))
             .ok();
+        let source = format!("template:{}", template::ID);
         Policy {
+            listing: Listing::new(&source, &rows, rules.as_ref()),
             rules,
             block_quic: options.block_quic,
             ..Policy::default()
@@ -78,6 +89,22 @@ impl Policy {
             main: main.to_owned(),
             rules,
             block_quic: options.block_quic,
+            listing: Listing::default(),
+        }
+    }
+
+    /// A policy of `specs` compiled over `groups`, with the rows listed as `rules` lists them.
+    #[cfg(test)]
+    pub fn listed(
+        main: &str,
+        groups: &[GroupDef],
+        is_node: &dyn Fn(&str) -> bool,
+        specs: &[RuleSpec],
+    ) -> Policy {
+        let rules = RuleSet::compile(groups, is_node, specs).ok();
+        Policy {
+            listing: Listing::new("test", specs, rules.as_ref()),
+            ..Policy::new(main, rules, Options::default())
         }
     }
 
@@ -85,26 +112,68 @@ impl Policy {
         &self.main
     }
 
+    /// The source's rows as `rules` lists them.
+    pub fn listing(&self) -> &Listing {
+        &self.listing
+    }
+
+    /// `ruleSource`: the template and its options, and what compiled of its rows.
+    pub fn source(&self) -> RuleSource {
+        let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+        RuleSource {
+            kind: SourceKind::Template,
+            template: Some(template::ID.to_owned()),
+            version: Some(template::VERSION),
+            subscription_id: None,
+            options: RuleOptions {
+                block_quic: self.block_quic,
+            },
+            rules: count(self.listing.rows.len()),
+            lines: count(self.listing.lines()),
+            skipped: count(self.rules.as_ref().map_or(0, RuleSet::skipped)),
+            rules_revision: self.listing.revision,
+            error: self.rules.is_none().then_some(ErrorCode::ParseFailed),
+        }
+    }
+
     /// Whether a rule matches names, so a flow's name is worth looking up.
     pub fn wants_names(&self) -> bool {
         self.rules.as_ref().is_some_and(RuleSet::has_names)
     }
 
-    /// Where rule mode sends `flow`: its first matching rule's target, the main group when none
-    /// matches. With `blockQuic`, QUIC bound for a group is rejected.
+    /// [`Policy::decide`]'s choice alone.
+    #[cfg(test)]
     pub fn choose<'a>(&'a self, flow: &Flow<'_>) -> Choice<'a> {
+        self.route(flow).0
+    }
+
+    /// Where rule mode sends `flow`: its first matching rule's target, the main group when none
+    /// matches; with `blockQuic`, QUIC bound for a group is rejected. And the rule that made the
+    /// choice, for `byRule`: the matched row's id as `rules` lists it, or `unmatched` when no row
+    /// matched and the flow went to the main group. The id is shared, so a flow that keeps it
+    /// copies no text.
+    pub fn decide<'a>(&'a self, flow: &Flow<'_>) -> (Choice<'a>, Arc<str>) {
+        let (choice, row) = self.route(flow);
+        let listed = row.and_then(|i| self.listing.rows.get(i));
+        let rule = listed.map_or(&*UNMATCHED, |r| &r.id);
+        (choice, Arc::clone(rule))
+    }
+
+    /// The choice, and the index of the row that matched.
+    fn route<'a>(&'a self, flow: &Flow<'_>) -> (Choice<'a>, Option<usize>) {
         let rules = self.rules.as_ref();
-        let matched = rules.and_then(|r| Some(&r.rows()[r.matched(flow)?].target));
+        let row = rules.and_then(|r| r.matched(flow));
+        let matched = rules.zip(row).map(|(r, i)| &r.rows()[i].target);
         let group = match matched {
-            Some(Target::Direct) => return Choice::Direct,
-            Some(Target::Reject) => return Choice::Reject,
+            Some(Target::Direct) => return (Choice::Direct, row),
+            Some(Target::Reject) => return (Choice::Reject, row),
             Some(Target::Group(id)) => id.as_str(),
             None => self.main.as_str(),
         };
         if self.block_quic && flow.network == Network::Udp && flow.port == QUIC_PORT {
-            return Choice::Blocked;
+            return (Choice::Blocked, row);
         }
-        Choice::Group(group)
+        (Choice::Group(group), row)
     }
 }
 

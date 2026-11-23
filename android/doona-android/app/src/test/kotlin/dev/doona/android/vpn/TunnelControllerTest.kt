@@ -251,7 +251,7 @@ class TunnelControllerTest {
 
     @Test
     fun anotherSchemaIsAnIncompatibleCore() {
-        core.schema = 2
+        core.schema = CORE_SCHEMA + 1
         start()
         assertEquals(Status.Failed(FailureReason.IncompatibleCore), awaitStatus { it is Status.Failed })
         assertTrue(host.routings.isEmpty())
