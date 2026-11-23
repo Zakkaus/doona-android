@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv.nodes
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
@@ -48,7 +50,6 @@ import dev.doona.android.prototype.rv.rememberRvFormat
 import dev.doona.android.prototype.rv.rvSharedFlag
 import dev.doona.android.prototype.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.scripted
-import dev.doona.android.prototype.rv.stats.RvEmptyChart
 
 /**
  * A node's page in the language of Revolut's stock page: the flag over its name as the large title, which collapses into
@@ -112,10 +113,17 @@ private fun HistoryCard(node: RvNode, times: List<String>, picked: Int, onPick: 
         RvCardHeader(stringResource(R.string.rv_nodes_history))
         Column(Modifier.padding(horizontal = RvSpace.rowPadding)) {
             if (node.history.isEmpty()) {
-                // No test yet: no figure, and the chart's grid alone, as 統計's charts show a day with no data.
+                // No test yet: no figure, and the dot chart's plot as it is with its labels, with the empty line on it at
+                // the size of an empty card's text (統計's charts show a day with no data as a grid alone).
                 Figure(RV_NO_VALUE)
                 Spacer(Modifier.height(RvSpace.barGap))
-                RvEmptyChart(stringResource(R.string.rv_stats_no_data), Modifier.height(RvLatencyDotsSize.head + RvLatencyDotsSize.plot))
+                Box {
+                    RvLatencyDots(emptyList(), null, emptyList(), 0, {})
+                    // Between the middle hairline and zero, not on a line.
+                    Box(Modifier.padding(top = RvLatencyDotsSize.head + RvLatencyDotsSize.plot / 2).fillMaxWidth().height(RvLatencyDotsSize.plot / 2), Alignment.Center) {
+                        RvText(stringResource(R.string.rv_stats_no_data), Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center)
+                    }
+                }
             } else {
                 Figure(latencyText(node.history[picked]))
                 val median = node.medianMs?.let { SEPARATOR + stringResource(R.string.rv_nodes_median, latencyText(it)) }.orEmpty()
