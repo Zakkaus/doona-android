@@ -15,8 +15,10 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.RvAppDisc
 import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvCheckRow
 import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvEmptyCaption
 import dev.doona.android.prototype.rv.RvEmptyState
@@ -32,12 +34,13 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvSubscription
+import dev.doona.android.prototype.rv.settings.RvPerAppData
 import dev.doona.android.prototype.rv.subs.rvSubscriptionMenu
 
 /**
  * The library's new parts in one page, for the owner to try on a phone (route `gallery`): the text field in its states,
- * subscription rows whose long press opens the menu, the error banner, the empty state, and the confirm sheet behind a
- * button. The goldens draw the same parts.
+ * subscription rows whose long press opens the menu, app rows to check, the error banner, the empty state, and the
+ * confirm sheet behind a button. The goldens draw the same parts.
  */
 @Composable
 internal fun RvGalleryScreen(onBack: () -> Unit) {
@@ -48,6 +51,7 @@ internal fun RvGalleryScreen(onBack: () -> Unit) {
         RvLargeTitle(title, titleBlock, insets)
         Section(R.string.rv_gallery_fields) { RvGalleryFields() }
         Section(R.string.rv_gallery_menu) { RvGalleryMenuCard(onDelete = { deleting = it }) }
+        Section(R.string.rv_gallery_check) { RvGalleryChecks() }
         Section(R.string.rv_gallery_banner) { RvGalleryBanners() }
         Section(R.string.rv_gallery_empty) { RvGalleryEmpty() }
         Section(R.string.rv_gallery_sheet) { RvPrimaryButton(stringResource(R.string.rv_menu_delete), { deleting = RvData.subscriptions.first() }) }
@@ -90,6 +94,19 @@ internal fun RvGalleryMenuCard(onDelete: (RvSubscription) -> Unit = {}) {
             RvLongPressMenu(rvSubscriptionMenu(onUpdate = {}, onEdit = {}, onDelete = { onDelete(sub) }), onClick = {}) { press ->
                 RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, pluralStringResource(R.plurals.rv_nodes_nodes, sub.nodes, sub.nodes), press)
             }
+        }
+    }
+}
+
+/** Three apps as 依 App lists them, the first and the last checked; a tap on a row checks or unchecks it. */
+@Composable
+internal fun RvGalleryChecks() {
+    val apps = RvPerAppData.apps.take(3)
+    var checked by remember { mutableStateOf(setOf(apps.first().packageName, apps.last().packageName)) }
+    RvCard {
+        apps.forEach { app ->
+            val on = app.packageName in checked
+            RvCheckRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, on, { checked = if (it) checked + app.packageName else checked - app.packageName })
         }
     }
 }

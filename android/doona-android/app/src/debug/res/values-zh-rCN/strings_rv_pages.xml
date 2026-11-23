@@ -3,6 +3,7 @@
     <string name="rv_gallery_title">组件</string>
     <string name="rv_gallery_fields">文本字段</string>
     <string name="rv_gallery_menu">菜单</string>
+    <string name="rv_gallery_check">勾选行</string>
     <string name="rv_gallery_banner">错误横幅</string>
     <string name="rv_gallery_empty">空状态</string>
     <string name="rv_gallery_sheet">确认面板</string>

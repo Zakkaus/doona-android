@@ -3,6 +3,7 @@
     <string name="rv_gallery_title">元件</string>
     <string name="rv_gallery_fields">文字欄位</string>
     <string name="rv_gallery_menu">選單</string>
+    <string name="rv_gallery_check">勾選列</string>
     <string name="rv_gallery_banner">錯誤橫幅</string>
     <string name="rv_gallery_empty">空狀態</string>
     <string name="rv_gallery_sheet">確認面板</string>

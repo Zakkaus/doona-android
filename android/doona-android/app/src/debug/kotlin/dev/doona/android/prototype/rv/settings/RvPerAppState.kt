@@ -81,6 +81,10 @@ internal object RvPerAppData {
     /** The two apps the except sample keeps out of the tunnel. */
     val except = RvPerApp(RvAppPolicy.Except, setOf(PACKAGE + "camera", PACKAGE + "video"))
 
+    /** The layouts' samples (`perapp-v1`, `-v2`): the first twelve apps, three of them checked under 只有勾選的. */
+    val twelve = apps.take(12)
+    val three = RvPerApp(RvAppPolicy.Only, listOf("browser", "chat", "mail").mapTo(mutableSetOf()) { PACKAGE + it })
+
     /** A query two apps match (Mail and Maps), and one none does. */
     const val QUERY = "ma"
     const val QUERY_NONE = "Bank"
@@ -106,4 +110,10 @@ internal fun rvPerAppSample(name: String, saved: RvPerApp = RvPerAppData.saved):
         "rebuild-failed" -> RvPerAppState(RvPerAppData.except, rebuildFailed = true)
         else -> RvPerAppState(saved)
     }
+}
+
+/** [rvPerAppSample]'s state [name] over the layouts' sample: the first twelve apps, three checked. */
+internal fun rvPerAppLookSample(name: String): RvPerAppState {
+    val state = rvPerAppSample(name, RvPerAppData.three)
+    return if (state.installed == null) state else state.copy(installed = RvPerAppData.twelve)
 }

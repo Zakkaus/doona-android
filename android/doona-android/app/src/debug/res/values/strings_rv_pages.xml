@@ -4,6 +4,7 @@
     <string name="rv_gallery_title">Components</string>
     <string name="rv_gallery_fields">Text field</string>
     <string name="rv_gallery_menu">Menu</string>
+    <string name="rv_gallery_check">Check row</string>
     <string name="rv_gallery_banner">Error banner</string>
     <string name="rv_gallery_empty">Empty state</string>
     <string name="rv_gallery_sheet">Confirm sheet</string>
