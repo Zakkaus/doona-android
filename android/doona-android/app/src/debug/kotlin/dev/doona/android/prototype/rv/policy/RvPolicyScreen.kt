@@ -159,7 +159,7 @@ private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_main_node), onClick = onOpen)
         RvRow(
-            { RvFlag(node.place.name, RvSize.rowDisc, current = true) },
+            { RvFlag(node.place.flag, RvSize.rowDisc, current = true) },
             node.name,
             listOf(stringResource(main.kind.label), node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
             onClick = onOpen,

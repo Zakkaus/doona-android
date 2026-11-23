@@ -118,7 +118,7 @@ private fun GroupCard(group: RvNodeGroup, currentId: String, sort: RvNodeSort, o
 /** A country's head row, laid out as a subscription's: its flag, its name, and how many nodes it has. */
 @Composable
 private fun PlaceRow(place: RvPlace, count: Int) {
-    RvRow({ RvFlag(place.name, RvNodesSize.rowFlag) }, stringResource(place.label), pluralStringResource(R.plurals.rv_nodes_nodes, count, count))
+    RvRow({ RvFlag(place.flag, RvNodesSize.rowFlag) }, stringResource(place.label), pluralStringResource(R.plurals.rv_nodes_nodes, count, count))
 }
 
 /**
@@ -137,7 +137,7 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
         node.changeMs?.let { change -> { RvDelta(change) } }
     }
     RvRow(
-        { RvFlag(node.place.name, RvNodesSize.rowFlag, current = current) },
+        { RvFlag(node.place.flag, RvNodesSize.rowFlag, current = current) },
         node.name,
         node.protocol + SEPARATOR + stringResource(node.place.label),
         if (current) pick.semantics { stateDescription = inUse } else pick,

@@ -208,7 +208,7 @@ internal fun RvFastestCard(nodes: List<RvNode>, currentId: String, onOpen: () ->
         // A new test re-sorts the rows: each moves to its new place, keyed by its node.
         nodes.forEachIndexed { order, node ->
             key(node.id) {
-                RvRow({ RvFlag(node.place.name, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + " · " + stringResource(node.place.label), Modifier.rvMoves()) {
+                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + " · " + stringResource(node.place.label), Modifier.rvMoves()) {
                     RvLatencyChange(node.latencyMs, node.changeMs, order = order)
                 }
             }

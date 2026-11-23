@@ -299,7 +299,7 @@ private fun NodeRow(node: RvNode, label: String, current: Boolean, order: Int, o
     // Each row is a layer of its own: a row composed after the others records itself, not the whole card again.
     RvMenuAnchor(rvNodeMenu(node, current, onPick, onDetail), Modifier.graphicsLayer {}) { menu, actions ->
         RvRow(
-            { RvFlag(node.place.name, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
+            { RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
             node.name,
             node.protocol + SEPARATOR + label,
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),

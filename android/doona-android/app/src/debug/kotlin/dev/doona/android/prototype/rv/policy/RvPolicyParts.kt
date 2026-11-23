@@ -34,7 +34,7 @@ import dev.doona.android.prototype.rv.rvRowIndication
  */
 @Composable
 internal fun RvPolicyTarget(group: RvPolicyGroup?) {
-    if (group == null) RvIconDisc(R.drawable.rv_sym_arrow_right_alt) else RvFlag(group.selected.place.name, RvSize.rowDisc)
+    if (group == null) RvIconDisc(R.drawable.rv_sym_arrow_right_alt) else RvFlag(group.selected.place.flag, RvSize.rowDisc)
 }
 
 /** What a rule matches, as its row's title. */

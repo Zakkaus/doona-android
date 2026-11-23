@@ -120,7 +120,7 @@ private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Un
         Modifier.selectable(chosen, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton) { onSelect(node.id) }
     }
     RvRow(
-        { RvFlag(node.place.name, RvSize.rowDisc, current = chosen) },
+        { RvFlag(node.place.flag, RvSize.rowDisc, current = chosen) },
         node.name,
         listOfNotNull(stringResource(R.string.rv_policy_auto).takeIf { chosen && auto }, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
         pick,

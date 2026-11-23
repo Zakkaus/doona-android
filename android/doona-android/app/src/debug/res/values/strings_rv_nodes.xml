@@ -25,6 +25,7 @@
     <string name="rv_nodes_region_oceania">Oceania</string>
     <string name="rv_nodes_region_americas">Americas</string>
     <string name="rv_nodes_region_europe">Europe</string>
+    <string name="rv_nodes_region_other">Other</string>
     <string name="rv_nodes_place_hk">Hong Kong</string>
     <string name="rv_nodes_place_tw">Taiwan</string>
     <string name="rv_nodes_place_jp">Japan</string>
@@ -37,6 +38,7 @@
     <string name="rv_nodes_place_nl">Netherlands</string>
     <string name="rv_nodes_place_fr">France</string>
     <string name="rv_nodes_place_au">Australia</string>
+    <string name="rv_nodes_place_other">Other</string>
     <string name="rv_nodes_in_use">In use</string>
     <string name="rv_nodes_latency_high">High latency</string>
     <string name="rv_nodes_history">Latency history</string>

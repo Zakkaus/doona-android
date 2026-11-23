@@ -139,7 +139,7 @@ private fun PathCard(connection: RvConnection) {
             RvRow({ RvIconDisc(R.drawable.rv_sym_arrow_right_alt) }, stringResource(R.string.mode_direct), stringResource(R.string.rv_policy_no_proxy))
         } else {
             RvRow({ RvIconDisc(group.kind.glyph) }, stringResource(group.name), stringResource(group.kind.label))
-            RvRow({ RvFlag(node.place.name, RvSize.rowDisc) }, node.name, listOf(node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR))
+            RvRow({ RvFlag(node.place.flag, RvSize.rowDisc) }, node.name, listOf(node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR))
         }
     }
 }
