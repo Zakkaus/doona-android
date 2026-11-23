@@ -26,6 +26,7 @@ mod diagnostics;
 #[cfg(feature = "fault-hook")]
 mod fault;
 mod rules;
+mod score;
 mod selection;
 mod snapshot;
 mod subscriptions;
@@ -425,15 +426,10 @@ impl Core {
             "setSubscriptionUserAgent" => parse(args)
                 .and_then(|a| self.set_subscription_user_agent(a))
                 .map(ok),
-            "trafficSeries" => self.traffic_series(args),
-            "usage" => self.usage(args),
-            "nodes" => self.nodes(args),
-            "rules" => self.rules(args),
             "setRuleSource" => parse(args).and_then(|a| self.set_rule_source(a).map(empty)),
-            "effectiveConfig" => self.effective_config(args),
             #[cfg(feature = "fault-hook")]
             "debugFault" => self.fault().map(empty),
-            _ => self.diagnostic(command, args, event),
+            _ => self.query_or_diagnostic(command, args, event),
         })
     }
 

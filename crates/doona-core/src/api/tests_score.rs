@@ -132,7 +132,7 @@ fn a_rejected_reload_keeps_score_evidence_and_authority() {
 }
 
 #[test]
-fn reading_the_catalog_spends_no_score_budget() {
+fn reading_catalog_and_score_state_spends_no_score_budget() {
     let dir = TempDir::new("score-read");
     let core = Core::new(path(&dir)).unwrap();
     let feeds = Feeds::new();
@@ -147,17 +147,38 @@ fn reading_the_catalog_spends_no_score_budget() {
     reporter.first_response();
     reporter.finish(honk_outbound::group::ScoreOutcome::Success);
     let score = Arc::clone(&lock(&core.shared.catalog).model.score);
+    let manager = &score.manager;
     let counts = || {
-        score
-            .manager
-            .score_budget_counters("g-Auto", SelectionNetwork::Tcp)
+        [SelectionNetwork::Tcp, SelectionNetwork::Udp].map(|net| {
+            (
+                manager.score_budget_counters("g-Auto", net),
+                manager.score_verification_counters("g-Auto", net),
+                manager
+                    .score_verification_for_network("g-Auto", net)
+                    .unwrap()
+                    .0,
+            )
+        })
     };
     let trial = route(&core, dst);
-    assert_eq!(counts().reserved, 1);
+    assert_eq!(counts()[0].0.reserved, 1);
     drop(trial);
     let before = counts();
-    for _ in 0..5 {
-        assert!(catalog(&core).groups[1].selected_id.is_some());
+    assert!(catalog(&core).groups[1].selected_id.is_some());
+    for _ in 0..2 {
+        let state = call(&core, "scoreState", json!({})).unwrap();
+        assert_eq!(state["rootBusinessStarts"], 1);
+        for (net, (budget, _, selected)) in ["tcp", "udp"].into_iter().zip(&before) {
+            let row = &state["groups"][0][net];
+            assert_eq!(row["selected"], *selected);
+            assert_eq!(
+                row["counters"],
+                json!({
+                    "businessStarts": budget.business_starts, "trialSuccess": budget.trial_success,
+                    "trialFailure": budget.trial_failure, "trialCancelled": budget.trial_cancelled,
+                })
+            );
+        }
     }
     assert_eq!(counts(), before);
     assert_eq!(score.manager.score_state().root_business_starts(), 1);
@@ -218,6 +239,14 @@ fn nested_score_retries_one_setup_then_relays_the_reply() {
             .manager
             .score_budget_counters(group, SelectionNetwork::Tcp);
         assert_eq!(budget.business_starts, 1, "{group}");
+    }
+    let state = call(&core, "scoreState", json!({})).unwrap();
+    assert_eq!(state["rootBusinessStarts"], 1);
+    let groups = state["groups"].as_array().unwrap();
+    assert_eq!(groups.len(), 2);
+    for group in groups {
+        assert_eq!(group["tcp"]["counters"]["businessStarts"], 1);
+        assert_eq!(group["udp"]["counters"]["businessStarts"], 0);
     }
 }
 
