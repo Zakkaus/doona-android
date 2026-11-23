@@ -70,11 +70,12 @@ interface Reports {
  * carries; once that sheet reports that the user picked an app ([picked]), those crash files are cleared, so a crash
  * written meanwhile stays, and a late pick in an earlier sheet clears only its own export's. A clear that does not
  * succeed is sent again at the next start ([sweep]). A sheet closed without a pick keeps them. Without the core's
- * listing (the core is unavailable) the zip takes the app's own, and nothing is cleared. App crash files are checked
- * again as they go into the zip ([exportedCrash]), for those written before the check. Process-wide, so a build
- * in progress outlives the page that started it. Each zip is written under a part name and then takes a name of its own;
- * one the sheet took is deleted [SHARE_GRACE_MS] after the sheet returns, which leaves the app picked time to read it,
- * and one it did not take at once; [sweep] removes what an earlier run left.
+ * listing (the core is unavailable) the zip takes the app's own, and nothing is cleared. An app crash file goes into the
+ * zip only in the current format, its lines checked again ([exportedCrash]); `report.json` names only the files the zip
+ * holds, and a pick clears only those. Process-wide, so a build in progress outlives the page that started it. Each zip
+ * is written under a part name and then takes a name of its own; one the sheet took is deleted [SHARE_GRACE_MS] after the
+ * sheet returns, which leaves the app picked time to read it, and one it did not take at once; [sweep] removes what an
+ * earlier run left.
  */
 class ReportExport(
     private val engine: Engine,
@@ -131,7 +132,12 @@ class ReportExport(
     fun picked(token: String, done: () -> Unit = {}) {
         scope.launch {
             try {
-                clearing.withLock { withContext(io) { tokens.picked(token) }?.let { clear(token, it) } }
+                // Noted before waiting for a clear in progress: a process that ends meanwhile leaves it to the next start.
+                val crashes = withContext(io) { tokens.picked(token) } ?: return@launch
+                clearing.withLock {
+                    // A pick reported twice: the first clear may have succeeded meanwhile, and forgotten the export.
+                    if (withContext(io) { tokens.kept(token) }) clear(token, crashes)
+                }
             } finally {
                 done()
             }
@@ -198,9 +204,10 @@ class ReportExport(
     private fun build(core: Result<CoreDiagnostics>, engineView: EngineView): ExportState.Ready {
         val listing = core.getOrNull()
         val names = listing?.crashes?.map { it.name } ?: crashes.list().map { it.name }
-        // A file gone since the listing is left out, and so is its name; so is an empty one, which is no crash file.
+        // Left out, with their names: a file gone since the listing, an empty one, which is no crash file, and an app file
+        // of an earlier format.
         val known = KnownNames()
-        val files = names.mapNotNull { name -> crashes.read(name)?.let { name to exportedCrash(it, known) } }
+        val files = names.mapNotNull { name -> crashes.read(name)?.let { exportedCrash(it, known) }?.let { name to it } }
         val at = clock()
         val json = reportJson(at, app(), engineView, core, AppEvents.snapshot(), files.map { it.first })
         val zip = publishZip(STAMP.format(Instant.ofEpochMilli(at)), json, files)

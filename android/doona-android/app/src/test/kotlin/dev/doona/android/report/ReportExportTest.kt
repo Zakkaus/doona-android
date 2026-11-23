@@ -1,25 +1,11 @@
 package dev.doona.android.report
 
-import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.CrashFile
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
-import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
-import dev.doona.android.engine.LogLevel
-import dev.doona.android.engine.Member
-import dev.doona.android.engine.PerApp
-import dev.doona.android.engine.Status
-import dev.doona.android.engine.Subscription
-import dev.doona.android.engine.fake.FakeEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
@@ -33,80 +19,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
-import java.io.File
-import java.util.zip.ZipFile
 
 /**
  * The export: a zip that holds no URL, address or host of the catalog it was made from, and a clear after the share that
  * takes only the crash files the zip holds.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class ReportExportTest {
-    @get:Rule
-    val tmp = TemporaryFolder()
-
-    private val crashDir get() = tmp.root.resolve("crash")
-    private val outDir get() = tmp.root.resolve("reports")
-
-    /** The exports a sheet may call back for, in a file that outlives an export object, as it outlives a process. */
-    private val tokens get() = ExportTokens { tmp.root.resolve("report-exports.json") }
-
-    @Before
-    fun setUp() = AppEvents.clear()
-
-    /** What a provider's subscription and a user's catalog can hold: a token URL, servers by address and by name. */
-    private val token = "tk_9f8e7d6c5b4a"
-    private val secrets = listOf(token, "provider-example.net", "203.0.113.45", "198.51.100.7", "hk1.edge-example.org", "2001:db8::17", "harbor-home", "user:pass")
-
-    private suspend fun fixtureEngine(): FakeEngine {
-        val nodes = listOf(
-            Member("n-1a2b3c4d5e6f7081", "203.0.113.45:443 hk", latencyMs = 42, subscriptionId = "s1"),
-            Member("n-9f8e7d6c5b4a3921", "hk1.edge-example.org vmess", failed = true, error = ErrorCode.LocalNetwork, subscriptionId = "s1"),
-            Member("n-0011223344556677", "[2001:db8::17]:8443 user:pass", subscriptionId = "s1"),
-        )
-        val groups = listOf(
-            // A subscription may name its groups too, so a group's name or id is no safer than a node's.
-            Group("g-198.51.100.7", "198.51.100.7", GroupKind.Selector, nodes + Member("g-Auto", "Auto", isGroup = true), selectedId = "g-Auto"),
-            Group("g-Auto", "Auto", GroupKind.UrlTest, nodes, selectedId = nodes[0].id),
-        )
-        val subscription = Subscription(
-            id = "s1",
-            name = "harbor-home",
-            url = "https://sub.provider-example.net/api/v1/client/subscribe?token=$token",
-            nodes = 3,
-            updatedAtEpochMs = 1_795_300_000_000,
-            error = "GET https://sub.provider-example.net/api/v1/client/subscribe?token=$token: 403",
-            totalBytes = 1L shl 40,
-        )
-        val engine = FakeEngine(groups, listOf(subscription), Status.Running(sinceEpochMs = 1_795_300_000_000))
-        engine.setPerApp(PerApp(AppPolicy.OnlyListed, setOf("com.example.secretapp")))
-        return engine
-    }
-
-    private val app = AppInfo("0.1", 1, "debug", listOf("arm64-v8a"), "16", 36, "Google", "Pixel 9")
-
-    private fun TestScope.export(engine: Engine, now: Long = 1_795_300_200_000, scope: CoroutineScope = this): ReportExport {
-        val files = CrashFiles(crashDir)
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher) { now }
-    }
-
-    /** Every entry of the zip, by name. */
-    private fun entries(zip: File): Map<String, String> = ZipFile(zip).use { z ->
-        z.entries().toList().associate { it.name to z.getInputStream(it).readBytes().decodeToString() }
-    }
-
-    /** A crash file of the app, from an exception whose message quotes the subscription URL. */
-    private fun appCrash(at: Long): String {
-        val error = IllegalStateException("fetch https://sub.provider-example.net/api?token=$token failed")
-        CrashHandler(CrashFiles(crashDir, clock = { at }), "0.1 debug arm64-v8a-android", { _, _ -> }, waitMs = 10_000) { true }.uncaughtException(Thread.currentThread(), error)
-        return CrashFiles(crashDir).list().last().name
-    }
-
+class ReportExportTest : ExportFixture() {
     @Test
     fun `the export holds no URL, address or host`() = runTest {
         val engine = fixtureEngine()
@@ -135,29 +55,6 @@ class ReportExportTest {
         assertEquals(2, report["events"]!!.jsonArray.size)
         assertEquals("Pixel 9", report["device"]!!.jsonObject["model"]!!.jsonPrimitive.content)
         assertTrue(report["diagnostics"] is JsonObject)
-    }
-
-    /** Records the clears it is sent; the first [failures] fail, and with [hangs] none returns, as in a process that ends. */
-    private class Recording(
-        private val fake: FakeEngine,
-        private val coreUp: Boolean = true,
-        private var failures: Int = 0,
-        private val hangs: Boolean = false,
-    ) : Engine by fake {
-        val cleared = mutableListOf<Pair<List<String>, Long>>()
-
-        override suspend fun diagnostics(level: LogLevel?) =
-            if (coreUp) fake.diagnostics(level) else Result.failure(EngineException(ErrorCode.Internal))
-
-        override suspend fun clearCrashes(names: List<String>, mark: Long): Result<Unit> {
-            cleared += names to mark
-            if (hangs) awaitCancellation()
-            if (failures > 0) {
-                failures--
-                return Result.failure(EngineException(ErrorCode.Internal))
-            }
-            return fake.clearCrashes(names, mark)
-        }
     }
 
     @Test
@@ -479,40 +376,75 @@ class ReportExportTest {
     }
 
     @Test
-    fun `an app crash file written before frames were checked is filtered as it is exported, a core one is not`() = runTest {
+    fun `an app crash file of an earlier format is left out of the zip and the report, and is not cleared`() = runTest {
         crashDir.mkdirs()
         val core = "1795300140000.txt"
         val coreText = "source: core\natEpochMs: 1795300140000\nmessage: panic in doonacore::api\n\nbacktrace:\n0 libdoonacore.so+0x1f2e\n"
         crashDir.resolve(core).writeText(coreText)
+        val placeholder = "1795300145000.txt"
+        crashDir.resolve(placeholder).writeText("")
+        // Written before the format line: its names were never checked, and a method name may hold a line break.
         val old = "1795300150000.txt"
         crashDir.resolve(old).writeText(
-            """
-            source: app
-            atEpochMs: 1795300150000
-            version: 0.1 debug arm64-v8a-android
-            thread: main
-            location: dev.doona.customer.example.run:7
-            message: uncaught exception
+            "source: app\natEpochMs: 1795300150000\nversion: 0.1 debug arm64-v8a-android\nthread: main\n" +
+                "location: dev.doona.android.report.CrashFiles.write:66\nmessage: uncaught exception\n\nbacktrace:\n" +
+                "exception: java.lang.IllegalStateException\n  at dev.doona.android.report.CrashFiles.write\nhunter2:66\n" +
+                "cause: dev.doona.customer.example.Leak\n",
+        )
+        val current = appCrash(1_795_300_160_000)
+        val fake = fixtureEngine()
+        fake.crashes = listOf(CrashFile(core, 1), CrashFile(placeholder, 0), CrashFile(old, 1), CrashFile(current, 1))
+        val engine = Recording(fake)
+        val export = export(engine)
+        export.startExport()
+        advanceUntilIdle()
+        val ready = export.take()!!
+        val zip = entries(ready.file)
+        assertEquals(setOf(ReportExport.REPORT_ENTRY, "crash/$core", "crash/$current"), zip.keys)
+        assertEquals(coreText, zip.getValue("crash/$core"))
+        val report = Json.parseToJsonElement(zip.getValue(ReportExport.REPORT_ENTRY)).jsonObject
+        assertEquals(listOf(core, current), report["crashes"]!!.jsonArray.map { it.jsonPrimitive.content })
+        val listed = report["diagnostics"]!!.jsonObject["crashes"]!!.jsonArray
+        assertEquals(listOf(core, current), listed.map { it.jsonObject["name"]!!.jsonPrimitive.content })
+        export.picked(ready.token)
+        advanceUntilIdle()
+        assertEquals(listOf(listOf(core, current) to 1_795_300_160_000L), engine.cleared)
+    }
 
-            backtrace:
-            exception: dev.doona.customer.example.Leak
-              at dev.doona.customer.example.run:7
-              at dev.doona.android.report.CrashFiles.hunter2:8
-              at dev.doona.android.report.CrashFiles.write:66
-            """.trimIndent() + "\n",
+    @Test
+    fun `of an app crash file only the lines its format has go out, its names checked again`() = runTest {
+        crashDir.mkdirs()
+        val name = "1795300150000.txt"
+        val kept = "source: app\nformat: 1\natEpochMs: 1795300150000\nversion: 0.1 debug arm64-v8a-android\nthread: main\n" +
+            "location: dev.doona.android.report.CrashFiles.write:66\nmessage: uncaught exception\n\nbacktrace:\n" +
+            "exception: java.lang.IllegalStateException\n  at dev.doona.android.report.CrashFiles.write:66\n"
+        crashDir.resolve(name).writeText(
+            kept +
+                // A method name that holds a line break, a password after it.
+                "  at dev.doona.android.report.CrashFiles.run\nhunter2:7\n" +
+                "  at dev.doona.android.report.CrashFiles.run:12\nhunter2 at sub.example.net:7\n" +
+                "  at dev.doona.android.report.CrashFiles.hunter2:8\n" +
+                "cause: dev.doona.customer.example.Leak\nmessage: GET https://sub.example.net/?token=tk_5ecret\n",
         )
         val fake = fixtureEngine()
-        fake.crashes = listOf(CrashFile(core, 1), CrashFile(old, 1))
+        fake.crashes = listOf(CrashFile(name, 1))
         val export = export(fake)
         export.startExport()
         advanceUntilIdle()
+        val text = entries(export.take()!!.file).getValue("crash/$name")
+        assertEquals(kept + "  at $REDACTED\n  at $REDACTED\n", text)
+    }
+
+    @Test
+    fun `without the core the app trims what earlier versions left to the newest five before it lists them`() = runTest {
+        crashDir.mkdirs()
+        val text = crashText("java.lang.IllegalStateException", emptyList(), true, "0.1 debug arm64-v8a-android", 1_795_300_150_000)
+        val names = (1..6).map { n -> "179530015000$n.txt".also { crashDir.resolve(it).writeText(text) } }
+        val export = export(Recording(fixtureEngine(), coreUp = false))
+        export.startExport()
+        advanceUntilIdle()
         val zip = entries(export.take()!!.file)
-        val text = zip.getValue("crash/$old")
-        for (leak in listOf("customer", "hunter2")) assertFalse(leak, leak in text)
-        assertTrue(text, text.startsWith("source: app\natEpochMs: 1795300150000\nversion: 0.1 debug arm64-v8a-android\nthread: main\n"))
-        assertTrue(text, "\nlocation: $REDACTED\n" in text)
-        assertTrue(text, "\nexception: $REDACTED\n" in text)
-        assertTrue(text, text.endsWith("  at $REDACTED\n  at $REDACTED\n  at dev.doona.android.report.CrashFiles.write:66\n"))
-        assertEquals(coreText, zip.getValue("crash/$core"))
+        assertEquals(names.drop(1).map { "crash/$it" }.toSet(), zip.keys - ReportExport.REPORT_ENTRY)
+        assertFalse(crashDir.resolve(names.first()).exists())
     }
 }

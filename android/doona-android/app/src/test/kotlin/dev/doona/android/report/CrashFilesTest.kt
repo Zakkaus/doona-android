@@ -10,6 +10,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -130,12 +131,13 @@ class CrashFilesTest {
             repeat(5) { files(base + it).write("old $it") }
             val killed = files(base + 10).apply { step = { if (it == at) throw Killed() } }
             assertThrows(Killed::class.java) { killed.write("app") }
-            assertTrue("$at", files(0).list().size <= CrashFiles.MAX_FILES)
+            // Counted on the directory: a listing takes the lock, which removes the part and trims to five.
+            assertTrue("$at", dir.list()!!.count { CrashFiles.number(it) != null } <= CrashFiles.MAX_FILES)
             assertEquals("$at", 1, dir.list()!!.count { ".part-" in it })
             val next = files(base + 20).write("next")
+            assertEquals("$at", 0, dir.list()!!.count { ".part-" in it })
             assertEquals("$at", CrashFiles.MAX_FILES, files(0).list().size)
             assertEquals("$at", next, files(0).list().last().name)
-            assertEquals("$at", 0, dir.list()!!.count { ".part-" in it })
         }
     }
 
@@ -199,6 +201,25 @@ class CrashFilesTest {
         dir.resolve("1795300150010.txt").resolve("kept").createNewFile()
         assertNull(files(1_795_300_100_000).write("app"))
         assertTrue(dir.resolve("1795300150009.txt").exists())
+    }
+
+    @Test
+    fun `a sweep trims six files to the newest five, and keeps the placeholder above them`() {
+        leftByEarlierVersions()
+        files(0).sweep()
+        assertEquals((2..6).map { "179530015000$it.txt" } + "1795300150009.txt", dir.list()!!.filter { it != ".lock" }.sorted())
+    }
+
+    @Test
+    fun `a file whose attributes cannot be read stops the write and the sweep, and nothing is removed`() {
+        leftByEarlierVersions()
+        // A link to itself: what it is cannot be read (ELOOP).
+        val loop = dir.resolve("1795300150020.txt").toPath()
+        Files.createSymbolicLink(loop, loop.fileName)
+        val before = dir.list()!!.filter { it != ".lock" }.sorted()
+        assertNull(files(1_795_300_100_000).write("app"))
+        files(0).sweep()
+        assertEquals(before, dir.list()!!.filter { it != ".lock" }.sorted())
     }
 
     @Test

@@ -38,8 +38,9 @@ class CrashCaptureTest {
         assertSame(error, handed?.second)
         val text = files.list().single().readText()
         val head = text.substringBefore("\n\n").lines().associate { it.substringBefore(": ") to it.substringAfter(": ") }
-        assertEquals(listOf("source", "atEpochMs", "version", "thread", "location", "message"), head.keys.toList())
+        assertEquals(listOf("source", "format", "atEpochMs", "version", "thread", "location", "message"), head.keys.toList())
         assertEquals("app", head["source"])
+        assertEquals("1", head["format"])
         assertEquals("0.1 debug arm64-v8a-android", head["version"])
         assertEquals("other", head["thread"])
         assertEquals(CRASH_MESSAGE, head["message"])
@@ -176,6 +177,28 @@ class CrashCaptureTest {
         assertFalse(text, "customer" in text)
         assertTrue(text, "\nexception: $REDACTED\n" in text)
         assertTrue("exception: java.lang.IllegalStateException\n" in crashText("java.lang.IllegalStateException", emptyList(), false, "v", 1))
+    }
+
+    @Test
+    fun `a static initialiser passes only for a class that has one, a constructor only for a class that has one`() {
+        val names = KnownNames()
+        // An object keeps its instance in a static field, which its static initialiser sets.
+        assertEquals("dev.doona.android.report.AppEvents.<clinit>:12", names.frame("dev.doona.android.report.AppEvents", "<clinit>", 12))
+        // Instance fields only: no static initialiser.
+        assertEquals(REDACTED, names.frame("dev.doona.android.report.CrashThreads", "<clinit>", 7))
+        assertEquals("dev.doona.android.report.CrashThreads.<init>:7", names.frame("dev.doona.android.report.CrashThreads", "<init>", 7))
+        // An interface has no constructor.
+        assertEquals(REDACTED, names.frame("dev.doona.android.report.Reports", "<init>", 7))
+    }
+
+    @Test
+    fun `only the first sixteen of the app's frames are checked and written`() {
+        val error = IllegalStateException().apply {
+            stackTrace = Array(40) { StackTraceElement("dev.doona.android.report.CrashFiles", "write", "CrashFiles.kt", it + 1) }
+        }
+        CrashHandler(files, "v", { _, _ -> }, waitMs = SURE_MS) { false }.uncaughtException(Thread.currentThread(), error)
+        val frames = files.list().single().readText().lines().filter { it.startsWith("  at ") }
+        assertEquals((1..16).map { "  at dev.doona.android.report.CrashFiles.write:$it" }, frames)
     }
 
     @Test

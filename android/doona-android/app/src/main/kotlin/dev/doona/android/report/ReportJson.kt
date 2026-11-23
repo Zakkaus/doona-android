@@ -14,13 +14,16 @@ import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -74,7 +77,7 @@ private val reportJson = Json { prettyPrint = true }
  * counts only: never a display name, a URL or a host, which a name can hold too (ARCH D21).
  */
 internal fun reportJson(atEpochMs: Long, app: AppInfo, engine: EngineView, core: Result<CoreDiagnostics>, events: List<AppEvent>, crashes: List<String>): String {
-    val diagnostics = core.fold({ parsed(it.json) }, { failure(it) })
+    val diagnostics = core.fold({ onlyHeld(parsed(it.json), crashes) }, { failure(it) })
     val report = buildJsonObject {
         put("format", REPORT_FORMAT)
         put("atEpochMs", atEpochMs)
@@ -111,6 +114,16 @@ private fun parsed(json: String): JsonElement = try {
     Json.parseToJsonElement(json)
 } catch (_: SerializationException) {
     buildJsonObject { put("error", "unreadable") }
+}
+
+/**
+ * The core's reply with its list of crash files cut to [crashes], those the zip holds: a placeholder or a file the export
+ * left out is named nowhere in the report.
+ */
+private fun onlyHeld(reply: JsonElement, crashes: List<String>): JsonElement {
+    val listed = (reply as? JsonObject)?.get("crashes") as? JsonArray ?: return reply
+    val held = listed.filter { ((it as? JsonObject)?.get("name") as? JsonPrimitive)?.contentOrNull in crashes }
+    return JsonObject(reply + ("crashes" to JsonArray(held)))
 }
 
 private fun failure(e: Throwable): JsonElement = buildJsonObject { put("error", (e as? EngineException)?.code?.name ?: "Internal") }

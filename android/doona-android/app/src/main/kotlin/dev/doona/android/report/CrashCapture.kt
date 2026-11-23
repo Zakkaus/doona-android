@@ -119,14 +119,19 @@ internal const val CRASH_MESSAGE = "uncaught exception"
 
 /** Frames of the app's own code; R8 keeps the package (`proguard-rules.pro`), so a release build's frames match too. */
 private const val OWN = "dev.doona."
-private const val MAX_FRAMES = 64
+
+/**
+ * The app's frames a file holds, the first ones. Each is checked against the app's classes, which loads them: past 16,
+ * the checks of a cold start, with no class loaded yet, would not end within the reader's 50 ms.
+ */
+private const val MAX_FRAMES = 16
 
 /**
  * A crash file's text for an exception of class [type], in the core's format: `key: value` lines, a blank line, then the
- * frames. It states the app's [version], whether the [main] thread threw (a thread's name can be anything, a URL
- * included), the first of [frames], a fixed message, then the class, if [names] knows it, and [frames]; null [frames]
- * could not be read. Never an exception's message, nor a frame of other code: either may quote a URL, an address or a
- * credential (ARCH D21).
+ * frames. After its source it states its format ([APP_FORMAT]), which the export reads ([exportedCrash]); then the app's
+ * [version], whether the [main] thread threw (a thread's name can be anything, a URL included), the first of [frames], a
+ * fixed message, then the class, if [names] knows it, and [frames]; null [frames] could not be read. Never an exception's
+ * message, nor a frame of other code: either may quote a URL, an address or a credential (ARCH D21).
  */
 internal fun crashText(
     type: String,
@@ -136,7 +141,7 @@ internal fun crashText(
     atEpochMs: Long,
     names: KnownNames = KnownNames(),
 ): String = buildString {
-    append(APP_SOURCE)
+    append(APP_HEADER)
     appendLine("atEpochMs: $atEpochMs")
     appendLine("version: $version")
     appendLine("thread: ${if (main) "main" else "other"}")

@@ -1,5 +1,8 @@
 package dev.doona.android.report
 
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
+
 /** What a crash file writes for a name it may not hold. */
 internal const val REDACTED = "<redacted>"
 
@@ -16,16 +19,16 @@ internal class KnownNames(private val loader: ClassLoader? = APP_LOADER) {
     /** The exception class [name], or [REDACTED]. */
     fun type(name: String): String = if (resolve(name) != null) name else REDACTED
 
-    /** `class.method:line`, or [REDACTED]. */
-    fun frame(className: String, method: String, line: Int): String =
-        if (declared(className)?.contains(method) == true) "$className.$method:$line" else REDACTED
+    /** `class.method:line`, when the class declares the method and the text has a frame's shape ([FRAME_TEXT]); else [REDACTED]. */
+    fun frame(className: String, method: String, line: Int): String {
+        val text = "$className.$method:$line"
+        return if (declared(className)?.contains(method) == true && FRAME_TEXT.matches(text)) text else REDACTED
+    }
 
     /** A frame as a crash file wrote it, `class.method:line`, checked again; [REDACTED] when it is not of that shape. */
     fun frame(text: String): String {
-        val line = text.substringAfterLast(':', "").toIntOrNull() ?: return REDACTED
-        val call = text.substringBeforeLast(':')
-        val dot = call.lastIndexOf('.')
-        return if (dot > 0) frame(call.substring(0, dot), call.substring(dot + 1), line) else REDACTED
+        val (className, method, line) = FRAME_TEXT.matchEntire(text)?.destructured ?: return REDACTED
+        return frame(className, method, line.toIntOrNull() ?: return REDACTED)
     }
 
     private fun declared(className: String): Set<String>? {
@@ -33,7 +36,8 @@ internal class KnownNames(private val loader: ClassLoader? = APP_LOADER) {
         val names = resolve(className)?.let { type ->
             try {
                 val constructors = if (type.declaredConstructors.isEmpty()) emptyList() else listOf(CONSTRUCTOR)
-                type.declaredMethods.map { it.name }.toHashSet() + constructors + INITIALISER
+                val initialiser = if (type.declaredFields.any(::isInitialised)) listOf(INITIALISER) else emptyList()
+                type.declaredMethods.map { it.name }.toHashSet() + constructors + initialiser
             } catch (_: LinkageError) {
                 null
             } catch (_: SecurityException) {
@@ -46,7 +50,7 @@ internal class KnownNames(private val loader: ClassLoader? = APP_LOADER) {
 
     /** The class [name], when every part of it is a plain identifier and [loader] resolves it; not initialised. */
     private fun resolve(name: String): Class<*>? {
-        if (!name.split('.').all(::isIdentifier)) return null
+        if (!CLASS_NAME.matches(name)) return null
         return try {
             Class.forName(name, false, loader)
         } catch (_: ClassNotFoundException) {
@@ -63,35 +67,95 @@ internal class KnownNames(private val loader: ClassLoader? = APP_LOADER) {
         const val CONSTRUCTOR = "<init>"
         const val INITIALISER = "<clinit>"
 
-        /** `[A-Za-z_$][A-Za-z0-9_$]*`: a name like `[Ljava.lang.String;` would resolve to an array. */
-        fun isIdentifier(name: String): Boolean {
-            fun letter(c: Char) = c in 'a'..'z' || c in 'A'..'Z' || c == '_' || c == '$'
-            return name.isNotEmpty() && letter(name[0]) && name.all { letter(it) || it in '0'..'9' }
+        /**
+         * Whether [field] is one only a static initialiser sets. Reflection does not show the initialiser itself, so a class
+         * has one when it declares a static field a constant cannot be: not final, or of a type other than a primitive or
+         * a String. An object's instance, a companion and a field set from code all are; a class that holds constants only,
+         * or sets a constant from code, is taken to have none, and its `<clinit>` frames are redacted.
+         */
+        fun isInitialised(field: Field): Boolean {
+            val modifiers = field.modifiers
+            val constant = Modifier.isFinal(modifiers) && (field.type.isPrimitive || field.type == String::class.java)
+            return Modifier.isStatic(modifiers) && !constant
         }
     }
 }
 
 /**
- * An app crash file as the export sends it: the class and the frames checked again by [names], as a file written before
- * the check holds them as the crash gave them. Any other file, the core's, goes as it is.
+ * A crash file as the export sends it, or null when it goes out not at all. A core file goes as it is: the core writes
+ * only its own fixed texts. An app file goes only in the current format ([APP_HEADER]), and of it only the lines of that
+ * format, the class and the frames checked again by [names]: a file of an earlier format was written with names never
+ * checked, which a line break in one could spread over lines of any shape. Any other file is no crash file of a known
+ * format and stays out.
  */
-internal fun exportedCrash(bytes: ByteArray, names: KnownNames): ByteArray {
+internal fun exportedCrash(bytes: ByteArray, names: KnownNames): ByteArray? {
     val text = bytes.decodeToString()
-    if (!text.startsWith(APP_SOURCE)) return bytes
-    return text.split('\n').joinToString("\n") { line ->
-        when {
-            line == LOCATION + UNKNOWN -> line
-            line.startsWith(LOCATION) -> LOCATION + names.frame(line.removePrefix(LOCATION))
-            line.startsWith(EXCEPTION) -> EXCEPTION + names.type(line.removePrefix(EXCEPTION))
-            line.startsWith(FRAME) -> FRAME + names.frame(line.removePrefix(FRAME))
-            else -> line
-        }
-    }.toByteArray()
+    return when {
+        text.startsWith(CORE_SOURCE) -> bytes
+        text.startsWith(APP_HEADER) -> text.split('\n').mapNotNull { appLine(it, names) }.joinToString("\n").toByteArray()
+        else -> null
+    }
 }
 
-/** The lines of an app crash file ([crashText]) that name code. */
+/** [line] of an app crash file ([crashText]) as the export sends it, or null when no line of the format has its shape. */
+private fun appLine(line: String, names: KnownNames): String? = when {
+    line in FIXED_LINES || STATED.any { it.matches(line) } -> line
+
+    line == LOCATION + UNKNOWN -> line
+
+    line.startsWith(LOCATION) -> checkedFrame(line.removePrefix(LOCATION), names)?.let { LOCATION + it }
+
+    line.startsWith(FRAME) -> checkedFrame(line.removePrefix(FRAME), names)?.let { FRAME + it }
+
+    line.startsWith(EXCEPTION) -> line.removePrefix(EXCEPTION).let { type ->
+        when {
+            type == REDACTED -> line
+            CLASS_NAME.matches(type) -> EXCEPTION + names.type(type)
+            else -> null
+        }
+    }
+
+    else -> null
+}
+
+private fun checkedFrame(text: String, names: KnownNames): String? = when {
+    text == REDACTED -> text
+    FRAME_TEXT.matches(text) -> names.frame(text)
+    else -> null
+}
+
+/** The lines of an app crash file ([crashText]) that name code, and the first ones, which tell its format. */
 internal const val APP_SOURCE = "source: app\n"
+
+/** The format of the app's crash files that this version writes and exports; files without it are of earlier versions. */
+internal const val APP_FORMAT = "format: 1\n"
+internal const val APP_HEADER = APP_SOURCE + APP_FORMAT
+private const val CORE_SOURCE = "source: core\n"
 internal const val LOCATION = "location: "
 internal const val EXCEPTION = "exception: "
 internal const val FRAME = "  at "
 internal const val UNKNOWN = "unknown"
+
+/** A class name: plain identifiers, `[A-Za-z_$][A-Za-z0-9_$]*`, joined by dots (`[Ljava.lang.String;` would resolve to an array). */
+private const val CLASS = """[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*"""
+private val CLASS_NAME = Regex(CLASS)
+
+/**
+ * A frame's text, `class.method:line`: the method one the JVM allows (no `.`, `;`, `[`, `/`, `<`, `>`), with no white
+ * space or colon either, or `<init>`, `<clinit>`.
+ */
+private val FRAME_TEXT = Regex("""($CLASS)\.([^\s.;\[/<>:]+|<init>|<clinit>):(-?\d{1,10})""")
+
+/** The lines of an app crash file that hold no value of the crash's: the header, the fixed message, the blank line. */
+private val FIXED_LINES = setOf(
+    APP_SOURCE.trimEnd(),
+    APP_FORMAT.trimEnd(),
+    "thread: main",
+    "thread: other",
+    "message: $CRASH_MESSAGE",
+    "",
+    "backtrace:",
+)
+
+/** The lines that state the time and the app's version line ([AppInfo.crashVersion]). */
+private val STATED = listOf(Regex("""atEpochMs: \d{1,19}"""), Regex("""version: [A-Za-z0-9._+() -]{1,100}"""))

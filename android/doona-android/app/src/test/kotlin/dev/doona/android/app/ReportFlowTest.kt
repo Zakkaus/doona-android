@@ -160,7 +160,7 @@ class ReportFlowTest {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val first = share(controller)
         // A crash after the first export: only the second holds it.
-        dir.resolve("1795300160000.txt").writeText("source: app\n")
+        dir.resolve("1795300160000.txt").writeText("source: core\n")
         engine.crashes = engine.crashes + CrashFile("1795300160000.txt", 12)
         val second = share(controller)
         pick(first, mail)

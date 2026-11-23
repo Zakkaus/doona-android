@@ -31,10 +31,17 @@ class CrashOffer(private val files: CrashFiles, locate: () -> File) {
     /** The number [shown] saves; 0 once saved, or with nothing offered. */
     private val pending = AtomicLong(0)
 
-    /** Reads the crash files, on the first call in a process only; it reads the disk, so call it off the main thread. */
+    /**
+     * Reads the crash files, on the first call in a process only; it reads the disk, so call it off the main thread. A
+     * directory that cannot be read offers nothing.
+     */
     fun check() {
         if (!checked.compareAndSet(false, true)) return
-        val newest = files.newest()
+        val newest = try {
+            files.newest()
+        } catch (_: IOException) {
+            return
+        }
         if (newest <= seenNumber()) return
         pending.set(newest)
         up.value = true

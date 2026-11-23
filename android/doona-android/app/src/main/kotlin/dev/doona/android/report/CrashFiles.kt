@@ -6,6 +6,7 @@ import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
+import java.nio.file.attribute.BasicFileAttributes
 
 /**
  * The crash files the core and the app share, in the core's `dataDir/crash` (core-api.md, `diagnostics`). A file is
@@ -24,7 +25,9 @@ import java.nio.file.NoSuchFileException
  *
  * Earlier versions claimed a name by creating `<n>.txt` empty, and could leave six files. An empty `<n>.txt` is such a
  * placeholder, never a crash file: not listed, read or exported. A write counts it only for its number, trims the crash
- * files past five, and removes the placeholders once its own file, above them, is published.
+ * files past five, and removes the placeholders once its own file, above them, is published; a listing and a sweep trim
+ * the oldest past five first. What a file is, is read with NIO, which throws: a file that cannot be read stops the write,
+ * the listing or the sweep, rather than pass for no file or for a placeholder.
  */
 class CrashFiles(locate: () -> File, private val clock: () -> Long = System::currentTimeMillis) {
     constructor(dir: File, clock: () -> Long = System::currentTimeMillis) : this({ dir }, clock)
@@ -37,10 +40,15 @@ class CrashFiles(locate: () -> File, private val clock: () -> Long = System::cur
 
     internal enum class Step { Written, Trimmed }
 
-    /** The crash files present, oldest first; an empty file is a placeholder, no crash file. */
-    fun list(): List<File> = named(dir.listFiles().orEmpty()).filter { it.length() > 0 }
+    /**
+     * The crash files present, oldest first, after the oldest past [MAX_FILES], which earlier versions left, went; an
+     * empty file is a placeholder, no crash file. Under the directory's lock, waited for as [write] waits.
+     */
+    @Throws(IOException::class)
+    fun list(): List<File> = locked { trimmed() }.map { it.file }
 
     /** The highest number a crash file present has; 0 with none. */
+    @Throws(IOException::class)
     fun newest(): Long = list().lastOrNull()?.let { number(it.name) } ?: 0
 
     /** The crash file [name] as it is now, at most [MAX_BYTES] of it; null when it is no crash file's name, is gone or is empty. */
@@ -72,10 +80,13 @@ class CrashFiles(locate: () -> File, private val clock: () -> Long = System::cur
         null
     }
 
-    /** Removes the parts writes that never ended left, as when the system ended a process during one. Reads the disk. */
+    /**
+     * Removes the parts writes that never ended left, as when the system ended a process during one, and the oldest files
+     * past [MAX_FILES] earlier versions left. Reads the disk.
+     */
     fun sweep() {
         try {
-            locked {}
+            locked { trimmed() }
         } catch (_: IOException) {
             // Tried again by the next write.
         }
@@ -89,8 +100,8 @@ class CrashFiles(locate: () -> File, private val clock: () -> Long = System::cur
     private fun publish(bytes: ByteArray): String? {
         val mark = savedMark()
         val named = named(dir.listFiles() ?: throw IOException("not listed"))
-        val (present, placeholders) = named.partition { it.length() > 0 }
-        val newest = named.lastOrNull()?.let { number(it.name) } ?: 0
+        val (present, placeholders) = named.partition { it.size > 0 }
+        val newest = named.lastOrNull()?.number ?: 0
         val at = maxOf(maxOf(mark, newest) + 1, clock(), MIN_NUMBER)
         if (at > MAX_NUMBER) return null
         val part = File(dir, "$at$PART")
@@ -100,7 +111,7 @@ class CrashFiles(locate: () -> File, private val clock: () -> Long = System::cur
                 it.fd.sync()
             }
             step(Step.Written)
-            trim(present)
+            trim(present.map { it.file }, room = 1)
             step(Step.Trimmed)
             if (!part.renameTo(File(dir, "$at.txt"))) throw IOException("not renamed")
         } catch (e: IOException) {
@@ -108,16 +119,23 @@ class CrashFiles(locate: () -> File, private val clock: () -> Long = System::cur
             throw e
         }
         // Only now: the new file holds a number above theirs. One that will not go is tried by the next write.
-        placeholders.forEach { it.delete() }
+        placeholders.forEach { it.file.delete() }
         return "$at.txt"
     }
 
+    /** Under the lock: the crash files, oldest first, after removing the oldest past [MAX_FILES]; one that will not go stops it. */
+    private fun trimmed(): List<Named> {
+        val present = named(dir.listFiles() ?: throw IOException("not listed")).filter { it.size > 0 }
+        trim(present.map { it.file }, room = 0)
+        return present.takeLast(MAX_FILES)
+    }
+
     /**
-     * Removes the oldest of [present] until one more leaves [MAX_FILES], however many an earlier version left. One that
-     * will not go stops the write: it would leave six.
+     * Removes the oldest of [present] until [room] more leave [MAX_FILES], however many an earlier version left. One that
+     * will not go stops the write, the listing or the sweep: a write would leave six.
      */
-    private fun trim(present: List<File>) {
-        for (old in present.take((present.size + 1 - MAX_FILES).coerceAtLeast(0))) {
+    private fun trim(present: List<File>, room: Int) {
+        for (old in present.take((present.size + room - MAX_FILES).coerceAtLeast(0))) {
             if (!old.delete() && old.exists()) throw IOException("not removed")
         }
     }
@@ -145,6 +163,9 @@ class CrashFiles(locate: () -> File, private val clock: () -> Long = System::cur
         return text.trim().toLongOrNull()?.takeIf { it in 0..MAX_NUMBER } ?: throw IOException("no mark")
     }
 
+    /** A file with a crash file's name: its number, the file, and its size, 0 for a placeholder. */
+    private class Named(val number: Long, val file: File, val size: Long)
+
     companion object {
         const val MAX_FILES = 5
         const val MAX_BYTES = 64 * 1024
@@ -164,9 +185,19 @@ class CrashFiles(locate: () -> File, private val clock: () -> Long = System::cur
         /** Taken before the directory's lock, by every thread of the process. */
         private val PROCESS = Any()
 
-        /** The files of [files] with a crash file's name, empty ones included, oldest first. */
-        private fun named(files: Array<out File>): List<File> =
-            files.mapNotNull { file -> number(file.name)?.takeIf { file.isFile }?.let { it to file } }.sortedBy { it.first }.map { it.second }
+        /**
+         * The files of [files] with a crash file's name, empty ones included, oldest first. What a file is that cannot be
+         * read is an [IOException]; a file gone meanwhile is passed over.
+         */
+        private fun named(files: Array<out File>): List<Named> = files.mapNotNull { file ->
+            val number = number(file.name) ?: return@mapNotNull null
+            val attributes = try {
+                Files.readAttributes(file.toPath(), BasicFileAttributes::class.java)
+            } catch (_: NoSuchFileException) {
+                return@mapNotNull null
+            }
+            Named(number, file, attributes.size()).takeIf { attributes.isRegularFile }
+        }.sortedBy { it.number }
 
         /** A part of a write that never ended: this version's, or an earlier one's (`.app.tmp`, `.core-<pid>.tmp` and the like). */
         private fun isLeftOver(name: String) =
