@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RV_NAV_POLICY
+import dev.doona.android.prototype.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
@@ -197,7 +198,7 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit) {
         stringResource(group.name),
         stringResource(group.kind.label) + SEPARATOR + count,
         Modifier.rvRowPress(Role.Button, { onOpen(group.id) }),
-        titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End) },
+        titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES) },
         subtitleEnd = { RvText(latencyText(node.latencyMs), Rv.type.rowSub, color = latencyColor(node.latencyMs), align = TextAlign.End) },
         trailing = { RvChevron() },
     )

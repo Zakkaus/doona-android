@@ -2,6 +2,9 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -10,11 +13,21 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
 import dev.doona.android.R
+import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvNodeSort
+import dev.doona.android.prototype.rv.data.RvRouteMode
+import dev.doona.android.prototype.rv.nodes.RvNodePicker
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
+import dev.doona.android.prototype.rv.policy.RvPolicyScreen
+import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
+import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -36,6 +49,9 @@ class RvLargeTextTest {
     @get:Rule
     val compose = createComposeRule()
 
+    @After
+    fun restoreScale() = rvAnimatorScale(1f)
+
     /** 新增規則's facts (X1): every label kept, the target's host:port and the route's group and node whole. */
     @Test
     fun ruleFactsAreWhole() {
@@ -46,6 +62,65 @@ class RvLargeTextTest {
         val values = listOf(connection.host + ":" + connection.port, connection.app, rvText(group.name) + SEPARATOR + group.selected.name)
         (labels + values).forEach(::assertWhole)
     }
+
+    /** 活動's main node (X3): its whole name beside its latency. */
+    @Test
+    fun activityNodeIsWhole() {
+        large { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+        assertWhole(RvData.current.name)
+    }
+
+    /** 策略's main node card (X3): its whole name beside its latency. */
+    @Test
+    fun policyMainNodeIsWhole() {
+        large { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+        assertWhole(RvPolicyData.main.selected.name)
+    }
+
+    /** The pull-down picker (X3): each node it shows has its whole name beside its latency and info mark. */
+    @Test
+    fun pickerNodesAreWhole() {
+        large { RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
+        assertShownNodesWhole()
+    }
+
+    /** The main node's picker (X3): the same, its rows the pull-down picker's. */
+    @Test
+    fun policyPickerNodesAreWhole() {
+        large { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}) }
+        assertShownNodesWhole()
+    }
+
+    private fun assertShownNodesWhole() {
+        val shown = RvData.nodes.map { it.name }.distinct().filter { compose.onAllNodes(shows(it), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("no node is shown", shown.isNotEmpty())
+        shown.forEach(::assertWhole)
+    }
+
+    /** While a test runs, 活動's node row keeps the room of its latency (B1): the name keeps its width and lines. */
+    @Test
+    fun activityTestKeepsTheRow() = assertTestKeepsRows(listOf(RvData.current.name)) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+
+    /** The same on the main node's picker (B1), whose rows had their latency line by line at rest and a bar while testing. */
+    @Test
+    fun pickerTestKeepsTheRows() = assertTestKeepsRows(RvData.nodes.map { it.name }.distinct()) {
+        RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {})
+    }
+
+    /** Each of [names] the [page] shows keeps its size when a latency test of every node starts. */
+    private fun assertTestKeepsRows(names: List<String>, page: @Composable () -> Unit) {
+        rvAnimatorScale(0f)
+        var testing by mutableStateOf(false)
+        large { CompositionLocalProvider(LocalRvTesting provides testing, page) }
+        val rest = sizes(names)
+        assertTrue("the page shows none of the names", rest.isNotEmpty())
+        testing = true
+        compose.waitForIdle()
+        assertEquals("the names' sizes at rest, then while testing", rest, sizes(names))
+    }
+
+    private fun sizes(names: List<String>): List<Pair<String, IntSize>> =
+        names.flatMap { name -> compose.onAllNodes(shows(name), useUnmergedTree = true).fetchSemanticsNodes().map { name to it.size } }
 
     private fun large(content: @Composable () -> Unit) = compose.setContent {
         CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, RV_FS200)) {

@@ -90,8 +90,9 @@ internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit) 
  * with the country's flag, its name and how many nodes it has. Each card shows its first [ROWS] and the current node
  * wherever it falls, then 查看全部 opens the rest in place. A tap on a node picks it ([onPick]), and the check moves.
  * Under 穩定 a row's second trailing line is how many of its kept tests answered, where its change is otherwise. While a
- * latency test of every node, or of one node, runs ([LocalRvTesting], [LocalRvTestingNodes]) the row's end is the pull-down
- * picker's: a busy bar in place of the latency and what is under it ([RvLatencyChange]).
+ * latency test of every node, or of one node, runs ([LocalRvTesting], [LocalRvTestingNodes]) a busy bar stands at the
+ * row's end in the room of the latency and what is under it, as in the pull-down picker ([RvLatencyChange]): the name
+ * keeps its width and lines.
  */
 @Composable
 internal fun RvNodeGroups(groups: List<RvNodeGroup>, currentId: String, sort: RvNodeSort, onPick: (String) -> Unit) {
@@ -141,9 +142,9 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
         node.name,
         node.protocol + SEPARATOR + stringResource(node.place.label),
         if (current) pick.semantics { stateDescription = inUse } else pick,
-        titleEnd = if (testing) null else ({ RvLatencyText(node.latencyMs, node.timedOut) }),
-        subtitleEnd = if (testing) null else second,
-        trailing = if (testing) ({ RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, node = node.id) }) else null,
+        titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
+        subtitleEnd = second,
+        endBusy = testing,
     )
 }
 

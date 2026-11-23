@@ -79,6 +79,6 @@ class RvNodeRowsTestingShotTest {
         /** Windows as tall as the group page whole, so one capture holds it to its end (measured: 1123.5, 1126 and 1520 dp). */
         const val GROUP = "+h1124dp"
         const val GROUP_FS115 = "+h1126dp"
-        const val GROUP_FS200 = "+h1520dp"
+        const val GROUP_FS200 = "+h1774dp"
     }
 }
