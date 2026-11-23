@@ -14,9 +14,10 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The Revolut-style samples, light and dark, in the scheme of the owner's wallpaper, for the owner to judge next to
- * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`, routing by rules; in 全域 in
- * `proto-rv-activity-global-*`; disconnected in `proto-rv-activity-idle-*`, scrolled with the bottom bar collapsed in
- * `proto-rv-activity-scrolled-*`, and the whole page in one tall capture in `proto-rv-activity-full-*`) and the traffic page a tile opens (`proto-rv-traffic-*`, and
+ * Revolut's screens: the 活動 screen in 全域, as the owner approved it at 609336cb (goldens `proto-rv-activity-light` and
+ * `-dark`; routing by rules, with the rule outbound card, in `proto-rv-activity-rule-*`; disconnected in
+ * `proto-rv-activity-idle-*`, scrolled with the bottom bar collapsed in `proto-rv-activity-scrolled-*`, and the whole
+ * page in one tall capture in `proto-rv-activity-full-*`) and the traffic page a tile opens (`proto-rv-traffic-*`, and
  * held at one second in `proto-rv-traffic-scrub-*`).
  */
 @RunWith(RobolectricTestRunner::class)
@@ -36,16 +37,16 @@ class RvShotTest {
     fun activityDark() = activity("activity", dark = true)
 
     @Test
-    fun activityGlobalLight() = compose.rvShot("activity-global", dark = false) { Global() }
+    fun activityRuleLight() = compose.rvShot("activity-rule", dark = false) { Rule() }
 
     @Test
-    fun activityGlobalDark() = compose.rvShot("activity-global", dark = true) { Global() }
+    fun activityRuleDark() = compose.rvShot("activity-rule", dark = true) { Rule() }
 
     @Test
-    fun activityIdleLight() = compose.rvShot("activity-idle", dark = false) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}) }
+    fun activityIdleLight() = compose.rvShot("activity-idle", dark = false) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global) }
 
     @Test
-    fun activityIdleDark() = compose.rvShot("activity-idle", dark = true) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}) }
+    fun activityIdleDark() = compose.rvShot("activity-idle", dark = true) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global) }
 
     @Test
     fun activityScrolledLight() = activity("activity-scrolled", dark = false) { rvScrollBy(SCROLLED_DP) }
@@ -74,10 +75,11 @@ class RvShotTest {
     fun trafficScrubDark() = traffic("traffic-scrub", dark = true, scrub = SCRUB)
 
     private fun activity(screen: String, dark: Boolean, before: ComposeContentTestRule.() -> Unit = {}) =
-        compose.rvShot(screen, dark, before) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+        compose.rvShot(screen, dark, before) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global) }
 
+    /** The engine's sample in the screen's default mode, routing by rules: the rule outbound card (O2). */
     @Composable
-    private fun Global() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global)
+    private fun Rule() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {})
 
     private fun traffic(screen: String, dark: Boolean, scrub: Int? = null) =
         compose.rvShot(screen, dark) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }

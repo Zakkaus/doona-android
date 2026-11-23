@@ -61,7 +61,7 @@ class RvMenuTest {
         compose.onNodeWithText(rvText(R.string.rv_menu_set_main)).performClick()
         compose.mainClock.advanceTimeBy(RvMotion.RETURN_MS * 2L)
         compose.onAllNodesWithTag(RV_PICKER).assertCountIs(0, "設為主節點 picks it, as a tap does, and closes the picker")
-        compose.onNode(hasText(taipei.name) and hasText(rvText(R.string.rv_main_node))).assertExists()
+        compose.onNode(hasText(taipei.name) and hasText(rvText(R.string.nav_nodes))).assertExists()
     }
 
     @Test
