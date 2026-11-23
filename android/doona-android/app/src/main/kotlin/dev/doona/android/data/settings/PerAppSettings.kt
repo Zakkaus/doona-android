@@ -26,7 +26,7 @@ import java.io.File
 import java.io.InputStream
 
 /**
- * The per-app policy, the only setting the app stores itself: the core's `state.json` owns mode, subscriptions and
+ * The per-app policy is stored separately from [AppSettings]; the core's `state.json` owns mode, subscriptions and
  * selections (ARCH D7). Only a file that does not exist reads as [AppPolicy.All]: an unreadable or corrupt file, a file
  * without a policy, or a policy this version does not know fails the read, because falling back to All would capture
  * apps the user excluded. A corrupt file is replaced with an [UNREADABLE] marker that fails every read the same way,

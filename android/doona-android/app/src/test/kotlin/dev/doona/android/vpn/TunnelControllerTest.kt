@@ -98,14 +98,31 @@ class TunnelControllerTest {
         start()
         assertTrue(core.startEntered.await(5, TimeUnit.SECONDS))
 
-        controller.stop()
+        controller.revoke(host)
         assertEquals(Status.Stopping, controller.status.value)
         release.countDown()
 
-        awaitStatus { it == Status.Stopped }
+        val terminal = runBlocking { withTimeout(5_000) { controller.session.first { it.status == Status.Stopped } } }
+        assertTrue(terminal.revoked)
         assertEquals(listOf("start", "stop"), core.events)
         assertTrue(host.tuns.single().closed)
         assertFalse(seen.any { it is Status.Running })
+    }
+
+    @Test
+    fun revokeDoesNotTurnAnExplicitStopIntoADrop() {
+        startRunning()
+        controller.stop()
+        controller.revoke(host)
+        val terminal = runBlocking { withTimeout(5_000) { controller.session.first { it.status == Status.Stopped } } }
+        assertFalse(terminal.revoked)
+    }
+
+    @Test
+    fun revokeFromAnotherHostLeavesTheOwnersTunnelRunning() {
+        val running = startRunning()
+        controller.revoke(FakeHost())
+        assertEquals(running, controller.status.value)
     }
 
     @Test
@@ -352,7 +369,7 @@ class TunnelControllerTest {
         val session = ServiceSession(controller)
         val ended = CopyOnWriteArrayList<Status>()
         Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { main ->
-            scope.launch(main) { session.follow { ended += it } }
+            scope.launch(main) { session.follow { ended += it.status } }
             repeat(2) { round ->
                 // The start fails while the main thread is still busy, so the service never sees Starting; the second
                 // failure also equals the first.

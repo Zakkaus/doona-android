@@ -3,7 +3,10 @@ package dev.doona.android.app
 import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
+import android.database.sqlite.SQLiteException
 import android.os.Build
+import androidx.work.WorkManager
+import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
@@ -17,12 +20,18 @@ import dev.doona.android.report.ExportTokens
 import dev.doona.android.report.ReportExport
 import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.reportDir
+import dev.doona.android.vpn.VpnLog
+import dev.doona.android.work.ForegroundRefresh
+import dev.doona.android.work.SubscriptionRefresh
+import dev.doona.android.work.scheduleSubscriptionRefresh
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -38,6 +47,27 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
 
     /** Outlives every screen: imports and local network prompts that a page started go on when it is left. */
     private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+
+    internal val subscriptionRefresh by lazy { SubscriptionRefresh(AppSettings.get(application), { engine }) }
+
+    internal fun startSubscriptionRefresh() {
+        application.registerActivityLifecycleCallbacks(ForegroundRefresh { uiScope.launch { subscriptionRefresh.run() } })
+        uiScope.launch { subscriptionRefresh.watchConnections() }
+        uiScope.launch {
+            AppSettings.get(application).subscriptionUpdate
+                .catch {
+                    if (it !is IOException) throw it
+                    VpnLog.warn("subscription-refresh: settings read failed (${it.javaClass.simpleName})")
+                }.collect {
+                    try {
+                        scheduleSubscriptionRefresh(WorkManager.getInstance(application), it)
+                    } catch (e: SQLiteException) {
+                        // A scheduler database error must not disable the foreground and connection checks.
+                        VpnLog.warn("subscription-refresh: schedule write failed (${e.javaClass.simpleName})")
+                    }
+                }
+        }
+    }
 
     /** The local network permission, asked for only when something on the local network failed (ARCH D26). */
     val localNetwork: LocalNetworkAccess by lazy { LocalNetworkAccess(::localNetworkGranted) }
