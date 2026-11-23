@@ -1,9 +1,12 @@
 package dev.doona.android.engine.fake
 
+import dev.doona.android.engine.CoreDiagnostics
+import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
@@ -77,6 +80,27 @@ class FakeEngine(
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
         settingsFlow.update { it.copy(perApp = perApp) }
+        return Result.success(Unit)
+    }
+
+    /** The ring's level, Info as after the core's `init`. */
+    var logLevel = LogLevel.Info
+
+    /** None: the fake never crashes. A test sets some to stand for the core's crash files. */
+    var crashes = emptyList<CrashFile>()
+
+    override suspend fun diagnostics(level: LogLevel?): Result<CoreDiagnostics> {
+        val files = crashes.joinToString(",") { """{"name":"${it.name}","bytes":${it.bytes}}""" }
+        return Result.success(CoreDiagnostics(logLevel, crashes, """{"level":"${logLevel.name.lowercase()}","crashes":[$files]}"""))
+    }
+
+    override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
+        logLevel = level
+        return Result.success(Unit)
+    }
+
+    override suspend fun clearCrashes(names: List<String>): Result<Unit> {
+        crashes = crashes.filterNot { it.name in names }
         return Result.success(Unit)
     }
 

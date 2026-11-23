@@ -1,16 +1,25 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.engine.CoreDiagnostics
+import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Subscription
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerializationStrategy
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 
 /** The contract schema this app speaks (`plans/v1/core-api.md`). */
@@ -335,5 +344,114 @@ internal object CoreJson {
             throw EngineException(errorCodeOf(json.decodeFromJsonElement(CallErrorReplyDto.serializer(), reply).error.code))
         }
         return json.decodeFromJsonElement(deserializer, reply.getValue("ok"))
+    }
+}
+
+/** A diagnostics level as the core's JSON carries it: the ring keeps the events of its level and the more severe. */
+@Serializable
+internal enum class CoreLevel {
+    @SerialName("error")
+    Error,
+
+    @SerialName("warn")
+    Warn,
+
+    @SerialName("info")
+    Info,
+
+    @SerialName("debug")
+    Debug,
+    ;
+
+    fun toLogLevel(): LogLevel = when (this) {
+        Error -> LogLevel.Error
+        Warn -> LogLevel.Warn
+        Info -> LogLevel.Info
+        Debug -> LogLevel.Debug
+    }
+
+    companion object {
+        fun of(level: LogLevel): CoreLevel = when (level) {
+            LogLevel.Error -> Error
+            LogLevel.Warn -> Warn
+            LogLevel.Info -> Info
+            LogLevel.Debug -> Debug
+        }
+    }
+}
+
+/** `setLogLevel`'s arguments. */
+@Serializable
+internal data class LevelArgs(val level: CoreLevel)
+
+/** `diagnostics`' arguments: the events of [level] and the more severe; every event when null, which is not sent. */
+@Serializable
+internal data class DiagnosticsArgs(val level: CoreLevel? = null)
+
+/** `clearCrashes`' arguments: the crash files the export took; the core deletes only these. */
+@Serializable
+internal data class ClearCrashesArgs(val names: List<String>)
+
+/** `diagnostics`' reply: the build, the ring's [level] and its [events] (oldest first), and the [crashes] (oldest first). */
+@Serializable
+internal data class DiagnosticsDto(
+    val core: CoreBuildDto,
+    val level: CoreLevel,
+    val events: List<DiagEventDto>,
+    /** Events the ring let go since `init`. */
+    val overwritten: Long,
+    /** What the last `snapshot` answered; null before the first. */
+    val snapshot: LastSnapshotDto? = null,
+    val stats: StatsSummaryDto,
+    val crashes: List<CrashFileDto>,
+) {
+    fun toCoreDiagnostics(json: String) = CoreDiagnostics(level.toLogLevel(), crashes.map { CrashFile(it.name, it.bytes) }, json)
+}
+
+/** The library and how it was built: [profile] `release` or `debug`, [target] as `aarch64-android`. */
+@Serializable
+internal data class CoreBuildDto(val version: String, val schema: Int, val profile: String, val target: String, val features: List<String>)
+
+/** One event of the ring: [code] an error code, [counts] numbers only, [ms] how long a command took. */
+@Serializable
+internal data class DiagEventDto(
+    val atEpochMs: Long,
+    val level: CoreLevel,
+    val name: String,
+    val code: String? = null,
+    val detail: String? = null,
+    val counts: Map<String, Long> = emptyMap(),
+    val ms: Long? = null,
+)
+
+@Serializable
+internal data class LastSnapshotDto(
+    val atEpochMs: Long,
+    val revision: Long,
+    val running: Boolean,
+    val generation: Long,
+    val error: String? = null,
+    val warning: String? = null,
+)
+
+/** The running generation's traffic (zero while stopped) and the local day's bytes, as `snapshot` reports them. */
+@Serializable
+internal data class StatsSummaryDto(val traffic: TrafficDto, val today: TodayDto = TodayDto())
+
+/** A file in the core's `crash/` directory. */
+@Serializable
+internal data class CrashFileDto(val name: String, val bytes: Long)
+
+/** `diagnostics`' reply parsed, and its `ok` object as JSON text for the export. */
+internal class DiagnosticsReply(val dto: DiagnosticsDto, val json: String)
+
+/** Reads the `ok` value once as a tree, then decodes it with the caller's [Json] configuration. */
+internal object DiagnosticsReplyReader : DeserializationStrategy<DiagnosticsReply> {
+    override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor
+
+    override fun deserialize(decoder: Decoder): DiagnosticsReply {
+        val input = decoder as? JsonDecoder ?: throw SerializationException("diagnostics needs a JSON decoder")
+        val ok = input.decodeJsonElement()
+        return DiagnosticsReply(input.json.decodeFromJsonElement(DiagnosticsDto.serializer(), ok), ok.toString())
     }
 }

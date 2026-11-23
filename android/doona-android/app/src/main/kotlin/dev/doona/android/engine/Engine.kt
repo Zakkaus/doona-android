@@ -63,6 +63,21 @@ interface Engine {
      * tunnel could not be rebuilt with it.
      */
     suspend fun setPerApp(perApp: PerApp): Result<Unit>
+
+    /**
+     * Reads the core's event ring, with the events of [level] and the more severe, or all of them when null, together
+     * with the build, the last snapshot's codes, the stats and the crash files. Works while the tunnel is stopped.
+     */
+    suspend fun diagnostics(level: LogLevel? = null): Result<CoreDiagnostics>
+
+    /** Sets the level the core's ring keeps from now on. The core does not save it; works while stopped. */
+    suspend fun setLogLevel(level: LogLevel): Result<Unit>
+
+    /**
+     * Deletes the crash files [names], sent after an export that included them succeeded. Only these go: a crash written
+     * since the export stays for the next one.
+     */
+    suspend fun clearCrashes(names: List<String>): Result<Unit>
 }
 
 /**

@@ -4,11 +4,13 @@ import android.content.Context
 import android.os.Process
 import android.os.SystemClock
 import dev.doona.android.data.settings.PerAppSettings
+import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Group
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
@@ -182,6 +184,16 @@ class ServiceEngine internal constructor(
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
         scope.async { savePerApp(perApp) }.await()
+
+    override suspend fun diagnostics(level: LogLevel?): Result<CoreDiagnostics> =
+        command("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
+            .map { it.dto.toCoreDiagnostics(it.json) }
+
+    override suspend fun setLogLevel(level: LogLevel): Result<Unit> =
+        command("setLogLevel", LevelArgs.serializer(), LevelArgs(CoreLevel.of(level)), Unit.serializer())
+
+    override suspend fun clearCrashes(names: List<String>): Result<Unit> =
+        command("clearCrashes", ClearCrashesArgs.serializer(), ClearCrashesArgs(names), Unit.serializer())
 
     private suspend fun savePerApp(perApp: PerApp): Result<Unit> {
         val rebuild = try {

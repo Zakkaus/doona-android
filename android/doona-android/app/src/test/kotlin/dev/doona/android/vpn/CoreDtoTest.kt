@@ -1,11 +1,14 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -24,7 +27,8 @@ class CoreDtoTest {
             "call-ok-empty.json", "call-ok-subscription.json", "call-error.json", "call-select-args.json",
             "call-ok-traffic-series.json", "call-ok-usage.json", "call-ok-nodes.json", "call-nodes-args.json",
             "call-ok-rules.json", "call-rules-args.json", "call-set-rule-source-args.json", "call-ok-effective-config.json",
-            "call-set-mode-args.json",
+            "call-set-mode-args.json", "call-ok-diagnostics.json", "call-diagnostics-args.json", "call-set-log-level-args.json",
+            "call-clear-crashes-args.json",
         )
         val present = ContractFixtures.dir.listFiles { f -> f.extension == "json" }.orEmpty().map { it.name }.toSet()
         assertEquals(checked, present)
@@ -217,6 +221,39 @@ class CoreDtoTest {
         assertEquals(Json.parseToJsonElement(fixture("call-select-args.json")), Json.parseToJsonElement(encoded))
         val auto = CoreJson.encode(SelectArgs.serializer(), SelectArgs("g-Proxy", null))
         assertEquals("""{"group":"g-Proxy","memberId":null}""", auto)
+    }
+
+    @Test
+    fun diagnosticsReply() {
+        val reply = CoreJson.result(fixture("call-ok-diagnostics.json"), DiagnosticsReplyReader)
+        val dto = reply.dto
+        assertEquals(CoreLevel.Info, dto.level)
+        assertEquals(11, dto.events.size)
+        val first = dto.events.first()
+        assertEquals("init", first.name)
+        assertEquals(2L, first.counts["nodes"])
+        assertNull(first.code)
+        assertEquals("internal", checkNotNull(dto.snapshot).error)
+        assertEquals(1073741824L, dto.stats.today.downTotal)
+        val diagnostics = dto.toCoreDiagnostics(reply.json)
+        assertEquals(LogLevel.Info, diagnostics.level)
+        assertEquals(listOf(CrashFile("1795300150000.txt", 5123)), diagnostics.crashes)
+        // The export keeps the core's whole reply, not only what the app parsed.
+        val ok = Json.parseToJsonElement(fixture("call-ok-diagnostics.json")).jsonObject.getValue("ok")
+        assertEquals(ok, Json.parseToJsonElement(diagnostics.json))
+    }
+
+    @Test
+    fun diagnosticsArgsEncodeAsTheFixtures() {
+        val filter = CoreJson.encode(DiagnosticsArgs.serializer(), DiagnosticsArgs(CoreLevel.Warn))
+        assertEquals(Json.parseToJsonElement(fixture("call-diagnostics-args.json")), Json.parseToJsonElement(filter))
+        // Every event: the level is left out.
+        assertEquals("{}", CoreJson.encode(DiagnosticsArgs.serializer(), DiagnosticsArgs(null)))
+        val level = CoreJson.encode(LevelArgs.serializer(), LevelArgs(CoreLevel.Info))
+        assertEquals(Json.parseToJsonElement(fixture("call-set-log-level-args.json")), Json.parseToJsonElement(level))
+        val clear = CoreJson.encode(ClearCrashesArgs.serializer(), ClearCrashesArgs(listOf("1795300150000.txt")))
+        assertEquals(Json.parseToJsonElement(fixture("call-clear-crashes-args.json")), Json.parseToJsonElement(clear))
+        assertEquals(LogLevel.entries, LogLevel.entries.map { CoreLevel.of(it).toLogLevel() })
     }
 
     @Test

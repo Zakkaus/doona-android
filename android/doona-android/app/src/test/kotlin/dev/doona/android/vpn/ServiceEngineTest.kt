@@ -9,6 +9,7 @@ import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
@@ -99,6 +100,15 @@ class ServiceEngineTest {
 
     @After
     fun tearDown() = scope.cancel()
+
+    @Test
+    fun diagnosticsSendsItsLevelAndKeepsTheReply() = runBlocking {
+        core.reply = ContractFixtures.read("call-ok-diagnostics.json")
+        val diagnostics = engine.diagnostics(LogLevel.Warn).getOrThrow()
+        assertEquals("diagnostics" to """{"level":"warn"}""", core.calls.single())
+        assertEquals(LogLevel.Info, diagnostics.level)
+        assertEquals(listOf("1795300150000.txt"), diagnostics.crashes.map { it.name })
+    }
 
     @Test
     fun aCommandSendsTypedArgsAndRefreshesTheCatalog() = runBlocking {
