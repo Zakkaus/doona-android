@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
@@ -44,6 +46,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
@@ -54,6 +57,7 @@ import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -371,6 +375,39 @@ internal fun RvAppDisc(packageName: String, label: String? = null, size: Dp = Rv
     if (icon == null) return Box(named) { RvIconDisc(R.drawable.rv_sym_apps, size = size) }
     Image(icon, contentDescription = label, Modifier.size(size).clip(CircleShape).background(Rv.colors.discOnCard))
 }
+
+/**
+ * A row of a list where several can be checked (依 App's apps): [RvRow] with its [leading] disc, [title] and [subtitle],
+ * and a check at its end that the whole row toggles, as a switch row of 設定 toggles its switch.
+ */
+@Composable
+internal fun RvCheckRow(leading: @Composable () -> Unit, title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val toggle = Modifier.toggleable(value = checked, interactionSource = null, indication = rvRowIndication(), role = Role.Checkbox, onValueChange = onChange)
+    RvRow(leading, title, subtitle, modifier.then(toggle)) { Check(checked) }
+}
+
+/**
+ * [RvCheckRow]'s check in [RvRadio]'s box: off, the radio's ring in [RvColors.control]; on, the check glyph of 已選's
+ * chip in the radio's accent, its disc grown to the ring's size, so both states are one size.
+ */
+@Composable
+private fun Check(checked: Boolean) {
+    val mark = painterResource(R.drawable.rv_nodes_ic_check_circle)
+    val on = Rv.colors.positive
+    val ring = Rv.colors.control
+    Canvas(Modifier.size(RvControlSize.radio).clearAndSetSemantics {}) {
+        if (checked) {
+            val box = size.minDimension / CHECK_DISC
+            translate((size.width - box) / 2, (size.height - box) / 2) { with(mark) { draw(Size(box, box), colorFilter = ColorFilter.tint(on)) } }
+        } else {
+            val stroke = RvControlSize.radioStroke.toPx()
+            drawCircle(ring, radius = (size.minDimension - stroke) / 2, style = Stroke(stroke))
+        }
+    }
+}
+
+/** The share of its box that the `check_circle` glyph's disc fills: 816 of Material Symbols' 960 units. */
+private const val CHECK_DISC = 816f / 960f
 
 /**
  * Revolut's 'See all' row at a list card's foot (measured §7): [text] centred, 19 sp bold in ink, in 56 dp. Ink, as

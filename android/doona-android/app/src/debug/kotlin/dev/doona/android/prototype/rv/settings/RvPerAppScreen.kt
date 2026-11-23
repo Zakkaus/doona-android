@@ -27,6 +27,7 @@ import dev.doona.android.prototype.rv.RvAppDisc
 import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvCheckRow
 import dev.doona.android.prototype.rv.RvEmptyCaption
 import dev.doona.android.prototype.rv.RvFieldMessage
 import dev.doona.android.prototype.rv.RvIconDisc
@@ -36,6 +37,7 @@ import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSearchField
+import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
@@ -53,6 +55,13 @@ internal class RvPerAppActions(
 )
 
 /**
+ * The page's layouts for the owner to pick from: [Today] is PV-a's, the policies' card and a switch per app; [Checks]
+ * (`perapp-v1`) keeps the card and checks each app with [RvCheckRow]; [Segmented] (`perapp-v2`) puts the policies in
+ * 策略's segmented control under the title, and checks each app with [RvCheckRow].
+ */
+internal enum class RvPerAppLook { Today, Checks, Segmented }
+
+/**
  * 依 App, a page of 設定, in DNS's language: the large title under the back bar, then one card of the three policies as
  * radio rows. Under 只有勾選的 and 勾選的以外 a card lists the phone's apps, each its icon, name and package with a switch,
  * and the search field ([RvSearchField], the node picker's) stands over that card, a control row of the page; a search
@@ -62,7 +71,7 @@ internal class RvPerAppActions(
  * row, or the library's notice card with 重試.
  */
 @Composable
-internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBack: () -> Unit) {
+internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBack: () -> Unit, look: RvPerAppLook = RvPerAppLook.Today) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_per_app)
     val listed = state.edited.policy != RvAppPolicy.All
@@ -78,18 +87,30 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
             Status(state, actions)
             // The policies and the error under them are one block of the column, as a field and its message are.
             Column(Modifier.testTag(RvPart.BLOCK)) {
-                RvSettingsCard {
-                    RvAppPolicy.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == state.edited.policy, { actions.policy(it) }) }
-                }
+                Policies(state, actions, look)
                 if (state.needsApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
             }
             if (listed) {
-                Spacer(Modifier.height(RvSpace.controlGap))
+                // The segmented control and the search are two control rows stacked in one, as a node list's search and order.
+                Spacer(Modifier.height(if (look == RvPerAppLook.Segmented) RvSpace.controlStack else RvSpace.controlGap))
                 RvSearchField(null, state.query, actions.query, Modifier.fillMaxWidth().testTag(RvPart.CONTROL), hint = hint)
                 Spacer(Modifier.height(RvSpace.controlGap))
-                Apps(state, actions)
+                Apps(state, actions, look)
             }
         }
+    }
+}
+
+/** The three policies: radio rows in a card, or, for [RvPerAppLook.Segmented], 策略's segmented control. */
+@Composable
+private fun Policies(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppLook) {
+    val policies = RvAppPolicy.entries
+    if (look == RvPerAppLook.Segmented) {
+        val labels = policies.map { stringResource(it.label) }
+        return RvSegmented(labels, policies.indexOf(state.edited.policy), { actions.policy(policies[it]) })
+    }
+    RvSettingsCard {
+        policies.forEach { RvSettingsRadioRow(stringResource(it.label), it == state.edited.policy, { actions.policy(it) }) }
     }
 }
 
@@ -112,21 +133,23 @@ private fun Status(state: RvPerAppState, actions: RvPerAppActions) {
 
 /** The apps, a row saying they are being read, or the empty caption when the search matches none. */
 @Composable
-private fun Apps(state: RvPerAppState, actions: RvPerAppActions) {
+private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppLook) {
     val shown = state.shown
     when {
         state.installed == null -> RvCard { BusyRow(stringResource(R.string.rv_perapp_loading)) }
         shown.isEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
-        else -> RvCard { shown.forEach { AppRow(it, it.packageName in state.edited.packages) { on -> actions.toggle(it.packageName, on) } } }
+        else -> RvCard { shown.forEach { AppRow(it, it.packageName in state.edited.packages, look) { on -> actions.toggle(it.packageName, on) } } }
     }
 }
 
 /**
  * One app: its own icon (the fallback glyph when the phone does not have it), its name over its package, and a switch
- * that is the checkbox of the list; the whole row toggles it, as a switch row of 設定.
+ * that is the checkbox of the list, or [RvCheckRow]'s check outside [RvPerAppLook.Today]; the whole row toggles it, as
+ * a switch row of 設定.
  */
 @Composable
-private fun AppRow(app: RvApp, checked: Boolean, onToggle: (Boolean) -> Unit) {
+private fun AppRow(app: RvApp, checked: Boolean, look: RvPerAppLook, onToggle: (Boolean) -> Unit) {
+    if (look != RvPerAppLook.Today) return RvCheckRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, checked, onToggle)
     val toggle = Modifier.toggleable(value = checked, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onToggle)
     RvRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, toggle) { RvSwitch(checked) }
 }
