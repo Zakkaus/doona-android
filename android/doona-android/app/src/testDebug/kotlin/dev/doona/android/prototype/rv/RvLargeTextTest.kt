@@ -193,6 +193,15 @@ class RvLargeTextTest {
     /** Where [node] ends, in px from the top of the page, unclipped: the tiles lie below the window at 2.0. */
     private fun bottom(node: SemanticsNode) = node.positionInRoot.y + node.size.height
 
+    /** 活動's 今日用量 at 2.0 (r12): the card grows under its text, and both legend entries are whole. */
+    @Test
+    fun usageLegendIsWhole() {
+        large { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+        val format = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0])
+        val day = RvData.today
+        listOf(R.string.ui_download to day.downTotal, R.string.ui_upload to day.upTotal).forEach { (label, bytes) -> assertWhole(rvText(label) + SEPARATOR + format.bytes(bytes)) }
+    }
+
     /**
      * Every wrapped text on the pages of the r12 panels reads well at 2.0 ([rvReadsWell]): no last line of one or two
      * letters (`代理`, `臺灣`, `43`), no word broken (`Hysteria` over `2`), a meta line broken between its parts only.
