@@ -18,7 +18,8 @@ use tokio::time::Instant;
 
 /// Once either side's FIN has arrived, a flow may go this long without a byte read or written in
 /// either direction before it is cut (see `gate.rs`). honk's `DRAIN_DEADLINE` (honk
-/// 7cd8b13c). A TCP/53 connection to the core's DNS may idle as long (see `dns::serve_tcp`).
+/// 7cd8b13c). A TCP/53 connection to the core's DNS may idle as long, from accept on (see
+/// [`Task::Dns`](super::gate::Task::Dns)).
 pub(crate) const DRAIN_DEADLINE: Duration = Duration::from_secs(30);
 
 /// The driver's state for one accepted connection.
@@ -257,23 +258,20 @@ pub(crate) async fn dial(io: FlowIo, id: FlowId, dst: SocketAddr, route: Route, 
 }
 
 /// Answers the framed DNS queries of a TCP/53 connection to the virtual resolver; `session`'s
-/// names learn what the answers map. One that sends no query or takes no answer for `idle` fails,
-/// so the driver resets the client; after the client's FIN the drain bounds it as any flow. The
-/// shutdown that passes the FIN on publishes the clean end in the gate, as the relay's does.
+/// names learn what the answers map. The driver bounds the session from accept: it is reset once
+/// it has moved nothing for its idle time (see `dns::serve_tcp`). The shutdown that passes the FIN
+/// on publishes the clean end in the gate, as the relay's does.
 pub(crate) async fn serve_dns(
     mut io: FlowIo,
     id: FlowId,
     (route, session): (Route, Arc<Session>),
     upstreams: Arc<[SocketAddr]>,
-    idle: Duration,
     events: Events,
 ) {
     let gate = io.gate();
     let work = async {
         let via = (&route, session.names());
-        let failed = dns::serve_tcp(&mut io, &upstreams, via, idle)
-            .await
-            .is_err();
+        let failed = dns::serve_tcp(&mut io, &upstreams, via).await.is_err();
         drop(io);
         #[cfg(test)]
         super::pause::at(super::pause::Point::Served).await;

@@ -5,8 +5,8 @@
 //! driver gave the flow up or the drain's deadline has passed; otherwise it runs, and what it did
 //! (a byte moved, a FIN read, a side shut) is recorded before anyone else looks.
 //!
-//! From the first FIN either way, a flow may go `idle` without a byte moved before it is cut. The
-//! driver alone decides: it queues each begun drain's deadline in its one timer ([`Drains`]), and
+//! From the first FIN either way (for the core's DNS, from accept), a flow may go `idle` without a
+//! byte moved before it is cut. The driver alone decides: it queues each begun drain's deadline in its one timer ([`Drains`]), and
 //! in one place (`TcpFlow::verdict`) releases a flow whose task ended cleanly with its tail handed
 //! to the stack, or else resets one whose deadline has passed. The task never reads the deadline:
 //! past it, its I/O waits for the driver's reset.
@@ -28,10 +28,12 @@ use tokio_util::sync::CancellationToken;
 /// What serves a TCP flow, as its gate needs to know.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Task {
-    /// A relay to the dialed destination: it ends cleanly once it shut both the client's side and
-    /// the upstream's.
+    /// A relay to the dialed destination: the drain begins at the first FIN either way, and the
+    /// task ends cleanly once it shut both the client's side and the upstream's.
     Relay,
-    /// The core's DNS: it ends cleanly once it shut the client's side.
+    /// The core's DNS: the drain begins at accept, so a session that moves nothing for its idle
+    /// time is reset whether or not the client sent its FIN, the time spent resolving included;
+    /// the task ends cleanly once it shut the client's side.
     Dns,
 }
 
@@ -49,7 +51,7 @@ pub(crate) struct Gate {
 
 #[derive(Default)]
 struct State {
-    /// When the drain began: the first FIN either way.
+    /// When the drain began: the first FIN either way, or accept.
     begun: Option<Instant>,
     /// When a byte last moved.
     moved: Option<Instant>,
@@ -77,16 +79,19 @@ pub(crate) struct Reading {
 
 impl Gate {
     pub fn new(idle: Duration, waker: Arc<Waker>, task: Task) -> Gate {
-        let ways = match task {
-            Task::Relay => 2,
-            Task::Dns => 1,
+        let (ways, begun) = match task {
+            Task::Relay => (2, None),
+            Task::Dns => (1, Some(Instant::now())),
         };
         Gate {
             idle,
             ways,
             waker,
             cancel: CancellationToken::new(),
-            state: Mutex::default(),
+            state: Mutex::new(State {
+                begun,
+                ..State::default()
+            }),
         }
     }
 

@@ -1,5 +1,5 @@
 //! The driver with a tun the apps stop reading: a DNS answer the core forwards maps its addresses
-//! only once the tun takes it.
+//! only once the tun takes it. And a TCP/53 session's deadline, queued at accept.
 
 use super::*;
 use crate::dns::tests::{answer_to, query, upstream_with};
@@ -122,4 +122,28 @@ async fn a_dns_answer_maps_its_addresses_once_the_tun_takes_it() {
     assert!(d.pending_tx.is_none());
     assert_eq!(name(1).as_deref(), Some("kept.example"));
     assert_eq!(name(2), None);
+}
+
+/// A TCP/53 session to the virtual resolver has its deadline queued as the driver accepts it: the
+/// core's DNS is bounded from accept, without waiting for an event of the flow.
+#[tokio::test]
+async fn a_dns_session_is_queued_in_the_drain_timer_as_it_is_accepted() {
+    let dir = TempDir::new("driver-dns-tcp");
+    let (mut d, _tun, _peer) = driver(&dir);
+    let now = Instant::now();
+    let mut app = Config::new([7; 32]);
+    app.local_v4 = Some(Ipv4Addr::new(172, 19, 0, 1));
+    let mut app = Stack::new(app, now);
+    app.tcp_connect(now, SocketAddr::from(([172, 19, 0, 2], 53)))
+        .unwrap();
+    let mut packet = vec![0; 2048];
+    while let Some(n) = app.poll_transmit(now, &mut packet) {
+        let _ = d.stack.receive(now, &packet[..n]);
+    }
+    let accepted = time::Instant::now();
+    d.accept();
+    assert_eq!(d.dns_flows, 1, "the session was not accepted");
+    let (at, id) = d.drains.peek().expect("no deadline queued at accept");
+    assert!(d.tcp.contains_key(&id));
+    assert!(at >= accepted + d.settings.tcp_drain, "{at:?}");
 }

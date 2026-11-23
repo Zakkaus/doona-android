@@ -98,7 +98,7 @@ async fn an_answer_over_tcp_is_mapped_before_the_driver_takes_its_last_byte() {
     };
     let upstreams = [upstream_with(|q| answer_to(q, 2))];
     let via = (&Route::Direct, &names);
-    serve_tcp(&mut driven, &upstreams, via, idle).await.unwrap();
+    serve_tcp(&mut driven, &upstreams, via).await.unwrap();
     let seen = driven.seen.expect("the driver took the whole answer");
     assert_eq!(
         seen.as_deref(),

@@ -284,6 +284,23 @@ fn a_dns_client_that_never_reads_is_reset_after_the_drain_time() {
     assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
 }
 
+/// A DNS client that connects and sends nothing is reset once the session has moved nothing for the
+/// drain time: the driver bounds it from accept, though no event comes.
+#[test]
+fn a_dns_client_that_sends_nothing_is_reset_after_the_drain_time() {
+    let options = Options {
+        tcp_drain: DRAIN,
+        ..Options::default()
+    };
+    let mut s = setup_with("Direct", options);
+    let id = s.client.connect(RESOLVER);
+    let reset = s
+        .client
+        .until(DRAIN + WAIT, |c| c.state(id) == Some(TcpState::Closed));
+    assert!(reset, "the core still holds the session");
+    assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
+}
+
 /// A client that half-closes and never reads, while the upstream sends a reply the client and the
 /// core's stack cannot hold, then closes: the relay's last chunk fits the queue to the driver, so
 /// the relay ends cleanly with part of the reply still waiting for the client. The driver keeps the

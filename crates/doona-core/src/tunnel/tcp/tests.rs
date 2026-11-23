@@ -232,7 +232,7 @@ async fn a_flow_given_up_moves_nothing_more_though_its_io_is_ready() {
         let gate = io.gate();
         let via = (Route::Direct, Arc::clone(&session));
         let none: Arc<[SocketAddr]> = Arc::from([]);
-        let task = tokio::spawn(serve_dns(io, id, via, none, DRAIN_DEADLINE, events));
+        let task = tokio::spawn(serve_dns(io, id, via, none, events));
         tokio::task::yield_now().await;
         let q = crate::dns::tests::query(7, "example.com", None);
         let mut framed = u16::try_from(q.len()).unwrap().to_be_bytes().to_vec();
@@ -291,7 +291,7 @@ fn serve(io: FlowIo, id: FlowId, events: Events) -> tokio::task::JoinHandle<()> 
     let session = Arc::new(Session::new(1, std::sync::Weak::new()));
     let none: Arc<[SocketAddr]> = Arc::from([]);
     let via = (Route::Direct, session);
-    tokio::spawn(serve_dns(io, id, via, none, DRAIN_DEADLINE, events))
+    tokio::spawn(serve_dns(io, id, via, none, events))
 }
 
 /// The client sends a query and its FIN; the core's DNS answers and ends cleanly, and the driver
@@ -359,4 +359,78 @@ async fn after_the_fin_a_dns_answer_queued_puts_the_deadline_off() {
     let _held = ends.down.recv().await.unwrap();
     tokio::time::sleep_until(fin + DRAIN_DEADLINE).await;
     assert!(!ends.gate.read().expired, "cut a deadline after the FIN");
+}
+
+/// After its FIN the client reads a little every two thirds of the deadline: each time the stack
+/// takes part of the answer the driver holds, while the next answers wait behind it, one in the
+/// task. The session is kept as long as the client reads.
+#[tokio::test(start_paused = true)]
+async fn a_dns_client_that_keeps_reading_a_little_keeps_its_session() {
+    let (_wire, _app, id) = Wire::connected();
+    let (events, _got) = mpsc::unbounded_channel();
+    let waker = Waker::new(Key::Tcp(id), events.clone());
+    let (mut ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE, Task::Dns);
+    let task = serve(io, id, events);
+    // Six queries and the FIN: one answer for the driver, DEPTH in the queue, one in the task.
+    let mut queries = Vec::new();
+    for i in 0..u16::try_from(DEPTH + 2).unwrap() {
+        queries.extend_from_slice(&framed(i, "example.com"));
+    }
+    let up = ends.up.take().unwrap();
+    up.try_send(Bytes::from(queries)).unwrap();
+    drop(up);
+    ends.gate.fin();
+    for _ in 0..8 {
+        tokio::task::yield_now().await;
+    }
+    let _held = ends.down.try_recv().unwrap();
+    for _ in 0..8 {
+        tokio::task::yield_now().await;
+    }
+    for _ in 0..3 {
+        tokio::time::sleep(DRAIN_DEADLINE * 2 / 3).await;
+        // What the driver reports as the stack takes part of the answer it holds.
+        ends.gate.moved();
+        assert!(
+            !task.is_finished(),
+            "the session ended though the client reads"
+        );
+        assert!(!ends.gate.read().expired);
+    }
+}
+
+/// A DNS client that sends nothing more is reset once the session has moved nothing for the idle
+/// time, whether or not it sent its FIN: the drain begins at accept, and the driver queues its
+/// deadline then, as no event may come.
+#[tokio::test(start_paused = true)]
+async fn a_silent_dns_client_is_reset_an_idle_time_after_the_session_last_moved() {
+    let (_wire, _app, id) = Wire::connected();
+    let (events, _got) = mpsc::unbounded_channel();
+    let waker = Waker::new(Key::Tcp(id), events.clone());
+    let accepted = Instant::now();
+    let (mut ends, io) = flow::pair(
+        Arc::clone(&waker),
+        Tally::new(None),
+        DRAIN_DEADLINE,
+        Task::Dns,
+    );
+    let up = ends.up.take().unwrap();
+    let mut flow = TcpFlow::new(ends, waker, true);
+    assert_eq!(
+        flow.due(),
+        Some(accepted + DRAIN_DEADLINE),
+        "not queued at accept"
+    );
+    let _task = serve(io, id, events);
+    tokio::time::sleep(DRAIN_DEADLINE * 2 / 3).await;
+    assert!(flow.verdict().is_none());
+    // A query, answered; the driver's stack takes the answer at once.
+    up.try_send(Bytes::from(framed(7, "example.com"))).unwrap();
+    let answered = Instant::now();
+    let _answer = flow.ends.down.recv().await.unwrap();
+    flow.ends.gate.moved();
+    tokio::time::sleep_until(answered + DRAIN_DEADLINE - LATE).await;
+    assert!(flow.verdict().is_none(), "cut before the idle time");
+    tokio::time::sleep_until(answered + DRAIN_DEADLINE).await;
+    assert!(matches!(flow.verdict(), Some(Step::Expired)));
 }

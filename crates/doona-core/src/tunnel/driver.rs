@@ -357,7 +357,11 @@ impl Driver {
             Task::Dns
         };
         let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(meter), drain, serves);
-        let flow = TcpFlow::new(ends, waker, dst.is_none());
+        let mut flow = TcpFlow::new(ends, waker, dst.is_none());
+        // A drain begun at accept (the core's DNS) is queued now, not at the flow's first event.
+        if let Some(at) = flow.due() {
+            self.drains.push(at, id);
+        }
         let events = self.events.clone();
         self.dns_flows += usize::from(flow.dns);
         self.tcp.insert(id, flow);
@@ -366,7 +370,7 @@ impl Driver {
             None => {
                 let upstreams = Arc::clone(&self.upstreams);
                 let via = (route, Arc::clone(&self.gen_.session));
-                let task = tcp::serve_dns(io, id, via, upstreams, drain, events);
+                let task = tcp::serve_dns(io, id, via, upstreams, events);
                 self.gen_.spawn(task);
             }
         }
