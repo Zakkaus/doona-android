@@ -1,7 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
@@ -130,7 +130,8 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
 /**
  * The screen's one tinted area: the dot map of the world in [dots] on the neutral page behind the header content,
  * centred on [focus] at [focusTop] from the header's top, none above [statusBar], and faint behind the hero's text at
- * [clear]. [live] moves it (a tab's fade, P2's stretch, the connected pulse, a pan to a new node).
+ * [clear]. [live] moves it (a tab's fade, P2's stretch, the connected pulse, a pan to a new node). A new [dots] colour
+ * turns in over [RvMotion.HERO_FADE_MS], as a theme change cross-fades, and not at once; at animator scale 0 at once.
  */
 @Composable
 internal fun RvHeader(
@@ -143,11 +144,13 @@ internal fun RvHeader(
     live: RvDotMotion = RvDotMotion(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar, live)) {
+    val ink = animateColorAsState(dots, Rv.motion.tween(RvMotion.HERO_FADE_MS, LinearEasing), label = "dots")
+    val moving = live.tinted { ink.value }
+    Box(modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar, moving)) {
         // The marker's pulse, an ambient loop: its own layer, voting the normal rate, so a frame of it redraws the ring
         // alone and not the page it lies on.
         if (focus != null) {
-            Spacer(Modifier.matchParentSize().preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {}.rvDotPulse(focus, dots, focusTop, live))
+            Spacer(Modifier.matchParentSize().preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {}.rvDotPulse(focus, dots, focusTop, moving))
         }
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = content)
     }
@@ -183,7 +186,8 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
 /**
  * A round action: a disc with a glyph and its label under it on one line, in [labelStyle], the size its row gives every
  * label ([rvActionRowFit]), and still shrinking to fit its column alone when it has no row; the line keeps its full
- * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy].
+ * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy];
+ * that swap and a new [label] fade through ([RvFadeThrough]).
  */
 @Composable
 internal fun RvAction(
@@ -196,14 +200,17 @@ internal fun RvAction(
 ) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
-            // While [busy] (connecting) the disc shows a busy bar instead of its glyph.
-            Crossfade(busy, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "busy") { working ->
+            // While [busy] (connecting) the disc shows a busy bar instead of its glyph, the one fading through the other.
+            RvFadeThrough(busy, "busy") { working ->
                 if (working) RvBusy(Modifier.width(RvSize.busy)) else RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)
             }
         }
         Spacer(Modifier.height(RvSpace.discToLabel))
-        val line = Modifier.padding(horizontal = RvSpace.actionLabelInset).rvFullLine(label, Rv.type.action)
-        RvText(label, labelStyle, line, align = TextAlign.Center, autoSize = rvShrinkToFit(labelStyle))
+        // A new word fades through the old one, with the glyph when both change at once.
+        RvFadeThrough(label, "label", alignment = Alignment.TopCenter) { word ->
+            val line = Modifier.padding(horizontal = RvSpace.actionLabelInset).rvFullLine(word, Rv.type.action)
+            RvText(word, labelStyle, line, align = TextAlign.Center, autoSize = rvShrinkToFit(labelStyle))
+        }
     }
 }
 

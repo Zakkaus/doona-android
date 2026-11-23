@@ -174,8 +174,14 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
     var heroBounds by remember { mutableStateOf<Rect?>(null) }
     val pan = rvMapPan(place)
     val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null, motion.resting), pan?.first, pan?.second)
-    // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected.
-    RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds, live = live) {
+    // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected and in the fair
+    // tone while it connects or disconnects (PV-c v3, the hero tinted by the connection state).
+    val dots = when {
+        state.status.busy -> Rv.colors.fair
+        running -> Rv.colors.dots
+        else -> Rv.colors.dotsIdle
+    }
+    RvHeader(place, statusBar + RvDots.focusTop, statusBar, dots, heroBounds, live = live) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
         Spacer(Modifier.height(RvSpace.headerTop))
         HeroBlock(state, ticking, mode, hero, Modifier.onPlaced { heroBounds = it.boundsInParent() }, motion.pushed)
@@ -206,8 +212,9 @@ private fun HeroBlock(state: ActivityUiState, ticking: State<ActivityUiState>, m
 }
 
 /**
- * The state and the mode over the download rate, the upload rate under it; a new state or each second's rates cross-fade
- * in. Read from [ticking] here, so that a tick recomposes the figures and not the header around them.
+ * The state and the mode over the download rate, the upload rate under it; a new state fades through the old (the two
+ * captions differ in length, so a cross-fade would lay them over each other), each second's rates cross-fade in. Read
+ * from [ticking] here, so that a tick recomposes the figures and not the header around them.
  */
 @Composable
 private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modifier: Modifier) {
@@ -215,7 +222,7 @@ private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modif
     val format = rememberRvFormat()
     val fade = Rv.motion.tween<Float>(RvMotion.FADE_MS)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Crossfade("${stringResource(state.status.label)} · ${stringResource(mode.label)}", animationSpec = fade, label = "caption") { RvText(it, Rv.type.caption) }
+        RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = format.rate(state.downRate.toDouble())
         Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvHero(RvAmount(number, unit)) }
@@ -252,13 +259,14 @@ private fun MainNodeFigure(state: ActivityUiState, mode: RvRouteMode, nodes: Lis
 
 /**
  * Connect or disconnect (busy while either is under way), the outbound mode, a latency test ([onTest]) and more, their
- * labels one size ([rvActionRowFit]).
+ * labels one size ([rvActionRowFit]). 中斷連線 holds from the connect's start to the disconnect's end, so a disconnect
+ * under way keeps its word beside its busy bar and turns to 連線 with the glyph when it has ended.
  */
 @Composable
 private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, onTest: () -> Unit) {
-    val running = state.status is Status.Running || state.status is Status.Starting
+    val on = state.status is Status.Running || state.status.busy
     val labels = listOf(
-        stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect),
+        stringResource(if (on) R.string.rv_disconnect else R.string.rv_connect),
         stringResource(R.string.act_mode),
         stringResource(R.string.rv_test_latency),
         stringResource(R.string.rv_more),
@@ -267,9 +275,8 @@ private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Un
         val style = rvActionRowFit(labels, maxWidth / labels.size)
         Row(Modifier.fillMaxWidth()) {
             val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
-            val toggle = if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect
-            val busy = state.status == Status.Starting || state.status == Status.Stopping
-            RvAction(R.drawable.rv_sym_power, labels[0], toggle, Modifier.weight(1f), busy = busy, labelStyle = style)
+            val toggle = if (on) ({ onAction(ActivityAction.Disconnect) }) else onConnect
+            RvAction(R.drawable.rv_sym_power, labels[0], toggle, Modifier.weight(1f), busy = state.status.busy, labelStyle = style)
             RvAction(R.drawable.rv_sym_directions, labels[1], { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f), labelStyle = style)
             RvAction(R.drawable.rv_sym_speed, labels[2], onTest, Modifier.weight(1f), labelStyle = style)
             RvAction(R.drawable.rv_sym_more_horiz, labels[3], NOT_WIRED, Modifier.weight(1f), labelStyle = style)
@@ -277,6 +284,9 @@ private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Un
     }
     ConnectionTicks(state.status)
 }
+
+/** A connect or a disconnect is under way. */
+private val Status.busy: Boolean get() = this == Status.Starting || this == Status.Stopping
 
 /** One haptic tick when [status] becomes connected, one when a disconnect ends; none on the first look or a failure. */
 @Composable

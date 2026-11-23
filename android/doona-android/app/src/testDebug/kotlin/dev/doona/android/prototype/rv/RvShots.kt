@@ -38,6 +38,19 @@ internal fun ComposeContentTestRule.rvShot(
     fontScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
+    rvContent(dark, fontScale, content)
+    before()
+    drawFully()
+    val variant = when {
+        fontScale != 1f -> "fs${(fontScale * PERCENT).roundToInt()}"
+        dark -> "dark"
+        else -> "light"
+    }
+    onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/proto-rv-$screen-$variant.png")
+}
+
+/** Sets [content] in the phone's frame, in the owner's wallpaper scheme, light or [dark], its text at [fontScale]. */
+internal fun ComposeContentTestRule.rvContent(dark: Boolean, fontScale: Float = 1f, content: @Composable () -> Unit) {
     RuntimeEnvironment.setQualifiers(if (dark) "+night" else "+notnight")
     setContent {
         DoonaTheme(dark) {
@@ -49,14 +62,6 @@ internal fun ComposeContentTestRule.rvShot(
             }
         }
     }
-    before()
-    drawFully()
-    val variant = when {
-        fontScale != 1f -> "fs${(fontScale * PERCENT).roundToInt()}"
-        dark -> "dark"
-        else -> "light"
-    }
-    onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/proto-rv-$screen-$variant.png")
 }
 
 private const val PERCENT = 100

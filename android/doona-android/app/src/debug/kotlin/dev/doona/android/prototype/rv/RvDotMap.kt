@@ -80,6 +80,8 @@ internal fun Modifier.rvDotMap(focus: RvPlace?, color: Color, focusTop: Dp, clea
     }
     onDrawBehind {
         val art = live.art()
+        // Read here, so a turn of colour redraws the map and lays nothing out.
+        val ink = live.tint?.invoke() ?: color
         // P2 stretches the map downward from its top: each band moves down in proportion to its height.
         val stretch = live.stretch() / size.height
         bands.fastForEach { band ->
@@ -88,11 +90,11 @@ internal fun Modifier.rvDotMap(focus: RvPlace?, color: Color, focusTop: Dp, clea
             val alpha = RvDots.ALPHA * bottom * top * art
             if (alpha <= 0f) return@fastForEach
             translate(top = band.y * stretch) {
-                drawPoints(band.full, PointMode.Points, color.copy(alpha = alpha), RvDots.dot.toPx(), StrokeCap.Round)
-                drawPoints(band.faint, PointMode.Points, color.copy(alpha = minOf(alpha, RvDots.CLEAR_ALPHA)), RvDots.dot.toPx(), StrokeCap.Round)
+                drawPoints(band.full, PointMode.Points, ink.copy(alpha = alpha), RvDots.dot.toPx(), StrokeCap.Round)
+                drawPoints(band.faint, PointMode.Points, ink.copy(alpha = minOf(alpha, RvDots.CLEAR_ALPHA)), RvDots.dot.toPx(), StrokeCap.Round)
             }
         }
-        if (focus != null) marker(centre.copy(y = centre.y * (1 + stretch)), color, art)
+        if (focus != null) marker(centre.copy(y = centre.y * (1 + stretch)), ink, art)
     }
 }
 
@@ -106,7 +108,7 @@ internal fun Modifier.rvDotPulse(focus: RvPlace?, color: Color, focusTop: Dp, li
     if (focus == null || phase <= 0f) return@drawBehind
     val stretch = live.stretch() / size.height
     val y = focusTop.toPx()
-    pulse(Offset(size.width / 2f, y * (1 + stretch)), color, live.art(), phase)
+    pulse(Offset(size.width / 2f, y * (1 + stretch)), live.tint?.invoke() ?: color, live.art(), phase)
 }
 
 /** A band of the map: its [y], its dots drawn [full], and those kept [faint] under the hero's text. */
@@ -128,8 +130,9 @@ private fun dotRows(lat: Float, lon: Float, centre: Offset, pitch: Float, height
 
 /**
  * What moves on the dot map: [art] scales its alpha (a tab's hero fade), [stretch] pulls it that many pixels longer from
- * its top (P2), [pulse] (0 to 1, 0 none) runs a copy of the marker's ring out to the glow's edge while connected, and
- * [lat] and [lon] centre the map where a node switch has panned it so far (null: on the focus).
+ * its top (P2), [pulse] (0 to 1, 0 none) runs a copy of the marker's ring out to the glow's edge while connected,
+ * [lat] and [lon] centre the map where a node switch has panned it so far (null: on the focus), and [tint] is its colour
+ * so far while it turns to a new one (null: the map's own).
  */
 internal class RvDotMotion(
     val art: () -> Float = { 1f },
@@ -137,7 +140,11 @@ internal class RvDotMotion(
     val pulse: () -> Float = { 0f },
     val lat: (() -> Float)? = null,
     val lon: (() -> Float)? = null,
-)
+    val tint: (() -> Color)? = null,
+) {
+    /** The same motion, its colour read from [tint] as it turns. */
+    fun tinted(tint: () -> Color) = RvDotMotion(art, stretch, pulse, lat, lon, tint)
+}
 
 private val RV_STILL = RvDotMotion()
 

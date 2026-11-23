@@ -126,8 +126,11 @@ class RvGestureTest {
         compose.mainClock.advanceTimeByFrame()
     }
 
-    /** The disc of 活動's 更多 action: the clickable child of the action, whose label is merged into it. */
-    private fun actionDisc() = compose.onAllNodesWithText(rvText(R.string.rv_more), useUnmergedTree = true).onFirst().onParent().onChildren().filterToOne(hasClickAction())
+    /**
+     * The disc of 活動's 更多 action: the clickable child of the action, whose label is merged into it (the label sits in
+     * its fade-through, one node down).
+     */
+    private fun actionDisc() = compose.onAllNodesWithText(rvText(R.string.rv_more), useUnmergedTree = true).onFirst().onParent().onParent().onChildren().filterToOne(hasClickAction())
 
     /** The disc's width on screen: the bounds in root carry the layer's scale (the unclipped ones keep the layout's size), and nothing clips a disc. */
     private fun SemanticsNodeInteraction.width() = getBoundsInRoot().let { it.right - it.left }.value
