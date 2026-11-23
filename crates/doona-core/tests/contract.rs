@@ -72,7 +72,7 @@ fn init_and_start_config() {
         doonacore::dto::SCHEMA
     );
     let config = round_trip::<StartConfig>("start-config.json");
-    assert_eq!(config.mtu, 8500);
+    assert_eq!(config.mtu, 65535);
     assert_eq!(config.dns.to_string(), "172.19.0.2");
 }
 

@@ -46,7 +46,7 @@ internal data class InitDto(val schema: Int)
 @Serializable
 internal data class StartConfigDto(val mtu: Int, val ipv4: String, val dns: String, val bootstrapDns: List<String>) {
     companion object {
-        const val MTU = 8500
+        const val MTU = 65535
         const val IPV4 = "172.19.0.1"
         const val IPV4_PREFIX = 30
         const val DNS = "172.19.0.2"
