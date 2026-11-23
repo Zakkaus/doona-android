@@ -10,7 +10,7 @@ import dev.doona.android.engine.fake.FakeEngine
 
 /** A connected engine with a minute of traffic, as previews and screenshot tests show the screen. */
 fun sampleActivityState(error: ErrorCode? = null): ActivityUiState {
-    val engine = FakeEngine(status = Status.Running(sinceEpochMs = 0), traffic = FakeEngine.SAMPLE_TRAFFIC)
+    val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS, status = Status.Running(sinceEpochMs = 0), traffic = FakeEngine.SAMPLE_TRAFFIC)
     return activityUiState(engine.status.value, engine.traffic.value, engine.settings.value, engine.groups.value, error)
 }
 

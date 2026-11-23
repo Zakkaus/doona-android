@@ -1,5 +1,6 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.DayTotal
 import dev.doona.android.engine.DayUsage
 import dev.doona.android.engine.EffectiveConfig
@@ -156,7 +157,15 @@ internal data class CatalogDto(
     val subscriptions: List<SubscriptionDto>,
     val mainGroupId: String,
     val ruleSource: RuleSourceDto,
-)
+) {
+    fun toCatalog() = Catalog(
+        mode = mode,
+        groups = groups.map(GroupDto::toGroup),
+        subscriptions = subscriptions.map(SubscriptionDto::toSubscription),
+        mainGroupId = mainGroupId,
+        ruleSource = ruleSource.toRuleSource(),
+    )
+}
 
 /**
  * Where Rule mode's rules come from and what compiled of them: [rules] rows, [lines] values, [skipped] lines not

@@ -64,7 +64,7 @@ class GroupViewModelTest {
         assertNotNull(detail)
         assertEquals("Proxy", detail!!.group.name)
         assertEquals("g-Auto", detail.current?.id)
-        assertEquals("n-hk1", detail.currentNode?.id)
+        assertEquals("n-369a8a63c1d2e3f4", detail.currentNode?.id)
     }
 
     @Test
@@ -104,10 +104,10 @@ class GroupViewModelTest {
     fun `selecting a member pins it`() = runTest {
         val engine = Answering(Result.success(Unit))
         val vm = collected(engine, "g-Proxy")
-        vm.onAction(GroupAction.Select("n-us1"))
-        assertEquals(listOf("g-Proxy" to "n-us1"), engine.selected)
+        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
+        assertEquals(listOf("g-Proxy" to "n-c2f5a8e1b3c4d5e6"), engine.selected)
         val group = vm.uiState.value.detail!!.group
-        assertEquals("n-us1", group.selectedId)
+        assertEquals("n-c2f5a8e1b3c4d5e6", group.selectedId)
         assertTrue(group.pinned)
         assertNull(vm.uiState.value.error)
     }
@@ -115,7 +115,7 @@ class GroupViewModelTest {
     @Test
     fun `a failed select shows its code and leaves the choice`() = runTest {
         val vm = collected(Answering(failure(ErrorCode.NotFound)), "g-Proxy")
-        vm.onAction(GroupAction.Select("n-us1"))
+        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
         assertEquals(ErrorCode.NotFound, vm.uiState.value.error)
         assertEquals("g-Auto", vm.uiState.value.detail!!.group.selectedId)
         vm.onAction(GroupAction.DismissError)
@@ -126,14 +126,14 @@ class GroupViewModelTest {
     fun `an automatic group offers the way back only while pinned`() = runTest {
         val vm = collected(FakeEngine(), "g-Auto")
         assertFalse(vm.uiState.value.detail!!.canReturnToAutomatic)
-        vm.onAction(GroupAction.Select("n-jp1"))
+        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
         assertTrue(vm.uiState.value.detail!!.canReturnToAutomatic)
     }
 
     @Test
     fun `a selector never offers a way back to automatic`() = runTest {
         val vm = collected(FakeEngine(), "g-Proxy")
-        vm.onAction(GroupAction.Select("n-jp1"))
+        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
         assertFalse(vm.uiState.value.detail!!.canReturnToAutomatic)
     }
 
@@ -141,7 +141,7 @@ class GroupViewModelTest {
     fun `return to automatic hands the group back to its own choice`() = runTest {
         val engine = Answering(Result.success(Unit))
         val vm = collected(engine, "g-Auto")
-        vm.onAction(GroupAction.Select("n-jp1"))
+        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
         vm.onAction(GroupAction.ReturnToAutomatic)
         assertEquals("g-Auto" to null, engine.selected.last())
         assertFalse(vm.uiState.value.detail!!.group.pinned)
@@ -152,7 +152,7 @@ class GroupViewModelTest {
     fun `a failed return to automatic keeps the pin and shows its code`() = runTest {
         val engine = Answering(Result.success(Unit))
         val vm = collected(engine, "g-Auto")
-        vm.onAction(GroupAction.Select("n-jp1"))
+        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
         engine.result = failure(ErrorCode.Internal)
         vm.onAction(GroupAction.ReturnToAutomatic)
         assertEquals(ErrorCode.Internal, vm.uiState.value.error)
@@ -210,9 +210,9 @@ class GroupViewModelTest {
         val gate = CompletableDeferred<Unit>()
         val engine = SlowFirstSelect(gate)
         val vm = collected(engine, "g-Proxy")
-        vm.onAction(GroupAction.Select("n-hk1"))
-        vm.onAction(GroupAction.Select("n-us1"))
-        assertEquals(listOf("start n-hk1", "start n-us1"), engine.log.filter { it.startsWith("start") })
+        vm.onAction(GroupAction.Select("n-369a8a63c1d2e3f4"))
+        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
+        assertEquals(listOf("start n-369a8a63c1d2e3f4", "start n-c2f5a8e1b3c4d5e6"), engine.log.filter { it.startsWith("start") })
         gate.complete(Unit)
     }
 
@@ -221,10 +221,10 @@ class GroupViewModelTest {
         val gate = CompletableDeferred<Unit>()
         val engine = SlowFirstSelect(gate)
         val vm = collected(engine, "g-Auto")
-        vm.onAction(GroupAction.Select("n-jp1"))
+        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
         vm.onAction(GroupAction.ReturnToAutomatic)
         vm.onAction(GroupAction.Test)
-        assertEquals(listOf("start n-jp1", "start null", "test g-Auto"), engine.log.filter { !it.startsWith("end") })
+        assertEquals(listOf("start n-85d011c7e5f60718", "start null", "test g-Auto"), engine.log.filter { !it.startsWith("end") })
         gate.complete(Unit)
     }
 
@@ -234,11 +234,11 @@ class GroupViewModelTest {
         val engine = SlowFirstSelect(gate)
         val store = ViewModelStore()
         val vm = ViewModelProvider(store, GroupViewModel.factory(engine, "g-Proxy"))[GroupViewModel::class.java]
-        vm.onAction(GroupAction.Select("n-hk1"))
-        vm.onAction(GroupAction.Select("n-us1"))
+        vm.onAction(GroupAction.Select("n-369a8a63c1d2e3f4"))
+        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
         store.clear()
         // The engine has both, in order, whether or not the screen is still there to see the answers.
-        assertEquals(listOf("start n-hk1", "start n-us1"), engine.log.filter { it.startsWith("start") })
+        assertEquals(listOf("start n-369a8a63c1d2e3f4", "start n-c2f5a8e1b3c4d5e6"), engine.log.filter { it.startsWith("start") })
         gate.complete(Unit)
     }
 
@@ -251,9 +251,9 @@ class GroupViewModelTest {
                 if (calls++ == 0) failure(ErrorCode.Busy) else fake.select(groupId, memberId)
         }
         val vm = collected(engine, "g-Proxy")
-        vm.onAction(GroupAction.Select("n-hk1"))
-        vm.onAction(GroupAction.Select("n-us1"))
-        assertEquals("n-us1", vm.uiState.value.detail!!.group.selectedId)
+        vm.onAction(GroupAction.Select("n-369a8a63c1d2e3f4"))
+        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
+        assertEquals("n-c2f5a8e1b3c4d5e6", vm.uiState.value.detail!!.group.selectedId)
         assertNull(vm.uiState.value.error)
     }
 }

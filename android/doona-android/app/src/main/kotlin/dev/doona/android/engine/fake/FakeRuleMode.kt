@@ -4,7 +4,6 @@ import dev.doona.android.engine.DayTotal
 import dev.doona.android.engine.DayUsage
 import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeCodes
@@ -52,16 +51,6 @@ object FakeRuleMode {
         row(CN_ROW, 3, RuleKind.GeoIp, "CN", 1, RuleTarget.Direct),
         row(MATCH_ROW, 4, RuleKind.Match, null, 0, RuleTarget.Group(MAIN_GROUP_ID)),
     )
-
-    /** [FakeEngine.SAMPLE_GROUPS] with the template's 串流 and AI selectors, which follow Proxy until the user picks. */
-    val GROUPS: List<Group> = run {
-        // Proxy, Auto, then the regions.
-        val template = FakeEngine.SAMPLE_GROUPS
-        val proxy = template.first()
-        val follower = Member(id = proxy.id, name = proxy.name, isGroup = true)
-        fun selector(id: String, name: String) = Group(id, name, GroupKind.Selector, listOf(follower) + proxy.members, selectedId = proxy.id)
-        template.take(2) + selector(STREAMING, "Streaming") + selector(AI, "AI") + template.drop(2)
-    }
 
     /** The compiled rules in the effective config's text, one per value. */
     private val LINES = listOf("GEOIP,private,DIRECT") +

@@ -28,15 +28,45 @@ class FakeEngineRuleModeTest {
 
     @Test
     fun theRowsTheSourceAndTheGroupsAreTheTemplatesAsTheFixturesHaveThem() = runTest {
-        val engine = FakeEngine(groups = FakeRuleMode.GROUPS, mode = Mode.Rule)
+        val engine = FakeEngine(mode = Mode.Rule)
         assertEquals(reply("call-ok-rules.json", RulesDto.serializer()).toRulePage(), engine.rules(offset = 0, limit = 50).getOrThrow())
         val catalog = checkNotNull(CoreJson.snapshot(ContractFixtures.read("snapshot-stopped-catalog.json")).catalog)
-        assertEquals(catalog.ruleSource.toRuleSource(), engine.ruleSource.value)
-        assertEquals(catalog.mainGroupId, engine.mainGroupId.value)
-        assertEquals(catalog.groups.map { it.id }, FakeRuleMode.GROUPS.map { it.id })
+        val published = checkNotNull(engine.catalog.value)
+        assertEquals(catalog.ruleSource.toRuleSource(), published.ruleSource)
+        assertEquals(catalog.mainGroupId, published.mainGroupId)
+        assertEquals(catalog.groups.map { it.id }, FakeEngine.TEMPLATE_GROUPS.map { it.id })
         // Every group a row sends to exists.
         val targets = FakeRuleMode.ROWS.mapNotNull { (it.target as? RuleTarget.Group)?.id }
-        assertTrue(FakeRuleMode.GROUPS.map { it.id }.containsAll(targets))
+        assertTrue(FakeEngine.TEMPLATE_GROUPS.map { it.id }.containsAll(targets))
+    }
+
+    @Test
+    fun theDefaultGroupsAreTheTemplatesWithEveryGroupTheRulesSendTo() = runTest {
+        val engine = FakeEngine()
+        assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), engine.groups.value.map { it.id })
+    }
+
+    @Test
+    fun theCatalogFollowsEveryChangeAtOnce() = runTest {
+        val engine = FakeEngine()
+        engine.setMode(Mode.Rule)
+        engine.groups.value = FakeEngine.SAMPLE_GROUPS
+        engine.subscriptions.value = emptyList()
+        val catalog = checkNotNull(engine.catalog.value)
+        assertEquals(Mode.Rule, catalog.mode)
+        assertEquals(FakeEngine.SAMPLE_GROUPS to emptyList<Any>(), catalog.groups to catalog.subscriptions)
+    }
+
+    @Test
+    fun theFakesNodesHaveIdsAndCodesOfTheCoresShape() = runTest {
+        val engine = FakeEngine()
+        val nodes = engine.groups.value.flatMap { it.members }.filterNot { it.isGroup }
+        assertTrue(nodes.isNotEmpty())
+        assertTrue(nodes.map { it.id }.toString(), nodes.all { Regex("n-[0-9a-f]{16}").matches(it.id) })
+        val listed = engine.effectiveConfig().getOrThrow().text.lines().filter { it.startsWith("# group ") }
+        val codes = listed.flatMap { Regex("""(?<=[ ,(])n-[^,)\s]*""").findAll(it).map { m -> m.value }.toList() }
+        assertTrue(codes.isNotEmpty())
+        assertTrue(codes.toString(), codes.all { Regex("n-[0-9a-f]{8}").matches(it) })
     }
 
     @Test
@@ -55,22 +85,22 @@ class FakeEngineRuleModeTest {
     fun theTemplatesOptionsChangeAndAnUnknownTemplateIsNotFound() = runTest {
         val engine = FakeEngine()
         assertTrue(engine.setRuleSource(FakeRuleMode.TEMPLATE, RuleOptions(blockQuic = true)).isSuccess)
-        assertEquals(FakeRuleMode.SOURCE.copy(options = RuleOptions(blockQuic = true)), engine.ruleSource.value)
+        assertEquals(FakeRuleMode.SOURCE.copy(options = RuleOptions(blockQuic = true)), engine.catalog.value?.ruleSource)
         assertEquals(ErrorCode.NotFound, engine.setRuleSource("later", RuleOptions()).code())
-        assertTrue(checkNotNull(engine.ruleSource.value).options.blockQuic)
+        assertEquals(true, engine.catalog.value?.ruleSource?.options?.blockQuic)
     }
 
     @Test
     fun theEffectiveConfigIsTheCoresWithNodesByCode() = runTest {
-        val engine = FakeEngine(groups = FakeRuleMode.GROUPS, mode = Mode.Rule)
+        val engine = FakeEngine(mode = Mode.Rule)
         val config = engine.effectiveConfig().getOrThrow()
         val fixture = reply("call-ok-effective-config.json", EffectiveConfigDto.serializer()).toEffectiveConfig()
         assertEquals(fixture.copy(text = config.text), config)
         fun rules(text: String) = text.lines().filterNot { it.startsWith("#") }
         assertEquals(rules(fixture.text), rules(config.text))
         assertEquals(fixture.text.lines().take(4), config.text.lines().take(4))
-        assertTrue("# group Auto (UrlTest, now n-hk1): n-hk1, n-hk2, n-jp1, n-us1" in config.text.lines())
-        val names = FakeRuleMode.GROUPS.flatMap { it.members }.filterNot { it.isGroup }.map { it.name }.toSet()
+        assertTrue("# group Auto (UrlTest, now n-369a8a63): n-369a8a63, n-4b1e07d9, n-85d011c7, n-c2f5a8e1" in config.text.lines())
+        val names = FakeEngine.TEMPLATE_GROUPS.flatMap { it.members }.filterNot { it.isGroup }.map { it.name }.toSet()
         assertFalse(names.any { it in config.text })
         assertTrue("# group Auto (UrlTest, now hk-01): hk-01, hk-02, jp-01, us-01" in NodeCodes(engine.groups.value).onScreen(config.text).lines())
 

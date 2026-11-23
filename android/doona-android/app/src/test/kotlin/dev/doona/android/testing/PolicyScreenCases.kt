@@ -35,10 +35,11 @@ import dev.doona.android.feature.subscriptions.sampleSubscriptionsState
 internal fun policyScreenCases(): List<ScreenCase> {
     val engine = sampleEngine()
     val apps = FakeInstalledApps()
-    val noSubscriptions = FakeEngine(subscriptions = emptyList())
-    val noSubscriptionsFailed = FakeEngine(subscriptions = emptyList(), status = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes))
-    val noSubscriptionsStopped = FakeEngine(subscriptions = emptyList(), status = Status.Failed(FailureReason.CoreStopped))
-    val loading = FakeEngine().apply { ready.value = false }
+    val groups = FakeEngine.SAMPLE_GROUPS
+    val noSubscriptions = FakeEngine(groups, subscriptions = emptyList())
+    val noSubscriptionsFailed = FakeEngine(groups, subscriptions = emptyList(), status = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes))
+    val noSubscriptionsStopped = FakeEngine(groups, subscriptions = emptyList(), status = Status.Failed(FailureReason.CoreStopped))
+    val loading = FakeEngine(groups).apply { ready.value = false }
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
     val list = bars + setOf(LayoutRole.Card, LayoutRole.Segmented, LayoutRole.Mark)

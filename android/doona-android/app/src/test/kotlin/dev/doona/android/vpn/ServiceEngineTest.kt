@@ -15,11 +15,13 @@ import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Status
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emitAll
@@ -43,9 +45,11 @@ import java.io.IOException
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 
 @RunWith(AndroidJUnit4::class)
 class ServiceEngineTest {
@@ -55,6 +59,9 @@ class ServiceEngineTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val core = FakeCore()
     private val requested = CopyOnWriteArrayList<Long>()
+
+    /** Where the engine reaches the core; set before the engine is first used. */
+    private var io: CoroutineDispatcher = Dispatchers.IO
 
     /** Sends a requested start to the service; the system may find none or refuse it. */
     @Volatile
@@ -96,7 +103,7 @@ class ServiceEngineTest {
         }
         val perAppSettings = PerAppSettings(store)
         val controller = TunnelController(core, opener, { perAppSettings.perApp.first() }, scope, killProcess = {})
-        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, Dispatchers.IO, scope, perAppRetryMs = 50)
+        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, io, scope, perAppRetryMs = 50)
     }
 
     @After
@@ -238,14 +245,54 @@ class ServiceEngineTest {
 
     @Test
     fun aRuleModeCatalogCarriesRuleItsMainGroupAndItsSource() = runBlocking {
-        assertEquals(null to null, engine.mainGroupId.value to engine.ruleSource.value)
+        assertEquals(null, engine.catalog.value)
         val rule = ContractFixtures.read("snapshot-stopped-catalog.json").replace("\"mode\": \"Global\"", "\"mode\": \"Rule\"")
         core.snapshotReplies += { rule }
         assertTrue(engine.setMode(Mode.Rule).isSuccess)
         assertEquals("setMode" to """{"mode":"Rule"}""", core.calls.single())
         assertEquals(Mode.Rule, engine.settings.value.mode)
-        assertEquals("g-Proxy", engine.mainGroupId.value)
-        assertEquals(listOf("cn-direct", 5, 91044300313602L), engine.ruleSource.value?.let { listOf(it.template, it.rules, it.rulesRevision) })
+        val catalog = checkNotNull(engine.catalog.value)
+        assertEquals(Mode.Rule to "g-Proxy", catalog.mode to catalog.mainGroupId)
+        assertEquals(listOf("cn-direct", 5, 91044300313602L), catalog.ruleSource.let { listOf(it.template, it.rules, it.rulesRevision) })
+        // The flows that repeat parts of it agree.
+        assertEquals(catalog.groups to catalog.subscriptions, engine.groups.value to engine.subscriptions.value)
+    }
+
+    @Test
+    fun aCatalogIsNeverSeenHalfPublished() = runBlocking {
+        val both = ContractFixtures.read("snapshot-stopped-catalog.json")
+            .replace("\"mode\": \"Global\"", "\"mode\": \"Rule\"").replace("\"blockQuic\": false", "\"blockQuic\": true")
+        core.snapshotReplies += { both }
+        // Collected undispatched: it sees each value as it is published.
+        val seen = CopyOnWriteArrayList<Pair<Mode, Boolean>>()
+        val watcher = launch(Dispatchers.Unconfined) {
+            engine.catalog.collect { catalog -> catalog?.let { seen += it.mode to it.ruleSource.options.blockQuic } }
+        }
+        assertTrue(engine.setMode(Mode.Rule).isSuccess)
+        watcher.cancel()
+        assertEquals(listOf(Mode.Rule to true), seen.toList())
+    }
+
+    @Test
+    fun aReadTheCallerLeavesBeforeTheCoreIsReachedNeverReachesIt() = runBlocking {
+        val dispatched = CountDownLatch(1)
+        val gate = CountDownLatch(1)
+        val threads = CopyOnWriteArrayList<Thread>()
+        io = Executor { task ->
+            // Listed before the test is told, so the test waits for every task the read dispatched.
+            threads += thread {
+                gate.await()
+                task.run()
+            }
+            dispatched.countDown()
+        }.asCoroutineDispatcher()
+        val reader = scope.launch { engine.effectiveConfig() }
+        assertTrue(dispatched.await(5, TimeUnit.SECONDS))
+        reader.cancel()
+        gate.countDown()
+        reader.join()
+        threads.forEach { it.join(5_000) }
+        assertFalse("effectiveConfig" in core.entered)
     }
 
     @Test

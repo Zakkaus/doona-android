@@ -44,7 +44,7 @@ class NavigationTest {
     @Test
     fun `the back stack survives saving and restoring`() {
         val restoration = StateRestorationTester(compose)
-        val engine = FakeEngine()
+        val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS)
         restoration.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}) } }
         compose.onNodeWithText("Policies").performClick()
         compose.onNodeWithText("Proxy").performClick()
@@ -69,7 +69,7 @@ class NavigationTest {
 
     @Test
     fun `a second back while the page leaves does not pop the tab underneath`() {
-        compose.setContent { SeedTheme { DoonaApp(FakeEngine(), FakeInstalledApps(), onConnect = {}, start = GROUP) } }
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = GROUP) } }
         compose.mainClock.autoAdvance = false
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithContentDescription("Back").performClick()
@@ -80,7 +80,7 @@ class NavigationTest {
 
     @Test
     fun `a group page leaves when its group is removed`() {
-        val engine = FakeEngine()
+        val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS)
         compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = GROUP) } }
         compose.onNodeWithText("Proxy").assertExists()
 

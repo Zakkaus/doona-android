@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Process
 import android.os.SystemClock
 import dev.doona.android.data.settings.PerAppSettings
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
@@ -15,7 +16,6 @@ import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
-import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
@@ -54,7 +54,7 @@ import java.io.IOException
 /**
  * The process-wide [Engine] behind the UI, the tile and the notification (ARCH D2). The tunnel status is the
  * [TunnelController]'s; the catalog, traffic and actions come from the core. The catalog is read after `init`, after
- * every command and whenever a snapshot shows a new revision. Snapshots are taken every 5 s while running (health),
+ * every command that is not a read, and whenever a snapshot shows a new revision. Snapshots are taken every 5 s while running (health),
  * every second while running and someone collects [traffic], and every second while a latency test runs.
  */
 class ServiceEngine internal constructor(
@@ -79,10 +79,8 @@ class ServiceEngine internal constructor(
     override val groups: StateFlow<List<Group>> = _groups.asStateFlow()
     private val _subscriptions = MutableStateFlow(emptyList<Subscription>())
     override val subscriptions: StateFlow<List<Subscription>> = _subscriptions.asStateFlow()
-    private val _mainGroupId = MutableStateFlow<String?>(null)
-    override val mainGroupId: StateFlow<String?> = _mainGroupId.asStateFlow()
-    private val _ruleSource = MutableStateFlow<RuleSource?>(null)
-    override val ruleSource: StateFlow<RuleSource?> = _ruleSource.asStateFlow()
+    private val _catalog = MutableStateFlow<Catalog?>(null)
+    override val catalog: StateFlow<Catalog?> = _catalog.asStateFlow()
     private val _settings = MutableStateFlow(Settings())
     private val perAppEdits = Mutex()
     override val settings: StateFlow<Settings> = _settings.asStateFlow()
@@ -189,15 +187,15 @@ class ServiceEngine internal constructor(
     override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
 
     override suspend fun rules(offset: Int, limit: Int): Result<RulePage> =
-        command("rules", RulesArgs.serializer(), RulesArgs(offset, limit), RulesDto.serializer()).map(RulesDto::toRulePage)
+        read("rules", RulesArgs.serializer(), RulesArgs(offset, limit), RulesDto.serializer()).map(RulesDto::toRulePage)
 
     override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> =
         command("setRuleSource", RuleSourceArgs.serializer(), RuleSourceArgs.template(template, options), Unit.serializer())
 
     override suspend fun effectiveConfig(): Result<EffectiveConfig> =
-        command("effectiveConfig", Unit.serializer(), Unit, EffectiveConfigDto.serializer()).map(EffectiveConfigDto::toEffectiveConfig)
+        read("effectiveConfig", Unit.serializer(), Unit, EffectiveConfigDto.serializer()).map(EffectiveConfigDto::toEffectiveConfig)
 
-    override suspend fun usage(): Result<Usage> = command("usage", Unit.serializer(), Unit, UsageDto.serializer()).map(UsageDto::toUsage)
+    override suspend fun usage(): Result<Usage> = read("usage", Unit.serializer(), Unit, UsageDto.serializer()).map(UsageDto::toUsage)
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
@@ -263,6 +261,17 @@ class ServiceEngine internal constructor(
         }.await()
     }
 
+    /**
+     * Runs a read in the caller's job: a caller that leaves before the core is reached never reaches it. A read changes
+     * nothing, so it waits for no ordered command and reads no catalog after.
+     */
+    private suspend fun <A, R> read(name: String, argsSerializer: SerializationStrategy<A>, args: A, result: DeserializationStrategy<R>): Result<R> =
+        if (opener.schema() != CORE_SCHEMA) {
+            Result.failure(EngineException(ErrorCode.Internal))
+        } else {
+            call(name, CoreJson.encode(argsSerializer, args), result)
+        }
+
     private suspend fun <R> call(name: String, argsJson: String, result: DeserializationStrategy<R>): Result<R> {
         val begun = System.nanoTime()
         val outcome = try {
@@ -291,7 +300,7 @@ class ServiceEngine internal constructor(
         return try {
             withContext(io) {
                 CoreJson.snapshot(core.snapshot(revision)).also { snapshot ->
-                    snapshot.catalog?.let { publish(Catalog.of(snapshot.revision, it)) }
+                    snapshot.catalog?.let { publish(snapshot.revision, it.toCatalog()) }
                     lastWarning.value = during to snapshot.warning?.let(::errorCodeOf)
                 }
             }
@@ -306,38 +315,19 @@ class ServiceEngine internal constructor(
         }
     }
 
-    /** Polls run concurrently and can finish out of order: a catalog older than the one shown is dropped. */
-    private fun publish(catalog: Catalog) {
+    /**
+     * Polls run concurrently and can finish out of order: a catalog older than the one shown is dropped. The catalog is
+     * mapped before and published in one write; the flows that repeat parts of it follow.
+     */
+    private fun publish(revision: Long, catalog: Catalog) {
         synchronized(publishing) {
-            if (catalog.revision <= revision) return
-            revision = catalog.revision
+            if (revision <= this.revision) return
+            this.revision = revision
+            _catalog.value = catalog
             _groups.value = catalog.groups
             _subscriptions.value = catalog.subscriptions
-            _mainGroupId.value = catalog.mainGroupId
-            _ruleSource.value = catalog.ruleSource
             _settings.update { it.copy(mode = catalog.mode) }
             _ready.value = true
-        }
-    }
-
-    /** One snapshot's catalog, mapped before it is published, and published whole. */
-    private data class Catalog(
-        val revision: Long,
-        val mode: Mode,
-        val groups: List<Group>,
-        val subscriptions: List<Subscription>,
-        val mainGroupId: String,
-        val ruleSource: RuleSource,
-    ) {
-        companion object {
-            fun of(revision: Long, dto: CatalogDto) = Catalog(
-                revision = revision,
-                mode = dto.mode,
-                groups = dto.groups.map(GroupDto::toGroup),
-                subscriptions = dto.subscriptions.map(SubscriptionDto::toSubscription),
-                mainGroupId = dto.mainGroupId,
-                ruleSource = dto.ruleSource.toRuleSource(),
-            )
         }
     }
 

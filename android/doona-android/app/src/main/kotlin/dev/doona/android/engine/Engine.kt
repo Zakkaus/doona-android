@@ -24,13 +24,10 @@ interface Engine {
     val perAppLoaded: StateFlow<Boolean>
 
     /**
-     * The group [Mode.Global] sends every flow through, and [Mode.Rule] each flow no rule matched. Null until the catalog
-     * is read.
+     * The core's catalog, published whole, so a reader never sees part of one catalog beside part of another. Null until
+     * it is read. [groups], [subscriptions] and [Settings.mode] repeat parts of it for the screens that read them alone.
      */
-    val mainGroupId: StateFlow<String?>
-
-    /** Where [Mode.Rule]'s rules come from and how many compiled; null until the catalog is read. Present in every mode. */
-    val ruleSource: StateFlow<RuleSource?>
+    val catalog: StateFlow<Catalog?>
 
     /**
      * A problem the running tunnel reports without stopping: [ErrorCode.LocalNetwork] once a connection through a node on
@@ -67,7 +64,8 @@ interface Engine {
 
     /**
      * Up to [limit] rows of the rule source, 1 to 500, from the row [offset]; none past the end. A page whose
-     * [RulePage.rulesRevision] differs from [ruleSource]'s is stale: read it again.
+     * [RulePage.rulesRevision] differs from the [catalog]'s rule source is stale: read it again. This and the other reads
+     * below run in the caller's job: a caller that leaves first stops them.
      */
     suspend fun rules(offset: Int, limit: Int): Result<RulePage>
 
@@ -175,6 +173,18 @@ data class Group(
     val selectedId: String?,
     val pinned: Boolean = false,
     val testing: Boolean = false,
+)
+
+/**
+ * One revision of the core's catalog. [mainGroupId] is the group [Mode.Global] sends every flow through, and [Mode.Rule]
+ * each flow no rule matched; [ruleSource] is where Rule's rules come from, present in every mode.
+ */
+data class Catalog(
+    val mode: Mode,
+    val groups: List<Group>,
+    val subscriptions: List<Subscription>,
+    val mainGroupId: String,
+    val ruleSource: RuleSource,
 )
 
 /** Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. */
