@@ -361,15 +361,24 @@ mod tests {
         }
     }
 
-    /// A fresh flow whose client has sent `GET` and keeps its side open, and its gate.
-    fn asked() -> (Ends, FlowIo, Arc<Gate>) {
-        let (events, _) = mpsc::unbounded_channel();
+    /// The flow's waker, and the driver's end of the wakes it sends.
+    type Wakes = (Arc<Waker>, mpsc::UnboundedReceiver<Event>);
+
+    /// A fresh flow whose client has sent `GET` and keeps its side open, its gate, and its wakes.
+    fn asked() -> (Ends, FlowIo, Arc<Gate>, Wakes) {
+        let (events, woken) = mpsc::unbounded_channel();
         let waker = Waker::new(Key::Udp(0), events);
-        let (ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE, Task::Relay);
+        let pair = flow::pair(
+            Arc::clone(&waker),
+            Tally::new(None),
+            DRAIN_DEADLINE,
+            Task::Relay,
+        );
+        let (ends, io) = pair;
         let up = ends.up.as_ref().unwrap();
         up.try_send(Bytes::from_static(b"GET")).unwrap();
         let gate = io.gate();
-        (ends, io, gate)
+        (ends, io, gate, (waker, woken))
     }
 
     /// The relay has passed its cancel check and starts to read the client's request when its
@@ -377,10 +386,12 @@ mod tests {
     /// the request upstream when it runs again.
     #[tokio::test(start_paused = true)]
     async fn a_relay_given_up_as_it_reads_writes_nothing_upstream() {
-        let (_ends, io, gate) = asked();
+        let (_ends, io, gate, _) = asked();
         let driver = Arc::clone(&gate);
         let mut client = Hooked::new(io);
-        client.on_read = Some(Box::new(move || driver.give_up()));
+        client.on_read = Some(Box::new(move || {
+            driver.give_up();
+        }));
         let (mut upstream, mut server) = duplex(CHUNK);
         let relay = tokio::spawn(async move {
             until_given_up(&gate, splice(&mut client, &mut upstream, &gate)).await
@@ -395,11 +406,12 @@ mod tests {
     }
 
     /// The relay is in the middle of its write upstream when its thread is descheduled; the driver,
-    /// on a thread of its own, gives the flow up meanwhile. Nothing reaches the upstream once the
-    /// driver has given the flow up: the write is either done before that, or never.
+    /// on a thread of its own, gives the flow up meanwhile, and ends it once no poll is in progress
+    /// (as `Driver::stop_tcp`): it waits for nothing, and is woken by the write's end. Nothing
+    /// reaches the upstream once the driver ends the flow.
     #[tokio::test(start_paused = true)]
     async fn a_relay_given_up_in_the_middle_of_a_write_writes_nothing_after() {
-        let (_ends, mut io, gate) = asked();
+        let (_ends, mut io, gate, (waker, mut woken)) = asked();
         let (near, _server) = duplex(CHUNK);
         let mut upstream = Hooked::new(near);
         let (given_up, after) = (Arc::clone(&upstream.given_up), Arc::clone(&upstream.after));
@@ -407,11 +419,17 @@ mod tests {
         upstream.on_write = Some(Box::new(move || {
             let (done, finished) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
-                driver.give_up();
+                loop {
+                    waker.rearm();
+                    if driver.give_up() {
+                        break;
+                    }
+                    woken.blocking_recv();
+                }
                 given_up.store(true, SeqCst);
                 let _ = done.send(());
             });
-            // Time for the driver to finish, unless the relay holds it off.
+            // Time for the driver to end the flow, unless it waits for the write's end.
             let _ = finished.recv_timeout(Duration::from_millis(200));
         }));
         let relay = tokio::spawn(async move {

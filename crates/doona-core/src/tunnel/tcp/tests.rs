@@ -4,9 +4,12 @@ use super::*;
 use crate::stats::meter::Tally;
 use crate::tunnel::flow::{self, CHUNK, DEPTH, Key};
 use crate::tunnel::gate::Task;
+use crate::tunnel::pause;
 use honk_netstack::{AcceptOpts, AcceptWhen, Config, ExcludeSet, Mode};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, duplex};
 use tokio::sync::mpsc;
+
+mod gate;
 
 /// How late a timer of the paused clock may fire: tokio's timers count whole milliseconds.
 const LATE: Duration = Duration::from_millis(10);
@@ -81,7 +84,7 @@ async fn a_client_that_reads_slowly_keeps_the_flow_in_the_middle_of_a_chunk() {
         Step::Expired
     ));
     assert!(!relay.is_finished(), "the relay never ends itself");
-    flow.give_up();
+    assert!(flow.stop(Stop::Reset), "a poll of the relay in progress");
     assert!(matches!(relay.await, Ok(None)));
 }
 
@@ -107,16 +110,23 @@ impl Wire {
             core: Stack::new(core, now),
             packet: vec![0; 2048],
         };
-        let app = wire.client.tcp_connect(now, ([10, 9, 9, 9], 80).into());
-        wire.settle();
-        let syn = wire.core.poll_accept().unwrap();
+        let (app, id) = wire.connect(80);
+        (wire, app, id)
+    }
+
+    /// Another connection, to `port`: the app's flow and the core's.
+    fn connect(&mut self, port: u16) -> (FlowId, FlowId) {
+        let now = std::time::Instant::now();
+        let app = self.client.tcp_connect(now, ([10, 9, 9, 9], port).into());
+        self.settle();
+        let syn = self.core.poll_accept().unwrap();
         let now = AcceptOpts {
             when: AcceptWhen::Now,
             ..AcceptOpts::default()
         };
-        wire.core.tcp_accept(syn.id, now).unwrap();
-        wire.settle();
-        (wire, app.unwrap(), syn.id)
+        self.core.tcp_accept(syn.id, now).unwrap();
+        self.settle();
+        (app.unwrap(), syn.id)
     }
 
     /// The app reads `n` bytes it has received, then the packets move.

@@ -8,7 +8,7 @@ use super::route::Route;
 use super::splice::splice;
 use crate::dns;
 use bytes::{Buf, Bytes};
-use honk_netstack::{FlowId, Stack, StreamError, TcpState};
+use honk_netstack::{FlowId, Refuse, Stack, StreamError, TcpState};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -42,6 +42,8 @@ pub(crate) struct TcpFlow {
     timer: Option<Instant>,
     /// Served by the core's DNS, not an app's connection: not counted in `activeFlows`.
     pub dns: bool,
+    /// Given up, to be ended so once no poll of its task is in progress (see [`TcpFlow::stop`]).
+    pub stopping: Option<Stop>,
 }
 
 pub(crate) enum Step {
@@ -52,6 +54,18 @@ pub(crate) enum Step {
     Failed,
     /// The drain's deadline passed: reset the client and end the task.
     Expired,
+    /// The drain's deadline passed while a poll of the task is in progress, which may yet move a
+    /// byte or end the task: decided once that poll's exit wakes the driver.
+    Busy,
+}
+
+/// How the driver ends a flow it gives up.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Stop {
+    /// Reset the client, or refuse its SYN if it was never answered.
+    Reset,
+    /// Release the handle: the task ended cleanly, or the stack side failed.
+    Release,
 }
 
 impl TcpFlow {
@@ -69,6 +83,7 @@ impl TcpFlow {
             client_fin: false,
             timer: None,
             dns,
+            stopping: None,
         }
     }
 
@@ -87,11 +102,14 @@ impl TcpFlow {
     /// What becomes of the flow, decided here alone, release before reset: a flow whose task ended
     /// cleanly, with its tail and FIN handed to the stack, is released, however late the driver
     /// hears that the task ended; otherwise one whose drain deadline has passed is reset, a tail
-    /// still in the channel included. `None` while neither holds.
+    /// still in the channel included, but only once no poll of the task is in progress. `None`
+    /// while neither holds. Never waits: see `Gate::read`.
     pub fn verdict(&self) -> Option<Step> {
         let gate = self.ends.gate.read();
         if gate.ended && self.down_shut && self.down_pending.is_none() {
             Some(Step::Close)
+        } else if gate.busy {
+            Some(Step::Busy)
         } else if gate.expired {
             Some(Step::Expired)
         } else {
@@ -115,10 +133,24 @@ impl TcpFlow {
         self.timer == Some(at)
     }
 
-    /// Gives the flow up: no I/O of its task runs once this returns (see `Gate::give_up`), and the
-    /// task ends.
-    pub fn give_up(&self) {
-        self.ends.gate.give_up();
+    /// Gives the flow up to end it `how`, unless it is being ended another way already: no poll of
+    /// its task enters from now on, and the task ends. True once no poll is in progress either, so
+    /// that the driver ends the flow now ([`TcpFlow::end`]); otherwise the poll in progress wakes
+    /// the driver as it exits, and the driver asks again. Meanwhile the flow has no timer and the
+    /// driver moves nothing of it.
+    pub fn stop(&mut self, how: Stop) -> bool {
+        self.stopping.get_or_insert(how);
+        self.timer = None;
+        self.ends.gate.give_up()
+    }
+
+    /// Ends the flow in the stack as it was given up to end (see [`TcpFlow::stop`]).
+    pub fn end(&self, stack: &mut Stack, id: FlowId) {
+        match self.stopping {
+            Some(Stop::Reset) if self.connected => stack.tcp_abort(id),
+            Some(Stop::Reset) => stack.tcp_refuse(id, Refuse::Rst),
+            Some(Stop::Release) | None => stack.tcp_close(id),
+        }
     }
 
     /// The driver's timer reached `at` for this flow: false when the flow no longer waits for it.
