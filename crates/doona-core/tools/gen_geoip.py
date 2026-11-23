@@ -2,7 +2,7 @@
 src/rules/private.list from MetaCubeX, for `GEOIP,private`.
 
 Usage: python -I tools/gen_geoip.py --date YYYYMMDD --private-rev SHA --work DIR
-DIR is a new, empty directory outside the repository (on the desktop, one under /scratch/ssd).
+DIR is a new, empty directory outside the repository.
 The script downloads APNIC's archived delegation file of that day there,
 delegated-apnic-YYYYMMDD.gz, and checks it against APNIC's MD5 file of the same day; and
 MetaCubeX/meta-rules-dat's geo/geoip/private.list at the commit SHA (full 40 hex digits). Nothing

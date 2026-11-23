@@ -35,8 +35,8 @@ characters. A rebuild keeps the bounding box of the files it replaces; `FontMetr
 
 `:icons` holds the complete Material Symbols Rounded set (Apache-2.0): filled, weight 500, 24 px, one vector drawable
 `sym_<name>` each, and the weight-600 variants `sym_add_w600` and `sym_close_w600`. `tools/gen_icons.py` regenerates the
-module from a pinned commit of google/material-design-icons; `--work` is a new directory outside the repository, on
-the desktop one under `/scratch/ssd`. The app names an icon only by a static `dev.doona.android.icons.R.drawable.sym_*`
+module from a pinned commit of google/material-design-icons; `--work` is a new, empty directory outside the
+repository. The app names an icon only by a static `dev.doona.android.icons.R.drawable.sym_*`
 field, so the release build's resource shrinker keeps the ones the code uses and strips the rest;
 `tools/check-layers.sh` fails on `getIdentifier(` anywhere, which would keep them all. `NOTICE` and the modules'
 `NOTICE` files list the licences.
