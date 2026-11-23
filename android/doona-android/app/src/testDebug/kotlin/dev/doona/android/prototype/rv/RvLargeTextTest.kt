@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -19,11 +20,13 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasParent
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.toSize
 import dev.doona.android.R
 import dev.doona.android.engine.Mode
 import dev.doona.android.prototype.rv.data.RvData
@@ -34,6 +37,7 @@ import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.policy.RvPolicyData
+import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
@@ -190,6 +194,43 @@ class RvLargeTextTest {
     private fun bottom(node: SemanticsNode) = node.positionInRoot.y + node.size.height
 
     /**
+     * Every wrapped text on the pages of the r12 panels reads well at 2.0 ([rvReadsWell]): no last line of one or two
+     * letters (`代理`, `臺灣`, `43`), no word broken (`Hysteria` over `2`), a meta line broken between its parts only.
+     */
+    @Test
+    fun wrappedTextsReadWell() = largePages { page ->
+        val texts = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text), useUnmergedTree = true).fetchSemanticsNodes()
+        texts.filter { SemanticsActions.GetTextLayoutResult in it.config }.map(::layout).filter { it.lineCount > 1 }.forEach { layout ->
+            val shown = layout.layoutInput.text.text
+            val lines = (0 until layout.lineCount).joinToString(" / ") { shown.substring(layout.getLineStart(it), layout.getLineEnd(it)).trim() }
+            assertTrue("page $page: '$lines' does not read well", rvReadsWell(layout))
+        }
+    }
+
+    /**
+     * In every row of those pages with one end for its whole text, the end sits beside the text or under it, never beside
+     * a part of it (r12): a text the end overlaps has no line above it that runs into the end's column.
+     */
+    @Test
+    fun rowEndsSitBesideOrUnderTheirText() = largePages { page ->
+        // The pages whose rows have one end beside the whole text: 活動's, the pull-down picker's (a line-wise end
+        // belongs to its own line, so a title with no end may run above it).
+        if (page !in ONE_END_PAGES) return@largePages
+        compose.onAllNodes(hasTestTag(RvPart.ROW), useUnmergedTree = true).fetchSemanticsNodes().forEach { row ->
+            // Unclipped: the page scrolls, and the scroll's viewport clips boundsInRoot to the window.
+            val all = texts(row).map { Rect(it.positionInRoot, it.size.toSize()) }
+            val start = all.minOfOrNull { it.left } ?: return@forEach
+            val (text, ends) = all.partition { it.left - start < 1f }
+            for (end in ends) {
+                for (beside in text.filter { it.top < end.bottom && end.top < it.bottom }) {
+                    val above = text.filter { it.bottom <= beside.top + 1f && it.right > end.left }
+                    assertTrue("page $page: an end at $end sits beside $beside under $above", above.isEmpty())
+                }
+            }
+        }
+    }
+
+    /**
      * A settings row (A4): at 2.0 its end control centres on the title's first line, with a subtitle under the title and
      * with a title of two lines, as at 1.0; the glyph at its start shares that line.
      */
@@ -256,6 +297,27 @@ class RvLargeTextTest {
     private fun sizes(names: List<String>): List<Pair<String, IntSize>> =
         names.flatMap { name -> compose.onAllNodes(shows(name), useUnmergedTree = true).fetchSemanticsNodes().map { name to it.size } }
 
+    /** Runs [check] on each page the r12 panels flagged, at 2.0, one after another in one composition. */
+    private fun largePages(check: (Int) -> Unit) {
+        val connection = RvPolicyData.connection
+        val pages: List<@Composable () -> Unit> = listOf(
+            { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) },
+            { RvActivityScreen(rvSampleActivity().copy(mode = Mode.Direct), onAction = {}, onConnect = {}) },
+            { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) },
+            { RvPolicyRulePage(connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) },
+            { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) },
+            { RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) },
+            { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}) },
+        )
+        var page by mutableStateOf(0)
+        large { pages[page]() }
+        pages.indices.forEach {
+            page = it
+            compose.waitForIdle()
+            check(it)
+        }
+    }
+
     private fun large(content: @Composable () -> Unit) = compose.setContent {
         CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, RV_FS200)) {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
@@ -263,8 +325,8 @@ class RvLargeTextTest {
     }
 
     /**
-     * Each text node showing [text] shows it whole: no line ends in an ellipsis, nothing runs past its box, and a text of
-     * two lines or more does not end on one letter alone (rule 14).
+     * Each text node showing [text] shows it whole: no line ends in an ellipsis, nothing runs past its box, and it reads
+     * well ([rvReadsWell]: no word broken, no last line of one or two letters; rule 14).
      */
     private fun assertWhole(text: String) {
         val nodes = compose.onAllNodes(shows(text), useUnmergedTree = true).fetchSemanticsNodes()
@@ -278,7 +340,7 @@ class RvLargeTextTest {
         assertFalse("$text is cut: ${layout.lineCount} lines in ${node.size.width} px", cut)
         val last = layout.lineCount - 1
         val line = layout.layoutInput.text.text.substring(layout.getLineStart(last), layout.getLineEnd(last))
-        assertFalse("$text ends on one letter: '$line'", last > 0 && line.count(Char::isLetterOrDigit) == 1)
+        assertTrue("$text does not read well, its last line '$line'", rvReadsWell(layout))
     }
 
     /** A text node showing [text], whatever word joiner the widow rule put in it. */
@@ -291,5 +353,8 @@ class RvLargeTextTest {
 
         /** Where RvText lets a value break at its punctuation. */
         const val ZERO_WIDTH_SPACE = "\u200B"
+
+        /** [largePages]' 活動 (both modes) and pull-down picker. */
+        val ONE_END_PAGES = setOf(0, 1, 5)
     }
 }

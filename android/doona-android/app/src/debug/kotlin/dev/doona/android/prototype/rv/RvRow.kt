@@ -38,9 +38,11 @@ import kotlin.math.min
  *
  * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], no gap between the lines);
  * [titleLines] and [titleOverflow] can keep a title to one line cut in the middle, which keeps both ends of a host:port
- * in view. Otherwise no end cuts the text it sits beside, nor is cut itself: where the two do not fit side by side whole
- * (a node's name beside its latency at a large font size), the text takes the whole line and the end moves down
- * ([TextBesideEnd], [RowLine]). While [endBusy] (a latency test runs for the row), a busy bar stands at the row's end
+ * in view. Otherwise no end cuts the text it sits beside, nor is cut itself, nor makes it read badly: an end sits beside
+ * its text where the text reads well there ([rvReadsWell]); else the text takes the whole line and the end goes under
+ * it, on the line's end (a node's name beside its latency at a large font size; [TextBesideEnd], [RowLine]), never
+ * beside a part of the text. A line-wise end, on its own line, also may not make that line wrap where the whole line
+ * holds it, so the ends stay on their lines. While [endBusy] (a latency test runs for the row), a busy bar stands at the row's end
  * in place of [titleEnd] and [subtitleEnd], which keep their room, so the text keeps its width and its lines.
  */
 @Composable
@@ -126,18 +128,21 @@ private fun hidden(end: @Composable () -> Unit): @Composable () -> Unit = { Box(
 
 /**
  * A row's title over its subtitle, with the row's [trailing] end beside them, [RvSpace.trailingGap] apart, both centred
- * on the row, at least [minHeight] tall (the row's, so they are centred once). The end never cuts the title: when the
- * title does not fit its lines beside the end (a node's name beside its latency at a large font size), the title takes
- * the whole line, and the end moves down beside the subtitle, its top on the subtitle's.
+ * on the row, at least [minHeight] tall (the row's, so they are centred once). The end never cuts the title nor squeezes
+ * the subtitle: when the title or the subtitle does not read well beside the end ([rvReadsWell]; a node's name beside
+ * its latency at a large font size, `Trojan ·` over `香港`), both take the whole line and the end goes under them, on the
+ * line's end. The end is centred on the whole text, so a line that wraps well beside it may (the picker's
+ * `Hong Kong 02` over `IPLC`).
  */
 @Composable
 private fun TextBesideEnd(title: String, subtitle: String?, titleLines: Int, minHeight: Dp, trailing: @Composable () -> Unit, modifier: Modifier) {
     val measurer = rememberTextMeasurer()
     val titleStyle = Rv.type.rowTitle
+    val subtitleStyle = Rv.type.rowSub
     Layout(
         {
             RvText(title, titleStyle, maxLines = titleLines)
-            subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
+            subtitle?.let { RvText(it, subtitleStyle, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
             Box { trailing() }
         },
         modifier,
@@ -148,9 +153,10 @@ private fun TextBesideEnd(title: String, subtitle: String?, titleLines: Int, min
         val least = minHeight.roundToPx()
         val end = parts.last().measure(Constraints(maxWidth = max(0, width - gap)))
         val beside = max(0, width - gap - end.width)
-        val fits = measurer.whole(RowText(title, titleStyle, titleLines), beside)
+        val fits = rvReadsWell(measurer.layout(RowText(title, titleStyle, titleLines), beside)) &&
+            (subtitle == null || rvReadsWell(measurer.layout(RowText(subtitle, subtitleStyle, RV_ROW_SUBTITLE_LINES), beside)))
         val titleLine = parts[0].measure(Constraints(maxWidth = if (fits) beside else width))
-        val subtitleLine = if (subtitle != null) parts[1].measure(Constraints(maxWidth = beside)) else null
+        val subtitleLine = if (subtitle != null) parts[1].measure(Constraints(maxWidth = if (fits) beside else width)) else null
         if (fits) {
             val text = titleLine.height + (subtitleLine?.height ?: 0) + inset * 2
             val height = maxOf(text, end.height, least)
@@ -161,10 +167,11 @@ private fun TextBesideEnd(title: String, subtitle: String?, titleLines: Int, min
                 end.place(width - end.width, Alignment.CenterVertically.align(end.height, height))
             }
         } else {
-            layout(width, max(least, inset * 2 + titleLine.height + max(subtitleLine?.height ?: 0, end.height))) {
+            val text = titleLine.height + (subtitleLine?.height ?: 0)
+            layout(width, max(least, inset * 2 + text + end.height)) {
                 titleLine.place(0, inset)
                 subtitleLine?.place(0, inset + titleLine.height)
-                end.place(width - end.width, inset + titleLine.height)
+                end.place(width - end.width, inset + text)
             }
         }
     }
@@ -184,8 +191,8 @@ private const val TITLE_SHARE = 0.4f
 /**
  * One line of a line-wise [RvRow]: [start] keeps its own width up to [TITLE_SHARE] of the line, [end] takes what it
  * needs of the rest, and [start] then gets what the end leaves. Where [end] does not fit whole on that line, or [start]
- * ([text], when given) does not fit its lines beside it, [end] goes under [start] on the line's end and each has the
- * whole line, so neither is cut.
+ * ([text], when given) does not read well beside it or would take more lines there than on the whole line, [end] goes
+ * under [start] on the line's end and each has the whole line, so neither is cut or squeezed.
  */
 @Composable
 private fun RowLine(end: (@Composable () -> Unit)?, text: RowText?, start: @Composable () -> Unit) {
@@ -199,7 +206,7 @@ private fun RowLine(end: (@Composable () -> Unit)?, text: RowText?, start: @Comp
         val keep = min(parts[0].maxIntrinsicWidth(constraints.maxHeight), (width * TITLE_SHARE).toInt())
         val room = max(0, width - keep - gap)
         val endWidth = parts.getOrNull(1)?.maxIntrinsicWidth(constraints.maxHeight)
-        val beside = endWidth == null || (endWidth <= room && (text == null || measurer.whole(text, max(0, width - endWidth - gap))))
+        val beside = endWidth == null || (endWidth <= room && (text == null || measurer.keeps(text, max(0, width - endWidth - gap), width)))
         val endPart = parts.getOrNull(1)?.measure(Constraints(maxWidth = if (beside) room else width))
         val startPart = parts[0].measure(Constraints(maxWidth = if (beside) max(0, width - (endPart?.width ?: 0) - gap) else width))
         if (beside) {
@@ -220,8 +227,14 @@ private fun RowLine(end: (@Composable () -> Unit)?, text: RowText?, start: @Comp
 /** A row's text as it is laid out: its words, its role and how many lines it may take. */
 private class RowText(val text: String, val style: TextStyle, val lines: Int)
 
-/** Whether [text] shows whole [width] px wide: within its lines, no ellipsis, nothing past its box. */
-private fun TextMeasurer.whole(text: RowText, width: Int): Boolean {
-    val layout = measure(scripted(text.text), text.style, TextOverflow.Ellipsis, maxLines = text.lines, constraints = Constraints(maxWidth = width))
-    return !layout.hasVisualOverflow && (0 until layout.lineCount).none(layout::isLineEllipsized)
+/** [text] laid out [width] px wide as its [RvText] lays it out. */
+private fun TextMeasurer.layout(text: RowText, width: Int) = rvLayout(text.text, text.style, text.lines, width)
+
+/**
+ * Whether [text] reads well [width] px wide ([rvReadsWell]) on no more lines than it takes [wide] px wide: an end beside a
+ * line may not make it wrap (`VLESS ·` over `臺灣`, `Hysteria` over `2`) where the whole line holds it.
+ */
+private fun TextMeasurer.keeps(text: RowText, width: Int, wide: Int): Boolean {
+    val narrow = layout(text, width)
+    return rvReadsWell(narrow) && (width >= wide || narrow.lineCount <= layout(text, wide).lineCount)
 }
