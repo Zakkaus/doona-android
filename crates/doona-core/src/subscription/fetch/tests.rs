@@ -1,0 +1,373 @@
+//! The download against loopback servers: lengths, chunks, bodies that end with the connection,
+//! redirects and their credentials, failures, the quota header and the User-Agent.
+
+use super::*;
+use crate::testutil::{http, response, target};
+use std::sync::Mutex;
+
+fn run<T>(f: impl Future<Output = T>) -> T {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(f)
+}
+
+fn get_url(url: &str) -> Result<Fetched, ErrorCode> {
+    run(fetch(
+        parse_url(url).unwrap(),
+        None,
+        Duration::from_secs(30),
+    ))
+}
+
+#[test]
+fn a_body_with_a_length_and_its_quota() {
+    let addr = http(|_| {
+        response(
+            "200 OK",
+            &[(
+                "Subscription-Userinfo",
+                "upload=1024; download=2048; total=107374182400; expire=1798000000",
+            )],
+            b"trojan://secret@192.0.2.1:443#a\n",
+        )
+    });
+    let fetched = get_url(&format!("http://{addr}/sub?token=x")).unwrap();
+    assert_eq!(fetched.body, b"trojan://secret@192.0.2.1:443#a\n");
+    assert_eq!(
+        fetched.userinfo,
+        Userinfo {
+            used_bytes: Some(3072),
+            total_bytes: Some(107374182400),
+            expires_at_epoch_ms: Some(1798000000000),
+        }
+    );
+}
+
+#[test]
+fn chunked_bodies_and_bodies_that_end_with_the_connection() {
+    let addr = http(|head| match target(head) {
+        "/chunked" => b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n\
+            5;x=1\r\nhello\r\n6\r\n world\r\n0\r\nTrailer: t\r\n\r\n"
+            .to_vec(),
+        _ => b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nuntil the end".to_vec(),
+    });
+    assert_eq!(
+        get_url(&format!("http://{addr}/chunked")).unwrap().body,
+        b"hello world"
+    );
+    let closed = get_url(&format!("http://{addr}/close")).unwrap();
+    assert_eq!(closed.body, b"until the end");
+    assert_eq!(closed.userinfo, Userinfo::default());
+}
+
+#[test]
+fn redirects_are_followed_and_credentials_stay_with_the_origin() {
+    let heads = std::sync::Arc::new(Mutex::new(Vec::new()));
+    let seen = std::sync::Arc::clone(&heads);
+    let other = http(move |head| {
+        seen.lock().unwrap().push(head.to_owned());
+        response("200 OK", &[], b"moved")
+    });
+    let origin = http(move |head| match target(head) {
+        "/sub" => response("302 Found", &[("Location", "/next")], b""),
+        "/next" if head.contains("Authorization: Basic dXNlcjpwQHNz\r\n") => {
+            let location = format!("http://{other}/final");
+            response("307 Temporary Redirect", &[("Location", &location)], b"")
+        }
+        _ => response("401 Unauthorized", &[], b""),
+    });
+    let fetched = get_url(&format!("http://user:p%40ss@{origin}/sub")).unwrap();
+    assert_eq!(fetched.body, b"moved");
+    let heads = heads.lock().unwrap();
+    assert_eq!(heads.len(), 1);
+    assert!(!heads[0].contains("Authorization"), "{}", heads[0]);
+    assert!(heads[0].contains(&format!("User-Agent: {USER_AGENT}\r\n")));
+}
+
+#[test]
+fn failures_are_fetch_failed() {
+    let addr = http(|head| match target(head) {
+        "/loop" => response("302 Found", &[("Location", "/loop")], b""),
+        "/missing" => response("404 Not Found", &[], b""),
+        "/short" => b"HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\nshort".to_vec(),
+        "/large" => b"HTTP/1.1 200 OK\r\nContent-Length: 9000000\r\n\r\n".to_vec(),
+        _ => b"not http\r\n\r\n".to_vec(),
+    });
+    for path in ["/loop", "/missing", "/short", "/large", "/garbage"] {
+        let result = get_url(&format!("http://{addr}{path}"));
+        assert_eq!(result.err(), Some(ErrorCode::FetchFailed), "{path}");
+    }
+    // Nothing listens on port 1.
+    assert_eq!(
+        get_url("http://127.0.0.1:1/").err(),
+        Some(ErrorCode::FetchFailed)
+    );
+}
+
+#[test]
+fn only_web_urls_with_a_host_are_taken() {
+    for url in [
+        "ftp://example.org/s",
+        "not a url",
+        "https://",
+        "file:///etc/hosts",
+    ] {
+        assert_eq!(
+            parse_url(url).err(),
+            Some(ErrorCode::InvalidArgument),
+            "{url}"
+        );
+    }
+    assert!(parse_url(" https://example.org/s?t=1 ").is_ok());
+}
+
+#[test]
+fn redirects_never_downgrade_or_reach_into_private_addresses() {
+    let url = |u: &str| Url::parse(u).unwrap();
+    let refused = |from: &str, to: &str| refused_redirect(&url(from), &url(from), &url(to));
+    let public = "https://example.org/s";
+    assert!(refused(public, "http://example.org/s"));
+    assert!(refused(public, "https://192.168.1.1/s"));
+    assert!(refused(public, "https://[::ffff:127.0.0.1]/s"));
+    assert!(refused(public, "ftp://example.org/s"));
+    assert!(!refused(public, "https://cdn.example.net/s"));
+    assert!(!refused("http://10.0.0.1/s", "http://10.0.0.2/s"));
+    // A subscription on a private address may move within private addresses after any hop.
+    let private = url("http://10.0.0.1/s");
+    assert!(!refused_redirect(
+        &private,
+        &url("https://example.org/s"),
+        &url("https://10.0.0.2/s")
+    ));
+}
+
+#[test]
+fn the_quota_header_reads_like_honk() {
+    assert_eq!(
+        parse_userinfo("upload=5;total=0;expire=0;download=x"),
+        Userinfo {
+            used_bytes: Some(5),
+            total_bytes: None,
+            expires_at_epoch_ms: None,
+        }
+    );
+    assert_eq!(parse_userinfo("nonsense"), Userinfo::default());
+}
+
+/// Needs the internet: TLS with the webpki roots and the fallback resolvers.
+#[test]
+#[ignore = "needs the internet"]
+fn an_https_fetch_reaches_a_public_server() {
+    let fetched = get_url("https://www.gstatic.com/generate_204").unwrap();
+    assert!(fetched.body.is_empty());
+}
+
+#[test]
+fn quotas_a_signed_long_cannot_hold_are_left_out() {
+    let max = i128::from(i64::MAX);
+    let beyond_u64 = parse_userinfo("upload=99999999999999999999; download=5");
+    assert_eq!(beyond_u64.used_bytes.map(i128::from), None);
+    let info = parse_userinfo(
+        "upload=9223372036854775807; download=1; total=18446744073709551615; expire=9223372036854776",
+    );
+    assert_eq!(info.used_bytes.map(i128::from), None);
+    assert_eq!(info.total_bytes.map(i128::from), None);
+    assert_eq!(info.expires_at_epoch_ms.map(i128::from), None);
+    let info = parse_userinfo("upload=9223372036854775806; download=1; total=9223372036854775807");
+    assert_eq!(info.used_bytes.map(i128::from), Some(max));
+    assert_eq!(info.total_bytes.map(i128::from), Some(max));
+}
+
+#[test]
+fn a_redirect_never_downgrades_from_the_hop_it_leaves() {
+    let url = |s: &str| Url::parse(s).unwrap();
+    let origin = url("http://feed.example/s");
+    let upgraded = url("https://cdn.example/s");
+    let back = next_hop(&origin, &upgraded, "http://cdn.example/t");
+    assert_eq!(back.err(), Some(ErrorCode::FetchFailed));
+    assert!(next_hop(&origin, &origin, "https://cdn.example/s").is_ok());
+    assert!(next_hop(&origin, &origin, "http://other.example/s").is_ok());
+    // Credentials in a Location are dropped.
+    let next = next_hop(&origin, &origin, "http://u:p@feed.example/t").unwrap();
+    assert!(next.username().is_empty() && next.password().is_none());
+}
+
+/// A dial that reaches no address is `local_network` when one of the addresses it tried is on the
+/// local network, by address and never by host name; loopback is not.
+#[test]
+fn a_dial_that_reached_nothing_is_local_network_when_it_tried_a_local_address() {
+    let cases: [(&[&str], ErrorCode); 5] = [
+        (&["192.168.8.161:80"], ErrorCode::LocalNetwork),
+        (&["[fd00::2]:443"], ErrorCode::LocalNetwork),
+        (&["203.0.113.7:80", "10.0.0.2:80"], ErrorCode::LocalNetwork),
+        (
+            &["203.0.113.7:80", "[2001:db8::1]:80"],
+            ErrorCode::FetchFailed,
+        ),
+        (&["127.0.0.1:80", "[::1]:80"], ErrorCode::FetchFailed),
+    ];
+    for (addrs, want) in cases {
+        let tried: Vec<SocketAddr> = addrs.iter().map(|a| a.parse().unwrap()).collect();
+        let got = run(Dials::new(refused).first(tried, |_| async { None::<()> }));
+        assert_eq!(got.err(), Some(want), "{addrs:?}");
+    }
+}
+
+/// A connection made after a local address failed means the fetch got through: what fails later is
+/// not the local network's.
+#[test]
+fn a_connection_clears_a_local_address_tried_before_it() {
+    let dials = Dials::new(refused);
+    let addrs = vec![
+        "192.168.8.161:80".parse().unwrap(),
+        "203.0.113.7:80".parse().unwrap(),
+    ];
+    let public = |a: SocketAddr| async move { (!crate::localnet::is_local(a.ip())).then_some(a) };
+    let reached = run(dials.first(addrs, public));
+    assert_eq!(reached, Ok("203.0.113.7:80".parse().unwrap()));
+    assert_eq!(dials.failure(), ErrorCode::FetchFailed);
+}
+
+/// Stands in for a connection that is refused at once.
+fn refused(_: SocketAddr) -> BoxFuture<'static, Option<TcpStream>> {
+    async { None }.boxed()
+}
+
+/// Stands in for a connection that never answers, as one Android 17 blocks.
+fn unanswered(_: SocketAddr) -> BoxFuture<'static, Option<TcpStream>> {
+    futures_util::future::pending().boxed()
+}
+
+/// A fetch from a local address that is refused or never answers is `local_network`, also when
+/// the bound runs out while the dial waits, as a dial Android 17 blocks does; the same from a
+/// public address is `fetch_failed`. No connection is made: each stands in for the network.
+#[test]
+fn a_fetch_from_a_local_address_that_never_connects_is_local_network() {
+    let cases = [
+        ("http://10.255.255.1:9/sub", ErrorCode::LocalNetwork),
+        ("http://[fd00::dead]:9/sub", ErrorCode::LocalNetwork),
+        ("http://203.0.113.7:9/sub", ErrorCode::FetchFailed),
+    ];
+    for (url, want) in cases {
+        for connect in [refused as Connect, unanswered] {
+            let bound = Duration::from_millis(300);
+            let got = run(fetch_by(parse_url(url).unwrap(), None, bound, connect));
+            assert_eq!(got.err(), Some(want), "{url}");
+        }
+    }
+}
+
+#[test]
+fn the_user_agent_reads_as_a_clash_meta_client() {
+    let agent = USER_AGENT.to_ascii_lowercase();
+    assert!(agent.starts_with("doona/"));
+    assert!(agent.contains("clash.meta") && agent.contains("mihomo"));
+}
+
+/// A subscription's own agent goes on the first request and on every hop after it, to another
+/// origin too; without one every request sends the default.
+#[test]
+fn a_subscriptions_agent_is_sent_on_every_hop() {
+    let heads = std::sync::Arc::new(Mutex::new(Vec::new()));
+    let (seen, seen_other) = (std::sync::Arc::clone(&heads), std::sync::Arc::clone(&heads));
+    let other = http(move |head| {
+        seen_other.lock().unwrap().push(head.to_owned());
+        response("200 OK", &[], b"moved")
+    });
+    let origin = http(move |head| {
+        seen.lock().unwrap().push(head.to_owned());
+        match target(head) {
+            "/sub" => response("302 Found", &[("Location", "/next")], b""),
+            _ => {
+                let location = format!("http://{other}/final");
+                response("307 Temporary Redirect", &[("Location", &location)], b"")
+            }
+        }
+    });
+    let url = format!("http://{origin}/sub");
+    for (agent, sent) in [
+        (Some("clash-verge/v2.2.3"), "clash-verge/v2.2.3"),
+        (None, USER_AGENT),
+    ] {
+        heads.lock().unwrap().clear();
+        let bound = Duration::from_secs(30);
+        let fetched = run(fetch(parse_url(&url).unwrap(), agent, bound)).unwrap();
+        assert_eq!(fetched.body, b"moved");
+        let heads = heads.lock().unwrap();
+        assert_eq!(heads.len(), 3, "{heads:?}");
+        for head in heads.iter() {
+            assert_eq!(head.matches("User-Agent:").count(), 1, "{head}");
+            assert!(
+                head.contains(&format!("\r\nUser-Agent: {sent}\r\n")),
+                "{head}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_user_agent_is_printable_ascii_of_1_to_256_bytes_and_not_blank() {
+    let longest = "x".repeat(256);
+    for (text, kept) in [
+        ("a", "a"),
+        ("mihomo/1.19.16", "mihomo/1.19.16"),
+        ("  clash-verge/v2.2.3 ", "clash-verge/v2.2.3"),
+        (
+            "Mozilla/5.0 (X11; Linux) ~!@#$%^&*()_+{}|:<>?",
+            "Mozilla/5.0 (X11; Linux) ~!@#$%^&*()_+{}|:<>?",
+        ),
+        (longest.as_str(), longest.as_str()),
+    ] {
+        assert_eq!(user_agent(text).as_deref(), Ok(kept), "{text}");
+    }
+    let too_long = "x".repeat(257);
+    let refused = [
+        "",
+        " ",
+        "   ",
+        too_long.as_str(),
+        "doona\r\nX-Injected: 1",
+        "doona\r\n\r\nGET /other HTTP/1.1",
+        "doona\nX-Injected: 1",
+        "doona\rX-Injected: 1",
+        "doona\0",
+        "doona\t1",
+        "doona\x7f",
+        "doona\x1b[0m",
+        "caf\u{e9}",
+        "\u{30c9}\u{30a5}\u{30fc}\u{30ca}",
+        "\u{ff2d}ihomo",
+    ];
+    for text in refused {
+        assert_eq!(
+            user_agent(text),
+            Err(ErrorCode::InvalidArgument),
+            "{text:?}"
+        );
+    }
+}
+
+/// The head is built only with an agent `user_agent` takes; anything else, which no command or
+/// `state.json` lets through, sends the default and adds no header.
+#[test]
+fn an_agent_with_a_line_break_never_reaches_the_request_head() {
+    let url = Url::parse("http://feed.example/sub").unwrap();
+    for agent in ["doona\r\nX-Injected: 1", "", "caf\u{e9}"] {
+        let head = String::from_utf8(request(&url, None, Some(agent))).unwrap();
+        assert!(
+            head.contains(&format!("\r\nUser-Agent: {USER_AGENT}\r\n")),
+            "{head}"
+        );
+        assert!(
+            !head.contains("X-Injected") && !head.contains("caf"),
+            "{head}"
+        );
+    }
+    let head = String::from_utf8(request(&url, None, Some("mihomo/1.19.16"))).unwrap();
+    assert!(
+        head.contains("\r\nUser-Agent: mihomo/1.19.16\r\n"),
+        "{head}"
+    );
+}

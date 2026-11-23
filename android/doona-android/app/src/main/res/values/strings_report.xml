@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The diagnostic report (report/): the share sheet's title, which the system draws. -->
+<resources>
+    <string name="report_share_title">Share diagnostic report</string>
+</resources>

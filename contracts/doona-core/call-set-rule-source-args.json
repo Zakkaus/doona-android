@@ -1,0 +1,7 @@
+{
+  "kind": "template",
+  "template": "cn-direct",
+  "options": {
+    "blockQuic": true
+  }
+}

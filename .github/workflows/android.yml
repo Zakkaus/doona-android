@@ -106,3 +106,96 @@ jobs:
           kt=android/tunbench/app/src/main/kotlin/dev/tunbench
           diff <(for c in HonkEngine Bench; do grep -oP '\bexternal fun \K\w+' "$kt/$c.kt" | sed "s/^/Java_dev_tunbench_${c}_/"; done | sort) \
             <("$readelf" --dyn-syms -W "$RUNNER_TEMP/apk/lib/arm64-v8a/libhonkengine.so" | awk '$7 != "UND" && $8 ~ /^Java_dev_tunbench_/ { print $8 }' | sort)
+
+  doona-core:
+    name: doona-android core
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read Rust toolchain
+        id: toolchain
+        run: echo "stable=$(grep -oP '^channel\s*=\s*\"\K[^\"]+' crates/doona-core/rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: ${{ steps.toolchain.outputs.stable }}
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: crates/doona-core
+          key: doona-core-host
+          cache-on-failure: true
+          save-if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      - name: doona-core fmt, clippy and tests
+        working-directory: crates/doona-core
+        run: |
+          set -euo pipefail
+          cargo fmt --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked
+
+  doona-kotlin:
+    name: doona-android Kotlin
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install the API 37.1 platform
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.1"'
+      - name: Check the layers and the design tokens
+        working-directory: android/doona-android
+        run: |
+          set -euo pipefail
+          tools/check-tokens.sh
+          tools/check-layers.sh
+      - name: Check Kotlin format, lint, run the JVM tests and the screenshots
+        working-directory: android/doona-android
+        # The JVM checks need no native library; the release job builds and checks it.
+        run: ./gradlew -Pdoona.skipCore=true spotlessCheck :app:lintDebug :icons:lintDebug :flags:lintDebug :app:testDebugUnitTest :flags:testDebugUnitTest :app:verifyRoborazziDebug
+
+  doona-release:
+    name: doona-android release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Read Rust toolchain
+        id: toolchain
+        run: echo "stable=$(grep -oP '^channel\s*=\s*\"\K[^\"]+' crates/doona-core/rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: ${{ steps.toolchain.outputs.stable }}
+          targets: aarch64-linux-android
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: crates/doona-core
+          key: doona-core-android
+          cache-on-failure: true
+          save-if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      - name: Install the NDK, the API 37.1 platform and cargo-ndk
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16248370" "platforms;android-37.1"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/30.0.16248370" >> "$GITHUB_ENV"
+          cargo install --locked cargo-ndk@4.1.2
+      - name: Build the release APK with the core and check its 16 KiB page alignment
+        working-directory: android/doona-android
+        run: |
+          set -euo pipefail
+          ./gradlew assembleRelease ${{ github.event_name == 'pull_request' && '-Pdoona.coreProfile=ci-release' || '' }}
+          apk=app/build/outputs/apk/release/app-release.apk
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/zipalign" -c -P 16 4 "$apk"

@@ -1,0 +1,246 @@
+package dev.doona.android.engine.fake
+
+import dev.doona.android.engine.Catalog
+import dev.doona.android.engine.CoreDiagnostics
+import dev.doona.android.engine.CrashFile
+import dev.doona.android.engine.EffectiveConfig
+import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.LogLevel
+import dev.doona.android.engine.Member
+import dev.doona.android.engine.Mode
+import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.Settings
+import dev.doona.android.engine.Status
+import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.Traffic
+import dev.doona.android.engine.Usage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlin.math.sin
+
+/**
+ * Deterministic in-memory [Engine] for previews and screenshot tests; it never touches the network or a tunnel. Its
+ * groups are the template's and its rules, effective config and usage [FakeRuleMode]'s, so every group a rule sends to
+ * exists. The goldens pass [SAMPLE_GROUPS], which they were drawn with.
+ */
+class FakeEngine(
+    groups: List<Group> = TEMPLATE_GROUPS,
+    subscriptions: List<Subscription> = SAMPLE_SUBSCRIPTIONS,
+    status: Status = Status.Stopped,
+    traffic: Traffic = Traffic(),
+    mode: Mode = Mode.Global,
+) : Engine {
+    override val ready = MutableStateFlow(true)
+    override val status = MutableStateFlow(status)
+    override val traffic = MutableStateFlow(traffic)
+    override val groups = MutableStateFlow(groups)
+    override val subscriptions = MutableStateFlow(subscriptions)
+    override val settings: StateFlow<Settings> get() = settingsFlow
+    private val settingsFlow = MutableStateFlow(Settings(mode = mode))
+    private val ruleSource = MutableStateFlow(FakeRuleMode.SOURCE)
+
+    /** The number in the next subscription id: as in the core, an id is never given twice, also after a removal. */
+    private var nextSubscription = (subscriptions.maxOfOrNull(::subscriptionNumber) ?: 0) + 1
+
+    /**
+     * Follows the flows above as each changes, also when a test sets one directly: Unconfined collects in the writer's
+     * thread before the write returns.
+     */
+    override val catalog: StateFlow<Catalog?> =
+        combine(this.groups, this.subscriptions, settingsFlow, ruleSource) { all, subscribed, settings, source ->
+            Catalog(settings.mode, all, subscribed, FakeRuleMode.MAIN_GROUP_ID, source)
+        }.stateIn(CoroutineScope(Dispatchers.Unconfined), SharingStarted.Eagerly, null)
+
+    /** True: the fake's policy is there from the start; a test sets false to stand for a stored policy still being read. */
+    override val perAppLoaded = MutableStateFlow(true)
+
+    /** None: the fake's tunnel never dials. A test sets one to stand for the core's report. */
+    override val warning = MutableStateFlow<ErrorCode?>(null)
+
+    override fun connect() {
+        status.value = Status.Running(sinceEpochMs = 0)
+    }
+
+    override fun disconnect() {
+        status.value = Status.Stopped
+    }
+
+    override suspend fun select(groupId: String, memberId: String?): Result<Unit> {
+        groups.update { all ->
+            all.map { g ->
+                if (g.id != groupId) g else g.copy(selectedId = memberId ?: g.members.firstOrNull()?.id, pinned = memberId != null)
+            }
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun testLatency(groupId: String?): Result<Unit> = Result.success(Unit)
+
+    override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
+        val agent = userAgentOf(userAgent).getOrElse { return Result.failure(it) }
+        val added = Subscription(id = takeSubscriptionId(), name = name ?: url, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = agent)
+        subscriptions.update { it + added }
+        return Result.success(added)
+    }
+
+    /** Above every id given before and every id in [subscriptions], which a test may set directly. */
+    @Synchronized
+    private fun takeSubscriptionId(): String {
+        val n = maxOf(nextSubscription, (subscriptions.value.maxOfOrNull(::subscriptionNumber) ?: 0) + 1)
+        nextSubscription = n + 1
+        return "s$n"
+    }
+
+    override suspend fun updateSubscription(id: String): Result<Subscription> =
+        Result.success(subscriptions.value.first { it.id == id })
+
+    override suspend fun removeSubscription(id: String): Result<Unit> {
+        subscriptions.update { all -> all.filterNot { it.id == id } }
+        return Result.success(Unit)
+    }
+
+    override suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription> {
+        val agent = userAgentOf(userAgent).getOrElse { return Result.failure(it) }
+        val changed = subscriptions.value.firstOrNull { it.id == id }?.copy(userAgent = agent)
+            ?: return Result.failure(EngineException(ErrorCode.NotFound))
+        subscriptions.update { all -> all.map { if (it.id == id) changed else it } }
+        return Result.success(changed)
+    }
+
+    override suspend fun setMode(mode: Mode): Result<Unit> {
+        settingsFlow.update { it.copy(mode = mode) }
+        return Result.success(Unit)
+    }
+
+    /** Pages [FakeRuleMode.ROWS] as the core pages its rows, and refuses the limits the core refuses. */
+    override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
+        if (offset < 0 || limit !in 1..MAX_RULES_PAGE) return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val rows = FakeRuleMode.ROWS
+        return Result.success(RulePage(FakeRuleMode.SOURCE.rulesRevision, rows.size, rows.drop(offset).take(limit)))
+    }
+
+    /** Only the template's options change: they change no row. */
+    override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> {
+        if (template != FakeRuleMode.TEMPLATE) return Result.failure(EngineException(ErrorCode.NotFound))
+        ruleSource.update { it.copy(options = options) }
+        return Result.success(Unit)
+    }
+
+    override suspend fun effectiveConfig(): Result<EffectiveConfig> =
+        Result.success(FakeRuleMode.effectiveConfig(settingsFlow.value.mode, groups.value, ruleSource.value))
+
+    override suspend fun usage(): Result<Usage> = Result.success(FakeRuleMode.USAGE)
+
+    override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
+        settingsFlow.update { it.copy(perApp = perApp) }
+        return Result.success(Unit)
+    }
+
+    /** The ring's level, Info as after the core's `init`. */
+    var logLevel = LogLevel.Info
+
+    /** None: the fake never crashes. A test sets some to stand for the core's crash files. */
+    var crashes = emptyList<CrashFile>()
+
+    /** The highest number a crash file's name held, as the core's mark. */
+    private var crashMark = 0L
+
+    override suspend fun diagnostics(level: LogLevel?): Result<CoreDiagnostics> {
+        crashMark = maxOf(crashMark, crashes.maxOfOrNull { it.name.removeSuffix(".txt").toLongOrNull() ?: 0L } ?: 0L)
+        val files = crashes.joinToString(",") { """{"name":"${it.name}","bytes":${it.bytes}}""" }
+        val json = """{"level":"${logLevel.name.lowercase()}","crashes":[$files],"crashMark":$crashMark}"""
+        return Result.success(CoreDiagnostics(logLevel, crashes, crashMark, json))
+    }
+
+    override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
+        logLevel = level
+        return Result.success(Unit)
+    }
+
+    override suspend fun clearCrashes(names: List<String>, mark: Long): Result<Unit> {
+        crashes = crashes.filterNot { it.name in names && (it.name.removeSuffix(".txt").toLongOrNull() ?: Long.MAX_VALUE) <= mark }
+        return Result.success(Unit)
+    }
+
+    companion object {
+        private const val MAX_RULES_PAGE = 500
+
+        private fun node(id: String, name: String, latencyMs: Int?) =
+            Member(id = id, name = name, latencyMs = latencyMs, subscriptionId = "s1")
+
+        /** Ids of the core's shape, `n-` and 16 hex digits, so effectiveConfig's codes are too; in the order of their names. */
+        private val NODES = listOf(
+            node("n-369a8a63c1d2e3f4", "hk-01", 42),
+            node("n-4b1e07d9a2c3b4d5", "hk-02", 57),
+            node("n-85d011c7e5f60718", "jp-01", 88),
+            node("n-c2f5a8e1b3c4d5e6", "us-01", 171),
+        )
+
+        /** The group template before rule mode: Proxy, Auto and one region. The goldens were drawn with it. */
+        val SAMPLE_GROUPS = listOf(
+            Group(
+                id = "g-Proxy",
+                name = "Proxy",
+                kind = GroupKind.Selector,
+                members = listOf(Member(id = "g-Auto", name = "Auto", isGroup = true), Member(id = "g-HK", name = "HK", isGroup = true)) + NODES,
+                selectedId = "g-Auto",
+            ),
+            Group(id = "g-Auto", name = "Auto", kind = GroupKind.UrlTest, members = NODES, selectedId = NODES[0].id),
+            Group(id = "g-HK", name = "HK", kind = GroupKind.UrlTest, members = NODES.take(2), selectedId = NODES[0].id),
+        )
+
+        /** The template as the core builds it: [SAMPLE_GROUPS] with the 串流 and AI selectors, which follow Proxy until the user picks. */
+        val TEMPLATE_GROUPS: List<Group> = run {
+            val proxy = SAMPLE_GROUPS.first()
+            val follower = Member(id = proxy.id, name = proxy.name, isGroup = true)
+            fun selector(name: String) = Group("g-$name", name, GroupKind.Selector, listOf(follower) + proxy.members, selectedId = proxy.id)
+            SAMPLE_GROUPS.take(2) + selector("Streaming") + selector("AI") + SAMPLE_GROUPS.drop(2)
+        }
+
+        /** A minute of download near 3.9 MB/s and upload near 330 KB/s: two slow waves around each level. */
+        val SAMPLE_TRAFFIC: Traffic = run {
+            fun series(level: Double, swing: Double, seed: Int) = List(60) { i ->
+                val t = (i + seed).toDouble()
+                (level + swing * (0.6 * sin(t / 9.0) + 0.4 * sin(t / 3.4 + seed))).toLong()
+            }
+            val down = series(3_900_000.0, 500_000.0, 1)
+            val up = series(330_000.0, 60_000.0, 5)
+            Traffic(upRate = 330_000, downRate = 3_900_000, upTotal = up.sum(), downTotal = down.sum(), upHistory = up, downHistory = down)
+        }
+
+        val SAMPLE_SUBSCRIPTIONS = listOf(
+            Subscription(id = "s1", name = "harbor", url = "https://example.invalid/sub", nodes = 4, updatedAtEpochMs = 0),
+        )
+    }
+}
+
+private const val MAX_USER_AGENT = 256
+
+/**
+ * The core's rule for a subscription's User-Agent (`fetch::user_agent`): null is the default; a value must be 1 to 256
+ * bytes of printable ASCII and not blank, and is kept trimmed. Printable ASCII has one byte per char, so the length in
+ * chars is the length in bytes for every value that passes.
+ */
+private fun userAgentOf(text: String?): Result<String?> = when {
+    text == null -> Result.success(null)
+
+    text.length !in 1..MAX_USER_AGENT || text.any { it !in ' '..'~' } || text.isBlank() ->
+        Result.failure(EngineException(ErrorCode.InvalidArgument))
+
+    else -> Result.success(text.trim())
+}
+
+/** The number of an id `s<n>`, or 0 for an id of another shape. */
+private fun subscriptionNumber(subscription: Subscription): Int = subscription.id.removePrefix("s").toIntOrNull() ?: 0

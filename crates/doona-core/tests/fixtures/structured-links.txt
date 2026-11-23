@@ -1,0 +1,12 @@
+# The share links of the nodes in clash.yaml, singbox.json and sip008.json, one per node.
+ss://YWVzLTI1Ni1nY206cGFzcw@192.0.2.11:8388#ss-01
+vmess://eyJ2IjoiMiIsInBzIjoidm1lc3MtMDEiLCJhZGQiOiJ2bWVzcy5leGFtcGxlLm5ldCIsInBvcnQiOiI0NDMiLCJpZCI6IjMyMGNiY2Q0LWU4NWMtNDAyZi1hZTY5LTZiNGI2ZDU3OTRiYiIsImFpZCI6IjAiLCJzY3kiOiJhdXRvIiwibmV0Ijoid3MiLCJ0eXBlIjoibm9uZSIsImhvc3QiOiJ2bWVzcy5leGFtcGxlLm5ldCIsInBhdGgiOiIvd3MiLCJ0bHMiOiJ0bHMiLCJzbmkiOiJ2bWVzcy5leGFtcGxlLm5ldCJ9
+vless://ef0c8917-ad5e-4c82-8e5b-5c07d818d829@vless.example.net:443?security=tls&sni=vless.example.net&type=tcp&packetEncoding=xudp#vless-01
+vless://ef0c8917-ad5e-4c82-8e5b-5c07d818d829@192.0.2.14:443?flow=xtls-rprx-vision&security=reality&sni=www.example.net&fp=chrome&pbk=d-Z80R7ouznLhLvLJAs5iS2sEeiGJ_KHIQQkiicVTnA&sid=6ba85179&type=tcp&packetEncoding=xudp#reality-01
+trojan://secret@trojan.example.net:443?sni=trojan.example.net#trojan-01
+hysteria2://secret@hy2.example.net:443?sni=hy2.example.net&obfs=salamander&obfs-password=obfs-secret#hy2-01
+tuic://b38ad070-88e0-4bcc-9808-924f3c0e1bd5:secret@tuic.example.net:443?alpn=h3&congestion_control=bbr&sni=tuic.example.net#tuic-01
+anytls://secret@anytls.example.net:443?sni=anytls.example.net#anytls-01
+socks5://user:pass@192.0.2.19:1080#socks-01
+juicity://354987ca-285a-4dfc-aac3-05cd46717ea9:secret@juicity.example.net:443?sni=juicity.example.net#juicity-01
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@192.0.2.12:8389#ss-02

@@ -1,0 +1,90 @@
+[package]
+name = "doona-core"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+publish = false
+description = "doona-Android's Rust core: the tun data path, state and the JNI surface of dev.doona.android.vpn.NativeCore"
+
+[lib]
+# Loaded by dev.doona.android.vpn.NativeCore as libdoonacore.so.
+name = "doonacore"
+# rlib: for the host tests, which drive the plain Rust API without a JVM.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Full SHAs: daeuniverse/honk main for config and outbounds, Glassyiris/honk for the netstack
+# (daeuniverse/honk#483), as in crates/honk-android. honk-outbound's flow observation, as
+# honk-core's native API enables it, reports which node address each dial tried (ARCH D26).
+honk-config = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2" }
+honk-outbound = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2", features = ["rprx", "flow-observation"] }
+honk-netstack = { git = "https://github.com/Glassyiris/honk", rev = "92211429afea6abb6ee834350d6ff9a5d8d331d2" }
+jni = { version = "=0.22.4", default-features = false }
+libc = "0.2"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+bytes = "1"
+futures-util = "0.3"
+serde_json = "1"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+# The subscription download and parser. Every one of these is already in the graph through
+# honk-config and honk-outbound, so the library links no new TLS stack: BoringSSL with the
+# webpki roots, as honk-outbound's own TLS. serde_yaml reads Clash documents, as honk-config's
+# own YAML.
+anyhow = "1"
+base64 = "0.23"
+boring = "5"
+httparse = "1"
+percent-encoding = "2"
+serde_yaml = "0.9"
+tokio-boring = "5"
+# serde_yaml's libyaml: its scanner measures a document's flow nesting before serde_yaml reads it.
+unsafe-libyaml = "0.2.11"
+url = "2"
+uuid = { version = "1", features = ["v5"] }
+webpki-root-certs = "1"
+# Rule mode's DOMAIN-KEYWORD: one automaton over every keyword of a source. Already in the graph
+# through regex.
+aho-corasick = "1"
+# Rule mode's names of DNS answers, least recently used first out. Already in the graph through
+# honk-outbound.
+lru = "0.19"
+# Match excluded symlink names with the same glob syntax as honk's include loader.
+glob = "0.3"
+
+[features]
+# Debug builds of the app only (its Gradle build turns this on for the debug variant):
+# `call("debugFault")` ends the running data path as a crash would (`src/api/fault.rs`).
+fault-hook = []
+
+[dev-dependencies]
+# Paused time for the TCP drain tests: a 30 s deadline without waiting 30 s.
+tokio = { version = "1", features = ["test-util"] }
+# The loopback TUIC server of the carrier tests: honk's Quinn (patched below) with its default
+# rustls on ring, both already in the graph.
+quinn = "0.11"
+
+[target.'cfg(target_os = "android")'.dependencies]
+# Routes `log` records to logcat.
+android_logger = { version = "0.15", default-features = false }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+# Every JNI entry point catches panics; abort would turn a caught panic into a process kill.
+panic = "unwind"
+
+[profile.ci-release]
+inherits = "release"
+lto = "thin"
+codegen-units = 16
+
+# honk's own workspace overrides (its root Cargo.toml at the pinned revision): the REALITY hooks of
+# its boring-sys fork and its Quinn fork. Git dependencies do not carry them, so they are repeated.
+[patch.crates-io]
+boring-sys = { git = "https://github.com/Glassyiris/boring-sys", rev = "3beb573b65ecaa69b7eefe3c2fecd074b97facd2" }
+quinn = { git = "https://github.com/Glassyiris/quinn", rev = "11f1de84c28305a3c98ace6d681c35219a8d1e6c" }
+quinn-proto = { git = "https://github.com/Glassyiris/quinn", rev = "11f1de84c28305a3c98ace6d681c35219a8d1e6c" }

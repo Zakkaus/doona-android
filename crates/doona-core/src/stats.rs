@@ -1,0 +1,484 @@
+//! What the screens chart, kept whether or not a screen is open: the rate of the last hour, each
+//! session's fastest second, the day's usage and each node's last latency tests. A generation's
+//! watch task folds its session's counters in once a second ([`Stats::sample`]), and `stop` folds
+//! the last bytes in once the generation has ended. Every store is bounded and takes the time from
+//! a [`Clock`], so tests set the time.
+
+pub(crate) mod day;
+mod file;
+pub(crate) mod latency;
+pub(crate) mod meter;
+pub(crate) mod ring;
+
+use crate::api::lock;
+use crate::diag::Diag;
+use crate::dto;
+use crate::sys;
+use crate::tunnel::Session;
+use day::{Day, Moved, Usage};
+use file::{LatencyFile, STATS_VERSION, StatsFile, UsageFile};
+use latency::Latency;
+use ring::{Ring, Series};
+use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tokio::runtime::Handle;
+
+/// Changed usage is written at most this often while a generation runs, besides when the local
+/// day changes and when the generation ends.
+const WRITE_EVERY_S: u64 = 60;
+/// Retries of a failed write, a minute apart at most: about a quarter hour, so a stop on a full
+/// disk keeps its last bytes once space comes free soon after; later, the next request writes.
+const RETRIES: u32 = 20;
+
+/// Folds in a row that must find the wall clock more than a day ahead of the time the boot clock
+/// carries on from the last wall time believed, before its date is believed: five minutes of a
+/// running tunnel. A clock gone wrong through the network or the RTC is set right at the next
+/// network time fix, which Android retries a minute apart; one the user moved stays, and only
+/// its first five minutes count on the day before.
+const JUMP_FOLDS: u32 = 300;
+
+/// One moment on the clocks the stores use.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Clock {
+    /// `CLOCK_BOOTTIME`: keys the rate ring.
+    pub boot_ms: u64,
+    /// `CLOCK_MONOTONIC`: what the boot clock counted beyond it, the phone slept.
+    pub mono_ms: u64,
+    pub wall_ms: i64,
+    /// The local zone's offset from UTC at `wall_ms`, in seconds.
+    pub offset_s: i32,
+}
+
+impl Clock {
+    pub fn now() -> Clock {
+        let wall_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX));
+        Clock {
+            boot_ms: sys::boot_ms(),
+            mono_ms: sys::mono_ms(),
+            wall_ms,
+            offset_s: sys::utc_offset(wall_ms.div_euclid(1000)),
+        }
+    }
+
+    pub fn boot_s(&self) -> u64 {
+        self.boot_ms / 1000
+    }
+}
+
+/// A fold the boot clock finds this much longer than the monotonic clock does spans a sleep.
+pub(crate) const SLEPT_MS: u64 = 1000;
+
+/// What a session moved since its last fold, and the boot seconds the fold covers.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Fold {
+    /// The second of the previous fold, or of the session's start.
+    pub from_s: u64,
+    pub to_s: u64,
+    /// The boot and the monotonic time at the fold.
+    pub boot_ms: u64,
+    pub mono_ms: u64,
+    /// The phone slept since the fold before.
+    pub slept: bool,
+    pub up: u64,
+    pub down: u64,
+    /// Flows the apps opened.
+    pub flows: u64,
+}
+
+pub(crate) struct Stats {
+    inner: Mutex<Inner>,
+    usage_file: StatsFile,
+    latency_file: StatsFile,
+    /// Runs the writes, off the caller's thread.
+    runtime: Handle,
+}
+
+impl std::fmt::Debug for Stats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Stats").finish_non_exhaustive()
+    }
+}
+
+struct Inner {
+    ring: Ring,
+    usage: Usage,
+    /// The local day the last fold counted on.
+    day: Option<i64>,
+    /// The boot and the wall time of the last fold whose clock was believed, and the folds in a
+    /// row since that found the wall clock too far ahead.
+    believed: Option<(u64, i64)>,
+    ahead: u32,
+    usage_writes: Pending,
+    latency: Latency,
+    latency_writes: Pending,
+    /// The latency change that last forgot a node's tests.
+    latency_forgot: u64,
+}
+
+/// The writes a fold asks for.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Writes {
+    pub usage: bool,
+    pub latency: bool,
+}
+
+/// What one file has not written yet. A write that fails leaves it so, to be asked again.
+#[derive(Debug, Default)]
+struct Pending {
+    /// Changes so far; the last write asked for held up to `asked`, the last good one `saved`.
+    changes: u64,
+    asked: u64,
+    saved: u64,
+    /// The boot second the last write was asked for.
+    asked_s: Option<u64>,
+    /// A failed write is being tried again.
+    retrying: bool,
+}
+
+impl Pending {
+    /// Asks for a write at boot second `now_s` when something is not written yet, and `at_once`
+    /// or a minute passed since the last one was asked for.
+    fn due(&mut self, now_s: u64, at_once: bool) -> bool {
+        let stale = self.asked_s.is_none_or(|a| now_s >= a + WRITE_EVERY_S);
+        let due = self.changes > self.saved && (at_once || stale);
+        if due {
+            self.asked = self.changes;
+            self.asked_s = Some(now_s);
+        }
+        due
+    }
+
+    /// A write holds the last request.
+    fn written(&self) -> bool {
+        self.saved >= self.asked
+    }
+
+    /// After a failed write: whether a retry should start, as the last request is not written
+    /// and none runs.
+    fn start_retry(&mut self) -> bool {
+        let start = !self.written() && !self.retrying;
+        self.retrying |= start;
+        start
+    }
+}
+
+impl Stats {
+    /// The stats saved in `dir`, written on `runtime`'s blocking threads, without diagnostics.
+    #[cfg(test)]
+    pub fn new(dir: &Path, runtime: Handle) -> Stats {
+        Stats::with_diag(dir, runtime, &Arc::default())
+    }
+
+    /// The stats saved in `dir`, written on `runtime`'s blocking threads; a file that cannot be
+    /// read or written is recorded in `diag`.
+    pub fn with_diag(dir: &Path, runtime: Handle, diag: &Arc<Diag>) -> Stats {
+        let usage_file = StatsFile::new(dir, file::USAGE, Arc::clone(diag));
+        let latency_file = StatsFile::new(dir, file::LATENCY, Arc::clone(diag));
+        let inner = Inner {
+            ring: Ring::new(),
+            usage: usage_file.load::<UsageFile>().usage.sane(),
+            day: None,
+            believed: None,
+            ahead: 0,
+            usage_writes: Pending::default(),
+            latency: Latency::from_saved(latency_file.load::<LatencyFile>().latency),
+            latency_writes: Pending::default(),
+            latency_forgot: 0,
+        };
+        Stats {
+            inner: Mutex::new(inner),
+            usage_file,
+            latency_file,
+            runtime,
+        }
+    }
+
+    /// Folds what `session` moved since its last fold into the stores, and its fastest second
+    /// into its peaks; writes the usage once a minute while it changes, and when the day changes.
+    pub fn sample(self: &Arc<Self>, session: &Session, clock: &Clock) {
+        self.save(self.fold(session, clock, false));
+    }
+
+    /// The generation of `session` ended: folds its last bytes, and writes what changed.
+    pub fn finish(self: &Arc<Self>, session: &Session, clock: &Clock) {
+        self.save(self.fold(session, clock, true));
+    }
+
+    /// Folds, and answers which writes are due: the usage's once a minute while it changes, at
+    /// once when the day changed or with `now`.
+    fn fold(&self, session: &Session, clock: &Clock, now: bool) -> Writes {
+        let mut inner = lock(&self.inner);
+        let clock = &inner.believe(clock);
+        let day = day::local(clock).0;
+        let turned = inner.day.replace(day).is_some_and(|d| d != day);
+        let fold = session.fold(clock);
+        let (up, down) = (inner.ring).add(fold.from_s, fold.to_s, fold.slept, fold.up, fold.down);
+        session.note_peak(up, down);
+        let taken = session.meters().take();
+        let moved = Moved {
+            up: fold.up,
+            down: fold.down,
+            flows: fold.flows,
+            outbounds: taken.outbounds,
+            rules: taken.rules,
+        };
+        inner.usage.add(clock, &moved);
+        let changed = turned || moved != Moved::default();
+        inner.usage_writes.changes += u64::from(changed);
+        let now_s = clock.boot_s();
+        Writes {
+            usage: inner.usage_writes.due(now_s, now || turned),
+            latency: false,
+        }
+    }
+
+    /// Runs `writes` on blocking threads. A file's writes run one at a time, each with the data
+    /// as it is when its turn comes, so the last one written is the newest.
+    fn save(self: &Arc<Self>, writes: Writes) {
+        if writes.usage {
+            self.save_file(Self::write_usage, |inner| &mut inner.usage_writes);
+        }
+        if writes.latency {
+            self.save_file(Self::write_latency, |inner| &mut inner.latency_writes);
+        }
+    }
+
+    /// Runs `write` on a blocking thread. When it fails and the file's last request is not
+    /// written, a retry starts unless one runs.
+    fn save_file(
+        self: &Arc<Self>,
+        write: fn(&Self) -> bool,
+        pending: fn(&mut Inner) -> &mut Pending,
+    ) {
+        let stats = Arc::clone(self);
+        self.runtime.spawn_blocking(move || {
+            if write(&stats) || !pending(&mut lock(&stats.inner)).start_retry() {
+                return;
+            }
+            let runtime = stats.runtime.clone();
+            runtime.spawn(stats.retry(write, pending));
+        });
+    }
+
+    /// Tries a failed write again after 1 s, then twice as long each time up to a minute, at most
+    /// [`RETRIES`] times, whether or not a generation runs, until a write of the file holds the
+    /// last request. It goes with the runtime when the core is dropped.
+    async fn retry(
+        self: Arc<Self>,
+        write: fn(&Self) -> bool,
+        pending: fn(&mut Inner) -> &mut Pending,
+    ) {
+        let mut delay = 1;
+        for _ in 0..RETRIES {
+            tokio::time::sleep(Duration::from_secs(delay)).await;
+            delay = (delay * 2).min(60);
+            if pending(&mut lock(&self.inner)).written() {
+                break;
+            }
+            let stats = Arc::clone(&self);
+            let written = tokio::task::spawn_blocking(move || write(&stats)).await;
+            if written.unwrap_or(true) {
+                break;
+            }
+        }
+        pending(&mut lock(&self.inner)).retrying = false;
+    }
+
+    /// Copies the usage under the lock, and encodes and writes the copy without it.
+    fn write_usage(&self) -> bool {
+        let mut changes = 0;
+        let written = self.usage_file.save(|| {
+            let inner = lock(&self.inner);
+            changes = inner.usage_writes.changes;
+            UsageFile {
+                stats_version: STATS_VERSION,
+                usage: inner.usage.clone(),
+            }
+        });
+        if written {
+            let saved = &mut lock(&self.inner).usage_writes.saved;
+            *saved = changes.max(*saved);
+        }
+        written
+    }
+
+    /// As [`Stats::write_usage`], for the latency tests.
+    fn write_latency(&self) -> bool {
+        let mut changes = 0;
+        let written = self.latency_file.save(|| {
+            let inner = lock(&self.inner);
+            changes = inner.latency_writes.changes;
+            LatencyFile {
+                stats_version: STATS_VERSION,
+                latency: inner.latency.all().clone(),
+            }
+        });
+        if written {
+            let saved = &mut lock(&self.inner).latency_writes.saved;
+            *saved = changes.max(*saved);
+        }
+        written
+    }
+
+    /// Records a latency test of node `id` in the round begun at `at_ms`: `ms`, or none when the
+    /// probe failed. The caller holds the catalog lock, as every caller that nests the two does.
+    pub fn record_latency(&self, id: &str, at_ms: i64, ms: Option<u32>) {
+        let mut inner = lock(&self.inner);
+        inner.latency.record(id, at_ms, ms);
+        inner.latency_writes.changes += 1;
+    }
+
+    /// A latency round ended: writes the tests if they changed.
+    pub fn end_round(self: &Arc<Self>) {
+        let latency = lock(&self.inner)
+            .latency_writes
+            .due(Clock::now().boot_s(), true);
+        self.save(Writes {
+            usage: false,
+            latency,
+        });
+    }
+
+    /// Forgets the tests of the nodes `keep` does not keep, as a catalog without them is
+    /// committed or loaded, and writes that at once, so a node that comes back starts with none.
+    /// The caller holds the catalog lock, as every caller that nests the two does.
+    pub fn keep_nodes(self: &Arc<Self>, keep: impl Fn(&str) -> bool) {
+        let latency = {
+            let mut inner = lock(&self.inner);
+            if inner.latency.retain(keep) {
+                inner.latency_writes.changes += 1;
+                inner.latency_forgot = inner.latency_writes.changes;
+                inner.latency_writes.due(Clock::now().boot_s(), true)
+            } else {
+                false
+            }
+        };
+        self.save(Writes {
+            usage: false,
+            latency,
+        });
+    }
+
+    /// Writes the latency tests here and now when a node's were forgotten and that is not on
+    /// disk yet, so that after a commit that brings the node back, a crash cannot read back the
+    /// tests it had before it left. Answers whether the disk has the forgetting.
+    pub fn forgetting_written(&self) -> bool {
+        let written = |inner: &Inner| inner.latency_writes.saved >= inner.latency_forgot;
+        if written(&lock(&self.inner)) {
+            return true;
+        }
+        self.write_latency();
+        written(&lock(&self.inner))
+    }
+
+    /// The tests of each node of `ids`, oldest first.
+    pub fn latency<'a>(&self, ids: impl Iterator<Item = &'a str>) -> Vec<Vec<dto::LatencyTest>> {
+        let inner = lock(&self.inner);
+        ids.map(|id| {
+            (inner.latency.get(id).into_iter().flatten())
+                .map(|t| dto::LatencyTest {
+                    at_epoch_ms: t.0,
+                    ms: t.1,
+                })
+                .collect()
+        })
+        .collect()
+    }
+
+    /// Today's bytes each way and yesterday's by the same local time, for `snapshot`.
+    pub fn today(&self, clock: &Clock) -> dto::Today {
+        let (up_total, down_total, yesterday_by_now) = lock(&self.inner).usage.today(clock);
+        dto::Today {
+            up_total,
+            down_total,
+            yesterday_by_now,
+        }
+    }
+
+    /// `usage`'s reply: today and yesterday by the hour, and the totals of the days before.
+    pub fn usage(&self, clock: &Clock) -> dto::Usage {
+        let now = day::local(clock).0;
+        let inner = lock(&self.inner);
+        let view = inner.usage.view(now);
+        let empty = Day::new(now);
+        dto::Usage {
+            today: day_usage(view.today.unwrap_or(&empty)),
+            yesterday: view.yesterday.map(day_usage),
+            days: (view.days.iter())
+                .map(|t| dto::DayTotal {
+                    date: day::date(t.day),
+                    up: t.up,
+                    down: t.down,
+                })
+                .collect(),
+        }
+    }
+
+    /// The rate over the `seconds` that end at the latest folded second while `running` (it is at
+    /// most a second old), or at `clock`'s second, and the wall time at the end of that second.
+    pub fn series(&self, seconds: u64, running: bool, clock: &Clock) -> (Series, i64) {
+        let inner = lock(&self.inner);
+        let now = clock.boot_s();
+        let end = match inner.ring.latest() {
+            Some(latest) if running && latest <= now && latest + 2 >= now => latest,
+            _ => now,
+        };
+        let behind_ms = (clock.boot_ms - end * 1000).saturating_sub(999);
+        let end_ms = clock.wall_ms - i64::try_from(behind_ms).unwrap_or(0);
+        (inner.ring.series(end, seconds), end_ms)
+    }
+}
+
+impl Inner {
+    /// The clock a fold at `clock` counts on. A wall clock whose local day is more than one past
+    /// that of the last believed wall time, carried on by the boot clock, ran ahead; until it has
+    /// for [`JUMP_FOLDS`] folds, the carried time counts, so a wrong date set right soon never
+    /// moves today and yesterday out of the days kept in full. A clock set back, or one that
+    /// moved no further than the next day, is believed at once.
+    fn believe(&mut self, clock: &Clock) -> Clock {
+        if let Some((boot_ms, wall_ms)) = self.believed {
+            let since = i64::try_from(clock.boot_ms.saturating_sub(boot_ms)).unwrap_or(i64::MAX);
+            let carried = Clock {
+                wall_ms: wall_ms.saturating_add(since),
+                ..*clock
+            };
+            if day::local(clock).0 > day::local(&carried).0 + 1 && self.ahead < JUMP_FOLDS {
+                self.ahead += 1;
+                return carried;
+            }
+        }
+        self.ahead = 0;
+        self.believed = Some((clock.boot_ms, clock.wall_ms));
+        *clock
+    }
+}
+
+fn day_usage(d: &Day) -> dto::DayUsage {
+    dto::DayUsage {
+        date: day::date(d.day),
+        up: Day::hours(&d.up),
+        down: Day::hours(&d.down),
+        flows: d.flows.clone(),
+        outbounds: (d.outbounds.iter())
+            .map(|(id, [up, down])| dto::OutboundBytes {
+                id: id.clone(),
+                up: *up,
+                down: *down,
+            })
+            .collect(),
+        by_rule: (d.rules.iter())
+            .map(|(id, [up, down, flows])| dto::RuleBytes {
+                id: id.clone(),
+                up: *up,
+                down: *down,
+                flows: *flows,
+            })
+            .collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests;

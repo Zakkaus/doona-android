@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group>
+        <clip-path android:pathData="M0 256a256 256 0 1 0 512 0a256 256 0 1 0 -512 0z" />
+        <path
+            android:fillColor="#FFD80027"
+            android:pathData="M0 0h512v512H0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M224 64a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M32 256a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M416 256a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M224 448a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M320 400a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M368 352a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M320 112a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M368 160a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M128 112a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M80 160a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M80 352a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="M128 400a32 32 0 1 0 64 0a32 32 0 1 0 -64 0z" />
+        <path
+            android:fillColor="#FFFFDA44"
+            android:pathData="m256 60l-103 52 20 61-61-20-52 103 52 103 61-20-20 61 103 52 103-52-20-61 61 20 52-103-52-103-61 20 20-61zm0 36l64 32-32 96 96-32 32 64-32 64-96-32 32 96-64 32-64-32 32-96-96 32-32-64 32-64 96 32-32-96z" />
+    </group>
+</vector>

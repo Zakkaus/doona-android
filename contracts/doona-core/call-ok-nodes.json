@@ -1,0 +1,37 @@
+{
+  "ok": {
+    "nodes": [
+      {
+        "id": "n-0c41be77",
+        "protocol": "trojan",
+        "server": "hk2.example.net",
+        "port": 443,
+        "transport": "tcp",
+        "tls": true,
+        "tests": [
+          {
+            "atEpochMs": 1795338000000,
+            "ms": 33
+          },
+          {
+            "atEpochMs": 1795339800000,
+            "ms": null
+          },
+          {
+            "atEpochMs": 1795341600000,
+            "ms": 31
+          }
+        ]
+      },
+      {
+        "id": "n-7f3a19c2",
+        "protocol": "hysteria2",
+        "server": "192.168.8.20",
+        "port": 443,
+        "transport": "quic",
+        "tls": true,
+        "tests": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Revolut-style sample of the settings and theme pages (prototype/rv/settings), debug builds only. -->
+<resources>
+    <string name="rv_settings_export_diagnostics">Export diagnostics</string>
+    <string name="rv_settings_check_update">Check for updates</string>
+
+    <string name="rv_settings_group_connection">Connection</string>
+    <string name="rv_settings_auto_connect">Connect at boot</string>
+    <string name="rv_settings_notify_drop">Notify when disconnected</string>
+    <string name="rv_settings_per_app">Per-app proxy</string>
+    <string name="rv_settings_per_app_value">%1$d apps only</string>
+    <string name="rv_settings_bypass_lan">Bypass local network</string>
+    <string name="rv_settings_bypass_lan_sub">10.0.0.0/8, 192.168.0.0/16 and more</string>
+    <string name="rv_settings_connection_footer">Only the selected apps use the proxy. Other apps and local-network addresses connect directly.</string>
+
+    <string name="rv_settings_group_subscription">Subscriptions</string>
+    <string name="rv_settings_auto_update">Auto-update</string>
+    <string name="rv_settings_update_interval">Update interval</string>
+    <string name="rv_settings_update_interval_value">Every %1$d hours</string>
+
+    <string name="rv_settings_group_appearance">Appearance</string>
+    <string name="rv_settings_theme">Theme</string>
+    <string name="rv_settings_theme_system">Follow system</string>
+    <string name="rv_settings_theme_light">Light</string>
+    <string name="rv_settings_theme_dark">Dark</string>
+    <string name="rv_settings_language">Language</string>
+    <string name="rv_settings_language_value" translatable="false">繁體中文</string>
+
+    <string name="rv_settings_group_advanced">Advanced</string>
+    <string name="rv_settings_dns" translatable="false">DNS</string>
+    <string name="rv_settings_dns_value">Automatic</string>
+    <string name="rv_settings_log_level">Log level</string>
+    <string name="rv_settings_log_level_value">Normal</string>
+
+    <string name="rv_settings_group_about">About</string>
+    <string name="rv_settings_version">Version</string>
+    <string name="rv_settings_version_value" translatable="false">0.1.0</string>
+    <string name="rv_settings_licenses">Open-source licenses</string>
+
+    <string name="rv_settings_accent">Accent colour</string>
+    <string name="rv_settings_follow_wallpaper">Follow wallpaper</string>
+    <string name="rv_settings_accent_blue">Blue</string>
+    <string name="rv_settings_accent_current">Current colour</string>
+    <string name="rv_settings_accent_purple">Purple</string>
+    <string name="rv_settings_accent_orange">Orange</string>
+    <string name="rv_settings_accent_pink">Pink</string>
+    <string name="rv_settings_mode">Mode</string>
+    <string name="rv_settings_preview">Preview</string>
+</resources>

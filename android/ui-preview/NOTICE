@@ -1,0 +1,31 @@
+Icons: Material Symbols (Outlined, weight 400, grade 0, optical size 24), Android vector drawables
+Source: https://github.com/google/material-design-icons/tree/10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7/symbols/android
+Commit: 10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7 (2026-10-23, "Update Symbols")
+Licence: Apache License 2.0, copied verbatim to third_party/material-symbols/LICENSE
+
+Vendored verbatim (file names kept) from symbols/android/<name>/materialsymbolsoutlined/<file>,
+in app/src/main/res/drawable/:
+  speed_24px.xml  speed_fill1_24px.xml  chevron_right_24px.xml
+  lan_24px.xml  lan_fill1_24px.xml
+  science_24px.xml  science_fill1_24px.xml
+  play_arrow_fill1_24px.xml  stop_fill1_24px.xml
+  settings_24px.xml
+  memory_24px.xml  alarm_24px.xml  bolt_24px.xml
+  dns_24px.xml  straighten_24px.xml  push_pin_24px.xml  language_24px.xml
+  link_24px.xml  more_vert_24px.xml  arrow_back_24px.xml
+ic_launcher_fg.xml reuses the path data of symbols/android/tune/materialsymbolsoutlined/tune_24px.xml
+unchanged, scaled and recoloured.
+They tint with ?attr/colorControlNormal; app/src/main/res/values/attrs.xml declares that attribute (normally
+from AppCompat) so the files link unchanged.
+
+Chart: Vico 3.3.1 (com.patrykandpatrick.vico:compose-m3), Apache License 2.0,
+https://github.com/patrykandpatrick/vico/releases/tag/v3.3.1
+
+Font: Google Sans, upright, Regular and Medium
+Source: https://github.com/google/fonts/tree/main/ofl/googlesans, file GoogleSans[GRAD,opsz,wght].ttf,
+fetched 2026-11-22 at google/fonts main 06bfe0d62a98375cb09c942fa18e68bd32cff057
+(SHA-256 d0a87d835a944b8b40d0e82a5651bb59ab97b936a2aeed5946eb57e7b2a3a90a)
+Licence: SIL Open Font License 1.1, copied verbatim with TRADEMARKS.md to app/src/main/assets/licenses/google-sans/
+Bundled as app/src/main/res/font/google_sans_regular.ttf and google_sans_medium.ttf: static instances of the
+variable file made with fontTools 4.68.0 (`fontTools.varLib.instancer ... opsz=18 wght=400|500 GRAD=0
+--update-name-table`), a Modified Version under the OFL. "Google Sans" is a trademark of Google LLC.

@@ -1,0 +1,215 @@
+{
+  "log": {
+    "level": "info"
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "remote",
+        "address": "https://dns.example.net/dns-query"
+      }
+    ]
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "address": [
+        "172.19.0.1/30"
+      ],
+      "auto_route": true
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "Proxy",
+      "outbounds": [
+        "Auto",
+        "ss-01",
+        "vmess-01",
+        "vless-01",
+        "reality-01",
+        "trojan-01"
+      ]
+    },
+    {
+      "type": "urltest",
+      "tag": "Auto",
+      "outbounds": [
+        "ss-01",
+        "trojan-01",
+        "hy2-01"
+      ]
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "ss-01",
+      "server": "192.0.2.11",
+      "server_port": 8388,
+      "method": "aes-256-gcm",
+      "password": "pass"
+    },
+    {
+      "type": "vmess",
+      "tag": "vmess-01",
+      "server": "vmess.example.net",
+      "server_port": 443,
+      "uuid": "320cbcd4-e85c-402f-ae69-6b4b6d5794bb",
+      "security": "auto",
+      "alter_id": 0,
+      "tls": {
+        "enabled": true,
+        "server_name": "vmess.example.net"
+      },
+      "transport": {
+        "type": "ws",
+        "path": "/ws",
+        "headers": {
+          "Host": "vmess.example.net"
+        }
+      }
+    },
+    {
+      "type": "vless",
+      "tag": "vless-01",
+      "server": "vless.example.net",
+      "server_port": 443,
+      "uuid": "ef0c8917-ad5e-4c82-8e5b-5c07d818d829",
+      "tls": {
+        "enabled": true,
+        "server_name": "vless.example.net"
+      }
+    },
+    {
+      "type": "vless",
+      "tag": "reality-01",
+      "server": "192.0.2.14",
+      "server_port": 443,
+      "uuid": "ef0c8917-ad5e-4c82-8e5b-5c07d818d829",
+      "flow": "xtls-rprx-vision",
+      "tls": {
+        "enabled": true,
+        "server_name": "www.example.net",
+        "utls": {
+          "enabled": true,
+          "fingerprint": "chrome"
+        },
+        "reality": {
+          "enabled": true,
+          "public_key": "d-Z80R7ouznLhLvLJAs5iS2sEeiGJ_KHIQQkiicVTnA",
+          "short_id": "6ba85179"
+        }
+      }
+    },
+    {
+      "type": "trojan",
+      "tag": "trojan-01",
+      "server": "trojan.example.net",
+      "server_port": 443,
+      "password": "secret",
+      "tls": {
+        "enabled": true,
+        "server_name": "trojan.example.net"
+      }
+    },
+    {
+      "type": "hysteria2",
+      "tag": "hy2-01",
+      "server": "hy2.example.net",
+      "server_port": 443,
+      "password": "secret",
+      "obfs": {
+        "type": "salamander",
+        "password": "obfs-secret"
+      },
+      "tls": {
+        "enabled": true,
+        "server_name": "hy2.example.net"
+      }
+    },
+    {
+      "type": "tuic",
+      "tag": "tuic-01",
+      "server": "tuic.example.net",
+      "server_port": 443,
+      "uuid": "b38ad070-88e0-4bcc-9808-924f3c0e1bd5",
+      "password": "secret",
+      "congestion_control": "bbr",
+      "tls": {
+        "enabled": true,
+        "server_name": "tuic.example.net",
+        "alpn": [
+          "h3"
+        ]
+      }
+    },
+    {
+      "type": "anytls",
+      "tag": "anytls-01",
+      "server": "anytls.example.net",
+      "server_port": 443,
+      "password": "secret",
+      "tls": {
+        "enabled": true,
+        "server_name": "anytls.example.net"
+      }
+    },
+    {
+      "type": "socks",
+      "tag": "socks-01",
+      "server": "192.0.2.19",
+      "server_port": 1080,
+      "version": "5",
+      "username": "user",
+      "password": "pass"
+    },
+    {
+      "type": "ssh",
+      "tag": "ssh-01",
+      "server": "192.0.2.36",
+      "server_port": 22,
+      "user": "admin",
+      "password": "secret"
+    },
+    {
+      "type": "tor",
+      "tag": "tor-01"
+    },
+    {
+      "type": "trojan",
+      "tag": "no-tls",
+      "server": "192.0.2.37",
+      "server_port": 443,
+      "password": "secret"
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    },
+    {
+      "type": "dns",
+      "tag": "dns-out"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "protocol": "dns",
+        "outbound": "dns-out"
+      },
+      {
+        "domain_suffix": [
+          "ads.example.net"
+        ],
+        "outbound": "block"
+      }
+    ],
+    "final": "Proxy",
+    "auto_detect_interface": true
+  }
+}

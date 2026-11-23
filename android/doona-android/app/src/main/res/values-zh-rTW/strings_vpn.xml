@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_channel_name">VPN 連線</string>
+    <string name="vpn_drop_channel_name">VPN 斷線通知</string>
+    <string name="vpn_status_starting">連線中…</string>
+    <string name="vpn_status_running">已連線</string>
+    <string name="vpn_status_stopping">斷線中…</string>
+    <string name="vpn_status_stopped">未連線</string>
+    <string name="vpn_status_failed">連線失敗</string>
+    <string name="vpn_rates">上傳 %1$s/秒，下載 %2$s/秒</string>
+    <string name="vpn_action_disconnect">斷線</string>
+    <string name="vpn_failed_title">VPN 已斷線</string>
+    <string name="vpn_drop_revoked">系統撤銷了 VPN 連線。</string>
+    <string name="vpn_failure_no_allowed_apps">清單中的 App 都沒有安裝。</string>
+    <string name="vpn_failure_start_failed">無法啟動 VPN。</string>
+    <string name="vpn_failure_core_stopped">連線意外中斷。</string>
+    <string name="vpn_failure_incompatible_core">VPN 核心與這個版本的 doona 不相容。</string>
+</resources>

@@ -225,5 +225,5 @@ checks the file and function limits of the app and the crate (see `AGENTS.md`).
   affinity request fails or is narrowed. The telemetry line shows the CPUs in effect.
 - Turning the screen off cuts throughput to about a third, which is why bench mode keeps the
   phone interactive behind a black Activity; a lit screen would add display power to the rails.
-- Use MTU 8500, the app's default.
+- Use MTU 8500 for comparisons with the earlier runs; the app's default is now 65535.
 - The pins in `android/plans/` (engine 7, relay 6, generator 0-1, sink 2-3) are for a Pixel 10 Pro.

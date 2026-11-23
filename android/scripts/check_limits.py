@@ -1,8 +1,9 @@
 """Check file length, function length, cyclomatic complexity and package names.
 
 Limits: a file over 600 lines, a function over 80 non-blank, non-comment lines (NLOC) or over a
-cyclomatic complexity of 15. Sources: the app's Kotlin and Java, and crates/honk-android's Rust,
-tests included. App source directories must not be named util, common, helper or misc.
+cyclomatic complexity of 15. Sources: the TunBench and doona apps' Kotlin and Java, and
+crates/honk-android's Rust, tests included. App source directories must not be named util,
+common, helper or misc.
 
 Existing violations are listed by name in limits-ratchet.txt with exactly their measured value: an
 entry above it, or for an item back within the limit, fails, so no entry leaves room to grow back.
@@ -31,7 +32,12 @@ GROUPS = {
         "android/tunbench/app/src",
         [f"*/{d}/**/*.{e}" for d in ("java", "kotlin") for e in ("kt", "java")],
     ),
+    "doona": (
+        "android/doona-android/app/src",
+        [f"*/{d}/**/*.{e}" for d in ("java", "kotlin") for e in ("kt", "java")],
+    ),
     "rust": ("crates/honk-android", ["src/**/*.rs", "tests/**/*.rs"]),
+    "doona-core": ("crates/doona-core/src", ["**/*.rs"]),
 }
 BANNED_DIRS = {"util", "common", "helper", "misc"}
 RATCHET = "android/scripts/limits-ratchet.txt"
