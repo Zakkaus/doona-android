@@ -92,6 +92,7 @@ internal fun RvActivityScreen(
     hero: RvHeroSwipe = RvHeroSwipe.Off,
     notice: (@Composable () -> Unit)? = null,
     noticeOnly: Boolean = false,
+    busy: RvBusyLook = RvBusyLook.Caption,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -108,7 +109,7 @@ internal fun RvActivityScreen(
     // The map stretches with the pull, and what lies under it moves down as far.
     val pushed = remember(pull) { pull.stretch?.let { stretch -> Modifier.graphicsLayer { translationY = stretch() } } }
     val motion = remember(pull, pushed, resting) { HeaderMotion(pull.stretch, pushed, resting) }
-    val look = remember(hero, nodes) { HeroLook(hero, nodes) }
+    val look = remember(hero, nodes, busy) { HeroLook(hero, nodes, busy) }
     val fastest = remember(nodes) { nodes.fastest(FASTEST) }
     CompositionLocalProvider(LocalRvCovered provides resting) {
         Box(Modifier.fillMaxSize()) {
@@ -161,8 +162,8 @@ internal class RvActivityRoutes(
  */
 private class HeaderMotion(val stretch: (() -> Float)?, val pushed: Modifier?, val resting: () -> Boolean)
 
-/** Whether the hero [swipe]s to the main node, one of [nodes] (H1). */
-private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>)
+/** Whether the hero [swipe]s to the main node, one of [nodes] (H1), and how it shows a connect or disconnect under way. */
+private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>, val busy: RvBusyLook)
 
 /** [state] without the second's rates, which only the hero's figures read, from [ticking]. */
 @Composable
@@ -174,8 +175,14 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
     var heroBounds by remember { mutableStateOf<Rect?>(null) }
     val pan = rvMapPan(place)
     val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null, motion.resting), pan?.first, pan?.second)
-    // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected.
-    RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds, live = live) {
+    // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected; the tint look
+    // gives them the fair tone while a connect or disconnect is under way.
+    val dots = when {
+        hero.busy.of(state.status) == RvBusyLook.Tint -> Rv.colors.fair
+        running -> Rv.colors.dots
+        else -> Rv.colors.dotsIdle
+    }
+    RvHeader(place, statusBar + RvDots.focusTop, statusBar, dots, heroBounds, live = live) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
         Spacer(Modifier.height(RvSpace.headerTop))
         HeroBlock(state, ticking, mode, hero, Modifier.onPlaced { heroBounds = it.boundsInParent() }, motion.pushed)
@@ -194,34 +201,39 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
 private fun HeroBlock(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, hero: HeroLook, placed: Modifier, pushed: Modifier?) {
     val moved = pushed ?: Modifier
     if (hero.swipe == RvHeroSwipe.Off) {
-        HeroFigure(ticking, mode, placed.then(moved))
+        HeroFigure(ticking, mode, placed.then(moved), hero.busy)
         Spacer(Modifier.height(RvSpace.heroToActions))
         return
     }
     val pager = rememberRvHeroPager(HERO_VIEWS)
     val names = listOf(stringResource(R.string.rv_hero_all_traffic), stringResource(R.string.rv_main_node))
-    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(ticking, mode, Modifier) else MainNodeFigure(state, mode, hero.nodes) }
+    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(ticking, mode, Modifier, hero.busy) else MainNodeFigure(state, mode, hero.nodes) }
     RvStatsDots(names.size, pager.view, moved, names, pager::show)
     Spacer(Modifier.height(RvSpace.heroToActions - RvSize.touch))
 }
 
 /**
  * The state and the mode over the download rate, the upload rate under it; a new state or each second's rates cross-fade
- * in. Read from [ticking] here, so that a tick recomposes the figures and not the header around them.
+ * in. Read from [ticking] here, so that a tick recomposes the figures and not the header around them. While a connect
+ * or disconnect is under way, [busy]'s chip takes the caption's place, or its bar the rates'.
  */
 @Composable
-private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modifier: Modifier) {
+private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modifier: Modifier, busy: RvBusyLook) {
     val state = ticking.value
     val format = rememberRvFormat()
     val fade = Rv.motion.tween<Float>(RvMotion.FADE_MS)
+    val look = busy.of(state.status)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Crossfade("${stringResource(state.status.label)} · ${stringResource(mode.label)}", animationSpec = fade, label = "caption") { RvText(it, Rv.type.caption) }
+        val caption = "${stringResource(state.status.label)} · ${stringResource(mode.label)}"
+        if (look == RvBusyLook.Chip) RvBusyChip(caption) else Crossfade(caption, animationSpec = fade, label = "caption") { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = format.rate(state.downRate.toDouble())
-        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvHero(RvAmount(number, unit)) }
+        val figure = @Composable { Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvHero(RvAmount(number, unit)) } }
+        if (look == RvBusyLook.Bar) RvBusyFigure(figure) else figure()
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") { RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub) }
+        val up = if (look == RvBusyLook.Bar) Modifier.rvHeld() else Modifier
+        Crossfade(format.rate(state.upRate.toDouble()).toString(), up, animationSpec = fade, label = "up") { RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub) }
     }
 }
 
