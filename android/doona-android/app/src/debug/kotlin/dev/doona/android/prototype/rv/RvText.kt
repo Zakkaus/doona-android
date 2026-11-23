@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
@@ -146,6 +148,37 @@ internal fun Modifier.rvFullLine(text: String, style: TextStyle): Modifier {
 
 /** The smallest a label shrinks to: half its size, at 2× the font size still the default size. */
 private const val FIT_MIN = 0.5f
+
+/**
+ * The one size a row of [labels] takes (a nav's tabs, a row of round actions), each kept to one line in a column [width]
+ * wide: [style] when every label fits at it, else the largest step of [rvShrinkToFit]'s range at which all of them fit,
+ * its line height scaled with it as Compose scales an auto size's. Each label set in it fits, so no label of the row
+ * shrinks alone.
+ */
+@Composable
+internal fun rvRowFit(labels: List<String>, style: TextStyle, width: Dp): TextStyle {
+    val measurer = rememberTextMeasurer()
+    val px = with(LocalDensity.current) { width.toPx().toInt() }
+    return remember(labels, style, px, measurer) {
+        // Sizes as shares of the full one, so each keeps the style's unit.
+        val full = style.fontSize.value
+        val at = { size: Float -> style.copy(fontSize = style.fontSize * (size / full), lineHeight = style.lineHeight * (size / full)) }
+        val fits = { size: Float -> labels.all { rvFitsOneLine(measurer, it, at(size), px) } }
+        val min = full * FIT_MIN
+        val steps = ((full - min) / FIT_STEP).toInt()
+        val size = if (fits(full)) full else (steps downTo 0).map { min + it * FIT_STEP }.firstOrNull { it < full && fits(it) } ?: min
+        if (size == full) style else at(size)
+    }
+}
+
+/** Whether [text] in [style] fits on one line [width] px wide, whole: no ellipsis, nothing past the edge. */
+private fun rvFitsOneLine(measurer: TextMeasurer, text: String, style: TextStyle, width: Int): Boolean {
+    val layout = measurer.measure(scripted(text), style, TextOverflow.Ellipsis, maxLines = 1, constraints = Constraints(maxWidth = width))
+    return !layout.hasVisualOverflow && !layout.isLineEllipsized(0)
+}
+
+/** [TextAutoSize.StepBased]'s default step, so a row's size is one a label shrinking alone could have taken. */
+private const val FIT_STEP = 0.25f
 
 /**
  * Moves [text] in [style] to the start by the blank its first glyph keeps before its ink (the side bearing), so the ink

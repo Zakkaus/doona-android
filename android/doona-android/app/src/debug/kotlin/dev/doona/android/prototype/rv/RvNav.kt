@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -94,6 +95,10 @@ internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlas
     }
     val grow = rvNavLabelGrowth()
     BoxWithConstraints(modifier.fillMaxWidth().padding(bottom = rvNavBottom(insets)), contentAlignment = Alignment.BottomCenter) {
+        val items = LocalRvNav.current
+        // The labels' one size, from the open capsule's tabs ([rvRowFit]); a label folding away may shrink alone.
+        val tab = (maxWidth - RvChrome.navInset * 2 - RvChrome.navPillInset * 2) / items.size
+        val labelStyle = rvRowFit(items.map { stringResource(it.label) }, Rv.type.navLabel, tab - RvNavSize.labelInset * 2)
         val width = lerp(maxWidth - RvChrome.navInset * 2, RvChrome.navCollapsedWidth, shrink)
         val height = lerp(RvChrome.navHeight + grow, RvChrome.navCollapsedHeight, shrink)
         val colors = Rv.colors
@@ -107,14 +112,17 @@ internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlas
                 .then(rim)
                 .padding(RvChrome.navPillInset),
         ) {
-            LocalRvNav.current.forEach { item -> NavItem(item, item.id == selected, shrink, Modifier.weight(1f)) { pick(item.id) } }
+            LocalRvNav.current.forEach { item -> NavItem(item, item.id == selected, shrink, labelStyle, Modifier.weight(1f)) { pick(item.id) } }
         }
     }
 }
 
-/** One destination: the glyph over its label on the pill when [selected]; [shrink] fades the label out and the glyph down. */
+/**
+ * One destination: the glyph over its label, in the tabs' one [labelStyle], on the pill when [selected]; [shrink] fades
+ * the label out and the glyph down.
+ */
 @Composable
-private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, modifier: Modifier, onClick: () -> Unit) {
+private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, labelStyle: TextStyle, modifier: Modifier, onClick: () -> Unit) {
     val colors = Rv.colors
     val ink = if (selected) colors.text else colors.textSecondary
     val pill = if (selected) Modifier.background(colors.navPill) else Modifier
@@ -130,7 +138,7 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, modifier:
         RvGlyph(item.icon, lerp(RvChrome.navGlyph, RvChrome.navCollapsedGlyph, shrink), ink)
         val label = stringResource(item.label)
         val line = rvNavLabelLine()
-        val fit = rvShrinkToFit(Rv.type.navLabel)
+        val fit = rvShrinkToFit(labelStyle)
         if (shrink < 1f) {
             Spacer(Modifier.height(RvChrome.navLabelGap * (1 - shrink)))
             // The label keeps its line while the capsule folds, so only its width can make it smaller: a word too long
@@ -139,7 +147,7 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, modifier:
             Box(box, contentAlignment = Alignment.TopCenter) {
                 RvText(
                     label,
-                    Rv.type.navLabel,
+                    labelStyle,
                     Modifier.wrapContentHeight(Alignment.Top, unbounded = true).height(line),
                     color = ink,
                     align = TextAlign.Center,

@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -249,18 +250,30 @@ private fun MainNodeFigure(state: ActivityUiState, mode: RvRouteMode, nodes: Lis
     }
 }
 
-/** Connect or disconnect (busy while either is under way), the outbound mode, a latency test ([onTest]) and more. */
+/**
+ * Connect or disconnect (busy while either is under way), the outbound mode, a latency test ([onTest]) and more, their
+ * labels one size ([rvActionRowFit]).
+ */
 @Composable
 private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, onTest: () -> Unit) {
     val running = state.status is Status.Running || state.status is Status.Starting
-    Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
-        val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
-        val toggle = if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect
-        val busy = state.status == Status.Starting || state.status == Status.Stopping
-        RvAction(R.drawable.rv_sym_power, stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect), toggle, Modifier.weight(1f), busy = busy)
-        RvAction(R.drawable.rv_sym_directions, stringResource(R.string.act_mode), { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f))
-        RvAction(R.drawable.rv_sym_speed, stringResource(R.string.rv_test_latency), onTest, Modifier.weight(1f))
-        RvAction(R.drawable.rv_sym_more_horiz, stringResource(R.string.rv_more), NOT_WIRED, Modifier.weight(1f))
+    val labels = listOf(
+        stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect),
+        stringResource(R.string.act_mode),
+        stringResource(R.string.rv_test_latency),
+        stringResource(R.string.rv_more),
+    )
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
+        val style = rvActionRowFit(labels, maxWidth / labels.size)
+        Row(Modifier.fillMaxWidth()) {
+            val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
+            val toggle = if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect
+            val busy = state.status == Status.Starting || state.status == Status.Stopping
+            RvAction(R.drawable.rv_sym_power, labels[0], toggle, Modifier.weight(1f), busy = busy, labelStyle = style)
+            RvAction(R.drawable.rv_sym_directions, labels[1], { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f), labelStyle = style)
+            RvAction(R.drawable.rv_sym_speed, labels[2], onTest, Modifier.weight(1f), labelStyle = style)
+            RvAction(R.drawable.rv_sym_more_horiz, labels[3], NOT_WIRED, Modifier.weight(1f), labelStyle = style)
+        }
     }
     ConnectionTicks(state.status)
 }

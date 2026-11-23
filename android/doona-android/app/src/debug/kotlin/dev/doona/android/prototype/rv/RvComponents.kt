@@ -178,12 +178,19 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
 }
 
 /**
- * A round action: a disc with a glyph and its label under it, one line that shrinks to fit its column as a nav label
- * does ([rvShrinkToFit]) and keeps its line's height, so nothing under it moves; only the disc takes the press
- * ([rvDiscPress]). [busy] swaps the glyph for [RvBusy].
+ * A round action: a disc with a glyph and its label under it on one line, in [labelStyle], the size its row gives every
+ * label ([rvActionRowFit]), and still shrinking to fit its column alone when it has no row; the line keeps its full
+ * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy].
  */
 @Composable
-internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
+internal fun RvAction(
+    @DrawableRes icon: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    busy: Boolean = false,
+    labelStyle: TextStyle = Rv.type.action,
+) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
             // While [busy] (connecting) the disc shows a busy bar instead of its glyph.
@@ -192,11 +199,14 @@ internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit
             }
         }
         Spacer(Modifier.height(RvSpace.discToLabel))
-        val style = Rv.type.action
-        val line = Modifier.padding(horizontal = RvSpace.actionLabelInset).rvFullLine(label, style)
-        RvText(label, style, line, align = TextAlign.Center, autoSize = rvShrinkToFit(style))
+        val line = Modifier.padding(horizontal = RvSpace.actionLabelInset).rvFullLine(label, Rv.type.action)
+        RvText(label, labelStyle, line, align = TextAlign.Center, autoSize = rvShrinkToFit(labelStyle))
     }
 }
+
+/** The one label size of a row of round actions whose columns are [column] wide ([rvRowFit]). */
+@Composable
+internal fun rvActionRowFit(labels: List<String>, column: Dp): TextStyle = rvRowFit(labels, Rv.type.action, column - RvSpace.actionLabelInset * 2)
 
 /** A grouped card: rows run edge to edge inside its rounded fill; no border, no shadow. */
 @Composable

@@ -39,6 +39,7 @@ import dev.doona.android.prototype.rv.RvSearchPill
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTabHeader
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.rvActionRowFit
 import dev.doona.android.prototype.rv.rvBarHeight
 import dev.doona.android.prototype.rv.rvDotMap
 import dev.doona.android.prototype.rv.rvHeroArt
@@ -97,9 +98,11 @@ private fun Hero(insets: WindowInsets, onReport: () -> Unit) {
         Box(Modifier.matchParentSize().graphicsLayer { alpha = RvSettingsAlpha.HERO_DOTS * art() }.then(dots))
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             RvTabHeader(insets)
+            val labels = listOf(stringResource(R.string.rv_settings_export_diagnostics), stringResource(R.string.rv_settings_check_update))
+            val style = rvActionRowFit(labels, RvSettingsSpace.actionColumn)
             Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
-                RvAction(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_settings_export_diagnostics), onReport, Modifier.width(RvSettingsSpace.actionColumn))
-                RvAction(R.drawable.rv_settings_ic_update, stringResource(R.string.rv_settings_check_update), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
+                RvAction(R.drawable.rv_sym_ios_share, labels[0], onReport, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
+                RvAction(R.drawable.rv_settings_ic_update, labels[1], NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
             }
         }
     }
