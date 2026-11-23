@@ -40,9 +40,9 @@ pub(crate) const MAX_FILES: usize = 5;
 pub(crate) const MAX_BYTES: usize = 64 * 1024;
 /// The panic locations a process writes files for; past these it writes none.
 const MAX_LOCATIONS: usize = 64;
-/// The file being written; it takes its name once complete. Not a crash file's name, so neither
-/// `diagnostics` nor `clearCrashes` sees it, and the next write starts it over.
-const PART: &str = ".core.tmp";
+/// The file being written, `.core-<pid>.tmp` (one core per process, one write at a time; the app
+/// names its own); it takes its name once complete. Neither command sees it: no crash file's name.
+const PART: &str = ".core-";
 /// The mark ([`Crashes::listing`]) as a clear leaves it, for a core that starts again.
 const MARK: &str = ".core.mark";
 /// The largest number a crash file's name holds: a millisecond time, 13 digits, until the year
@@ -254,40 +254,42 @@ impl Crashes {
         Some(Held(files))
     }
 
-    /// Writes `text` whole to [`PART`], then renames it to its name, then removes the oldest
-    /// files beyond the other four; on a failure, removes the part and leaves the rest. The name's
-    /// number is the time, or one past `mark` when that is later, as for a second panic in one
-    /// millisecond or a clock set back. The caller holds `files`.
+    /// Writes `text` to [`PART`], renames it onto the name it claimed, then removes all but the
+    /// newest five; on a failure, removes the part and the claim. The number is the time, or one
+    /// past `mark` if later (two panics in a millisecond, a clock set back). Caller holds `files`.
     fn publish(&self, text: &str, mark: &mut Option<u64>) -> io::Result<String> {
         fs::create_dir_all(&self.dir)?;
-        let part = self.dir.join(PART);
+        let part = self.dir.join(format!("{PART}{}.tmp", std::process::id()));
         let published = self.put(&part, text.as_bytes()).and_then(|()| {
-            let old = self.listed(mark);
+            let _ = self.listed(mark);
             let (at, name) = self.free_name(mark.unwrap_or_default())?;
-            fs::rename(&part, self.dir.join(&name))?;
-            Ok((at, name, old))
+            let renamed = fs::rename(&part, self.dir.join(&name));
+            renamed.inspect_err(|_| drop(fs::remove_file(self.dir.join(&name))))?;
+            Ok((at, name))
         });
-        let (at, name, old) = published.inspect_err(|_| {
+        let (at, name) = published.inspect_err(|_| {
             let _ = fs::remove_file(&part);
         })?;
         *mark = Some(at);
-        for (_, gone, _) in old.iter().take((old.len() + 1).saturating_sub(MAX_FILES)) {
+        let present = self.files(); // After the rename: the app may have published one meanwhile.
+        for (_, gone, _) in present.iter().take(present.len().saturating_sub(MAX_FILES)) {
             let _ = fs::remove_file(self.dir.join(gone));
         }
         Ok(name)
     }
 
-    /// The first number past `mark`, and not before the time, whose name nothing holds (the app
-    /// may have taken one meanwhile, which a rename would replace). None past the largest number:
-    /// `invalid_data`.
+    /// The first number past `mark`, and not before the time, whose name nothing holds, claimed by
+    /// creating it: the app takes names by the same rule, so a rename onto the claim replaces no
+    /// file of the app's, nor the app's one of ours. None past the largest number: `invalid_data`.
     fn free_name(&self, mark: u64) -> io::Result<(u64, String)> {
-        let mut at = mark.saturating_add(1).max(self.now());
-        while at <= MAX_NUMBER {
+        let mut claim = fs::OpenOptions::new();
+        claim.write(true).create_new(true);
+        for at in mark.saturating_add(1).max(self.now())..=MAX_NUMBER {
             let name = format!("{at}.txt");
-            if fs::symlink_metadata(self.dir.join(&name)).is_err() {
-                return Ok((at, name));
+            match claim.open(self.dir.join(&name)) {
+                Err(e) if e.kind() == ErrorKind::AlreadyExists => {}
+                claimed => return claimed.map(|_| (at, name)),
             }
-            at += 1;
         }
         Err(ErrorKind::InvalidData.into())
     }
@@ -391,7 +393,7 @@ impl Crashes {
             return Ok(None);
         }
         fs::create_dir_all(&self.dir)?;
-        let part = self.dir.join(PART);
+        let part = self.dir.join(format!("{PART}{}.tmp", std::process::id()));
         let saved = self.put(&part, kept.to_string().as_bytes());
         saved
             .and_then(|()| fs::rename(&part, self.dir.join(MARK)))

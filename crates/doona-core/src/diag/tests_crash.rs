@@ -5,7 +5,10 @@ use super::crash;
 use super::tests::{crashes, panic_on, read};
 use crate::testutil::TempDir;
 use std::fs;
+use std::io::ErrorKind;
+use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::Ordering::Relaxed;
 
 fn entries(dir: &TempDir) -> Vec<String> {
     let mut names: Vec<String> = fs::read_dir(dir.path().join(crash::DIR))
@@ -122,4 +125,82 @@ fn a_frame_names_only_known_objects() {
     ];
     assert!(names.iter().all(|n| known.contains(n)), "{trace}");
     assert!(names.contains(&"libdoonacore.so"), "{trace}");
+}
+
+/// The app writes into the same directory at any time (`CrashFiles.kt`, from its crash handler),
+/// by the same rules: it claims a free name, renames its own part onto it, then removes all but
+/// the newest five. Writing at once, neither side takes a name the other holds, and five remain.
+#[test]
+fn the_app_writing_at_once_takes_no_name_twice_and_five_remain() {
+    const ROUNDS: usize = 200;
+    let (dir, diag) = crashes("diag-crash-race");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    let crashes = diag.crashes().unwrap();
+    // A clock that stands still makes both sides want the same next number.
+    crashes.clock.store(1_795_300_000_000, Relaxed);
+    let app = std::thread::spawn({
+        let at = at.clone();
+        move || {
+            (0..ROUNDS)
+                .filter_map(|i| app_write(&at, i))
+                .collect::<Vec<_>>()
+        }
+    });
+    let mut names: Vec<String> = (0..ROUNDS)
+        .filter_map(|_| crashes.save("source: core\n").ok())
+        .collect();
+    names.extend(app.join().unwrap());
+    let taken = names.len();
+    names.sort();
+    names.dedup();
+    assert_eq!(names.len(), taken, "a name was taken twice");
+    assert!(
+        numbers(&at).len() <= crash::MAX_FILES,
+        "{:?}",
+        entries(&dir)
+    );
+}
+
+/// The crash files' numbers in `dir`, lowest first.
+fn numbers(dir: &Path) -> Vec<u64> {
+    let mut numbers: Vec<u64> = fs::read_dir(dir)
+        .unwrap()
+        .filter_map(|e| {
+            e.ok()?
+                .file_name()
+                .into_string()
+                .ok()?
+                .strip_suffix(".txt")?
+                .parse()
+                .ok()
+        })
+        .collect();
+    numbers.sort_unstable();
+    numbers
+}
+
+/// One write of the app's, as `CrashFiles.write` makes it.
+fn app_write(dir: &Path, round: usize) -> Option<String> {
+    let part = dir.join(format!(".app-{round}.tmp"));
+    fs::write(&part, format!("source: app {round}\n")).ok()?;
+    let mut at = numbers(dir).last().map_or(1, |n| n + 1);
+    let name = loop {
+        let name = format!("{at}.txt");
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(dir.join(&name))
+        {
+            Ok(_) => break name,
+            Err(e) if e.kind() == ErrorKind::AlreadyExists => at += 1,
+            Err(_) => return None,
+        }
+    };
+    fs::rename(&part, dir.join(&name)).ok()?;
+    let present = numbers(dir);
+    for n in &present[..present.len().saturating_sub(crash::MAX_FILES)] {
+        let _ = fs::remove_file(dir.join(format!("{n}.txt")));
+    }
+    Some(name)
 }
