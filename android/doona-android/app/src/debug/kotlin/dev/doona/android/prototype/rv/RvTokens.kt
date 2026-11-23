@@ -25,6 +25,9 @@ internal object RvSpace {
     /** From a round action's disc to its label (measured §6: 8 dp). */
     val discToLabel = 8.dp
 
+    /** 活動's own: from its round actions' discs to their labels, as the owner approved it (609336cb). */
+    val activityDiscToLabel = 10.dp
+
     /**
      * From the status bar to the hero's caption: the top bar's row (6 + 44 dp), then 102 dp, as Revolut sets its caption
      * about 100 dp under the bar; the map's marker sits in that space, clear of the bar's glass.
@@ -40,6 +43,9 @@ internal object RvSpace {
 
     /** From the round actions' labels to the first card (measured §5: the action row ends 1360 px, the card starts 1400). */
     val actionsToCard = 16.dp
+
+    /** 活動's own: from its round actions' labels to the first card, as the owner approved it (609336cb). 歡迎 keeps [actionsToCard]. */
+    val activityActionsToCard = 32.dp
     val subGap = 6.dp
     val tight = 4.dp
 
@@ -104,6 +110,9 @@ internal object RvSpace {
 internal object RvSize {
     /** A round action's disc (measured §6: 48 dp). */
     val actionDisc = 48.dp
+
+    /** 活動's own round actions' disc, as the owner approved it (609336cb). */
+    val activityActionDisc = 52.dp
 
     /** Material Symbols draw in a 20 dp live area of their 24 dp box, the width of #11's '+'. */
     val actionGlyph = 24.dp
@@ -492,6 +501,9 @@ internal object RvTypeScale {
     val activityHero = RvTypeStep(42, 48, FontWeight.Bold, display = true)
     val activityHeroUnit = RvTypeStep(24, 32, FontWeight.SemiBold, display = true)
     val activitySub = RvTypeStep(15, 20, FontWeight.Medium)
+
+    /** 活動's own round actions' labels, as the owner approved them (609336cb); [action] stays for every other page. */
+    val activityAction = RvTypeStep(15, 20, FontWeight.Medium)
 
     /** A detail page's figure (measured §10.1, the coin header): 33 sp with its decimals, the unit 22 sp. */
     val detailFigure = RvTypeStep(33, 40, FontWeight.Bold, display = true)

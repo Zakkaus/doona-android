@@ -172,7 +172,7 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
         Spacer(Modifier.height(RvSpace.activityHeaderTop))
         HeroBlock(state, ticking, mode, hero, motion.pushed)
         if (motion.pushed == null) actions() else Box(motion.pushed) { actions() }
-        Spacer(Modifier.height(RvSpace.actionsToCard))
+        Spacer(Modifier.height(RvSpace.activityActionsToCard))
     }
 }
 
@@ -255,10 +255,10 @@ private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Un
         val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
         val toggle = if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect
         val busy = state.status == Status.Starting || state.status == Status.Stopping
-        RvAction(R.drawable.rv_sym_power, stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect), toggle, Modifier.weight(1f), busy = busy)
-        RvAction(R.drawable.rv_sym_directions, stringResource(R.string.act_mode), { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f))
-        RvAction(R.drawable.rv_sym_speed, stringResource(R.string.rv_test_latency), onTest, Modifier.weight(1f))
-        RvAction(R.drawable.rv_sym_more_horiz, stringResource(R.string.rv_more), NOT_WIRED, Modifier.weight(1f))
+        RvAction(R.drawable.rv_sym_power, stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect), toggle, Modifier.weight(1f), busy = busy, look = RvActionLook.Activity)
+        RvAction(R.drawable.rv_sym_directions, stringResource(R.string.act_mode), { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f), look = RvActionLook.Activity)
+        RvAction(R.drawable.rv_sym_speed, stringResource(R.string.rv_test_latency), onTest, Modifier.weight(1f), look = RvActionLook.Activity)
+        RvAction(R.drawable.rv_sym_more_horiz, stringResource(R.string.rv_more), NOT_WIRED, Modifier.weight(1f), look = RvActionLook.Activity)
     }
     ConnectionTicks(state.status)
 }

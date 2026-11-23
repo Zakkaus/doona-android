@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -226,18 +227,32 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
     return if (cut < 0) figure to "" else figure.substring(0, cut) to figure.substring(cut)
 }
 
-/** A round action: a disc with a glyph and its label under it; only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy]. */
+/**
+ * A round action: a disc with a glyph and its label under it; only the disc takes the press ([rvDiscPress]). [busy] swaps
+ * the glyph for [RvBusy]. [look] sets the disc, the gap under it and the label: [RvActionLook.Standard], or 活動's own.
+ */
 @Composable
-internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
+internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false, look: RvActionLook = RvActionLook.Standard) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
+        Box(Modifier.rvDiscPress(Modifier.size(look.disc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
             // While [busy] (connecting) the disc shows a busy bar instead of its glyph.
             Crossfade(busy, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "busy") { working ->
                 if (working) RvBusy(Modifier.width(RvSize.busy)) else RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)
             }
         }
-        Spacer(Modifier.height(RvSpace.discToLabel))
-        RvText(label, Rv.type.action, align = TextAlign.Center)
+        Spacer(Modifier.height(look.gap))
+        RvText(label, look.label ?: Rv.type.action, align = TextAlign.Center)
+    }
+}
+
+/** A round action's disc, the gap from it to its label, and the label's style ([RvType.action] when none). */
+@Immutable
+internal class RvActionLook(val disc: Dp, val gap: Dp, val label: TextStyle?) {
+    companion object {
+        val Standard = RvActionLook(RvSize.actionDisc, RvSpace.discToLabel, null)
+
+        /** 活動's round actions, as the owner approved them (609336cb). */
+        val Activity = RvActionLook(RvSize.activityActionDisc, RvSpace.activityDiscToLabel, RvActivityType.action)
     }
 }
 
