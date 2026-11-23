@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug builds only: the RV sample's launcher shortcuts (brief rv-gestures), as Revolut publishes its top actions. Each
+  opens RvPreviewActivity with its action, and the sample runs it on screen: connecting shows 連線中 first (in the app,
+  after VpnService's consent), so nothing connects unseen.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/rv_shortcut_power"
+        android:shortcutId="rv_connect"
+        android:shortcutShortLabel="@string/rv_connect">
+        <intent
+            android:action="dev.doona.android.prototype.rv.CONNECT"
+            android:targetClass="dev.doona.android.prototype.rv.RvPreviewActivity"
+            android:targetPackage="dev.doona.android" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/rv_shortcut_power"
+        android:shortcutId="rv_disconnect"
+        android:shortcutShortLabel="@string/rv_disconnect">
+        <intent
+            android:action="dev.doona.android.prototype.rv.DISCONNECT"
+            android:targetClass="dev.doona.android.prototype.rv.RvPreviewActivity"
+            android:targetPackage="dev.doona.android" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/rv_shortcut_nodes"
+        android:shortcutId="rv_nodes"
+        android:shortcutShortLabel="@string/rv_nodes_title">
+        <intent
+            android:action="dev.doona.android.prototype.rv.NODES"
+            android:targetClass="dev.doona.android.prototype.rv.RvPreviewActivity"
+            android:targetPackage="dev.doona.android" />
+    </shortcut>
+</shortcuts>

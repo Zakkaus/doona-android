@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import android.os.Trace
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,20 +30,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -94,7 +103,7 @@ internal fun rvShade(scroll: ScrollState): () -> Float {
  * 訂閱 open nothing in the sample.
  */
 @Composable
-internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, onSearch: () -> Unit, onStats: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, onSearch: () -> Unit, onStats: () -> Unit, modifier: Modifier = Modifier, pull: RvPullLook = RvPullLook.None) {
     RvBar(glass, insets, shade, modifier) {
         // Each control keeps a 48 dp target round its 44 dp disc, so the gaps between targets are 4 dp narrower.
         Row(Modifier.fillMaxSize().padding(horizontal = RvSpace.gutter - RvChrome.touchPad), verticalAlignment = Alignment.CenterVertically) {
@@ -102,7 +111,7 @@ internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, 
                 Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvChrome.markGlyph))
             }
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-            SearchPill(glass, onSearch, Modifier.weight(1f))
+            SearchPill(glass, onSearch, pull, Modifier.weight(1f))
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
             GlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
             Spacer(Modifier.width(RvChrome.buttonGap - RvChrome.touchPad * 2))
@@ -111,10 +120,32 @@ internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, 
     }
 }
 
+/**
+ * The search pill, also the pull-down's anchor: it grows by [RvMotion.ANCHOR_GROW] as the pull's progress runs to 1 (the
+ * picker it opens has the same pill as its field), and offers the pull to TalkBack as an action.
+ */
 @Composable
-private fun SearchPill(glass: RvGlass, onClick: () -> Unit, modifier: Modifier) {
+private fun SearchPill(glass: RvGlass, onClick: () -> Unit, pull: RvPullLook, modifier: Modifier) {
+    val open = pull.open
+    val label = stringResource(R.string.rv_nodes_title)
     Row(
         modifier
+            // A tap pushes the search page, and the pill becomes its field.
+            .rvSharedSearch()
+            .graphicsLayer {
+                val grow = 1f + RvMotion.ANCHOR_GROW * pull.progress()
+                scaleX = grow
+                scaleY = grow
+            }
+            .semantics {
+                if (open == null) return@semantics
+                customActions = listOf(
+                    CustomAccessibilityAction(label) {
+                        open()
+                        true
+                    },
+                )
+            }
             .minimumInteractiveComponentSize()
             .height(RvChrome.control)
             .rvControl(glass, CircleShape)
@@ -128,14 +159,53 @@ private fun SearchPill(glass: RvGlass, onClick: () -> Unit, modifier: Modifier) 
     }
 }
 
+/**
+ * The search pill as a field (the node picker's bar): the same glass, glyph and type, with [query] typed in it and the
+ * pill's 搜尋節點 as the placeholder; CJK runs set in Noto as everywhere else. [focus], when given, can put the cursor
+ * (and the keyboard) in it.
+ */
+@Composable
+internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier, focus: FocusRequester? = null) {
+    // Its composition, the text field's first one included, is a section of its own in a Perfetto trace.
+    Trace.beginSection(TRACE_FIELD)
+    val colors = Rv.colors
+    val hint = stringResource(R.string.rv_search_nodes)
+    Row(
+        modifier
+            .minimumInteractiveComponentSize()
+            .height(RvChrome.control)
+            .rvControl(glass, CircleShape)
+            .padding(horizontal = RvChrome.searchInset),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(RvChrome.searchInset),
+    ) {
+        RvGlyph(R.drawable.rv_sym_search, RvChrome.searchGlyph, colors.text)
+        BasicTextField(
+            query,
+            onQuery,
+            Modifier.weight(1f).then(focus?.let { Modifier.focusRequester(it) } ?: Modifier).semantics { contentDescription = hint },
+            textStyle = Rv.type.search.copy(color = colors.text),
+            singleLine = true,
+            cursorBrush = SolidColor(colors.positive),
+            visualTransformation = { TransformedText(scripted(it.text), OffsetMapping.Identity) },
+            decorationBox = { field ->
+                Box(contentAlignment = Alignment.CenterStart) {
+                    if (query.isEmpty()) RvText(hint, Rv.type.search, color = colors.textSecondary)
+                    field()
+                }
+            },
+        )
+    }
+    Trace.endSection()
+}
+
+/** A round glass button of the top bar: a 44 dp disc in a 48 dp target, with a disc's press ([rvDiscPress]). */
 @Composable
 private fun GlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, onClick: () -> Unit) {
     Box(
         Modifier
             .minimumInteractiveComponentSize()
-            .size(RvChrome.control)
-            .rvControl(glass, CircleShape)
-            .rvPress(CircleShape, Role.Button, onClick)
+            .rvDiscPress(Modifier.size(RvChrome.control).rvControl(glass, CircleShape), onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) { RvGlyph(icon, RvChrome.controlGlyph, Rv.colors.text) }
@@ -174,3 +244,5 @@ internal fun RvBackDisc(onBack: () -> Unit, modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
     ) { RvGlyph(R.drawable.rv_sym_arrow_back, RvChrome.controlGlyph, colors.text) }
 }
+
+private const val TRACE_FIELD = "RvSearchField"

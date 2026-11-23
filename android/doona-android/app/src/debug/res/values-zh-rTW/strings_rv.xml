@@ -35,6 +35,8 @@
     <string name="rv_mode_rule">規則</string>
     <string name="rv_main_node">主節點</string>
     <string name="rv_main_node_hint">選擇的節點會成為主節點</string>
+    <string name="rv_hero_all_traffic">全部流量</string>
+    <string name="rv_hero_show">顯示%1$s</string>
     <string name="rv_direct_note">未使用節點，全部直接連線</string>
     <string name="rv_rule_streaming">串流</string>
     <string name="rv_rule_domestic">國內與區網</string>
@@ -42,4 +44,14 @@
     <plurals name="rv_see_all_rules">
         <item quantity="other">查看全部 %1$d 條分流</item>
     </plurals>
+    <!-- Long-press menus (G3). -->
+    <string name="rv_menu_set_main">設為主節點</string>
+    <string name="rv_menu_details">詳情</string>
+    <string name="rv_menu_copy_link">複製分享連結</string>
+    <string name="rv_menu_update">更新</string>
+    <string name="rv_menu_delete">刪除</string>
+    <string name="rv_menu_cancel">取消</string>
+    <string name="rv_menu_delete_question">刪除 %1$s？</string>
+    <string name="rv_reorder_up">上移</string>
+    <string name="rv_reorder_down">下移</string>
 </resources>

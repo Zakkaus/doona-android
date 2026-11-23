@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -53,6 +54,17 @@ class RvColorsTest {
         for (c in themes) {
             assertAtLeast("${c.name} pager dot on the page", RvContrast.MARK, c.control, c.page)
             c.categories.forEachIndexed { i, used -> assertAtLeast("${c.name} used arc $i on the card", RvContrast.MARK, used, c.card) }
+        }
+    }
+
+    /** G8: a pressed disc lightens in both themes, the hero's action disc and the top bar's glass alike. */
+    @Test
+    fun aPressedDiscLightens() {
+        for (c in themes) {
+            for ((what, disc) in listOf("action disc" to c.discOnHeader, "glass disc" to c.controlGlass.over.compositeOver(c.page))) {
+                val lit = c.discLit.compositeOver(disc)
+                assertTrue("${c.name} $what lightens: ${lit.luminance()} over ${disc.luminance()}", lit.luminance() > disc.luminance())
+            }
         }
     }
 

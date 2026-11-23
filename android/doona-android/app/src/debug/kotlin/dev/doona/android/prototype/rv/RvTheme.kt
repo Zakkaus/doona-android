@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import android.os.Build
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -147,6 +148,9 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val roundButton = discOnHeader
     val stateLayer = s.onSurface
 
+    /** What a round disc lightens toward while pressed (measured: Revolut's discs lighten): see [RvAlpha.DISC_LIT_LIGHT]. */
+    val discLit = if (dark) s.onSurface.copy(alpha = RvAlpha.DISC_LIT_DARK) else s.surfaceContainerLowest.copy(alpha = RvAlpha.DISC_LIT_LIGHT)
+
     fun quality(tone: Tone): Color = when (tone) {
         Tone.Ok -> good
         Tone.Warn -> fair
@@ -258,7 +262,7 @@ internal class RvType {
 }
 
 @Immutable
-internal class RvTokens(val colors: RvColors, val type: RvType)
+internal class RvTokens(val colors: RvColors, val type: RvType, val motion: RvMotionScale)
 
 private val LocalRv = staticCompositionLocalOf<RvTokens> { error("RvTheme is not set") }
 
@@ -269,12 +273,21 @@ internal object Rv {
     val type: RvType
         @Composable @ReadOnlyComposable
         get() = LocalRv.current.type
+    val motion: RvMotionScale
+        @Composable @ReadOnlyComposable
+        get() = LocalRv.current.motion
 }
 
+/**
+ * The sample's tokens for [content], and its overscroll: the platform's stretch on Android 12 and later (Compose's
+ * default there), and none below, where the default is the old edge glow that Revolut never shows (brief rv-gestures G9).
+ */
 @Composable
 internal fun RvTheme(scheme: ColorScheme, dark: Boolean, content: @Composable () -> Unit) {
-    val tokens = remember(scheme, dark) { RvTokens(RvColors(scheme, dark), RvType()) }
-    CompositionLocalProvider(LocalRv provides tokens, content = content)
+    val motion = rememberRvMotion()
+    val tokens = remember(scheme, dark, motion) { RvTokens(RvColors(scheme, dark), RvType(), motion) }
+    val overscroll = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) LocalOverscrollFactory.current else null
+    CompositionLocalProvider(LocalRv provides tokens, LocalOverscrollFactory provides overscroll, content = content)
 }
 
 /** The wallpaper's scheme on Android 12 and later; below that there is no wallpaper colour, so Material's baseline. */

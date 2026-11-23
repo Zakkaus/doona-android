@@ -16,7 +16,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +34,7 @@ import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.rvPress
+import dev.doona.android.prototype.rv.rvPressIndication
 import dev.doona.android.prototype.rv.scripted
 
 /** Text in a role; CJK runs in Noto, the rest in Inter. [maxLines] defaults to one, ending in an ellipsis. */
@@ -132,7 +132,7 @@ internal fun RvSettingsSwitchRow(title: String, @DrawableRes icon: Int, checked:
     val toggle = Modifier.toggleable(
         value = checked,
         interactionSource = null,
-        indication = ripple(color = Rv.colors.stateLayer),
+        indication = rvPressIndication(),
         role = Role.Switch,
         onValueChange = onChange,
     )
@@ -145,7 +145,7 @@ internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -
     val choose = Modifier.selectable(
         selected = selected,
         interactionSource = null,
-        indication = ripple(color = Rv.colors.stateLayer),
+        indication = rvPressIndication(),
         role = Role.RadioButton,
         onClick = onSelect,
     )

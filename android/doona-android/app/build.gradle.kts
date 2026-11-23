@@ -155,6 +155,18 @@ androidComponents {
             tasks.named { it == "assemble$name" }.configureEach { dependsOn(check) }
         }
     }
+    // The profile build carries the debug source set: the RV prototype, its resources and its launcher entry, and a
+    // baseline profile. Without it the prototype ran interpreted on the phone (composables called a few dozen times a
+    // gesture never got hot enough for the JIT) and the JIT compiled for about 1.1 s of each 5 s trace (rv-perf3). It
+    // compiles every method of the app and of Compose, androidx.collection and coroutines ahead: a stand-in for a
+    // profile recorded on the phone with the Macrobenchmark generator, which this build does not have yet.
+    onVariants(selector().withBuildType("profile")) { variant ->
+        variant.sources.kotlin?.addStaticSourceDirectory("src/debug/kotlin")
+        variant.sources.res?.addStaticSourceDirectory("src/debug/res")
+        variant.sources.assets?.addStaticSourceDirectory("src/debug/assets")
+        variant.sources.manifests.addStaticManifestFile("src/debug/AndroidManifest.xml")
+        variant.sources.baselineProfiles?.addStaticSourceDirectory("src/debug/baselineProfiles")
+    }
 }
 
 android {
@@ -186,6 +198,14 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // The debug key lets a release APK install locally; a store release is signed elsewhere.
             signingConfig = signingConfigs.getByName("debug")
+        }
+        // A release build (R8, not debuggable) that also carries the debug source set's prototype, so frame times
+        // measured on a phone mean what a user would see; profileable, so Perfetto can trace it. Debug Compose
+        // numbers are not decisions. The source set is added below, under androidComponents.
+        create("profile") {
+            initWith(getByName("release"))
+            isProfileable = true
+            matchingFallbacks += "release"
         }
     }
 

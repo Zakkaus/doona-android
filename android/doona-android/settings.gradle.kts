@@ -23,3 +23,4 @@ rootProject.name = "doona-android"
 include(":app")
 include(":icons")
 include(":flags")
+include(":benchmark")

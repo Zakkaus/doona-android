@@ -84,11 +84,17 @@ internal object RvSize {
     val navGlyph = 24.dp
     val progress = 5.dp
 
+    /** A busy bar ([RvBusy]) in a row's trailing slot or in a round action's disc: a glyph's width. */
+    val busy = 24.dp
+
     /** The current node's check (measured §7 `avatar_badgeBottom`): a 16 dp disc, its ring in the card's colour. */
     val badge = 16.dp
     val badgeRing = 2.dp
     val badgeCheck = 1.5.dp
     val badgeOverhang = 2.dp
+
+    /** A long-press menu: a card of one-line rows this wide, floating by the row it belongs to. */
+    val menuWidth = 248.dp
 }
 
 /** The one chevron (measured §7): 6.7 x 12.2 dp of 2 dp stroke in a 24 dp box. */
@@ -206,6 +212,13 @@ internal object RvChartSize {
 internal object RvAlpha {
     /** The state layer: the content colour over the visible shape while pressed. */
     const val PRESSED = 0.1f
+
+    /**
+     * A round disc lightening while pressed: the card's white at 60 % over it in light; in dark, where the disc is
+     * already the lightest container, the text colour at 10 %, as strong as the state layer.
+     */
+    const val DISC_LIT_LIGHT = 0.6f
+    const val DISC_LIT_DARK = 0.1f
 
     /** Every chart's hairline grid, in the text colour: about 1.2:1 against the card in both themes (L-11). */
     const val GRID_LIGHT = 0.09f
@@ -353,7 +366,6 @@ internal object RvChrome {
 
     const val NAV_SHADOW_ALPHA = 0.16f
     const val CONTROL_SHADOW_ALPHA = 0.06f
-    const val COLLAPSE_MS = 220
 }
 
 /**

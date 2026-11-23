@@ -37,6 +37,8 @@
     <string name="rv_mode_rule">Rules</string>
     <string name="rv_main_node">Main node</string>
     <string name="rv_main_node_hint">The node you pick becomes the main node</string>
+    <string name="rv_hero_all_traffic">All traffic</string>
+    <string name="rv_hero_show">Show %1$s</string>
     <string name="rv_direct_note">No node in use: all traffic goes direct</string>
     <string name="rv_rule_streaming">Streaming</string>
     <string name="rv_rule_domestic">Domestic and LAN</string>
@@ -45,4 +47,14 @@
         <item quantity="one">See the %1$d rule</item>
         <item quantity="other">See all %1$d rules</item>
     </plurals>
+    <!-- Long-press menus (G3). -->
+    <string name="rv_menu_set_main">Set as main node</string>
+    <string name="rv_menu_details">Details</string>
+    <string name="rv_menu_copy_link">Copy share link</string>
+    <string name="rv_menu_update">Update</string>
+    <string name="rv_menu_delete">Delete</string>
+    <string name="rv_menu_cancel">Cancel</string>
+    <string name="rv_menu_delete_question">Delete %1$s?</string>
+    <string name="rv_reorder_up">Move up</string>
+    <string name="rv_reorder_down">Move down</string>
 </resources>

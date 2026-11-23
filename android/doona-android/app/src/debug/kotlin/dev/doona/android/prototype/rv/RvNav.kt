@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,12 +19,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -42,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.max
 import dev.doona.android.R
+import kotlinx.coroutines.launch
 
 /** A destination of the floating bottom bar. */
 internal class RvNavItem(@DrawableRes val icon: Int, @StringRes val label: Int)
@@ -57,13 +57,29 @@ internal const val RV_NAV_SETTINGS = 2
 
 /**
  * The floating bottom bar (measured §9): a glass capsule [RvChrome.navInset] in from the sides and [rvNavBottom] above
- * the screen's edge, a filled glyph over a label for each of [RV_NAV], the [selected] one on a flat opaque pill.
- * [collapsed] shrinks it to icons only, 336 x 52 dp, centred and almost opaque, as Revolut's bar does while the content
- * scrolls up.
+ * the screen's edge, a filled glyph over a label for each of [RV_NAV], the [selected] one on a flat opaque pill. While
+ * [scroll], the page's, moves its content up, it shrinks to icons only, 336 x 52 dp, centred and almost opaque, as
+ * Revolut's bar does. Tapping the [selected] tab again glides that page back to its top in [RvMotion.TOP_MS] (G6).
  */
 @Composable
-internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlass, collapsed: Boolean, insets: WindowInsets, modifier: Modifier = Modifier) {
-    val shrink by animateFloatAsState(if (collapsed) 1f else 0f, tween(RvChrome.COLLAPSE_MS), label = "nav")
+internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlass, scroll: ScrollState, insets: WindowInsets, modifier: Modifier = Modifier) {
+    val motion = Rv.motion
+    val scope = rememberCoroutineScope()
+    val shrink by animateFloatAsState(if (rvCollapsedOnScroll(scroll)) 1f else 0f, motion.tween(RvMotion.NAV_MS), label = "nav")
+    val pick: (Int) -> Unit = { i ->
+        if (i != selected) {
+            onSelect(i)
+        } else {
+            scope.launch {
+                RvFrames.begin(TO_TOP)
+                try {
+                    scroll.animateScrollTo(0, motion.tween(RvMotion.TOP_MS, RvMotion.Decelerate))
+                } finally {
+                    RvFrames.end(TO_TOP)
+                }
+            }
+        }
+    }
     BoxWithConstraints(modifier.fillMaxWidth().padding(bottom = rvNavBottom(insets)), contentAlignment = Alignment.BottomCenter) {
         val width = lerp(maxWidth - RvChrome.navInset * 2, RvChrome.navCollapsedWidth, shrink)
         val height = lerp(RvChrome.navHeight, RvChrome.navCollapsedHeight, shrink)
@@ -78,7 +94,7 @@ internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlas
                 .then(rim)
                 .padding(RvChrome.navPillInset),
         ) {
-            RV_NAV.forEachIndexed { i, item -> NavItem(item, i == selected, shrink, Modifier.weight(1f)) { onSelect(i) } }
+            RV_NAV.forEachIndexed { i, item -> NavItem(item, i == selected, shrink, Modifier.weight(1f)) { pick(i) } }
         }
     }
 }
@@ -94,7 +110,7 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, modifier:
             .fillMaxHeight()
             .clip(CircleShape)
             .then(pill)
-            .selectable(selected, interactionSource = null, indication = ripple(color = colors.stateLayer), role = Role.Tab, onClick = onClick),
+            .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -132,7 +148,7 @@ internal fun rvNavClearance(insets: WindowInsets): Dp = rvNavBottom(insets) + Rv
  * reaches the top, as Revolut's bar follows the direction of the scroll.
  */
 @Composable
-internal fun rvCollapsedOnScroll(scroll: ScrollState): Boolean {
+private fun rvCollapsedOnScroll(scroll: ScrollState): Boolean {
     var collapsed by remember { mutableStateOf(false) }
     LaunchedEffect(scroll) {
         var last = scroll.value
@@ -147,3 +163,5 @@ internal fun rvCollapsedOnScroll(scroll: ScrollState): Boolean {
     }
     return collapsed
 }
+
+private const val TO_TOP = "tab-to-top"

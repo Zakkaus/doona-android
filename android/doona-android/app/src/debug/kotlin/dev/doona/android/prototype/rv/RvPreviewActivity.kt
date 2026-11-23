@@ -1,84 +1,107 @@
 package dev.doona.android.prototype.rv
 
+import android.content.Context
 import android.os.Bundle
+import android.os.Trace
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.nodes.RvNodeDetail
-import dev.doona.android.prototype.rv.nodes.RvNodesPage
-import dev.doona.android.prototype.rv.nodes.sampleNodesPage
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
-import dev.doona.android.prototype.rv.settings.RvThemeScreen
-import dev.doona.android.prototype.rv.settings.rvSampleSettings
-import dev.doona.android.prototype.rv.stats.RvStatsScreen
-import dev.doona.android.prototype.rv.stats.rvStatsSample
+import androidx.compose.ui.text.font.createFontFamilyResolver
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import kotlinx.coroutines.runBlocking
+import kotlin.concurrent.thread
 
 /**
- * Debug builds only: the Revolut-style sample with its invented state, full screen on a phone, so the glass blur can be
- * seen where the platform draws it (Robolectric's goldens cannot). 活動 pushes 流量詳情 (a traffic tile), 統計 (the top
- * bar), 節點 (the search pill and the outbound row) and the node in use (its row); 節點 pushes a node's page; the nav
- * switches to 設定, which pushes 主題. Back returns. Start it from the launcher's "doona RV sample", or with
- * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`.
+ * Debug builds only: the Revolut-style sample with its invented state, full screen on a phone, so the glass blur and
+ * the motion can be seen where the platform draws them (Robolectric's goldens cannot). 活動 pushes 流量詳情 (a traffic
+ * tile), 統計 (the top bar), 節點 (the search pill and the outbound row) and the node in use (its row), and pulls down
+ * the node picker; 節點 pushes a node's page; the nav switches to 設定, which pushes 主題. Back returns, predictively.
+ * Start it from the launcher's "doona RV sample", or with
+ * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`, adding any of:
+ * `--es pull P2` (P1-P3, [RvPullMotion]), `--es tab T2` ([RvTabMotion]), `--es push S2` ([RvPushMotion]),
+ * `--es hero H1` (活動's hero swipes between 全部流量 and 主節點, [RvHeroSwipe]),
+ * `--es start idle` (start disconnected), `--ez fail true` (connecting fails), `--es page nodes` (start on a page:
+ * nodes, stats, traffic or settings) and `--ez test true` (a latency test a second after launch). The launcher icon's
+ * shortcuts (xml/rv_shortcuts) open it with an action, [RvLaunch]: `-a dev.doona.android.prototype.rv.CONNECT` starts
+ * disconnected and connects on screen, `.DISCONNECT` starts connected and disconnects, `.NODES` starts with the node
+ * picker open. A recreated activity does not run its action again.
  */
 class RvPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        setContent {
-            val dark = isSystemInDarkTheme()
-            RvTheme(rvSystemScheme(dark), dark) {
-                // The pages pushed over the tab home, last on top: a route's name, and a node's id after a colon.
-                var stack by rememberSaveable { mutableStateOf(listOf(ACTIVITY)) }
-                BackHandler(enabled = stack.size > 1) { stack = stack.dropLast(1) }
-                RvPreviewPage(stack.last(), push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { stack = listOf(it) })
-            }
-        }
+        val options = RvMotionOptions(
+            pull = extra(EXTRA_PULL, RvPullMotion.entries) { it.code } ?: RvPullMotion.Sheet,
+            tab = extra(EXTRA_TAB, RvTabMotion.entries) { it.code } ?: RvTabMotion.Cut,
+            push = extra(EXTRA_PUSH, RvPushMotion.entries) { it.code } ?: RvPushMotion.Zoom,
+            hero = extra(EXTRA_HERO, RvHeroSwipe.entries) { it.code } ?: RvHeroSwipe.Off,
+        )
+        val launch = RvLaunch.entries.firstOrNull { it.action != null && it.action == intent.action }.takeIf { savedInstanceState == null } ?: RvLaunch.None
+        val start = RvSampleStart(
+            connected = when (launch) {
+                RvLaunch.Connect -> false
+                RvLaunch.Disconnect -> true
+                else -> intent.getStringExtra(EXTRA_START) != START_IDLE
+            },
+            fails = intent.getBooleanExtra(EXTRA_FAIL, false),
+            page = intent.getStringExtra(EXTRA_PAGE),
+            test = intent.getBooleanExtra(EXTRA_TEST, false),
+            launch = launch,
+        )
+        preloadFonts(applicationContext)
+        // Each gesture's frame times go to logcat (`adb logcat -s RvFrames`).
+        RvFrames.attach(window)
+        setContent { RvPreviewApp(options, start) }
+    }
+
+    /** The launch's [key] extra as one of [entries], by its name or its [code], any case; null when absent or unknown. */
+    private fun <T : Enum<T>> extra(key: String, entries: List<T>, code: (T) -> String): T? = intent.getStringExtra(key)?.let { value ->
+        entries.firstOrNull { it.name.equals(value, ignoreCase = true) || code(it).equals(value, ignoreCase = true) }
     }
 }
 
+/**
+ * Loads every weight of the sample's fonts on a thread of its own as the activity starts, so that no frame waits on a
+ * font file: Compose loads a resource font on the main thread, during the first layout that needs its weight. The
+ * typefaces land in caches every resolver shares. Traced as [FONTS].
+ */
+private fun preloadFonts(context: Context) = thread(name = FONTS, isDaemon = true) {
+    Trace.beginSection(FONTS)
+    try {
+        val resolver = createFontFamilyResolver(context)
+        runBlocking { listOf(RvInter, RvInterDisplay, RvNoto).forEach { resolver.preload(it) } }
+    } finally {
+        Trace.endSection()
+    }
+}
+
+/** The options to compare, one change from the default each: the default (P1 T1 S1 H0), then P2, P3, T2, S2 and H1. */
+internal class RvMotionPreviews : PreviewParameterProvider<RvMotionOptions> {
+    override val values = sequenceOf(
+        RvMotionOptions(),
+        RvMotionOptions(pull = RvPullMotion.Stretch),
+        RvMotionOptions(pull = RvPullMotion.Drop),
+        RvMotionOptions(tab = RvTabMotion.Fade),
+        RvMotionOptions(push = RvPushMotion.Axis),
+        RvMotionOptions(hero = RvHeroSwipe.On),
+    )
+}
+
+/** Run in Android Studio's interactive preview to try each option by hand. */
+@Preview(name = "Motion", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Composable
-private fun RvPreviewPage(route: String, push: (String) -> Unit, pop: () -> Unit, tab: (String) -> Unit) {
-    val nodes = remember { sampleNodesPage() }
-    var settings by remember { mutableStateOf(rvSampleSettings()) }
-    // 策略 has no sample page yet.
-    val onTab: (Int) -> Unit = { i -> TABS[i]?.let(tab) }
-    when (route.substringBefore(':')) {
-        TRAFFIC -> RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = pop)
+private fun RvMotionPreview(@PreviewParameter(RvMotionPreviews::class) options: RvMotionOptions) = RvPreviewApp(options)
 
-        STATS -> RvStatsScreen(rvStatsSample(), onBack = pop)
-
-        NODES -> RvNodesPage(nodes, onBack = pop, onFilter = {}, onOpen = { push("$NODE:$it") }, onAllNodes = {})
-
-        NODE -> {
-            val node = nodes.nodes.first { it.id == route.substringAfter(':') }
-            RvNodeDetail(node, current = node.id == nodes.currentId, nodes.testedAtEpochMs, onBack = pop, onUse = {}, onTest = {})
-        }
-
-        SETTINGS -> RvSettingsScreen(settings, onChange = { settings = it }, onOpenTheme = { push(THEME) }, onTab = onTab)
-
-        THEME -> RvThemeScreen(settings.appearance, { settings = settings.copy(appearance = it) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pop)
-
-        else -> {
-            val routes = RvActivityRoutes({ push(TRAFFIC) }, { push(STATS) }, { push(NODES) }, { push("$NODE:${nodes.currentId}") }, onTab)
-            RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, routes)
-        }
-    }
-}
-
-private const val ACTIVITY = "activity"
-private const val TRAFFIC = "traffic"
-private const val STATS = "stats"
-private const val NODES = "nodes"
-private const val NODE = "node"
-private const val SETTINGS = "settings"
-private const val THEME = "theme"
-private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_SETTINGS to SETTINGS)
+private const val FONTS = "RvFontPreload"
+private const val EXTRA_PULL = "pull"
+private const val EXTRA_TAB = "tab"
+private const val EXTRA_PUSH = "push"
+private const val EXTRA_HERO = "hero"
+private const val EXTRA_START = "start"
+private const val START_IDLE = "idle"
+private const val EXTRA_FAIL = "fail"
+private const val EXTRA_PAGE = "page"
+private const val EXTRA_TEST = "test"

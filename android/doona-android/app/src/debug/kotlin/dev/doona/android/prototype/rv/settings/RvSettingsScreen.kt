@@ -41,8 +41,8 @@ import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvBarHeight
-import dev.doona.android.prototype.rv.rvCollapsedOnScroll
 import dev.doona.android.prototype.rv.rvDotMap
+import dev.doona.android.prototype.rv.rvHeroArt
 import dev.doona.android.prototype.rv.rvNavClearance
 import dev.doona.android.prototype.rv.rvSystemScheme
 
@@ -61,7 +61,7 @@ internal fun RvSettingsScreen(state: RvSettingsState, onChange: (RvSettingsState
         stringResource(R.string.hub_settings),
         insets,
         scroll = scroll,
-        overlay = { glass -> RvFloatingNav(RV_NAV_SETTINGS, onTab, glass, rvCollapsedOnScroll(scroll), insets, Modifier.align(Alignment.BottomCenter)) },
+        overlay = { glass -> RvFloatingNav(RV_NAV_SETTINGS, onTab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter)) },
     ) { titleBlock ->
         Hero(titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
@@ -83,7 +83,9 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets) {
     Box(Modifier.fillMaxWidth()) {
         // No dot on the status bar's clock (S8-08): the map starts under it, as 活動's does.
         val dots = Modifier.rvDotMap(null, Rv.colors.dots, status + rvBarHeight() + RvSettingsSpace.mapDrop, fadeTop = status)
-        Box(Modifier.matchParentSize().graphicsLayer { alpha = RvSettingsAlpha.HERO_DOTS }.then(dots))
+        // After a hard-cut tab switch the dots fade in ([rvHeroArt]).
+        val art = rvHeroArt()
+        Box(Modifier.matchParentSize().graphicsLayer { alpha = RvSettingsAlpha.HERO_DOTS * art() }.then(dots))
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             RvBarSpacer(insets)
             Spacer(Modifier.height(RvSettingsSpace.heroTop))

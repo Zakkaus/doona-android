@@ -2,6 +2,7 @@
 /app/build/
 /icons/build/
 /flags/build/
+/benchmark/build/
 /.gradle/
 /.kotlin/
 /.idea/

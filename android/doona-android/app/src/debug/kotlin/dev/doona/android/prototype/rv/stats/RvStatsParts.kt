@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -20,6 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -27,6 +31,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvFigure
+import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.scripted
 
@@ -81,12 +86,20 @@ internal fun RvStatsSwatch(color: Color) {
     Box(Modifier.size(RvStatsSize.legendSquare).clip(RoundedCornerShape(RvStatsSize.legendRadius)).background(color))
 }
 
-/** The pager's dots under the tiles: the current one larger and darker, the others in the control grey (3:1 on the page, S06). */
+/**
+ * The pager's dots under the tiles: the current one larger and darker, the others in the control grey (3:1 on the page, S06).
+ * Given [onPick], each dot is also a tab named by its [labels] entry, [RvSize.touch] high: a tap shows its page.
+ */
 @Composable
-internal fun RvStatsDots(count: Int, current: Int) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+internal fun RvStatsDots(count: Int, current: Int, modifier: Modifier = Modifier, labels: List<String> = emptyList(), onPick: ((Int) -> Unit)? = null) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         repeat(count) { i ->
-            Box(Modifier.width(RvStatsSize.dotPitch), contentAlignment = Alignment.Center) {
+            val tab = if (onPick == null) {
+                Modifier
+            } else {
+                Modifier.height(RvSize.touch).selectable(i == current, interactionSource = null, indication = null, role = Role.Tab) { onPick(i) }.semantics { contentDescription = labels[i] }
+            }
+            Box(tab.width(RvStatsSize.dotPitch), contentAlignment = Alignment.Center) {
                 val size = if (i == current) RvStatsSize.dot else RvStatsSize.dotIdle
                 Box(Modifier.size(size).clip(CircleShape).background(if (i == current) Rv.colors.textSecondary else Rv.colors.control))
             }

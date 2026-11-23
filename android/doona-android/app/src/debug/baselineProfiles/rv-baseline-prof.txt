@@ -1,0 +1,8 @@
+HSPLdev/doona/android/**;->**(**)**
+Ldev/doona/android/**;
+HSPLandroidx/compose/**;->**(**)**
+Landroidx/compose/**;
+HSPLandroidx/collection/**;->**(**)**
+Landroidx/collection/**;
+HSPLkotlinx/coroutines/**;->**(**)**
+Lkotlinx/coroutines/**;

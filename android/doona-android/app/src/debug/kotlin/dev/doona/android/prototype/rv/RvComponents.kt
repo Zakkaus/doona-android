@@ -1,11 +1,16 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,12 +27,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -37,7 +48,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -52,6 +65,7 @@ import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvPlace
+import kotlinx.coroutines.delay
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.abs
@@ -62,10 +76,42 @@ internal fun RvText(text: String, style: TextStyle, modifier: Modifier = Modifie
     BasicText(scripted(text), modifier, style.copy(color = color, textAlign = align), overflow = TextOverflow.Ellipsis, maxLines = 1)
 }
 
-/** The one press feedback: the content colour's state layer, clipped to the visible [shape]. */
+/**
+ * The one press feedback: the content colour's state layer, clipped to the visible [shape], up in [RvMotion.PRESS_MS].
+ * [onLongClick], when given, fires on a long press with combinedClickable's own haptic tick; [RvLongPressTiming] sets
+ * when that is.
+ */
 @Composable
-internal fun Modifier.rvPress(shape: Shape, role: Role, onClick: () -> Unit): Modifier =
-    clip(shape).clickable(interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = role, onClick = onClick)
+internal fun Modifier.rvPress(shape: Shape, role: Role, onClick: () -> Unit, onLongClick: (() -> Unit)? = null): Modifier =
+    if (onLongClick == null) {
+        clip(shape).clickable(interactionSource = null, indication = rvPressIndication(), role = role, onClick = onClick)
+    } else {
+        clip(shape).combinedClickable(interactionSource = null, indication = rvPressIndication(), role = role, onLongClick = onLongClick, onClick = onClick)
+    }
+
+/**
+ * A round disc's press, as Revolut's discs take one (measured: they lighten and grow slightly while held): the disc
+ * grows by [RvMotion.DISC_GROW] and lightens toward [RvColors.discLit], both in [RvMotion.PRESS_MS], and goes back on
+ * release; at animator scale 0 at once. [fill] is the disc's size and fill (a background, or the controls' glass), drawn
+ * inside the growing layer under the lightening. The scale is the layer's and both read the press in the draw phase,
+ * so a frame lays nothing out and allocates nothing. Rows and pills keep [rvPressIndication].
+ */
+@Composable
+internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit): Modifier {
+    val motion = Rv.motion
+    val lit = Rv.colors.discLit
+    val source = remember { MutableInteractionSource() }
+    val press = remember { Animatable(0f) }
+    LaunchedEffect(source, motion) { source.rvFollowPress { press.animateTo(it, motion.tween(RvMotion.PRESS_MS, LinearEasing)) } }
+    return graphicsLayer {
+        val grow = 1f + RvMotion.DISC_GROW * press.value
+        scaleX = grow
+        scaleY = grow
+    }.then(fill)
+        .drawBehind { if (press.value > 0f) drawCircle(lit, alpha = press.value) }
+        .clip(CircleShape)
+        .clickable(source, indication = null, role = Role.Button, onClick = onClick)
+}
 
 @Composable
 internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: Modifier = Modifier) {
@@ -75,7 +121,7 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
 /**
  * The screen's one tinted area: the dot map of the world in [dots] on the neutral page behind the header content,
  * centred on [focus] at [focusTop] from the header's top, none above [statusBar], and faint behind the hero's text at
- * [clear].
+ * [clear]. [live] moves it (a tab's fade, P2's stretch, the connected pulse, a pan to a new node).
  */
 @Composable
 internal fun RvHeader(
@@ -85,13 +131,17 @@ internal fun RvHeader(
     dots: Color,
     clear: Rect?,
     modifier: Modifier = Modifier,
+    live: RvDotMotion = RvDotMotion(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        content = content,
-    )
+    Box(modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar, live)) {
+        // The marker's pulse, an ambient loop: its own layer, voting the normal rate, so a frame of it redraws the ring
+        // alone and not the page it lies on.
+        if (focus != null) {
+            Spacer(Modifier.matchParentSize().preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {}.rvDotPulse(focus, dots, focusTop, live))
+        }
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = content)
+    }
 }
 
 /**
@@ -121,19 +171,15 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
     return if (cut < 0) figure to "" else figure.substring(0, cut) to figure.substring(cut)
 }
 
-/** A round action: a disc with a glyph and its label under it; only the disc lights up when pressed. */
+/** A round action: a disc with a glyph and its label under it; only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy]. */
 @Composable
-internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier
-                .size(RvSize.actionDisc)
-                .clip(CircleShape)
-                .background(Rv.colors.discOnHeader)
-                .rvPress(CircleShape, Role.Button, onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)
+        Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
+            // While [busy] (connecting) the disc shows a busy bar instead of its glyph.
+            Crossfade(busy, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "busy") { working ->
+                if (working) RvBusy(Modifier.width(RvSize.busy)) else RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)
+            }
         }
         Spacer(Modifier.height(RvSpace.discToLabel))
         RvText(label, Rv.type.action, align = TextAlign.Center)
@@ -154,10 +200,11 @@ internal fun RvRow(
     subtitle: String?,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     // The card clips the layer of its first and last row to its corners.
-    val press = onClick?.let { Modifier.rvPress(RectangleShape, Role.Button, it) } ?: Modifier
+    val press = onClick?.let { Modifier.rvPress(RectangleShape, Role.Button, it, onLongClick) } ?: Modifier
     Row(
         modifier
             .fillMaxWidth()
@@ -303,12 +350,38 @@ internal fun RvDelta(changeMs: Int) {
     }
 }
 
-/** A node's latency as a trailing value (19 sp semibold) over its [RvDelta] (17 sp); a test that timed out is a dash. */
+/** Whether a latency test of every node is running: every [RvLatencyChange] shows [RvBusy] until its result arrives. */
+internal val LocalRvTesting = compositionLocalOf { false }
+
+/** The nodes a test of their own is running for (a row menu's 測試延遲): only their rows show [RvBusy]. */
+internal val LocalRvTestingNodes = compositionLocalOf { emptySet<String>() }
+
+/**
+ * A node's latency over its change since the test before ([RvDelta]). While a test runs ([LocalRvTesting], or one of
+ * [node]'s own in [LocalRvTestingNodes]) a busy bar stands in for both; when it ends the result fades in [order] ×
+ * [RvMotion.STAGGER_MS] after the list's first, so the results run down the list, and any later change cross-fades.
+ */
 @Composable
-internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?) {
-    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-        RvText(latencyMs?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
-        changeMs?.let { RvDelta(it) }
+internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, order: Int = 0, node: String? = null) {
+    val motion = Rv.motion
+    val testing = LocalRvTesting.current || node in LocalRvTestingNodes.current
+    var waiting by remember { mutableStateOf(testing) }
+    // Only while what it shows lags the test: a row at rest launches nothing, and a list has one per row.
+    if (waiting != testing) {
+        LaunchedEffect(testing) {
+            if (!testing && !motion.instant) delay(order.toLong() * RvMotion.STAGGER_MS)
+            waiting = testing
+        }
+    }
+    Crossfade(if (waiting) null else latencyMs to changeMs, animationSpec = motion.tween(RvMotion.FADE_MS), label = "latency") { shown ->
+        if (shown == null) {
+            RvBusy(Modifier.width(RvSize.busy))
+        } else {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+                RvText(shown.first?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
+                shown.second?.let { RvDelta(it) }
+            }
+        }
     }
 }
 

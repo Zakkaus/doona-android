@@ -12,6 +12,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- 連線, 中斷連線 and 節點 from the launcher icon's long press. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/rv_shortcuts" />
         </activity>
         <!-- Debug builds only: adb's hooks for measurements and the core-failure check (vpn/DebugHooks.kt). Only the
              shell and the system hold DUMP, so no other app can send these. -->
