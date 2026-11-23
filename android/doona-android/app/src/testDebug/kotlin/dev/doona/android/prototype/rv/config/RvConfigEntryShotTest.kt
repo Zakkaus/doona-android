@@ -30,10 +30,10 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The configuration's entry points (PV-f item 5), samples only, behind the pages' preview flag `configRev`: 策略 in 規則
  * with 設定檔 under 範本 (`proto-rv-policy-config-entry-*`) and 設定 with 設定檔 in 進階
- * (`proto-rv-settings-config-entry-*`). Every size holds the whole page, from its top: 策略's own goldens at fs115 and
- * fs200 are its first screen, where the row is below the fold, so the window grows to take it in and the first screen
- * stays where it was (scrolling to the row collapses the nav to its glyphs); 設定 is whole at every size, as its own
- * goldens are.
+ * (`proto-rv-settings-config-entry-*`). Each is recorded as its own counterpart is, in the same window and from the
+ * same scroll, so a diff against it shows what the row moved: 策略 is whole at light and dark and the phone's first
+ * screen at fs115 and fs200 (`proto-rv-policy-*`; the row is below that fold, so those two show the page above it and
+ * nothing scrolls, which would collapse the nav to its glyphs); 設定 is whole at every size, as its own goldens are.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -53,13 +53,9 @@ class RvConfigEntryShotTest {
     @Config(qualifiers = WHOLE_POLICY)
     fun policyDark() = compose.rvShot("policy-config-entry", dark = true, before = { assertWhole() }) { Policy() }
 
-    @Test
-    @Config(qualifiers = WHOLE_POLICY_FS115)
-    fun policyFs115() = compose.rvShot("policy-config-entry", dark = false, before = { assertWhole() }, fontScale = RV_FS115) { Policy() }
+    @Test fun policyFs115() = compose.rvShot("policy-config-entry", dark = false, fontScale = RV_FS115) { Policy() }
 
-    @Test
-    @Config(qualifiers = WHOLE_POLICY_FS200)
-    fun policyFs200() = compose.rvShot("policy-config-entry", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Policy() }
+    @Test fun policyFs200() = compose.rvShot("policy-config-entry", dark = false, fontScale = RV_FS200) { Policy() }
 
     @Test
     @Config(qualifiers = WHOLE_SETTINGS)
@@ -106,8 +102,6 @@ class RvConfigEntryShotTest {
 
     private companion object {
         const val WHOLE_POLICY = "+h1990dp"
-        const val WHOLE_POLICY_FS115 = "+h1994dp"
-        const val WHOLE_POLICY_FS200 = "+h2950dp"
         const val WHOLE_SETTINGS = "+h1664dp"
         const val WHOLE_SETTINGS_FS115 = "+h1687dp"
         const val WHOLE_SETTINGS_FS200 = "+h2115dp"
