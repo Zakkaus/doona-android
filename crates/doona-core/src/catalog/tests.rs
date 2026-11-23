@@ -24,6 +24,7 @@ fn stored(id: &str, body: &str) -> StoredSubscription {
         id: id.to_owned(),
         name: id.to_owned(),
         url: format!("https://{id}.invalid/"),
+        format: Some(parsed.format),
         updated_at_epoch_ms: None,
         used_bytes: None,
         total_bytes: None,

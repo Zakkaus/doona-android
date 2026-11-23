@@ -11,7 +11,7 @@
 //! mapping or sequence, as upstream decides. Surge-style records are `parse_failed`.
 
 use super::structured;
-use crate::dto::ErrorCode;
+use crate::dto::{ErrorCode, SubscriptionFormat};
 use honk_config::node::Node;
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -28,8 +28,9 @@ const MAX_VMESS_PAYLOAD: usize = 16 << 10;
 
 /// The admitted nodes of a body and what `state.json` keeps to parse them again: the share link
 /// of each node, or for a structured body, the document of the entries they came from.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct Parsed {
+    pub format: SubscriptionFormat,
     pub links: Vec<String>,
     pub nodes: Vec<Node>,
     pub document: Option<String>,
@@ -41,17 +42,17 @@ pub(crate) struct Parsed {
 pub(crate) fn parse(body: &[u8]) -> Result<Parsed, ErrorCode> {
     let text = std::str::from_utf8(body).map_err(|_| ErrorCode::ParseFailed)?;
     let text = strip_bom(text);
-    let text: Cow<'_, str> = match decode_base64_flexible(text) {
+    let decoded: Cow<'_, str> = match decode_base64_flexible(text) {
         Some(bytes) => String::from_utf8(bytes)
             .map_err(|_| ErrorCode::ParseFailed)?
             .into(),
         None => text.into(),
     };
-    let text = strip_bom(&text);
+    let text = strip_bom(&decoded);
     if text.trim().is_empty() {
         return Err(ErrorCode::NoNodes);
     }
-    let parsed = if starts_with_link(text) {
+    let mut parsed = if starts_with_link(text) {
         admit(text.lines())?
     } else if let Some(parsed) = structured::parse(text)? {
         parsed
@@ -62,6 +63,9 @@ pub(crate) fn parse(body: &[u8]) -> Result<Parsed, ErrorCode> {
     };
     if parsed.nodes.is_empty() {
         return Err(ErrorCode::NoNodes);
+    }
+    if matches!(decoded, Cow::Owned(_)) && parsed.format == SubscriptionFormat::ShareLinks {
+        parsed.format = SubscriptionFormat::Base64;
     }
     Ok(parsed)
 }
@@ -86,6 +90,7 @@ pub(crate) fn admit<'a>(lines: impl Iterator<Item = &'a str>) -> Result<Parsed, 
         }
     }
     Ok(Parsed {
+        format: SubscriptionFormat::ShareLinks,
         links,
         nodes: admission.nodes,
         document: None,

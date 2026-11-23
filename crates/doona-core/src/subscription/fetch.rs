@@ -83,8 +83,8 @@ pub(crate) fn user_agent(text: &str) -> Result<String, ErrorCode> {
 }
 
 /// Downloads `url` within `bound`, redirects included, sending `agent`, or [`USER_AGENT`] when
-/// there is none, on every request. A failure is `fetch_failed`, or `local_network` while the dial
-/// that failed or ran out of time had a local address to try.
+/// there is none, on every request. An oversized body is `too_large`; other failures are
+/// `fetch_failed`, or `local_network` if the failed dial had a local address to try.
 pub(crate) async fn fetch(
     url: Url,
     agent: Option<&str>,
@@ -424,7 +424,7 @@ async fn read_exact<R: AsyncRead + Unpin>(
     length: usize,
 ) -> Result<Vec<u8>, ErrorCode> {
     if length > MAX_BODY {
-        return Err(ErrorCode::FetchFailed);
+        return Err(ErrorCode::TooLarge);
     }
     let mut body = vec![0; length];
     reader
@@ -448,7 +448,7 @@ async fn read_to_end<R: AsyncRead + Unpin>(reader: &mut R) -> Result<Vec<u8>, Er
         Err(_) => return Err(ErrorCode::FetchFailed),
     }
     if body.len() > MAX_BODY {
-        return Err(ErrorCode::FetchFailed);
+        return Err(ErrorCode::TooLarge);
     }
     Ok(body)
 }
@@ -464,8 +464,8 @@ async fn read_chunked<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<Vec<u8>
             while !read_line(reader).await?.trim().is_empty() {}
             return Ok(body);
         }
-        if body.len() + size > MAX_BODY {
-            return Err(ErrorCode::FetchFailed);
+        if size > MAX_BODY - body.len() {
+            return Err(ErrorCode::TooLarge);
         }
         let start = body.len();
         body.resize(start + size, 0);

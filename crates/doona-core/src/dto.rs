@@ -19,6 +19,7 @@ pub enum ErrorCode {
     InvalidArgument,
     NotFound,
     FetchFailed,
+    TooLarge,
     ParseFailed,
     NoNodes,
     Busy,
@@ -34,6 +35,7 @@ impl ErrorCode {
             ErrorCode::InvalidArgument => "invalid_argument",
             ErrorCode::NotFound => "not_found",
             ErrorCode::FetchFailed => "fetch_failed",
+            ErrorCode::TooLarge => "too_large",
             ErrorCode::ParseFailed => "parse_failed",
             ErrorCode::NoNodes => "no_nodes",
             ErrorCode::Busy => "busy",
@@ -340,6 +342,16 @@ pub struct Member {
     pub subscription_id: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SubscriptionFormat {
+    ShareLinks,
+    Base64,
+    Clash,
+    SingBox,
+    Sip008,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Subscription {
@@ -347,6 +359,8 @@ pub struct Subscription {
     pub name: String,
     pub url: String,
     pub nodes: u32,
+    /// Format of the last successful fetch; null for subscriptions saved before it was recorded.
+    pub format: Option<SubscriptionFormat>,
     pub updated_at_epoch_ms: Option<i64>,
     pub error: Option<ErrorCode>,
     pub used_bytes: Option<i64>,

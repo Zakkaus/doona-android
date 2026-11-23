@@ -374,6 +374,7 @@ impl Model {
             name: s.name.clone(),
             url: s.url.clone(),
             nodes: u32::try_from(self.nodes_of(&s.id)).unwrap_or(u32::MAX),
+            format: s.format,
             updated_at_epoch_ms: s.updated_at_epoch_ms,
             error: s.error,
             used_bytes: s.used_bytes,

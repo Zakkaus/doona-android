@@ -82,7 +82,7 @@ fn init_and_start_config() {
 #[test]
 fn call_replies_and_args() {
     let error = round_trip::<Reply<Empty>>("call-error.json");
-    assert!(matches!(error, Reply::Error(e) if e.code.as_str() == "fetch_failed"));
+    assert!(matches!(error, Reply::Error(e) if e.code == ErrorCode::TooLarge));
     assert_eq!(
         round_trip::<Reply<Empty>>("call-ok-empty.json"),
         Reply::Ok(Empty {})
