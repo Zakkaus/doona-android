@@ -82,6 +82,7 @@ struct Current {
 #[derive(Clone)]
 struct Published {
     registries: Registries,
+    proxies: Arc<ProxyRegistry>,
     carriers: Arc<Carriers>,
 }
 
@@ -285,9 +286,8 @@ impl Outbounds {
     }
 
     /// What new flows are routed by now.
-    pub(crate) fn view(&self) -> View<'_> {
+    pub(crate) fn view(&self) -> View {
         View {
-            outbounds: self,
             table: self.table(),
         }
     }
@@ -361,6 +361,7 @@ impl Outbounds {
             Some((registries, reused)) => (
                 Some(Published {
                     registries,
+                    proxies: Arc::clone(&self.proxies),
                     carriers,
                 }),
                 reused,

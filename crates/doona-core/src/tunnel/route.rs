@@ -18,10 +18,11 @@ use super::Session;
 use super::udp::UdpUpstream;
 use crate::dto::Mode;
 use crate::localnet::{self, Trace};
-use crate::outbounds::{Dialer, Outbounds};
+use crate::outbounds::{Dialer, Outbounds, View};
 use crate::rules::policy::Choice;
 use crate::rules::{Flow, Network};
 use crate::stats::meter::{DIRECT, Meter};
+use honk_outbound::group::ScoreContinuation;
 use honk_outbound::proxy::AsyncReadWrite;
 use std::io::{self, ErrorKind};
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
@@ -29,6 +30,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::time::Duration;
 use tokio::net::{TcpStream, UdpSocket};
+use tokio::time::{Instant, timeout_at};
 
 mod connect;
 
@@ -92,6 +94,8 @@ pub(crate) enum Route {
     RuleDirect(Arc<str>),
     /// Through this node; what each dial showed on its way to the node goes to the session.
     Proxy(Arc<Dialer>, Arc<Session>),
+    /// The DNS session keeps its routing publication but selects for each upstream socket.
+    Resolver(View, Arc<Session>),
     /// A rule's reject; Global or a rule's group while it has no node. TCP is reset, datagrams
     /// are dropped.
     Refuse,
@@ -149,7 +153,11 @@ impl Route {
         } else {
             (policy.main(), None)
         };
-        Route::through(view.for_flow(group, dst, network, domain), rule, session)
+        Route::through(
+            view.for_flow(group, dst, network, domain, None),
+            rule,
+            session,
+        )
     }
 
     /// The route of DNS the core answers for `session`'s generation: straight out in Direct, else
@@ -168,9 +176,10 @@ impl Route {
         let view = outbounds.view();
         match view.mode().unwrap_or(mode) {
             Mode::Direct => Route::Direct,
-            Mode::Global | Mode::Rule => {
-                Route::through(view.dialer(view.policy().main()), None, session)
+            Mode::Global | Mode::Rule if view.has_main_node() => {
+                Route::Resolver(view, Arc::clone(session))
             }
+            _ => Route::Refuse,
         }
     }
 
@@ -194,6 +203,7 @@ impl Route {
         match self {
             Route::Direct => Some(meters.get(DIRECT)),
             Route::RuleDirect(rule) => Some(meters.get_ruled(DIRECT, rule)),
+            Route::Resolver(view, _) => Some(meters.get(view.policy().main())),
             Route::Proxy(d, _) => Some(match &d.rule {
                 Some(rule) => meters.get_ruled(&d.group, rule),
                 None => meters.get(&d.group),
@@ -208,29 +218,52 @@ impl Route {
         match self {
             Route::Direct | Route::RuleDirect(_) => true,
             Route::Proxy(d, _) => d.supports_udp(),
-            Route::Refuse | Route::Blocked => false,
+            Route::Resolver(..) | Route::Refuse | Route::Blocked => false,
         }
     }
 
+    #[cfg(test)]
     pub async fn connect(&self, dst: SocketAddr) -> io::Result<Upstream> {
         self.connect_tcp(dst).await.map(|(stream, _)| stream)
     }
 
     pub(super) async fn connect_tcp(&self, dst: SocketAddr) -> io::Result<connect::Connected> {
+        self.connect_until(dst, Instant::now() + CONNECT_TIMEOUT, &mut None)
+            .await
+    }
+
+    pub(crate) async fn connect_until(
+        &self,
+        dst: SocketAddr,
+        deadline: Instant,
+        original: &mut Option<ScoreContinuation>,
+    ) -> io::Result<connect::Connected> {
         match self {
             Route::Direct | Route::RuleDirect(_) => {
-                let s = within(TcpStream::connect(dst)).await??;
+                let s = timeout_at(deadline, TcpStream::connect(dst)).await??;
                 // The app's own segments arrive already sized; Nagle would only add delay.
                 s.set_nodelay(true)?;
                 Ok((Box::new(s), None))
             }
-            Route::Proxy(d, session) => connect::connect(d, session, dst).await,
+            Route::Proxy(d, session) => connect::connect(d, session, dst, deadline, original).await,
+            Route::Resolver(view, session) => {
+                let dialer = view
+                    .for_flow(
+                        view.policy().main(),
+                        dst,
+                        Network::Tcp,
+                        || None,
+                        original.as_ref(),
+                    )
+                    .ok_or(ErrorKind::PermissionDenied)?;
+                connect::connect(&dialer, session, dst, deadline, original).await
+            }
             Route::Refuse | Route::Blocked => Err(ErrorKind::PermissionDenied.into()),
         }
     }
 
     /// An upstream that exchanges datagrams with `dst` only.
-    pub async fn bind_udp(&self, dst: SocketAddr) -> io::Result<UdpUpstream> {
+    pub async fn bind_udp(&self, dst: SocketAddr) -> io::Result<connect::Connected<UdpUpstream>> {
         match self {
             Route::Direct | Route::RuleDirect(_) => {
                 let any: SocketAddr = match dst {
@@ -239,47 +272,43 @@ impl Route {
                 };
                 let s = UdpSocket::bind(any).await?;
                 s.connect(dst).await?;
-                Ok(UdpUpstream::Socket(s))
+                Ok((UdpUpstream::Socket(s), None))
             }
             Route::Proxy(d, session) => {
                 let (registry, proxies, id) =
                     (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
-                let (trace, began) = (Trace::default(), session.begin_dial());
-                let dial = trace.scope(async move {
+                let trace = Trace::default();
+                let dial = async move {
                     proxies
                         .dial_udp_transport_runtime(registry, id, dst, None, CONNECT_TIMEOUT)
                         .await
-                });
-                let dialed = flatten(within(d.on_carriers(dial)).await);
-                session.dialed(began, &trace, dialed.is_ok());
+                };
+                let (transport, reporter) = connect::setup(
+                    d,
+                    session,
+                    &trace,
+                    Instant::now() + CONNECT_TIMEOUT,
+                    |_| {},
+                    dial,
+                )
+                .await
+                .map_err(|(_, e)| e)?;
                 // A transport that only bound a socket to the node has sent nothing yet: its first
                 // send says whether the node's address is reachable. honk does not say where a
                 // SOCKS5 node's UDP relay is (its server names it in a reply), so such a session
                 // goes by the control connection's address; v0.1 leaves that limit.
                 let peer = trace.peer().or_else(|| localnet::literal(d.node.host()));
                 let local = peer.is_some_and(localnet::is_local);
-                Ok(UdpUpstream::Proxy(
-                    dialed?,
-                    dst,
-                    local.then(|| Arc::clone(session)),
+                Ok((
+                    UdpUpstream::Proxy(transport, dst, local.then(|| Arc::clone(session))),
+                    reporter,
                 ))
             }
-            Route::Refuse | Route::Blocked => Err(ErrorKind::PermissionDenied.into()),
+            Route::Resolver(..) | Route::Refuse | Route::Blocked => {
+                Err(ErrorKind::PermissionDenied.into())
+            }
         }
     }
-}
-
-/// `fut` within [`CONNECT_TIMEOUT`]: honk bounds only some steps of a dial.
-async fn within<T>(fut: impl Future<Output = T>) -> io::Result<T> {
-    tokio::time::timeout(CONNECT_TIMEOUT, fut)
-        .await
-        .map_err(|_| ErrorKind::TimedOut.into())
-}
-
-/// A dial through a node within [`within`] on its carriers, as one result. honk's error text may
-/// name the server, so a failure it reports is kept only as refused.
-fn flatten<T>(dialed: io::Result<io::Result<anyhow::Result<T>>>) -> io::Result<T> {
-    dialed?.and_then(|r| r.map_err(|_| ErrorKind::ConnectionRefused.into()))
 }
 
 #[cfg(test)]

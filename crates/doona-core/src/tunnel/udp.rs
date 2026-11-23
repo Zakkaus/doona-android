@@ -7,6 +7,14 @@
 //! dropped, as a network would, when the budget or a queue is full or too many associations are
 //! open. Android 17 refuses a datagram to a node on the local network with `EPERM` while doona
 //! lacks the permission, so the first send through such a node reports how it went (ARCH D26).
+//!
+//! Score counts an association once. Reply-idle after an accepted peer reply is success;
+//! a locally dropped reply is not evidence against the node.
+
+mod exchange;
+use exchange::exchange;
+#[cfg(test)]
+mod tests_score;
 
 use super::Session;
 use super::flow::{DEPTH, Event, Events, Key, Waker};
@@ -23,13 +31,12 @@ use std::io::{self, ErrorKind};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{
-    AtomicU64, AtomicUsize,
-    Ordering::{AcqRel, Acquire, Relaxed},
+    AtomicUsize,
+    Ordering::{AcqRel, Acquire},
 };
 use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::sync::{OwnedSemaphorePermit, mpsc};
-use tokio::time::Instant;
 
 /// An association with no datagram either way for this long ends, unless the core's options set
 /// another time.
@@ -127,7 +134,7 @@ pub(crate) struct Opened {
     pub id: u64,
     pub up: mpsc::Receiver<Datagram>,
     pub down: mpsc::Sender<Datagram>,
-    pub waker: Arc<Waker>,
+    waker: Arc<Waker>,
     budget: Arc<Budget>,
     idle: Duration,
 }
@@ -158,30 +165,34 @@ impl Nat {
         events: &Events,
         route: impl FnOnce() -> Option<Route>,
     ) -> Option<(Opened, Route)> {
-        let existing = self.by_pair.get(&(client, remote)).copied();
-        let new_route = match existing {
-            Some(_) => None,
-            None if self.flows.len() >= MAX_ASSOCIATIONS => return None,
-            None => Some(route()?),
-        };
-        let datagram = Datagram::copy(payload, &self.budget)?;
-        let (id, opened) = match (existing, new_route) {
-            (Some(id), _) => (id, None),
-            (None, route) => {
-                let o = self.open(client, remote, events);
-                (o.id, route.map(|r| (o, r)))
+        if let Some(id) = self.by_pair.get(&(client, remote)) {
+            let flow = &self.flows[id];
+            if let Ok(slot) = flow.up.try_reserve()
+                && let Some(d) = Datagram::copy(payload, &self.budget)
+            {
+                slot.send(d);
             }
-        };
-        let flow = self.flows.get(&id)?;
-        // Full: dropped. Closed: the task is ending and its UdpEnded event removes the entry.
-        let _ = flow.up.try_send(datagram);
-        opened
+            return None;
+        }
+        if self.flows.len() >= MAX_ASSOCIATIONS {
+            return None;
+        }
+        let route = route()?;
+        let first = Datagram::copy(payload, &self.budget)?;
+        Some((self.open(client, remote, events, first), route))
     }
 
-    fn open(&mut self, client: SocketAddr, remote: SocketAddr, events: &Events) -> Opened {
+    fn open(
+        &mut self,
+        client: SocketAddr,
+        remote: SocketAddr,
+        events: &Events,
+        first: Datagram,
+    ) -> Opened {
         self.next += 1;
         let id = self.next;
         let (up_tx, up_rx) = mpsc::channel(DEPTH * 8);
+        up_tx.try_send(first).expect("new association has room");
         let (down_tx, down_rx) = mpsc::channel(DEPTH * 8);
         let waker = Waker::new(Key::Udp(id), events.clone());
         self.by_pair.insert((client, remote), id);
@@ -282,71 +293,10 @@ pub(crate) fn relay(
     let tally = Tally::new(meter);
     async move {
         let id = o.id;
-        if let Ok(upstream) = route.bind_udp(remote).await {
-            exchange(o, &upstream, tally).await;
+        if let Ok((upstream, reporter)) = route.bind_udp(remote).await {
+            exchange(o, &upstream, tally, reporter.as_ref()).await;
         }
         let _ = events.send(Event::UdpEnded(id));
-    }
-}
-
-/// Moves datagrams both ways until neither way moved one for the idle time or the upstream fails.
-/// Each way is one future polled to its end, never dropped mid-datagram, so a transport that
-/// frames datagrams on a stream is never cut inside a frame.
-async fn exchange(o: Opened, upstream: &UdpUpstream, tally: Tally) {
-    let Opened {
-        mut up,
-        down,
-        waker,
-        budget,
-        idle,
-        ..
-    } = o;
-    let begun = Instant::now();
-    // When either way last moved a datagram, in milliseconds since `begun`.
-    let last = AtomicU64::new(0);
-    let moved = || last.store(millis(begun.elapsed()), Relaxed);
-    let sending = async {
-        let mut first = upstream.first_send_to();
-        while let Some(d) = up.recv().await {
-            let began = first.map(Session::begin_dial);
-            // A failed send is a lost datagram; one still blocked after `idle` ends the association.
-            let Ok(sent) = tokio::time::timeout(idle, upstream.send(&d.bytes)).await else {
-                return;
-            };
-            if let (Some(session), Some(began)) = (first.take(), began) {
-                session.first_sent(began, &sent);
-            }
-            if sent.is_ok() {
-                tally.up(d.bytes.len());
-            }
-            moved();
-        }
-    };
-    let receiving = async {
-        let mut own = Vec::new();
-        while let Ok(d) = upstream.recv(&mut own, &budget).await {
-            // None: over the budget, dropped.
-            let n = d.as_ref().map_or(0, |d| d.bytes.len());
-            if d.is_some_and(|d| down.try_send(d).is_ok()) {
-                tally.down(n);
-                waker.wake();
-            }
-            moved();
-        }
-    };
-    let idled = async {
-        loop {
-            let until = begun + Duration::from_millis(last.load(Relaxed)) + idle;
-            if Instant::now() >= until {
-                return;
-            }
-            tokio::time::sleep_until(until).await;
-        }
-    };
-    tokio::select! {
-        () = sending => {}
-        () = receiving => {}
-        () = idled => {}
     }
 }
 
@@ -470,7 +420,7 @@ mod tests {
             .send(pair, b"first", &events, || Some(Route::Direct))
             .unwrap();
         let upstream = UdpUpstream::Proxy(Arc::new(node), pair.1, Some(Arc::clone(&session)));
-        exchange(opened, &upstream, Tally::new(None)).await;
+        exchange(opened, &upstream, Tally::new(None), None).await;
         session.warning()
     }
 
@@ -504,7 +454,7 @@ mod tests {
             .unwrap();
         let upstream = UdpUpstream::Proxy(Arc::new(Node(None)), pair.1, None);
         let meter = meters.get_ruled("g-Proxy", "r-1");
-        exchange(opened, &upstream, Tally::new(Some(meter))).await;
+        exchange(opened, &upstream, Tally::new(Some(meter)), None).await;
         let taken = meters.take();
         assert_eq!(taken.rules, [("r-1".to_owned(), [5, 0, 1])]);
         assert_eq!(taken.outbounds, [("g-Proxy".to_owned(), 5, 0)]);

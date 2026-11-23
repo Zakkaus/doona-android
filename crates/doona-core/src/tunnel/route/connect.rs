@@ -1,4 +1,4 @@
-use super::{CONNECT_TIMEOUT, Dialer, Session, Trace, Upstream};
+use super::{Dialer, Session, Trace, Upstream};
 use crate::api::lock;
 use honk_outbound::group::{ScoreBusinessGuard, ScoreContinuation, ScoreOutcome, ScoreReporter};
 use honk_outbound::runtime::DialScope;
@@ -7,12 +7,11 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::time::{Instant, timeout_at};
 
-pub(super) type Connected = (Upstream, Option<ScoreReporter>);
+pub(crate) type Connected<T = Upstream> = (T, Option<ScoreReporter>);
 
 struct Setup {
     scope: Arc<DialScope>,
     progress: Arc<Mutex<Progress>>,
-    original: ScoreContinuation,
 }
 
 struct Progress {
@@ -22,7 +21,6 @@ struct Progress {
 
 impl Setup {
     fn new(d: &Dialer, guard: ScoreBusinessGuard) -> Self {
-        let original = guard.continuation();
         let progress = Arc::new(Mutex::new(Progress {
             waiting: Some(guard),
             started: None,
@@ -32,24 +30,16 @@ impl Setup {
             let mut p = lock(&start);
             p.started = p.waiting.take().map(ScoreBusinessGuard::start);
         });
-        Self {
-            scope,
-            progress,
-            original,
-        }
+        Self { scope, progress }
     }
 
-    fn failed(self, outcome: ScoreOutcome) -> Option<ScoreContinuation> {
+    fn failed(self, outcome: ScoreOutcome) {
         let mut p = lock(&self.progress);
         if let Some(guard) = p.waiting.take() {
             guard.finish(outcome);
         }
         if let Some(reporter) = p.started.take() {
             reporter.setup_failed(outcome);
-        }
-        match outcome {
-            ScoreOutcome::Rejected | ScoreOutcome::Cancelled | ScoreOutcome::Shutdown => None,
-            _ => Some(self.original),
         }
     }
 }
@@ -58,20 +48,26 @@ pub(super) async fn connect(
     first: &Dialer,
     session: &Session,
     dst: SocketAddr,
+    deadline: Instant,
+    original: &mut Option<ScoreContinuation>,
 ) -> io::Result<Connected> {
-    let deadline = Instant::now() + CONNECT_TIMEOUT;
-    match dial(first, session, dst, deadline).await {
+    match dial(first, session, dst, deadline, original).await {
         Ok(stream) => Ok(stream),
-        Err((error, original)) => {
-            if Instant::now() >= deadline {
+        Err((outcome, error)) => {
+            if Instant::now() >= deadline
+                || matches!(
+                    outcome,
+                    ScoreOutcome::Rejected | ScoreOutcome::Cancelled | ScoreOutcome::Shutdown
+                )
+            {
                 return Err(error);
             }
-            let Some(retry) = original.and_then(|c| first.retry(&c)) else {
+            let Some(retry) = original.as_ref().and_then(|c| first.retry(c)) else {
                 return Err(error);
             };
-            dial(&retry, session, dst, deadline)
+            dial(&retry, session, dst, deadline, original)
                 .await
-                .map_err(|(e, _)| e)
+                .map_err(|(_, e)| e)
         }
     }
 }
@@ -81,25 +77,48 @@ async fn dial(
     session: &Session,
     dst: SocketAddr,
     deadline: Instant,
-) -> Result<Connected, (io::Error, Option<ScoreContinuation>)> {
+    original: &mut Option<ScoreContinuation>,
+) -> Result<Connected, (ScoreOutcome, io::Error)> {
+    let (registry, proxies, id) = (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
+    let dial = async move {
+        proxies
+            .dial_runtime(
+                registry,
+                id,
+                dst,
+                None,
+                deadline.saturating_duration_since(Instant::now()),
+            )
+            .await
+            .map(|s| s.stream)
+    };
+    let admitted = |g: &ScoreBusinessGuard| {
+        original.get_or_insert_with(|| g.continuation());
+    };
+    setup(d, session, &Trace::default(), deadline, admitted, dial).await
+}
+
+pub(super) async fn setup<T: Send + 'static>(
+    d: &Dialer,
+    session: &Session,
+    trace: &Trace,
+    deadline: Instant,
+    admitted: impl FnOnce(&ScoreBusinessGuard),
+    dial: impl Future<Output = anyhow::Result<T>> + Send + 'static,
+) -> Result<Connected<T>, (ScoreOutcome, io::Error)> {
     let guard = d
         .score
         .as_ref()
         .map(|s| s.feedback.begin())
         .transpose()
-        .map_err(|_| (ErrorKind::PermissionDenied.into(), None))?;
-    let setup = guard.map(|g| Setup::new(d, g));
+        .map_err(|_| (ScoreOutcome::Rejected, ErrorKind::PermissionDenied.into()))?;
+    let setup = guard.map(|g| {
+        admitted(&g);
+        Setup::new(d, g)
+    });
     let scope = setup.as_ref().map(|s| Arc::clone(&s.scope));
-    let (registry, proxies, id) = (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
-    let (trace, began) = (Trace::default(), session.begin_dial());
+    let began = session.begin_dial();
     let work = trace.scope(async move {
-        let dial = proxies.dial_runtime(
-            registry,
-            id,
-            dst,
-            None,
-            deadline.saturating_duration_since(Instant::now()),
-        );
         match scope {
             Some(scope) => scope.scope(dial).await,
             None => dial.await,
@@ -124,16 +143,21 @@ async fn dial(
         Ok(Err(e)) => Err((ScoreOutcome::Shutdown, e)),
         Err(outcome) => Err((outcome, ErrorKind::TimedOut.into())),
     };
-    session.dialed(began, &trace, result.is_ok());
+    session.dialed(began, trace, result.is_ok());
     match result {
         Ok(stream) => {
             let reporter = setup.and_then(|s| lock(&s.progress).started.take());
             if let Some(r) = &reporter {
                 r.setup_succeeded();
             }
-            Ok((stream.stream, reporter))
+            Ok((stream, reporter))
         }
-        Err((outcome, error)) => Err((error, setup.and_then(|s| s.failed(outcome)))),
+        Err((outcome, error)) => {
+            if let Some(setup) = setup {
+                setup.failed(outcome);
+            }
+            Err((outcome, error))
+        }
     }
 }
 

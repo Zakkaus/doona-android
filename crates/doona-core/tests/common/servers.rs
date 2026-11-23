@@ -123,10 +123,11 @@ pub fn sender(len: usize) -> SocketAddr {
     addr
 }
 
-/// A loopback port with nothing listening.
-pub fn closed_port() -> SocketAddr {
-    let l = TcpListener::bind("127.0.0.1:0").unwrap();
-    l.local_addr().unwrap()
+/// A bound, non-listening TCP socket reserves its refused address until the caller drops it.
+pub fn closed_port() -> (SocketAddr, tokio::net::TcpSocket) {
+    let socket = tokio::net::TcpSocket::new_v4().unwrap();
+    socket.bind(([127, 0, 0, 1], 0).into()).unwrap();
+    (socket.local_addr().unwrap(), socket)
 }
 
 pub fn udp_echo() -> (SocketAddr, Arc<Seen>) {

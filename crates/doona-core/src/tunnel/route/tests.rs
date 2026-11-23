@@ -17,12 +17,16 @@ use std::time::Duration;
 /// Three SOCKS5 nodes, published with the template's groups and a policy of `options`.
 fn published(options: Options) -> (Outbounds, Model) {
     let links = b"socks5://127.0.0.1:1#a\nsocks5://127.0.0.1:2#b\nsocks5://127.0.0.1:3#c\n";
+    published_links(links, options, Mode::Rule)
+}
+
+pub(crate) fn published_links(links: &[u8], options: Options, mode: Mode) -> (Outbounds, Model) {
     let nodes = entries("s1", parse(links).unwrap().nodes);
     let mut model = Model::new(nodes, HashMap::from([("s1".to_owned(), 1)]));
     model.policy = template(&model, options);
     let outbounds = Outbounds::new(Arc::default()).unwrap();
     let built = outbounds.build(&model.nodes);
-    outbounds.replace(built, model.routing(&BTreeMap::new(), Mode::Rule));
+    outbounds.replace(built, model.routing(&BTreeMap::new(), mode));
     (outbounds, model)
 }
 
@@ -70,6 +74,7 @@ fn target(route: &Route) -> &str {
     match route {
         Route::Direct | Route::RuleDirect(_) => "direct",
         Route::Proxy(d, _) => &d.group,
+        Route::Resolver(view, _) => view.policy().main(),
         Route::Refuse => "refused",
         Route::Blocked => "blocked",
     }
@@ -344,6 +349,7 @@ fn a_flow_paused_across_two_commits_routes_by_one_of_them() {
 /// decision 10), whatever server the query was sent to.
 #[test]
 fn dns_goes_through_the_main_group_unless_direct() {
+    use honk_outbound::alive::{IpVersion, ProbeDomain};
     let (outbounds, model) = published(Options::default());
     let session = session();
     let dns = |mode| {
@@ -355,6 +361,22 @@ fn dns_goes_through_the_main_group_unless_direct() {
     assert_eq!(target(&dns(Mode::Direct)), "direct");
     let empty = Outbounds::new(Arc::default()).unwrap();
     assert!(Route::dns(Inbound::Tun, Mode::Rule, &empty, &session).refused());
+    for family in [IpVersion::V4, IpVersion::V6] {
+        assert!(
+            !dns(Mode::Global).refused(),
+            "a resolver family is still usable"
+        );
+        for node in &model.nodes {
+            model
+                .score
+                .alive
+                .report_unavailable_forced(node.uuid, ProbeDomain::Tcp, family);
+        }
+    }
+    assert!(
+        dns(Mode::Global).refused(),
+        "main group has no usable TCP node"
+    );
 }
 
 #[tokio::test]

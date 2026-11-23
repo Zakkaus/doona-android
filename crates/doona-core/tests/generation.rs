@@ -170,20 +170,21 @@ fn stop_closes_every_carrier_before_it_returns() {
         tuic::link(sink, "tq"),
     ];
     let g = Global::new(&links, vec![]);
+    let (dst, _socket) = servers::closed_port();
     let before = open_fds();
     let mut c = g.start();
     // Both servers echo any stream; the destination is never dialed.
-    let id = c.connect(servers::closed_port());
+    let id = c.connect(dst);
     assert_eq!(c.exchange(id, b"pooled").unwrap(), b"pooled");
     g.select("te");
-    let id = c.connect(servers::closed_port());
+    let id = c.connect(dst);
     assert_eq!(c.exchange(id, b"kept").unwrap(), b"kept");
     assert!(c.until(WAIT, |_| traffic(&g).active_flows == 0));
     g.select("stall");
-    let _stalled = c.connect(servers::closed_port());
+    let _stalled = c.connect(dst);
     assert!(c.until(WAIT, |_| stall_seen.connections.load(Relaxed) == 1));
     g.select("tq");
-    let _handshake = c.connect(servers::closed_port());
+    let _handshake = c.connect(dst);
     assert!(c.until(WAIT, |_| sink_seen.datagrams.load(Relaxed) > 0));
     assert_eq!(at_seen.connections.load(Relaxed), 1);
     assert_eq!(

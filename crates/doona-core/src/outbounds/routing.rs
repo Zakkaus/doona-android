@@ -1,13 +1,13 @@
-//! What new flows are routed by, as [`Outbounds`] publishes it: the mode, each group's node and
+//! What new flows are routed by, as [`super::Outbounds`] publishes it: the mode, each group's node and
 //! the policy that chooses a group, swapped in one step and read at once.
 
-use super::{Dialer, Outbounds, Published};
+use super::{Dialer, Published};
 use crate::dto::Mode;
 use crate::rules::Network;
 use crate::rules::policy::Policy;
 use crate::score::{Score, family};
 use honk_config::node::Node;
-use honk_outbound::alive::ProbeDomain;
+use honk_outbound::alive::{IpVersion, ProbeDomain};
 use honk_outbound::group::{
     ScoreAttempt, ScoreContinuation, ScoreSelectionContext, ScoreSelectionEntry, ScoreTarget,
     SelectionNetwork,
@@ -58,9 +58,7 @@ impl Dialer {
                 original,
             );
         let entry = plan.entries.into_iter().next()?;
-        attempt
-            .table
-            .scored(&self.proxies, &self.group, &attempt.group, entry)
+        attempt.table.scored(&self.group, &attempt.group, entry)
     }
 }
 
@@ -100,12 +98,12 @@ pub(crate) struct Routing {
 }
 
 /// One publication of what new flows are routed by, read at once.
-pub(crate) struct View<'a> {
-    pub(super) outbounds: &'a Outbounds,
+#[derive(Clone)]
+pub(crate) struct View {
     pub(super) table: Arc<Table>,
 }
 
-impl View<'_> {
+impl View {
     pub fn policy(&self) -> &Policy {
         &self.table.policy
     }
@@ -115,16 +113,32 @@ impl View<'_> {
         self.table.mode
     }
 
+    pub fn has_main_node(&self) -> bool {
+        let table = &self.table;
+        if table.published.is_none() {
+            return false;
+        }
+        match table.selected.get(self.policy().main()) {
+            Some(Leaf::Node(_)) => true,
+            Some(Leaf::Score(owner)) => table.score.as_ref().is_some_and(|score| {
+                [IpVersion::V4, IpVersion::V6].into_iter().any(|family| {
+                    !score
+                        .manager
+                        .peek_selection_plan_for_domain(owner, ProbeDomain::Tcp, family)
+                        .nodes
+                        .is_empty()
+                })
+            }),
+            None => false,
+        }
+    }
+
     /// The node `group` (an id such as `g-Proxy`) sends traffic to, and what dials it; `None`
     /// while the group does not exist or has no node.
     pub fn dialer(&self, group: &str) -> Option<Dialer> {
         let (group, leaf) = self.table.selected.get_key_value(group)?;
-        self.table.dialer(
-            &self.outbounds.proxies,
-            group,
-            leaf.peek(self.table.score.as_deref()?)?,
-            None,
-        )
+        self.table
+            .dialer(group, leaf.peek(self.table.score.as_deref()?)?, None)
     }
 
     pub fn for_flow<'a>(
@@ -133,15 +147,14 @@ impl View<'_> {
         dst: SocketAddr,
         network: Network,
         domain: impl FnOnce() -> Option<&'a str>,
+        original: Option<&ScoreContinuation>,
     ) -> Option<Dialer> {
         let (group, leaf) = self.table.selected.get_key_value(group)?;
         let score = self.table.score.as_ref()?;
         let owner = match leaf {
             Leaf::Score(owner) => owner,
             Leaf::Node(node) => {
-                return self
-                    .table
-                    .dialer(&self.outbounds.proxies, group, node, None);
+                return self.table.dialer(group, node, None);
             }
         };
         let probe_domain = match network {
@@ -160,46 +173,32 @@ impl View<'_> {
         };
         let plan = score
             .manager
-            .selection_plan_for_target_with_health_fallback(owner, &context, None);
-        self.table.scored(
-            &self.outbounds.proxies,
-            group,
-            owner,
-            plan.entries.into_iter().next()?,
-        )
+            .selection_plan_for_target_with_health_fallback(owner, &context, original);
+        self.table
+            .scored(group, owner, plan.entries.into_iter().next()?)
     }
 }
 
 impl Table {
     fn scored(
         self: &Arc<Self>,
-        proxies: &Arc<honk_outbound::proxy::ProxyRegistry>,
         group: &Arc<str>,
         owner: &Arc<str>,
         entry: ScoreSelectionEntry<'_>,
     ) -> Option<Dialer> {
         let score = self.score.as_ref()?;
         let uuid = entry.node.id;
-        let attempt = entry
-            .feedback
-            .filter(|f| f.context().network == SelectionNetwork::Tcp)
-            .map(|feedback| Attempt {
-                table: Arc::clone(self),
-                group: Arc::clone(owner),
-                uuid,
-                final_owners: entry.final_owners,
-                feedback,
-            });
-        self.dialer(proxies, group, &score.entries[&uuid].node, attempt)
+        let attempt = entry.feedback.map(|feedback| Attempt {
+            table: Arc::clone(self),
+            group: Arc::clone(owner),
+            uuid,
+            final_owners: entry.final_owners,
+            feedback,
+        });
+        self.dialer(group, &score.entries[&uuid].node, attempt)
     }
 
-    fn dialer(
-        &self,
-        proxies: &Arc<honk_outbound::proxy::ProxyRegistry>,
-        group: &Arc<str>,
-        node: &Arc<Node>,
-        score: Option<Attempt>,
-    ) -> Option<Dialer> {
+    fn dialer(&self, group: &Arc<str>, node: &Arc<Node>, score: Option<Attempt>) -> Option<Dialer> {
         let published = self.published.as_ref()?;
         Some(Dialer {
             group: Arc::clone(group),
@@ -207,7 +206,7 @@ impl Table {
             score,
             node: Arc::clone(node),
             registry: Arc::clone(published.registries.of(node)?),
-            proxies: Arc::clone(proxies),
+            proxies: Arc::clone(&published.proxies),
             carriers: Arc::clone(&published.carriers),
         })
     }

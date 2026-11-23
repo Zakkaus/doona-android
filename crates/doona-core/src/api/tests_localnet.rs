@@ -119,7 +119,7 @@ fn a_udp_transport_to_a_node_on_the_local_network_reports_its_first_send() {
         let dir = TempDir::new("api-lan-udp");
         let core = started(&dir, &format!("ss://{user}@{server}#ss\n"));
         let route = route(&core);
-        let upstream = core.runtime.block_on(route.bind_udp(destination)).unwrap();
+        let (upstream, _) = core.runtime.block_on(route.bind_udp(destination)).unwrap();
         assert_eq!(upstream.first_send_to().is_some(), reports, "{server}");
         core.stop();
     }

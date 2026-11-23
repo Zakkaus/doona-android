@@ -12,6 +12,11 @@ mod cert;
 #[allow(dead_code)]
 #[path = "../tests/common/client.rs"]
 pub mod client;
+#[allow(dead_code)]
+#[path = "../tests/common/servers.rs"]
+pub mod servers;
+#[path = "../tests/common/socks.rs"]
+pub mod socks;
 #[path = "../tests/common/tuic.rs"]
 pub mod tuic;
 
