@@ -85,10 +85,18 @@ internal class RvPolicyRoutes(
  * what it does. 規則: the main node, which carries whatever no rule sends elsewhere (its card opens the main node's
  * picker); the groups, each with how it picks and the node it uses (a row pushes its page); the rules in order with
  * today's bytes, as Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
- * the node everything goes through, so under the mode the page is the node picker itself; 直連 shows the mode alone.
+ * the node everything goes through, so under the mode the page is the node picker itself; 直連 shows the mode alone. A
+ * [notice] (a banner, or the page's body while it loads) heads the cards, as on 活動; with [noticeOnly] it stands in their
+ * place, and the bar and the nav stay.
  */
 @Composable
-internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes = RvPolicyRoutes()) {
+internal fun RvPolicyScreen(
+    state: RvPolicyState,
+    onChange: (RvPolicyState) -> Unit,
+    routes: RvPolicyRoutes = RvPolicyRoutes(),
+    notice: (@Composable () -> Unit)? = null,
+    noticeOnly: Boolean = false,
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val title = stringResource(R.string.nav_policies)
@@ -110,15 +118,18 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
         RvTabHeader(insets)
         // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
         RvGutter {
-            ModeCard(state.mode) { onChange(state.copy(mode = it)) }
-            if (state.mode == RvRouteMode.Rule) {
-                MainCard(state.group(RvPolicyData.main), routes.mainNode)
-                GroupsCard(state, routes.group)
-                RulesCard(routes.rules)
-                OptionsCard(state, onChange, routes)
+            notice?.invoke()
+            if (!noticeOnly) {
+                ModeCard(state.mode) { onChange(state.copy(mode = it)) }
+                if (state.mode == RvRouteMode.Rule) {
+                    MainCard(state.group(RvPolicyData.main), routes.mainNode)
+                    GroupsCard(state, routes.group)
+                    RulesCard(routes.rules)
+                    OptionsCard(state, onChange, routes)
+                }
             }
         }
-        if (state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
+        if (!noticeOnly && state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
         // The last card clears the floating nav, as on 設定.
         Spacer(Modifier.height(rvNavClearance(insets)))
     }

@@ -60,10 +60,11 @@ internal class RvSubsActions(
  * 訂閱: a pushed page with the large title and 更新所有訂閱 in the bar. A failed update shows the banner first, with 重試.
  * Each subscription is a card: its row (name, node count and last update, chevron to its page), then what it has used
  * of its quota and when it ends over the progress bar. A long press on a card opens 更新, 編輯 and 刪除; 刪除 asks in
- * the confirm sheet. 新增訂閱 floats at the bottom.
+ * the confirm sheet. 新增訂閱 floats at the bottom. A [notice] (the page's body while it loads) heads the cards; with
+ * [noticeOnly] it stands in their place, and the title and the bar stay.
  */
 @Composable
-internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions) {
+internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, notice: (@Composable () -> Unit)? = null, noticeOnly: Boolean = false) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_subscriptions)
     RvScrollPage(
@@ -75,8 +76,11 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions) {
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter {
-            state.subscriptions.firstOrNull { it.id == state.failedId }?.let { FailedBanner(it) { actions.update(it.id) } }
-            state.subscriptions.forEach { SubscriptionCard(it, actions) }
+            notice?.invoke()
+            if (!noticeOnly) {
+                state.subscriptions.firstOrNull { it.id == state.failedId }?.let { FailedBanner(it) { actions.update(it.id) } }
+                state.subscriptions.forEach { SubscriptionCard(it, actions) }
+            }
         }
     }
     val deleting = state.subscriptions.firstOrNull { it.id == state.deletingId }
