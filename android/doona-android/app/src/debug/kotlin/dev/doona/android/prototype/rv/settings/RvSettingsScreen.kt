@@ -143,7 +143,6 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
         RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
         RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, onPerApp, perAppValue(state.perApp))
     }
-    RvSettingsFooter(stringResource(R.string.rv_settings_connection_footer))
 }
 
 @Composable

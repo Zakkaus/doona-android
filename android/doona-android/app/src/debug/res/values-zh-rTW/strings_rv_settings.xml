@@ -7,7 +7,6 @@
     <string name="rv_settings_notify_drop">斷線時通知</string>
     <string name="rv_settings_per_app">每個 App 的代理</string>
     <string name="rv_settings_per_app_value">只代理 %1$d 個 App</string>
-    <string name="rv_settings_connection_footer">只有選取的 App 走代理，其餘 App 與區網位址直接連線。</string>
 
     <string name="rv_settings_group_subscription">訂閱</string>
     <string name="rv_settings_auto_update">自動更新</string>
@@ -38,12 +37,11 @@
     <string name="rv_settings_mode">模式</string>
     <string name="rv_settings_preview">預覽</string>
     <string name="rv_settings_always_on">永久連線的 VPN</string>
-    <string name="rv_settings_always_on_sub">在系統的 VPN 設定中開啟</string>
+    <string name="rv_settings_always_on_sub">系統 VPN 設定</string>
     <string name="rv_settings_dns_alidns">阿里 DNS</string>
     <string name="rv_settings_dns_server">伺服器</string>
     <string name="rv_settings_dns_custom">自訂</string>
     <string name="rv_settings_dns_custom_sub">輸入位址</string>
-    <string name="rv_settings_dns_footer">規則與全域模式下，DNS 查詢經主節點送出。</string>
 
     <string name="rv_report_title">回報問題</string>
     <string name="rv_report_export">匯出診斷報告</string>

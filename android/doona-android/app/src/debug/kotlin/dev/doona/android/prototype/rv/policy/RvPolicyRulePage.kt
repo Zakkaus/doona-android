@@ -94,12 +94,12 @@ private fun ConnectionCard(connection: RvConnection) {
     }
 }
 
-/** 完整網域 | 網域後綴 | 關鍵字 in a control card, as 策略's mode, and one line saying what the chosen way covers for this host. */
+/** 完整網域 | 網域後綴 | 關鍵字 in a control card, and under it what the chosen way covers for this host (a suffix: nothing). */
 @Composable
 private fun MatchBy(host: String, matchBy: RvMatchBy, onMatchBy: (RvMatchBy) -> Unit) {
     val ways = RvMatchBy.entries
     RvGutter {
-        RvControlCard(stringResource(matchBy.line, matchBy.of(host))) {
+        RvControlCard(matchBy.line?.let { stringResource(it, matchBy.of(host)) }) {
             RvSegmented(ways.map { stringResource(it.label) }, ways.indexOf(matchBy), { onMatchBy(ways[it]) })
         }
     }

@@ -123,11 +123,10 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
             { onChange(state.copy(link = it.trim())) },
             stringResource(R.string.rv_add_link),
             placeholder = RV_LINK_PLACEHOLDER,
-            supporting = stringResource(R.string.rv_add_link_hint),
             enabled = editable,
             keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri),
         )
-        RvTextField(state.name, { onChange(state.copy(name = it)) }, stringResource(R.string.rv_add_name), supporting = stringResource(R.string.rv_add_name_hint), enabled = editable)
+        RvTextField(state.name, { onChange(state.copy(name = it)) }, stringResource(R.string.rv_add_name), enabled = editable)
     }
     if (phase is RvAddPhase.Importing) Progress(phase)
 }

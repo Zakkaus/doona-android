@@ -36,9 +36,10 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The subscription pages, light and dark, each page whole in one capture: 訂閱 (`proto-rv-subs-*`), with a failed update
  * (`-subs-failed-*`), with the long-press menu open on Harbor Cloud (`-subs-menu-*`) and with the delete question
- * (`-subs-delete-*`); a subscription's page (`-sub-detail-*`) and its rename sheet (`-sub-detail-rename-*`); 新增訂閱
- * with the clipboard's row (`-sub-add-*`), importing, done, and failed for each reason; and the deep link's question over
- * 活動 (`-sub-import-*`). Sheets are drawn as their window draws them once in.
+ * (`-subs-delete-*`); a subscription's page (`-sub-detail-*`), its rename sheet (`-sub-detail-rename-*`) and its
+ * User-Agent sheet (`-sub-detail-user-agent-*`); 新增訂閱 with the clipboard's row (`-sub-add-*`), importing, done, and
+ * failed for each reason; and the deep link's question over 活動 (`-sub-import-*`). Sheets are drawn as their window
+ * draws them once in.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -77,6 +78,10 @@ class RvSubsShotTest {
     @Test fun renameLight() = shot("sub-detail-rename", false, whole = false) { Rename() }
 
     @Test fun renameDark() = shot("sub-detail-rename", true, whole = false) { Rename() }
+
+    @Test fun userAgentLight() = shot("sub-detail-user-agent", false, whole = false) { UserAgent() }
+
+    @Test fun userAgentDark() = shot("sub-detail-user-agent", true, whole = false) { UserAgent() }
 
     @Test fun addLight() = shot("sub-add", false) { Add("") }
 
@@ -158,8 +163,18 @@ class RvSubsShotTest {
     private fun Rename() {
         Box(Modifier.fillMaxSize()) {
             Detail()
-            Sheet(stringResource(R.string.rv_sub_rename), stringResource(R.string.rv_add_name_hint), stringResource(R.string.rv_save)) {
+            Sheet(stringResource(R.string.rv_sub_rename), null, stringResource(R.string.rv_save)) {
                 RvTextField(HARBOR.name, {}, stringResource(R.string.rv_sub_name))
+            }
+        }
+    }
+
+    @Composable
+    private fun UserAgent() {
+        Box(Modifier.fillMaxSize()) {
+            Detail()
+            Sheet(stringResource(R.string.rv_sub_user_agent), null, stringResource(R.string.rv_save)) {
+                RvTextField("", {}, stringResource(R.string.rv_sub_user_agent))
             }
         }
     }
@@ -174,7 +189,7 @@ class RvSubsShotTest {
     }
 
     @Composable
-    private fun Sheet(title: String, body: String, confirm: String, extra: (@Composable () -> Unit)? = null) {
+    private fun Sheet(title: String, body: String?, confirm: String, extra: (@Composable () -> Unit)? = null) {
         RvSheetLayout({ 1f }, {}, title) {
             RvConfirmContent(title, body, confirm, stringResource(R.string.rv_cancel), onConfirm = {}, onDismiss = {}, extra = extra?.let { { it() } })
         }
@@ -182,7 +197,7 @@ class RvSubsShotTest {
 
     private companion object {
         /** A subscription's page is taller than the phone; every other page fits its 915 dp. */
-        const val WHOLE_DETAIL = "+h1106dp"
+        const val WHOLE_DETAIL = "+h1079dp"
         val HARBOR = RvData.subscriptions.first()
 
         /** Where a finger held Harbor Cloud's card: a third of the way in, on its row. */

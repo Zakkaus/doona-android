@@ -7,16 +7,12 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvAlpha
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvConfirmSheet
@@ -29,24 +25,24 @@ import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
-import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvSubFormat
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.rememberRvFormat
 
-/** A subscription's page: which sheet is open, if any, and the name being typed into 重新命名. */
+/** A subscription's page: which sheet is open, if any, and the name or User-Agent being typed into it. */
 @Immutable
-internal data class RvSubDetailState(val sheet: RvSubSheet? = null, val name: String = "")
+internal data class RvSubDetailState(val sheet: RvSubSheet? = null, val name: String = "", val userAgent: String = "")
 
-internal enum class RvSubSheet { Rename, Delete }
+internal enum class RvSubSheet { Rename, UserAgent, Delete }
 
 /**
  * A subscription's page, pushed from 訂閱: the name as the large title; its key stats (nodes, used of its quota, end
- * date, last update, format); 更新 with the auto-update interval and the User-Agent, which is global for now, so its
- * row is shown disabled with a note; 訂閱 with the name (重新命名 in a sheet with a field) and the link's host; then
- * 刪除訂閱 alone in its card, its glyph in the error hue, asking in the confirm sheet. 立即更新 floats at the bottom.
+ * date, last update, format); 更新 with the auto-update interval and the subscription's own User-Agent (預設 until it
+ * has one; a sheet with a field, as 重新命名, sets it, and an empty field goes back to the default); 訂閱 with the name
+ * (重新命名 in a sheet with a field) and the link's host; then 刪除訂閱 alone in its card, its glyph in the error hue,
+ * asking in the confirm sheet. 立即更新 floats at the bottom.
  */
 @Composable
 internal fun RvSubDetail(sub: RvSubscription, state: RvSubDetailState, onChange: (RvSubDetailState) -> Unit, onBack: () -> Unit, onUpdate: () -> Unit) {
@@ -60,14 +56,7 @@ internal fun RvSubDetail(sub: RvSubscription, state: RvSubDetailState, onChange:
         RvLargeTitle(sub.name, titleBlock, insets)
         RvGutter { KeyStats(sub) }
         RvSectionTitle(stringResource(R.string.rv_sub_updates), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { UpdatesCard() }
-        RvText(
-            stringResource(R.string.rv_sub_user_agent_note),
-            Rv.type.tileCaption,
-            Modifier.padding(start = RvSpace.gutter + RvSpace.rowPadding, end = RvSpace.gutter + RvSpace.rowPadding, top = RvSpace.tight * 2),
-            color = Rv.colors.textSecondary,
-            maxLines = NOTE_LINES,
-        )
+        RvGutter { UpdatesCard { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = "")) } }
         RvSectionTitle(stringResource(R.string.rv_sub_section), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvCard {
@@ -83,13 +72,22 @@ internal fun RvSubDetail(sub: RvSubscription, state: RvSubDetailState, onChange:
     RvConfirmSheet(
         visible = state.sheet == RvSubSheet.Rename,
         title = stringResource(R.string.rv_sub_rename),
-        body = stringResource(R.string.rv_add_name_hint),
+        body = null,
         confirm = stringResource(R.string.rv_save),
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = close,
         onDismiss = close,
         confirmEnabled = state.name.isNotBlank(),
     ) { RvTextField(state.name, { onChange(state.copy(name = it)) }, stringResource(R.string.rv_sub_name)) }
+    RvConfirmSheet(
+        visible = state.sheet == RvSubSheet.UserAgent,
+        title = stringResource(R.string.rv_sub_user_agent),
+        body = null,
+        confirm = stringResource(R.string.rv_save),
+        dismiss = stringResource(R.string.rv_cancel),
+        onConfirm = close,
+        onDismiss = close,
+    ) { RvTextField(state.userAgent, { onChange(state.copy(userAgent = it)) }, stringResource(R.string.rv_sub_user_agent)) }
     RvConfirmSheet(
         visible = state.sheet == RvSubSheet.Delete,
         title = stringResource(R.string.rv_sub_delete_title, sub.name),
@@ -115,9 +113,9 @@ private fun KeyStats(sub: RvSubscription) {
     }
 }
 
-/** The auto-update interval, and the User-Agent row at [RvAlpha.DISABLED], which takes no tap. */
+/** The auto-update interval, and the User-Agent, whose row opens its sheet ([onUserAgent]). */
 @Composable
-private fun UpdatesCard() {
+private fun UpdatesCard(onUserAgent: () -> Unit) {
     RvCard {
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_schedule) },
@@ -129,8 +127,8 @@ private fun UpdatesCard() {
             { RvIconDisc(R.drawable.rv_sym_dns) },
             stringResource(R.string.rv_sub_user_agent),
             stringResource(R.string.rv_sub_user_agent_default),
-            Modifier.graphicsLayer { alpha = RvAlpha.DISABLED }.semantics { disabled() },
-        )
+            onClick = onUserAgent,
+        ) { RvChevron() }
     }
 }
 
@@ -141,6 +139,3 @@ internal val RvSubFormat.label: Int
         RvSubFormat.SingBox -> R.string.rv_sub_format_sing_box
         RvSubFormat.Links -> R.string.rv_sub_format_links
     }
-
-/** The note under the updates card, as 設定's footer under a card: 13 sp, 8 dp under it, indented as a row. */
-private const val NOTE_LINES = 3

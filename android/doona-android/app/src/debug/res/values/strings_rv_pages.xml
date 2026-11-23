@@ -17,9 +17,7 @@
         <item quantity="other">Its %1$d nodes are removed with it.</item>
     </plurals>
     <string name="rv_add_link">Subscription link</string>
-    <string name="rv_add_link_hint">Clash, sing-box and share-link lists.</string>
     <string name="rv_add_name">Name (optional)</string>
-    <string name="rv_add_name_hint">The name is shown only in doona.</string>
     <string name="rv_add_not_subscription">This link did not return a subscription.</string>
     <string name="rv_sub_failed_title">Could not update %1$s</string>
     <plurals name="rv_sub_failed_reason">

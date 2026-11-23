@@ -41,8 +41,8 @@ import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * 範本 (the 策略 options row), doona web's routing modes on a phone: one card of templates, each its glyph, its name over
- * one line on what it does, and a radio; one the core cannot build yet is listed, dimmed, with the reason in place of
- * its line, and cannot be chosen. 檢視變更 opens the impact review, and only once a template other than [current] is
+ * its line, if it has one, and a radio; one the core cannot build yet is listed, dimmed, with the reason in place of its
+ * line, and cannot be chosen. 檢視變更 opens the impact review, and only once a template other than [current] is
  * [selected].
  */
 @Composable
@@ -70,12 +70,12 @@ internal fun RvTemplatePage(
     }
 }
 
-/** One template; the one in use says so after its line. */
+/** One template; the one in use says so after its line, or as its line. */
 @Composable
 private fun TemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean, onSelect: () -> Unit) {
     val reason = template.unsupported
     val line = reason?.let { stringResource(it) }
-        ?: (stringResource(template.line) + if (inUse) SEPARATOR + stringResource(R.string.rv_template_in_use) else "")
+        ?: listOfNotNull(template.line?.let { stringResource(it) }, stringResource(R.string.rv_template_in_use).takeIf { inUse }).joinToString(SEPARATOR).ifEmpty { null }
     val pick = Modifier
         .graphicsLayer { alpha = if (reason == null) 1f else RvAlpha.DISABLED }
         .selectable(selected, enabled = reason == null, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton, onClick = onSelect)

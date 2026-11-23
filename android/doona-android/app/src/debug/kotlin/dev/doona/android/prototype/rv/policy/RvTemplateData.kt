@@ -6,14 +6,14 @@ import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 
 /**
- * A rule template, as doona web's routing modes offer them: its name, one line on what it does, its glyph, and, when
- * the core cannot build it yet, why ([unsupported]); such a template is listed but cannot be chosen.
+ * A rule template, as doona web's routing modes offer them: its name, an optional line on what it does, its glyph,
+ * and, when the core cannot build it yet, why ([unsupported]); such a template is listed but cannot be chosen.
  */
 @Immutable
 internal class RvTemplate(
     val id: String,
     @StringRes val name: Int,
-    @StringRes val line: Int,
+    @StringRes val line: Int?,
     @DrawableRes val glyph: Int,
     @StringRes val unsupported: Int? = null,
 )
@@ -53,9 +53,9 @@ internal class RvImpact(
 /** The templates and the sample review: from the current 國內直連 to 依服務分流. */
 internal object RvTemplateData {
     val cnDirect = RvTemplate("cn-direct", R.string.rv_policy_template_value, R.string.rv_template_cn_direct_line, R.drawable.rv_sym_arrow_right_alt)
-    val services = RvTemplate("services", R.string.rv_template_services, R.string.rv_template_services_line, R.drawable.rv_sym_apps)
+    val services = RvTemplate("services", R.string.rv_template_services, null, R.drawable.rv_sym_apps)
     private val regions = RvTemplate("regions", R.string.rv_template_regions, R.string.rv_template_regions_line, R.drawable.rv_sym_account_tree)
-    private val homebound = RvTemplate("homebound", R.string.rv_template_homebound, R.string.rv_template_homebound_line, R.drawable.rv_sym_directions)
+    private val homebound = RvTemplate("homebound", R.string.rv_template_homebound, null, R.drawable.rv_sym_directions)
     private val gfw = RvTemplate("gfw", R.string.rv_template_gfw, R.string.rv_template_gfw_line, R.drawable.rv_sym_block, R.string.rv_template_needs_geosite)
 
     val all: List<RvTemplate> = listOf(cnDirect, services, regions, homebound, gfw)
