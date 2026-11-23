@@ -25,11 +25,20 @@ import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPageState
+import dev.doona.android.prototype.rv.policy.RvPolicyData
+import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
+import dev.doona.android.prototype.rv.policy.RvPolicyRoutes
+import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
+import dev.doona.android.prototype.rv.policy.RvPolicyScreen
+import dev.doona.android.prototype.rv.policy.RvPolicyState
+import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
@@ -101,6 +110,7 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
     val scope = rememberCoroutineScope()
     val run = remember { RvSampleRun(scope, start.connected, start.fails) }
     var stack by rememberSaveable { mutableStateOf(start.stack) }
+    val policy = remember { RvSamplePolicy() }
     // While connected the minute moves on each second.
     val running = run.status is Status.Running
     LaunchedEffect(running) { if (running) rvEverySample { run.second++ } }
@@ -121,11 +131,21 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
         LocalRvUpdating provides run.updating,
         LocalRvRowActions provides actions,
     ) {
-        RvStackHost(stack, onBack = pages.pop, options) { route -> RvSamplePage(route, run, options, settings, onSettings, pages, start.launch == RvLaunch.Nodes) }
+        RvStackHost(stack, onBack = pages.pop, options) { route -> RvSamplePage(route, run, options, settings, onSettings, policy, pages, start.launch == RvLaunch.Nodes) }
     }
 }
 
 private class RvSamplePages(val push: (String) -> Unit, val pop: () -> Unit, val tab: (Int) -> Unit)
+
+/** 策略's sample state, which its pages share: the groups' choices, the main node picker's order and the quick rule. */
+@Stable
+private class RvSamplePolicy {
+    var state by mutableStateOf(RvPolicyState())
+
+    // The main node's picker keeps its own order, apart from 全域's (in the policy state), as each screen remembers its last.
+    var pickerSort by mutableStateOf(RvNodeSort.Latency)
+    var quickRule by mutableStateOf(RvQuickRule())
+}
 
 @Composable
 private fun RvSamplePage(
@@ -134,6 +154,7 @@ private fun RvSamplePage(
     options: RvMotionOptions,
     settings: RvSettingsState,
     onSettings: (RvSettingsState) -> Unit,
+    policy: RvSamplePolicy,
     pages: RvSamplePages,
     picking: Boolean,
 ) {
@@ -167,7 +188,41 @@ private fun RvSamplePage(
 
         THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pages.pop)
 
+        POLICY, PICKER, GROUP, RULE -> PolicyPage(route, policy, pages)
+
         else -> ActivityPage(run, options, pages, picking)
+    }
+}
+
+/** 策略 and what it pushes: a group's page (its rows), the main node's picker (its card) and the quick rule (新增規則). */
+@Composable
+private fun PolicyPage(route: String, policy: RvSamplePolicy, pages: RvSamplePages) {
+    when (route.substringBefore(':')) {
+        PICKER -> {
+            val main = policy.state.group(RvPolicyData.main)
+            RvNodePickerPage(
+                RvData.nodes,
+                RvData.subscriptions,
+                main.selectedId,
+                policy.pickerSort,
+                onSort = { policy.pickerSort = it },
+                onPick = { policy.state = policy.state.choose(main.id, it) },
+                onBack = pages.pop,
+                onTest = {},
+            )
+        }
+
+        GROUP -> {
+            val group = policy.state.group(RvPolicyData.group(route.substringAfter(':')))
+            RvPolicyGroupPage(group, onBack = pages.pop, onSelect = { policy.state = policy.state.choose(group.id, it) }, onTest = {})
+        }
+
+        RULE -> RvPolicyRulePage(RvPolicyData.connection, policy.quickRule, { policy.quickRule = it }, onBack = pages.pop, onApply = pages.pop)
+
+        else -> {
+            val routes = RvPolicyRoutes(group = { pages.push("$GROUP:$it") }, mainNode = { pages.push(PICKER) }, newRule = { pages.push(RULE) }, tab = pages.tab)
+            RvPolicyScreen(policy.state, { policy.state = it }, routes)
+        }
     }
 }
 
@@ -178,6 +233,8 @@ private fun RvSamplePage(
 @Composable
 private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean) {
     val pull = rememberRvPullState(picking)
+    // The outbound card's mode row and 查看全部 open 策略; a rule group opens its group's page there.
+    val toPolicy = { pages.tab(RV_NAV_POLICY) }
     val routes = RvActivityRoutes(
         traffic = { pages.push(TRAFFIC) },
         stats = { pages.push(STATS) },
@@ -185,6 +242,9 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
         nodes = { pages.push(NODES) },
         node = { pages.push("$NODE:${run.currentId}") },
         tab = pages.tab,
+        mode = toPolicy,
+        rule = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { pages.push("$GROUP:${it.id}") } ?: toPolicy() },
+        rules = toPolicy,
         test = run::test,
     )
     RvPullDown(
@@ -353,4 +413,8 @@ internal const val NODES = "nodes"
 internal const val NODE = "node"
 internal const val SETTINGS = "settings"
 internal const val THEME = "theme"
-private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_SETTINGS to SETTINGS)
+internal const val POLICY = "policy"
+internal const val GROUP = "group"
+internal const val RULE = "rule"
+internal const val PICKER = "picker"
+private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS)

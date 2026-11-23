@@ -178,15 +178,20 @@ internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>) {
             RvText(stringResource(R.string.rv_remaining), Rv.type.cardUnit, Modifier.alignByBaseline(), color = Rv.colors.textSecondary)
         }
         Spacer(Modifier.height(RvSpace.tight))
-        subscriptions.forEach { sub ->
-            val total = format.bytes(sub.totalBytes)
-            RvRow(
-                { RvIconDisc(R.drawable.rv_sym_rss_feed) },
-                sub.name,
-                stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
-            ) { RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
-        }
+        subscriptions.forEach { RvSubscriptionRow(it) }
     }
+}
+
+/** A subscription's row: a neutral disc, its name over its use against its quota and its end date, and what is left. */
+@Composable
+internal fun RvSubscriptionRow(sub: RvSubscription) {
+    val format = rememberRvFormat()
+    val total = format.bytes(sub.totalBytes)
+    RvRow(
+        { RvIconDisc(R.drawable.rv_sym_rss_feed) },
+        sub.name,
+        stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
+    ) { RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
 }
 
 /**
@@ -201,7 +206,7 @@ internal fun RvFastestCard(nodes: List<RvNode>, currentId: String, onOpen: () ->
         nodes.forEachIndexed { order, node ->
             key(node.id) {
                 RvRow({ RvFlag(node.place.name, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + " · " + stringResource(node.place.label), Modifier.rvMoves()) {
-                    RvLatencyChange(node.latencyMs, node.changeMs, order)
+                    RvLatencyChange(node.latencyMs, node.changeMs, order = order)
                 }
             }
         }

@@ -22,13 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvGlyph
+import dev.doona.android.prototype.rv.RvPart
 import dev.doona.android.prototype.rv.RvRadio
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSize
@@ -50,29 +53,31 @@ internal fun RvSettingsText(
     BasicText(scripted(text), modifier, style.copy(color = color, textAlign = align), overflow = TextOverflow.Ellipsis, maxLines = maxLines)
 }
 
-/** A settings group card, 20 dp round as every card (N-06): rows run edge to edge, with no divider, border or shadow. */
+/** A settings group card: the library's card, 20 dp round as every card (N-06), rows edge to edge, no divider or shadow. */
 @Composable
-internal fun RvSettingsCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
+internal fun RvSettingsCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) = RvCard(modifier, content)
+
+/**
+ * The title of a group of cards: the shared outside section title, 24 dp above, 12 dp between it and its card; the
+ * [first] under a page header adds nothing above itself.
+ */
+@Composable
+internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, first: Boolean = false) {
+    RvSectionTitle(title, modifier, first = first)
 }
 
-/** The title of a group of cards: the shared outside section title, 24 dp above, 12 dp between it and its card. */
-@Composable
-internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier) {
-    RvSectionTitle(title, modifier)
-}
-
-/** A group's explanation under its card, in secondary text. */
+/** A group's explanation under its card, in secondary text, on the page's grid as the section titles (spacing audit row 5). */
 @Composable
 internal fun RvSettingsFooter(text: String, modifier: Modifier = Modifier) {
-    val pad = Modifier.padding(start = RvSettingsSpace.footerInset, end = RvSettingsSpace.footerInset, top = RvSettingsSpace.footerAbove)
+    val pad = Modifier.padding(top = RvSettingsSpace.footerAbove).testTag(RvPart.FOOTER)
     RvSettingsText(text, Rv.type.tileCaption, modifier.then(pad), color = Rv.colors.textSecondary, maxLines = FOOTER_LINES)
 }
 
 /**
- * A row of a card: a 24 dp glyph, a title over an optional subtitle, and trailing content. The glyph and the trailing
- * control centre on the first line of text, which is where Revolut's rows keep them when the subtitle wraps. The row's
- * touch behaviour comes in [modifier], outside the padding, so the whole row is the target.
+ * A row of a card: a 24 dp glyph, a title over an optional subtitle, and trailing content, 58 dp tall with one line and
+ * 82 with a subtitle, as [RvRow]; a subtitle that wraps makes it taller. The text block centres in that height, and the
+ * glyph and the trailing control centre on its first line, which is where Revolut's rows keep them when the subtitle
+ * wraps. The row's touch behaviour comes in [modifier], outside the padding, so the whole row is the target.
  */
 @Composable
 internal fun RvSettingsRow(
@@ -82,21 +87,27 @@ internal fun RvSettingsRow(
     subtitle: String? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    Row(
-        modifier.fillMaxWidth().heightIn(min = RvSettingsSize.rowOneLine).padding(horizontal = RvSettingsSpace.rowInset, vertical = RvSettingsSpace.rowPad),
-        verticalAlignment = Alignment.Top,
+    Box(
+        modifier
+            .fillMaxWidth()
+            .testTag(RvPart.ROW)
+            .heightIn(min = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine)
+            .padding(horizontal = RvSettingsSpace.rowInset),
+        contentAlignment = Alignment.CenterStart,
     ) {
-        icon?.let {
-            FirstLine { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
-            Spacer(Modifier.width(RvSettingsSpace.glyphGap))
-        }
-        Column(Modifier.weight(1f)) {
-            RvSettingsText(title, Rv.type.rowTitle, maxLines = TITLE_LINES)
-            subtitle?.let { RvSettingsText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = SUBTITLE_LINES) }
-        }
-        trailing?.let {
-            Spacer(Modifier.width(RvSettingsSpace.trailingGap))
-            FirstLine(it)
+        Row(Modifier.fillMaxWidth().padding(vertical = RvSettingsSpace.rowPad), verticalAlignment = Alignment.Top) {
+            icon?.let {
+                FirstLine { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
+                Spacer(Modifier.width(RvSettingsSpace.glyphGap))
+            }
+            Column(Modifier.weight(1f)) {
+                RvSettingsText(title, Rv.type.rowTitle, maxLines = TITLE_LINES)
+                subtitle?.let { RvSettingsText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = SUBTITLE_LINES) }
+            }
+            trailing?.let {
+                Spacer(Modifier.width(RvSettingsSpace.trailingGap))
+                FirstLine(it)
+            }
         }
     }
 }
@@ -106,24 +117,19 @@ private fun FirstLine(content: @Composable () -> Unit) {
     Box(Modifier.height(RvSettingsSize.titleLine), contentAlignment = Alignment.Center) { content() }
 }
 
-/** A row that opens something: an optional [value] in secondary text, then a chevron. */
+/**
+ * A row that opens something, then a chevron; its optional [value] is the row's second line, as Revolut's Appearance rows
+ * show Theme over "Light - Glass" (§13.3), so the row is the two-line 82 dp one.
+ */
 @Composable
 internal fun RvSettingsNavRow(title: String, @DrawableRes icon: Int, onClick: () -> Unit, value: String? = null) {
-    RvSettingsRow(title, Modifier.rvPress(RectangleShape, Role.Button, onClick), icon) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            value?.let {
-                RvSettingsText(it, RvSettingsType.value, color = Rv.colors.textSecondary)
-                Spacer(Modifier.width(RvSettingsSpace.valueGap))
-            }
-            RvChevron()
-        }
-    }
+    RvSettingsRow(title, Modifier.rvPress(RectangleShape, Role.Button, onClick), icon, subtitle = value) { RvChevron() }
 }
 
-/** A row that only shows a [value]. */
+/** A row that only shows a [value], as its second line. */
 @Composable
 internal fun RvSettingsValueRow(title: String, @DrawableRes icon: Int, value: String) {
-    RvSettingsRow(title, icon = icon) { RvSettingsText(value, RvSettingsType.value, color = Rv.colors.textSecondary) }
+    RvSettingsRow(title, icon = icon, subtitle = value)
 }
 
 /** A row whose whole width toggles its switch. */

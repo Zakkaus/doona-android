@@ -22,7 +22,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.doona.android.R
@@ -32,10 +31,10 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAlpha
 import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvInter
+import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.rvPress
-import dev.doona.android.prototype.rv.rvSoftShadow
 
 /** Sizes of the 節點 page and the node detail page, after revolut-android-measured.md (its section in brackets). */
 internal object RvNodesSize {
@@ -57,14 +56,11 @@ internal object RvNodesSize {
     val statusGlyph = 16.dp
 
     /**
-     * The floating 'Get started' pill and the round companion beside it (§8, N06: a 52 dp pill and a 56 dp disc on one
-     * centre line, 8 dp apart, 16 dp above the inset), and the pill's soft shadow, cast from its own shape (S7-16).
+     * The round companion beside the floating [dev.doona.android.prototype.rv.RvPrimaryButton] (§8, N06: a 56 dp disc
+     * 8 dp from the 52 dp pill, on one centre line).
      */
-    val cta = 52.dp
     val ctaCompanion = 56.dp
     val ctaGap = 8.dp
-    val ctaShadow = 12.dp
-    val ctaShadowDrop = 4.dp
     val ctaGlyph = 24.dp
 }
 
@@ -73,9 +69,6 @@ internal object RvNodesType {
     /** The name under a 'Top movers' flag and its latency. */
     val topName = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp)
     val topValue = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp, fontFeatureSettings = "tnum")
-
-    /** The floating pill's label (§8: 22 sp on a 423 dp screen, 20 sp on ours). */
-    val cta = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp)
 }
 
 /** A latency's colour: the fixed good, fair and slow hues. */
@@ -101,26 +94,14 @@ internal fun RvStatusChip(@DrawableRes icon: Int, label: String, color: Color) {
 }
 
 /**
- * Revolut's floating 'Get started' with the round companion beside it ('Buy' and more): a full-width pill in the text
- * colour (white in dark, Addendum A) over a soft shadow cast from the pill's own shape in light (S7-16), and a 56 dp
- * container disc with no shadow, both on one centre line (N06).
+ * Revolut's floating 'Get started' with the round companion beside it ('Buy' and more): the library's [RvPrimaryButton]
+ * and a 56 dp container disc with no shadow, both on one centre line (N06).
  */
 @Composable
 internal fun RvFloatingActions(label: String, onClick: () -> Unit, @DrawableRes icon: Int, iconLabel: String, onIcon: () -> Unit, modifier: Modifier = Modifier) {
     val colors = Rv.colors
-    val fill = if (colors.dark) Color.White else colors.text
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(RvNodesSize.ctaGap), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .weight(1f)
-                .heightIn(min = RvNodesSize.cta)
-                .rvSoftShadow(CircleShape, RvNodesSize.ctaShadow, RvNodesSize.ctaShadowDrop, RvAlpha.CTA_SHADOW)
-                .clip(CircleShape)
-                .background(fill)
-                .rvPress(CircleShape, Role.Button, onClick)
-                .padding(vertical = RvSpace.tight),
-            contentAlignment = Alignment.Center,
-        ) { RvText(label, RvNodesType.cta, color = colors.page, align = TextAlign.Center) }
+        RvPrimaryButton(label, onClick, Modifier.weight(1f))
         Box(
             Modifier
                 .size(RvNodesSize.ctaCompanion)

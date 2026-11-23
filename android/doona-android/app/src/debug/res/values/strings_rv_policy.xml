@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_policy_test_all">Test every group</string>
+    <string name="rv_policy_update_subscriptions">Update subscriptions</string>
+    <string name="rv_policy_mode_rule">Rules route traffic; the rest goes to the main node</string>
+    <string name="rv_policy_mode_global">All traffic goes to the main node</string>
+    <string name="rv_policy_mode_direct">No traffic goes through a proxy</string>
+    <string name="rv_policy_groups">Groups</string>
+    <string name="rv_policy_group_auto">Auto</string>
+    <string name="rv_policy_kind_select">Manual</string>
+    <string name="rv_policy_kind_auto">Fastest</string>
+    <plurals name="rv_policy_node_count">
+        <item quantity="one">%1$d node</item>
+        <item quantity="other">%1$d nodes</item>
+    </plurals>
+    <string name="rv_policy_rules">Routing rules</string>
+    <string name="rv_policy_rules_order">Rules are tried from the top; the first match wins</string>
+    <plurals name="rv_policy_see_all_rules">
+        <item quantity="one">See all %1$d rule</item>
+        <item quantity="other">See all %1$d rules</item>
+    </plurals>
+    <plurals name="rv_policy_domains">
+        <item quantity="one">%1$s, %2$d domain</item>
+        <item quantity="other">%1$s, %2$d domains</item>
+    </plurals>
+    <string name="rv_policy_kind_domain">Domain</string>
+    <string name="rv_policy_lan">Local network</string>
+    <string name="rv_policy_lan_kind">Private IP addresses</string>
+    <string name="rv_policy_rest">Everything else</string>
+    <string name="rv_policy_rest_kind">Matched no rule above</string>
+    <string name="rv_policy_template">Template</string>
+    <string name="rv_policy_template_value">Bypass mainland China</string>
+    <string name="rv_policy_new_rule">New rule</string>
+    <string name="rv_policy_block_ads">Block ads</string>
+    <string name="rv_policy_block_quic">Block QUIC</string>
+    <string name="rv_policy_selected">Selected %1$s · %2$s</string>
+    <string name="rv_policy_auto">Auto</string>
+    <string name="rv_policy_auto_note">Picks the node with the lowest latency (50 ms tolerance)</string>
+    <string name="rv_policy_test_group">Test this group</string>
+    <string name="rv_policy_nodes">Nodes</string>
+    <plurals name="rv_policy_see_all_nodes">
+        <item quantity="one">See all %1$d</item>
+        <item quantity="other">See all %1$d</item>
+    </plurals>
+    <string name="rv_policy_target">Destination</string>
+    <string name="rv_policy_app">App</string>
+    <string name="rv_policy_matched">Matched rule</string>
+    <string name="rv_policy_via">Now through</string>
+    <string name="rv_policy_match_by">Match by</string>
+    <string name="rv_policy_match_full">Domain</string>
+    <string name="rv_policy_match_suffix">Suffix</string>
+    <string name="rv_policy_match_keyword">Keyword</string>
+    <string name="rv_policy_match_full_line">Only %1$s</string>
+    <string name="rv_policy_match_suffix_line">%1$s and all its subdomains</string>
+    <string name="rv_policy_match_keyword_line">Domains containing %1$s</string>
+    <string name="rv_policy_send_to">Send to</string>
+    <string name="rv_policy_no_proxy">No proxy</string>
+    <plurals name="rv_policy_other_groups">
+        <item quantity="one">%1$d more group</item>
+        <item quantity="other">%1$d more groups</item>
+    </plurals>
+    <string name="rv_policy_position">Position</string>
+    <string name="rv_policy_position_value">Before “%1$s”</string>
+    <string name="rv_policy_apply">Apply</string>
+</resources>

@@ -111,44 +111,27 @@ internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, 
                 Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvChrome.markGlyph))
             }
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-            SearchPill(glass, onSearch, pull, Modifier.weight(1f))
+            RvSearchPill(onSearch, Modifier.weight(1f), glass, pull)
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-            GlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
+            RvGlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
             Spacer(Modifier.width(RvChrome.buttonGap - RvChrome.touchPad * 2))
-            GlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), NOT_WIRED)
+            RvGlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), NOT_WIRED)
         }
     }
 }
 
 /**
- * The search pill, also the pull-down's anchor: it grows by [RvMotion.ANCHOR_GROW] as the pull's progress runs to 1 (the
- * picker it opens has the same pill as its field), and offers the pull to TalkBack as an action.
+ * The search pill (measured §4: 44 dp, full round, the 24 dp magnifier 8 dp in, the 17 sp placeholder): on 活動's bar in
+ * the controls' [glass] and a 48 dp target; without glass, on the page in the filter chips' fill, its 44 dp the layout
+ * box, as a node list's first row. On the bar it is also the pull-down's anchor ([barPill]).
  */
 @Composable
-private fun SearchPill(glass: RvGlass, onClick: () -> Unit, pull: RvPullLook, modifier: Modifier) {
-    val open = pull.open
-    val label = stringResource(R.string.rv_nodes_title)
+internal fun RvSearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, glass: RvGlass? = null, pull: RvPullLook = RvPullLook.None) {
+    val fill = glass?.let { Modifier.barPill(pull).minimumInteractiveComponentSize().height(RvChrome.control).rvControl(it, CircleShape) }
+        ?: Modifier.height(RvChrome.control).clip(CircleShape).background(Rv.colors.segmentTrack)
     Row(
         modifier
-            // A tap pushes the search page, and the pill becomes its field.
-            .rvSharedSearch()
-            .graphicsLayer {
-                val grow = 1f + RvMotion.ANCHOR_GROW * pull.progress()
-                scaleX = grow
-                scaleY = grow
-            }
-            .semantics {
-                if (open == null) return@semantics
-                customActions = listOf(
-                    CustomAccessibilityAction(label) {
-                        open()
-                        true
-                    },
-                )
-            }
-            .minimumInteractiveComponentSize()
-            .height(RvChrome.control)
-            .rvControl(glass, CircleShape)
+            .then(fill)
             .rvPress(CircleShape, Role.Button, onClick)
             .padding(start = RvChrome.searchInset),
         verticalAlignment = Alignment.CenterVertically,
@@ -157,6 +140,32 @@ private fun SearchPill(glass: RvGlass, onClick: () -> Unit, pull: RvPullLook, mo
         RvGlyph(R.drawable.rv_sym_search, RvChrome.searchGlyph, Rv.colors.text)
         RvText(stringResource(R.string.rv_search_nodes), Rv.type.search, color = Rv.colors.textSecondary)
     }
+}
+
+/**
+ * The bar pill as the pull-down's anchor: it grows by [RvMotion.ANCHOR_GROW] as the pull's progress runs to 1 (the
+ * picker it opens has the same pill as its field), offers the pull to TalkBack as an action, and on a tap becomes the
+ * search page's field.
+ */
+@Composable
+private fun Modifier.barPill(pull: RvPullLook): Modifier {
+    val open = pull.open
+    val label = stringResource(R.string.rv_nodes_title)
+    return rvSharedSearch()
+        .graphicsLayer {
+            val grow = 1f + RvMotion.ANCHOR_GROW * pull.progress()
+            scaleX = grow
+            scaleY = grow
+        }
+        .semantics {
+            if (open == null) return@semantics
+            customActions = listOf(
+                CustomAccessibilityAction(label) {
+                    open()
+                    true
+                },
+            )
+        }
 }
 
 /**
@@ -199,9 +208,12 @@ internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> U
     Trace.endSection()
 }
 
-/** A round glass button of the top bar: a 44 dp disc in a 48 dp target, with a disc's press ([rvDiscPress]). */
+/**
+ * A top bar's round action (活動's 統計 and 訂閱): a 44 dp glass disc with the soft shadow and, in dark, its rim, in a 48 dp
+ * target, with a disc's press ([rvDiscPress]); [label] is for the screen reader.
+ */
 @Composable
-private fun GlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, onClick: () -> Unit) {
+internal fun RvGlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, onClick: () -> Unit) {
     Box(
         Modifier
             .minimumInteractiveComponentSize()

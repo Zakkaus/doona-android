@@ -49,18 +49,22 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.data.RvAmount
@@ -69,12 +73,48 @@ import kotlinx.coroutines.delay
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
-/** One line of text in a role; CJK runs in Noto, the rest in Inter. */
+/**
+ * One line of text in a role; CJK runs in Noto, the rest in Inter. Cut short, it ends in an ellipsis right after the last
+ * word that fits: the platform keeps the space after that word before its ellipsis (`IPLC …`), so the line is laid out
+ * once more without it. The shorter text stays while the width does, and the whole text returns when the line gets more
+ * room.
+ */
 @Composable
 internal fun RvText(text: String, style: TextStyle, modifier: Modifier = Modifier, color: Color = Rv.colors.text, align: TextAlign = TextAlign.Start) {
-    BasicText(scripted(text), modifier, style.copy(color = color, textAlign = align), overflow = TextOverflow.Ellipsis, maxLines = 1)
+    var cut by remember(text) { mutableStateOf<RvCut?>(null) }
+    BasicText(
+        scripted(cut?.text ?: text),
+        modifier,
+        style.copy(color = color, textAlign = align),
+        onTextLayout = { layout ->
+            val kept = cut
+            if (kept == null) {
+                cut = rvCut(text, layout)
+            } else if (layout.layoutInput.constraints.maxWidth > kept.width) {
+                cut = null
+            }
+        },
+        overflow = TextOverflow.Ellipsis,
+        maxLines = 1,
+    )
 }
+
+/** A line cut at a word for [width] px. */
+private class RvCut(val width: Int, val text: String)
+
+/** [text] up to the last word that fits and an ellipsis, when the platform's cut of [layout] left a space before its own. */
+private fun rvCut(text: String, layout: TextLayoutResult): RvCut? {
+    if (!layout.isLineEllipsized(0)) return null
+    val end = layout.getLineEnd(0, visibleEnd = true).coerceAtMost(text.length)
+    val kept = text.substring(0, end).trimEnd()
+    val atSpace = kept.length < end || text.getOrNull(end)?.isWhitespace() == true
+    return if (atSpace && kept.isNotEmpty()) RvCut(layout.layoutInput.constraints.maxWidth, kept + ELLIPSIS) else null
+}
+
+private const val ELLIPSIS = "\u2026"
 
 /**
  * The one press feedback: the content colour's state layer, clipped to the visible [shape], up in [RvMotion.PRESS_MS].
@@ -189,10 +229,49 @@ internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit
 /** A grouped card: rows run edge to edge inside its rounded fill; no border, no shadow. */
 @Composable
 internal fun RvCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
+    Column(modifier.fillMaxWidth().testTag(RvPart.CARD).clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
 }
 
-/** A row of a grouped card: a disc at the start, a title over an optional subtitle, and trailing content at the end. */
+/**
+ * A control in a card, as Revolut sets its segmented control (measured §8: inset 16 dp in a card): [control] on the row
+ * padding, 16 dp under the card's top, then the optional [caption] saying what the choice does, in secondary text on the
+ * card's grid, and the card's padding at its foot.
+ */
+@Composable
+internal fun RvControlCard(caption: String?, modifier: Modifier = Modifier, control: @Composable () -> Unit) {
+    RvCard(modifier) {
+        Column(Modifier.padding(RvSpace.rowPadding)) {
+            control()
+            caption?.let { RvText(it, Rv.type.rowSub, Modifier.padding(top = RvSpace.controlToCaption), color = Rv.colors.textSecondary) }
+        }
+    }
+}
+
+/** Test tags of the library's layout parts, which `RvLayoutTest` measures on every page against these tokens. */
+internal object RvPart {
+    const val MARK = "rv-mark"
+    const val TITLE = "rv-title"
+    const val CAPTION = "rv-caption"
+    const val CONTROL = "rv-control"
+    const val CARD = "rv-card"
+    const val SECTION = "rv-section"
+    const val FOOTER = "rv-footer"
+
+    /** A composite block of the page's column (a pager of tiles and its dots), measured as one card. */
+    const val BLOCK = "rv-block"
+    const val ROW = "rv-row"
+    const val SEGMENTED = "rv-segmented"
+}
+
+/**
+ * A row of a grouped card: a disc at the start, a title over an optional subtitle, and trailing content at the end.
+ *
+ * [titleEnd] and [subtitleEnd] put a value at the end of the title's line and of the subtitle's line instead of one
+ * trailing column beside both: each line then shares its width only with its own end. The start keeps its width up to
+ * [TITLE_SHARE] of the line, the end takes what it needs of the rest, and the start gets what is left, so a long name
+ * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
+ * text column to its widest end. [trailing] (a chevron) still follows after both lines.
+ */
 @Composable
 internal fun RvRow(
     leading: @Composable () -> Unit,
@@ -201,13 +280,17 @@ internal fun RvRow(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    titleEnd: (@Composable () -> Unit)? = null,
+    subtitleEnd: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     // The card clips the layer of its first and last row to its corners.
     val press = onClick?.let { Modifier.rvPress(RectangleShape, Role.Button, it, onLongClick) } ?: Modifier
+    val lineWise = titleEnd != null || subtitleEnd != null
     Row(
         modifier
             .fillMaxWidth()
+            .testTag(RvPart.ROW)
             .heightIn(min = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine)
             .then(press)
             .padding(horizontal = RvSpace.rowPadding),
@@ -216,12 +299,44 @@ internal fun RvRow(
         leading()
         Spacer(Modifier.width(RvSpace.rowGap))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-            RvText(title, Rv.type.rowTitle)
-            subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) }
+            if (lineWise) {
+                RowLine(titleEnd) { RvText(title, Rv.type.rowTitle) }
+                subtitle?.let { RowLine(subtitleEnd) { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) } }
+            } else {
+                RvText(title, Rv.type.rowTitle)
+                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) }
+            }
         }
         trailing?.let {
             Spacer(Modifier.width(RvSpace.trailingGap))
             it()
+        }
+    }
+}
+
+/** The share of a line a row's title keeps, if it needs it, before the end of the line takes the rest. */
+private const val TITLE_SHARE = 0.4f
+
+/**
+ * One line of a line-wise [RvRow]: [start] keeps its own width up to [TITLE_SHARE] of the line, [end] takes what it
+ * needs of the rest, and [start] then gets what the end leaves; either ends in an ellipsis only when both are long.
+ */
+@Composable
+private fun RowLine(end: (@Composable () -> Unit)?, start: @Composable () -> Unit) {
+    Layout({
+        start()
+        end?.invoke()
+    }) { parts, constraints ->
+        val width = constraints.maxWidth
+        val gap = if (parts.size > 1) RvSpace.trailingGap.roundToPx() else 0
+        val keep = min(parts[0].maxIntrinsicWidth(constraints.maxHeight), (width * TITLE_SHARE).toInt())
+        val endPart = parts.getOrNull(1)?.measure(Constraints(maxWidth = max(0, width - keep - gap)))
+        val endWidth = endPart?.width ?: 0
+        val startPart = parts[0].measure(Constraints(maxWidth = max(0, width - endWidth - gap)))
+        val height = max(startPart.height, endPart?.height ?: 0)
+        layout(width, height) {
+            startPart.place(0, (height - startPart.height) / 2)
+            endPart?.let { it.place(width - it.width, (height - it.height) / 2) }
         }
     }
 }
@@ -309,11 +424,13 @@ internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: Str
 /**
  * An outside section title (measured §7, §13.4), for a run of list cards on a settings or detail page: 20 sp bold, 24 dp
  * under what is above it and 12 dp above its card; with [onClick], a chevron in the title's colour, and the title opens it.
+ * The [first] one under a [RvPageHeader] adds nothing above itself: the header's gap is already there.
  */
 @Composable
-internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, first: Boolean = false) {
     val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSpace.tight), Role.Button, it) } ?: Modifier
-    Row(modifier.padding(top = RvSpace.sectionAbove, bottom = RvSpace.sectionBelow).then(press), verticalAlignment = Alignment.CenterVertically) {
+    val above = if (first) Modifier else Modifier.padding(top = RvSpace.sectionAbove)
+    Row(modifier.then(above).padding(bottom = RvSpace.sectionBelow).testTag(RvPart.SECTION).then(press), verticalAlignment = Alignment.CenterVertically) {
         RvText(title, Rv.type.section, Modifier.semantics { heading() })
         if (onClick != null) RvChevron(color = Rv.colors.text)
     }
@@ -357,12 +474,13 @@ internal val LocalRvTesting = compositionLocalOf { false }
 internal val LocalRvTestingNodes = compositionLocalOf { emptySet<String>() }
 
 /**
- * A node's latency over its change since the test before ([RvDelta]). While a test runs ([LocalRvTesting], or one of
+ * A node's latency as a trailing value (19 sp semibold, as [RvLatencyText] writes it) over its change since the test
+ * before ([RvDelta], 17 sp). While a test runs ([LocalRvTesting], or one of
  * [node]'s own in [LocalRvTestingNodes]) a busy bar stands in for both; when it ends the result fades in [order] ×
  * [RvMotion.STAGGER_MS] after the list's first, so the results run down the list, and any later change cross-fades.
  */
 @Composable
-internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, order: Int = 0, node: String? = null) {
+internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean = false, order: Int = 0, node: String? = null) {
     val motion = Rv.motion
     val testing = LocalRvTesting.current || node in LocalRvTestingNodes.current
     var waiting by remember { mutableStateOf(testing) }
@@ -373,15 +491,28 @@ internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, order: Int = 0, no
             waiting = testing
         }
     }
-    Crossfade(if (waiting) null else latencyMs to changeMs, animationSpec = motion.tween(RvMotion.FADE_MS), label = "latency") { shown ->
+    Crossfade(if (waiting) null else Triple(latencyMs, changeMs, timedOut), animationSpec = motion.tween(RvMotion.FADE_MS), label = "latency") { shown ->
         if (shown == null) {
             RvBusy(Modifier.width(RvSize.busy))
         } else {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-                RvText(shown.first?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
+                RvLatencyText(shown.first, shown.third)
                 shown.second?.let { RvDelta(it) }
             }
         }
+    }
+}
+
+/**
+ * A node's last test as a row's trailing value: its latency; 逾時 in the slow colour of a latency that went up, when the
+ * test timed out; a dash when there is nothing to show (never tested, or no node).
+ */
+@Composable
+internal fun RvLatencyText(latencyMs: Int?, timedOut: Boolean) {
+    when {
+        latencyMs != null -> RvText(stringResource(R.string.latency_ms, latencyMs), Rv.type.rowValue, align = TextAlign.End)
+        timedOut -> RvText(stringResource(R.string.rv_nodes_timed_out), Rv.type.rowValue, color = Rv.colors.slow, align = TextAlign.End)
+        else -> RvText(RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
     }
 }
 

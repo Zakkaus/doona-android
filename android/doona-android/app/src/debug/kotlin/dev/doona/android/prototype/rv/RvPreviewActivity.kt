@@ -18,8 +18,10 @@ import kotlin.concurrent.thread
  * Debug builds only: the Revolut-style sample with its invented state, full screen on a phone, so the glass blur and
  * the motion can be seen where the platform draws them (Robolectric's goldens cannot). 活動 pushes 流量詳情 (a traffic
  * tile), 統計 (the top bar), 節點 (the search pill and the outbound row) and the node in use (its row), and pulls down
- * the node picker; 節點 pushes a node's page; the nav switches to 設定, which pushes 主題. Back returns, predictively.
- * Start it from the launcher's "doona RV sample", or with
+ * the node picker; 節點 pushes a node's page; the nav switches to 設定, which pushes 主題, and to 策略, which pushes a
+ * group's page (its rows), the main node's picker (its card) and the quick rule (新增規則); 活動's mode row and 查看全部
+ * switch to 策略, and a rule group opens its group's page. Back returns, predictively. Start it from the launcher's
+ * "doona RV sample", or with
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`, adding any of:
  * `--es pull P2` (P1-P3, [RvPullMotion]), `--es tab T2` ([RvTabMotion]), `--es push S2` ([RvPushMotion]),
  * `--es hero H1` (活動's hero swipes between 全部流量 and 主節點, [RvHeroSwipe]),

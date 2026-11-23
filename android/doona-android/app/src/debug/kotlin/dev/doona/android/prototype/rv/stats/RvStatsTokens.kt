@@ -9,11 +9,12 @@ internal object RvStatsSpace {
     /** A card's inner padding, Revolut's 16 dp. */
     val pad = 16.dp
 
-    /** From the chips to the first card. */
-    val chipsGap = 16.dp
-
-    /** Between two paged tiles, as between any side-by-side cards (Addendum A: 16 dp). */
-    val tileGap = 16.dp
+    /**
+     * Between two paged tiles, and how much of the next tile shows at the screen's edge (measured §2, 03-analytics-a:
+     * 188 dp tiles 8 dp apart, the neighbour peeking 4 dp), so the row reads as one that scrolls.
+     */
+    val tileGap = 8.dp
+    val tilePeek = 4.dp
 
     /** From a card's figure block to its chart, and between a legend's lines. */
     val chartGap = 16.dp

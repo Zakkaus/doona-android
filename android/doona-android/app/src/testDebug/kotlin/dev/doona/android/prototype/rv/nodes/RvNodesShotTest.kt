@@ -56,9 +56,9 @@ class RvNodesShotTest {
 
     private companion object {
         /** A window as tall as the whole 節點 page, so one capture holds every card. */
-        const val WHOLE_PAGE = "+h2897dp"
+        const val WHOLE_PAGE = "+h2893dp"
 
         /** A window as tall as the whole node page, so one capture holds every stat above the floating actions. */
-        const val WHOLE_DETAIL = "+h1157dp"
+        const val WHOLE_DETAIL = "+h1220dp"
     }
 }

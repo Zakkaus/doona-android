@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_policy_test_all">測試所有策略組</string>
+    <string name="rv_policy_update_subscriptions">更新訂閱</string>
+    <string name="rv_policy_mode_rule">依規則分流，其餘走主節點</string>
+    <string name="rv_policy_mode_global">全部流量走主節點</string>
+    <string name="rv_policy_mode_direct">全部流量不經代理</string>
+    <string name="rv_policy_groups">策略組</string>
+    <string name="rv_policy_group_auto">自動</string>
+    <string name="rv_policy_kind_select">手動選擇</string>
+    <string name="rv_policy_kind_auto">自動測速</string>
+    <plurals name="rv_policy_node_count">
+        <item quantity="other">%1$d 個節點</item>
+    </plurals>
+    <string name="rv_policy_rules">分流規則</string>
+    <string name="rv_policy_rules_order">由上而下比對，第一條符合的規則生效</string>
+    <plurals name="rv_policy_see_all_rules">
+        <item quantity="other">查看全部 %1$d 條</item>
+    </plurals>
+    <plurals name="rv_policy_domains">
+        <item quantity="other">%1$s 等 %2$d 個網域</item>
+    </plurals>
+    <string name="rv_policy_kind_domain">網域</string>
+    <string name="rv_policy_lan">區網</string>
+    <string name="rv_policy_lan_kind">私有 IP 位址</string>
+    <string name="rv_policy_rest">其餘流量</string>
+    <string name="rv_policy_rest_kind">未符合以上規則</string>
+    <string name="rv_policy_template">範本</string>
+    <string name="rv_policy_template_value">國內直連</string>
+    <string name="rv_policy_new_rule">新增規則</string>
+    <string name="rv_policy_block_ads">擋廣告</string>
+    <string name="rv_policy_block_quic">擋 QUIC</string>
+    <string name="rv_policy_selected">已選 %1$s · %2$s</string>
+    <string name="rv_policy_auto">自動</string>
+    <string name="rv_policy_auto_note">自動選擇延遲最低的節點（容差 50 毫秒）</string>
+    <string name="rv_policy_test_group">測試此組</string>
+    <string name="rv_policy_nodes">節點</string>
+    <plurals name="rv_policy_see_all_nodes">
+        <item quantity="other">查看全部 %1$d 個</item>
+    </plurals>
+    <string name="rv_policy_target">目標</string>
+    <string name="rv_policy_app">應用程式</string>
+    <string name="rv_policy_matched">符合規則</string>
+    <string name="rv_policy_via">目前經由</string>
+    <string name="rv_policy_match_by">比對方式</string>
+    <string name="rv_policy_match_full">完整網域</string>
+    <string name="rv_policy_match_suffix">網域後綴</string>
+    <string name="rv_policy_match_keyword">關鍵字</string>
+    <string name="rv_policy_match_full_line">只比對 %1$s</string>
+    <string name="rv_policy_match_suffix_line">%1$s 和它的所有子網域</string>
+    <string name="rv_policy_match_keyword_line">網域含有 %1$s</string>
+    <string name="rv_policy_send_to">送往</string>
+    <string name="rv_policy_no_proxy">不經代理</string>
+    <plurals name="rv_policy_other_groups">
+        <item quantity="other">其他 %1$d 個策略組</item>
+    </plurals>
+    <string name="rv_policy_position">位置</string>
+    <string name="rv_policy_position_value">「%1$s」之前</string>
+    <string name="rv_policy_apply">套用</string>
+</resources>

@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,7 +32,8 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvFigure
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvGutter
-import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvPageHeader
+import dev.doona.android.prototype.rv.RvPart
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
@@ -53,13 +55,13 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_stats_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
-        RvLargeTitle(title, titleBlock, insets)
-        Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
-            RvFilterChip(stringResource(R.string.rv_stats_all_subscriptions), NOT_WIRED)
-            Spacer(Modifier.weight(1f))
-            RvFilterChip(stringResource(state.range.label), NOT_WIRED)
-        }
-        Spacer(Modifier.height(RvStatsSpace.chipsGap))
+        RvPageHeader(title, titleBlock, insets, control = {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                RvFilterChip(stringResource(R.string.rv_stats_all_subscriptions), NOT_WIRED)
+                Spacer(Modifier.weight(1f))
+                RvFilterChip(stringResource(state.range.label), NOT_WIRED)
+            }
+        })
         RvGutter { RvSpentCard(state) }
         Spacer(Modifier.height(RvSpace.cardGap))
         DayTiles(state.today)
@@ -98,8 +100,9 @@ private fun DayTiles(day: RvDay) {
     )
     val pager = rememberPagerState { tiles.size }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val width = (maxWidth - RvSpace.gutter * 2 - RvStatsSpace.tileGap) / 2
-        Column {
+        // Two tiles, then the next one's edge at the screen's edge: 188 dp each on a 412 dp screen, as Revolut's.
+        val width = (maxWidth - RvSpace.gutter - RvStatsSpace.tileGap * 2 - RvStatsSpace.tilePeek) / 2
+        Column(Modifier.testTag(RvPart.BLOCK)) {
             HorizontalPager(
                 pager,
                 contentPadding = PaddingValues(horizontal = RvSpace.gutter),

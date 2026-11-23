@@ -16,27 +16,27 @@ internal object RvSettingsSpace {
     val margin = 16.dp
     val cardGap = 16.dp
 
-    /** A group footer sits this far under its card, indented as a row is, so its text starts 32 dp from the screen's edge. */
+    /** A group footer sits this far under its card, its text on the margin as the section titles (spacing audit row 5). */
     val footerAbove = 8.dp
-    val footerInset = 16.dp
 
     /** Start and end padding of a row, and from its glyph to its text. */
     val rowInset = 16.dp
     val glyphGap = 16.dp
     val trailingGap = 12.dp
-    val valueGap = 4.dp
 
     /** A row's top and bottom padding: with the 26 dp title line this makes the measured 58 dp, and 82 dp with a subtitle. */
     val rowPad = 16.dp
     val bottom = 24.dp
 
-    /** The hero: the title row under the bar, then the two round actions. */
+    /**
+     * The hero: the title row under the bar, then the two round actions; the first section title sits its usual 24 dp
+     * under them, as under any content (spacing audit row 7: 24 dp under the title block).
+     */
     val heroTop = 8.dp
     val markGap = 8.dp
     val titleToActions = 24.dp
     val actionColumn = 96.dp
     val actionGap = 8.dp
-    val heroBottom = 24.dp
 
     /** How far under the bar the hero's dot map is centred, so East Asia's land falls behind the title. */
     val mapDrop = 16.dp
@@ -50,9 +50,6 @@ internal object RvSettingsSpace {
 }
 
 internal object RvSettingsSize {
-    /** A one-line row; a row with a second line takes its natural height, 82 dp for one line of subtitle (S04). */
-    val rowOneLine = 58.dp
-
     /** The text line of a title; glyphs and trailing controls centre on it, so a wrapped row keeps them on its first line. */
     val titleLine = 26.dp
     val glyph = 24.dp
@@ -85,11 +82,6 @@ internal object RvSettingsAlpha {
 
     /** A control that does not apply while another setting overrides it. */
     const val DISABLED = 0.38f
-}
-
-internal object RvSettingsType {
-    /** A trailing value: a step under the subtitle, so a long one still fits beside its title. */
-    val value = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp)
 }
 
 /** The five accent colours, each a primary in light; the dark theme's is the same hue lifted toward white. */

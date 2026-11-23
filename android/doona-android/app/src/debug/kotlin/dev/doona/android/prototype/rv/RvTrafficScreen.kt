@@ -62,8 +62,7 @@ internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack:
     val step = RV_RANGE_SECONDS[range] / RV_RANGE_POINTS * MS_PER_SECOND
     val live = if (upload) state.upRate else state.downRate
     RvScrollPage(stringResource(R.string.rv_traffic_title), insets, onBack = onBack, compact = true) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSpace.gutter))
+        RvPageTop(insets)
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             val options = listOf(stringResource(R.string.ui_download), stringResource(R.string.ui_upload))
             RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 })

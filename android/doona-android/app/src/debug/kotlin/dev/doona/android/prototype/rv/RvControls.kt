@@ -7,8 +7,10 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -37,26 +39,35 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
+import androidx.compose.ui.unit.sp
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
 
-// The sample's controls, one of each: range chip, segmented control, chart tool disc, value pill, switch and radio.
+// The sample's controls, one of each: range chip, segmented control, chart tool disc, value pill, primary button, switch
+// and radio.
 
 /** The geometry of the switch and the radio (measured §13.4; Addendum A: a thinner track under the 19 dp thumb). */
 internal object RvControlSize {
@@ -77,18 +88,30 @@ internal object RvControlSize {
     val chipStart = 16.dp
     val chipEnd = 12.dp
     val chipGlyph = 16.dp
+
+    /**
+     * The primary button, node detail's approved floating pill moved here (§8, N06: 52 dp, over the 48 dp target), and
+     * its soft shadow, cast from its own shape (S7-16).
+     */
+    val primary = 52.dp
+    val primaryShadow = 12.dp
+    val primaryShadowDrop = 4.dp
 }
+
+/** The primary button's label (§8: 22 sp on a 423 dp screen, 20 sp on ours). */
+private val primaryLabel = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp)
 
 /**
  * A filter chip under a pushed page's large title, Revolut's small action button (`Personal ▾`, `This month ▾`): the
- * label on the segment track's fill and a chevron that says it opens a choice; a 48 dp target (S7-07).
+ * label on the segment track's fill and a chevron that says it opens a choice. The 40 dp pill is its layout box, so the
+ * header measures from its visible edge (spacing audit row 3); its target reaches 48 dp (S7-07) through Compose's touch
+ * target expansion, which does not move the layout.
  */
 @Composable
 internal fun RvFilterChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val size = RvControlSize
     Row(
         modifier
-            .minimumInteractiveComponentSize()
             .heightIn(min = size.chip)
             .clip(CircleShape)
             .background(Rv.colors.segmentTrack)
@@ -102,13 +125,17 @@ internal fun RvFilterChip(label: String, onClick: () -> Unit, modifier: Modifier
     }
 }
 
-/** A range under a chart, Revolut's chip (measured §8): only the selected one has a fill, raised off the page; no track. */
+/**
+ * One of a few choices in a row, Revolut's range chip (measured §8): only the selected one has a fill, raised off the
+ * page; no track. Under a chart it picks the range; under a node list's search it picks the order. The 36 dp pill is its
+ * layout box, so a row of them measures from its visible edge; its target reaches 48 dp through Compose's touch target
+ * expansion, which does not move the layout.
+ */
 @Composable
 internal fun RvRangePill(label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = Rv.colors
     Box(
         Modifier
-            .minimumInteractiveComponentSize()
             .height(RvChartSize.range)
             .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
             .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick)
@@ -116,6 +143,10 @@ internal fun RvRangePill(label: String, selected: Boolean, onClick: () -> Unit) 
         contentAlignment = Alignment.Center,
     ) { RvText(label, Rv.type.action, color = if (selected) colors.text else colors.textSecondary) }
 }
+
+/** How far a raised chip's shadow reaches under it in this theme; dark draws no shadow (its pill is a lighter fill). */
+internal val rvRaisedReach: Dp
+    @Composable get() = if (Rv.colors.raisedShadow) RvChartSize.rangeShadowReach else 0.dp
 
 /** A raised control's fill in [shape]: a surface over a soft shadow in light, a lighter container in dark. */
 @Composable
@@ -128,7 +159,9 @@ internal fun Modifier.rvRaised(shape: Shape): Modifier {
 
 /**
  * Revolut's segmented control (measured §8): a 36 dp pill track, visible on any surface, [options] in equal parts, the
- * [selected] one on a raised pill 2 dp inside it. Each part is a 48 dp target; the press lights only its pill.
+ * [selected] one on a raised pill 2 dp inside it. The track is the control's layout box, so what is above and below it
+ * measures from its visible edge (spacing audit row 4); each part's target reaches 48 dp through Compose's touch target
+ * expansion, which does not move the layout. The press lights only its pill.
  */
 @Composable
 internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -136,8 +169,8 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
     val motion = Rv.motion
     // Each segment's pill as the row lays it out; one raised pill rests there and slides to the next selection.
     val slots = remember(options.size) { mutableStateListOf<IntRect?>().apply { repeat(options.size) { add(null) } } }
-    Box(modifier.fillMaxWidth().height(RvSize.touch), contentAlignment = Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(RvChartSize.segment).clip(CircleShape).background(colors.segmentTrack))
+    Box(modifier.fillMaxWidth().height(RvChartSize.segment).testTag(RvPart.SEGMENTED)) {
+        Box(Modifier.matchParentSize().clip(CircleShape).background(colors.segmentTrack))
         slots.getOrNull(selected)?.let { slot ->
             val x by animateIntAsState(slot.left, motion.tween(RvMotion.SLIDE_MS), label = "segment")
             Box(Modifier.align(Alignment.TopStart).offset { IntOffset(x, slot.top) }.exactSize(slot.width, slot.height).rvRaised(CircleShape))
@@ -151,7 +184,6 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
                         .weight(1f)
                         .fillMaxHeight()
                         .selectable(i == selected, interactionSource = source, indication = null, role = Role.Tab) { onSelect(i) }
-                        .padding(vertical = (RvSize.touch - RvChartSize.segment) / 2)
                         .padding(RvChartSize.segmentInset)
                         .onPlaced { placed -> placed.boundsInParent().roundToIntRect().let { if (slots[i] != it) slots[i] = it } }
                         .clip(CircleShape)
@@ -197,6 +229,42 @@ internal fun RvRoundButton(@DrawableRes icon: Int, label: String, onClick: () ->
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) { RvGlyph(icon, RvChartSize.roundGlyph, Rv.colors.text) }
+}
+
+/**
+ * The page's one main action, Revolut's full-width pill (§8): node detail's approved 'Get started' pill, moved here. One
+ * style, the ink's fill (white in dark, Addendum A) with the page's colour as its label, the soft shadow under it in
+ * light. Pressed, the label's colour lies over the fill as the state layer;
+ * disabled, the button stays flat at [RvAlpha.DISABLED] and takes no press. At least [RvControlSize.primary] tall, so the
+ * whole pill is the target. [interactionSource] lets a caller (or a test) observe or drive the press.
+ */
+@Composable
+internal fun RvPrimaryButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    interactionSource: MutableInteractionSource? = null,
+) {
+    val colors = Rv.colors
+    val size = RvControlSize
+    val fill = if (colors.dark) Color.White else colors.text
+    val source = interactionSource ?: remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val shown = if (pressed && enabled) colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill) else fill
+    val lift = if (enabled) Modifier.rvSoftShadow(CircleShape, size.primaryShadow, size.primaryShadowDrop, RvAlpha.CTA_SHADOW) else Modifier
+    Box(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = size.primary)
+            .graphicsLayer { alpha = if (enabled) 1f else RvAlpha.DISABLED }
+            .then(lift)
+            .clip(CircleShape)
+            .background(shown)
+            .clickable(interactionSource = source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
+        contentAlignment = Alignment.Center,
+    ) { RvText(label, primaryLabel, color = colors.page, align = TextAlign.Center) }
 }
 
 /**

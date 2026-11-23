@@ -295,7 +295,7 @@ private fun NodeRow(node: RvNode, label: String, current: Boolean, order: Int, o
 @Composable
 private fun NodeTrailing(node: RvNode, order: Int, details: String, onDetail: (String) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        RvLatencyChange(node.latencyMs, node.changeMs, order, node.id)
+        RvLatencyChange(node.latencyMs, node.changeMs, order = order, node = node.id)
         // The mark's 48 dp target reaches into the row's padding, so the glyph ends where every trailing ink ends.
         Box(
             Modifier

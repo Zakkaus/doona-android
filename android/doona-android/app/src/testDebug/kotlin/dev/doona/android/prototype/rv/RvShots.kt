@@ -2,11 +2,14 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performSemanticsAction
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.PhoneFrame
@@ -39,6 +42,12 @@ internal fun ComposeContentTestRule.rvShot(
     before()
     drawFully()
     onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/proto-rv-$screen-${if (dark) "dark" else "light"}.png")
+}
+
+/** Scrolls the page's content up by [dp], as a finger would, and lets what follows the scroll (the nav's collapse) settle. */
+internal fun ComposeContentTestRule.rvScrollBy(dp: Float) {
+    onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, dp * density.density) }
+    waitForIdle()
 }
 
 /** A full capture holds the whole page: its window is as tall as the page, so nothing is left to scroll. */
