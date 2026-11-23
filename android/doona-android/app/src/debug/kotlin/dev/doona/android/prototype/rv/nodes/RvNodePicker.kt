@@ -117,7 +117,8 @@ internal const val RV_PICKER = "rv-picker"
  * filters by name, code, protocol or place; rows and groups that stop matching fold away and come back. [section] gives
  * the n-th section (0 the bar, 1 the title, then each group) its modifier, for P3's staggered drop; [stretch] moves the
  * list down by that many pixels while a pull at its top would close the picker. As the [searchPage] (brief rv-gestures
- * G7) its field is the search pill's, and the keyboard comes up once the page has arrived.
+ * G7) its field is the search pill's, and the keyboard comes up once the page has arrived. The large title is [title],
+ * 節點 unless the caller opened the picker from a card that names it (規則's 主節點).
  */
 @Composable
 internal fun RvNodePicker(
@@ -130,6 +131,7 @@ internal fun RvNodePicker(
     section: (Int) -> Modifier = { Modifier },
     stretch: () -> Float = { 0f },
     searchPage: Boolean = false,
+    title: String = stringResource(R.string.rv_nodes_title),
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val focus = remember { FocusRequester() }
@@ -158,7 +160,7 @@ internal fun RvNodePicker(
             // A pull down at the top, which closes the picker, moves the list under the bar with the finger.
             Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll).graphicsLayer { translationY = stretch() }) {
                 Column(section(1)) {
-                    RvLargeTitle(stringResource(R.string.rv_nodes_title), Modifier, insets)
+                    RvLargeTitle(title, Modifier, insets)
                     RvText(stringResource(R.string.rv_main_node_hint), Rv.type.rowSub, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.subGap * 2), color = Rv.colors.textSecondary)
                 }
                 var first = 0

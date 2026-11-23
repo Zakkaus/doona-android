@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import dev.doona.android.R
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
@@ -40,7 +42,8 @@ import kotlin.math.roundToInt
 
 /**
  * The keyboard over the two pages that take typing, light, dark and fs200: 新增訂閱 with its link field focused
- * (`proto-rv-sub-add-ime-*`) and the pull-down picker's search page with a query typed (`-policy-picker-ime-*`).
+ * (`proto-rv-sub-add-ime-*`) and the pull-down picker's search page with a query typed (`-policy-picker-ime-*`), titled
+ * 主節點 as the page that opens it, so the title does not change when the keyboard rises.
  * The test sets the IME inset of a keyboard 300 dp tall on the content, as the system dispatches it when the keyboard
  * rises, so every page that reads `WindowInsets.ime` sees it. The keyboard is the system's own window and is not
  * drawn by the library: a flat panel of its height stands in so the golden shows what it covers (recorded twice, byte-identical).
@@ -118,7 +121,16 @@ class RvKeyboardShotTest {
     private fun Add() = RvSubAdd(RvAddState(link = RV_SAMPLE_LINK), {}, onPaste = {}, onImport = {}, onBack = {})
 
     @Composable
-    private fun Picker() = RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}, searchPage = true)
+    private fun Picker() = RvNodePicker(
+        RvData.nodes,
+        RvData.subscriptions,
+        RvData.CURRENT_ID,
+        onPick = {},
+        onDetail = {},
+        onClose = {},
+        searchPage = true,
+        title = stringResource(R.string.rv_main_node),
+    )
 
     private companion object {
         val KEYBOARD = 300.dp
