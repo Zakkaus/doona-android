@@ -1,6 +1,6 @@
 //! A subscription's own User-Agent: what `addSubscription` and `setSubscriptionUserAgent` take,
 //! that each fetch of the subscription sends it, that setting it fetches nothing, and that it stays
-//! out of diagnostics, `effectiveConfig` and the log (ARCH D21).
+//! out of error replies, diagnostics, `effectiveConfig` and the log (ARCH D21).
 
 use super::Core;
 use super::tests_catalog::{call, catalog, path};
@@ -9,41 +9,65 @@ use crate::subscription::fetch::USER_AGENT;
 use crate::testutil::{TempDir, fixture, http, logs, response};
 use serde_json::{Value, json};
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
 
-/// A feed at `/sub` that keeps the head of each request it gets.
+/// A feed at `/sub` that keeps the head of each request it gets. Once refusing, it answers 403 with
+/// the request's User-Agent in a header and in the body.
 struct Feed {
     addr: SocketAddr,
     heads: Arc<Mutex<Vec<String>>>,
+    refusing: Arc<AtomicBool>,
 }
 
 impl Feed {
     fn new() -> Feed {
         let heads: Arc<Mutex<Vec<String>>> = Arc::default();
-        let seen = Arc::clone(&heads);
+        let refusing: Arc<AtomicBool> = Arc::default();
+        let (seen, refused) = (Arc::clone(&heads), Arc::clone(&refusing));
         let body = fixture("links.txt");
         let addr = http(move |head| {
             seen.lock().unwrap().push(head.to_owned());
-            response("200 OK", &[], &body)
+            if !refused.load(Relaxed) {
+                return response("200 OK", &[], &body);
+            }
+            let agent = agent_of(head);
+            let echo = format!("refused {agent}");
+            response("403 Forbidden", &[("X-Echo", agent)], echo.as_bytes())
         });
-        Feed { addr, heads }
+        Feed {
+            addr,
+            heads,
+            refusing,
+        }
     }
 
     fn url(&self) -> String {
         format!("http://{}/sub", self.addr)
     }
 
-    /// The User-Agent of each request so far, in order; a head with two of them would fail here.
+    fn refuse(&self) {
+        self.refusing.store(true, Relaxed);
+    }
+
+    /// The User-Agent of each request so far, in order.
     fn agents(&self) -> Vec<String> {
         let heads = self.heads.lock().unwrap();
-        let agent = |head: &String| {
-            let mut agents = head.lines().filter_map(|l| l.strip_prefix("User-Agent: "));
-            let agent = agents.next().unwrap().to_owned();
-            assert!(agents.next().is_none(), "{head}");
-            agent
-        };
-        heads.iter().map(agent).collect()
+        heads.iter().map(|h| agent_of(h).to_owned()).collect()
     }
+}
+
+/// The one User-Agent of a request head; a head with none or two fails here.
+fn agent_of(head: &str) -> &str {
+    let mut agents = head.lines().filter_map(|l| l.strip_prefix("User-Agent: "));
+    let agent = agents.next().unwrap();
+    assert!(agents.next().is_none(), "{head}");
+    agent
+}
+
+/// The whole reply of `command`, not only its code.
+fn reply(core: &Core, command: &str, args: Value) -> Value {
+    serde_json::from_str(&core.call(command, &args.to_string())).unwrap()
 }
 
 fn add(core: &Core, feed: &Feed, agent: Value) -> Result<Value, ErrorCode> {
@@ -170,13 +194,23 @@ fn the_agent_stays_out_of_diagnostics_effective_config_and_the_log() {
         update(&core).unwrap();
         let injected = set(&core, "s1", json!(format!("{AGENT}\r\nX: 1")));
         assert_eq!(injected.err(), Some(ErrorCode::InvalidArgument));
+        // A provider that echoes the agent in its refusal: the error carries the code and nothing else.
+        feed.refuse();
+        let refused = json!({"error": {"code": "fetch_failed"}});
+        let updating = reply(&core, "updateSubscription", json!({"id": "s1"}));
+        assert_eq!(updating, refused);
+        let adding = json!({"url": feed.url(), "name": null, "userAgent": AGENT});
+        assert_eq!(reply(&core, "addSubscription", adding), refused);
         let diagnostics = call(&core, "diagnostics", json!({"level": "debug"})).unwrap();
         (
             diagnostics,
             call(&core, "effectiveConfig", json!({})).unwrap(),
         )
     });
-    assert_eq!(feed.agents(), [AGENT; 2]);
+    assert_eq!(feed.agents(), [AGENT; 4]);
+    let shown = catalog(&core).subscriptions;
+    assert_eq!(shown.len(), 1);
+    assert_eq!(shown[0].error, Some(ErrorCode::FetchFailed));
     let events = diagnostics["events"].as_array().unwrap();
     let named = |name: &str| events.iter().filter(|e| e["name"] == name).count();
     assert_eq!(named("setSubscriptionUserAgent"), 3, "{events:?}");

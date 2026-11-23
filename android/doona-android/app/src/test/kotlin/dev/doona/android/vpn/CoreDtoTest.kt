@@ -11,12 +11,14 @@ import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleTarget
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -255,6 +257,19 @@ class CoreDtoTest {
         // A null agent is sent as null: the core requires the key, and null means its default.
         val reset = CoreJson.encode(SubscriptionUserAgentArgs.serializer(), SubscriptionUserAgentArgs("s1", userAgent = null))
         assertEquals(Json.parseToJsonElement(fixture("call-set-subscription-user-agent-args.json")), Json.parseToJsonElement(reset))
+    }
+
+    /** As in the core: `addSubscription` may leave the agent out, `setSubscriptionUserAgent` may not. */
+    @Test
+    fun anAddWithoutTheAgentDecodesAndTheSetterNeedsItsKey() {
+        val keyless = """{"url":"https://example.invalid/sub","name":null}"""
+        val add = Json.decodeFromString(AddSubscriptionArgs.serializer(), keyless)
+        assertEquals(AddSubscriptionArgs("https://example.invalid/sub", name = null, userAgent = null), add)
+        // A null agent is left out, which the core reads as its default.
+        assertEquals(keyless, CoreJson.encode(AddSubscriptionArgs.serializer(), add))
+        assertThrows(SerializationException::class.java) {
+            Json.decodeFromString(SubscriptionUserAgentArgs.serializer(), """{"id":"s1"}""")
+        }
     }
 
     @Test

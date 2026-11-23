@@ -346,8 +346,9 @@ internal data class SelectArgs(val group: String, val memberId: String?)
 @Serializable
 internal data class GroupArgs(val group: String?)
 
+/** `addSubscription`: [userAgent] may be absent, as from a caller before it; absent or null is the default. */
 @Serializable
-internal data class AddSubscriptionArgs(val url: String, val name: String?, val userAgent: String?)
+internal data class AddSubscriptionArgs(val url: String, val name: String?, val userAgent: String? = null)
 
 /** `setSubscriptionUserAgent`: the key is required, and null returns the subscription to the default. */
 @Serializable

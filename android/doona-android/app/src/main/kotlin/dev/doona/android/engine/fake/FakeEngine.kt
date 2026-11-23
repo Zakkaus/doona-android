@@ -51,6 +51,9 @@ class FakeEngine(
     private val settingsFlow = MutableStateFlow(Settings(mode = mode))
     private val ruleSource = MutableStateFlow(FakeRuleMode.SOURCE)
 
+    /** The number in the next subscription id: as in the core, an id is never given twice, also after a removal. */
+    private var nextSubscription = (subscriptions.maxOfOrNull(::subscriptionNumber) ?: 0) + 1
+
     /**
      * Follows the flows above as each changes, also when a test sets one directly: Unconfined collects in the writer's
      * thread before the write returns.
@@ -86,10 +89,18 @@ class FakeEngine(
     override suspend fun testLatency(groupId: String?): Result<Unit> = Result.success(Unit)
 
     override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
-        val id = "s${subscriptions.value.size + 1}"
-        val added = Subscription(id = id, name = name ?: url, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = userAgent)
+        val agent = userAgentOf(userAgent).getOrElse { return Result.failure(it) }
+        val added = Subscription(id = takeSubscriptionId(), name = name ?: url, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = agent)
         subscriptions.update { it + added }
         return Result.success(added)
+    }
+
+    /** Above every id given before and every id in [subscriptions], which a test may set directly. */
+    @Synchronized
+    private fun takeSubscriptionId(): String {
+        val n = maxOf(nextSubscription, (subscriptions.value.maxOfOrNull(::subscriptionNumber) ?: 0) + 1)
+        nextSubscription = n + 1
+        return "s$n"
     }
 
     override suspend fun updateSubscription(id: String): Result<Subscription> =
@@ -101,7 +112,8 @@ class FakeEngine(
     }
 
     override suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription> {
-        val changed = subscriptions.value.firstOrNull { it.id == id }?.copy(userAgent = userAgent)
+        val agent = userAgentOf(userAgent).getOrElse { return Result.failure(it) }
+        val changed = subscriptions.value.firstOrNull { it.id == id }?.copy(userAgent = agent)
             ?: return Result.failure(EngineException(ErrorCode.NotFound))
         subscriptions.update { all -> all.map { if (it.id == id) changed else it } }
         return Result.success(changed)
@@ -213,3 +225,22 @@ class FakeEngine(
         )
     }
 }
+
+private const val MAX_USER_AGENT = 256
+
+/**
+ * The core's rule for a subscription's User-Agent (`fetch::user_agent`): null is the default; a value must be 1 to 256
+ * bytes of printable ASCII and not blank, and is kept trimmed. Printable ASCII has one byte per char, so the length in
+ * chars is the length in bytes for every value that passes.
+ */
+private fun userAgentOf(text: String?): Result<String?> = when {
+    text == null -> Result.success(null)
+
+    text.length !in 1..MAX_USER_AGENT || text.any { it !in ' '..'~' } || text.isBlank() ->
+        Result.failure(EngineException(ErrorCode.InvalidArgument))
+
+    else -> Result.success(text.trim())
+}
+
+/** The number of an id `s<n>`, or 0 for an id of another shape. */
+private fun subscriptionNumber(subscription: Subscription): Int = subscription.id.removePrefix("s").toIntOrNull() ?: 0
