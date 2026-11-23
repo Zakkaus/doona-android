@@ -226,6 +226,10 @@ impl ToClient for FlowIo {
     fn map_with_last_chunk(&mut self, mapping: Mapping) {
         self.chan.mapping = Some(mapping);
     }
+
+    fn resolving(&mut self, on: bool) {
+        self.gate.resolving(on);
+    }
 }
 
 impl AsyncWrite for FlowIo {

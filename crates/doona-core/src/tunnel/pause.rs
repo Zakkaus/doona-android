@@ -19,6 +19,8 @@ use tokio::sync::Notify;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Point {
+    /// The core's DNS waits for its resolver.
+    Resolving,
     /// The core's DNS has an answer for the client, before it writes it.
     Answered,
     /// The core's DNS has served its session to the end, before its task reports how it ended.

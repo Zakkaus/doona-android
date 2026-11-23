@@ -28,6 +28,10 @@ impl ToClient for Driven<'_> {
     fn map_with_last_chunk(&mut self, mapping: Mapping) {
         self.io.map_with_last_chunk(mapping);
     }
+
+    fn resolving(&mut self, on: bool) {
+        self.io.resolving(on);
+    }
 }
 
 impl AsyncRead for Driven<'_> {

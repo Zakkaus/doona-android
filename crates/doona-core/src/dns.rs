@@ -201,14 +201,19 @@ pub(crate) trait ToClient: AsyncRead + AsyncWrite + Unpin {
     /// Has `mapping` put as the driver takes the last chunk of the next write, before that chunk
     /// can leave; dropped with the chunk if the driver never takes it.
     fn map_with_last_chunk(&mut self, mapping: Mapping);
+
+    /// The session waits for the resolver (`true`), or no longer. Before the client's FIN that wait
+    /// is not idle, however short the drain: [`EXCHANGE`] an upstream bounds it.
+    fn resolving(&mut self, on: bool);
 }
 
 /// Answers the framed queries of one TCP/53 connection in turn until the client closes it. It has
 /// no timer of its own: the driver resets a connection that moves nothing for its idle time, before
 /// or after the client's FIN, and drops what it still holds for the client (see `tunnel/gate.rs`),
 /// so a client that sends neither a query nor its FIN, or never reads, cannot hold the connection
-/// or its buffers. Each byte of a query read or of an answer written counts as progress there.
-/// What an answer maps goes to `names` with the answer's last chunk.
+/// or its buffers. Each byte of a query read or of an answer written counts as progress there, and
+/// the time spent waiting for the resolver before the client's FIN is not idle. What an answer maps goes to `names` with
+/// the answer's last chunk.
 pub(crate) async fn serve_tcp<S: ToClient>(
     io: &mut S,
     upstreams: &[SocketAddr],
@@ -220,7 +225,12 @@ pub(crate) async fn serve_tcp<S: ToClient>(
             Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
             Err(e) => return Err(e),
         };
-        if let Some(a) = answer(upstreams, route, &query, Network::Tcp).await {
+        io.resolving(true);
+        #[cfg(test)]
+        crate::tunnel::pause::at(crate::tunnel::pause::Point::Resolving).await;
+        let reply = answer(upstreams, route, &query, Network::Tcp).await;
+        io.resolving(false);
+        if let Some(a) = reply {
             #[cfg(test)]
             crate::tunnel::pause::at(crate::tunnel::pause::Point::Answered).await;
             if let Some(learned) = Learned::read(&query, &a) {

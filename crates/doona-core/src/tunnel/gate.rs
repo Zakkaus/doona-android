@@ -40,8 +40,12 @@ const BUSY: u32 = 1;
 const WANTED: u32 = 1 << 1;
 /// The driver gave the flow up: no poll enters again.
 const GIVEN_UP: u32 = 1 << 2;
+/// The core's DNS waits for its resolver (see [`Gate::resolving`]).
+const RESOLVING: u32 = 1 << 3;
+/// The driver saw the client's FIN.
+const FIN: u32 = 1 << 4;
 /// One side the task shut cleanly, with its FIN passed on: the bits from here count them.
-const SHUT: u32 = 1 << 3;
+const SHUT: u32 = 1 << 5;
 
 /// What serves a TCP flow, as its gate needs to know.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,8 +54,9 @@ pub(crate) enum Task {
     /// task ends cleanly once it shut both the client's side and the upstream's.
     Relay,
     /// The core's DNS: the drain begins at accept, so a session that moves nothing for its idle
-    /// time is reset whether or not the client sent its FIN, the time spent resolving included;
-    /// the task ends cleanly once it shut the client's side.
+    /// time is reset whether or not the client sent its FIN; the time spent waiting for the
+    /// resolver before the FIN does not count (see [`Gate::resolving`]). The task ends cleanly once
+    /// it shut the client's side.
     Dns,
 }
 
@@ -74,9 +79,11 @@ pub(crate) struct Gate {
     epoch: Instant,
     /// When the drain began: the first FIN either way, or accept.
     begun: AtomicU64,
-    /// When the task last moved a byte, once the drain had begun; earlier ones never matter. The task alone writes it, so a store keeps it in order.
+    /// When the task last moved a byte (or its resolver answered), once the drain had begun;
+    /// earlier ones never matter. The task alone writes it, so a store keeps it in order.
     moved: AtomicU64,
-    /// When the driver's stack last took a byte of the flow. The driver alone writes it.
+    /// When the driver last saw the flow move: its stack took a byte, or the client's FIN ended a
+    /// wait for the resolver. The driver alone writes it.
     took: AtomicU64,
 }
 
@@ -124,15 +131,20 @@ impl Gate {
         (begun != 0).then(|| begun.max(moved).saturating_add(self.idle))
     }
 
-    /// Whether the deadline has passed at `now`.
-    fn past(&self, now: u64) -> bool {
-        self.due().is_some_and(|due| now >= due)
+    /// Whether the deadline has passed at `now`, with the flags of `word`: never while the core's
+    /// DNS waits for its resolver before the client's FIN.
+    fn past(&self, word: u32, now: u64) -> bool {
+        !exempt(word) && self.due().is_some_and(|due| now >= due)
     }
 
     /// The client's FIN, seen now by the driver. The first FIN either way begins the drain and
     /// wakes the driver to queue its deadline; a later one changes nothing, so the deadline never
-    /// comes earlier after that.
+    /// comes earlier after that. The core's DNS waiting for its resolver is idle from here.
     pub fn fin(&self) {
+        if exempt(self.word.load(Acquire)) {
+            self.took.store(self.now(), Release);
+        }
+        self.word.fetch_or(FIN, AcqRel);
         if self.begun.load(Acquire) == 0 && self.begin(self.now()) {
             self.waker.wake();
         }
@@ -151,14 +163,18 @@ impl Gate {
             return;
         }
         let now = self.now();
-        if !self.past(now) {
+        if !self.past(self.word.load(Acquire), now) {
             self.took.store(now, Release);
         }
     }
 
     /// When the flow is cut unless a byte moves first, for the driver's timer: `None` before the
-    /// drain begins.
+    /// drain begins, and while the core's DNS waits for its resolver before the client's FIN (the
+    /// resolver's answer wakes the driver).
     pub fn deadline(&self) -> Option<Instant> {
+        if exempt(self.word.load(Acquire)) {
+            return None;
+        }
         let due = self.due()?;
         Some(self.epoch + Duration::from_nanos(due - 1))
     }
@@ -169,7 +185,7 @@ impl Gate {
         let mut word = self.word.load(Acquire);
         loop {
             let ended = word / SHUT >= self.ways;
-            let past = self.begun.load(Acquire) != 0 && self.past(self.now());
+            let past = self.begun.load(Acquire) != 0 && self.past(word, self.now());
             if !past || word & BUSY == 0 {
                 return Reading {
                     ended,
@@ -210,6 +226,23 @@ impl Gate {
         self.cancel.cancelled().await;
     }
 
+    /// The core's DNS waits for its resolver (`true`), or no longer, as the resolver answered or
+    /// gave up. Before the client's FIN that wait is not idle, however short the drain: the
+    /// resolver's own timeout bounds it (`dns::EXCHANGE` an upstream), and its end counts as
+    /// progress and wakes the driver to queue the deadline from there. From the FIN on it is idle
+    /// time (see [`Gate::fin`]): a session the client closed ends a drain time after it last moved.
+    pub fn resolving(&self, on: bool) {
+        if on {
+            self.word.fetch_or(RESOLVING, AcqRel);
+            return;
+        }
+        if exempt(self.word.load(Acquire)) {
+            self.moved.store(self.now(), Release);
+        }
+        self.word.fetch_and(!RESOLVING, AcqRel);
+        self.waker.wake();
+    }
+
     /// The gate for one I/O poll of the task: `None`, so no I/O, once the flow is given up or past
     /// its deadline. A refused entry changes nothing the driver reads.
     fn enter(&self) -> Option<Entry<'_>> {
@@ -236,7 +269,7 @@ impl Gate {
         // Before the drain begins nothing is cut, and a byte moved changes no deadline.
         if self.begun.load(Acquire) != 0 {
             let now = self.now();
-            if self.past(now) {
+            if self.past(word, now) {
                 return None;
             }
             entry.now = Some(now);
@@ -304,6 +337,12 @@ impl Gate {
         }
         polled
     }
+}
+
+/// Whether `word` holds the flow exempt from its deadline: the core's DNS waits for its resolver,
+/// and the client has not sent its FIN.
+fn exempt(word: u32) -> bool {
+    word & (RESOLVING | FIN) == RESOLVING
 }
 
 /// `d` in nanoseconds, held far below the end of the gate's clock.

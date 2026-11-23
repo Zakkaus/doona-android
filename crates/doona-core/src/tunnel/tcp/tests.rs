@@ -444,3 +444,54 @@ async fn a_silent_dns_client_is_reset_an_idle_time_after_the_session_last_moved(
     tokio::time::sleep_until(answered + DRAIN_DEADLINE).await;
     assert!(matches!(flow.verdict(), Some(Step::Expired)));
 }
+
+/// The client sends a query and keeps its side open; the resolver answers after more than the
+/// drain time, which is shorter than the resolver's own timeout. Waiting for the resolver is not
+/// idle: the session is not cut, and the answer reaches the client.
+#[tokio::test(start_paused = true)]
+async fn a_query_the_resolver_answers_after_the_drain_time_is_answered() {
+    let (_wire, _app, id) = Wire::connected();
+    let (events, _got) = mpsc::unbounded_channel();
+    let waker = Waker::new(Key::Tcp(id), events.clone());
+    let drain = Duration::from_secs(3);
+    let (mut ends, io) = flow::pair(waker, Tally::new(None), drain, Task::Dns);
+    let resolving = pause::hold(pause::Point::Resolving);
+    let _task = serve(io, id, events);
+    let up = ends.up.take().unwrap();
+    up.try_send(Bytes::from(framed(7, "example.com"))).unwrap();
+    resolving.reached().await;
+    // The resolver answers 4 s later.
+    tokio::time::advance(Duration::from_secs(4)).await;
+    assert!(!ends.gate.read().expired, "cut while the resolver works");
+    resolving.release();
+    let answer = ends.down.recv().await;
+    assert!(answer.is_some_and(|a| a.len() > 2), "no answer");
+}
+
+/// As above, but the client sends its FIN while the resolver still works: the wait is idle from
+/// the FIN on, and the session is cut a drain time after the FIN, not at once.
+#[tokio::test(start_paused = true)]
+async fn waiting_for_the_resolver_is_idle_from_the_clients_fin_on() {
+    let (_wire, _app, id) = Wire::connected();
+    let (events, _got) = mpsc::unbounded_channel();
+    let waker = Waker::new(Key::Tcp(id), events.clone());
+    let drain = Duration::from_secs(3);
+    let (mut ends, io) = flow::pair(waker, Tally::new(None), drain, Task::Dns);
+    let resolving = pause::hold(pause::Point::Resolving);
+    let _task = serve(io, id, events);
+    let up = ends.up.take().unwrap();
+    up.try_send(Bytes::from(framed(7, "example.com"))).unwrap();
+    resolving.reached().await;
+    assert_eq!(ends.gate.deadline(), None, "a deadline queued for the wait");
+    tokio::time::advance(Duration::from_secs(4)).await;
+    // What the driver does when it sees the client's FIN.
+    let fin = Instant::now();
+    ends.gate.fin();
+    assert!(!ends.gate.read().expired, "cut at the FIN");
+    assert_eq!(ends.gate.deadline(), Some(fin + drain));
+    tokio::time::advance(drain).await;
+    assert!(
+        ends.gate.read().expired,
+        "the wait after the FIN is not idle"
+    );
+}
