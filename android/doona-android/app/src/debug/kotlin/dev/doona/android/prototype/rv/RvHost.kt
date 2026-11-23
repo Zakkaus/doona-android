@@ -197,9 +197,13 @@ internal fun Modifier.rvSharedSearch(): Modifier {
 internal fun Modifier.rvSharedFlag(node: String): Modifier {
     val shared = LocalRvShared.current ?: return this
     val motion = Rv.motion
+    val shown = LocalRvShown.current
+    // A flag in the picker composed ahead and hidden takes no part: a node page pushed from 活動 would fly it in from
+    // a row nobody sees.
+    val config = remember(shown) { RvShownConfig(shown) }
     return with(shared.layout) {
         this@rvSharedFlag.sharedBounds(
-            rememberSharedContentState(FLAG + node),
+            rememberSharedContentState(FLAG + node, config),
             shared.page,
             enter = fadeIn(motion.tween(shared.pushMs)),
             exit = fadeOut(motion.tween(shared.pushMs)),
@@ -210,6 +214,12 @@ internal fun Modifier.rvSharedFlag(node: String): Modifier {
 }
 
 private const val FLAG = "flag:"
+
+/** A shared element that takes part only while [shown]. */
+private class RvShownConfig(private val shown: () -> Boolean) : SharedTransitionScope.SharedContentConfig {
+    override val SharedTransitionScope.SharedContentState.isEnabled: Boolean
+        get() = shown()
+}
 
 /** Whether the page this is in has finished coming in (at once outside the host). */
 @Composable

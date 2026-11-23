@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -19,6 +20,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.TouchInjectionScope
 import androidx.compose.ui.test.getBoundsInRoot
@@ -26,6 +28,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
@@ -37,6 +40,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import dev.doona.android.R
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RV_PICKER
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -250,6 +254,60 @@ class RvPullTest {
     }
 
     @Test
+    fun aPickerComposedAheadIsHiddenUntilItOpens() {
+        var composed = false
+        lateinit var state: RvPullState
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                state = rememberRvPullState()
+                RvPullDown(RvPullMotion.Sheet, state, activity = { Box(Modifier.fillMaxSize()) }) {
+                    SideEffect { composed = true }
+                    Box(Modifier.fillMaxSize().testTag(SHEET).clickable {})
+                }
+            }
+        }
+        compose.runOnIdle { state.warmUp() }
+        compose.waitForIdle()
+        assertTrue("composed ahead", composed)
+        compose.onAllNodesWithTag(SHEET).assertCountIs(0, "and hidden from accessibility and touch")
+        compose.runOnIdle { state.reveal() }
+        compose.waitForIdle()
+        compose.onAllNodesWithTag(SHEET).assertCountIs(1, "revealed, it is there")
+    }
+
+    @Test
+    fun closingKeepsThePickerComposed() {
+        var disposed = 0
+        lateinit var state: RvPullState
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                state = rememberRvPullState(open = true)
+                RvPullDown(RvPullMotion.Sheet, state, activity = { Box(Modifier.fillMaxSize()) }) {
+                    DisposableEffect(Unit) { onDispose { disposed++ } }
+                    Box(Modifier.fillMaxSize().testTag(SHEET))
+                }
+            }
+        }
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { state.close() }
+        compose.mainClock.advanceTimeBy(RvMotion.RETURN_MS * 2L)
+        assertEquals("closed", 0f, state.shown.value)
+        assertEquals("the close's last frame disposes nothing", 0, disposed)
+        compose.onAllNodesWithTag(SHEET).assertCountIs(0, "closed, the picker is hidden")
+    }
+
+    @Test
+    fun aPullComposesThePickerAheadSoItsRevealComposesNoRows() {
+        app()
+        drag(activity(), FAR, release = false)
+        compose.mainClock.advanceTimeBy(HOLD_MS)
+        compose.onAllNodesWithTag(RV_PICKER).assertCountIs(0, "composed while the finger pulls, the picker is hidden")
+        activity().performTouchInput { up() }
+        compose.mainClock.advanceTimeByFrame()
+        assertEquals("the reveal's first frame has every row", RvData.nodes.size, rows())
+    }
+
+    @Test
     fun activitysSecondHoldsWhileThePullOrThePickerCoversIt() {
         var second by mutableIntStateOf(0)
         var progress by mutableFloatStateOf(0f)
@@ -266,6 +324,8 @@ class RvPullTest {
         compose.runOnIdle { progress = 0f }
         compose.runOnIdle { assertEquals("back, it catches up", 2, shown) }
     }
+
+    private fun rows(): Int = RvData.nodes.sumOf { compose.onAllNodes(hasText(it.name) and hasAnyAncestor(hasTestTag(RV_PICKER))).fetchSemanticsNodes().size }
 
     private fun app() {
         compose.setContent {
@@ -320,6 +380,10 @@ class RvPullTest {
         val FLICK = 20.dp
         const val STEPS = 20
         const val FRAME_MS = 16L
+        const val SHEET = "sheet"
+
+        /** A finger held at the end of a pull long enough for the picker's rows to come in, a row a frame. */
+        const val HOLD_MS = 1_500L
         const val FLICK_STEPS = 4
 
         /** 64 dp in 40 ms and 20 dp in 16 ms: both faster than [RvMotion.pullFling]. */

@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +62,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.LocalRvShown
 import dev.doona.android.prototype.rv.LocalRvUpdating
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
@@ -314,27 +316,34 @@ private fun RvNode.matches(query: String, label: String): Boolean =
 private class RvRowsComposed(val first: Int, val composed: () -> Int)
 
 /**
- * How many of the picker's [total] rows (訂閱 rows and node rows, in order) are composed: at first those that fill the
- * window, then [ROWS_PER_FRAME] more each frame until all are. On the phone, composing all 50 rows in the page's first
- * frame took 52 ms of the UI thread in the profile build (23 ms to compose, 10 to measure, 7 to draw); the rows below
- * the window now come in over the next frames, out of sight, and the first frame holds a window's worth.
+ * How many of the picker's [total] rows (訂閱 rows and node rows, in order) are composed: shown, at first those that
+ * fill the window, then [ROWS_PER_FRAME] more each frame until all are; composed ahead and hidden ([LocalRvShown]), from
+ * none, a row a frame, filling the window at once if it is shown before they are in. On the phone, composing all 50 rows
+ * in the page's first frame took 52 ms of the UI thread in the profile build (23 ms to compose, 10 to measure, 7 to
+ * draw); the rows below the window come in over the next frames, out of sight.
  */
 @Composable
 private fun rememberRowsComposed(total: Int): () -> Int {
     val window = LocalWindowInfo.current.containerSize.height
     val row = with(LocalDensity.current) { RvSize.rowTwoLine.roundToPx() }
-    val composed = remember { mutableIntStateOf(window / row.coerceAtLeast(1) + 1) }
+    val fill = window / row.coerceAtLeast(1) + 1
+    val shown = LocalRvShown.current
+    // Not observed here: whether it is shown decides where the count starts, not when this composes.
+    val composed = remember { mutableIntStateOf(if (Snapshot.withoutReadObservation { shown() }) fill else 0) }
     LaunchedEffect(total) {
         while (composed.intValue < total) {
             withFrameNanos {}
-            composed.intValue += ROWS_PER_FRAME
+            composed.intValue = (if (shown()) maxOf(composed.intValue, fill) else composed.intValue) + ROWS_PER_FRAME
         }
     }
-    return { composed.intValue }
+    return { if (shown()) maxOf(composed.intValue, fill) else composed.intValue }
 }
 
-/** About 1 ms each to compose and measure on the phone, so a frame takes a few without missing the 120 Hz budget. */
-private const val ROWS_PER_FRAME = 4
+/**
+ * A row is about 3 ms to compose, apply and measure on the phone (profile build, 120 Hz): one a frame keeps a frame
+ * within its budget while the page or the sheet moves; four made each of those frames 13 to 20 ms.
+ */
+private const val ROWS_PER_FRAME = 1
 private const val QUARTER_TURN = 90f
 private const val SEARCH_GESTURE = "search"
 private const val TRACE_FOCUS = "RvSearchFocus"

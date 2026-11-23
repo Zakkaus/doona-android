@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -23,6 +24,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
@@ -35,12 +37,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -93,6 +98,21 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
     var drawn by mutableStateOf(open)
         private set
 
+    /**
+     * Composed, shown or not: from [warmUp], as soon as 活動 is pulled, or from a reveal, and kept from then on. On the
+     * phone composing the picker took the reveal's first frame 45 ms and disposing it the close's last 24 ms; composed
+     * while the finger pulls (a row a frame) and kept, neither falls in a frame that moves. Not [drawn], it is measured
+     * but not placed: not drawn, not touched, and hidden from accessibility. Not composed before a pull, so a page pushed
+     * over an unpulled 活動 does not dispose it with 活動.
+     */
+    var warm by mutableStateOf(open)
+        private set
+
+    /** Composes the picker ahead, hidden. */
+    fun warmUp() {
+        warm = true
+    }
+
     /** How far 活動 has blurred and faded: the pull's progress, then at least how far the picker has come in. */
     val look: Float get() = maxOf(opening.progress, shown.value)
 
@@ -100,6 +120,7 @@ internal class RvPullState(open: Boolean, private val scope: CoroutineScope, pri
     fun reveal(velocity: Float = 0f) {
         open = true
         drawn = true
+        warm = true
         // P3: 活動 has already moved down with the finger, so the reveal takes over from that distance.
         val from = if (variant == RvPullMotion.Drop && height > 0f) (opening.pulled / height).coerceIn(0f, 1f) else null
         if (from != null) opening.clear()
@@ -216,6 +237,7 @@ internal fun RvPullDown(variant: RvPullMotion, state: RvPullState, activity: @Co
     PullBack(state)
     ThresholdTick(state.opening)
     ThresholdTick(state.closing)
+    WarmUp(state)
     val dropPx = with(LocalDensity.current) { RvMotion.drop.toPx() }
     val drop = variant == RvPullMotion.Drop
     val look = remember(state, drop) { RvPullLook(if (drop) null else ({ state.opening.pulled }), { state.look }, { state.reveal() }) }
@@ -225,7 +247,7 @@ internal fun RvPullDown(variant: RvPullMotion, state: RvPullState, activity: @Co
         RvPickerMotion({ state.close() }, { i -> Modifier.graphicsLayer { dropIn(state.shown.value, i, dropPx) } }, { state.closing.pulled })
     }
     Box(Modifier.fillMaxSize().onSizeChanged { state.height = it.height.toFloat() }.then(state.opening.catching).then(state.opening.nested)) {
-        if (drop && state.drawn) PickerBox(state, Modifier) { picker(staggered) }
+        if (drop && state.warm) PickerBox(state, Modifier) { picker(staggered) }
         Box(Modifier.fillMaxSize().graphicsLayer { if (drop) translationY = state.opening.pulled + state.shown.value * state.height }) {
             activity(look)
             if (variant == RvPullMotion.Sheet && state.drawn) {
@@ -239,7 +261,7 @@ internal fun RvPullDown(variant: RvPullMotion, state: RvPullState, activity: @Co
                 )
             }
         }
-        if (state.drawn) {
+        if (state.warm) {
             when (variant) {
                 RvPullMotion.Sheet -> PickerBox(state, Modifier.graphicsLayer { translationY = (state.shown.value - 1f) * state.height }) { picker(still) }
                 RvPullMotion.Stretch -> PickerBox(state, Modifier.graphicsLayer { alpha = state.shown.value }) { picker(still) }
@@ -250,10 +272,50 @@ internal fun RvPullDown(variant: RvPullMotion, state: RvPullState, activity: @Co
     }
 }
 
-/** The picker, with its own pull down at the top to close it. */
+/**
+ * The picker, with its own pull down at the top to close it. Until it is [RvPullState.drawn] it is measured and not
+ * placed, so nothing draws it and no touch reaches it, its semantics are cleared, and its rows follow no latency test or
+ * update (a busy bar would run in each).
+ */
 @Composable
 private fun PickerBox(state: RvPullState, modifier: Modifier, content: @Composable () -> Unit) {
-    Box(modifier.fillMaxSize().then(state.closing.catching).then(state.closing.nested)) { content() }
+    val drawn = state.drawn
+    val shown = remember(state) { { state.drawn } }
+    val hidden = if (drawn) Modifier else Modifier.clearAndSetSemantics {}
+    Layout(
+        {
+            CompositionLocalProvider(
+                LocalRvShown provides shown,
+                LocalRvTesting provides (drawn && LocalRvTesting.current),
+                LocalRvTestingNodes provides if (drawn) LocalRvTestingNodes.current else emptySet(),
+                LocalRvUpdating provides if (drawn) LocalRvUpdating.current else emptySet(),
+                content = content,
+            )
+        },
+        modifier.fillMaxSize().then(state.closing.catching).then(state.closing.nested).then(hidden),
+    ) { measurables, constraints ->
+        // As a Box lays out its content, at its top start, but placed only while shown.
+        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val width = placeables.maxOfOrNull { it.width }?.coerceAtLeast(constraints.minWidth) ?: constraints.minWidth
+        val height = placeables.maxOfOrNull { it.height }?.coerceAtLeast(constraints.minHeight) ?: constraints.minHeight
+        layout(width, height) { if (shown()) placeables.forEach { it.placeRelative(0, 0) } }
+    }
+}
+
+/**
+ * Whether the content is on screen: the picker composed ahead is not until it is revealed. Its rows come in one a frame
+ * while hidden, and a shared element there takes part only while shown.
+ */
+internal val LocalRvShown = staticCompositionLocalOf<() -> Boolean> { { true } }
+
+/** Composes the picker ahead, hidden, as soon as 活動 is pulled: by the time the pull commits its rows are in. */
+@Composable
+private fun WarmUp(state: RvPullState) {
+    LaunchedEffect(state) {
+        if (state.warm) return@LaunchedEffect
+        snapshotFlow { state.opening.progress > 0f }.first { it }
+        state.warmUp()
+    }
 }
 
 /** Over everything while the picker moves or is held: a touch catches it, the finger moves it 1:1, letting go settles it. */

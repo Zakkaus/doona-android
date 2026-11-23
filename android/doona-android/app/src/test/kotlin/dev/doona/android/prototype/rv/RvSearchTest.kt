@@ -77,7 +77,8 @@ class RvSearchTest {
         var first = 0
         repeat(FIRST_FRAMES) { if (first == 0) compose.mainClock.advanceTimeByFrame().also { first = rows() } }
         assertTrue("a window's worth at first, not all ${RvData.nodes.size} ($first)", first in 1 until RvData.nodes.size / 2)
-        compose.mainClock.advanceTimeBy(RvMotion.SEARCH_MS * 2L)
+        // A row a frame: every 訂閱 and node row after the window's.
+        compose.mainClock.advanceTimeBy(FRAME_MS * (RvData.subscriptions.size + RvData.nodes.size))
         assertEquals("the rest come in over the next frames", RvData.nodes.size, rows())
     }
 
@@ -101,5 +102,6 @@ class RvSearchTest {
     private companion object {
         const val FRAMES_MS = 50L
         const val FIRST_FRAMES = 5
+        const val FRAME_MS = 16L
     }
 }
