@@ -22,10 +22,13 @@ impl log::Log for Counting {
         let _ = LOGGED.try_with(|n| n.set(n.get() + 1));
         let mut watched = WATCHED.lock().unwrap_or_else(|e| e.into_inner());
         if !watched.is_empty() {
-            let message = record.args().to_string();
-            for (text, held) in watched.iter_mut() {
-                *held += usize::from(message.contains(text.as_str()));
-            }
+            // The logging thread's test may count its allocations: formatting is the logger's.
+            super::alloc::uncounted(|| {
+                let message = record.args().to_string();
+                for (text, held) in watched.iter_mut() {
+                    *held += usize::from(message.contains(text.as_str()));
+                }
+            });
         }
     }
 
