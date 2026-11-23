@@ -7,6 +7,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,8 +18,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.max
 import dev.doona.android.R
@@ -129,15 +133,23 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, modifier:
         RvGlyph(item.icon, lerp(RvChrome.navGlyph, RvChrome.navCollapsedGlyph, shrink), ink)
         val label = stringResource(item.label)
         val line = rvNavLabelLine()
+        val size = Rv.type.navLabel.fontSize
+        val fit = remember(size) { TextAutoSize.StepBased(size * NAV_LABEL_MIN, size) }
         if (shrink < 1f) {
             Spacer(Modifier.height(RvChrome.navLabelGap * (1 - shrink)))
-            RvText(
-                label,
-                Rv.type.navLabel,
-                Modifier.height(line * (1 - shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)),
-                color = ink,
-                align = TextAlign.Center,
-            )
+            // The label keeps its line while the capsule folds, so only its width can make it smaller: a word too long
+            // for the tab (Connections at 92 of 93 dp) shrinks to fit, whole, inside the pill's round ends.
+            val box = Modifier.height(line * (1 - shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)).padding(horizontal = RvNavSize.labelInset)
+            Box(box, contentAlignment = Alignment.TopCenter) {
+                RvText(
+                    label,
+                    Rv.type.navLabel,
+                    Modifier.wrapContentHeight(Alignment.Top, unbounded = true).height(line),
+                    color = ink,
+                    align = TextAlign.Center,
+                    autoSize = fit,
+                )
+            }
         }
     }
 }
@@ -189,3 +201,11 @@ private fun rvCollapsedOnScroll(scroll: ScrollState): Boolean {
 }
 
 private const val TO_TOP = "tab-to-top"
+
+/** The smallest a nav label shrinks to: half its size, at 2× the font size still the default size. */
+private const val NAV_LABEL_MIN = 0.5f
+
+internal object RvNavSize {
+    /** A label's room inside its tab: clear of the selected pill's round ends at the label's height. */
+    val labelInset = 8.dp
+}

@@ -35,7 +35,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The sample's motion, on a clock the test drives (goldens cannot show motion; the pull-down is [RvPullTest]'s): at
  * animator scale 0 a push, the pull-down and the connect sequence finish at once and the haptic ticks still come; a cancelled predictive back leaves the pushed page as it was, a committed one pops;
- * connecting runs 未連線 → 連線中 → 已連線 → 正在中斷連線 → 未連線 with one tick each way, and a failed connect says why.
+ * connecting runs 未連線 → 連線中 → 已連線 → 中斷連線中 → 未連線 with one tick each way, and a failed connect says why.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

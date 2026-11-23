@@ -18,7 +18,7 @@
     <string name="backend_connected">Connected</string>
     <string name="login_submit">Connect</string>
     <string name="settings_profile">Profile</string>
-    <string name="act_mode">Outbound mode</string>
+    <string name="act_mode">Mode</string>
     <string name="mode_rule">Rule</string>
     <string name="mode_direct">Direct</string>
     <string name="mode_global">Global</string>
@@ -113,7 +113,7 @@
     <string name="error_parse_failed">Could not read the subscription</string>
     <string name="error_no_nodes">The subscription has no nodes</string>
     <string name="error_busy">Another change is in progress. Try again.</string>
-    <string name="error_internal">Something went wrong</string>
+    <string name="error_internal">Internal error</string>
     <string name="error_local_network">Could not reach an address on the local network</string>
     <string name="local_network_ask_title">Allow local network access</string>
     <string name="local_network_ask_body">doona needs this permission to reach subscriptions and nodes on your local network.</string>

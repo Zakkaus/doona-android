@@ -27,7 +27,7 @@
     <string name="rv_policy_rest">其余流量</string>
     <string name="rv_policy_rest_kind">未匹配以上规则</string>
     <string name="rv_policy_template">模板</string>
-    <string name="rv_policy_template_value">国内直连</string>
+    <string name="rv_policy_template_value">绕过中国大陆</string>
     <string name="rv_policy_new_rule">添加规则</string>
     <string name="rv_policy_block_ads">屏蔽广告</string>
     <string name="rv_policy_block_quic">屏蔽 QUIC</string>
@@ -67,8 +67,8 @@
         <item quantity="other">应用 %1$d 条规则</item>
     </plurals>
     <string name="rv_rules_pending">尚未应用</string>
-    <string name="rv_rules_held">待应用</string>
-    <string name="rv_rules_discard">舍弃待应用的规则</string>
+    <string name="rv_rules_held">暂存</string>
+    <string name="rv_rules_discard">舍弃暂存的规则</string>
     <string name="rv_rules_in_use">生效</string>
     <string name="rv_rules_off">已停用</string>
     <string name="rv_rules_skipped">已跳过</string>
@@ -103,8 +103,8 @@
     <string name="rv_effective_members_more">%1$s 等 %2$d 个</string>
     <string name="rv_effective_list_separator">、</string>
     <string name="rv_effective_dns_via">经由</string>
-    <string name="rv_effective_lan_value">不进通道</string>
-    <string name="rv_effective_apps_in">走通道的应用</string>
+    <string name="rv_effective_lan_value">通道外</string>
+    <string name="rv_effective_apps_in">通道内的应用</string>
     <plurals name="rv_effective_apps">
         <item quantity="other">%1$d 个</item>
     </plurals>
@@ -118,7 +118,7 @@
     <string name="rv_rule_edit_domain">域名</string>
     <string name="rv_rule_edit_need_domain">请输入域名</string>
     <string name="rv_rule_edit_need_cidr">请输入 IP 段</string>
-    <string name="rv_rule_edit_bad_domain">只能使用英文字母、数字、连字符和点</string>
+    <string name="rv_rule_edit_bad_domain">只能使用英文字母、数字、连字符和句点</string>
     <string name="rv_rule_edit_bad_cidr">IP 段的格式为 91.108.56.0/22</string>
     <string name="rv_rule_edit_cidr_line">%1$s 内的地址</string>
     <string name="rv_rule_edit_geoip_line">GeoIP 数据中属于中国大陆的地址</string>

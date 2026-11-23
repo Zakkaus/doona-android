@@ -5,7 +5,7 @@
 
     <string name="rv_settings_group_connection">連線</string>
     <string name="rv_settings_notify_drop">斷線時通知</string>
-    <string name="rv_settings_per_app">每個 App 的代理</string>
+    <string name="rv_settings_per_app">依 App</string>
     <string name="rv_settings_per_app_value">只代理 %1$d 個 App</string>
     <string name="rv_settings_connection_footer">只有選取的 App 經由代理，其他 App 與區網位址直接連線。</string>
 
@@ -51,10 +51,10 @@
     <string name="rv_report_failed_reason">doona 的核心沒有回應。</string>
     <string name="rv_log_error">錯誤</string>
     <string name="rv_log_warn">警告</string>
-    <string name="rv_log_info">一般</string>
+    <string name="rv_log_info">資訊</string>
     <string name="rv_log_debug">除錯</string>
     <string name="rv_settings_per_app_except">不代理 %1$d 個 App</string>
-    <string name="rv_perapp_needs_app">至少要勾選一個 App</string>
+    <string name="rv_perapp_needs_app">請至少勾選一個 App</string>
     <string name="rv_perapp_loading">正在載入 App…</string>
     <string name="rv_perapp_saving">正在儲存…</string>
     <string name="rv_perapp_save_failed">無法儲存</string>

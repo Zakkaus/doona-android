@@ -41,10 +41,10 @@
     <string name="rv_nodes_protocol">协议</string>
     <string name="rv_nodes_server">服务器</string>
     <string name="rv_nodes_port">端口</string>
-    <string name="rv_nodes_transport">传输</string>
+    <string name="rv_nodes_transport">传输方式</string>
     <string name="rv_nodes_subscription">来自订阅</string>
     <string name="rv_nodes_last_test">上次测试</string>
-    <string name="rv_nodes_use">设为当前节点</string>
+    <string name="rv_nodes_use">设为主节点</string>
     <string name="rv_nodes_sort_latency">延迟</string>
     <string name="rv_nodes_sort_stability">稳定</string>
     <string name="rv_nodes_sort_name">名称</string>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rv_policy_test_all">Test every group</string>
+    <string name="rv_policy_test_all">Test all groups</string>
     <string name="rv_policy_update_subscriptions">Update subscriptions</string>
     <string name="rv_policy_mode_direct">All traffic connects directly, without a proxy</string>
     <string name="rv_policy_mode_global">All traffic goes through the main node</string>
@@ -76,7 +76,7 @@
     <string name="rv_rules_pending">Not applied yet</string>
     <string name="rv_rules_held">Held</string>
     <string name="rv_rules_discard">Discard held rules</string>
-    <string name="rv_rules_in_use">In use</string>
+    <string name="rv_rules_in_use">In effect</string>
     <string name="rv_rules_off">Off</string>
     <string name="rv_rules_skipped">Skipped</string>
     <plurals name="rv_rules_count">

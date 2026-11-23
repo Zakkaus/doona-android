@@ -43,7 +43,7 @@ class ComponentSemanticsTest {
             DoonaLatency(null)
             DoonaMetricLatency(42)
         }
-        mapOf("良好" to 2, "普通" to 1, "緩慢" to 1, "未測試" to 1).forEach { (state, count) -> compose.onAllNodes(hasState(state)).assertCountEquals(count) }
+        mapOf("快速" to 2, "普通" to 1, "緩慢" to 1, "未測試" to 1).forEach { (state, count) -> compose.onAllNodes(hasState(state)).assertCountEquals(count) }
     }
 
     @Test

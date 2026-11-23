@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Rv
@@ -73,6 +74,15 @@ class RvConnectionsShotTest {
     @Test
     @Config(qualifiers = WHOLE_LIST)
     fun listDark() = compose.rvShot("connections", dark = true, before = { assertWhole() }) { List() }
+
+    /** The four-tab nav in English: Connections fits its tab at the default size and shrinks, whole, at 1.15×. */
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun listEn() = compose.rvShot("connections-en", dark = false) { List() }
+
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun listEnFs115() = compose.rvShot("connections-en", dark = false, fontScale = RV_FS115) { List() }
 
     @Test
     @Config(qualifiers = WHOLE_WRAPPED)

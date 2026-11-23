@@ -110,10 +110,10 @@
     <string name="error_internal">发生内部错误</string>
     <string name="error_local_network">无法连接局域网中的地址</string>
     <string name="local_network_ask_title">允许访问局域网</string>
-    <string name="local_network_ask_body">要连接局域网中的订阅和节点，doona 需要此权限。</string>
+    <string name="local_network_ask_body">访问局域网中的订阅与节点需要此权限。</string>
     <string name="local_network_ask_continue">继续</string>
     <string name="local_network_ask_not_now">暂不</string>
     <string name="local_network_denied_title">未允许访问局域网</string>
-    <string name="local_network_denied_body">无法连接局域网中的订阅和节点。请在应用设置中允许 doona 访问局域网。</string>
+    <string name="local_network_denied_body">无法访问局域网中的订阅与节点。请在应用设置中允许 doona 访问局域网。</string>
     <string name="local_network_open_settings">打开设置</string>
 </resources>

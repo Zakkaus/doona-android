@@ -10,11 +10,11 @@
     <string name="rv_stats_nothing_today">今天還沒有流量</string>
     <string name="rv_stats_no_data">尚無資料</string>
     <string name="rv_stats_connections">連線次數</string>
-    <string name="rv_stats_quota">訂閱流量</string>
+    <string name="rv_stats_quota">訂閱額度</string>
     <string name="rv_stats_quota_total">共 %1$s · %2$s</string>
     <string name="rv_stats_quota_left">剩餘 %1$s</string>
     <string name="rv_stats_no_quota">沒有訂閱提供流量額度</string>
-    <string name="rv_stats_no_expiry">未提供到期日</string>
+    <string name="rv_stats_no_expiry">無到期日</string>
     <string name="rv_stats_nodes">節點分布</string>
     <string name="rv_stats_latency">延遲分布</string>
     <string name="rv_stats_ms">毫秒</string>

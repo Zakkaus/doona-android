@@ -73,6 +73,10 @@ class RvShotTest {
     @Test
     fun trafficScrubDark() = traffic("traffic-scrub", dark = true, scrub = SCRUB)
 
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun activityEn() = activity("activity-en", dark = false)
+
     private fun activity(screen: String, dark: Boolean, before: ComposeContentTestRule.() -> Unit = {}) =
         compose.rvShot(screen, dark, before) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
 

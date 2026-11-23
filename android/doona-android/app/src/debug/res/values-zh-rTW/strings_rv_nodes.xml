@@ -41,10 +41,10 @@
     <string name="rv_nodes_protocol">協定</string>
     <string name="rv_nodes_server">伺服器</string>
     <string name="rv_nodes_port">埠</string>
-    <string name="rv_nodes_transport">傳輸</string>
+    <string name="rv_nodes_transport">傳輸方式</string>
     <string name="rv_nodes_subscription">來自訂閱</string>
     <string name="rv_nodes_last_test">上次測試</string>
-    <string name="rv_nodes_use">設為目前節點</string>
+    <string name="rv_nodes_use">設為主節點</string>
     <string name="rv_nodes_sort_latency">延遲</string>
     <string name="rv_nodes_sort_stability">穩定</string>
     <string name="rv_nodes_sort_name">名稱</string>

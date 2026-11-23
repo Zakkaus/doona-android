@@ -65,6 +65,9 @@ private const val PERCENT = 100
 internal const val RV_FS115 = 1.15f
 internal const val RV_FS200 = 2f
 
+/** The phone in English, for the goldens that show the English labels in their slots (wording review, Addendum 4 C). */
+internal const val RV_EN = "en-w412dp-h915dp-notnight-xhdpi"
+
 /** Scrolls the page's content up by [dp], as a finger would, and lets what follows the scroll (the nav's collapse) settle. */
 internal fun ComposeContentTestRule.rvScrollBy(dp: Float) {
     onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, dp * density.density) }

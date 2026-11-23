@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -83,7 +84,7 @@ import kotlin.math.min
  * word that fits: the platform keeps the space after that word before its ellipsis (`IPLC …`), so the line is laid out
  * once more without it. The shorter text stays while the width does, and the whole text returns when the line gets more
  * room. [maxLines] lets it run to more lines, the last ending in the platform's ellipsis, and [overflow] may put the
- * ellipsis in the middle of a single line instead.
+ * ellipsis in the middle of a single line instead. Given [autoSize], a line too long for its width shrinks to fit.
  */
 @Composable
 internal fun RvText(
@@ -94,6 +95,7 @@ internal fun RvText(
     align: TextAlign = TextAlign.Start,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
+    autoSize: TextAutoSize? = null,
 ) {
     var cut by remember(text) { mutableStateOf<RvCut?>(null) }
     BasicText(
@@ -104,13 +106,14 @@ internal fun RvText(
             // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
             val kept = cut
             when {
-                maxLines != 1 || overflow != TextOverflow.Ellipsis -> Unit
+                maxLines != 1 || overflow != TextOverflow.Ellipsis || autoSize != null -> Unit
                 kept == null -> cut = rvCut(text, layout)
                 layout.layoutInput.constraints.maxWidth > kept.width -> cut = null
             }
         },
         overflow = overflow,
         maxLines = maxLines,
+        autoSize = autoSize,
     )
 }
 

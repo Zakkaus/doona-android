@@ -11,7 +11,7 @@
     <string name="rv_stats_nothing_today">No data used today</string>
     <string name="rv_stats_no_data">No data yet</string>
     <string name="rv_stats_connections">Connections</string>
-    <string name="rv_stats_quota">Subscription data</string>
+    <string name="rv_stats_quota">Subscription quota</string>
     <string name="rv_stats_quota_total">of %1$s · %2$s</string>
     <string name="rv_stats_quota_left">%1$s left</string>
     <string name="rv_stats_no_quota">No subscription reports its quota</string>

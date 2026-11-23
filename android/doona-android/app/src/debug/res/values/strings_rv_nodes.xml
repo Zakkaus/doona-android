@@ -7,7 +7,7 @@
     <string name="rv_nodes_fastest_card">Fastest nodes</string>
     <string name="rv_nodes_fastest">Fastest</string>
     <string name="rv_nodes_steadiest">Steadiest</string>
-    <string name="rv_nodes_spread">Where the nodes are</string>
+    <string name="rv_nodes_spread">Node locations</string>
     <plurals name="rv_nodes_countries">
         <item quantity="one">%1$d country or region</item>
         <item quantity="other">%1$d countries or regions</item>
@@ -48,7 +48,7 @@
     <string name="rv_nodes_transport">Transport</string>
     <string name="rv_nodes_subscription">From subscription</string>
     <string name="rv_nodes_last_test">Last tested</string>
-    <string name="rv_nodes_use">Use this node</string>
+    <string name="rv_nodes_use">Set as main node</string>
     <string name="rv_nodes_sort_latency">Latency</string>
     <string name="rv_nodes_sort_stability">Stability</string>
     <string name="rv_nodes_sort_name">Name</string>

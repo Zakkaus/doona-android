@@ -21,7 +21,7 @@
         <item quantity="other">%1$d 条连接匹配</item>
     </plurals>
     <string name="rv_conn_none_title">没有匹配的连接</string>
-    <string name="rv_conn_none_line">换个关键词，或清除搜索</string>
+    <string name="rv_conn_none_line">改用其他关键词，或清除搜索</string>
     <string name="rv_conn_off_title">未连接</string>
     <string name="rv_conn_off_line">连接后，各应用的连接会列在这里</string>
 </resources>

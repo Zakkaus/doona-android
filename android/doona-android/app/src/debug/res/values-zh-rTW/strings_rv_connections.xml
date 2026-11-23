@@ -21,7 +21,7 @@
         <item quantity="other">%1$d 條連線符合</item>
     </plurals>
     <string name="rv_conn_none_title">沒有符合的連線</string>
-    <string name="rv_conn_none_line">換個關鍵字，或清除搜尋</string>
+    <string name="rv_conn_none_line">改用其他關鍵字，或清除搜尋</string>
     <string name="rv_conn_off_title">尚未連線</string>
     <string name="rv_conn_off_line">連線後，各 App 的連線會列在這裡</string>
 </resources>

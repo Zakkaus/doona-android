@@ -27,7 +27,7 @@
     <string name="rv_policy_rest">其餘流量</string>
     <string name="rv_policy_rest_kind">未符合以上規則</string>
     <string name="rv_policy_template">範本</string>
-    <string name="rv_policy_template_value">國內直連</string>
+    <string name="rv_policy_template_value">繞過中國大陸</string>
     <string name="rv_policy_new_rule">新增規則</string>
     <string name="rv_policy_block_ads">擋廣告</string>
     <string name="rv_policy_block_quic">擋 QUIC</string>
@@ -40,7 +40,7 @@
         <item quantity="other">查看全部 %1$d 個</item>
     </plurals>
     <string name="rv_policy_target">目標</string>
-    <string name="rv_policy_app">應用程式</string>
+    <string name="rv_policy_app">App</string>
     <string name="rv_policy_matched">符合規則</string>
     <string name="rv_policy_via">目前經由</string>
     <string name="rv_policy_match_by">比對方式</string>
@@ -67,8 +67,8 @@
         <item quantity="other">套用 %1$d 條規則</item>
     </plurals>
     <string name="rv_rules_pending">尚未套用</string>
-    <string name="rv_rules_held">待套用</string>
-    <string name="rv_rules_discard">捨棄待套用的規則</string>
+    <string name="rv_rules_held">暫存</string>
+    <string name="rv_rules_discard">捨棄暫存的規則</string>
     <string name="rv_rules_in_use">生效</string>
     <string name="rv_rules_off">已停用</string>
     <string name="rv_rules_skipped">已略過</string>
@@ -103,13 +103,13 @@
     <string name="rv_effective_members_more">%1$s 等 %2$d 個</string>
     <string name="rv_effective_list_separator">、</string>
     <string name="rv_effective_dns_via">經由</string>
-    <string name="rv_effective_lan_value">不進通道</string>
-    <string name="rv_effective_apps_in">走通道的 App</string>
+    <string name="rv_effective_lan_value">通道外</string>
+    <string name="rv_effective_apps_in">通道內的 App</string>
     <plurals name="rv_effective_apps">
         <item quantity="other">%1$d 個</item>
     </plurals>
     <string name="rv_effective_apps_rest">其餘 App</string>
-    <string name="rv_effective_apps_rest_value">直接連線</string>
+    <string name="rv_effective_apps_rest_value">直連</string>
     <string name="rv_effective_per_app">依 App</string>
     <string name="rv_effective_source">來源</string>
     <string name="rv_effective_copy">複製</string>
@@ -118,7 +118,7 @@
     <string name="rv_rule_edit_domain">網域</string>
     <string name="rv_rule_edit_need_domain">請輸入網域</string>
     <string name="rv_rule_edit_need_cidr">請輸入 IP 段</string>
-    <string name="rv_rule_edit_bad_domain">只能使用英文字母、數字、連字號和點</string>
+    <string name="rv_rule_edit_bad_domain">只能使用英文字母、數字、連字號與句點</string>
     <string name="rv_rule_edit_bad_cidr">IP 段的格式為 91.108.56.0/22</string>
     <string name="rv_rule_edit_cidr_line">%1$s 內的位址</string>
     <string name="rv_rule_edit_geoip_line">GeoIP 資料中屬於中國大陸的位址</string>

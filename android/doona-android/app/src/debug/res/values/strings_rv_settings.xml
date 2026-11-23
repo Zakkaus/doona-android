@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The Revolut-style sample of the settings and theme pages (prototype/rv/settings), debug builds only. -->
 <resources>
-    <string name="rv_settings_export_diagnostics">Export diagnostics</string>
-    <string name="rv_settings_check_update">Check for updates</string>
+    <string name="rv_settings_export_diagnostics">Export</string>
+    <string name="rv_settings_check_update">Update</string>
 
     <string name="rv_settings_group_connection">Connection</string>
     <string name="rv_settings_notify_drop">Notify when disconnected</string>
-    <string name="rv_settings_per_app">Per-app proxy</string>
+    <string name="rv_settings_per_app">Per-app</string>
     <string name="rv_settings_per_app_value">%1$d apps only</string>
     <string name="rv_settings_connection_footer">Only the selected apps go through the proxy. Other apps and local-network addresses connect directly.</string>
 
@@ -32,10 +32,10 @@
     <string name="rv_settings_version_value" translatable="false">0.1.0</string>
     <string name="rv_settings_licenses">Open-source licenses</string>
 
-    <string name="rv_settings_accent">Accent colour</string>
+    <string name="rv_settings_accent">Accent color</string>
     <string name="rv_settings_follow_wallpaper">Follow wallpaper</string>
     <string name="rv_settings_accent_blue">Blue</string>
-    <string name="rv_settings_accent_current">Current colour</string>
+    <string name="rv_settings_accent_current">Current color</string>
     <string name="rv_settings_accent_purple">Purple</string>
     <string name="rv_settings_accent_orange">Orange</string>
     <string name="rv_settings_accent_pink">Pink</string>
@@ -58,7 +58,7 @@
     <string name="rv_report_failed_reason">doona\'s core did not respond.</string>
     <string name="rv_log_error">Error</string>
     <string name="rv_log_warn">Warning</string>
-    <string name="rv_log_info">Normal</string>
+    <string name="rv_log_info">Info</string>
     <string name="rv_log_debug">Debug</string>
     <string name="rv_settings_per_app_except">All but %1$d apps</string>
     <string name="rv_perapp_needs_app">Check at least one app</string>

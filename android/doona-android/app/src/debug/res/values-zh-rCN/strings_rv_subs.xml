@@ -33,6 +33,6 @@
     <string name="rv_add_not_subscription_reason">这个链接返回的内容不是订阅。请确认这是服务商提供的订阅链接。</string>
     <string name="rv_add_too_large">订阅内容超过 %1$s 的上限。</string>
     <string name="rv_import_title">添加 %1$s</string>
-    <string name="rv_import_body">这个链接来自其他应用，来源为 %1$s。</string>
+    <string name="rv_import_body">此链接来自 %1$s。</string>
     <string name="rv_import_add">添加</string>
 </resources>

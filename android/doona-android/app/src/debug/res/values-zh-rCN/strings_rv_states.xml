@@ -16,10 +16,10 @@
     <string name="rv_crash_reason">崩溃记录已保存，会附在诊断报告中。</string>
     <string name="rv_crash_export">导出报告</string>
     <string name="rv_lan_ask_title">允许访问局域网</string>
-    <string name="rv_lan_ask_body">连接局域网中的订阅和节点需要此权限。</string>
+    <string name="rv_lan_ask_body">访问局域网中的订阅与节点需要此权限。</string>
     <string name="rv_lan_ask_continue">继续</string>
     <string name="rv_lan_ask_not_now">暂不</string>
     <string name="rv_lan_denied_title">未允许访问局域网</string>
-    <string name="rv_lan_denied_body">无法连接局域网中的订阅和节点。请在应用设置中允许 doona 访问局域网。</string>
+    <string name="rv_lan_denied_body">无法访问局域网中的订阅与节点。请在应用设置中允许 doona 访问局域网。</string>
     <string name="rv_lan_open_settings">打开设置</string>
 </resources>

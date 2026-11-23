@@ -3,11 +3,11 @@
 <resources>
     <string name="rv_subs_nodes_updated">%1$s · updated %2$s</string>
     <string name="rv_subs_used">%1$s of %2$s</string>
-    <string name="rv_subs_no_expiry">No end date</string>
+    <string name="rv_subs_no_expiry">No expiry date</string>
     <string name="rv_sub_update_now">Update now</string>
     <string name="rv_sub_node_count">Nodes</string>
     <string name="rv_sub_used">Used</string>
-    <string name="rv_sub_expires">Ends</string>
+    <string name="rv_sub_expires">Expires</string>
     <string name="rv_sub_updated">Last updated</string>
     <string name="rv_sub_format">Format</string>
     <string name="rv_sub_format_clash">Clash YAML</string>
@@ -36,6 +36,6 @@
     <string name="rv_add_not_subscription_reason">This link did not return a subscription. Check that it is the subscription link from your provider.</string>
     <string name="rv_add_too_large">The subscription is larger than the %1$s limit.</string>
     <string name="rv_import_title">Add %1$s</string>
-    <string name="rv_import_body">A link from another app, from %1$s.</string>
+    <string name="rv_import_body">This link came from %1$s.</string>
     <string name="rv_import_add">Add</string>
 </resources>
