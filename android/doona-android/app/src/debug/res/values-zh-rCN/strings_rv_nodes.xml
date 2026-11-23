@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_nodes_title">节点</string>
+    <string name="rv_nodes_all_subscriptions">全部订阅</string>
+    <string name="rv_nodes_by_latency">按延迟</string>
+    <string name="rv_nodes_fastest_card">最快节点</string>
+    <string name="rv_nodes_fastest">最快</string>
+    <string name="rv_nodes_steadiest">最稳</string>
+    <string name="rv_nodes_spread">节点分布</string>
+    <plurals name="rv_nodes_countries">
+        <item quantity="other">%1$d 个国家或地区</item>
+    </plurals>
+    <plurals name="rv_nodes_nodes">
+        <item quantity="other">%1$d 个节点</item>
+    </plurals>
+    <string name="rv_nodes_all">全部节点</string>
+    <plurals name="rv_nodes_see_all">
+        <item quantity="other">查看全部 %1$d 个</item>
+    </plurals>
+    <string name="rv_nodes_region_asia">亚洲</string>
+    <string name="rv_nodes_region_oceania">大洋洲</string>
+    <string name="rv_nodes_region_americas">美洲</string>
+    <string name="rv_nodes_region_europe">欧洲</string>
+    <string name="rv_nodes_place_hk">香港</string>
+    <string name="rv_nodes_place_tw">台湾</string>
+    <string name="rv_nodes_place_jp">日本</string>
+    <string name="rv_nodes_place_kr">韩国</string>
+    <string name="rv_nodes_place_sg">新加坡</string>
+    <string name="rv_nodes_place_us">美国</string>
+    <string name="rv_nodes_place_ca">加拿大</string>
+    <string name="rv_nodes_place_gb">英国</string>
+    <string name="rv_nodes_place_de">德国</string>
+    <string name="rv_nodes_place_nl">荷兰</string>
+    <string name="rv_nodes_place_fr">法国</string>
+    <string name="rv_nodes_place_au">澳大利亚</string>
+    <string name="rv_nodes_in_use">使用中</string>
+    <string name="rv_nodes_latency_high">延迟偏高</string>
+    <string name="rv_nodes_history">延迟记录</string>
+    <string name="rv_nodes_median">中位数 %1$s</string>
+    <string name="rv_nodes_details">节点信息</string>
+    <string name="rv_nodes_protocol">协议</string>
+    <string name="rv_nodes_server">服务器</string>
+    <string name="rv_nodes_port">端口</string>
+    <string name="rv_nodes_transport">传输</string>
+    <string name="rv_nodes_subscription">来自订阅</string>
+    <string name="rv_nodes_last_test">上次测试</string>
+    <string name="rv_nodes_use">设为当前节点</string>
+    <string name="rv_nodes_sort_latency">延迟</string>
+    <string name="rv_nodes_sort_stability">稳定</string>
+    <string name="rv_nodes_sort_name">名称</string>
+    <string name="rv_nodes_sort_region">地区</string>
+    <string name="rv_nodes_stability">稳定 %1$d/%2$d</string>
+    <string name="rv_nodes_timed_out">超时</string>
+</resources>

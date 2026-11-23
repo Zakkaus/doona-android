@@ -1,121 +1,94 @@
 # i18n glossary (en / zh-TW / zh-CN)
 
-Terminology for `android/doona-android/app/src/main/res/values*`. The zh-CN column follows
-the doona web catalogue (`src/i18n/locales/zh-CN.json`); the last column gives the web key
-that fixes the term, or `—` when the web product has no equivalent. `values-zh-rCN` and
-`values-zh-rTW` carry the same keys in the same order. Each table row deliberately holds both
-scripts, one per locale column; that mixing is the point of the table.
+Terminology for `android/doona-android/app/src/main/res/values*` and
+`app/src/debug/res/values*`, aligned with the doona web catalogues
+(`/home/zakk/code/doona/src/i18n/locales/*.json`) and, where the web app has no
+equivalent, the lite app (`apps/lite/src/i18n`). The **doona key** column names the
+catalogue entry that fixes the term; `lite:` marks a lite-app key. This table
+deliberately holds both scripts, one per locale column.
 
-## Navigation and status
+Rows marked **owner check** are terms where the aligned word would change an approved RV
+screen (`values-zh-rTW/strings_rv*.xml`); the change is not applied. See
+[`i18n-doona-alignment.md`](i18n-doona-alignment.md).
 
-| English | zh-TW | zh-CN | doona web key |
-| --- | --- | --- | --- |
-| Activity | 活動 | 活动 | `nav.activity` |
-| Monitor | 觀測 | 观测 | `hub.traffic` |
-| Routing | 路由 | 路由 | `hub.routing` |
-| Settings | 設定 | 设置 | `nav.settings` |
-| System status | 系統狀態 | 系统状态 | `nav.overview` |
-| Policies | 策略 | 策略 | `nav.policies` |
-| Nodes | 節點 | 节点 | `nav.nodes` |
-| Rules | 規則 | 规则 | `nav.rules` |
-| Search | 搜尋 | 搜索 | `shell.shortcutSearch` |
-| Connected | 已連線 | 已连接 | `shell.backend.connected` |
-| Connect | 連線 | 连接 | `shell.backend.connecting` |
-| Disconnect | 斷線 | 断开 | `conn.close` |
-| Not connected | 未連線 | 未连接 | — |
-| Profile | 連線設定檔 | 配置方案 | `settings.profileName` |
+| Concept | English | zh-TW | zh-CN | doona key | Android resources |
+| --- | --- | --- | --- | --- | --- |
+| Node | Node | 節點 | 节点 | `nav.nodes` | `nav_nodes`, `rv_nodes_title` |
+| Subscription | Subscription | 訂閱 | 订阅 | `nodes.addProvider` | `sub_title`, `rv_subscriptions` |
+| Outbound | Outbound | 出站 | 出站 | `act.mode` | `act_mode`, `act_global` |
+| Rule | Rule | 規則 | 规则 | `nav.rules` | `nav_rules`, `mode_rule`, `rv_mode_rule` |
+| Rule set | Rule set | — | — | — | none in doona or the app |
+| Policy | Policy | 策略 | 策略 | `nav.policies` | `nav_policies` |
+| Policy group | Policy group | 策略群組 | 策略组 | `dashboard.policyGroups` | `rv_policy_groups` (owner check) |
+| Main node | Main node | 主節點 | 主节点 | `act.setup.connectionHint` | `rv_main_node`, `rv_nodes_use` (owner check) |
+| Proxy | Proxy | 代理 | 代理 | `rule.template.group.proxy` | `rv_stats_proxy`, `rv_policy_no_proxy` |
+| Direct | Direct | 直連 | 直连 | `mode.direct` | `mode_direct`, `rv_stats_direct` |
+| Reject | Reject | 拒絕 | 拒绝 | `rule.dns.action.rejectQuery` | none (the app has no reject target) |
+| Block | Block | 封鎖 | 屏蔽 | `rule.template.blockAds` | `rv_policy_block_ads` (owner check) |
+| Global | Global | 全域 | 全局 | `mode.global` | `mode_global`, `act_global` |
+| Rule mode | Rule | 規則 | 规则 | `mode.rule` | `mode_rule`, `rv_mode_rule` |
+| Latency | Latency | 延遲 | 延迟 | `act.latency` | `act_latency`, `rv_stats_latency` |
+| Test latency | Test latency | 測試延遲 | 测试延迟 | `lite:testLatency` | `rv_test_latency` |
+| Traffic | Traffic | 流量 | 流量 | `act.traffic` | `rv_traffic_title`, `rv_stats_quota` |
+| Upload | Upload | 上傳 | 上传 | `ui.upload` | `ui_upload` |
+| Download | Download | 下載 | 下载 | `ui.download` | `ui_download` |
+| Connection | Connection | 連線 | 连接 | `nav.connections` | `rv_nav_connections`, `rv_this_connection` |
+| Connections | Connections | 連線 | 连接 | `nav.connections` | `act_active`, `rv_conn_summary` |
+| Disconnect | Disconnect | 中斷連線 | 断开连接 | `event.disconnected` | `vpn_action_disconnect`, `vpn_failed_title` |
+| DNS | DNS | DNS | DNS | `nav.dns` | `rv_settings_dns_server` |
+| Per-app | Per-app | 依 App | 按应用 | — | `perapp_title`, `rv_settings_per_app` |
+| LAN | LAN | 區網 | 局域网 | `rule.processHelp` | `rv_policy_lan`, `rv_policy_lan_kind` |
+| Update | Update | 更新 | 更新 | `nodes.refresh` | `sub_update`, `rv_menu_update` |
+| Import | Import | 匯入 | 导入 | `config.revisions.origin.import` | `rv_add_import`, `rv_add_importing` |
+| Export | Export | 匯出 | 导出 | `log.export` | `rv_stats_export`, `rv_effective_export` |
+| Diagnostics | Diagnostics | 診斷 | 诊断 | `config.diagnostics` | `rv_stats_export`, `rv_settings_export_diagnostics` |
+| Log level | Log level | 日誌等級 | 日志级别 | `settings.logLevel` | `rv_settings_log_level` |
+| Settings | Settings | 設定 | 设置 | `nav.settings` | `hub_settings` |
+| Theme | Theme | 主題 | 主题 | `ui.theme` | `rv_settings_theme` |
+| Light | Light | 亮色 | 浅色 | `theme.light` | `rv_settings_theme_light` (owner check) |
+| Dark | Dark | 暗色 | 深色 | `theme.dark` | `rv_settings_theme_dark` (owner check) |
+| Follow system | Follow system | 跟隨系統 | 跟随系统 | `theme.system` | `rv_settings_theme_system` |
+| Language | Language | 語言 | 语言 | `ui.lang` | `rv_settings_language` |
+| About | About | 關於 | 关于 | `settings.about` | `rv_settings_group_about` |
+| Advanced | Advanced | 進階 | 高级 | `nodes.manual.advanced` | `rv_settings_group_advanced` |
+| Version | Version | 版本 | 版本 | `ov.config` | `rv_settings_version` |
+| Pinned | Pinned | 已手動固定 | 已手动固定 | `policy.overridden` | `policy_pinned` |
+| Return to automatic | Back to automatic | 恢復自動選擇 | 恢复自动选择 | `policy.releaseOverride` | `policy_unpin` |
+| Includes (filter) | Includes | 選入條件 | 选入条件 | `policy.includes` | `policy_includes` |
+| No groups | No groups | 沒有群組 | 暂无组 | `policy.empty` | `policy_empty_title` |
+| Subgroup | Groups (nested) | 子群組 | 子组 | `group.nestedGroups` | `policy_groups_inside` |
+| First available | First available | 依序備援 | 按顺序备用 | `policy.kind.fallback` | `policy_kind_fallback` |
+| Manual | Manual | 手動選擇 | 手动选择 | `policy.kind.selector` | `policy_kind_selector` |
+| Automatic | Automatic | 自動選擇 | 自动选择 | `policy.kind.auto` | `policy_kind_auto` |
+| Fastest on average | Fastest on average | 平均最快 | 平均最快 | `policy.kind.urltest` | `policy_kind_urltest` |
+| Fixed | Fixed | 固定 | 固定 | `policy.kind.fixed` | `policy_kind_fixed` |
+| Test all | Test all | 測試全部 | 测试全部 | `policy.probeAll` | `policy_test_all` |
+| Filter nodes | Filter nodes | 篩選節點 | 筛选节点 | `policy.filter` | `policy_filter` |
+| Available only | Available only | 只顯示可用節點 | 只显示可用节点 | `policy.aliveOnly` | `policy_alive_only` |
+| All regions | All regions | 全部地區 | 全部地区 | `policy.allRegions` | `policy_all_regions` |
+| Sort | Sort | 排序 | 排序 | `policy.sort` | `policy_sort` |
+| By latency | By latency | 依延遲 | 按延迟 | `policy.byLatency` | `policy_by_latency` |
+| Both | Both | 兩者 | 两者 | `policy.both` | `policy_both` |
+| Active connections | Active connections | 活動連線 | 活动连接 | `act.active` | `act_active` |
+| In use | In use | 使用中 | 使用中 | `conn.latency.inUse` | `rv_nodes_in_use` (owner check) |
+| Port | Port | 連接埠 | 端口 | `nodes.manual.port` | `rv_nodes_port` (owner check) |
+| Protocol | Protocol | 協定 | 协议 | `nodes.latency.byProtocol` | `rv_nodes_protocol` |
+| Median | Median | 中位數 | 中位数 | `dns.chart.median` | `rv_stats_median` |
+| Timed out | Timed out | 逾時 | 超时 | `policy.probeReason.deadline` | `rv_nodes_timed_out` |
+| Statistics | Statistics | 統計 | 统计 | `dns.tab.stats` | `rv_stats` |
+| Save | Save | 儲存 | 保存 | `settings.save` | `rv_save` |
+| Close connection | Close connection | 關閉連線 | 关闭连接 | `conn.close` | `rv_conn_close` |
+| Subscription quota | Subscription quota | 訂閱額度 | 订阅额度 | `dashboard.providerBudget` | `rv_stats_quota` (label: Subscription data) |
+| Expires | Expires | 到期 | 到期 | `nodes.expires` | `rv_expires`, `rv_sub_expires` |
+| Updated | Updated | 更新時間 | 更新时间 | `nodes.updated` | `sub_updated`, `rv_updated` |
 
-## Routing and policies
+## Notes
 
-| English | zh-TW | zh-CN | doona web key |
-| --- | --- | --- | --- |
-| Outbound mode | 出站模式 | 出站模式 | `act.mode` |
-| Rule | 規則 | 规则 | `ui.rule` |
-| Direct | 直連 | 直连 | `act.modeDirectHelp` |
-| Global | 全域 | 全局 | `act.global` |
-| Global outbound | 全域出站 | 全局出站 | `act.global` |
-| Group | 群組 | 组 | `ui.group` |
-| Policy group | 策略群組 | 策略组 | `dashboard.policyGroups` |
-| Subgroup | 內含群組 | 内含组 | `group.nestedGroups` |
-| Manual | 手動選擇 | 手动选择 | `policy.kind.selector` |
-| Automatic | 自動選擇 | 自动选择 | `policy.kind.auto` |
-| Fastest on average | 平均最快 | 平均最快 | `policy.kind.urltest` |
-| First available | 依序備援 | 首个可用 | `group.policy.fallbackHint` |
-| Fixed | 固定 | 固定 | `policy.kind.fixed` |
-| Pinned | 已固定 | 已固定 | `policy.overridden` |
-| Return to automatic | 回到自動 | 恢复自动选择 | `policy.releaseOverride` |
-| Includes (filter) | 選入條件 | 包含条件 | `group.byRule` |
-| Filter nodes | 篩選節點 | 筛选节点 | `nodes.referenced` |
-| Available only | 只顯示可用節點 | 只显示可用节点 | `policy.aliveOnly` |
-| Sort / By latency | 排序 / 依延遲 | 排序 / 按延迟 | `policy.sort`, `policy.byLatency` |
-| All regions | 全部地區 | 全部地区 | `policy.allRegions` |
-| Both (TCP and UDP) | 兩者 | 两者 | `policy.both` |
-| Member | 成員 | 成员 | `policy.membersDown` |
-
-## Nodes and subscriptions
-
-| English | zh-TW | zh-CN | doona web key |
-| --- | --- | --- | --- |
-| Node | 節點 | 节点 | `config.draftNode` |
-| Subscription | 訂閱 | 订阅 | `nodes.kind.subscription` |
-| Add subscription | 新增訂閱 | 新增订阅 | `nodes.addProvider` |
-| Subscription URL | 訂閱網址 | 订阅网址 | `nodes.url` |
-| Import | 匯入 | 汇入 | `act.setup.nodesHint` |
-| Link | 連結 | 连结 | `nodes.addNodeHelp` |
-| Create | 建立 | 建立 | `group.create` |
-| Update / Updated | 更新 / 更新於 | 更新 / 更新于 | `settings.geodataUpdated` |
-| Expires / Expired | 到期 / 已過期 | 到期 / 已过期 | `nodes.expires`, `ui.backend.eventCursorExpired` |
-| Traffic used | 已用 | 已用 | `act.traffic` |
-
-## Metrics
-
-| English | zh-TW | zh-CN | doona web key |
-| --- | --- | --- | --- |
-| Latency | 延遲 | 延迟 | `act.latency` |
-| Fast / Fair / Slow | 良好 / 普通 / 緩慢 | 快速 / 一般 / 缓慢 | `latency.good` (app only) |
-| Not tested | 未測試 | 未测试 | `rule.untested` |
-| CPU usage | CPU 使用率 | CPU 使用率 | `act.cpu` |
-| Upload / Download | 上傳 / 下載 | 上传 / 下载 | `widgets.outbounds` |
-| Active connections | 活動連線 | 活动连接 | `act.active` |
-
-## Platform and permissions
-
-| English | zh-TW | zh-CN | doona web key |
-| --- | --- | --- | --- |
-| App | App | 应用 | — |
-| Device | 裝置 | 设备 | — |
-| Home screen | 主畫面 | 主屏幕 | — |
-| Save | 儲存 | 保存 | `settings.save` |
-| Change | 變更 | 更改 | `config.globalNote` |
-| Local network | 區網 | 局域网 | `rule.processHelp` |
-| Address | 位址 | 地址 | — |
-| Access | 存取 | 访问 | — |
-| Built-in | 內建 | 内置 | `settings.geodataResetHelp` |
-| Incompatible | 不相容 | 不兼容 | — |
-| Core (VPN binary) | 核心 | 核心 | — |
-| Per-app | 依 App | 按应用 | — |
-| Checked (checkbox) | 勾選 | 勾选 | `nodes.deleteSelected` |
-
-## Deliberate differences from `opencc -c t2s.json`
-
-The zh-CN files start from character conversion of zh-TW, so every remaining difference is a
-Mainland term choice. Grouped:
-
-- Settings vocabulary: `設定`→`设置`, `開啟設定`→`打开设置`, `儲存`→`保存`, `選填`→`可选`,
-  `重設`→`重置`.
-- Group and connection vocabulary: `群組`→`组`, `新增`→`添加`, `建立`→`创建`, `連線`→`连接`,
-  `斷線`→`断开`, `中斷連線`→`断开连接`, `連線設定檔`→`配置方案`.
-- Scope and wording: `全域`→`全局`, `區網`→`局域网`, `存取`→`访问`, `位址`→`地址`,
-  `裝置`→`设备`, `主畫面`→`主屏幕`, `App`→`应用`, `連結`→`链接`, `匯入`→`导入`,
-  `關鍵字`→`关键词`, `符合`→`匹配`, `清單`→`列表`, `內建`→`内置`, `不相容`→`不兼容`,
-  `暫時不要`→`暂不`.
-- Meaning, not transliteration: `依序備援`→`首个可用` (en "First available"),
-  `選入條件`→`包含条件` (en "Includes"), `測試全部`→`全部测试`, `回到自動`→`恢复自动选择`
-  (web `policy.releaseOverride`), `良好`→`快速`, `普通`→`一般` (en "Fast", "Fair"),
-  `找不到項目`→`未找到项目`, `目前`→`当前`, `依延遲`→`按延迟`, `再試`→`重试`,
-  `內含群組`→`内含组`.
-- Sentences where zh-TW's casual phrasing became an explicit platform statement:
-  `已安裝的 App 都不走 VPN`→`已安装的应用均未经过 VPN`, and
-  `清單中的 App 都沒有安裝。`→`列表中的应用均未安装。`.
-- Plurals keep only `<item quantity="other">`, as in zh-TW: Chinese has no singular form, and
-  Android requires only `other` for zh-rCN.
+- `values-zh-rCN` and `values-zh-rTW` (main and debug) carry the same resource names as
+  their `values` counterpart, minus entries marked `translatable="false"` (`app_name`,
+  `ui_tcp`, `ui_udp`, `act_rate`) and names whose text is not language-dependent.
+- Chinese plurals keep only `<item quantity="other">`; Android requires no other
+  quantity for `zh-rTW` or `zh-rCN`.
+- `light`/`dark`: the web catalogue (`theme.light` 亮色, `theme.dark` 暗色) and the lite
+  app (淺色, 深色) disagree; the RV screen follows the lite wording, which needs the
+  owner's confirmation before the catalogue is called consistent.

@@ -34,7 +34,7 @@
     <string name="act_cpu">CPU 使用率</string>
     <string name="policy_kind_selector">手动选择</string>
     <string name="policy_kind_urltest">平均最快</string>
-    <string name="policy_kind_fallback">首个可用</string>
+    <string name="policy_kind_fallback">按顺序备用</string>
     <string name="policy_kind_fixed">固定</string>
     <string name="policy_healthy">%1$d 个可用</string>
     <string name="policy_untested">%1$d 个未测试</string>
@@ -52,16 +52,16 @@
     </plurals>
     <string name="ui_group">组</string>
     <string name="group_every_node">包含所有节点</string>
-    <string name="policy_includes">包含条件</string>
+    <string name="policy_includes">选入条件</string>
     <string name="policy_filter">筛选节点</string>
     <string name="policy_test_all">全部测试</string>
     <string name="policy_test_group">测试此组</string>
     <string name="policy_unpin">恢复自动选择</string>
-    <string name="policy_pinned">已固定</string>
+    <string name="policy_pinned">已手动固定</string>
     <string name="policy_failed">测试失败</string>
     <string name="policy_failed_count">%1$d 个失败</string>
-    <string name="policy_groups_inside">内含组</string>
-    <string name="policy_empty_title">没有组</string>
+    <string name="policy_groups_inside">子组</string>
+    <string name="policy_empty_title">暂无组</string>
     <string name="policy_empty_line">添加订阅后会创建组。</string>
     <string name="sub_title">订阅</string>
     <string name="sub_add">添加订阅</string>
@@ -96,7 +96,7 @@
     <string name="ui_off">关闭</string>
     <string name="status_stopped">未连接</string>
     <string name="status_starting">连接中</string>
-    <string name="status_stopping">断开中</string>
+    <string name="status_stopping">断开连接中</string>
     <string name="status_failed_no_allowed_apps">已安装的应用均未经过 VPN</string>
     <string name="status_failed_start">VPN 未能启动</string>
     <string name="status_failed_core_stopped">核心已停止</string>
