@@ -11,6 +11,7 @@
     <string name="rv_sub_format">格式</string>
     <string name="rv_sub_format_clash">Clash YAML</string>
     <string name="rv_sub_format_sing_box">sing-box JSON</string>
+    <string name="rv_sub_format_sip008">SIP008 JSON</string>
     <string name="rv_sub_format_links">分享链接列表</string>
     <string name="rv_sub_updates">更新</string>
     <string name="rv_sub_auto_update">自动更新</string>

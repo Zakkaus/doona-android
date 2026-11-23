@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -14,8 +15,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBanner
+import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvGutter
@@ -25,6 +28,7 @@ import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvProgress
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvTextField
@@ -42,7 +46,8 @@ internal enum class RvAddFailure { Unreachable, NotSubscription, TooLarge }
 internal sealed interface RvAddPhase {
     data object Editing : RvAddPhase
 
-    data class Importing(val downloadedBytes: Long, val fraction: Float) : RvAddPhase
+    /** Downloading; a provider that gives no length leaves [fraction] null, and the core reports no byte count at all ([downloadedBytes] null). */
+    data class Importing(val downloadedBytes: Long?, val fraction: Float?) : RvAddPhase
 
     data class Done(val sub: RvSubscription) : RvAddPhase
 
@@ -136,13 +141,24 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
     if (phase is RvAddPhase.Importing) Progress(phase)
 }
 
-/** The download so far over the bar: a 52 dp row, then the bar on the card's padding. */
+/**
+ * The download so far over the bar: a 52 dp row, then the bar on the card's padding. With no length there is no bar to
+ * fill: the row carries the busy bar in its trailing slot, as 訂閱's row does while it updates, so a frame of it cannot
+ * be read as a share. With no byte count the second line stays and shows a dash in its place.
+ */
 @Composable
 private fun Progress(phase: RvAddPhase.Importing) {
     val format = rememberRvFormat()
+    val bar = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding)
+    val busy: (@Composable () -> Unit)? = if (phase.fraction == null) ({ RvBusy(Modifier.width(RvSize.busy)) }) else null
     RvCard {
-        RvRow({ RvIconDisc(R.drawable.rv_stats_ic_sync) }, stringResource(R.string.rv_add_importing), stringResource(R.string.rv_add_downloaded, format.bytes(phase.downloadedBytes).toString()))
-        RvProgress(phase.fraction, Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding))
+        RvRow(
+            { RvIconDisc(R.drawable.rv_stats_ic_sync) },
+            stringResource(R.string.rv_add_importing),
+            stringResource(R.string.rv_add_downloaded, phase.downloadedBytes?.let { format.bytes(it).toString() } ?: RV_NO_VALUE),
+            trailing = busy,
+        )
+        phase.fraction?.let { RvProgress(it, bar) }
     }
 }
 

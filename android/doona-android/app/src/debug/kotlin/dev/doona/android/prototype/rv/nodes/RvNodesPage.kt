@@ -153,7 +153,7 @@ private fun TopNode(node: RvNode, current: Boolean, onOpen: (String) -> Unit, mo
             .padding(vertical = RvSpace.tight),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        RvFlag(node.place.name, RvNodesSize.topFlag, current = current)
+        RvFlag(node.place.flag, RvNodesSize.topFlag, current = current)
         Spacer(Modifier.height(RvNodesSize.topLabelGap))
         // A node's code keeps its own figures: Inter's tabular figures widen the hyphen of `hk-01`.
         RvText(node.short, Rv.type.pill.copy(fontFeatureSettings = null), align = TextAlign.Center)
@@ -194,7 +194,7 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
                 // A long press opens the row's menu; the box round the row moves when a test re-sorts the card.
                 RvMenuAnchor(rvNodeMenu(node, current, LocalRvRowActions.current.useNode, onOpen), Modifier.rvMoves()) { menu, actions ->
                     RvRow(
-                        { RvFlag(node.place.name, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
+                        { RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
                         node.name,
                         node.protocol + SEPARATOR + stringResource(node.place.label),
                         (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),

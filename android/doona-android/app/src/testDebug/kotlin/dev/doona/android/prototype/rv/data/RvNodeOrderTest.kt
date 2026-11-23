@@ -60,7 +60,8 @@ class RvNodeOrderTest {
     @Test
     fun regionGroupsEachCountryAcrossSubscriptionsFastestCountryFirst() {
         val groups = rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Region).map { it as RvNodeGroup.Place }
-        assertEquals(RvPlace.entries.size, groups.size)
+        // The sample has a node in every country; 其他, for nodes with no country, has none in it.
+        assertEquals(RvPlace.entries.count { it.mapped }, groups.size)
         groups.forEach { group -> assertTrue(group.nodes.all { it.place == group.place }) }
         assertTrue("香港 has nodes from both subscriptions", groups.first { it.place == RvPlace.HK }.nodes.map { it.subscription }.toSet().size == 2)
         val leads = groups.mapNotNull { it.nodes.first().latencyMs }

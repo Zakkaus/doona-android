@@ -29,19 +29,21 @@ private val SHOTS = System.getProperty("doona.shots") ?: "src/test/screenshots"
  * Draws [content] in the scheme of the owner's wallpaper, light or [dark], runs [before] (a scroll, an assertion) and
  * records the golden `proto-rv-<screen>-light` or `-dark`. At a [fontScale] other than 1 the page's text scales as the
  * phone's font size setting scales it (the frame's status bar does not), and the golden is
- * `proto-rv-<screen>-fs<percent>`, as the app's `fs115` and `fs200`.
+ * `proto-rv-<screen>-fs<percent>`, as the app's `fs115` and `fs200`. A frame with [gesture] false draws no gesture handle
+ * (the content draws its own bar, as three-button navigation does).
  */
 internal fun ComposeContentTestRule.rvShot(
     screen: String,
     dark: Boolean,
     before: ComposeContentTestRule.() -> Unit = {},
     fontScale: Float = 1f,
+    gesture: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     RuntimeEnvironment.setQualifiers(if (dark) "+night" else "+notnight")
     setContent {
         DoonaTheme(dark) {
-            PhoneFrame {
+            PhoneFrame(gesture) {
                 val density = LocalDensity.current.density
                 CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
                     RvTheme(seedColorScheme(Seed.Cyan.argb, dark), dark, content)

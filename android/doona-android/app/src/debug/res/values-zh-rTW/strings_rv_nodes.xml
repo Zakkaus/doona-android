@@ -21,6 +21,7 @@
     <string name="rv_nodes_region_oceania">大洋洲</string>
     <string name="rv_nodes_region_americas">美洲</string>
     <string name="rv_nodes_region_europe">歐洲</string>
+    <string name="rv_nodes_region_other">其他</string>
     <string name="rv_nodes_place_hk">香港</string>
     <string name="rv_nodes_place_tw">臺灣</string>
     <string name="rv_nodes_place_jp">日本</string>
@@ -33,6 +34,7 @@
     <string name="rv_nodes_place_nl">荷蘭</string>
     <string name="rv_nodes_place_fr">法國</string>
     <string name="rv_nodes_place_au">澳洲</string>
+    <string name="rv_nodes_place_other">其他</string>
     <string name="rv_nodes_in_use">目前使用中</string>
     <string name="rv_nodes_latency_high">延遲偏高</string>
     <string name="rv_nodes_history">延遲紀錄</string>

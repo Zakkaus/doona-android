@@ -11,7 +11,8 @@ import dev.doona.android.prototype.rv.data.steadiest
 /** The 節點 page: every node, the one in use, and when the rounds of tests ran, oldest first. */
 @Immutable
 internal class RvNodesPageState(val nodes: List<RvNode>, val currentId: String, val testedAtEpochMs: List<Long>) {
-    val places: Set<RvPlace> get() = nodes.mapTo(mutableSetOf()) { it.place }
+    /** The countries the map marks and the count counts: those with a spot on the map. */
+    val places: Set<RvPlace> get() = nodes.mapTo(mutableSetOf()) { it.place }.filterTo(mutableSetOf()) { it.mapped }
 
     /** The eight fastest nodes by their last test, or the eight steadiest over all tests. */
     fun top(steadiest: Boolean): List<RvNode> = if (steadiest) nodes.steadiest(TOP) else nodes.fastest(TOP)
@@ -21,6 +22,7 @@ internal class RvNodesPageState(val nodes: List<RvNode>, val currentId: String, 
         .sortedWith(compareBy(nullsLast()) { it.latencyMs })
         .groupBy { it.place.region }
         .toList()
+        .sortedBy { it.first == RvRegion.Other }
 }
 
 private const val TOP = 8

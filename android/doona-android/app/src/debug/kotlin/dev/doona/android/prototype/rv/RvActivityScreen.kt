@@ -170,7 +170,7 @@ private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>, val busy
 private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, motion: HeaderMotion, insets: WindowInsets, hero: HeroLook, actions: @Composable () -> Unit) {
     val running = state.status is Status.Running || state.status is Status.Starting
     // Direct traffic uses no node, so the map marks no place.
-    val place = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.place }
+    val place = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.place }?.takeIf { it.mapped }
     val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
     var heroBounds by remember { mutableStateOf<Rect?>(null) }
     val pan = rvMapPan(place)
@@ -359,7 +359,7 @@ private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvAc
             val listed = node?.let { at -> nodes.firstOrNull { it.id == at.id } }
             RvRow(
                 // The node in use: its flag carries the current node's check.
-                { RvFlag(listed?.place?.name, RvSize.rowDisc, current = node != null) },
+                { RvFlag(listed?.place?.flag, RvSize.rowDisc, current = node != null) },
                 node?.name ?: RV_NO_VALUE,
                 stringResource(if (mode == RvRouteMode.Rule) R.string.rv_main_node else R.string.nav_nodes),
                 onClick = routes.node,
@@ -381,7 +381,7 @@ private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
     val format = rememberRvFormat()
     val node = rule.nodeId?.let { RvData.node(it) }
     RvRow(
-        { if (node != null) RvFlag(node.place.name, RvSize.rowDisc) else RvIconDisc(R.drawable.rv_sym_arrow_right_alt) },
+        { if (node != null) RvFlag(node.place.flag, RvSize.rowDisc) else RvIconDisc(R.drawable.rv_sym_arrow_right_alt) },
         stringResource(rule.group),
         node?.name ?: stringResource(R.string.mode_direct),
         onClick = { onOpen(rule.group) },

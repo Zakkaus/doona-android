@@ -36,6 +36,7 @@ import dev.doona.android.prototype.rv.RvUsageChart
 import dev.doona.android.prototype.rv.RvUsageLegend
 import dev.doona.android.prototype.rv.RvUsageSize
 import dev.doona.android.prototype.rv.RvWorldMap
+import dev.doona.android.prototype.rv.data.RvPlace
 import dev.doona.android.prototype.rv.data.RvSplit
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.rvMedian
@@ -178,7 +179,7 @@ private fun QuotaLegend(sub: RvSubscription, nowEpochMs: Long, segment: RvRingSe
  */
 @Composable
 internal fun RvNodeMapCard(state: RvStatsState) {
-    val countries = state.nodes.mapTo(mutableSetOf()) { it.place }
+    val countries = state.nodes.mapNotNullTo(mutableSetOf()) { it.place.takeIf(RvPlace::mapped) }
     RvCard {
         RvCardHeader(stringResource(R.string.rv_stats_nodes))
         Column(cardBody) {

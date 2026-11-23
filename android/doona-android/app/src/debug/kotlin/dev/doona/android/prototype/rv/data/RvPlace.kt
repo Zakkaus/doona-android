@@ -9,6 +9,9 @@ internal enum class RvRegion(@StringRes val label: Int) {
     Oceania(R.string.rv_nodes_region_oceania),
     Americas(R.string.rv_nodes_region_americas),
     Europe(R.string.rv_nodes_region_europe),
+
+    /** Where the nodes whose name gives no country are listed ([RvPlace.Other]); always last. */
+    Other(R.string.rv_nodes_region_other),
 }
 
 /**
@@ -28,4 +31,14 @@ internal enum class RvPlace(@StringRes val label: Int, val region: RvRegion, val
     NL(R.string.rv_nodes_place_nl, RvRegion.Europe, 52.13f, 5.29f),
     FR(R.string.rv_nodes_place_fr, RvRegion.Europe, 46.23f, 2.21f),
     AU(R.string.rv_nodes_place_au, RvRegion.Oceania, -25.27f, 133.78f),
+
+    /** A node whose name gives no country: listed as 其他, drawn with the fallback disc and never marked on a map. */
+    Other(R.string.rv_nodes_place_other, RvRegion.Other, 0f, 0f),
+    ;
+
+    /** The flag's country code: none for [Other], whose disc then carries no code. */
+    val flag: String? get() = if (this == Other) null else name
+
+    /** Whether the place has a spot on a map; [Other] has none, so no map marks it and no count includes it. */
+    val mapped: Boolean get() = this != Other
 }

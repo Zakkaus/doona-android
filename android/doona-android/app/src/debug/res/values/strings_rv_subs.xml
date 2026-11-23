@@ -12,6 +12,7 @@
     <string name="rv_sub_format">Format</string>
     <string name="rv_sub_format_clash">Clash YAML</string>
     <string name="rv_sub_format_sing_box">sing-box JSON</string>
+    <string name="rv_sub_format_sip008">SIP008 JSON</string>
     <string name="rv_sub_format_links">Share-link list</string>
     <string name="rv_sub_updates">Updates</string>
     <string name="rv_sub_auto_update">Auto-update</string>

@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv.nodes
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,12 +23,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
@@ -71,7 +74,7 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
             HistoryCard(node, times, picked) { picked = it }
         }
         RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { StatsCard(node, times.last()) }
+        RvGutter { StatsCard(node, times.lastOrNull() ?: RV_NO_VALUE) }
         // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
         Spacer(Modifier.height(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter))
         Spacer(Modifier.windowInsetsBottomHeight(insets))
@@ -97,7 +100,7 @@ private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets:
         titleBlock,
         insets,
         // The flag of the row this page was opened from grows into this one (rule 4).
-        mark = { RvFlag(node.place.name, RvSize.headerDisc, Modifier.rvSharedFlag(node.id)) },
+        mark = { RvFlag(node.place.flag, RvSize.headerDisc, Modifier.rvSharedFlag(node.id)) },
         caption = { RvCaption(node.protocol + SEPARATOR + stringResource(node.place.label)) },
         control = chips,
     )
@@ -109,11 +112,25 @@ private fun HistoryCard(node: RvNode, times: List<String>, picked: Int, onPick: 
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_history))
         Column(Modifier.padding(horizontal = RvSpace.rowPadding)) {
-            Figure(latencyText(node.history[picked]))
-            val median = node.medianMs?.let { SEPARATOR + stringResource(R.string.rv_nodes_median, latencyText(it)) }.orEmpty()
-            RvText(times[picked] + median, Rv.type.tileCaption, color = Rv.colors.textSecondary)
-            Spacer(Modifier.height(RvSpace.barGap))
-            RvLatencyDots(node.history, node.medianMs, times, picked, onPick)
+            if (node.history.isEmpty()) {
+                // No test yet: no figure, and the dot chart's plot as it is with its labels, with the empty line on it at
+                // the size of an empty card's text (統計's charts show a day with no data as a grid alone).
+                Figure(RV_NO_VALUE)
+                Spacer(Modifier.height(RvSpace.barGap))
+                Box {
+                    RvLatencyDots(emptyList(), null, emptyList(), 0, {})
+                    // Between the middle hairline and zero, not on a line.
+                    Box(Modifier.padding(top = RvLatencyDotsSize.head + RvLatencyDotsSize.plot / 2).fillMaxWidth().height(RvLatencyDotsSize.plot / 2), Alignment.Center) {
+                        RvText(stringResource(R.string.rv_stats_no_data), Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center)
+                    }
+                }
+            } else {
+                Figure(latencyText(node.history[picked]))
+                val median = node.medianMs?.let { SEPARATOR + stringResource(R.string.rv_nodes_median, latencyText(it)) }.orEmpty()
+                RvText(times[picked] + median, Rv.type.tileCaption, color = Rv.colors.textSecondary)
+                Spacer(Modifier.height(RvSpace.barGap))
+                RvLatencyDots(node.history, node.medianMs, times, picked, onPick)
+            }
         }
         Spacer(Modifier.height(RvSpace.rowPadding))
     }

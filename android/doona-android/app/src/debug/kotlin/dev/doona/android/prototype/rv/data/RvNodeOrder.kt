@@ -60,7 +60,9 @@ internal sealed class RvNodeGroup(val key: String, val nodes: List<RvNode>) {
 /** [nodes] as a list shows them under [sort]: by subscription in [subscriptions]' order, or by country for 地區. */
 internal fun rvNodeGroups(nodes: List<RvNode>, subscriptions: List<RvSubscription>, sort: RvNodeSort): List<RvNodeGroup> = when (sort) {
     // groupBy keeps the order in which each country first appears, so the country with the fastest node leads.
+    // 其他 closes the list, whatever its nodes' latency; the sort keeps every other card where it was.
     RvNodeSort.Region -> nodes.sortedWith(rvByLatency).groupBy { it.place }.map { (place, members) -> RvNodeGroup.Place(place, members) }
+        .sortedBy { it.place == RvPlace.Other }
 
     else -> {
         val order = when (sort) {

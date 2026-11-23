@@ -45,7 +45,8 @@ import kotlin.math.roundToInt
  * reference price; an axis label it would cover is left out. The strip for the labels is as wide as the widest of
  * them and the pill, [RvLatencyDotsSize.plotGap] clear of the plot (S7-15). The [selected] test is marked with the library's
  * [rvChartMarker], as 統計's latency chart marks the current node (S7-14, N03). A time the chip would reach is left out.
- * The dots are spread so the widest time's chip fits inside the plot, and a tap picks the nearest test.
+ * The dots are spread so the widest time's chip fits inside the plot, and a tap picks the nearest test. With no test
+ * the plot is the grid and its labels alone (a tap picks nothing).
  */
 @Composable
 internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -75,7 +76,7 @@ internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String
     val pick by rememberUpdatedState(onSelect)
     Canvas(
         modifier.fillMaxWidth().height(RvLatencyDotsSize.head + RvLatencyDotsSize.plot + RvChartSize.markerGap + with(density) { chipHeight.toDp() }).pointerInput(history.size, widest, strip) {
-            detectTapGestures { tap -> pick(Columns(size.width - strip, history.size, widest + 2 * pad).at(tap.x)) }
+            detectTapGestures { tap -> if (history.isNotEmpty()) pick(Columns(size.width - strip, history.size, widest + 2 * pad).at(tap.x)) }
         },
     ) {
         val plot = Plot(this, Columns(size.width - strip, history.size, widest + 2 * pad), strip, chipHeight)
