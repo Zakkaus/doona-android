@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
@@ -142,9 +143,11 @@ private const val MAX_AGENT = 256
 private fun KeyStats(sub: RvSubscription) {
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
+    // A provider that sends no quota has no use to show against it.
+    val used = if (sub.hasQuota) stringResource(R.string.rv_subs_used, format.bytesIn(sub.usedBytes, total), total.toString()) else RV_NO_VALUE
     RvCard {
         RvStatRow(stringResource(R.string.rv_sub_node_count), sub.nodes.toString())
-        RvStatRow(stringResource(R.string.rv_sub_used), stringResource(R.string.rv_subs_used, format.bytesIn(sub.usedBytes, total), total.toString()))
+        RvStatRow(stringResource(R.string.rv_sub_used), used)
         RvStatRow(stringResource(R.string.rv_sub_expires), sub.expiresAtEpochMs?.let { format.date(it) } ?: stringResource(R.string.rv_subs_no_expiry))
         RvStatRow(stringResource(R.string.rv_sub_updated), format.time(sub.updatedAtEpochMs))
         RvStatRow(stringResource(R.string.rv_sub_format), stringResource(sub.format.label))
@@ -175,5 +178,6 @@ internal val RvSubFormat.label: Int
     get() = when (this) {
         RvSubFormat.Clash -> R.string.rv_sub_format_clash
         RvSubFormat.SingBox -> R.string.rv_sub_format_sing_box
+        RvSubFormat.Sip008 -> R.string.rv_sub_format_sip008
         RvSubFormat.Links -> R.string.rv_sub_format_links
     }

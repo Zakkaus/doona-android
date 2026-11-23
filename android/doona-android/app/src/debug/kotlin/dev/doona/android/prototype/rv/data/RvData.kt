@@ -21,12 +21,15 @@ internal data class RvSubscription(
     val format: RvSubFormat = RvSubFormat.Links,
     val userAgent: String? = null,
 ) {
+    /** Whether the provider sent a quota; the sample marks none as a total of 0, as 統計 and 訂閱's bar already read it. */
+    val hasQuota: Boolean get() = totalBytes > 0L
+
     /** What is left, never below nothing when a subscription has gone over its quota. */
     val leftBytes: Long get() = (totalBytes - usedBytes).coerceAtLeast(0L)
 }
 
-/** How a subscription's body is written: Clash YAML, sing-box JSON, or a list of share links (plain or base64). */
-internal enum class RvSubFormat { Clash, SingBox, Links }
+/** How a subscription's body is written: Clash YAML, sing-box JSON, SIP008 JSON (Shadowsocks servers), or a list of share links (plain or base64). */
+internal enum class RvSubFormat { Clash, SingBox, Sip008, Links }
 
 /** One day by the hour from midnight, oldest first; the last hour is the current one, still filling. */
 @Immutable

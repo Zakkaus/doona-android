@@ -79,6 +79,7 @@ internal fun rvAddSample(phase: String): RvAddState {
     val typed = RvAddState(link = RV_SAMPLE_LINK, name = RvData.subscriptions.first().name)
     return when (phase) {
         "importing" -> typed.copy(phase = RvAddPhase.Importing(IMPORTED_BYTES, IMPORTED_SHARE))
+        "importing-unknown" -> typed.copy(phase = RvAddPhase.Importing(null, null))
         "done" -> typed.copy(phase = RvAddPhase.Done(RvData.subscriptions.first()))
         "unreachable" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.Unreachable))
         "not-subscription" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.NotSubscription))

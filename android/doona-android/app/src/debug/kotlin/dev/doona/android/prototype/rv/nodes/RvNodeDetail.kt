@@ -28,6 +28,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
@@ -47,6 +48,7 @@ import dev.doona.android.prototype.rv.rememberRvFormat
 import dev.doona.android.prototype.rv.rvSharedFlag
 import dev.doona.android.prototype.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.scripted
+import dev.doona.android.prototype.rv.stats.RvEmptyChart
 
 /**
  * A node's page in the language of Revolut's stock page: the flag over its name as the large title, which collapses into
@@ -71,7 +73,7 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
             HistoryCard(node, times, picked) { picked = it }
         }
         RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { StatsCard(node, times.last()) }
+        RvGutter { StatsCard(node, times.lastOrNull() ?: RV_NO_VALUE) }
         // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
         Spacer(Modifier.height(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter))
         Spacer(Modifier.windowInsetsBottomHeight(insets))
@@ -109,11 +111,18 @@ private fun HistoryCard(node: RvNode, times: List<String>, picked: Int, onPick: 
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_history))
         Column(Modifier.padding(horizontal = RvSpace.rowPadding)) {
-            Figure(latencyText(node.history[picked]))
-            val median = node.medianMs?.let { SEPARATOR + stringResource(R.string.rv_nodes_median, latencyText(it)) }.orEmpty()
-            RvText(times[picked] + median, Rv.type.tileCaption, color = Rv.colors.textSecondary)
-            Spacer(Modifier.height(RvSpace.barGap))
-            RvLatencyDots(node.history, node.medianMs, times, picked, onPick)
+            if (node.history.isEmpty()) {
+                // No test yet: no figure, and the chart's grid alone, as 統計's charts show a day with no data.
+                Figure(RV_NO_VALUE)
+                Spacer(Modifier.height(RvSpace.barGap))
+                RvEmptyChart(stringResource(R.string.rv_stats_no_data), Modifier.height(RvLatencyDotsSize.head + RvLatencyDotsSize.plot))
+            } else {
+                Figure(latencyText(node.history[picked]))
+                val median = node.medianMs?.let { SEPARATOR + stringResource(R.string.rv_nodes_median, latencyText(it)) }.orEmpty()
+                RvText(times[picked] + median, Rv.type.tileCaption, color = Rv.colors.textSecondary)
+                Spacer(Modifier.height(RvSpace.barGap))
+                RvLatencyDots(node.history, node.medianMs, times, picked, onPick)
+            }
         }
         Spacer(Modifier.height(RvSpace.rowPadding))
     }

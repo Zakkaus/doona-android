@@ -16,6 +16,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBanner
+import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvGutter
@@ -42,7 +43,8 @@ internal enum class RvAddFailure { Unreachable, NotSubscription, TooLarge }
 internal sealed interface RvAddPhase {
     data object Editing : RvAddPhase
 
-    data class Importing(val downloadedBytes: Long, val fraction: Float) : RvAddPhase
+    /** Downloading; a provider that gives no length leaves [fraction] null, and the core reports no byte count at all ([downloadedBytes] null). */
+    data class Importing(val downloadedBytes: Long?, val fraction: Float?) : RvAddPhase
 
     data class Done(val sub: RvSubscription) : RvAddPhase
 
@@ -136,13 +138,21 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
     if (phase is RvAddPhase.Importing) Progress(phase)
 }
 
-/** The download so far over the bar: a 52 dp row, then the bar on the card's padding. */
+/**
+ * The download so far over the bar: a 52 dp row, then the bar on the card's padding. What is not known is not drawn: with
+ * no length the bar is the busy bar, and with no byte count the row has no second line.
+ */
 @Composable
 private fun Progress(phase: RvAddPhase.Importing) {
     val format = rememberRvFormat()
+    val bar = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding)
     RvCard {
-        RvRow({ RvIconDisc(R.drawable.rv_stats_ic_sync) }, stringResource(R.string.rv_add_importing), stringResource(R.string.rv_add_downloaded, format.bytes(phase.downloadedBytes).toString()))
-        RvProgress(phase.fraction, Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding))
+        RvRow(
+            { RvIconDisc(R.drawable.rv_stats_ic_sync) },
+            stringResource(R.string.rv_add_importing),
+            phase.downloadedBytes?.let { stringResource(R.string.rv_add_downloaded, format.bytes(it).toString()) },
+        )
+        phase.fraction?.let { RvProgress(it, bar) } ?: RvBusy(bar)
     }
 }
 
