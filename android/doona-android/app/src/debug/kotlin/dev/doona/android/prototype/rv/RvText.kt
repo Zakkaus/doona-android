@@ -27,7 +27,9 @@ import androidx.compose.ui.unit.TextUnit
  * word that fits: the platform keeps the space after that word before its ellipsis (`IPLC …`), so the line is laid out
  * once more without it. The shorter text stays while the width does, and the whole text returns when the line gets more
  * room. [maxLines] lets it run to more lines, the last ending in the platform's ellipsis, and [overflow] may put the
- * ellipsis in the middle of a single line instead. Given [autoSize], a line too long for its width shrinks to fit.
+ * ellipsis in the middle of a single line instead. Given [autoSize], a line too long for its width shrinks to fit. A text
+ * that wraps never leaves one letter alone on its last line: laid out once more with that letter joined to the one
+ * before it, it carries both (「當機」, not 「機」).
  */
 @Composable
 internal fun RvText(
@@ -41,15 +43,17 @@ internal fun RvText(
     autoSize: TextAutoSize? = null,
 ) {
     var cut by remember(text) { mutableStateOf<RvCut?>(null) }
+    var joined by remember(text) { mutableStateOf(false) }
     BasicText(
-        scripted(cut?.text ?: text),
+        scripted(cut?.text ?: if (joined) rvJoinLast(text) else text),
         modifier,
         style.copy(color = color, textAlign = align),
         onTextLayout = { layout ->
             // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
             val kept = cut
             when {
-                maxLines != 1 || overflow != TextOverflow.Ellipsis || autoSize != null -> Unit
+                maxLines != 1 -> if (!joined && rvWidow(layout)) joined = true
+                overflow != TextOverflow.Ellipsis || autoSize != null -> Unit
                 kept == null -> cut = rvCut(text, layout)
                 layout.layoutInput.constraints.maxWidth > kept.width -> cut = null
             }
@@ -73,6 +77,22 @@ private fun rvCut(text: String, layout: TextLayoutResult): RvCut? {
 }
 
 private const val ELLIPSIS = "\u2026"
+
+/** Whether the last of two or more lines of [layout] holds one letter alone (「機」, or 「機。」 with its stop). */
+private fun rvWidow(layout: TextLayoutResult): Boolean {
+    val last = layout.lineCount - 1
+    if (last < 1 || layout.isLineEllipsized(last)) return false
+    val line = layout.layoutInput.text.text.substring(layout.getLineStart(last), layout.getLineEnd(last))
+    return line.codePoints().filter(Character::isLetterOrDigit).count() == 1L
+}
+
+/** [text] with a word joiner before its last letter: no line break can fall between it and the letter before. */
+private fun rvJoinLast(text: String): String {
+    val last = text.indexOfLast(Char::isLetterOrDigit)
+    return if (last > 0) text.substring(0, last) + WORD_JOINER + text.substring(last) else text
+}
+
+private const val WORD_JOINER = "\u2060"
 
 /**
  * A label that keeps one line in a fixed column (a nav tab's, a round action's): set in [style], or smaller when that
