@@ -284,8 +284,9 @@ internal object RvPart {
  * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
  * text column to its widest end. [trailing] (a chevron) still follows after both lines.
  *
- * The title takes one line and ends in an ellipsis; [titleLines] lets it wrap (a host name on its own page), and
- * [titleOverflow] can cut it in the middle instead, which keeps both ends of a host:port in view.
+ * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], no gap between the lines);
+ * [titleLines] and [titleOverflow] can keep a title to one line cut in the middle, which keeps both ends of a host:port
+ * in view.
  */
 @Composable
 internal fun RvRow(
@@ -297,7 +298,7 @@ internal fun RvRow(
     onLongClick: (() -> Unit)? = null,
     titleEnd: (@Composable () -> Unit)? = null,
     subtitleEnd: (@Composable () -> Unit)? = null,
-    titleLines: Int = 1,
+    titleLines: Int = RV_ROW_TITLE_LINES,
     titleOverflow: TextOverflow = TextOverflow.Ellipsis,
     trailing: (@Composable () -> Unit)? = null,
 ) {
@@ -315,13 +316,13 @@ internal fun RvRow(
     ) {
         leading()
         Spacer(Modifier.width(RvSpace.rowGap))
-        Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+        Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
             if (lineWise) {
                 RowLine(titleEnd) { RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow) }
-                subtitle?.let { RowLine(subtitleEnd) { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) } }
+                subtitle?.let { RowLine(subtitleEnd) { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) } }
             } else {
                 RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow)
-                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) }
+                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
             }
         }
         trailing?.let {
@@ -330,6 +331,14 @@ internal fun RvRow(
         }
     }
 }
+
+/**
+ * The one row rule, every list row's ([RvRow] and the settings rows), as Revolut's measured rows (`07-set-interface.xml`,
+ * `07-privacy.xml`): the title wraps to two lines and the subtitle to three, the last ending in an ellipsis; the
+ * subtitle's line box starts where the title's ends.
+ */
+internal const val RV_ROW_TITLE_LINES = 2
+internal const val RV_ROW_SUBTITLE_LINES = 3
 
 /** The share of a line a row's title keeps, if it needs it, before the end of the line takes the rest. */
 private const val TITLE_SHARE = 0.4f

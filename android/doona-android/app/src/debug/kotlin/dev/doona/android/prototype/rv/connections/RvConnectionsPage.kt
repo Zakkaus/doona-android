@@ -177,9 +177,10 @@ internal fun RvConnectionRow(connection: RvConnection, nowEpochMs: Long, onClick
         connection.app + SEPARATOR + connection.rule.targetName(),
         onClick = onClick,
         onLongClick = onClick,
+        titleLines = 1,
         titleOverflow = TextOverflow.MiddleEllipsis,
     ) {
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+        Column(horizontalAlignment = Alignment.End) {
             RvText(bytes, Rv.type.rowValue, align = TextAlign.End)
             RvText(age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)
         }

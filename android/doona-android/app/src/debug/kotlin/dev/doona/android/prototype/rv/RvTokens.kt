@@ -38,10 +38,11 @@ internal object RvSpace {
     val tight = 4.dp
 
     /**
-     * Above and below a row's text: a row whose text fits keeps its 58 or 82 dp, and one whose title wraps grows by its
-     * lines with this much space around them, as Revolut's rows grow with a wrapped title (82 to 129 dp, measured §13.3).
+     * Above a row's title and below its subtitle (Revolut's rows: 16.1 dp, `07-set-*.xml`, `01-home-b.xml`): with the
+     * 26 dp title line and the 24 dp subtitle line directly under it, a row is 58 or 82 dp, and one whose text wraps grows
+     * by its lines, as Revolut's rows grow to 105.5 and 129 dp.
      */
-    val rowTextInset = 12.dp
+    val rowTextInset = 16.dp
 
     /** Between two tiles side by side: Revolut's crypto tiles sit 16 dp apart (measured §10.2). */
     val tileGap = 16.dp

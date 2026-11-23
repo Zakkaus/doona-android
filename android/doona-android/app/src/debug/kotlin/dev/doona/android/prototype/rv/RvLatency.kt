@@ -84,7 +84,7 @@ internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean 
         if (shown == null) {
             RvBusy(Modifier.width(RvSize.busy))
         } else {
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+            Column(horizontalAlignment = Alignment.End) {
                 RvLatencyText(shown.first, shown.third)
                 shown.second?.let { RvDelta(it) }
             }

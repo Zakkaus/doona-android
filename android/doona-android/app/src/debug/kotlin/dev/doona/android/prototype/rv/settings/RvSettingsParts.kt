@@ -27,6 +27,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import dev.doona.android.prototype.rv.RV_ROW_SUBTITLE_LINES
+import dev.doona.android.prototype.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
@@ -35,7 +37,9 @@ import dev.doona.android.prototype.rv.RvPart
 import dev.doona.android.prototype.rv.RvRadio
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSize
+import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
+import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.rvPress
 import dev.doona.android.prototype.rv.rvPressIndication
 import dev.doona.android.prototype.rv.scripted
@@ -88,14 +92,14 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Row(Modifier.fillMaxWidth().padding(vertical = RvSettingsSpace.rowPad), verticalAlignment = Alignment.Top) {
+        Row(Modifier.fillMaxWidth().padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top) {
             icon?.let {
                 FirstLine { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
                 Spacer(Modifier.width(RvSettingsSpace.glyphGap))
             }
             Column(Modifier.weight(1f)) {
-                RvSettingsText(title, Rv.type.rowTitle, maxLines = TITLE_LINES)
-                subtitle?.let { RvSettingsText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = SUBTITLE_LINES) }
+                RvText(title, Rv.type.rowTitle, maxLines = RV_ROW_TITLE_LINES)
+                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
             }
             trailing?.let {
                 Spacer(Modifier.width(RvSettingsSpace.trailingGap))
@@ -151,6 +155,3 @@ internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -
     )
     RvSettingsRow(title, choose, subtitle = subtitle) { RvRadio(selected) }
 }
-
-private const val TITLE_LINES = 2
-private const val SUBTITLE_LINES = 2

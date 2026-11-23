@@ -21,8 +21,6 @@ internal object RvSettingsSpace {
     val glyphGap = 16.dp
     val trailingGap = 12.dp
 
-    /** A row's top and bottom padding: with the 26 dp title line this makes the measured 58 dp, and 82 dp with a subtitle. */
-    val rowPad = 16.dp
     val bottom = 24.dp
 
     /**
