@@ -49,7 +49,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The 連線 tab with four tabs in the bar (`proto-rv-connections-*`), YouTube's connection page
+ * The 連線 tab (`proto-rv-connections-*`), YouTube's connection page
  * (`proto-rv-connection-*`, also fs115 and fs200) and Telegram's, which has no domain (`proto-rv-connection-ip-*`); the
  * tab searching for `google` (`proto-rv-connections-search-*`) and with the tunnel off (`proto-rv-connections-off-*`),
  * light and dark, each in one capture of the whole page; that a tap or a long press on a row opens its page, and that
@@ -75,7 +75,7 @@ class RvConnectionsShotTest {
     @Config(qualifiers = WHOLE_LIST)
     fun listDark() = compose.rvShot("connections", dark = true, before = { assertWhole() }) { List() }
 
-    /** The four-tab nav in English: Connections fits its tab at the default size and shrinks, whole, at 1.15×. */
+    /** The nav in English: Connections fits its tab at the default size and shrinks, whole, at 1.15×. */
     @Test
     @Config(qualifiers = RV_EN)
     fun listEn() = compose.rvShot("connections-en", dark = false) { List() }

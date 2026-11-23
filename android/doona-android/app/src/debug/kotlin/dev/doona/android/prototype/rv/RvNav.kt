@@ -54,17 +54,15 @@ internal const val RV_NAV_POLICY = 1
 internal const val RV_NAV_SETTINGS = 2
 internal const val RV_NAV_CONNECTIONS = 3
 
-private val activityItem = RvNavItem(RV_NAV_ACTIVITY, R.drawable.rv_sym_space_dashboard, R.string.hub_activity)
-private val policyItem = RvNavItem(RV_NAV_POLICY, R.drawable.rv_sym_account_tree, R.string.nav_policies)
-private val settingsItem = RvNavItem(RV_NAV_SETTINGS, R.drawable.rv_sym_settings, R.string.hub_settings)
+/** The tab homes, the same four on every page that shows the bar: 活動, 策略, 連線 and 設定 (the owner, 2026-11-23). */
+internal val RV_NAV = listOf(
+    RvNavItem(RV_NAV_ACTIVITY, R.drawable.rv_sym_space_dashboard, R.string.hub_activity),
+    RvNavItem(RV_NAV_POLICY, R.drawable.rv_sym_account_tree, R.string.nav_policies),
+    RvNavItem(RV_NAV_CONNECTIONS, R.drawable.rv_sym_sync_alt, R.string.rv_nav_connections),
+    RvNavItem(RV_NAV_SETTINGS, R.drawable.rv_sym_settings, R.string.hub_settings),
+)
 
-/** The tab homes, the same on every page that shows the bar: 活動, 策略 and 設定. */
-internal val RV_NAV = listOf(activityItem, policyItem, settingsItem)
-
-/** The proposed fourth tab (features-gap Q5, option A): 連線 between 策略 and 設定. */
-internal val RV_NAV_FOUR = listOf(activityItem, policyItem, RvNavItem(RV_NAV_CONNECTIONS, R.drawable.rv_sym_sync_alt, R.string.rv_nav_connections), settingsItem)
-
-/** The tabs the bar shows: [RV_NAV] unless a preview provides [RV_NAV_FOUR]. */
+/** The tabs the bar shows: [RV_NAV]. */
 internal val LocalRvNav = staticCompositionLocalOf { RV_NAV }
 
 /**

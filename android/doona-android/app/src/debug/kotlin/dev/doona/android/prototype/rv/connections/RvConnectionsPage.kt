@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -23,9 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.LocalRvNav
 import dev.doona.android.prototype.rv.RV_NAV_CONNECTIONS
-import dev.doona.android.prototype.rv.RV_NAV_FOUR
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAppDisc
 import dev.doona.android.prototype.rv.RvCaption
@@ -62,15 +59,14 @@ internal class RvConnectionsRoutes(
 )
 
 /**
- * 連線, the proposed fourth tab (features-gap Q5, option A), in the language of 節點: the shared page header, its large
+ * 連線, the third of the four tabs, in the language of 節點: the shared page header, its large
  * title with search in the bar, a caption counting the open connections and their bytes, and the app and order chips as
  * its control row; then one card of the connections
  * open now ([connections], newest first), each its app's icon, where it went over the app and the rule's group, and its
  * bytes over how long it has been open. A connection opens its page. While [query] is set, the search field replaces
  * the caption and the chips and the card keeps the connections whose host or app holds it. With the tunnel off
  * ([connected] false), or nothing matching, the card says so in the library's empty caption, with no action: 連線 is
- * 活動's, and the bar's close ends a search. The bar always has four tabs here. Host names are shown from memory and
- * never logged (D21).
+ * 活動's, and the bar's close ends a search. Host names are shown from memory and never logged (D21).
  */
 @Composable
 internal fun RvConnectionsPage(
@@ -84,28 +80,26 @@ internal fun RvConnectionsPage(
     val scroll = rememberScrollState()
     val title = stringResource(R.string.rv_nav_connections)
     val search = stringResource(if (query == null) R.string.rv_conn_search else R.string.rv_conn_search_end)
-    CompositionLocalProvider(LocalRvNav provides RV_NAV_FOUR) {
-        RvScrollPage(
-            title,
-            insets,
-            scroll = scroll,
-            actions = if (connected) {
-                { glass -> RvGlassButton(glass, if (query == null) R.drawable.rv_sym_search else R.drawable.rv_sym_close, search) { routes.query(if (query == null) "" else null) } }
-            } else {
-                null
-            },
-            overlay = { glass ->
-                RvFloatingNav(RV_NAV_CONNECTIONS, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
-            },
-        ) { titleBlock ->
-            if (connected && query == null) {
-                RvPageHeader(title, titleBlock, insets, caption = { Summary(connections) }, control = { Filters(routes.filter) })
-            } else {
-                RvLargeTitle(title, titleBlock, insets)
-            }
-            if (connected) Connections(connections, query, routes, nowEpochMs) else Disconnected()
-            Spacer(Modifier.height(rvNavClearance(insets)))
+    RvScrollPage(
+        title,
+        insets,
+        scroll = scroll,
+        actions = if (connected) {
+            { glass -> RvGlassButton(glass, if (query == null) R.drawable.rv_sym_search else R.drawable.rv_sym_close, search) { routes.query(if (query == null) "" else null) } }
+        } else {
+            null
+        },
+        overlay = { glass ->
+            RvFloatingNav(RV_NAV_CONNECTIONS, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
+        },
+    ) { titleBlock ->
+        if (connected && query == null) {
+            RvPageHeader(title, titleBlock, insets, caption = { Summary(connections) }, control = { Filters(routes.filter) })
+        } else {
+            RvLargeTitle(title, titleBlock, insets)
         }
+        if (connected) Connections(connections, query, routes, nowEpochMs) else Disconnected()
+        Spacer(Modifier.height(rvNavClearance(insets)))
     }
 }
 

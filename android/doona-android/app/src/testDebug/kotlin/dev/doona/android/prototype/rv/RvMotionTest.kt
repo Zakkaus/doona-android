@@ -10,6 +10,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -85,7 +87,7 @@ class RvMotionTest {
         rvAnimatorScale(0f)
         app(RvSampleStart(connected = false))
         compose.mainClock.autoAdvance = false
-        compose.onNodeWithText(text(R.string.rv_connect)).performClick()
+        connectAction().performClick()
         compose.mainClock.advanceTimeBy(RV_CONNECT_MS + FRAMES_MS)
         compose.onAllNodesWithText(caption(R.string.status_starting)).assertCountIs(0, "the old state does not linger")
         compose.onNodeWithText(caption(R.string.backend_connected)).assertExists()
@@ -133,7 +135,7 @@ class RvMotionTest {
         compose.mainClock.autoAdvance = false
         compose.mainClock.advanceTimeBy(FRAMES_MS)
         compose.onNodeWithText(caption(R.string.status_stopped)).assertExists()
-        compose.onNodeWithText(text(R.string.rv_connect)).performClick()
+        connectAction().performClick()
         compose.mainClock.advanceTimeBy(RvMotion.FADE_MS + FRAMES_MS)
         compose.onNodeWithText(caption(R.string.status_starting)).assertExists()
         compose.onAllNodesWithText(caption(R.string.status_stopped)).assertCountIs(0, "未連線 has faded out")
@@ -153,7 +155,7 @@ class RvMotionTest {
     fun aFailedConnectSaysWhyWithoutATick() {
         app(RvSampleStart(connected = false, fails = true))
         compose.mainClock.autoAdvance = false
-        compose.onNodeWithText(text(R.string.rv_connect)).performClick()
+        connectAction().performClick()
         compose.mainClock.advanceTimeBy(RV_CONNECT_MS + RvMotion.FADE_MS + FRAMES_MS)
         compose.onNodeWithText(caption(R.string.status_failed_start)).assertExists()
         assertEquals(emptyList<HapticFeedbackType>(), taps.kinds)
@@ -173,6 +175,9 @@ class RvMotionTest {
             up()
         }
     }
+
+    /** 活動's 連線 action: the nav's 連線 tab has the same text, and a tab is selectable. */
+    private fun connectAction() = compose.onNode(hasText(text(R.string.rv_connect)) and !isSelectable())
 
     private fun text(@StringRes id: Int) = rvText(id)
 

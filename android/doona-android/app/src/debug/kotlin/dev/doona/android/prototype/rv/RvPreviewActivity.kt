@@ -22,7 +22,7 @@ import kotlin.concurrent.thread
  * group's page (its rows), the main node's picker (its card) and the quick rule (新增規則); 活動's mode row and 查看全部
  * switch to 策略, and a rule group opens its group's page. 策略 also pushes all rules (which open the effective config)
  * and 範本 with its impact review; 設定 pushes DNS and the effective config, and its always-on row opens the system's VPN
- * settings; 連線 (the fourth tab, `--ez rv.tabs4 true`) pushes a connection's page, which opens the quick rule from it.
+ * settings; 連線 pushes a connection's page, which opens the quick rule from it.
  * Back returns, predictively. Start it from the launcher's "doona RV sample", or with
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`, adding any of:
  * `--es pull P2` (P1-P3, [RvPullMotion]), `--es tab T2` ([RvTabMotion]), `--es push S2` ([RvPushMotion]),
@@ -58,7 +58,6 @@ class RvPreviewActivity : ComponentActivity() {
             launch = launch,
             routes = intent.getStringExtra(EXTRA_STACK)?.split(',')?.filter { it.isNotBlank() },
             pending = intent.getBooleanExtra(EXTRA_PENDING, false),
-            fourTabs = intent.getBooleanExtra(EXTRA_FOUR_TABS, false),
         )
         preloadFonts(applicationContext)
         // Each gesture's frame times go to logcat (`adb logcat -s RvFrames`).
@@ -116,5 +115,4 @@ private const val EXTRA_PAGE = "page"
 private const val EXTRA_ROUTE = "route"
 private const val EXTRA_STACK = "rv.route"
 private const val EXTRA_PENDING = "rv.pending"
-private const val EXTRA_FOUR_TABS = "rv.tabs4"
 private const val EXTRA_TEST = "test"

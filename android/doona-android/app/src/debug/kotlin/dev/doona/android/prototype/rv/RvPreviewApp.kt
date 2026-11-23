@@ -88,7 +88,7 @@ internal enum class RvLaunch(val action: String?) {
  * How the sample starts: [connected] or not, whether connecting [fails], the [page] on top of its tab home (a route
  * such as `nodes` or `settings`) or a whole stack of [routes] (such as `policy`, `rules`), whether a latency [test] runs
  * a second after launch (for recording it), the shortcut it was [launch]ed by, whether 全部規則 holds two [pending]
- * quick rules, and whether the bar shows the proposed fourth tab, 連線 ([fourTabs]).
+ * quick rules.
  */
 @Immutable
 internal data class RvSampleStart(
@@ -99,7 +99,6 @@ internal data class RvSampleStart(
     val launch: RvLaunch = RvLaunch.None,
     val routes: List<String>? = null,
     val pending: Boolean = false,
-    val fourTabs: Boolean = false,
 ) {
     val stack: List<String>
         get() = routes?.takeIf { it.isNotEmpty() } ?: when (page) {
@@ -155,7 +154,6 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
         LocalRvTestingNodes provides run.testingNodes,
         LocalRvUpdating provides run.updating,
         LocalRvRowActions provides actions,
-        LocalRvNav provides if (start.fourTabs) RV_NAV_FOUR else RV_NAV,
     ) {
         RvStackHost(stack, onBack = pages.pop, options) { route -> RvSamplePage(route, run, options, settings, onSettings, policy, pages, start.launch == RvLaunch.Nodes) }
     }
