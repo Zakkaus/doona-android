@@ -247,6 +247,7 @@ fn rule_source_args_and_the_effective_config() {
     );
     assert_eq!(config.main_group_id, "g-Proxy");
     assert!(config.text.ends_with("MATCH,Proxy\n") && !config.truncated);
-    // Nodes by display name only.
-    assert!(config.text.contains("hk-01") && !config.text.contains("192.0.2."));
+    // Nodes by code only, never by display name or endpoint (ARCH D21).
+    assert!(config.text.contains("now n-369a8a63)") && !config.text.contains("hk-01"));
+    assert!(!config.text.contains("192.0.2."));
 }
