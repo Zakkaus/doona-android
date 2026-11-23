@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -21,6 +22,7 @@ import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -168,6 +170,16 @@ class RvPerAppShotTest {
         compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("all"), RvPerAppActions(), onBack = {}) } }
         compose.onAllNodes(hasContentDescription(rvText(R.string.perapp_search))).assertCountEquals(0)
         compose.onAllNodesWithText("Browser").assertCountEquals(0)
+    }
+
+    @Test
+    fun theSearchStandsOnThePageBetweenThePoliciesAndTheApps() {
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("only"), RvPerAppActions(), onBack = {}) } }
+        val search = compose.onNode(hasContentDescription(rvText(R.string.perapp_search))).getUnclippedBoundsInRoot()
+        val policies = compose.onNodeWithText(rvText(R.string.perapp_policy_except)).getUnclippedBoundsInRoot()
+        val apps = compose.onNodeWithText("Browser").getUnclippedBoundsInRoot()
+        assertTrue("the search is under the policies", search.top > policies.bottom)
+        assertTrue("the search is over the apps", search.bottom < apps.top)
     }
 
     @Test

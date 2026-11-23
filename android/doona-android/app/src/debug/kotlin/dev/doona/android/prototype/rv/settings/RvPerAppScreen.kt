@@ -55,8 +55,8 @@ internal class RvPerAppActions(
 /**
  * 依 App, a page of 設定, in DNS's language: the large title under the back bar, then one card of the three policies as
  * radio rows. Under 只有勾選的 and 勾選的以外 a card lists the phone's apps, each its icon, name and package with a switch,
- * and the search field takes the bar beside the back disc, as the node picker's; a search that matches nothing says so
- * in the library's empty caption. 只有勾選的 with nothing checked says what it needs under the policies, as a field says
+ * and the search field ([RvSearchField], the node picker's) stands over that card, a control row of the page; a search
+ * that matches nothing says so in the library's empty caption. 只有勾選的 with nothing checked says what it needs under the policies, as a field says
  * its error ([RvFieldMessage]), and cannot be saved. 儲存 floats at the foot, enabled only when the edits can be saved, since a save rebuilds
  * the tunnel. A save under way, a failed one and a tunnel that would not come back after one show at the top: a busy
  * row, or the library's notice card with 重試.
@@ -71,11 +71,6 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
         title,
         insets,
         onBack = onBack,
-        field = if (listed) {
-            { glass, modifier -> RvSearchField(glass, state.query, actions.query, modifier, hint = hint) }
-        } else {
-            null
-        },
         bottomAction = { RvPrimaryButton(stringResource(R.string.perapp_save), actions.save, enabled = state.canSave) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
@@ -89,7 +84,9 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
                 if (state.needsApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
             }
             if (listed) {
-                Spacer(Modifier.height(RvSpace.cardGap))
+                Spacer(Modifier.height(RvSpace.controlGap))
+                RvSearchField(null, state.query, actions.query, Modifier.fillMaxWidth().testTag(RvPart.CONTROL), hint = hint)
+                Spacer(Modifier.height(RvSpace.controlGap))
                 Apps(state, actions)
             }
         }

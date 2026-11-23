@@ -199,11 +199,12 @@ private fun Modifier.barPill(pull: RvPullLook): Modifier {
 /**
  * The search pill as a field (the node picker's bar, a list page's bar): the same glass, glyph and type, with [query]
  * typed in it and [hint], the pill's 搜尋節點 unless the list is another, as the placeholder; CJK runs set in Noto as
- * everywhere else. [focus], when given, can put the cursor (and the keyboard) in it.
+ * everywhere else. [focus], when given, can put the cursor (and the keyboard) in it. Without [glass], on a page over the
+ * list it searches rather than on a bar, it fills with the control grey as the pill does there.
  */
 @Composable
 internal fun RvSearchField(
-    glass: RvGlass,
+    glass: RvGlass?,
     query: String,
     onQuery: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -213,11 +214,11 @@ internal fun RvSearchField(
     // Its composition, the text field's first one included, is a section of its own in a Perfetto trace.
     Trace.beginSection(TRACE_FIELD)
     val colors = Rv.colors
+    val fill = glass?.let { Modifier.minimumInteractiveComponentSize().height(RvChrome.control).rvControl(it, CircleShape) }
+        ?: Modifier.height(RvChrome.control).clip(CircleShape).background(colors.segmentTrack)
     Row(
         modifier
-            .minimumInteractiveComponentSize()
-            .height(RvChrome.control)
-            .rvControl(glass, CircleShape)
+            .then(fill)
             .padding(horizontal = RvChrome.searchInset),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(RvChrome.searchInset),
