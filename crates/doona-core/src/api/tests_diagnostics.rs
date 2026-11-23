@@ -265,7 +265,20 @@ fn crash_files_that_cannot_be_listed_fail_diagnostics() {
     let refused = call(&core, "diagnostics", json!({}));
     assert_eq!(refused, Err(ErrorCode::Internal));
     std::fs::remove_dir(crash.join(".lock")).unwrap();
-    assert_eq!(diagnostics(&core, json!({})).crashes.len(), 5);
+    let listed = diagnostics(&core, json!({}));
+    assert_eq!(listed.crashes.len(), 5);
+    // The failure's event keeps the I/O error's kind (a directory opened as a file), not the
+    // reply's code.
+    let failed: Vec<_> = listed
+        .events
+        .iter()
+        .filter(|e| e.name == "diagnostics")
+        .collect();
+    assert_eq!(failed.len(), 1, "{failed:?}");
+    assert_eq!(
+        (failed[0].level, failed[0].code.as_deref()),
+        (Level::Error, Some("io"))
+    );
 }
 
 /// What a full ring costs as a reply, printed for the record.

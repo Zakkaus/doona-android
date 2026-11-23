@@ -46,7 +46,8 @@ const READS: [&str; 6] = [
 ];
 
 impl Core {
-    /// Runs `run`, which may note counts and a detail on the command's event, then records it.
+    /// Runs `run`, which may note counts, a detail and a code on the command's event, then records
+    /// it; a failure's code is the reply's unless `run` noted one.
     pub(super) fn traced(
         &self,
         command: &str,
@@ -71,7 +72,10 @@ impl Core {
                     ErrorCode::Internal => Level::Error,
                     _ => Level::Warn,
                 };
-                self.diag.record(Event { level, ..event }.code(code));
+                // An I/O kind `run` noted says more than the reply's code: kept.
+                let mut event = Event { level, ..event };
+                event.code = event.code.or(Some(code.as_str()));
+                self.diag.record(event);
                 error_reply(code)
             }
         }

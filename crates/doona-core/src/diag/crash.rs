@@ -172,6 +172,9 @@ pub(crate) struct Crashes {
     /// A file that will not go, for the tests: trimming fails.
     #[cfg(test)]
     pub(super) stuck: std::sync::atomic::AtomicBool,
+    /// An entry that cannot be read, for the tests: a listing's scan fails.
+    #[cfg(test)]
+    pub(super) unscanned: std::sync::atomic::AtomicBool,
 }
 
 struct Files {
@@ -198,6 +201,8 @@ impl Crashes {
             clock: std::sync::atomic::AtomicU64::new(0),
             #[cfg(test)]
             stuck: std::sync::atomic::AtomicBool::new(false),
+            #[cfg(test)]
+            unscanned: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
@@ -371,15 +376,23 @@ impl Crashes {
     /// The crash files, oldest first, and the mark: no file listed has a higher number, and no
     /// file written from now on will have it or a lower one. `clearCrashes` takes it back. Under
     /// the directory's lock, the oldest files past five, which earlier versions left, go first. A
-    /// lock that cannot be taken, or a file past five that will not go, is an error: a listing
-    /// never holds six. An empty file is no crash file, and what cannot be read leaves the mark
-    /// lower, which a clear only narrows.
+    /// lock that cannot be taken, a directory or entry that cannot be read, or a file past five
+    /// that will not go, is an error: a listing never holds six, nor reads as empty when it is
+    /// not. An empty file is no crash file, and a mark that cannot be read leaves the mark lower,
+    /// which a clear only narrows.
     pub fn listing(&self) -> io::Result<(Vec<CrashFile>, u64)> {
         let Some(mut files) = self.hold(None)? else {
             return Ok((Vec::new(), 0));
         };
         let lock = DirLock::take(&self.dir, None)?;
-        let mut listed = crash_dir::scan(&self.dir).unwrap_or_default();
+        let scanned = crash_dir::scan(&self.dir);
+        #[cfg(test)]
+        let scanned = if self.unscanned.load(std::sync::atomic::Ordering::Relaxed) {
+            Err(ErrorKind::PermissionDenied.into())
+        } else {
+            scanned
+        };
+        let mut listed = scanned?;
         listed.retain(|(.., bytes)| *bytes > 0);
         self.trim(&listed, MAX_FILES)?;
         let listed = listed.split_off(listed.len().saturating_sub(MAX_FILES));

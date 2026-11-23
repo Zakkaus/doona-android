@@ -61,17 +61,18 @@ type Slot = Mutex<Option<fs::File>>;
 
 /// One slot per directory a core of this process locked, never freed: its descriptor stays open
 /// for the process's life, however often its lock fails.
-static SLOTS: Mutex<Vec<(PathBuf, &'static Slot)>> = Mutex::new(Vec::new());
+pub(super) static SLOTS: Mutex<Vec<(PathBuf, &'static Slot)>> = Mutex::new(Vec::new());
 
-/// The slot of `dir`, made on its first use.
-fn slot(dir: &Path) -> &'static Slot {
-    let mut slots = SLOTS.lock().unwrap_or_else(PoisonError::into_inner);
+/// The slot of `dir`, made on its first use. The list of slots is waited for as the slot is:
+/// with `until`, only until then.
+fn slot(dir: &Path, until: Option<Instant>) -> io::Result<&'static Slot> {
+    let mut slots = wait(&SLOTS, until)?;
     if let Some((_, slot)) = slots.iter().find(|(known, _)| known == dir) {
-        return slot;
+        return Ok(slot);
     }
     let slot: &'static Slot = Box::leak(Box::new(Mutex::new(None)));
     slots.push((dir.to_path_buf(), slot));
-    slot
+    Ok(slot)
 }
 
 /// A crash directory this core holds, until dropped: the lock taken on its slot's descriptor,
@@ -88,7 +89,7 @@ impl DirLock {
     /// keeps the descriptor in its slot for the next try.
     pub(super) fn take(dir: &Path, until: Option<Instant>) -> io::Result<DirLock> {
         fs::create_dir_all(dir)?;
-        let mut held = wait(slot(dir), until)?;
+        let mut held = wait(slot(dir, until)?, until)?;
         let path = dir.join(LOCK);
         let file = match held.take() {
             Some(file) if names(&file, &path) => file,
@@ -125,16 +126,14 @@ impl Drop for DirLock {
     }
 }
 
-/// The slot, waited for as long as another thread holds it, or with `until`, until then.
-fn wait(
-    slot: &'static Slot,
-    until: Option<Instant>,
-) -> io::Result<MutexGuard<'static, Option<fs::File>>> {
+/// `mutex`, a slot or the list of them, waited for as long as another thread holds it, or with
+/// `until`, until then; past it, `TimedOut`.
+fn wait<T>(mutex: &'static Mutex<T>, until: Option<Instant>) -> io::Result<MutexGuard<'static, T>> {
     let Some(until) = until else {
-        return Ok(slot.lock().unwrap_or_else(PoisonError::into_inner));
+        return Ok(mutex.lock().unwrap_or_else(PoisonError::into_inner));
     };
     loop {
-        match slot.try_lock() {
+        match mutex.try_lock() {
             Ok(held) => return Ok(held),
             Err(TryLockError::Poisoned(held)) => return Ok(held.into_inner()),
             Err(TryLockError::WouldBlock) if Instant::now() < until => std::thread::sleep(RETRY),
