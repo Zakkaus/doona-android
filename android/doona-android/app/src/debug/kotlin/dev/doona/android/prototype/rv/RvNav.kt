@@ -38,7 +38,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.max
 import dev.doona.android.R
@@ -131,11 +130,11 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, modifier:
         val label = stringResource(item.label)
         val line = rvNavLabelLine()
         if (shrink < 1f) {
-            Spacer(Modifier.height(lerp(RvChrome.navLabelGap, 0.dp, shrink)))
+            Spacer(Modifier.height(RvChrome.navLabelGap * (1 - shrink)))
             RvText(
                 label,
                 Rv.type.navLabel,
-                Modifier.height(lerp(line, 0.dp, shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)),
+                Modifier.height(line * (1 - shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)),
                 color = ink,
                 align = TextAlign.Center,
             )

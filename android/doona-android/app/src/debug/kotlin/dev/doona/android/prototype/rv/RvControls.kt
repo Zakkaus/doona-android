@@ -168,7 +168,7 @@ internal fun RvRangePill(label: String, selected: Boolean, onClick: () -> Unit) 
 
 /** How far a raised chip's shadow reaches under it in this theme; dark draws no shadow (its pill is a lighter fill). */
 internal val rvRaisedReach: Dp
-    @Composable get() = if (Rv.colors.raisedShadow) RvChartSize.rangeShadowReach else 0.dp
+    @Composable get() = if (Rv.colors.raisedShadow) RvChartSize.rangeShadowReach else 0.dp // literal: no shadow, so no reach
 
 /** A raised control's fill in [shape]: a surface over a soft shadow in light, a lighter container in dark. */
 @Composable

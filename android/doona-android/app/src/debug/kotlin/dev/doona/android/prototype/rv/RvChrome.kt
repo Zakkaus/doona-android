@@ -53,7 +53,6 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
-import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
 
@@ -247,7 +246,7 @@ private fun Modifier.rvControl(glass: RvGlass, shape: Shape): Modifier {
 
 @Composable
 internal fun Modifier.rvSoftShadow(shape: Shape, radius: Dp, drop: Dp, alpha: Float): Modifier =
-    if (Rv.colors.glassShadow) dropShadow(shape, Shadow(radius, Color.Black, offset = DpOffset(0.dp, drop), alpha = alpha)) else this
+    if (Rv.colors.glassShadow) dropShadow(shape, Shadow(radius, Color.Black, offset = DpOffset.Zero.copy(y = drop), alpha = alpha)) else this
 
 /**
  * A pushed page's back control (measured §4, X-04): a 44 dp disc 16 dp from the edge in a 48 dp target, the 24 dp

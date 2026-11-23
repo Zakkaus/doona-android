@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -49,9 +50,6 @@ internal object RvSpace {
 
     /** From the detail page's segmented control to its hero, and from its figures to its chart. */
     val chartGap = 24.dp
-
-    /** From the detail chart to its range chips. */
-    val chipGap = 12.dp
 
     /** An outside section title: this far under what is above it, and this far above its card (measured §13.4). */
     val sectionAbove = 24.dp
@@ -124,8 +122,6 @@ internal object RvSize {
     val rowTwoLine = 82.dp
     val rowOneLine = 58.dp
 
-    /** A row title's line box (measured §7: 26 dp), where a taller leading disc centres on the first line of a wrapped block. */
-    val titleLine = 26.dp
     val inlineGlyph = 16.dp
     val dot = 8.dp
 
@@ -302,6 +298,20 @@ internal object RvChartSize {
     val gridRow = 24.7.dp
 }
 
+/**
+ * The only fixed hues: the latency qualities in light and in dark, before [RvColors] darkens or lightens them until they
+ * read on the card, and Revolut's off switch thumb, #fafafa in both themes.
+ */
+internal object RvHue {
+    val goodLight = Color(0xFF13795B)
+    val goodDark = Color(0xFF5BC49A)
+    val fairLight = Color(0xFF94600A)
+    val fairDark = Color(0xFFE7B04E)
+    val slowLight = Color(0xFFB3261E)
+    val slowDark = Color(0xFFFF8A80)
+    val switchOffThumb = Color(0xFFFAFAFA)
+}
+
 internal object RvAlpha {
     /** The state layer: the content colour over the visible shape while pressed. */
     const val PRESSED = 0.1f
@@ -319,6 +329,10 @@ internal object RvAlpha {
 
     /** A tile's fill under its sparkline: neutral, the text colour, fading to nothing at the bottom. */
     const val TILE_FILL = 0.08f
+
+    /** The world map's land, in the text colour. */
+    const val LAND_LIGHT = 0.08f
+    const val LAND_DARK = 0.14f
 
     /** The detail chart's fill under its line: the series colour at the line, linear to nothing at the plot's bottom. */
     const val AREA_LIGHT = 0.13f
@@ -493,11 +507,7 @@ internal object RvUsageSize {
     const val HEADROOM = 1.25f
 }
 
-/** A home card of Revolut's: its own grey header with a chevron, its figure and its rows (study §3). */
 internal object RvHomeSize {
-    val headerPad = 16.dp
-    val headerChevron = 20.dp
-
     /** The filled triangle before a change, as Revolut's delta (measured §7: 8 dp). */
     val delta = 8.dp
     val deltaGap = 4.dp

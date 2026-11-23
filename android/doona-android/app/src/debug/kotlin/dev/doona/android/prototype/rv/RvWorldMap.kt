@@ -24,19 +24,19 @@ private val shapes: Map<String, List<Path>> by lazy { RvWorld.countries.associat
  * width, every country in [places] filled in the primary colour, with a 0.5 dp seam in the card's colour round each so
  * neighbours stay apart (S7-08). A place the 1:110m shapes leave out or draw in a box under [SMALL_AREA] dp² (Hong
  * Kong, Singapore, Taiwan) also gets a primary dot, ringed in the card's colour so it stands off the land around it (S7-04).
- * A ring under [MIN_RING] across is left out, so no island shows as a lone speck (N-03: Hawaii).
+ * A ring under [RvWorldMapSize.minRing] across is left out, so no island shows as a lone speck (N-03: Hawaii).
  */
 @Composable
 internal fun RvWorldMap(places: Set<RvPlace>, modifier: Modifier = Modifier) {
     val colors = Rv.colors
-    val land = colors.text.copy(alpha = if (colors.dark) LAND_DARK else LAND_LIGHT)
+    val land = colors.text.copy(alpha = if (colors.dark) RvAlpha.LAND_DARK else RvAlpha.LAND_LIGHT)
     val mark = colors.positive
     val ring = colors.card
     Spacer(
         modifier.fillMaxWidth().aspectRatio(RvWorld.WIDTH / RvWorld.HEIGHT).drawWithCache {
             val codes = places.mapTo(mutableSetOf()) { it.name }
             val k = size.width / RvWorld.WIDTH
-            val least = MIN_RING.toPx() / k
+            val least = RvWorldMapSize.minRing.toPx() / k
             val seen = { rings: List<Path> -> Path().apply { rings.filter { it.getBounds().maxDimension >= least }.forEach { addPath(it) } } }
             val rest = Path()
             for ((code, rings) in shapes) if (code !in codes) rest.addPath(seen(rings))
@@ -45,9 +45,9 @@ internal fun RvWorldMap(places: Set<RvPlace>, modifier: Modifier = Modifier) {
             val whole = { rings: List<Path> -> Path().apply { rings.forEach { addPath(it) } }.getBounds() }
             val tiny = places.filter { place -> shapes[place.name]?.let(whole)?.let { it.width * it.height * k * k < small } ?: true }
             val dots = tiny.map { project(it.lat, it.lon) * k }
-            val dot = DOT.toPx()
-            val halo = dot + HALO.toPx()
-            val seam = Stroke(SEAM.toPx() / k)
+            val dot = RvWorldMapSize.dot.toPx()
+            val halo = dot + RvWorldMapSize.halo.toPx()
+            val seam = Stroke(RvWorldMapSize.seam.toPx() / k)
             onDrawBehind {
                 scale(k, k, pivot = Offset.Zero) {
                     drawPath(rest, land)
@@ -104,20 +104,19 @@ private class PolylineReader(private val text: String) {
     }
 }
 
-private const val LAND_LIGHT = 0.08f
-private const val LAND_DARK = 0.14f
-private val DOT = 3.dp
-private val HALO = 1.5.dp
-private val SEAM = 0.5.dp
+/** A small country's dot and the halo round it, the seam between neighbours, and the narrowest ring drawn. */
+internal object RvWorldMapSize {
+    val dot = 3.dp
+    val halo = 1.5.dp
+    val seam = 0.5.dp
+    val minRing = 2.dp
+}
 
 /**
  * A filled country whose bounding box is under this many dp² is too small to see, so it gets a dot (S7-04: about 16 dp²
  * of land; the box is about twice the land). Taiwan's box is 6 dp²; the Netherlands', 12 dp², still shows as a shape.
  */
 private const val SMALL_AREA = 8f
-
-/** A ring narrower and shorter than this draws as a speck, not a shape. */
-private val MIN_RING = 2.dp
 
 private const val HALF_TURN = 180f
 private const val FULL_TURN = 360f

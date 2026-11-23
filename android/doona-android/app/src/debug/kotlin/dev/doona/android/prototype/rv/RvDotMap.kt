@@ -153,7 +153,7 @@ private fun DrawScope.pulse(at: Offset, color: Color, art: Float, phase: Float) 
  */
 private fun DrawScope.marker(at: Offset, color: Color, art: Float) {
     val glow = RvDots.glow.toPx()
-    drawCircle(Brush.radialGradient(listOf(color.copy(alpha = RvDots.GLOW_ALPHA * art), color.copy(alpha = 0f)), at, glow), glow, at)
+    drawCircle(Brush.radialGradient(listOf(color.copy(alpha = RvDots.GLOW_ALPHA * art), color.copy(alpha = 0f)), at, glow), glow, at) // literal: the glow's transparent end
     drawCircle(color.copy(alpha = RvDots.RING_ALPHA * art), RvDots.ring.toPx(), at, style = Stroke(RvDots.ringStroke.toPx()))
     drawCircle(color, RvDots.marker.toPx() / 2f, at, alpha = art)
 }

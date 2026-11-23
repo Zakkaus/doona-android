@@ -107,9 +107,9 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val navGlass = RvGlassTint(navOver(navSolid, s.onSurface), navSolid.copy(alpha = RvAlpha.GLASS_SOLID))
 
     /** Latency qualities: the only fixed hues, darkened (light) or lightened (dark) until they read on the card and their chip. */
-    val good = readableHue(Color(if (dark) 0xFF5BC49A else 0xFF13795B))
-    val fair = readableHue(Color(if (dark) 0xFFE7B04E else 0xFF94600A))
-    val slow = readableHue(Color(if (dark) 0xFFFF8A80 else 0xFFB3261E))
+    val good = readableHue(if (dark) RvHue.goodDark else RvHue.goodLight)
+    val fair = readableHue(if (dark) RvHue.fairDark else RvHue.fairLight)
+    val slow = readableHue(if (dark) RvHue.slowDark else RvHue.slowLight)
 
     /** A progress bar's empty part. */
     val track = discOnCard
@@ -133,7 +133,7 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val switchOnThumb = s.primary
     val switchOnTrack = switchTrack(s.primary)
     val switchOnRim: Color? = s.primary.takeIf { rvContrast(switchOnTrack, card) < RvContrast.MARK }
-    val switchOffThumb = SWITCH_OFF_THUMB
+    val switchOffThumb = RvHue.switchOffThumb
 
     /** Categories that are not a direction (統計's quota ring, per subscription): ink and the control grey, never [down] or [up]. */
     val categories = listOf(s.onSurface, control)
@@ -213,9 +213,6 @@ private fun RvColors.navOver(solid: Color, under: Color): Color =
     (0..RvContrast.STEPS).map { solid.copy(alpha = RvAlpha.NAV_GLASS_MIN + (RvAlpha.GLASS_SOLID - RvAlpha.NAV_GLASS_MIN) * it / RvContrast.STEPS) }
         .firstOrNull { rvContrast(textSecondary, it.compositeOver(under)) >= RvContrast.TEXT_MIN } ?: solid.copy(alpha = RvAlpha.GLASS_SOLID)
 
-/** Revolut's off thumb, in both themes (its dark theme's off switch is #fafafa on #525254). */
-private val SWITCH_OFF_THUMB = Color(0xFFFAFAFA)
-
 /** The WCAG contrast ratio of two opaque colours. */
 internal fun rvContrast(a: Color, b: Color): Float {
     val la = a.luminance()
@@ -262,13 +259,17 @@ internal class RvType {
     val seeAll = RvTypeScale.seeAll.style()
 
     // Tabular figures only where figures line up or change in place: Inter's tnum also widens the hyphen of a name.
-    private fun RvTypeStep.style(tabular: Boolean = false) = TextStyle(
-        fontFamily = if (display) RvInterDisplay else RvInter,
-        fontWeight = weight,
-        fontSize = size.sp,
-        lineHeight = line.sp,
-        fontFeatureSettings = if (tabular) RvTypeScale.TABULAR else null,
-    )
+    private fun RvTypeStep.style(tabular: Boolean = false): TextStyle {
+        val fontSize = size.sp // literal: the type scale's own size, from RvTypeScale
+        val lineHeight = line.sp // literal: and its line height
+        return TextStyle(
+            fontFamily = if (display) RvInterDisplay else RvInter,
+            fontWeight = weight,
+            fontSize = fontSize,
+            lineHeight = lineHeight,
+            fontFeatureSettings = if (tabular) RvTypeScale.TABULAR else null,
+        )
+    }
 }
 
 @Immutable

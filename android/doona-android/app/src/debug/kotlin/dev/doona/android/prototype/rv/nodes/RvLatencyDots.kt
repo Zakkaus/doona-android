@@ -43,7 +43,7 @@ import kotlin.math.roundToInt
  * timed out (drawn at the top: no answer is the slowest), the axis labels on the right, and every other test's time
  * under its dot. A dotted line marks [median], its value in a pill at the line's right end, where Revolut sets a
  * reference price; an axis label it would cover is left out. The strip for the labels is as wide as the widest of
- * them and the pill, [PLOT_GAP] clear of the plot (S7-15). The [selected] test is marked with the library's
+ * them and the pill, [RvLatencyDotsSize.plotGap] clear of the plot (S7-15). The [selected] test is marked with the library's
  * [rvChartMarker], as 統計's latency chart marks the current node (S7-14, N03). A time the chip would reach is left out.
  * The dots are spread so the widest time's chip fits inside the plot, and a tap picks the nearest test.
  */
@@ -71,10 +71,10 @@ internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String
     val chipHeight = with(density) { rvMarkerChip(times.firstOrNull()?.let { measurer.measure(it, look.picked).size.height.toFloat() } ?: 0f) }
     val pillWidth = medianText?.let { measurer.measure(scripted(it), look.label).size.width + with(density) { 2 * RvChartSize.pillPadH.toPx() } } ?: 0f
     val labelWidth = axis.maxOf { measurer.measure(scripted(it), look.label).size.width }.toFloat()
-    val strip = maxOf(pillWidth, labelWidth) + with(density) { PLOT_GAP.toPx() }
+    val strip = maxOf(pillWidth, labelWidth) + with(density) { RvLatencyDotsSize.plotGap.toPx() }
     val pick by rememberUpdatedState(onSelect)
     Canvas(
-        modifier.fillMaxWidth().height(HEAD + PLOT + RvChartSize.markerGap + with(density) { chipHeight.toDp() }).pointerInput(history.size, widest, strip) {
+        modifier.fillMaxWidth().height(RvLatencyDotsSize.head + RvLatencyDotsSize.plot + RvChartSize.markerGap + with(density) { chipHeight.toDp() }).pointerInput(history.size, widest, strip) {
             detectTapGestures { tap -> pick(Columns(size.width - strip, history.size, widest + 2 * pad).at(tap.x)) }
         },
     ) {
@@ -124,8 +124,8 @@ private class DotsLook(
 
 /** The chart's geometry in one [scope]: the [columns] across the plot, the axis labels in a [strip] at the right. */
 private class Plot(private val scope: DrawScope, private val columns: Columns, strip: Float, private val chipHeight: Float) {
-    private val head = with(scope) { HEAD.toPx() }
-    private val bottom = head + with(scope) { PLOT.toPx() }
+    private val head = with(scope) { RvLatencyDotsSize.head.toPx() }
+    private val bottom = head + with(scope) { RvLatencyDotsSize.plot.toPx() }
     private val right = scope.size.width - strip
     private val chipTop = bottom + with(scope) { RvChartSize.markerGap.toPx() }
 
@@ -149,7 +149,7 @@ private class Plot(private val scope: DrawScope, private val columns: Columns, s
 
     /** The selected test's marker, its [time] in the chip; returns the chip's start and end. */
     fun marker(i: Int, time: TextLayoutResult, color: Color): ClosedFloatingPointRange<Float> = with(scope) {
-        rvChartMarker(x(i), columns.pitch, DOT.toPx(), bottom, time, color)
+        rvChartMarker(x(i), columns.pitch, RvLatencyDotsSize.dot.toPx(), bottom, time, color)
     }
 
     /** The dotted median across the plot, its value in a pill at the strip's end. */
@@ -163,9 +163,9 @@ private class Plot(private val scope: DrawScope, private val columns: Columns, s
 
     /** A test's dot at [y], or an empty ring at the top for one that timed out. */
     fun dot(i: Int, y: Float?, color: Color, missed: Color) = with(scope) {
-        val r = DOT.toPx() / 2
+        val r = RvLatencyDotsSize.dot.toPx() / 2
         if (y == null) {
-            drawCircle(missed, r - RING.toPx() / 2, Offset(x(i), head), style = Stroke(RING.toPx()))
+            drawCircle(missed, r - RvLatencyDotsSize.ring.toPx() / 2, Offset(x(i), head), style = Stroke(RvLatencyDotsSize.ring.toPx()))
         } else {
             drawCircle(color, r, Offset(x(i), y))
         }
@@ -183,11 +183,13 @@ private class Plot(private val scope: DrawScope, private val columns: Columns, s
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f
 
-/** The plot, room above for the top label, and the gap from the plot to the label strip. */
-private val PLOT = 140.dp
-private val HEAD = 10.dp
-private val PLOT_GAP = 8.dp
+internal object RvLatencyDotsSize {
+    /** The plot, room above for the top label, and the gap from the plot to the label strip. */
+    val plot = 140.dp
+    val head = 10.dp
+    val plotGap = 8.dp
 
-/** The dots (§10.2: Revolut's EPS dots are 8 dp, N04) and a timed-out test's ring. */
-private val DOT = 8.dp
-private val RING = 1.5.dp
+    /** The dots (§10.2: Revolut's EPS dots are 8 dp, N04) and a timed-out test's ring. */
+    val dot = 8.dp
+    val ring = 1.5.dp
+}
