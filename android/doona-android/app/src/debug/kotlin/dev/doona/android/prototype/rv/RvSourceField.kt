@@ -149,7 +149,10 @@ private fun DrawScope.drawLineNumbers(
  * characters and does not become Inter's arrow.
  */
 @Composable
-internal fun rvSourceStyle(): TextStyle = Rv.type.rowSub.copy(fontFeatureSettings = VERBATIM)
+internal fun rvSourceStyle(): TextStyle = Rv.type.rowSub.rvVerbatim()
+
+/** [this] with Inter's contextual alternates and ligatures off, for any text that quotes source (`->` stays `->`). */
+internal fun TextStyle.rvVerbatim(): TextStyle = copy(fontFeatureSettings = VERBATIM)
 
 /** A line number: the row subtitle's 17 sp in tabular figures, so every number of a gutter ends on one edge. */
 @Composable

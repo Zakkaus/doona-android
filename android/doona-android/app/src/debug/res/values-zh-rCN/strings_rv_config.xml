@@ -6,4 +6,33 @@
     <string name="rv_gallery_source">源码字段</string>
     <string name="rv_gallery_diff">差异</string>
     <string name="rv_config_unknown_group">找不到策略组 %1$s</string>
+    <string name="rv_config_title">配置文件</string>
+    <string name="rv_config_applied">第 %1$d 版 · %2$s 应用</string>
+    <string name="rv_config_files">文件</string>
+    <string name="rv_config_entry">主文件</string>
+    <string name="rv_config_included_by">由 %1$s 引入</string>
+    <plurals name="rv_config_lines">
+        <item quantity="other">%1$d 行</item>
+    </plurals>
+    <string name="rv_config_contents">内容</string>
+    <string name="rv_config_dns_servers">DNS 服务器</string>
+    <string name="rv_config_dns_queries">DNS 查询规则</string>
+    <string name="rv_config_dns_answers">DNS 响应规则</string>
+    <string name="rv_config_compat">兼容性</string>
+    <string name="rv_config_constrained">部分生效</string>
+    <plurals name="rv_config_items">
+        <item quantity="other">%1$d 项</item>
+    </plurals>
+    <plurals name="rv_config_skipped_count">
+        <item quantity="other">%1$d 项已跳过</item>
+    </plurals>
+    <plurals name="rv_config_see_all_items">
+        <item quantity="other">查看全部 %1$d 项</item>
+    </plurals>
+    <string name="rv_config_history">版本记录</string>
+    <string name="rv_config_import">导入配置文件</string>
+    <string name="rv_config_reason_linux">仅限 Linux</string>
+    <string name="rv_config_reason_process">无法匹配进程名</string>
+    <string name="rv_config_reason_mac">无法匹配 MAC 地址</string>
+    <string name="rv_config_line">第 %1$d 行</string>
 </resources>

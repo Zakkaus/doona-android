@@ -7,4 +7,37 @@
     <string name="rv_gallery_source">Source field</string>
     <string name="rv_gallery_diff">Diff</string>
     <string name="rv_config_unknown_group">No group named %1$s</string>
+    <string name="rv_config_title">Configuration</string>
+    <string name="rv_config_applied">Revision %1$d · applied %2$s</string>
+    <string name="rv_config_files">Files</string>
+    <string name="rv_config_entry">Entry file</string>
+    <string name="rv_config_included_by">Included by %1$s</string>
+    <plurals name="rv_config_lines">
+        <item quantity="one">%1$d line</item>
+        <item quantity="other">%1$d lines</item>
+    </plurals>
+    <string name="rv_config_contents">Contents</string>
+    <string name="rv_config_dns_servers">DNS servers</string>
+    <string name="rv_config_dns_queries">DNS query rules</string>
+    <string name="rv_config_dns_answers">DNS response rules</string>
+    <string name="rv_config_compat">Compatibility</string>
+    <string name="rv_config_constrained">Partly applied</string>
+    <plurals name="rv_config_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="rv_config_skipped_count">
+        <item quantity="one">%1$d skipped</item>
+        <item quantity="other">%1$d skipped</item>
+    </plurals>
+    <plurals name="rv_config_see_all_items">
+        <item quantity="one">See %1$d item</item>
+        <item quantity="other">See all %1$d</item>
+    </plurals>
+    <string name="rv_config_history">History</string>
+    <string name="rv_config_import">Import configuration</string>
+    <string name="rv_config_reason_linux">Linux only</string>
+    <string name="rv_config_reason_process">No process names</string>
+    <string name="rv_config_reason_mac">No MAC addresses</string>
+    <string name="rv_config_line">Line %1$d</string>
 </resources>
