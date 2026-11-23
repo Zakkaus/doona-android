@@ -48,6 +48,28 @@ abstract class CheckNoFaultHook : DefaultTask() {
     }
 }
 
+// The RV sample's launcher shortcuts name the package they open. Shortcut XML takes no manifest placeholder, and a
+// string reference there resolves against the launcher's resources, not the app's; debug and profile differ in package
+// (applicationIdSuffix), so each variant writes xml/rv_shortcuts from one template with its own application id.
+abstract class RvShortcuts : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val template: RegularFileProperty
+
+    @get:Input
+    abstract val applicationId: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun write() {
+        val xml = outputDir.get().dir("xml").asFile.resolve("rv_shortcuts.xml")
+        xml.parentFile.mkdirs()
+        xml.writeText(template.get().asFile.readText().replace("\${applicationId}", applicationId.get()))
+    }
+}
+
 val coreDir = rootProject.file("../../crates/doona-core")
 val coreNdk = "30.0.16248370"
 val coreSymbols = listOf("init", "start", "stop", "snapshot", "call")
@@ -167,6 +189,15 @@ androidComponents {
         variant.sources.manifests.addStaticManifestFile("src/debug/AndroidManifest.xml")
         variant.sources.baselineProfiles?.addStaticSourceDirectory("src/debug/baselineProfiles")
     }
+    // The debug source set's launcher shortcuts, written for each variant that carries the RV sample (RvShortcuts).
+    onVariants { variant ->
+        if (variant.buildType != "debug" && variant.buildType != "profile") return@onVariants
+        val shortcuts = tasks.register<RvShortcuts>("rvShortcuts" + variant.name.replaceFirstChar { it.uppercase() }) {
+            template.set(layout.projectDirectory.file("src/debug/shortcuts/rv_shortcuts.xml"))
+            applicationId.set(variant.applicationId)
+        }
+        variant.sources.res?.addGeneratedSourceDirectory(shortcuts, RvShortcuts::outputDir)
+    }
 }
 
 android {
@@ -201,9 +232,12 @@ android {
         }
         // A release build (R8, not debuggable) that also carries the debug source set's prototype, so frame times
         // measured on a phone mean what a user would see; profileable, so Perfetto can trace it. Debug Compose
-        // numbers are not decisions. The source set is added below, under androidComponents.
+        // numbers are not decisions. The source set is added below, under androidComponents. It installs as a package of
+        // its own beside doona, with its own launcher name (src/profile): sharing dev.doona.android, an install or the
+        // benchmark's uninstall after connectedProfileAndroidTest wiped doona's data on the phone (2026-11-23).
         create("profile") {
             initWith(getByName("release"))
+            applicationIdSuffix = ".profile"
             isProfileable = true
             matchingFallbacks += "release"
         }

@@ -17,7 +17,8 @@ import org.junit.runner.RunWith
  * The RV prototype's gestures, measured as the perf rounds did by hand (plans/perf5/one.sh), [ITERATIONS] times each on
  * the app's profile build, its baseline profile compiled in: the process killed, the prototype started and left
  * [SETTLE_MS], then a trace of [LEAD_MS] at rest, the gesture, and [TAIL_MS] after it. Each gesture reports
- * [RvDeadlineMissedMetric]'s App Deadline Missed count and [FrameTimingMetric]'s frame times.
+ * [RvDeadlineMissedMetric]'s App Deadline Missed count and [FrameTimingMetric]'s frame times. The profile build is the
+ * package [PACKAGE], beside doona's, so installing it and the uninstall after the run leave doona's data alone.
  *
  * The gestures are the same `input` commands, in the pixels of the 1080 x 2410 phone the perf rounds used: [pull] pulls
  * 活動 down past the threshold, [reveal] further, [close] backs out of the open picker, [search] taps the search pill,
@@ -77,7 +78,7 @@ class RvGestureBenchmark {
     }
 
     private companion object {
-        const val PACKAGE = "dev.doona.android"
+        const val PACKAGE = "dev.doona.android.profile"
         const val ACTIVITY = "dev.doona.android.prototype.rv.RvPreviewActivity"
         const val ITERATIONS = 10
         const val SETTLE_MS = 3_000L

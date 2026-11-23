@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The profile build installs beside doona (dev.doona.android.profile), so its launcher entry and its quick-settings
+     tile carry a name of their own. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:label="@string/profile_app_name"
+        tools:replace="android:label">
+
+        <service
+            android:name=".vpn.ToggleTileService"
+            android:label="@string/profile_app_name"
+            tools:replace="android:label" />
+    </application>
+</manifest>

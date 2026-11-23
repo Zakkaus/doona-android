@@ -2,7 +2,8 @@
 <!--
   Debug builds only: the RV sample's launcher shortcuts (brief rv-gestures), as Revolut publishes its top actions. Each
   opens RvPreviewActivity with its action, and the sample runs it on screen: connecting shows 連線中 first (in the app,
-  after VpnService's consent), so nothing connects unseen.
+  after VpnService's consent), so nothing connects unseen. A template: each variant writes xml/rv_shortcuts from it with
+  its own application id as targetPackage (RvShortcuts in build.gradle.kts).
 -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
@@ -13,7 +14,7 @@
         <intent
             android:action="dev.doona.android.prototype.rv.CONNECT"
             android:targetClass="dev.doona.android.prototype.rv.RvPreviewActivity"
-            android:targetPackage="dev.doona.android" />
+            android:targetPackage="${applicationId}" />
     </shortcut>
     <shortcut
         android:enabled="true"
@@ -23,7 +24,7 @@
         <intent
             android:action="dev.doona.android.prototype.rv.DISCONNECT"
             android:targetClass="dev.doona.android.prototype.rv.RvPreviewActivity"
-            android:targetPackage="dev.doona.android" />
+            android:targetPackage="${applicationId}" />
     </shortcut>
     <shortcut
         android:enabled="true"
@@ -33,6 +34,6 @@
         <intent
             android:action="dev.doona.android.prototype.rv.NODES"
             android:targetClass="dev.doona.android.prototype.rv.RvPreviewActivity"
-            android:targetPackage="dev.doona.android" />
+            android:targetPackage="${applicationId}" />
     </shortcut>
 </shortcuts>

@@ -39,8 +39,15 @@ class RvShortcutsTest {
     @Test
     fun everyShortcutOpensTheSampleWithAnActionItHandles() {
         val intents = shortcutIntents()
-        assertEquals("one shortcut per launch action", RvLaunch.entries.mapNotNull { it.action }.sorted(), intents.map { it.first }.sorted())
-        intents.forEach { (action, target) -> assertEquals("$action opens the sample", RvPreviewActivity::class.java.name, target) }
+        assertEquals("one shortcut per launch action", RvLaunch.entries.mapNotNull { it.action }.sorted(), intents.map { it.action }.sorted())
+        intents.forEach { assertEquals("${it.action} opens the sample", RvPreviewActivity::class.java.name, it.target) }
+    }
+
+    /** The template's package is the variant's own (the profile build installs as dev.doona.android.profile). */
+    @Test
+    fun everyShortcutTargetsThisBuildsPackage() {
+        val app = RuntimeEnvironment.getApplication().packageName
+        shortcutIntents().forEach { assertEquals("${it.action}'s package", app, it.pkg) }
     }
 
     @Test
@@ -65,13 +72,19 @@ class RvShortcutsTest {
         compose.mainClock.autoAdvance = false
     }
 
-    /** Each shortcut's intent: its action and the activity it targets. */
-    private fun shortcutIntents(): List<Pair<String, String>> {
+    private data class ShortcutIntent(val action: String, val pkg: String, val target: String)
+
+    /** Each shortcut's intent: its action and the package and activity it targets. */
+    private fun shortcutIntents(): List<ShortcutIntent> {
         val parser = RuntimeEnvironment.getApplication().resources.getXml(R.xml.rv_shortcuts)
-        val found = mutableListOf<Pair<String, String>>()
+        val found = mutableListOf<ShortcutIntent>()
         while (parser.next() != XmlResourceParser.END_DOCUMENT) {
             if (parser.eventType != XmlResourceParser.START_TAG || parser.name != "intent") continue
-            found += parser.getAttributeValue(ANDROID, "action") to parser.getAttributeValue(ANDROID, "targetClass")
+            found += ShortcutIntent(
+                parser.getAttributeValue(ANDROID, "action"),
+                parser.getAttributeValue(ANDROID, "targetPackage"),
+                parser.getAttributeValue(ANDROID, "targetClass"),
+            )
         }
         return found
     }
