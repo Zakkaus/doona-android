@@ -93,12 +93,17 @@ androidComponents {
         }
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildCore, CargoNdk::outputDir)
     }
-    // The profile build carries the debug source set: the RV prototype, its resources and its launcher entry.
+    // The profile build carries the debug source set: the RV prototype, its resources and its launcher entry, and a
+    // baseline profile. Without it the prototype ran interpreted on the phone (composables called a few dozen times a
+    // gesture never got hot enough for the JIT) and the JIT compiled for about 1.1 s of each 5 s trace (rv-perf3). It
+    // compiles every method of the app and of Compose, androidx.collection and coroutines ahead: a stand-in for a
+    // profile recorded on the phone with the Macrobenchmark generator, which this build does not have yet.
     onVariants(selector().withBuildType("profile")) { variant ->
         variant.sources.kotlin?.addStaticSourceDirectory("src/debug/kotlin")
         variant.sources.res?.addStaticSourceDirectory("src/debug/res")
         variant.sources.assets?.addStaticSourceDirectory("src/debug/assets")
         variant.sources.manifests.addStaticManifestFile("src/debug/AndroidManifest.xml")
+        variant.sources.baselineProfiles?.addStaticSourceDirectory("src/debug/baselineProfiles")
     }
 }
 
