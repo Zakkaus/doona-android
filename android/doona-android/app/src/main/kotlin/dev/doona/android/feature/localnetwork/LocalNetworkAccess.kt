@@ -147,13 +147,14 @@ class LocalNetworkAccess(private val granted: () -> Boolean) {
     fun resumed() {
         val allowed = granted()
         val answer = synchronized(lock) {
-            if (!away && !(allowed && settings != null)) return
-            away = false
+            // Before the return below: the tunnel's refusal may be up with no action waiting on it.
             if (allowed) {
                 refusal = false
                 tunnelRefusal = false
                 show()
             }
+            if (!away && !(allowed && settings != null)) return
+            away = false
             settings.also { settings = null }
         }
         answer?.complete(allowed)

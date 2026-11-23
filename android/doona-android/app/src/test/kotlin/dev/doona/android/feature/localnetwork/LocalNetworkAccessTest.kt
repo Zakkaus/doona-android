@@ -179,6 +179,22 @@ class LocalNetworkAccessTest {
     }
 
     @Test
+    fun accessAllowedOnTheInfoPageTakesDownATunnelsRefusalNoActionWaitsOn() = runTest(UnconfinedTestDispatcher()) {
+        val answer = async { access.ask() }
+        access.declined()
+        assertFalse(answer.await())
+        // Only the tunnel's report shows the refusal.
+        val report = launch { access.noticed() }
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+        // The user leaves by the launcher, allows access on the app's info page and comes back.
+        granted = true
+        access.resumed()
+        assertNull("access is allowed: no refusal stays", access.prompt.value)
+        report.cancel()
+        assertNull(access.prompt.value)
+    }
+
+    @Test
     fun continuingAWithdrawnReasonAsksTheSystemNothing() = runTest(UnconfinedTestDispatcher()) {
         var requests = 0
         val host = LocalNetworkHost(access, request = { requests++ }, openSettings = {})
