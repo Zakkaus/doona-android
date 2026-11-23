@@ -155,7 +155,7 @@ private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
 private fun GlobalPicker(state: RvPolicyState, onChange: (RvPolicyState) -> Unit) {
     val main = state.group(RvPolicyData.main)
     val groups = remember(state.nodeSort) { rvNodeGroups(RvData.nodes, RvData.subscriptions, state.nodeSort) }
-    RvControlRow { RvNodeListControls(state.nodeSort) { onChange(state.copy(nodeSort = it)) } }
+    RvControlRow({ RvNodeListControls(state.nodeSort) { onChange(state.copy(nodeSort = it)) } }, RvSpace.tabBlockGap)
     RvNodeGroups(groups, main.selectedId, state.nodeSort) { onChange(state.choose(main.id, it)) }
 }
 

@@ -271,7 +271,8 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
             }
         }
         for ((upper, lower) in pairs(blocks)) {
-            val gap = (if (upper == header) RvSpace.headerGap else GAPS[upper.first.asCard() to lower.first.asCard()]) ?: continue
+            val kinds = upper.first.asCard() to lower.first.asCard()
+            val gap = (if (upper == header) RvSpace.headerGap else (TAB_GAPS[kinds]?.takeIf { top == Top.Tab } ?: GAPS[kinds])) ?: continue
             expect("gap ${upper.first} to ${lower.first} at ${lower.second.top} dp", lower.second.top - upper.second.bottom, gap)
         }
     }
@@ -351,6 +352,14 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
             // A footer ends its group; a card with no section title over it starts the next as a section title would.
             (RvPart.FOOTER to RvPart.CARD) to RvSpace.sectionAbove,
             (RvPart.SECTION to RvPart.CARD) to RvSpace.sectionBelow,
+        )
+
+        /** On a tab home every block sits one gap from the next, a control row too (rv-fix-4e). */
+        val TAB_GAPS = mapOf(
+            (RvPart.CAPTION to RvPart.CONTROL) to RvSpace.tabBlockGap,
+            (RvPart.CAPTION to RvPart.CARD) to RvSpace.tabBlockGap,
+            (RvPart.CONTROL to RvPart.CARD) to RvSpace.tabBlockGap,
+            (RvPart.CARD to RvPart.CONTROL) to RvSpace.tabBlockGap,
         )
     }
 }

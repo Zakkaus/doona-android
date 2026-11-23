@@ -180,7 +180,7 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
         Spacer(Modifier.height(RvSpace.headerTop))
         HeroBlock(state, ticking, mode, hero, Modifier.onPlaced { heroBounds = it.boundsInParent() }, motion.pushed)
         if (motion.pushed == null) actions() else Box(motion.pushed) { actions() }
-        Spacer(Modifier.height(RvSpace.actionsToCard))
+        Spacer(Modifier.height(RvSpace.tabBlockGap))
     }
 }
 

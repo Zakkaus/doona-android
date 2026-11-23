@@ -33,10 +33,14 @@ internal object RvSpace {
     val heroToActions = 64.dp
 
     /**
-     * On a tab home, which has no large title, the first content sits this far under the bar's controls: Revolut's tabs
-     * put Payments' banner 13.6 dp under theirs (revolut-ux3 §5: the controls end at 71.4 + 44 dp, the banner at 129).
+     * Under a tab home's bar (策略, 連線), Revolut's rule (rv-fix-4e, 36 Android screens with the search bar): on a flat
+     * page the first block sits [tabTop] under the bar's controls (Payments' banner 14.1 dp under them), and the blocks
+     * under it sit [tabBlockGap] apart (a caption, a control row, the first card). 活動's hero keeps its own top
+     * ([headerTop]) and puts its first card [tabBlockGap] under its round actions, as Revolut's first card sits 16 dp
+     * under the last element of its hero.
      */
-    val tabTop = 13.6.dp
+    val tabTop = 14.dp
+    val tabBlockGap = 16.dp
 
     /** From the round actions' labels to the first card (measured §5: the action row ends 1360 px, the card starts 1400). */
     val actionsToCard = 16.dp

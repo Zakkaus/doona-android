@@ -196,21 +196,21 @@ internal fun RvPageHeader(
 }
 
 /**
- * A control row on the page (filter chips, a status chip, a list's search and order), on the gutter with
- * [RvSpace.controlGap] above and below it, as Revolut's Analytics sets its chips between its title and its first card.
+ * A control row on the page (filter chips, a status chip, a list's search and order), on the gutter with [gap] above and
+ * below it: [RvSpace.controlGap] on a pushed page, as Revolut's Analytics sets its chips between its title and its first
+ * card; [RvSpace.tabBlockGap] on a tab home, where every block sits that far from the next.
  */
 @Composable
-internal fun RvControlRow(control: @Composable () -> Unit) {
-    Spacer(Modifier.height(RvSpace.controlGap))
+internal fun RvControlRow(control: @Composable () -> Unit, gap: Dp = RvSpace.controlGap) {
+    Spacer(Modifier.height(gap))
     Box(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CONTROL)) { control() }
-    Spacer(Modifier.height(RvSpace.controlGap))
+    Spacer(Modifier.height(gap))
 }
 
 /**
  * The head of a tab home (策略, 連線, 設定), which has no large title, as Revolut's tabs have none (revolut-ux3 §5): the
- * bar's room ([RvChrome.tabBarTop]), then [RvSpace.tabTop] to the first content. An optional [caption] ([RvCaption] lines) and [control] row
- * follow as [RvPageHeader] sets them; after a caption with no control row, the first card follows [RvSpace.headerGap]
- * under it.
+ * bar's room ([RvChrome.tabBarTop]), then [RvSpace.tabTop] to the first content. An optional [caption] ([RvCaption]
+ * lines) and [control] row follow, and the first card after them, each [RvSpace.tabBlockGap] under the one above.
  */
 @Composable
 internal fun RvTabHeader(insets: WindowInsets, caption: (@Composable ColumnScope.() -> Unit)? = null, control: (@Composable () -> Unit)? = null) {
@@ -219,10 +219,11 @@ internal fun RvTabHeader(insets: WindowInsets, caption: (@Composable ColumnScope
     caption?.let {
         Column(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CAPTION), verticalArrangement = Arrangement.spacedBy(RvSpace.tight), content = it)
     }
-    when {
-        control != null -> RvControlRow(control)
-        caption != null -> Spacer(Modifier.height(RvSpace.headerGap))
+    control?.let {
+        if (caption != null) Spacer(Modifier.height(RvSpace.tabBlockGap))
+        Box(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CONTROL)) { it() }
     }
+    if (caption != null || control != null) Spacer(Modifier.height(RvSpace.tabBlockGap))
 }
 
 /** A pushed page's large title alone: [RvPageHeader] with no caption and no control. */
