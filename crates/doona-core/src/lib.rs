@@ -9,6 +9,7 @@ mod diag;
 mod dns;
 pub mod dto;
 mod groups;
+pub mod honkconf;
 mod ids;
 mod jni;
 mod localnet;

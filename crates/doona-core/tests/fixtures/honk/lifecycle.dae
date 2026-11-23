@@ -1,0 +1,1 @@
+global { disable_waiting_network: true }
