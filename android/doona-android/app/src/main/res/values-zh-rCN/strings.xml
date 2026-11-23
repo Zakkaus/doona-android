@@ -36,6 +36,10 @@
     <string name="policy_kind_urltest">平均最快</string>
     <string name="policy_kind_fallback">按顺序备用</string>
     <string name="policy_kind_fixed">固定</string>
+    <string name="policy_kind_score">综合评分</string>
+    <string name="policy_kind_loadbalance">负载均衡</string>
+    <string name="policy_kind_random">随机</string>
+    <string name="group_policy_score_hint">根据节点的可靠性与近期连接质量自动选择</string>
     <string name="policy_healthy">%1$d 个可用</string>
     <string name="policy_untested">%1$d 个未测试</string>
     <string name="policy_current">当前</string>
