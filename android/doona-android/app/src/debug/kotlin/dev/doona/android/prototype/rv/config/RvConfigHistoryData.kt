@@ -3,6 +3,11 @@ package dev.doona.android.prototype.rv.config
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
+import dev.doona.android.prototype.rv.RvDiffFile
+import dev.doona.android.prototype.rv.RvDiffKind.Added
+import dev.doona.android.prototype.rv.RvDiffKind.Removed
+import dev.doona.android.prototype.rv.RvDiffKind.Same
+import dev.doona.android.prototype.rv.RvDiffLine
 import dev.doona.android.prototype.rv.data.RV_NOW
 
 /** Where an applied revision came from, as `configHistory` gives its origin. */
@@ -88,6 +93,23 @@ internal object RvConfigHistoryData {
 
     /** Naming revision 8, which has no name yet: the field is empty and shows what the row says without one. */
     val rename = RvRevisionRename(8, "")
+
+    /**
+     * What restoring revision 8 (or 7) changes against the head: those sent `ai` through the US nodes, revision 9
+     * through Japan's (its name says so).
+     */
+    val restoreDiff = RvDiffFile(
+        RvConfigData.ENTRY,
+        listOf(
+            listOf(
+                RvDiffLine(Same, 28, "  ai {"),
+                RvDiffLine(Removed, 29, "    filter: name(keyword: 'JP')"),
+                RvDiffLine(Added, 29, "    filter: name(keyword: 'US')"),
+                RvDiffLine(Same, 30, "    policy: min_moving_avg"),
+                RvDiffLine(Same, 31, "  }"),
+            ),
+        ),
+    )
 
     /** The pin's `SourceLimits::DEFAULT` (config-plan.md:36): 32 files, 8 MiB, entry, includes and companions together. */
     const val LIMIT_FILES = 32

@@ -14,6 +14,7 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
@@ -44,8 +45,10 @@ import org.robolectric.annotation.GraphicsMode
  * (`proto-rv-config-history-*`); an import refused at the 32-file / 8 MiB budget (`proto-rv-config-import-limit-*`);
  * and one staged with an include outside the picked file's directory (`proto-rv-config-import-escape-*`). Named
  * revisions (round 2, item 1): the list with four named, the head's name long enough to wrap
- * (`proto-rv-config-history-named-*`), the long-press menu on revision 8 (`-history-menu-*`) and its rename sheet
- * (`-history-rename-*`). Light and dark hold the whole page; fs115 and fs200 the first screen.
+ * (`proto-rv-config-history-named-*`), the long-press menu where a finger held revision 8 (`-history-menu-*`),
+ * revision 8's page, unnamed (`proto-rv-config-revision-*`), revision 7's, named (`-revision-named-*`), and the rename
+ * sheet its 名稱 row opens on revision 8 (`-history-rename-*`). Light and dark hold the whole page; fs115 and fs200
+ * the first screen.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -110,6 +113,30 @@ class RvConfigHistoryShotTest {
     fun renameFs200() = compose.rvShot("config-history-rename", dark = false, fontScale = RV_FS200) { Rename() }
 
     @Test
+    fun revisionLight() = compose.rvShot("config-revision", dark = false) { Revision(UNNAMED) }
+
+    @Test
+    fun revisionDark() = compose.rvShot("config-revision", dark = true) { Revision(UNNAMED) }
+
+    @Test
+    fun revisionFs115() = compose.rvShot("config-revision", dark = false, fontScale = RV_FS115) { Revision(UNNAMED) }
+
+    @Test
+    fun revisionFs200() = compose.rvShot("config-revision", dark = false, fontScale = RV_FS200) { Revision(UNNAMED) }
+
+    @Test
+    fun revisionNamedLight() = compose.rvShot("config-revision-named", dark = false) { Revision(HOME) }
+
+    @Test
+    fun revisionNamedDark() = compose.rvShot("config-revision-named", dark = true) { Revision(HOME) }
+
+    @Test
+    fun revisionNamedFs115() = compose.rvShot("config-revision-named", dark = false, fontScale = RV_FS115) { Revision(HOME) }
+
+    @Test
+    fun revisionNamedFs200() = compose.rvShot("config-revision-named", dark = false, fontScale = RV_FS200) { Revision(HOME) }
+
+    @Test
     fun limitLight() = compose.rvShot("config-import-limit", dark = false) { Import(RvConfigHistoryData.limit) }
 
     @Test
@@ -159,6 +186,23 @@ class RvConfigHistoryShotTest {
     }
 
     @Test
+    fun theNameRowOfARevisionOpensTheSheetOnThatRevision() {
+        var asked: RvRevisionRename? = null
+        compose.setContent { Themed { RvConfigRevisionPage(revision(HOME), listOf(RvConfigHistoryData.restoreDiff), onBack = {}, onRename = { asked = it }) } }
+        compose.onNodeWithText(NAME).performClick()
+        assertEquals(RvRevisionRename(HOME, "家用"), asked)
+    }
+
+    @Test
+    fun anUnnamedRevisionSaysSoAndOffersRestore() {
+        var restored = false
+        compose.setContent { Themed { RvConfigRevisionPage(revision(UNNAMED), listOf(RvConfigHistoryData.restoreDiff), onBack = {}, onRestore = { restored = true }) } }
+        compose.onNodeWithText("未命名").assertExists()
+        compose.onNodeWithText("還原").performClick()
+        assertEquals(true, restored)
+    }
+
+    @Test
     fun savingAnEmptyNameTakesTheNameAway() {
         var saved: Pair<Int, String?>? = null
         var rename by mutableStateOf<RvRevisionRename?>(RvRevisionRename(7, "  "))
@@ -201,7 +245,7 @@ class RvConfigHistoryShotTest {
     /** Where the menu's card goes: set by [placeMenu] once the list is laid out. */
     private var menuAt by mutableStateOf(DpOffset.Zero)
 
-    /** The named list with revision 8's menu open, as the anchored menu places it: its end on the row's, under the row. */
+    /** The named list with the menu where a finger held revision 8's row, as the long-press menu places it. */
     @Composable
     private fun MenuOpen() {
         Box(Modifier.fillMaxSize()) {
@@ -210,18 +254,31 @@ class RvConfigHistoryShotTest {
         }
     }
 
-    /** Puts the menu's card [RvMenuSize.anchorGap] under revision 8's row, its end on the row's end ([RvMenu]'s anchored place). */
+    /**
+     * Puts the menu's card where [RvLongPressMenu] opens it for a finger a third of the way into revision 8's row, at
+     * its vertical centre (as the subscriptions' sample holds its card): its top start at the finger, within the
+     * window's margin.
+     */
     private fun ComposeContentTestRule.placeMenu() {
         val row = onNodeWithText("第 8 版").fetchSemanticsNode().boundsInRoot
-        menuAt = with(density) { DpOffset(row.right.toDp() - RvMenuSize.minWidth, row.bottom.toDp() + RvMenuSize.anchorGap) }
+        val window = onRoot().fetchSemanticsNode().boundsInRoot
+        menuAt = with(density) {
+            val x = (row.left + row.width / 3).toDp()
+            DpOffset(x.coerceIn(RvMenuSize.margin, window.right.toDp() - RvMenuSize.margin - RvMenuSize.minWidth), row.center.y.toDp())
+        }
         waitForIdle()
     }
 
-    /** The named list under the rename sheet for revision 8, which has no name yet, as the sheet's window draws it. */
+    @Composable
+    private fun Revision(rev: Int) = RvConfigRevisionPage(revision(rev), listOf(RvConfigHistoryData.restoreDiff), onBack = {})
+
+    private fun revision(rev: Int) = RvConfigHistoryData.named.first { it.rev == rev }
+
+    /** Revision 8's page under the rename sheet its 名稱 row opens (no name yet), as the sheet's window draws it. */
     @Composable
     private fun Rename() {
         Box(Modifier.fillMaxSize()) {
-            Named()
+            Revision(UNNAMED)
             val title = stringResource(R.string.rv_sub_rename)
             RvSheetLayout({ 1f }, {}, title) {
                 RvConfirmContent(title, null, stringResource(R.string.rv_save), stringResource(R.string.rv_cancel), onConfirm = {}, onDismiss = {}) {
@@ -235,6 +292,9 @@ class RvConfigHistoryShotTest {
         const val WHOLE_HISTORY = "+h1019dp"
         const val WHOLE_NAMED = "+h1045dp"
         const val RENAME = "重新命名"
+        const val NAME = "名稱"
+        const val UNNAMED = 8
+        const val HOME = 7
         const val SAVE = "儲存"
     }
 }

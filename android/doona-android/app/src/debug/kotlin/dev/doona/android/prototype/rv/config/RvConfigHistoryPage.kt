@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
@@ -20,22 +19,19 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
-import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLargeTitle
-import dev.doona.android.prototype.rv.RvMenuAnchor
+import dev.doona.android.prototype.rv.RvLongPressMenu
 import dev.doona.android.prototype.rv.RvMenuItem
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
 import dev.doona.android.prototype.rv.rvKeepRuns
 import dev.doona.android.prototype.rv.rvKeepTail
-import dev.doona.android.prototype.rv.rvRowPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.settings.RvNavEnd
 import dev.doona.android.prototype.rv.settings.RvSettingsNavRow
@@ -46,9 +42,10 @@ import dev.doona.android.prototype.rv.settings.RvSettingsRow
  * with when and how it was applied, the head marked 使用中; a row opens that revision's diff against the head, from
  * which a restore makes a new revision. A revision the user named shows its name, wrapping as long as it is, over its
  * time, origin and number (the number last: a line ending in a two-letter origin would hold 第 N 版 to it, and the
- * whole would not fit the column at a large font size); one without shows its number over its time. A long press
- * offers 重新命名, which opens [rename]'s sheet ([onRename] opens, types into and closes it); 儲存 gives [onSaveName]
- * the name trimmed, or null for an empty field, which takes the name away. 匯出設定檔 follows in its own card
+ * whole would not fit the column at a large font size); one without shows its number over its time. A tap opens the
+ * revision's page ([RvConfigRevisionPage], where its 名稱 row renames it); a long press offers 重新命名 at the finger as
+ * a shortcut, which opens [RvRevisionRenameSheet] on [rename] ([onRename] opens, types into and closes it; [onSaveName]
+ * gets the name trimmed, or null to take it away). 匯出設定檔 follows in its own card
  * (`configExport`, behind the picker and a confirmation, since the files can carry credentials).
  */
 @Composable
@@ -73,27 +70,7 @@ internal fun RvConfigHistoryPage(
         Spacer(Modifier.height(RvSpace.gutter))
         Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
-    RvConfirmSheet(
-        visible = rename != null,
-        title = stringResource(R.string.rv_sub_rename),
-        body = null,
-        confirm = stringResource(R.string.rv_save),
-        dismiss = stringResource(R.string.rv_cancel),
-        onConfirm = {
-            rename?.let { onSaveName(it.rev, it.name.trim().ifEmpty { null }) }
-            onRename(null)
-        },
-        onDismiss = { onRename(null) },
-    ) { rename?.let { RvRevisionNameField(it) { name -> onRename(it.copy(name = name)) } } }
-}
-
-/**
- * The rename sheet's field: the sheet's title names it, so it has no label of its own; empty, it shows the revision's
- * number, which is what the row says while the revision has no name (the placeholder is that value, not a hint).
- */
-@Composable
-internal fun RvRevisionNameField(rename: RvRevisionRename, onName: (String) -> Unit) {
-    RvTextField(rename.name, onName, label = null, name = stringResource(R.string.rv_sub_rename), placeholder = stringResource(R.string.rv_config_revision, rename.rev))
+    RvRevisionRenameSheet(rename, onRename, onSaveName)
 }
 
 /** The menu a revision's row opens on a long press: 重新命名. */
@@ -107,10 +84,10 @@ private fun RevisionRow(revision: RvRevision, head: Boolean, onRevision: (Int) -
     val inUse: (@Composable () -> Unit)? = if (head) ({ RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_template_in_use), Rv.colors.positive) }) else null
     val time = rvConfigWhen(revision.appliedAtEpochMs)
     val name = revision.name
-    RvMenuAnchor(rvRevisionMenu(onRename)) { open, actions ->
+    RvLongPressMenu(rvRevisionMenu(onRename), { onRevision(revision.rev) }) { press ->
         RvSettingsRow(
             name ?: number,
-            actions.rvRowPress(Role.Button, { onRevision(revision.rev) }, open),
+            press,
             subtitle = rvConfigLine(if (name == null) listOf(time, origin) else listOf(time, origin, number)),
             titleLines = if (name == null) RV_ROW_TITLE_LINES else Int.MAX_VALUE,
         ) { RvNavEnd(inUse) }
