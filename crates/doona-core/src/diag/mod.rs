@@ -9,6 +9,7 @@
 //! ring's lock is never taken on the data path.
 
 pub(crate) mod crash;
+mod crash_dir;
 pub mod report;
 mod stack;
 

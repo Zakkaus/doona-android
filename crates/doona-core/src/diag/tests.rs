@@ -426,7 +426,10 @@ fn concurrent_publishes_keep_five_files() {
                 });
             }
         });
-        let n = fs::read_dir(dir.path().join(crash::DIR)).unwrap().count();
+        let n = fs::read_dir(dir.path().join(crash::DIR)).unwrap();
+        let n = n
+            .filter(|e| e.as_ref().unwrap().file_name() != ".lock")
+            .count();
         assert!(n <= MAX_FILES, "round {round}: {n} files");
     }
 }
@@ -449,6 +452,7 @@ fn a_failed_write_leaves_no_file_and_is_tried_again() {
     let mut present: Vec<String> = fs::read_dir(&at)
         .unwrap()
         .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .filter(|n| n != ".lock")
         .collect();
     present.sort();
     assert_eq!(present, old, "nothing evicted, no part left");

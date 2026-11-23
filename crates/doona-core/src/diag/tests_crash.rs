@@ -5,7 +5,6 @@ use super::crash;
 use super::tests::{crashes, panic_on, read};
 use crate::testutil::TempDir;
 use std::fs;
-use std::io::ErrorKind;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::Ordering::Relaxed;
@@ -30,9 +29,9 @@ fn past_the_largest_number_nothing_is_written() {
     fs::write(at.join(&max), "x").unwrap();
     let crashes = diag.crashes().unwrap();
     assert!(crashes.save("source: core\n").is_err());
-    assert_eq!(entries(&dir), std::slice::from_ref(&max));
+    assert_eq!(left(&dir), std::slice::from_ref(&max));
     panic_on(&diag, || panic!("debugFault"));
-    assert_eq!(entries(&dir), [max]);
+    assert_eq!(left(&dir), [max]);
     let last = *diag.events(None).0.last().unwrap();
     assert_eq!((last.name, last.detail), ("panic", Some("invalid_data")));
 }
@@ -41,18 +40,18 @@ fn past_the_largest_number_nothing_is_written() {
 /// the core starts again: a clear sent twice cannot remove a newer file.
 #[test]
 fn a_cleared_name_is_never_taken_again() {
-    use std::sync::atomic::Ordering::Relaxed;
+    const T: u64 = 1_795_300_000_000;
     let (dir, diag) = crashes("diag-crash-replay");
     let crashes = diag.crashes().unwrap();
-    crashes.clock.store(100, Relaxed);
+    crashes.clock.store(T, Relaxed);
     let first = crashes.save("source: core\n").unwrap();
-    assert_eq!(first, "100.txt");
+    assert_eq!(first, format!("{T}.txt"));
     let exported = [first.clone()];
     let mark = crashes.mark();
-    assert_eq!(mark, 100);
+    assert_eq!(mark, T);
     assert_eq!(crashes.remove(&exported, mark).unwrap(), Some(1));
     let second = crashes.save("source: core\n").unwrap();
-    assert_eq!(second, "101.txt");
+    assert_eq!(second, format!("{}.txt", T + 1));
     assert_eq!(
         crashes.remove(&exported, mark).unwrap(),
         Some(0),
@@ -71,15 +70,15 @@ fn a_cleared_name_is_never_taken_again() {
         Some(1)
     );
     assert_eq!(
-        crashes.remove(&[], 102).unwrap(),
+        crashes.remove(&[], T + 2).unwrap(),
         None,
         "above the core's own"
     );
     let again = crash::Crashes::new(dir.path().join(crash::DIR));
-    again.clock.store(100, Relaxed);
+    again.clock.store(T, Relaxed);
     assert_eq!(
         again.save("source: core\n").unwrap(),
-        "102.txt",
+        format!("{}.txt", T + 2),
         "after a restart"
     );
 }
@@ -128,38 +127,33 @@ fn a_frame_names_only_known_objects() {
 }
 
 /// The app writes into the same directory at any time (`CrashFiles.kt`, from its crash handler),
-/// by the same rules: it claims a free name, renames its own part onto it, then removes all but
-/// the newest five. Writing at once, neither side takes a name the other holds, and five remain.
+/// by the same rules, under the same lock. Writing at once, neither side takes a name the other
+/// holds, and five remain.
 #[test]
 fn the_app_writing_at_once_takes_no_name_twice_and_five_remain() {
     const ROUNDS: usize = 200;
+    const T: u64 = 1_795_300_000_000;
     let (dir, diag) = crashes("diag-crash-race");
     let at = dir.path().join(crash::DIR);
     fs::create_dir_all(&at).unwrap();
     let crashes = diag.crashes().unwrap();
     // A clock that stands still makes both sides want the same next number.
-    crashes.clock.store(1_795_300_000_000, Relaxed);
+    crashes.clock.store(T, Relaxed);
     let app = std::thread::spawn({
         let at = at.clone();
-        move || {
-            (0..ROUNDS)
-                .filter_map(|i| app_write(&at, i))
-                .collect::<Vec<_>>()
-        }
+        move || (0..ROUNDS).map(|_| app_write(&at, T)).collect::<Vec<_>>()
     });
     let mut names: Vec<String> = (0..ROUNDS)
         .filter_map(|_| crashes.save("source: core\n").ok())
         .collect();
     names.extend(app.join().unwrap());
     let taken = names.len();
+    assert_eq!(taken, 2 * ROUNDS, "a write failed");
     names.sort();
     names.dedup();
     assert_eq!(names.len(), taken, "a name was taken twice");
-    assert!(
-        numbers(&at).len() <= crash::MAX_FILES,
-        "{:?}",
-        entries(&dir)
-    );
+    assert_eq!(numbers(&at).len(), crash::MAX_FILES, "{:?}", entries(&dir));
+    assert_eq!(left(&dir).len(), crash::MAX_FILES, "a part left");
 }
 
 /// The crash files' numbers in `dir`, lowest first.
@@ -180,27 +174,168 @@ fn numbers(dir: &Path) -> Vec<u64> {
     numbers
 }
 
-/// One write of the app's, as `CrashFiles.write` makes it.
-fn app_write(dir: &Path, round: usize) -> Option<String> {
-    let part = dir.join(format!(".app-{round}.tmp"));
-    fs::write(&part, format!("source: app {round}\n")).ok()?;
-    let mut at = numbers(dir).last().map_or(1, |n| n + 1);
-    let name = loop {
-        let name = format!("{at}.txt");
-        match fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(dir.join(&name))
-        {
-            Ok(_) => break name,
-            Err(e) if e.kind() == ErrorKind::AlreadyExists => at += 1,
-            Err(_) => return None,
+/// One write of the app's, as `CrashFiles.write` makes it: under the lock, it removes parts, takes
+/// a number above the mark, the files and the time, writes its part, makes room and renames it.
+fn app_write(dir: &Path, now: u64) -> String {
+    let _held = app_lock(dir);
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        if entry.file_name().to_str().unwrap().contains(".part-") {
+            fs::remove_file(entry.path()).unwrap();
         }
-    };
-    fs::rename(&part, dir.join(&name)).ok()?;
-    let present = numbers(dir);
-    for n in &present[..present.len().saturating_sub(crash::MAX_FILES)] {
-        let _ = fs::remove_file(dir.join(format!("{n}.txt")));
     }
-    Some(name)
+    let present = numbers(dir);
+    let mark = fs::read_to_string(dir.join(".core.mark")).map_or(0, |m| m.trim().parse().unwrap());
+    let at = (mark.max(present.last().copied().unwrap_or(0)) + 1).max(now);
+    let part = dir.join(format!("{at}.part-app"));
+    fs::write(&part, "source: app\n").unwrap();
+    for n in &present[..(present.len() + 1).saturating_sub(crash::MAX_FILES)] {
+        fs::remove_file(dir.join(format!("{n}.txt"))).unwrap();
+    }
+    let name = format!("{at}.txt");
+    fs::rename(&part, dir.join(&name)).unwrap();
+    name
+}
+
+/// The directory's lock as the app takes it (`CrashFiles.kt`): the JVM's `FileChannel.lock`, a
+/// traditional fcntl lock on the whole of `.lock`, released when the file closes.
+fn app_lock(dir: &Path) -> fs::File {
+    use std::os::fd::AsRawFd;
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(dir.join(".lock"))
+        .unwrap();
+    // SAFETY: a zeroed flock is a valid one; the fields set make it a write lock on the whole file.
+    let mut lock: libc::flock = unsafe { std::mem::zeroed() };
+    lock.l_type = libc::F_WRLCK as _;
+    lock.l_whence = libc::SEEK_SET as _;
+    // SAFETY: `lock` lives across the call, and the descriptor is open.
+    assert_eq!(
+        unsafe { libc::fcntl(file.as_raw_fd(), libc::F_SETLKW, &lock) },
+        0
+    );
+    file
+}
+
+/// The crash files present and anything else but the lock, sorted.
+fn left(dir: &TempDir) -> Vec<String> {
+    entries(dir).into_iter().filter(|n| n != ".lock").collect()
+}
+
+/// While the app holds the directory, the core writes nothing; then it takes a number above the
+/// mark it finds, as a clear may have saved one meanwhile.
+#[test]
+fn the_core_waits_for_the_apps_lock_and_reads_the_mark_then() {
+    let (dir, diag) = crashes("diag-crash-lock");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    let crashes = diag.crashes().unwrap();
+    crashes.clock.store(1_795_300_000_000, Relaxed);
+    let held = app_lock(&at);
+    std::thread::scope(|s| {
+        let core = s.spawn(|| crashes.save("source: core\n").unwrap());
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        let early = numbers(&at);
+        fs::write(at.join(".core.mark"), "1795300000500").unwrap();
+        drop(held);
+        let name = core.join().unwrap();
+        assert!(early.is_empty(), "written while the app held the lock");
+        assert_eq!(name, "1795300000501.txt");
+    });
+}
+
+/// A core that read the mark before another one cleared does not take the cleared name: the mark
+/// is read again under the lock.
+#[test]
+fn a_core_takes_no_name_another_cleared() {
+    let (dir, diag) = crashes("diag-crash-two-cores");
+    let first = diag.crashes().unwrap();
+    let second = crash::Crashes::new(dir.path().join(crash::DIR));
+    first.clock.store(1_795_300_000_000, Relaxed);
+    second.clock.store(1_795_300_000_000, Relaxed);
+    assert!(second.list().is_empty());
+    let name = first.save("source: core\n").unwrap();
+    let cleared = std::slice::from_ref(&name);
+    assert_eq!(first.remove(cleared, first.mark()).unwrap(), Some(1));
+    assert_ne!(second.save("source: core\n").unwrap(), name);
+}
+
+/// A clock set before September 2001 still gives a 13-digit name, as the app's do.
+#[test]
+fn a_name_has_thirteen_digits_however_early_the_clock() {
+    let (_dir, diag) = crashes("diag-crash-floor");
+    let crashes = diag.crashes().unwrap();
+    crashes.clock.store(946_684_800_000, Relaxed);
+    assert_eq!(crashes.save("source: core\n").unwrap(), "1000000000000.txt");
+}
+
+/// What a write the system ended left, the app's or the core's, of this version or an earlier
+/// one, is removed by the next write, however recent: the lock proves no write is running.
+#[test]
+fn a_write_removes_what_ended_writes_left_at_once() {
+    let (dir, diag) = crashes("diag-crash-sweep");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    let left_over = [
+        "1795300000100.part-app",
+        "1795300000200.part-core",
+        ".app.tmp",
+        ".core.tmp",
+        ".app-4242.tmp",
+        ".core-77.tmp",
+    ];
+    for name in left_over.into_iter().chain(["1795300000000.txt"]) {
+        fs::write(at.join(name), "x").unwrap();
+    }
+    let crashes = diag.crashes().unwrap();
+    crashes.clock.store(1_795_300_000_300, Relaxed);
+    let new = crashes.save("source: core\n").unwrap();
+    assert_eq!(left(&dir), ["1795300000000.txt".to_owned(), new]);
+}
+
+/// The oldest file goes before the new one is published, so six never exist: a publish that
+/// fails after the trim leaves four.
+#[test]
+fn the_oldest_file_goes_before_the_new_one_is_published() {
+    let (dir, diag) = crashes("diag-crash-trim-first");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    for n in 1..=5 {
+        fs::write(at.join(format!("179530000000{n}.txt")), "x").unwrap();
+    }
+    let crashes = diag.crashes().unwrap();
+    crashes.clock.store(1_795_300_000_100, Relaxed);
+    // A directory holds the new name, so the rename fails.
+    fs::create_dir(at.join("1795300000100.txt")).unwrap();
+    assert!(crashes.save("source: core\n").is_err());
+    let names: Vec<String> = crashes.list().into_iter().map(|f| f.name).collect();
+    assert_eq!(
+        names,
+        (2..=5)
+            .map(|n| format!("179530000000{n}.txt"))
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(left(&dir).len(), 5, "four files and the directory, no part");
+}
+
+/// A file that will not go stops the write: published, it would make six. The part goes too.
+#[test]
+fn a_file_that_will_not_go_stops_the_write() {
+    let (dir, diag) = crashes("diag-crash-stuck");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    let old: Vec<String> = (1..=5).map(|n| format!("179530000000{n}.txt")).collect();
+    for name in &old {
+        fs::write(at.join(name), "x").unwrap();
+    }
+    let crashes = diag.crashes().unwrap();
+    crashes.stuck.store(true, Relaxed);
+    let failed = crashes.save("source: core\n").unwrap_err();
+    assert_eq!(failed.kind(), std::io::ErrorKind::PermissionDenied);
+    assert_eq!(left(&dir), old);
+    crashes.stuck.store(false, Relaxed);
+    crashes.save("source: core\n").unwrap();
+    assert_eq!(left(&dir)[..4], old[1..]);
 }

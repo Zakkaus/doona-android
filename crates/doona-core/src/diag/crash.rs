@@ -17,8 +17,11 @@
 //! nothing of the payload; it never logs, since a panic inside a logger that holds its lock would
 //! wait on that lock forever; and it takes the stack, as offsets and before the crash files, in
 //! `stack.rs`. A name is never taken twice: a new file's number is above every number a crash
-//! file had (the mark), which a clear never lowers and saves for the next start.
+//! file had (the mark), which a clear never lowers and saves for the next start. The app writes
+//! into the same directory by the same rules, and both take the directory's lock (`crash_dir.rs`).
 
+use super::crash_dir::DirLock;
+pub(crate) use super::crash_dir::{MAX_NUMBER, MIN_NUMBER, number};
 use super::report::{self, CrashFile};
 use super::stack::Stack;
 use super::{Diag, Event, now_ms};
@@ -40,14 +43,13 @@ pub(crate) const MAX_FILES: usize = 5;
 pub(crate) const MAX_BYTES: usize = 64 * 1024;
 /// The panic locations a process writes files for; past these it writes none.
 const MAX_LOCATIONS: usize = 64;
-/// The file being written, `.core-<pid>.tmp` (one core per process, one write at a time; the app
-/// names its own); it takes its name once complete. Neither command sees it: no crash file's name.
-const PART: &str = ".core-";
-/// The mark ([`Crashes::listing`]) as a clear leaves it, for a core that starts again.
+/// A file being written is `<n>.part-core` (the app's `<n>.part-app`) and takes its name `<n>.txt`
+/// once complete. Neither command sees it: no crash file's name.
+const PART: &str = ".part-core";
+/// The mark ([`Crashes::listing`]) as a clear leaves it, for a core that starts again; written as
+/// [`MARK_PART`] first.
 const MARK: &str = ".core.mark";
-/// The largest number a crash file's name holds: a millisecond time, 13 digits, until the year
-/// 2286. Far below 2^63, so the mark fits Kotlin's `Long`.
-pub(crate) const MAX_NUMBER: u64 = 9_999_999_999_999;
+const MARK_PART: &str = ".core.tmp";
 
 /// The messages of the core's own panic sites outside the tests, which name no data and are kept
 /// as they are: the `unreachable!()` of `structured/clash.rs` and `json/sing_box.rs`, that of
@@ -164,6 +166,9 @@ pub(crate) struct Crashes {
     /// The time names are taken from, for the tests; 0 for the clock.
     #[cfg(test)]
     pub(super) clock: std::sync::atomic::AtomicU64,
+    /// A file that will not go, for the tests: trimming fails.
+    #[cfg(test)]
+    pub(super) stuck: std::sync::atomic::AtomicBool,
 }
 
 struct Files {
@@ -171,9 +176,9 @@ struct Files {
     written: HashSet<u64>,
     /// The text of the file being written, allocated with the core.
     text: String,
-    /// The highest number a crash file had here, published or listed, and read from [`MARK`] at
-    /// the first use. A new file's number is above it, and a clear never
-    /// lowers it, so a name is never taken twice and a clear sent again removes no newer file.
+    /// The highest number a crash file had here, published or listed, or in [`MARK`], read again
+    /// each time. A new file's number is above it, and a clear never lowers it, so a name is
+    /// never taken twice and a clear sent again removes no newer file.
     mark: Option<u64>,
 }
 
@@ -190,6 +195,8 @@ impl Crashes {
             full_after: std::sync::atomic::AtomicUsize::new(0),
             #[cfg(test)]
             clock: std::sync::atomic::AtomicU64::new(0),
+            #[cfg(test)]
+            stuck: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
@@ -254,51 +261,51 @@ impl Crashes {
         Some(Held(files))
     }
 
-    /// Writes `text` to [`PART`], renames it onto the name it claimed, then removes all but the
-    /// newest five; on a failure, removes the part and the claim. The number is the time, or one
-    /// past `mark` if later (two panics in a millisecond, a clock set back). Caller holds `files`.
+    /// Under the directory's lock: writes `text` to `<n>`[`PART`] until it is on disk, removes the
+    /// oldest files so that five remain with it, and renames it `<n>.txt`; on a failure, removes
+    /// the part. The number is the time, or one past `mark` if later (two panics in a
+    /// millisecond, a clock set back), and at least [`MIN_NUMBER`]. Caller holds `files`.
     fn publish(&self, text: &str, mark: &mut Option<u64>) -> io::Result<String> {
-        fs::create_dir_all(&self.dir)?;
-        let part = self.dir.join(format!("{PART}{}.tmp", std::process::id()));
-        let published = self.put(&part, text.as_bytes()).and_then(|()| {
-            let _ = self.listed(mark);
-            let (at, name) = self.free_name(mark.unwrap_or_default())?;
-            let renamed = fs::rename(&part, self.dir.join(&name));
-            renamed.inspect_err(|_| drop(fs::remove_file(self.dir.join(&name))))?;
-            Ok((at, name))
-        });
-        let (at, name) = published.inspect_err(|_| {
-            let _ = fs::remove_file(&part);
-        })?;
-        *mark = Some(at);
-        let present = self.files(); // After the rename: the app may have published one meanwhile.
-        for (_, gone, _) in present.iter().take(present.len().saturating_sub(MAX_FILES)) {
-            let _ = fs::remove_file(self.dir.join(gone));
+        let _lock = DirLock::take(&self.dir)?;
+        let present = self.listed(mark);
+        let at = mark.unwrap_or_default().saturating_add(1);
+        let at = at.max(self.now()).max(MIN_NUMBER);
+        if at > MAX_NUMBER {
+            return Err(ErrorKind::InvalidData.into());
         }
+        let (part, name) = (self.dir.join(format!("{at}{PART}")), format!("{at}.txt"));
+        let published = self.put(&part, text.as_bytes()).and_then(|()| {
+            self.trim(&present)?;
+            fs::rename(&part, self.dir.join(&name))
+        });
+        published.inspect_err(|_| drop(fs::remove_file(&part)))?;
+        *mark = Some(at);
         Ok(name)
     }
 
-    /// The first number past `mark`, and not before the time, whose name nothing holds, claimed by
-    /// creating it: the app takes names by the same rule, so a rename onto the claim replaces no
-    /// file of the app's, nor the app's one of ours. None past the largest number: `invalid_data`.
-    fn free_name(&self, mark: u64) -> io::Result<(u64, String)> {
-        let mut claim = fs::OpenOptions::new();
-        claim.write(true).create_new(true);
-        for at in mark.saturating_add(1).max(self.now())..=MAX_NUMBER {
-            let name = format!("{at}.txt");
-            match claim.open(self.dir.join(&name)) {
-                Err(e) if e.kind() == ErrorKind::AlreadyExists => {}
-                claimed => return claimed.map(|_| (at, name)),
+    /// Removes the oldest of `present` until one more leaves [`MAX_FILES`]. A file that will not
+    /// go stops the write: published, it would leave six.
+    fn trim(&self, present: &[(u64, String, u64)]) -> io::Result<()> {
+        let over = (present.len() + 1).saturating_sub(MAX_FILES);
+        for (_, gone, _) in &present[..over] {
+            #[cfg(test)]
+            if self.stuck.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(ErrorKind::PermissionDenied.into());
+            }
+            match fs::remove_file(self.dir.join(gone)) {
+                Err(e) if e.kind() != ErrorKind::NotFound => return Err(e),
+                _ => {}
             }
         }
-        Err(ErrorKind::InvalidData.into())
+        Ok(())
     }
 
-    /// The crash files, oldest first, with `mark` raised to the newest of them.
+    /// The crash files, oldest first, with `mark` raised to the newest of them and to the mark a
+    /// clear saved, which another core may have saved meanwhile.
     fn listed(&self, mark: &mut Option<u64>) -> Vec<(u64, String, u64)> {
         let files = self.files();
-        let kept = mark.get_or_insert_with(|| self.saved_mark());
-        *kept = (*kept).max(files.last().map_or(0, |(at, ..)| *at));
+        let newest = files.last().map_or(0, |(at, ..)| *at);
+        *mark = Some(mark.unwrap_or_default().max(self.saved_mark()).max(newest));
         files
     }
 
@@ -377,23 +384,23 @@ impl Crashes {
         self.listing().1
     }
 
-    /// Removes the files named whose numbers are `mark` or below, the mark of the listing they
-    /// were exported from; a name already gone is passed over. Saves the core's own mark first, so
-    /// a core that starts again takes no name at or below it. A `mark` above the core's, which no
-    /// listing gave, is refused (none): saved, it would leave no name to take. Answers how many
-    /// files it removed.
+    /// Under the directory's lock, removes the files named whose numbers are `mark` or below, the
+    /// mark of the listing they were exported from; a name already gone is passed over. Saves the
+    /// core's own mark first, so no core takes a name at or below it. A `mark` above the core's,
+    /// which no listing gave, is refused (none): saved, it would leave no name to take. Answers
+    /// how many files it removed.
     pub fn remove(&self, names: &[String], mark: u64) -> io::Result<Option<usize>> {
         let Some(mut files) = self.hold() else {
             return Ok(Some(0));
         };
+        let _lock = DirLock::take(&self.dir)?;
         let kept = &mut files.0.mark;
         let _ = self.listed(kept);
         let kept = kept.unwrap_or_default();
         if mark > kept {
             return Ok(None);
         }
-        fs::create_dir_all(&self.dir)?;
-        let part = self.dir.join(format!("{PART}{}.tmp", std::process::id()));
+        let part = self.dir.join(MARK_PART);
         let saved = self.put(&part, kept.to_string().as_bytes());
         saved
             .and_then(|()| fs::rename(&part, self.dir.join(MARK)))
@@ -422,15 +429,6 @@ impl Drop for Held<'_> {
     fn drop(&mut self) {
         let _ = HOLDING.try_with(|h| h.set(false));
     }
-}
-
-/// The number a crash file's name holds: `<epochMs>.txt`, at most [`MAX_NUMBER`], is the one
-/// name the core and the app give their crash files.
-pub(crate) fn number(name: &str) -> Option<u64> {
-    let digits = name.strip_suffix(".txt")?;
-    let digits =
-        (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())).then_some(digits);
-    digits?.parse().ok().filter(|&at| at <= MAX_NUMBER)
 }
 
 /// Text that fits in the string's room up to [`MAX_BYTES`]; the rest is dropped.
