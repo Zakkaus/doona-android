@@ -110,18 +110,18 @@ class RvRulesShotTest {
 
     private companion object {
         /** Windows as tall as each whole page, so one capture holds it to its end. */
-        const val WHOLE_RULES = "+h1679dp"
-        const val WHOLE_EDIT = "+h1415dp"
-        const val WHOLE_PENDING = "+h1969dp"
-        const val WHOLE_IMPACT = "+h1447dp"
-        const val WHOLE_EDIT_RULE = "+h1093dp"
-        const val WHOLE_ERROR_RULE = "+h1121dp"
+        const val WHOLE_RULES = "+h1687dp"
+        const val WHOLE_EDIT = "+h1423dp"
+        const val WHOLE_PENDING = "+h1977dp"
+        const val WHOLE_IMPACT = "+h1455dp"
+        const val WHOLE_EDIT_RULE = "+h1101dp"
+        const val WHOLE_ERROR_RULE = "+h1129dp"
 
         /** github.com, the second of the user's rules. */
         const val GITHUB = 5
 
         /** Telegram's range with a prefix past /32: the field says how to write it, and 套用 is off. */
         val BAD_RANGE = RvRuleDraft(RvMatchKind.Cidr, "91.108.56.0/33", "main")
-        const val WHOLE_EFFECTIVE = "+h2098dp"
+        const val WHOLE_EFFECTIVE = "+h2106dp"
     }
 }

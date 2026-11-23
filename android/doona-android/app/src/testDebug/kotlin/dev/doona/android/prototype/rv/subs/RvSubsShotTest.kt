@@ -197,7 +197,7 @@ class RvSubsShotTest {
 
     private companion object {
         /** A subscription's page is taller than the phone; every other page fits its 915 dp. */
-        const val WHOLE_DETAIL = "+h1079dp"
+        const val WHOLE_DETAIL = "+h1087dp"
         val HARBOR = RvData.subscriptions.first()
 
         /** Where a finger held Harbor Cloud's card: a third of the way in, on its row. */

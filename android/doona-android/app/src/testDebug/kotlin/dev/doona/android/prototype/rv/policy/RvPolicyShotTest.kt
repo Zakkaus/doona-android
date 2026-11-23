@@ -138,10 +138,10 @@ class RvPolicyShotTest {
 
     private companion object {
         /** Windows as tall as each whole page, so one capture holds it to its end (the tab's last card 28 dp above the nav). */
-        const val WHOLE_RULE = "+h1929dp"
+        const val WHOLE_RULE = "+h1937dp"
         const val WHOLE_SELECT = "+h1136dp"
         const val WHOLE_AUTO = "+h1120dp"
-        const val WHOLE_FLOW = "+h1251dp"
+        const val WHOLE_FLOW = "+h1259dp"
 
         /** 全域 scrolled this far shows the second subscription's card under the bar. */
         const val GLOBAL_SCROLL = 1048f

@@ -66,11 +66,12 @@ internal object RvSpace {
     val captionGap = 4.dp
 
     /**
-     * From the title or its caption to the first card or section title, which then adds nothing above itself: the gap
-     * between cards (spacing audit row 2; Revolut's 設定 puts its first card 79 dp under the bar's controls, 07-settings-a
-     * (41,494): the title 24 dp under them, its 38 dp line, then 16).
+     * From the title or its caption to the first card or section title, which then adds nothing above itself: Revolut's
+     * pushed pages put their first card 76.1 dp under the back disc (revolut-ux3 `st0.xml`: the disc ends at 117.6 dp, the
+     * first row starts at 193.7), so the card starts 126.5 dp under the status bar here, where Revolut's starts 126.2. With
+     * the title's 14 dp ([RvChrome.largeTitleTop]) and its 38 dp line box, that leaves 24.
      */
-    val headerGap = 16.dp
+    val headerGap = 24.dp
 
     /**
      * Round a control row on the page (a page's filter chips, a status chip): from the title block to it, and from it to
@@ -387,8 +388,9 @@ internal object RvChrome {
 
     /**
      * A page's large title, or the mark above it, this far under the bar's controls ([RvPageHeader] then sets what
-     * follows), the same on every page: the title's ink starts 68.5 dp under the status bar and the first card 118 dp,
-     * where Revolut's pushed pages put them at 67.8 and 118.4 (revolut-ux3 §5). With the controls' 6 + 44 dp, that is 14.
+     * follows), the same on every page: the title's ink starts 69 dp under the status bar, where Revolut's pushed pages
+     * put it at 68.2 (revolut-ux3 §5). With the controls' 6 + 44 dp, that is 14. The first card follows at
+     * [RvSpace.headerGap].
      */
     val largeTitleTop = 14.dp
 

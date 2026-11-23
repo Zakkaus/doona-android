@@ -227,7 +227,7 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
 
     fun run(top: Top): List<String> {
         top(top)
-        column()
+        column(top)
         rows()
         segmented()
         return drift
@@ -243,9 +243,13 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
         }
     }
 
-    /** The page's column: each block on the gutter, and the gap to the block under it by what the two are. */
-    private fun column() {
+    /**
+     * The page's column: each block on the gutter, and the gap to the block under it by what the two are. A centred
+     * header (a detail page's, measured as a block) is a header: what follows it keeps the header's gap.
+     */
+    private fun column(top: Top) {
         val blocks = blocks()
+        val header = blocks.firstOrNull()?.takeIf { top == Top.Header }
         val end = width - GUTTER.value
         for ((kind, rect) in blocks) {
             when {
@@ -264,7 +268,7 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
             }
         }
         for ((upper, lower) in pairs(blocks)) {
-            val gap = GAPS[upper.first.asCard() to lower.first.asCard()] ?: continue
+            val gap = (if (upper == header) RvSpace.headerGap else GAPS[upper.first.asCard() to lower.first.asCard()]) ?: continue
             expect("gap ${upper.first} to ${lower.first} at ${lower.second.top} dp", lower.second.top - upper.second.bottom, gap)
         }
     }
