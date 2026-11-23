@@ -132,8 +132,8 @@ class RvConfigSourceShotTest {
     private fun Diff(diff: RvConfigDiff) = RvConfigDiffPage(diff, onBack = {})
 
     private companion object {
-        const val WHOLE_SOURCE = "+h1121dp"
-        const val WHOLE_ERROR = "+h1148dp"
+        const val WHOLE_SOURCE = "+h1122dp"
+        const val WHOLE_ERROR = "+h1149dp"
         const val WHOLE_DIFF = "+h915dp"
         const val WHOLE_STALE = "+h1030dp"
         const val REVIEW = "檢視變更"

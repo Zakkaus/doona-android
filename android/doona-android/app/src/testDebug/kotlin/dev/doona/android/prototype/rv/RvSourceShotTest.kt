@@ -84,6 +84,15 @@ class RvSourceShotTest {
     }
 
     @Test
+    fun aLinesIndentCountsItsLeadingBlanks() {
+        assertEquals(0, rvBlankColumns("routing {"))
+        assertEquals(2, rvBlankColumns("  domain(geosite:cn) -> direct"))
+        assertEquals(7, rvBlankColumns(" \t  x"))
+        assertEquals(3, rvBlankColumns("   \n"))
+        assertEquals(0, rvBlankColumns(""))
+    }
+
+    @Test
     fun tappingAMarksMessagePutsTheCursorOnItsSpan() {
         val start = rvByteOf(RV_GALLERY_SOURCE, WORD)
         var value by mutableStateOf(TextFieldValue(RV_GALLERY_SOURCE))

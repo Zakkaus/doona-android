@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -43,7 +44,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import dev.doona.android.R
 
 /**
@@ -78,6 +81,7 @@ internal fun RvSourceField(
     val style = rvSourceStyle()
     val numbers = rvLineNumberStyle()
     val measurer = rememberTextMeasurer()
+    val space = rvSpaceWidth(style, measurer)
     val gutter = rvLineNumberWidth(measurer, lines.size, numbers)
     val tint = SpanStyle(color = colors.error, background = colors.error.copy(alpha = RvAlpha.STATUS_CHIP), textDecoration = TextDecoration.Underline)
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
@@ -101,7 +105,7 @@ internal fun RvSourceField(
                         drawLineNumbers(measurer, shown, lines, marked, ink, gutter.toPx())
                     },
                 textStyle = style.copy(color = colors.text),
-                visualTransformation = SourceMarks(ranges, tint),
+                visualTransformation = SourceMarks(ranges, tint, space),
                 onTextLayout = { layout = it },
                 cursorBrush = SolidColor(colors.positive),
                 decorationBox = { field ->
@@ -171,16 +175,69 @@ internal fun rvLineNumberWidth(measurer: TextMeasurer, count: Int, style: TextSt
     return with(LocalDensity.current) { px.toDp() }
 }
 
-/** The source as the field draws it: CJK runs in Noto, as [RvText] sets them, and each marked span tinted. */
-private data class SourceMarks(val ranges: List<TextRange>, val tint: SpanStyle) : VisualTransformation {
+/**
+ * The source as the field draws it: CJK runs in Noto, as [RvText] sets them, each marked span tinted, and each line a
+ * paragraph of its own that hangs by its indent ([rvHang]; [space] is one blank's width). A paragraph that ends in a
+ * line feed shows an empty line after it, so the feed is drawn as a word joiner, which has no width and keeps every
+ * offset where it was; a text that ends in a feed gets one more joiner for its last, empty line.
+ */
+private data class SourceMarks(val ranges: List<TextRange>, val tint: SpanStyle, val space: TextUnit) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
+        val source = text.text
+        val closed = source.endsWith('\n')
         val shown = buildAnnotatedString {
-            append(scripted(text.text))
+            append(scripted(source.replace('\n', LINE_END) + if (closed) LINE_END.toString() else ""))
             ranges.forEach { addStyle(tint, it.start.coerceAtMost(text.length), it.end.coerceAtMost(text.length)) }
+            var from = 0
+            while (from < length) {
+                val end = source.indexOf('\n', from).let { if (it < 0 || it + 1 >= length) length else it + 1 }
+                addStyle(ParagraphStyle(textIndent = rvHang(rvBlankColumns(source.substring(from, end.coerceAtMost(source.length))), space)), from, end)
+                from = end
+            }
         }
-        return TransformedText(shown, OffsetMapping.Identity)
+        return TransformedText(shown, if (closed) ClosedText(source.length) else OffsetMapping.Identity)
     }
 }
+
+/** The offsets of a text whose displayed form has one joiner more than its [length]. */
+private class ClosedText(private val length: Int) : OffsetMapping {
+    override fun originalToTransformed(offset: Int) = offset
+
+    override fun transformedToOriginal(offset: Int) = offset.coerceAtMost(length)
+}
+
+private const val LINE_END = '\u2060'
+
+/** The width of one blank in [style]: what a column of a line's indent is. */
+@Composable
+internal fun rvSpaceWidth(style: TextStyle, measurer: TextMeasurer): TextUnit {
+    val density = LocalDensity.current
+    return remember(style, measurer, density) {
+        val px = measurer.measure("a a", style).size.width - measurer.measure("aa", style).size.width
+        with(density) { px.toSp() }
+    }
+}
+
+/** How many columns of blanks [line] begins with: a space is one, a tab four. */
+internal fun rvBlankColumns(line: CharSequence): Int {
+    var columns = 0
+    for (c in line) {
+        columns += when (c) {
+            ' ' -> 1
+            '\t' -> TAB_COLUMNS
+            else -> return columns
+        }
+    }
+    return columns
+}
+
+/**
+ * The indent a wrapped line's continuation takes: the line's own [columns] of leading blanks, so it hangs under its
+ * first character of text and not under the margin, where it reads as the next line of the file.
+ */
+internal fun rvHang(columns: Int, space: TextUnit): TextIndent = if (columns == 0) TextIndent.None else TextIndent(restLine = space * columns)
+
+private const val TAB_COLUMNS = 4
 
 /** The selection in [text] of [mark]'s byte span: where the field puts the cursor to open at it. */
 internal fun rvSourceSelection(text: String, mark: RvSourceMark): TextRange = TextRange(rvUtf16Index(text, mark.start), rvUtf16Index(text, mark.end))
