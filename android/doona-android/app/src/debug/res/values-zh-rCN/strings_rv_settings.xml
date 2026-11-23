@@ -53,4 +53,11 @@
     <string name="rv_log_warn">警告</string>
     <string name="rv_log_info">一般</string>
     <string name="rv_log_debug">调试</string>
+    <string name="rv_licenses_title">开源许可证</string>
+    <string name="rv_perapp_loading">正在加载应用…</string>
+    <string name="rv_perapp_needs_app">至少要勾选一个应用</string>
+    <string name="rv_perapp_rebuild_failed">已保存，但 VPN 无法重新连接</string>
+    <string name="rv_perapp_save_failed">无法保存</string>
+    <string name="rv_perapp_saving">正在保存…</string>
+    <string name="rv_settings_per_app_except">不代理 %1$d 个应用</string>
 </resources>
