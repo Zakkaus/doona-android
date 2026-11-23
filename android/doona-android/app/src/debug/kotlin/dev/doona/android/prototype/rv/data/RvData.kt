@@ -124,8 +124,7 @@ internal object RvData {
     /** The auto group the global outbound uses, by the name the subscription's template gives it. */
     const val AUTO_GROUP = "自動"
 
-    /** Settings: the apps that use the proxy, and how often subscriptions refresh (the last refresh was at 06:00). */
-    const val PROXIED_APPS = 12
+    /** Settings: how often subscriptions refresh (the last refresh was at 06:00); 依 App's apps are RvPerAppData's. */
     const val UPDATE_HOURS = 12
 
     const val CURRENT_ID = "hk-02"

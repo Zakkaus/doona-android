@@ -71,7 +71,7 @@ internal fun RvSettingsScreen(
     ) { titleBlock ->
         Hero(titleBlock, insets, routes.report)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            ConnectionGroup(state, onChange, routes.alwaysOn)
+            ConnectionGroup(state, onChange, routes.alwaysOn, routes.perApp)
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme)
             AdvancedGroup(state, routes)
@@ -113,10 +113,11 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
 
 /**
  * Where 設定's rows lead beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that
- * switch, D14), the DNS picker, the effective config, and 回報問題 from 進階's row and the hero's 匯出診斷.
+ * switch, D14), 依 App, the DNS picker, the effective config, and 回報問題 from 進階's row and the hero's 匯出診斷.
  */
 internal class RvSettingsRoutes(
     val alwaysOn: () -> Unit = NOT_WIRED,
+    val perApp: () -> Unit = NOT_WIRED,
     val dns: () -> Unit = NOT_WIRED,
     val effectiveConfig: () -> Unit = NOT_WIRED,
     val report: () -> Unit = NOT_WIRED,
@@ -124,10 +125,11 @@ internal class RvSettingsRoutes(
 
 /**
  * 連線: always-on as a row that opens the system's VPN settings, since Android, not the app, turns it on; the drop
- * notice; and the apps that use the tunnel. The LAN always stays outside the tunnel (D25), so there is no switch for it.
+ * notice; and the apps that use the tunnel, which opens 依 App. The LAN always stays outside the tunnel (D25), so there is
+ * no switch for it.
  */
 @Composable
-private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, onAlwaysOn: () -> Unit) {
+private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, onAlwaysOn: () -> Unit, onPerApp: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_connection))
     RvSettingsCard {
         RvSettingsNavRow(
@@ -137,12 +139,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
             subtitle = stringResource(R.string.rv_settings_always_on_sub),
         )
         RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
-        RvSettingsNavRow(
-            stringResource(R.string.rv_settings_per_app),
-            R.drawable.rv_sym_apps,
-            NOT_WIRED,
-            stringResource(R.string.rv_settings_per_app_value, state.proxiedApps),
-        )
+        RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, onPerApp, perAppValue(state.perApp))
     }
     RvSettingsFooter(stringResource(R.string.rv_settings_connection_footer))
 }
@@ -191,6 +188,14 @@ private fun AboutGroup() {
         RvSettingsValueRow(stringResource(R.string.rv_settings_version), R.drawable.rv_settings_ic_info, stringResource(R.string.rv_settings_version_value))
         RvSettingsNavRow(stringResource(R.string.rv_settings_licenses), R.drawable.rv_sym_license, NOT_WIRED)
     }
+}
+
+/** 依 App's policy as its row's second line: every app, or how many apps it takes or keeps out. */
+@Composable
+private fun perAppValue(perApp: RvPerApp): String = when (perApp.policy) {
+    RvAppPolicy.All -> stringResource(R.string.perapp_policy_all)
+    RvAppPolicy.Only -> stringResource(R.string.rv_settings_per_app_value, perApp.packages.size)
+    RvAppPolicy.Except -> stringResource(R.string.rv_settings_per_app_except, perApp.packages.size)
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

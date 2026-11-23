@@ -178,16 +178,22 @@ private fun Modifier.barPill(pull: RvPullLook): Modifier {
 }
 
 /**
- * The search pill as a field (the node picker's bar): the same glass, glyph and type, with [query] typed in it and the
- * pill's 搜尋節點 as the placeholder; CJK runs set in Noto as everywhere else. [focus], when given, can put the cursor
- * (and the keyboard) in it.
+ * The search pill as a field (the node picker's bar, a list page's bar): the same glass, glyph and type, with [query]
+ * typed in it and [hint], the pill's 搜尋節點 unless the list is another, as the placeholder; CJK runs set in Noto as
+ * everywhere else. [focus], when given, can put the cursor (and the keyboard) in it.
  */
 @Composable
-internal fun RvSearchField(glass: RvGlass, query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier, focus: FocusRequester? = null) {
+internal fun RvSearchField(
+    glass: RvGlass,
+    query: String,
+    onQuery: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    focus: FocusRequester? = null,
+    hint: String = stringResource(R.string.rv_search_nodes),
+) {
     // Its composition, the text field's first one included, is a section of its own in a Perfetto trace.
     Trace.beginSection(TRACE_FIELD)
     val colors = Rv.colors
-    val hint = stringResource(R.string.rv_search_nodes)
     Row(
         modifier
             .minimumInteractiveComponentSize()

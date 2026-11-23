@@ -60,4 +60,10 @@
     <string name="rv_log_warn">Warning</string>
     <string name="rv_log_info">Normal</string>
     <string name="rv_log_debug">Debug</string>
+    <string name="rv_settings_per_app_except">All but %1$d apps</string>
+    <string name="rv_perapp_needs_app">Check at least one app</string>
+    <string name="rv_perapp_loading">Loading apps…</string>
+    <string name="rv_perapp_saving">Saving…</string>
+    <string name="rv_perapp_save_failed">Could not save</string>
+    <string name="rv_perapp_rebuild_failed">Saved, but the VPN could not reconnect</string>
 </resources>

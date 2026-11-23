@@ -44,12 +44,16 @@ import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
 import dev.doona.android.prototype.rv.settings.RvExport
 import dev.doona.android.prototype.rv.settings.RvLogLevel
+import dev.doona.android.prototype.rv.settings.RvPerAppActions
+import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvReportScreen
+import dev.doona.android.prototype.rv.settings.RvSave
 import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.previewDark
+import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.states.RvActivityNotice
@@ -199,6 +203,8 @@ private fun RvSamplePage(
 
         DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop)
 
+        PERAPP -> PerAppPage(route, settings, onSettings, pages)
+
         in RvPolicyPreviewRoutes.all -> RvPolicyPreview(route, policy, settings, pages.push, pages.pop, pages.tab)
 
         else -> OtherPage(route, run, options, pages, picking)
@@ -234,11 +240,35 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
     val context = LocalContext.current
     val routes = RvSettingsRoutes(
         alwaysOn = { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
+        perApp = { pages.push(PERAPP) },
         dns = { pages.push(DNS) },
         effectiveConfig = { pages.push(RvPolicyPreviewRoutes.EFFECTIVE) },
         report = { pages.push(REPORT) },
     )
     RvSettingsScreen(settings, onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes)
+}
+
+/**
+ * 依 App from 設定's saved setting; `perapp:<state>` opens it in one of its goldens' states (`all`, `except`, `search`,
+ * `loading`, `saving`, …). A save rebuilds for [RV_SAVE_MS], then 設定 takes the setting.
+ */
+@Composable
+private fun PerAppPage(route: String, settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit, pages: RvSamplePages) {
+    var state by remember { mutableStateOf(rvPerAppSample(route.substringAfter(':', ""), settings.perApp)) }
+    LaunchedEffect(state.save) {
+        if (state.save != RvSave.Saving) return@LaunchedEffect
+        delay(RV_SAVE_MS)
+        onSettings(settings.copy(perApp = state.edited))
+        state = state.copy(saved = state.edited, draft = null, save = RvSave.Idle)
+    }
+    val actions = RvPerAppActions(
+        policy = { state = state.withPolicy(it) },
+        toggle = { pkg, on -> state = state.withApp(pkg, on) },
+        query = { state = state.copy(query = it) },
+        save = { state = state.copy(save = RvSave.Saving, rebuildFailed = false) },
+        reconnect = { state = state.copy(rebuildFailed = false) },
+    )
+    RvPerAppScreen(state, actions, onBack = pages.pop)
 }
 
 /**
@@ -476,6 +506,7 @@ internal const val RV_CONNECT_MS = 1_200L
 internal const val RV_STOP_MS = 400L
 internal const val RV_TEST_MS = 1_200L
 private const val RV_EXPORT_MS = 1_500L
+private const val RV_SAVE_MS = 1_200L
 private const val TEST_DELAY_MS = 1_000L
 private const val SWING = 12
 private const val SWING_STEP = 7
@@ -490,6 +521,7 @@ internal const val SETTINGS = "settings"
 internal const val THEME = "theme"
 internal const val DNS = "dns"
 internal const val REPORT = "report"
+internal const val PERAPP = "perapp"
 internal const val CONNECTIONS = "connections"
 internal const val CONNECTION = "connection"
 internal const val GALLERY = "gallery"

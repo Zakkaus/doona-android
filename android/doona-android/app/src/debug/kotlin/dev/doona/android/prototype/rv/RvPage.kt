@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
@@ -50,7 +51,9 @@ import kotlin.math.roundToInt
  * [RvBarSpacer]. [actions] puts round glass buttons ([RvGlassButton]) at the bar's end, on its row and in 48 dp
  * targets, as 活動's top bar has them. [bottomAction] floats a page's one action (an [RvPrimaryButton]) on the gutter,
  * 16 dp above the inset, with no scrim; the page keeps its room under the content, so the last card scrolls clear of
- * it. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's floating actions).
+ * it. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's floating actions). [field] puts a list
+ * page's search field ([RvSearchField]) on the bar beside the back disc, in the title's place, as the node picker's bar
+ * holds it; it draws in the bar's glass with the modifier that sizes it to the row.
  */
 @Composable
 internal fun RvScrollPage(
@@ -63,6 +66,7 @@ internal fun RvScrollPage(
     actions: (@Composable (RvGlass) -> Unit)? = null,
     bottomAction: (@Composable () -> Unit)? = null,
     overlay: @Composable BoxScope.(RvGlass) -> Unit = {},
+    field: (@Composable (RvGlass, Modifier) -> Unit)? = null,
     content: @Composable ColumnScope.(titleBlock: Modifier) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -80,19 +84,7 @@ internal fun RvScrollPage(
             if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() }))
         }
         RvBar(glass, insets, rvShade(scroll), Modifier.align(Alignment.TopStart)) {
-            // A large title is the heading for a screen reader, and the bar's only repeats it.
-            val semantics = if (compact) Modifier.semantics { heading() } else Modifier.clearAndSetSemantics {}
-            RvText(
-                title,
-                Rv.type.barTitle,
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = if (onBack == null) RvChrome.titleStart - RvSpace.gutter else RvChrome.titleStart, end = RvChrome.titleStart - RvSpace.gutter)
-                    .graphicsLayer { alpha = collapse() }
-                    .then(semantics),
-                align = if (onBack == null) TextAlign.Center else TextAlign.Start,
-            )
-            onBack?.let { RvBackDisc(it) }
+            if (field != null) FieldBar(glass, onBack, field) else TitleBar(title, onBack, compact, collapse)
         }
         actions?.let {
             // Each disc keeps its 48 dp target, so the gap between targets is the gap between discs less the overhangs.
@@ -112,6 +104,38 @@ internal fun RvScrollPage(
             }
         }
         overlay(glass)
+    }
+}
+
+/** The bar's title, faded in by [collapse], beside the back disc or centred without one. */
+@Composable
+private fun TitleBar(title: String, onBack: (() -> Unit)?, compact: Boolean, collapse: () -> Float) {
+    // A large title is the heading for a screen reader, and the bar's only repeats it.
+    val semantics = if (compact) Modifier.semantics { heading() } else Modifier.clearAndSetSemantics {}
+    RvText(
+        title,
+        Rv.type.barTitle,
+        Modifier
+            .fillMaxWidth()
+            .padding(start = if (onBack == null) RvChrome.titleStart - RvSpace.gutter else RvChrome.titleStart, end = RvChrome.titleStart - RvSpace.gutter)
+            .graphicsLayer { alpha = collapse() }
+            .then(semantics),
+        align = if (onBack == null) TextAlign.Center else TextAlign.Start,
+    )
+    onBack?.let { RvBackDisc(it) }
+}
+
+/** The bar of a page with a search [field]: the back disc, then the field to the bar's end, as the node picker's bar. */
+@Composable
+private fun FieldBar(glass: RvGlass, onBack: (() -> Unit)?, field: @Composable (RvGlass, Modifier) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if (onBack != null) {
+            RvBackDisc(onBack)
+            Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
+        } else {
+            Spacer(Modifier.width(RvSpace.gutter - RvChrome.touchPad))
+        }
+        field(glass, Modifier.weight(1f).padding(end = RvSpace.gutter - RvChrome.touchPad))
     }
 }
 

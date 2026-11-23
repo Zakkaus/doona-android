@@ -27,23 +27,29 @@ internal enum class RvDnsUpstream(@StringRes val label: Int, val address: String
     AliDns(R.string.rv_settings_dns_alidns, "223.5.5.5"),
 }
 
-/** What the settings page shows. The appearance is the theme page's state, so the 主題 row reads what the page sets. */
+/**
+ * What the settings page shows. The appearance is the theme page's state, so the 主題 row reads what the page sets;
+ * [perApp] is what 依 App saved.
+ */
 @Immutable
 internal data class RvSettingsState(
     val notifyOnDrop: Boolean,
-    val proxiedApps: Int,
+    val perApp: RvPerApp,
     val autoUpdate: Boolean,
     val updateHours: Int,
     val appearance: RvAppearance,
     val dns: RvDnsUpstream,
-)
+) {
+    /** How many apps 依 App checked. */
+    val proxiedApps: Int get() = perApp.packages.size
+}
 
 internal fun rvSampleAppearance() = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0)
 
 /** The settings page as [RvData] has it. */
 internal fun rvSampleSettings() = RvSettingsState(
     notifyOnDrop = true,
-    proxiedApps = RvData.PROXIED_APPS,
+    perApp = RvPerAppData.saved,
     autoUpdate = true,
     updateHours = RvData.UPDATE_HOURS,
     appearance = rvSampleAppearance(),

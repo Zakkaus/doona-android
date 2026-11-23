@@ -30,10 +30,13 @@ import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.settings.RvExport
 import dev.doona.android.prototype.rv.settings.RvLogLevel
+import dev.doona.android.prototype.rv.settings.RvPerAppActions
+import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsSpace
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
+import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvSampleAppearance
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
@@ -122,6 +125,15 @@ class RvLayoutTest {
 
     @Test
     fun connection() = measure("connection", Top.Header) { RvConnectionDetail(RvPolicyData.connections[YOUTUBE], onBack = {}, onClose = {}, onNewRule = {}) }
+
+    @Test
+    fun perApp() = measure("perapp-only", Top.Title) { RvPerAppScreen(rvPerAppSample(""), RvPerAppActions(), onBack = {}) }
+
+    @Test
+    fun perAppNoneSelected() = measure("perapp-none-selected", Top.Title) { RvPerAppScreen(rvPerAppSample("none-selected"), RvPerAppActions(), onBack = {}) }
+
+    @Test
+    fun perAppSaveFailed() = measure("perapp-save-failed", Top.Title) { RvPerAppScreen(rvPerAppSample("save-failed"), RvPerAppActions(), onBack = {}) }
 
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {
         var barBottom = 0f
@@ -295,6 +307,8 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
             (RvPart.CARD to RvPart.CONTROL) to RvSpace.controlGap,
             (RvPart.CARD to RvPart.FOOTER) to RvSettingsSpace.footerAbove,
             (RvPart.FOOTER to RvPart.SECTION) to RvSpace.sectionAbove,
+            // A footer ends its group; a card with no section title over it starts the next as a section title would.
+            (RvPart.FOOTER to RvPart.CARD) to RvSpace.sectionAbove,
             (RvPart.SECTION to RvPart.CARD) to RvSpace.sectionBelow,
         )
     }
