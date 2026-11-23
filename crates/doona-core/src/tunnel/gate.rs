@@ -182,34 +182,43 @@ impl Gate {
     }
 
     /// The gate as the driver reads it now, without waiting (see [`Reading`]). The clock is read
-    /// only once the drain has begun.
+    /// only once the drain has begun. Past the deadline, the driver takes the gate's state in one
+    /// step and judges it at the same instant, as a poll may have entered or exited since it looked:
+    /// one in progress wakes the driver as it exits, and none enters from that instant on.
     pub fn read(&self) -> Reading {
-        let mut word = self.word.load(Acquire);
-        loop {
-            let ended = word / SHUT >= self.ways;
-            let past = self.begun.load(Acquire) != 0 && self.past(word, self.now());
-            if !past || word & BUSY == 0 {
-                return Reading {
-                    ended,
-                    expired: past,
-                    busy: false,
-                };
-            }
-            // The poll in progress wakes the driver as it exits; one that has just exited is read
-            // again.
-            match self
-                .word
-                .compare_exchange(word, word | WANTED, AcqRel, Acquire)
-            {
-                Ok(_) => {
-                    return Reading {
-                        ended,
-                        expired: false,
-                        busy: true,
-                    };
-                }
-                Err(now) => word = now,
-            }
+        let word = self.word.load(Acquire);
+        let ended = |word: u32| word / SHUT >= self.ways;
+        let open = |word| Reading {
+            ended: ended(word),
+            expired: false,
+            busy: false,
+        };
+        if self.begun.load(Acquire) == 0 {
+            return open(word);
+        }
+        #[cfg(test)]
+        super::pause::passing(super::pause::Point::Reading);
+        let now = self.now();
+        if !self.past(word, now) {
+            return open(word);
+        }
+        #[cfg(test)]
+        super::pause::passing(super::pause::Point::Taking);
+        let word = self.word.fetch_or(WANTED, AcqRel);
+        if word & BUSY != 0 {
+            return Reading {
+                busy: true,
+                ..open(word)
+            };
+        }
+        let expired = self.past(word, now);
+        if !expired && word & WANTED == 0 {
+            // A poll that exited since moved a byte: nothing to wait for.
+            self.word.fetch_and(!WANTED, AcqRel);
+        }
+        Reading {
+            expired,
+            ..open(word)
         }
     }
 

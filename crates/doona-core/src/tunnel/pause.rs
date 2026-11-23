@@ -1,7 +1,8 @@
 //! Points where a test holds a flow's task, as if the thread running it were descheduled there,
 //! and meanwhile does what the driver would. Compiled into tests only. A hold covers the tasks of
-//! the thread that set it, so a test on a current-thread runtime holds only its own. And an
-//! upstream whose write holds the thread polling it (see [`stuck`]).
+//! the thread that set it, so a test on a current-thread runtime holds only its own. Points in the
+//! driver's code where a test does what a task would (see [`then_at`]). And an upstream whose
+//! write holds the thread polling it (see [`stuck`]).
 
 use super::flow::FlowIo;
 use super::splice::splice;
@@ -25,6 +26,10 @@ pub(crate) enum Point {
     Answered,
     /// The core's DNS has served its session to the end, before its task reports how it ended.
     Served,
+    /// The driver has looked at a flow's gate, and has not read the clock for the deadline yet.
+    Reading,
+    /// The driver found a flow's deadline passed, and has not taken the gate's state yet.
+    Taking,
 }
 
 #[derive(Default)]
@@ -35,7 +40,11 @@ struct Hold {
 
 thread_local! {
     static HOLDS: RefCell<Vec<(Point, Arc<Hold>)>> = const { RefCell::new(Vec::new()) };
+    static THEN: RefCell<Vec<(Point, Then)>> = const { RefCell::new(Vec::new()) };
 }
+
+/// What a test runs at a point of the driver's code (see [`then_at`]).
+type Then = Box<dyn FnOnce()>;
 
 /// Holds each task of this thread that comes to a point, until the test lets it go; dropped, it
 /// holds no more.
@@ -81,6 +90,30 @@ pub(crate) async fn at(point: Point) {
     if let Some(hold) = hold {
         hold.reached.notify_one();
         hold.released.notified().await;
+    }
+}
+
+/// Runs `then` once, the next time the driver's code on this thread comes to `point`: as if a task
+/// on another thread ran it there.
+pub(crate) fn then_at(point: Point, then: impl FnOnce() + 'static) {
+    THEN.with(|then_at| then_at.borrow_mut().push((point, Box::new(then))));
+}
+
+/// The driver's code comes to `point`: it runs what the test set there (see [`then_at`]). Only in
+/// a debug build: a release build of the tests, which the benches are, measures the driver's code
+/// without it.
+#[inline]
+pub(crate) fn passing(point: Point) {
+    if !cfg!(debug_assertions) {
+        return;
+    }
+    let then = THEN.with(|then_at| {
+        let mut then_at = then_at.borrow_mut();
+        let found = then_at.iter().position(|(p, _)| *p == point)?;
+        Some(then_at.remove(found).1)
+    });
+    if let Some(then) = then {
+        then();
     }
 }
 

@@ -211,3 +211,126 @@ fn a_give_up_does_not_wait_for_the_relay_registering_to_be_woken() {
     let woken = holding.woken.load(std::sync::atomic::Ordering::SeqCst);
     assert!(seen || woken, "the relay missed its give-up");
 }
+
+/// The upstream's FIN has passed to the client, and the client's FIN begun the drain. The driver
+/// looks at the gate before the deadline; the relay's last shutdown enters then, and the deadline
+/// passes before the driver reads the clock. The driver judges the gate as it is at that instant,
+/// a poll in progress: it waits for that shutdown, which ends the relay cleanly, and does not
+/// reset the flow.
+#[test]
+#[cfg_attr(
+    not(debug_assertions),
+    ignore = "the driver's test hooks run in debug builds"
+)]
+fn a_shutdown_that_enters_as_the_driver_reads_the_gate_is_waited_for() {
+    const IDLE: Duration = Duration::from_secs(3);
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_time()
+        .start_paused(true)
+        .build()
+        .unwrap();
+    let clock = runtime.handle().clone();
+    let _paused = runtime.enter();
+    let (_wire, _app, id) = Wire::connected();
+    let (events, mut woken) = mpsc::unbounded_channel();
+    let waker = Waker::new(Key::Tcp(id), events);
+    let (_ends, io) = flow::pair(Arc::clone(&waker), Tally::new(None), IDLE, Task::Relay);
+    let gate = io.gate();
+    assert!(
+        gate.poll_shutdown(|| std::task::Poll::Ready(Ok(())))
+            .is_ready()
+    );
+    gate.fin();
+    while woken.try_recv().is_ok() {}
+    waker.rearm();
+    let (start, started) = std::sync::mpsc::channel();
+    let (entered, in_shutdown) = std::sync::mpsc::channel();
+    let (release, released) = std::sync::mpsc::channel::<()>();
+    let (relay_gate, relay_clock) = (Arc::clone(&gate), clock.clone());
+    let (first, joined) = std::thread::scope(|s| {
+        let relay = s.spawn(move || {
+            let _paused = relay_clock.enter();
+            started.recv().unwrap();
+            relay_gate.poll_shutdown(|| {
+                entered.send(()).unwrap();
+                let _ = released.recv();
+                std::task::Poll::Ready(Ok(()))
+            })
+        });
+        let late = clock.clone();
+        pause::then_at(pause::Point::Reading, move || {
+            start.send(()).unwrap();
+            in_shutdown.recv().unwrap();
+            late.block_on(tokio::time::advance(IDLE));
+        });
+        let first = gate.read();
+        let _ = release.send(());
+        (first, relay.join().unwrap())
+    });
+    assert!(joined.is_ready());
+    assert!(
+        first.busy && !first.expired,
+        "judged on what it saw before the shutdown"
+    );
+    assert!(
+        woken.try_recv().is_ok(),
+        "the shutdown's end did not wake the driver"
+    );
+    assert!(gate.read().ended, "the shutdown did not end the relay");
+}
+
+/// The client's FIN begun the drain; a write of the relay enters before the deadline and holds its
+/// thread past it. The driver finds the deadline passed, and the write ends, a byte moved, before
+/// the driver takes the gate's state: judged at the same instant on that state, the deadline counts
+/// from the write's entry, and the flow is kept.
+#[test]
+#[cfg_attr(
+    not(debug_assertions),
+    ignore = "the driver's test hooks run in debug builds"
+)]
+fn a_byte_moved_as_the_driver_takes_the_gate_keeps_the_flow() {
+    const IDLE: Duration = Duration::from_secs(3);
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_time()
+        .start_paused(true)
+        .build()
+        .unwrap();
+    let clock = runtime.handle().clone();
+    let _paused = runtime.enter();
+    let (_wire, _app, id) = Wire::connected();
+    let (events, _woken) = mpsc::unbounded_channel();
+    let waker = Waker::new(Key::Tcp(id), events);
+    let (_ends, io) = flow::pair(waker, Tally::new(None), IDLE, Task::Relay);
+    let gate = io.gate();
+    gate.fin();
+    runtime.block_on(tokio::time::advance(Duration::from_secs(2)));
+    let (entered, in_write) = std::sync::mpsc::channel();
+    let (release, released) = std::sync::mpsc::channel::<()>();
+    let (relay_gate, relay_clock) = (Arc::clone(&gate), clock.clone());
+    let relay = std::thread::spawn(move || {
+        let _paused = relay_clock.enter();
+        relay_gate.poll_write(|| {
+            entered.send(()).unwrap();
+            let _ = released.recv();
+            std::task::Poll::Ready(Ok(1))
+        })
+    });
+    in_write.recv().unwrap();
+    runtime.block_on(tokio::time::advance(Duration::from_secs(2)));
+    let ended = Arc::new(std::sync::Mutex::new(None));
+    let wrote = Arc::clone(&ended);
+    pause::then_at(pause::Point::Taking, move || {
+        let _ = release.send(());
+        *wrote.lock().unwrap() = Some(relay.join().unwrap());
+    });
+    let reading = gate.read();
+    let wrote = ended.lock().unwrap().take();
+    assert!(wrote.is_some_and(|w| w.is_ready()), "the write did not end");
+    assert!(!reading.expired && !reading.busy, "cut though a byte moved");
+    let due = gate.deadline().map(|at| at - tokio::time::Instant::now());
+    assert_eq!(
+        due,
+        Some(Duration::from_secs(1)),
+        "not counted from the write's entry"
+    );
+}
