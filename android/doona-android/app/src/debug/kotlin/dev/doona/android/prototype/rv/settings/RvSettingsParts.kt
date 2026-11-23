@@ -135,15 +135,21 @@ internal fun RvSettingsNavRow(
     mark: (@Composable () -> Unit)? = null,
 ) {
     RvSettingsRow(title, Modifier.rvRowPress(Role.Button, onClick), icon, subtitle = subtitle, titleStyle = titleStyle, titleLines = titleLines) {
-        if (mark == null) {
+        RvNavEnd(mark)
+    }
+}
+
+/** The end of a row that opens something: its chevron, after a [mark] (a status chip) when there is one. */
+@Composable
+internal fun RvNavEnd(mark: (@Composable () -> Unit)?) {
+    if (mark == null) {
+        RvChevron()
+    } else {
+        // A chip is taller than the first line it is centred on, so it is not held to that line's height.
+        Row(Modifier.wrapContentHeight(unbounded = true), verticalAlignment = Alignment.CenterVertically) {
+            mark()
+            Spacer(Modifier.width(RvSpace.trailingGap))
             RvChevron()
-        } else {
-            // A chip is taller than the first line it is centred on, so it is not held to that line's height.
-            Row(Modifier.wrapContentHeight(unbounded = true), verticalAlignment = Alignment.CenterVertically) {
-                mark()
-                Spacer(Modifier.width(RvSpace.trailingGap))
-                RvChevron()
-            }
         }
     }
 }

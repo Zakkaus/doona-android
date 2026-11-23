@@ -13,9 +13,24 @@ internal enum class RvRevisionOrigin(@StringRes val label: Int) {
     Restore(R.string.rv_config_origin_restore),
 }
 
-/** One applied revision: its number, when it was applied, its origin and, for a restore, the revision it restored. */
+/**
+ * One applied revision: its number, when it was applied, its origin, for a restore the revision it restored, and the
+ * [name] the user gave it (null until named; an empty name clears it).
+ */
 @Immutable
-internal class RvRevision(val rev: Int, val appliedAtEpochMs: Long, val origin: RvRevisionOrigin, val restored: Int? = null)
+internal class RvRevision(
+    val rev: Int,
+    val appliedAtEpochMs: Long,
+    val origin: RvRevisionOrigin,
+    val restored: Int? = null,
+    val name: String? = null,
+) {
+    fun named(name: String?) = RvRevision(rev, appliedAtEpochMs, origin, restored, name)
+}
+
+/** The rename sheet over 版本紀錄: the revision [rev] being named and the [name] typed so far. */
+@Immutable
+internal data class RvRevisionRename(val rev: Int, val name: String)
 
 /**
  * What 匯入設定檔 shows after the picker: the picked [name]; refused at the budget (`source_limit`, before any parse: no
@@ -36,6 +51,12 @@ internal object RvConfigHistoryData {
     private const val HOUR = 60 * 60 * 1000L
     private const val DAY = 24 * HOUR
 
+    /** The revisions the sample names. */
+    private const val HEAD = 9
+    private const val HOME = 7
+    private const val ROUTER = 6
+    private const val FIRST = 1
+
     /** The applied revisions, newest first; the app keeps the latest ten, and there are nine. */
     val revisions = listOf(
         RvRevision(9, RvConfigData.APPLIED_AT, RvRevisionOrigin.Edit),
@@ -48,6 +69,25 @@ internal object RvConfigHistoryData {
         RvRevision(2, RV_NOW - 12 * DAY - 3 * HOUR, RvRevisionOrigin.Edit),
         RvRevision(1, RV_NOW - 12 * DAY - 5 * HOUR, RvRevisionOrigin.Template),
     )
+
+    /**
+     * The same revisions after the user named four of them: the head with a long name (it wraps at large font sizes),
+     * a short one, the import and the first template; the rest show their time as before.
+     */
+    val named = revisions.map {
+        it.named(
+            when (it.rev) {
+                HEAD -> "東京出差：影音與 AI 走日本節點"
+                HOME -> "家用"
+                ROUTER -> "路由器匯入"
+                FIRST -> "初次設定"
+                else -> null
+            },
+        )
+    }
+
+    /** Naming revision 8, which has no name yet: the field is empty and shows what the row says without one. */
+    val rename = RvRevisionRename(8, "")
 
     /** The pin's `SourceLimits::DEFAULT` (config-plan.md:36): 32 files, 8 MiB, entry, includes and companions together. */
     const val LIMIT_FILES = 32

@@ -7,6 +7,14 @@ import dev.doona.android.prototype.rv.rvKeepTail
 /**
  * A row's second line from its [parts]: each part's words whole, and the end of the line kept together, so a line that
  * wraps at a large font size breaks between parts or at a space, never inside a word, and never ends on one or two
- * characters ([rvKeepRuns], [rvKeepTail]).
+ * characters ([rvKeepRuns], [rvKeepTail]). The separator's dot stays with the part before it, so a wrapped line never
+ * starts with it.
  */
-internal fun rvConfigLine(parts: List<String>): String = rvKeepTail(parts.joinToString(SEPARATOR) { rvKeepRuns(it) })
+internal fun rvConfigLine(parts: List<String>): String = rvKeepTail(parts.joinToString(KEPT_SEPARATOR) { rvKeepRuns(it) })
+
+/**
+ * [SEPARATOR] with a word joiner (U+2060: no break on either side, no width) between its first space and its dot,
+ * so a line breaks only after the dot. A no-break space would do the same, but after a CJK part it is set in Inter
+ * where a space is set in Noto, and it would widen the gap.
+ */
+private val KEPT_SEPARATOR = SEPARATOR.replaceFirst(" ", " \u2060")
