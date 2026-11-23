@@ -114,6 +114,7 @@ fn local_reply_loss_does_not_charge_the_node() {
 }
 
 const REMOTE: SocketAddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 443));
+const SEND_TIMEOUT: Duration = Duration::from_secs(3);
 
 fn pair(port: u16) -> (SocketAddr, SocketAddr) {
     (([127, 0, 0, 1], port).into(), REMOTE)
@@ -144,6 +145,10 @@ fn upstream(carrier: Carrier, reply: bool) -> UdpUpstream {
 impl PacketTransport for Stalled {
     fn relay_addr(&self) -> SocketAddr {
         REMOTE
+    }
+
+    fn send_timeout(&self) -> Duration {
+        SEND_TIMEOUT
     }
 
     fn send_timeout_is_congestion(&self) -> bool {
@@ -203,31 +208,35 @@ async fn after_reply(carrier: Carrier, delay: Duration) -> ScoreOutcome {
         nat.send(pair(1), &[1], &events, || unreachable!());
     }
     assert!(poll!(&mut run).is_pending());
-    advance(IDLE - delay).await;
-    run.now_or_never().expect("association idle deadline")
+    let wait = SEND_TIMEOUT.min(IDLE - delay);
+    let tick = Duration::from_millis(1);
+    advance(wait - tick).await;
+    assert!(poll!(&mut run).is_pending(), "ended before the deadline");
+    advance(tick).await;
+    run.now_or_never().expect("missed the first deadline")
 }
 
 #[tokio::test(start_paused = true)]
 async fn reply_idle_before_the_send_deadline_keeps_success() {
-    let outcome = after_reply(Carrier::Stream, IDLE / 2).await;
+    let outcome = after_reply(Carrier::Stream, IDLE - Duration::from_secs(1)).await;
     assert_eq!(outcome, ScoreOutcome::Success);
 }
 
 #[tokio::test(start_paused = true)]
 async fn a_stalled_send_times_out_even_after_a_reply_and_queue_overflow() {
-    let outcome = after_reply(Carrier::Stream, Duration::ZERO).await;
+    let outcome = after_reply(Carrier::Stream, Duration::from_secs(1)).await;
     assert_eq!(outcome, ScoreOutcome::Timeout);
 }
 
 #[tokio::test(start_paused = true)]
 async fn a_congested_send_deadline_is_cancelled() {
-    let outcome = after_reply(Carrier::Datagram, Duration::ZERO).await;
+    let outcome = after_reply(Carrier::Datagram, Duration::from_secs(1)).await;
     assert_eq!(outcome, ScoreOutcome::Cancelled);
 }
 
 #[tokio::test(start_paused = true)]
 async fn a_stalled_quic_path_overrides_packet_congestion() {
-    let outcome = after_reply(Carrier::StalledQuic, Duration::ZERO).await;
+    let outcome = after_reply(Carrier::StalledQuic, Duration::from_secs(1)).await;
     assert_eq!(outcome, ScoreOutcome::NodeFailure);
 }
 

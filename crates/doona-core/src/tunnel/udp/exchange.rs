@@ -15,6 +15,13 @@ fn packet_outcome(error: &io::Error) -> ScoreOutcome {
 }
 
 impl UdpUpstream {
+    fn send_timeout(&self, idle: Duration) -> Duration {
+        match self {
+            Self::Proxy(t, ..) => t.send_timeout(),
+            Self::Socket(_) => idle,
+        }
+    }
+
     fn send_outcome(&self, outcome: ScoreOutcome) -> ScoreOutcome {
         if outcome == ScoreOutcome::Timeout
             && matches!(self, Self::Proxy(t, ..) if t.send_timeout_is_congestion())
@@ -61,7 +68,8 @@ pub(super) async fn exchange(
         while let Some(d) = up.recv().await {
             let began = first.map(Session::begin_dial);
             let timed = reporter.map(|r| (r, std::time::Instant::now()));
-            let Ok(sent) = tokio::time::timeout(idle, upstream.send(&d.bytes)).await else {
+            let timeout = upstream.send_timeout(idle);
+            let Ok(sent) = tokio::time::timeout(timeout, upstream.send(&d.bytes)).await else {
                 return upstream.send_outcome(ScoreOutcome::Timeout);
             };
             if let (Some(session), Some(began)) = (first.take(), began) {
