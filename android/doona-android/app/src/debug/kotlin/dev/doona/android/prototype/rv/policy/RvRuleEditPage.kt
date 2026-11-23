@@ -2,7 +2,6 @@ package dev.doona.android.prototype.rv.policy
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,16 +25,14 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvConfirmSheet
-import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
-import dev.doona.android.prototype.rv.RvMenu
-import dev.doona.android.prototype.rv.RvMenuItem
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
+import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvText
@@ -80,12 +77,17 @@ internal data class RvRuleDraft(val kind: RvMatchKind, val value: String, val ta
 }
 
 private val NO_VALUE = setOf(RvMatchKind.GeoIpCn, RvMatchKind.Private)
+
+/** The slider's two sets of kinds: a domain's three, as the quick rule offers them, and an address's three. */
+private val DOMAIN_KINDS = listOf(RvMatchKind.Full, RvMatchKind.Suffix, RvMatchKind.Keyword)
+private val ADDRESS_KINDS = listOf(RvMatchKind.Cidr, RvMatchKind.GeoIpCn, RvMatchKind.Private)
 private val CIDR = Regex("""(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d|[12]\d|3[0-2])""")
 private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")
 
 /**
- * A rule's page (全部規則 → a rule), in the quick rule's grammar: the large title; 比對 as a chip that opens the six
- * kinds in a menu, then the value in the library's text field (none for GEOIP CN and private ranges), and one line on
+ * A rule's page (全部規則 → a rule), in the quick rule's grammar: the large title; 比對方式 as the quick rule's slider
+ * over the three kinds of the rule's own set (a domain's: 完整網域, 網域後綴, 關鍵字; an address's: IP 段, GEOIP CN, 私有
+ * IP 位址), then the value in the library's text field (none for GEOIP CN and private ranges), and one line on
  * what the rule covers, or what is wrong with the value; 送往, the quick rule's list; a card with 啟用 and 刪除規則,
  * which asks first; and 套用 floating at the bottom, off while the value is wrong.
  */
@@ -129,22 +131,19 @@ internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit,
     )
 }
 
-/** The kind chip and its menu, the value field when the kind takes one, and the line under them. */
+/**
+ * The kind slider over the three kinds of the rule's set, the value field when the kind takes one, and the line under
+ * them; the slider sits [RvSpace.controlStack] over the field, two controls stacked in one.
+ */
 @Composable
 private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
-    var choosing by remember { mutableStateOf(false) }
-    val items = RvMatchKind.entries.map { kind ->
-        RvMenuItem(stringResource(kind.label), R.drawable.rv_sym_rule) { onChange(draft.copy(kind = kind)) }
-    }
+    val kinds = if (draft.kind in DOMAIN_KINDS) DOMAIN_KINDS else ADDRESS_KINDS
     Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-        Box {
-            RvFilterChip(stringResource(draft.kind.label), { choosing = true })
-            RvMenu(choosing, { choosing = false }, items)
-        }
-        Spacer(Modifier.height(RvSpace.sectionBelow))
+        RvSegmented(kinds.map { stringResource(it.label) }, kinds.indexOf(draft.kind), { onChange(draft.copy(kind = kinds[it])) })
+        Spacer(Modifier.height(RvSpace.controlStack))
         val problem = draft.problem?.let { stringResource(it) }
         if (draft.needsValue) {
-            // The kind chip right above names what the field holds, so it has no label of its own (Addendum 3).
+            // The kind slider right above names what the field holds, so it has no label of its own (Addendum 3).
             RvTextField(
                 draft.value,
                 { onChange(draft.copy(value = it.trim())) },

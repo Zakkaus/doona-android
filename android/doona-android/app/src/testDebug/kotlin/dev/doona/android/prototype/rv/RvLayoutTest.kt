@@ -304,7 +304,7 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
         }
     }
 
-    /** A segmented control is 36 dp tall, on the gutter or 16 dp inside its card. */
+    /** A segmented control is 40 dp tall (look E), on the gutter or 16 dp inside its card. */
     private fun segmented() {
         for (s in parts.getValue(RvPart.SEGMENTED)) {
             expect("segmented control's height", s.height, RvChartSize.segment)

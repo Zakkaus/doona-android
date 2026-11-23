@@ -11,6 +11,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import dev.doona.android.prototype.rv.RV_FS115
+import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -33,7 +35,8 @@ import org.robolectric.annotation.GraphicsMode
  * `proto-rv-policy-global-scrolled-*`, scrolled to the second subscription) and in 直連 (`proto-rv-policy-direct-*`, the
  * mode alone), a selector's page (串流, `proto-rv-policy-group-select-*`), a url-test group's page (自動,
  * `proto-rv-policy-group-auto-*`) and the quick rule opened from a connection (`proto-rv-policy-flow-*`); the main node's
- * picker is RvNodeListShotTest's. A tap on a node in 全域 moves the check to it, and its order stays in the tab's state.
+ * picker is RvNodeListShotTest's. 策略 at font scale 1.15 and 2.0 (`proto-rv-policy-fs115`, `-fs200`) and the quick rule at
+ * 2.0 (`proto-rv-policy-flow-fs200`) are in the phone's window, for their sliders. A tap on a node in 全域 moves the check to it, and its order stays in the tab's state.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -97,6 +100,17 @@ class RvPolicyShotTest {
         assertEquals(RvNodeSort.Name, state.nodeSort)
     }
 
+    /** The mode's slider (look E) at the large font sizes, in the phone's window: one size for the row, nothing cut. */
+    @Test
+    fun ruleFs115() = compose.rvShot("policy", dark = false, fontScale = RV_FS115) { Policy(RvRouteMode.Rule) }
+
+    @Test
+    fun ruleFs200() = compose.rvShot("policy", dark = false, fontScale = RV_FS200) { Policy(RvRouteMode.Rule) }
+
+    /** 新增規則's match slider at font scale 2.0, in the phone's window. */
+    @Test
+    fun flowFs200() = compose.rvShot("policy-flow", dark = false, fontScale = RV_FS200) { Flow() }
+
     @Test
     fun directLight() = compose.rvShot("policy-direct", dark = false, before = { assertWhole() }) { Policy(RvRouteMode.Direct) }
 
@@ -141,7 +155,7 @@ class RvPolicyShotTest {
         const val WHOLE_RULE = "+h1990dp"
         const val WHOLE_SELECT = "+h1136dp"
         const val WHOLE_AUTO = "+h1149dp"
-        const val WHOLE_FLOW = "+h1292dp"
+        const val WHOLE_FLOW = "+h1296dp"
 
         /** 全域 scrolled this far shows the second subscription's card under the bar. */
         const val GLOBAL_SCROLL = 1048f

@@ -34,8 +34,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +55,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -60,6 +64,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
@@ -180,18 +185,23 @@ internal fun Modifier.rvRaised(shape: Shape): Modifier {
 }
 
 /**
- * Revolut's segmented control (measured §8): a 36 dp pill track, visible on any surface, [options] in equal parts, the
- * [selected] one on a raised pill 2 dp inside it. The track is the control's layout box, so what is above and below it
- * measures from its visible edge (spacing audit row 4); each part's target reaches 48 dp through Compose's touch target
- * expansion, which does not move the layout. The press lights only its pill.
+ * Revolut's segmented control (measured §8) in the owner's look E (rv-fix-4e), the one slider of every page: a 40 dp
+ * pill track, visible on any surface, [options] in equal parts, each after its glyph when [glyphs] gives one drawable
+ * per option, the [selected] one on a raised pill 2 dp inside it (a soft shadow in light, a rim in dark). The labels
+ * take one size ([rvSegmentStyle]) and the control grows with their line at a large font size ([rvSegmentHeight]), so
+ * no label is cut. The track is the control's layout box, so what is above and below it measures from its visible edge
+ * (spacing audit row 4); each part's target reaches 48 dp through Compose's touch target expansion, which does not move
+ * the layout. The press lights only its pill.
  */
 @Composable
-internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, glyphs: List<Int> = emptyList()) {
     val colors = Rv.colors
     val motion = Rv.motion
     // Each segment's pill as the row lays it out; one raised pill rests there and slides to the next selection.
     val slots = remember(options.size) { mutableStateListOf<IntRect?>().apply { repeat(options.size) { add(null) } } }
-    Box(modifier.fillMaxWidth().height(RvChartSize.segment).testTag(RvPart.SEGMENTED)) {
+    var width by remember { mutableIntStateOf(0) }
+    val style = rvSegmentStyle(options, glyphs.isNotEmpty(), width)
+    Box(modifier.fillMaxWidth().height(rvSegmentHeight(style)).onSizeChanged { width = it.width }.testTag(RvPart.SEGMENTED)) {
         Box(Modifier.matchParentSize().clip(CircleShape).background(colors.segmentTrack))
         slots.getOrNull(selected)?.let { slot ->
             val x by animateIntAsState(slot.left, motion.tween(RvMotion.SLIDE_MS), label = "segment")
@@ -211,9 +221,48 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
                         .clip(CircleShape)
                         .indication(source, rvPressIndication()),
                     contentAlignment = Alignment.Center,
-                ) { RvText(label, Rv.type.segment, color = ink) }
+                ) { RvSegmentLabel(label, glyphs.getOrNull(i), style, ink) }
             }
         }
+    }
+}
+
+/**
+ * The segments' labels in one size for all [options] (one label size per row): the largest at which each fits on one
+ * line in its part of the control [width] px wide, a range chip's padding ([RvChartSize.rangePad]) clear of its pill's
+ * round ends, after its [glyph] when the control has glyphs ([rvRowFit]). Before the control is measured ([width] 0)
+ * it is the full size.
+ */
+@Composable
+private fun rvSegmentStyle(options: List<String>, glyph: Boolean, width: Int): TextStyle {
+    val style = Rv.type.segment
+    if (width == 0 || options.isEmpty()) return style
+    val pad = RvChartSize.segmentInset + RvChartSize.rangePad
+    val column = with(LocalDensity.current) { (width / options.size).toDp() } - pad * 2
+    return rvRowFit(options, style, if (glyph) column - RvChartSize.segmentGlyph - RvChartSize.segmentGlyphGap else column)
+}
+
+/**
+ * The control's height for labels in [style]: [RvChartSize.segment], or the labels' line and the pill's inset above and
+ * below it where that is more, as at font scale 2.0, so a label is never cut at the top or the bottom.
+ */
+@Composable
+private fun rvSegmentHeight(style: TextStyle): Dp {
+    val line = with(LocalDensity.current) { style.lineHeight.toDp() }
+    return maxOf(RvChartSize.segment, line + RvChartSize.segmentInset * 2)
+}
+
+/** A segment's label in [style] and [color], after its [glyph] when it has one. */
+@Composable
+private fun RvSegmentLabel(text: String, @DrawableRes glyph: Int?, style: TextStyle, color: Color) {
+    if (glyph == null) {
+        RvText(text, style, color = color)
+        return
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        RvGlyph(glyph, RvChartSize.segmentGlyph, color)
+        Spacer(Modifier.width(RvChartSize.segmentGlyphGap))
+        RvText(text, style, color = color)
     }
 }
 

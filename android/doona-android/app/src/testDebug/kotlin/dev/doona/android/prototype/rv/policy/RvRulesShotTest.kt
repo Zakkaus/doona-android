@@ -1,11 +1,27 @@
 package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.performClick
+import dev.doona.android.R
+import dev.doona.android.prototype.rv.RV_FS200
+import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.rvText
+import dev.doona.android.prototype.rv.seedColorScheme
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,7 +34,7 @@ import org.robolectric.annotation.GraphicsMode
  * same in edit mode (`proto-rv-rules-edit-*`) and with two rules held (`proto-rv-rules-pending-*`), the template picker
  * with 依服務分流 picked (`proto-rv-template-*`), its impact review (`proto-rv-template-impact-*`) and the effective
  * config (`proto-rv-effective-config-*`); a rule's page (`proto-rv-rule-edit-*`) and the same with an IP range it
- * cannot apply (`proto-rv-rule-edit-error-*`).
+ * cannot apply (`proto-rv-rule-edit-error-*`), both also at font scale 2.0 in the phone's window; and that a rule's kind is the slider over its own set of three.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -91,6 +107,33 @@ class RvRulesShotTest {
     @Test
     @Config(qualifiers = WHOLE_ERROR_RULE)
     fun ruleErrorDark() = compose.rvShot("rule-edit-error", dark = true, before = { assertWhole() }) { Edit(BAD_RANGE) }
+
+    /** The kind slider at font scale 2.0 in the phone's window: a domain's three kinds, and an address's. */
+    @Test
+    fun ruleFs200() = compose.rvShot("rule-edit", dark = false, fontScale = RV_FS200) { Edit(RvRuleDraft.of(RvPolicyData.allRules[GITHUB])) }
+
+    @Test
+    fun ruleErrorFs200() = compose.rvShot("rule-edit-error", dark = false, fontScale = RV_FS200) { Edit(BAD_RANGE) }
+
+    @Test
+    fun aRulesKindIsTheSliderOverItsOwnSet() {
+        var draft = RvRuleDraft.of(RvPolicyData.allRules[GITHUB])
+        var address by mutableStateOf(false)
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                var shown by remember(address) { mutableStateOf(if (address) BAD_RANGE else draft) }
+                RvRuleEditPage(shown, { changed -> shown = changed.also { draft = it } }, onBack = {}, onApply = {}, onDelete = {})
+            }
+        }
+        val kind = { label: Int -> compose.onNode(hasText(rvText(label)) and isSelectable()) }
+        kind(R.string.rv_policy_match_suffix).assertIsSelected()
+        kind(R.string.rv_policy_match_keyword).assertIsNotSelected().performClick().assertIsSelected()
+        assertEquals(RvMatchKind.Keyword, draft.kind)
+        address = true
+        kind(R.string.rv_policy_match_cidr).assertIsSelected()
+        kind(R.string.rv_policy_lan_kind).performClick().assertIsSelected()
+        assertEquals(RvMatchKind.Private, draft.kind)
+    }
 
     @Composable
     private fun Edit(draft: RvRuleDraft) = RvRuleEditPage(draft, onChange = {}, onBack = {}, onApply = {}, onDelete = {})

@@ -124,11 +124,14 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
     }
 }
 
-/** 規則 | 全域 | 直連 in a card, as Revolut sets a segmented control, and one line under it saying what the mode does. */
+/**
+ * 規則 | 全域 | 直連, each after its glyph, in a card, as Revolut sets a segmented control, and one line under it saying what
+ * the mode does.
+ */
 @Composable
 private fun ModeCard(mode: RvRouteMode, onMode: (RvRouteMode) -> Unit) {
     RvControlCard(stringResource(mode.line)) {
-        RvSegmented(MODES.map { stringResource(it.label) }, MODES.indexOf(mode), { onMode(MODES[it]) })
+        RvSegmented(MODES.map { stringResource(it.label) }, MODES.indexOf(mode), { onMode(MODES[it]) }, glyphs = MODES.map { it.glyph })
     }
 }
 
@@ -228,6 +231,17 @@ private val RvRouteMode.label: Int
         RvRouteMode.Rule -> R.string.rv_mode_rule
         RvRouteMode.Global -> R.string.mode_global
         RvRouteMode.Direct -> R.string.mode_direct
+    }
+
+/**
+ * A mode's glyph on the slider (look E): 規則 the rule glyph, 直連 the arrow 活動 and 連線 draw for direct traffic; the
+ * library has no 全域 glyph, so the globe of 設定's language row stands in.
+ */
+private val RvRouteMode.glyph: Int
+    get() = when (this) {
+        RvRouteMode.Rule -> R.drawable.rv_sym_rule
+        RvRouteMode.Global -> R.drawable.rv_settings_ic_language
+        RvRouteMode.Direct -> R.drawable.rv_sym_arrow_right_alt
     }
 
 private val RvRouteMode.line: Int
