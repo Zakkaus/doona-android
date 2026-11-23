@@ -16,7 +16,7 @@ import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.concurrent.atomic.AtomicReference
+import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -30,11 +30,14 @@ sealed interface ExportState {
     /** The zip is being written. */
     data object Building : ExportState
 
-    /** The zip at [file] is written; the activity shares it. [crashes] are cleared once the user picks an app for it. */
-    data class Ready(val file: File, val crashes: ExportedCrashes?) : ExportState
+    /**
+     * The zip at [file] is written; the activity shares it. [crashes] are cleared once the user picks an app for it, in
+     * the sheet whose callback carries [token].
+     */
+    data class Ready(val file: File, val crashes: ExportedCrashes?, val token: String) : ExportState
 
-    /** The share sheet for [file] is open. */
-    data class Sharing(val file: File) : ExportState
+    /** The share sheet for [file], of the export [token], is open. */
+    data class Sharing(val file: File, val token: String) : ExportState
 
     /** The zip could not be written, or no share sheet opened. Shown until dismissed. */
     data object Failed : ExportState
@@ -60,19 +63,21 @@ interface Reports {
 
 /**
  * The diagnostic report export: a zip in [outDir] of `report.json` ([reportJson]) and the crash files, which the activity
- * shares through the share sheet. Nothing is sent anywhere: the user picks where it goes. Once the sheet reports that the
- * user picked an app ([picked]), the crash files the zip holds are cleared by the names and the mark of the core's
- * listing, so a crash written meanwhile stays; a sheet closed without a pick keeps them. Without the core's listing (the
- * core is unavailable) the zip takes the app's own, and nothing is cleared. Process-wide, so a build in progress outlives
- * the page that started it. Each zip has a name of its own; one the sheet took is deleted [SHARE_GRACE_MS] after the
- * sheet returns, which leaves the app picked time to read it, and one it did not take at once; [sweep] removes what an
- * earlier run left.
+ * shares through the share sheet. Nothing is sent anywhere: the user picks where it goes. Each export has a token, kept
+ * in [tokens] with the names and the mark of the core's listing, which its sheet's callback carries; once that sheet
+ * reports that the user picked an app ([picked]), those crash files are cleared, so a crash written meanwhile stays, and
+ * a late pick in an earlier sheet clears only its own export's. A sheet closed without a pick keeps them. Without the
+ * core's listing (the core is unavailable) the zip takes the app's own, and nothing is cleared. Process-wide, so a build
+ * in progress outlives the page that started it. Each zip is written under a part name and then takes a name of its own;
+ * one the sheet took is deleted [SHARE_GRACE_MS] after the sheet returns, which leaves the app picked time to read it,
+ * and one it did not take at once; [sweep] removes what an earlier run left.
  */
 class ReportExport(
     private val engine: Engine,
     private val crashes: CrashFiles,
     private val offer: CrashOffer,
     private val outDir: () -> File,
+    private val tokens: ExportTokens,
     private val app: () -> AppInfo,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
@@ -80,16 +85,14 @@ class ReportExport(
 ) : Reports {
     private val state = MutableStateFlow<ExportState>(ExportState.Idle)
 
-    /** What a pick in the open share sheet clears; taken once. */
-    private val onPick = AtomicReference<ExportedCrashes?>()
+    /** Held while a zip is written and published, and while [sweep] removes parts: it never takes one being written. */
+    private val zips = Any()
     override val export: StateFlow<ExportState> = state.asStateFlow()
     override val crashOffered: StateFlow<Boolean> get() = offer.offered
 
     override fun startExport() {
         offer.dismiss()
         if (!state.compareAndSet(ExportState.Idle, ExportState.Building) && !state.compareAndSet(ExportState.Failed, ExportState.Building)) return
-        // The new zip holds the crashes a late pick in an earlier sheet would clear.
-        onPick.set(null)
         scope.launch {
             val core = engine.diagnostics()
             val engineView = EngineView(engine.status.value, engine.settings.value, engine.catalog.value)
@@ -104,23 +107,28 @@ class ReportExport(
     /** The zip to share, for the activity, once: the state moves on to [ExportState.Sharing]. */
     fun take(): ExportState.Ready? {
         val ready = state.value as? ExportState.Ready ?: return null
-        if (!state.compareAndSet(ready, ExportState.Sharing(ready.file))) return null
-        onPick.set(ready.crashes)
-        return ready
+        return ready.takeIf { state.compareAndSet(ready, ExportState.Sharing(ready.file, ready.token)) }
     }
 
     /** The share sheet did not open because the activity ended first, as on rotation: the next one shares [ready]. */
     fun putBack(ready: ExportState.Ready) {
-        if (state.compareAndSet(ExportState.Sharing(ready.file), ready)) onPick.set(null)
+        state.compareAndSet(ExportState.Sharing(ready.file, ready.token), ready)
     }
 
     /**
-     * The user picked an app in the share sheet (the sheet's callback, `Intent.createChooser` with an `IntentSender`):
-     * clears the crash files the zip holds, once. A pick does not prove the app sent the zip on, but it is the only
-     * answer the sheet gives; its activity result says nothing, and closing the sheet clears nothing.
+     * The user picked an app in the share sheet of the export [token] (the sheet's callback, [isPick]), in this process
+     * or an earlier one: clears the crash files that export holds, once, then calls [done]. A pick does not prove the app
+     * sent the zip on, but it is the only answer the sheet gives; its activity result says nothing, and closing the sheet
+     * clears nothing.
      */
-    fun picked() {
-        onPick.getAndSet(null)?.let { scope.launch { engine.clearCrashes(it.names, it.mark) } }
+    fun picked(token: String, done: () -> Unit = {}) {
+        scope.launch {
+            try {
+                withContext(io) { tokens.take(token) }?.let { engine.clearCrashes(it.names, it.mark) }
+            } finally {
+                done()
+            }
+        }
     }
 
     /** The share sheet returned, whatever the user did there. The zip goes after [SHARE_GRACE_MS]. */
@@ -137,18 +145,26 @@ class ReportExport(
     fun shareFailed() {
         val sharing = state.value as? ExportState.Sharing ?: return
         if (!state.compareAndSet(sharing, ExportState.Failed)) return
-        onPick.set(null)
-        scope.launch(io) { sharing.file.delete() }
+        scope.launch(io) {
+            sharing.file.delete()
+            tokens.take(sharing.token)
+        }
     }
 
-    /** Removes the zips an earlier run left, those older than [SHARE_GRACE_MS]; it reads the disk, so call it off the main thread. */
+    /**
+     * Removes what an earlier run left: every zip it was writing, and the zips older than [SHARE_GRACE_MS]. It reads the
+     * disk, so call it off the main thread.
+     */
     fun sweep() {
         val before = clock() - SHARE_GRACE_MS
-        outDir().listFiles { file -> file.name.startsWith(ZIP_PREFIX) && file.name.endsWith(ZIP_SUFFIX) }
-            .orEmpty()
-            .filter { it.lastModified() < before }
-            .forEach { it.delete() }
+        synchronized(zips) {
+            outDir().listFiles { file -> file.isPart() || (file.isZip() && file.lastModified() < before) }.orEmpty().forEach { it.delete() }
+        }
     }
+
+    private fun File.isPart() = name.startsWith(PART_PREFIX) && name.endsWith(PART_SUFFIX)
+
+    private fun File.isZip() = name.startsWith(ZIP_PREFIX) && name.endsWith(ZIP_SUFFIX)
 
     override fun dismissFailure() {
         state.compareAndSet(ExportState.Failed, ExportState.Idle)
@@ -163,30 +179,34 @@ class ReportExport(
     private fun build(core: Result<CoreDiagnostics>, engineView: EngineView): ExportState.Ready {
         val listing = core.getOrNull()
         val names = listing?.crashes?.map { it.name } ?: crashes.list().map { it.name }
-        // A file gone since the listing is left out, and so is its name; so is one still empty, a name a writer claimed
-        // and has not filled yet, which a clear by that name would remove with the crash it is about to hold.
-        val files = names.mapNotNull { name -> crashes.read(name)?.takeIf { it.isNotEmpty() }?.let { name to it } }
+        // A file gone since the listing is left out, and so is its name.
+        val files = names.mapNotNull { name -> crashes.read(name)?.let { name to it } }
         val at = clock()
         val json = reportJson(at, app(), engineView, core, AppEvents.snapshot(), files.map { it.first })
-        val zip = newZip(STAMP.format(Instant.ofEpochMilli(at)))
-        try {
-            writeZip(zip, json, files)
-        } catch (e: IOException) {
-            zip.delete()
-            throw e
-        }
+        val zip = publishZip(STAMP.format(Instant.ofEpochMilli(at)), json, files)
+        val token = UUID.randomUUID().toString()
         val cleared = listing?.let { l -> files.map { it.first }.takeIf { it.isNotEmpty() }?.let { ExportedCrashes(it, l.crashMark) } }
-        return ExportState.Ready(zip, cleared)
+        cleared?.let { tokens.add(token, it) }
+        return ExportState.Ready(zip, cleared, token)
     }
 
-    /** A new, empty file `doona-report-<stamp>.zip`, or `-2`, `-3` and on when an export in the same second has the name. */
-    private fun newZip(stamp: String): File {
+    /**
+     * Writes the zip under a part name of its own, then renames it `doona-report-<stamp>.zip`, or `-2`, `-3` and on when
+     * an export in the same second has the name: no zip under that name is ever half written.
+     */
+    private fun publishZip(stamp: String, json: String, files: List<Pair<String, ByteArray>>): File = synchronized(zips) {
         val dir = outDir().apply { mkdirs() }
-        var n = 1
-        while (true) {
-            val zip = File(dir, ZIP_PREFIX + stamp + (if (n == 1) "" else "-$n") + ZIP_SUFFIX)
-            if (zip.createNewFile()) return zip
-            n++
+        val part = File.createTempFile(PART_PREFIX, PART_SUFFIX, dir)
+        try {
+            writeZip(part, json, files)
+            val zip = generateSequence(1) { it + 1 }
+                .map { n -> File(dir, ZIP_PREFIX + stamp + (if (n == 1) "" else "-$n") + ZIP_SUFFIX) }
+                .first { !it.exists() }
+            if (!part.renameTo(zip)) throw IOException("not renamed")
+            zip
+        } catch (e: IOException) {
+            part.delete()
+            throw e
         }
     }
 
@@ -201,6 +221,10 @@ class ReportExport(
         const val SHARE_GRACE_MS = 10 * 60_000L
         private const val ZIP_PREFIX = "doona-report-"
         private const val ZIP_SUFFIX = ".zip"
+
+        /** A zip being written: `.doona-report-<random>.part`. */
+        private const val PART_PREFIX = ".doona-report-"
+        private const val PART_SUFFIX = ".part"
         private val STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.systemDefault())
 
         /** The zip: [REPORT_ENTRY], then each crash file under [CRASH_DIR]. */

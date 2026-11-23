@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * The share sheet's only launcher. Its return, to this activity or a recreated one, says nothing of what the user did
-     * there; a pick reaches the export by the sheet's own callback ([dev.doona.android.report.reportPicks]).
+     * there; a pick reaches the export by the sheet's own callback ([dev.doona.android.report.ReportPickReceiver]).
      */
     private val reportShare =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { container.reports.shared() }
@@ -167,7 +167,7 @@ class MainActivity : ComponentActivity() {
         val title = getString(R.string.report_share_title)
         lifecycleScope.launch {
             val sheet = try {
-                withContext(Dispatchers.IO) { reportShareIntent(this@MainActivity, ready.file, title) }
+                withContext(Dispatchers.IO) { reportShareIntent(this@MainActivity, ready.file, title, ready.token) }
             } catch (e: CancellationException) {
                 container.reports.putBack(ready)
                 throw e

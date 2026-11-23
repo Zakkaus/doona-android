@@ -80,7 +80,7 @@ class ServiceEngineTest {
     private var afterWrite: (() -> Unit)? = null
 
     private val engine by lazy {
-        val opener = CoreOpener(core, "/data", Dispatchers.IO)
+        val opener = CoreOpener(core, { "/data" }, Dispatchers.IO)
         val store = object : DataStore<Preferences> by perAppStore {
             override val data = flow {
                 if (failNextRead) {

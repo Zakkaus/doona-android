@@ -4,8 +4,11 @@ import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentSender
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Looper
+import android.service.chooser.ChooserResult
+import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -13,22 +16,38 @@ import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.report.ExportState
 import dev.doona.android.report.REPORT_MIME
+import dev.doona.android.report.ReportPickReceiver
 import dev.doona.android.report.reportAuthority
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.android.controller.ActivityController
 import org.robolectric.annotation.Config
+import org.robolectric.util.ReflectionHelpers
+import org.robolectric.util.ReflectionHelpers.ClassParameter
 
 /** The share step: the share sheet the export opens, and the clear that only a pick in it sends. */
 @RunWith(AndroidJUnit4::class)
 @Config(application = FakeEngineApplication::class)
 class ReportFlowTest {
     private val app = ApplicationProvider.getApplicationContext<DoonaApplication>()
+    private val mail = ComponentName("com.example.mail", "com.example.mail.Compose")
+
+    /**
+     * FileProvider keeps the roots it read per authority for the process, and each Robolectric test has a data directory
+     * of its own: forget them, so each test's report URI resolves.
+     */
+    @Before
+    fun forgetProviderRoots() {
+        val cache = FileProvider::class.java.getDeclaredField("sCache").apply { isAccessible = true }.get(null) as HashMap<*, *>
+        synchronized(cache) { cache.clear() }
+    }
 
     /** Runs the main looper until [done], while the zip is written on another thread. */
     private fun idleUntil(done: () -> Boolean) {
@@ -40,10 +59,7 @@ class ReportFlowTest {
         assertTrue("timed out", done())
     }
 
-    /**
-     * The share sheet sends the zip and grants read access to it only. One test builds the URI: FileProvider keeps the
-     * roots it read per authority for the process, and each Robolectric test has a data directory of its own.
-     */
+    /** The share sheet sends the zip and grants read access to it only. */
     private fun assertWellFormed(chooser: Intent) {
         assertEquals(Intent.ACTION_CHOOSER, chooser.action)
         val send = IntentCompat.getParcelableExtra(chooser, Intent.EXTRA_INTENT, Intent::class.java)!!
@@ -93,8 +109,72 @@ class ReportFlowTest {
         val sender = pickSender(started.intent)!!
         pick(sender, app = null)
         assertTrue(engine.crashes.isNotEmpty())
-        pick(sender, ComponentName("com.example.mail", "com.example.mail.Compose"))
+        pick(sender, mail)
         idleUntil { engine.crashes.isEmpty() }
         controller.close()
+    }
+
+    /** Exports a report, closes its sheet without a pick, and answers the sheet's callback. */
+    private fun share(controller: ActivityController<MainActivity>): IntentSender {
+        app.container.reports.startExport()
+        idleUntil { shadowOf(controller.get()).peekNextStartedActivityForResult() != null }
+        val started = shadowOf(controller.get()).nextStartedActivityForResult
+        shadowOf(controller.get()).receiveResult(started.intent, Activity.RESULT_CANCELED, null)
+        idleUntil { app.container.reports.export.value == ExportState.Idle }
+        return pickSender(started.intent)!!
+    }
+
+    /** The sheet's callback from Android 15: a result, which names the app picked only for a pick. */
+    private fun chooserResult(sender: IntentSender, type: Int, app: ComponentName?) {
+        val result = ReflectionHelpers.callConstructor(
+            ChooserResult::class.java,
+            ClassParameter.from(Int::class.javaPrimitiveType, type),
+            ClassParameter.from(ComponentName::class.java, app),
+            ClassParameter.from(Boolean::class.javaPrimitiveType, false),
+        )
+        sender.sendIntent(this.app, 0, Intent().putExtra(Intent.EXTRA_CHOOSER_RESULT, result), null, null)
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+
+    @Test
+    fun `a pick reported as a chooser result clears, a copy does not`() {
+        val engine = app.container.engine as FakeEngine
+        val dir = app.container.crashFiles.dir.apply { mkdirs() }
+        dir.resolve("1795300150000.txt").writeText("source: core\n")
+        engine.crashes = listOf(CrashFile("1795300150000.txt", 13))
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val sender = share(controller)
+        chooserResult(sender, ChooserResult.CHOOSER_RESULT_COPY, null)
+        assertTrue(engine.crashes.isNotEmpty())
+        chooserResult(sender, ChooserResult.CHOOSER_RESULT_SELECTED_COMPONENT, mail)
+        idleUntil { engine.crashes.isEmpty() }
+        controller.close()
+    }
+
+    @Test
+    fun `a late pick in the first sheet clears only the first export's crash files`() {
+        val engine = app.container.engine as FakeEngine
+        val dir = app.container.crashFiles.dir.apply { mkdirs() }
+        dir.resolve("1795300150000.txt").writeText("source: core\n")
+        engine.crashes = listOf(CrashFile("1795300150000.txt", 13))
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val first = share(controller)
+        // A crash after the first export: only the second holds it.
+        dir.resolve("1795300160000.txt").writeText("source: app\n")
+        engine.crashes = engine.crashes + CrashFile("1795300160000.txt", 12)
+        val second = share(controller)
+        pick(first, mail)
+        idleUntil { engine.crashes.size < 2 }
+        assertEquals(listOf("1795300160000.txt"), engine.crashes.map { it.name })
+        pick(second, mail)
+        idleUntil { engine.crashes.isEmpty() }
+        controller.close()
+    }
+
+    @Test
+    fun `the sheet calls back a receiver in the manifest, which no other app can reach`() {
+        val receiver = ComponentName(app, ReportPickReceiver::class.java)
+        val info = app.packageManager.getReceiverInfo(receiver, PackageManager.ComponentInfoFlags.of(0))
+        assertFalse(info.exported)
     }
 }

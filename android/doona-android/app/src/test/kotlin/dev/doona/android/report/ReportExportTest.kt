@@ -48,6 +48,9 @@ class ReportExportTest {
     private val crashDir get() = tmp.root.resolve("crash")
     private val outDir get() = tmp.root.resolve("reports")
 
+    /** The exports a sheet may call back for, in a file that outlives an export object, as it outlives a process. */
+    private val tokens get() = ExportTokens { tmp.root.resolve("report-exports.json") }
+
     @Before
     fun setUp() = AppEvents.clear()
 
@@ -85,7 +88,7 @@ class ReportExportTest {
     private fun TestScope.export(engine: Engine, now: Long = 1_795_300_200_000): ReportExport {
         val files = CrashFiles(crashDir)
         val dispatcher = StandardTestDispatcher(testScheduler)
-        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, { app }, this, dispatcher) { now }
+        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, this, dispatcher) { now }
     }
 
     /** Every entry of the zip, by name. */
@@ -96,7 +99,7 @@ class ReportExportTest {
     /** A crash file of the app, from an exception whose message quotes the subscription URL. */
     private fun appCrash(at: Long): String {
         val error = IllegalStateException("fetch https://sub.provider-example.net/api?token=$token failed")
-        CrashHandler(CrashFiles(crashDir, clock = { at }), "0.1 debug arm64-v8a-android", { _, _ -> }) { true }.uncaughtException(Thread.currentThread(), error)
+        CrashHandler(CrashFiles(crashDir, clock = { at }), "0.1 debug arm64-v8a-android", { _, _ -> }, waitMs = 10_000) { true }.uncaughtException(Thread.currentThread(), error)
         return CrashFiles(crashDir).list().last().name
     }
 
@@ -164,8 +167,8 @@ class ReportExportTest {
         export.shared()
         advanceUntilIdle()
         assertTrue("the return alone clears nothing", engine.cleared.isEmpty())
-        export.picked()
-        export.picked()
+        export.picked(ready.token)
+        export.picked(ready.token)
         advanceUntilIdle()
         assertEquals(listOf(listed to 1_795_300_151_000L), engine.cleared)
         assertEquals(ExportState.Idle, export.export.value)
@@ -181,10 +184,10 @@ class ReportExportTest {
         val export = export(engine)
         export.startExport()
         advanceUntilIdle()
-        export.take()
+        val ready = export.take()!!
         export.shareFailed()
         export.shared()
-        export.picked()
+        export.picked(ready.token)
         advanceUntilIdle()
         assertEquals(ExportState.Failed, export.export.value)
         assertTrue(engine.cleared.isEmpty())
@@ -204,7 +207,7 @@ class ReportExportTest {
         assertTrue("crash/$crash" in zip)
         val diagnostics = Json.parseToJsonElement(zip.getValue(ReportExport.REPORT_ENTRY)).jsonObject["diagnostics"]!!.jsonObject
         assertEquals("Internal", diagnostics["error"]!!.jsonPrimitive.content)
-        export.picked()
+        export.picked(ready.token)
         export.shared()
         advanceUntilIdle()
         assertTrue(engine.cleared.isEmpty())
@@ -216,26 +219,8 @@ class ReportExportTest {
         val files = CrashFiles(crashDir)
         val offer = CrashOffer(files, tmp.root.resolve("seen")).apply { check() }
         assertTrue(offer.offered.value)
-        ReportExport(fixtureEngine(), files, offer, { outDir }, { app }, this, StandardTestDispatcher(testScheduler)).startExport()
+        ReportExport(fixtureEngine(), files, offer, { outDir }, tokens, { app }, this, StandardTestDispatcher(testScheduler)).startExport()
         assertFalse(offer.offered.value)
-    }
-
-    @Test
-    fun `a crash file still empty is left out of the zip and of the clear`() = runTest {
-        val fake = fixtureEngine()
-        val crash = appCrash(1_795_300_150_000)
-        // Another writer claimed this name and has not renamed its part onto it yet.
-        crashDir.resolve("1795300151000.txt").createNewFile()
-        fake.crashes = listOf(CrashFile(crash, 1), CrashFile("1795300151000.txt", 0))
-        val engine = Recording(fake)
-        val export = export(engine)
-        export.startExport()
-        advanceUntilIdle()
-        val ready = export.take()!!
-        assertEquals(setOf("crash/$crash"), entries(ready.file).keys - ReportExport.REPORT_ENTRY)
-        export.picked()
-        advanceUntilIdle()
-        assertEquals(listOf(crash), engine.cleared.single().first)
     }
 
     @Test
@@ -315,5 +300,52 @@ class ReportExportTest {
         export.shareFailed()
         advanceUntilIdle()
         assertFalse(zip.exists())
+    }
+
+    @Test
+    fun `a late pick in an earlier sheet clears only that export's crash files`() = runTest {
+        val fake = fixtureEngine()
+        val first = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(first, 1))
+        val engine = Recording(fake)
+        val export = export(engine)
+        export.startExport()
+        advanceUntilIdle()
+        val firstExport = export.take()!!
+        export.shared()
+        // A crash after the first export: only the second holds it.
+        val second = appCrash(1_795_300_160_000)
+        fake.crashes = listOf(CrashFile(first, 1), CrashFile(second, 1))
+        export.startExport()
+        advanceUntilIdle()
+        export.take()!!
+        export.picked(firstExport.token)
+        advanceUntilIdle()
+        assertEquals(listOf(listOf(first) to 1_795_300_150_000L), engine.cleared)
+    }
+
+    @Test
+    fun `a pick reaches an export the process made before it ended`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(crash, 1))
+        val engine = Recording(fake)
+        val before = export(engine)
+        before.startExport()
+        advanceUntilIdle()
+        val ready = before.take()!!
+        // The process ends with the sheet open; the pick starts a new one.
+        val after = export(engine)
+        after.picked(ready.token)
+        advanceUntilIdle()
+        assertEquals(listOf(listOf(crash) to 1_795_300_150_000L), engine.cleared)
+    }
+
+    @Test
+    fun `a zip an ended run was writing is removed at the next start, however recent`() = runTest {
+        outDir.mkdirs()
+        val half = outDir.resolve(".doona-report-1234.part").apply { writeText("x") }
+        export(fixtureEngine()).sweep()
+        assertFalse(half.exists())
     }
 }

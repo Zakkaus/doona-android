@@ -402,8 +402,9 @@ class ServiceEngine internal constructor(
             val app = context.applicationContext
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val core = DeferredCore { NativeCore }
-            // noBackupFilesDir keeps state.json, which holds subscription URLs with tokens, out of every backup.
-            val opener = CoreOpener(core, app.noBackupFilesDir.path, Dispatchers.IO)
+            // noBackupFilesDir keeps state.json, which holds subscription URLs with tokens, out of every backup. Asking for
+            // it makes it, which is disk work: the opener asks on IO.
+            val opener = CoreOpener(core, { app.noBackupFilesDir.path }, Dispatchers.IO)
             val perApp = PerAppSettings.create(app)
             val controller = TunnelController(
                 core = core,

@@ -46,7 +46,7 @@ class TunnelControllerTest {
     private val killed = CountDownLatch(1)
     private val controller = TunnelController(
         core = core,
-        opener = CoreOpener(core, "/data", Dispatchers.IO),
+        opener = CoreOpener(core, { "/data" }, Dispatchers.IO),
         perApp = { perAppError?.let { throw it } ?: perApp },
         scope = scope,
         killProcess = { killed.countDown() },

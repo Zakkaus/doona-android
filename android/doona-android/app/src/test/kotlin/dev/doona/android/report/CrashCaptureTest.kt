@@ -9,6 +9,10 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+
+/** A wait no write here outlasts, for the tests that read the file a crash left: a slow machine may take 200 ms. */
+private const val SURE_MS = 10_000L
 
 /** The uncaught-exception handler: the crash file it writes holds no message and no foreign frame, and the chain goes on. */
 class CrashCaptureTest {
@@ -26,7 +30,7 @@ class CrashCaptureTest {
     @Test
     fun `a crash leaves one file in the core's format, then goes to the previous handler`() {
         var handed: Pair<Thread, Throwable>? = null
-        val handler = CrashHandler(files, "0.1 debug arm64-v8a-android", { t, e -> handed = t to e }) { false }
+        val handler = CrashHandler(files, "0.1 debug arm64-v8a-android", { t, e -> handed = t to e }, waitMs = SURE_MS) { false }
         val error = leaky()
         handler.uncaughtException(Thread.currentThread(), error)
 
@@ -43,7 +47,8 @@ class CrashCaptureTest {
         val trace = text.substringAfter("\n\nbacktrace:\n").lines().filter { it.isNotEmpty() }
         assertEquals("exception: java.lang.IllegalStateException", trace.first())
         assertEquals("the cause is not read", 1, trace.count { !it.startsWith("  at ") })
-        assertTrue(trace.filter { it.startsWith("  at ") }.all { it.startsWith("  at dev.doona.") })
+        // A test's own name, spaces and all, is no identifier.
+        assertTrue(trace.filter { it.startsWith("  at ") }.all { it.startsWith("  at dev.doona.") || it == "  at $REDACTED" })
         for (leak in listOf("https", "example", "tk_5ecret", "203.0.113.45", "refused", "org.junit", "java.lang.reflect")) {
             assertFalse(leak, leak in text)
         }
@@ -51,7 +56,7 @@ class CrashCaptureTest {
 
     @Test
     fun `the main thread is named, any other is not`() {
-        val handler = CrashHandler(files, "v", { _, _ -> }) { true }
+        val handler = CrashHandler(files, "v", { _, _ -> }, waitMs = SURE_MS) { true }
         handler.uncaughtException(Thread("OkHttp https://sub.example.net/"), leaky())
         val text = files.list().single().readText()
         assertTrue("thread: main\n" in text)
@@ -64,7 +69,7 @@ class CrashCaptureTest {
         val guarded = object : RuntimeException() {
             override val cause: Throwable get() = error("asked")
         }
-        CrashHandler(files, "v", { _, _ -> }) { false }.uncaughtException(Thread.currentThread(), guarded)
+        CrashHandler(files, "v", { _, _ -> }, waitMs = SURE_MS) { false }.uncaughtException(Thread.currentThread(), guarded)
         assertTrue(files.list().single().readText().contains("\nexception: dev.doona.android.report.CrashCaptureTest"))
     }
 
@@ -86,6 +91,7 @@ class CrashCaptureTest {
             val second = Thread.getDefaultUncaughtExceptionHandler() as CrashHandler
             assertSame(before, first.previous)
             assertSame(before, second.previous)
+            assertSame("the threads are kept", first.threads, second.threads)
         } finally {
             Thread.setDefaultUncaughtExceptionHandler(before)
         }
@@ -95,7 +101,7 @@ class CrashCaptureTest {
     fun `the crash goes on while another thread holds the exception`() {
         val error = leaky()
         val handed = CountDownLatch(1)
-        val handler = CrashHandler(files, "v", { _, _ -> handed.countDown() }) { false }
+        val handler = CrashHandler(files, "v", { _, _ -> handed.countDown() }, waitMs = SURE_MS) { false }
         val crashing = Thread { handler.uncaughtException(Thread.currentThread(), error) }
         // As a thread that locked the exception and waits for the crashing one to end.
         synchronized(error) {
@@ -104,5 +110,50 @@ class CrashCaptureTest {
         }
         crashing.join()
         assertTrue(files.list().single().readText().contains("exception: java.lang.IllegalStateException"))
+    }
+
+    @Test
+    fun `a write that hangs still hands the crash on by the deadline, from a thread started before the crash`() {
+        val release = CountDownLatch(1)
+        val writing = AtomicReference<Thread>()
+        // The clock is read in the middle of the write: blocked there, it stands for an fsync that does not return.
+        val hanging = CrashFiles(tmp.root.resolve("crash"), clock = {
+            writing.set(Thread.currentThread())
+            release.await()
+            1_795_300_150_000
+        })
+        val handed = CountDownLatch(1)
+        val handler = CrashHandler(hanging, "v", { _, _ -> handed.countDown() }) { false }
+        val before = Thread.getAllStackTraces().keys
+        val crashing = Thread { handler.uncaughtException(Thread.currentThread(), leaky()) }
+        try {
+            val begun = System.nanoTime()
+            crashing.start()
+            assertTrue("the crash was not handed on", handed.await(5, TimeUnit.SECONDS))
+            assertTrue("handed on late", System.nanoTime() - begun < TimeUnit.SECONDS.toNanos(1))
+            assertTrue("the write ran on a thread made at the crash", writing.get() in before)
+        } finally {
+            release.countDown()
+            crashing.join()
+        }
+    }
+
+    @Test
+    fun `a frame whose names are no plain identifiers is written redacted`() {
+        val error = IllegalStateException().apply {
+            stackTrace = arrayOf(
+                StackTraceElement("dev.doona.android.Forged", "https://user:hunter2@sub.example.net/api", "Forged.kt", 7),
+                StackTraceElement("dev.doona.android.https://user:hunter2@sub.example.net", "run", "Forged.kt", 8),
+                StackTraceElement("dev.doona.android.report.Real\$Inner", "write\$lambda\$0", "Real.kt", 9),
+                StackTraceElement("dev.doona.android.report.Real", "<init>", "Real.kt", 10),
+            )
+        }
+        CrashHandler(files, "v", { _, _ -> }, waitMs = SURE_MS) { false }.uncaughtException(Thread.currentThread(), error)
+        val text = files.list().single().readText()
+        for (leak in listOf("hunter2", "example", "https", "user:")) assertFalse(leak, leak in text)
+        val frames = text.lines().filter { it.startsWith("  at ") }
+        val own = listOf("dev.doona.android.report.Real\$Inner.write\$lambda\$0:9", "dev.doona.android.report.Real.<init>:10")
+        assertEquals(listOf("<redacted>", "<redacted>") + own, frames.map { it.removePrefix("  at ") })
+        assertTrue("location: <redacted>\n" in text)
     }
 }

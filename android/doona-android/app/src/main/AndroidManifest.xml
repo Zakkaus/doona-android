@@ -67,6 +67,12 @@
                 android:resource="@xml/report_paths" />
         </provider>
 
+        <!-- Hears a pick in a report's share sheet. Not exported: only this app's own PendingIntent reaches it. In the
+             manifest, so a pick after the process ended still clears what that export holds. -->
+        <receiver
+            android:name=".report.ReportPickReceiver"
+            android:exported="false" />
+
         <service
             android:name=".vpn.ToggleTileService"
             android:exported="true"

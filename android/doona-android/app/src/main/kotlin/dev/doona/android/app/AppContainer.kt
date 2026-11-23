@@ -12,9 +12,9 @@ import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.report.AppInfo
 import dev.doona.android.report.CrashFiles
 import dev.doona.android.report.CrashOffer
+import dev.doona.android.report.ExportTokens
 import dev.doona.android.report.ReportExport
 import dev.doona.android.report.reportDir
-import dev.doona.android.report.reportPicks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,10 +57,13 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     /** The report offered after a crash, once per crash; the number it last offered is kept beside the crash files. */
     val crashOffer: CrashOffer by lazy { CrashOffer(crashFiles) { File(application.noBackupFilesDir, "crash-offered") } }
 
-    /** The diagnostic report export, above every screen: a zip being written survives leaving the page. */
+    /**
+     * The diagnostic report export, above every screen: a zip being written survives leaving the page. The exports a
+     * share sheet may still call back for are kept beside the crash files, so a pick reaches them after a restart.
+     */
     val reports: ReportExport by lazy {
-        ReportExport(engine, crashFiles, crashOffer, { reportDir(application) }, { AppInfo.of(application) }, uiScope, Dispatchers.IO)
-            .also { export -> reportPicks(application, export::picked) }
+        val tokens = ExportTokens { File(application.noBackupFilesDir, "report-exports.json") }
+        ReportExport(engine, crashFiles, crashOffer, { reportDir(application) }, tokens, { AppInfo.of(application) }, uiScope, Dispatchers.IO)
     }
 
     private val launched = AtomicBoolean(false)
