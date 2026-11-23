@@ -339,3 +339,157 @@ fn a_file_that_will_not_go_stops_the_write() {
     crashes.save("source: core\n").unwrap();
     assert_eq!(left(&dir)[..4], old[1..]);
 }
+
+/// Runs a panic on a core's thread while `hold` keeps the crash directory, and answers whether the
+/// panic ended within two seconds. If not, `hold` is dropped, so a hook that waits ends.
+fn panics_while<H>(diag: &Arc<super::Diag>, hold: &mut Option<H>) -> bool {
+    let (done, ended) = std::sync::mpsc::channel();
+    let target = Arc::clone(diag);
+    let panicking = std::thread::spawn(move || {
+        panic_on(&target, || panic!("debugFault"));
+        let _ = done.send(());
+    });
+    let ended = ended
+        .recv_timeout(std::time::Duration::from_secs(2))
+        .is_ok();
+    if !ended {
+        *hold = None;
+    }
+    panicking.join().unwrap();
+    ended
+}
+
+/// A panic while the app holds the directory waits about 100 ms for it, then writes no file: a
+/// hook that waited longer could keep the process from ending. The same panic again does not
+/// wait: in every flow, it would wait each time.
+#[test]
+fn a_panic_gives_up_on_a_directory_the_app_holds() {
+    let (dir, diag) = crashes("diag-crash-held");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    let mut held = Some(app_lock(&at));
+    assert!(
+        panics_while(&diag, &mut held),
+        "the panic waited for the lock"
+    );
+    assert!(
+        panics_while(&diag, &mut held),
+        "the same panic waited again"
+    );
+    drop(held);
+    assert!(numbers(&at).is_empty(), "{:?}", entries(&dir));
+    let events = diag.events(None).0;
+    let details: Vec<_> = events.iter().rev().take(2).map(|e| e.detail).collect();
+    assert_eq!(details, [Some("repeated"), Some("timed_out")]);
+}
+
+/// A clear holds the core's files while it waits for the directory, which it may; a panic on
+/// another thread meanwhile gives up within the same bound.
+#[test]
+fn a_panic_gives_up_while_a_clear_waits_for_the_directory() {
+    let (dir, diag) = crashes("diag-crash-clearing");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    let held = app_lock(&at);
+    let clearing = std::thread::spawn({
+        let diag = Arc::clone(&diag);
+        move || diag.crashes().unwrap().remove(&[], 0).map(|_| ())
+    });
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let mut held = Some(held);
+    assert!(
+        panics_while(&diag, &mut held),
+        "the panic waited for the clear"
+    );
+    drop(held);
+    clearing.join().unwrap().unwrap();
+}
+
+/// An empty `<n>.txt` is a placeholder an earlier version claimed, never a crash file: it is not
+/// listed, so no export takes it.
+#[test]
+fn an_empty_file_is_no_crash_file() {
+    let (dir, diag) = crashes("diag-crash-empty");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    fs::write(at.join("1795300000000.txt"), "x").unwrap();
+    fs::write(at.join("1795300000001.txt"), "").unwrap();
+    let names: Vec<String> = diag
+        .crashes()
+        .unwrap()
+        .list()
+        .into_iter()
+        .map(|f| f.name)
+        .collect();
+    assert_eq!(names, ["1795300000000.txt"]);
+}
+
+/// What earlier versions left is put right under the lock before anything is counted: the empty
+/// placeholders go, and six files are trimmed to five. The new name is above every name seen,
+/// the placeholders' included, and a clear saves a mark no lower.
+#[test]
+fn the_lock_removes_placeholders_and_trims_what_earlier_versions_left() {
+    let (dir, diag) = crashes("diag-crash-earlier");
+    let at = dir.path().join(crash::DIR);
+    let earlier = || {
+        fs::create_dir_all(&at).unwrap();
+        for n in 1..=6 {
+            fs::write(at.join(format!("179530000000{n}.txt")), "x").unwrap();
+        }
+        fs::write(at.join("1795300000009.txt"), "").unwrap();
+    };
+    earlier();
+    let crashes = diag.crashes().unwrap();
+    crashes.clock.store(1_795_300_000_000, Relaxed);
+    assert_eq!(crashes.save("source: core\n").unwrap(), "1795300000010.txt");
+    let kept = ["3", "4", "5", "6"].map(|n| format!("179530000000{n}.txt"));
+    assert_eq!(left(&dir)[..4], kept, "{:?}", left(&dir));
+    assert_eq!(left(&dir).len(), 5);
+
+    fs::remove_dir_all(&at).unwrap();
+    earlier();
+    let again = crash::Crashes::new(at.clone());
+    assert_eq!(again.remove(&[], 0).unwrap(), Some(0));
+    assert_eq!(
+        numbers(&at),
+        (2..=6).map(|n| 1_795_300_000_000 + n).collect::<Vec<_>>()
+    );
+    let mark: u64 = fs::read_to_string(at.join(".core.mark"))
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    assert!(mark >= 1_795_300_000_009, "{mark}");
+}
+
+/// Only a mark never saved reads as none. One that cannot be read, or that holds no number, stops
+/// the write and the clear: read as none, a cleared name could be taken again. So does a
+/// directory that cannot be listed.
+#[test]
+fn a_mark_or_directory_that_cannot_be_read_stops_writes_and_clears() {
+    use std::os::unix::fs::PermissionsExt;
+    let (dir, diag) = crashes("diag-crash-unread");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(at.join(".core.mark")).unwrap();
+    let crashes = diag.crashes().unwrap();
+    assert!(
+        crashes.save("source: core\n").is_err(),
+        "a mark that is a directory"
+    );
+    assert!(crashes.remove(&[], 0).is_err());
+    fs::remove_dir(at.join(".core.mark")).unwrap();
+    fs::write(at.join(".core.mark"), "17953000x").unwrap();
+    assert!(
+        crashes.save("source: core\n").is_err(),
+        "a mark that holds no number"
+    );
+    assert!(crashes.remove(&[], 0).is_err());
+    assert!(numbers(&at).is_empty());
+
+    fs::remove_file(at.join(".core.mark")).unwrap();
+    fs::set_permissions(&at, fs::Permissions::from_mode(0o300)).unwrap();
+    let unlisted = crashes.save("source: core\n");
+    fs::set_permissions(&at, fs::Permissions::from_mode(0o700)).unwrap();
+    assert!(unlisted.is_err(), "a directory that cannot be listed");
+    assert!(numbers(&at).is_empty());
+}

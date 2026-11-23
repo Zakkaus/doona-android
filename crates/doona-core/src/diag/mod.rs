@@ -10,6 +10,7 @@
 
 pub(crate) mod crash;
 mod crash_dir;
+mod place;
 pub mod report;
 mod stack;
 
@@ -186,6 +187,7 @@ pub(super) fn io_code(kind: ErrorKind) -> &'static str {
         ErrorKind::StorageFull | ErrorKind::QuotaExceeded => "storage_full",
         ErrorKind::ReadOnlyFilesystem => "read_only",
         ErrorKind::InvalidData => "invalid_data",
+        ErrorKind::TimedOut => "timed_out",
         _ => "io",
     }
 }

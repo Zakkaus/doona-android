@@ -1,7 +1,8 @@
 //! The ring, its level, and the crash files: their cap, their order, a repeated location, and
 //! what a formatted message keeps.
 
-use super::crash::{self, MAX_BYTES, MAX_FILES, Module, Place, place, version_of};
+use super::crash::{self, MAX_BYTES, MAX_FILES};
+use super::place::{Module, Place, place, version_of};
 use super::report::Level;
 use super::*;
 use crate::testutil::{TempDir, alloc};
