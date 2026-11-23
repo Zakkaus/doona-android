@@ -66,7 +66,7 @@ import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * Where the 策略 tab leads: a group's page, the main node's picker, all rules, the template, a new rule, the other tabs,
- * its two bar actions.
+ * its two bar actions, and the configuration's overview (with the preview flag [RvPolicyScreen]'s `configRev`).
  */
 internal class RvPolicyRoutes(
     val group: (String) -> Unit = {},
@@ -78,6 +78,7 @@ internal class RvPolicyRoutes(
     val testAll: () -> Unit = {},
     val update: () -> Unit = {},
     val search: () -> Unit = {},
+    val config: () -> Unit = {},
 )
 
 /**
@@ -88,7 +89,8 @@ internal class RvPolicyRoutes(
  * today's bytes, as Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
  * the node everything goes through, so under the mode the page is the node picker itself; 直連 shows the mode alone.
  * With no subscription there is nothing to route: [noSubscription], when set, puts the empty state with 新增訂閱 (which
- * runs it) in place of the cards, as 活動 does; the bar and the nav stay.
+ * runs it) in place of the cards, as 活動 does; the bar and the nav stay. [configRev] is a preview flag (PV-f): set, 設定檔
+ * joins the card under 範本 with the applied revision and opens the configuration's overview ([RvPolicyRoutes.config]).
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -96,6 +98,7 @@ internal fun RvPolicyScreen(
     onChange: (RvPolicyState) -> Unit,
     routes: RvPolicyRoutes = RvPolicyRoutes(),
     noSubscription: (() -> Unit)? = null,
+    configRev: Int? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -131,7 +134,7 @@ internal fun RvPolicyScreen(
                     MainCard(state.group(RvPolicyData.main), routes.mainNode)
                     GroupsCard(state, routes.group)
                     RulesCard(routes.rules)
-                    OptionsCard(state, onChange, routes)
+                    OptionsCard(state, onChange, routes, configRev)
                 }
             }
         }
@@ -217,20 +220,32 @@ private fun RulesCard(onAll: () -> Unit) {
     }
 }
 
-/** What shapes the rules: the template they come from, a new rule, and the two switches doona web offers with it. */
+/**
+ * What shapes the rules: the template they come from, the configuration file's applied revision when [configRev] is set,
+ * a new rule, and the two switches doona web offers with it.
+ */
 @Composable
-private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes) {
+private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Int?) {
     RvCard {
-        RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_policy_template), null, onClick = routes.template) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RvText(stringResource(R.string.rv_policy_template_value), Rv.type.rowSub, color = Rv.colors.textSecondary)
-                Spacer(Modifier.width(RvSpace.tight))
-                RvChevron()
-            }
+        ValueRow(R.drawable.rv_sym_rule, stringResource(R.string.rv_policy_template), stringResource(R.string.rv_policy_template_value), routes.template)
+        if (configRev != null) {
+            ValueRow(R.drawable.rv_sym_edit, stringResource(R.string.rv_config_title), stringResource(R.string.rv_config_revision, configRev), routes.config)
         }
         RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.rv_policy_new_rule), null, onClick = routes.newRule) { RvChevron() }
         SwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), state.blockAds) { onChange(state.copy(blockAds = it)) }
         SwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), state.blockQuic) { onChange(state.copy(blockQuic = it)) }
+    }
+}
+
+/** A row that opens a page, with its current value before the chevron. */
+@Composable
+private fun ValueRow(@DrawableRes icon: Int, title: String, value: String, onClick: () -> Unit) {
+    RvRow({ RvIconDisc(icon) }, title, null, onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary)
+            Spacer(Modifier.width(RvSpace.tight))
+            RvChevron()
+        }
     }
 }
 
