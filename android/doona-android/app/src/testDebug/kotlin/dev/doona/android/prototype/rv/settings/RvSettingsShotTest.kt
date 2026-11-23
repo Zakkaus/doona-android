@@ -25,7 +25,7 @@ import org.robolectric.annotation.GraphicsMode
  * The Revolut-style settings sample, light and dark, in the scheme of the owner's wallpaper: the 設定 page captured in
  * one long frame (goldens `proto-rv-settings-light`, `-dark`, `-fs115` and `-fs200`), and the 主題 page it opens
  * (`proto-rv-settings-theme-light` and `-dark`), and the DNS picker of 進階 (`proto-rv-settings-dns-*`); and that
- * 進階's 回報問題 row opens the report page, and the 依 App row its page.
+ * 進階's 回報問題 row opens the report page, and the 依 App and licences rows theirs.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -65,15 +65,18 @@ class RvSettingsShotTest {
 
     @Test
     @Config(qualifiers = LONG_PAGE)
-    fun perAppOpensItsPage() {
+    fun perAppAndLicensesOpenTheirPages() {
         var perApp = 0
+        var licenses = 0
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(perApp = { perApp++ }))
+                RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(perApp = { perApp++ }, licenses = { licenses++ }))
             }
         }
         compose.onNodeWithText(rvText(R.string.rv_settings_per_app)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_settings_licenses)).performClick()
         assertEquals(1, perApp)
+        assertEquals(1, licenses)
     }
 
     @Test

@@ -75,7 +75,7 @@ internal fun RvSettingsScreen(
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme)
             AdvancedGroup(state, routes)
-            AboutGroup()
+            AboutGroup(routes.licenses)
         }
         // The last card clears the floating nav over the page.
         Spacer(Modifier.height(rvNavClearance(insets)))
@@ -113,7 +113,8 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
 
 /**
  * Where 設定's rows lead beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that
- * switch, D14), 依 App, the DNS picker, the effective config, and 回報問題 from 進階's row and the hero's 匯出診斷.
+ * switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row and the hero's 匯出診斷, and the
+ * licences.
  */
 internal class RvSettingsRoutes(
     val alwaysOn: () -> Unit = NOT_WIRED,
@@ -121,6 +122,7 @@ internal class RvSettingsRoutes(
     val dns: () -> Unit = NOT_WIRED,
     val effectiveConfig: () -> Unit = NOT_WIRED,
     val report: () -> Unit = NOT_WIRED,
+    val licenses: () -> Unit = NOT_WIRED,
 )
 
 /**
@@ -182,11 +184,11 @@ private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes) {
 }
 
 @Composable
-private fun AboutGroup() {
+private fun AboutGroup(onLicenses: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_about))
     RvSettingsCard {
         RvSettingsValueRow(stringResource(R.string.rv_settings_version), R.drawable.rv_settings_ic_info, stringResource(R.string.rv_settings_version_value))
-        RvSettingsNavRow(stringResource(R.string.rv_settings_licenses), R.drawable.rv_sym_license, NOT_WIRED)
+        RvSettingsNavRow(stringResource(R.string.rv_settings_licenses), R.drawable.rv_sym_license, onLicenses)
     }
 }
 

@@ -43,6 +43,9 @@ import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
 import dev.doona.android.prototype.rv.settings.RvExport
+import dev.doona.android.prototype.rv.settings.RvLicenseText
+import dev.doona.android.prototype.rv.settings.RvLicenses
+import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvLogLevel
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
@@ -203,7 +206,7 @@ private fun RvSamplePage(
 
         DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop)
 
-        PERAPP -> PerAppPage(route, settings, onSettings, pages)
+        PERAPP, LICENSES, LICENSE -> AboutAppsPage(route, settings, onSettings, pages)
 
         in RvPolicyPreviewRoutes.all -> RvPolicyPreview(route, policy, settings, pages.push, pages.pop, pages.tab)
 
@@ -244,8 +247,19 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         dns = { pages.push(DNS) },
         effectiveConfig = { pages.push(RvPolicyPreviewRoutes.EFFECTIVE) },
         report = { pages.push(REPORT) },
+        licenses = { pages.push(LICENSES) },
     )
     RvSettingsScreen(settings, onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes)
+}
+
+/** 設定's 依 App, and 授權條款 with each licence's text (`license:<n>`). */
+@Composable
+private fun AboutAppsPage(route: String, settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit, pages: RvSamplePages) {
+    when (route.substringBefore(':')) {
+        PERAPP -> PerAppPage(route, settings, onSettings, pages)
+        LICENSES -> RvLicensesScreen(onOpen = { pages.push("$LICENSE:$it") }, onBack = pages.pop)
+        else -> RvLicenseText(RvLicenses.all[route.substringAfter(':').toInt()], onBack = pages.pop)
+    }
 }
 
 /**
@@ -522,6 +536,8 @@ internal const val THEME = "theme"
 internal const val DNS = "dns"
 internal const val REPORT = "report"
 internal const val PERAPP = "perapp"
+internal const val LICENSES = "licenses"
+internal const val LICENSE = "license"
 internal const val CONNECTIONS = "connections"
 internal const val CONNECTION = "connection"
 internal const val GALLERY = "gallery"

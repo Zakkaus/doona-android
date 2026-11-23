@@ -29,6 +29,7 @@ import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.settings.RvExport
+import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvLogLevel
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
@@ -134,6 +135,9 @@ class RvLayoutTest {
 
     @Test
     fun perAppSaveFailed() = measure("perapp-save-failed", Top.Title) { RvPerAppScreen(rvPerAppSample("save-failed"), RvPerAppActions(), onBack = {}) }
+
+    @Test
+    fun licenses() = measure("licenses", Top.Title) { RvLicensesScreen(onOpen = {}, onBack = {}) }
 
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {
         var barBottom = 0f
