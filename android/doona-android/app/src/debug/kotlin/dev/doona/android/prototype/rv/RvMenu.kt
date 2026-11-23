@@ -109,13 +109,18 @@ private fun RvMenu(state: RvMenuState, items: List<RvMenuItem>) {
     val motion = Rv.motion
     val shown = remember { MutableTransitionState(false) }
     shown.targetState = state.open
+    // Closed and settled, the menu composes nothing, not even its timing: every row of a list carries one.
+    if (!shown.currentState && !shown.targetState) return
     LaunchedEffect(state.open) {
         val gesture = if (state.open) "menu-open" else "menu-close"
         RvFrames.begin(gesture)
-        snapshotFlow { shown.isIdle }.first { it }
-        RvFrames.end(gesture)
+        // A close that has settled leaves composition with this effect: it ends there.
+        try {
+            snapshotFlow { shown.isIdle }.first { it }
+        } finally {
+            RvFrames.end(gesture)
+        }
     }
-    if (!shown.currentState && !shown.targetState) return
     val density = LocalDensity.current
     val endSide = if (LocalLayoutDirection.current == LayoutDirection.Ltr) 1f else 0f
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars

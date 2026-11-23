@@ -366,9 +366,12 @@ internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, order: Int = 0, no
     val motion = Rv.motion
     val testing = LocalRvTesting.current || node in LocalRvTestingNodes.current
     var waiting by remember { mutableStateOf(testing) }
-    LaunchedEffect(testing) {
-        if (!testing && waiting && !motion.instant) delay(order.toLong() * RvMotion.STAGGER_MS)
-        waiting = testing
+    // Only while what it shows lags the test: a row at rest launches nothing, and a list has one per row.
+    if (waiting != testing) {
+        LaunchedEffect(testing) {
+            if (!testing && !motion.instant) delay(order.toLong() * RvMotion.STAGGER_MS)
+            waiting = testing
+        }
     }
     Crossfade(if (waiting) null else latencyMs to changeMs, animationSpec = motion.tween(RvMotion.FADE_MS), label = "latency") { shown ->
         if (shown == null) {
