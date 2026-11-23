@@ -412,9 +412,15 @@ internal object RvAlpha {
 internal object RvChrome {
     /**
      * The controls' row: its top this far under the status bar, every control a 44 dp disc or pill in a 48 dp target.
-     * Revolut's back disc sits 6 dp under its status bar (revolut-ux3 §5), and every bar's row is this one.
+     * Revolut's back disc sits 6 dp under its status bar (revolut-ux3 §5), and every pushed page's bar is this one.
      */
     val barTop = 6.dp
+
+    /**
+     * A tab home's bar (活動, 策略, 連線: the duck, the search capsule, the tab's discs) sits higher: Revolut's tab bars
+     * put their 44 dp controls 4 dp under the status bar (rv-fix-4e, 36 Android screens with the search bar).
+     */
+    val tabBarTop = 4.dp
     val control = 44.dp
     val controlGlyph = 24.dp
     val touchPad = (RvSize.touch - control) / 2

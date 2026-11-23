@@ -171,7 +171,9 @@ class RvLayoutTest {
             DoonaTheme(false) {
                 PhoneFrame {
                     val insets = LocalFrameInsets.current ?: WindowInsets(0)
-                    barBottom = insets.getTop(LocalDensity.current) / LocalDensity.current.density + rvBarHeight().value
+                    // A tab home's bar sits higher than a pushed page's.
+                    val barTop = if (top == Top.Tab) RvChrome.tabBarTop else RvChrome.barTop
+                    barBottom = insets.getTop(LocalDensity.current) / LocalDensity.current.density + rvBarHeight(barTop).value
                     RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
                 }
             }
@@ -212,7 +214,8 @@ class RvLayoutTest {
 
 /**
  * How a page starts under the bar: a large title, a centred header (a detail page's, as a block) where a large title
- * would start, its own hero (not measured), or a tab home's first content, [RvSpace.tabTop] under the bar.
+ * would start, its own hero (not measured), or a tab home's first content, [RvSpace.tabTop] under its bar
+ * ([RvChrome.tabBarTop]).
  */
 private enum class Top { Title, Header, Hero, Tab }
 

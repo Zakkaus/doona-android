@@ -58,21 +58,28 @@ import dev.doona.android.feature.NOT_WIRED
 
 /**
  * The row of controls at the top of every page, over the content: [content] in a row of 48 dp targets whose 44 dp
- * controls sit [RvChrome.barTop] under the status bar. Behind it a strip of the page fades in by [shade] (0 at rest, 1
+ * controls sit [top] under the status bar ([RvChrome.barTop], or [RvChrome.tabBarTop] on a tab home). Behind it a strip of the page fades in by [shade] (0 at rest, 1
  * once the content has moved under it): the content blurred under the page at 85 %, solid to the controls' bottom plus
  * 8 dp, then the blur and its tint fading out together over 12 dp, so what scrolls under the bar is blurred rather than
  * cut off at a line (S5-24). The tint used to fade alone while the blur ran on to the edge, which left a band of
  * untinted blurred content under the row (item 23).
  */
 @Composable
-internal fun RvBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+internal fun RvBar(
+    glass: RvGlass,
+    insets: WindowInsets,
+    shade: () -> Float,
+    modifier: Modifier = Modifier,
+    top: Dp = RvChrome.barTop,
+    content: @Composable BoxScope.() -> Unit,
+) {
     Box(modifier.fillMaxWidth()) {
         Box(Modifier.matchParentSize().fadeOutBottom(RvChrome.stripFade, shade).rvGlass(glass, RectangleShape, Rv.colors.barGlass))
         Box(
             Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(insets.only(WindowInsetsSides.Top))
-                .padding(top = RvChrome.barTop - RvChrome.touchPad, bottom = RvChrome.stripBelow - RvChrome.touchPad + RvChrome.stripFade)
+                .padding(top = top - RvChrome.touchPad, bottom = RvChrome.stripBelow - RvChrome.touchPad + RvChrome.stripFade)
                 .height(RvSize.touch),
             contentAlignment = Alignment.CenterStart,
             content = content,
@@ -112,7 +119,7 @@ internal fun RvTopBar(
     pull: RvPullLook = RvPullLook.None,
     onSubscriptions: () -> Unit = NOT_WIRED,
 ) {
-    RvBar(glass, insets, shade, modifier) {
+    RvBar(glass, insets, shade, modifier, RvChrome.tabBarTop) {
         RvTabBarRow(glass, { RvSearchPill(onSearch, it, glass, pull) }) {
             RvGlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
             RvGlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), onSubscriptions)

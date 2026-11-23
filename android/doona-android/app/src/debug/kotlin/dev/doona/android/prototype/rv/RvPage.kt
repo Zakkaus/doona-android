@@ -40,14 +40,16 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import kotlin.math.roundToInt
 
 /**
  * The one scaffold of every page but 活動: the page scrolls under [RvBar], whose strip blurs it once it moves under the
  * bar. A pushed page ([onBack] adds the back disc) puts [content]'s `titleBlock` modifier on the block that ends with
  * its [RvLargeTitle]; as that block's bottom edge passes under the bar, the 20 sp [title] fades in on the bar beside the
- * disc. A page with a [field] and no [onBack] is a tab home (策略, 連線, 設定): 活動's bar ([RvTabBarRow]), [field] as
- * its search capsule and [actions] after it, and no large title; its content begins with [RvTabHeader]. A page with
+ * disc. A page with a [field] and no [onBack] is a tab home (策略, 連線, 設定): 活動's bar ([RvTabBarRow]) at its height
+ * ([RvChrome.tabBarTop]), [field] as its search capsule and [actions] after it, and no large title; its content begins
+ * with [RvTabHeader]. A page with
  * neither (歡迎) centres the title on the bar. The content starts at the screen's top, so it begins with
  * [RvBarSpacer]. On any other page, [actions] puts round glass buttons
  * ([RvGlassButton]) at the bar's end, on its row and in 48 dp targets, and [field] puts a list page's search field
@@ -71,8 +73,10 @@ internal fun RvScrollPage(
     content: @Composable ColumnScope.(titleBlock: Modifier) -> Unit,
 ) {
     val density = LocalDensity.current
+    val tab = field != null && onBack == null
+    val barTop = if (tab) RvChrome.tabBarTop else RvChrome.barTop
     var titleBottom by remember { mutableIntStateOf(Int.MAX_VALUE) }
-    val barBottom = with(density) { insets.getTop(this) + rvBarHeight().roundToPx() }
+    val barBottom = with(density) { insets.getTop(this) + rvBarHeight(barTop).roundToPx() }
     val fade = with(density) { RvChrome.collapse.toPx() }
     // 0 while the large title is clear of the bar, 1 once its bottom edge is under it.
     val collapse = { ((barBottom + fade - titleBottom) / fade).coerceIn(0f, 1f) }
@@ -84,7 +88,7 @@ internal fun RvScrollPage(
             // The bottom action's room: the gap above it, then the action with its 16 dp over the inset.
             if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() }))
         }
-        RvBar(glass, insets, rvShade(scroll), Modifier.align(Alignment.TopStart)) {
+        RvBar(glass, insets, rvShade(scroll), Modifier.align(Alignment.TopStart), barTop) {
             when {
                 field == null -> TitleBar(title, onBack, collapse)
                 onBack == null -> RvTabBarRow(glass, { field(glass, it) }, actions?.let { { it(glass) } })
@@ -92,7 +96,7 @@ internal fun RvScrollPage(
             }
         }
         // A tab home's buttons are on its bar's row.
-        if (field == null || onBack != null) {
+        if (!tab) {
             actions?.let {
                 // Each disc keeps its 48 dp target, so the gap between targets is the gap between discs less the overhangs.
                 Row(
@@ -142,15 +146,18 @@ private fun FieldBar(glass: RvGlass, onBack: () -> Unit, field: @Composable (RvG
     }
 }
 
-/** From the screen's top to the bar's controls' bottom, under the status bar: what the content keeps free above it. */
-internal fun rvBarHeight() = RvChrome.barTop + RvChrome.control
+/**
+ * From the status bar to the bar's controls' bottom, for a bar whose controls sit [top] under it: what the content keeps
+ * free above it.
+ */
+internal fun rvBarHeight(top: Dp = RvChrome.barTop) = top + RvChrome.control
 
-/** The room the status bar and the bar's controls take at the top of the scrolling content. */
+/** The room the status bar and the bar's controls take at the top of the scrolling content, for a bar at [top]. */
 @Composable
-internal fun RvBarSpacer(insets: WindowInsets) {
+internal fun RvBarSpacer(insets: WindowInsets, top: Dp = RvChrome.barTop) {
     Column {
         Spacer(Modifier.windowInsetsTopHeight(insets))
-        Spacer(Modifier.height(rvBarHeight()))
+        Spacer(Modifier.height(rvBarHeight(top)))
     }
 }
 
@@ -201,13 +208,13 @@ internal fun RvControlRow(control: @Composable () -> Unit) {
 
 /**
  * The head of a tab home (策略, 連線, 設定), which has no large title, as Revolut's tabs have none (revolut-ux3 §5): the
- * bar's room, then [RvSpace.tabTop] to the first content. An optional [caption] ([RvCaption] lines) and [control] row
+ * bar's room ([RvChrome.tabBarTop]), then [RvSpace.tabTop] to the first content. An optional [caption] ([RvCaption] lines) and [control] row
  * follow as [RvPageHeader] sets them; after a caption with no control row, the first card follows [RvSpace.headerGap]
  * under it.
  */
 @Composable
 internal fun RvTabHeader(insets: WindowInsets, caption: (@Composable ColumnScope.() -> Unit)? = null, control: (@Composable () -> Unit)? = null) {
-    RvBarSpacer(insets)
+    RvBarSpacer(insets, RvChrome.tabBarTop)
     Spacer(Modifier.height(RvSpace.tabTop))
     caption?.let {
         Column(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CAPTION), verticalArrangement = Arrangement.spacedBy(RvSpace.tight), content = it)
