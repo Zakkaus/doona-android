@@ -27,11 +27,14 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,27 +92,42 @@ internal fun RvActivityScreen(
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val glass = rememberRvGlass()
-    // While the pull or the picker covers 活動 the map's pulse rests, so 活動 does not change under the blur.
+    // While the pull or the picker covers 活動 the map's pulse rests and the tiles' lines hold, so 活動 does not change
+    // under the blur.
     val covered = remember(pull) { derivedStateOf { pull.progress() > 0f } }
-    Box(Modifier.fillMaxSize()) {
-        // The pull blurs and fades the page; the bars stay sharp, so the search pill, the picker's anchor, can grow.
-        Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
-            // The map stretches with the pull, and what lies under it moves down as far.
-            val pushed = pull.stretch?.let { stretch -> Modifier.graphicsLayer { translationY = stretch() } }
-            Header(state, mode, HeaderMotion(pull.stretch, pushed) { covered.value }, insets, HeroLook(hero, nodes)) { HeroActions(state, onAction, onConnect, routes.test) }
-            RvGutter(pushed ?: Modifier) {
-                OutboundCard(state, mode, routes, nodes)
-                TrafficTiles(state, routes.traffic)
-                RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
-                RvSubscriptionsCard(subscriptions)
-                RvFastestCard(nodes.fastest(FASTEST), state.node?.id ?: RvData.CURRENT_ID, routes.nodes)
+    val resting = remember(covered) { { covered.value } }
+    // A second's tick changes the rates and the minute's samples, nothing else. The hero's figures read them through
+    // [ticking] and the traffic tiles take [state]; the rest of 活動 takes [steady], equal from one tick to the next, so a
+    // tick recomposes those two and skips the rest. It recomposed the whole page each second: 7.5 ms on the phone.
+    val ticking = rememberUpdatedState(state)
+    val steady = state.steady()
+    // The map stretches with the pull, and what lies under it moves down as far.
+    val pushed = remember(pull) { pull.stretch?.let { stretch -> Modifier.graphicsLayer { translationY = stretch() } } }
+    val motion = remember(pull, pushed, resting) { HeaderMotion(pull.stretch, pushed, resting) }
+    val look = remember(hero, nodes) { HeroLook(hero, nodes) }
+    val fastest = remember(nodes) { nodes.fastest(FASTEST) }
+    CompositionLocalProvider(LocalRvCovered provides resting) {
+        Box(Modifier.fillMaxSize()) {
+            // The pull blurs and fades the page; the bars stay sharp, so the search pill, the picker's anchor, can grow.
+            Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
+                Header(steady, ticking, mode, motion, insets, look) { HeroActions(steady, onAction, onConnect, routes.test) }
+                RvGutter(pushed ?: Modifier) {
+                    OutboundCard(steady, mode, routes, nodes)
+                    TrafficTiles(state, routes.traffic)
+                    RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
+                    RvSubscriptionsCard(subscriptions)
+                    RvFastestCard(fastest, steady.node?.id ?: RvData.CURRENT_ID, routes.nodes)
+                }
+                Spacer(Modifier.height(rvNavClearance(insets)))
             }
-            Spacer(Modifier.height(rvNavClearance(insets)))
+            RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.search, onStats = routes.stats, Modifier.align(Alignment.TopCenter), pull)
+            RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
         }
-        RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.search, onStats = routes.stats, Modifier.align(Alignment.TopCenter), pull)
-        RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
     }
 }
+
+/** [ActivityUiState] without what a second's tick changes: the rates and the minute's samples. */
+private fun ActivityUiState.steady(): ActivityUiState = copy(downRate = 0, upRate = 0, downHistory = emptyList(), upHistory = emptyList())
 
 /**
  * Where 活動 leads: a traffic tile, 統計, the search page (the search pill), 節點 (最快節點's header), the node row, the
@@ -137,8 +155,9 @@ private class HeaderMotion(val stretch: (() -> Float)?, val pushed: Modifier?, v
 /** Whether the hero [swipe]s to the main node, one of [nodes] (H1). */
 private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>)
 
+/** [state] without the second's rates, which only the hero's figures read, from [ticking]. */
 @Composable
-private fun Header(state: ActivityUiState, mode: RvRouteMode, motion: HeaderMotion, insets: WindowInsets, hero: HeroLook, actions: @Composable () -> Unit) {
+private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, motion: HeaderMotion, insets: WindowInsets, hero: HeroLook, actions: @Composable () -> Unit) {
     val running = state.status is Status.Running || state.status is Status.Starting
     // Direct traffic uses no node, so the map marks no place.
     val place = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.place }
@@ -150,7 +169,7 @@ private fun Header(state: ActivityUiState, mode: RvRouteMode, motion: HeaderMoti
     RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds, live = live) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
         Spacer(Modifier.height(RvSpace.headerTop))
-        HeroBlock(state, mode, hero, Modifier.onPlaced { heroBounds = it.boundsInParent() }, motion.pushed)
+        HeroBlock(state, ticking, mode, hero, Modifier.onPlaced { heroBounds = it.boundsInParent() }, motion.pushed)
         if (motion.pushed == null) actions() else Box(motion.pushed) { actions() }
         Spacer(Modifier.height(RvSpace.actionsToCard))
     }
@@ -163,23 +182,27 @@ private fun Header(state: ActivityUiState, mode: RvRouteMode, motion: HeaderMoti
  * actions stay where they are.
  */
 @Composable
-private fun HeroBlock(state: ActivityUiState, mode: RvRouteMode, hero: HeroLook, placed: Modifier, pushed: Modifier?) {
+private fun HeroBlock(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, hero: HeroLook, placed: Modifier, pushed: Modifier?) {
     val moved = pushed ?: Modifier
     if (hero.swipe == RvHeroSwipe.Off) {
-        HeroFigure(state, mode, placed.then(moved))
+        HeroFigure(ticking, mode, placed.then(moved))
         Spacer(Modifier.height(RvSpace.heroToActions))
         return
     }
     val pager = rememberRvHeroPager(HERO_VIEWS)
     val names = listOf(stringResource(R.string.rv_hero_all_traffic), stringResource(R.string.rv_main_node))
-    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(state, mode, Modifier) else MainNodeFigure(state, mode, hero.nodes) }
+    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(ticking, mode, Modifier) else MainNodeFigure(state, mode, hero.nodes) }
     RvStatsDots(names.size, pager.view, moved, names, pager::show)
     Spacer(Modifier.height(RvSpace.heroToActions - RvSize.touch))
 }
 
-/** The state and the mode over the download rate, the upload rate under it; a new state or each second's rates cross-fade in. */
+/**
+ * The state and the mode over the download rate, the upload rate under it; a new state or each second's rates cross-fade
+ * in. Read from [ticking] here, so that a tick recomposes the figures and not the header around them.
+ */
 @Composable
-private fun HeroFigure(state: ActivityUiState, mode: RvRouteMode, modifier: Modifier) {
+private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modifier: Modifier) {
+    val state = ticking.value
     val format = rememberRvFormat()
     val fade = Rv.motion.tween<Float>(RvMotion.FADE_MS)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {

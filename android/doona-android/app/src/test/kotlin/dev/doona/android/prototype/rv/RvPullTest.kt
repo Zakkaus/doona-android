@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -243,6 +247,24 @@ class RvPullTest {
         compose.mainClock.advanceTimeBy(RvMotion.RETURN_MS * 2L)
         assertEquals("closed", 0f, state.shown.value)
         assertTrue("the close moves the picker by its layer, not by composing it (${compositions - before} times)", compositions - before <= 1)
+    }
+
+    @Test
+    fun activitysSecondHoldsWhileThePullOrThePickerCoversIt() {
+        var second by mutableIntStateOf(0)
+        var progress by mutableFloatStateOf(0f)
+        var shown = -1
+        val look = RvPullLook(null, { progress }, null)
+        compose.setContent { shown = rememberShownSecond({ second }, look) }
+        compose.runOnIdle { second = 1 }
+        compose.runOnIdle { assertEquals("uncovered, the run's second", 1, shown) }
+        compose.runOnIdle {
+            progress = 0.5f
+            second = 2
+        }
+        compose.runOnIdle { assertEquals("covered, the second it had", 1, shown) }
+        compose.runOnIdle { progress = 0f }
+        compose.runOnIdle { assertEquals("back, it catches up", 2, shown) }
     }
 
     private fun app() {

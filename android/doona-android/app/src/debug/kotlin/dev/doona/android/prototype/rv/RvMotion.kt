@@ -31,6 +31,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -271,20 +273,43 @@ internal suspend fun InteractionSource.rvFollowPress(to: suspend (Float) -> Unit
 /**
  * A live chart's glide: when [values] moved on by one sample (the window shifted left), the series is drawn [shift] steps
  * right of rest, from 1 down to 0 over [RvMotion.SAMPLE_MS], with [lead] (the sample that just left) in front, so the
- * line scrolls on instead of jumping a step each second. Any other change draws at rest.
+ * line scrolls on instead of jumping a step each second. Any other change draws at rest. While [covered] it is drawn
+ * where it was when the cover came ([drawnShift]).
  */
-internal class RvGlide(val lead: Float?, val shift: Animatable<Float, AnimationVector1D>)
+internal class RvGlide(val lead: Float?, val shift: Animatable<Float, AnimationVector1D>, private val covered: () -> Boolean = { false }) {
+    private var held = Float.NaN
+
+    /**
+     * The steps right of rest to draw the series at: [shift], or while [covered] where it stood when the cover came, read
+     * without observing the animation, so a covered page's frames redraw nothing and nothing jumps.
+     */
+    fun drawnShift(): Float {
+        if (!covered()) {
+            held = Float.NaN
+            return shift.value
+        }
+        if (held.isNaN()) held = Snapshot.withoutReadObservation { shift.value }
+        return held
+    }
+}
+
+/**
+ * Whether the page is covered, as 活動 is under the pull and the picker: its live charts hold their glide, so that it
+ * does not change, and the blur and glass over it are not drawn again, on every frame.
+ */
+internal val LocalRvCovered = staticCompositionLocalOf<() -> Boolean> { { false } }
 
 @Composable
 internal fun rememberRvGlide(values: List<Float>): RvGlide {
     val instant = Rv.motion.instant
+    val covered = LocalRvCovered.current
     val seen = remember { arrayOfNulls<List<Float>>(1) }
     val glide = remember(values) {
         val before = seen[0]
         seen[0] = values
         val shifted = before != null && before.size == values.size && values.size > 1 && before.subList(1, before.size) == values.subList(0, values.size - 1)
         val lead = before?.first()?.takeIf { shifted && !instant }
-        RvGlide(lead, Animatable(if (lead == null) 0f else 1f))
+        RvGlide(lead, Animatable(if (lead == null) 0f else 1f), covered)
     }
     LaunchedEffect(glide) { glide.shift.animateTo(0f, tween(RvMotion.SAMPLE_MS, easing = LinearEasing)) }
     return glide

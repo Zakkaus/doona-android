@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -141,7 +142,8 @@ internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextSty
 internal fun RvSparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val glide = rememberRvGlide(values)
-    Canvas(modifier.fillMaxWidth().height(RvChartSize.spark)) {
+    // A layer of its own: a frame of the glide records the line alone, not the page around it with the glass over it.
+    Canvas(modifier.fillMaxWidth().height(RvChartSize.spark).graphicsLayer {}) {
         if (values.size < 2) return@Canvas
         val stroke = RvChartSize.sparkStroke.toPx()
         val scale = Scale(values.max() * RvChartSize.SPARK_HEADROOM, 0f, size.height - stroke / 2)
@@ -162,7 +164,7 @@ private inline fun DrawScope.gliding(glide: RvGlide, values: List<Float>, right:
     if (lead == null) return draw(values, right)
     val step = right / (values.size - 1)
     clipRect(right = right) {
-        translate(left = (glide.shift.value - 1f) * step) { draw(listOf(lead) + values, right + step) }
+        translate(left = (glide.drawnShift() - 1f) * step) { draw(listOf(lead) + values, right + step) }
     }
 }
 
@@ -315,7 +317,7 @@ private class ScrubTicks(private val haptics: HapticFeedback) {
 private fun liveValue(values: List<Float>, glide: RvGlide): Float? {
     val last = values.lastOrNull()?.takeUnless { it.isNaN() } ?: return null
     val before = values.getOrNull(values.size - 2)?.takeUnless { it.isNaN() || glide.lead == null } ?: return last
-    return last + (before - last) * glide.shift.value
+    return last + (before - last) * glide.drawnShift()
 }
 
 /**

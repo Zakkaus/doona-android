@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -191,7 +192,7 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
         pull,
         activity = { look ->
             val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) run.disconnect() }
-            RvActivityScreen(run.activity(), onAction, run::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
+            RvActivityScreen(run.activity(rememberShownSecond({ run.second }, look)), onAction, run::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
         },
         picker = { motion ->
             val pick: (String) -> Unit = {
@@ -201,6 +202,20 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
             RvNodePicker(run.nodes, RvData.subscriptions, run.currentId, pick, onDetail = { pages.push("$NODE:$it") }, onClose = motion.close, section = motion.section, stretch = motion.stretch)
         },
     )
+}
+
+/**
+ * The second 活動 shows: the run's, except while the pull or the picker covers 活動 (blurred, dimmed or hidden), when it
+ * holds the one it had. A tick then changes nothing under the picker, so 活動 is not composed again, nor its blur and
+ * glass drawn again, each second; it catches up as it comes back.
+ */
+@Composable
+internal fun rememberShownSecond(second: () -> Int, look: RvPullLook): Int {
+    val covered by remember(look) { derivedStateOf { look.progress() > 0f } }
+    val held = remember { intArrayOf(0) }
+    // Read only while uncovered, so that a tick under the cover does not compose 活動 again.
+    if (!covered) held[0] = second()
+    return held[0]
 }
 
 /**
@@ -308,8 +323,8 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
         if (nodes.none { it.id == currentId }) nodes.fastest(1).firstOrNull()?.let { currentId = it.id }
     }
 
-    /** 活動 as the run has it: live while connected; otherwise its state with no rates and no history. */
-    fun activity(): ActivityUiState {
+    /** 活動 as the run has it at [second]: live while connected; otherwise its state with no rates and no history. */
+    fun activity(second: Int = this.second): ActivityUiState {
         val live = rvSampleActivity(currentId, nodes, second)
         return if (status is Status.Running) live else live.copy(status = status, downRate = 0, upRate = 0, downHistory = emptyList(), upHistory = emptyList())
     }
