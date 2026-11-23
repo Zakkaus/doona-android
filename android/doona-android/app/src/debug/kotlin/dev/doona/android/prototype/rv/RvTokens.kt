@@ -380,10 +380,11 @@ internal object RvChrome {
     val titleStart = 76.dp
 
     /**
-     * A page's large title, or the mark above it, this far under the bar's controls ([RvPageHeader] then sets what follows):
-     * Revolut's 設定 card starts 79 dp under the controls (§2, 07-settings-a), which is this, the title's line and 16 dp.
+     * A page's large title, or the mark above it, this far under the bar's controls ([RvPageHeader] then sets what
+     * follows), the same on every page: the title's ink starts 68.5 dp under the status bar and the first card 118 dp,
+     * where Revolut's pushed pages put them at 67.8 and 118.4 (revolut-ux3 §5).
      */
-    val largeTitleTop = 24.dp
+    val largeTitleTop = 8.dp
 
     val navInset = 16.dp
     val navBottom = 40.dp

@@ -134,7 +134,7 @@ class RvConnectionsShotTest {
         const val ABSENT = "org.telegram.messenger"
 
         /** Windows as tall as each whole page, so one capture holds it to its end. */
-        const val WHOLE_LIST = "+h974dp"
+        const val WHOLE_LIST = "+h958dp"
         const val WHOLE_DETAIL = "+h1018dp"
 
         /** YouTube's page: its host wraps to a second line. */
