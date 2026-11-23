@@ -176,10 +176,10 @@ class RvPullTest {
     fun aPullDownAtThePickersTopClosesIt() {
         app()
         open()
-        val title = pickerTitle().getUnclippedBoundsInRoot().top
+        val title = compose.onNodeWithText(rvText(R.string.rv_nodes_title)).getUnclippedBoundsInRoot().top
         drag(picker(), FAR, release = false)
         compose.mainClock.advanceTimeByFrame()
-        val moved = pickerTitle().getUnclippedBoundsInRoot().top - title
+        val moved = compose.onNodeWithText(rvText(R.string.rv_nodes_title)).getUnclippedBoundsInRoot().top - title
         assertTrue("the list follows the finger with resistance: $moved", moved > RvMotion.pullCommit && moved < FAR)
         assertEquals("the closing threshold ticks too", List(2) { HapticFeedbackType.GestureThresholdActivate }, taps.kinds)
         compose.onRoot().performTouchInput { up() }
@@ -345,10 +345,7 @@ class RvPullTest {
 
     private fun picker() = compose.onNode(hasScrollAction() and hasAnyAncestor(hasTestTag(RV_PICKER)))
 
-    /** The picker's title, not 活動's node row under it, whose subtitle in 全域 is the same 節點. */
-    private fun pickerTitle() = compose.onNode(hasText(rvText(R.string.rv_nodes_title)) and hasAnyAncestor(hasTestTag(RV_PICKER)))
-
-    private fun heroTop(): Dp = compose.onNodeWithText("${rvText(R.string.backend_connected)} · ${rvText(R.string.mode_global)}").getUnclippedBoundsInRoot().top
+    private fun heroTop(): Dp = compose.onNodeWithText("${rvText(R.string.backend_connected)} · ${rvText(R.string.rv_mode_rule)}").getUnclippedBoundsInRoot().top
 
     private fun pickerTop(): Dp = compose.onNodeWithTag(RV_PICKER).getUnclippedBoundsInRoot().top
 

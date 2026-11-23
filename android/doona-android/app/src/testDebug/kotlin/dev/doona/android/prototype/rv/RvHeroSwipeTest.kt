@@ -54,7 +54,7 @@ class RvHeroSwipeTest {
     val utc = Utc()
 
     private val taps = RvTaps()
-    private val traffic = "${rvText(R.string.backend_connected)} · ${rvText(R.string.mode_global)}"
+    private val traffic = "${rvText(R.string.backend_connected)} · ${rvText(R.string.rv_mode_rule)}"
     private val mainNode = "${rvText(R.string.rv_main_node)} · ${rvText(RvData.current.place.label)}"
 
     @After

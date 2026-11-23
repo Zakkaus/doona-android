@@ -261,34 +261,16 @@ internal class RvType {
     val search = RvTypeScale.search.style()
     val cardTitle = RvTypeScale.cardTitle.style()
     val seeAll = RvTypeScale.seeAll.style()
-}
 
-/**
- * 活動's own text, as the owner approved it (609336cb), from [RvActivityTokens]: its hero's caption, figure and unit, the
- * rates' line under it, the round actions' labels, the 全域 outbound card's rows and 今日用量's title. Every other page
- * reads [RvType]; these are not design-system roles (RvParityTest compares [RvType]).
- */
-@Immutable
-internal object RvActivityType {
-    val caption = RvActivityTokens.caption.style()
-    val hero = RvActivityTokens.hero.style(tabular = true)
-    val heroUnit = RvActivityTokens.heroUnit.style(tabular = true)
-    val sub = RvActivityTokens.sub.style(tabular = true)
-    val action = RvActivityTokens.action.style()
-    val rowTitle = RvActivityTokens.rowTitle.style()
-    val rowValue = RvActivityTokens.rowTitle.style(tabular = true)
-    val rowSub = RvActivityTokens.rowSub.style()
-    val cardTitle = RvActivityTokens.cardTitle.style()
+    // Tabular figures only where figures line up or change in place: Inter's tnum also widens the hyphen of a name.
+    private fun RvTypeStep.style(tabular: Boolean = false) = TextStyle(
+        fontFamily = if (display) RvInterDisplay else RvInter,
+        fontWeight = weight,
+        fontSize = size.sp,
+        lineHeight = line.sp,
+        fontFeatureSettings = if (tabular) RvTypeScale.TABULAR else null,
+    )
 }
-
-// Tabular figures only where figures line up or change in place: Inter's tnum also widens the hyphen of a name.
-private fun RvTypeStep.style(tabular: Boolean = false) = TextStyle(
-    fontFamily = if (display) RvInterDisplay else RvInter,
-    fontWeight = weight,
-    fontSize = size.sp,
-    lineHeight = line.sp,
-    fontFeatureSettings = if (tabular) RvTypeScale.TABULAR else null,
-)
 
 @Immutable
 internal class RvTokens(val colors: RvColors, val type: RvType, val motion: RvMotionScale)

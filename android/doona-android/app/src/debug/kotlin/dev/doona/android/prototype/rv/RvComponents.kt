@@ -27,7 +27,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -173,15 +172,14 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
 
 /**
  * The screen's one tinted area: the dot map of the world in [dots] on the neutral page behind the header content,
- * centred on [focus] at [focusTop] from the header's top, none above [statusBar] (with none given, the dots run up
- * behind the status bar), and faint behind the hero's text at [clear]. [live] moves it (a tab's fade, P2's stretch, the
- * connected pulse, a pan to a new node).
+ * centred on [focus] at [focusTop] from the header's top, none above [statusBar], and faint behind the hero's text at
+ * [clear]. [live] moves it (a tab's fade, P2's stretch, the connected pulse, a pan to a new node).
  */
 @Composable
 internal fun RvHeader(
     focus: RvPlace?,
     focusTop: Dp,
-    statusBar: Dp?,
+    statusBar: Dp,
     dots: Color,
     clear: Rect?,
     modifier: Modifier = Modifier,
@@ -208,17 +206,15 @@ internal fun RvHero(amount: RvAmount, modifier: Modifier = Modifier) {
     RvHero(whole, decimals + amount.unit, modifier)
 }
 
-/**
- * The hero figure: [whole] at 44 sp, [part] (decimals and unit) at 32 sp on the same baseline; [style] and [partStyle]
- * set other sizes (活動's approved hero, [RvActivityType]).
- */
+/** The hero figure: [whole] at 44 sp, [part] (decimals and unit) at 32 sp on the same baseline. */
 @Composable
-internal fun RvHero(whole: String, part: String, modifier: Modifier = Modifier, style: TextStyle = Rv.type.hero, partStyle: TextStyle = Rv.type.heroSmall) {
+internal fun RvHero(whole: String, part: String, modifier: Modifier = Modifier) {
+    val type = Rv.type
     val text = buildAnnotatedString {
         append(whole)
-        withStyle(partStyle.toSpanStyle()) { append(part) }
+        withStyle(type.heroSmall.toSpanStyle()) { append(part) }
     }
-    BasicText(text, modifier, style.copy(color = Rv.colors.text), maxLines = 1)
+    BasicText(text, modifier, type.hero.copy(color = Rv.colors.text), maxLines = 1)
 }
 
 /** A figure split at its decimal separator: the integer, and the separator with the decimals (or nothing). */
@@ -227,32 +223,18 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
     return if (cut < 0) figure to "" else figure.substring(0, cut) to figure.substring(cut)
 }
 
-/**
- * A round action: a disc with a glyph and its label under it; only the disc takes the press ([rvDiscPress]). [busy] swaps
- * the glyph for [RvBusy]. [look] sets the disc, the gap under it and the label: [RvActionLook.Standard], or 活動's own.
- */
+/** A round action: a disc with a glyph and its label under it; only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy]. */
 @Composable
-internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false, look: RvActionLook = RvActionLook.Standard) {
+internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.rvDiscPress(Modifier.size(look.disc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
+        Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
             // While [busy] (connecting) the disc shows a busy bar instead of its glyph.
             Crossfade(busy, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "busy") { working ->
                 if (working) RvBusy(Modifier.width(RvSize.busy)) else RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)
             }
         }
-        Spacer(Modifier.height(look.gap))
-        RvText(label, look.label ?: Rv.type.action, align = TextAlign.Center)
-    }
-}
-
-/** A round action's disc, the gap from it to its label, and the label's style ([RvType.action] when none). */
-@Immutable
-internal class RvActionLook(val disc: Dp, val gap: Dp, val label: TextStyle?) {
-    companion object {
-        val Standard = RvActionLook(RvSize.actionDisc, RvSpace.discToLabel, null)
-
-        /** 活動's round actions, as the owner approved them (609336cb). */
-        val Activity = RvActionLook(RvActivityTokens.actionDisc, RvActivityTokens.discToLabel, RvActivityType.action)
+        Spacer(Modifier.height(RvSpace.discToLabel))
+        RvText(label, Rv.type.action, align = TextAlign.Center)
     }
 }
 
@@ -317,7 +299,6 @@ internal fun RvRow(
     subtitleEnd: (@Composable () -> Unit)? = null,
     titleLines: Int = 1,
     titleOverflow: TextOverflow = TextOverflow.Ellipsis,
-    look: RvRowLook = RvRowLook.Standard,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     // The card clips the layer of its first and last row to its corners.
@@ -327,41 +308,26 @@ internal fun RvRow(
         modifier
             .fillMaxWidth()
             .testTag(RvPart.ROW)
-            .heightIn(min = if (subtitle == null) RvSize.rowOneLine else look.twoLine)
+            .heightIn(min = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine)
             .then(press)
-            .padding(horizontal = look.padding),
+            .padding(horizontal = RvSpace.rowPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         leading()
-        Spacer(Modifier.width(look.gap))
-        val titleStyle = look.title ?: Rv.type.rowTitle
-        val subtitleStyle = look.subtitle ?: Rv.type.rowSub
+        Spacer(Modifier.width(RvSpace.rowGap))
         Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
             if (lineWise) {
-                RowLine(titleEnd) { RvText(title, titleStyle, maxLines = titleLines, overflow = titleOverflow) }
-                subtitle?.let { RowLine(subtitleEnd) { RvText(it, subtitleStyle, color = Rv.colors.textSecondary) } }
+                RowLine(titleEnd) { RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow) }
+                subtitle?.let { RowLine(subtitleEnd) { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) } }
             } else {
-                RvText(title, titleStyle, maxLines = titleLines, overflow = titleOverflow)
-                subtitle?.let { RvText(it, subtitleStyle, color = Rv.colors.textSecondary) }
+                RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow)
+                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) }
             }
         }
         trailing?.let {
             Spacer(Modifier.width(RvSpace.trailingGap))
             it()
         }
-    }
-}
-
-/**
- * A row's padding, the gap from its leading visual to its text, its height with a subtitle, and its title and subtitle
- * styles ([RvType.rowTitle] and [RvType.rowSub] when none): [Standard] on every page, [Activity] in 活動's 全域 outbound
- * card, as the owner approved it (609336cb).
- */
-@Immutable
-internal class RvRowLook(val padding: Dp, val gap: Dp, val twoLine: Dp, val title: TextStyle?, val subtitle: TextStyle?) {
-    companion object {
-        val Standard = RvRowLook(RvSpace.rowPadding, RvSpace.rowGap, RvSize.rowTwoLine, null, null)
-        val Activity = RvRowLook(RvActivityTokens.rowPadding, RvActivityTokens.rowGap, RvActivityTokens.rowTwoLine, RvActivityType.rowTitle, RvActivityType.rowSub)
     }
 }
 
@@ -394,12 +360,12 @@ private fun RowLine(end: (@Composable () -> Unit)?, start: @Composable () -> Uni
 
 /**
  * A row's leading disc: a glyph on the raised fill. A detail page's header takes it at [RvSize.headerDisc]; the glyph
- * keeps the row's proportion to its disc unless [glyph] says otherwise (活動's 全域 outbound card).
+ * keeps the row's proportion to its disc.
  */
 @Composable
-internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc, glyph: Dp = RvSize.rowGlyph * (size / RvSize.rowDisc)) {
+internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc) {
     Box(Modifier.size(size).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
-        RvGlyph(icon, glyph, color)
+        RvGlyph(icon, RvSize.rowGlyph * (size / RvSize.rowDisc), color)
     }
 }
 

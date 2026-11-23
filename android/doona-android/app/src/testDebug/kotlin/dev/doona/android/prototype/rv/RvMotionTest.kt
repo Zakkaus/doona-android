@@ -177,7 +177,7 @@ class RvMotionTest {
     private fun text(@StringRes id: Int) = rvText(id)
 
     /** 活動's caption in a state: the state, then the mode (規則). */
-    private fun caption(@StringRes state: Int) = "${text(state)} · ${text(R.string.mode_global)}"
+    private fun caption(@StringRes state: Int) = "${text(state)} · ${text(R.string.rv_mode_rule)}"
 
     private companion object {
         val PULL_LONG = 300.dp

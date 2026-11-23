@@ -31,7 +31,6 @@ import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.gallery.RvGalleryScreen
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
@@ -344,7 +343,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         pull,
         activity = { look ->
             val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) run.disconnect() }
-            RvActivityScreen(run.activity(rememberShownSecond({ run.second }, look)), onAction, run::connect, routes, mode = RvRouteMode.Global, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
+            RvActivityScreen(run.activity(rememberShownSecond({ run.second }, look)), onAction, run::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
         },
         picker = { motion ->
             val pick: (String) -> Unit = {

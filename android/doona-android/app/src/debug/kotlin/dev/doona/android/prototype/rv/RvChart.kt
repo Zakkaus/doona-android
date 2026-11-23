@@ -88,7 +88,7 @@ internal fun rememberRvFormat(): RvFormat {
  * disc at the top end, the [figure] in bold, a secondary [note] under it, and the sparkline of [values] at the bottom
  * (measured §10.2: 148 x 60 dp). With [quiet] (no
  * connection, or no traffic) the tile takes Revolut's empty chart card instead: a larger figure over ghost bars, and
- * [note] says why there is no line. The whole tile is one button. 活動's tiles, as the owner approved them (609336cb).
+ * [note] says why there is no line. The whole tile is one button.
  */
 @Composable
 internal fun RvSparkTile(
@@ -101,25 +101,24 @@ internal fun RvSparkTile(
     quiet: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    ghost: FloatArray = RV_GHOST_DOWN,
 ) {
     val type = Rv.type
     RvCard(modifier.aspectRatio(1f).rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, onClick)) {
         Column(Modifier.fillMaxSize().padding(RvChartSize.tilePad)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // As the owner approved it (609336cb): the caption small over the figure, larger when there is no traffic.
-                RvText(caption, if (quiet) RvActivityType.rowSub else type.tileCaption, Modifier.weight(1f), color = Rv.colors.textSecondary)
+                // One tile layout in every state and on every page: the in-card header's 19 sp, the value at the tile's size (L-03).
+                RvText(caption, type.cardTitle, Modifier.weight(1f), color = Rv.colors.textSecondary)
                 Box(Modifier.size(RvChartSize.tileDisc).clip(CircleShape).background(series.disc), contentAlignment = Alignment.Center) {
                     RvGlyph(icon, RvChartSize.tileGlyph, series.line)
                 }
             }
             Spacer(Modifier.height(RvSpace.tight))
             // Each second's rate cross-fades in instead of jumping.
-            Crossfade(figure.whole to figure.unit, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "tile") { (whole, unit) ->
-                RvFigureText(RvFigure(whole, unit), if (quiet) type.cardValue else type.tileValue, if (quiet) type.cardUnit else type.tileUnit)
-            }
+            Crossfade(figure.whole to figure.unit, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "tile") { (whole, unit) -> RvFigureText(RvFigure(whole, unit), type.tileValue, type.tileUnit) }
             RvText(note, type.tileCaption, color = Rv.colors.textSecondary)
             Spacer(Modifier.weight(1f))
-            if (quiet) RvGhostBars(RV_GHOST) else RvSparkline(values, series.line)
+            if (quiet) RvGhostBars(ghost) else RvSparkline(values, series.line)
         }
     }
 }
@@ -471,8 +470,9 @@ private fun DrawScope.dots() = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH
 private fun DrawScope.dottedAcross(color: Color, y: Float, alpha: Float = 1f) =
     drawLine(color, Offset(0f, y), Offset(size.width, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots(), alpha)
 
-/** Ghost bar heights as shares of the chart's height, the same on both tiles, as the owner approved them (609336cb). */
-private val RV_GHOST = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
+/** Ghost bar heights as shares of the chart's height: download's, and upload's of its own shape (S5-09). */
+internal val RV_GHOST_DOWN = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
+internal val RV_GHOST_UP = floatArrayOf(0.3f, 0.22f, 0.48f, 0.34f, 0.6f, 0.4f, 0.26f, 0.52f, 0.72f, 0.44f, 0.58f, 0.38f)
 
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f

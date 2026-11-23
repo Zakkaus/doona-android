@@ -90,7 +90,7 @@ class RvShortcutsTest {
     }
 
     /** 活動's caption in a state: the state, then the mode (規則). */
-    private fun caption(@StringRes state: Int) = "${rvText(state)} · ${rvText(R.string.mode_global)}"
+    private fun caption(@StringRes state: Int) = "${rvText(state)} · ${rvText(R.string.rv_mode_rule)}"
 
     private companion object {
         const val ANDROID = "http://schemas.android.com/apk/res/android"
