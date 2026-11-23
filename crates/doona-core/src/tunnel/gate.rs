@@ -20,9 +20,11 @@
 //! it, its I/O waits for the driver's reset.
 
 use super::flow::Waker;
+use futures_util::task::AtomicWaker;
 use honk_netstack::FlowId;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+use std::future::{Future, poll_fn};
 use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -32,7 +34,6 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::time::Instant;
-use tokio_util::sync::CancellationToken;
 
 /// A poll of the task is in progress.
 const BUSY: u32 = 1;
@@ -69,8 +70,9 @@ pub(crate) struct Gate {
     /// Wakes the driver when the drain begins, so that it queues the deadline, and when a poll it
     /// waits for ends.
     waker: Arc<Waker>,
-    /// Wakes the task once the driver gave the flow up.
-    cancel: CancellationToken,
+    /// The task's waker for its give-up (see [`Gate::given_up`]): registering takes no lock the
+    /// driver's wake waits for.
+    task: AtomicWaker,
     /// The flags above and the count of shutdowns, in one word: each change either side makes is
     /// one atomic step, ordered against the other side's.
     word: AtomicU32,
@@ -110,7 +112,7 @@ impl Gate {
             idle: nanos(idle),
             ways,
             waker,
-            cancel: CancellationToken::new(),
+            task: AtomicWaker::new(),
             word: AtomicU32::new(0),
             epoch: Instant::now(),
             begun: AtomicU64::new(begun),
@@ -217,13 +219,25 @@ impl Gate {
     /// gives the flow up again then.
     pub fn give_up(&self) -> bool {
         let word = self.word.fetch_or(GIVEN_UP | WANTED, AcqRel);
-        self.cancel.cancel();
+        self.task.wake();
         word & BUSY == 0
     }
 
-    /// Completes once the driver gave the flow up.
-    pub async fn given_up(&self) {
-        self.cancel.cancelled().await;
+    /// Completes once the driver gave the flow up. The task registers its waker, then looks again:
+    /// a give-up in between finds the waker or is seen.
+    pub fn given_up(&self) -> impl Future<Output = ()> + '_ {
+        poll_fn(|cx| {
+            let given_up = || self.word.load(Acquire) & GIVEN_UP != 0;
+            if given_up() {
+                return Poll::Ready(());
+            }
+            self.task.register(cx.waker());
+            if given_up() {
+                Poll::Ready(())
+            } else {
+                Poll::Pending
+            }
+        })
     }
 
     /// The core's DNS waits for its resolver (`true`), or no longer, as the resolver answered or
