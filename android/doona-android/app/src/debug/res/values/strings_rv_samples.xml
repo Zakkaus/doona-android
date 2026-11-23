@@ -4,4 +4,6 @@
     <string name="rv_vpn_denied_reason">doona needs your permission to set up a VPN.</string>
     <string name="rv_notify_denied">Notifications are off</string>
     <string name="rv_notify_denied_reason">doona cannot show the connection status, and will not tell you when it disconnects.</string>
+    <string name="rv_failed_switch_mode">Could not switch the mode</string>
+    <string name="rv_failed_switch_node">Could not switch the node</string>
 </resources>

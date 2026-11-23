@@ -4,4 +4,6 @@
     <string name="rv_vpn_denied_reason">doona 需要你允许建立 VPN。</string>
     <string name="rv_notify_denied">通知已关闭</string>
     <string name="rv_notify_denied_reason">doona 无法显示连接状态，也不会通知你连接中断。</string>
+    <string name="rv_failed_switch_mode">无法切换模式</string>
+    <string name="rv_failed_switch_node">无法切换节点</string>
 </resources>
