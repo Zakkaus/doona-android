@@ -154,7 +154,7 @@ impl HonkStore {
     pub fn edit(&mut self, id: u64, relative: &Path, text: &str) -> Result<(), StoreError> {
         let mut tree = Tree::read(&self.draft_entry(self.find(id)?))?;
         let path = tree.edit_path(relative)?;
-        if path.extension().is_some_and(|ext| ext == "dae") {
+        if super::staged::is_honk_source(&path) {
             tree.files.remove(&path);
             let used = tree.files.values().map(|s| s.len()).sum::<usize>();
             let value =
