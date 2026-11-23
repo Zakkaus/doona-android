@@ -274,13 +274,18 @@ internal fun RvPrimaryButton(
     val fill = if (colors.dark) Color.White else colors.text
     val source = interactionSource ?: remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val shown = if (pressed && enabled) colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill) else fill
+    // Disabled, the pill is opaque in the colour its faded fill gives over the page, so a list scrolling under a floating
+    // action never shows through it; its label in the page's colour looks as it did faded.
+    val shown = when {
+        !enabled -> fill.copy(alpha = RvAlpha.DISABLED).compositeOver(colors.page)
+        pressed -> colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill)
+        else -> fill
+    }
     val lift = if (enabled) Modifier.rvSoftShadow(CircleShape, size.primaryShadow, size.primaryShadowDrop, RvAlpha.CTA_SHADOW) else Modifier
     Box(
         modifier
             .fillMaxWidth()
             .heightIn(min = size.primary)
-            .graphicsLayer { alpha = if (enabled) 1f else RvAlpha.DISABLED }
             .then(lift)
             .clip(CircleShape)
             .background(shown)

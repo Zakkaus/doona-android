@@ -57,5 +57,4 @@
     <string name="rv_perapp_saving">正在儲存…</string>
     <string name="rv_perapp_save_failed">無法儲存</string>
     <string name="rv_perapp_rebuild_failed">已儲存，但 VPN 無法重新連線</string>
-    <string name="rv_licenses_title">授權條款</string>
 </resources>

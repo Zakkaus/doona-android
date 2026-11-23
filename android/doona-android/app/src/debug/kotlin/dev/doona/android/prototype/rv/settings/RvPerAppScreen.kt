@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv.settings
 
 import android.content.res.Configuration
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,7 +22,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAppDisc
 import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvBusy
@@ -64,7 +61,7 @@ internal class RvPerAppActions(
 @Composable
 internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val title = stringResource(R.string.perapp_title)
+    val title = stringResource(R.string.rv_settings_per_app)
     val listed = state.edited.policy != RvAppPolicy.All
     val hint = stringResource(R.string.perapp_search)
     RvScrollPage(
@@ -76,11 +73,7 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
         } else {
             null
         },
-        bottomAction = {
-            // The library's disabled pill is the whole button faded, so the list scrolling under it would show through;
-            // the page's colour under the pill keeps it as it looks on a bare page.
-            RvPrimaryButton(stringResource(R.string.perapp_save), actions.save, Modifier.background(Rv.colors.page, CircleShape), enabled = state.canSave)
-        },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.perapp_save), actions.save, enabled = state.canSave) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
