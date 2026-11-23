@@ -196,7 +196,7 @@ fn nested_score_retries_one_setup_then_relays_the_reply() {
             &model.groups,
             &model.nodes,
             &index,
-            model.score.manager.score_state(),
+            Some(&model.score),
         ));
         core.shared
             .publish_nodes(&c, core.shared.outbounds.build(&c.model.nodes));
@@ -219,4 +219,90 @@ fn nested_score_retries_one_setup_then_relays_the_reply() {
             .score_budget_counters(group, SelectionNetwork::Tcp);
         assert_eq!(budget.business_starts, 1, "{group}");
     }
+}
+
+#[test]
+fn a_recovered_network_can_dial_after_ten_failures_on_every_leaf() {
+    use tokio::net::TcpSocket;
+
+    let dir = TempDir::new("score-uplink");
+    let core = Core::new(path(&dir)).unwrap();
+    let _enter = core.runtime.enter();
+    // Bound but not listening: both proxies refuse TCP until the uplink returns.
+    let sockets = [(); 2].map(|()| {
+        let socket = TcpSocket::new_v4().unwrap();
+        socket.bind(([127, 0, 0, 1], 0).into()).unwrap();
+        socket
+    });
+    let [a, b] = sockets.each_ref().map(|s| s.local_addr().unwrap());
+    let feeds = Feeds::new();
+    feeds.set("/sub", format!("socks5://{a}#a\nsocks5://{b}#b").as_bytes());
+    add(&core, &feeds, "/sub").unwrap();
+    // honk measures registration grace with std::time, not Tokio's clock.
+    std::thread::sleep(std::time::Duration::from_secs(60));
+    let dst = echo();
+    for member in &catalog(&core).groups[1].members {
+        pin(&core, "g-Auto", Some(&member.id));
+        for _ in 0..10 {
+            let r = route(&core, dst);
+            assert!(!r.refused());
+            assert!(core.runtime.block_on(r.connect(dst)).is_err());
+        }
+    }
+    pin(&core, "g-Auto", None);
+    let listeners = sockets.map(|s| s.listen(1).unwrap());
+    let recovered = route(&core, dst);
+    assert!(
+        !recovered.refused(),
+        "the restored proxies must still be candidates"
+    );
+    core.runtime.block_on(async {
+        let serve = async {
+            let (stream, _) =
+                tokio::select! { a = listeners[0].accept() => a, b = listeners[1].accept() => b }
+                    .unwrap();
+            let stream = stream.into_std().unwrap();
+            stream.set_nonblocking(false).unwrap();
+            tokio::task::spawn_blocking(move || {
+                crate::testutil::relay_socks(stream, |s| std::net::TcpStream::connect(s))
+            })
+            .await
+            .unwrap()
+            .unwrap();
+        };
+        let dial = async {
+            drop(recovered.connect(dst).await.unwrap());
+        };
+        tokio::join!(serve, dial);
+    });
+}
+
+#[test]
+fn an_unchanged_refresh_keeps_probe_latency_and_registration_age() {
+    use honk_outbound::alive::{IpVersion, ProbeDomain};
+    use std::time::Duration;
+
+    let dir = TempDir::new("score-health");
+    let core = Core::new(path(&dir)).unwrap();
+    let feeds = Feeds::new();
+    feeds.set("/sub", b"socks5://127.0.0.1:1#a");
+    add(&core, &feeds, "/sub").unwrap();
+    let score = || Arc::clone(&lock(&core.shared.catalog).model.score);
+    let id = lock(&core.shared.catalog).model.nodes[0].uuid;
+    let (domain, family) = (ProbeDomain::Tcp, IpVersion::V4);
+    score().probe(id, [127, 0, 0, 1].into(), Some(37));
+    std::thread::sleep(Duration::from_secs(60));
+    call(&core, "updateSubscription", json!({"id":"s1"})).unwrap();
+    let health = &score().alive;
+    assert_eq!(
+        health.get_last_latency(id, domain, family),
+        Some(Duration::from_millis(37))
+    );
+    for _ in 0..10 {
+        health.report_unavailable_traffic(id, domain, family);
+    }
+    assert!(
+        !health.is_alive_for(id, domain, family),
+        "refresh restarted grace"
+    );
 }

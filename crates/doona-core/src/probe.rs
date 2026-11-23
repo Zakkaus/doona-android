@@ -157,8 +157,8 @@ impl Probes {
             let mut c = lock(&shared.catalog);
             // `cancel` is cancelled under the catalog lock, so a stop that returned is never undone.
             if !cancel.is_cancelled() && c.model.record(&target, ms, error) {
-                if let Some((ip, available)) = trace.availability() {
-                    c.model.score.available(target.entry.uuid, ip, available);
+                if let Some(ip) = trace.reached_peer() {
+                    c.model.score.available(target.entry.uuid, ip);
                 }
                 if let Some(ip) = trace.peer().or_else(|| literal(target.entry.node.host())) {
                     c.model.score.probe(target.entry.uuid, ip, ms);

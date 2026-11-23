@@ -42,16 +42,6 @@ pub(crate) struct Attempt {
     pub feedback: ScoreAttempt,
 }
 
-impl Attempt {
-    pub fn available(&self, ip: std::net::IpAddr, available: bool) {
-        self.table
-            .score
-            .as_ref()
-            .expect("Score route")
-            .available(self.uuid, ip, available);
-    }
-}
-
 impl Dialer {
     pub(crate) fn retry(&self, original: &ScoreContinuation) -> Option<Self> {
         let attempt = self.score.as_ref()?;

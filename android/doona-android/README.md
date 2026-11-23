@@ -9,6 +9,8 @@ and components read roles only.
 Auto and the region groups use honk's Score policy. Proxy and the rule groups remain Selectors.
 Pinning a Score member overrides automatic selection until you clear the pin. A TCP setup failure
 can try one other eligible member before the app sends any data; the retry shares the original deadline.
+A network outage does not permanently exclude failed nodes or start background probes. A subscription
+refresh keeps probe latency for unchanged nodes.
 
 ```sh
 . ~/.cache/android-dev/env.sh

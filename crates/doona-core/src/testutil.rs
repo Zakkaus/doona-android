@@ -195,7 +195,7 @@ pub fn socks5_with(
     (addr, count)
 }
 
-fn relay_socks(mut client: std::net::TcpStream, connect: Connect) -> std::io::Result<()> {
+pub fn relay_socks(mut client: std::net::TcpStream, connect: Connect) -> std::io::Result<()> {
     use std::io::{Read, Write};
     let mut greeting = [0u8; 2];
     client.read_exact(&mut greeting)?;

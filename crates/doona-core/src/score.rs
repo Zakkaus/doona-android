@@ -7,7 +7,7 @@ use crate::ids::is_group;
 use honk_config::group::{Group, GroupPolicy};
 use honk_outbound::alive::{AliveDialerSet, IpVersion, ProbeDomain};
 use honk_outbound::group::{
-    GroupManager, GroupMember, ScorePolicyState, SelectionNetwork, SelectorMember, SelectorNetworks,
+    GroupManager, GroupMember, SelectionNetwork, SelectorMember, SelectorNetworks,
 };
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -17,7 +17,7 @@ use uuid::Uuid;
 
 pub(crate) struct Score {
     pub manager: GroupManager,
-    alive: Arc<AliveDialerSet>,
+    pub alive: Arc<AliveDialerSet>,
     pub entries: HashMap<Uuid, Arc<NodeEntry>>,
 }
 
@@ -26,15 +26,14 @@ impl Score {
         groups: &[GroupDef],
         entries: &[Arc<NodeEntry>],
         index: &HashMap<String, usize>,
-        state: Arc<ScorePolicyState>,
+        previous: Option<&Self>,
     ) -> Self {
-        let alive = Arc::new(AliveDialerSet::new());
+        let alive = previous.map(|s| Arc::clone(&s.alive)).unwrap_or_default();
         let nodes: Vec<_> = entries
             .iter()
             .map(|entry| {
                 let mut node = (*entry.node).clone();
                 node.id = entry.uuid;
-                alive.register_node(node.id, node.name.clone(), node.address.clone());
                 node
             })
             .collect();
@@ -61,13 +60,38 @@ impl Score {
             &groups,
             &nodes,
             Some(Arc::clone(&alive)),
-            state,
+            previous
+                .map(|s| s.manager.score_state())
+                .unwrap_or_default(),
         );
         Self {
             manager,
             alive,
             entries: entries.iter().map(|n| (n.uuid, Arc::clone(n))).collect(),
         }
+    }
+
+    // A staged reload must not change registrations used by the live catalog.
+    pub fn publish(&self, previous: Option<&Self>) {
+        let previous = previous.filter(|p| Arc::ptr_eq(&p.alive, &self.alive));
+        for (&id, entry) in &self.entries {
+            let node = &entry.node;
+            let old = previous.and_then(|p| p.entries.get(&id));
+            if !old.is_some_and(|e| e.node.name == node.name && e.node.address == node.address) {
+                self.alive
+                    .register_node(id, node.name.clone(), node.address.clone());
+            }
+        }
+        if let Some(previous) = previous {
+            for id in previous
+                .entries
+                .keys()
+                .filter(|id| !self.entries.contains_key(id))
+            {
+                self.alive.remove_node(*id);
+            }
+        }
+        self.manager.publish_score_membership();
     }
 
     pub fn selected(&self, group: &str) -> Option<&str> {
@@ -91,14 +115,9 @@ impl Score {
         .run_callbacks();
     }
 
-    pub fn available(&self, id: Uuid, ip: IpAddr, available: bool) {
-        if available {
-            self.alive
-                .report_available_traffic(id, ProbeDomain::Tcp, family(ip));
-        } else {
-            self.alive
-                .report_unavailable_traffic(id, ProbeDomain::Tcp, family(ip));
-        }
+    pub fn available(&self, id: Uuid, ip: IpAddr) {
+        self.alive
+            .report_available_traffic(id, ProbeDomain::Tcp, family(ip));
     }
 
     pub fn probe(&self, id: Uuid, ip: IpAddr, latency: Option<u32>) {

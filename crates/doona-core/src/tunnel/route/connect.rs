@@ -105,7 +105,13 @@ async fn dial(
             None => dial.await,
         }
     });
-    let result = match timeout_at(deadline, d.on_carriers(work)).await {
+    let result = match admitted_until(
+        deadline,
+        d.on_carriers(work),
+        setup.as_ref().map(|s| &*s.scope),
+    )
+    .await
+    {
         Ok(Ok(Err(_))) if d.registry.is_shutdown() => {
             Err((ScoreOutcome::Shutdown, ErrorKind::NotConnected.into()))
         }
@@ -116,21 +122,9 @@ async fn dial(
             )
         }),
         Ok(Err(e)) => Err((ScoreOutcome::Shutdown, e)),
-        Err(_)
-            if setup
-                .as_ref()
-                .is_some_and(|s| s.scope.is_waiting_for_admission()) =>
-        {
-            Err((ScoreOutcome::Rejected, ErrorKind::TimedOut.into()))
-        }
-        Err(_) => Err((ScoreOutcome::Timeout, ErrorKind::TimedOut.into())),
+        Err(outcome) => Err((outcome, ErrorKind::TimedOut.into())),
     };
     session.dialed(began, &trace, result.is_ok());
-    if let Some(attempt) = &d.score
-        && let Some((ip, available)) = trace.availability()
-    {
-        attempt.available(ip, available);
-    }
     match result {
         Ok(stream) => {
             let reporter = setup.and_then(|s| lock(&s.progress).started.take());
@@ -140,5 +134,56 @@ async fn dial(
             Ok((stream.stream, reporter))
         }
         Err((outcome, error)) => Err((error, setup.and_then(|s| s.failed(outcome)))),
+    }
+}
+
+async fn admitted_until<F: Future>(
+    deadline: Instant,
+    dial: F,
+    scope: Option<&DialScope>,
+) -> Result<F::Output, ScoreOutcome> {
+    let mut dial = std::pin::pin!(dial);
+    timeout_at(deadline, &mut dial).await.map_err(|_| {
+        if scope.is_some_and(DialScope::is_waiting_for_admission) {
+            ScoreOutcome::Rejected
+        } else {
+            ScoreOutcome::Timeout
+        }
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::subscription::parse::parse;
+    use honk_outbound::{proxy::ProxyRegistry, runtime::OutboundRuntimeRegistry};
+    use std::time::Duration;
+
+    #[tokio::test(start_paused = true)]
+    async fn a_capacity_wait_is_rejected_not_a_node_timeout() {
+        let nodes = parse(b"socks5://127.0.0.1:1#a").unwrap().nodes;
+        let (registry, _) =
+            OutboundRuntimeRegistry::build_reusing_with_dial_ceiling(&nodes, 1, 1, 1, false, None)
+                .unwrap();
+        let registry = Arc::new(registry);
+        let _held = registry.acquire_dial_permit().await;
+        let scope = registry.dial_scope(|| panic!("started without admission"));
+        let proxies = ProxyRegistry::default_resolver().unwrap();
+        let work = proxies.dial_runtime(
+            registry,
+            nodes[0].id,
+            ([127, 0, 0, 1], 80).into(),
+            None,
+            Duration::from_secs(10),
+        );
+        assert!(matches!(
+            admitted_until(
+                Instant::now() + Duration::from_millis(50),
+                scope.scope(work),
+                Some(&scope)
+            )
+            .await,
+            Err(ScoreOutcome::Rejected)
+        ));
     }
 }

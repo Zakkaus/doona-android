@@ -15,7 +15,7 @@ use crate::state::{State, StoredSubscription};
 use crate::stats::{Clock, Stats};
 use crate::subscription::parse;
 use honk_config::node::Node;
-use honk_outbound::group::{ScorePolicyState, SelectionNetwork};
+use honk_outbound::group::SelectionNetwork;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
@@ -82,7 +82,7 @@ pub(crate) fn load(state: &State, diag: &Diag) -> Model {
         }
         incarnations.insert(s.id.clone(), incarnation());
     }
-    Model::sourced(nodes, incarnations, &state.rule_source, Arc::default())
+    Model::sourced(nodes, incarnations, &state.rule_source, None)
 }
 
 /// The nodes `state.json` keeps for `s`, parsed again: from its structured document when it has
@@ -232,12 +232,7 @@ impl Model {
     /// The groups over `nodes` under the template's default policy.
     #[cfg(test)]
     pub fn new(nodes: Vec<Arc<NodeEntry>>, incarnations: HashMap<String, u64>) -> Model {
-        Model::sourced(
-            nodes,
-            incarnations,
-            &RuleSourceSpec::default(),
-            Arc::default(),
-        )
+        Model::sourced(nodes, incarnations, &RuleSourceSpec::default(), None)
     }
 
     /// The groups over `nodes`, and the policy of `source` over them.
@@ -245,7 +240,7 @@ impl Model {
         nodes: Vec<Arc<NodeEntry>>,
         incarnations: HashMap<String, u64>,
         source: &RuleSourceSpec,
-        state: Arc<ScorePolicyState>,
+        previous: Option<&Score>,
     ) -> Model {
         let index: HashMap<String, usize> = nodes
             .iter()
@@ -258,7 +253,7 @@ impl Model {
             .collect();
         let groups = groups::template(&named);
         let policy = compile(&groups, &index, source);
-        let score = Arc::new(Score::new(&groups, &nodes, &index, state));
+        let score = Arc::new(Score::new(&groups, &nodes, &index, previous));
         Model {
             nodes,
             index,
@@ -295,12 +290,7 @@ impl Model {
                 }
             }
         }
-        Model::sourced(
-            nodes,
-            incarnations,
-            &state.rule_source,
-            self.score.manager.score_state(),
-        )
+        Model::sourced(nodes, incarnations, &state.rule_source, Some(&self.score))
     }
 
     /// Compiles `source` over the groups and nodes as they are, for new flows.

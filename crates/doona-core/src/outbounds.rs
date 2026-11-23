@@ -429,7 +429,7 @@ impl Outbounds {
                 p.registries.0.iter().for_each(|r| p.carriers.adopt(r));
             }
             let old = table.published.clone();
-            routing.score.manager.publish_score_membership();
+            routing.score.publish(table.score.as_deref());
             *table = Arc::new(Table::new(published, routing));
             self.routings.fetch_add(1, Relaxed);
             (old, reused)
