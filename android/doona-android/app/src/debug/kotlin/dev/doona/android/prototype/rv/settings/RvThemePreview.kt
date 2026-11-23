@@ -29,6 +29,7 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvActivityScreen
 import dev.doona.android.prototype.rv.RvChrome
+import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvSampleActivity
 
@@ -85,7 +86,7 @@ internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: 
     val scheme = appearance.scheme(if (isDark) dark else light, isDark)
     val label = stringResource(R.string.rv_settings_preview)
     val size = RvSettingsSize
-    val shape = RoundedCornerShape(size.previewRadius)
+    val shape = RoundedCornerShape(RvSize.highlightRadius)
     RvSettingsCard(modifier) {
         Box(
             Modifier

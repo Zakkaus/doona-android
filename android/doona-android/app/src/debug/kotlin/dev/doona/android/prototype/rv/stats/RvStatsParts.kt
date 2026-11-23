@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -83,7 +82,7 @@ private fun Triangle(up: Boolean, color: Color, side: Dp) {
 /** A legend entry's rounded square, Revolut's 9 dp. */
 @Composable
 internal fun RvStatsSwatch(color: Color) {
-    Box(Modifier.size(RvStatsSize.legendSquare).clip(RoundedCornerShape(RvStatsSize.legendRadius)).background(color))
+    Box(Modifier.size(RvStatsSize.legendSquare).background(color))
 }
 
 /**

@@ -126,7 +126,7 @@ private fun TopCard(top: List<RvNode>, currentId: String, steadiest: Boolean, on
 private fun TopNode(node: RvNode, current: Boolean, onOpen: (String) -> Unit, modifier: Modifier) {
     Column(
         modifier
-            .rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, { onOpen(node.id) })
+            .rvPress(RoundedCornerShape(RvSize.highlightRadius), Role.Button, { onOpen(node.id) })
             .semantics(mergeDescendants = true) {}
             .padding(vertical = RvSpace.tight),
         horizontalAlignment = Alignment.CenterHorizontally,

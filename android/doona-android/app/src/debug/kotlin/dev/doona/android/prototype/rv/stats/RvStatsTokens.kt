@@ -51,7 +51,6 @@ internal object RvStatsSize {
     val ringStroke = 8.dp
     val ringGap = 2.dp
     val legendSquare = 9.dp
-    val legendRadius = 2.dp
 
     /**
      * The latency dot chart, after Revolut's EPS chart, in node detail's grammar: dots small enough to keep a gap at a

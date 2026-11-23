@@ -118,8 +118,15 @@ internal object RvSize {
     /** The welcome page's duck: the size Revolut's New features card gives its sparkle (measured §13.3: 48 dp). */
     val emptyGlyph = 48.dp
 
-    /** Every card's corners, 設定's and 主題's included (measured §2: 20 dp, N-06). */
+    /**
+     * The corner scale (revolut-ux3 §2), the only radii of the sample: every card, popup, tile and banner takes
+     * [cardRadius]; a highlight inside a card [highlightRadius]; buttons, pills, chips, discs and the capsule are fully
+     * round; a sheet takes [RvSheetSize.radius]. A small mark (a legend's square) has none.
+     */
     val cardRadius = 20.dp
+
+    /** A highlight or a picture inside a card: the card's 20 dp less Revolut's 4 dp inset (revolut-ux3 §2). */
+    val highlightRadius = 16.dp
 
     /** A list card's 'See all' row (S7-12, Revolut's 56 dp). */
     val seeAll = 56.dp
@@ -218,12 +225,11 @@ internal object RvChartSize {
     val dottedPitch = 6.dp
 
     /**
-     * The one value pill (measured §10.1: 28 dp tall, 8 dp round, 15 sp, a soft shadow), on a chart [pillInset] in from
-     * its edge, and [pillClear] off the line it labels.
+     * The one value pill (measured §10.1: 28 dp tall, 15 sp, a soft shadow; fully round, as every pill, revolut-ux3 §2),
+     * on a chart [pillInset] in from its edge, and [pillClear] off the line it labels.
      */
     val pill = 28.dp
     val pillPadH = 8.dp
-    val pillRadius = 8.dp
     val pillShadow = 2.dp
     val pillInset = 8.dp
     val pillClear = 6.dp
@@ -430,7 +436,6 @@ internal object RvUsageSize {
     val card = 188.dp
     val pad = 16.dp
     val legendSquare = 9.dp
-    val legendRadius = 2.dp
     val legendGap = 6.dp
     val legendItemGap = 16.dp
 

@@ -412,7 +412,7 @@ internal fun DrawScope.rvPillSize(text: TextLayoutResult) = Size(text.size.width
  */
 internal fun DrawScope.rvValuePill(text: TextLayoutResult, topLeft: Offset, ink: RvPillInk, alpha: Float = 1f) {
     val size = rvPillSize(text)
-    val radius = CornerRadius(RvChartSize.pillRadius.toPx())
+    val radius = CornerRadius(size.height / 2)
     if (ink.shadow) {
         val step = RvChartSize.pillShadow.toPx() / 2
         drawRoundRect(Color.Black.copy(alpha = RvAlpha.PILL_SHADOW_FAR), topLeft + Offset(0f, step * 2), size, radius, alpha = alpha)

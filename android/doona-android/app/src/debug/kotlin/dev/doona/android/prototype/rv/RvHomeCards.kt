@@ -14,12 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -81,7 +79,7 @@ internal fun RvUsageLegend(day: RvDay, modifier: Modifier = Modifier) {
 @Composable
 private fun LegendItem(color: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(RvUsageSize.legendSquare).clip(RoundedCornerShape(RvUsageSize.legendRadius)).background(color))
+        Box(Modifier.size(RvUsageSize.legendSquare).background(color))
         Spacer(Modifier.width(RvUsageSize.legendGap))
         RvText(text, Rv.type.tileCaption, color = Rv.colors.textSecondary)
     }

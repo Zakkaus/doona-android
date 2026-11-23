@@ -439,7 +439,7 @@ internal fun RvChevron(modifier: Modifier = Modifier, color: Color = Rv.colors.c
  */
 @Composable
 internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: String? = null) {
-    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, it) } ?: Modifier
+    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSize.highlightRadius), Role.Button, it) } ?: Modifier
     Row(
         Modifier
             .padding(top = RvSpace.headerInset)
@@ -462,7 +462,7 @@ internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: Str
  */
 @Composable
 internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, first: Boolean = false) {
-    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSpace.tight), Role.Button, it) } ?: Modifier
+    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSize.highlightRadius), Role.Button, it) } ?: Modifier
     val above = if (first) Modifier else Modifier.padding(top = RvSpace.sectionAbove)
     Row(modifier.then(above).padding(bottom = RvSpace.sectionBelow).testTag(RvPart.SECTION).then(press), verticalAlignment = Alignment.CenterVertically) {
         RvText(title, Rv.type.section, Modifier.semantics { heading() })
