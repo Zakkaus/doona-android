@@ -23,17 +23,11 @@ internal object RvSettingsSpace {
 
     val bottom = 24.dp
 
-    /**
-     * The hero: the title row under the bar, then the two round actions; the first section title sits its usual 24 dp
-     * under them, as under any content (spacing audit row 7: 24 dp under the title block).
-     */
-    val heroTop = 8.dp
-    val markGap = 8.dp
-    val titleToActions = 24.dp
+    /** The hero's two round actions; the first section title sits its usual 24 dp under them, as under any content. */
     val actionColumn = 96.dp
     val actionGap = 8.dp
 
-    /** How far under the bar the hero's dot map is centred, so East Asia's land falls behind the title. */
+    /** How far under the bar the hero's dot map is centred, so East Asia's land falls behind the round actions. */
     val mapDrop = 16.dp
 
     /** The theme page's colour row (48 dp targets 10 dp in, so a 36 dp disc's edge sits 16 dp in), its preview and its mode columns. */
@@ -48,9 +42,6 @@ internal object RvSettingsSize {
     /** The text line of a title; glyphs and trailing controls centre on it, so a wrapped row keeps them on its first line. */
     val titleLine = 26.dp
     val glyph = 24.dp
-
-    /** The hero: the duck mark beside the title. */
-    val mark = 32.dp
 
     /** A colour disc, and the ring round the selected one. */
     val accentDisc = 36.dp

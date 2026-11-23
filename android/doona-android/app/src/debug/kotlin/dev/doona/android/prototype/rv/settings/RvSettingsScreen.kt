@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv.settings
 
 import android.content.res.Configuration
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,10 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
@@ -36,11 +32,12 @@ import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.RV_NAV_SETTINGS
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAction
-import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSearchPill
 import dev.doona.android.prototype.rv.RvSpace
+import dev.doona.android.prototype.rv.RvTabHeader
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvBarHeight
 import dev.doona.android.prototype.rv.rvDotMap
@@ -49,11 +46,11 @@ import dev.doona.android.prototype.rv.rvNavClearance
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
- * The 設定 page in Revolut's settings language (§13, with the Security page's hero): the doona mark beside the title, two
- * round actions under it, then a card for each group of settings with a section title over it and, where it helps, a
- * footer under it, all scrolling under the floating nav. The large title collapses into the bar as the page scrolls. The
- * state is the caller's, so the switches turn; the rows that open something are not wired, 主題 opens [onOpenTheme] and
- * the nav's tabs [onTab].
+ * The 設定 tab in Revolut's settings language (§13): the tabs' bar, its capsule opening the node search
+ * ([RvSettingsRoutes.search]); two round actions as the first content, then a card for each group of settings with a
+ * section title over it and, where it helps, a footer under it, all scrolling under the floating nav. The state is the
+ * caller's, so the switches turn; the rows that open something are not wired, 主題 opens [onOpenTheme] and the nav's
+ * tabs [onTab].
  */
 @Composable
 internal fun RvSettingsScreen(
@@ -70,8 +67,9 @@ internal fun RvSettingsScreen(
         insets,
         scroll = scroll,
         overlay = { glass -> RvFloatingNav(RV_NAV_SETTINGS, onTab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter)) },
-    ) { titleBlock ->
-        Hero(titleBlock, insets, routes.report)
+        field = { glass, modifier -> RvSearchPill(routes.search, modifier, glass) },
+    ) {
+        Hero(insets, routes.report)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             ConnectionGroup(state, onChange, routes.alwaysOn, routes.perApp)
             SubscriptionGroup(state, onChange)
@@ -85,11 +83,11 @@ internal fun RvSettingsScreen(
 }
 
 /**
- * The mark beside the title, centred on a faint dot texture that runs up behind the bar, and the two actions under it;
+ * The two round actions, centred on a faint dot texture that runs up behind the bar, [RvTabHeader]'s gap under it;
  * 匯出診斷 opens 回報問題 ([onReport]).
  */
 @Composable
-private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Unit) {
+private fun Hero(insets: WindowInsets, onReport: () -> Unit) {
     val status = with(LocalDensity.current) { insets.getTop(this).toDp() }
     Box(Modifier.fillMaxWidth()) {
         // No dot on the status bar's clock (S8-08): the map starts under it, as 活動's does.
@@ -98,13 +96,7 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
         val art = rvHeroArt()
         Box(Modifier.matchParentSize().graphicsLayer { alpha = RvSettingsAlpha.HERO_DOTS * art() }.then(dots))
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            RvBarSpacer(insets)
-            Spacer(Modifier.height(RvSettingsSpace.heroTop))
-            Row(titleBlock, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.markGap)) {
-                Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvSettingsSize.mark))
-                RvSettingsText(stringResource(R.string.hub_settings), Rv.type.largeTitle, Modifier.semantics { heading() })
-            }
-            Spacer(Modifier.height(RvSettingsSpace.titleToActions))
+            RvTabHeader(insets)
             Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
                 RvAction(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_settings_export_diagnostics), onReport, Modifier.width(RvSettingsSpace.actionColumn))
                 RvAction(R.drawable.rv_settings_ic_update, stringResource(R.string.rv_settings_check_update), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
@@ -114,11 +106,12 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
 }
 
 /**
- * Where 設定's rows lead beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that
- * switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row and the hero's 匯出診斷, and the
- * licences.
+ * Where 設定 leads beyond the theme: the bar's capsule to the node search; the system's VPN settings, where always-on
+ * is turned on (Android owns that switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row
+ * and the hero's 匯出診斷, and the licences.
  */
 internal class RvSettingsRoutes(
+    val search: () -> Unit = NOT_WIRED,
     val alwaysOn: () -> Unit = NOT_WIRED,
     val perApp: () -> Unit = NOT_WIRED,
     val dns: () -> Unit = NOT_WIRED,

@@ -86,13 +86,13 @@ class RvLayoutTest {
     fun traffic() = measure("traffic", Top.Title) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
 
     @Test
-    fun policyRule() = measure("policy", Top.Title) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+    fun policyRule() = measure("policy", Top.Tab) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
 
     @Test
-    fun policyGlobal() = measure("policy-global", Top.Title) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Global), onChange = {}) }
+    fun policyGlobal() = measure("policy-global", Top.Tab) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Global), onChange = {}) }
 
     @Test
-    fun policyDirect() = measure("policy-direct", Top.Title) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}) }
+    fun policyDirect() = measure("policy-direct", Top.Tab) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}) }
 
     @Test
     fun groupSelect() = measure("policy-group-select", Top.Title) { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) }
@@ -148,7 +148,7 @@ class RvLayoutTest {
     fun report() = measure("report", Top.Title) { RvReportScreen(RvLogLevel.Info, RvExport.Failed, onLevel = {}, onExport = {}, onBack = {}) }
 
     @Test
-    fun connections() = measure("connections", Top.Title) { RvConnectionsPage(RvPolicyData.connections) }
+    fun connections() = measure("connections", Top.Tab) { RvConnectionsPage(RvPolicyData.connections) }
 
     @Test
     fun connection() = measure("connection", Top.Header) { RvConnectionDetail(RvPolicyData.connections[YOUTUBE], onBack = {}, onClose = {}, onNewRule = {}) }
@@ -212,9 +212,9 @@ class RvLayoutTest {
 
 /**
  * How a page starts under the bar: a large title, a centred header (a detail page's, as a block) where a large title
- * would start, or its own hero (not measured).
+ * would start, its own hero (not measured), or a tab home's first content, [RvSpace.tabTop] under the bar.
  */
-private enum class Top { Title, Header, Hero }
+private enum class Top { Title, Header, Hero, Tab }
 
 /** One page's parts in dp, and the drifts found in them. */
 private class Measure(private val parts: Map<String, List<Rect>>, private val barBottom: Float) {
@@ -239,6 +239,7 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
             Top.Title -> head?.let { expect("header's top", it.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no large title")
             Top.Header -> blocks().firstOrNull()?.let { expect("header's top", it.second.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no header")
             Top.Hero -> Unit
+            Top.Tab -> blocks().firstOrNull()?.let { expect("tab's first content", it.second.top, barBottom + RvSpace.tabTop.value) } ?: drift.add("no content")
         }
     }
 

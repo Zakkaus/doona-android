@@ -240,6 +240,7 @@ private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions,
 private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit, pages: RvSamplePages) {
     val context = LocalContext.current
     val routes = RvSettingsRoutes(
+        search = { pages.push(SEARCH) },
         alwaysOn = { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
         perApp = { pages.push(PERAPP) },
         dns = { pages.push(DNS) },

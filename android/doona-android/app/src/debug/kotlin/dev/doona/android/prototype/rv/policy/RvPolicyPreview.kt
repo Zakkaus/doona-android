@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.doona.android.prototype.rv.RV_NAV_POLICY
+import dev.doona.android.prototype.rv.SEARCH
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
@@ -139,6 +140,7 @@ internal fun RvPolicyPreview(
                 template = { push(r.TEMPLATE) },
                 newRule = { push(r.RULE) },
                 tab = onTab,
+                search = { push(SEARCH) },
             )
             RvPolicyScreen(state.policy, { state.policy = it }, routes)
         }

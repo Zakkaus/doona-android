@@ -15,8 +15,6 @@
     <string name="rv_conn_rule_index">第 %1$d 条规则</string>
     <string name="rv_conn_no_domain">无域名</string>
     <string name="rv_conn_close">关闭连接</string>
-    <string name="rv_conn_search_end">结束搜索</string>
-    <string name="rv_conn_search_hint">主机或应用</string>
     <plurals name="rv_conn_matches">
         <item quantity="other">%1$d 条连接匹配</item>
     </plurals>

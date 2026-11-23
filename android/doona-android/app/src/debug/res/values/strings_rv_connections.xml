@@ -16,8 +16,6 @@
     <string name="rv_conn_rule_index">Rule %1$d</string>
     <string name="rv_conn_no_domain">No domain</string>
     <string name="rv_conn_close">Close connection</string>
-    <string name="rv_conn_search_end">End search</string>
-    <string name="rv_conn_search_hint">Host or app</string>
     <plurals name="rv_conn_matches">
         <item quantity="one">%1$d connection matches</item>
         <item quantity="other">%1$d connections match</item>

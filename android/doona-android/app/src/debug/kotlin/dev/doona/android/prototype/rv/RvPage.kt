@@ -44,15 +44,18 @@ import kotlin.math.roundToInt
 
 /**
  * The one scaffold of every page but 活動: the page scrolls under [RvBar], whose strip blurs it once it moves under the
- * bar. A large-title page (設定, 統計, 節點, 主題) puts [content]'s `titleBlock` modifier on the block that ends with its
- * [RvLargeTitle]; as that block's bottom edge passes under the bar, the 20 sp [title] fades in on the bar. [onBack] adds
- * the back disc and puts the title beside it; without it (a tab home) the title is centred. The content starts at the screen's top, so it begins with
- * [RvBarSpacer]. [actions] puts round glass buttons ([RvGlassButton]) at the bar's end, on its row and in 48 dp
- * targets, as 活動's top bar has them. [bottomAction] floats a page's one action (an [RvPrimaryButton]) on the gutter,
- * 16 dp above the inset, with no scrim; the page keeps its room under the content, so the last card scrolls clear of
- * it. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's floating actions). [field] puts a list
- * page's search field ([RvSearchField]) on the bar beside the back disc, in the title's place, as the node picker's bar
- * holds it; it draws in the bar's glass with the modifier that sizes it to the row.
+ * bar. A pushed page ([onBack] adds the back disc) puts [content]'s `titleBlock` modifier on the block that ends with
+ * its [RvLargeTitle]; as that block's bottom edge passes under the bar, the 20 sp [title] fades in on the bar beside the
+ * disc. A page with a [field] and no [onBack] is a tab home (策略, 連線, 設定): 活動's bar ([RvTabBarRow]), [field] as
+ * its search capsule and [actions] after it, and no large title; its content begins with [RvTabHeader]. A page with
+ * neither (歡迎) centres the title on the bar. The content starts at the screen's top, so it begins with
+ * [RvBarSpacer]. On any other page, [actions] puts round glass buttons
+ * ([RvGlassButton]) at the bar's end, on its row and in 48 dp targets, and [field] puts a list page's search field
+ * ([RvSearchField]) beside the back disc, in the title's place, as the node picker's bar holds it; either draws in the
+ * bar's glass, [field] with the modifier that sizes it to the row. [bottomAction] floats a page's one action (an
+ * [RvPrimaryButton]) on the gutter, 16 dp above the inset, with no scrim; the page keeps its room under the content, so
+ * the last card scrolls clear of it. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's
+ * floating actions).
  */
 @Composable
 internal fun RvScrollPage(
@@ -82,17 +85,24 @@ internal fun RvScrollPage(
             if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() }))
         }
         RvBar(glass, insets, rvShade(scroll), Modifier.align(Alignment.TopStart)) {
-            if (field != null) FieldBar(glass, onBack, field) else TitleBar(title, onBack, collapse)
+            when {
+                field == null -> TitleBar(title, onBack, collapse)
+                onBack == null -> RvTabBarRow(glass, { field(glass, it) }, actions?.let { { it(glass) } })
+                else -> FieldBar(glass, onBack, field)
+            }
         }
-        actions?.let {
-            // Each disc keeps its 48 dp target, so the gap between targets is the gap between discs less the overhangs.
-            Row(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .windowInsetsPadding(insets.only(WindowInsetsSides.Top))
-                    .padding(top = RvChrome.barTop - RvChrome.touchPad, end = RvSpace.gutter - RvChrome.touchPad),
-                horizontalArrangement = Arrangement.spacedBy(RvChrome.buttonGap - RvChrome.touchPad * 2),
-            ) { it(glass) }
+        // A tab home's buttons are on its bar's row.
+        if (field == null || onBack != null) {
+            actions?.let {
+                // Each disc keeps its 48 dp target, so the gap between targets is the gap between discs less the overhangs.
+                Row(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .windowInsetsPadding(insets.only(WindowInsetsSides.Top))
+                        .padding(top = RvChrome.barTop - RvChrome.touchPad, end = RvSpace.gutter - RvChrome.touchPad),
+                    horizontalArrangement = Arrangement.spacedBy(RvChrome.buttonGap - RvChrome.touchPad * 2),
+                ) { it(glass) }
+            }
         }
         bottomAction?.let {
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { size -> actionHeight = size.height }.padding(horizontal = RvSpace.gutter)) {
@@ -124,14 +134,10 @@ private fun TitleBar(title: String, onBack: (() -> Unit)?, collapse: () -> Float
 
 /** The bar of a page with a search [field]: the back disc, then the field to the bar's end, as the node picker's bar. */
 @Composable
-private fun FieldBar(glass: RvGlass, onBack: (() -> Unit)?, field: @Composable (RvGlass, Modifier) -> Unit) {
+private fun FieldBar(glass: RvGlass, onBack: () -> Unit, field: @Composable (RvGlass, Modifier) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        if (onBack != null) {
-            RvBackDisc(onBack)
-            Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-        } else {
-            Spacer(Modifier.width(RvSpace.gutter - RvChrome.touchPad))
-        }
+        RvBackDisc(onBack)
+        Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
         field(glass, Modifier.weight(1f).padding(end = RvSpace.gutter - RvChrome.touchPad))
     }
 }
@@ -191,6 +197,25 @@ internal fun RvControlRow(control: @Composable () -> Unit) {
     Spacer(Modifier.height(RvSpace.controlGap))
     Box(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CONTROL)) { control() }
     Spacer(Modifier.height(RvSpace.controlGap))
+}
+
+/**
+ * The head of a tab home (策略, 連線, 設定), which has no large title, as Revolut's tabs have none (revolut-ux3 §5): the
+ * bar's room, then [RvSpace.tabTop] to the first content. An optional [caption] ([RvCaption] lines) and [control] row
+ * follow as [RvPageHeader] sets them; after a caption with no control row, the first card follows [RvSpace.headerGap]
+ * under it.
+ */
+@Composable
+internal fun RvTabHeader(insets: WindowInsets, caption: (@Composable ColumnScope.() -> Unit)? = null, control: (@Composable () -> Unit)? = null) {
+    RvBarSpacer(insets)
+    Spacer(Modifier.height(RvSpace.tabTop))
+    caption?.let {
+        Column(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CAPTION), verticalArrangement = Arrangement.spacedBy(RvSpace.tight), content = it)
+    }
+    when {
+        control != null -> RvControlRow(control)
+        caption != null -> Spacer(Modifier.height(RvSpace.headerGap))
+    }
 }
 
 /** A pushed page's large title alone: [RvPageHeader] with no caption and no control. */

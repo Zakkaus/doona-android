@@ -97,9 +97,9 @@ internal fun rvShade(scroll: ScrollState): () -> Float {
 }
 
 /**
- * 活動's top bar (measured §4): the duck mark in a disc, a search pill and two round buttons, 統計 and 訂閱, all 44 dp
+ * 活動's top bar (measured §4): [RvTabBarRow] with the search pill and two round buttons, 統計 and 訂閱, all 44 dp
  * glass over what scrolls under them, on [RvBar]'s strip. The pill opens [onSearch], 統計 [onStats] and 訂閱
- * [onSubscriptions]; the duck opens nothing in the sample.
+ * [onSubscriptions].
  */
 @Composable
 internal fun RvTopBar(
@@ -113,28 +113,48 @@ internal fun RvTopBar(
     onSubscriptions: () -> Unit = NOT_WIRED,
 ) {
     RvBar(glass, insets, shade, modifier) {
-        // Each control keeps a 48 dp target round its 44 dp disc, so the gaps between targets are 4 dp narrower.
-        Row(Modifier.fillMaxSize().padding(horizontal = RvSpace.gutter - RvChrome.touchPad), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.minimumInteractiveComponentSize().size(RvChrome.control).rvControl(glass, CircleShape), contentAlignment = Alignment.Center) {
-                Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvChrome.markGlyph))
-            }
-            Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-            RvSearchPill(onSearch, Modifier.weight(1f), glass, pull)
-            Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
+        RvTabBarRow(glass, { RvSearchPill(onSearch, it, glass, pull) }) {
             RvGlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
-            Spacer(Modifier.width(RvChrome.buttonGap - RvChrome.touchPad * 2))
             RvGlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), onSubscriptions)
         }
     }
 }
 
 /**
- * The search pill (measured §4: 44 dp, full round, the 24 dp magnifier 8 dp in, the 17 sp placeholder): on 活動's bar in
- * the controls' [glass] and a 48 dp target; without glass, on the page in the filter chips' fill, its 44 dp the layout
- * box, as a node list's first row. On the bar it is also the pull-down's anchor ([barPill]).
+ * The row of every tab home's bar, 活動's first (measured §4; one bar on every tab, the owner's mock of 2026-11-23): the
+ * duck mark in a disc, which opens nothing in the sample, then the search capsule ([search], given the modifier that
+ * sizes it), then the tab's own round buttons ([actions]). Without buttons the capsule runs to the gutter.
  */
 @Composable
-internal fun RvSearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, glass: RvGlass? = null, pull: RvPullLook = RvPullLook.None) {
+internal fun RvTabBarRow(glass: RvGlass, search: @Composable (Modifier) -> Unit, actions: (@Composable () -> Unit)? = null) {
+    // Each control keeps a 48 dp target round its 44 dp disc, so the gaps between targets are 4 dp narrower.
+    Row(Modifier.fillMaxSize().padding(horizontal = RvSpace.gutter - RvChrome.touchPad), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.minimumInteractiveComponentSize().size(RvChrome.control).rvControl(glass, CircleShape), contentAlignment = Alignment.Center) {
+            Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvChrome.markGlyph))
+        }
+        Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
+        search(Modifier.weight(1f))
+        if (actions != null) {
+            Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
+            Row(horizontalArrangement = Arrangement.spacedBy(RvChrome.buttonGap - RvChrome.touchPad * 2), verticalAlignment = Alignment.CenterVertically) { actions() }
+        }
+    }
+}
+
+/**
+ * The search pill (measured §4: 44 dp, full round, the 24 dp magnifier 8 dp in, the 17 sp placeholder, [hint], 搜尋節點
+ * unless the tab searches another list): on a tab's bar in the controls' [glass] and a 48 dp target; without glass, on
+ * the page in the filter chips' fill, its 44 dp the layout box, as a node list's first row. On the bar it is also the
+ * pull-down's anchor ([barPill]).
+ */
+@Composable
+internal fun RvSearchPill(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    glass: RvGlass? = null,
+    pull: RvPullLook = RvPullLook.None,
+    hint: String = stringResource(R.string.rv_search_nodes),
+) {
     val fill = glass?.let { Modifier.barPill(pull).minimumInteractiveComponentSize().height(RvChrome.control).rvControl(it, CircleShape) }
         ?: Modifier.height(RvChrome.control).clip(CircleShape).background(Rv.colors.segmentTrack)
     Row(
@@ -146,7 +166,7 @@ internal fun RvSearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, gl
         horizontalArrangement = Arrangement.spacedBy(RvChrome.searchInset),
     ) {
         RvGlyph(R.drawable.rv_sym_search, RvChrome.searchGlyph, Rv.colors.text)
-        RvText(stringResource(R.string.rv_search_nodes), Rv.type.search, color = Rv.colors.textSecondary)
+        RvText(hint, Rv.type.search, color = Rv.colors.textSecondary)
     }
 }
 

@@ -39,14 +39,15 @@ import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLatencyChange
-import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSearchPill
 import dev.doona.android.prototype.rv.RvSeeAll
 import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
+import dev.doona.android.prototype.rv.RvTabHeader
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RvData
@@ -75,11 +76,12 @@ internal class RvPolicyRoutes(
     val tab: (Int) -> Unit = {},
     val testAll: () -> Unit = {},
     val update: () -> Unit = {},
+    val search: () -> Unit = {},
 )
 
 /**
  * The 策略 tab, a control page in the language of 設定 and 節點 (rv-policy-STATE.md has the synthesis behind it): the
- * large title with two glass actions in the bar; the mode as FlClash's three segments in a card with one line saying
+ * tabs' bar, its capsule opening the node search ([RvPolicyRoutes.search]) and its two glass actions after it; the mode as FlClash's three segments in a card with one line saying
  * what it does. 規則: the main node, which carries whatever no rule sends elsewhere (its card opens the main node's
  * picker); the groups, each with how it picks and the node it uses (a row pushes its page); the rules in order with
  * today's bytes, as Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
@@ -100,11 +102,12 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
             RvGlassButton(glass, R.drawable.rv_sym_speed, testAll, routes.testAll)
             RvGlassButton(glass, R.drawable.rv_stats_ic_sync, update, routes.update)
         },
+        field = { glass, modifier -> RvSearchPill(routes.search, modifier, glass) },
         overlay = { glass ->
             RvFloatingNav(RV_NAV_POLICY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
         },
-    ) { titleBlock ->
-        RvPageHeader(title, titleBlock, insets)
+    ) {
+        RvTabHeader(insets)
         // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
         RvGutter {
             ModeCard(state.mode) { onChange(state.copy(mode = it)) }

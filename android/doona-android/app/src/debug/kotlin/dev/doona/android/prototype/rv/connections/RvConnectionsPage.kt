@@ -1,20 +1,22 @@
 package dev.doona.android.prototype.rv.connections
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -30,16 +32,15 @@ import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvEmptyCaption
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFloatingNav
-import dev.doona.android.prototype.rv.RvGlassButton
+import dev.doona.android.prototype.rv.RvGlass
 import dev.doona.android.prototype.rv.RvGutter
-import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLongPressTiming
-import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvSpace
+import dev.doona.android.prototype.rv.RvSearchField
+import dev.doona.android.prototype.rv.RvSearchPill
+import dev.doona.android.prototype.rv.RvTabHeader
 import dev.doona.android.prototype.rv.RvText
-import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
@@ -59,14 +60,14 @@ internal class RvConnectionsRoutes(
 )
 
 /**
- * 連線, the third of the four tabs, in the language of 節點: the shared page header, its large
- * title with search in the bar, a caption counting the open connections and their bytes, and the app and order chips as
- * its control row; then one card of the connections
+ * 連線, the third of the four tabs, in the language of 節點: the tabs' bar, its capsule 搜尋連線; a caption counting the
+ * open connections and their bytes, and the app and order chips as its control row; then one card of the connections
  * open now ([connections], newest first), each its app's icon, where it went over the app and the rule's group, and its
- * bytes over how long it has been open. A connection opens its page. While [query] is set, the search field replaces
- * the caption and the chips and the card keeps the connections whose host or app holds it. With the tunnel off
- * ([connected] false), or nothing matching, the card says so in the library's empty caption, with no action: 連線 is
- * 活動's, and the bar's close ends a search. Host names are shown from memory and never logged (D21).
+ * bytes over how long it has been open. A connection opens its page. The capsule starts a search ([query] set): it
+ * becomes the field, the count of matches replaces the caption and the chips, and the card keeps the connections whose
+ * host or app holds the query; back ends it. With the tunnel off ([connected] false), or nothing matching, the card says
+ * so in the library's empty caption, with no action: 連線 is 活動's. Host names are shown from memory and never logged
+ * (D21).
  */
 @Composable
 internal fun RvConnectionsPage(
@@ -78,29 +79,37 @@ internal fun RvConnectionsPage(
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
-    val title = stringResource(R.string.rv_nav_connections)
-    val search = stringResource(if (query == null) R.string.rv_conn_search else R.string.rv_conn_search_end)
+    val hint = stringResource(R.string.rv_conn_search)
+    val shown = if (query.isNullOrBlank()) connections else connections.filter { it.host.contains(query, ignoreCase = true) || it.app.contains(query, ignoreCase = true) }
+    // The bar has no close: back ends a search.
+    BackHandler(enabled = query != null) { routes.query(null) }
     RvScrollPage(
-        title,
+        stringResource(R.string.rv_nav_connections),
         insets,
         scroll = scroll,
-        actions = if (connected) {
-            { glass -> RvGlassButton(glass, if (query == null) R.drawable.rv_sym_search else R.drawable.rv_sym_close, search) { routes.query(if (query == null) "" else null) } }
-        } else {
-            null
+        field = { glass, modifier ->
+            if (query == null) RvSearchPill({ routes.query("") }, modifier, glass, hint = hint) else SearchField(glass, query, routes, modifier, hint)
         },
         overlay = { glass ->
             RvFloatingNav(RV_NAV_CONNECTIONS, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
         },
-    ) { titleBlock ->
-        if (connected && query == null) {
-            RvPageHeader(title, titleBlock, insets, caption = { Summary(connections) }, control = { Filters(routes.filter) })
-        } else {
-            RvLargeTitle(title, titleBlock, insets)
+    ) {
+        when {
+            !connected -> RvTabHeader(insets)
+            query == null -> RvTabHeader(insets, caption = { Summary(connections) }, control = { Filters(routes.filter) })
+            else -> RvTabHeader(insets, caption = { RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size)) })
         }
-        if (connected) Connections(connections, query, routes, nowEpochMs) else Disconnected()
+        if (connected) Connections(shown, connections, routes, nowEpochMs) else Disconnected()
         Spacer(Modifier.height(rvNavClearance(insets)))
     }
+}
+
+/** The bar's capsule while searching: the field holding [query], with the cursor (and the keyboard) as it opens empty. */
+@Composable
+private fun SearchField(glass: RvGlass, query: String, routes: RvConnectionsRoutes, modifier: Modifier, hint: String) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(focus) { if (query.isEmpty()) focus.requestFocus() }
+    RvSearchField(glass, query, { routes.query(it) }, modifier, focus, hint)
 }
 
 /** The tunnel is off: nothing to list. 連線 is 活動's; the page does not repeat it. */
@@ -109,22 +118,9 @@ private fun Disconnected() {
     RvGutter { RvEmptyCaption(stringResource(R.string.rv_conn_off_title), stringResource(R.string.rv_conn_off_line)) }
 }
 
-/** The search field while searching, then the card of connections, or the empty state when none match. */
+/** The card of the [shown] connections, or the empty state when none match; a row opens its place in [connections]. */
 @Composable
-private fun Connections(connections: List<RvConnection>, query: String?, routes: RvConnectionsRoutes, nowEpochMs: Long) {
-    val shown = if (query.isNullOrBlank()) connections else connections.filter { it.host.contains(query, ignoreCase = true) || it.app.contains(query, ignoreCase = true) }
-    if (query != null) {
-        RvTextField(
-            query,
-            { routes.query(it) },
-            stringResource(R.string.rv_conn_search),
-            Modifier.padding(horizontal = RvSpace.gutter),
-            placeholder = stringResource(R.string.rv_conn_search_hint),
-            supporting = pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size),
-        )
-        // The search field is the page's control row: the first card follows a control's gap under it.
-        Spacer(Modifier.height(RvSpace.controlGap))
-    }
+private fun Connections(shown: List<RvConnection>, connections: List<RvConnection>, routes: RvConnectionsRoutes, nowEpochMs: Long) {
     RvGutter {
         if (shown.isEmpty()) {
             RvEmptyCaption(stringResource(R.string.rv_conn_none_title), stringResource(R.string.rv_conn_none_line))

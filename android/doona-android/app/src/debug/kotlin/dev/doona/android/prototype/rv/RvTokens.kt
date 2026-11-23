@@ -32,6 +32,12 @@ internal object RvSpace {
     val headerTop = 152.dp
     val heroToActions = 64.dp
 
+    /**
+     * On a tab home, which has no large title, the first content sits this far under the bar's controls: Revolut's tabs
+     * put Payments' banner 13.6 dp under theirs (revolut-ux3 §5: the controls end at 71.4 + 44 dp, the banner at 129).
+     */
+    val tabTop = 13.6.dp
+
     /** From the round actions' labels to the first card (measured §5: the action row ends 1360 px, the card starts 1400). */
     val actionsToCard = 16.dp
     val subGap = 6.dp
