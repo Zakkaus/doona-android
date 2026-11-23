@@ -108,6 +108,9 @@ internal object RvControlSize {
     val primaryShadow = 12.dp
     val primaryShadowDrop = 4.dp
 
+    /** The secondary button in a card or a sheet (revolut-ux3 §3: Revolut's in-card button, 40 dp, full round). */
+    val secondary = 40.dp
+
     /**
      * The text field: the search pill's shape (measured §4, full round) at the primary button's 52 dp, its text 16 dp in
      * as a row's is, its label 8 dp above it as a round action's label sits under its disc (§6), and a 1 dp ring for
@@ -285,6 +288,26 @@ internal fun RvPrimaryButton(
             .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
         contentAlignment = Alignment.Center,
     ) { RvText(label, primaryLabel, color = colors.page, align = TextAlign.Center) }
+}
+
+/**
+ * A card's or a sheet's secondary action, Revolut's in-card button (revolut-ux3 §3): a full-width pill at least
+ * [RvControlSize.secondary] tall on the filter chip's neutral fill (the segment track, which reads on a card, a sheet
+ * and the page), its 17 sp semibold [label] in ink, centred; pressed, the state layer. It never takes a hue, so it never
+ * pairs a green or teal action with a red glyph. Its target reaches 48 dp through Compose's touch target expansion.
+ */
+@Composable
+internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = RvControlSize.secondary)
+            .clip(CircleShape)
+            .background(Rv.colors.segmentTrack)
+            .rvPress(CircleShape, Role.Button, onClick)
+            .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
+        contentAlignment = Alignment.Center,
+    ) { RvText(label, Rv.type.action, color = Rv.colors.text, align = TextAlign.Center) }
 }
 
 /**

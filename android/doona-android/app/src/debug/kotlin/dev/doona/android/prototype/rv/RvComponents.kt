@@ -480,9 +480,11 @@ internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style:
 }
 
 /**
- * An inline error banner: a card with the error's glyph on a row's disc in the error hue (the title stays in ink, as
- * Revolut's destructive row, measured §13.2), the [title] over its [reason] (wrapping, in secondary ink), and the one
- * [action] as the card's foot, in the 'See all' row's form. A screen reader announces it when it appears.
+ * A notice card, as Revolut's notice card with a button (revolut-ux3 §3): 16 dp padding on every side; a row's 40 dp
+ * disc with the notice's glyph in ink, its top on the title's line; the [title] over its [reason] (wrapping, in
+ * secondary ink) 16 dp after the disc; then, [RvSpace.noticeToAction] under the text, the one [action] as the
+ * full-width secondary pill. No hue anywhere: Revolut's notice is neutral, and the owner ruled out a red glyph over a
+ * teal action (2026-11-23). A screen reader announces it when it appears.
  */
 @Composable
 internal fun RvBanner(
@@ -494,16 +496,17 @@ internal fun RvBanner(
     @DrawableRes icon: Int = R.drawable.rv_sym_error,
 ) {
     RvCard(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
-        Row(Modifier.fillMaxWidth().padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, top = RvSpace.rowPadding)) {
-            RvIconDisc(icon, Rv.colors.error)
-            Spacer(Modifier.width(RvSpace.rowGap))
-            // The title centres on the disc; the reason wraps under it.
-            Column(Modifier.weight(1f).padding(top = (RvSize.rowDisc - RvSize.titleLine) / 2), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-                RvText(title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
-                RvText(reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
+        Column(Modifier.fillMaxWidth().padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.noticeToAction)) {
+            Row(Modifier.fillMaxWidth()) {
+                RvIconDisc(icon)
+                Spacer(Modifier.width(RvSpace.rowGap))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+                    RvText(title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
+                    RvText(reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
+                }
             }
+            RvSecondaryButton(action, onAction)
         }
-        RvSeeAll(action, onAction)
     }
 }
 

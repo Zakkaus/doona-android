@@ -90,6 +90,9 @@ internal object RvSpace {
 
     /** Between a card's lines of text and its progress bar. */
     val barGap = 14.dp
+
+    /** In a notice card ([RvBanner]), from its text to its action's pill (revolut-ux3 §3: 16 dp). */
+    val noticeToAction = 16.dp
 }
 
 internal object RvSize {
