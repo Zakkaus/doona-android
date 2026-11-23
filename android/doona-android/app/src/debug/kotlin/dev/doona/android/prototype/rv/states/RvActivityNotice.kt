@@ -17,7 +17,8 @@ import dev.doona.android.prototype.rv.rvIdleActivity
  * failed its latency test; another app took the VPN; no network; the core stopped after the tunnel came up. And, once
  * after doona crashed, that a crash log waits to be exported. A start that failed says why: the tunnel did not start,
  * the per-app list resolved to no installed app, the bundled core speaks another schema, or the core found no node in
- * Global. A tunnel revoked by the system is [VpnTaken]. A failed subscription update keeps its nodes, so it is told on
+ * Global. A tunnel revoked by the system is [VpnTaken]. A refusal is told where the user acted: the system's VPN consent
+ * ([ConsentDenied]) and the notification permission ([NotifyDenied]). A failed subscription update keeps its nodes, so it is told on
  * 訂閱, not here.
  */
 internal enum class RvActivityNotice(val route: String) {
@@ -31,6 +32,8 @@ internal enum class RvActivityNotice(val route: String) {
     StartNoApps("failed-no-apps"),
     StartIncompatible("failed-incompatible"),
     StartNoNodes("failed-no-nodes"),
+    ConsentDenied("consent-denied"),
+    NotifyDenied("notify-denied"),
 }
 
 /**
@@ -47,7 +50,7 @@ internal fun rvNoticeActivity(notice: RvActivityNotice): ActivityUiState {
         RvActivityNotice.StartNoApps -> idle.copy(status = Status.Failed(FailureReason.NoAllowedApps))
         RvActivityNotice.StartIncompatible -> idle.copy(status = Status.Failed(FailureReason.IncompatibleCore))
         RvActivityNotice.StartNoNodes -> idle.copy(status = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes), node = null)
-        RvActivityNotice.VpnTaken, RvActivityNotice.Offline, RvActivityNotice.Crash -> idle
+        RvActivityNotice.VpnTaken, RvActivityNotice.Offline, RvActivityNotice.Crash, RvActivityNotice.ConsentDenied, RvActivityNotice.NotifyDenied -> idle
     }
 }
 
@@ -55,7 +58,8 @@ internal fun rvNoticeActivity(notice: RvActivityNotice): ActivityUiState {
  * The notice's card: the empty state with 新增訂閱, or a banner with its reason and one action ([onAction]): 重新測試,
  * 重新連線, 網路設定 or 匯出報告. A failed start is titled 連線失敗, the reason the notification's (`vpn_failure_*`), and its
  * action what can mend it: 重試, 依 App, 檢查更新 or 新增訂閱. Each banner keeps the error glyph but VPN (its power glyph)
- * and the network (Wi-Fi off).
+ * and the network (Wi-Fi off). A refusal's action is the way back: 重新連線 asks the system for the VPN consent again, 開啟設定
+ * opens the app's notification settings; the notification glyph marks the second.
  */
 @Composable
 internal fun RvActivityNoticeCard(notice: RvActivityNotice, onAction: () -> Unit) {
@@ -101,6 +105,22 @@ internal fun RvActivityNoticeCard(notice: RvActivityNotice, onAction: () -> Unit
         RvActivityNotice.StartIncompatible -> StartBanner(R.string.vpn_failure_incompatible_core, R.string.rv_settings_check_update, onAction)
 
         RvActivityNotice.StartNoNodes -> StartBanner(R.string.first_no_nodes, R.string.rv_add_subscription, onAction)
+
+        RvActivityNotice.ConsentDenied -> RvBanner(
+            stringResource(R.string.rv_vpn_denied),
+            stringResource(R.string.rv_vpn_denied_reason),
+            stringResource(R.string.rv_reconnect),
+            onAction,
+            icon = R.drawable.rv_sym_power,
+        )
+
+        RvActivityNotice.NotifyDenied -> RvBanner(
+            stringResource(R.string.rv_notify_denied),
+            stringResource(R.string.rv_notify_denied_reason),
+            stringResource(R.string.rv_lan_open_settings),
+            onAction,
+            icon = R.drawable.rv_settings_ic_notifications,
+        )
     }
 }
 
