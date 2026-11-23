@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_welcome_title">欢迎使用 doona</string>
+    <string name="rv_welcome_line">doona 经由订阅提供的节点转发流量，并按规则决定哪些流量直连。</string>
+    <string name="rv_welcome_subs_sub">Clash、sing-box 与分享链接列表</string>
+    <string name="rv_welcome_rules">规则</string>
+    <string name="rv_welcome_rules_sub">每个连接按规则经过节点或直连</string>
+    <string name="rv_welcome_vpn">VPN</string>
+    <string name="rv_welcome_vpn_sub">应用的流量经过 doona 的 VPN</string>
+    <string name="rv_welcome_note">第一次连接时，Android 会先询问是否允许 doona 建立 VPN，再询问是否允许发送通知。</string>
+    <string name="rv_no_node">没有可用的节点</string>
+    <string name="rv_no_node_reason">所有节点的延迟测试都失败。请确认网络连接，或更新订阅后重新测试。</string>
+    <string name="rv_retest">重新测试</string>
+    <string name="rv_core_stopped">连接已断开</string>
+    <string name="rv_core_stopped_reason">doona 的核心已停止运行，流量不再经过节点。</string>
+    <string name="rv_crash">doona 先前发生崩溃</string>
+    <string name="rv_crash_reason">崩溃记录已保存，会附在诊断报告中。</string>
+    <string name="rv_crash_export">导出报告</string>
+    <string name="rv_lan_ask_title">允许访问局域网</string>
+    <string name="rv_lan_ask_body">连接局域网中的订阅和节点需要此权限。</string>
+    <string name="rv_lan_ask_continue">继续</string>
+    <string name="rv_lan_ask_not_now">暂不</string>
+    <string name="rv_lan_denied_title">未允许访问局域网</string>
+    <string name="rv_lan_denied_body">无法连接局域网中的订阅和节点。请在应用设置中允许 doona 访问局域网。</string>
+    <string name="rv_lan_open_settings">打开设置</string>
+</resources>

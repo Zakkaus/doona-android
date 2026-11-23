@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_stats_title">统计</string>
+    <string name="rv_stats_all_subscriptions">全部订阅</string>
+    <string name="rv_stats_today">今天</string>
+    <string name="rv_stats_week">本周</string>
+    <string name="rv_stats_month">本月</string>
+    <string name="rv_stats_used">已用流量</string>
+    <string name="rv_stats_vs_yesterday">比昨天同时段</string>
+    <string name="rv_stats_nothing_today">今天还没有流量</string>
+    <string name="rv_stats_no_data">尚无数据</string>
+    <string name="rv_stats_connections">连接次数</string>
+    <string name="rv_stats_quota">订阅流量</string>
+    <string name="rv_stats_quota_total">共 %1$s · %2$s</string>
+    <string name="rv_stats_quota_left">剩余 %1$s</string>
+    <string name="rv_stats_no_quota">没有订阅提供流量额度</string>
+    <string name="rv_stats_no_expiry">未提供到期日</string>
+    <string name="rv_stats_nodes">节点分布</string>
+    <string name="rv_stats_latency">延迟分布</string>
+    <string name="rv_stats_ms">毫秒</string>
+    <string name="rv_stats_median">中位数 · 已测试 %1$d 个</string>
+    <string name="rv_stats_split">分流比例</string>
+    <string name="rv_stats_via_proxy">经过代理</string>
+    <string name="rv_stats_proxy">代理</string>
+    <string name="rv_stats_direct">直连</string>
+    <string name="rv_stats_tools">工具</string>
+    <string name="rv_stats_test_all">测试全部延迟</string>
+    <string name="rv_stats_update_all">更新所有订阅</string>
+    <string name="rv_stats_export">导出诊断</string>
+    <string name="rv_stats_export_detail">日志与连接状态</string>
+    <plurals name="rv_stats_subscriptions">
+        <item quantity="other">%1$d 个订阅</item>
+    </plurals>
+    <plurals name="rv_stats_countries">
+        <item quantity="other">%1$d 个国家或地区</item>
+    </plurals>
+    <plurals name="rv_stats_node_count">
+        <item quantity="other">%1$d 个节点</item>
+    </plurals>
+</resources>

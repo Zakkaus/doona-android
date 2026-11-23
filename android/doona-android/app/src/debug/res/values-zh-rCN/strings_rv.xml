@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_connect">连接</string>
+    <string name="rv_disconnect">断开连接</string>
+    <string name="rv_test_latency">测试延迟</string>
+    <string name="rv_more">更多</string>
+    <string name="rv_expires">%1$s 到期</string>
+    <string name="rv_updated">%1$s 更新</string>
+    <string name="rv_peak">峰值 %1$s</string>
+    <string name="rv_stat_peak">峰值</string>
+    <string name="rv_stat_average">平均</string>
+    <string name="rv_now">现在</string>
+    <string name="rv_no_traffic">当前没有流量</string>
+    <string name="rv_traffic_title">流量</string>
+    <string name="rv_this_connection">本次连接</string>
+    <string name="rv_downloaded">已下载</string>
+    <string name="rv_uploaded">已上传</string>
+    <string name="rv_connected_for">连接时长</string>
+    <string name="rv_duration">%1$d 小时 %2$d 分</string>
+    <string name="rv_chart_type">图表类型</string>
+    <string name="rv_full_screen">全屏</string>
+    <string name="rv_range_1m">1 分</string>
+    <string name="rv_range_5m">5 分</string>
+    <string name="rv_range_15m">15 分</string>
+    <string name="rv_range_1h">1 小时</string>
+    <string name="rv_search_nodes">搜索节点</string>
+    <string name="rv_stats">统计</string>
+    <string name="rv_subscriptions">订阅</string>
+    <string name="rv_today_usage">今日用量</string>
+    <string name="rv_less_than_yesterday">比昨天同时段少 %1$s</string>
+    <string name="rv_more_than_yesterday">比昨天同时段多 %1$s</string>
+    <string name="rv_remaining">剩余</string>
+    <string name="rv_subscription_usage">%1$s / %2$s · %3$s 到期</string>
+    <string name="rv_fastest_nodes">最快节点</string>
+    <string name="rv_mode_rule">规则</string>
+    <string name="rv_main_node">主节点</string>
+    <string name="rv_main_node_hint">选择的节点会成为主节点</string>
+    <string name="rv_hero_all_traffic">全部流量</string>
+    <string name="rv_hero_show">显示%1$s</string>
+    <string name="rv_direct_note">未使用节点，全部直连</string>
+    <string name="rv_rule_streaming">流媒体</string>
+    <string name="rv_rule_domestic">国内与局域网</string>
+    <string name="rv_rule_ai">AI</string>
+    <plurals name="rv_see_all_rules">
+        <item quantity="other">查看全部 %1$d 条规则</item>
+    </plurals>
+    <!-- Long-press menus (G3). -->
+    <string name="rv_menu_set_main">设为主节点</string>
+    <string name="rv_menu_details">详情</string>
+    <string name="rv_menu_copy_link">复制分享链接</string>
+    <string name="rv_reorder_up">上移</string>
+    <string name="rv_reorder_down">下移</string>
+</resources>

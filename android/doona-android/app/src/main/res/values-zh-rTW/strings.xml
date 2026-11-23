@@ -56,11 +56,11 @@
     <string name="policy_filter">篩選節點</string>
     <string name="policy_test_all">測試全部</string>
     <string name="policy_test_group">測試此群組</string>
-    <string name="policy_unpin">回到自動</string>
-    <string name="policy_pinned">已固定</string>
+    <string name="policy_unpin">恢復自動選擇</string>
+    <string name="policy_pinned">已手動固定</string>
     <string name="policy_failed">測試失敗</string>
     <string name="policy_failed_count">%1$d 個失敗</string>
-    <string name="policy_groups_inside">內含群組</string>
+    <string name="policy_groups_inside">子群組</string>
     <string name="policy_empty_title">沒有群組</string>
     <string name="policy_empty_line">新增訂閱後會建立群組。</string>
     <string name="sub_title">訂閱</string>
