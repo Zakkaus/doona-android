@@ -17,6 +17,7 @@ use super::{HEADER, count, question_end, skip_name, u16_at};
 use crate::api::lock;
 use crate::sys;
 use lru::LruCache;
+use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::{Arc, Mutex};
 
@@ -31,9 +32,6 @@ const BATCH: usize = 64;
 const TYPE_A: u16 = 1;
 const TYPE_CNAME: u16 = 5;
 const CLASS_IN: u16 = 1;
-/// The most names a CNAME chain is followed through, the question's included; a longer chain ends
-/// there.
-const MAX_CHAIN: usize = 16;
 /// The longest name, without its final dot.
 const MAX_NAME: usize = 253;
 
@@ -154,36 +152,41 @@ enum Data {
 struct Malformed;
 
 /// The addresses, with their TTLs, of the A records in the answer section from `at` that `name`
-/// reaches through its CNAME chain: `name`, the name its CNAME gives, and so on. An alias back into
-/// the chain ends it, as does a record that runs past the message; what came before counts. None
-/// when a CNAME's data is not one name: its alias would be read from the bytes around it.
+/// reaches through its CNAME chain: `name`, the name its CNAME gives (the first, if it has more),
+/// and so on, as far as the answer's records go. An alias back into the chain ends it, as does a
+/// record that runs past the message; what came before counts. None when a CNAME's data is not one
+/// name: its alias would be read from the bytes around it.
 fn reached(m: &[u8], name: &str, mut at: usize) -> Option<Vec<(Ipv4Addr, u32)>> {
-    let mut records = Vec::new();
+    let (mut aliases, mut addresses) = (HashMap::new(), Vec::new());
     for _ in 0..count(m, 6) {
         let Some((end, held)) = record(m, at) else {
             break;
         };
         at = end;
-        records.extend(held.ok()?);
-    }
-    let mut chain = vec![name.to_owned()];
-    while chain.len() < MAX_CHAIN {
-        let last = &chain[chain.len() - 1];
-        let next = records.iter().find_map(|(owner, data)| match data {
-            Data::Alias(to) if owner == last => read_name(m, *to),
-            _ => None,
-        });
-        match next {
-            Some(next) if !chain.contains(&next) => chain.push(next),
-            _ => break,
+        match held.ok()? {
+            Some((owner, Data::Alias(to))) => {
+                aliases.entry(owner).or_insert(to);
+            }
+            Some((owner, Data::A(addr, ttl))) => addresses.push((owner, addr, ttl)),
+            None => {}
         }
     }
-    let found = records
+    // Each step takes the alias of a name not taken before, so the chain has at most one step per
+    // CNAME record.
+    let (mut chain, mut last) = (HashSet::from([name.to_owned()]), name.to_owned());
+    for _ in 0..aliases.len() {
+        let Some(next) = aliases.get(&last).and_then(|&to| read_name(m, to)) else {
+            break;
+        };
+        if !chain.insert(next.clone()) {
+            break;
+        }
+        last = next;
+    }
+    let found = addresses
         .into_iter()
-        .filter_map(|(owner, data)| match data {
-            Data::A(addr, ttl) if chain.contains(&owner) => Some((addr, ttl)),
-            _ => None,
-        })
+        .filter(|(owner, ..)| chain.contains(owner))
+        .map(|(_, addr, ttl)| (addr, ttl))
         .collect();
     Some(found)
 }
