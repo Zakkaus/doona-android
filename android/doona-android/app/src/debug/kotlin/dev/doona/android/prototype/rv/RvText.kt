@@ -187,10 +187,17 @@ private fun rvSteps(full: Float): List<Float> {
  * size, centred in it, so a smaller size moves nothing under the label. Compose scales a line's height with the size.
  */
 @Composable
-internal fun Modifier.rvFullLine(text: String, style: TextStyle): Modifier {
+internal fun Modifier.rvFullLine(text: String, style: TextStyle): Modifier = height(rvOneLine(text, style)).wrapContentHeight()
+
+/**
+ * The height [text] takes on one line in [style] at this font scale. A line in sp does not grow with the font scale as
+ * the font does, so at a large size this is the font's own height, past the style's line.
+ */
+@Composable
+internal fun rvOneLine(text: String, style: TextStyle): Dp {
     val measurer = rememberTextMeasurer()
     val px = remember(text, style, measurer) { measurer.measure(scripted(text), style, maxLines = 1).size.height }
-    return height(with(LocalDensity.current) { px.toDp() }).wrapContentHeight()
+    return with(LocalDensity.current) { px.toDp() }
 }
 
 /** The smallest a label shrinks to: half its size, at 2× the font size still the default size. */

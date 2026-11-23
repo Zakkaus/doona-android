@@ -46,8 +46,6 @@ internal object RvSettingsSpace {
 }
 
 internal object RvSettingsSize {
-    /** The text line of a title; glyphs and trailing controls centre on it, so a wrapped row keeps them on its first line. */
-    val titleLine = 26.dp
     val glyph = 24.dp
 
     /** The duck mark beside the hero's title. */

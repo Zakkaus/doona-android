@@ -1,11 +1,16 @@
 package dev.doona.android.prototype.rv
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -15,6 +20,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
@@ -32,6 +38,8 @@ import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
+import dev.doona.android.prototype.rv.settings.RvSettingsRow
+import dev.doona.android.prototype.rv.settings.RvSettingsSize
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -180,6 +188,31 @@ class RvLargeTextTest {
 
     /** Where [node] ends, in px from the top of the page, unclipped: the tiles lie below the window at 2.0. */
     private fun bottom(node: SemanticsNode) = node.positionInRoot.y + node.size.height
+
+    /**
+     * A settings row (A4): at 2.0 its end control centres on the title's first line, with a subtitle under the title and
+     * with a title of two lines, as at 1.0; the glyph at its start shares that line.
+     */
+    @Test
+    fun settingsRowCentresOnItsFirstLine() {
+        val title = rvText(R.string.rv_settings_always_on)
+        val rows = listOf(title to rvText(R.string.rv_settings_always_on_sub), title + " " + rvText(R.string.rv_settings_always_on_sub) to null)
+        large {
+            Column {
+                rows.forEachIndexed { i, (text, subtitle) ->
+                    RvSettingsRow(text, icon = R.drawable.rv_sym_settings, subtitle = subtitle) { Box(Modifier.size(RvSettingsSize.glyph).testTag("end$i")) }
+                }
+            }
+        }
+        rows.forEachIndexed { i, (text, _) ->
+            val node = compose.onAllNodes(shows(text), useUnmergedTree = true).fetchSemanticsNodes().single()
+            val layout = layout(node)
+            if (i == 1) assertEquals("$text takes two lines", 2, layout.lineCount)
+            val line = node.positionInRoot.y + (layout.getLineTop(0) + layout.getLineBottom(0)) / 2
+            val end = compose.onNodeWithTag("end$i", useUnmergedTree = true).fetchSemanticsNode()
+            assertEquals("$text: the end's centre on the first line", line, end.positionInRoot.y + end.size.height / 2f, 1f)
+        }
+    }
 
     /** The text nodes under [node], in the unmerged tree. */
     private fun texts(node: SemanticsNode): List<SemanticsNode> =
