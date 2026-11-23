@@ -62,7 +62,9 @@ internal class RvRulesRoutes(
  * it sends and today's bytes, an off or skipped rule saying so; how many are in use, off and skipped, as D34 counts
  * them; and the way to the effective config, which shows what the core compiled. The bar's pencil turns on [editing],
  * for reordering (first match wins, so order matters): a long press lifts a rule to drag it, and 完成 ends it. A rule
- * opens its page; a long press its menu. 刪除 asks in the library's confirm sheet.
+ * opens its page; a long press its menu. 刪除 asks in the library's confirm sheet. A [notice] (a banner: the source did
+ * not parse, or the rules could not be read) heads the cards; with [noticeOnly] it stands in their place, and the title,
+ * the bar and the bottom action stay.
  */
 @Composable
 internal fun RvRulesPage(
@@ -71,6 +73,8 @@ internal fun RvRulesPage(
     editing: Boolean,
     onBack: () -> Unit,
     routes: RvRulesRoutes = RvRulesRoutes(),
+    notice: (@Composable () -> Unit)? = null,
+    noticeOnly: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_policy_rules)
@@ -83,12 +87,14 @@ internal fun RvRulesPage(
         bottomAction = { BottomAction(pending.size, editing, routes) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        if (!editing) {
+        if (!editing && !noticeOnly) {
             RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.gutter), color = Rv.colors.textSecondary)
             // The order line keeps the page's first card a control's gap under it, as before RvPageHeader.
             Spacer(Modifier.height(RvSpace.controlGap))
         }
         RvGutter {
+            notice?.invoke()
+            if (noticeOnly) return@RvGutter
             if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
             RulesCard(rules, editing, routes)
             if (!editing) {

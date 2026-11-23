@@ -6,4 +6,9 @@
     <string name="rv_notify_denied_reason">doona 無法顯示連線狀態，也不會通知你連線中斷。</string>
     <string name="rv_failed_switch_mode">無法切換模式</string>
     <string name="rv_failed_switch_node">無法切換節點</string>
+    <string name="rv_rules_parse_failed">無法解析規則來源</string>
+    <string name="rv_rules_parse_failed_reason">來源的內容格式有誤。</string>
+    <string name="rv_rules_read_failed">無法讀取規則</string>
+    <string name="rv_effective_failed">無法讀取生效設定</string>
+    <string name="rv_effective_truncated">匯出的文字已截斷</string>
 </resources>
