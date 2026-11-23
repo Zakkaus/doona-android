@@ -29,7 +29,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
@@ -395,12 +398,44 @@ internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** A row of Revolut's Key stats card (measured §11): [label] 19 sp medium in secondary ink, [value] 19 sp at the end. */
+/**
+ * A row of Revolut's Key stats card (measured §11): [label] 19 sp medium in secondary ink, [value] 19 sp at the end, in a
+ * 58 dp row. A fact is read whole: when the two do not fit one line with [RvSpace.trailingGap] between them (a host:port,
+ * a group and its node at a large font size), the value goes under the label on its edge and wraps, and the row grows as
+ * a two-line row does. Nothing of either is cut.
+ */
 @Composable
 internal fun RvStatRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().height(RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.CenterVertically) {
-        RvText(label, Rv.type.statLabel, Modifier.weight(1f), color = Rv.colors.textSecondary)
-        RvText(value, Rv.type.stat, align = TextAlign.End)
+    // Laid out once more when the value moves under the label, as RvText's cut is: its lines then start on the edge.
+    var stacked by remember(label, value) { mutableStateOf(false) }
+    Layout(
+        {
+            RvText(label, Rv.type.statLabel, color = Rv.colors.textSecondary, maxLines = RV_ROW_TITLE_LINES)
+            RvText(value, Rv.type.stat, align = if (stacked) TextAlign.Start else TextAlign.End, maxLines = Int.MAX_VALUE)
+        },
+        Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
+    ) { (labelPart, valuePart), constraints ->
+        val width = constraints.maxWidth
+        val oneLine = labelPart.maxIntrinsicWidth(Constraints.Infinity) + RvSpace.trailingGap.roundToPx() + valuePart.maxIntrinsicWidth(Constraints.Infinity) <= width
+        if (stacked == oneLine) stacked = !oneLine
+        val free = Constraints(maxWidth = width)
+        val labelLine = labelPart.measure(free)
+        val valueLine = valuePart.measure(free)
+        if (oneLine) {
+            val height = max(RvSize.rowOneLine.roundToPx(), max(labelLine.height, valueLine.height))
+            layout(width, height) {
+                labelLine.place(0, Alignment.CenterVertically.align(labelLine.height, height))
+                valueLine.place(width - valueLine.width, Alignment.CenterVertically.align(valueLine.height, height))
+            }
+        } else {
+            val text = labelLine.height + valueLine.height
+            val height = max(RvSize.rowTwoLine.roundToPx(), text + RvSpace.rowTextInset.roundToPx() * 2)
+            val top = Alignment.CenterVertically.align(text, height)
+            layout(width, height) {
+                labelLine.place(0, top)
+                valueLine.place(0, top + labelLine.height)
+            }
+        }
     }
 }
 

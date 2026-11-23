@@ -2,12 +2,14 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.modifiers.TextAutoSizeLayoutScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.toSize
+import kotlin.math.ceil
 
 /**
  * One line of text in a role; CJK runs in Noto, the rest in Inter. Cut short, it ends in an ellipsis right after the last
@@ -41,7 +44,9 @@ import androidx.compose.ui.unit.toSize
  * room. [maxLines] lets it run to more lines, the last ending in the platform's ellipsis, and [overflow] may put the
  * ellipsis in the middle of a single line instead. Given [autoSize], a line too long for its width shrinks to fit. A text
  * that wraps never leaves one letter alone on its last line: laid out once more with that letter joined to the one
- * before it, it carries both (「當機」, not 「機」).
+ * before it, it carries both (「當機」, not 「機」). A word longer than the line (a host:port) is broken where it runs out
+ * of room, which no joiner holds, so there the text is laid out once more narrower by that last line's width, and the
+ * letter before comes down too (`…com:4` over `43`, not `…com:44` over `3`).
  */
 @Composable
 internal fun RvText(
@@ -56,17 +61,25 @@ internal fun RvText(
 ) {
     var cut by remember(text) { mutableStateOf<RvCut?>(null) }
     var joined by remember(text) { mutableStateOf(false) }
+    var narrower by remember(text) { mutableIntStateOf(0) }
     BasicText(
         scripted(cut?.text ?: if (joined) rvJoinLast(text) else text),
-        modifier,
+        if (narrower == 0) modifier else modifier.padding(end = with(LocalDensity.current) { narrower.toDp() }),
         style.copy(color = color, textAlign = align),
         onTextLayout = { layout ->
             // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
             val kept = cut
             when {
-                maxLines != 1 -> if (!joined && rvWidow(layout)) joined = true
+                maxLines != 1 -> when {
+                    !rvWidow(layout) -> Unit
+                    !joined -> joined = true
+                    narrower == 0 -> narrower = rvLastLineWidth(layout)
+                }
+
                 overflow != TextOverflow.Ellipsis || autoSize != null -> Unit
+
                 kept == null -> cut = rvCut(text, layout)
+
                 layout.layoutInput.constraints.maxWidth > kept.width -> cut = null
             }
         },
@@ -96,6 +109,15 @@ private fun rvWidow(layout: TextLayoutResult): Boolean {
     if (last < 1 || layout.isLineEllipsized(last)) return false
     val line = layout.layoutInput.text.text.substring(layout.getLineStart(last), layout.getLineEnd(last))
     return line.codePoints().filter(Character::isLetterOrDigit).count() == 1L
+}
+
+/**
+ * The width of the last line of [layout], in whole px: a line that much narrower cannot keep the letter that ended the
+ * line before, since the last line's letter did not fit after it.
+ */
+private fun rvLastLineWidth(layout: TextLayoutResult): Int {
+    val last = layout.lineCount - 1
+    return ceil(layout.getLineRight(last) - layout.getLineLeft(last)).toInt()
 }
 
 /** [text] with a word joiner before its last letter: no line break can fall between it and the letter before. */
