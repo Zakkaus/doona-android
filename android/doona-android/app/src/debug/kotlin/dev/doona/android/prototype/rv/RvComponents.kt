@@ -232,10 +232,17 @@ internal fun RvControlCard(caption: String?, modifier: Modifier = Modifier, cont
     }
 }
 
-/** The line under a control in a card saying what the choice does: secondary text, [RvSpace.controlToCaption] under it. */
+/** The line under a control in a card saying what the choice does ([RvChoiceLine]), [RvSpace.controlToCaption] under it. */
 @Composable
-internal fun RvControlLine(text: String, modifier: Modifier = Modifier) {
-    RvText(text, Rv.type.rowSub, modifier.padding(top = RvSpace.controlToCaption), color = Rv.colors.textSecondary)
+internal fun RvControlLine(text: String, modifier: Modifier = Modifier) = RvChoiceLine(text, modifier.padding(top = RvSpace.controlToCaption))
+
+/**
+ * A line saying what a choice does (a mode, what a rule's match covers), in secondary text. It wraps as long as it needs
+ * rather than cut the reason or the domain it names (`依規則分流，其餘流量經主節點`, `只比對 gemini.google.com`).
+ */
+@Composable
+internal fun RvChoiceLine(text: String, modifier: Modifier = Modifier) {
+    RvText(text, Rv.type.rowSub, modifier, color = Rv.colors.textSecondary, maxLines = Int.MAX_VALUE)
 }
 
 /** Test tags of the library's layout parts, which `RvLayoutTest` measures on every page against these tokens. */

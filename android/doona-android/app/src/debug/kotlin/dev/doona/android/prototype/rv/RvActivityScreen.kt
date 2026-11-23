@@ -339,7 +339,7 @@ private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvAc
     RvCard {
         RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = routes.mode) { RvChevron() }
         if (mode == RvRouteMode.Direct) {
-            RvText(stringResource(R.string.rv_direct_note), Rv.type.rowSub, Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding), color = Rv.colors.textSecondary)
+            RvChoiceLine(stringResource(R.string.rv_direct_note), Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding))
             return@RvCard
         }
         // A node switch cross-fades the row to the new flag and name.

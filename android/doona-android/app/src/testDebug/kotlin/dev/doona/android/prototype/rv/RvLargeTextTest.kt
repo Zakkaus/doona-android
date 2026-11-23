@@ -15,6 +15,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import dev.doona.android.R
+import dev.doona.android.engine.Mode
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvRouteMode
@@ -34,6 +35,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -105,6 +107,28 @@ class RvLargeTextTest {
     @Test
     fun pickerTestKeepsTheRows() = assertTestKeepsRows(RvData.nodes.map { it.name }.distinct()) {
         RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {})
+    }
+
+    /** 策略's line under its mode (X2): the whole of what Rule does, its main-node clause included. */
+    @Test
+    fun modeLineIsWhole() {
+        large { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+        assertWhole(rvText(R.string.rv_policy_mode_rule))
+    }
+
+    /** 活動's line under Direct (X2): the whole note, its qualifier on the proxy included. */
+    @Test
+    fun directLineIsWhole() {
+        large { RvActivityScreen(rvSampleActivity().copy(mode = Mode.Direct), onAction = {}, onConnect = {}) }
+        assertWhole(rvText(R.string.rv_direct_note))
+    }
+
+    /** 新增規則's line under its match (X1): the domain it covers whole. */
+    @Test
+    fun matchLineIsWhole() {
+        val connection = RvPolicyData.connection
+        large { RvPolicyRulePage(connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
+        assertWhole(RuntimeEnvironment.getApplication().getString(R.string.rv_policy_match_full_line, connection.host))
     }
 
     /** Each of [names] the [page] shows keeps its size when a latency test of every node starts. */
