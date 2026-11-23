@@ -14,13 +14,15 @@ import androidx.benchmark.traceprocessor.TraceProcessor
 @OptIn(ExperimentalMetricApi::class)
 class RvDeadlineMissedMetric : TraceMetric() {
     override fun getMeasurements(captureInfo: Metric.CaptureInfo, traceSession: TraceProcessor.Session): List<Metric.Measurement> {
-        val counts = runCatching { traceSession.query(
-            """
+        val counts = runCatching {
+            traceSession.query(
+                """
             select count(*) as frames, sum(jank_type like '%App Deadline Missed%') as missed
             from actual_frame_timeline_slice
             where layer_name like '%${captureInfo.targetPackageName}%'
-            """.trimIndent(),
-        ).single() }.getOrNull() ?: return emptyList()
+                """.trimIndent(),
+            ).single()
+        }.getOrNull() ?: return emptyList()
         return listOf(
             Metric.Measurement("appDeadlineMissed", (counts.nullableLong("missed") ?: 0L).toDouble()),
             Metric.Measurement("timelineFrames", counts.long("frames").toDouble()),

@@ -7,7 +7,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,7 +28,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,7 +55,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -76,10 +73,8 @@ import androidx.core.graphics.drawable.toBitmap
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvPlace
-import kotlinx.coroutines.delay
 import java.text.DecimalFormatSymbols
 import java.util.Locale
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -475,86 +470,6 @@ internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClic
     }
 }
 
-/**
- * A latency's change since the test before, as Revolut writes a delta (measured §7): a filled 8 dp triangle pointing its
- * way, then the amount, in one hue: the good hue when it fell, the slow hue when it rose. No change is a dash.
- */
-@Composable
-internal fun RvDelta(changeMs: Int) {
-    // No change is not a measurement, so it shows a dash and no triangle.
-    if (changeMs == 0) return RvText(RV_NO_VALUE, Rv.type.rowSub, color = Rv.colors.textSecondary)
-    val color = if (changeMs < 0) Rv.colors.good else Rv.colors.slow
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvHomeSize.deltaGap)) {
-        Canvas(Modifier.size(RvHomeSize.delta)) {
-            val h = size.width * TRIANGLE_HEIGHT
-            val top = (size.height - h) / 2
-            val path = Path().apply {
-                if (changeMs > 0) {
-                    moveTo(size.width / 2, top)
-                    lineTo(size.width, top + h)
-                    lineTo(0f, top + h)
-                } else {
-                    moveTo(0f, top)
-                    lineTo(size.width, top)
-                    lineTo(size.width / 2, top + h)
-                }
-                close()
-            }
-            drawPath(path, color)
-        }
-        RvText(stringResource(R.string.latency_ms, abs(changeMs)), Rv.type.rowSub, color = color)
-    }
-}
-
-/** Whether a latency test of every node is running: every [RvLatencyChange] shows [RvBusy] until its result arrives. */
-internal val LocalRvTesting = compositionLocalOf { false }
-
-/** The nodes a test of their own is running for (a row menu's 測試延遲): only their rows show [RvBusy]. */
-internal val LocalRvTestingNodes = compositionLocalOf { emptySet<String>() }
-
-/**
- * A node's latency as a trailing value (19 sp semibold, as [RvLatencyText] writes it) over its change since the test
- * before ([RvDelta], 17 sp). While a test runs ([LocalRvTesting], or one of
- * [node]'s own in [LocalRvTestingNodes]) a busy bar stands in for both; when it ends the result fades in [order] ×
- * [RvMotion.STAGGER_MS] after the list's first, so the results run down the list, and any later change cross-fades.
- */
-@Composable
-internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean = false, order: Int = 0, node: String? = null) {
-    val motion = Rv.motion
-    val testing = LocalRvTesting.current || node in LocalRvTestingNodes.current
-    var waiting by remember { mutableStateOf(testing) }
-    // Only while what it shows lags the test: a row at rest launches nothing, and a list has one per row.
-    if (waiting != testing) {
-        LaunchedEffect(testing) {
-            if (!testing && !motion.instant) delay(order.toLong() * RvMotion.STAGGER_MS)
-            waiting = testing
-        }
-    }
-    Crossfade(if (waiting) null else Triple(latencyMs, changeMs, timedOut), animationSpec = motion.tween(RvMotion.FADE_MS), label = "latency") { shown ->
-        if (shown == null) {
-            RvBusy(Modifier.width(RvSize.busy))
-        } else {
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-                RvLatencyText(shown.first, shown.third)
-                shown.second?.let { RvDelta(it) }
-            }
-        }
-    }
-}
-
-/**
- * A node's last test as a row's trailing value: its latency; 逾時 in the slow colour of a latency that went up, when the
- * test timed out; a dash when there is nothing to show (never tested, or no node).
- */
-@Composable
-internal fun RvLatencyText(latencyMs: Int?, timedOut: Boolean) {
-    when {
-        latencyMs != null -> RvText(stringResource(R.string.latency_ms, latencyMs), Rv.type.rowValue, align = TextAlign.End)
-        timedOut -> RvText(stringResource(R.string.rv_nodes_timed_out), Rv.type.rowValue, color = Rv.colors.slow, align = TextAlign.End)
-        else -> RvText(RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
-    }
-}
-
 /** A small glyph before a label in the same colour: the header's sub line. */
 @Composable
 internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
@@ -628,6 +543,3 @@ internal const val RV_NO_VALUE = "—"
 /** A banner's or an empty state's title wraps to two lines at most, and its reason or line to three. */
 private const val BANNER_TITLE_LINES = 2
 private const val BANNER_REASON_LINES = 3
-
-/** An equilateral triangle is this share of its width high. */
-private const val TRIANGLE_HEIGHT = 0.866f

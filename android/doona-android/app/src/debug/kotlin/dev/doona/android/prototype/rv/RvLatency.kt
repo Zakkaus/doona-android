@@ -1,0 +1,109 @@
+package dev.doona.android.prototype.rv
+
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import dev.doona.android.R
+import kotlinx.coroutines.delay
+import kotlin.math.abs
+
+// A node's latency as a row shows it: the figure, 逾時 or a dash, over its change since the test before.
+
+/**
+ * A latency's change since the test before, as Revolut writes a delta (measured §7): a filled 8 dp triangle pointing its
+ * way, then the amount, in one hue: the good hue when it fell, the slow hue when it rose. No change is a dash.
+ */
+@Composable
+internal fun RvDelta(changeMs: Int) {
+    // No change is not a measurement, so it shows a dash and no triangle.
+    if (changeMs == 0) return RvText(RV_NO_VALUE, Rv.type.rowSub, color = Rv.colors.textSecondary)
+    val color = if (changeMs < 0) Rv.colors.good else Rv.colors.slow
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvHomeSize.deltaGap)) {
+        Canvas(Modifier.size(RvHomeSize.delta)) {
+            val h = size.width * TRIANGLE_HEIGHT
+            val top = (size.height - h) / 2
+            val path = Path().apply {
+                if (changeMs > 0) {
+                    moveTo(size.width / 2, top)
+                    lineTo(size.width, top + h)
+                    lineTo(0f, top + h)
+                } else {
+                    moveTo(0f, top)
+                    lineTo(size.width, top)
+                    lineTo(size.width / 2, top + h)
+                }
+                close()
+            }
+            drawPath(path, color)
+        }
+        RvText(stringResource(R.string.latency_ms, abs(changeMs)), Rv.type.rowSub, color = color)
+    }
+}
+
+/** Whether a latency test of every node is running: every [RvLatencyChange] shows [RvBusy] until its result arrives. */
+internal val LocalRvTesting = compositionLocalOf { false }
+
+/** The nodes a test of their own is running for (a row menu's 測試延遲): only their rows show [RvBusy]. */
+internal val LocalRvTestingNodes = compositionLocalOf { emptySet<String>() }
+
+/**
+ * A node's latency as a trailing value (19 sp semibold, as [RvLatencyText] writes it) over its change since the test
+ * before ([RvDelta], 17 sp). While a test runs ([LocalRvTesting], or one of
+ * [node]'s own in [LocalRvTestingNodes]) a busy bar stands in for both; when it ends the result fades in [order] ×
+ * [RvMotion.STAGGER_MS] after the list's first, so the results run down the list, and any later change cross-fades.
+ */
+@Composable
+internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean = false, order: Int = 0, node: String? = null) {
+    val motion = Rv.motion
+    val testing = LocalRvTesting.current || node in LocalRvTestingNodes.current
+    var waiting by remember { mutableStateOf(testing) }
+    // Only while what it shows lags the test: a row at rest launches nothing, and a list has one per row.
+    if (waiting != testing) {
+        LaunchedEffect(testing) {
+            if (!testing && !motion.instant) delay(order.toLong() * RvMotion.STAGGER_MS)
+            waiting = testing
+        }
+    }
+    Crossfade(if (waiting) null else Triple(latencyMs, changeMs, timedOut), animationSpec = motion.tween(RvMotion.FADE_MS), label = "latency") { shown ->
+        if (shown == null) {
+            RvBusy(Modifier.width(RvSize.busy))
+        } else {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+                RvLatencyText(shown.first, shown.third)
+                shown.second?.let { RvDelta(it) }
+            }
+        }
+    }
+}
+
+/**
+ * A node's last test as a row's trailing value: its latency; 逾時 in the slow colour of a latency that went up, when the
+ * test timed out; a dash when there is nothing to show (never tested, or no node).
+ */
+@Composable
+internal fun RvLatencyText(latencyMs: Int?, timedOut: Boolean) {
+    when {
+        latencyMs != null -> RvText(stringResource(R.string.latency_ms, latencyMs), Rv.type.rowValue, align = TextAlign.End)
+        timedOut -> RvText(stringResource(R.string.rv_nodes_timed_out), Rv.type.rowValue, color = Rv.colors.slow, align = TextAlign.End)
+        else -> RvText(RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
+    }
+}
+
+/** An equilateral triangle is this share of its width high. */
+private const val TRIANGLE_HEIGHT = 0.866f
