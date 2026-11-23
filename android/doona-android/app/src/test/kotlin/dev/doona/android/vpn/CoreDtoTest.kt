@@ -68,7 +68,7 @@ class CoreDtoTest {
         val catalog = checkNotNull(CoreJson.snapshot(fixture("snapshot-stopped-catalog.json")).catalog)
         assertEquals(CoreMode.Global, catalog.mode)
         val groups = catalog.groups.map(GroupDto::toGroup)
-        assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), groups.map { it.id })
+        assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), groups.map { it.id })
         val auto = groups[1]
         assertEquals(GroupKind.UrlTest, auto.kind)
         assertTrue(auto.testing)

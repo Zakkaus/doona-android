@@ -106,7 +106,7 @@ class ServiceEngineTest {
         assertTrue(engine.setMode(Mode.Direct).isSuccess)
         assertEquals("setMode" to """{"mode":"Direct"}""", core.calls.single())
         assertTrue(engine.ready.value)
-        assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), engine.groups.value.map { it.id })
+        assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), engine.groups.value.map { it.id })
         assertEquals(listOf("s1"), engine.subscriptions.value.map { it.id })
     }
 
@@ -192,7 +192,7 @@ class ServiceEngineTest {
         caller.cancel()
         release.countDown()
         withTimeout(5_000) { engine.ready.first { it } }
-        assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), engine.groups.value.map { it.id })
+        assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), engine.groups.value.map { it.id })
     }
 
     @Test

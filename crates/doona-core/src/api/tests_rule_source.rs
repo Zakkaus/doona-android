@@ -367,3 +367,32 @@ fn the_effective_config_codes_a_node_name_that_carries_an_endpoint_or_credential
         assert!(!whole.contains(leak), "{leak}: {whole}");
     }
 }
+
+/// The stopped catalog's groups are the template's over its two `hk-01` nodes, ids, names, kinds
+/// and members in order, and a member shows the same values in every group.
+#[test]
+fn the_stopped_catalog_fixture_has_the_template_groups() {
+    let fixture = contract("snapshot-stopped-catalog.json");
+    let snapshot: Snapshot = serde_json::from_value(fixture).unwrap();
+    let groups = snapshot.catalog.unwrap().groups;
+    let shown: Vec<_> = groups
+        .iter()
+        .map(|g| {
+            let members: Vec<String> = g.members.iter().map(|m| m.id.clone()).collect();
+            (g.id.clone(), g.name.clone(), g.kind, members)
+        })
+        .collect();
+    let nodes = [("n-7f3a19c2", "hk-01"), ("n-0c41be77", "hk-01")];
+    let template: Vec<_> = crate::groups::template(&nodes)
+        .into_iter()
+        .map(|g| (g.id, g.name, g.kind, g.members))
+        .collect();
+    assert_eq!(shown, template);
+    let mut seen = std::collections::HashMap::new();
+    for m in groups.iter().flat_map(|g| &g.members) {
+        assert_eq!(*seen.entry(&m.id).or_insert(m), m);
+        if let Some(g) = groups.iter().find(|g| g.id == m.id) {
+            assert!(m.is_group && m.name == g.name, "{m:?}");
+        }
+    }
+}

@@ -104,7 +104,7 @@ fn snapshots() {
     assert_eq!(stopped.today.yesterday_by_now, None);
     let catalog = stopped.catalog.unwrap();
     assert_eq!(catalog.mode, Mode::Global);
-    assert_eq!(catalog.groups.len(), 3);
+    assert_eq!(catalog.groups.len(), 5);
     // Two members share a display name but not an id.
     let proxy = &catalog.groups[0];
     assert_eq!(proxy.members[2].name, proxy.members[3].name);
