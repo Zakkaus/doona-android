@@ -53,9 +53,9 @@ internal fun RvUsageCard(day: RvDay, nowHour: Float, yesterdayByNow: Long) {
     RvCard(Modifier.height(RvUsageSize.card)) {
         Box(Modifier.fillMaxSize().padding(RvUsageSize.pad)) {
             val legend = with(LocalDensity.current) { type.tileCaption.lineHeight.toDp() }
-            RvUsageChart(day, nowHour, Modifier.align(Alignment.TopEnd).fillMaxWidth(CHART_SHARE).fillMaxHeight().padding(bottom = RvUsageSize.chartAboveLegend + legend))
+            ApprovedUsageChart(day, nowHour, Modifier.align(Alignment.TopEnd).fillMaxWidth(CHART_SHARE).fillMaxHeight().padding(bottom = RvUsageSize.chartAboveLegend + legend))
             Column {
-                RvText(stringResource(R.string.rv_today_usage), type.cardTitle, color = colors.textSecondary)
+                RvText(stringResource(R.string.rv_today_usage), RvActivityType.cardTitle, color = colors.textSecondary)
                 Spacer(Modifier.height(RvSpace.tight))
                 RvFigureText(format.bytes(day.total).figure(), type.cardValue, type.cardUnit)
                 RvText(stringResource(compare, format.bytes(abs(change)).toString()), type.tileCaption, color = colors.textSecondary)
@@ -110,6 +110,49 @@ internal fun RvUsageChart(day: RvDay, nowHour: Float, modifier: Modifier) {
         val now = totalTop.last()
         drawCircle(colors.up.line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, now)
         drawCircle(colors.up.line, RvChartSize.liveDot.toPx() / 2, now)
+    }
+}
+
+/**
+ * 活動's 今日用量 chart, as the owner approved it (609336cb): [RvUsageChart]'s steps over a grid that strengthens toward
+ * the end of the day and toward its top, both bands at one alpha in their own hue, round line ends, and no mark at the
+ * current time. 統計's 已用流量 keeps [RvUsageChart].
+ */
+@Composable
+private fun ApprovedUsageChart(day: RvDay, nowHour: Float, modifier: Modifier) {
+    val colors = Rv.colors
+    val grid = colors.text.copy(alpha = if (colors.dark) RvActivityTokens.GRID_DARK else RvActivityTokens.GRID_LIGHT)
+    val band = if (colors.dark) RvActivityTokens.BAND_DARK else RvActivityTokens.BAND_LIGHT
+    Canvas(modifier) {
+        fadingGrid(grid)
+        val high = (day.total * RvUsageSize.HEADROOM).coerceAtLeast(1f)
+        val chart = StepChart(size.width, size.height, high, nowHour)
+        val downTop = chart.steps(day.down.runningSum())
+        val totalTop = chart.steps(day.down.zip(day.up) { down, up -> down + up }.runningSum())
+        drawPath(chart.band(totalTop, downTop), colors.up.line.copy(alpha = band))
+        drawPath(chart.band(downTop, null), colors.down.line.copy(alpha = band))
+        val stroke = Stroke(RvUsageSize.stroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        drawPath(chart.line(downTop), colors.down.line, style = stroke)
+        drawPath(chart.line(totalTop), colors.up.line, style = stroke)
+    }
+}
+
+/**
+ * A hairline every [RvUsageSize.GRID_HOURS] hours, stronger toward the day's end, each fading out downward; and
+ * [RvUsageSize.GRID_ROWS] rows, each fading in toward the day's end, weaker lower down.
+ */
+private fun DrawScope.fadingGrid(color: Color) {
+    val hairline = 1f
+    val columns = RvUsageSize.HOURS / RvUsageSize.GRID_HOURS
+    for (i in 0..columns) {
+        val x = (size.width - hairline) * i / columns + hairline / 2
+        val ink = color.copy(alpha = color.alpha * i / columns)
+        drawLine(Brush.verticalGradient(listOf(ink, Color.Transparent)), Offset(x, 0f), Offset(x, size.height), hairline)
+    }
+    for (j in 0 until RvUsageSize.GRID_ROWS) {
+        val y = size.height * j / RvUsageSize.GRID_ROWS + hairline / 2
+        val ink = color.copy(alpha = color.alpha * (1 - j.toFloat() / RvUsageSize.GRID_ROWS))
+        drawLine(Brush.horizontalGradient(listOf(Color.Transparent, ink)), Offset(0f, y), Offset(size.width, y), hairline)
     }
 }
 

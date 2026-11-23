@@ -392,7 +392,7 @@ private fun TrafficTiles(state: ActivityUiState, onOpenTraffic: () -> Unit) {
     val quiet = state.status !is Status.Running || (state.downHistory.all { it == 0f } && state.upHistory.all { it == 0f })
     Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tileGap)) {
         TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.downRate, minutePeak(state.downHistory), state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
-        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, minutePeak(state.upHistory), state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
+        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, minutePeak(state.upHistory), state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f))
     }
 }
 
@@ -407,11 +407,10 @@ private fun TrafficTile(
     quiet: Boolean,
     onClick: () -> Unit,
     modifier: Modifier,
-    ghost: FloatArray = RV_GHOST_DOWN,
 ) {
     val format = rememberRvFormat()
     val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, format.rate(peak.toDouble()).toString())
-    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier, ghost)
+    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier)
 }
 
 /** The fastest second of a minute's samples; a missing sample (NaN, a gap in the line) is not a rate. */

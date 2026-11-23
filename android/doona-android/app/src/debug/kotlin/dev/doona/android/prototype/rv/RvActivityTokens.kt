@@ -37,4 +37,13 @@ internal object RvActivityTokens {
     val action = RvTypeStep(15, 20, FontWeight.Medium)
     val rowTitle = RvTypeStep(17, 24, FontWeight.Medium)
     val rowSub = RvTypeStep(15, 20, FontWeight.Normal)
+
+    /** 今日用量's title (shared: [RvTypeScale.cardTitle]). */
+    val cardTitle = RvTypeStep(15, 20, FontWeight.SemiBold)
+
+    /** 今日用量's chart: its grid in the text colour, and both bands in their lines' colours, at these alphas. */
+    const val GRID_LIGHT = 0.06f
+    const val GRID_DARK = 0.025f
+    const val BAND_LIGHT = 0.16f
+    const val BAND_DARK = 0.22f
 }
