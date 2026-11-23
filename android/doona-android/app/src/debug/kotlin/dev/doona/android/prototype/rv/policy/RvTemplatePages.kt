@@ -34,6 +34,7 @@ import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.config.rvConfigPhrase
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
@@ -62,21 +63,26 @@ internal fun RvTemplatePage(
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter {
-            RvCard { RvTemplateData.all.forEach { TemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
+            RvCard { RvTemplateData.all.forEach { RvTemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
         }
     }
 }
 
-/** One template; after its line, why it cannot be chosen, or that it is in use. */
+/**
+ * One template; after its line, why it cannot be chosen, or that it is in use. Also the configuration's template page,
+ * which keeps words and the end of each text together ([kept]: [rvConfigPhrase]) as its other pages do.
+ */
 @Composable
-private fun TemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean, onSelect: () -> Unit) {
+internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean, kept: Boolean = false, onSelect: () -> Unit) {
     val reason = template.unsupported
     val state = reason?.let { stringResource(it) } ?: stringResource(R.string.rv_template_in_use).takeIf { inUse }
-    val line = listOfNotNull(stringResource(template.line), state).joinToString(SEPARATOR)
+    val parts = listOfNotNull(stringResource(template.line), state)
+    val line = if (kept) rvConfigPhrase(parts) else parts.joinToString(SEPARATOR)
+    val title = stringResource(template.name).let { if (kept) rvConfigPhrase(listOf(it)) else it }
     val pick = Modifier
         .graphicsLayer { alpha = if (reason == null) 1f else RvAlpha.DISABLED }
         .selectable(selected, enabled = reason == null, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton, onClick = onSelect)
-    RvRow({ RvIconDisc(template.glyph) }, stringResource(template.name), line, pick) { RvRadio(selected) }
+    RvRow({ RvIconDisc(template.glyph) }, title, line, pick) { RvRadio(selected) }
 }
 
 /**

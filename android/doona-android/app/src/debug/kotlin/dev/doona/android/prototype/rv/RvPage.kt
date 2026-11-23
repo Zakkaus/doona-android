@@ -56,7 +56,8 @@ import kotlin.math.roundToInt
  * ([RvSearchField]) beside the back disc, in the title's place, as the node picker's bar holds it; either draws in the
  * bar's glass, [field] with the modifier that sizes it to the row. [bottomAction] floats a page's one action (an
  * [RvPrimaryButton]) on the gutter, 16 dp above the inset, with no scrim; the page keeps its room under the content, so
- * the last card scrolls clear of it. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's
+ * the last card scrolls clear of it. A page of dense text (a file's code) sets [actionScrim] to put [RvActionStrip]
+ * behind the action, so the text under it is blurred rather than showing through at its edge. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's
  * floating actions).
  */
 @Composable
@@ -68,6 +69,7 @@ internal fun RvScrollPage(
     scroll: ScrollState = rememberScrollState(),
     actions: (@Composable (RvGlass) -> Unit)? = null,
     bottomAction: (@Composable () -> Unit)? = null,
+    actionScrim: Boolean = false,
     overlay: @Composable BoxScope.(RvGlass) -> Unit = {},
     field: (@Composable (RvGlass, Modifier) -> Unit)? = null,
     content: @Composable ColumnScope.(titleBlock: Modifier) -> Unit,
@@ -109,10 +111,15 @@ internal fun RvScrollPage(
             }
         }
         bottomAction?.let {
-            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { size -> actionHeight = size.height }.padding(horizontal = RvSpace.gutter)) {
-                it()
-                Spacer(Modifier.height(RvSpace.gutter))
-                Spacer(Modifier.windowInsetsBottomHeight(insets))
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                if (actionScrim) RvActionStrip(glass, Modifier.matchParentSize())
+                // The strip's fade lies in the gap above the action, which the content's room already leaves.
+                val fade = if (actionScrim) Modifier.padding(top = RvChrome.stripFade) else Modifier
+                Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter).then(fade).onSizeChanged { size -> actionHeight = size.height }) {
+                    it()
+                    Spacer(Modifier.height(RvSpace.gutter))
+                    Spacer(Modifier.windowInsetsBottomHeight(insets))
+                }
             }
         }
         overlay(glass)

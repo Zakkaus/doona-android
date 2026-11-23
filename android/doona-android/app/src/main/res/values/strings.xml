@@ -37,6 +37,10 @@
     <string name="policy_kind_urltest">Fastest on average</string>
     <string name="policy_kind_fallback">First available</string>
     <string name="policy_kind_fixed">Fixed</string>
+    <string name="policy_kind_score">Score</string>
+    <string name="policy_kind_loadbalance">Load balance</string>
+    <string name="policy_kind_random">Random</string>
+    <string name="group_policy_score_hint">Picks a node by its observed reliability and recent connection quality</string>
     <string name="policy_healthy">%1$d available</string>
     <string name="policy_untested">%1$d untested</string>
     <string name="policy_current">Current</string>

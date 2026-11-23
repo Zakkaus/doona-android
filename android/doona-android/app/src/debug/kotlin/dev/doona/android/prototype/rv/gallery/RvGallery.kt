@@ -39,8 +39,8 @@ import dev.doona.android.prototype.rv.subs.rvSubscriptionMenu
 
 /**
  * The library's new parts in one page, for the owner to try on a phone (route `gallery`): the text field in its states,
- * subscription rows whose long press opens the menu, app rows to check, the error banner, the empty state, and the
- * confirm sheet behind a button. The goldens draw the same parts.
+ * subscription rows whose long press opens the menu, app rows to check, the error banner, the empty state, the source
+ * field and its diff, and the confirm sheet behind a button. The goldens draw the same parts.
  */
 @Composable
 internal fun RvGalleryScreen(onBack: () -> Unit) {
@@ -54,6 +54,9 @@ internal fun RvGalleryScreen(onBack: () -> Unit) {
         Section(R.string.rv_gallery_check) { RvGalleryChecks() }
         Section(R.string.rv_gallery_banner) { RvGalleryBanners() }
         Section(R.string.rv_gallery_empty) { RvGalleryEmpty() }
+        Section(R.string.rv_gallery_code) { RvGalleryCode() }
+        Section(R.string.rv_gallery_source) { RvGallerySource() }
+        Section(R.string.rv_gallery_diff) { RvGalleryDiff() }
         Section(R.string.rv_gallery_sheet) { RvPrimaryButton(stringResource(R.string.rv_menu_delete), { deleting = RvData.subscriptions.first() }) }
     }
     val sub = deleting

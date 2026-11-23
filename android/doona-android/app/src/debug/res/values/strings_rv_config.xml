@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_source_line">Line %1$d: %2$s</string>
+    <string name="rv_diff_added_line">Added, line %1$d: %2$s</string>
+    <string name="rv_diff_removed_line">Removed, line %1$d: %2$s</string>
+    <string name="rv_diff_counts" translatable="false">+%1$d −%2$d</string>
+    <string name="rv_gallery_code">Source text</string>
+    <string name="rv_gallery_source">Source field</string>
+    <string name="rv_gallery_diff">Diff</string>
+    <string name="rv_config_unknown_group">No group named %1$s</string>
+    <string name="rv_config_title">Configuration</string>
+    <string name="rv_config_applied">Revision %1$d · applied %2$s</string>
+    <string name="rv_config_files">Files</string>
+    <string name="rv_config_entry">Entry file</string>
+    <string name="rv_config_included_by">Included by %1$s</string>
+    <plurals name="rv_config_lines">
+        <item quantity="one">%1$d line</item>
+        <item quantity="other">%1$d lines</item>
+    </plurals>
+    <string name="rv_config_contents">Contents</string>
+    <string name="rv_config_dns_servers">DNS servers</string>
+    <string name="rv_config_dns_queries">DNS query rules</string>
+    <string name="rv_config_dns_answers">DNS response rules</string>
+    <string name="rv_config_compat">Compatibility</string>
+    <string name="rv_config_constrained">Partly applied</string>
+    <plurals name="rv_config_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="rv_config_skipped_count">
+        <item quantity="one">%1$d skipped</item>
+        <item quantity="other">%1$d skipped</item>
+    </plurals>
+    <plurals name="rv_config_see_all_items">
+        <item quantity="one">See %1$d item</item>
+        <item quantity="other">See all %1$d</item>
+    </plurals>
+    <string name="rv_config_history">History</string>
+    <string name="rv_config_import">Import configuration</string>
+    <string name="rv_config_reason_linux">Linux only</string>
+    <string name="rv_config_reason_process">No process names</string>
+    <string name="rv_config_reason_mac">No MAC addresses</string>
+    <string name="rv_config_line">Line %1$d</string>
+    <string name="rv_config_source">Source</string>
+    <string name="rv_config_search">Search the file</string>
+    <string name="rv_config_draft_base">Draft · based on revision %1$d</string>
+    <string name="rv_config_based_on">Against revision %1$d</string>
+    <string name="rv_config_stale_title">The configuration changed</string>
+    <string name="rv_config_stale_reason">This draft is based on revision %1$d; revision %2$d is now applied.</string>
+    <string name="rv_config_reload">Reload</string>
+    <string name="rv_config_revision">Revision %1$d</string>
+    <string name="rv_config_origin_import">Imported</string>
+    <string name="rv_config_origin_restore">Restored from revision %1$d</string>
+    <string name="rv_config_unnamed">Unnamed</string>
+    <string name="rv_config_restore">Restore</string>
+    <string name="rv_config_export">Export configuration</string>
+    <string name="rv_config_import_refused">Cannot import</string>
+    <plurals name="rv_config_import_limit">
+        <item quantity="one">An import holds at most %1$d file, %2$s in all.</item>
+        <item quantity="other">An import holds at most %1$d files, %2$s in all.</item>
+    </plurals>
+    <string name="rv_config_pick_again">Choose another file</string>
+    <string name="rv_config_still_in_use">Revision %1$d is still in use.</string>
+    <string name="rv_config_escape_title">An include is outside the import</string>
+    <string name="rv_config_edit_source">Edit source</string>
+    <string name="rv_template_global">Global proxy</string>
+    <string name="rv_template_global_line">Everything but the local network goes through the proxy</string>
+    <string name="rv_template_single">Single group</string>
+    <string name="rv_template_single_line">Proxied traffic shares one group</string>
+    <string name="rv_template_by_service_line">Telegram, Apple and overseas media each get a group</string>
+    <string name="rv_template_more">More templates</string>
+    <string name="rv_template_options">Options</string>
+    <string name="rv_template_nm_direct">Keep NetworkManager direct</string>
+    <string name="rv_template_group_proxy">Proxy</string>
+    <string name="rv_template_group_auto">Automatic</string>
+    <string name="rv_template_group_media">Overseas media</string>
+    <string name="rv_template_group_bahamut">Bahamut</string>
+    <string name="rv_template_group_cn">Mainland China</string>
+    <string name="rv_config_create">Create configuration</string>
+    <string name="rv_config_kind_note">%1$s: %2$s</string>
+    <string name="rv_template_group_apple" translatable="false">Apple</string>
+    <string name="rv_template_group_openai" translatable="false">OpenAI</string>
+    <string name="rv_template_group_netflix" translatable="false">Netflix</string>
+</resources>

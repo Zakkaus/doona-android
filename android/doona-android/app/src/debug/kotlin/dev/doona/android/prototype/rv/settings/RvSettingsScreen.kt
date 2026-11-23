@@ -55,6 +55,8 @@ import dev.doona.android.prototype.rv.rvSystemScheme
  * settings with a section title over it and, where it helps, a footer under it, all scrolling under the floating nav.
  * There is no search capsule; the title collapses into the bar as the page scrolls. The state is the caller's, so the
  * switches turn; the rows that open something are not wired, 主題 opens [onOpenTheme] and the nav's tabs [onTab].
+ * [configRev] is a preview flag (PV-f): set, 進階 gains 設定檔 with the applied revision, which opens the configuration's
+ * overview ([RvSettingsRoutes.config]).
  */
 @Composable
 internal fun RvSettingsScreen(
@@ -63,6 +65,7 @@ internal fun RvSettingsScreen(
     onOpenTheme: () -> Unit,
     onTab: (Int) -> Unit = {},
     routes: RvSettingsRoutes = RvSettingsRoutes(),
+    configRev: Int? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -77,7 +80,7 @@ internal fun RvSettingsScreen(
             ConnectionGroup(state, onChange, routes.alwaysOn, routes.perApp)
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme)
-            AdvancedGroup(state, routes)
+            AdvancedGroup(state, routes, configRev)
             AboutGroup(routes.licenses)
         }
         // The last card clears the floating nav over the page.
@@ -118,7 +121,7 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
 
 /**
  * Where 設定 leads beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row
- * and the hero's 匯出診斷, and the licences.
+ * and the hero's 匯出診斷, the licences, and the configuration's overview (with the preview flag).
  */
 internal class RvSettingsRoutes(
     val alwaysOn: () -> Unit = NOT_WIRED,
@@ -127,6 +130,7 @@ internal class RvSettingsRoutes(
     val effectiveConfig: () -> Unit = NOT_WIRED,
     val report: () -> Unit = NOT_WIRED,
     val licenses: () -> Unit = NOT_WIRED,
+    val config: () -> Unit = NOT_WIRED,
 )
 
 /**
@@ -178,11 +182,14 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit) {
  * glyph; and the effective config, read-only.
  */
 @Composable
-private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes) {
+private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_advanced))
     RvSettingsCard {
         RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, stringResource(state.dns.label))
         RvSettingsNavRow(stringResource(R.string.rv_report_title), R.drawable.rv_sym_ios_share, routes.report)
+        if (configRev != null) {
+            RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, stringResource(R.string.rv_config_revision, configRev))
+        }
         RvSettingsNavRow(stringResource(R.string.rv_effective_open), R.drawable.rv_sym_rule, routes.effectiveConfig)
     }
 }
