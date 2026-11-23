@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_source_line">第 %1$d 行：%2$s</string>
+    <string name="rv_diff_added_line">新增，第 %1$d 行：%2$s</string>
+    <string name="rv_diff_removed_line">移除，第 %1$d 行：%2$s</string>
+    <string name="rv_gallery_source">源码字段</string>
+    <string name="rv_gallery_diff">差异</string>
+    <string name="rv_config_unknown_group">找不到策略组 %1$s</string>
+</resources>

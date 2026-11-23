@@ -1,0 +1,64 @@
+package dev.doona.android.prototype.rv.gallery
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.TextFieldValue
+import dev.doona.android.R
+import dev.doona.android.prototype.rv.RvDiffFile
+import dev.doona.android.prototype.rv.RvDiffKind.Added
+import dev.doona.android.prototype.rv.RvDiffKind.Removed
+import dev.doona.android.prototype.rv.RvDiffKind.Same
+import dev.doona.android.prototype.rv.RvDiffLine
+import dev.doona.android.prototype.rv.RvSourceDiff
+import dev.doona.android.prototype.rv.RvSourceField
+import dev.doona.android.prototype.rv.RvSourceMark
+
+/** The source field holding a small rules file, with one mark after a multibyte word: a group the file does not declare. */
+@Composable
+internal fun RvGallerySource() {
+    var value by remember { mutableStateOf(TextFieldValue(RV_GALLERY_SOURCE)) }
+    val mark = RvSourceMark(rvByteOf(RV_GALLERY_SOURCE, MISSING), rvByteOf(RV_GALLERY_SOURCE, MISSING) + MISSING.length, stringResource(R.string.rv_config_unknown_group, MISSING))
+    RvSourceField(value, { value = it }, RV_GALLERY_FILE, marks = listOf(mark))
+}
+
+/** The same file's diff after the fix: the line that named the missing group, and a rule added further down. */
+@Composable
+internal fun RvGalleryDiff(onOpen: (Int) -> Unit = {}) {
+    RvSourceDiff(RV_GALLERY_DIFF, onOpen)
+}
+
+/** The UTF-8 byte offset in [text] of the first [word]: what honk reports, counted from the file's start. */
+internal fun rvByteOf(text: String, word: String): Int = text.substring(0, text.indexOf(word)).encodeToByteArray().size
+
+private const val MISSING = "stream"
+private const val RV_GALLERY_FILE = "rules/media.dae"
+
+internal val RV_GALLERY_SOURCE = """
+    # 影音服務
+    routing {
+      domain(keyword: 影音) -> $MISSING
+      domain(suffix: video.example) -> media
+      fallback: proxy
+    }
+""".trimIndent()
+
+internal val RV_GALLERY_DIFF = RvDiffFile(
+    RV_GALLERY_FILE,
+    listOf(
+        listOf(
+            RvDiffLine(Same, 2, "routing {"),
+            RvDiffLine(Removed, 3, "  domain(keyword: 影音) -> $MISSING"),
+            RvDiffLine(Added, 3, "  domain(keyword: 影音) -> media"),
+            RvDiffLine(Same, 4, "  domain(suffix: video.example) -> media"),
+        ),
+        listOf(
+            RvDiffLine(Same, 11, "  domain(suffix: music.example) -> media"),
+            RvDiffLine(Added, 12, "  domain(suffix: radio.example) -> media"),
+            RvDiffLine(Same, 13, "  fallback: proxy"),
+        ),
+    ),
+)
