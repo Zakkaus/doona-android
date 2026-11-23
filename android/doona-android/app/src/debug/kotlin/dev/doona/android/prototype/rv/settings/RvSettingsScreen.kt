@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv.settings
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,15 +21,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.RV_NAV_SETTINGS
-import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAction
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvFootnote
@@ -40,9 +36,6 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTabHeader
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvActionRowFit
-import dev.doona.android.prototype.rv.rvBarHeight
-import dev.doona.android.prototype.rv.rvDotMap
-import dev.doona.android.prototype.rv.rvHeroArt
 import dev.doona.android.prototype.rv.rvNavClearance
 import dev.doona.android.prototype.rv.rvSystemScheme
 
@@ -84,26 +77,18 @@ internal fun RvSettingsScreen(
 }
 
 /**
- * The two round actions, centred on a faint dot texture that runs up behind the bar, [RvTabHeader]'s gap under it;
- * 匯出診斷 opens 回報問題 ([onReport]).
+ * The two round actions, centred, the first content [RvTabHeader]'s gap under the bar as on 策略 and 連線, their labels one
+ * size ([rvActionRowFit]); 匯出診斷 opens 回報問題 ([onReport]).
  */
 @Composable
 private fun Hero(insets: WindowInsets, onReport: () -> Unit) {
-    val status = with(LocalDensity.current) { insets.getTop(this).toDp() }
-    Box(Modifier.fillMaxWidth()) {
-        // No dot on the status bar's clock (S8-08): the map starts under it, as 活動's does.
-        val dots = Modifier.rvDotMap(null, Rv.colors.dots, status + rvBarHeight() + RvSettingsSpace.mapDrop, fadeTop = status)
-        // After a hard-cut tab switch the dots fade in ([rvHeroArt]).
-        val art = rvHeroArt()
-        Box(Modifier.matchParentSize().graphicsLayer { alpha = RvSettingsAlpha.HERO_DOTS * art() }.then(dots))
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            RvTabHeader(insets)
-            val labels = listOf(stringResource(R.string.rv_settings_export_diagnostics), stringResource(R.string.rv_settings_check_update))
-            val style = rvActionRowFit(labels, RvSettingsSpace.actionColumn)
-            Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
-                RvAction(R.drawable.rv_sym_ios_share, labels[0], onReport, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
-                RvAction(R.drawable.rv_settings_ic_update, labels[1], NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
-            }
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        RvTabHeader(insets)
+        val labels = listOf(stringResource(R.string.rv_settings_export_diagnostics), stringResource(R.string.rv_settings_check_update))
+        val style = rvActionRowFit(labels, RvSettingsSpace.actionColumn)
+        Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
+            RvAction(R.drawable.rv_sym_ios_share, labels[0], onReport, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
+            RvAction(R.drawable.rv_settings_ic_update, labels[1], NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
         }
     }
 }

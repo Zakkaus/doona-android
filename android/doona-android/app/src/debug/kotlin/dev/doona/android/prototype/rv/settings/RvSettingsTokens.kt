@@ -27,9 +27,6 @@ internal object RvSettingsSpace {
     val actionColumn = 96.dp
     val actionGap = 8.dp
 
-    /** How far under the bar the hero's dot map is centred, so East Asia's land falls behind the round actions. */
-    val mapDrop = 16.dp
-
     /** The theme page's colour row (48 dp targets 10 dp in, so a 36 dp disc's edge sits 16 dp in), its preview and its mode columns. */
     val accentPad = 8.dp
     val accentInset = 10.dp
@@ -61,9 +58,6 @@ internal object RvSettingsSize {
 }
 
 internal object RvSettingsAlpha {
-    /** The hero's dot texture: a settings page asks for less than the activity header. */
-    const val HERO_DOTS = 0.5f
-
     /** A control that does not apply while another setting overrides it. */
     const val DISABLED = 0.38f
 }
