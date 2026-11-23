@@ -269,25 +269,30 @@ impl UdpUpstream {
     }
 }
 
-/// Serves one association until it idles out or its upstream fails; its payload counts on the
-/// route's meter.
-pub(crate) async fn relay(
+/// The task that serves one association until it idles out or its upstream fails; its payload
+/// counts on the route's meter. The association is one flow of the meter from the call, as the
+/// driver creates it, whether or not its upstream comes up.
+pub(crate) fn relay(
     o: Opened,
     remote: SocketAddr,
     (route, meter): (Route, Option<Arc<Meter>>),
     events: Events,
-) {
-    let id = o.id;
-    if let Ok(upstream) = route.bind_udp(remote).await {
-        exchange(o, &upstream, meter).await;
+) -> impl Future<Output = ()> {
+    // One flow, whichever way its datagrams move.
+    let tally = Tally::new(meter);
+    async move {
+        let id = o.id;
+        if let Ok(upstream) = route.bind_udp(remote).await {
+            exchange(o, &upstream, tally).await;
+        }
+        let _ = events.send(Event::UdpEnded(id));
     }
-    let _ = events.send(Event::UdpEnded(id));
 }
 
 /// Moves datagrams both ways until neither way moved one for the idle time or the upstream fails.
 /// Each way is one future polled to its end, never dropped mid-datagram, so a transport that
 /// frames datagrams on a stream is never cut inside a frame.
-async fn exchange(o: Opened, upstream: &UdpUpstream, meter: Option<Arc<Meter>>) {
+async fn exchange(o: Opened, upstream: &UdpUpstream, tally: Tally) {
     let Opened {
         mut up,
         down,
@@ -300,8 +305,6 @@ async fn exchange(o: Opened, upstream: &UdpUpstream, meter: Option<Arc<Meter>>) 
     // When either way last moved a datagram, in milliseconds since `begun`.
     let last = AtomicU64::new(0);
     let moved = || last.store(millis(begun.elapsed()), Relaxed);
-    // One flow, whichever way its datagrams move.
-    let tally = Tally::new(meter);
     let sending = async {
         let mut first = upstream.first_send_to();
         while let Some(d) = up.recv().await {
@@ -467,7 +470,7 @@ mod tests {
             .send(pair, b"first", &events, || Some(Route::Direct))
             .unwrap();
         let upstream = UdpUpstream::Proxy(Arc::new(node), pair.1, Some(Arc::clone(&session)));
-        exchange(opened, &upstream, None).await;
+        exchange(opened, &upstream, Tally::new(None)).await;
         session.warning()
     }
 
@@ -501,10 +504,27 @@ mod tests {
             .unwrap();
         let upstream = UdpUpstream::Proxy(Arc::new(Node(None)), pair.1, None);
         let meter = meters.get_ruled("g-Proxy", "r-1");
-        exchange(opened, &upstream, Some(meter)).await;
+        exchange(opened, &upstream, Tally::new(Some(meter))).await;
         let taken = meters.take();
         assert_eq!(taken.rules, [("r-1".to_owned(), [5, 0, 1])]);
         assert_eq!(taken.outbounds, [("g-Proxy".to_owned(), 5, 0)]);
+    }
+
+    /// An association whose upstream never comes up is still one flow of its rule: connect
+    /// refuses the limited broadcast address, as a bind fails on `EMFILE`.
+    #[tokio::test]
+    async fn an_association_whose_socket_fails_still_counts_one_flow() {
+        let meters = crate::stats::meter::Meters::default();
+        let (events, _wakes) = mpsc::unbounded_channel();
+        let mut nat = Nat::new(Budget::new(QUEUED_BYTES), IDLE);
+        let remote: SocketAddr = "255.255.255.255:123".parse().unwrap();
+        let pair = ("172.19.0.1:40000".parse().unwrap(), remote);
+        let route = || Some(Route::RuleDirect("r-1".into()));
+        let (opened, route) = nat.send(pair, b"ntp", &events, route).unwrap();
+        assert!(route.bind_udp(remote).await.is_err(), "the socket came up");
+        let meter = meters.get_ruled(crate::stats::meter::DIRECT, "r-1");
+        relay(opened, remote, (route, Some(meter)), events.clone()).await;
+        assert_eq!(meters.take().rules, [("r-1".to_owned(), [0, 0, 1])]);
     }
 
     #[tokio::test]
