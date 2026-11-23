@@ -10,10 +10,12 @@ import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.report.AppInfo
+import dev.doona.android.report.AppReportExporter
 import dev.doona.android.report.CrashFiles
 import dev.doona.android.report.CrashOffer
 import dev.doona.android.report.ExportTokens
 import dev.doona.android.report.ReportExport
+import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.reportDir
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,13 +60,16 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     val crashOffer: CrashOffer by lazy { CrashOffer(crashFiles) { File(application.noBackupFilesDir, "crash-offered") } }
 
     /**
-     * The diagnostic report export, above every screen: a zip being written survives leaving the page. The exports a
-     * share sheet may still call back for are kept beside the crash files, so a pick reaches them after a restart.
+     * The diagnostic report export, process-wide. The exports a share sheet may still call back for are kept beside the
+     * crash files, so a pick reaches them after a restart.
      */
     val reports: ReportExport by lazy {
         val tokens = ExportTokens { File(application.noBackupFilesDir, "report-exports.json") }
         ReportExport(engine, crashFiles, crashOffer, { reportDir(application) }, tokens, { AppInfo.of(application) }, uiScope, Dispatchers.IO)
     }
+
+    /** The diagnostic report for a page to export and share, and the crash offer; no UI of its own. */
+    val reportExporter: ReportExporter by lazy { AppReportExporter(application, reports, Dispatchers.IO) }
 
     private val launched = AtomicBoolean(false)
 

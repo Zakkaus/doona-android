@@ -76,7 +76,7 @@ always interactive takes a required callback; one that can be static takes a nul
 | Work with no known end | `DoonaProgress` | `Small` alone, `Inline` on a line of text |
 | How much of a quota is used | `DoonaMeter(fraction, valueText)` | The value text goes above the bar and wraps; do not draw a bar beside it yourself |
 | A list or page with nothing in it | `DoonaEmptyState(icon, title, line, actionLabel, onAction)` | One line that says what to do; the action is the next step, shown when both are given |
-| An error that the user should see | `DoonaErrorBanner`; a field's own error for one input | The banner dismisses on tap; `actionLabel` and `onAction` add one next step, a text button at its end (the crash banner's 匯出報告) |
+| An error that the user should see | `DoonaErrorBanner`; a field's own error for one input | The banner dismisses on tap |
 | Ask before a removal or a choice | `DoonaConfirmDialog` | `kind = Destructive` for removing. A tap on the underlay around the card dismisses; the card scrolls in a window too short for it, and button labels wrap whole. The caller stops showing it on confirm or dismiss |
 | Status as a colour | `DoonaStatusLight`, `DoonaLatency`, `DoonaBadge` | Say it in words as well |
 | A series over time | `DoonaSparkline`; series colours are `DoonaTheme.colors.series1` and `series2`, which no status shares | |

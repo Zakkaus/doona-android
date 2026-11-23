@@ -2,7 +2,6 @@ package dev.doona.android.app
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -22,14 +21,10 @@ import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
-import dev.doona.android.feature.report.ReportRoute
-import dev.doona.android.feature.report.crashNotice
 import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
-import dev.doona.android.report.Reports
-import dev.doona.android.report.fake.FakeReports
 
 /**
  * The frame every page of the app sits in: the hub bar below it, or the hub rail beside it in a short window (see
@@ -50,8 +45,7 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
  * so it survives configuration changes and process death; each entry gets its own ViewModels and saved state.
  * [start] must begin with [ActivityKey]. [imports] is the app-wide subscription import in flight; the default lives
  * as long as the composition. [version] is the app's version name for the settings, read by the activity.
- * [localNetwork] shows the local network prompts over every page; a host without one never asks. [reports] is the
- * diagnostic report export and the crash offer; the default exports nothing.
+ * [localNetwork] shows the local network prompts over every page; a host without one never asks.
  */
 @Composable
 fun DoonaApp(
@@ -62,7 +56,6 @@ fun DoonaApp(
     imports: SubscriptionImports = rememberSubscriptionImports(engine),
     version: String = "",
     localNetwork: LocalNetworkHost? = null,
-    reports: Reports = remember { FakeReports() },
 ) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
     DoonaAppShell(current = currentTab(backStack), onSelect = { backStack.selectTab(it) }) {
@@ -73,11 +66,7 @@ fun DoonaApp(
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider = entryProvider {
                 entry<ActivityKey> {
-                    // Above the first-run gate, so a crash is offered on whichever page the tab shows.
-                    val crash = crashNotice(reports, onOpenReport = { backStack.add(ReportKey) })
-                    FirstRunGate(engine, imports, crash) {
-                        ActivityRoute(engine, crash, onConnect, onOpenGroup = { backStack.add(GroupKey(it)) })
-                    }
+                    FirstRunGate(engine, imports) { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.add(GroupKey(it)) }) }
                 }
                 entry<PoliciesKey> {
                     PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
@@ -87,16 +76,9 @@ fun DoonaApp(
                 }
                 entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
                 entry<SettingsKey> {
-                    SettingsRoute(
-                        engine,
-                        version,
-                        onOpenPerApp = { backStack.add(PerAppKey) },
-                        onOpenSubscriptions = { backStack.add(SubscriptionsKey) },
-                        onOpenReport = { backStack.add(ReportKey) },
-                    )
+                    SettingsRoute(engine, version, onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
                 }
                 entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
-                entry<ReportKey> { key -> ReportRoute(engine, reports, onBack = { backStack.pop(key) }) }
             },
         )
     }

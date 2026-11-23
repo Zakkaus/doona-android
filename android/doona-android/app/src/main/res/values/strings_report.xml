@@ -1,18 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The 回報問題 page, the diagnostic report and the crash offer (feature/report, report/). -->
+<!-- The diagnostic report (report/): the share sheet's title, which the system draws. -->
 <resources>
-    <string name="report_title">Report a problem</string>
-    <string name="report_log_level">Log level</string>
-    <string name="report_level_error">Error</string>
-    <string name="report_level_warn">Warning</string>
-    <string name="report_level_info">Normal</string>
-    <string name="report_level_debug">Debug</string>
-    <string name="report_level_note">Returns to Normal when the app restarts.</string>
-    <string name="report_section">Diagnostic report</string>
-    <string name="report_export">Export diagnostic report</string>
-    <string name="report_note">The report holds the app and core versions, the device model, a summary of the settings, recent events and crash logs, and no node names, URLs or addresses. Nothing is uploaded: you choose where to share it.</string>
-    <string name="report_export_failed">Could not export the diagnostic report</string>
     <string name="report_share_title">Share diagnostic report</string>
-    <string name="report_crash_banner">doona crashed earlier</string>
-    <string name="report_crash_action">Export report</string>
 </resources>

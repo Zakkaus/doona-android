@@ -2,12 +2,11 @@ package dev.doona.android.report
 
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.Engine
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -25,57 +24,25 @@ import java.util.zip.ZipOutputStream
 /** The crash files an export holds, which a clear after a pick in the share sheet removes: their [names] and the listing's [mark]. */
 data class ExportedCrashes(val names: List<String>, val mark: Long)
 
-/** Where the export is: from the tap to the share sheet's return. */
-sealed interface ExportState {
-    data object Idle : ExportState
-
-    /** The zip is being written. */
-    data object Building : ExportState
-
-    /**
-     * The zip at [file] is written; the activity shares it. [crashes] are cleared once the user picks an app for it, in
-     * the sheet whose callback carries [token].
-     */
-    data class Ready(val file: File, val crashes: ExportedCrashes?, val token: String) : ExportState
-
-    /** The share sheet for [file], of the export [token], is open. */
-    data class Sharing(val file: File, val token: String) : ExportState
-
-    /** The zip could not be written, or no share sheet opened. Shown until dismissed. */
-    data object Failed : ExportState
-}
-
-/** What the screens get of the export and the crash offer; [ReportExport] in the app, a fixed one in previews. */
-interface Reports {
-    val export: StateFlow<ExportState>
-
-    /** True while a crash waits to be reported ([CrashOffer]). */
-    val crashOffered: StateFlow<Boolean>
-
-    /** Builds the report; the activity shares it when it is [ExportState.Ready]. Also takes down the crash offer. */
-    fun startExport()
-
-    fun dismissFailure()
-
-    fun dismissCrash()
-
-    /** The crash offer reached the screen, so it is not made again for the same crash ([CrashOffer.shown]). */
-    fun crashShown()
-}
+/**
+ * A report written and ready to share: the zip at [file], the export's [token], which its share sheet's callback
+ * carries, and the crash files a pick in that sheet clears ([crashes]; none without the core's listing).
+ */
+data class ReportZip(val file: File, val token: String, val crashes: ExportedCrashes?)
 
 /**
- * The diagnostic report export: a zip in [outDir] of `report.json` ([reportJson]) and the crash files, which the activity
- * shares through the share sheet. Nothing is sent anywhere: the user picks where it goes. Each export has a token, kept
+ * The diagnostic report export: a zip in [outDir] of `report.json` ([reportJson]) and the crash files, which a share
+ * sheet sends ([ReportExporter]). Nothing is sent anywhere: the user picks where it goes. Each export has a token, kept
  * in [tokens] with the names and the mark of the core's listing before its sheet opens, which its sheet's callback
  * carries; once that sheet reports that the user picked an app ([picked]), those crash files are cleared, so a crash
  * written meanwhile stays, and a late pick in an earlier sheet clears only its own export's. A clear that does not
  * succeed is sent again at the next start ([sweep]). A sheet closed without a pick keeps them. Without the core's
  * listing (the core is unavailable) the zip takes the app's own, and nothing is cleared. An app crash file goes into the
  * zip only in the current format, its lines checked again ([exportedCrash]); `report.json` names only the files the zip
- * holds, and a pick clears only those. Process-wide, so a build in progress outlives the page that started it. Each zip
- * is written under a part name and then takes a name of its own; one the sheet took is deleted [SHARE_GRACE_MS] after the
- * sheet returns, which leaves the app picked time to read it, and one it did not take at once; [sweep] removes what an
- * earlier run left.
+ * holds, and a pick clears only those. Each zip is written under a part name and then takes a name of its own; one a
+ * sheet took is deleted [SHARE_GRACE_MS] after the sheet returns ([returned]), which leaves the app picked time to read
+ * it, and one no sheet took at once ([notOpened]); [sweep] removes what an earlier run left. Android-free; the share
+ * sheet is [ReportExporter]'s.
  */
 class ReportExport(
     private val engine: Engine,
@@ -87,40 +54,50 @@ class ReportExport(
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
     private val clock: () -> Long = System::currentTimeMillis,
-) : Reports {
-    private val state = MutableStateFlow<ExportState>(ExportState.Idle)
-
+) {
     /** Held while a zip is written and published, and while [sweep] removes parts: it never takes one being written. */
     private val zips = Any()
 
     /** One clear at a time, so a pick reported twice, or one that comes while a start sends the pending ones, clears once. */
     private val clearing = Mutex()
-    override val export: StateFlow<ExportState> = state.asStateFlow()
-    override val crashOffered: StateFlow<Boolean> get() = offer.offered
 
-    override fun startExport() {
+    /** True while a crash waits to be reported ([CrashOffer]). */
+    val crashOffered: StateFlow<Boolean> get() = offer.offered
+
+    /**
+     * Writes the report and keeps its token, before any sheet can open for it: null when the zip or the token could not
+     * be written. Takes the crash offer down. A caller that leaves meanwhile gets nothing, and its zip goes.
+     */
+    suspend fun build(): ReportZip? {
         offer.dismiss()
-        if (!state.compareAndSet(ExportState.Idle, ExportState.Building) && !state.compareAndSet(ExportState.Failed, ExportState.Building)) return
-        scope.launch {
-            val core = engine.diagnostics()
-            val engineView = EngineView(engine.status.value, engine.settings.value, engine.catalog.value)
-            state.value = try {
-                withContext(io) { build(core, engineView) }
-            } catch (_: IOException) {
-                ExportState.Failed
-            }
+        val core = engine.diagnostics()
+        val engineView = EngineView(engine.status.value, engine.settings.value, engine.catalog.value)
+        var written: ReportZip? = null
+        try {
+            withContext(io) { written = write(core, engineView) }
+        } catch (e: CancellationException) {
+            written?.let(::notOpened)
+            throw e
+        } catch (_: IOException) {
+            return null
+        }
+        return written
+    }
+
+    /** The share sheet for [zip] returned, whatever the user did there. The zip goes after [SHARE_GRACE_MS]. */
+    fun returned(zip: ReportZip) {
+        scope.launch(io) {
+            delay(SHARE_GRACE_MS)
+            zip.file.delete()
         }
     }
 
-    /** The zip to share, for the activity, once: the state moves on to [ExportState.Sharing]. */
-    fun take(): ExportState.Ready? {
-        val ready = state.value as? ExportState.Ready ?: return null
-        return ready.takeIf { state.compareAndSet(ready, ExportState.Sharing(ready.file, ready.token)) }
-    }
-
-    /** The share sheet did not open because the activity ended first, as on rotation: the next one shares [ready]. */
-    fun putBack(ready: ExportState.Ready) {
-        state.compareAndSet(ExportState.Sharing(ready.file, ready.token), ready)
+    /** No share sheet opened for [zip]: nothing was shared, so nothing is cleared, and the zip goes. */
+    fun notOpened(zip: ReportZip) {
+        scope.launch(io) {
+            zip.file.delete()
+            tokens.forget(zip.token)
+        }
     }
 
     /**
@@ -149,26 +126,6 @@ class ReportExport(
         if (engine.clearCrashes(crashes.names, crashes.mark).isSuccess) withContext(io) { tokens.forget(token) }
     }
 
-    /** The share sheet returned, whatever the user did there. The zip goes after [SHARE_GRACE_MS]. */
-    fun shared() {
-        val sharing = state.value as? ExportState.Sharing ?: return
-        if (!state.compareAndSet(sharing, ExportState.Idle)) return
-        scope.launch(io) {
-            delay(SHARE_GRACE_MS)
-            sharing.file.delete()
-        }
-    }
-
-    /** No share sheet opened: nothing was shared, so nothing is cleared, and the zip goes. */
-    fun shareFailed() {
-        val sharing = state.value as? ExportState.Sharing ?: return
-        if (!state.compareAndSet(sharing, ExportState.Failed)) return
-        scope.launch(io) {
-            sharing.file.delete()
-            tokens.forget(sharing.token)
-        }
-    }
-
     /**
      * Once per process, at its start: removes what an earlier run left, every zip it was writing and the zips older than
      * [SHARE_GRACE_MS], and sends again the clears picks asked for that did not succeed, idempotent as they are. It reads
@@ -190,18 +147,15 @@ class ReportExport(
 
     private fun File.isZip() = name.startsWith(ZIP_PREFIX) && name.endsWith(ZIP_SUFFIX)
 
-    override fun dismissFailure() {
-        state.compareAndSet(ExportState.Failed, ExportState.Idle)
-    }
+    fun dismissCrash() = offer.dismiss()
 
-    override fun dismissCrash() = offer.dismiss()
-
-    override fun crashShown() {
+    /** The crash offer reached the screen, so it is not made again for the same crash ([CrashOffer.shown]). */
+    fun crashShown() {
         scope.launch(io) { offer.shown() }
     }
 
     /** The zip, and the export's token saved before any sheet can open for it: a token that cannot be saved fails the export. */
-    private fun build(core: Result<CoreDiagnostics>, engineView: EngineView): ExportState.Ready {
+    private fun write(core: Result<CoreDiagnostics>, engineView: EngineView): ReportZip {
         val listing = core.getOrNull()
         val names = listing?.crashes?.map { it.name } ?: crashes.list().map { it.name }
         // Left out, with their names: a file gone since the listing, an empty one, which is no crash file, and an app file
@@ -219,7 +173,7 @@ class ReportExport(
             zip.delete()
             throw e
         }
-        return ExportState.Ready(zip, cleared, token)
+        return ReportZip(zip, token, cleared)
     }
 
     /**

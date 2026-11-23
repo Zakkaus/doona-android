@@ -9,6 +9,8 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -24,9 +26,7 @@ class ExportPicksTest : ExportFixture() {
         val process = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
         val before = export(dying, scope = process)
         val tokens = (1..2).map {
-            before.startExport()
-            advanceUntilIdle()
-            before.take()!!.token.also { before.shared() }
+            before.build()!!.also(before::returned).token
         }
         // The first clear does not return; the second pick waits for it.
         tokens.forEach { before.picked(it) }
@@ -45,10 +45,7 @@ class ExportPicksTest : ExportFixture() {
         tmp.root.resolve(tokensFile.name + ".part").mkdirs()
         val fake = fixtureEngine()
         fake.crashes = listOf(CrashFile(appCrash(1_795_300_150_000), 1))
-        val export = export(Recording(fake))
-        export.startExport()
-        advanceUntilIdle()
-        assertTrue(export.export.value.toString(), export.export.value is ExportState.Ready)
+        assertNotNull(export(Recording(fake)).build())
     }
 
     @Test
@@ -58,9 +55,7 @@ class ExportPicksTest : ExportFixture() {
         fake.crashes = listOf(CrashFile(crash, 1))
         val engine = Recording(fake, failures = 1)
         val export = export(engine)
-        export.startExport()
-        advanceUntilIdle()
-        val ready = export.take()!!
+        val ready = export.build()!!
         tmp.root.resolve(tokensFile.name + ".part").mkdirs()
         export.picked(ready.token)
         advanceUntilIdle()
@@ -75,12 +70,9 @@ class ExportPicksTest : ExportFixture() {
         tokensFile.writeText(later)
         val fake = fixtureEngine()
         fake.crashes = listOf(CrashFile(appCrash(1_795_300_150_000), 1))
-        val export = export(Recording(fake))
-        export.startExport()
-        advanceUntilIdle()
+        assertNull(export(Recording(fake)).build())
         export(Recording(fake)).sweep()
         advanceUntilIdle()
-        assertEquals(ExportState.Failed, export.export.value)
         assertEquals(later, tokensFile.readText())
         assertTrue(AppEvents.snapshot().toString(), AppEvents.snapshot().any { it.text == ExportTokens.TOKENS_UNDECODABLE })
     }

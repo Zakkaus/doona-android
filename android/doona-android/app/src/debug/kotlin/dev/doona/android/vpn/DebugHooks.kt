@@ -1,9 +1,14 @@
 package dev.doona.android.vpn
 
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.edit
+import dev.doona.android.app.DoonaApplication
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.concurrent.thread
 
 /**
@@ -16,12 +21,17 @@ import kotlin.concurrent.thread
  *   start logs `start N: mtu M` under the `doona.vpn` tag.
  * - `adb shell am broadcast -n dev.doona.android/.vpn.DebugHooks -a dev.doona.android.debug.FAULT` ends the running
  *   core's data path as a crash would; the health check must then show the tunnel failed within 10 s.
+ * - `adb shell am broadcast -n dev.doona.android/.vpn.DebugHooks -a dev.doona.android.debug.EXPORT` writes the diagnostic
+ *   report and opens its share sheet, as a report page will ([dev.doona.android.report.ReportExporter]); a pick there
+ *   clears the crash files the zip holds. Android starts no activity for an app in the background, so open doona first.
+ *   Each run logs `debug export: …` under the `doona.vpn` tag. Its zip goes at the next start.
  */
 internal class DebugHooks : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             ACTION_MTU -> setMtu(context, intent.getIntExtra(EXTRA_MTU, 0))
             ACTION_FAULT -> fault(goAsync())
+            ACTION_EXPORT -> export(context.applicationContext as DoonaApplication, goAsync())
         }
     }
 
@@ -45,9 +55,29 @@ internal class DebugHooks : BroadcastReceiver() {
         }
     }
 
+    /** Exports on the main thread, as a page would; the export reads the disk on its own dispatcher. */
+    private fun export(app: DoonaApplication, pending: BroadcastReceiver.PendingResult?) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val share = app.container.reportExporter.export() ?: return@launch VpnLog.warn("debug export: no report")
+                try {
+                    app.startActivity(share.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    VpnLog.info("debug export: share sheet started")
+                } catch (_: ActivityNotFoundException) {
+                    share.notOpened()
+                    VpnLog.warn("debug export: no share sheet")
+                }
+            } finally {
+                // Null when called outside a broadcast, as in a test.
+                pending?.finish()
+            }
+        }
+    }
+
     companion object {
         const val ACTION_MTU = "dev.doona.android.debug.MTU"
         const val ACTION_FAULT = "dev.doona.android.debug.FAULT"
+        const val ACTION_EXPORT = "dev.doona.android.debug.EXPORT"
         const val EXTRA_MTU = "mtu"
 
         /** The core refuses a smaller MTU; its start config holds 16 bits. */

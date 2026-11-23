@@ -27,18 +27,10 @@ import dev.doona.android.designsystem.theme.scripted
 /**
  * Error banner: a card with the error tone's dot and border, holding a message that may wrap. It is the one card that
  * keeps a border: the border says it is an error, which a card's fill does not. Tapping it dismisses it; screen
- * readers announce it when it appears. With [actionLabel] and [onAction] it also offers one next step, a text button at
- * the end, centred on the message; a tap there is the action's, not a dismissal.
+ * readers announce it when it appears.
  */
 @Composable
-fun DoonaErrorBanner(
-    message: String,
-    dismissLabel: String,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-    actionLabel: String? = null,
-    onAction: (() -> Unit)? = null,
-) {
+fun DoonaErrorBanner(message: String, dismissLabel: String, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val c = DoonaTheme.colors
     val shape = DoonaTheme.shape.card
     val style = DoonaTheme.type.body
@@ -53,16 +45,10 @@ fun DoonaErrorBanner(
             .clickable(role = Role.Button, onClickLabel = dismissLabel, onClick = onDismiss)
             .semantics { liveRegion = LiveRegionMode.Polite }
             .padding(DoonaTheme.spacing.cardInset),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.Top) {
-            LineDot(Tone.Err, style, DoonaTheme.size.statusDot)
-            Spacer(Modifier.width(DoonaTheme.spacing.item))
-            Text(scripted(message), style = style, color = c.text)
-        }
-        if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.width(DoonaTheme.spacing.item))
-            DoonaButton(actionLabel, onAction, style = DoonaButtonStyle.Text)
-        }
+        LineDot(Tone.Err, style, DoonaTheme.size.statusDot)
+        Spacer(Modifier.width(DoonaTheme.spacing.item))
+        Text(scripted(message), style = style, color = c.text)
     }
 }

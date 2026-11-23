@@ -1,6 +1,5 @@
 package dev.doona.android.app
 
-import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentSender
@@ -14,10 +13,11 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.fake.FakeEngine
-import dev.doona.android.report.ExportState
 import dev.doona.android.report.REPORT_MIME
 import dev.doona.android.report.ReportPickReceiver
+import dev.doona.android.report.ReportShare
 import dev.doona.android.report.reportAuthority
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -25,14 +25,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.Robolectric
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.android.controller.ActivityController
 import org.robolectric.annotation.Config
 import org.robolectric.util.ReflectionHelpers
 import org.robolectric.util.ReflectionHelpers.ClassParameter
 
-/** The share step: the share sheet the export opens, and the clear that only a pick in it sends. */
+/** The share step, through the export's API ([dev.doona.android.report.ReportExporter]): its share sheet, and the clear that only a pick in it sends. */
 @RunWith(AndroidJUnit4::class)
 @Config(application = FakeEngineApplication::class)
 class ReportFlowTest {
@@ -49,7 +47,7 @@ class ReportFlowTest {
         synchronized(cache) { cache.clear() }
     }
 
-    /** Runs the main looper until [done], while the zip is written on another thread. */
+    /** Runs the main looper until [done], while a clear is sent from another thread. */
     private fun idleUntil(done: () -> Boolean) {
         val deadline = System.nanoTime() + 10_000_000_000
         while (!done() && System.nanoTime() < deadline) {
@@ -86,42 +84,37 @@ class ReportFlowTest {
         shadowOf(Looper.getMainLooper()).idle()
     }
 
+    /** A report from the export's API, as a page asks for it; the zip is written, and its URI resolved, off this thread. */
+    private fun export(): ReportShare = runBlocking { app.container.reportExporter.export() }!!
+
     @Test
-    fun `an export opens the share sheet, whose return keeps the crash files and whose pick clears them`() {
+    fun `an export gives a share sheet whose return keeps the crash files and whose pick clears them`() {
         val engine = app.container.engine as FakeEngine
         val dir = app.container.crashFiles.dir.apply { mkdirs() }
         dir.resolve("1795300150000.txt").writeText("source: core\n")
         engine.crashes = listOf(CrashFile("1795300150000.txt", 13))
-        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
 
-        app.container.reports.startExport()
-        // The zip is written, then its URI resolved, each off the main thread, before the sheet opens.
-        idleUntil { shadowOf(controller.get()).peekNextStartedActivityForResult() != null }
-        val started = shadowOf(controller.get()).nextStartedActivityForResult
-        assertWellFormed(started.intent)
+        val share = export()
+        assertWellFormed(share.intent)
 
         // The sheet closed without a pick answers as a share sent through it does: no result.
-        shadowOf(controller.get()).receiveResult(started.intent, Activity.RESULT_CANCELED, null)
-        idleUntil { app.container.reports.export.value == ExportState.Idle }
+        share.returned()
+        shadowOf(Looper.getMainLooper()).idle()
         assertTrue("a return alone keeps the crash files", engine.crashes.isNotEmpty())
 
         // The sheet's Copy names no app and sends the zip nowhere; a pick names the app.
-        val sender = pickSender(started.intent)!!
+        val sender = pickSender(share.intent)!!
         pick(sender, app = null)
         assertTrue(engine.crashes.isNotEmpty())
         pick(sender, mail)
         idleUntil { engine.crashes.isEmpty() }
-        controller.close()
     }
 
     /** Exports a report, closes its sheet without a pick, and answers the sheet's callback. */
-    private fun share(controller: ActivityController<MainActivity>): IntentSender {
-        app.container.reports.startExport()
-        idleUntil { shadowOf(controller.get()).peekNextStartedActivityForResult() != null }
-        val started = shadowOf(controller.get()).nextStartedActivityForResult
-        shadowOf(controller.get()).receiveResult(started.intent, Activity.RESULT_CANCELED, null)
-        idleUntil { app.container.reports.export.value == ExportState.Idle }
-        return pickSender(started.intent)!!
+    private fun share(): IntentSender {
+        val share = export()
+        share.returned()
+        return pickSender(share.intent)!!
     }
 
     /** The sheet's callback from Android 15: a result, which names the app picked only for a pick. */
@@ -142,13 +135,11 @@ class ReportFlowTest {
         val dir = app.container.crashFiles.dir.apply { mkdirs() }
         dir.resolve("1795300150000.txt").writeText("source: core\n")
         engine.crashes = listOf(CrashFile("1795300150000.txt", 13))
-        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
-        val sender = share(controller)
+        val sender = share()
         chooserResult(sender, ChooserResult.CHOOSER_RESULT_COPY, null)
         assertTrue(engine.crashes.isNotEmpty())
         chooserResult(sender, ChooserResult.CHOOSER_RESULT_SELECTED_COMPONENT, mail)
         idleUntil { engine.crashes.isEmpty() }
-        controller.close()
     }
 
     @Test
@@ -157,18 +148,16 @@ class ReportFlowTest {
         val dir = app.container.crashFiles.dir.apply { mkdirs() }
         dir.resolve("1795300150000.txt").writeText("source: core\n")
         engine.crashes = listOf(CrashFile("1795300150000.txt", 13))
-        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
-        val first = share(controller)
+        val first = share()
         // A crash after the first export: only the second holds it.
         dir.resolve("1795300160000.txt").writeText("source: core\n")
         engine.crashes = engine.crashes + CrashFile("1795300160000.txt", 12)
-        val second = share(controller)
+        val second = share()
         pick(first, mail)
         idleUntil { engine.crashes.size < 2 }
         assertEquals(listOf("1795300160000.txt"), engine.crashes.map { it.name })
         pick(second, mail)
         idleUntil { engine.crashes.isEmpty() }
-        controller.close()
     }
 
     @Test

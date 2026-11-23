@@ -40,7 +40,7 @@ class DebugHooksTest {
 
     @Test
     fun onlyTheShellAndTheSystemCanSendThem() {
-        for (action in listOf(DebugHooks.ACTION_MTU, DebugHooks.ACTION_FAULT)) {
+        for (action in listOf(DebugHooks.ACTION_MTU, DebugHooks.ACTION_FAULT, DebugHooks.ACTION_EXPORT)) {
             val intent = Intent(action).setPackage(context.packageName)
             val receiver = context.packageManager.queryBroadcastReceivers(intent, 0).single().activityInfo
             assertEquals(DebugHooks::class.java.name, receiver.name)

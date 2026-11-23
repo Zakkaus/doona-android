@@ -1,17 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 診斷報告（report/）：系統分享選單的標題。 -->
 <resources>
-    <string name="report_title">回報問題</string>
-    <string name="report_log_level">日誌等級</string>
-    <string name="report_level_error">錯誤</string>
-    <string name="report_level_warn">警告</string>
-    <string name="report_level_info">一般</string>
-    <string name="report_level_debug">除錯</string>
-    <string name="report_level_note">App 重新啟動後會回到一般。</string>
-    <string name="report_section">診斷報告</string>
-    <string name="report_export">匯出診斷報告</string>
-    <string name="report_note">報告含 App 與核心版本、裝置型號、設定摘要、近期事件和當機記錄，不含節點名稱、網址或位址。App 不會自動上傳，傳送對象由你選擇。</string>
-    <string name="report_export_failed">無法匯出診斷報告</string>
     <string name="report_share_title">傳送診斷報告</string>
-    <string name="report_crash_banner">doona 先前發生當機</string>
-    <string name="report_crash_action">匯出報告</string>
 </resources>

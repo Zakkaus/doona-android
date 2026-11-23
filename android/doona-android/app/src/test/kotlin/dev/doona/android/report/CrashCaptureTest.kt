@@ -188,7 +188,7 @@ class CrashCaptureTest {
         assertEquals(REDACTED, names.frame("dev.doona.android.report.CrashThreads", "<clinit>", 7))
         assertEquals("dev.doona.android.report.CrashThreads.<init>:7", names.frame("dev.doona.android.report.CrashThreads", "<init>", 7))
         // An interface has no constructor.
-        assertEquals(REDACTED, names.frame("dev.doona.android.report.Reports", "<init>", 7))
+        assertEquals(REDACTED, names.frame("dev.doona.android.report.ReportExporter", "<init>", 7))
     }
 
     @Test

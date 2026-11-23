@@ -35,12 +35,7 @@ class ReportExportTest : ExportFixture() {
         AppEvents.record(AppEventLevel.Info, "updateSubscription: ok after 1840 ms", 1_795_300_190_000)
         AppEvents.record(AppEventLevel.Warn, "start 3 failed: StartFailed after 412 ms", 1_795_300_191_000)
 
-        val export = export(engine)
-        export.startExport()
-        advanceUntilIdle()
-
-        val ready = export.export.value as ExportState.Ready
-        val zip = entries(ready.file)
+        val zip = entries(export(engine).build()!!.file)
         assertEquals(setOf(ReportExport.REPORT_ENTRY, "crash/$crash"), zip.keys)
         val all = zip.values.joinToString("\n")
         for (secret in secrets + "com.example.secretapp") assertFalse(secret, secret in all)
@@ -64,25 +59,20 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listed.map { CrashFile(it, crashDir.resolve(it).length()) }
         val engine = Recording(fake)
         val export = export(engine)
-        export.startExport()
+        val ready = export.build()!!
         // A crash written after the core's listing is neither exported nor cleared.
         val later = appCrash(1_795_300_152_000)
-        advanceUntilIdle()
-
-        val ready = export.take()!!
         assertEquals(listed.map { "crash/$it" }.toSet(), entries(ready.file).keys - ReportExport.REPORT_ENTRY)
-        assertNull("the zip is shared once", export.take())
         assertTrue(engine.cleared.isEmpty())
 
         // The sheet's return comes before its pick, or after: the order is the system's.
-        export.shared()
-        advanceUntilIdle()
+        export.returned(ready)
+        runCurrent()
         assertTrue("the return alone clears nothing", engine.cleared.isEmpty())
         export.picked(ready.token)
         export.picked(ready.token)
         advanceUntilIdle()
         assertEquals(listOf(listed to 1_795_300_151_000L), engine.cleared)
-        assertEquals(ExportState.Idle, export.export.value)
         assertTrue(crashDir.resolve(later).exists())
     }
 
@@ -93,14 +83,11 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listOf(CrashFile(crash, 1))
         val engine = Recording(fake)
         val export = export(engine)
-        export.startExport()
+        val ready = export.build()!!
+        export.notOpened(ready)
         advanceUntilIdle()
-        val ready = export.take()!!
-        export.shareFailed()
-        export.shared()
         export.picked(ready.token)
         advanceUntilIdle()
-        assertEquals(ExportState.Failed, export.export.value)
         assertTrue(engine.cleared.isEmpty())
     }
 
@@ -109,17 +96,14 @@ class ReportExportTest : ExportFixture() {
         val engine = Recording(fixtureEngine(), coreUp = false)
         val crash = appCrash(1_795_300_150_000)
         val export = export(engine)
-        export.startExport()
-        advanceUntilIdle()
-
-        val ready = export.take()!!
+        val ready = export.build()!!
         assertNull(ready.crashes)
         val zip = entries(ready.file)
         assertTrue("crash/$crash" in zip)
         val diagnostics = Json.parseToJsonElement(zip.getValue(ReportExport.REPORT_ENTRY)).jsonObject["diagnostics"]!!.jsonObject
         assertEquals("Internal", diagnostics["error"]!!.jsonPrimitive.content)
         export.picked(ready.token)
-        export.shared()
+        export.returned(ready)
         advanceUntilIdle()
         assertTrue(engine.cleared.isEmpty())
     }
@@ -130,19 +114,8 @@ class ReportExportTest : ExportFixture() {
         val files = CrashFiles(crashDir)
         val offer = CrashOffer(files, tmp.root.resolve("seen")).apply { check() }
         assertTrue(offer.offered.value)
-        ReportExport(fixtureEngine(), files, offer, { outDir }, tokens, { app }, this, StandardTestDispatcher(testScheduler)).startExport()
+        ReportExport(fixtureEngine(), files, offer, { outDir }, tokens, { app }, this, StandardTestDispatcher(testScheduler)).build()
         assertFalse(offer.offered.value)
-    }
-
-    @Test
-    fun `a zip put back by an activity that ended is shared by the next`() = runTest {
-        val export = export(fixtureEngine())
-        export.startExport()
-        advanceUntilIdle()
-        val ready = export.take()!!
-        export.putBack(ready)
-        assertEquals(ready, export.export.value)
-        assertEquals(ready, export.take())
     }
 
     @Test
@@ -152,25 +125,16 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listOf(CrashFile(crash, 1))
         val engine = Recording(fake)
         val export = export(engine)
-        export.startExport()
+        export.returned(export.build()!!)
         advanceUntilIdle()
-        export.take()
-        export.shared()
-        advanceUntilIdle()
-        assertEquals(ExportState.Idle, export.export.value)
         assertTrue(engine.cleared.isEmpty())
     }
 
     @Test
     fun `two exports in one second get a zip each`() = runTest {
         val export = export(fixtureEngine())
-        export.startExport()
-        advanceUntilIdle()
-        val first = export.take()!!.file
-        export.shared()
-        export.startExport()
-        advanceUntilIdle()
-        val second = export.take()!!.file
+        val first = export.build()!!.file
+        val second = export.build()!!.file
         assertTrue(first.name, first.name.matches(Regex("doona-report-\\d{8}-\\d{6}\\.zip")))
         assertEquals(first.name.removeSuffix(".zip") + "-2.zip", second.name)
     }
@@ -178,10 +142,9 @@ class ReportExportTest : ExportFixture() {
     @Test
     fun `a shared zip stays while the app picked may read it, then goes`() = runTest {
         val export = export(fixtureEngine())
-        export.startExport()
-        advanceUntilIdle()
-        val zip = export.take()!!.file
-        export.shared()
+        val ready = export.build()!!
+        val zip = ready.file
+        export.returned(ready)
         advanceTimeBy(ReportExport.SHARE_GRACE_MS - 1)
         runCurrent()
         assertTrue(zip.exists())
@@ -205,11 +168,10 @@ class ReportExportTest : ExportFixture() {
     @Test
     fun `a zip no share sheet took is deleted`() = runTest {
         val export = export(fixtureEngine())
-        export.startExport()
+        val ready = export.build()!!
+        export.notOpened(ready)
         advanceUntilIdle()
-        val zip = export.take()!!.file
-        export.shareFailed()
-        advanceUntilIdle()
+        val zip = ready.file
         assertFalse(zip.exists())
     }
 
@@ -220,16 +182,12 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listOf(CrashFile(first, 1))
         val engine = Recording(fake)
         val export = export(engine)
-        export.startExport()
-        advanceUntilIdle()
-        val firstExport = export.take()!!
-        export.shared()
+        val firstExport = export.build()!!
+        export.returned(firstExport)
         // A crash after the first export: only the second holds it.
         val second = appCrash(1_795_300_160_000)
         fake.crashes = listOf(CrashFile(first, 1), CrashFile(second, 1))
-        export.startExport()
-        advanceUntilIdle()
-        export.take()!!
+        export.build()!!
         export.picked(firstExport.token)
         advanceUntilIdle()
         assertEquals(listOf(listOf(first) to 1_795_300_150_000L), engine.cleared)
@@ -242,9 +200,7 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listOf(CrashFile(crash, 1))
         val engine = Recording(fake)
         val before = export(engine)
-        before.startExport()
-        advanceUntilIdle()
-        val ready = before.take()!!
+        val ready = before.build()!!
         // The process ends with the sheet open; the pick starts a new one.
         val after = export(engine)
         after.picked(ready.token)
@@ -267,11 +223,7 @@ class ReportExportTest : ExportFixture() {
         val fake = fixtureEngine()
         val crash = appCrash(1_795_300_150_000)
         fake.crashes = listOf(CrashFile(crash, 1))
-        val export = export(Recording(fake))
-        export.startExport()
-        advanceUntilIdle()
-        assertEquals(ExportState.Failed, export.export.value)
-        assertNull(export.take())
+        assertNull(export(Recording(fake)).build())
         assertTrue(outDir.list().orEmpty().none { it.endsWith(".zip") })
     }
 
@@ -282,9 +234,7 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listOf(CrashFile(crash, 1))
         val engine = Recording(fake, failures = 1)
         val export = export(engine)
-        export.startExport()
-        advanceUntilIdle()
-        export.picked(export.take()!!.token)
+        export.picked(export.build()!!.token)
         advanceUntilIdle()
         assertEquals(1, engine.cleared.size)
         export(engine).sweep()
@@ -302,17 +252,14 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listOf(CrashFile(crash, 1))
         val engine = Recording(fake, failures = 1)
         val export = export(engine)
-        export.startExport()
-        advanceUntilIdle()
-        export.picked(export.take()!!.token)
-        export.shared()
+        val ready = export.build()!!
+        export.picked(ready.token)
+        export.returned(ready)
         advanceUntilIdle()
         val saved = tmp.root.resolve("report-exports.json")
         assertTrue(saved.setReadable(false))
         try {
-            export.startExport()
-            advanceUntilIdle()
-            assertEquals(ExportState.Failed, export.export.value)
+            assertNull(export.build())
         } finally {
             saved.setReadable(true)
         }
@@ -329,9 +276,7 @@ class ReportExportTest : ExportFixture() {
         val dying = Recording(fake, hangs = true)
         val process = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
         val before = export(dying, scope = process)
-        before.startExport()
-        advanceUntilIdle()
-        before.picked(before.take()!!.token)
+        before.picked(before.build()!!.token)
         advanceUntilIdle()
         assertEquals(1, dying.cleared.size)
         process.cancel()
@@ -349,9 +294,7 @@ class ReportExportTest : ExportFixture() {
         val engine = Recording(fake)
         val export = export(engine)
         val tokens = (1..9).map {
-            export.startExport()
-            advanceUntilIdle()
-            export.take()!!.token.also { export.shared() }
+            export.build()!!.also(export::returned).token
         }
         export.picked(tokens.first())
         advanceUntilIdle()
@@ -366,9 +309,7 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listOf(CrashFile("1795300140000.txt", 0), CrashFile(crash, 1))
         val engine = Recording(fake)
         val export = export(engine)
-        export.startExport()
-        advanceUntilIdle()
-        val ready = export.take()!!
+        val ready = export.build()!!
         assertEquals(setOf("crash/$crash"), entries(ready.file).keys - ReportExport.REPORT_ENTRY)
         export.picked(ready.token)
         advanceUntilIdle()
@@ -396,9 +337,7 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listOf(CrashFile(core, 1), CrashFile(placeholder, 0), CrashFile(old, 1), CrashFile(current, 1))
         val engine = Recording(fake)
         val export = export(engine)
-        export.startExport()
-        advanceUntilIdle()
-        val ready = export.take()!!
+        val ready = export.build()!!
         val zip = entries(ready.file)
         assertEquals(setOf(ReportExport.REPORT_ENTRY, "crash/$core", "crash/$current"), zip.keys)
         assertEquals(coreText, zip.getValue("crash/$core"))
@@ -429,9 +368,7 @@ class ReportExportTest : ExportFixture() {
         val fake = fixtureEngine()
         fake.crashes = listOf(CrashFile(name, 1))
         val export = export(fake)
-        export.startExport()
-        advanceUntilIdle()
-        val text = entries(export.take()!!.file).getValue("crash/$name")
+        val text = entries(export.build()!!.file).getValue("crash/$name")
         assertEquals(kept + "  at $REDACTED\n  at $REDACTED\n", text)
     }
 
@@ -441,9 +378,7 @@ class ReportExportTest : ExportFixture() {
         val text = crashText("java.lang.IllegalStateException", emptyList(), true, "0.1 debug arm64-v8a-android", 1_795_300_150_000)
         val names = (1..6).map { n -> "179530015000$n.txt".also { crashDir.resolve(it).writeText(text) } }
         val export = export(Recording(fixtureEngine(), coreUp = false))
-        export.startExport()
-        advanceUntilIdle()
-        val zip = entries(export.take()!!.file)
+        val zip = entries(export.build()!!.file)
         assertEquals(names.drop(1).map { "crash/$it" }.toSet(), zip.keys - ReportExport.REPORT_ENTRY)
         assertFalse(crashDir.resolve(names.first()).exists())
     }

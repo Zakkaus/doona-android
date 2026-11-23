@@ -49,20 +49,17 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.messageRes
-import dev.doona.android.feature.report.CrashBanner
-import dev.doona.android.feature.report.CrashNotice
 import dev.doona.android.icons.R as IconsR
 
 /**
  * The 活動 entry: builds the ViewModel and collects its state while the screen is started. Connecting (which needs
- * the activity for consent) and opening a group (navigation) go straight to the shell's callbacks; the crash offer
- * comes from outside the first-run gate, which shows it on either page.
+ * the activity for consent) and opening a group (navigation) go straight to the shell's callbacks.
  */
 @Composable
-fun ActivityRoute(engine: Engine, crash: CrashNotice, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
+fun ActivityRoute(engine: Engine, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
     val viewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.factory(engine))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ActivityScreen(state, viewModel::onAction, onConnect, onOpenGroup, crash)
+    ActivityScreen(state, viewModel::onAction, onConnect, onOpenGroup)
 }
 
 /**
@@ -70,13 +67,7 @@ fun ActivityRoute(engine: Engine, crash: CrashNotice, onConnect: () -> Unit, onO
  * global outbound), then the traffic tiles two per row and the current node's latency across both columns.
  */
 @Composable
-fun ActivityScreen(
-    state: ActivityUiState,
-    onAction: (ActivityAction) -> Unit,
-    onConnect: () -> Unit,
-    onOpenGroup: (String) -> Unit,
-    crash: CrashNotice = CrashNotice.None,
-) {
+fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
     val space = DoonaTheme.spacing
     DoonaPage(
         actions = listOf(
@@ -89,7 +80,6 @@ fun ActivityScreen(
         DoonaPageTabs(listOf(stringResource(R.string.hub_activity), stringResource(R.string.nav_overview)), selected = 0)
         DoonaGap(space.section)
         Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
-            CrashBanner(crash)
             state.error?.let { code ->
                 DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(ActivityAction.DismissError) })
             }
