@@ -602,6 +602,7 @@ dependencies = [
  "boring",
  "bytes",
  "futures-util",
+ "glob",
  "honk-config",
  "honk-netstack",
  "honk-outbound",

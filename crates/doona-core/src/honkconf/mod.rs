@@ -1,4 +1,5 @@
-//! Read-only import of honk configuration. Capability reporting never edits `Config`.
+//! Import honk sources and keep their private drafts and applied revisions.
+//! Capability reporting never edits `Config`.
 //!
 //! The capture family is IPv4. A requested non-Chrome `global.utls_imitate` is an
 //! `unsupported_option`: honk's uTLS implementation can only use the Chrome profile.
@@ -6,8 +7,13 @@
 //! `global.data_dir`. No full honk GeoIP/GEOSITE snapshot is linked into this runtime.
 
 mod declarations;
+mod draft;
 mod rules;
 mod staged;
+mod store;
+
+pub use draft::Draft;
+pub use store::{HonkStore, StoreError};
 
 use std::borrow::Cow;
 use std::collections::HashSet;

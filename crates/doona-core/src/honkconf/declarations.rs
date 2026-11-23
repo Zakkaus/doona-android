@@ -21,6 +21,8 @@ pub(super) struct Context<'a> {
     pub config: &'a Config,
     pub root: &'a Path,
     pub links: &'a HashSet<PathBuf>,
+    pub files: &'a super::staged::Files,
+    pub companions: &'a super::staged::Files,
     pub diagnostics: &'a [DetailedDiagnostic],
 }
 
@@ -238,9 +240,9 @@ fn host_field(value: &str, ctx: &Context<'_>, settings: &mut Settings, location:
         return;
     };
     let code = match super::staged::confined(ctx.root, Path::new(path), ctx.links) {
-        None => "use_host_escape",
-        Some(p) if p.is_file() && std::fs::File::open(&p).is_ok() => return,
-        Some(_) => "missing_hosts_source",
+        Err(_) => "use_host_escape",
+        Ok(p) if ctx.files.contains_key(&p) || ctx.companions.contains_key(&p) => return,
+        Ok(_) => "missing_hosts_source",
     };
     settings
         .entry(("dns", format!("use_host[{i}]")))
