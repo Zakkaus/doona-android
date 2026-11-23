@@ -261,16 +261,28 @@ internal class RvType {
     val search = RvTypeScale.search.style()
     val cardTitle = RvTypeScale.cardTitle.style()
     val seeAll = RvTypeScale.seeAll.style()
-
-    // Tabular figures only where figures line up or change in place: Inter's tnum also widens the hyphen of a name.
-    private fun RvTypeStep.style(tabular: Boolean = false) = TextStyle(
-        fontFamily = if (display) RvInterDisplay else RvInter,
-        fontWeight = weight,
-        fontSize = size.sp,
-        lineHeight = line.sp,
-        fontFeatureSettings = if (tabular) RvTypeScale.TABULAR else null,
-    )
 }
+
+/**
+ * 活動's own text, as the owner approved it (609336cb): its hero's caption, figure and unit and the rates' line under
+ * it. Every other page reads [RvType]; these are not design-system roles (RvParityTest compares [RvType]).
+ */
+@Immutable
+internal object RvActivityType {
+    val caption = RvTypeScale.activityCaption.style()
+    val hero = RvTypeScale.activityHero.style(tabular = true)
+    val heroUnit = RvTypeScale.activityHeroUnit.style(tabular = true)
+    val sub = RvTypeScale.activitySub.style(tabular = true)
+}
+
+// Tabular figures only where figures line up or change in place: Inter's tnum also widens the hyphen of a name.
+private fun RvTypeStep.style(tabular: Boolean = false) = TextStyle(
+    fontFamily = if (display) RvInterDisplay else RvInter,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = line.sp,
+    fontFeatureSettings = if (tabular) RvTypeScale.TABULAR else null,
+)
 
 @Immutable
 internal class RvTokens(val colors: RvColors, val type: RvType, val motion: RvMotionScale)

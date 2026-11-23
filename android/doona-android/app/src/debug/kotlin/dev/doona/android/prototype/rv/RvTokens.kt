@@ -484,6 +484,15 @@ internal object RvTypeScale {
     val hero = RvTypeStep(44, 53, FontWeight.Bold, display = true)
     val heroSmall = RvTypeStep(32, 40, FontWeight.Bold, display = true)
 
+    /**
+     * 活動's own hero, as the owner approved it (609336cb): the caption 16 sp, the figure 42 sp whole with its unit 24 sp
+     * semibold, and both rates under it at 15 sp medium. [hero], [caption] and [sub] stay for every other page.
+     */
+    val activityCaption = RvTypeStep(16, 22, FontWeight.Normal)
+    val activityHero = RvTypeStep(42, 48, FontWeight.Bold, display = true)
+    val activityHeroUnit = RvTypeStep(24, 32, FontWeight.SemiBold, display = true)
+    val activitySub = RvTypeStep(15, 20, FontWeight.Medium)
+
     /** A detail page's figure (measured §10.1, the coin header): 33 sp with its decimals, the unit 22 sp. */
     val detailFigure = RvTypeStep(33, 40, FontWeight.Bold, display = true)
     val detailUnit = RvTypeStep(22, 28, FontWeight.SemiBold, display = true)

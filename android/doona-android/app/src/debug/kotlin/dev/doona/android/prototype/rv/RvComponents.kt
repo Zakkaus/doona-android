@@ -207,15 +207,17 @@ internal fun RvHero(amount: RvAmount, modifier: Modifier = Modifier) {
     RvHero(whole, decimals + amount.unit, modifier)
 }
 
-/** The hero figure: [whole] at 44 sp, [part] (decimals and unit) at 32 sp on the same baseline. */
+/**
+ * The hero figure: [whole] at 44 sp, [part] (decimals and unit) at 32 sp on the same baseline; [style] and [partStyle]
+ * set other sizes (活動's approved hero, [RvActivityType]).
+ */
 @Composable
-internal fun RvHero(whole: String, part: String, modifier: Modifier = Modifier) {
-    val type = Rv.type
+internal fun RvHero(whole: String, part: String, modifier: Modifier = Modifier, style: TextStyle = Rv.type.hero, partStyle: TextStyle = Rv.type.heroSmall) {
     val text = buildAnnotatedString {
         append(whole)
-        withStyle(type.heroSmall.toSpanStyle()) { append(part) }
+        withStyle(partStyle.toSpanStyle()) { append(part) }
     }
-    BasicText(text, modifier, type.hero.copy(color = Rv.colors.text), maxLines = 1)
+    BasicText(text, modifier, style.copy(color = Rv.colors.text), maxLines = 1)
 }
 
 /** A figure split at its decimal separator: the integer, and the separator with the decimals (or nothing). */

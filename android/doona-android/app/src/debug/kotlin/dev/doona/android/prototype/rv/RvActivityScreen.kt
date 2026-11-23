@@ -51,7 +51,6 @@ import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
-import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.data.RvPlace
@@ -64,7 +63,7 @@ import kotlinx.coroutines.launch
 
 /**
  * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
- * hero figure and the upload rate under it on a dot map of the world that marks the node's country (#07, #08), four round
+ * hero figure and both rates under it on a dot map of the world that marks the node's country (#07, #08), four round
  * actions, then the outbound card (item 24: the mode, the main node and the rule groups that sent traffic today),
  * download and upload as two of Revolut's square home tiles (either opens the traffic page), and three more cards as
  * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
@@ -198,8 +197,9 @@ private fun HeroBlock(state: ActivityUiState, ticking: State<ActivityUiState>, m
 }
 
 /**
- * The state and the mode over the download rate, the upload rate under it; a new state or each second's rates cross-fade
- * in. Read from [ticking] here, so that a tick recomposes the figures and not the header around them.
+ * The state and the mode over the download rate, both rates under it, as the owner approved them (609336cb); a new state
+ * or each second's rates cross-fade in. Read from [ticking] here, so that a tick recomposes the figures and not the
+ * header around them.
  */
 @Composable
 private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modifier: Modifier) {
@@ -207,13 +207,18 @@ private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modif
     val format = rememberRvFormat()
     val fade = Rv.motion.tween<Float>(RvMotion.FADE_MS)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Crossfade("${stringResource(state.status.label)} · ${stringResource(mode.label)}", animationSpec = fade, label = "caption") { RvText(it, Rv.type.caption) }
+        Crossfade("${stringResource(state.status.label)} · ${stringResource(mode.label)}", animationSpec = fade, label = "caption") { RvText(it, RvActivityType.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = format.rate(state.downRate.toDouble())
-        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvHero(RvAmount(number, unit)) }
+        // The figure whole in one size, its unit smaller after it.
+        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvHero(number, unit, style = RvActivityType.hero, partStyle = RvActivityType.heroUnit) }
         Spacer(Modifier.height(RvSpace.subGap))
-        // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") { RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub) }
+        Crossfade(down.toString() to format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "rates") { (downRate, upRate) ->
+            Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.rowPadding)) {
+                RvInline(R.drawable.rv_sym_arrow_downward, downRate, Rv.colors.textSecondary, RvActivityType.sub)
+                RvInline(R.drawable.rv_sym_arrow_upward, upRate, Rv.colors.textSecondary, RvActivityType.sub)
+            }
+        }
     }
 }
 
