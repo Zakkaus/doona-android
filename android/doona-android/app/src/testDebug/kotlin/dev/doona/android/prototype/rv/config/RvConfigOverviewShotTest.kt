@@ -24,8 +24,9 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * 設定檔 and its skipped list (PV-f item 2), samples only: the overview with the entry's Linux-only settings skipped
  * (`proto-rv-config-overview-*`), the same with the plan's negative rule skipped in an include
- * (`proto-rv-config-overview-skipped-include-*`), and that list (`proto-rv-config-unsupported-*`). Light and dark hold
- * the whole page; fs115 and fs200 the phone's first screen.
+ * (`proto-rv-config-overview-skipped-include-*`), and that list (`proto-rv-config-unsupported-*`). The list holds the
+ * whole page at every size, so no rule's text or reason is cut by the screen; the overview's light and dark hold the
+ * whole page and its fs115 and fs200 the phone's first screen.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -68,16 +69,17 @@ class RvConfigOverviewShotTest {
     fun skippedIncludeFs200() = compose.rvShot("config-overview-skipped-include", dark = false, fontScale = RV_FS200) { Overview(RvConfigData.skippedInclude) }
 
     @Test
-    fun unsupportedLight() = compose.rvShot("config-unsupported", dark = false) { Skipped() }
+    fun unsupportedLight() = compose.rvShot("config-unsupported", dark = false, before = { assertWhole() }) { Skipped() }
 
     @Test
-    fun unsupportedDark() = compose.rvShot("config-unsupported", dark = true) { Skipped() }
+    fun unsupportedDark() = compose.rvShot("config-unsupported", dark = true, before = { assertWhole() }) { Skipped() }
 
     @Test
-    fun unsupportedFs115() = compose.rvShot("config-unsupported", dark = false, fontScale = RV_FS115) { Skipped() }
+    fun unsupportedFs115() = compose.rvShot("config-unsupported", dark = false, before = { assertWhole() }, fontScale = RV_FS115) { Skipped() }
 
     @Test
-    fun unsupportedFs200() = compose.rvShot("config-unsupported", dark = false, fontScale = RV_FS200) { Skipped() }
+    @Config(qualifiers = WHOLE_UNSUPPORTED_FS200)
+    fun unsupportedFs200() = compose.rvShot("config-unsupported", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Skipped() }
 
     @Test
     fun aFileRowOpensThatFile() {
@@ -107,5 +109,6 @@ class RvConfigOverviewShotTest {
 
     private companion object {
         const val WHOLE_OVERVIEW = "+h1695dp"
+        const val WHOLE_UNSUPPORTED_FS200 = "+h1047dp"
     }
 }

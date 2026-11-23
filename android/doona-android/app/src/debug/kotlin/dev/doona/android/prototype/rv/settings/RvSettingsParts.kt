@@ -82,6 +82,7 @@ internal fun RvSettingsRow(
     @DrawableRes icon: Int? = null,
     subtitle: String? = null,
     titleStyle: TextStyle = Rv.type.rowTitle,
+    titleLines: Int = RV_ROW_TITLE_LINES,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Box(
@@ -98,7 +99,7 @@ internal fun RvSettingsRow(
                 Spacer(Modifier.width(RvSettingsSpace.glyphGap))
             }
             Column(Modifier.weight(1f)) {
-                RvText(title, titleStyle, maxLines = RV_ROW_TITLE_LINES)
+                RvText(title, titleStyle, maxLines = titleLines)
                 subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
             }
             trailing?.let {
@@ -118,7 +119,8 @@ private fun FirstLine(content: @Composable () -> Unit) {
  * A row that opens something, then a chevron; its optional [subtitle] is the row's second line, so the row is the
  * two-line 82 dp one: a value, as Revolut's Appearance rows show Theme over "Light - Glass" (§13.3), or what the row
  * leads to. A row of a plain list (the licences) has no [icon], so its text starts on the card's padding, as DNS's 自訂.
- * A title that is source text (a skipped declaration) takes [titleStyle] with Inter's ligatures off (`rvVerbatim`).
+ * A title that is source text (a skipped declaration) takes [titleStyle] with Inter's ligatures off (`rvVerbatim`) and
+ * [titleLines] as many lines as it needs: what the user looks for in the file is the text, so it is never cut.
  */
 @Composable
 internal fun RvSettingsNavRow(
@@ -127,8 +129,9 @@ internal fun RvSettingsNavRow(
     onClick: () -> Unit,
     subtitle: String? = null,
     titleStyle: TextStyle = Rv.type.rowTitle,
+    titleLines: Int = RV_ROW_TITLE_LINES,
 ) {
-    RvSettingsRow(title, Modifier.rvRowPress(Role.Button, onClick), icon, subtitle = subtitle, titleStyle = titleStyle) { RvChevron() }
+    RvSettingsRow(title, Modifier.rvRowPress(Role.Button, onClick), icon, subtitle = subtitle, titleStyle = titleStyle, titleLines = titleLines) { RvChevron() }
 }
 
 /** A row that only shows a [value], as its second line. */

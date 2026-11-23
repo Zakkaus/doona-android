@@ -55,7 +55,7 @@ internal fun RvConfigSkippedPage(state: RvConfigState, onBack: () -> Unit, onOpe
 private fun SkippedRow(record: RvSkipped, onOpen: (RvSkipped) -> Unit) {
     val reasons = record.reasons.map { stringResource(it.label) }.joinToString(stringResource(R.string.rv_effective_list_separator))
     val line = stringResource(R.string.rv_config_line, record.line) + SEPARATOR + reasons
-    RvSettingsNavRow(record.text, null, { onOpen(record) }, subtitle = line, titleStyle = Rv.type.rowTitle.rvVerbatim())
+    RvSettingsNavRow(record.text, null, { onOpen(record) }, subtitle = line, titleStyle = Rv.type.rowTitle.rvVerbatim(), titleLines = Int.MAX_VALUE)
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
