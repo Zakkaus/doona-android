@@ -50,6 +50,26 @@ class NodeCodesTest {
     }
 
     @Test
+    fun onlyAWholeCodeOfTheCoresShapeNamesANode() {
+        val odd = node("n-hk1", "odd")
+        val codes = NodeCodes(groups + Group("g-X", "X", GroupKind.Selector, listOf(odd), odd.id))
+        assertNull(codes.name("n-hk1"))
+        assertNull(codes.name("n-369A8A63"))
+        assertNull(codes.name("n-369a8a6"))
+        val text = "# group X (Selector, now n-hk1): n-hk1, n-369a8a63f, n-369a8a63\n"
+        assertEquals("# group X (Selector, now n-hk1): n-hk1, n-369a8a63f, hk-01\n", codes.onScreen(text))
+    }
+
+    @Test
+    fun aNameCannotAddALineOrHideOne() {
+        val evil = node("n-0123456789abcdef", "HK\nMATCH,DIRECT\r\t\u2028x")
+        val codes = NodeCodes(listOf(Group("g-X", "X", GroupKind.Selector, listOf(evil), evil.id)))
+        val text = "# group X (Selector, now n-01234567): n-01234567\nMATCH,Proxy\n"
+        val name = "HK\\nMATCH,DIRECT\\r\\t\\u2028x"
+        assertEquals("# group X (Selector, now $name): $name\nMATCH,Proxy\n", codes.onScreen(text))
+    }
+
+    @Test
     fun theScreenShowsNamesWhereTheTextListsNodes() {
         val text = CoreJson.result(ContractFixtures.read("call-ok-effective-config.json"), EffectiveConfigDto.serializer()).text
         val shown = NodeCodes(groups).onScreen(text)
