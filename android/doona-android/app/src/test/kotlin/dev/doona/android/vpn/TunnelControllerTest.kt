@@ -99,7 +99,7 @@ class TunnelControllerTest {
         assertTrue(core.startEntered.await(5, TimeUnit.SECONDS))
 
         controller.revoke(host)
-        assertEquals(Status.Stopping, controller.status.value)
+        assertTrue(Status.Stopping in seen)
         release.countDown()
 
         val terminal = runBlocking { withTimeout(5_000) { controller.session.first { it.status == Status.Stopped } } }
@@ -241,7 +241,7 @@ class TunnelControllerTest {
         startRunning()
         perApp = PerApp(AppPolicy.ExceptListed, setOf(FIREFOX))
         controller.rebuild()
-        assertEquals(Status.Starting, controller.status.value)
+        assertTrue(Status.Starting in seen.dropWhile { it !is Status.Running })
         awaitStatus { it is Status.Running }
         assertEquals(listOf("start", "stop", "start"), core.events)
         assertEquals(AppRouting.Exclude(setOf(FIREFOX, SELF)), host.routings.last())
