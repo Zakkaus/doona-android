@@ -62,4 +62,91 @@
     <string name="rv_policy_position">Position</string>
     <string name="rv_policy_position_value">Before “%1$s”</string>
     <string name="rv_policy_apply">Apply</string>
+    <string name="rv_policy_match_cidr">IP range</string>
+    <string name="rv_policy_match_geoip_cn" translatable="false">GEOIP CN</string>
+    <string name="rv_policy_rule_off">Off</string>
+    <string name="rv_policy_rule_skipped">Not supported, skipped</string>
+    <string name="rv_rules_reorder">Reorder</string>
+    <string name="rv_rules_edit_line">Long-press a rule, then drag it to reorder</string>
+    <string name="rv_rules_done">Done</string>
+    <plurals name="rv_rules_apply_held">
+        <item quantity="one">Apply %1$d rule</item>
+        <item quantity="other">Apply %1$d rules</item>
+    </plurals>
+    <string name="rv_rules_pending">Not applied yet</string>
+    <string name="rv_rules_held">Held</string>
+    <string name="rv_rules_discard">Discard held rules</string>
+    <string name="rv_rules_in_use">In use</string>
+    <string name="rv_rules_off">Off</string>
+    <string name="rv_rules_skipped">Skipped</string>
+    <string name="rv_rules_skipped_line">GEOSITE is not supported yet, so its rules are skipped</string>
+    <plurals name="rv_rules_count">
+        <item quantity="one">%1$d rule</item>
+        <item quantity="other">%1$d rules</item>
+    </plurals>
+    <string name="rv_template_cn_direct_line">Mainland China sites go direct</string>
+    <string name="rv_template_services">By service</string>
+    <string name="rv_template_services_line">Streaming, AI and more each get a group</string>
+    <string name="rv_template_regions">By region</string>
+    <string name="rv_template_regions_line">One group for each region</string>
+    <string name="rv_template_homebound">Homebound</string>
+    <string name="rv_template_homebound_line">Abroad: mainland China sites use the proxy</string>
+    <string name="rv_template_gfw">Blocked sites only</string>
+    <string name="rv_template_gfw_line">Only blocked sites use the proxy</string>
+    <string name="rv_template_needs_geosite">Needs GEOSITE, not supported yet</string>
+    <string name="rv_template_in_use">In use</string>
+    <string name="rv_template_review">Review changes</string>
+    <string name="rv_template_note">Changes are listed before anything is applied</string>
+    <string name="rv_template_from_to">%1$s → %2$s</string>
+    <string name="rv_template_added">Rules added</string>
+    <string name="rv_template_changed">Rules changed</string>
+    <string name="rv_template_removed">Rules removed</string>
+    <string name="rv_template_kept">Your rules kept</string>
+    <string name="rv_template_group_youtube" translatable="false">YouTube</string>
+    <string name="rv_template_group_telegram" translatable="false">Telegram</string>
+    <string name="rv_template_ai_was">was 6 domains</string>
+    <string name="rv_template_new_flows">Only new connections follow the new rules</string>
+    <string name="rv_policy_change_add">New</string>
+    <string name="rv_policy_change_keep">Kept</string>
+    <string name="rv_policy_change_change">Changed</string>
+    <string name="rv_policy_change_remove">Removed</string>
+    <string name="rv_effective_title">Effective config</string>
+    <string name="rv_effective_open">View effective config</string>
+    <string name="rv_effective_mode">Mode</string>
+    <string name="rv_effective_members_more">%1$s and %2$d in all</string>
+    <string name="rv_effective_list_separator">",\u0020"</string>
+    <string name="rv_effective_dns_via">Through</string>
+    <string name="rv_effective_lan_value">Outside the tunnel</string>
+    <string name="rv_effective_apps_in">Apps in the tunnel</string>
+    <plurals name="rv_effective_apps">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <string name="rv_effective_apps_rest">Other apps</string>
+    <string name="rv_effective_apps_rest_value">Direct</string>
+    <string name="rv_effective_per_app">Per app</string>
+    <string name="rv_effective_source">Source</string>
+    <string name="rv_effective_copy">Copy</string>
+    <string name="rv_effective_export">Export</string>
+    <string name="rv_rule_edit_title">Edit rule</string>
+    <string name="rv_rule_edit_domain">Domain</string>
+    <string name="rv_rule_edit_domain_hint" translatable="false">example.com</string>
+    <string name="rv_rule_edit_cidr_hint" translatable="false">91.108.56.0/22</string>
+    <string name="rv_rule_edit_need_domain">Enter a domain</string>
+    <string name="rv_rule_edit_need_cidr">Enter an IP range</string>
+    <string name="rv_rule_edit_bad_domain">Use letters, digits, hyphens and dots only</string>
+    <string name="rv_rule_edit_bad_cidr">Write the range as 91.108.56.0/22</string>
+    <string name="rv_rule_edit_cidr_line">Addresses in %1$s</string>
+    <string name="rv_rule_edit_geoip_line">Addresses GeoIP places in mainland China</string>
+    <string name="rv_rule_edit_private_line">Private addresses stay outside the tunnel, so this rule matches nothing</string>
+    <string name="rv_rule_edit_enabled">On</string>
+    <string name="rv_rule_edit_delete">Delete rule</string>
+    <string name="rv_rule_delete_title">Delete this rule?</string>
+    <string name="rv_rule_delete_body">“%1$s” leaves the list. Connections it matched go to the next rule that matches.</string>
+    <string name="rv_rule_delete_confirm">Delete</string>
+    <string name="rv_rule_delete_cancel">Cancel</string>
+    <string name="rv_rule_menu_edit">Edit</string>
+    <string name="rv_rule_menu_off">Turn off</string>
+    <string name="rv_rule_menu_on">Turn on</string>
+    <string name="rv_rule_menu_delete">Delete</string>
 </resources>

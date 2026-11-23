@@ -118,12 +118,13 @@ private fun FirstLine(content: @Composable () -> Unit) {
 }
 
 /**
- * A row that opens something, then a chevron; its optional [value] is the row's second line, as Revolut's Appearance rows
- * show Theme over "Light - Glass" (§13.3), so the row is the two-line 82 dp one.
+ * A row that opens something, then a chevron; its optional [subtitle] is the row's second line, so the row is the
+ * two-line 82 dp one: a value, as Revolut's Appearance rows show Theme over "Light - Glass" (§13.3), or what the row
+ * leads to.
  */
 @Composable
-internal fun RvSettingsNavRow(title: String, @DrawableRes icon: Int, onClick: () -> Unit, value: String? = null) {
-    RvSettingsRow(title, Modifier.rvPress(RectangleShape, Role.Button, onClick), icon, subtitle = value) { RvChevron() }
+internal fun RvSettingsNavRow(title: String, @DrawableRes icon: Int, onClick: () -> Unit, subtitle: String? = null) {
+    RvSettingsRow(title, Modifier.rvPress(RectangleShape, Role.Button, onClick), icon, subtitle = subtitle) { RvChevron() }
 }
 
 /** A row that only shows a [value], as its second line. */
@@ -145,9 +146,9 @@ internal fun RvSettingsSwitchRow(title: String, @DrawableRes icon: Int, checked:
     RvSettingsRow(title, toggle, icon, subtitle) { RvSwitch(checked) }
 }
 
-/** A row of a radio list: the title, and the radio at the end. */
+/** A row of a radio list: the title over an optional [subtitle], and the radio at the end. */
 @Composable
-internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit) {
+internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit, subtitle: String? = null) {
     val choose = Modifier.selectable(
         selected = selected,
         interactionSource = null,
@@ -155,7 +156,7 @@ internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -
         role = Role.RadioButton,
         onClick = onSelect,
     )
-    RvSettingsRow(title, choose) { RvRadio(selected) }
+    RvSettingsRow(title, choose, subtitle = subtitle) { RvRadio(selected) }
 }
 
 private const val TITLE_LINES = 2

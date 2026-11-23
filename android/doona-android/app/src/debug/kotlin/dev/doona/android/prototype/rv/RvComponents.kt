@@ -47,16 +47,20 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -68,6 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.core.graphics.drawable.toBitmap
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvPlace
@@ -82,7 +87,8 @@ import kotlin.math.min
  * One line of text in a role; CJK runs in Noto, the rest in Inter. Cut short, it ends in an ellipsis right after the last
  * word that fits: the platform keeps the space after that word before its ellipsis (`IPLC …`), so the line is laid out
  * once more without it. The shorter text stays while the width does, and the whole text returns when the line gets more
- * room. [maxLines] lets it run to more lines, the last ending in the platform's ellipsis.
+ * room. [maxLines] lets it run to more lines, the last ending in the platform's ellipsis, and [overflow] may put the
+ * ellipsis in the middle of a single line instead.
  */
 @Composable
 internal fun RvText(
@@ -92,6 +98,7 @@ internal fun RvText(
     color: Color = Rv.colors.text,
     align: TextAlign = TextAlign.Start,
     maxLines: Int = 1,
+    overflow: TextOverflow = TextOverflow.Ellipsis,
 ) {
     var cut by remember(text) { mutableStateOf<RvCut?>(null) }
     BasicText(
@@ -99,15 +106,15 @@ internal fun RvText(
         modifier,
         style.copy(color = color, textAlign = align),
         onTextLayout = { layout ->
-            // The cut at a word is for one line; more lines end in the platform's ellipsis.
+            // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
             val kept = cut
             when {
-                maxLines != 1 -> Unit
+                maxLines != 1 || overflow != TextOverflow.Ellipsis -> Unit
                 kept == null -> cut = rvCut(text, layout)
                 layout.layoutInput.constraints.maxWidth > kept.width -> cut = null
             }
         },
-        overflow = TextOverflow.Ellipsis,
+        overflow = overflow,
         maxLines = maxLines,
     )
 }
@@ -281,6 +288,9 @@ internal object RvPart {
  * [TITLE_SHARE] of the line, the end takes what it needs of the rest, and the start gets what is left, so a long name
  * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
  * text column to its widest end. [trailing] (a chevron) still follows after both lines.
+ *
+ * The title takes one line and ends in an ellipsis; [titleLines] lets it wrap (a host name on its own page), and
+ * [titleOverflow] can cut it in the middle instead, which keeps both ends of a host:port in view.
  */
 @Composable
 internal fun RvRow(
@@ -292,6 +302,8 @@ internal fun RvRow(
     onLongClick: (() -> Unit)? = null,
     titleEnd: (@Composable () -> Unit)? = null,
     subtitleEnd: (@Composable () -> Unit)? = null,
+    titleLines: Int = 1,
+    titleOverflow: TextOverflow = TextOverflow.Ellipsis,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     // The card clips the layer of its first and last row to its corners.
@@ -308,12 +320,12 @@ internal fun RvRow(
     ) {
         leading()
         Spacer(Modifier.width(RvSpace.rowGap))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+        Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
             if (lineWise) {
-                RowLine(titleEnd) { RvText(title, Rv.type.rowTitle) }
+                RowLine(titleEnd) { RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow) }
                 subtitle?.let { RowLine(subtitleEnd) { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) } }
             } else {
-                RvText(title, Rv.type.rowTitle)
+                RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow)
                 subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) }
             }
         }
@@ -357,6 +369,23 @@ internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text) {
     Box(Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
         RvGlyph(icon, RvSize.rowGlyph, color)
     }
+}
+
+/**
+ * A row's leading disc for an app: the app's own launcher icon, from the package manager, filling the disc as a flag
+ * does; an app the phone does not have (or does not let doona see) gets the apps glyph on the raised fill instead.
+ * [label] (the app's name) is for a screen reader, where the row does not name the app.
+ */
+@Composable
+internal fun RvAppDisc(packageName: String, label: String? = null) {
+    val context = LocalContext.current
+    val px = with(LocalDensity.current) { RvSize.rowDisc.roundToPx() }
+    val icon = remember(packageName, px) {
+        runCatching { context.packageManager.getApplicationIcon(packageName).toBitmap(px, px).asImageBitmap() }.getOrNull()
+    }
+    val named = label?.let { Modifier.semantics { contentDescription = it } } ?: Modifier
+    if (icon == null) return Box(named) { RvIconDisc(R.drawable.rv_sym_apps) }
+    Image(icon, contentDescription = label, Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard))
 }
 
 /** Revolut's 'See all' row at a list card's foot (measured §7): [text] centred, 19 sp bold in the accent, in 56 dp. */

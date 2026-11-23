@@ -76,7 +76,7 @@ internal fun RvPolicyRulePage(
         MatchBy(connection.host, rule.matchBy) { onChange(rule.copy(matchBy = it)) }
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
-            TargetCard(rule.targetId) { onChange(rule.copy(targetId = it)) }
+            RvTargetCard(rule.targetId) { onChange(rule.copy(targetId = it)) }
             PositionCard(connection.rule)
         }
     }
@@ -105,37 +105,6 @@ private fun MatchBy(host: String, matchBy: RvMatchBy, onMatchBy: (RvMatchBy) -> 
     }
 }
 
-/**
- * The groups the rule can send to, then 直連: the first [TARGETS] groups, then the rest in place. A group is drawn by
- * where its traffic ends, as on 活動 and in the rules card.
- */
-@Composable
-private fun TargetCard(targetId: String, onTarget: (String) -> Unit) {
-    var all by rememberSaveable { mutableStateOf(false) }
-    val groups = listOf(RvPolicyData.main) + RvPolicyData.groups
-    val shown = if (all) groups else groups.take(TARGETS)
-    RvCard {
-        shown.forEach { Target(it, targetId == it.id) { onTarget(it.id) } }
-        Target(null, targetId == RV_DIRECT) { onTarget(RV_DIRECT) }
-        if (!all) {
-            val more = groups.size - shown.size
-            RvSeeAll(pluralStringResource(R.plurals.rv_policy_other_groups, more, more)) { all = true }
-        }
-    }
-}
-
-/** One destination: the group and the node it uses, or 直連; the whole row picks it. */
-@Composable
-private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Unit) {
-    val pick = Modifier.selectable(selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton, onClick = onSelect)
-    RvRow(
-        { RvPolicyTarget(group) },
-        group?.let { stringResource(it.name) } ?: stringResource(R.string.mode_direct),
-        group?.selected?.name ?: stringResource(R.string.rv_policy_no_proxy),
-        pick,
-    ) { RvRadio(selected) }
-}
-
 /** Where the rule goes: before the rule the connection matched, so it is tried first. */
 @Composable
 private fun PositionCard(matched: RvPolicyRule) {
@@ -150,8 +119,6 @@ private fun PositionCard(matched: RvPolicyRule) {
     }
 }
 
-/** The groups listed before 其他 N 個策略組: the main node, 自動, 串流 and AI. */
-private const val TARGETS = 4
 private const val PORT = ":"
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

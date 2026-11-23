@@ -1,5 +1,7 @@
 package dev.doona.android.prototype.rv
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,28 +20,29 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.preferredFrameRate
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.prototype.rv.connections.RvConnectionDetail
+import dev.doona.android.prototype.rv.connections.RvConnectionsPage
+import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.gallery.RvGalleryScreen
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
-import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPageState
 import dev.doona.android.prototype.rv.policy.RvPolicyData
-import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
-import dev.doona.android.prototype.rv.policy.RvPolicyRoutes
-import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
-import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
-import dev.doona.android.prototype.rv.policy.RvQuickRule
+import dev.doona.android.prototype.rv.policy.RvPolicyPreview
+import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
+import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
+import dev.doona.android.prototype.rv.settings.RvDnsScreen
+import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
@@ -73,8 +76,9 @@ internal enum class RvLaunch(val action: String?) {
 
 /**
  * How the sample starts: [connected] or not, whether connecting [fails], the [page] on top of its tab home (a route
- * such as `nodes` or `settings`), whether a latency [test] runs a second after launch (for recording it), and the
- * shortcut it was [launch]ed by.
+ * such as `nodes` or `settings`) or a whole stack of [routes] (such as `policy`, `rules`), whether a latency [test] runs
+ * a second after launch (for recording it), the shortcut it was [launch]ed by, whether 全部規則 holds two [pending]
+ * quick rules, and whether the bar shows the proposed fourth tab, 連線 ([fourTabs]).
  */
 @Immutable
 internal data class RvSampleStart(
@@ -83,9 +87,12 @@ internal data class RvSampleStart(
     val page: String? = null,
     val test: Boolean = false,
     val launch: RvLaunch = RvLaunch.None,
+    val routes: List<String>? = null,
+    val pending: Boolean = false,
+    val fourTabs: Boolean = false,
 ) {
     val stack: List<String>
-        get() = when (page) {
+        get() = routes?.takeIf { it.isNotEmpty() } ?: when (page) {
             null, ACTIVITY -> listOf(ACTIVITY)
             SETTINGS -> listOf(SETTINGS)
             else -> listOf(ACTIVITY, page)
@@ -118,7 +125,7 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
     val scope = rememberCoroutineScope()
     val run = remember { RvSampleRun(scope, start.connected, start.fails) }
     var stack by rememberSaveable { mutableStateOf(start.stack) }
-    val policy = remember { RvSamplePolicy() }
+    val policy = remember { RvPolicyPreviewState(if (start.pending) RvPolicyData.pending else emptyList()) }
     // While connected the minute moves on each second.
     val running = run.status is Status.Running
     LaunchedEffect(running) { if (running) rvEverySample { run.second++ } }
@@ -138,22 +145,13 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
         LocalRvTestingNodes provides run.testingNodes,
         LocalRvUpdating provides run.updating,
         LocalRvRowActions provides actions,
+        LocalRvNav provides if (start.fourTabs) RV_NAV_FOUR else RV_NAV,
     ) {
         RvStackHost(stack, onBack = pages.pop, options) { route -> RvSamplePage(route, run, options, settings, onSettings, policy, pages, start.launch == RvLaunch.Nodes) }
     }
 }
 
 private class RvSamplePages(val push: (String) -> Unit, val pop: () -> Unit, val tab: (Int) -> Unit)
-
-/** 策略's sample state, which its pages share: the groups' choices, the main node picker's order and the quick rule. */
-@Stable
-private class RvSamplePolicy {
-    var state by mutableStateOf(RvPolicyState())
-
-    // The main node's picker keeps its own order, apart from 全域's (in the policy state), as each screen remembers its last.
-    var pickerSort by mutableStateOf(RvNodeSort.Latency)
-    var quickRule by mutableStateOf(RvQuickRule())
-}
 
 @Composable
 private fun RvSamplePage(
@@ -162,7 +160,7 @@ private fun RvSamplePage(
     options: RvMotionOptions,
     settings: RvSettingsState,
     onSettings: (RvSettingsState) -> Unit,
-    policy: RvSamplePolicy,
+    policy: RvPolicyPreviewState,
     pages: RvSamplePages,
     picking: Boolean,
 ) {
@@ -192,52 +190,57 @@ private fun RvSamplePage(
             RvNodeDetail(node, current = node.id == run.currentId, RvData.testTimes, onBack = pages.pop, onUse = { run.currentId = node.id }, onTest = {})
         }
 
-        SETTINGS -> RvSettingsScreen(settings, onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab)
+        SETTINGS -> SettingsPage(settings, onSettings, pages)
 
         THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pages.pop)
 
-        POLICY, PICKER, GROUP, RULE -> PolicyPage(route, policy, pages)
+        DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop)
 
+        in RvPolicyPreviewRoutes.all -> RvPolicyPreview(route, policy, settings, pages.push, pages.pop, pages.tab)
+
+        else -> OtherPage(route, run, options, pages, picking)
+    }
+}
+
+/** 訂閱's pages, the library's gallery, the first run, 連線 and a connection's page, or else 活動. */
+@Composable
+private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean) {
+    when (route.substringBefore(':')) {
         in RvSubsRoutes.all -> RvSubsRoute(route, pages.push, pages.pop)
 
         GALLERY -> RvGalleryScreen(onBack = pages.pop)
 
         WELCOME -> RvWelcome(onAdd = { pages.push(RvSubsRoutes.ADD) })
 
+        CONNECTIONS -> ConnectionsPage(route, pages)
+
+        CONNECTION -> {
+            val i = route.substringAfter(':').toInt()
+            RvConnectionDetail(RvPolicyData.connections[i], onBack = pages.pop, onClose = pages.pop, onNewRule = { pages.push("${RvPolicyPreviewRoutes.RULE}:$i") })
+        }
+
         else -> ActivityPage(route, run, options, pages, picking)
     }
 }
 
-/** 策略 and what it pushes: a group's page (its rows), the main node's picker (its card) and the quick rule (新增規則). */
+/** 設定: its always-on row opens the system's VPN settings, and DNS and 檢視生效設定 push their pages. */
 @Composable
-private fun PolicyPage(route: String, policy: RvSamplePolicy, pages: RvSamplePages) {
-    when (route.substringBefore(':')) {
-        PICKER -> {
-            val main = policy.state.group(RvPolicyData.main)
-            RvNodePickerPage(
-                RvData.nodes,
-                RvData.subscriptions,
-                main.selectedId,
-                policy.pickerSort,
-                onSort = { policy.pickerSort = it },
-                onPick = { policy.state = policy.state.choose(main.id, it) },
-                onBack = pages.pop,
-                onTest = {},
-            )
-        }
+private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit, pages: RvSamplePages) {
+    val context = LocalContext.current
+    val routes = RvSettingsRoutes(
+        alwaysOn = { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
+        dns = { pages.push(DNS) },
+        effectiveConfig = { pages.push(RvPolicyPreviewRoutes.EFFECTIVE) },
+    )
+    RvSettingsScreen(settings, onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes)
+}
 
-        GROUP -> {
-            val group = policy.state.group(RvPolicyData.group(route.substringAfter(':')))
-            RvPolicyGroupPage(group, onBack = pages.pop, onSelect = { policy.state = policy.state.choose(group.id, it) }, onTest = {})
-        }
-
-        RULE -> RvPolicyRulePage(RvPolicyData.connection, policy.quickRule, { policy.quickRule = it }, onBack = pages.pop, onApply = pages.pop)
-
-        else -> {
-            val routes = RvPolicyRoutes(group = { pages.push("$GROUP:$it") }, mainNode = { pages.push(PICKER) }, newRule = { pages.push(RULE) }, tab = pages.tab)
-            RvPolicyScreen(policy.state, { policy.state = it }, routes)
-        }
-    }
+/** 連線; `connections:off` shows it with the tunnel off, and 連線 there opens it connected. */
+@Composable
+private fun ConnectionsPage(route: String, pages: RvSamplePages) {
+    var query by rememberSaveable { mutableStateOf<String?>(null) }
+    val routes = RvConnectionsRoutes(open = { pages.push("$CONNECTION:$it") }, query = { query = it }, connect = { pages.tab(RV_NAV_CONNECTIONS) }, tab = pages.tab)
+    RvConnectionsPage(RvPolicyData.connections, routes, query, connected = !route.endsWith(":off"))
 }
 
 /**
@@ -258,7 +261,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         node = { pages.push("$NODE:${run.currentId}") },
         tab = pages.tab,
         mode = toPolicy,
-        rule = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { pages.push("$GROUP:${it.id}") } ?: toPolicy() },
+        rule = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { pages.push("${RvPolicyPreviewRoutes.GROUP}:${it.id}") } ?: toPolicy() },
         rules = toPolicy,
         test = run::test,
         subscriptions = { pages.push(RvSubsRoutes.LIST) },
@@ -458,11 +461,10 @@ internal const val NODES = "nodes"
 internal const val NODE = "node"
 internal const val SETTINGS = "settings"
 internal const val THEME = "theme"
-internal const val POLICY = "policy"
-internal const val GROUP = "group"
-internal const val RULE = "rule"
-internal const val PICKER = "picker"
+internal const val DNS = "dns"
+internal const val CONNECTIONS = "connections"
+internal const val CONNECTION = "connection"
 internal const val GALLERY = "gallery"
 internal const val WELCOME = "welcome"
 internal const val STATE = "state"
-private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS)
+private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to RvPolicyPreviewRoutes.POLICY, RV_NAV_SETTINGS to SETTINGS, RV_NAV_CONNECTIONS to CONNECTIONS)

@@ -20,18 +20,20 @@ import kotlin.concurrent.thread
  * tile), 統計 (the top bar), 節點 (the search pill and the outbound row) and the node in use (its row), and pulls down
  * the node picker; 節點 pushes a node's page; the nav switches to 設定, which pushes 主題, and to 策略, which pushes a
  * group's page (its rows), the main node's picker (its card) and the quick rule (新增規則); 活動's mode row and 查看全部
- * switch to 策略, and a rule group opens its group's page. Back returns, predictively. Start it from the launcher's
- * "doona RV sample", or with
+ * switch to 策略, and a rule group opens its group's page. 策略 also pushes all rules (which open the effective config)
+ * and 範本 with its impact review; 設定 pushes DNS and the effective config, and its always-on row opens the system's VPN
+ * settings; 連線 (the fourth tab, `--ez rv.tabs4 true`) pushes a connection's page, which opens the quick rule from it.
+ * Back returns, predictively. Start it from the launcher's "doona RV sample", or with
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`, adding any of:
  * `--es pull P2` (P1-P3, [RvPullMotion]), `--es tab T2` ([RvTabMotion]), `--es push S2` ([RvPushMotion]),
  * `--es hero H1` (活動's hero swipes between 全部流量 and 主節點, [RvHeroSwipe]),
  * `--es start idle` (start disconnected), `--ez fail true` (connecting fails), `--es page nodes` (start on a page over
  * 活動: nodes, stats, traffic, `gallery` (the library's parts), `welcome` (the first run), `state:<notice>` (活動 empty
- * or under a banner), `subs` (訂閱), or settings on its own; `--es route` is the same) and `--ez test true` (a latency
- * test a second after launch). The launcher icon's
- * shortcuts (xml/rv_shortcuts) open it with an action, [RvLaunch]: `-a dev.doona.android.prototype.rv.CONNECT` starts
- * disconnected and connects on screen, `.DISCONNECT` starts connected and disconnects, `.NODES` starts with the node
- * picker open. A recreated activity does not run its action again.
+ * or under a banner), `subs` (訂閱), or settings on its own; `--es route` is the same), `--es rv.route policy,rules`
+ * (that stack of pages), `--ez rv.pending true` (全部規則 holds two quick rules) and `--ez test true` (a latency test a
+ * second after launch). The launcher icon's shortcuts (xml/rv_shortcuts) open it with an action, [RvLaunch]:
+ * `-a dev.doona.android.prototype.rv.CONNECT` starts disconnected and connects on screen, `.DISCONNECT` starts connected
+ * and disconnects, `.NODES` starts with the node picker open. A recreated activity does not run its action again.
  */
 class RvPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +56,9 @@ class RvPreviewActivity : ComponentActivity() {
             page = intent.getStringExtra(EXTRA_PAGE) ?: intent.getStringExtra(EXTRA_ROUTE),
             test = intent.getBooleanExtra(EXTRA_TEST, false),
             launch = launch,
+            routes = intent.getStringExtra(EXTRA_STACK)?.split(',')?.filter { it.isNotBlank() },
+            pending = intent.getBooleanExtra(EXTRA_PENDING, false),
+            fourTabs = intent.getBooleanExtra(EXTRA_FOUR_TABS, false),
         )
         preloadFonts(applicationContext)
         // Each gesture's frame times go to logcat (`adb logcat -s RvFrames`).
@@ -109,4 +114,7 @@ private const val START_IDLE = "idle"
 private const val EXTRA_FAIL = "fail"
 private const val EXTRA_PAGE = "page"
 private const val EXTRA_ROUTE = "route"
+private const val EXTRA_STACK = "rv.route"
+private const val EXTRA_PENDING = "rv.pending"
+private const val EXTRA_FOUR_TABS = "rv.tabs4"
 private const val EXTRA_TEST = "test"

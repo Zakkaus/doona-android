@@ -5,12 +5,9 @@
     <string name="rv_settings_check_update">Check for updates</string>
 
     <string name="rv_settings_group_connection">Connection</string>
-    <string name="rv_settings_auto_connect">Connect at boot</string>
     <string name="rv_settings_notify_drop">Notify when disconnected</string>
     <string name="rv_settings_per_app">Per-app proxy</string>
     <string name="rv_settings_per_app_value">%1$d apps only</string>
-    <string name="rv_settings_bypass_lan">Bypass local network</string>
-    <string name="rv_settings_bypass_lan_sub">10.0.0.0/8, 192.168.0.0/16 and more</string>
     <string name="rv_settings_connection_footer">Only the selected apps use the proxy. Other apps and local-network addresses connect directly.</string>
 
     <string name="rv_settings_group_subscription">Subscriptions</string>
@@ -28,7 +25,6 @@
 
     <string name="rv_settings_group_advanced">Advanced</string>
     <string name="rv_settings_dns" translatable="false">DNS</string>
-    <string name="rv_settings_dns_value">Automatic</string>
     <string name="rv_settings_log_level">Log level</string>
     <string name="rv_settings_log_level_value">Normal</string>
 
@@ -46,4 +42,14 @@
     <string name="rv_settings_accent_pink">Pink</string>
     <string name="rv_settings_mode">Mode</string>
     <string name="rv_settings_preview">Preview</string>
+    <string name="rv_settings_always_on">Always-on VPN</string>
+    <string name="rv_settings_always_on_sub">Turned on in the system\'s VPN settings</string>
+    <string name="rv_settings_dns_cloudflare" translatable="false">Cloudflare</string>
+    <string name="rv_settings_dns_google" translatable="false">Google</string>
+    <string name="rv_settings_dns_quad9" translatable="false">Quad9</string>
+    <string name="rv_settings_dns_alidns">AliDNS</string>
+    <string name="rv_settings_dns_server">Server</string>
+    <string name="rv_settings_dns_custom">Custom</string>
+    <string name="rv_settings_dns_custom_sub">Enter an address</string>
+    <string name="rv_settings_dns_footer">In rule and global mode, queries go out through the main node.</string>
 </resources>

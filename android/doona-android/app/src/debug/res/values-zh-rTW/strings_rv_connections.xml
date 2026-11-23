@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_nav_connections">連線</string>
+    <string name="rv_conn_search">搜尋連線</string>
+    <plurals name="rv_conn_summary">
+        <item quantity="other">%1$d 條連線 · 下載 %2$s · 上傳 %3$s</item>
+    </plurals>
+    <string name="rv_conn_all_apps">全部 App</string>
+    <string name="rv_conn_newest">最新的在前</string>
+    <string name="rv_conn_seconds">%1$d 秒</string>
+    <string name="rv_conn_minutes">%1$d 分</string>
+    <string name="rv_conn_path">路徑</string>
+    <string name="rv_conn_port">埠 %1$d</string>
+    <string name="rv_conn_started">開始時間</string>
+    <string name="rv_conn_age">已連線</string>
+    <string name="rv_conn_rule_index">第 %1$d 條規則</string>
+    <string name="rv_conn_no_domain">沒有網域，依位址比對</string>
+    <string name="rv_conn_close">關閉連線</string>
+    <string name="rv_conn_search_end">結束搜尋</string>
+    <string name="rv_conn_search_hint">主機或 App</string>
+    <plurals name="rv_conn_matches">
+        <item quantity="other">%1$d 條連線符合</item>
+    </plurals>
+    <string name="rv_conn_search_clear">清除搜尋</string>
+    <string name="rv_conn_none_title">沒有符合的連線</string>
+    <string name="rv_conn_none_line">換個關鍵字，或清除搜尋</string>
+    <string name="rv_conn_off_title">尚未連線</string>
+    <string name="rv_conn_off_line">連線後，各 App 的連線會列在這裡</string>
+</resources>
