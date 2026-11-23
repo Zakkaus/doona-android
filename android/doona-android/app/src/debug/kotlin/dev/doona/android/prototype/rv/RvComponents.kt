@@ -235,7 +235,7 @@ internal object RvPart {
     const val SECTION = "rv-section"
     const val FOOTER = "rv-footer"
 
-    /** A composite block of the page's column (a pager of tiles and its dots), measured as one card. */
+    /** A composite block of the page's column (a pager of tiles, a card and the message under it), measured as one card. */
     const val BLOCK = "rv-block"
     const val ROW = "rv-row"
     const val SEGMENTED = "rv-segmented"

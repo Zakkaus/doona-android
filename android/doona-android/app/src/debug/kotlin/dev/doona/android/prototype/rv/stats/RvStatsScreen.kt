@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv.stats
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -79,9 +78,9 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
 }
 
 /**
- * 下載, 上傳 and 連線次數 as Revolut's paged half tiles: two side by side as 活動's pair, the third past the edge, dots
- * under them. Download and upload come from the daily history; a count of opened connections needs the core, so that
- * tile is v0.2.
+ * 下載, 上傳 and 連線次數 as Revolut's paged half tiles: two side by side, as far apart as 活動's pair, and the third's edge
+ * at the screen's edge, which says the row scrolls. Download and upload come from the daily history; a count of opened
+ * connections needs the core, so that tile is v0.2.
  */
 @Composable
 private fun DayTiles(day: RvDay) {
@@ -101,19 +100,16 @@ private fun DayTiles(day: RvDay) {
     )
     val pager = rememberPagerState { tiles.size }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // Two tiles as 活動's pair: between the gutters, RvSpace.tileGap apart; the third starts past the screen's edge.
-        val width = (maxWidth - RvSpace.gutter * 2 - RvSpace.tileGap) / 2
-        Column(Modifier.testTag(RvPart.BLOCK)) {
-            HorizontalPager(
-                pager,
-                contentPadding = PaddingValues(horizontal = RvSpace.gutter),
-                pageSize = PageSize.Fixed(width),
-                pageSpacing = RvSpace.tileGap,
-                verticalAlignment = Alignment.Top,
-            ) { page -> RvDayTileCard(tiles[page]) }
-            Spacer(Modifier.height(RvStatsSpace.dotsGap))
-            RvStatsDots(tiles.size, pager.currentPage)
-        }
+        // From the gutter, two tiles RvSpace.tileGap apart, then the third's first RvStatsSpace.tilePeek before the edge.
+        val width = (maxWidth - RvSpace.gutter - RvSpace.tileGap * 2 - RvStatsSpace.tilePeek) / 2
+        HorizontalPager(
+            pager,
+            Modifier.testTag(RvPart.BLOCK),
+            contentPadding = PaddingValues(horizontal = RvSpace.gutter),
+            pageSize = PageSize.Fixed(width),
+            pageSpacing = RvSpace.tileGap,
+            verticalAlignment = Alignment.Top,
+        ) { page -> RvDayTileCard(tiles[page]) }
     }
 }
 

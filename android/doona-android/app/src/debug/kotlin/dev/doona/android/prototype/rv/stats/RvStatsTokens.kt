@@ -13,8 +13,11 @@ internal object RvStatsSpace {
     val chartGap = 16.dp
     val legendGap = 10.dp
 
-    /** Under the paged tiles, to their dots. */
-    val dotsGap = 10.dp
+    /**
+     * How much of the third paged tile shows at the screen's edge, so the row reads as one that scrolls (measured §2,
+     * 03-analytics-a: the neighbour tile peeks 4 dp).
+     */
+    val tilePeek = 4.dp
 }
 
 internal object RvStatsSize {
@@ -33,7 +36,7 @@ internal object RvStatsSize {
     /** The delta's filled triangle, Revolut's 8 dp. */
     val delta = 8.dp
 
-    /** The pager's dots: the current one larger and darker. */
+    /** The page dots under 活動's hero views: the current one larger and darker. */
     val dot = 8.dp
     val dotIdle = 5.dp
     val dotPitch = 12.dp
