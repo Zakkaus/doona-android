@@ -1,6 +1,10 @@
 package dev.doona.android.prototype.rv.config
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -8,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvTheme
@@ -109,6 +114,28 @@ class RvConfigSourceShotTest {
     }
 
     @Test
+    fun anEditDropsTheDiagnosticOfTheCheckedTextAndLetsTheDraftBeReviewed() {
+        val draft = RvConfigSourceData.error
+        var value by mutableStateOf(TextFieldValue(draft.text))
+        compose.setContent { Themed { RvConfigSourcePage(draft, value, { value = it }, onBack = {}) } }
+        compose.onNodeWithText(MARK).assertExists()
+        value = TextFieldValue("\n" + draft.text)
+        compose.onNodeWithText(MARK).assertDoesNotExist()
+        compose.onNodeWithText(REVIEW).assertIsEnabled()
+    }
+
+    @Test
+    fun fixingTheGroupLetsTheDraftBeReviewed() {
+        val draft = RvConfigSourceData.error
+        var value by mutableStateOf(TextFieldValue(draft.text))
+        compose.setContent { Themed { RvConfigSourcePage(draft, value, { value = it }, onBack = {}) } }
+        compose.onNodeWithText(REVIEW).assertIsNotEnabled()
+        value = TextFieldValue(draft.text.replace("-> stream", "-> media"))
+        compose.onNodeWithText(MARK).assertDoesNotExist()
+        compose.onNodeWithText(REVIEW).assertIsEnabled()
+    }
+
+    @Test
     fun aStaleDraftCannotBeApplied() {
         compose.setContent { Themed { Diff(RvConfigSourceData.stale) } }
         compose.onNodeWithText(APPLY).assertIsNotEnabled()
@@ -125,8 +152,12 @@ class RvConfigSourceShotTest {
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
 
+    /** The page over [draft] as checked, its text held here as the app's editor state holds it. */
     @Composable
-    private fun Source(draft: RvSourceDraft) = RvConfigSourcePage(draft, onBack = {})
+    private fun Source(draft: RvSourceDraft) {
+        var value by remember(draft) { mutableStateOf(TextFieldValue(draft.text)) }
+        RvConfigSourcePage(draft, value, { value = it }, onBack = {})
+    }
 
     @Composable
     private fun Diff(diff: RvConfigDiff) = RvConfigDiffPage(diff, onBack = {})
@@ -138,5 +169,6 @@ class RvConfigSourceShotTest {
         const val WHOLE_STALE = "+h1030dp"
         const val REVIEW = "檢視變更"
         const val APPLY = "套用"
+        const val MARK = "第 7 行：找不到策略組 stream"
     }
 }
