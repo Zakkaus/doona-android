@@ -10,9 +10,13 @@ use super::{Flow, Network, RuleSet, RuleSpec, Target};
 use crate::dto::{ErrorCode, GroupKind, RuleOptions, RuleSource, SourceKind};
 use crate::groups::{self, GroupDef};
 use crate::ids::group_id;
+use std::sync::{Arc, LazyLock};
 
 /// QUIC's port, which `blockQuic` refuses over UDP.
 const QUIC_PORT: u16 = 443;
+
+/// The rule of a flow no row matched, which went to the main group.
+static UNMATCHED: LazyLock<Arc<str>> = LazyLock::new(|| "unmatched".into());
 
 #[derive(Debug)]
 pub(crate) struct Policy {
@@ -137,23 +141,22 @@ impl Policy {
         self.rules.as_ref().is_some_and(RuleSet::has_names)
     }
 
-    /// Where rule mode sends `flow`: its first matching rule's target, the main group when none
-    /// matches. With `blockQuic`, QUIC bound for a group is rejected.
+    /// [`Policy::decide`]'s choice alone.
+    #[cfg(test)]
     pub fn choose<'a>(&'a self, flow: &Flow<'_>) -> Choice<'a> {
         self.route(flow).0
     }
 
-    /// [`Policy::choose`]'s choice, and the rule that made it for `byRule`: the matched row's id
-    /// as `rules` lists it, or `unmatched` when no row matched and the flow went to the main
-    /// group.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "route.rs records the rule once r2-fix2 merges")
-    )]
-    pub fn decide<'a>(&'a self, flow: &Flow<'_>) -> (Choice<'a>, &'a str) {
+    /// Where rule mode sends `flow`: its first matching rule's target, the main group when none
+    /// matches; with `blockQuic`, QUIC bound for a group is rejected. And the rule that made the
+    /// choice, for `byRule`: the matched row's id as `rules` lists it, or `unmatched` when no row
+    /// matched and the flow went to the main group. The id is shared, so a flow that keeps it
+    /// copies no text.
+    pub fn decide<'a>(&'a self, flow: &Flow<'_>) -> (Choice<'a>, Arc<str>) {
         let (choice, row) = self.route(flow);
         let listed = row.and_then(|i| self.listing.rows.get(i));
-        (choice, listed.map_or("unmatched", |r| r.id.as_str()))
+        let rule = listed.map_or(&*UNMATCHED, |r| &r.id);
+        (choice, Arc::clone(rule))
     }
 
     /// The choice, and the index of the row that matched.

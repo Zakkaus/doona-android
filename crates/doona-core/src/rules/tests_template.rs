@@ -174,7 +174,7 @@ fn a_rule_may_reject_or_name_a_group_and_the_policy_says_so() {
 #[test]
 fn decide_names_the_row_that_chose() {
     let (_, p) = policy(3, Options::default());
-    let ids: Vec<&str> = p.listing().rows.iter().map(|r| r.id.as_str()).collect();
+    let ids: Vec<&str> = p.listing().rows.iter().map(|r| &*r.id).collect();
     let cases = [
         (
             Some("www.netflix.com"),
@@ -194,13 +194,13 @@ fn decide_names_the_row_that_chose() {
     ];
     for (domain, ip, id, choice) in cases {
         let f = flow(domain, ip, 443, Network::Tcp);
-        assert_eq!(p.decide(&f), (choice, id), "{domain:?}");
+        assert_eq!(p.decide(&f), (choice, id.into()), "{domain:?}");
         assert_eq!(p.choose(&f), choice, "{domain:?}");
     }
     // QUIC that blockQuic refuses still names its row.
     let (_, on) = policy(3, Options { block_quic: true });
     let quic = flow(None, ABROAD, 443, Network::Udp);
-    assert_eq!(on.decide(&quic), (Choice::Blocked, ids[4]));
+    assert_eq!(on.decide(&quic), (Choice::Blocked, ids[4].into()));
 }
 
 #[test]
@@ -208,10 +208,16 @@ fn a_flow_no_row_matches_is_unmatched() {
     let groups = [tests::group("Proxy", &["n-1"])];
     let rules = [tests::rule("DOMAIN-SUFFIX", &["ads.example"], "REJECT")];
     let p = Policy::listed("g-Proxy", &groups, &|id| id == "n-1", &rules);
-    let row = p.listing().rows[0].id.as_str();
+    let row = &*p.listing().rows[0].id;
     let tcp = |domain| flow(Some(domain), ABROAD, 443, Network::Tcp);
-    assert_eq!(p.decide(&tcp("x.ads.example")), (Choice::Reject, row));
+    assert_eq!(
+        p.decide(&tcp("x.ads.example")),
+        (Choice::Reject, row.into())
+    );
     let other = tcp("other.example");
-    assert_eq!(p.decide(&other), (Choice::Group("g-Proxy"), "unmatched"));
+    assert_eq!(
+        p.decide(&other),
+        (Choice::Group("g-Proxy"), "unmatched".into())
+    );
     assert_eq!(p.choose(&other), Choice::Group("g-Proxy"));
 }

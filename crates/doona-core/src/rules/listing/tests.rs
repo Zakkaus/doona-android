@@ -12,7 +12,7 @@ fn listed(rules: &[RuleSpec]) -> Listing {
 }
 
 fn ids(listing: &Listing) -> Vec<&str> {
-    listing.rows.iter().map(|r| r.id.as_str()).collect()
+    listing.rows.iter().map(|r| &*r.id).collect()
 }
 
 #[test]
@@ -91,7 +91,7 @@ fn a_page_is_bounded_by_the_offset_the_limit_and_the_end() {
     let page = listing.page(5, 3);
     assert_eq!((page.total, page.rows.len()), (7, 2));
     assert_eq!((page.rows[0].index, page.rows[1].index), (5, 6));
-    assert_eq!(page.rows[0].id, listing.rows[5].id);
+    assert_eq!(page.rows[0].id, *listing.rows[5].id);
     assert!(listing.page(7, 3).rows.is_empty());
     assert!(listing.page(u32::MAX, 500).rows.is_empty());
     assert_eq!(listing.page(0, 3).rules_revision, listing.revision);

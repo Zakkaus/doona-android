@@ -6,6 +6,7 @@
 use super::{Kind, RuleSet, RuleSpec, Skip, Target};
 use crate::dto::{RuleRow, Rules, TargetKind};
 use std::collections::HashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// The rows of one source, as compiled.
@@ -19,7 +20,8 @@ pub(crate) struct Listing {
 /// One row: what the source says, and what of it was not compiled.
 #[derive(Debug)]
 pub(crate) struct Listed {
-    pub id: String,
+    /// Shared with the meters of the flows the row routes, so a flow copies no text.
+    pub id: Arc<str>,
     pub kind: Kind,
     pub values: Vec<String>,
     pub target: Target,
@@ -43,7 +45,7 @@ impl Listing {
                 *occurrence += 1;
                 let skipped = compiled.map_or(0, |set| set.rows()[i].skipped);
                 Listed {
-                    id: format!("r-{:016x}", first_bits(id, 8)),
+                    id: format!("r-{:016x}", first_bits(id, 8)).into(),
                     kind: spec.kind.clone(),
                     values: spec.values.clone(),
                     target: spec.target.clone(),
@@ -52,7 +54,7 @@ impl Listing {
                 }
             })
             .collect();
-        let ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
+        let ids: Vec<&str> = rows.iter().map(|r| &*r.id).collect();
         let revision = first_bits(Uuid::new_v5(&namespace(), ids.join("\n").as_bytes()), 6);
         Listing { rows, revision }
     }
@@ -82,7 +84,7 @@ impl Listed {
             Target::Group(id) => (id.as_str(), TargetKind::Group),
         };
         RuleRow {
-            id: self.id.clone(),
+            id: self.id.to_string(),
             index,
             kind: kind_name(&self.kind).to_owned(),
             sample: self.values.first().cloned(),

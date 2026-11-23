@@ -114,10 +114,6 @@ impl Meters {
     }
 
     /// The meter of the flows `rule` sends to `target`, made on first use. Once per flow.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "route.rs records the rule once r2-fix2 merges")
-    )]
     pub fn get_ruled(&self, target: &str, rule: &str) -> Arc<Meter> {
         self.find(target, Some(rule))
     }

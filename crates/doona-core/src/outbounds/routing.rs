@@ -53,6 +53,7 @@ impl View<'_> {
         let (group, node) = self.table.selected.get_key_value(group)?;
         Some(Dialer {
             group: Arc::clone(group),
+            rule: None,
             node: Arc::clone(node),
             registry: Arc::clone(published.registries.of(node)?),
             proxies: Arc::clone(&self.outbounds.proxies),

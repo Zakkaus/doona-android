@@ -90,6 +90,8 @@ struct Published {
 pub struct Dialer {
     /// The group the node was chosen through: the flow's outbound.
     pub group: Arc<str>,
+    /// The rule that chose the group in Rule mode, for `byRule`; none in Global and for DNS.
+    pub rule: Option<Arc<str>>,
     pub node: Arc<Node>,
     pub registry: Arc<OutboundRuntimeRegistry>,
     pub proxies: Arc<ProxyRegistry>,

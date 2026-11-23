@@ -85,6 +85,8 @@ pub(crate) enum Inbound {
 #[derive(Clone)]
 pub(crate) enum Route {
     Direct,
+    /// Direct by this rule in Rule mode: as `Direct`, metered under the rule as well.
+    RuleDirect(Arc<str>),
     /// Through this node; what each dial showed on its way to the node goes to the session.
     Proxy(Arc<Dialer>, Arc<Session>),
     /// A rule's reject; Global or a rule's group while it has no node. TCP is reset, datagrams
@@ -115,7 +117,7 @@ impl Route {
         }
         let view = outbounds.view();
         let policy = view.policy();
-        let group = if mode == Mode::Rule {
+        let (group, rule) = if mode == Mode::Rule {
             // A name is looked up only when a rule could match it.
             let name = (policy.wants_names())
                 .then(|| session.names().name(dst.ip()))
@@ -126,16 +128,16 @@ impl Route {
                 port: dst.port(),
                 network,
             };
-            match policy.choose(&flow) {
-                Choice::Direct => return Route::Direct,
-                Choice::Reject => return Route::Refuse,
-                Choice::Blocked => return Route::Blocked,
-                Choice::Group(group) => group,
+            match policy.decide(&flow) {
+                (Choice::Direct, rule) => return Route::RuleDirect(rule),
+                (Choice::Reject, _) => return Route::Refuse,
+                (Choice::Blocked, _) => return Route::Blocked,
+                (Choice::Group(group), rule) => (group, Some(rule)),
             }
         } else {
-            policy.main()
+            (policy.main(), None)
         };
-        Route::through(&view, group, session)
+        Route::through(&view, group, rule, session)
     }
 
     /// The route of DNS the core answers for `session`'s generation: straight out in Direct, else
@@ -151,14 +153,21 @@ impl Route {
             Mode::Direct => Route::Direct,
             Mode::Global | Mode::Rule => {
                 let view = outbounds.view();
-                Route::through(&view, view.policy().main(), session)
+                Route::through(&view, view.policy().main(), None, session)
             }
         }
     }
 
-    /// Through the node `group` selects in `view`; refused while it has none, never direct.
-    fn through(view: &View<'_>, group: &str, session: &Arc<Session>) -> Route {
-        view.dialer(group).map_or(Route::Refuse, |d| {
+    /// Through the node `group` selects in `view`, chosen by `rule` in Rule mode; refused while
+    /// the group has no node, never direct.
+    fn through(
+        view: &View<'_>,
+        group: &str,
+        rule: Option<Arc<str>>,
+        session: &Arc<Session>,
+    ) -> Route {
+        view.dialer(group).map_or(Route::Refuse, |mut d| {
+            d.rule = rule;
             Route::Proxy(Arc::new(d), Arc::clone(session))
         })
     }
@@ -167,11 +176,17 @@ impl Route {
         matches!(self, Route::Refuse | Route::Blocked)
     }
 
-    /// The meter of this route's target in `session`: the group it goes through, or `direct`.
+    /// The meter of this route's target in `session`, the group it goes through or `direct`,
+    /// and of the rule that chose it in Rule mode.
     pub fn meter(&self, session: &Session) -> Option<Arc<Meter>> {
+        let meters = session.meters();
         match self {
-            Route::Direct => Some(session.meters().get(DIRECT)),
-            Route::Proxy(d, _) => Some(session.meters().get(&d.group)),
+            Route::Direct => Some(meters.get(DIRECT)),
+            Route::RuleDirect(rule) => Some(meters.get_ruled(DIRECT, rule)),
+            Route::Proxy(d, _) => Some(match &d.rule {
+                Some(rule) => meters.get_ruled(&d.group, rule),
+                None => meters.get(&d.group),
+            }),
             Route::Refuse | Route::Blocked => None,
         }
     }
@@ -180,7 +195,7 @@ impl Route {
     /// QUIC falls back to TCP.
     pub fn carries_udp(&self) -> bool {
         match self {
-            Route::Direct => true,
+            Route::Direct | Route::RuleDirect(_) => true,
             Route::Proxy(d, _) => d.supports_udp(),
             Route::Refuse | Route::Blocked => false,
         }
@@ -188,7 +203,7 @@ impl Route {
 
     pub async fn connect(&self, dst: SocketAddr) -> io::Result<Upstream> {
         match self {
-            Route::Direct => {
+            Route::Direct | Route::RuleDirect(_) => {
                 let s = within(TcpStream::connect(dst)).await??;
                 // The app's own segments arrive already sized; Nagle would only add delay.
                 s.set_nodelay(true)?;
@@ -214,7 +229,7 @@ impl Route {
     /// An upstream that exchanges datagrams with `dst` only.
     pub async fn bind_udp(&self, dst: SocketAddr) -> io::Result<UdpUpstream> {
         match self {
-            Route::Direct => {
+            Route::Direct | Route::RuleDirect(_) => {
                 let any: SocketAddr = match dst {
                     SocketAddr::V4(_) => (Ipv4Addr::UNSPECIFIED, 0).into(),
                     SocketAddr::V6(_) => (Ipv6Addr::UNSPECIFIED, 0).into(),
