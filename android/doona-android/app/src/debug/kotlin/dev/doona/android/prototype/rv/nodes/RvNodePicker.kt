@@ -88,6 +88,7 @@ import dev.doona.android.prototype.rv.RvMotion
 import dev.doona.android.prototype.rv.RvNotice
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
+import dev.doona.android.prototype.rv.RvRowEnd
 import dev.doona.android.prototype.rv.RvSearchField
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
@@ -315,11 +316,10 @@ private fun NodeRow(node: RvNode, label: String, current: Boolean, order: Int, o
     }
 }
 
-/** The row's latency and change, then the info mark that opens the node's page. */
+/** The row's latency and change, then the info mark that opens the node's page, on the latency's line ([RvRowEnd]). */
 @Composable
 private fun NodeTrailing(node: RvNode, order: Int, details: String, onDetail: (String) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RvLatencyChange(node.latencyMs, node.changeMs, order = order, node = node.id)
+    RvRowEnd({ RvLatencyChange(node.latencyMs, node.changeMs, order = order, node = node.id) }) {
         // The mark's 48 dp target reaches into the row's padding, so the glyph ends where every trailing ink ends.
         Box(
             Modifier

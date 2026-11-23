@@ -269,6 +269,9 @@ internal object RvPart {
     /** A composite block of the page's column (a pager of tiles, a card and the message under it), measured as one card. */
     const val BLOCK = "rv-block"
     const val ROW = "rv-row"
+
+    /** A busy bar standing in for a row's end while a test runs. */
+    const val BUSY = "rv-busy"
     const val SEGMENTED = "rv-segmented"
 }
 

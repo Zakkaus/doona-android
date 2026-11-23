@@ -55,6 +55,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.math.abs
 
 /**
  * The library's parts at the phone's largest font size (2.0), where a layout fixed for the default size cuts what it
@@ -240,6 +241,98 @@ class RvLargeTextTest {
     }
 
     /**
+     * In every row of those pages whose end goes under its text (item 9), the end starts where the text's last line ends
+     * (no gap between their line boxes, as between title and subtitle), and the info mark of the pull-down picker's rows
+     * sits centred on the end's first line, its figure.
+     */
+    @Test
+    fun endsUnderTheirTextStartRightUnderIt() = largePages { page ->
+        rows().forEach { row ->
+            val figure = underFigure(row) ?: return@forEach
+            val (text, _) = rowTexts(row)
+            val above = text.filter { it.bottom <= figure.top + 1f }.maxOf { it.bottom }
+            assertEquals("page $page: the end at $figure under a line ending at $above", above, figure.top, 1f)
+            marks(row).forEach { assertEquals("page $page: the info mark's middle on the figure at $figure", figure.center.y, it.center.y, 1f) }
+        }
+    }
+
+    /**
+     * While a test runs at 2.0, the busy bar of an end under its text stands in the middle of the line its figure takes at
+     * rest, and the row's info mark with it (item 9; the bar hung in the middle of the latency's two lines, 80 px under
+     * the text).
+     */
+    @Test
+    fun busyBarsStandOnTheirFiguresLine() {
+        rvAnimatorScale(0f)
+        var testing by mutableStateOf(false)
+        largePages({ testing }) { page ->
+            testing = false
+            compose.waitForIdle()
+            val figures = rows().map { row -> underFigure(row)?.let { it.center.y - top(row) } }
+            testing = true
+            compose.waitForIdle()
+            rows().zip(figures).forEach { (row, figure) ->
+                if (figure == null) return@forEach
+                val bars = descendants(row).filter { it.config.getOrNull(SemanticsProperties.TestTag) == RvPart.BUSY }.map { centreY(it) - top(row) }
+                // A page whose own state runs no test here (策略 inside its pull) shows no bar.
+                if (bars.isEmpty()) return@forEach
+                assertTrue("page $page: no busy bar on the figure's line at $figure: $bars", bars.any { abs(it - figure) <= 1f })
+                marks(row).forEach { assertEquals("page $page: the info mark's middle on the bar's line", figure, it.center.y - top(row), 1f) }
+            }
+        }
+    }
+
+    /**
+     * At 1.0, while a test runs, the pull-down picker's names are whole on one line beside the busy bar, as they were
+     * before the rows kept their latency's room (item 9: `Hong Kong 02 IPLC`, `Hong Kong 05 IEPL`).
+     */
+    @Test
+    fun pickerNamesKeepOneLineWhileTesting() {
+        rvAnimatorScale(0f)
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                CompositionLocalProvider(LocalRvTesting provides true) {
+                    RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {})
+                }
+            }
+        }
+        val lines = RvData.nodes.map { it.name }.distinct().flatMap { name -> compose.onAllNodes(shows(name), useUnmergedTree = true).fetchSemanticsNodes().map { name to layout(it).lineCount } }
+        assertTrue("the picker shows Hong Kong 02 IPLC", lines.any { it.first == "Hong Kong 02 IPLC" })
+        assertEquals("names on more than one line while testing", emptyList<Pair<String, Int>>(), lines.filter { it.second > 1 })
+    }
+
+    private fun rows() = compose.onAllNodes(hasTestTag(RvPart.ROW), useUnmergedTree = true).fetchSemanticsNodes()
+
+    private fun top(node: SemanticsNode) = node.positionInRoot.y
+
+    private fun centreY(node: SemanticsNode) = node.positionInRoot.y + node.size.height / 2f
+
+    /** A row's texts, unclipped, split into its start column's and its ends'. */
+    private fun rowTexts(row: SemanticsNode): Pair<List<Rect>, List<Rect>> {
+        val all = texts(row).map { Rect(it.positionInRoot, it.size.toSize()) }
+        val start = all.minOfOrNull { it.left } ?: return emptyList<Rect>() to emptyList()
+        return all.partition { it.left - start < 1f }
+    }
+
+    /** The row's first end text (its figure: a latency) where it went under the row's text: beside none of its lines, the text's last line above it. */
+    private fun underFigure(row: SemanticsNode): Rect? {
+        val (text, ends) = rowTexts(row)
+        val end = ends.minByOrNull { it.top } ?: return null
+        if (text.any { it.top < end.bottom - 1f && end.top < it.bottom - 1f }) return null
+        val above = text.filter { it.bottom <= end.top + 1f }
+        return end.takeIf { above.isNotEmpty() }
+    }
+
+    /** The row's info marks (the pull-down picker's), unclipped. */
+    private fun marks(row: SemanticsNode): List<Rect> {
+        val details = rvText(R.string.rv_nodes_details)
+        return descendants(row).filter { it.config.getOrNull(SemanticsProperties.ContentDescription)?.contains(details) == true }
+            .map { Rect(it.positionInRoot, it.size.toSize()) }
+    }
+
+    private fun descendants(node: SemanticsNode): List<SemanticsNode> = node.children.flatMap { listOf(it) + descendants(it) }
+
+    /**
      * A settings row (A4): at 2.0 its end control centres on the title's first line, with a subtitle under the title and
      * with a title of two lines, as at 1.0; the glyph at its start shares that line.
      */
@@ -307,7 +400,7 @@ class RvLargeTextTest {
         names.flatMap { name -> compose.onAllNodes(shows(name), useUnmergedTree = true).fetchSemanticsNodes().map { name to it.size } }
 
     /** Runs [check] on each page the r12 panels flagged, at 2.0, one after another in one composition. */
-    private fun largePages(check: (Int) -> Unit) {
+    private fun largePages(testing: () -> Boolean = { false }, check: (Int) -> Unit) {
         val connection = RvPolicyData.connection
         val pages: List<@Composable () -> Unit> = listOf(
             { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) },
@@ -319,7 +412,7 @@ class RvLargeTextTest {
             { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}) },
         )
         var page by mutableStateOf(0)
-        large { pages[page]() }
+        large { CompositionLocalProvider(LocalRvTesting provides testing(), pages[page]) }
         pages.indices.forEach {
             page = it
             compose.waitForIdle()
