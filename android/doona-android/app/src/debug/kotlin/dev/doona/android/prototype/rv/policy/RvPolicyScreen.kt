@@ -33,6 +33,7 @@ import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvControlCard
 import dev.doona.android.prototype.rv.RvControlRow
+import dev.doona.android.prototype.rv.RvEmptyState
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvGlassButton
@@ -86,9 +87,16 @@ internal class RvPolicyRoutes(
  * picker); the groups, each with how it picks and the node it uses (a row pushes its page); the rules in order with
  * today's bytes, as Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
  * the node everything goes through, so under the mode the page is the node picker itself; 直連 shows the mode alone.
+ * With no subscription there is nothing to route: [noSubscription], when set, puts the empty state with 新增訂閱 (which
+ * runs it) in place of the cards, as 活動 does; the bar and the nav stay.
  */
 @Composable
-internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes = RvPolicyRoutes()) {
+internal fun RvPolicyScreen(
+    state: RvPolicyState,
+    onChange: (RvPolicyState) -> Unit,
+    routes: RvPolicyRoutes = RvPolicyRoutes(),
+    noSubscription: (() -> Unit)? = null,
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val title = stringResource(R.string.nav_policies)
@@ -110,15 +118,24 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
         RvTabHeader(insets)
         // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
         RvGutter {
-            ModeCard(state.mode) { onChange(state.copy(mode = it)) }
-            if (state.mode == RvRouteMode.Rule) {
-                MainCard(state.group(RvPolicyData.main), routes.mainNode)
-                GroupsCard(state, routes.group)
-                RulesCard(routes.rules)
-                OptionsCard(state, onChange, routes)
+            if (noSubscription != null) {
+                RvEmptyState(
+                    stringResource(R.string.rv_empty_subscription),
+                    stringResource(R.string.rv_empty_subscription_line),
+                    stringResource(R.string.rv_add_subscription),
+                    noSubscription,
+                )
+            } else {
+                ModeCard(state.mode) { onChange(state.copy(mode = it)) }
+                if (state.mode == RvRouteMode.Rule) {
+                    MainCard(state.group(RvPolicyData.main), routes.mainNode)
+                    GroupsCard(state, routes.group)
+                    RulesCard(routes.rules)
+                    OptionsCard(state, onChange, routes)
+                }
             }
         }
-        if (state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
+        if (noSubscription == null && state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
         // The last card clears the floating nav, as on 設定.
         Spacer(Modifier.height(rvNavClearance(insets)))
     }

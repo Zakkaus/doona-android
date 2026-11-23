@@ -32,14 +32,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.prototype.rv.LocalRvTesting
+import dev.doona.android.prototype.rv.LocalRvTestingNodes
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChartSize
 import dev.doona.android.prototype.rv.RvDelta
+import dev.doona.android.prototype.rv.RvEmptyState
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
+import dev.doona.android.prototype.rv.RvLatencyChange
 import dev.doona.android.prototype.rv.RvLatencyText
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRangePill
@@ -85,7 +89,9 @@ internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit) 
  * headed by its 訂閱 row (use against quota, end date, what is left); under 地區 it is a country, headed by the same row
  * with the country's flag, its name and how many nodes it has. Each card shows its first [ROWS] and the current node
  * wherever it falls, then 查看全部 opens the rest in place. A tap on a node picks it ([onPick]), and the check moves.
- * Under 穩定 a row's second trailing line is how many of its kept tests answered, where its change is otherwise.
+ * Under 穩定 a row's second trailing line is how many of its kept tests answered, where its change is otherwise. While a
+ * latency test of every node, or of one node, runs ([LocalRvTesting], [LocalRvTestingNodes]) the row's end is the pull-down
+ * picker's: a busy bar in place of the latency and what is under it ([RvLatencyChange]).
  */
 @Composable
 internal fun RvNodeGroups(groups: List<RvNodeGroup>, currentId: String, sort: RvNodeSort, onPick: (String) -> Unit) {
@@ -124,6 +130,7 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
     val inUse = stringResource(R.string.rv_nodes_in_use)
     val pick = Modifier.selectable(current, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton) { onPick(node.id) }
     val steady = stringResource(R.string.rv_nodes_stability, node.answered, node.history.size)
+    val testing = LocalRvTesting.current || node.id in LocalRvTestingNodes.current
     val second: (@Composable () -> Unit)? = if (sort == RvNodeSort.Stability) {
         { RvText(steady, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) }
     } else {
@@ -134,8 +141,9 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
         node.name,
         node.protocol + SEPARATOR + stringResource(node.place.label),
         if (current) pick.semantics { stateDescription = inUse } else pick,
-        titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
-        subtitleEnd = second,
+        titleEnd = if (testing) null else ({ RvLatencyText(node.latencyMs, node.timedOut) }),
+        subtitleEnd = if (testing) null else second,
+        trailing = if (testing) ({ RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, node = node.id) }) else null,
     )
 }
 
@@ -146,6 +154,8 @@ private const val ROWS = 8
  * The main node's picker, pushed from 規則's 主節點 card: the back disc and 測試延遲 in the bar, 主節點 as the large title
  * over what the choice does, the search pill and the order, then the node list. A tap picks the node and stays, the
  * check moving to it. The order is the caller's ([sort], [onSort]), so the page keeps its last choice across visits.
+ * With no node (no subscription) the order has nothing to order and the list gives way to the empty state, whose 新增訂閱
+ * runs [onAdd].
  */
 @Composable
 internal fun RvNodePickerPage(
@@ -157,14 +167,27 @@ internal fun RvNodePickerPage(
     onPick: (String) -> Unit,
     onBack: () -> Unit,
     onTest: () -> Unit,
+    onAdd: () -> Unit = {},
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_main_node)
     val test = stringResource(R.string.rv_test_latency)
     val groups = remember(nodes, subscriptions, sort) { rvNodeGroups(nodes, subscriptions, sort) }
     RvScrollPage(title, insets, onBack = onBack, actions = { glass -> RvGlassButton(glass, R.drawable.rv_sym_speed, test, onTest) }) { titleBlock ->
-        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) }, control = { RvNodeListControls(sort, onSort) })
-        RvNodeGroups(groups, currentId, sort, onPick)
+        val controls: (@Composable () -> Unit)? = if (nodes.isEmpty()) null else ({ RvNodeListControls(sort, onSort) })
+        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) }, control = controls)
+        if (nodes.isEmpty()) {
+            RvGutter {
+                RvEmptyState(
+                    stringResource(R.string.rv_empty_subscription),
+                    stringResource(R.string.rv_empty_subscription_line),
+                    stringResource(R.string.rv_add_subscription),
+                    onAdd,
+                )
+            }
+        } else {
+            RvNodeGroups(groups, currentId, sort, onPick)
+        }
         Spacer(Modifier.height(RvSpace.cardGap))
         Spacer(Modifier.windowInsetsBottomHeight(insets))
     }

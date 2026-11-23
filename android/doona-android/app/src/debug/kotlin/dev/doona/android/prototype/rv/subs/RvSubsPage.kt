@@ -10,17 +10,22 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.LocalRvUpdating
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBanner
+import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvConfirmSheet
+import dev.doona.android.prototype.rv.RvEmptyState
+import dev.doona.android.prototype.rv.RvGlass
 import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
@@ -31,6 +36,7 @@ import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvProgress
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.data.RvData
@@ -60,21 +66,28 @@ internal class RvSubsActions(
  * 訂閱: a pushed page with the large title and 更新所有訂閱 in the bar. A failed update shows the banner first, with 重試.
  * Each subscription is a card: its row (name, node count and last update, chevron to its page), then what it has used
  * of its quota and when it ends over the progress bar. A long press on a card opens 更新, 編輯 and 刪除; 刪除 asks in
- * the confirm sheet. 新增訂閱 floats at the bottom.
+ * the confirm sheet. 新增訂閱 floats at the bottom. With no subscription there is nothing to update or to float over: the
+ * bar's 更新所有訂閱 and the floating 新增訂閱 give way to the empty state, which carries the one 新增訂閱.
  */
 @Composable
 internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_subscriptions)
-    RvScrollPage(
-        title,
-        insets,
-        onBack = actions.back,
-        actions = { RvGlassButton(it, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) },
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) },
-    ) { titleBlock ->
+    val empty = state.subscriptions.isEmpty()
+    val updateAll: (@Composable (RvGlass) -> Unit)? =
+        if (empty) null else ({ RvGlassButton(it, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) })
+    val add: (@Composable () -> Unit)? = if (empty) null else ({ RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) })
+    RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter {
+            if (empty) {
+                RvEmptyState(
+                    stringResource(R.string.rv_empty_subscription),
+                    stringResource(R.string.rv_empty_subscription_line),
+                    stringResource(R.string.rv_add_subscription),
+                    actions.add,
+                )
+            }
             state.subscriptions.firstOrNull { it.id == state.failedId }?.let { FailedBanner(it) { actions.update(it.id) } }
             state.subscriptions.forEach { SubscriptionCard(it, actions) }
         }
@@ -102,13 +115,25 @@ internal fun FailedBanner(sub: RvSubscription, onRetry: () -> Unit) {
     )
 }
 
+/** A subscription: its row, with a busy bar before the chevron while it updates ([LocalRvUpdating], as the node picker's row), then its use. */
 @Composable
 private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions) {
     val menu = rvSubscriptionMenu(onUpdate = { actions.update(sub.id) }, onEdit = { actions.open(sub.id) }, onDelete = { actions.delete(sub.id) })
+    val updating = sub.id in LocalRvUpdating.current
     RvCard {
         RvLongPressMenu(menu, onClick = { actions.open(sub.id) }) { press ->
             Column(press) {
-                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, rvNodesUpdated(sub)) { RvChevron() }
+                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, rvNodesUpdated(sub)) {
+                    if (updating) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RvBusy(Modifier.width(RvSize.busy))
+                            Spacer(Modifier.width(RvSpace.trailingGap))
+                            RvChevron()
+                        }
+                    } else {
+                        RvChevron()
+                    }
+                }
                 Usage(sub)
             }
         }

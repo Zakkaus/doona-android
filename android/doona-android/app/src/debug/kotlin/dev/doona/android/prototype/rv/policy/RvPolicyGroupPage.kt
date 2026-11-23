@@ -25,6 +25,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.LocalRvTesting
+import dev.doona.android.prototype.rv.LocalRvTestingNodes
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
@@ -33,6 +35,7 @@ import dev.doona.android.prototype.rv.RvDelta
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvInline
+import dev.doona.android.prototype.rv.RvLatencyChange
 import dev.doona.android.prototype.rv.RvLatencyText
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvPrimaryButton
@@ -100,12 +103,17 @@ private fun NodesCard(group: RvPolicyGroup, onSelect: (String) -> Unit) {
     }
 }
 
-/** A node as 節點 lists it; a selector's row picks it, and the chosen row carries the check badge (and 自動 in url-test). */
+/**
+ * A node as 節點 lists it; a selector's row picks it, and the chosen row carries the check badge (and 自動 in url-test).
+ * While a latency test of every node, or of this node, runs ([LocalRvTesting], [LocalRvTestingNodes]) its end is the node
+ * picker's: a busy bar in place of the latency and its change ([RvLatencyChange]).
+ */
 @Composable
 private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Unit) {
     val chosen = node.id == group.selectedId
     val auto = group.kind == RvGroupKind.Auto
     val picked = stringResource(R.string.rv_nodes_in_use)
+    val testing = LocalRvTesting.current || node.id in LocalRvTestingNodes.current
     val pick = if (auto) {
         if (chosen) Modifier.semantics { stateDescription = picked } else Modifier
     } else {
@@ -116,8 +124,9 @@ private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Un
         node.name,
         listOfNotNull(stringResource(R.string.rv_policy_auto).takeIf { chosen && auto }, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
         pick,
-        titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
-        subtitleEnd = node.changeMs?.let { { RvDelta(it) } },
+        titleEnd = if (testing) null else ({ RvLatencyText(node.latencyMs, node.timedOut) }),
+        subtitleEnd = if (testing) null else node.changeMs?.let { { RvDelta(it) } },
+        trailing = if (testing) ({ RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, node = node.id) }) else null,
     )
 }
 

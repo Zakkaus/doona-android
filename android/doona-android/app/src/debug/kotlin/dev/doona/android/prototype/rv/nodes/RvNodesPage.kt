@@ -35,6 +35,7 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
+import dev.doona.android.prototype.rv.RvEmptyState
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
@@ -66,23 +67,44 @@ import dev.doona.android.prototype.rv.rvSystemScheme
  * as 'Your trips' (the world map with every country that has a node filled); then 全部節點 as 'All crypto' rows, one
  * card per part of the world, each node's latency over its change since the test before, five rows and then 查看全部. The
  * node in use carries the check badge on its flag wherever it is listed; a tap on a node opens its page and never
- * switches to it (Addendum A). The line under the title says that the node chosen here is the main node (item 24).
+ * switches to it (Addendum A). The line under the title says that the node chosen here is the main node (item 24). With no
+ * node (no subscription) the chips and the cards give way to the empty state, whose 新增訂閱 runs [onAdd].
  */
 @Composable
-internal fun RvNodesPage(state: RvNodesPageState, onBack: () -> Unit, onFilter: () -> Unit, onOpen: (String) -> Unit, onAllNodes: () -> Unit) {
+internal fun RvNodesPage(
+    state: RvNodesPageState,
+    onBack: () -> Unit,
+    onFilter: () -> Unit,
+    onOpen: (String) -> Unit,
+    onAllNodes: () -> Unit,
+    onAdd: () -> Unit = {},
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }
     val title = stringResource(R.string.rv_nodes_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         // The pull-down from 活動 picks the main node; groups with their own choice open from 活動's rule rows (item 24).
-        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) }, control = { Chips(onFilter) })
-        RvGutter {
-            TopCard(state.top(steadiest), state.currentId, steadiest, { steadiest = it }, onOpen, onAllNodes)
-            MapCard(state)
-        }
-        RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
-        RvGutter {
-            for ((region, nodes) in state.byRegion()) RegionCard(region, nodes, state.currentId, onOpen)
+        val empty = state.nodes.isEmpty()
+        val chips: (@Composable () -> Unit)? = if (empty) null else ({ Chips(onFilter) })
+        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) }, control = chips)
+        if (empty) {
+            RvGutter {
+                RvEmptyState(
+                    stringResource(R.string.rv_empty_subscription),
+                    stringResource(R.string.rv_empty_subscription_line),
+                    stringResource(R.string.rv_add_subscription),
+                    onAdd,
+                )
+            }
+        } else {
+            RvGutter {
+                TopCard(state.top(steadiest), state.currentId, steadiest, { steadiest = it }, onOpen, onAllNodes)
+                MapCard(state)
+            }
+            RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
+            RvGutter {
+                for ((region, nodes) in state.byRegion()) RegionCard(region, nodes, state.currentId, onOpen)
+            }
         }
         Spacer(Modifier.height(RvSpace.cardGap))
         Spacer(Modifier.windowInsetsBottomHeight(insets))
