@@ -18,11 +18,12 @@ internal enum class RvTemplatePolicy(@StringRes val label: Int, @DrawableRes val
 }
 
 /**
- * A group a template declares (doona `templates.ts` `GroupSpec`): its [name] in the file, its [label] (the comment the
- * template writes over it; none for a group the file already had), how it picks, and a region's flag.
+ * A group a template declares (doona `templates.ts` `GroupSpec`): its [name] in the file, its [label] (doona
+ * `templateText`: the title every page gives it, and the comment a template writes over it), how it picks, and a
+ * region's flag.
  */
 @Immutable
-internal class RvTemplateGroup(val name: String, @StringRes val label: Int?, val policy: RvTemplatePolicy, val flag: String? = null)
+internal class RvTemplateGroup(val name: String, @StringRes val label: Int, val policy: RvTemplatePolicy, val flag: String? = null)
 
 /** A template on the configuration side: the row it shows and the groups it declares (doona `templates[id].groups`). */
 @Immutable
@@ -61,7 +62,8 @@ internal class RvTemplateApply(
  * default options.
  */
 internal object RvConfigTemplateData {
-    val defaultProxy = RvTemplateGroup("proxy", null, RvTemplatePolicy.Score)
+    /** doona's `defaultGroup`, written without a comment into a file with no group; titled 代理 as doona's `proxy`. */
+    val defaultProxy = RvTemplateGroup("proxy", R.string.rv_template_group_proxy, RvTemplatePolicy.Score)
 
     private val proxy = RvTemplateGroup("proxy", R.string.rv_template_group_proxy, RvTemplatePolicy.Select)
     private val auto = RvTemplateGroup("auto", R.string.rv_template_group_auto, RvTemplatePolicy.Score)

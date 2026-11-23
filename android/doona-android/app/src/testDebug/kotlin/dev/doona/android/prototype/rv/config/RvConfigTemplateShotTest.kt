@@ -21,6 +21,7 @@ import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.rvScrollBy
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.Assert.assertEquals
@@ -35,7 +36,8 @@ import org.robolectric.annotation.GraphicsMode
  * doona's templates on the configuration side (Round 2 item 2), samples only: choosing 依地區分流 for a new
  * configuration, with its region and service groups (`proto-rv-config-template-new-*`), and 依服務分流 applied over
  * 繞過中國大陸 through the diff (`proto-rv-config-template-diff-*`). Light and dark hold the whole page; fs115 and fs200
- * the first screen.
+ * the first screen, and the new configuration's page scrolled to its end (`proto-rv-config-template-new-end-*`), where
+ * the last row stands clear of the floating 建立設定檔.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -57,6 +59,12 @@ class RvConfigTemplateShotTest {
 
     @Test
     fun newFs200() = compose.rvShot("config-template-new", dark = false, fontScale = RV_FS200) { New() }
+
+    @Test
+    fun newEndFs115() = compose.rvShot("config-template-new-end", dark = false, fontScale = RV_FS115, before = { rvScrollBy(TO_THE_END_DP) }) { New() }
+
+    @Test
+    fun newEndFs200() = compose.rvShot("config-template-new-end", dark = false, fontScale = RV_FS200, before = { rvScrollBy(TO_THE_END_DP) }) { New() }
 
     @Test
     @Config(qualifiers = WHOLE_DIFF)
@@ -125,6 +133,9 @@ class RvConfigTemplateShotTest {
     private companion object {
         const val WHOLE_NEW = "+h2454dp"
         const val WHOLE_DIFF = "+h2454dp"
+
+        /** Farther than the page at fs200 scrolls; the scroll stops at the end. */
+        const val TO_THE_END_DP = 10_000f
         const val APPLE = "Apple"
 
         /** The page keeps a title's words and last letters together with word joiners. */

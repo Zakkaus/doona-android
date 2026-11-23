@@ -85,7 +85,7 @@ internal fun RvConfigTemplatePage(
  * 檢視變更 before a template replaces the routing (doona's template dialog, drawn as the configuration's diff page): the
  * base revision under the large title; the template before and after (策略's 範本 row, so a long pair wraps under its
  * title rather than pushing a stat's label out) and the rules it adds and removes; the groups it
- * adds, each under the label it writes, and those it reuses as the files declare them; then the file's diff, a tap
+ * adds and those it reuses, each titled by its label over the change, its name in the file and how it picks; then the file's diff, a tap
  * opening the file at that line, and the line that only new connections follow it. 套用 floats over the scrim.
  */
 @Composable
@@ -148,14 +148,14 @@ private fun OptionRow(@DrawableRes icon: Int, title: String, subtitle: String?, 
 }
 
 /**
- * A template's group: a region's flag or the glyph of how it picks; its label (the comment the template writes) over
- * [change], its name in the file and how it picks. A group without a label (a file's own) shows its name as its title.
+ * A template's group: a region's flag or the glyph of how it picks, titled by its label over how it picks. On the diff
+ * page the line starts with [change] and the group's name in the file, which doona's apply dialog alone shows.
  */
 @Composable
 private fun GroupRow(group: RvTemplateGroup, change: String?) {
-    val title = group.label?.let { stringResource(it) } ?: group.name
-    val line = rvConfigLine(listOfNotNull(change, group.name.takeIf { group.label != null }, stringResource(group.policy.label)))
-    RvRow({ group.flag?.let { RvFlag(it, RvSize.rowDisc) } ?: RvIconDisc(group.policy.glyph) }, title, line)
+    val named = change?.let { listOf(it, group.name) }.orEmpty()
+    val line = rvConfigLine(named + stringResource(group.policy.label))
+    RvRow({ group.flag?.let { RvFlag(it, RvSize.rowDisc) } ?: RvIconDisc(group.policy.glyph) }, stringResource(group.label), line)
 }
 
 /** What 綜合評分 does, in doona's words, under the groups; its words, and its last one with them, stay whole. */
