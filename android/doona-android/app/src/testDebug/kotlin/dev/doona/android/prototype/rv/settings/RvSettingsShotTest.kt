@@ -1,11 +1,14 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextLayoutResult
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
@@ -29,7 +32,8 @@ import org.robolectric.annotation.GraphicsMode
  * one long frame (goldens `proto-rv-settings-light`, `-dark`, `-fs115` and `-fs200`), and the 主題 page it opens
  * (`proto-rv-settings-theme-light` and `-dark`), and the DNS picker of 進階 (`proto-rv-settings-dns-*`); and that
  * 進階's 回報問題 row opens the report page, and the 依 App and licences rows theirs; and that its top is the hero (the
- * owner's S1), with its title and no search capsule.
+ * owner's S1), with its title and no search capsule, and its round actions as far under the title as Revolut's
+ * Security hero sets them.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -63,6 +67,24 @@ class RvSettingsShotTest {
         compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Settings() } }
         compose.onNode(hasText(rvText(R.string.hub_settings)) and isHeading()).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_search_nodes)).assertDoesNotExist()
+    }
+
+    /**
+     * The round actions sit [RvSettingsSpace.titleToActions] under the title's line box, so their discs fall as far
+     * under the title's baseline as Revolut's Security hero puts them (revolut-08), within [BASELINE_NEAR]; S1's 24 dp
+     * left 30.5.
+     */
+    @Test
+    fun theActionsSitUnderTheTitleAsRevolutsSecurityHero() {
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Settings() } }
+        val title = compose.onNode(hasText(rvText(R.string.hub_settings)) and isHeading())
+        val box = title.getUnclippedBoundsInRoot()
+        val layouts = mutableListOf<TextLayoutResult>()
+        title.fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+        val baseline = box.top + with(compose.density) { layouts.single().firstBaseline.toDp() }
+        val disc = compose.onNodeWithText(rvText(R.string.rv_settings_export_diagnostics)).getUnclippedBoundsInRoot().top
+        assertEquals("line box to disc", RvSettingsSpace.titleToActions.value, (disc - box.bottom).value, NEAR)
+        assertEquals("baseline to disc", REVOLUT_BASELINE_TO_DISC, (disc - baseline).value, BASELINE_NEAR)
     }
 
     @Test
@@ -121,8 +143,14 @@ class RvSettingsShotTest {
          * As tall as the whole 設定 page, at each font size, so its end shows as the phone shows it: the last card 28 dp
          * above the bottom navigation.
          */
-        const val LONG_PAGE = "+h1582dp"
-        const val LONG_PAGE_FS115 = "+h1605dp"
-        const val LONG_PAGE_FS200 = "+h2008dp"
+        const val LONG_PAGE = "+h1598dp"
+        const val LONG_PAGE_FS115 = "+h1621dp"
+        const val LONG_PAGE_FS200 = "+h2024dp"
+
+        const val NEAR = 0.5f
+
+        /** revolut-08 (Security): the title's baseline (row 674) to the discs' top (row 743), 69 px at 1.46 px/dp. */
+        const val REVOLUT_BASELINE_TO_DISC = 47f
+        const val BASELINE_NEAR = 2f
     }
 }
