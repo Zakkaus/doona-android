@@ -1,6 +1,8 @@
 package dev.doona.android.prototype.rv
 
+import android.icu.text.BreakIterator
 import java.lang.Character.UnicodeScript
+import java.util.Locale
 
 /**
  * Line-break control for the text of a row or a banner that wraps in a column of a few characters (a large font size),
@@ -32,6 +34,28 @@ internal fun rvKeepRuns(text: String): String = buildString(text.length + text.l
         }
         before = point
         i += Character.charCount(point)
+    }
+}
+
+/**
+ * [text] with the letters of each word held together, the words as ICU's dictionary finds them in Han, kana or Hangul
+ * text (中國|大陸|網站|直接|連線): a line then breaks between two words. [rvKeepRuns] holds a whole run instead, which
+ * is better while the run fits the line; a run as long as a sentence ("中國大陸網站直接連線" at a large font size) no
+ * longer fits, and the platform then breaks it at any character. Latin words already break only at spaces.
+ */
+internal fun rvKeepWords(text: String, locale: Locale = Locale.CHINESE): String = buildString(text.length * 2) {
+    val words = BreakIterator.getWordInstance(locale).apply { setText(text) }
+    var start = words.first()
+    var end = words.next()
+    while (end != BreakIterator.DONE) {
+        var before = -1
+        text.substring(start, end).codePoints().forEach { point ->
+            if (isCjk(before) && isCjk(point)) append(WORD_JOINER)
+            appendCodePoint(point)
+            before = point
+        }
+        start = end
+        end = words.next()
     }
 }
 

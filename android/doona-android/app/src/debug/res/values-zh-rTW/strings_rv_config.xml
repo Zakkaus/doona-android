@@ -54,4 +54,19 @@
     <string name="rv_config_still_in_use">第 %1$d 版仍在使用。</string>
     <string name="rv_config_escape_title">引入的檔案在匯入範圍外</string>
     <string name="rv_config_edit_source">編輯原始碼</string>
+    <string name="rv_template_global">全域代理</string>
+    <string name="rv_template_global_line">區網以外的流量都經由代理</string>
+    <string name="rv_template_single">單一策略組</string>
+    <string name="rv_template_single_line">代理流量都經由同一個策略組</string>
+    <string name="rv_template_by_service_line">Telegram、Apple 與國外媒體各用一個策略組</string>
+    <string name="rv_template_more">更多範本</string>
+    <string name="rv_template_options">選項</string>
+    <string name="rv_template_nm_direct">NetworkManager 直連</string>
+    <string name="rv_template_group_proxy">代理</string>
+    <string name="rv_template_group_auto">自動選擇</string>
+    <string name="rv_template_group_media">國外媒體</string>
+    <string name="rv_template_group_bahamut">巴哈姆特</string>
+    <string name="rv_template_group_cn">回國節點</string>
+    <string name="rv_config_create">建立設定檔</string>
+    <string name="rv_config_kind_note">%1$s：%2$s</string>
 </resources>
