@@ -66,13 +66,6 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
     RvSectionTitle(title, modifier, first = first)
 }
 
-/** A group's explanation under its card, in secondary text, on the page's grid as the section titles (spacing audit row 5). */
-@Composable
-internal fun RvSettingsFooter(text: String, modifier: Modifier = Modifier) {
-    val pad = Modifier.padding(top = RvSettingsSpace.footerAbove).testTag(RvPart.FOOTER)
-    RvSettingsText(text, Rv.type.tileCaption, modifier.then(pad), color = Rv.colors.textSecondary, maxLines = FOOTER_LINES)
-}
-
 /**
  * A row of a card: a 24 dp glyph, a title over an optional subtitle, and trailing content, 58 dp tall with one line and
  * 82 with a subtitle, as [RvRow]; a subtitle that wraps makes it taller. The text block centres in that height, and the
@@ -161,4 +154,3 @@ internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -
 
 private const val TITLE_LINES = 2
 private const val SUBTITLE_LINES = 2
-private const val FOOTER_LINES = 3

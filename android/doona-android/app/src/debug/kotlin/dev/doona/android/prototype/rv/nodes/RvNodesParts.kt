@@ -20,17 +20,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAlpha
 import dev.doona.android.prototype.rv.RvGlyph
-import dev.doona.android.prototype.rv.RvInter
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
@@ -61,13 +57,6 @@ internal object RvNodesSize {
     val ctaCompanion = 56.dp
     val ctaGap = 8.dp
     val ctaGlyph = 24.dp
-}
-
-/** The pages' own type steps, set in Inter or Noto as [RvText] does. */
-internal object RvNodesType {
-    /** The name under a 'Top movers' flag and its latency. */
-    val topName = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp)
-    val topValue = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp, fontFeatureSettings = "tnum")
 }
 
 /** A latency's colour: the fixed good, fair and slow hues. */

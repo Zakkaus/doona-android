@@ -133,8 +133,9 @@ private fun TopNode(node: RvNode, current: Boolean, onOpen: (String) -> Unit, mo
     ) {
         RvFlag(node.place.name, RvNodesSize.topFlag, current = current)
         Spacer(Modifier.height(RvNodesSize.topLabelGap))
-        RvText(node.short, RvNodesType.topName, align = TextAlign.Center)
-        RvText(latencyText(node.latencyMs), RvNodesType.topValue, color = latencyColor(node.latencyMs), align = TextAlign.Center)
+        // A node's code keeps its own figures: Inter's tabular figures widen the hyphen of `hk-01`.
+        RvText(node.short, Rv.type.pill.copy(fontFeatureSettings = null), align = TextAlign.Center)
+        RvText(latencyText(node.latencyMs), Rv.type.pill, color = latencyColor(node.latencyMs), align = TextAlign.Center)
     }
 }
 

@@ -44,7 +44,6 @@ import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
-import dev.doona.android.prototype.rv.settings.RvSettingsSpace
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvSampleAppearance
@@ -342,7 +341,7 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
             (RvPart.CARD to RvPart.CARD) to RvSpace.cardGap,
             (RvPart.CARD to RvPart.SECTION) to RvSpace.sectionAbove,
             (RvPart.CARD to RvPart.CONTROL) to RvSpace.controlGap,
-            (RvPart.CARD to RvPart.FOOTER) to RvSettingsSpace.footerAbove,
+            (RvPart.CARD to RvPart.FOOTER) to RvSpace.footnoteAbove,
             (RvPart.FOOTER to RvPart.SECTION) to RvSpace.sectionAbove,
             // A footer ends its group; a card with no section title over it starts the next as a section title would.
             (RvPart.FOOTER to RvPart.CARD) to RvSpace.sectionAbove,

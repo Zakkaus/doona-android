@@ -16,9 +16,6 @@ internal object RvSettingsSpace {
     val margin = 16.dp
     val cardGap = 16.dp
 
-    /** A group footer sits this far under its card, its text on the margin as the section titles (spacing audit row 5). */
-    val footerAbove = 8.dp
-
     /** Start and end padding of a row, and from its glyph to its text. */
     val rowInset = 16.dp
     val glyphGap = 16.dp

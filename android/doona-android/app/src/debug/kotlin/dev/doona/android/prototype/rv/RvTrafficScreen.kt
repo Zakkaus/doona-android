@@ -89,14 +89,14 @@ internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack:
 }
 
 /**
- * The rate as the detail figure (measured §10.1: 33 sp with its decimals, the unit 22 sp), then when it was: now, or the
- * scrubbed second's time [at].
+ * The rate as a chart card's figure (Revolut's Analytics figure, measured §10.2), then when it was: now, or the scrubbed
+ * second's time [at].
  */
 @Composable
 private fun Hero(rate: RvAmount, at: String?) {
     // Each second's live rate cross-fades in; a scrubbed second follows the finger at once.
     val fade = if (at == null) Rv.motion.tween<Float>(RvMotion.FADE_MS) else snap()
-    Crossfade(rate.number to rate.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvFigureText(RvFigure(number, unit), Rv.type.detailFigure, Rv.type.detailUnit) }
+    Crossfade(rate.number to rate.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvFigureText(RvFigure(number, unit), Rv.type.cardValue, Rv.type.cardUnit) }
     Spacer(Modifier.height(RvSpace.subGap))
     RvText(at ?: stringResource(R.string.rv_now), Rv.type.sub, color = Rv.colors.textSecondary)
 }

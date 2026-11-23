@@ -43,6 +43,7 @@ class DoonaType {
     val section = TypeScale.section.style()
     val statLabel = TypeScale.statLabel.style()
     val stat = TypeScale.stat.style(tabular = true)
+    val button = TypeScale.button.style()
     val largeTitle = TypeScale.largeTitle.style()
     val barTitle = TypeScale.barTitle.style()
     val navLabel = TypeScale.navLabel.style()

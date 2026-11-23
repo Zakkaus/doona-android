@@ -527,7 +527,7 @@ internal fun RvBanner(
 internal fun RvEmptyState(title: String, line: String, action: String, onAction: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(vertical = RvSpace.chartGap), horizontalAlignment = Alignment.CenterHorizontally) {
         RvText(title, Rv.type.rowTitle, align = TextAlign.Center, maxLines = BANNER_TITLE_LINES)
-        Spacer(Modifier.height(RvSpace.tight / 2))
+        Spacer(Modifier.height(RvSpace.emptyLine))
         RvText(line, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center, maxLines = BANNER_REASON_LINES)
         Spacer(Modifier.height(RvSpace.chartGap))
         RvPrimaryButton(action, onAction)
@@ -549,6 +549,17 @@ internal fun RvEmptyCaption(title: String, caption: String, modifier: Modifier =
     }
 }
 
+/**
+ * The one footnote: what a group of cards means, under its last card in secondary text at the row subtitle's step,
+ * [RvSpace.footnoteAbove] under it and on the gutter as the section titles, three lines at most. 13/18 is for chart
+ * captions and legends only.
+ */
+@Composable
+internal fun RvFootnote(text: String, modifier: Modifier = Modifier) {
+    val pad = Modifier.padding(start = RvSpace.gutter, top = RvSpace.footnoteAbove, end = RvSpace.gutter).testTag(RvPart.FOOTER)
+    RvText(text, Rv.type.rowSub, modifier.then(pad), color = Rv.colors.textSecondary, maxLines = FOOTNOTE_LINES)
+}
+
 @Composable
 internal fun RvGutter(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap), content = content)
@@ -559,3 +570,4 @@ internal const val RV_NO_VALUE = "—"
 /** A banner's or an empty state's title wraps to two lines at most, and its reason, line or caption to three. */
 private const val BANNER_TITLE_LINES = 2
 private const val BANNER_REASON_LINES = 3
+private const val FOOTNOTE_LINES = 3

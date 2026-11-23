@@ -60,9 +60,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
@@ -73,7 +71,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
-import androidx.compose.ui.unit.sp
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
 
@@ -120,9 +117,6 @@ internal object RvControlSize {
     val fieldRing = 1.dp
     val fieldTrailing = 4.dp
 }
-
-/** The primary button's label (§8: 22 sp on a 423 dp screen, 20 sp on ours). */
-private val primaryLabel = TextStyle(fontFamily = RvInter, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp)
 
 /**
  * A filter chip under a pushed page's large title, Revolut's small action button (`Personal ▾`, `This month ▾`): the
@@ -292,7 +286,7 @@ internal fun RvPrimaryButton(
             .clickable(interactionSource = source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
         contentAlignment = Alignment.Center,
-    ) { RvText(label, primaryLabel, color = colors.page, align = TextAlign.Center) }
+    ) { RvText(label, Rv.type.button, color = colors.page, align = TextAlign.Center) }
 }
 
 /**

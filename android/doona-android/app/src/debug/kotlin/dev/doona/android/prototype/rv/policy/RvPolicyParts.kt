@@ -83,18 +83,6 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
     )
 }
 
-/**
- * A note under a card in secondary text, 12 dp below it and starting on the card's content line, 32 dp from the
- * screen's edge, where the settings pages start their footers.
- */
-@Composable
-internal fun RvCardNote(text: String, modifier: Modifier = Modifier) {
-    val inset = RvSpace.gutter + RvSpace.rowPadding
-    RvText(text, Rv.type.rowSub, modifier.padding(start = inset, end = inset, top = RvSpace.sectionBelow), color = Rv.colors.textSecondary, maxLines = NOTE_LINES)
-}
-
-private const val NOTE_LINES = 3
-
 /** Where a rule sends: its group's name, or 直連. */
 @Composable
 internal fun RvPolicyRule.targetName(): String = group?.let { stringResource(it.name) } ?: stringResource(R.string.mode_direct)

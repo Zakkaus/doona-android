@@ -233,8 +233,6 @@ private const val LUMINANCE_FLARE = 0.05f
 internal class RvType {
     val hero = RvTypeScale.hero.style(tabular = true)
     val heroSmall = RvTypeScale.heroSmall.style(tabular = true)
-    val detailFigure = RvTypeScale.detailFigure.style(tabular = true)
-    val detailUnit = RvTypeScale.detailUnit.style()
     val caption = RvTypeScale.caption.style()
     val sub = RvTypeScale.sub.style(tabular = true)
     val rowTitle = RvTypeScale.rowTitle.style()
@@ -254,6 +252,7 @@ internal class RvType {
     val statLabel = RvTypeScale.statLabel.style()
     val stat = RvTypeScale.stat.style(tabular = true)
     val field = RvTypeScale.field.style()
+    val button = RvTypeScale.button.style()
     val largeTitle = RvTypeScale.largeTitle.style()
     val barTitle = RvTypeScale.barTitle.style()
     val navLabel = RvTypeScale.navLabel.style()

@@ -56,6 +56,9 @@ internal object RvSpace {
     val sectionAbove = 24.dp
     val sectionBelow = 12.dp
 
+    /** A footnote ([RvFootnote]) sits this far under its card, on the gutter as the section titles (spacing audit row 5). */
+    val footnoteAbove = 8.dp
+
     /** A card's in-card header row sits this far under the card's top, so the card's padding is the same at both ends. */
     val headerInset = 4.dp
 
@@ -91,6 +94,9 @@ internal object RvSpace {
 
     /** Between a card's lines of text and its progress bar. */
     val barGap = 14.dp
+
+    /** In an empty state ([RvEmptyState]), from its title to its line (revolut-ux3 §4: the subtitle 10 dp below). */
+    val emptyLine = 10.dp
 
     /** In a notice card ([RvBanner]), from its text to its action's pill (revolut-ux3 §3: 16 dp). */
     val noticeToAction = 16.dp
@@ -477,10 +483,6 @@ internal object RvTypeScale {
     val hero = RvTypeStep(44, 53, FontWeight.Bold, display = true)
     val heroSmall = RvTypeStep(32, 40, FontWeight.Bold, display = true)
 
-    /** A detail page's figure (measured §10.1, the coin header): 33 sp with its decimals, the unit 22 sp. */
-    val detailFigure = RvTypeStep(33, 40, FontWeight.Bold, display = true)
-    val detailUnit = RvTypeStep(22, 28, FontWeight.SemiBold, display = true)
-
     /** The hero's caption (measured §5: 17 sp medium), and the line under a figure (17 sp). */
     val caption = RvTypeStep(17, 24, FontWeight.Medium)
     val sub = RvTypeStep(17, 24, FontWeight.Normal)
@@ -496,7 +498,10 @@ internal object RvTypeScale {
     val tileValue = RvTypeStep(24, 30, FontWeight.Bold, display = true)
     val tileUnit = RvTypeStep(15, 20, FontWeight.SemiBold, display = true)
 
-    /** A chart card's figure, after Revolut's Analytics page: the tile's figure when there is no traffic. */
+    /**
+     * A chart card's figure, after Revolut's Analytics page (measured §10.2: the 'Spent' tile's figure, 29 sp bold): the
+     * tile's figure when there is no traffic, and 流量詳情's rate.
+     */
     val cardValue = RvTypeStep(28, 34, FontWeight.Bold, display = true)
     val cardUnit = RvTypeStep(17, 22, FontWeight.SemiBold, display = true)
 
@@ -513,6 +518,9 @@ internal object RvTypeScale {
     /** What a text field holds and its placeholder: the stat value's 19 sp regular (measured §11). */
     val field = RvTypeStep(19, 26, FontWeight.Normal)
     val navLabel = RvTypeStep(15, 18, FontWeight.SemiBold)
+
+    /** A primary button's label (measured §8 and revolut-ux3 §4: 22 sp semibold in the 52 dp pill). */
+    val button = RvTypeStep(22, 28, FontWeight.SemiBold)
 
     /** A pushed page's large title, and the compact one it collapses to beside the back disc (measured §4). */
     val largeTitle = RvTypeStep(32, 38, FontWeight.Bold, display = true)

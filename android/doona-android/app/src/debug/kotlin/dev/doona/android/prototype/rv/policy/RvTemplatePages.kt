@@ -23,6 +23,7 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAlpha
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
@@ -63,7 +64,7 @@ internal fun RvTemplatePage(
         RvGutter {
             RvCard { RvTemplateData.all.forEach { TemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
         }
-        RvCardNote(stringResource(R.string.rv_template_note))
+        RvFootnote(stringResource(R.string.rv_template_note))
     }
 }
 
@@ -100,7 +101,7 @@ internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply:
         RvGutter { RvCard { impact.groups.forEach { ImpactGroupRow(it) } } }
         RvSectionTitle(stringResource(R.string.rv_policy_rules), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { RvCard { impact.rules.forEach { ImpactRuleRow(it) } } }
-        RvCardNote(stringResource(R.string.rv_template_new_flows))
+        RvFootnote(stringResource(R.string.rv_template_new_flows))
     }
 }
 

@@ -56,6 +56,9 @@ object TypeScale {
     /** The capsule's label (A07, measured). */
     val navLabel = TypeStep(15, 18, FontWeight.SemiBold)
 
+    /** A primary button's label (measured §8 and revolut-ux3 §4: 22 sp semibold in the 52 dp pill). */
+    val button = TypeStep(22, 28, FontWeight.SemiBold)
+
     /** A pushed page's large title (S8-03), and the compact one it collapses to beside the back disc (measured §4). */
     val largeTitle = TypeStep(32, 38, FontWeight.Bold, display = true)
     val barTitle = TypeStep(20, 26, FontWeight.SemiBold, display = true)
