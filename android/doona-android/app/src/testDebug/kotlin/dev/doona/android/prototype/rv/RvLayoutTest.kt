@@ -34,6 +34,8 @@ import dev.doona.android.prototype.rv.policy.RvRuleEditPage
 import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.policy.RvTemplateImpactPage
 import dev.doona.android.prototype.rv.policy.RvTemplatePage
+import dev.doona.android.prototype.rv.settings.RvDnsScreen
+import dev.doona.android.prototype.rv.settings.RvDnsUpstream
 import dev.doona.android.prototype.rv.settings.RvExport
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvLogLevel
@@ -138,6 +140,9 @@ class RvLayoutTest {
     fun theme() = measure("settings-theme", Top.Title) {
         RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), onBack = {})
     }
+
+    @Test
+    fun dns() = measure("settings-dns", Top.Title) { RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}) }
 
     @Test
     fun report() = measure("report", Top.Title) { RvReportScreen(RvLogLevel.Info, RvExport.Failed, onLevel = {}, onExport = {}, onBack = {}) }

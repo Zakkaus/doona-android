@@ -138,7 +138,7 @@ class RvPolicyShotTest {
 
     private companion object {
         /** Windows as tall as each whole page, so one capture holds it to its end (the tab's last card 28 dp above the nav). */
-        const val WHOLE_RULE = "+h1998dp"
+        const val WHOLE_RULE = "+h1929dp"
         const val WHOLE_SELECT = "+h1136dp"
         const val WHOLE_AUTO = "+h1120dp"
         const val WHOLE_FLOW = "+h1284dp"
