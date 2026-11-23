@@ -1,4 +1,5 @@
 import com.android.build.api.artifact.SingleArtifact
+import java.security.MessageDigest
 import java.util.zip.ZipFile
 
 plugins {
@@ -60,9 +61,13 @@ val ndkDir = androidComponents.sdkComponents.ndkDirectory
 // it, and each feature set in its own below that. Cargo hashes a path package relative to its workspace, so two
 // checkouts sharing one target directory build the same unit: one whose sources are older than the other's last build
 // takes that build as fresh, and cargo-ndk packages the other checkout's library. The checkout's directory is named by
-// its whole path, escaped ('_' as "_u", '/' as "_s") so that no two paths share a name, as two could share a hash.
+// the first 64 bits of the SHA-256 of its canonical path in lowercase hex: 16 characters however long the path, so two
+// checkouts whose paths differ only in case stay apart on a target file system that ignores case.
 val coreTarget = providers.environmentVariable("CARGO_TARGET_DIR").orNull?.let(::File) ?: coreDir.resolve("target")
-val coreCheckout = coreDir.canonicalFile.parentFile.parentFile.path.replace("_", "_u").replace("/", "_s")
+val coreCheckout = MessageDigest.getInstance("SHA-256")
+    .digest(coreDir.canonicalFile.parentFile.parentFile.path.toByteArray())
+    .take(8)
+    .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 val skipCore = providers.gradleProperty("doona.skipCore").orNull.toBoolean()
 
 androidComponents {
