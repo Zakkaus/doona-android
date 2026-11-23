@@ -3,7 +3,7 @@
 //! choices of UrlTest groups, and which groups are testing. It changes only under the core's
 //! catalog lock, in sections that never wait on I/O.
 
-use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member, Mode};
+use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member, Mode, RuleSourceSpec};
 use crate::groups::{self, GroupDef};
 use crate::ids::{self, is_group};
 use crate::outbounds::{Built, Outbounds, Routing};
@@ -76,7 +76,7 @@ pub(crate) fn load(state: &State) -> Model {
         }
         incarnations.insert(s.id.clone(), incarnation());
     }
-    Model::new(nodes, incarnations)
+    Model::sourced(nodes, incarnations, &state.rule_source)
 }
 
 /// The nodes `state.json` keeps for `s`, parsed again: from its structured document when it has
@@ -170,7 +170,8 @@ pub(crate) struct Model {
     /// The incarnation each subscription's nodes belong to; a refresh gives a new one.
     pub incarnations: HashMap<String, u64>,
     pub groups: Vec<GroupDef>,
-    /// What chooses a new flow's group: the main group, and the template's rules over `groups`.
+    /// What chooses a new flow's group: the main group, and the rules of `state.json`'s source
+    /// over `groups`.
     pub policy: Arc<Policy>,
     latency: HashMap<String, Latency>,
     /// The automatic choice of each UrlTest group that has had a successful probe.
@@ -217,7 +218,18 @@ pub(crate) struct Target {
 }
 
 impl Model {
+    /// The groups over `nodes` under the template's default policy.
+    #[cfg(test)]
     pub fn new(nodes: Vec<Arc<NodeEntry>>, incarnations: HashMap<String, u64>) -> Model {
+        Model::sourced(nodes, incarnations, &RuleSourceSpec::default())
+    }
+
+    /// The groups over `nodes`, and the policy of `source` over them.
+    pub fn sourced(
+        nodes: Vec<Arc<NodeEntry>>,
+        incarnations: HashMap<String, u64>,
+        source: &RuleSourceSpec,
+    ) -> Model {
         let index: HashMap<String, usize> = nodes
             .iter()
             .enumerate()
@@ -228,8 +240,7 @@ impl Model {
             .map(|n| (n.id.as_str(), n.name.as_str()))
             .collect();
         let groups = groups::template(&named);
-        let is_node = |id: &str| index.contains_key(id);
-        let policy = Policy::template(&groups, &is_node, template::Options::default());
+        let policy = compile(&groups, &index, source);
         Model {
             nodes,
             index,
@@ -262,7 +273,12 @@ impl Model {
                 }
             }
         }
-        Model::new(nodes, incarnations)
+        Model::sourced(nodes, incarnations, &state.rule_source)
+    }
+
+    /// Compiles `source` over the groups and nodes as they are, for new flows.
+    pub fn set_source(&mut self, source: &RuleSourceSpec) {
+        self.policy = Arc::new(compile(&self.groups, &self.index, source));
     }
 
     /// Whether node `id` is in the catalog.
@@ -320,6 +336,8 @@ impl Model {
     pub fn catalog(&self, state: &State) -> Catalog {
         Catalog {
             mode: state.mode,
+            main_group_id: self.policy.main().to_owned(),
+            rule_source: self.policy.source(),
             groups: self
                 .groups
                 .iter()
@@ -528,6 +546,13 @@ impl Model {
         let &i = self.index.get(member)?;
         Some(Arc::clone(&self.nodes[i].node))
     }
+}
+
+/// The policy of `source` over `groups`, whose nodes `index` holds.
+fn compile(groups: &[GroupDef], index: &HashMap<String, usize>, source: &RuleSourceSpec) -> Policy {
+    let RuleSourceSpec::Template { options, .. } = source;
+    let is_node = |id: &str| index.contains_key(id);
+    Policy::template(groups, &is_node, template::Options::from(*options))
 }
 
 #[cfg(test)]

@@ -95,6 +95,116 @@
         ]
       },
       {
+        "id": "g-Streaming",
+        "name": "Streaming",
+        "kind": "Selector",
+        "selectedId": "g-Proxy",
+        "pinned": false,
+        "testing": false,
+        "members": [
+          {
+            "id": "g-Proxy",
+            "name": "Proxy",
+            "latencyMs": null,
+            "failed": false,
+            "error": null,
+            "isGroup": true,
+            "subscriptionId": null
+          },
+          {
+            "id": "g-Auto",
+            "name": "Auto",
+            "latencyMs": null,
+            "failed": false,
+            "error": null,
+            "isGroup": true,
+            "subscriptionId": null
+          },
+          {
+            "id": "g-HK",
+            "name": "HK",
+            "latencyMs": null,
+            "failed": false,
+            "error": null,
+            "isGroup": true,
+            "subscriptionId": null
+          },
+          {
+            "id": "n-7f3a19c2",
+            "name": "hk-01",
+            "latencyMs": 42,
+            "failed": false,
+            "error": null,
+            "isGroup": false,
+            "subscriptionId": "s1"
+          },
+          {
+            "id": "n-0c41be77",
+            "name": "hk-01",
+            "latencyMs": null,
+            "failed": true,
+            "error": "local_network",
+            "isGroup": false,
+            "subscriptionId": "s1"
+          }
+        ]
+      },
+      {
+        "id": "g-AI",
+        "name": "AI",
+        "kind": "Selector",
+        "selectedId": "g-Proxy",
+        "pinned": false,
+        "testing": false,
+        "members": [
+          {
+            "id": "g-Proxy",
+            "name": "Proxy",
+            "latencyMs": null,
+            "failed": false,
+            "error": null,
+            "isGroup": true,
+            "subscriptionId": null
+          },
+          {
+            "id": "g-Auto",
+            "name": "Auto",
+            "latencyMs": null,
+            "failed": false,
+            "error": null,
+            "isGroup": true,
+            "subscriptionId": null
+          },
+          {
+            "id": "g-HK",
+            "name": "HK",
+            "latencyMs": null,
+            "failed": false,
+            "error": null,
+            "isGroup": true,
+            "subscriptionId": null
+          },
+          {
+            "id": "n-7f3a19c2",
+            "name": "hk-01",
+            "latencyMs": 42,
+            "failed": false,
+            "error": null,
+            "isGroup": false,
+            "subscriptionId": "s1"
+          },
+          {
+            "id": "n-0c41be77",
+            "name": "hk-01",
+            "latencyMs": null,
+            "failed": true,
+            "error": "local_network",
+            "isGroup": false,
+            "subscriptionId": "s1"
+          }
+        ]
+      },
+      {
         "id": "g-HK",
         "name": "HK",
         "kind": "UrlTest",
@@ -135,6 +245,21 @@
         "totalBytes": 107374182400,
         "expiresAtEpochMs": 1798000000000
       }
-    ]
+    ],
+    "mainGroupId": "g-Proxy",
+    "ruleSource": {
+      "kind": "template",
+      "template": "cn-direct",
+      "version": 2,
+      "subscriptionId": null,
+      "options": {
+        "blockQuic": false
+      },
+      "rules": 5,
+      "lines": 23,
+      "skipped": 0,
+      "rulesRevision": 91044300313602,
+      "error": null
+    }
   }
 }

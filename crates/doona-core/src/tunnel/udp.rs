@@ -300,9 +300,9 @@ async fn exchange(o: Opened, upstream: &UdpUpstream, meter: Option<Arc<Meter>>) 
     // When either way last moved a datagram, in milliseconds since `begun`.
     let last = AtomicU64::new(0);
     let moved = || last.store(millis(begun.elapsed()), Relaxed);
-    let sent_meter = meter.clone();
+    // One flow, whichever way its datagrams move.
+    let tally = Tally::new(meter);
     let sending = async {
-        let tally = Tally::new(sent_meter);
         let mut first = upstream.first_send_to();
         while let Some(d) = up.recv().await {
             let began = first.map(Session::begin_dial);
@@ -320,7 +320,6 @@ async fn exchange(o: Opened, upstream: &UdpUpstream, meter: Option<Arc<Meter>>) 
         }
     };
     let receiving = async {
-        let tally = Tally::new(meter);
         let mut own = Vec::new();
         while let Ok(d) = upstream.recv(&mut own, &budget).await {
             // None: over the budget, dropped.
@@ -485,6 +484,27 @@ mod tests {
         assert_eq!(after_first_send(Node(None), true).await, None);
         let unreachable = Node(Some(ErrorKind::NetworkUnreachable));
         assert_eq!(after_first_send(unreachable, false).await, None);
+    }
+
+    /// An association is one flow of its rule, however many ways its datagrams move.
+    #[tokio::test]
+    async fn an_association_counts_one_flow() {
+        let meters = crate::stats::meter::Meters::default();
+        let (events, _wakes) = mpsc::unbounded_channel();
+        let mut nat = Nat::new(Budget::new(QUEUED_BYTES), Duration::from_millis(100));
+        let pair = (
+            "172.19.0.1:40000".parse().unwrap(),
+            "1.1.1.1:53".parse().unwrap(),
+        );
+        let (opened, _) = nat
+            .send(pair, b"first", &events, || Some(Route::Direct))
+            .unwrap();
+        let upstream = UdpUpstream::Proxy(Arc::new(Node(None)), pair.1, None);
+        let meter = meters.get_ruled("g-Proxy", "r-1");
+        exchange(opened, &upstream, Some(meter)).await;
+        let taken = meters.take();
+        assert_eq!(taken.rules, [("r-1".to_owned(), [5, 0, 1])]);
+        assert_eq!(taken.outbounds, [("g-Proxy".to_owned(), 5, 0)]);
     }
 
     #[tokio::test]
