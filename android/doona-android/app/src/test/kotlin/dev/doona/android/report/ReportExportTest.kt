@@ -16,7 +16,9 @@ import dev.doona.android.engine.fake.FakeEngine
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -83,7 +85,7 @@ class ReportExportTest {
     private fun TestScope.export(engine: Engine, now: Long = 1_795_300_200_000): ReportExport {
         val files = CrashFiles(crashDir)
         val dispatcher = StandardTestDispatcher(testScheduler)
-        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), outDir, { app }, this, dispatcher) { now }
+        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, { app }, this, dispatcher) { now }
     }
 
     /** Every entry of the zip, by name. */
@@ -142,7 +144,7 @@ class ReportExportTest {
     }
 
     @Test
-    fun `after the share returns, only the crash files the zip holds are cleared`() = runTest {
+    fun `a pick in the share sheet clears only the crash files the zip holds, once`() = runTest {
         val fake = fixtureEngine()
         val listed = listOf(appCrash(1_795_300_150_000), appCrash(1_795_300_151_000))
         fake.crashes = listed.map { CrashFile(it, crashDir.resolve(it).length()) }
@@ -158,7 +160,12 @@ class ReportExportTest {
         assertNull("the zip is shared once", export.take())
         assertTrue(engine.cleared.isEmpty())
 
+        // The sheet's return comes before its pick, or after: the order is the system's.
         export.shared()
+        advanceUntilIdle()
+        assertTrue("the return alone clears nothing", engine.cleared.isEmpty())
+        export.picked()
+        export.picked()
         advanceUntilIdle()
         assertEquals(listOf(listed to 1_795_300_151_000L), engine.cleared)
         assertEquals(ExportState.Idle, export.export.value)
@@ -177,6 +184,7 @@ class ReportExportTest {
         export.take()
         export.shareFailed()
         export.shared()
+        export.picked()
         advanceUntilIdle()
         assertEquals(ExportState.Failed, export.export.value)
         assertTrue(engine.cleared.isEmpty())
@@ -196,23 +204,10 @@ class ReportExportTest {
         assertTrue("crash/$crash" in zip)
         val diagnostics = Json.parseToJsonElement(zip.getValue(ReportExport.REPORT_ENTRY)).jsonObject["diagnostics"]!!.jsonObject
         assertEquals("Internal", diagnostics["error"]!!.jsonPrimitive.content)
+        export.picked()
         export.shared()
         advanceUntilIdle()
         assertTrue(engine.cleared.isEmpty())
-    }
-
-    @Test
-    fun `a new export replaces the last zip`() = runTest {
-        val engine = fixtureEngine()
-        val first = export(engine, now = 1_795_300_200_000)
-        first.startExport()
-        advanceUntilIdle()
-        first.take()
-        first.shared()
-        val second = export(engine, now = 1_795_300_300_000)
-        second.startExport()
-        advanceUntilIdle()
-        assertEquals(listOf((second.export.value as ExportState.Ready).file.name), outDir.list()!!.toList())
     }
 
     @Test
@@ -221,7 +216,104 @@ class ReportExportTest {
         val files = CrashFiles(crashDir)
         val offer = CrashOffer(files, tmp.root.resolve("seen")).apply { check() }
         assertTrue(offer.offered.value)
-        ReportExport(fixtureEngine(), files, offer, outDir, { app }, this, StandardTestDispatcher(testScheduler)).startExport()
+        ReportExport(fixtureEngine(), files, offer, { outDir }, { app }, this, StandardTestDispatcher(testScheduler)).startExport()
         assertFalse(offer.offered.value)
+    }
+
+    @Test
+    fun `a crash file still empty is left out of the zip and of the clear`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        // Another writer claimed this name and has not renamed its part onto it yet.
+        crashDir.resolve("1795300151000.txt").createNewFile()
+        fake.crashes = listOf(CrashFile(crash, 1), CrashFile("1795300151000.txt", 0))
+        val engine = Recording(fake)
+        val export = export(engine)
+        export.startExport()
+        advanceUntilIdle()
+        val ready = export.take()!!
+        assertEquals(setOf("crash/$crash"), entries(ready.file).keys - ReportExport.REPORT_ENTRY)
+        export.picked()
+        advanceUntilIdle()
+        assertEquals(listOf(crash), engine.cleared.single().first)
+    }
+
+    @Test
+    fun `a zip put back by an activity that ended is shared by the next`() = runTest {
+        val export = export(fixtureEngine())
+        export.startExport()
+        advanceUntilIdle()
+        val ready = export.take()!!
+        export.putBack(ready)
+        assertEquals(ready, export.export.value)
+        assertEquals(ready, export.take())
+    }
+
+    @Test
+    fun `a share sheet closed without a pick clears nothing`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(crash, 1))
+        val engine = Recording(fake)
+        val export = export(engine)
+        export.startExport()
+        advanceUntilIdle()
+        export.take()
+        export.shared()
+        advanceUntilIdle()
+        assertEquals(ExportState.Idle, export.export.value)
+        assertTrue(engine.cleared.isEmpty())
+    }
+
+    @Test
+    fun `two exports in one second get a zip each`() = runTest {
+        val export = export(fixtureEngine())
+        export.startExport()
+        advanceUntilIdle()
+        val first = export.take()!!.file
+        export.shared()
+        export.startExport()
+        advanceUntilIdle()
+        val second = export.take()!!.file
+        assertTrue(first.name, first.name.matches(Regex("doona-report-\\d{8}-\\d{6}\\.zip")))
+        assertEquals(first.name.removeSuffix(".zip") + "-2.zip", second.name)
+    }
+
+    @Test
+    fun `a shared zip stays while the app picked may read it, then goes`() = runTest {
+        val export = export(fixtureEngine())
+        export.startExport()
+        advanceUntilIdle()
+        val zip = export.take()!!.file
+        export.shared()
+        advanceTimeBy(ReportExport.SHARE_GRACE_MS - 1)
+        runCurrent()
+        assertTrue(zip.exists())
+        advanceTimeBy(2)
+        runCurrent()
+        assertFalse(zip.exists())
+    }
+
+    @Test
+    fun `a later run removes the zips an earlier one left, the recent ones not`() = runTest {
+        val now = 1_795_300_200_000
+        outDir.mkdirs()
+        val old = outDir.resolve("doona-report-20261101-000000.zip").apply { writeText("x") }
+        old.setLastModified(now - ReportExport.SHARE_GRACE_MS - 1)
+        val recent = outDir.resolve("doona-report-20261123-000000.zip").apply { writeText("x") }
+        recent.setLastModified(now - 1)
+        export(fixtureEngine(), now).sweep()
+        assertEquals(listOf(recent.name), outDir.list()!!.toList())
+    }
+
+    @Test
+    fun `a zip no share sheet took is deleted`() = runTest {
+        val export = export(fixtureEngine())
+        export.startExport()
+        advanceUntilIdle()
+        val zip = export.take()!!.file
+        export.shareFailed()
+        advanceUntilIdle()
+        assertFalse(zip.exists())
     }
 }

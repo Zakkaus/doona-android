@@ -7,6 +7,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /** The uncaught-exception handler: the crash file it writes holds no message and no foreign frame, and the chain goes on. */
 class CrashCaptureTest {
@@ -40,7 +42,7 @@ class CrashCaptureTest {
         assertTrue(head["location"]!!.startsWith("dev.doona.android.report.CrashCaptureTest."))
         val trace = text.substringAfter("\n\nbacktrace:\n").lines().filter { it.isNotEmpty() }
         assertEquals("exception: java.lang.IllegalStateException", trace.first())
-        assertTrue("cause: java.io.IOException" in trace)
+        assertEquals("the cause is not read", 1, trace.count { !it.startsWith("  at ") })
         assertTrue(trace.filter { it.startsWith("  at ") }.all { it.startsWith("  at dev.doona.") })
         for (leak in listOf("https", "example", "tk_5ecret", "203.0.113.45", "refused", "org.junit", "java.lang.reflect")) {
             assertFalse(leak, leak in text)
@@ -57,12 +59,13 @@ class CrashCaptureTest {
     }
 
     @Test
-    fun `an exception that is its own cause is written once`() {
-        val looped = object : RuntimeException() {
-            override val cause: Throwable get() = this
+    fun `an exception's cause is never asked for`() {
+        // Asking takes the exception's lock (Throwable.getCause is synchronized).
+        val guarded = object : RuntimeException() {
+            override val cause: Throwable get() = error("asked")
         }
-        CrashHandler(files, "v", { _, _ -> }) { false }.uncaughtException(Thread.currentThread(), looped)
-        assertEquals(1, Regex("^(exception|cause): ", RegexOption.MULTILINE).findAll(files.list().single().readText()).count())
+        CrashHandler(files, "v", { _, _ -> }) { false }.uncaughtException(Thread.currentThread(), guarded)
+        assertTrue(files.list().single().readText().contains("\nexception: dev.doona.android.report.CrashCaptureTest"))
     }
 
     @Test
@@ -86,5 +89,20 @@ class CrashCaptureTest {
         } finally {
             Thread.setDefaultUncaughtExceptionHandler(before)
         }
+    }
+
+    @Test
+    fun `the crash goes on while another thread holds the exception`() {
+        val error = leaky()
+        val handed = CountDownLatch(1)
+        val handler = CrashHandler(files, "v", { _, _ -> handed.countDown() }) { false }
+        val crashing = Thread { handler.uncaughtException(Thread.currentThread(), error) }
+        // As a thread that locked the exception and waits for the crashing one to end.
+        synchronized(error) {
+            crashing.start()
+            assertTrue("the handler waited on the exception's lock", handed.await(5, TimeUnit.SECONDS))
+        }
+        crashing.join()
+        assertTrue(files.list().single().readText().contains("exception: java.lang.IllegalStateException"))
     }
 }

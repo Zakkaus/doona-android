@@ -202,9 +202,11 @@ internal class TunnelController(
             try {
                 core.start(it.fd, config)
             } catch (e: IllegalStateException) {
-                // Only the core speaks in codes: it reports its own as the message of this exception.
-                VpnLog.warn("start $g: the core refused with ${e.message}")
-                return Status.Failed(FailureReason.StartFailed, errorCodeOf(e.message.orEmpty()))
+                // Only the core speaks in codes: it reports its own as the message of this exception. The log takes the
+                // code it maps to, never the message itself, which the diagnostic report carries (ARCH D21).
+                val code = errorCodeOf(e.message.orEmpty())
+                VpnLog.warn("start $g: the core refused with ${code.name}")
+                return Status.Failed(FailureReason.StartFailed, code)
             }
         }
         coreRunning = true

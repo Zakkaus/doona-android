@@ -93,4 +93,25 @@ class ReportScreenTest {
         compose.onNodeWithText("doona 先前發生當機").assertDoesNotExist()
         assertEquals(0, reports.exports)
     }
+
+    @Test
+    fun `the crash banner shows on the first-run page too, and says it was shown once`() {
+        val reports = FakeReports(crashOffered = true)
+        compose.setContent {
+            SeedTheme { DoonaApp(FakeEngine(subscriptions = emptyList()), FakeInstalledApps(), onConnect = {}, reports = reports) }
+        }
+        compose.onNodeWithText("doona 先前發生當機").assertExists()
+        compose.waitForIdle()
+        assertEquals(1, reports.crashesShown)
+    }
+
+    @Test
+    fun `a crash offer that is not up is not marked shown`() {
+        val reports = FakeReports(crashOffered = false)
+        compose.setContent {
+            SeedTheme { DoonaApp(FakeEngine(), FakeInstalledApps(), onConnect = {}, reports = reports) }
+        }
+        compose.waitForIdle()
+        assertEquals(0, reports.crashesShown)
+    }
 }

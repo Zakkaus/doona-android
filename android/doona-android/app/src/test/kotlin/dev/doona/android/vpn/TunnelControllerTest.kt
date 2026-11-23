@@ -6,6 +6,7 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
+import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -433,5 +434,15 @@ class TunnelControllerTest {
     private companion object {
         const val SELF = "dev.doona.android"
         const val FIREFOX = "org.mozilla.firefox"
+    }
+
+    @Test
+    fun aRefusalIsLoggedByItsCodeAlone() {
+        core.startError = IllegalStateException("fetch https://sub.example.net/api?token=tk_5ecret failed")
+        start()
+        awaitStatus { it is Status.Failed }
+        val refusal = AppEvents.snapshot().last { "refused" in it.text }.text
+        assertFalse(refusal, "://" in refusal || "tk_5ecret" in refusal)
+        assertTrue(refusal, refusal.endsWith("Internal"))
     }
 }

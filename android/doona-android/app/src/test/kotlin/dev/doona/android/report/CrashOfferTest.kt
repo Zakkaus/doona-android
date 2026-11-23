@@ -6,7 +6,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
-/** A crash is written once and offered once: at the first check after it, never again, whatever the user did. */
+/** A crash is written once and offered until the offer reaches the screen; never again after that, whatever the user did. */
 class CrashOfferTest {
     @get:Rule
     val tmp = TemporaryFolder()
@@ -28,6 +28,7 @@ class CrashOfferTest {
 
         val next = launch()
         assertTrue(next.offered.value)
+        next.shown()
         next.dismiss()
         next.check()
         assertFalse("a second check in the same process offers nothing", next.offered.value)
@@ -36,16 +37,19 @@ class CrashOfferTest {
     }
 
     @Test
-    fun `an offer left unanswered is not made again`() {
+    fun `an offer that was on screen is not made again, answered or not`() {
         crash(1_795_300_150_000)
-        assertTrue(launch().offered.value)
+        val first = launch()
+        assertTrue(first.offered.value)
+        first.shown()
+        first.shown()
         assertFalse(launch().offered.value)
     }
 
     @Test
     fun `a later crash is offered again`() {
         crash(1_795_300_150_000)
-        launch().dismiss()
+        launch().apply { shown() }.dismiss()
         crash(1_795_300_160_000)
         assertTrue(launch().offered.value)
     }
@@ -59,6 +63,14 @@ class CrashOfferTest {
     fun `a crash the core wrote counts like the app's`() {
         dir.mkdirs()
         dir.resolve("1795300150000.txt").writeText("source: core\n")
+        assertTrue(launch().offered.value)
+    }
+
+    @Test
+    fun `an offer that never reached the screen is made again`() {
+        crash(1_795_300_150_000)
+        // The process ends, or the first-run page is up, before the banner is drawn.
+        assertTrue(launch().offered.value)
         assertTrue(launch().offered.value)
     }
 }

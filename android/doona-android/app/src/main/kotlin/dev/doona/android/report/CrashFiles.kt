@@ -6,15 +6,25 @@ import java.io.IOException
 
 /**
  * The crash files the core and the app share, in the core's `dataDir/crash` (core-api.md, `diagnostics`). A file is
- * `<epochMs>.txt`, the number at most [MAX_NUMBER] and above every number a crash file had: above the files present and
- * above the mark the core saves in `.core.mark` when a clear removes them. A file holds at most [MAX_BYTES], and the
- * directory keeps the newest [MAX_FILES]. The core writes its own; the app writes one from its uncaught-exception
- * handler ([CrashCapture]), with [clock] for the name.
+ * `<epochMs>.txt`, the number 13 digits long ([MIN_NUMBER], [MAX_NUMBER]) and above every number a crash file had:
+ * above the files present and above the mark the core saves in `.core.mark` when a clear removes them. A file holds at
+ * most [MAX_BYTES], and the directory keeps the newest [MAX_FILES]. The core writes its own (`crash.rs`); the app writes
+ * one from its uncaught-exception handler ([CrashCapture]), with [clock] for the name. Either may write while the other
+ * does, so both take a name by the same rule: claim it by creating it, which fails when anyone holds it, rename the
+ * finished part onto the claim, then count the files again and remove all but the newest five.
  */
-class CrashFiles(val dir: File, private val clock: () -> Long = System::currentTimeMillis) {
-    /** The crash files present, oldest first. */
+class CrashFiles(locate: () -> File, private val clock: () -> Long = System::currentTimeMillis) {
+    constructor(dir: File, clock: () -> Long = System::currentTimeMillis) : this({ dir }, clock)
+
+    /** The directory, found on first use: the app's directories are made when first asked for, which is disk work. */
+    val dir: File by lazy(locate)
+
+    /**
+     * The crash files present, oldest first. An empty one is not a crash yet: a name another writer claimed and has not
+     * renamed its part onto, or one a write the system ended left behind ([sweep]).
+     */
     fun list(): List<File> = dir.listFiles().orEmpty()
-        .mapNotNull { file -> number(file.name)?.takeIf { file.isFile }?.let { it to file } }
+        .mapNotNull { file -> number(file.name)?.takeIf { file.isFile && file.length() > 0 }?.let { it to file } }
         .sortedBy { it.first }
         .map { it.second }
 
@@ -42,12 +52,14 @@ class CrashFiles(val dir: File, private val clock: () -> Long = System::currentT
 
     /**
      * Saves [text] as a new crash file and returns its name, or null when it could not: the disk refused, or no number
-     * is left. It is written in full under a name no listing reads and then renamed, so a reader never sees part of it.
+     * is left. It is written in full under a name of its own that no listing reads, then renamed onto its claimed name,
+     * so a reader never sees part of it, and two crashes at once never write into one file.
      */
     fun write(text: String): String? {
-        val part = File(dir, PART)
+        var part: File? = null
         return try {
             dir.mkdirs()
+            part = File.createTempFile(PART_PREFIX, PART_SUFFIX, dir)
             FileOutputStream(part).use {
                 it.write(capped(text))
                 it.fd.sync()
@@ -56,21 +68,48 @@ class CrashFiles(val dir: File, private val clock: () -> Long = System::currentT
         } catch (_: IOException) {
             null
         } finally {
-            part.delete()
+            part?.delete()
         }
     }
 
     private fun publish(part: File): String? {
-        val present = list()
-        val mark = maxOf(savedMark(), present.lastOrNull()?.let { number(it.name) } ?: 0)
-        var at = maxOf(clock(), mark + 1)
-        while (at <= MAX_NUMBER && File(dir, "$at.txt").exists()) at++
-        if (at > MAX_NUMBER) return null
-        val name = "$at.txt"
-        if (!part.renameTo(File(dir, name))) return null
-        present.take((present.size + 1 - MAX_FILES).coerceAtLeast(0)).forEach { it.delete() }
-        return name
+        val mark = maxOf(savedMark(), newest())
+        var at = maxOf(clock(), mark + 1, MIN_NUMBER)
+        while (at <= MAX_NUMBER) {
+            val claim = File(dir, "$at.txt")
+            if (claim.createNewFile()) {
+                if (!part.renameTo(claim)) {
+                    claim.delete()
+                    return null
+                }
+                trim()
+                return claim.name
+            }
+            at++
+        }
+        return null
     }
+
+    /** Removes all but the newest [MAX_FILES]; counted after a publish, so a file the core published meanwhile counts. */
+    private fun trim() {
+        val present = list()
+        present.take((present.size - MAX_FILES).coerceAtLeast(0)).forEach { it.delete() }
+    }
+
+    /**
+     * Removes what writes that never finished left, as when the system ended a process during one: the app's and the
+     * core's parts, and names claimed but never filled. Only those older than [olderThanMs], so a write in progress,
+     * in this process or the core's, keeps its own.
+     */
+    fun sweep(olderThanMs: Long = PART_AGE_MS) {
+        val before = clock() - olderThanMs
+        dir.listFiles { file -> file.isPart() || (number(file.name) != null && file.length() == 0L) }
+            .orEmpty()
+            .filter { it.lastModified() < before }
+            .forEach { it.delete() }
+    }
+
+    private fun File.isPart() = name.endsWith(PART_SUFFIX) && (name.startsWith(PART_PREFIX) || name.startsWith(CORE_PART_PREFIX))
 
     /** The mark the core saved with its last clear; 0 when there is none or it cannot be read. */
     private fun savedMark(): Long = try {
@@ -86,8 +125,16 @@ class CrashFiles(val dir: File, private val clock: () -> Long = System::currentT
         /** A 13-digit millisecond time, until the year 2286; the core takes no larger number. */
         const val MAX_NUMBER = 9_999_999_999_999L
 
-        /** The app's file in progress; the core's is `.core.tmp`. */
-        private const val PART = ".app.tmp"
+        /** The smallest 13-digit number, for a clock set before September 2001. */
+        const val MIN_NUMBER = 1_000_000_000_000L
+
+        /** The app's files in progress, `.app-<random>.tmp`; the core's are `.core-<pid>.tmp`. */
+        private const val PART_PREFIX = ".app-"
+        private const val CORE_PART_PREFIX = ".core-"
+        private const val PART_SUFFIX = ".tmp"
+
+        /** A part this old belongs to no write still running: a write takes milliseconds. */
+        private const val PART_AGE_MS = 60_000L
         private const val MARK = ".core.mark"
         private const val DIGITS = 13
 

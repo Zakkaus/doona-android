@@ -26,4 +26,12 @@ class FakeReports(export: ExportState = ExportState.Idle, crashOffered: Boolean 
     override fun dismissCrash() {
         crashOffered.value = false
     }
+
+    /** How often the crash offer reported that it reached the screen. */
+    var crashesShown = 0
+        private set
+
+    override fun crashShown() {
+        crashesShown++
+    }
 }

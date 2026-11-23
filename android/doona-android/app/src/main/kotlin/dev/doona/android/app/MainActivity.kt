@@ -22,7 +22,10 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
 import dev.doona.android.report.ExportState
 import dev.doona.android.report.reportShareIntent
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The only activity. It owns the steps that need an activity: before the engine may connect, the notification
@@ -53,7 +56,10 @@ class MainActivity : ComponentActivity() {
     private val localNetworkPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { container.localNetwork.answered(it) }
 
-    /** The share sheet's only launcher: its return, to this activity or a recreated one, clears what the report holds. */
+    /**
+     * The share sheet's only launcher. Its return, to this activity or a recreated one, says nothing of what the user did
+     * there; a pick reaches the export by the sheet's own callback ([dev.doona.android.report.reportPicks]).
+     */
     private val reportShare =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { container.reports.shared() }
 
@@ -151,15 +157,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Opens the share sheet for the report that is ready, once; nothing is sent unless the user picks an app there. */
+    /**
+     * Opens the share sheet for the report that is ready, once; nothing is sent unless the user picks an app there. The
+     * zip's URI is resolved off the main thread. An activity that ends meanwhile, as on rotation, puts the zip back for
+     * the next one; a sheet that cannot open lets the next export start.
+     */
     private fun shareReport() {
         val ready = container.reports.take() ?: return
-        try {
-            reportShare.launch(reportShareIntent(this, ready.file, getString(R.string.report_share_title)))
-        } catch (_: ActivityNotFoundException) {
-            container.reports.shareFailed()
-        } catch (_: IllegalArgumentException) {
-            container.reports.shareFailed()
+        val title = getString(R.string.report_share_title)
+        lifecycleScope.launch {
+            val sheet = try {
+                withContext(Dispatchers.IO) { reportShareIntent(this@MainActivity, ready.file, title) }
+            } catch (e: CancellationException) {
+                container.reports.putBack(ready)
+                throw e
+            } catch (_: IllegalArgumentException) {
+                // The provider does not serve the file.
+                container.reports.shareFailed()
+                return@launch
+            }
+            try {
+                reportShare.launch(sheet)
+            } catch (_: ActivityNotFoundException) {
+                container.reports.shareFailed()
+            }
         }
     }
 

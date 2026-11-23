@@ -14,11 +14,13 @@ import dev.doona.android.report.CrashFiles
 import dev.doona.android.report.CrashOffer
 import dev.doona.android.report.ReportExport
 import dev.doona.android.report.reportDir
+import dev.doona.android.report.reportPicks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Process-wide objects, created once by [DoonaApplication] (manual dependency injection, ARCH D6). Activities,
@@ -46,20 +48,35 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     /** The subscription import in flight, above every screen that can start one: a slow fetch survives leaving the page. */
     val imports: SubscriptionImports by lazy { SubscriptionImports(uiEngine, uiScope) }
 
-    /** The crash files of the core and the app: the core's `crash/` directory under the data directory it is given. */
-    val crashFiles: CrashFiles by lazy { CrashFiles(File(application.noBackupFilesDir, "crash")) }
+    /**
+     * The crash files of the core and the app: the core's `crash/` directory under the data directory it is given. The
+     * directories are found on first use, off the main thread: asking for one makes it.
+     */
+    val crashFiles: CrashFiles by lazy { CrashFiles({ File(application.noBackupFilesDir, "crash") }) }
 
     /** The report offered after a crash, once per crash; the number it last offered is kept beside the crash files. */
-    val crashOffer: CrashOffer by lazy { CrashOffer(crashFiles, File(application.noBackupFilesDir, "crash-offered")) }
+    val crashOffer: CrashOffer by lazy { CrashOffer(crashFiles) { File(application.noBackupFilesDir, "crash-offered") } }
 
     /** The diagnostic report export, above every screen: a zip being written survives leaving the page. */
     val reports: ReportExport by lazy {
-        ReportExport(engine, crashFiles, crashOffer, reportDir(application), { AppInfo.of(application) }, uiScope, Dispatchers.IO)
+        ReportExport(engine, crashFiles, crashOffer, { reportDir(application) }, { AppInfo.of(application) }, uiScope, Dispatchers.IO)
+            .also { export -> reportPicks(application, export::picked) }
     }
 
-    /** Looks for a crash to offer the report for; the first call in a process reads the disk, later ones do nothing. */
+    private val launched = AtomicBoolean(false)
+
+    /**
+     * Once per process: looks for a crash to offer the report for, and removes what earlier runs left, parts of crash
+     * files and old report zips. Not again for an activity created later, whose share sheet may hold a zip. Reads the
+     * disk on another thread.
+     */
     fun checkCrashes() {
-        uiScope.launch(Dispatchers.IO) { crashOffer.check() }
+        if (!launched.compareAndSet(false, true)) return
+        uiScope.launch(Dispatchers.IO) {
+            crashOffer.check()
+            crashFiles.sweep()
+            reports.sweep()
+        }
     }
 
     /** Below Android 17 no permission guards the local network. */

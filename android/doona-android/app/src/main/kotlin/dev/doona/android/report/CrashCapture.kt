@@ -2,6 +2,7 @@ package dev.doona.android.report
 
 import android.os.Looper
 import android.os.Process
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.system.exitProcess
 
 /**
@@ -18,7 +19,12 @@ object CrashCapture {
     }
 }
 
-/** Saves the crash, then calls [previous]; nothing it does on the way can keep [previous] from being called. */
+/**
+ * Saves the crash, then calls [previous]; nothing it does on the way can keep [previous] from being called. It reads the
+ * exception's class only, which takes no lock. Its frames are read on another thread, waited for at most [FRAMES_WAIT_MS]:
+ * reading an exception's stack or cause takes the exception's lock, and a thread that holds it may be waiting for this
+ * one to end, so reading here could keep the crash from ever being handed on.
+ */
 internal class CrashHandler(
     private val files: CrashFiles,
     private val version: String,
@@ -27,7 +33,8 @@ internal class CrashHandler(
 ) : Thread.UncaughtExceptionHandler {
     override fun uncaughtException(thread: Thread, error: Throwable) {
         try {
-            files.write(crashText(error, isMain(thread), version, System.currentTimeMillis()))
+            val frames = ownFramesWithin(error, FRAMES_WAIT_MS)
+            files.write(crashText(error.javaClass.name, frames, isMain(thread), version, System.currentTimeMillis()))
         } catch (_: Throwable) {
             // The process is ending: a crash file that could not be written is lost, the exception still goes on.
         }
@@ -41,6 +48,7 @@ internal class CrashHandler(
 
     private companion object {
         const val CRASH_EXIT = 10
+        const val FRAMES_WAIT_MS = 200L
     }
 }
 
@@ -49,45 +57,47 @@ internal const val CRASH_MESSAGE = "uncaught exception"
 
 /** Frames of the app's own code; R8 keeps the package (`proguard-rules.pro`), so a release build's frames match too. */
 private const val OWN = "dev.doona."
-private const val MAX_CAUSES = 8
 private const val MAX_FRAMES = 64
 
 /**
- * A crash file's text for [error], in the core's format: `key: value` lines, a blank line, then the frames. It states the
- * app's [version], whether the [main] thread threw (a thread's name can be anything, a URL included), the first frame
- * of the app's own code, a fixed message, then for the exception and each cause its class and the app's own frames as
- * `class.method:line`. Never an exception's message, nor a frame of other code: either may quote a URL, an address or a
+ * A crash file's text for an exception of class [type], in the core's format: `key: value` lines, a blank line, then the
+ * frames. It states the app's [version], whether the [main] thread threw (a thread's name can be anything, a URL
+ * included), the first of [frames], a fixed message, then the class and [frames] as `class.method:line`; null [frames]
+ * could not be read. Never an exception's message, nor a frame of other code: either may quote a URL, an address or a
  * credential (ARCH D21).
  */
-internal fun crashText(error: Throwable, main: Boolean, version: String, atEpochMs: Long): String = buildString {
-    val chain = causes(error)
+internal fun crashText(type: String, frames: List<String>?, main: Boolean, version: String, atEpochMs: Long): String = buildString {
     appendLine("source: app")
     appendLine("atEpochMs: $atEpochMs")
     appendLine("version: $version")
     appendLine("thread: ${if (main) "main" else "other"}")
-    appendLine("location: ${chain.firstNotNullOfOrNull { ownFrames(it).firstOrNull() }?.let(::frame) ?: "unknown"}")
+    appendLine("location: ${frames?.firstOrNull() ?: "unknown"}")
     appendLine("message: $CRASH_MESSAGE")
     appendLine()
     appendLine("backtrace:")
-    chain.forEachIndexed { i, t ->
-        appendLine("${if (i == 0) "exception" else "cause"}: ${t.javaClass.name}")
-        ownFrames(t).forEach { appendLine("  at ${frame(it)}") }
-    }
+    appendLine("exception: $type")
+    frames?.forEach { appendLine("  at $it") }
 }
 
-/** [error] and its causes, outermost first, each once. */
-private fun causes(error: Throwable): List<Throwable> {
-    val seen = mutableListOf<Throwable>()
-    var next: Throwable? = error
-    while (next != null && seen.size < MAX_CAUSES) {
-        val current: Throwable = next
-        if (seen.any { it === current }) break
-        seen += current
-        next = current.cause
+/**
+ * The app's own frames of [error], at most [MAX_FRAMES], read on a thread of their own; null when they were not read
+ * within [waitMs] or could not be (no thread to read them on). That thread hands any failure to nobody: it must not
+ * reach the default handler, which is the one asking.
+ */
+internal fun ownFramesWithin(error: Throwable, waitMs: Long): List<String>? {
+    val frames = AtomicReference<List<String>?>()
+    return try {
+        val reader = Thread({
+            frames.set(error.stackTrace.filter { it.className.startsWith(OWN) }.take(MAX_FRAMES).map(::frame))
+        }, "doona-crash-frames")
+        reader.isDaemon = true
+        reader.uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { _, _ -> }
+        reader.start()
+        reader.join(waitMs)
+        frames.get()
+    } catch (_: Throwable) {
+        null
     }
-    return seen
 }
-
-private fun ownFrames(t: Throwable): List<StackTraceElement> = t.stackTrace.filter { it.className.startsWith(OWN) }.take(MAX_FRAMES)
 
 private fun frame(e: StackTraceElement) = "${e.className}.${e.methodName}:${e.lineNumber}"

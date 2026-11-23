@@ -2,12 +2,6 @@ package dev.doona.android.feature.activity
 
 import android.text.format.Formatter
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -18,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
@@ -51,46 +43,26 @@ import dev.doona.android.designsystem.components.DoonaSparkline
 import dev.doona.android.designsystem.components.DoonaSwitchRow
 import dev.doona.android.designsystem.components.DoonaTileCaption
 import dev.doona.android.designsystem.components.DoonaTileRow
-import dev.doona.android.designsystem.theme.DoonaMotion
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.messageRes
-import dev.doona.android.report.Reports
+import dev.doona.android.feature.report.CrashBanner
+import dev.doona.android.feature.report.CrashNotice
 import dev.doona.android.icons.R as IconsR
 
 /**
  * The 活動 entry: builds the ViewModel and collects its state while the screen is started. Connecting (which needs
- * the activity for consent) and opening a group (navigation) go straight to the shell's callbacks.
+ * the activity for consent) and opening a group (navigation) go straight to the shell's callbacks; the crash offer
+ * comes from outside the first-run gate, which shows it on either page.
  */
 @Composable
-fun ActivityRoute(engine: Engine, reports: Reports, onConnect: () -> Unit, onOpenGroup: (String) -> Unit, onOpenReport: () -> Unit) {
+fun ActivityRoute(engine: Engine, crash: CrashNotice, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
     val viewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.factory(engine))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val crashed by reports.crashOffered.collectAsStateWithLifecycle()
-    // The export goes on in the 回報問題 page, which shows its progress and a failure.
-    val crash = CrashNotice(
-        shown = crashed,
-        onExport = {
-            reports.startExport()
-            onOpenReport()
-        },
-        onDismiss = reports::dismissCrash,
-    )
     ActivityScreen(state, viewModel::onAction, onConnect, onOpenGroup, crash)
-}
-
-/**
- * The offer to report a crash ([Reports.crashOffered]), [shown] while one waits: [onExport] exports the report,
- * [onDismiss] takes the offer down.
- */
-@Immutable
-class CrashNotice(val shown: Boolean, val onExport: () -> Unit, val onDismiss: () -> Unit) {
-    companion object {
-        val None = CrashNotice(shown = false, onExport = {}, onDismiss = {})
-    }
 }
 
 /**
@@ -209,25 +181,5 @@ private fun RowScope.RateTile(@DrawableRes icon: Int, seriesColor: Color, captio
     DoonaMetricTile(icon, { DoonaTileCaption(caption) }, Modifier.weight(1f).fillMaxHeight()) {
         DoonaMetricValue(value)
         if (series.isNotEmpty()) DoonaSparkline(series, seriesColor, Modifier.fillMaxWidth())
-    }
-}
-
-/** The crash offer at the top of the page; it comes and goes with the popup's motion, so the cards below slide rather than jump. */
-@Composable
-private fun CrashBanner(crash: CrashNotice) {
-    val motion = tween<Float>(DoonaMotion.POPUP_MS, easing = DoonaMotion.emphasizedDecelerate)
-    val size = tween<IntSize>(DoonaMotion.POPUP_MS, easing = DoonaMotion.emphasizedDecelerate)
-    AnimatedVisibility(
-        visible = crash.shown,
-        enter = fadeIn(motion) + expandVertically(size),
-        exit = fadeOut(motion) + shrinkVertically(size),
-    ) {
-        DoonaErrorBanner(
-            stringResource(R.string.report_crash_banner),
-            stringResource(R.string.ui_dismiss),
-            onDismiss = crash.onDismiss,
-            actionLabel = stringResource(R.string.report_crash_action),
-            onAction = crash.onExport,
-        )
     }
 }

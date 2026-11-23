@@ -23,6 +23,7 @@ import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
 import dev.doona.android.feature.report.ReportRoute
+import dev.doona.android.feature.report.crashNotice
 import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
@@ -72,8 +73,10 @@ fun DoonaApp(
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider = entryProvider {
                 entry<ActivityKey> {
-                    FirstRunGate(engine, imports) {
-                        ActivityRoute(engine, reports, onConnect, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenReport = { backStack.add(ReportKey) })
+                    // Above the first-run gate, so a crash is offered on whichever page the tab shows.
+                    val crash = crashNotice(reports, onOpenReport = { backStack.add(ReportKey) })
+                    FirstRunGate(engine, imports, crash) {
+                        ActivityRoute(engine, crash, onConnect, onOpenGroup = { backStack.add(GroupKey(it)) })
                     }
                 }
                 entry<PoliciesKey> {

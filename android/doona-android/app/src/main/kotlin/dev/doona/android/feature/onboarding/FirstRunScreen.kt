@@ -22,6 +22,8 @@ import dev.doona.android.designsystem.components.DoonaText
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.messageRes
+import dev.doona.android.feature.report.CrashBanner
+import dev.doona.android.feature.report.CrashNotice
 import dev.doona.android.feature.subscriptions.AddFormFields
 import dev.doona.android.feature.subscriptions.AddSubscriptionForm
 import dev.doona.android.feature.subscriptions.SubscriptionImports
@@ -29,15 +31,16 @@ import dev.doona.android.feature.subscriptions.SubscriptionImports
 /**
  * The 活動 tab's content: the progress page until the engine has loaded, the first-run page while there is no
  * subscription and no tunnel is running, and [content], the activity screen, otherwise: from the first subscription
- * on, and for as long as a tunnel runs, so removing the last subscription never hides its status or its switch.
+ * on, and for as long as a tunnel runs, so removing the last subscription never hides its status or its switch. The
+ * first-run page shows the [crash] offer too; [content] is given it by the caller.
  */
 @Composable
-fun FirstRunGate(engine: Engine, imports: SubscriptionImports, content: @Composable () -> Unit) {
+fun FirstRunGate(engine: Engine, imports: SubscriptionImports, crash: CrashNotice, content: @Composable () -> Unit) {
     val viewModel: FirstRunViewModel = viewModel(factory = FirstRunViewModel.factory(engine, imports))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     when {
         !state.ready -> LoadingScreen()
-        state.showsFirstRun -> FirstRunScreen(state, viewModel.fields, viewModel::onAction)
+        state.showsFirstRun -> FirstRunScreen(state, viewModel.fields, viewModel::onAction, crash)
         else -> content()
     }
 }
@@ -58,7 +61,7 @@ fun LoadingScreen() {
  * add one when the core refused it for want of a node, and the failure's own message otherwise.
  */
 @Composable
-fun FirstRunScreen(state: FirstRunUiState, fields: AddFormFields, onAction: (FirstRunAction) -> Unit) {
+fun FirstRunScreen(state: FirstRunUiState, fields: AddFormFields, onAction: (FirstRunAction) -> Unit, crash: CrashNotice = CrashNotice.None) {
     val space = DoonaTheme.spacing
     DoonaPage {
         DoonaPageTitle(stringResource(R.string.hub_activity))
@@ -70,6 +73,7 @@ fun FirstRunScreen(state: FirstRunUiState, fields: AddFormFields, onAction: (Fir
         }
         DoonaGap(space.section)
         Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
+            CrashBanner(crash)
             if (state.noNodes) {
                 DoonaCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(space.cardInset)) { DoonaText(stringResource(R.string.first_no_nodes), style = DoonaTheme.type.body) }
             }
