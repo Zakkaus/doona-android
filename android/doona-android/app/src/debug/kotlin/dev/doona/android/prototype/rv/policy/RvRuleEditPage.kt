@@ -142,10 +142,12 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
         if (draft.needsValue) {
             val problem = draft.problem?.let { stringResource(it) }
             Spacer(Modifier.height(RvSpace.sectionBelow))
+            // The kind chip right above names what the field holds, so it has no label of its own (Addendum 3).
             RvTextField(
                 draft.value,
                 { onChange(draft.copy(value = it.trim())) },
-                stringResource(
+                label = null,
+                name = stringResource(
                     when (draft.kind) {
                         RvMatchKind.Cidr -> R.string.rv_policy_match_cidr
                         RvMatchKind.Keyword -> R.string.rv_policy_match_keyword

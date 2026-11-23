@@ -17,6 +17,8 @@
     <string name="rv_sub_auto_update">Auto-update</string>
     <string name="rv_sub_user_agent">User-Agent</string>
     <string name="rv_sub_user_agent_default">Default</string>
+    <!-- The User-Agent doona sends while a subscription keeps the default; %1$s is the app version. -->
+    <string name="rv_sub_user_agent_value" translatable="false">doona/%1$s (clash.meta; mihomo)</string>
     <string name="rv_sub_section">Subscription</string>
     <string name="rv_sub_name">Name</string>
     <string name="rv_sub_link">Link</string>

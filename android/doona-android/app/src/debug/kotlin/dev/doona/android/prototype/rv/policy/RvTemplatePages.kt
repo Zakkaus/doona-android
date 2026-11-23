@@ -64,7 +64,6 @@ internal fun RvTemplatePage(
         RvGutter {
             RvCard { RvTemplateData.all.forEach { TemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
         }
-        RvFootnote(stringResource(R.string.rv_template_note))
     }
 }
 

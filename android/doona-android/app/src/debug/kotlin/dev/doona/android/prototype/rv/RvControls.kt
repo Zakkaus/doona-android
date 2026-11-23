@@ -315,7 +315,8 @@ internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Mod
 }
 
 /**
- * A single-line text field. The [label] sits over the field in secondary ink; the field is the search pill's shape
+ * A single-line text field. The [label] sits over the field in secondary ink; it is null when the title right above
+ * already names the field, and [name] then names it for a screen reader. The field is the search pill's shape
  * (measured §4) on the segmented control's track, which reads on the page, on a card and in a sheet, holding [value] in
  * 19 sp (the stat value, measured §11) or [placeholder] in secondary ink; under it [supporting] text, or [error] in the
  * error hue, which also marks it for a screen reader; no approved page outlines an error, so the message alone shows
@@ -327,8 +328,9 @@ internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Mod
 internal fun RvTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String,
+    label: String?,
     modifier: Modifier = Modifier,
+    name: String? = null,
     placeholder: String? = null,
     supporting: String? = null,
     error: String? = null,
@@ -348,7 +350,10 @@ internal fun RvTextField(
         modifier
             .fillMaxWidth()
             .graphicsLayer { alpha = if (enabled) 1f else RvAlpha.DISABLED }
-            .semantics { if (error != null) error(error) },
+            .semantics {
+                if (label == null && name != null) contentDescription = name
+                if (error != null) error(error)
+            },
         enabled = enabled,
         textStyle = Rv.type.field.copy(color = colors.text),
         keyboardOptions = keyboard,
@@ -359,8 +364,10 @@ internal fun RvTextField(
         cursorBrush = SolidColor(colors.positive),
         decorationBox = { field ->
             Column {
-                RvText(label, Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = colors.textSecondary)
-                Spacer(Modifier.height(RvSpace.discToLabel))
+                if (label != null) {
+                    RvText(label, Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = colors.textSecondary)
+                    Spacer(Modifier.height(RvSpace.discToLabel))
+                }
                 Row(
                     Modifier
                         .fillMaxWidth()

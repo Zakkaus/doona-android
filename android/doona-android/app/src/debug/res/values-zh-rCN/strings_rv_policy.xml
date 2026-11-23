@@ -73,7 +73,6 @@
     <string name="rv_template_needs_geosite">需 GEOSITE</string>
     <string name="rv_template_in_use">使用中</string>
     <string name="rv_template_review">查看更改</string>
-    <string name="rv_template_note">应用前会先列出更改</string>
     <string name="rv_template_from_to">%1$s → %2$s</string>
     <string name="rv_template_added">添加规则</string>
     <string name="rv_template_changed">更改规则</string>

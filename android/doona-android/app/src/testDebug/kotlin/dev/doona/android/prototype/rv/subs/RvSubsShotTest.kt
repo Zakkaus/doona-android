@@ -16,7 +16,6 @@ import dev.doona.android.prototype.rv.RvActivityScreen
 import dev.doona.android.prototype.rv.RvConfirmContent
 import dev.doona.android.prototype.rv.RvMenuPanel
 import dev.doona.android.prototype.rv.RvSheetLayout
-import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
@@ -164,7 +163,7 @@ class RvSubsShotTest {
         Box(Modifier.fillMaxSize()) {
             Detail()
             Sheet(stringResource(R.string.rv_sub_rename), null, stringResource(R.string.rv_save)) {
-                RvTextField(HARBOR.name, {}, stringResource(R.string.rv_sub_name))
+                RvRenameField(HARBOR.name) {}
             }
         }
     }
@@ -174,7 +173,7 @@ class RvSubsShotTest {
         Box(Modifier.fillMaxSize()) {
             Detail()
             Sheet(stringResource(R.string.rv_sub_user_agent), null, stringResource(R.string.rv_save)) {
-                RvTextField("", {}, stringResource(R.string.rv_sub_user_agent))
+                RvUserAgentField("") {}
             }
         }
     }

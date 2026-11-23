@@ -78,7 +78,7 @@ internal fun RvSubDetail(sub: RvSubscription, state: RvSubDetailState, onChange:
         onConfirm = close,
         onDismiss = close,
         confirmEnabled = state.name.isNotBlank(),
-    ) { RvTextField(state.name, { onChange(state.copy(name = it)) }, stringResource(R.string.rv_sub_name)) }
+    ) { RvRenameField(state.name) { onChange(state.copy(name = it)) } }
     RvConfirmSheet(
         visible = state.sheet == RvSubSheet.UserAgent,
         title = stringResource(R.string.rv_sub_user_agent),
@@ -87,7 +87,7 @@ internal fun RvSubDetail(sub: RvSubscription, state: RvSubDetailState, onChange:
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = close,
         onDismiss = close,
-    ) { RvTextField(state.userAgent, { onChange(state.copy(userAgent = it)) }, stringResource(R.string.rv_sub_user_agent)) }
+    ) { RvUserAgentField(state.userAgent) { onChange(state.copy(userAgent = it)) } }
     RvConfirmSheet(
         visible = state.sheet == RvSubSheet.Delete,
         title = stringResource(R.string.rv_sub_delete_title, sub.name),
@@ -97,6 +97,22 @@ internal fun RvSubDetail(sub: RvSubscription, state: RvSubDetailState, onChange:
         onConfirm = close,
         onDismiss = close,
     )
+}
+
+/** The rename sheet's field: the sheet's title names it, so it has no label of its own (Addendum 3). */
+@Composable
+internal fun RvRenameField(name: String, onName: (String) -> Unit) {
+    RvTextField(name, onName, label = null, name = stringResource(R.string.rv_sub_rename))
+}
+
+/**
+ * The User-Agent sheet's field, named by the sheet's title. Empty while the subscription sends the default, which it
+ * shows as its placeholder: the value doona sends, not a hint.
+ */
+@Composable
+internal fun RvUserAgentField(userAgent: String, onUserAgent: (String) -> Unit) {
+    val default = stringResource(R.string.rv_sub_user_agent_value, stringResource(R.string.rv_settings_version_value))
+    RvTextField(userAgent, onUserAgent, label = null, name = stringResource(R.string.rv_sub_user_agent), placeholder = default)
 }
 
 /** Revolut's Key stats card (measured §11): what the subscription holds and when it was last fetched. */

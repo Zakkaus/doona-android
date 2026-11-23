@@ -81,7 +81,6 @@
     <string name="rv_template_needs_geosite">Needs GEOSITE</string>
     <string name="rv_template_in_use">In use</string>
     <string name="rv_template_review">Review changes</string>
-    <string name="rv_template_note">Changes are listed before anything is applied</string>
     <string name="rv_template_from_to">%1$s → %2$s</string>
     <string name="rv_template_added">Rules added</string>
     <string name="rv_template_changed">Rules changed</string>
