@@ -56,8 +56,8 @@ pub(crate) enum Task {
     Relay,
     /// The core's DNS: the drain begins at accept, so a session that moves nothing for its idle
     /// time is reset whether or not the client sent its FIN; the time spent waiting for the
-    /// resolver before the FIN does not count (see [`Gate::resolving`]). The task ends cleanly once
-    /// it shut the client's side.
+    /// resolver before the FIN counts only past the resolver's own bound (see [`Gate::resolving`]).
+    /// The task ends cleanly once it shut the client's side.
     Dns,
 }
 
@@ -76,8 +76,8 @@ pub(crate) struct Gate {
     /// The flags above and the count of shutdowns, in one word: each change either side makes is
     /// one atomic step, ordered against the other side's.
     word: AtomicU32,
-    /// The gate's clock starts here: `begun`, `moved` and `took` are nanoseconds since, plus one;
-    /// zero is none.
+    /// The gate's clock starts here: `begun`, `moved`, `took` and `bound` are nanoseconds since,
+    /// plus one; zero is none.
     epoch: Instant,
     /// When the drain began: the first FIN either way, or accept.
     begun: AtomicU64,
@@ -87,6 +87,9 @@ pub(crate) struct Gate {
     /// When the driver last saw the flow move: its stack took a byte, or the client's FIN ended a
     /// wait for the resolver. The driver alone writes it.
     took: AtomicU64,
+    /// When the resolver the core's DNS waits for gives up on its own: the wait is not idle until
+    /// then (see [`Gate::resolving`]). The task alone writes it.
+    bound: AtomicU64,
 }
 
 /// The gate as the driver reads it at one instant.
@@ -118,6 +121,7 @@ impl Gate {
             begun: AtomicU64::new(begun),
             moved: AtomicU64::new(0),
             took: AtomicU64::new(0),
+            bound: AtomicU64::new(0),
         }
     }
 
@@ -126,17 +130,24 @@ impl Gate {
         nanos(self.epoch.elapsed()).saturating_add(1)
     }
 
-    /// The deadline on the gate's clock; `None` before the drain begins.
-    fn due(&self) -> Option<u64> {
+    /// The deadline on the gate's clock, with the flags of `word`; `None` before the drain begins.
+    /// While the core's DNS waits for its resolver before the client's FIN, the idle time counts
+    /// from the resolver's bound on.
+    fn due(&self, word: u32) -> Option<u64> {
         let begun = self.begun.load(Acquire);
-        let moved = self.moved.load(Acquire).max(self.took.load(Acquire));
-        (begun != 0).then(|| begun.max(moved).saturating_add(self.idle))
+        if begun == 0 {
+            return None;
+        }
+        let mut last = begun.max(self.moved.load(Acquire).max(self.took.load(Acquire)));
+        if exempt(word) {
+            last = last.max(self.bound.load(Acquire));
+        }
+        Some(last.saturating_add(self.idle))
     }
 
-    /// Whether the deadline has passed at `now`, with the flags of `word`: never while the core's
-    /// DNS waits for its resolver before the client's FIN.
+    /// Whether the deadline has passed at `now`, with the flags of `word`.
     fn past(&self, word: u32, now: u64) -> bool {
-        !exempt(word) && self.due().is_some_and(|due| now >= due)
+        self.due(word).is_some_and(|due| now >= due)
     }
 
     /// The client's FIN, seen now by the driver. The first FIN either way begins the drain and
@@ -171,13 +182,9 @@ impl Gate {
     }
 
     /// When the flow is cut unless a byte moves first, for the driver's timer: `None` before the
-    /// drain begins, and while the core's DNS waits for its resolver before the client's FIN (the
-    /// resolver's answer wakes the driver).
+    /// drain begins. The resolver's end wakes the driver to queue it again, from there.
     pub fn deadline(&self) -> Option<Instant> {
-        if exempt(self.word.load(Acquire)) {
-            return None;
-        }
-        let due = self.due()?;
+        let due = self.due(self.word.load(Acquire))?;
         Some(self.epoch + Duration::from_nanos(due - 1))
     }
 
@@ -249,13 +256,17 @@ impl Gate {
         })
     }
 
-    /// The core's DNS waits for its resolver (`true`), or no longer, as the resolver answered or
-    /// gave up. Before the client's FIN that wait is not idle, however short the drain: the
-    /// resolver's own timeout bounds it (`dns::EXCHANGE` an upstream), and its end counts as
-    /// progress and wakes the driver to queue the deadline from there. From the FIN on it is idle
-    /// time (see [`Gate::fin`]): a session the client closed ends a drain time after it last moved.
-    pub fn resolving(&self, on: bool) {
-        if on {
+    /// The core's DNS waits for its resolver, which gives up on its own within `bound` (`Some`),
+    /// or no longer, as the resolver answered or gave up. Before the client's FIN that wait is not
+    /// idle up to `bound`, however short the drain, and its end counts as progress and wakes the
+    /// driver to queue the deadline from there. The driver's deadline holds without that end: a
+    /// resolver that never returns, as one whose outbound holds its thread, is cut the drain time
+    /// after `bound`. From the FIN on the wait is idle time (see [`Gate::fin`]): a session the
+    /// client closed ends a drain time after it last moved.
+    pub fn resolving(&self, bound: Option<Duration>) {
+        if let Some(bound) = bound {
+            let by = self.now().saturating_add(nanos(bound));
+            self.bound.store(by, Release);
             self.word.fetch_or(RESOLVING, AcqRel);
             return;
         }

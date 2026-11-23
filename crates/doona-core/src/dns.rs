@@ -202,9 +202,9 @@ pub(crate) trait ToClient: AsyncRead + AsyncWrite + Unpin {
     /// can leave; dropped with the chunk if the driver never takes it.
     fn map_with_last_chunk(&mut self, mapping: Mapping);
 
-    /// The session waits for the resolver (`true`), or no longer. Before the client's FIN that wait
-    /// is not idle, however short the drain: [`EXCHANGE`] an upstream bounds it.
-    fn resolving(&mut self, on: bool);
+    /// The session waits for the resolver, which gives up within `bound` (`Some`), or no longer.
+    /// Before the client's FIN that wait is not idle up to `bound`, however short the drain.
+    fn resolving(&mut self, bound: Option<Duration>);
 }
 
 /// Answers the framed queries of one TCP/53 connection in turn until the client closes it. It has
@@ -212,24 +212,27 @@ pub(crate) trait ToClient: AsyncRead + AsyncWrite + Unpin {
 /// or after the client's FIN, and drops what it still holds for the client (see `tunnel/gate.rs`),
 /// so a client that sends neither a query nor its FIN, or never reads, cannot hold the connection
 /// or its buffers. Each byte of a query read or of an answer written counts as progress there, and
-/// the time spent waiting for the resolver before the client's FIN is not idle. What an answer maps goes to `names` with
-/// the answer's last chunk.
+/// before the client's FIN the wait for the resolver is not idle up to the resolver's own bound,
+/// [`EXCHANGE`] an upstream: the driver cuts a resolver that never returns, as one whose outbound
+/// holds its thread, without it. What an answer maps goes to `names` with the answer's last chunk.
 pub(crate) async fn serve_tcp<S: ToClient>(
     io: &mut S,
     upstreams: &[SocketAddr],
     (route, names): (&Route, &Names),
 ) -> io::Result<()> {
+    let tries = u32::try_from(upstreams.len()).unwrap_or(u32::MAX);
+    let bound = EXCHANGE.saturating_mul(tries);
     loop {
         let query = match read_framed(io).await {
             Ok(q) => q,
             Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
             Err(e) => return Err(e),
         };
-        io.resolving(true);
+        io.resolving(Some(bound));
         #[cfg(test)]
         crate::tunnel::pause::at(crate::tunnel::pause::Point::Resolving).await;
         let reply = answer(upstreams, route, &query, Network::Tcp).await;
-        io.resolving(false);
+        io.resolving(None);
         if let Some(a) = reply {
             #[cfg(test)]
             crate::tunnel::pause::at(crate::tunnel::pause::Point::Answered).await;

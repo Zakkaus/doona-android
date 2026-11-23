@@ -29,8 +29,8 @@ impl ToClient for Driven<'_> {
         self.io.map_with_last_chunk(mapping);
     }
 
-    fn resolving(&mut self, on: bool) {
-        self.io.resolving(on);
+    fn resolving(&mut self, bound: Option<Duration>) {
+        self.io.resolving(bound);
     }
 }
 

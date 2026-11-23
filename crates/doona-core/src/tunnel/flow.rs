@@ -227,8 +227,8 @@ impl ToClient for FlowIo {
         self.chan.mapping = Some(mapping);
     }
 
-    fn resolving(&mut self, on: bool) {
-        self.gate.resolving(on);
+    fn resolving(&mut self, bound: Option<Duration>) {
+        self.gate.resolving(bound);
     }
 }
 

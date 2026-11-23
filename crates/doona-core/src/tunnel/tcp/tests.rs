@@ -296,12 +296,13 @@ fn framed(id: u16, name: &str) -> Vec<u8> {
     framed
 }
 
-/// The core's DNS for flow `id`, with no upstream: each query is answered SERVFAIL at once.
+/// The core's DNS for flow `id`, with the two upstreams through a route that refuses them: each
+/// query is answered SERVFAIL at once.
 fn serve(io: FlowIo, id: FlowId, events: Events) -> tokio::task::JoinHandle<()> {
     let session = Arc::new(Session::new(1, std::sync::Weak::new()));
-    let none: Arc<[SocketAddr]> = Arc::from([]);
-    let via = (Route::Direct, session);
-    tokio::spawn(serve_dns(io, id, via, none, events))
+    let upstreams: Arc<[SocketAddr]> = Arc::from(dns::UPSTREAMS);
+    let via = (Route::Refuse, session);
+    tokio::spawn(serve_dns(io, id, via, upstreams, events))
 }
 
 /// The client sends a query and its FIN; the core's DNS answers and ends cleanly, and the driver
@@ -482,7 +483,9 @@ async fn waiting_for_the_resolver_is_idle_from_the_clients_fin_on() {
     let up = ends.up.take().unwrap();
     up.try_send(Bytes::from(framed(7, "example.com"))).unwrap();
     resolving.reached().await;
-    assert_eq!(ends.gate.deadline(), None, "a deadline queued for the wait");
+    let bound = Duration::from_secs(10);
+    let deadline = Some(Instant::now() + bound + drain);
+    assert_eq!(ends.gate.deadline(), deadline, "the wait counts as idle");
     tokio::time::advance(Duration::from_secs(4)).await;
     // What the driver does when it sees the client's FIN.
     let fin = Instant::now();
@@ -494,4 +497,34 @@ async fn waiting_for_the_resolver_is_idle_from_the_clients_fin_on() {
         ends.gate.read().expired,
         "the wait after the FIN is not idle"
     );
+}
+
+/// The resolver never returns, its own timeout included (its write holds its thread in a lock of
+/// the outbound), and the client keeps its side open. The driver cuts the session on its own: the
+/// resolver's bound (5 s for each of the two upstreams), then a drain time, after the query.
+#[tokio::test(start_paused = true)]
+async fn a_resolver_that_never_returns_is_cut_its_bound_and_a_drain_time_after_the_query() {
+    let (_wire, _app, id) = Wire::connected();
+    let (events, _got) = mpsc::unbounded_channel();
+    let waker = Waker::new(Key::Tcp(id), events.clone());
+    let drain = Duration::from_secs(3);
+    let (mut ends, io) = flow::pair(waker, Tally::new(None), drain, Task::Dns);
+    let resolving = pause::hold(pause::Point::Resolving);
+    let _task = serve(io, id, events);
+    let up = ends.up.take().unwrap();
+    up.try_send(Bytes::from(framed(7, "example.com"))).unwrap();
+    resolving.reached().await;
+    let cut = Instant::now() + Duration::from_secs(10) + drain;
+    assert_eq!(
+        ends.gate.deadline(),
+        Some(cut),
+        "no deadline while the resolver works"
+    );
+    tokio::time::advance(cut - Instant::now() - Duration::from_millis(1)).await;
+    assert!(
+        !ends.gate.read().expired,
+        "cut within the resolver's bound and a drain time"
+    );
+    tokio::time::advance(Duration::from_millis(1)).await;
+    assert!(ends.gate.read().expired, "the resolver holds the session");
 }
