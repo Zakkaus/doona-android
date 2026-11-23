@@ -22,7 +22,8 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * What a real engine gives that the sample's dataset never did, on the pages that read it; each light, dark and fs200:
- * 新增訂閱 while the download has no known end (`proto-rv-sub-adding-unknown-*`: the busy bar, no byte count); a node
+ * 新增訂閱 while the download has no known end (`proto-rv-sub-adding-unknown-*`: the busy bar in the row's trailing slot,
+ * as 訂閱's row has it while it updates, and a dash for the byte count); a node
  * with no probe record (`-node-detail-probes0-*`) and with one (`-node-detail-probes1-*`); a subscription whose
  * provider sent no quota (`-sub-detail-noquota-*`) and one in the SIP008 format (`-sub-sip008-*`). The busy bar runs at
  * animator scale 0, so it rests half full (recorded twice, byte-identical).

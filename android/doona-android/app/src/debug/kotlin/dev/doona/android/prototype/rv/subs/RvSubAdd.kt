@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -14,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvBusy
@@ -26,6 +28,7 @@ import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvProgress
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvTextField
@@ -139,20 +142,23 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
 }
 
 /**
- * The download so far over the bar: a 52 dp row, then the bar on the card's padding. What is not known is not drawn: with
- * no length the bar is the busy bar, and with no byte count the row has no second line.
+ * The download so far over the bar: a 52 dp row, then the bar on the card's padding. With no length there is no bar to
+ * fill: the row carries the busy bar in its trailing slot, as 訂閱's row does while it updates, so a frame of it cannot
+ * be read as a share. With no byte count the second line stays and shows a dash in its place.
  */
 @Composable
 private fun Progress(phase: RvAddPhase.Importing) {
     val format = rememberRvFormat()
     val bar = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding)
+    val busy: (@Composable () -> Unit)? = if (phase.fraction == null) ({ RvBusy(Modifier.width(RvSize.busy)) }) else null
     RvCard {
         RvRow(
             { RvIconDisc(R.drawable.rv_stats_ic_sync) },
             stringResource(R.string.rv_add_importing),
-            phase.downloadedBytes?.let { stringResource(R.string.rv_add_downloaded, format.bytes(it).toString()) },
+            stringResource(R.string.rv_add_downloaded, phase.downloadedBytes?.let { format.bytes(it).toString() } ?: RV_NO_VALUE),
+            trailing = busy,
         )
-        phase.fraction?.let { RvProgress(it, bar) } ?: RvBusy(bar)
+        phase.fraction?.let { RvProgress(it, bar) }
     }
 }
 
