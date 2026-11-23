@@ -1,11 +1,12 @@
-//! The JSON payloads of the JNI contract (`plans/v1/core-api.md`, schema 1). Kotlin's twin is
+//! The JSON payloads of the JNI contract (`plans/v1/core-api.md`, schema 2). Kotlin's twin is
 //! `vpn/CoreDto.kt`; `contracts/doona-core/*.json` holds the examples both sides test against.
 //! Unknown fields are ignored; a missing required field fails to parse (`invalid_argument`).
 
 use serde::{Deserialize, Serialize};
 
-/// The contract schema this core speaks; `init` returns it.
-pub const SCHEMA: u32 = 1;
+/// The contract schema this core speaks; `init` returns it. Schema 2 added `Rule` to the modes,
+/// which a schema-1 app cannot read; later additions within it stay additive.
+pub const SCHEMA: u32 = 2;
 
 /// The closed set of error codes, as `ErrorCode` in Kotlin's `Engine.kt`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,8 +44,7 @@ pub enum Mode {
     #[default]
     Global,
     Direct,
-    /// Each new flow takes its first matching rule's target (rule-mode.md); R3 adds it to the
-    /// contract.
+    /// Each new flow takes its first matching rule's target (rule-mode.md); new in schema 2.
     Rule,
 }
 

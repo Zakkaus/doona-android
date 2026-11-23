@@ -2,9 +2,9 @@
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
 use doonacore::dto::{
-    EffectiveConfig, Empty, ErrorCode, Init, Mode, Nodes, NodesArgs, Reply, RuleSourceSpec, Rules,
-    RulesArgs, SelectArgs, Snapshot, SourceKind, StartConfig, Subscription, TargetKind,
-    TrafficSeries, Usage,
+    EffectiveConfig, Empty, ErrorCode, Init, Mode, ModeArgs, Nodes, NodesArgs, Reply,
+    RuleSourceSpec, Rules, RulesArgs, SelectArgs, Snapshot, SourceKind, StartConfig, Subscription,
+    TargetKind, TrafficSeries, Usage,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -29,7 +29,7 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 17] = [
+const COVERED: [&str; 18] = [
     "call-error.json",
     "call-nodes-args.json",
     "call-ok-effective-config.json",
@@ -41,6 +41,7 @@ const COVERED: [&str; 17] = [
     "call-ok-usage.json",
     "call-rules-args.json",
     "call-select-args.json",
+    "call-set-mode-args.json",
     "call-set-rule-source-args.json",
     "init.json",
     "snapshot-died.json",
@@ -62,7 +63,10 @@ fn every_fixture_is_covered() {
 
 #[test]
 fn init_and_start_config() {
-    assert_eq!(round_trip::<Init>("init.json").schema, 1);
+    assert_eq!(
+        round_trip::<Init>("init.json").schema,
+        doonacore::dto::SCHEMA
+    );
     let config = round_trip::<StartConfig>("start-config.json");
     assert_eq!(config.mtu, 8500);
     assert_eq!(config.dns.to_string(), "172.19.0.2");
@@ -78,6 +82,8 @@ fn call_replies_and_args() {
     );
     let sub = round_trip::<Reply<Subscription>>("call-ok-subscription.json");
     assert!(matches!(sub, Reply::Ok(s) if s.id == "s1" && s.nodes == 2));
+    let mode = round_trip::<ModeArgs>("call-set-mode-args.json");
+    assert_eq!(mode.mode, Mode::Rule);
     let select = round_trip::<SelectArgs>("call-select-args.json");
     assert_eq!(select.member_id.as_deref(), Some("n-0c41be77"));
 }
