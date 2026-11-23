@@ -83,8 +83,8 @@ private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")
 
 /**
  * A rule's page (全部規則 → a rule), in the quick rule's grammar: the large title; 比對 as a chip that opens the six
- * kinds in a menu, then the value in the library's text field with what the rule covers, or what is wrong with the
- * value, under it (no value for GEOIP CN and private ranges); 送往, the quick rule's list; a card with 啟用 and 刪除規則,
+ * kinds in a menu, then the value in the library's text field with what is wrong with it under it (no value for
+ * GEOIP CN and private ranges); 送往, the quick rule's list; a card with 啟用 and 刪除規則,
  * which asks first; and 套用 floating at the bottom, off while the value is wrong.
  */
 @Composable
@@ -153,20 +153,10 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
                     },
                 ),
                 placeholder = stringResource(if (draft.kind == RvMatchKind.Cidr) R.string.rv_rule_edit_cidr_hint else R.string.rv_rule_edit_domain_hint),
-                supporting = if (problem == null) draft.covers() else null,
                 error = problem,
             )
         }
     }
-}
-
-/** What a value covers, as the quick rule says it under its choice; a suffix and the kinds without a value say nothing. */
-@Composable
-private fun RvRuleDraft.covers(): String? = when (kind) {
-    RvMatchKind.Full -> stringResource(R.string.rv_policy_match_full_line, value)
-    RvMatchKind.Keyword -> stringResource(R.string.rv_policy_match_keyword_line, value)
-    RvMatchKind.Cidr -> stringResource(R.string.rv_rule_edit_cidr_line, value)
-    RvMatchKind.Suffix, RvMatchKind.GeoIpCn, RvMatchKind.Private -> null
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

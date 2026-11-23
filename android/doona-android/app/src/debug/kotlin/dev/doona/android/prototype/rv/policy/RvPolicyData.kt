@@ -191,11 +191,11 @@ internal data class RvPolicyState(
     fun choose(groupId: String, nodeId: String) = copy(choices = choices + (groupId to nodeId))
 }
 
-/** What the quick rule matches on, what that covers (a suffix says nothing more), and the part of the host it keeps. */
-internal enum class RvMatchBy(@StringRes val label: Int, @StringRes val line: Int?) {
-    Full(R.string.rv_policy_match_full, R.string.rv_policy_match_full_line),
-    Suffix(R.string.rv_policy_match_suffix, null),
-    Keyword(R.string.rv_policy_match_keyword, R.string.rv_policy_match_keyword_line),
+/** What the quick rule matches on, and the part of the host each choice keeps. */
+internal enum class RvMatchBy(@StringRes val label: Int) {
+    Full(R.string.rv_policy_match_full),
+    Suffix(R.string.rv_policy_match_suffix),
+    Keyword(R.string.rv_policy_match_keyword),
     ;
 
     fun of(host: String): String = when (this) {

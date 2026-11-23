@@ -45,8 +45,6 @@
     <string name="rv_policy_match_full">Domain</string>
     <string name="rv_policy_match_suffix">Suffix</string>
     <string name="rv_policy_match_keyword">Keyword</string>
-    <string name="rv_policy_match_full_line">Only %1$s</string>
-    <string name="rv_policy_match_keyword_line">Domains containing %1$s</string>
     <string name="rv_policy_send_to">Send to</string>
     <string name="rv_policy_no_proxy">No proxy</string>
     <plurals name="rv_policy_other_groups">
@@ -76,13 +74,10 @@
         <item quantity="one">%1$d rule</item>
         <item quantity="other">%1$d rules</item>
     </plurals>
-    <string name="rv_template_cn_direct_line">Mainland China sites go direct</string>
     <string name="rv_template_services">By service</string>
     <string name="rv_template_regions">By region</string>
-    <string name="rv_template_regions_line">One group for each region</string>
     <string name="rv_template_homebound">Homebound</string>
     <string name="rv_template_gfw">Blocked sites only</string>
-    <string name="rv_template_gfw_line">Only blocked sites use the proxy</string>
     <string name="rv_template_needs_geosite">Needs GEOSITE</string>
     <string name="rv_template_in_use">In use</string>
     <string name="rv_template_review">Review changes</string>
@@ -126,7 +121,6 @@
     <string name="rv_rule_edit_need_cidr">Enter an IP range</string>
     <string name="rv_rule_edit_bad_domain">Use letters, digits, hyphens and dots only</string>
     <string name="rv_rule_edit_bad_cidr">Write the range as 91.108.56.0/22</string>
-    <string name="rv_rule_edit_cidr_line">Addresses in %1$s</string>
     <string name="rv_rule_edit_enabled">On</string>
     <string name="rv_rule_edit_delete">Delete rule</string>
     <string name="rv_rule_delete_title">Delete this rule?</string>

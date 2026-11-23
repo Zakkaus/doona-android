@@ -41,8 +41,6 @@
     <string name="rv_policy_match_full">完整域名</string>
     <string name="rv_policy_match_suffix">域名后缀</string>
     <string name="rv_policy_match_keyword">关键词</string>
-    <string name="rv_policy_match_full_line">只匹配 %1$s</string>
-    <string name="rv_policy_match_keyword_line">域名包含 %1$s</string>
     <string name="rv_policy_send_to">送往</string>
     <string name="rv_policy_no_proxy">不经代理</string>
     <plurals name="rv_policy_other_groups">
@@ -68,13 +66,10 @@
     <plurals name="rv_rules_count">
         <item quantity="other">%1$d 条</item>
     </plurals>
-    <string name="rv_template_cn_direct_line">中国大陆网站直连</string>
     <string name="rv_template_services">按服务分流</string>
     <string name="rv_template_regions">按地区分流</string>
-    <string name="rv_template_regions_line">每个地区一个策略组</string>
     <string name="rv_template_homebound">回国</string>
     <string name="rv_template_gfw">只代理被封锁的网站</string>
-    <string name="rv_template_gfw_line">只有被封锁的网站走代理</string>
     <string name="rv_template_needs_geosite">需 GEOSITE</string>
     <string name="rv_template_in_use">使用中</string>
     <string name="rv_template_review">查看更改</string>
@@ -113,7 +108,6 @@
     <string name="rv_rule_edit_need_cidr">请输入 IP 段</string>
     <string name="rv_rule_edit_bad_domain">只能使用英文字母、数字、连字符和点</string>
     <string name="rv_rule_edit_bad_cidr">IP 段的格式为 91.108.56.0/22</string>
-    <string name="rv_rule_edit_cidr_line">%1$s 内的地址</string>
     <string name="rv_rule_edit_enabled">启用</string>
     <string name="rv_rule_edit_delete">删除规则</string>
     <string name="rv_rule_delete_title">删除这条规则？</string>
