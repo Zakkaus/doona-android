@@ -34,6 +34,7 @@ import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvLongPressTiming
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
@@ -133,7 +134,8 @@ private fun Connections(connections: List<RvConnection>, query: String?, routes:
         if (shown.isEmpty()) {
             RvEmptyCaption(stringResource(R.string.rv_conn_none_title), stringResource(R.string.rv_conn_none_line))
         } else {
-            RvCard { shown.forEach { c -> RvConnectionRow(c, nowEpochMs) { routes.open(connections.indexOf(c)) } } }
+            // A long press opens the page as a tap does, at the menus' 500 ms (the owner, N6).
+            RvLongPressTiming { RvCard { shown.forEach { c -> RvConnectionRow(c, nowEpochMs) { routes.open(connections.indexOf(c)) } } } }
         }
     }
 }
@@ -155,8 +157,8 @@ private fun Summary(connections: List<RvConnection>) {
 /**
  * One connection: the app's own icon; host:port, cut in the middle when it is too long, so the start of the name and
  * the port both stay; the app's name and the rule's group (or 直連) under it; and at the end, as a node row's latency
- * over its change, the bytes it moved both ways over how long it has been open. Its page splits the bytes and shows
- * the whole host.
+ * over its change, the bytes it moved both ways over how long it has been open. A tap or a long press opens its page
+ * ([onClick]), which splits the bytes and shows the whole host.
  */
 @Composable
 internal fun RvConnectionRow(connection: RvConnection, nowEpochMs: Long, onClick: () -> Unit) {
@@ -168,6 +170,7 @@ internal fun RvConnectionRow(connection: RvConnection, nowEpochMs: Long, onClick
         connection.host + PORT + connection.port,
         connection.app + SEPARATOR + connection.rule.targetName(),
         onClick = onClick,
+        onLongClick = onClick,
         titleOverflow = TextOverflow.MiddleEllipsis,
     ) {
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {

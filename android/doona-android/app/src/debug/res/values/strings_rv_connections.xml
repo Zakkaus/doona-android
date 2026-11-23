@@ -11,7 +11,6 @@
     <string name="rv_conn_seconds">%1$d s</string>
     <string name="rv_conn_minutes">%1$d min</string>
     <string name="rv_conn_path">Path</string>
-    <string name="rv_conn_port">Port %1$d</string>
     <string name="rv_conn_started">Started</string>
     <string name="rv_conn_age">Open for</string>
     <string name="rv_conn_rule_index">Rule %1$d</string>

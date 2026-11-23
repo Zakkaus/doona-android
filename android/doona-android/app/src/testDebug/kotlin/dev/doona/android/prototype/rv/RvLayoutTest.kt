@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.toSize
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvRouteMode
@@ -119,6 +120,9 @@ class RvLayoutTest {
     @Test
     fun report() = measure("report", Top.Title) { RvReportScreen(RvLogLevel.Info, RvExport.Failed, onLevel = {}, onExport = {}, onBack = {}) }
 
+    @Test
+    fun connection() = measure("connection", Top.Header) { RvConnectionDetail(RvPolicyData.connections[YOUTUBE], onBack = {}, onClose = {}, onNewRule = {}) }
+
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {
         var barBottom = 0f
         compose.setContent {
@@ -154,10 +158,18 @@ class RvLayoutTest {
             }
         }
     }
+
+    private companion object {
+        /** YouTube's connection, whose host wraps. */
+        const val YOUTUBE = 3
+    }
 }
 
-/** How a page starts under the bar: a large title, a compact page's first part, or its own hero (not measured). */
-private enum class Top { Title, Compact, Hero }
+/**
+ * How a page starts under the bar: a large title, a compact page's first part, a centred header (a detail page's, as a
+ * block) where a large title would start, or its own hero (not measured).
+ */
+private enum class Top { Title, Compact, Header, Hero }
 
 /** One page's parts in dp, and the drifts found in them. */
 private class Measure(private val parts: Map<String, List<Rect>>, private val barBottom: Float) {
@@ -181,6 +193,7 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
         when (top) {
             Top.Title -> head?.let { expect("header's top", it.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no large title")
             Top.Compact -> blocks().firstOrNull()?.let { expect("first part's top", it.second.top, barBottom + RvSpace.headerGap.value) }
+            Top.Header -> blocks().firstOrNull()?.let { expect("header's top", it.second.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no header")
             Top.Hero -> Unit
         }
     }
