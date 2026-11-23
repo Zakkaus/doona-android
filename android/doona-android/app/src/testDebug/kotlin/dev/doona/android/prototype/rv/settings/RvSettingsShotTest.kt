@@ -1,6 +1,8 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -26,7 +28,8 @@ import org.robolectric.annotation.GraphicsMode
  * The Revolut-style settings sample, light and dark, in the scheme of the owner's wallpaper: the 設定 page captured in
  * one long frame (goldens `proto-rv-settings-light`, `-dark`, `-fs115` and `-fs200`), and the 主題 page it opens
  * (`proto-rv-settings-theme-light` and `-dark`), and the DNS picker of 進階 (`proto-rv-settings-dns-*`); and that
- * 進階's 回報問題 row opens the report page, and the 依 App and licences rows theirs.
+ * 進階's 回報問題 row opens the report page, and the 依 App and licences rows theirs; and that its top is the hero (the
+ * owner's S1), with its title and no search capsule.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -54,6 +57,13 @@ class RvSettingsShotTest {
     @Test
     @Config(qualifiers = RV_EN)
     fun settingsEn() = compose.rvShot("settings-en", dark = false) { Settings() }
+
+    @Test
+    fun theTopIsTheHeroWithItsTitleAndNoSearch() {
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Settings() } }
+        compose.onNode(hasText(rvText(R.string.hub_settings)) and isHeading()).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_search_nodes)).assertDoesNotExist()
+    }
 
     @Test
     @Config(qualifiers = LONG_PAGE)

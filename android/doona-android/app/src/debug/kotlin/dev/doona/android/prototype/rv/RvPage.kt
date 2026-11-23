@@ -47,11 +47,11 @@ import kotlin.math.roundToInt
  * The one scaffold of every page but 活動: the page scrolls under [RvBar], whose strip blurs it once it moves under the
  * bar. A pushed page ([onBack] adds the back disc) puts [content]'s `titleBlock` modifier on the block that ends with
  * its [RvLargeTitle]; as that block's bottom edge passes under the bar, the 20 sp [title] fades in on the bar beside the
- * disc. A page with a [field] and no [onBack] is a tab home (策略, 連線, 設定): 活動's bar ([RvTabBarRow]) at its height
+ * disc. A page with a [field] and no [onBack] is a tab home (策略, 連線): 活動's bar ([RvTabBarRow]) at its height
  * ([RvChrome.tabBarTop]), [field] as its search capsule and [actions] after it, and no large title; its content begins
- * with [RvTabHeader]. A page with
- * neither (歡迎) centres the title on the bar. The content starts at the screen's top, so it begins with
- * [RvBarSpacer]. On any other page, [actions] puts round glass buttons
+ * with [RvTabHeader]. A page with neither (歡迎, 設定's hero) centres the title on the bar, fading in as the
+ * `titleBlock` passes under it. The content starts at the screen's top, so it begins with [RvBarSpacer]. On any other
+ * page, [actions] puts round glass buttons
  * ([RvGlassButton]) at the bar's end, on its row and in 48 dp targets, and [field] puts a list page's search field
  * ([RvSearchField]) beside the back disc, in the title's place, as the node picker's bar holds it; either draws in the
  * bar's glass, [field] with the modifier that sizes it to the row. [bottomAction] floats a page's one action (an
@@ -208,7 +208,7 @@ internal fun RvControlRow(control: @Composable () -> Unit, gap: Dp = RvSpace.con
 }
 
 /**
- * The head of a tab home (策略, 連線, 設定), which has no large title, as Revolut's tabs have none (revolut-ux3 §5): the
+ * The head of a tab home (策略, 連線), which has no large title, as Revolut's tabs have none (revolut-ux3 §5): the
  * bar's room ([RvChrome.tabBarTop]), then [RvSpace.tabTop] to the first content. An optional [caption] ([RvCaption]
  * lines) and [control] row follow, and the first card after them, each [RvSpace.tabBlockGap] under the one above.
  */

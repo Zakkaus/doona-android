@@ -27,6 +27,16 @@ internal object RvSettingsSpace {
     val actionColumn = 96.dp
     val actionGap = 8.dp
 
+    /**
+     * The hero (S1, as at 9bb3f79e): the title row this far under the bar, then the two round actions (spacing audit
+     * row 7: 24 dp under the title block); the dot map is centred [mapDrop] under the bar, so East Asia's land falls
+     * behind the title.
+     */
+    val heroTop = 8.dp
+    val markGap = 8.dp
+    val titleToActions = 24.dp
+    val mapDrop = 16.dp
+
     /** The theme page's colour row (48 dp targets 10 dp in, so a 36 dp disc's edge sits 16 dp in), its preview and its mode columns. */
     val accentPad = 8.dp
     val accentInset = 10.dp
@@ -39,6 +49,9 @@ internal object RvSettingsSize {
     /** The text line of a title; glyphs and trailing controls centre on it, so a wrapped row keeps them on its first line. */
     val titleLine = 26.dp
     val glyph = 24.dp
+
+    /** The duck mark beside the hero's title. */
+    val mark = 32.dp
 
     /** A colour disc, and the ring round the selected one. */
     val accentDisc = 36.dp
@@ -58,6 +71,9 @@ internal object RvSettingsSize {
 }
 
 internal object RvSettingsAlpha {
+    /** The hero's dot texture; a settings page asks for less than the activity header. */
+    const val HERO_DOTS = 0.5f
+
     /** A control that does not apply while another setting overrides it. */
     const val DISABLED = 0.38f
 }
