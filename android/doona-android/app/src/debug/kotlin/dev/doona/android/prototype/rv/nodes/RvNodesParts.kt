@@ -41,7 +41,6 @@ internal object RvNodesSize {
     /** The 'Top movers' grid's flags, and the list rows' (§7: 40 dp logo circles). */
     val topFlag = 54.dp
     val rowFlag = 40.dp
-    val detailFlag = 48.dp
 
     /** 'Top movers': flag to name, and between the grid's two lines. */
     val topLabelGap = 8.dp

@@ -168,12 +168,12 @@ class RvConnectionsShotTest {
 
         /** Windows as tall as each whole page, so one capture holds it to its end. */
         const val WHOLE_LIST = "+h958dp"
-        const val WHOLE_DETAIL = "+h1145dp"
+        const val WHOLE_DETAIL = "+h1153dp"
 
         /** YouTube's page, whose host wraps after a dot at the larger font sizes. */
-        const val WHOLE_WRAPPED = "+h1125dp"
-        const val WHOLE_WRAPPED_FS115 = "+h1132dp"
-        const val WHOLE_WRAPPED_FS200 = "+h1298dp"
+        const val WHOLE_WRAPPED = "+h1133dp"
+        const val WHOLE_WRAPPED_FS115 = "+h1140dp"
+        const val WHOLE_WRAPPED_FS200 = "+h1306dp"
 
         /** Past the menus' 500 ms ([RvMotion.LONG_PRESS_MS]), which the page's rows take. */
         const val LONG_PRESS_MS = 700L

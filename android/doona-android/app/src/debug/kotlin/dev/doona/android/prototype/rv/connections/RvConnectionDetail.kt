@@ -84,10 +84,10 @@ internal fun RvConnectionDetail(
 }
 
 /**
- * The centred header: the app's disc [RvSpace.discToLabel] over its name, as a round action sets its label; the bytes
- * moved both ways as [RvHero]; the host and port in secondary text, breaking only after a dot of the domain, and for a
- * connection the core had no name for, that only an address rule could match it. The first card follows
- * [RvSpace.headerGap] under it, as under every page header.
+ * The centred header: the app's disc at [RvSize.headerDisc], the size of node detail's flag, [RvSpace.discToLabel] over
+ * its name, as a round action sets its label; the bytes moved both ways as [RvHero]; the host and port in secondary
+ * text, breaking only after a dot of the domain, and for a connection the core had no name for, that only an address
+ * rule could match it. The first card follows [RvSpace.headerGap] under it, as under every page header.
  */
 @Composable
 private fun Header(connection: RvConnection, titleBlock: Modifier, insets: WindowInsets) {
@@ -99,7 +99,7 @@ private fun Header(connection: RvConnection, titleBlock: Modifier, insets: Windo
     Spacer(Modifier.height(RvChrome.largeTitleTop))
     // One block of the page's column, which RvLayoutTest measures from where a large title starts.
     Column(Modifier.fillMaxWidth().testTag(RvPart.BLOCK).padding(horizontal = RvSpace.gutter), horizontalAlignment = Alignment.CenterHorizontally) {
-        RvAppDisc(connection.packageName)
+        RvAppDisc(connection.packageName, size = RvSize.headerDisc)
         Spacer(Modifier.height(RvSpace.discToLabel))
         RvText(connection.app, Rv.type.rowTitle, titleBlock.semantics { heading() }, align = TextAlign.Center)
         RvHero(format.bytes(connection.downBytes + connection.upBytes))

@@ -37,6 +37,7 @@ import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
+import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvText
@@ -96,7 +97,7 @@ private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets:
         titleBlock,
         insets,
         // The flag of the row this page was opened from grows into this one (rule 4).
-        mark = { RvFlag(node.place.name, RvNodesSize.detailFlag, Modifier.rvSharedFlag(node.id)) },
+        mark = { RvFlag(node.place.name, RvSize.headerDisc, Modifier.rvSharedFlag(node.id)) },
         caption = { RvCaption(node.protocol + SEPARATOR + stringResource(node.place.label)) },
         control = chips,
     )

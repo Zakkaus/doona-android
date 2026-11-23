@@ -106,6 +106,9 @@ internal object RvSize {
     val rowDisc = 40.dp
     val rowGlyph = 22.dp
 
+    /** A detail page's header mark, over its name: node detail's flag and a connection's app disc, one size on both. */
+    val headerDisc = 48.dp
+
     /** A row with a subtitle, and one without (measured §7: 82 and 58 dp). */
     val rowTwoLine = 82.dp
     val rowOneLine = 58.dp

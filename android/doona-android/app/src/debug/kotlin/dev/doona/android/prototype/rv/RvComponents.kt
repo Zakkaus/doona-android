@@ -358,29 +358,33 @@ private fun RowLine(end: (@Composable () -> Unit)?, start: @Composable () -> Uni
     }
 }
 
-/** A row's leading disc: a glyph on the raised fill. */
+/**
+ * A row's leading disc: a glyph on the raised fill. A detail page's header takes it at [RvSize.headerDisc]; the glyph
+ * keeps the row's proportion to its disc.
+ */
 @Composable
-internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text) {
-    Box(Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
-        RvGlyph(icon, RvSize.rowGlyph, color)
+internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc) {
+    Box(Modifier.size(size).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
+        RvGlyph(icon, RvSize.rowGlyph * (size / RvSize.rowDisc), color)
     }
 }
 
 /**
  * A row's leading disc for an app: the app's own launcher icon, from the package manager, filling the disc as a flag
  * does; an app the phone does not have (or does not let doona see) gets the apps glyph on the raised fill instead.
- * [label] (the app's name) is for a screen reader, where the row does not name the app.
+ * [label] (the app's name) is for a screen reader, where the row does not name the app. A detail page's header takes
+ * it at [RvSize.headerDisc].
  */
 @Composable
-internal fun RvAppDisc(packageName: String, label: String? = null) {
+internal fun RvAppDisc(packageName: String, label: String? = null, size: Dp = RvSize.rowDisc) {
     val context = LocalContext.current
-    val px = with(LocalDensity.current) { RvSize.rowDisc.roundToPx() }
+    val px = with(LocalDensity.current) { size.roundToPx() }
     val icon = remember(packageName, px) {
         runCatching { context.packageManager.getApplicationIcon(packageName).toBitmap(px, px).asImageBitmap() }.getOrNull()
     }
     val named = label?.let { Modifier.semantics { contentDescription = it } } ?: Modifier
-    if (icon == null) return Box(named) { RvIconDisc(R.drawable.rv_sym_apps) }
-    Image(icon, contentDescription = label, Modifier.size(RvSize.rowDisc).clip(CircleShape).background(Rv.colors.discOnCard))
+    if (icon == null) return Box(named) { RvIconDisc(R.drawable.rv_sym_apps, size = size) }
+    Image(icon, contentDescription = label, Modifier.size(size).clip(CircleShape).background(Rv.colors.discOnCard))
 }
 
 /**
