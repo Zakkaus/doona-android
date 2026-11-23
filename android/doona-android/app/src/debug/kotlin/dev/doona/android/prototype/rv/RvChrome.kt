@@ -99,11 +99,20 @@ internal fun rvShade(scroll: ScrollState): () -> Float {
 
 /**
  * 活動's top bar (measured §4): the duck mark in a disc, a search pill and two round buttons, 統計 and 訂閱, all 44 dp
- * glass over what scrolls under them, on [RvBar]'s strip. The pill opens [onSearch] and 統計 [onStats]; the duck and
- * 訂閱 open nothing in the sample.
+ * glass over what scrolls under them, on [RvBar]'s strip. The pill opens [onSearch], 統計 [onStats] and 訂閱
+ * [onSubscriptions]; the duck opens nothing in the sample.
  */
 @Composable
-internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, onSearch: () -> Unit, onStats: () -> Unit, modifier: Modifier = Modifier, pull: RvPullLook = RvPullLook.None) {
+internal fun RvTopBar(
+    glass: RvGlass,
+    insets: WindowInsets,
+    shade: () -> Float,
+    onSearch: () -> Unit,
+    onStats: () -> Unit,
+    modifier: Modifier = Modifier,
+    pull: RvPullLook = RvPullLook.None,
+    onSubscriptions: () -> Unit = NOT_WIRED,
+) {
     RvBar(glass, insets, shade, modifier) {
         // Each control keeps a 48 dp target round its 44 dp disc, so the gaps between targets are 4 dp narrower.
         Row(Modifier.fillMaxSize().padding(horizontal = RvSpace.gutter - RvChrome.touchPad), verticalAlignment = Alignment.CenterVertically) {
@@ -115,7 +124,7 @@ internal fun RvTopBar(glass: RvGlass, insets: WindowInsets, shade: () -> Float, 
             Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
             RvGlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
             Spacer(Modifier.width(RvChrome.buttonGap - RvChrome.touchPad * 2))
-            RvGlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), NOT_WIRED)
+            RvGlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), onSubscriptions)
         }
     }
 }

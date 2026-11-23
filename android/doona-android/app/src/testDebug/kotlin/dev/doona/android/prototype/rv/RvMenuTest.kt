@@ -31,7 +31,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The rows' long-press menus (brief rv-gestures G3), on a clock the test drives: a node row's menu opens at 500 ms with
- * the long press's haptic tick and its items do what they say; a subscription is deleted only after its question; every
+ * the long press's haptic tick and its items do what they say; a subscription is deleted only after its confirm sheet; every
  * item is also a TalkBack action on the row; the share link carries the node's address.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -71,8 +71,8 @@ class RvMenuTest {
         val member = RvData.nodes.first { it.subscription == lantern.name }
         longPress(lantern.name)
         compose.onNodeWithText(rvText(R.string.rv_menu_delete)).performClick()
-        compose.mainClock.advanceTimeBy(RvMotion.MOVE_MS.toLong())
-        compose.onNodeWithText(RuntimeEnvironment.getApplication().getString(R.string.rv_menu_delete_question, lantern.name)).assertExists()
+        compose.mainClock.advanceTimeBy(RvMotion.MENU_MS.toLong())
+        compose.onNodeWithText(RuntimeEnvironment.getApplication().getString(R.string.rv_sub_delete_title, lantern.name)).assertExists()
         inPicker(member.name).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_menu_delete)).performClick()
         compose.mainClock.advanceTimeBy(RvMotion.MOVE_MS * 2L)

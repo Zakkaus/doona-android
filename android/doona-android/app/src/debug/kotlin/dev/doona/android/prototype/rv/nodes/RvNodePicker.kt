@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.collapse
@@ -62,6 +63,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.LocalRvRowActions
 import dev.doona.android.prototype.rv.LocalRvShown
 import dev.doona.android.prototype.rv.LocalRvUpdating
 import dev.doona.android.prototype.rv.RV_NO_VALUE
@@ -72,6 +74,7 @@ import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvChrome
+import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvFrames
 import dev.doona.android.prototype.rv.RvGlyph
@@ -228,7 +231,8 @@ private fun Group(
 
 /**
  * 活動's 訂閱 row for [sub] (use, quota, end date, what is left), with a chevron that turns down while [open]; a long
- * press opens its menu (更新, 刪除), and an update in progress shows a busy bar where what is left would be.
+ * press opens its menu (更新, 刪除, which asks first in [RvConfirmSheet]), and an update in progress shows a busy bar
+ * where what is left would be.
  */
 @Composable
 private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean, onToggle: () -> Unit) {
@@ -250,7 +254,8 @@ private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean
         }
     }
     val updating = sub.id in LocalRvUpdating.current
-    RvMenuAnchor(rvSubscriptionMenu(sub)) { menu, actions ->
+    var deleting by remember { mutableStateOf(false) }
+    RvMenuAnchor(rvSubscriptionMenu(sub) { deleting = true }) { menu, actions ->
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_rss_feed) },
             sub.name,
@@ -268,6 +273,19 @@ private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean
             }
         }
     }
+    val delete = LocalRvRowActions.current.deleteSubscription
+    RvConfirmSheet(
+        visible = deleting,
+        title = stringResource(R.string.rv_sub_delete_title, sub.name),
+        body = pluralStringResource(R.plurals.rv_sub_delete_body, sub.nodes, sub.nodes),
+        confirm = stringResource(R.string.rv_menu_delete),
+        dismiss = stringResource(R.string.rv_cancel),
+        onConfirm = {
+            deleting = false
+            delete?.invoke(sub.id)
+        },
+        onDismiss = { deleting = false },
+    )
 }
 
 /**

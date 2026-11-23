@@ -1,118 +1,111 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.preferredFrameRate
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.round
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import dev.doona.android.R
-import dev.doona.android.designsystem.theme.LocalFrameInsets
 import kotlinx.coroutines.flow.first
+import kotlin.math.max
 
-/** A long-press menu's card, for tests. */
+// Revolut's More popup and its long-press menu (revolut-UX.md §5, §9): a raised card that scales and fades in from where
+// it was asked for, with no scrim; a long press shows the row's press first and opens the menu.
+
+/** A menu's card, for tests. */
 internal const val RV_MENU = "rv-menu"
 
-/** One action of a long-press menu: its glyph and label, the question it asks first if any ([confirm]), what it does. */
+/**
+ * One entry of a menu: its glyph and label, and what it does. A [destructive] entry keeps its label in ink and draws only
+ * its glyph in the error hue, as Revolut's destructive row (measured §13.2); a [separated] entry starts a group of its
+ * own under a hairline, as the More menu sets its last row apart (revolut-UX.md §5). An entry that needs a question
+ * first asks it in [RvConfirmSheet] from its [onClick].
+ */
 @Immutable
-internal class RvMenuItem(@DrawableRes val icon: Int, val label: String, val confirm: String? = null, val onClick: () -> Unit)
+internal class RvMenuItem(
+    val label: String,
+    @DrawableRes val icon: Int,
+    val destructive: Boolean = false,
+    val separated: Boolean = false,
+    val onClick: () -> Unit,
+)
 
-/** Whether a row's menu is open, and the item whose question it shows instead of the list ([asking]). */
-@Stable
-internal class RvMenuState {
-    var open by mutableStateOf(false)
-    var asking by mutableStateOf<RvMenuItem?>(null)
+/** The menu's geometry: Revolut's More card (20 dp round, rows with a leading glyph), held clear of the screen's edges. */
+internal object RvMenuSize {
+    val minWidth = 200.dp
+    val maxWidth = 280.dp
 
-    fun show(question: RvMenuItem? = null) {
-        asking = question
-        open = true
-    }
+    /** An anchored menu opens this far under its anchor, its end on the anchor's end. */
+    val anchorGap = 8.dp
 
-    fun close() {
-        open = false
-    }
+    /** The menu keeps the gutter from the window's edges, and room round it for its shadow inside the popup's window. */
+    val margin = RvSpace.gutter
+    val shadowRoom = RvChrome.navShadow
 }
 
 /**
- * A row with a long-press menu (brief rv-gestures G3): [content] draws the row, given the long press that opens the menu
- * and a modifier that offers every item to TalkBack as a custom action (an item that asks first opens the menu on its
- * question). No [items], no menu. [modifier] goes on the box round the row, the menu's anchor.
+ * The menu as a popup over the screen while [expanded]: at [at] (a point in the anchor, where a finger pressed) or, with
+ * none, under the anchor with its end on the anchor's end; it flips above when there is no room under. It scales from
+ * [RvMotion.MENU_FROM] and fades in from that point in [RvMotion.MENU_MS] and out in [RvMotion.MENU_OUT_MS]; a tap
+ * outside or back calls [onDismiss], and picking an item dismisses it and runs the item. The anchor is the layout this
+ * is called in. Closed and settled, it composes nothing: every row of a list may carry one.
  */
 @Composable
-internal fun RvMenuAnchor(items: List<RvMenuItem>, modifier: Modifier = Modifier, content: @Composable (open: (() -> Unit)?, actions: Modifier) -> Unit) {
-    val state = remember { RvMenuState() }
-    if (items.isEmpty()) {
-        Box(modifier) { content(null, Modifier) }
-        return
-    }
-    val actions = Modifier.semantics {
-        customActions = items.map { item ->
-            CustomAccessibilityAction(item.label) {
-                if (item.confirm != null) state.show(item) else item.onClick()
-                true
-            }
-        }
-    }
-    Box(modifier) {
-        content({ state.show() }, actions)
-        RvMenu(state, items)
-    }
-}
-
-/**
- * The menu, as Revolut's More popup built from the RV set's parts: a card of one-line rows ([RvRow], each with its
- * [RvIconDisc]) on the raised fill, under the floating nav's shadow in light and inside the raised rim in dark, its end
- * on the row's end, below the row or above it when there is no room. It scales from [RvMotion.MENU_FROM] and fades in from that corner in [RvMotion.MENU_MS] and goes
- * in [RvMotion.MENU_OUT_MS]; a tap outside or back closes it. An item that asks first turns the card into its question
- * over that item and 取消.
- */
-@Composable
-private fun RvMenu(state: RvMenuState, items: List<RvMenuItem>) {
-    val motion = Rv.motion
+internal fun RvMenu(expanded: Boolean, onDismiss: () -> Unit, items: List<RvMenuItem>, at: Offset? = null) {
     val shown = remember { MutableTransitionState(false) }
-    shown.targetState = state.open
-    // Closed and settled, the menu composes nothing, not even its timing: every row of a list carries one.
+    shown.targetState = expanded
     if (!shown.currentState && !shown.targetState) return
-    LaunchedEffect(state.open) {
-        val gesture = if (state.open) "menu-open" else "menu-close"
+    LaunchedEffect(expanded) {
+        val gesture = if (expanded) "menu-open" else "menu-close"
         RvFrames.begin(gesture)
         // A close that has settled leaves composition with this effect: it ends there.
         try {
@@ -121,97 +114,158 @@ private fun RvMenu(state: RvMenuState, items: List<RvMenuItem>) {
             RvFrames.end(gesture)
         }
     }
+    val motion = Rv.motion
     val density = LocalDensity.current
-    val endSide = if (LocalLayoutDirection.current == LayoutDirection.Ltr) 1f else 0f
-    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val position = remember(density, insets) {
-        with(density) { MenuPosition(RvSpace.tight.roundToPx(), RvSpace.rowPadding.roundToPx(), insets.getTop(this), insets.getBottom(this)) }
+    var origin by remember { mutableStateOf(TransformOrigin.Center) }
+    val position = remember(at, density) {
+        with(density) { MenuPosition(at?.round(), RvMenuSize.anchorGap.roundToPx(), RvMenuSize.margin.roundToPx(), RvMenuSize.shadowRoom.roundToPx()) { origin = it } }
     }
-    Popup(position, onDismissRequest = state::close, properties = PopupProperties(focusable = true)) {
-        val transition = rememberTransition(shown, label = "menu")
-        val p by transition.animateFloat({ motion.tween(if (targetState) RvMotion.MENU_MS else RvMotion.MENU_OUT_MS) }, label = "in") { if (it) 1f else 0f }
-        val shape = RoundedCornerShape(RvSize.cardRadius)
-        val colors = Rv.colors
-        // In dark the shadow is not drawn (as under every raised control): the raised fill and its rim set it apart.
-        val rim = colors.raisedRim?.let { Modifier.border(RvChrome.ring, it, shape) } ?: Modifier
-        Column(
+    Popup(popupPositionProvider = position, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
+        val progress by rememberTransition(shown, label = "menu").animateFloat(
+            transitionSpec = { if (targetState) motion.tween(RvMotion.MENU_MS, RvMotion.Decelerate) else motion.tween(RvMotion.MENU_OUT_MS, RvMotion.Accelerate) },
+            label = "open",
+        ) { if (it) 1f else 0f }
+        RvMenuPanel(
+            items,
+            onPick = {
+                onDismiss()
+                it.onClick()
+            },
             Modifier
-                .testTag(RV_MENU)
                 // The menu is a window of its own, outside the sample's vote: it asks the high rate as it scales.
                 .preferredFrameRate(FrameRateCategory.High)
+                .padding(RvMenuSize.shadowRoom)
                 .graphicsLayer {
-                    val scale = RvMotion.MENU_FROM + (1f - RvMotion.MENU_FROM) * p
+                    val scale = lerp(RvMotion.MENU_FROM, 1f, progress)
                     scaleX = scale
                     scaleY = scale
-                    alpha = p
-                    transformOrigin = TransformOrigin(endSide, if (position.below) 0f else 1f)
-                }
-                .width(RvSize.menuWidth)
-                .rvSoftShadow(shape, RvChrome.navShadow, RvChrome.navShadowDrop, RvChrome.NAV_SHADOW_ALPHA)
-                .clip(shape)
-                .background(colors.raised)
-                .then(rim)
-                .animateContentSize(motion.tween(RvMotion.MOVE_MS)),
-        ) {
-            Crossfade(state.asking, animationSpec = motion.tween(RvMotion.FADE_MS), label = "question") { asking ->
-                if (asking == null) MenuList(state, items) else Question(state, asking)
-            }
-        }
-    }
-}
-
-@Composable
-private fun MenuList(state: RvMenuState, items: List<RvMenuItem>) {
-    Column {
-        items.forEach { item ->
-            MenuRow(item) {
-                if (item.confirm != null) {
-                    state.asking = item
-                } else {
-                    state.close()
-                    item.onClick()
-                }
-            }
-        }
-    }
-}
-
-/** An item's question, the item to go ahead and 取消, which closes the menu. */
-@Composable
-private fun Question(state: RvMenuState, item: RvMenuItem) {
-    Column {
-        RvText(
-            item.confirm.orEmpty(),
-            Rv.type.rowTitle,
-            Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, top = RvSpace.rowPadding, bottom = RvSpace.tight),
+                    alpha = progress
+                    transformOrigin = origin
+                },
         )
-        MenuRow(item) {
-            state.close()
-            item.onClick()
-        }
-        MenuRow(RvMenuItem(R.drawable.rv_sym_arrow_back, stringResource(R.string.rv_menu_cancel)) {}, state::close)
     }
-}
-
-@Composable
-private fun MenuRow(item: RvMenuItem, onClick: () -> Unit) {
-    RvRow({ RvIconDisc(item.icon) }, item.label, null, onClick = onClick)
 }
 
 /**
- * Places the menu's end on the anchor row's end less [inset] (where its trailing content ends), [gap] under the row, or
- * [gap] over it when it would run into the bottom inset; [below] says which, for the corner it grows from.
+ * The menu's card: the raised fill (white in light, a lighter container with its rim in dark) over the capsule's soft
+ * shadow in light, 20 dp round as every card, as wide as its longest label within [RvMenuSize]; a 58 dp row per item
+ * with a 24 dp glyph and its label, as Revolut's settings rows (measured §7).
  */
-private class MenuPosition(private val gap: Int, private val inset: Int, private val top: Int, private val bottom: Int) : PopupPositionProvider {
-    var below by mutableStateOf(true)
-        private set
-
-    override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
-        val end = if (layoutDirection == LayoutDirection.Ltr) anchorBounds.right - inset - popupContentSize.width else anchorBounds.left + inset
-        val x = end.coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0))
-        val under = anchorBounds.bottom + gap
-        below = under + popupContentSize.height <= windowSize.height - bottom
-        val y = if (below) under else (anchorBounds.top - gap - popupContentSize.height).coerceAtLeast(top)
-        return IntOffset(x, y)
+@Composable
+internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, modifier: Modifier = Modifier) {
+    val colors = Rv.colors
+    val shape = RoundedCornerShape(RvSize.cardRadius)
+    val rim = colors.raisedRim?.let { Modifier.border(RvChrome.ring, it, shape) } ?: Modifier
+    Column(
+        modifier
+            .testTag(RV_MENU)
+            .widthIn(RvMenuSize.minWidth, RvMenuSize.maxWidth)
+            .width(IntrinsicSize.Max)
+            .rvSoftShadow(shape, RvChrome.navShadow, RvChrome.navShadowDrop, RvChrome.NAV_SHADOW_ALPHA)
+            .clip(shape)
+            .background(colors.raised)
+            .then(rim)
+            .padding(vertical = RvSpace.tight),
+    ) {
+        items.forEach { item ->
+            if (item.separated) {
+                // Only the line's own 1 dp: Revolut's last row starts 2 px (0.8 dp) under the row above (p1-more-sheet).
+                Box(Modifier.padding(horizontal = RvSpace.rowPadding).fillMaxWidth().height(RvChrome.ring).background(colors.grid))
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = RvSize.rowOneLine)
+                    .rvPress(RectangleShape, Role.Button, { onPick(item) })
+                    .padding(horizontal = RvSpace.rowPadding),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RvGlyph(item.icon, RvSize.actionGlyph, if (item.destructive) colors.error else colors.text)
+                Spacer(Modifier.width(RvSpace.rowGap))
+                RvText(item.label, Rv.type.rowTitle)
+            }
+        }
     }
+}
+
+/**
+ * A row (or card) with a long-press menu, as the gestures brief has it (G3): [content] gets the modifier to put on the
+ * element that is pressed. A tap runs [onClick]; a press held [RvMotion.LONG_PRESS_MS] (or the user's longer delay)
+ * shows the press, ticks, and opens [items] at the finger. A screen reader gets each item as a custom action, so no
+ * item needs the gesture.
+ */
+@Composable
+internal fun RvLongPressMenu(items: List<RvMenuItem>, onClick: (() -> Unit)?, modifier: Modifier = Modifier, content: @Composable (Modifier) -> Unit) {
+    var touch by remember { mutableStateOf(Offset.Zero) }
+    var open by remember { mutableStateOf(false) }
+    Box(modifier) {
+        RvLongPressTiming {
+            content(
+                Modifier
+                    .pointerInput(Unit) { awaitEachGesture { touch = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position } }
+                    // combinedClickable ticks on the long press.
+                    .rvPress(RectangleShape, Role.Button, onClick ?: {}, onLongClick = { open = true })
+                    .rvMenuActions(items),
+            )
+        }
+        RvMenu(open, { open = false }, items, at = touch)
+    }
+}
+
+/**
+ * A row that opens its menu under its end ([RvMenu] without a point): [content] draws the row, given the long press that
+ * opens the menu (for [RvRow]'s `onLongClick`) and a modifier that offers every item to TalkBack as a custom action. No
+ * [items], no menu. [modifier] goes on the box round the row, the menu's anchor.
+ */
+@Composable
+internal fun RvMenuAnchor(items: List<RvMenuItem>, modifier: Modifier = Modifier, content: @Composable (open: (() -> Unit)?, actions: Modifier) -> Unit) {
+    if (items.isEmpty()) {
+        Box(modifier) { content(null, Modifier) }
+        return
+    }
+    var open by remember { mutableStateOf(false) }
+    Box(modifier) {
+        content({ open = true }, Modifier.rvMenuActions(items))
+        RvMenu(open, { open = false }, items)
+    }
+}
+
+/** Every one of [items] as a TalkBack custom action. */
+private fun Modifier.rvMenuActions(items: List<RvMenuItem>): Modifier = semantics {
+    customActions = items.map { item ->
+        CustomAccessibilityAction(item.label) {
+            item.onClick()
+            true
+        }
+    }
+}
+
+/**
+ * Places the menu's popup: its card's top start at [at] in the anchor, or its top end [gap] under the anchor's bottom end;
+ * above that point when it would cross the window's bottom [margin]; within the margins either way. The popup's window
+ * holds [room] round the card for its shadow. [onOrigin] gets the point the card grows from, in the card's own fractions.
+ */
+private class MenuPosition(
+    private val at: IntOffset?,
+    private val gap: Int,
+    private val margin: Int,
+    private val room: Int,
+    private val onOrigin: (TransformOrigin) -> Unit,
+) : PopupPositionProvider {
+    override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
+        val width = popupContentSize.width - 2 * room
+        val height = popupContentSize.height - 2 * room
+        val ltr = layoutDirection == LayoutDirection.Ltr
+        val growX = at?.let { anchorBounds.left + it.x } ?: if (ltr) anchorBounds.right else anchorBounds.left
+        val growY = at?.let { anchorBounds.top + it.y } ?: (anchorBounds.bottom + gap)
+        val startX = if ((at != null) == ltr) growX else growX - width
+        val x = startX.coerceIn(margin, max(margin, windowSize.width - margin - width))
+        val below = growY + height <= windowSize.height - margin
+        val top = if (below) growY else (at?.let { growY } ?: (anchorBounds.top - gap)) - height
+        val y = top.coerceIn(margin, max(margin, windowSize.height - margin - height))
+        onOrigin(TransformOrigin(fraction(growX - x, width), fraction((if (below) growY else top + height) - y, height)))
+        return IntOffset(x - room, y - room)
+    }
+
+    private fun fraction(part: Int, whole: Int) = if (whole <= 0) 0.5f else (part.toFloat() / whole).coerceIn(0f, 1f)
 }

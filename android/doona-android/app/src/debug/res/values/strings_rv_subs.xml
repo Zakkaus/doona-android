@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Revolut-style sample's subscription pages (prototype/rv/subs), debug builds only. -->
+<resources>
+    <string name="rv_subs_nodes_updated">%1$s · updated %2$s</string>
+    <string name="rv_subs_used">%1$s of %2$s</string>
+    <string name="rv_subs_no_expiry">No end date</string>
+    <string name="rv_sub_update_now">Update now</string>
+    <string name="rv_sub_node_count">Nodes</string>
+    <string name="rv_sub_used">Used</string>
+    <string name="rv_sub_expires">Ends</string>
+    <string name="rv_sub_updated">Last updated</string>
+    <string name="rv_sub_format">Format</string>
+    <string name="rv_sub_format_clash">Clash YAML</string>
+    <string name="rv_sub_format_sing_box">sing-box JSON</string>
+    <string name="rv_sub_format_links">Share-link list</string>
+    <string name="rv_sub_updates">Updates</string>
+    <string name="rv_sub_auto_update">Auto-update</string>
+    <string name="rv_sub_user_agent">User-Agent</string>
+    <string name="rv_sub_user_agent_default">Clash-compatible (default)</string>
+    <string name="rv_sub_user_agent_note">Every subscription uses the default User-Agent; a subscription cannot set its own yet.</string>
+    <string name="rv_sub_section">Subscription</string>
+    <string name="rv_sub_name">Name</string>
+    <string name="rv_sub_link">Link</string>
+    <string name="rv_sub_delete">Delete subscription</string>
+    <string name="rv_sub_rename">Rename</string>
+    <string name="rv_save">Save</string>
+    <string name="rv_add_clipboard">Use the copied link</string>
+    <string name="rv_add_import">Import</string>
+    <string name="rv_add_importing">Importing…</string>
+    <string name="rv_add_downloaded">Downloaded %1$s</string>
+    <string name="rv_add_done">Imported %1$s</string>
+    <string name="rv_done">Done</string>
+    <string name="rv_add_failed">Could not import the subscription</string>
+    <string name="rv_add_unreachable">The subscription\'s server did not answer. Check the link and the network, then try again.</string>
+    <string name="rv_add_not_subscription_reason">This link did not return a subscription. Check that it is the subscription link from your provider.</string>
+    <string name="rv_add_too_large">The subscription is larger than the %1$s limit.</string>
+    <string name="rv_import_title">Add %1$s</string>
+    <string name="rv_import_body">A link from another app, from %1$s. Once added, doona downloads its node list.</string>
+    <string name="rv_import_add">Add</string>
+</resources>

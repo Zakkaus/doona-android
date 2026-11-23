@@ -374,8 +374,8 @@ internal fun rvReorderMenu(state: RvReorderState, index: Int): List<RvMenuItem> 
     val up = stringResource(R.string.rv_reorder_up)
     val down = stringResource(R.string.rv_reorder_down)
     return buildList {
-        if (index > 0) add(RvMenuItem(R.drawable.rv_sym_arrow_upward, up) { state.step(index, -1) })
-        if (index < state.count - 1) add(RvMenuItem(R.drawable.rv_sym_arrow_downward, down) { state.step(index, 1) })
+        if (index > 0) add(RvMenuItem(up, R.drawable.rv_sym_arrow_upward) { state.step(index, -1) })
+        if (index < state.count - 1) add(RvMenuItem(down, R.drawable.rv_sym_arrow_downward) { state.step(index, 1) })
     }
 }
 

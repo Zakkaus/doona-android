@@ -48,26 +48,25 @@ internal fun rvNodeMenu(node: RvNode, current: Boolean, use: ((String) -> Unit)?
     val detailsLabel = stringResource(R.string.rv_menu_details)
     val copy = stringResource(R.string.rv_menu_copy_link)
     return buildList {
-        if (use != null && !current) add(RvMenuItem(R.drawable.rv_nodes_ic_check_circle, setMain) { use(node.id) })
-        add(RvMenuItem(R.drawable.rv_sym_speed, testLabel) { test(node.id) })
-        add(RvMenuItem(R.drawable.rv_sym_info, detailsLabel) { details(node.id) })
-        add(RvMenuItem(R.drawable.rv_sym_ios_share, copy) { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(node.name, node.shareLink()))) } })
+        if (use != null && !current) add(RvMenuItem(setMain, R.drawable.rv_nodes_ic_check_circle) { use(node.id) })
+        add(RvMenuItem(testLabel, R.drawable.rv_sym_speed) { test(node.id) })
+        add(RvMenuItem(detailsLabel, R.drawable.rv_sym_info) { details(node.id) })
+        add(RvMenuItem(copy, R.drawable.rv_sym_ios_share) { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(node.name, node.shareLink()))) } })
     }
 }
 
 /**
- * A subscription row's menu: 更新, and 刪除 after its question. 編輯 is left out: the RV set has no subscription editor
- * to open (a gap written in the lane's STATE).
+ * A subscription row's menu: 更新, and 刪除 set apart, which runs [onDelete] to ask its question (the row's
+ * [RvConfirmSheet]) where the sample can delete. 編輯 is left out: the picker has no subscription editor to open.
  */
 @Composable
-internal fun rvSubscriptionMenu(sub: RvSubscription): List<RvMenuItem> {
+internal fun rvSubscriptionMenu(sub: RvSubscription, onDelete: () -> Unit): List<RvMenuItem> {
     val actions = LocalRvRowActions.current
     val update = actions.updateSubscription ?: return emptyList()
     val updateLabel = stringResource(R.string.rv_menu_update)
     val deleteLabel = stringResource(R.string.rv_menu_delete)
-    val question = stringResource(R.string.rv_menu_delete_question, sub.name)
     return buildList {
-        add(RvMenuItem(R.drawable.rv_stats_ic_sync, updateLabel) { update(sub.id) })
-        actions.deleteSubscription?.let { delete -> add(RvMenuItem(R.drawable.rv_sym_delete, deleteLabel, question) { delete(sub.id) }) }
+        add(RvMenuItem(updateLabel, R.drawable.rv_stats_ic_sync) { update(sub.id) })
+        if (actions.deleteSubscription != null) add(RvMenuItem(deleteLabel, R.drawable.rv_sym_delete, destructive = true, separated = true, onClick = onDelete))
     }
 }

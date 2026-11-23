@@ -10,10 +10,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +28,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +45,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -50,11 +57,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -66,8 +77,8 @@ import androidx.compose.ui.unit.sp
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
 
-// The sample's controls, one of each: range chip, segmented control, chart tool disc, value pill, primary button, switch
-// and radio.
+// The sample's controls, one of each: range chip, segmented control, chart tool disc, value pill, primary button, text
+// field, switch and radio.
 
 /** The geometry of the switch and the radio (measured §13.4; Addendum A: a thinner track under the 19 dp thumb). */
 internal object RvControlSize {
@@ -96,6 +107,15 @@ internal object RvControlSize {
     val primary = 52.dp
     val primaryShadow = 12.dp
     val primaryShadowDrop = 4.dp
+
+    /**
+     * The text field: the search pill's shape (measured §4, full round) at the primary button's 52 dp, its text 16 dp in
+     * as a row's is, its label 8 dp above it as a round action's label sits under its disc (§6), and a 1 dp ring for
+     * focus, as the switch's on track is outlined.
+     */
+    val field = 52.dp
+    val fieldRing = 1.dp
+    val fieldTrailing = 4.dp
 }
 
 /** The primary button's label (§8: 22 sp on a 423 dp screen, 20 sp on ours). */
@@ -266,6 +286,84 @@ internal fun RvPrimaryButton(
         contentAlignment = Alignment.Center,
     ) { RvText(label, primaryLabel, color = colors.page, align = TextAlign.Center) }
 }
+
+/**
+ * A single-line text field. The [label] sits over the field in secondary ink; the field is the search pill's shape
+ * (measured §4) on the segmented control's track, which reads on the page, on a card and in a sheet, holding [value] in
+ * 19 sp (the stat value, measured §11) or [placeholder] in secondary ink; under it [supporting] text, or [error] in the
+ * error hue, which also marks it for a screen reader; no approved page outlines an error, so the message alone shows
+ * it. Focused, the field is ringed in the accent and
+ * the cursor is the accent. Label, field and message are one target, as Material's field is; [trailing] (a clear or
+ * paste button) sits inside the field's end. Disabled, the whole field is at [RvAlpha.DISABLED] and takes no input.
+ */
+@Composable
+internal fun RvTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    supporting: String? = null,
+    error: String? = null,
+    enabled: Boolean = true,
+    keyboard: KeyboardOptions = KeyboardOptions.Default,
+    actions: KeyboardActions = KeyboardActions.Default,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val colors = Rv.colors
+    val size = RvControlSize
+    val source = remember { MutableInteractionSource() }
+    val focused by source.collectIsFocusedAsState()
+    val ring = if (focused && enabled) colors.positive else null
+    BasicTextField(
+        value,
+        onValueChange,
+        modifier
+            .fillMaxWidth()
+            .graphicsLayer { alpha = if (enabled) 1f else RvAlpha.DISABLED }
+            .semantics { if (error != null) error(error) },
+        enabled = enabled,
+        textStyle = Rv.type.field.copy(color = colors.text),
+        keyboardOptions = keyboard,
+        keyboardActions = actions,
+        singleLine = true,
+        visualTransformation = RvScripted,
+        interactionSource = source,
+        cursorBrush = SolidColor(colors.positive),
+        decorationBox = { field ->
+            Column {
+                RvText(label, Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = colors.textSecondary)
+                Spacer(Modifier.height(RvSpace.discToLabel))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = size.field)
+                        .clip(CircleShape)
+                        .background(colors.segmentTrack)
+                        .then(ring?.let { Modifier.border(size.fieldRing, it, CircleShape) } ?: Modifier)
+                        .padding(start = RvSpace.rowPadding, end = if (trailing != null) size.fieldTrailing else RvSpace.rowPadding),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                        if (value.isEmpty() && placeholder != null) RvText(placeholder, Rv.type.field, color = colors.textSecondary)
+                        field()
+                    }
+                    trailing?.invoke()
+                }
+                (error ?: supporting)?.let {
+                    val pad = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, top = RvSpace.subGap)
+                    RvText(it, Rv.type.rowSub, pad, color = if (error != null) colors.error else colors.textSecondary, maxLines = MESSAGE_LINES)
+                }
+            }
+        },
+    )
+}
+
+/** What the user types, with every run of CJK set in Noto as [RvText] sets it; the text itself is unchanged. */
+private val RvScripted = VisualTransformation { TransformedText(scripted(it.text), OffsetMapping.Identity) }
+
+/** A field's supporting or error message wraps to at most this many lines. */
+private const val MESSAGE_LINES = 2
 
 /**
  * A tag chip on a card's header (`v0.2`), Revolut's tag chips (measured §8): full round, the pill's fill and ink, flat.

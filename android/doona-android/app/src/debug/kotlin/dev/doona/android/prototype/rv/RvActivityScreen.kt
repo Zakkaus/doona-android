@@ -75,7 +75,8 @@ import kotlinx.coroutines.launch
  * download and upload as two of Revolut's square home tiles (either opens the traffic page), and three more cards as
  * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
  * floating glass bottom bar (§9), which shrinks while the content scrolls up. It renders [ActivityUiState]; the engine
- * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData].
+ * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. A [notice] (a banner) heads
+ * the cards; with [noticeOnly] (the empty state) it stands in their place.
  */
 @Composable
 internal fun RvActivityScreen(
@@ -88,6 +89,8 @@ internal fun RvActivityScreen(
     subscriptions: List<RvSubscription> = RvData.subscriptions,
     pull: RvPullLook = RvPullLook.None,
     hero: RvHeroSwipe = RvHeroSwipe.Off,
+    notice: (@Composable () -> Unit)? = null,
+    noticeOnly: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -112,15 +115,18 @@ internal fun RvActivityScreen(
             Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
                 Header(steady, ticking, mode, motion, insets, look) { HeroActions(steady, onAction, onConnect, routes.test) }
                 RvGutter(pushed ?: Modifier) {
-                    OutboundCard(steady, mode, routes, nodes)
-                    TrafficTiles(state, routes.traffic)
-                    RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
-                    RvSubscriptionsCard(subscriptions)
-                    RvFastestCard(fastest, steady.node?.id ?: RvData.CURRENT_ID, routes.nodes)
+                    notice?.invoke()
+                    if (!noticeOnly) {
+                        OutboundCard(steady, mode, routes, nodes)
+                        TrafficTiles(state, routes.traffic)
+                        RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
+                        RvSubscriptionsCard(subscriptions, routes.subscriptions)
+                        RvFastestCard(fastest, steady.node?.id ?: RvData.CURRENT_ID, routes.nodes)
+                    }
                 }
                 Spacer(Modifier.height(rvNavClearance(insets)))
             }
-            RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.search, onStats = routes.stats, Modifier.align(Alignment.TopCenter), pull)
+            RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.search, onStats = routes.stats, Modifier.align(Alignment.TopCenter), pull, routes.subscriptions)
             RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
         }
     }
@@ -131,7 +137,8 @@ private fun ActivityUiState.steady(): ActivityUiState = copy(downRate = 0, upRat
 
 /**
  * Where 活動 leads: a traffic tile, 統計, the search page (the search pill), 節點 (最快節點's header), the node row, the
- * nav's tabs, the mode picker, a rule row (by its group) and the full list of rules.
+ * nav's tabs, the mode picker, a rule row (by its group), the full list of rules, and 訂閱 (the top bar's disc and the
+ * card's header).
  */
 internal class RvActivityRoutes(
     val traffic: () -> Unit = {},
@@ -144,6 +151,7 @@ internal class RvActivityRoutes(
     val rule: (Int) -> Unit = {},
     val rules: () -> Unit = {},
     val test: () -> Unit = NOT_WIRED,
+    val subscriptions: () -> Unit = {},
 )
 
 /**

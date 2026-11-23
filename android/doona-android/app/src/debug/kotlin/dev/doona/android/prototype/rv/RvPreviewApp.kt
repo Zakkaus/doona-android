@@ -27,6 +27,7 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.fastest
+import dev.doona.android.prototype.rv.gallery.RvGalleryScreen
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
@@ -46,7 +47,14 @@ import dev.doona.android.prototype.rv.settings.previewDark
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
+import dev.doona.android.prototype.rv.states.RvActivityNotice
+import dev.doona.android.prototype.rv.states.RvActivityNoticeCard
+import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import dev.doona.android.prototype.rv.stats.rvStatsSample
+import dev.doona.android.prototype.rv.subs.RvImportSheet
+import dev.doona.android.prototype.rv.subs.RvSubsRoute
+import dev.doona.android.prototype.rv.subs.RvSubsRoutes
+import dev.doona.android.prototype.rv.welcome.RvWelcome
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -190,7 +198,13 @@ private fun RvSamplePage(
 
         POLICY, PICKER, GROUP, RULE -> PolicyPage(route, policy, pages)
 
-        else -> ActivityPage(run, options, pages, picking)
+        in RvSubsRoutes.all -> RvSubsRoute(route, pages.push, pages.pop)
+
+        GALLERY -> RvGalleryScreen(onBack = pages.pop)
+
+        WELCOME -> RvWelcome(onAdd = { pages.push(RvSubsRoutes.ADD) })
+
+        else -> ActivityPage(route, run, options, pages, picking)
     }
 }
 
@@ -228,10 +242,11 @@ private fun PolicyPage(route: String, policy: RvSamplePolicy, pages: RvSamplePag
 
 /**
  * 活動 with its pull-down (open at first when [picking]): a picked node becomes the current one and the picker closes;
- * its page opens over 活動.
+ * its page opens over 活動. [route] `state:<notice>` puts a notice on it instead ([NoticeActivity]), and `sub-import` the
+ * deep link's sheet over it.
  */
 @Composable
-private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean) {
+private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean) {
     val pull = rememberRvPullState(picking)
     // The outbound card's mode row and 查看全部 open 策略; a rule group opens its group's page there.
     val toPolicy = { pages.tab(RV_NAV_POLICY) }
@@ -246,7 +261,14 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
         rule = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { pages.push("$GROUP:${it.id}") } ?: toPolicy() },
         rules = toPolicy,
         test = run::test,
+        subscriptions = { pages.push(RvSubsRoutes.LIST) },
     )
+    val name = route.substringBefore(':')
+    val notice = RvActivityNotice.entries.firstOrNull { name == STATE && it.route == route.substringAfter(':') }
+    if (notice != null) {
+        NoticeActivity(notice, routes, pages)
+        return
+    }
     RvPullDown(
         options.pull,
         pull,
@@ -262,6 +284,29 @@ private fun ActivityPage(run: RvSampleRun, options: RvMotionOptions, pages: RvSa
             RvNodePicker(run.nodes, RvData.subscriptions, run.currentId, pick, onDetail = { pages.push("$NODE:$it") }, onClose = motion.close, section = motion.section, stretch = motion.stretch)
         },
     )
+    if (name == RvSubsRoutes.IMPORT) ImportSheet(pages)
+}
+
+/**
+ * 活動 under a notice ([RvActivityNotice.route]): its action clears it (back to 活動), but the empty state's 新增訂閱 opens
+ * the add page.
+ */
+@Composable
+private fun NoticeActivity(notice: RvActivityNotice, routes: RvActivityRoutes, pages: RvSamplePages) {
+    val empty = notice == RvActivityNotice.NoSubscription
+    val onNotice = if (empty) ({ pages.push(RvSubsRoutes.ADD) }) else pages.pop
+    RvActivityScreen(rvNoticeActivity(notice), onAction = {}, onConnect = {}, routes, notice = { RvActivityNoticeCard(notice, onNotice) }, noticeOnly = empty)
+}
+
+/** A deep link's question over 活動 (`sub-import`): 加入 opens the add page, which imports it. */
+@Composable
+private fun ImportSheet(pages: RvSamplePages) {
+    var importing by remember { mutableStateOf(true) }
+    val sub = RvData.subscriptions.first()
+    RvImportSheet(importing, sub.name, sub.host, onAdd = {
+        importing = false
+        pages.push("${RvSubsRoutes.ADD}:importing")
+    }, onDismiss = { importing = false })
 }
 
 /**
@@ -417,4 +462,7 @@ internal const val POLICY = "policy"
 internal const val GROUP = "group"
 internal const val RULE = "rule"
 internal const val PICKER = "picker"
+internal const val GALLERY = "gallery"
+internal const val WELCOME = "welcome"
+internal const val STATE = "state"
 private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to POLICY, RV_NAV_SETTINGS to SETTINGS)

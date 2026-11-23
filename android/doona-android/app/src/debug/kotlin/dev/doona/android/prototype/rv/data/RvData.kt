@@ -3,7 +3,10 @@ package dev.doona.android.prototype.rv.data
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 
-/** A subscription: its name, the nodes it gave, when it was refreshed, its quota used of total, and when it ends, if it does. */
+/**
+ * A subscription: its name, the nodes it gave, when it was refreshed, its quota used of total, when it ends, if it does,
+ * the host of its link (the page shows only the host: the rest of a link carries its token), and how its body is written.
+ */
 @Immutable
 internal class RvSubscription(
     val id: String,
@@ -13,10 +16,15 @@ internal class RvSubscription(
     val usedBytes: Long,
     val totalBytes: Long,
     val expiresAtEpochMs: Long?,
+    val host: String = "",
+    val format: RvSubFormat = RvSubFormat.Links,
 ) {
     /** What is left, never below nothing when a subscription has gone over its quota. */
     val leftBytes: Long get() = (totalBytes - usedBytes).coerceAtLeast(0L)
 }
+
+/** How a subscription's body is written: Clash YAML, sing-box JSON, or a list of share links (plain or base64). */
+internal enum class RvSubFormat { Clash, SingBox, Links }
 
 /** One day by the hour from midnight, oldest first; the last hour is the current one, still filling. */
 @Immutable
@@ -83,8 +91,8 @@ internal object RvData {
     fun node(id: String): RvNode? = nodes.firstOrNull { it.id == id }
 
     val subscriptions = listOf(
-        RvSubscription("s1", RV_HARBOR, nodes.count { it.subscription == RV_HARBOR }, UPDATED, 61_700_000_000, 200_000_000_000, 1_805_112_000_000),
-        RvSubscription("s2", RV_LANTERN, nodes.count { it.subscription == RV_LANTERN }, UPDATED, 36_400_000_000, 100_000_000_000, 1_798_718_400_000),
+        RvSubscription("s1", RV_HARBOR, nodes.count { it.subscription == RV_HARBOR }, UPDATED, 61_700_000_000, 200_000_000_000, 1_805_112_000_000, "sub.harbor-cloud.example", RvSubFormat.Clash),
+        RvSubscription("s2", RV_LANTERN, nodes.count { it.subscription == RV_LANTERN }, UPDATED, 36_400_000_000, 100_000_000_000, 1_798_718_400_000, "lantern-net.example", RvSubFormat.Links),
     )
 
     val session = RvSession(SESSION_START, RV_NOW, SESSION_DOWN, SESSION_UP, PEAK_DOWN, PEAK_UP, RvMinute.down, RvMinute.up)

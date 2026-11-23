@@ -25,8 +25,10 @@ import kotlin.concurrent.thread
  * `adb shell am start -n dev.doona.android/dev.doona.android.prototype.rv.RvPreviewActivity`, adding any of:
  * `--es pull P2` (P1-P3, [RvPullMotion]), `--es tab T2` ([RvTabMotion]), `--es push S2` ([RvPushMotion]),
  * `--es hero H1` (活動's hero swipes between 全部流量 and 主節點, [RvHeroSwipe]),
- * `--es start idle` (start disconnected), `--ez fail true` (connecting fails), `--es page nodes` (start on a page:
- * nodes, stats, traffic or settings) and `--ez test true` (a latency test a second after launch). The launcher icon's
+ * `--es start idle` (start disconnected), `--ez fail true` (connecting fails), `--es page nodes` (start on a page over
+ * 活動: nodes, stats, traffic, `gallery` (the library's parts), `welcome` (the first run), `state:<notice>` (活動 empty
+ * or under a banner), `subs` (訂閱), or settings on its own; `--es route` is the same) and `--ez test true` (a latency
+ * test a second after launch). The launcher icon's
  * shortcuts (xml/rv_shortcuts) open it with an action, [RvLaunch]: `-a dev.doona.android.prototype.rv.CONNECT` starts
  * disconnected and connects on screen, `.DISCONNECT` starts connected and disconnects, `.NODES` starts with the node
  * picker open. A recreated activity does not run its action again.
@@ -49,7 +51,7 @@ class RvPreviewActivity : ComponentActivity() {
                 else -> intent.getStringExtra(EXTRA_START) != START_IDLE
             },
             fails = intent.getBooleanExtra(EXTRA_FAIL, false),
-            page = intent.getStringExtra(EXTRA_PAGE),
+            page = intent.getStringExtra(EXTRA_PAGE) ?: intent.getStringExtra(EXTRA_ROUTE),
             test = intent.getBooleanExtra(EXTRA_TEST, false),
             launch = launch,
         )
@@ -106,4 +108,5 @@ private const val EXTRA_START = "start"
 private const val START_IDLE = "idle"
 private const val EXTRA_FAIL = "fail"
 private const val EXTRA_PAGE = "page"
+private const val EXTRA_ROUTE = "route"
 private const val EXTRA_TEST = "test"

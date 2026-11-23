@@ -102,12 +102,13 @@ internal object RvMotion {
     const val HERO_FADE_MS = 330
 
     /**
-     * A long-press menu (as Revolut's More popup) scales from [MENU_FROM] and fades in, from its anchor, in about 267 ms,
-     * and goes the same way in about 233 ms (both measured).
+     * A long-press menu (as Revolut's More popup) scales from [MENU_FROM] (Material's menu's) and fades in, from where it
+     * was asked for, in about 267 ms ([Decelerate]), and goes the same way in about 233 ms ([Accelerate]); both measured.
+     * [RvSheet] rises and falls in the same times.
      */
     const val MENU_MS = 267
     const val MENU_OUT_MS = 233
-    const val MENU_FROM = 0.9f
+    const val MENU_FROM = 0.8f
 
     /** The switch's thumb, as Material 3's (100 ms). */
     const val SWITCH_MS = 100
@@ -179,6 +180,9 @@ internal object RvMotion {
 
     /** The pull-down's curve: decelerating to rest, no overshoot (Material's standard decelerate). */
     val Decelerate: Easing = CubicBezierEasing(0f, 0f, 0f, 1f)
+
+    /** What leaves: accelerating away (the menu's and the sheet's close). */
+    val Accelerate: Easing = CubicBezierEasing(0.3f, 0f, 1f, 1f)
     val Standard: Easing = FastOutSlowInEasing
 }
 

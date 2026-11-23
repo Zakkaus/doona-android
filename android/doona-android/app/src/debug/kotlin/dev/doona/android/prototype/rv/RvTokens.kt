@@ -100,8 +100,14 @@ internal object RvSize {
     /** A row with a subtitle, and one without (measured §7: 82 and 58 dp). */
     val rowTwoLine = 82.dp
     val rowOneLine = 58.dp
+
+    /** A row title's line box (measured §7: 26 dp), where a taller leading disc centres on the first line of a wrapped block. */
+    val titleLine = 26.dp
     val inlineGlyph = 16.dp
     val dot = 8.dp
+
+    /** An empty state's glyph (measured §13.3, New features: a 48 dp sparkle). */
+    val emptyGlyph = 48.dp
 
     /** Every card's corners, 設定's and 主題's included (measured §2: 20 dp, N-06). */
     val cardRadius = 20.dp
@@ -295,6 +301,9 @@ internal object RvAlpha {
     /** A range the build does not offer yet. */
     const val DISABLED = 0.38f
 
+    /** The scrim under a modal sheet (measured §2: #333333 over the page, about black at 80 %). */
+    const val SCRIM = 0.8f
+
     /** Glass tints: the top bar's controls over the blur in light, dense enough that a title under them stays a blur (L-08), and any glass's solid fill. */
     const val GLASS_SOLID = 0.94f
     const val CONTROL_GLASS = 0.85f
@@ -477,6 +486,9 @@ internal object RvTypeScale {
     /** A stat row (measured §11): the label 19 sp medium in secondary ink, the value 19 sp regular. */
     val statLabel = RvTypeStep(19, 26, FontWeight.Medium)
     val stat = RvTypeStep(19, 26, FontWeight.Normal)
+
+    /** What a text field holds and its placeholder: the stat value's 19 sp regular (measured §11). */
+    val field = RvTypeStep(19, 26, FontWeight.Normal)
     val navLabel = RvTypeStep(15, 18, FontWeight.SemiBold)
 
     /** A pushed page's large title, and the compact one it collapses to beside the back disc (measured §4). */

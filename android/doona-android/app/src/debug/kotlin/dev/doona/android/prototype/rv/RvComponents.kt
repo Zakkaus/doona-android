@@ -55,8 +55,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -80,25 +82,33 @@ import kotlin.math.min
  * One line of text in a role; CJK runs in Noto, the rest in Inter. Cut short, it ends in an ellipsis right after the last
  * word that fits: the platform keeps the space after that word before its ellipsis (`IPLC …`), so the line is laid out
  * once more without it. The shorter text stays while the width does, and the whole text returns when the line gets more
- * room.
+ * room. [maxLines] lets it run to more lines, the last ending in the platform's ellipsis.
  */
 @Composable
-internal fun RvText(text: String, style: TextStyle, modifier: Modifier = Modifier, color: Color = Rv.colors.text, align: TextAlign = TextAlign.Start) {
+internal fun RvText(
+    text: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    color: Color = Rv.colors.text,
+    align: TextAlign = TextAlign.Start,
+    maxLines: Int = 1,
+) {
     var cut by remember(text) { mutableStateOf<RvCut?>(null) }
     BasicText(
         scripted(cut?.text ?: text),
         modifier,
         style.copy(color = color, textAlign = align),
         onTextLayout = { layout ->
+            // The cut at a word is for one line; more lines end in the platform's ellipsis.
             val kept = cut
-            if (kept == null) {
-                cut = rvCut(text, layout)
-            } else if (layout.layoutInput.constraints.maxWidth > kept.width) {
-                cut = null
+            when {
+                maxLines != 1 -> Unit
+                kept == null -> cut = rvCut(text, layout)
+                layout.layoutInput.constraints.maxWidth > kept.width -> cut = null
             }
         },
         overflow = TextOverflow.Ellipsis,
-        maxLines = 1,
+        maxLines = maxLines,
     )
 }
 
@@ -525,12 +535,70 @@ internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style:
     }
 }
 
+/**
+ * An inline error banner: a card with the error's glyph on a row's disc in the error hue (the title stays in ink, as
+ * Revolut's destructive row, measured §13.2), the [title] over its [reason] (wrapping, in secondary ink), and the one
+ * [action] as the card's foot, in the 'See all' row's form. A screen reader announces it when it appears.
+ */
+@Composable
+internal fun RvBanner(
+    title: String,
+    reason: String,
+    action: String,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+    @DrawableRes icon: Int = R.drawable.rv_sym_error,
+) {
+    RvCard(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
+        Row(Modifier.fillMaxWidth().padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, top = RvSpace.rowPadding)) {
+            RvIconDisc(icon, Rv.colors.error)
+            Spacer(Modifier.width(RvSpace.rowGap))
+            // The title centres on the disc; the reason wraps under it.
+            Column(Modifier.weight(1f).padding(top = (RvSize.rowDisc - RvSize.titleLine) / 2), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+                RvText(title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
+                RvText(reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
+            }
+        }
+        RvSeeAll(action, onAction)
+    }
+}
+
+/**
+ * An empty state, as Revolut's New features card (measured §13.3): a card with a 48 dp glyph of the set in secondary
+ * ink, the [title] and one [line] under it, centred, and the one [action] as the primary button.
+ */
+@Composable
+internal fun RvEmptyState(
+    @DrawableRes icon: Int,
+    title: String,
+    line: String,
+    action: String,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    RvCard(modifier) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding, vertical = RvSpace.chartGap), horizontalAlignment = Alignment.CenterHorizontally) {
+            RvGlyph(icon, RvSize.emptyGlyph, Rv.colors.textSecondary)
+            Spacer(Modifier.height(RvSpace.rowGap))
+            RvText(title, Rv.type.rowTitle, align = TextAlign.Center, maxLines = BANNER_TITLE_LINES)
+            Spacer(Modifier.height(RvSpace.tight / 2))
+            RvText(line, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center, maxLines = BANNER_REASON_LINES)
+            Spacer(Modifier.height(RvSpace.chartGap))
+            RvPrimaryButton(action, onAction)
+        }
+    }
+}
+
 @Composable
 internal fun RvGutter(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap), content = content)
 }
 
 internal const val RV_NO_VALUE = "—"
+
+/** A banner's or an empty state's title wraps to two lines at most, and its reason or line to three. */
+private const val BANNER_TITLE_LINES = 2
+private const val BANNER_REASON_LINES = 3
 
 /** An equilateral triangle is this share of its width high. */
 private const val TRIANGLE_HEIGHT = 0.866f

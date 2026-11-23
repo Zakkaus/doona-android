@@ -48,10 +48,6 @@
     <string name="rv_menu_set_main">設為主節點</string>
     <string name="rv_menu_details">詳情</string>
     <string name="rv_menu_copy_link">複製分享連結</string>
-    <string name="rv_menu_update">更新</string>
-    <string name="rv_menu_delete">刪除</string>
-    <string name="rv_menu_cancel">取消</string>
-    <string name="rv_menu_delete_question">刪除 %1$s？</string>
     <string name="rv_reorder_up">上移</string>
     <string name="rv_reorder_down">下移</string>
 </resources>
