@@ -115,7 +115,7 @@ internal object RvSize {
     val inlineGlyph = 16.dp
     val dot = 8.dp
 
-    /** An empty state's glyph (measured §13.3, New features: a 48 dp sparkle). */
+    /** The welcome page's duck: the size Revolut's New features card gives its sparkle (measured §13.3: 48 dp). */
     val emptyGlyph = 48.dp
 
     /** Every card's corners, 設定's and 主題's included (measured §2: 20 dp, N-06). */

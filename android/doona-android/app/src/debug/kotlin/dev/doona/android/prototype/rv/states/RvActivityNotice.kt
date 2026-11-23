@@ -45,7 +45,6 @@ internal fun rvNoticeActivity(notice: RvActivityNotice): ActivityUiState {
 internal fun RvActivityNoticeCard(notice: RvActivityNotice, onAction: () -> Unit) {
     when (notice) {
         RvActivityNotice.NoSubscription -> RvEmptyState(
-            R.drawable.rv_sym_rss_feed,
             stringResource(R.string.rv_empty_subscription),
             stringResource(R.string.rv_empty_subscription_line),
             stringResource(R.string.rv_add_subscription),

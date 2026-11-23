@@ -23,7 +23,6 @@
         <item quantity="one">%1$d connection matches</item>
         <item quantity="other">%1$d connections match</item>
     </plurals>
-    <string name="rv_conn_search_clear">Clear search</string>
     <string name="rv_conn_none_title">No connection matches</string>
     <string name="rv_conn_none_line">Try another word, or clear the search</string>
     <string name="rv_conn_off_title">Not connected</string>

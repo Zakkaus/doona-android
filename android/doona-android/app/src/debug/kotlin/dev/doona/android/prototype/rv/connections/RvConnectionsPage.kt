@@ -28,7 +28,7 @@ import dev.doona.android.prototype.rv.RV_NAV_FOUR
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAppDisc
 import dev.doona.android.prototype.rv.RvCard
-import dev.doona.android.prototype.rv.RvEmptyState
+import dev.doona.android.prototype.rv.RvEmptyCaption
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvGlassButton
@@ -49,15 +49,11 @@ import dev.doona.android.prototype.rv.rememberRvFormat
 import dev.doona.android.prototype.rv.rvNavClearance
 import dev.doona.android.prototype.rv.rvSystemScheme
 
-/**
- * Where the 連線 tab leads: a connection's page, the two filters, the search ([query] null ends it), connecting when the
- * tunnel is off, and the other tabs.
- */
+/** Where the 連線 tab leads: a connection's page, the two filters, the search ([query] null ends it), and the other tabs. */
 internal class RvConnectionsRoutes(
     val open: (Int) -> Unit = {},
     val filter: () -> Unit = {},
     val query: (String?) -> Unit = {},
-    val connect: () -> Unit = {},
     val tab: (Int) -> Unit = {},
 )
 
@@ -67,8 +63,9 @@ internal class RvConnectionsRoutes(
  * open now ([connections], newest first), each its app's icon, where it went over the app and the rule's group, and its
  * bytes over how long it has been open. A connection opens its page. While [query] is set, the search field replaces
  * the line and the chips and the card keeps the connections whose host or app holds it. With the tunnel off
- * ([connected] false), or nothing matching, the library's empty state says so and offers the way on. The bar always
- * has four tabs here. Host names are shown from memory and never logged (D21).
+ * ([connected] false), or nothing matching, the card says so in the library's empty caption, with no action: 連線 is
+ * 活動's, and the bar's close ends a search. The bar always has four tabs here. Host names are shown from memory and
+ * never logged (D21).
  */
 @Composable
 internal fun RvConnectionsPage(
@@ -97,24 +94,16 @@ internal fun RvConnectionsPage(
             },
         ) { titleBlock ->
             RvLargeTitle(title, titleBlock, insets)
-            if (connected) Connections(connections, query, routes, nowEpochMs) else Disconnected(routes.connect)
+            if (connected) Connections(connections, query, routes, nowEpochMs) else Disconnected()
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
     }
 }
 
-/** The tunnel is off: nothing to list, and 連線 turns it on. */
+/** The tunnel is off: nothing to list. 連線 is 活動's; the page does not repeat it. */
 @Composable
-private fun Disconnected(onConnect: () -> Unit) {
-    RvGutter {
-        RvEmptyState(
-            R.drawable.rv_sym_sync_alt,
-            stringResource(R.string.rv_conn_off_title),
-            stringResource(R.string.rv_conn_off_line),
-            stringResource(R.string.rv_connect),
-            onConnect,
-        )
-    }
+private fun Disconnected() {
+    RvGutter { RvEmptyCaption(stringResource(R.string.rv_conn_off_title), stringResource(R.string.rv_conn_off_line)) }
 }
 
 /** The line or the search field, the chips, and the card of connections, or the empty state when none match. */
@@ -142,13 +131,7 @@ private fun Connections(connections: List<RvConnection>, query: String?, routes:
     Spacer(Modifier.height(RvSpace.controlGap))
     RvGutter {
         if (shown.isEmpty()) {
-            RvEmptyState(
-                R.drawable.rv_sym_search,
-                stringResource(R.string.rv_conn_none_title),
-                stringResource(R.string.rv_conn_none_line),
-                stringResource(R.string.rv_conn_search_clear),
-                { routes.query(null) },
-            )
+            RvEmptyCaption(stringResource(R.string.rv_conn_none_title), stringResource(R.string.rv_conn_none_line))
         } else {
             RvCard { shown.forEach { c -> RvConnectionRow(c, nowEpochMs) { routes.open(connections.indexOf(c)) } } }
         }

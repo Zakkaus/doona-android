@@ -18,6 +18,7 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvConfirmSheet
+import dev.doona.android.prototype.rv.RvEmptyCaption
 import dev.doona.android.prototype.rv.RvEmptyState
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
@@ -110,16 +111,18 @@ internal fun RvGalleryBanners() {
     }
 }
 
-/** No subscription yet, with 新增訂閱. */
+/** The two empty states: no subscription yet, with 新增訂閱; then a card with nothing in it, 連線 with the tunnel off. */
 @Composable
 internal fun RvGalleryEmpty(onAdd: () -> Unit = {}) {
-    RvEmptyState(
-        R.drawable.rv_sym_rss_feed,
-        stringResource(R.string.rv_empty_subscription),
-        stringResource(R.string.rv_empty_subscription_line),
-        stringResource(R.string.rv_add_subscription),
-        onAdd,
-    )
+    Column(verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap)) {
+        RvEmptyState(
+            stringResource(R.string.rv_empty_subscription),
+            stringResource(R.string.rv_empty_subscription_line),
+            stringResource(R.string.rv_add_subscription),
+            onAdd,
+        )
+        RvEmptyCaption(stringResource(R.string.rv_conn_off_title), stringResource(R.string.rv_conn_off_line))
+    }
 }
 
 /** An invented subscription link (a reserved `.example` host) and the field's placeholder. */

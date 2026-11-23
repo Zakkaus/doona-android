@@ -511,27 +511,33 @@ internal fun RvBanner(
 }
 
 /**
- * An empty state, as Revolut's New features card (measured §13.3): a card with a 48 dp glyph of the set in secondary
- * ink, the [title] and one [line] under it, centred, and the one [action] as the primary button.
+ * An empty state where a section is not set up yet (活動 with no subscription), as Revolut's product that is not opened
+ * (revolut-ux3 §4): no glyph, no disc and no card, the [title] over one [line], centred, then the one [action] as the
+ * full-width primary pill on the caller's gutter. The title keeps the row title's step: Revolut's 44 sp is the hero's,
+ * not a notice's. For data that is empty inside a card, [RvEmptyCaption].
  */
 @Composable
-internal fun RvEmptyState(
-    @DrawableRes icon: Int,
-    title: String,
-    line: String,
-    action: String,
-    onAction: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+internal fun RvEmptyState(title: String, line: String, action: String, onAction: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().padding(vertical = RvSpace.chartGap), horizontalAlignment = Alignment.CenterHorizontally) {
+        RvText(title, Rv.type.rowTitle, align = TextAlign.Center, maxLines = BANNER_TITLE_LINES)
+        Spacer(Modifier.height(RvSpace.tight / 2))
+        RvText(line, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center, maxLines = BANNER_REASON_LINES)
+        Spacer(Modifier.height(RvSpace.chartGap))
+        RvPrimaryButton(action, onAction)
+    }
+}
+
+/**
+ * An empty state inside a card (連線 with the tunnel off, a search that matches nothing), as Revolut's tile with no data
+ * (revolut-ux3 §4): the card holds its [title] and a 17 sp [caption] under it, both at the start on the card's 16 dp
+ * padding, and no glyph, disc or action.
+ */
+@Composable
+internal fun RvEmptyCaption(title: String, caption: String, modifier: Modifier = Modifier) {
     RvCard(modifier) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding, vertical = RvSpace.chartGap), horizontalAlignment = Alignment.CenterHorizontally) {
-            RvGlyph(icon, RvSize.emptyGlyph, Rv.colors.textSecondary)
-            Spacer(Modifier.height(RvSpace.rowGap))
-            RvText(title, Rv.type.rowTitle, align = TextAlign.Center, maxLines = BANNER_TITLE_LINES)
-            Spacer(Modifier.height(RvSpace.tight / 2))
-            RvText(line, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center, maxLines = BANNER_REASON_LINES)
-            Spacer(Modifier.height(RvSpace.chartGap))
-            RvPrimaryButton(action, onAction)
+        Column(Modifier.fillMaxWidth().padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+            RvText(title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
+            RvText(caption, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
         }
     }
 }
@@ -543,6 +549,6 @@ internal fun RvGutter(modifier: Modifier = Modifier, content: @Composable Column
 
 internal const val RV_NO_VALUE = "—"
 
-/** A banner's or an empty state's title wraps to two lines at most, and its reason or line to three. */
+/** A banner's or an empty state's title wraps to two lines at most, and its reason, line or caption to three. */
 private const val BANNER_TITLE_LINES = 2
 private const val BANNER_REASON_LINES = 3

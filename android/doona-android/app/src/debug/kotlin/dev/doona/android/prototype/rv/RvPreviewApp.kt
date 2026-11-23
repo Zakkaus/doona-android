@@ -239,7 +239,7 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
 @Composable
 private fun ConnectionsPage(route: String, pages: RvSamplePages) {
     var query by rememberSaveable { mutableStateOf<String?>(null) }
-    val routes = RvConnectionsRoutes(open = { pages.push("$CONNECTION:$it") }, query = { query = it }, connect = { pages.tab(RV_NAV_CONNECTIONS) }, tab = pages.tab)
+    val routes = RvConnectionsRoutes(open = { pages.push("$CONNECTION:$it") }, query = { query = it }, tab = pages.tab)
     RvConnectionsPage(RvPolicyData.connections, routes, query, connected = !route.endsWith(":off"))
 }
 
