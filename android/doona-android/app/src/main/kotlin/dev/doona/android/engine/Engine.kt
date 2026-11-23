@@ -24,6 +24,15 @@ interface Engine {
     val perAppLoaded: StateFlow<Boolean>
 
     /**
+     * The group [Mode.Global] sends every flow through, and [Mode.Rule] each flow no rule matched. Null until the catalog
+     * is read.
+     */
+    val mainGroupId: StateFlow<String?>
+
+    /** Where [Mode.Rule]'s rules come from and how many compiled; null until the catalog is read. Present in every mode. */
+    val ruleSource: StateFlow<RuleSource?>
+
+    /**
      * A problem the running tunnel reports without stopping: [ErrorCode.LocalNetwork] once a connection through a node on
      * the local network failed in this run (ARCH D26). Null otherwise, and whenever the tunnel is not running.
      */
@@ -55,6 +64,24 @@ interface Engine {
     suspend fun removeSubscription(id: String): Result<Unit>
 
     suspend fun setMode(mode: Mode): Result<Unit>
+
+    /**
+     * Up to [limit] rows of the rule source, 1 to 500, from the row [offset]; none past the end. A page whose
+     * [RulePage.rulesRevision] differs from [ruleSource]'s is stale: read it again.
+     */
+    suspend fun rules(offset: Int, limit: Int): Result<RulePage>
+
+    /**
+     * Makes the template [template] with [options] the rule source; new flows use it at once. Fails with
+     * [ErrorCode.NotFound] for a template the core does not have.
+     */
+    suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit>
+
+    /** What routes flows and DNS now, with the rules as text for the read-only 生效設定 page. */
+    suspend fun effectiveConfig(): Result<EffectiveConfig>
+
+    /** Today's and yesterday's bytes by the hour, by outbound and by rule, and the totals of the last 31 days. */
+    suspend fun usage(): Result<Usage>
 
     /**
      * Stores [perApp] and applies it: a running tunnel is rebuilt, which drops open connections, and the call returns
@@ -114,8 +141,11 @@ data class Traffic(
     val downHistory: List<Long> = emptyList(),
 )
 
-/** Global sends everything through the template's first group. Rule arrives with the simple routing templates. */
-enum class Mode { Global, Direct }
+/**
+ * Global sends every flow through the main group and Direct sends every flow straight out. Rule sends each new flow
+ * where the first rule that matches it says, and a flow no rule matched through the main group.
+ */
+enum class Mode { Global, Direct, Rule }
 
 enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Fallback(false) }
 

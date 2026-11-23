@@ -12,6 +12,8 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
+import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Status
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -235,17 +237,57 @@ class ServiceEngineTest {
     }
 
     @Test
-    fun aRuleModeCatalogShowsAsGlobal() = runBlocking {
-        val direct = ContractFixtures.read("snapshot-stopped-catalog.json").replace("\"mode\": \"Global\"", "\"mode\": \"Direct\"")
-        val rule = direct.replace("\"revision\": 7", "\"revision\": 8").replace("\"mode\": \"Direct\"", "\"mode\": \"Rule\"")
-        core.snapshotReplies += { direct }
-        assertTrue(engine.setMode(Mode.Direct).isSuccess)
-        assertEquals(Mode.Direct, engine.settings.value.mode)
-
+    fun aRuleModeCatalogCarriesRuleItsMainGroupAndItsSource() = runBlocking {
+        assertEquals(null to null, engine.mainGroupId.value to engine.ruleSource.value)
+        val rule = ContractFixtures.read("snapshot-stopped-catalog.json").replace("\"mode\": \"Global\"", "\"mode\": \"Rule\"")
         core.snapshotReplies += { rule }
-        assertTrue(engine.setMode(Mode.Global).isSuccess)
-        assertEquals("setMode" to """{"mode":"Global"}""", core.calls.last())
-        assertEquals(Mode.Global, engine.settings.value.mode)
+        assertTrue(engine.setMode(Mode.Rule).isSuccess)
+        assertEquals("setMode" to """{"mode":"Rule"}""", core.calls.single())
+        assertEquals(Mode.Rule, engine.settings.value.mode)
+        assertEquals("g-Proxy", engine.mainGroupId.value)
+        assertEquals(listOf("cn-direct", 5, 91044300313602L), engine.ruleSource.value?.let { listOf(it.template, it.rules, it.rulesRevision) })
+    }
+
+    @Test
+    fun rulesAreReadThePageAsked() = runBlocking {
+        core.reply = ContractFixtures.read("call-ok-rules.json")
+        val page = engine.rules(offset = 50, limit = 25).getOrThrow()
+        assertEquals("rules" to """{"offset":50,"limit":25}""", core.calls.single())
+        assertEquals(listOf(91044300313602L, 5L), listOf(page.rulesRevision, page.total.toLong()))
+        assertEquals(RuleTarget.Group("g-Streaming"), page.rows[1].target)
+    }
+
+    @Test
+    fun ruleModeCommandsSendTheirArgsAndMapTheReplies() = runBlocking {
+        assertTrue(engine.setRuleSource("cn-direct", RuleOptions(blockQuic = true)).isSuccess)
+        core.reply = ContractFixtures.read("call-ok-effective-config.json")
+        val config = engine.effectiveConfig().getOrThrow()
+        core.reply = ContractFixtures.read("call-ok-usage.json")
+        val usage = engine.usage().getOrThrow()
+        val sent = listOf(
+            "setRuleSource" to """{"kind":"template","template":"cn-direct","options":{"blockQuic":true}}""",
+            "effectiveConfig" to "{}",
+            "usage" to "{}",
+        )
+        assertEquals(sent, core.calls.toList())
+        assertEquals(Mode.Rule to RuleTarget.Group("g-Proxy"), config.mode to config.dnsVia)
+        assertEquals(listOf("r-6e59b550be7e592b", "r-8d066c6f0b6552cd"), usage.today.byRule.map { it.id })
+    }
+
+    @Test
+    fun ruleModeErrorsKeepTheirCodes() = runBlocking {
+        fun Result<*>.code() = (exceptionOrNull() as EngineException).code
+        core.reply = """{"error":{"code":"invalid_argument"}}"""
+        assertEquals(ErrorCode.InvalidArgument, engine.rules(offset = 0, limit = 501).code())
+        core.reply = """{"error":{"code":"not_found"}}"""
+        assertEquals(ErrorCode.NotFound, engine.setRuleSource("later", RuleOptions()).code())
+        core.reply = """{"error":{"code":"parse_failed"}}"""
+        assertEquals(ErrorCode.ParseFailed, engine.setRuleSource("cn-direct", RuleOptions()).code())
+        // A reply without its fields cannot be read.
+        core.reply = """{"ok":{"rulesRevision":1}}"""
+        assertEquals(ErrorCode.Internal, engine.rules(offset = 0, limit = 50).code())
+        assertEquals(ErrorCode.Internal, engine.effectiveConfig().code())
+        assertEquals(ErrorCode.Internal, engine.usage().code())
     }
 
     @Test

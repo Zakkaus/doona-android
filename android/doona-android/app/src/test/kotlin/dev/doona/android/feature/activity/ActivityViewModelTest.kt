@@ -104,6 +104,13 @@ class ActivityViewModelTest {
     }
 
     @Test
+    fun `rule mode keeps the node of the flows no rule matched until the policy page shows rules`() = runTest {
+        val vm = collected(FakeEngine(status = Status.Running(sinceEpochMs = 0), mode = Mode.Rule))
+        assertEquals(Mode.Rule, vm.uiState.value.mode)
+        assertEquals("n-hk1", vm.uiState.value.node?.id)
+    }
+
+    @Test
     fun `groups that select each other leave the node unknown instead of hanging`() = runTest {
         val a = Group("g-A", "A", GroupKind.Selector, listOf(Member("g-B", "B", isGroup = true)), selectedId = "g-B")
         val b = Group("g-B", "B", GroupKind.Selector, listOf(Member("g-A", "A", isGroup = true)), selectedId = "g-A")

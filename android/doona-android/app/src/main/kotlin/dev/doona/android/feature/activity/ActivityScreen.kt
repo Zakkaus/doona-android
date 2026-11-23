@@ -86,9 +86,9 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
             ConnectionCard(state.status, state.hasSubscriptions, onSwitch = { if (it) onConnect() else onAction(ActivityAction.Disconnect) })
             DoonaControlCard(IconsR.drawable.sym_shuffle, stringResource(R.string.act_mode)) {
                 DoonaSegmented(
-                    Mode.entries.map { stringResource(it.label) },
-                    selected = state.mode.ordinal,
-                    onSelect = { onAction(ActivityAction.SetMode(Mode.entries[it])) },
+                    MODE_CHOICES.map { stringResource(it.label) },
+                    selected = MODE_CHOICES.indexOf(state.mode.shown),
+                    onSelect = { onAction(ActivityAction.SetMode(MODE_CHOICES[it])) },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -103,10 +103,17 @@ fun ActivityScreen(state: ActivityUiState, onAction: (ActivityAction) -> Unit, o
 
 private const val NO_VALUE = "—"
 
+/** The modes the control offers. Rule waits for the 策略 page (U1); until then it shows as Global. */
+private val MODE_CHOICES = listOf(Mode.Global, Mode.Direct)
+
+private val Mode.shown: Mode
+    get() = if (this == Mode.Rule) Mode.Global else this
+
 private val Mode.label: Int
     get() = when (this) {
         Mode.Global -> R.string.mode_global
         Mode.Direct -> R.string.mode_direct
+        Mode.Rule -> R.string.mode_rule
     }
 
 @Composable

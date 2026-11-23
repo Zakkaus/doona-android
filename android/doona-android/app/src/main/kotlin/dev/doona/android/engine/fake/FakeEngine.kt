@@ -1,27 +1,38 @@
 package dev.doona.android.engine.fake
 
+import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.Traffic
+import dev.doona.android.engine.Usage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlin.math.sin
 
-/** Deterministic in-memory [Engine] for previews and screenshot tests; it never touches the network or a tunnel. */
+/**
+ * Deterministic in-memory [Engine] for previews and screenshot tests; it never touches the network or a tunnel. Its rules,
+ * effective config and usage are [FakeRuleMode]'s; a rule mode page passes [FakeRuleMode.GROUPS], which hold the groups
+ * the rules send to.
+ */
 class FakeEngine(
     groups: List<Group> = SAMPLE_GROUPS,
     subscriptions: List<Subscription> = SAMPLE_SUBSCRIPTIONS,
     status: Status = Status.Stopped,
     traffic: Traffic = Traffic(),
+    mode: Mode = Mode.Global,
 ) : Engine {
     override val ready = MutableStateFlow(true)
     override val status = MutableStateFlow(status)
@@ -29,7 +40,9 @@ class FakeEngine(
     override val groups = MutableStateFlow(groups)
     override val subscriptions = MutableStateFlow(subscriptions)
     override val settings: StateFlow<Settings> get() = settingsFlow
-    private val settingsFlow = MutableStateFlow(Settings())
+    private val settingsFlow = MutableStateFlow(Settings(mode = mode))
+    override val mainGroupId = MutableStateFlow<String?>(FakeRuleMode.MAIN_GROUP_ID)
+    override val ruleSource = MutableStateFlow<RuleSource?>(FakeRuleMode.SOURCE)
 
     /** True: the fake's policy is there from the start; a test sets false to stand for a stored policy still being read. */
     override val perAppLoaded = MutableStateFlow(true)
@@ -75,12 +88,33 @@ class FakeEngine(
         return Result.success(Unit)
     }
 
+    /** Pages [FakeRuleMode.ROWS] as the core pages its rows, and refuses the limits the core refuses. */
+    override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
+        if (offset < 0 || limit !in 1..MAX_RULES_PAGE) return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val rows = FakeRuleMode.ROWS
+        return Result.success(RulePage(FakeRuleMode.SOURCE.rulesRevision, rows.size, rows.drop(offset).take(limit)))
+    }
+
+    /** Only the template's options change: they change no row. */
+    override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> {
+        if (template != FakeRuleMode.TEMPLATE) return Result.failure(EngineException(ErrorCode.NotFound))
+        ruleSource.update { it?.copy(options = options) }
+        return Result.success(Unit)
+    }
+
+    override suspend fun effectiveConfig(): Result<EffectiveConfig> =
+        Result.success(FakeRuleMode.effectiveConfig(settingsFlow.value.mode, groups.value, ruleSource.value ?: FakeRuleMode.SOURCE))
+
+    override suspend fun usage(): Result<Usage> = Result.success(FakeRuleMode.USAGE)
+
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
         settingsFlow.update { it.copy(perApp = perApp) }
         return Result.success(Unit)
     }
 
     companion object {
+        private const val MAX_RULES_PAGE = 500
+
         private fun node(id: String, name: String, latencyMs: Int?) =
             Member(id = id, name = name, latencyMs = latencyMs, subscriptionId = "s1")
 

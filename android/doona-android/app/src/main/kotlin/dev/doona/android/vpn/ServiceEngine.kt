@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Process
 import android.os.SystemClock
 import dev.doona.android.data.settings.PerAppSettings
+import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -12,10 +13,14 @@ import dev.doona.android.engine.Group
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
+import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.Traffic
+import dev.doona.android.engine.Usage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineDispatcher
@@ -74,6 +79,10 @@ class ServiceEngine internal constructor(
     override val groups: StateFlow<List<Group>> = _groups.asStateFlow()
     private val _subscriptions = MutableStateFlow(emptyList<Subscription>())
     override val subscriptions: StateFlow<List<Subscription>> = _subscriptions.asStateFlow()
+    private val _mainGroupId = MutableStateFlow<String?>(null)
+    override val mainGroupId: StateFlow<String?> = _mainGroupId.asStateFlow()
+    private val _ruleSource = MutableStateFlow<RuleSource?>(null)
+    override val ruleSource: StateFlow<RuleSource?> = _ruleSource.asStateFlow()
     private val _settings = MutableStateFlow(Settings())
     private val perAppEdits = Mutex()
     override val settings: StateFlow<Settings> = _settings.asStateFlow()
@@ -177,7 +186,18 @@ class ServiceEngine internal constructor(
     override suspend fun removeSubscription(id: String): Result<Unit> =
         command("removeSubscription", IdArgs.serializer(), IdArgs(id), Unit.serializer())
 
-    override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(CoreMode.of(mode)), Unit.serializer())
+    override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
+
+    override suspend fun rules(offset: Int, limit: Int): Result<RulePage> =
+        command("rules", RulesArgs.serializer(), RulesArgs(offset, limit), RulesDto.serializer()).map(RulesDto::toRulePage)
+
+    override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> =
+        command("setRuleSource", RuleSourceArgs.serializer(), RuleSourceArgs.template(template, options), Unit.serializer())
+
+    override suspend fun effectiveConfig(): Result<EffectiveConfig> =
+        command("effectiveConfig", Unit.serializer(), Unit, EffectiveConfigDto.serializer()).map(EffectiveConfigDto::toEffectiveConfig)
+
+    override suspend fun usage(): Result<Usage> = command("usage", Unit.serializer(), Unit, UsageDto.serializer()).map(UsageDto::toUsage)
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
@@ -293,16 +313,31 @@ class ServiceEngine internal constructor(
             revision = catalog.revision
             _groups.value = catalog.groups
             _subscriptions.value = catalog.subscriptions
+            _mainGroupId.value = catalog.mainGroupId
+            _ruleSource.value = catalog.ruleSource
             _settings.update { it.copy(mode = catalog.mode) }
             _ready.value = true
         }
     }
 
-    /** One snapshot's catalog, mapped before it is published, and published whole. Until K1, Rule shows as Global. */
-    private data class Catalog(val revision: Long, val mode: Mode, val groups: List<Group>, val subscriptions: List<Subscription>) {
+    /** One snapshot's catalog, mapped before it is published, and published whole. */
+    private data class Catalog(
+        val revision: Long,
+        val mode: Mode,
+        val groups: List<Group>,
+        val subscriptions: List<Subscription>,
+        val mainGroupId: String,
+        val ruleSource: RuleSource,
+    ) {
         companion object {
-            fun of(revision: Long, dto: CatalogDto) =
-                Catalog(revision, dto.mode.toMode(), dto.groups.map(GroupDto::toGroup), dto.subscriptions.map(SubscriptionDto::toSubscription))
+            fun of(revision: Long, dto: CatalogDto) = Catalog(
+                revision = revision,
+                mode = dto.mode,
+                groups = dto.groups.map(GroupDto::toGroup),
+                subscriptions = dto.subscriptions.map(SubscriptionDto::toSubscription),
+                mainGroupId = dto.mainGroupId,
+                ruleSource = dto.ruleSource.toRuleSource(),
+            )
         }
     }
 

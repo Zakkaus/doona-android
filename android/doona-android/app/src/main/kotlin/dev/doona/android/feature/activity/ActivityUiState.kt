@@ -20,7 +20,7 @@ data class ActivityUiState(
     val outbound: String? = null,
     /**
      * The node that carries traffic, found by following each selected group down to a node; null in Direct, where
-     * traffic uses no node.
+     * traffic uses no node. In Rule it is the node of the flows no rule matched.
      */
     val node: Member? = null,
     val downRate: Long = 0,
@@ -59,7 +59,7 @@ fun activityUiState(
         mode = settings.mode,
         outboundGroupId = outbound?.id,
         outbound = outbound?.members?.firstOrNull { it.id == outbound.selectedId }?.name,
-        node = outbound?.takeIf { settings.mode == Mode.Global }?.let { currentNode(it, groups) },
+        node = outbound?.takeIf { settings.mode != Mode.Direct }?.let { currentNode(it, groups) },
         downRate = traffic.downRate,
         upRate = traffic.upRate,
         downHistory = traffic.downHistory.map(Long::toFloat),

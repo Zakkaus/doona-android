@@ -4,8 +4,14 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.RuleKind
+import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RuleSkip
+import dev.doona.android.engine.RuleTarget
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -17,17 +23,45 @@ import org.junit.Test
 class CoreDtoTest {
     private fun fixture(name: String) = ContractFixtures.read(name)
 
+    /** Each fixture's DTO; a reply's is that of its `ok` value. */
+    private val dtos: Map<String, KSerializer<*>> = mapOf(
+        "init.json" to InitDto.serializer(),
+        "start-config.json" to StartConfigDto.serializer(),
+        "snapshot-running.json" to SnapshotDto.serializer(),
+        "snapshot-died.json" to SnapshotDto.serializer(),
+        "snapshot-stopped-catalog.json" to SnapshotDto.serializer(),
+        "call-ok-empty.json" to Unit.serializer(),
+        "call-ok-subscription.json" to SubscriptionDto.serializer(),
+        "call-error.json" to CallErrorReplyDto.serializer(),
+        "call-select-args.json" to SelectArgs.serializer(),
+        "call-ok-traffic-series.json" to TrafficSeriesDto.serializer(),
+        "call-ok-usage.json" to UsageDto.serializer(),
+        "call-ok-nodes.json" to NodesDto.serializer(),
+        "call-nodes-args.json" to NodesArgs.serializer(),
+        "call-ok-rules.json" to RulesDto.serializer(),
+        "call-rules-args.json" to RulesArgs.serializer(),
+        "call-set-rule-source-args.json" to RuleSourceArgs.serializer(),
+        "call-ok-effective-config.json" to EffectiveConfigDto.serializer(),
+        "call-set-mode-args.json" to ModeArgs.serializer(),
+    )
+
     @Test
     fun everyFixtureHasAParser() {
-        val checked = setOf(
-            "init.json", "start-config.json", "snapshot-running.json", "snapshot-died.json", "snapshot-stopped-catalog.json",
-            "call-ok-empty.json", "call-ok-subscription.json", "call-error.json", "call-select-args.json",
-            "call-ok-traffic-series.json", "call-ok-usage.json", "call-ok-nodes.json", "call-nodes-args.json",
-            "call-ok-rules.json", "call-rules-args.json", "call-set-rule-source-args.json", "call-ok-effective-config.json",
-            "call-set-mode-args.json",
-        )
         val present = ContractFixtures.dir.listFiles { f -> f.extension == "json" }.orEmpty().map { it.name }.toSet()
-        assertEquals(checked, present)
+        assertEquals(dtos.keys, present)
+    }
+
+    /** Decoding and encoding again gives the fixture back: the DTOs carry every field, with the core's names and types. */
+    @Test
+    fun everyFixtureRoundTrips() {
+        val json = Json { encodeDefaults = true }
+        for ((name, dto) in dtos) {
+            @Suppress("UNCHECKED_CAST")
+            val serializer = dto as KSerializer<Any>
+            val whole = Json.parseToJsonElement(fixture(name))
+            val payload = if (name.startsWith("call-ok-")) whole.jsonObject.getValue("ok") else whole
+            assertEquals(name, payload, json.encodeToJsonElement(serializer, json.decodeFromJsonElement(serializer, payload)))
+        }
     }
 
     @Test
@@ -66,7 +100,7 @@ class CoreDtoTest {
     @Test
     fun catalogMapsToEngineTypes() {
         val catalog = checkNotNull(CoreJson.snapshot(fixture("snapshot-stopped-catalog.json")).catalog)
-        assertEquals(CoreMode.Global, catalog.mode)
+        assertEquals(Mode.Global, catalog.mode)
         val groups = catalog.groups.map(GroupDto::toGroup)
         assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), groups.map { it.id })
         val auto = groups[1]
@@ -104,11 +138,25 @@ class CoreDtoTest {
     }
 
     @Test
-    fun ruleModeMapsToGlobalUntilTheEngineKnowsIt() {
-        assertEquals(Mode.Global, CoreMode.Rule.toMode())
-        assertEquals(Mode.Global, CoreMode.Global.toMode())
-        assertEquals(Mode.Direct, CoreMode.Direct.toMode())
-        assertEquals(Mode.entries, Mode.entries.map { CoreMode.of(it).toMode() })
+    fun theRuleSourceMapsToTheEngineType() {
+        val source = checkNotNull(CoreJson.snapshot(fixture("snapshot-stopped-catalog.json")).catalog).ruleSource.toRuleSource()
+        assertEquals(listOf("cn-direct", 2, null), listOf(source.template, source.version, source.subscriptionId))
+        assertEquals(RuleOptions(blockQuic = false), source.options)
+        assertEquals(91044300313602L, source.rulesRevision)
+        assertNull(source.error)
+        val broken = RuleSourceDto("template", "cn-direct", 2, null, RuleOptionsDto(true), 0, 0, 0, 1, "parse_failed").toRuleSource()
+        assertEquals(ErrorCode.ParseFailed, broken.error)
+        assertTrue(broken.options.blockQuic)
+    }
+
+    @Test
+    fun everyModeIsTheCoresOwn() {
+        for (mode in Mode.entries) {
+            val json = CoreJson.encode(ModeArgs.serializer(), ModeArgs(mode))
+            assertEquals("""{"mode":"$mode"}""", json)
+        }
+        val rule = fixture("snapshot-stopped-catalog.json").replace("\"mode\": \"Global\"", "\"mode\": \"Rule\"")
+        assertEquals(Mode.Rule, CoreJson.snapshot(rule).catalog?.mode)
     }
 
     @Test
@@ -126,12 +174,38 @@ class CoreDtoTest {
         assertEquals("g-Proxy", last.target)
         assertEquals("group", last.targetKind)
         assertEquals(listOf(0, 1, 2, 3, 4), rules.rows.map { it.index })
+
+        val page = rules.toRulePage()
+        assertEquals(listOf(5, 5), listOf(page.total, page.rows.size))
+        assertEquals(rules.rows.map { it.id }, page.rows.map { it.id })
+        assertEquals(
+            listOf(RuleTarget.Direct, RuleTarget.Group("g-Streaming"), RuleTarget.Group("g-AI"), RuleTarget.Direct, RuleTarget.Group("g-Proxy")),
+            page.rows.map { it.target },
+        )
+        assertEquals(listOf(RuleKind.GeoIp, RuleKind.DomainSuffix, RuleKind.DomainSuffix, RuleKind.GeoIp, RuleKind.Match), page.rows.map { it.kind })
+        assertEquals(listOf(1, 14, 6, 1, 0), page.rows.map { it.count })
+        assertTrue(page.rows.all { it.skipped == null && it.skippedLines == 0 })
+    }
+
+    @Test
+    fun aRowOfAKindNotCompiledKeepsItsNameAndReason() {
+        fun row(kind: String, targetKind: String, skipped: String?) = RuleRowDto("r-1", 0, kind, "x", 1, "reject", targetKind, skipped, 1).toRuleRow()
+        val geosite = row("GEOSITE", "reject", "geodata_missing")
+        assertNull(geosite.kind)
+        assertEquals("GEOSITE", geosite.kindName)
+        assertEquals(RuleTarget.Reject, geosite.target)
+        assertEquals(RuleSkip.GeodataMissing, geosite.skipped)
+        assertEquals(RuleSkip.AppRule, row("PROCESS-NAME", "reject", "app_rule").skipped)
+        assertEquals(RuleSkip.UnsupportedKind, row("DOMAIN-REGEX", "reject", "unsupported_kind").skipped)
+        // A GeoIP row compiles its codes with data and skips the others.
+        assertEquals(RuleKind.GeoIp to RuleSkip.GeodataMissing, row("GeoIp", "direct", "geodata_missing").let { it.kind to it.skipped })
+        assertEquals(RuleSkip.UnsupportedKind, row("X", "reject", "from_a_newer_core").skipped)
     }
 
     @Test
     fun effectiveConfig() {
         val config = CoreJson.result(fixture("call-ok-effective-config.json"), EffectiveConfigDto.serializer())
-        assertEquals(CoreMode.Rule, config.mode)
+        assertEquals(Mode.Rule, config.mode)
         assertEquals("g-Proxy", config.mainGroupId)
         assertEquals("g-Proxy", config.dnsVia)
         assertEquals(listOf("1.1.1.1:53", "8.8.8.8:53"), config.dnsUpstreams)
@@ -139,6 +213,13 @@ class CoreDtoTest {
         assertTrue(config.text.startsWith("# mode: Rule\n"))
         assertTrue(config.text.endsWith("MATCH,Proxy\n"))
         assertFalse(config.truncated)
+
+        val effective = config.toEffectiveConfig()
+        assertEquals(Mode.Rule, effective.mode)
+        assertEquals(RuleTarget.Group("g-Proxy"), effective.dnsVia)
+        assertEquals(config.text, effective.text)
+        assertEquals(config.ruleSource.toRuleSource(), effective.ruleSource)
+        assertEquals(RuleTarget.Direct, config.copy(mode = Mode.Direct, dnsVia = "direct").toEffectiveConfig().dnsVia)
     }
 
     @Test
@@ -149,7 +230,9 @@ class CoreDtoTest {
         val off = CoreJson.encode(RuleSourceArgs.serializer(), RuleSourceArgs("template", "cn-direct", RuleOptionsDto(blockQuic = false)))
         assertEquals("""{"kind":"template","template":"cn-direct","options":{"blockQuic":false}}""", off)
 
-        val mode = CoreJson.encode(ModeArgs.serializer(), ModeArgs(CoreMode.Rule))
+        assertEquals(source, CoreJson.encode(RuleSourceArgs.serializer(), RuleSourceArgs.template("cn-direct", RuleOptions(blockQuic = true))))
+
+        val mode = CoreJson.encode(ModeArgs.serializer(), ModeArgs(Mode.Rule))
         assertEquals(Json.parseToJsonElement(fixture("call-set-mode-args.json")), Json.parseToJsonElement(mode))
         val page = CoreJson.encode(RulesArgs.serializer(), RulesArgs(offset = 0, limit = 50))
         assertEquals(Json.parseToJsonElement(fixture("call-rules-args.json")), Json.parseToJsonElement(page))
@@ -195,6 +278,15 @@ class CoreDtoTest {
         assertEquals(listOf(276L, 398L), usage.today.byRule.map { it.flows })
         assertEquals(usage.today.outbounds.sumOf { it.up }, usage.today.byRule.sumOf { it.up })
         assertEquals(usage.today.outbounds.sumOf { it.down }, usage.today.byRule.sumOf { it.down })
+
+        val mapped = usage.toUsage()
+        assertEquals(usage.today.byRule.map { listOf(it.id, it.up, it.down, it.flows) }, mapped.today.byRule.map { listOf(it.id, it.up, it.down, it.flows) })
+        assertEquals(usage.today.outbounds.map { it.id }, mapped.today.outbounds.map { it.id })
+        assertEquals(usage.today.flows, mapped.today.flows)
+        assertEquals(checkNotNull(mapped.yesterday).down, yesterday.down)
+        assertEquals(usage.days.map { it.date }, mapped.days.map { it.date })
+        // A core from before byRule sends none.
+        assertTrue(usage.copy(today = usage.today.copy(byRule = emptyList())).toUsage().today.byRule.isEmpty())
 
         val nodes = CoreJson.result(fixture("call-ok-nodes.json"), NodesDto.serializer()).nodes
         assertEquals("trojan", nodes[0].protocol)
