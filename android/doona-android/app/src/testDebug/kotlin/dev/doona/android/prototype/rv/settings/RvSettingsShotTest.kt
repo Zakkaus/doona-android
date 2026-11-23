@@ -107,7 +107,7 @@ class RvSettingsShotTest {
          * above the bottom navigation.
          */
         const val LONG_PAGE = "+h1529dp"
-        const val LONG_PAGE_FS115 = "+h1544dp"
-        const val LONG_PAGE_FS200 = "+h1870dp"
+        const val LONG_PAGE_FS115 = "+h1546dp"
+        const val LONG_PAGE_FS200 = "+h1882dp"
     }
 }

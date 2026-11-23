@@ -68,7 +68,8 @@ internal val LocalRvNav = staticCompositionLocalOf { RV_NAV }
 /**
  * The floating bottom bar (measured §9): a glass capsule [RvChrome.navInset] in from the sides and [rvNavBottom] above
  * the screen's edge, a filled glyph over a label for each of [LocalRvNav]'s tabs, the one whose id is [selected] on a
- * flat opaque pill; [onSelect] gets a tab's id. While [scroll], the page's, moves its content up, it shrinks to icons
+ * flat opaque pill; a larger font makes the label's line, and so the capsule, taller ([rvNavLabelLine]), never cutting
+ * a glyph. [onSelect] gets a tab's id. While [scroll], the page's, moves its content up, it shrinks to icons
  * only, 336 x 52 dp, centred and almost opaque, as Revolut's bar does. Tapping the [selected] tab again glides that page
  * back to its top in [RvMotion.TOP_MS] (G6).
  */
@@ -91,9 +92,10 @@ internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlas
             }
         }
     }
+    val grow = rvNavLabelGrowth()
     BoxWithConstraints(modifier.fillMaxWidth().padding(bottom = rvNavBottom(insets)), contentAlignment = Alignment.BottomCenter) {
         val width = lerp(maxWidth - RvChrome.navInset * 2, RvChrome.navCollapsedWidth, shrink)
-        val height = lerp(RvChrome.navHeight, RvChrome.navCollapsedHeight, shrink)
+        val height = lerp(RvChrome.navHeight + grow, RvChrome.navCollapsedHeight, shrink)
         val colors = Rv.colors
         val tint = colors.navGlass
         val rim = colors.navRim?.let { Modifier.border(RvChrome.navRim, it, CircleShape) } ?: Modifier
@@ -127,12 +129,13 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, modifier:
     ) {
         RvGlyph(item.icon, lerp(RvChrome.navGlyph, RvChrome.navCollapsedGlyph, shrink), ink)
         val label = stringResource(item.label)
+        val line = rvNavLabelLine()
         if (shrink < 1f) {
             Spacer(Modifier.height(lerp(RvChrome.navLabelGap, 0.dp, shrink)))
             RvText(
                 label,
                 Rv.type.navLabel,
-                Modifier.height(lerp(RvChrome.navLabel, 0.dp, shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)),
+                Modifier.height(lerp(line, 0.dp, shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)),
                 color = ink,
                 align = TextAlign.Center,
             )
@@ -148,11 +151,22 @@ internal fun rvNavBottom(insets: WindowInsets): Dp {
 }
 
 /**
- * The space every page with the capsule keeps free at its end: the capsule, and [RvChrome.navGap] between it and the
- * last card once the page is scrolled to its end (item 3).
+ * The space every page with the capsule keeps free at its end: the capsule, as tall as the font size makes it, and
+ * [RvChrome.navGap] between it and the last card once the page is scrolled to its end (item 3).
  */
 @Composable
-internal fun rvNavClearance(insets: WindowInsets): Dp = rvNavBottom(insets) + RvChrome.navHeight + RvChrome.navGap
+internal fun rvNavClearance(insets: WindowInsets): Dp = rvNavBottom(insets) + RvChrome.navHeight + rvNavLabelGrowth() + RvChrome.navGap
+
+/**
+ * A label's line: the 15 sp label's line height at the phone's font size, never less than [RvChrome.navLabel], so a
+ * larger font does not cut the glyphs' bottoms (ruler audit finding 1).
+ */
+@Composable
+private fun rvNavLabelLine(): Dp = with(LocalDensity.current) { max(RvChrome.navLabel, Rv.type.navLabel.lineHeight.toDp()) }
+
+/** What a larger font adds to the capsule's height: the label's line beyond [RvChrome.navLabel], 0 at the default size. */
+@Composable
+private fun rvNavLabelGrowth(): Dp = rvNavLabelLine() - RvChrome.navLabel
 
 /**
  * Whether the capsule is collapsed: from the moment [scroll] moves the content up until it moves it back down or
