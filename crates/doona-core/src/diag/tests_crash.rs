@@ -493,3 +493,90 @@ fn a_mark_or_directory_that_cannot_be_read_stops_writes_and_clears() {
     assert!(unlisted.is_err(), "a directory that cannot be listed");
     assert!(numbers(&at).is_empty());
 }
+
+/// Six files an earlier version left are trimmed to the newest five under the lock before they
+/// are listed: no export takes six, and no name below the newest is freed.
+#[test]
+fn a_listing_trims_what_earlier_versions_left_to_the_newest_five() {
+    let (dir, diag) = crashes("diag-crash-list-six");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    for n in 1..=6 {
+        fs::write(at.join(format!("179530000000{n}.txt")), "x").unwrap();
+    }
+    let listed = diag.crashes().unwrap().list();
+    let names: Vec<String> = listed.into_iter().map(|f| f.name).collect();
+    let newest: Vec<String> = (2..=6).map(|n| format!("179530000000{n}.txt")).collect();
+    assert_eq!(names, newest);
+    assert_eq!(left(&dir), newest);
+}
+
+/// A mark is read to its end: a number followed by anything but white space is no mark, however
+/// far on it comes.
+#[test]
+fn a_mark_with_more_after_its_number_stops_writes_and_clears() {
+    let (dir, diag) = crashes("diag-crash-mark-tail");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    let mark = format!("1795300000000{}x", " ".repeat(11));
+    fs::write(at.join(".core.mark"), mark).unwrap();
+    let crashes = diag.crashes().unwrap();
+    assert!(crashes.save("source: core\n").is_err());
+    assert!(crashes.remove(&[], 0).is_err());
+    assert!(numbers(&at).is_empty());
+}
+
+/// A panic that gives up on the core's files, which a clear holds while it waits for the
+/// directory, counts its location as written too: the same panic again does not wait.
+#[test]
+fn a_panic_given_up_on_the_files_is_not_waited_for_again() {
+    let (dir, diag) = crashes("diag-crash-clearing-again");
+    let at = dir.path().join(crash::DIR);
+    fs::create_dir_all(&at).unwrap();
+    let held = app_lock(&at);
+    let clearing = std::thread::spawn({
+        let diag = Arc::clone(&diag);
+        move || diag.crashes().unwrap().remove(&[], 0).map(|_| ())
+    });
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let mut held = Some(held);
+    assert!(panics_while(&diag, &mut held), "the panic waited");
+    assert!(panics_while(&diag, &mut held), "the same panic waited");
+    drop(held);
+    clearing.join().unwrap().unwrap();
+    let events = diag.events(None).0;
+    let details: Vec<_> = events.iter().rev().take(2).map(|e| e.detail).collect();
+    assert_eq!(details, [Some("repeated"), Some("timed_out")]);
+}
+
+/// A try of the directory's lock that a signal interrupts gives up once a panic's time is up, as
+/// one the app's lock refuses does: signals that keep coming cannot hold the panic. Without a
+/// deadline, as for a clear, it is tried again at once. (`F_OFD_SETLK` does not block, so no
+/// signal can be made to interrupt it here; the decision is tested alone.)
+#[test]
+fn an_interrupted_try_of_the_lock_gives_up_past_the_panics_deadline() {
+    use super::crash_dir::{PANIC_WAIT, RETRY, retry};
+    use std::io::{Error, ErrorKind};
+    let now = std::time::Instant::now();
+    let interrupted = || Error::from_raw_os_error(libc::EINTR);
+    let held = || Error::from_raw_os_error(libc::EAGAIN);
+    let timed_out = |e: Error| e.kind() == ErrorKind::TimedOut;
+    assert!(retry(interrupted(), Some(now), now).is_err_and(timed_out));
+    assert!(retry(held(), Some(now), now).is_err_and(timed_out));
+    assert_eq!(
+        retry(interrupted(), Some(now + PANIC_WAIT), now).unwrap(),
+        None
+    );
+    assert_eq!(
+        retry(held(), Some(now + PANIC_WAIT), now).unwrap(),
+        Some(RETRY)
+    );
+    assert_eq!(retry(interrupted(), None, now).unwrap(), None);
+    let denied = Error::from_raw_os_error(libc::EBADF);
+    assert_eq!(
+        retry(denied, Some(now + PANIC_WAIT), now)
+            .unwrap_err()
+            .raw_os_error(),
+        Some(libc::EBADF)
+    );
+}

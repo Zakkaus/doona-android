@@ -29,13 +29,13 @@ use super::{Diag, Event, now_ms};
 use crate::api::lock;
 use crate::dto::ErrorCode;
 use std::cell::{Cell, OnceCell};
-use std::collections::HashSet;
 use std::fmt;
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{self, ErrorKind, Read as _, Write as _};
 use std::panic::{Location, PanicHookInfo};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::{Mutex, MutexGuard, OnceLock, TryLockError, Weak};
 use std::time::Instant;
 
@@ -149,7 +149,8 @@ fn on_panic_here(info: &PanicHookInfo<'_>) {
 
 pub(crate) enum Written {
     File,
-    /// This process wrote a file for the location already, or for as many locations as it may.
+    /// This process wrote a file for the location already, or gave up on it, or wrote one for as
+    /// many locations as it may.
     Repeated,
     Failed(ErrorKind),
 }
@@ -157,6 +158,8 @@ pub(crate) enum Written {
 /// A core's crash files.
 pub(crate) struct Crashes {
     dir: PathBuf,
+    /// The locations this process wrote a file for, or gave up on.
+    written: Locations,
     /// Held while a file is written, published and the oldest removed, and while the files are
     /// listed or removed: two panics at once leave five files, and a listing never sees six.
     files: Mutex<Files>,
@@ -172,8 +175,6 @@ pub(crate) struct Crashes {
 }
 
 struct Files {
-    /// Hashes of the locations this process wrote a file for.
-    written: HashSet<u64>,
     /// The text of the file being written, allocated with the core.
     text: String,
     /// The highest number a crash file had here, published or listed, or in [`MARK`], read again
@@ -186,8 +187,8 @@ impl Crashes {
     pub fn new(dir: PathBuf) -> Crashes {
         Crashes {
             dir,
+            written: Locations([const { AtomicU64::new(0) }; MAX_LOCATIONS]),
             files: Mutex::new(Files {
-                written: HashSet::with_capacity(MAX_LOCATIONS),
                 text: String::with_capacity(MAX_BYTES),
                 mark: None,
             }),
@@ -204,48 +205,45 @@ impl Crashes {
     /// counts as written once its file is published: a write that failed is tried again. Waits
     /// for the files and the directory until [`PANIC_WAIT`] has passed, then gives up; a location
     /// given up on counts as written too, as a panic repeated in every flow would wait each time
-    /// and leave the lock's descriptor open each time (`crash_dir.rs`).
+    /// and leave the lock's descriptor open each time (`crash_dir.rs`). The locations are kept
+    /// apart from the files, so a panic that could not have the files, which a clear may hold
+    /// while it waits for the directory, still notes its own.
     pub(crate) fn write(&self, info: &PanicHookInfo<'_>) -> Written {
         let until = Some(Instant::now() + PANIC_WAIT);
-        let key = info.location().map_or(0, |at| {
+        let key = info.location().map_or(1, |at| {
             let mut h = DefaultHasher::new();
             (at.file(), at.line(), at.column()).hash(&mut h);
-            h.finish()
+            h.finish().max(1)
         });
-        let repeated = |w: &HashSet<u64>| w.len() >= MAX_LOCATIONS || w.contains(&key);
-        match self.hold(until) {
-            Err(e) => return Written::Failed(e.kind()),
-            Ok(files) if files.as_ref().is_none_or(|f| repeated(&f.0.written)) => {
-                return Written::Repeated;
-            }
-            Ok(_) => {}
+        // A thread that panicked holding the files writes none: taking them again would wait.
+        if self.written.has(key) || HOLDING.try_with(Cell::get).unwrap_or(false) {
+            return Written::Repeated;
         }
-        // Taken before the files are (`stack.rs`), and checked again after: another thread may
-        // have written the location meanwhile.
+        // Taken before the files are (`stack.rs`); the location is checked again after, as
+        // another thread may have written it meanwhile.
         let (stack, thread) = (Stack::capture(), thread());
         let mut files = match self.hold(until) {
             Ok(Some(files)) => files,
             Ok(None) => return Written::Repeated,
-            Err(e) => return Written::Failed(e.kind()),
+            Err(e) => {
+                self.written.add(key);
+                return Written::Failed(e.kind());
+            }
         };
-        let Files {
-            written,
-            text,
-            mark,
-        } = &mut *files.0;
-        if repeated(written) {
+        if self.written.has(key) {
             return Written::Repeated;
         }
+        let Files { text, mark } = &mut *files.0;
         text.clear();
         let _ = describe(&mut Bounded(text), info, thread, &stack);
         match self.publish(text, mark, until) {
             Ok(_) => {
-                written.insert(key);
+                self.written.add(key);
                 Written::File
             }
             Err(e) => {
                 if e.kind() == ErrorKind::TimedOut {
-                    written.insert(key);
+                    self.written.add(key);
                 }
                 Written::Failed(e.kind())
             }
@@ -372,15 +370,30 @@ impl Crashes {
     }
 
     /// The crash files, oldest first, and the mark: no file listed has a higher number, and no
-    /// file written from now on will have it or a lower one. `clearCrashes` takes it back. Read
-    /// without the directory's lock; an empty file is no crash file, and what cannot be read
-    /// leaves the mark lower, which a clear only narrows.
+    /// file written from now on will have it or a lower one. `clearCrashes` takes it back. Under
+    /// the directory's lock, the oldest files past five, which earlier versions left, go first; a
+    /// file that will not go is listed still. Without the lock, as when the directory cannot be
+    /// made, the files are listed as they are. An empty file is no crash file, and what cannot be
+    /// read leaves the mark lower, which a clear only narrows.
     pub fn listing(&self) -> (Vec<CrashFile>, u64) {
         let Ok(Some(mut files)) = self.hold(None) else {
             return (Vec::new(), 0);
         };
+        let lock = DirLock::take(&self.dir, None);
         let mut listed = crash_dir::scan(&self.dir).unwrap_or_default();
         listed.retain(|(.., bytes)| *bytes > 0);
+        if lock.is_ok() {
+            let over = listed.len().saturating_sub(MAX_FILES);
+            let stays = |(_, name, _): &Listed| {
+                fs::remove_file(self.dir.join(name)).is_err_and(|e| e.kind() != ErrorKind::NotFound)
+            };
+            let mut seen = 0;
+            listed.retain(|file| {
+                seen += 1;
+                seen > over || stays(file)
+            });
+        }
+        drop(lock);
         let newest = listed.last().map_or(0, |(at, ..)| *at);
         let saved = crash_dir::saved_mark(&self.dir).unwrap_or(0);
         let mark = files.0.mark.unwrap_or_default().max(saved).max(newest);
@@ -454,6 +467,36 @@ struct Held<'a>(MutexGuard<'a, Files>);
 impl Drop for Held<'_> {
     fn drop(&mut self) {
         let _ = HOLDING.try_with(|h| h.set(false));
+    }
+}
+
+/// The locations a process wrote a file for or gave up on, by a hash other than 0, which marks a
+/// free slot. Without a lock: a panic notes its location whatever another thread holds.
+struct Locations([AtomicU64; MAX_LOCATIONS]);
+
+impl Locations {
+    /// Whether a panic at `key` writes no file: one was written for it, or for as many locations
+    /// as a process may have.
+    fn has(&self, key: u64) -> bool {
+        let mut full = true;
+        for slot in &self.0 {
+            match slot.load(Relaxed) {
+                0 => full = false,
+                held if held == key => return true,
+                _ => {}
+            }
+        }
+        full
+    }
+
+    fn add(&self, key: u64) {
+        for slot in &self.0 {
+            match slot.compare_exchange(0, key, Relaxed, Relaxed) {
+                Ok(_) => return,
+                Err(held) if held == key => return,
+                Err(_) => {}
+            }
+        }
     }
 }
 

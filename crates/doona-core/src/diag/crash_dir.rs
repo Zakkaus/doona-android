@@ -94,16 +94,29 @@ fn lock(file: &fs::File, until: Option<Instant>) -> io::Result<()> {
     };
     // SAFETY: `lock` outlives each call, and the descriptor is open.
     while unsafe { libc::fcntl(file.as_raw_fd(), wait, &lock) } != 0 {
-        let e = io::Error::last_os_error();
-        let held = matches!(e.raw_os_error(), Some(libc::EAGAIN | libc::EACCES));
-        match until {
-            _ if e.kind() == ErrorKind::Interrupted => {}
-            Some(until) if held && Instant::now() < until => std::thread::sleep(RETRY),
-            Some(_) if held => return Err(ErrorKind::TimedOut.into()),
-            _ => return Err(e),
+        if let Some(pause) = retry(io::Error::last_os_error(), until, Instant::now())? {
+            std::thread::sleep(pause);
         }
     }
     Ok(())
+}
+
+/// What a try of the lock that failed with `e` at `now` leads to: another try at once after an
+/// interruption, one after [`RETRY`] while another holds the lock, or an error. Past `until`, an
+/// interrupted try gives up too (`TimedOut`): signals that keep coming cannot hold a panic.
+pub(super) fn retry(
+    e: io::Error,
+    until: Option<Instant>,
+    now: Instant,
+) -> io::Result<Option<Duration>> {
+    let held = matches!(e.raw_os_error(), Some(libc::EAGAIN | libc::EACCES));
+    let interrupted = e.kind() == ErrorKind::Interrupted;
+    match until {
+        Some(until) if (held || interrupted) && now >= until => Err(ErrorKind::TimedOut.into()),
+        _ if interrupted => Ok(None),
+        Some(_) if held => Ok(Some(RETRY)),
+        _ => Err(e),
+    }
 }
 
 /// The files with a crash file's name, empty ones included, oldest first: by number, then by
@@ -130,15 +143,28 @@ pub(super) fn scan(dir: &Path) -> io::Result<Vec<Listed>> {
 }
 
 /// The mark a clear saved in [`MARK`]: 0 only when none was ever saved. A mark that cannot be
-/// read, or holds no number up to [`MAX_NUMBER`], is an error: read as 0, it could give a cleared
-/// name again.
+/// read, or holds anything but a number up to [`MAX_NUMBER`] and white space, is an error: read as
+/// 0, it could give a cleared name again.
 pub(super) fn saved_mark(dir: &Path) -> io::Result<u64> {
-    let mut digits = [0_u8; 24];
-    let read = match fs::File::open(dir.join(MARK)) {
+    let mut file = match fs::File::open(dir.join(MARK)) {
         Err(e) if e.kind() == ErrorKind::NotFound => return Ok(0),
-        opened => opened?.read(&mut digits)?,
+        opened => opened?,
     };
-    let digits = std::str::from_utf8(&digits[..read]).ok();
+    // Read to the end, so nothing may follow the number: a mark is 13 digits, a buffer that
+    // fills holds more than one.
+    let mut digits = [0_u8; 32];
+    let mut read = 0;
+    while read < digits.len() {
+        match file.read(&mut digits[read..]) {
+            Ok(0) => break,
+            Ok(n) => read += n,
+            Err(e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(e) => return Err(e),
+        }
+    }
+    let digits = (read < digits.len())
+        .then(|| std::str::from_utf8(&digits[..read]).ok())
+        .flatten();
     let mark = digits.and_then(|d| d.trim().parse().ok());
     mark.filter(|&m| m <= MAX_NUMBER)
         .ok_or_else(|| ErrorKind::InvalidData.into())
