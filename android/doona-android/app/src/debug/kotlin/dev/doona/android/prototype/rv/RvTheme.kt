@@ -264,16 +264,20 @@ internal class RvType {
 }
 
 /**
- * 活動's own text, as the owner approved it (609336cb): its hero's caption, figure and unit, the rates' line under it
- * and the round actions' labels. Every other page reads [RvType]; these are not design-system roles (RvParityTest compares [RvType]).
+ * 活動's own text, as the owner approved it (609336cb), from [RvActivityTokens]: its hero's caption, figure and unit, the
+ * rates' line under it, the round actions' labels and the 全域 outbound card's rows. Every other page reads [RvType];
+ * these are not design-system roles (RvParityTest compares [RvType]).
  */
 @Immutable
 internal object RvActivityType {
-    val caption = RvTypeScale.activityCaption.style()
-    val hero = RvTypeScale.activityHero.style(tabular = true)
-    val heroUnit = RvTypeScale.activityHeroUnit.style(tabular = true)
-    val sub = RvTypeScale.activitySub.style(tabular = true)
-    val action = RvTypeScale.activityAction.style()
+    val caption = RvActivityTokens.caption.style()
+    val hero = RvActivityTokens.hero.style(tabular = true)
+    val heroUnit = RvActivityTokens.heroUnit.style(tabular = true)
+    val sub = RvActivityTokens.sub.style(tabular = true)
+    val action = RvActivityTokens.action.style()
+    val rowTitle = RvActivityTokens.rowTitle.style()
+    val rowValue = RvActivityTokens.rowTitle.style(tabular = true)
+    val rowSub = RvActivityTokens.rowSub.style()
 }
 
 // Tabular figures only where figures line up or change in place: Inter's tnum also widens the hyphen of a name.

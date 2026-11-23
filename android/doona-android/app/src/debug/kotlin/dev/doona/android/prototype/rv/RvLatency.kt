@@ -18,8 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.Tone
+import dev.doona.android.designsystem.components.latencyTone
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
@@ -107,3 +110,24 @@ internal fun RvLatencyText(latencyMs: Int?, timedOut: Boolean) {
 
 /** An equilateral triangle is this share of its width high. */
 private const val TRIANGLE_HEIGHT = 0.866f
+
+/**
+ * A node's latency over its quality word, the word in the quality's fixed hue, as 活動's 全域 outbound card showed it when
+ * the owner approved it (609336cb): [value] over [note].
+ */
+@Composable
+internal fun RvLatency(ms: Int?, value: TextStyle = Rv.type.rowValue, note: TextStyle = Rv.type.rowSub) {
+    val tone = latencyTone(ms)
+    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+        RvText(ms?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE, value, align = TextAlign.End)
+        RvText(stringResource(tone.quality), note, color = Rv.colors.quality(tone), align = TextAlign.End)
+    }
+}
+
+private val Tone.quality: Int
+    get() = when (this) {
+        Tone.Ok -> R.string.latency_good
+        Tone.Warn -> R.string.latency_fair
+        Tone.Err -> R.string.latency_slow
+        Tone.Neutral -> R.string.latency_untested
+    }

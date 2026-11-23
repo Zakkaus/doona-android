@@ -252,7 +252,7 @@ internal class RvActionLook(val disc: Dp, val gap: Dp, val label: TextStyle?) {
         val Standard = RvActionLook(RvSize.actionDisc, RvSpace.discToLabel, null)
 
         /** 活動's round actions, as the owner approved them (609336cb). */
-        val Activity = RvActionLook(RvSize.activityActionDisc, RvSpace.activityDiscToLabel, RvActivityType.action)
+        val Activity = RvActionLook(RvActivityTokens.actionDisc, RvActivityTokens.discToLabel, RvActivityType.action)
     }
 }
 
@@ -317,6 +317,7 @@ internal fun RvRow(
     subtitleEnd: (@Composable () -> Unit)? = null,
     titleLines: Int = 1,
     titleOverflow: TextOverflow = TextOverflow.Ellipsis,
+    look: RvRowLook = RvRowLook.Standard,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     // The card clips the layer of its first and last row to its corners.
@@ -326,26 +327,41 @@ internal fun RvRow(
         modifier
             .fillMaxWidth()
             .testTag(RvPart.ROW)
-            .heightIn(min = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine)
+            .heightIn(min = if (subtitle == null) RvSize.rowOneLine else look.twoLine)
             .then(press)
-            .padding(horizontal = RvSpace.rowPadding),
+            .padding(horizontal = look.padding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         leading()
-        Spacer(Modifier.width(RvSpace.rowGap))
+        Spacer(Modifier.width(look.gap))
+        val titleStyle = look.title ?: Rv.type.rowTitle
+        val subtitleStyle = look.subtitle ?: Rv.type.rowSub
         Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
             if (lineWise) {
-                RowLine(titleEnd) { RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow) }
-                subtitle?.let { RowLine(subtitleEnd) { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) } }
+                RowLine(titleEnd) { RvText(title, titleStyle, maxLines = titleLines, overflow = titleOverflow) }
+                subtitle?.let { RowLine(subtitleEnd) { RvText(it, subtitleStyle, color = Rv.colors.textSecondary) } }
             } else {
-                RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow)
-                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary) }
+                RvText(title, titleStyle, maxLines = titleLines, overflow = titleOverflow)
+                subtitle?.let { RvText(it, subtitleStyle, color = Rv.colors.textSecondary) }
             }
         }
         trailing?.let {
             Spacer(Modifier.width(RvSpace.trailingGap))
             it()
         }
+    }
+}
+
+/**
+ * A row's padding, the gap from its leading visual to its text, its height with a subtitle, and its title and subtitle
+ * styles ([RvType.rowTitle] and [RvType.rowSub] when none): [Standard] on every page, [Activity] in 活動's 全域 outbound
+ * card, as the owner approved it (609336cb).
+ */
+@Immutable
+internal class RvRowLook(val padding: Dp, val gap: Dp, val twoLine: Dp, val title: TextStyle?, val subtitle: TextStyle?) {
+    companion object {
+        val Standard = RvRowLook(RvSpace.rowPadding, RvSpace.rowGap, RvSize.rowTwoLine, null, null)
+        val Activity = RvRowLook(RvActivityTokens.rowPadding, RvActivityTokens.rowGap, RvActivityTokens.rowTwoLine, RvActivityType.rowTitle, RvActivityType.rowSub)
     }
 }
 
@@ -378,12 +394,12 @@ private fun RowLine(end: (@Composable () -> Unit)?, start: @Composable () -> Uni
 
 /**
  * A row's leading disc: a glyph on the raised fill. A detail page's header takes it at [RvSize.headerDisc]; the glyph
- * keeps the row's proportion to its disc.
+ * keeps the row's proportion to its disc unless [glyph] says otherwise (活動's 全域 outbound card).
  */
 @Composable
-internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc) {
+internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc, glyph: Dp = RvSize.rowGlyph * (size / RvSize.rowDisc)) {
     Box(Modifier.size(size).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
-        RvGlyph(icon, RvSize.rowGlyph * (size / RvSize.rowDisc), color)
+        RvGlyph(icon, glyph, color)
     }
 }
 

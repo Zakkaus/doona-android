@@ -167,12 +167,12 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
     val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null, motion.resting), pan?.first, pan?.second)
     // As the owner approved it (609336cb): the dots run up behind the status bar, as Revolut's texture does, and behind the
     // hero's text at full strength, in the accent only while connected; the marker sits under the top bar's glass.
-    RvHeader(place, statusBar + RvDots.activityFocusTop, null, if (running) Rv.colors.dots else Rv.colors.dotsIdle, null, live = live) {
+    RvHeader(place, statusBar + RvActivityTokens.focusTop, null, if (running) Rv.colors.dots else Rv.colors.dotsIdle, null, live = live) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
-        Spacer(Modifier.height(RvSpace.activityHeaderTop))
+        Spacer(Modifier.height(RvActivityTokens.headerTop))
         HeroBlock(state, ticking, mode, hero, motion.pushed)
         if (motion.pushed == null) actions() else Box(motion.pushed) { actions() }
-        Spacer(Modifier.height(RvSpace.activityActionsToCard))
+        Spacer(Modifier.height(RvActivityTokens.actionsToCard))
     }
 }
 
@@ -315,12 +315,13 @@ private fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
 }
 
 /**
- * The outbound card (item 24), in the 最快節點 card's rows, four at most: the mode, which opens the mode picker; then in
- * 規則 the main node and the two rule groups that sent the most traffic today, and 查看全部 for the rest; in 全域 the one
- * node; in 直連 a line that no node is in use.
+ * The outbound card (item 24). In 全域 as the owner approved it (609336cb, [GlobalCard]); otherwise in the 最快節點 card's
+ * rows, four at most: the mode, which opens the mode picker; then in 規則 the main node and the two rule groups that sent
+ * the most traffic today, and 查看全部 for the rest (O2); in 直連 a line that no node is in use.
  */
 @Composable
 private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvActivityRoutes, nodes: List<RvNode>) {
+    if (mode == RvRouteMode.Global) return GlobalCard(state, routes)
     RvCard {
         RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = routes.mode) { RvChevron() }
         if (mode == RvRouteMode.Direct) {
@@ -334,16 +335,35 @@ private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvAc
                 // The node in use: its flag carries the current node's check.
                 { RvFlag(listed?.place?.name, RvSize.rowDisc, current = node != null) },
                 node?.name ?: RV_NO_VALUE,
-                stringResource(if (mode == RvRouteMode.Rule) R.string.rv_main_node else R.string.nav_nodes),
+                stringResource(R.string.rv_main_node),
                 onClick = routes.node,
                 // Its latency over the change since the test before, as 節點 and the 最快節點 rows show it (L-12).
             ) { RvLatencyChange(node?.latencyMs?.takeUnless { node.failed }, listed?.changeMs?.takeUnless { node.failed }) }
         }
-        if (mode != RvRouteMode.Rule) return@RvCard
         RvData.ruleOutbounds.take(RULE_ROWS).forEach { RuleRow(it, routes.rule) }
         RvSeeAll(pluralStringResource(R.plurals.rv_see_all_rules, RvData.RULES, RvData.RULES), routes.rules)
     }
 }
+
+/**
+ * The outbound card in 全域, as the owner approved it (609336cb): 全域出站 and the group it sends to, which opens the mode
+ * picker, then the node in use with its latency and quality word, in 活動's own row look ([RvRowLook.Activity]). A node
+ * switch cross-fades the node's row.
+ */
+@Composable
+private fun GlobalCard(state: ActivityUiState, routes: RvActivityRoutes) {
+    RvCard {
+        RvRow({ GlobalDisc(R.drawable.rv_sym_filter_alt) }, stringResource(R.string.act_global), state.outbound ?: RV_NO_VALUE, onClick = routes.mode, look = RvRowLook.Activity) { RvChevron() }
+        Crossfade(state.node, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "node") { node ->
+            RvRow({ GlobalDisc(R.drawable.rv_sym_schedule) }, node?.name ?: RV_NO_VALUE, stringResource(R.string.nav_nodes), onClick = routes.node, look = RvRowLook.Activity) {
+                RvLatency(node?.latencyMs?.takeUnless { node.failed }, RvActivityType.rowValue, RvActivityType.rowSub)
+            }
+        }
+    }
+}
+
+@Composable
+private fun GlobalDisc(@DrawableRes icon: Int) = RvIconDisc(icon, size = RvActivityTokens.rowDisc, glyph = RvActivityTokens.rowGlyph)
 
 /**
  * A rule group that sent traffic today: the node's flag, or for 直連 its own straight arrow (the diamond is the mode's), the
