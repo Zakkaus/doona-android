@@ -28,6 +28,13 @@ import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
+import dev.doona.android.prototype.rv.RvSkeletonCard
+import dev.doona.android.prototype.rv.RvSkeletonControlCard
+import dev.doona.android.prototype.rv.RvSkeletonGoal
+import dev.doona.android.prototype.rv.RvSkeletonHeader
+import dev.doona.android.prototype.rv.RvSkeletonRow
+import dev.doona.android.prototype.rv.RvSkeletonSeeAll
+import dev.doona.android.prototype.rv.RvSkeletonTiles
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.data.RvData
@@ -36,8 +43,8 @@ import dev.doona.android.prototype.rv.subs.rvSubscriptionMenu
 
 /**
  * The library's new parts in one page, for the owner to try on a phone (route `gallery`): the text field in its states,
- * subscription rows whose long press opens the menu, the error banner, the empty state, and the confirm sheet behind a
- * button. The goldens draw the same parts.
+ * subscription rows whose long press opens the menu, the error banner, the empty state, the loading skeleton, and the
+ * confirm sheet behind a button. The goldens draw the same parts.
  */
 @Composable
 internal fun RvGalleryScreen(onBack: () -> Unit) {
@@ -50,6 +57,7 @@ internal fun RvGalleryScreen(onBack: () -> Unit) {
         Section(R.string.rv_gallery_menu) { RvGalleryMenuCard(onDelete = { deleting = it }) }
         Section(R.string.rv_gallery_banner) { RvGalleryBanners() }
         Section(R.string.rv_gallery_empty) { RvGalleryEmpty() }
+        Section(R.string.rv_gallery_skeleton) { RvGallerySkeleton() }
         Section(R.string.rv_gallery_sheet) { RvPrimaryButton(stringResource(R.string.rv_menu_delete), { deleting = RvData.subscriptions.first() }) }
     }
     val sub = deleting
@@ -121,6 +129,29 @@ internal fun RvGalleryEmpty(onAdd: () -> Unit = {}) {
             onAdd,
         )
         RvEmptyCaption(stringResource(R.string.rv_conn_off_title), stringResource(R.string.rv_conn_off_line))
+    }
+}
+
+/**
+ * The skeleton's parts as a page shows them while it loads: a control card, a card with its header, a row without an
+ * end, two rows with one and its see-all line, the tiles, and a card with a goal under its row.
+ */
+@Composable
+internal fun RvGallerySkeleton() {
+    Column(verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap)) {
+        RvSkeletonControlCard()
+        RvSkeletonCard {
+            RvSkeletonHeader()
+            RvSkeletonRow(0)
+            RvSkeletonRow(1, end = true)
+            RvSkeletonRow(2, end = true)
+            RvSkeletonSeeAll()
+        }
+        RvSkeletonTiles()
+        RvSkeletonCard {
+            RvSkeletonRow(3)
+            RvSkeletonGoal()
+        }
     }
 }
 

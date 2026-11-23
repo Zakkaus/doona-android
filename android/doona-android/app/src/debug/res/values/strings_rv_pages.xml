@@ -6,6 +6,7 @@
     <string name="rv_gallery_menu">Menu</string>
     <string name="rv_gallery_banner">Error banner</string>
     <string name="rv_gallery_empty">Empty state</string>
+    <string name="rv_gallery_skeleton">Loading skeleton</string>
     <string name="rv_gallery_sheet">Confirm sheet</string>
     <string name="rv_menu_update">Update</string>
     <string name="rv_menu_edit">Edit</string>

@@ -264,7 +264,7 @@ private fun rvSegmentStyle(options: List<String>, glyph: Boolean, width: Int): T
  * below it where that is more, as at font scale 2.0, so a label is never cut at the top or the bottom.
  */
 @Composable
-private fun rvSegmentHeight(style: TextStyle): Dp {
+internal fun rvSegmentHeight(style: TextStyle): Dp {
     val line = with(LocalDensity.current) { style.lineHeight.toDp() }
     return maxOf(RvChartSize.segment, line + RvChartSize.segmentInset * 2)
 }

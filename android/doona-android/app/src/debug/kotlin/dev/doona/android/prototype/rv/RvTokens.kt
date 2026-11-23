@@ -385,6 +385,12 @@ internal object RvAlpha {
     /** A range the build does not offer yet. */
     const val DISABLED = 0.38f
 
+    /**
+     * How much of a skeleton's bars the shimmer's band takes away at its middle: Revolut's light shimmer (revolut-UX
+     * §11, seen in motion, not measured), a soft pass that leaves every bar in view.
+     */
+    const val SHIMMER = 0.45f
+
     /** The scrim under a modal sheet (measured §2: #333333 over the page, about black at 80 %). */
     const val SHEET_SCRIM = 0.8f
 

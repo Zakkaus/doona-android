@@ -37,6 +37,10 @@ import dev.doona.android.prototype.rv.RvProgress
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSize
+import dev.doona.android.prototype.rv.RvSkeletonCard
+import dev.doona.android.prototype.rv.RvSkeletonCards
+import dev.doona.android.prototype.rv.RvSkeletonGoal
+import dev.doona.android.prototype.rv.RvSkeletonRow
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.data.RvData
@@ -67,13 +71,15 @@ internal class RvSubsActions(
  * Each subscription is a card: its row (name, node count and last update, chevron to its page), then what it has used
  * of its quota and when it ends over the progress bar. A long press on a card opens 更新, 編輯 and 刪除; 刪除 asks in
  * the confirm sheet. 新增訂閱 floats at the bottom. With no subscription there is nothing to update or to float over: the
- * bar's 更新所有訂閱 and the floating 新增訂閱 give way to the empty state, which carries the one 新增訂閱.
+ * bar's 更新所有訂閱 and the floating 新增訂閱 give way to the empty state, which carries the one 新增訂閱. While [loading]
+ * (before the engine is ready) the cards are skeletons of subscription cards ([SubsSkeleton]), and the cards fade in
+ * over them in place; the title and the bar's actions are there from the start.
  */
 @Composable
-internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions) {
+internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boolean = false) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_subscriptions)
-    val empty = state.subscriptions.isEmpty()
+    val empty = !loading && state.subscriptions.isEmpty()
     val updateAll: (@Composable (RvGlass) -> Unit)? =
         if (empty) null else ({ RvGlassButton(it, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) })
     val add: (@Composable () -> Unit)? = if (empty) null else ({ RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) })
@@ -87,9 +93,12 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions) {
                     stringResource(R.string.rv_add_subscription),
                     actions.add,
                 )
+            } else {
+                RvSkeletonCards(loading, { SubsSkeleton() }) {
+                    state.subscriptions.firstOrNull { it.id == state.failedId }?.let { FailedBanner(it) { actions.update(it.id) } }
+                    state.subscriptions.forEach { SubscriptionCard(it, actions) }
+                }
             }
-            state.subscriptions.firstOrNull { it.id == state.failedId }?.let { FailedBanner(it) { actions.update(it.id) } }
-            state.subscriptions.forEach { SubscriptionCard(it, actions) }
         }
     }
     val deleting = state.subscriptions.firstOrNull { it.id == state.deletingId }
@@ -139,6 +148,20 @@ private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions) {
         }
     }
 }
+
+/** 訂閱's cards while it loads: subscription cards, each its row and its quota's goal. */
+@Composable
+private fun SubsSkeleton() {
+    repeat(SKELETON_CARDS) {
+        RvSkeletonCard {
+            RvSkeletonRow(it)
+            RvSkeletonGoal()
+        }
+    }
+}
+
+/** The subscription cards the skeleton shows: two, as Revolut's list skeleton shows two rows (revolut-UX §11). */
+private const val SKELETON_CARDS = 2
 
 /** Used of total at the start and the end date at the end, over the quota's bar (Revolut's goal card, #13). */
 @Composable

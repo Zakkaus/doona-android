@@ -5,6 +5,7 @@
     <string name="rv_gallery_menu">菜单</string>
     <string name="rv_gallery_banner">错误横幅</string>
     <string name="rv_gallery_empty">空状态</string>
+    <string name="rv_gallery_skeleton">加载骨架</string>
     <string name="rv_gallery_sheet">确认面板</string>
     <string name="rv_menu_update">更新</string>
     <string name="rv_menu_edit">编辑</string>

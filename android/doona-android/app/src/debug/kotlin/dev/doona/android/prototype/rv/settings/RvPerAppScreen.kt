@@ -37,6 +37,9 @@ import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSearchField
 import dev.doona.android.prototype.rv.RvSize
+import dev.doona.android.prototype.rv.RvSkeletonCard
+import dev.doona.android.prototype.rv.RvSkeletonFade
+import dev.doona.android.prototype.rv.RvSkeletonRow
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvTheme
@@ -59,7 +62,8 @@ internal class RvPerAppActions(
  * that matches nothing says so in the library's empty caption. 只有勾選的 with nothing checked says what it needs under the policies, as a field says
  * its error ([RvFieldMessage]), and cannot be saved. 儲存 floats at the foot, enabled only when the edits can be saved, since a save rebuilds
  * the tunnel. A save under way, a failed one and a tunnel that would not come back after one show at the top: a busy
- * row, or the library's notice card with 重試.
+ * row, or the library's notice card with 重試. While the apps are read, their card is a skeleton of app rows, and the
+ * apps fade in over it in place.
  */
 @Composable
 internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBack: () -> Unit) {
@@ -110,16 +114,25 @@ private fun Status(state: RvPerAppState, actions: RvPerAppActions) {
     Spacer(Modifier.height(RvSpace.cardGap))
 }
 
-/** The apps, a row saying they are being read, or the empty caption when the search matches none. */
+/**
+ * The apps, or the empty caption when the search matches none; while they are read, a skeleton of their rows, which a
+ * screen reader reads as the apps loading.
+ */
 @Composable
 private fun Apps(state: RvPerAppState, actions: RvPerAppActions) {
-    val shown = state.shown
-    when {
-        state.installed == null -> RvCard { BusyRow(stringResource(R.string.rv_perapp_loading)) }
-        shown.isEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
-        else -> RvCard { shown.forEach { AppRow(it, it.packageName in state.edited.packages) { on -> actions.toggle(it.packageName, on) } } }
+    val loading = stringResource(R.string.rv_perapp_loading)
+    RvSkeletonFade(state.installed == null, { RvSkeletonCard(description = loading) { repeat(SKELETON_APPS) { RvSkeletonRow(it) } } }) {
+        val shown = state.shown
+        if (shown.isEmpty()) {
+            RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
+        } else {
+            RvCard { shown.forEach { AppRow(it, it.packageName in state.edited.packages) { on -> actions.toggle(it.packageName, on) } } }
+        }
     }
 }
+
+/** The app rows the skeleton shows: what the first screen holds under the search field. */
+private const val SKELETON_APPS = 6
 
 /**
  * One app: its own icon (the fallback glyph when the phone does not have it), its name over its package, and a switch

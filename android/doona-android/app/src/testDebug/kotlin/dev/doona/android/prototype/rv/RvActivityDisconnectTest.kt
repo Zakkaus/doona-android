@@ -1,17 +1,11 @@
 package dev.doona.android.prototype.rv
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Rect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasText
@@ -155,28 +149,7 @@ class RvActivityDisconnectTest {
             clock.advanceTimeBy(stop + at - clock.currentTime)
             frames += "stopped +${clock.currentTime - stop} ms" to capture()
         }
-        stitch(frames, bottom, dark).captureRoboImage("$SHOTS/proto-rv-activity-disconnect-frames-$name.png")
-    }
-
-    /** [frames] cropped to their top [bottom] px, side by side [GAP_PX] apart, each with its time under it. */
-    private fun stitch(frames: List<Pair<String, ImageBitmap>>, bottom: Int, dark: Boolean): Bitmap {
-        val width = frames.first().second.width
-        val out = Bitmap.createBitmap(frames.size * (width + GAP_PX) - GAP_PX, bottom + BAND_PX, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(out)
-        canvas.drawColor(GAP.toArgb())
-        val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = (if (dark) Color.White else Color.Black).toArgb()
-            textSize = TIME_PX
-            textAlign = Paint.Align.CENTER
-        }
-        val band = Paint().apply { color = (if (dark) Color.Black else Color.White).toArgb() }
-        frames.forEachIndexed { i, (time, frame) ->
-            val x = i * (width + GAP_PX)
-            canvas.drawBitmap(frame.asAndroidBitmap(), Rect(0, 0, width, bottom), Rect(x, 0, x + width, bottom), null)
-            canvas.drawRect(Rect(x, bottom, x + width, bottom + BAND_PX), band)
-            canvas.drawText(time, x + width / 2f, bottom + BAND_PX * TIME_LINE, ink)
-        }
-        return out
+        rvStrip(frames, bottom, dark).captureRoboImage("$SHOTS/proto-rv-activity-disconnect-frames-$name.png")
     }
 
     /** How far, at most per channel, the pixel nearest [target] in the map's centre column (the marker's) lies from it. */
@@ -207,10 +180,5 @@ class RvActivityDisconnectTest {
         /** The marker lies above this. */
         const val MAP_DP = 200f
         const val CROP_BELOW_DP = 16f
-        const val GAP_PX = 8
-        const val BAND_PX = 56
-        const val TIME_PX = 28f
-        const val TIME_LINE = 0.7f
-        val GAP = Color.Magenta
     }
 }

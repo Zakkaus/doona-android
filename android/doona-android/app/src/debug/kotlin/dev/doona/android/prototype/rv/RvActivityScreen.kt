@@ -77,7 +77,9 @@ import kotlinx.coroutines.launch
  * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
  * floating glass bottom bar (§9), which shrinks while the content scrolls up. It renders [ActivityUiState]; the engine
  * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. A [notice] (a banner) heads
- * the cards; with [noticeOnly] (the empty state) it stands in their place.
+ * the cards; with [noticeOnly] (the empty state) it stands in their place. While [loading] (before the engine is ready)
+ * the hero's three lines and the cards are skeletons of themselves ([RvSkeletonHero], [ActivitySkeleton]), and the
+ * content fades in over them in place; the map, the actions, the bar and the nav are there from the start.
  */
 @Composable
 internal fun RvActivityScreen(
@@ -92,6 +94,7 @@ internal fun RvActivityScreen(
     hero: RvHeroSwipe = RvHeroSwipe.Off,
     notice: (@Composable () -> Unit)? = null,
     noticeOnly: Boolean = false,
+    loading: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -108,7 +111,7 @@ internal fun RvActivityScreen(
     // The map stretches with the pull, and what lies under it moves down as far.
     val pushed = remember(pull) { pull.stretch?.let { stretch -> Modifier.graphicsLayer { translationY = stretch() } } }
     val motion = remember(pull, pushed, resting) { HeaderMotion(pull.stretch, pushed, resting) }
-    val look = remember(hero, nodes) { HeroLook(hero, nodes) }
+    val look = remember(hero, nodes, loading) { HeroLook(hero, nodes, loading) }
     val fastest = remember(nodes) { nodes.fastest(FASTEST) }
     CompositionLocalProvider(LocalRvCovered provides resting) {
         Box(Modifier.fillMaxSize()) {
@@ -118,11 +121,13 @@ internal fun RvActivityScreen(
                 RvGutter(pushed ?: Modifier) {
                     notice?.invoke()
                     if (!noticeOnly) {
-                        OutboundCard(steady, mode, routes, nodes)
-                        TrafficTiles(state, routes.traffic)
-                        RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
-                        RvSubscriptionsCard(subscriptions, routes.subscriptions)
-                        RvFastestCard(fastest, steady.node?.id ?: RvData.CURRENT_ID, routes.nodes)
+                        RvSkeletonCards(loading, { ActivitySkeleton() }) {
+                            OutboundCard(steady, mode, routes, nodes)
+                            TrafficTiles(state, routes.traffic)
+                            RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
+                            RvSubscriptionsCard(subscriptions, routes.subscriptions)
+                            RvFastestCard(fastest, steady.node?.id ?: RvData.CURRENT_ID, routes.nodes)
+                        }
                     }
                 }
                 Spacer(Modifier.height(rvNavClearance(insets)))
@@ -161,8 +166,8 @@ internal class RvActivityRoutes(
  */
 private class HeaderMotion(val stretch: (() -> Float)?, val pushed: Modifier?, val resting: () -> Boolean)
 
-/** Whether the hero [swipe]s to the main node, one of [nodes] (H1). */
-private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>)
+/** Whether the hero [swipe]s to the main node, one of [nodes] (H1), and whether it waits for its figures ([loading]). */
+private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>, val loading: Boolean)
 
 /** [state] without the second's rates, which only the hero's figures read, from [ticking]. */
 @Composable
@@ -200,13 +205,13 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
 private fun HeroBlock(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, hero: HeroLook, placed: Modifier, pushed: Modifier?) {
     val moved = pushed ?: Modifier
     if (hero.swipe == RvHeroSwipe.Off) {
-        HeroFigure(ticking, mode, placed.then(moved))
+        HeroFigure(ticking, mode, placed.then(moved), hero.loading)
         Spacer(Modifier.height(RvSpace.heroToActions))
         return
     }
     val pager = rememberRvHeroPager(HERO_VIEWS)
     val names = listOf(stringResource(R.string.rv_hero_all_traffic), stringResource(R.string.rv_main_node))
-    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(ticking, mode, Modifier) else MainNodeFigure(state, mode, hero.nodes) }
+    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(ticking, mode, Modifier, hero.loading) else MainNodeFigure(state, mode, hero.nodes) }
     RvStatsDots(names.size, pager.view, moved, names, pager::show)
     Spacer(Modifier.height(RvSpace.heroToActions - RvSize.touch))
 }
@@ -214,14 +219,20 @@ private fun HeroBlock(state: ActivityUiState, ticking: State<ActivityUiState>, m
 /**
  * The state and the mode over the download rate, the upload rate under it; a new state fades through the old (the two
  * captions differ in length, so a cross-fade would lay them over each other), each second's rates cross-fade in. Read
- * from [ticking] here, so that a tick recomposes the figures and not the header around them.
+ * from [ticking] here, so that a tick recomposes the figures and not the header around them. While [loading], their
+ * skeleton.
  */
 @Composable
-private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modifier: Modifier) {
+private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modifier: Modifier, loading: Boolean) {
+    RvSkeletonFade(loading, { RvSkeletonHero() }, modifier) { HeroLines(ticking, mode) }
+}
+
+@Composable
+private fun HeroLines(ticking: State<ActivityUiState>, mode: RvRouteMode) {
     val state = ticking.value
     val format = rememberRvFormat()
     val fade = Rv.motion.tween<Float>(RvMotion.FADE_MS)
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = format.rate(state.downRate.toDouble())
@@ -384,6 +395,17 @@ private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
         node?.name ?: stringResource(R.string.mode_direct),
         onClick = { onOpen(rule.group) },
     ) { RvText(format.bytes(rule.bytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
+}
+
+/** 活動's cards while it loads: the outbound card's four rows and its see-all line, then the two traffic tiles. */
+@Composable
+private fun ActivitySkeleton() {
+    RvSkeletonCard {
+        RvSkeletonRow(0)
+        repeat(RULE_ROWS + 1) { RvSkeletonRow(it + 1, end = true) }
+        RvSkeletonSeeAll()
+    }
+    RvSkeletonTiles()
 }
 
 /**

@@ -47,6 +47,11 @@ import dev.doona.android.prototype.rv.RvSearchPill
 import dev.doona.android.prototype.rv.RvSeeAll
 import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSize
+import dev.doona.android.prototype.rv.RvSkeletonCard
+import dev.doona.android.prototype.rv.RvSkeletonCards
+import dev.doona.android.prototype.rv.RvSkeletonControlCard
+import dev.doona.android.prototype.rv.RvSkeletonHeader
+import dev.doona.android.prototype.rv.RvSkeletonRow
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvTabHeader
@@ -89,7 +94,9 @@ internal class RvPolicyRoutes(
  * today's bytes, as Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
  * the node everything goes through, so under the mode the page is the node picker itself; 直連 shows the mode alone.
  * With no subscription there is nothing to route: [noSubscription], when set, puts the empty state with 新增訂閱 (which
- * runs it) in place of the cards, as 活動 does; the bar and the nav stay.
+ * runs it) in place of the cards, as 活動 does; the bar and the nav stay. While [loading] (before the engine is ready)
+ * the cards are skeletons of the mode card, the main node's and the groups' ([PolicySkeleton]), and the cards fade in
+ * over them in place.
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -97,6 +104,7 @@ internal fun RvPolicyScreen(
     onChange: (RvPolicyState) -> Unit,
     routes: RvPolicyRoutes = RvPolicyRoutes(),
     noSubscription: (() -> Unit)? = null,
+    loading: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -127,16 +135,18 @@ internal fun RvPolicyScreen(
                     noSubscription,
                 )
             } else {
-                ModeCard(state.mode) { onChange(state.copy(mode = it)) }
-                if (state.mode == RvRouteMode.Rule) {
-                    MainCard(state.group(RvPolicyData.main), routes.mainNode)
-                    GroupsCard(state, routes.group)
-                    RulesCard(routes.rules)
-                    OptionsCard(state, onChange, routes)
+                RvSkeletonCards(loading, { PolicySkeleton() }) {
+                    ModeCard(state.mode) { onChange(state.copy(mode = it)) }
+                    if (state.mode == RvRouteMode.Rule) {
+                        MainCard(state.group(RvPolicyData.main), routes.mainNode)
+                        GroupsCard(state, routes.group)
+                        RulesCard(routes.rules)
+                        OptionsCard(state, onChange, routes)
+                    }
                 }
             }
         }
-        if (noSubscription == null && state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
+        if (noSubscription == null && !loading && state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
         // The last card clears the floating nav, as on 設定.
         Spacer(Modifier.height(rvNavClearance(insets)))
     }
@@ -150,6 +160,20 @@ internal fun RvPolicyScreen(
 private fun ModeCard(mode: RvRouteMode, onMode: (RvRouteMode) -> Unit) {
     RvControlCard(stringResource(mode.line)) {
         RvSegmented(MODES.map { stringResource(it.label) }, MODES.indexOf(mode), { onMode(MODES[it]) }, glyphs = MODES.map { it.glyph })
+    }
+}
+
+/** 策略's cards while it loads: the mode card, the main node's card and the groups' first rows. */
+@Composable
+private fun PolicySkeleton() {
+    RvSkeletonControlCard()
+    RvSkeletonCard {
+        RvSkeletonHeader()
+        RvSkeletonRow(0, end = true)
+    }
+    RvSkeletonCard {
+        RvSkeletonHeader()
+        repeat(SKELETON_GROUPS) { RvSkeletonRow(it + 1, end = true) }
     }
 }
 
@@ -241,6 +265,9 @@ private fun SwitchRow(@DrawableRes icon: Int, title: String, checked: Boolean, o
     val toggle = Modifier.toggleable(checked, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onChange)
     RvRow({ RvIconDisc(icon) }, title, null, toggle) { RvSwitch(checked) }
 }
+
+/** The groups' rows the skeleton shows: what the first screen holds under the main node's card. */
+private const val SKELETON_GROUPS = 3
 
 private val MODES = listOf(RvRouteMode.Rule, RvRouteMode.Global, RvRouteMode.Direct)
 
