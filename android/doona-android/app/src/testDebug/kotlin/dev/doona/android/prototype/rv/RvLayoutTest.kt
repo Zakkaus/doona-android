@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.toSize
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
+import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvRouteMode
@@ -146,6 +147,9 @@ class RvLayoutTest {
 
     @Test
     fun report() = measure("report", Top.Title) { RvReportScreen(RvLogLevel.Info, RvExport.Failed, onLevel = {}, onExport = {}, onBack = {}) }
+
+    @Test
+    fun connections() = measure("connections", Top.Title) { RvConnectionsPage(RvPolicyData.connections) }
 
     @Test
     fun connection() = measure("connection", Top.Header) { RvConnectionDetail(RvPolicyData.connections[YOUTUBE], onBack = {}, onClose = {}, onNewRule = {}) }
