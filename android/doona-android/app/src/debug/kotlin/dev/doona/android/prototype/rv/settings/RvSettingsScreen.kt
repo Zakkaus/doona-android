@@ -69,7 +69,7 @@ internal fun RvSettingsScreen(
         scroll = scroll,
         overlay = { glass -> RvFloatingNav(RV_NAV_SETTINGS, onTab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter)) },
     ) { titleBlock ->
-        Hero(titleBlock, insets)
+        Hero(titleBlock, insets, routes.report)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             ConnectionGroup(state, onChange, routes.alwaysOn)
             SubscriptionGroup(state, onChange)
@@ -82,9 +82,12 @@ internal fun RvSettingsScreen(
     }
 }
 
-/** The mark beside the title, centred on a faint dot texture that runs up behind the bar, and the two actions under it. */
+/**
+ * The mark beside the title, centred on a faint dot texture that runs up behind the bar, and the two actions under it;
+ * 匯出診斷 opens 回報問題 ([onReport]).
+ */
 @Composable
-private fun Hero(titleBlock: Modifier, insets: WindowInsets) {
+private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Unit) {
     val status = with(LocalDensity.current) { insets.getTop(this).toDp() }
     Box(Modifier.fillMaxWidth()) {
         // No dot on the status bar's clock (S8-08): the map starts under it, as 活動's does.
@@ -101,7 +104,7 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets) {
             }
             Spacer(Modifier.height(RvSettingsSpace.titleToActions))
             Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
-                RvAction(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_settings_export_diagnostics), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
+                RvAction(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_settings_export_diagnostics), onReport, Modifier.width(RvSettingsSpace.actionColumn))
                 RvAction(R.drawable.rv_settings_ic_update, stringResource(R.string.rv_settings_check_update), NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn))
             }
         }
@@ -110,9 +113,14 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets) {
 
 /**
  * Where 設定's rows lead beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that
- * switch, D14), the DNS picker and the effective config.
+ * switch, D14), the DNS picker, the effective config, and 回報問題 from the hero's 匯出診斷.
  */
-internal class RvSettingsRoutes(val alwaysOn: () -> Unit = NOT_WIRED, val dns: () -> Unit = NOT_WIRED, val effectiveConfig: () -> Unit = NOT_WIRED)
+internal class RvSettingsRoutes(
+    val alwaysOn: () -> Unit = NOT_WIRED,
+    val dns: () -> Unit = NOT_WIRED,
+    val effectiveConfig: () -> Unit = NOT_WIRED,
+    val report: () -> Unit = NOT_WIRED,
+)
 
 /**
  * 連線: always-on as a row that opens the system's VPN settings, since Android, not the app, turns it on; the drop

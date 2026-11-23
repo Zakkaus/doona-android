@@ -42,6 +42,9 @@ import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
+import dev.doona.android.prototype.rv.settings.RvExport
+import dev.doona.android.prototype.rv.settings.RvLogLevel
+import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsState
@@ -202,7 +205,7 @@ private fun RvSamplePage(
     }
 }
 
-/** 訂閱's pages, the library's gallery, the first run, 連線 and a connection's page, or else 活動. */
+/** 訂閱's pages, the library's gallery, the first run, 連線 and a connection's page, 回報問題, or else 活動. */
 @Composable
 private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean) {
     when (route.substringBefore(':')) {
@@ -219,6 +222,8 @@ private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions,
             RvConnectionDetail(RvPolicyData.connections[i], onBack = pages.pop, onClose = pages.pop, onNewRule = { pages.push("${RvPolicyPreviewRoutes.RULE}:$i") })
         }
 
+        REPORT -> ReportPage(route, pages)
+
         else -> ActivityPage(route, run, options, pages, picking)
     }
 }
@@ -231,8 +236,25 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         alwaysOn = { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
         dns = { pages.push(DNS) },
         effectiveConfig = { pages.push(RvPolicyPreviewRoutes.EFFECTIVE) },
+        report = { pages.push(REPORT) },
     )
     RvSettingsScreen(settings, onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes)
+}
+
+/**
+ * 回報問題; `report:exporting` and `report:failed` open it in those states. An export writes for [RV_EXPORT_MS], then is
+ * done, as the share sheet would take it from there.
+ */
+@Composable
+private fun ReportPage(route: String, pages: RvSamplePages) {
+    var level by rememberSaveable { mutableStateOf(RvLogLevel.Info) }
+    var export by rememberSaveable { mutableStateOf(RvExport.entries.firstOrNull { it.name.equals(route.substringAfter(':', ""), ignoreCase = true) } ?: RvExport.Idle) }
+    LaunchedEffect(export) {
+        if (export != RvExport.Exporting) return@LaunchedEffect
+        delay(RV_EXPORT_MS)
+        export = RvExport.Idle
+    }
+    RvReportScreen(level, export, onLevel = { level = it }, onExport = { export = RvExport.Exporting }, onBack = pages.pop)
 }
 
 /** 連線; `connections:off` shows it with the tunnel off, and 連線 there opens it connected. */
@@ -449,6 +471,7 @@ private fun RvNode.retested(round: Int): RvNode {
 internal const val RV_CONNECT_MS = 1_200L
 internal const val RV_STOP_MS = 400L
 internal const val RV_TEST_MS = 1_200L
+private const val RV_EXPORT_MS = 1_500L
 private const val TEST_DELAY_MS = 1_000L
 private const val SWING = 12
 private const val SWING_STEP = 7
@@ -462,6 +485,7 @@ internal const val NODE = "node"
 internal const val SETTINGS = "settings"
 internal const val THEME = "theme"
 internal const val DNS = "dns"
+internal const val REPORT = "report"
 internal const val CONNECTIONS = "connections"
 internal const val CONNECTION = "connection"
 internal const val GALLERY = "gallery"

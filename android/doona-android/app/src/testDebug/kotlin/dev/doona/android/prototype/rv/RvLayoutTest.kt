@@ -27,6 +27,9 @@ import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
+import dev.doona.android.prototype.rv.settings.RvExport
+import dev.doona.android.prototype.rv.settings.RvLogLevel
+import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsSpace
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
@@ -112,6 +115,9 @@ class RvLayoutTest {
     fun theme() = measure("settings-theme", Top.Title) {
         RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), onBack = {})
     }
+
+    @Test
+    fun report() = measure("report", Top.Title) { RvReportScreen(RvLogLevel.Info, RvExport.Failed, onLevel = {}, onExport = {}, onBack = {}) }
 
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {
         var barBottom = 0f

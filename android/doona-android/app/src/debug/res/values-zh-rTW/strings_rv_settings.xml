@@ -45,4 +45,13 @@
     <string name="rv_settings_dns_custom">自訂</string>
     <string name="rv_settings_dns_custom_sub">輸入位址</string>
     <string name="rv_settings_dns_footer">規則與全域模式下，DNS 查詢經主節點送出。</string>
+
+    <string name="rv_report_title">回報問題</string>
+    <string name="rv_report_export">匯出診斷報告</string>
+    <string name="rv_report_failed">無法匯出診斷報告</string>
+    <string name="rv_report_failed_reason">doona 的核心沒有回應。</string>
+    <string name="rv_log_error">錯誤</string>
+    <string name="rv_log_warn">警告</string>
+    <string name="rv_log_info">一般</string>
+    <string name="rv_log_debug">除錯</string>
 </resources>

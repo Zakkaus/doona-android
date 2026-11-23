@@ -52,4 +52,13 @@
     <string name="rv_settings_dns_custom">Custom</string>
     <string name="rv_settings_dns_custom_sub">Enter an address</string>
     <string name="rv_settings_dns_footer">In rule and global mode, queries go out through the main node.</string>
+
+    <string name="rv_report_title">Report a problem</string>
+    <string name="rv_report_export">Export diagnostic report</string>
+    <string name="rv_report_failed">Could not export the diagnostic report</string>
+    <string name="rv_report_failed_reason">doona\'s core did not respond.</string>
+    <string name="rv_log_error">Error</string>
+    <string name="rv_log_warn">Warning</string>
+    <string name="rv_log_info">Normal</string>
+    <string name="rv_log_debug">Debug</string>
 </resources>
