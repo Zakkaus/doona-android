@@ -316,15 +316,15 @@ internal fun rvSystemScheme(dark: Boolean): ColorScheme {
 internal fun scripted(text: String): AnnotatedString = buildAnnotatedString {
     var start = 0
     while (start < text.length) {
-        val cjk = text[start].isCjk()
+        val cjk = text[start].rvCjk()
         var end = start + 1
-        while (end < text.length && (text[end].isCjk() == cjk || text[end] == ' ')) end++
+        while (end < text.length && (text[end].rvCjk() == cjk || text[end] == ' ')) end++
         if (cjk) withStyle(SpanStyle(fontFamily = RvNoto)) { append(text, start, end) } else append(text, start, end)
         start = end
     }
 }
 
-private fun Char.isCjk() = code >= CJK_START
+internal fun Char.rvCjk() = code >= CJK_START
 
 /** CJK Radicals Supplement: everything from here up is set in Noto. */
 private const val CJK_START = 0x2E80

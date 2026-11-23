@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import android.icu.text.BreakIterator
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -9,7 +10,6 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.modifiers.TextAutoSizeLayoutScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,10 +43,9 @@ import kotlin.math.ceil
  * once more without it. The shorter text stays while the width does, and the whole text returns when the line gets more
  * room. [maxLines] lets it run to more lines, the last ending in the platform's ellipsis, and [overflow] may put the
  * ellipsis in the middle of a single line instead. Given [autoSize], a line too long for its width shrinks to fit. A text
- * that wraps never leaves one letter alone on its last line: laid out once more with that letter joined to the one
- * before it, it carries both (「當機」, not 「機」). A word longer than the line (a host:port) is broken where it runs out
- * of room, which no joiner holds, so there the text is laid out once more narrower by that last line's width, and the
- * letter before comes down too (`…com:4` over `43`, not `…com:44` over `3`).
+ * that wraps is laid out again until it reads well ([RvWrap]): a meta line breaks only between its parts, a value
+ * breaks at its dots and its port's colon rather than inside a word, and the last line keeps a word, not one or two
+ * letters (「當機」, not 「機」; 「不經代理」, not 「代理」).
  */
 @Composable
 internal fun RvText(
@@ -60,26 +59,18 @@ internal fun RvText(
     autoSize: TextAutoSize? = null,
 ) {
     var cut by remember(text) { mutableStateOf<RvCut?>(null) }
-    var joined by remember(text) { mutableStateOf(false) }
-    var narrower by remember(text) { mutableIntStateOf(0) }
+    var wrap by remember(text) { mutableStateOf(RvWrap()) }
     BasicText(
-        scripted(cut?.text ?: if (joined) rvJoinLast(text) else text),
-        if (narrower == 0) modifier else modifier.padding(end = with(LocalDensity.current) { narrower.toDp() }),
+        scripted(cut?.text ?: wrap.text(text)),
+        if (wrap.narrower <= 0) modifier else modifier.padding(end = with(LocalDensity.current) { wrap.narrower.toDp() }),
         style.copy(color = color, textAlign = align),
         onTextLayout = { layout ->
             // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
             val kept = cut
             when {
-                maxLines != 1 -> when {
-                    !rvWidow(layout) -> Unit
-                    !joined -> joined = true
-                    narrower == 0 -> narrower = rvLastLineWidth(layout)
-                }
-
+                maxLines != 1 -> wrap.next(text, layout)?.let { wrap = it }
                 overflow != TextOverflow.Ellipsis || autoSize != null -> Unit
-
                 kept == null -> cut = rvCut(text, layout)
-
                 layout.layoutInput.constraints.maxWidth > kept.width -> cut = null
             }
         },
@@ -103,17 +94,162 @@ private fun rvCut(text: String, layout: TextLayoutResult): RvCut? {
 
 private const val ELLIPSIS = "\u2026"
 
-/** Whether the last of two or more lines of [layout] holds one letter alone (「機」, or 「機。」 with its stop). */
-private fun rvWidow(layout: TextLayoutResult): Boolean {
+/**
+ * How a wrapped text is laid out again so it reads well, one step a pass, each step taken once:
+ * - [bound]: a meta line, parts joined by ` · `, breaks only after a separator and keeps each part whole (`61.7 / 200 GB ·`
+ *   over `3/15 到期`, not `61.7 /` over `200 GB`), unless a part is longer than its line ([unbound]);
+ * - [soft]: a value broken inside a word (a host:port, an app's package) may break after a dot between letters and before
+ *   a port's colon instead (`gemini.google.com` over `:443`, not `…com:4` over `43`);
+ * - [joined]: one letter alone on the last line is joined to the letter before (「當機」, not 「機」);
+ * - [word]: a last line of fewer than [LAST_LINE_LETTERS] letters takes the whole word that ended the line before, joined
+ *   to it ([word] is where the last line started; 「發生當機」, not 「當機」; 「不經代理」, not 「代理」); -2 once dropped;
+ * - [narrower]: failing that, the text is laid out once more narrower by the last line's width, so the line before gives
+ *   it what it can; -1 once dropped.
+ *
+ * A [word] or [narrower] step stays only where it adds no line, cuts nothing and breaks no word ([lines] is the count
+ * before it).
+ */
+private data class RvWrap(
+    val bound: Boolean = false,
+    val unbound: Boolean = false,
+    val soft: Boolean = false,
+    val joined: Boolean = false,
+    val word: Int = -1,
+    val narrower: Int = 0,
+    val lines: Int = 0,
+) {
+    fun text(text: String): String {
+        var shown = if (bound) rvBind(text) else text
+        if (soft) shown = rvSoftBreaks(shown)
+        if (joined) shown = rvJoinLast(shown)
+        return if (word >= 0) rvJoinWord(shown, word) else shown
+    }
+
+    /** The next step for [layout], the layout of [text] after the steps so far, or null when none is left to take. */
+    fun next(text: String, layout: TextLayoutResult): RvWrap? {
+        val last = layout.lineCount - 1
+        val torn = rvTorn(layout)
+        val worse = last + 1 > lines || torn || layout.isLineEllipsized(last) || layout.hasVisualOverflow
+        return when {
+            narrower > 0 -> if (worse) copy(narrower = -1) else null
+
+            word >= 0 && worse -> copy(word = -2)
+
+            last < 1 -> null
+
+            bound && torn -> copy(bound = false, unbound = true)
+
+            !bound && !unbound && META_SEPARATOR in text -> copy(bound = true)
+
+            torn && !soft && rvSoftBreaks(text) != text -> copy(soft = true)
+
+            narrower < 0 -> null
+
+            else -> when (rvLastLetters(layout)) {
+                1 -> if (joined) shorten(layout) else copy(joined = true)
+                in 2 until LAST_LINE_LETTERS -> shorten(layout)
+                else -> null
+            }
+        }
+    }
+
+    /** The last line is short: bring the word before it down, else narrow the text once. */
+    private fun shorten(layout: TextLayoutResult): RvWrap? {
+        val shown = layout.layoutInput.text.text
+        val start = layout.getLineStart(layout.lineCount - 1)
+        return when {
+            word == -1 && rvJoinWord(shown, start) != shown -> copy(word = start, lines = layout.lineCount)
+            narrower == 0 -> copy(narrower = rvLastLineWidth(layout), lines = layout.lineCount)
+            else -> null
+        }
+    }
+}
+
+/** [text] in [style] laid out [width] px wide in at most [maxLines] lines as [RvText] lays it out, its [RvWrap] steps taken. */
+internal fun TextMeasurer.rvLayout(text: String, style: TextStyle, maxLines: Int, width: Int): TextLayoutResult {
+    var wrap = RvWrap()
+    var layout = rvMeasure(wrap, text, style, maxLines, width)
+    repeat(WRAP_STEPS) {
+        wrap = wrap.next(text, layout) ?: return layout
+        layout = rvMeasure(wrap, text, style, maxLines, width)
+    }
+    return layout
+}
+
+private fun TextMeasurer.rvMeasure(wrap: RvWrap, text: String, style: TextStyle, maxLines: Int, width: Int) =
+    measure(scripted(wrap.text(text)), style, TextOverflow.Ellipsis, maxLines = maxLines, constraints = Constraints(maxWidth = (width - wrap.narrower.coerceAtLeast(0)).coerceAtLeast(0)))
+
+/** Whether [layout] reads well: whole (no ellipsis, nothing past its box), no word broken, no last line of one or two letters. */
+internal fun rvReadsWell(layout: TextLayoutResult): Boolean =
+    !layout.hasVisualOverflow && (0 until layout.lineCount).none(layout::isLineEllipsized) && !rvTorn(layout) && (layout.lineCount < 2 || rvLastLetters(layout) >= LAST_LINE_LETTERS)
+
+/** More steps than [RvWrap] can take, which ends each step after one try. */
+private const val WRAP_STEPS = 6
+
+/** A wrapped line ends on fewer letters than this only where nothing better fits. */
+private const val LAST_LINE_LETTERS = 3
+
+private const val META_SEPARATOR = " · "
+
+/** The letters and digits on the last of [layout]'s lines; none counted when it ends in an ellipsis. */
+private fun rvLastLetters(layout: TextLayoutResult): Int {
     val last = layout.lineCount - 1
-    if (last < 1 || layout.isLineEllipsized(last)) return false
+    if (layout.isLineEllipsized(last)) return Int.MAX_VALUE
     val line = layout.layoutInput.text.text.substring(layout.getLineStart(last), layout.getLineEnd(last))
-    return line.codePoints().filter(Character::isLetterOrDigit).count() == 1L
+    return line.codePoints().filter(Character::isLetterOrDigit).count().toInt()
+}
+
+/** Whether a line of [layout] ends inside a word: a Latin letter, digit or sign on both sides of the break, no space. */
+private fun rvTorn(layout: TextLayoutResult): Boolean {
+    val text = layout.layoutInput.text.text
+    return (0 until layout.lineCount - 1).any { line ->
+        val end = layout.getLineEnd(line)
+        val before = text.substring(0, end).lastOrNull { it != WORD_JOINER_CHAR }
+        val after = text.substring(end).firstOrNull { it != WORD_JOINER_CHAR }
+        before != null && after != null && before.inWord() && after.inWord()
+    }
+}
+
+private fun Char.inWord() = !isWhitespace() && this != ZERO_WIDTH_SPACE && !rvCjk()
+
+/** [text] with no break inside a meta line's parts or before a separator: a word joiner after each space but the separators'. */
+private fun rvBind(text: String): String = text.split(META_SEPARATOR).joinToString(" $WORD_JOINER· ") { it.replace(" ", " $WORD_JOINER") }
+
+/** [text] with a break allowed after a dot between letters and before a colon that follows a letter and leads a number. */
+private fun rvSoftBreaks(text: String): String = buildString {
+    text.forEachIndexed { i, c ->
+        val before = text.getOrNull(i - 1)
+        val after = text.getOrNull(i + 1)
+        if (c == ':' && before?.isLetter() == true && after?.isDigit() == true) append(ZERO_WIDTH_SPACE)
+        append(c)
+        if (c == '.' && before?.isLetter() == true && after?.isLetter() == true) append(ZERO_WIDTH_SPACE)
+    }
 }
 
 /**
- * The width of the last line of [layout], in whole px: a line that much narrower cannot keep the letter that ended the
- * line before, since the last line's letter did not fit after it.
+ * [text] with word joiners through the word that ends before [start] (the last line's start, spaces skipped) and on to
+ * [start], so no break falls inside that word or between it and the last line; [text] as it is when that word starts it.
+ * Words are ICU's, a dictionary's for CJK.
+ */
+private fun rvJoinWord(text: String, start: Int): String {
+    var end = start
+    while (end > 0 && (text[end - 1].isWhitespace() || text[end - 1] == WORD_JOINER_CHAR)) end--
+    if (end == 0) return text
+    val words = BreakIterator.getWordInstance()
+    words.setText(text)
+    val from = words.preceding(end)
+    if (from <= 0) return text
+    return buildString {
+        text.forEachIndexed { i, c ->
+            if (i in from + 1..start && text[i - 1] != WORD_JOINER_CHAR && c != WORD_JOINER_CHAR) append(WORD_JOINER_CHAR)
+            append(c)
+        }
+    }
+}
+
+/**
+ * The width of the last line of [layout], in whole px: a line that much narrower cannot keep the word that ended the
+ * line before, since the last line did not fit after it.
  */
 private fun rvLastLineWidth(layout: TextLayoutResult): Int {
     val last = layout.lineCount - 1
@@ -126,6 +262,8 @@ private fun rvJoinLast(text: String): String {
     return if (last > 0) text.substring(0, last) + WORD_JOINER + text.substring(last) else text
 }
 
+private const val ZERO_WIDTH_SPACE = '\u200B'
+private const val WORD_JOINER_CHAR = '\u2060'
 private const val WORD_JOINER = "\u2060"
 
 /**

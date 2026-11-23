@@ -283,10 +283,13 @@ class RvLargeTextTest {
 
     /** A text node showing [text], whatever word joiner the widow rule put in it. */
     private fun shows(text: String) = SemanticsMatcher("shows $text") { node ->
-        node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.replace(WORD_JOINER, "") == text } == true
+        node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.replace(WORD_JOINER, "").replace(ZERO_WIDTH_SPACE, "") == text } == true
     }
 
     private companion object {
-        const val WORD_JOINER = "⁠"
+        const val WORD_JOINER = "\u2060"
+
+        /** Where RvText lets a value break at its punctuation. */
+        const val ZERO_WIDTH_SPACE = "\u200B"
     }
 }
