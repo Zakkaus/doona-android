@@ -281,6 +281,9 @@ internal object RvChartSize {
     val range = 36.dp
     val rangePad = 12.dp
     val rangeGap = 4.dp
+
+    /** The pill's room above and below its label's line at the default size: (36 − 24) / 2, kept as the line grows. */
+    val rangeInset = 6.dp
     val rangeShadow = 2.dp
 
     /**

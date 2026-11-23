@@ -6,10 +6,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
@@ -129,6 +131,39 @@ class RvLargeTextTest {
         val connection = RvPolicyData.connection
         large { RvPolicyRulePage(connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
         assertWhole(RuntimeEnvironment.getApplication().getString(R.string.rv_policy_match_full_line, connection.host))
+    }
+
+    /** 流量's range chips (B3, X7): one label size for the row, each label whole and inside its pill. */
+    @Test
+    fun rangeChipsFitTheirRow() {
+        large { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
+        assertOneWholeSize(listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h).map(::rvText))
+    }
+
+    /** The node list's order chips (B3, X7): the same. */
+    @Test
+    fun orderChipsFitTheirRow() {
+        large { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}) }
+        assertOneWholeSize(RvNodeSort.entries.map { rvText(it.label) })
+    }
+
+    /**
+     * Each of the chip [labels] whole and inside its pill, [RvChartSize.rangeInset] clear of its top and bottom, and all of
+     * them laid out at one size (one label size per row).
+     */
+    private fun assertOneWholeSize(labels: List<String>) {
+        val sizes = labels.associateWith { label ->
+            val text = compose.onAllNodes(shows(label).and(hasParent(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab))), useUnmergedTree = true)
+                .fetchSemanticsNodes().single()
+            val pill = text.parent!!.size.height
+            val room = text.size.height + 2 * RvChartSize.rangeInset.value * text.layoutInfo.density.density
+            assertTrue("$label: its pill is $pill px for a $room px label and its room", pill >= room - 1)
+            val layouts = mutableListOf<TextLayoutResult>()
+            text.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+            layouts.single().layoutInput.style.fontSize
+        }
+        labels.forEach(::assertWhole)
+        assertEquals("one label size for the row: $sizes", 1, sizes.values.toSet().size)
     }
 
     /** Each of [names] the [page] shows keeps its size when a latency test of every node starts. */

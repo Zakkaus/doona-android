@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -153,22 +154,38 @@ internal fun RvFilterChip(label: String, onClick: () -> Unit, modifier: Modifier
 }
 
 /**
- * One of a few choices in a row, Revolut's range chip (measured §8): only the selected one has a fill, raised off the
- * page; no track. Under a chart it picks the range; under a node list's search it picks the order. The 36 dp pill is its
- * layout box, so a row of them measures from its visible edge; its target reaches 48 dp through Compose's touch target
- * expansion, which does not move the layout.
+ * A row of Revolut's range chips (measured §8), [labels] in order, the [selected] one raised, [RvChartSize.rangeGap]
+ * apart: under a chart it picks the range; under a node list's search it picks the order. The labels take one size, the
+ * largest at which the whole row fits its width ([rvChipRowFit]), and every pill grows with that size's line, keeping
+ * [RvChartSize.rangeInset] above and below it, so at a large font size no label is cut or runs past its pill.
  */
 @Composable
-internal fun RvRangePill(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun RvRangeRow(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    var width by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val style = rvChipRowFit(labels, Rv.type.action, RvChartSize.rangePad, RvChartSize.rangeGap, with(density) { width.toDp() })
+    val height = maxOf(RvChartSize.range, with(density) { style.lineHeight.toDp() } + RvChartSize.rangeInset * 2)
+    Row(modifier.fillMaxWidth().onSizeChanged { width = it.width }.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
+        labels.forEachIndexed { i, label -> RvRangePill(label, i == selected, style, height) { onSelect(i) } }
+    }
+}
+
+/**
+ * One of a few choices in a row, Revolut's range chip: only the selected one has a fill, raised off the page; no track.
+ * The pill ([height], 36 dp at the default size) is its layout box, so a row of them measures from its visible edge; its
+ * target reaches 48 dp through Compose's touch target expansion, which does not move the layout.
+ */
+@Composable
+private fun RvRangePill(label: String, selected: Boolean, style: TextStyle, height: Dp, onClick: () -> Unit) {
     val colors = Rv.colors
     Box(
         Modifier
-            .height(RvChartSize.range)
+            .height(height)
             .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
             .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick)
             .padding(horizontal = RvChartSize.rangePad),
         contentAlignment = Alignment.Center,
-    ) { RvText(label, Rv.type.action, color = if (selected) colors.text else colors.textSecondary) }
+    ) { RvText(label, style, color = if (selected) colors.text else colors.textSecondary) }
 }
 
 /** How far a raised chip's shadow reaches under it in this theme; dark draws no shadow (its pill is a lighter fill). */

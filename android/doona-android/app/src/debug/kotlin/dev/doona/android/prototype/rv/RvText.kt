@@ -181,16 +181,35 @@ private const val FIT_MIN = 0.5f
 internal fun rvRowFit(labels: List<String>, style: TextStyle, width: Dp): TextStyle {
     val measurer = rememberTextMeasurer()
     val px = with(LocalDensity.current) { width.toPx().toInt() }
-    return remember(labels, style, px, measurer) {
-        // Sizes as shares of the full one, so each keeps the style's unit.
-        val full = style.fontSize.value
-        val at = { size: Float -> style.copy(fontSize = style.fontSize * (size / full), lineHeight = style.lineHeight * (size / full)) }
-        val fits = { size: Float -> labels.all { rvFitsOneLine(measurer, it, at(size), px) } }
-        val min = full * FIT_MIN
-        val steps = ((full - min) / FIT_STEP).toInt()
-        val size = if (fits(full)) full else (steps downTo 0).map { min + it * FIT_STEP }.firstOrNull { it < full && fits(it) } ?: min
-        if (size == full) style else at(size)
+    return remember(labels, style, px, measurer) { rvLargestFit(style) { at -> labels.all { rvFitsOneLine(measurer, it, at, px) } } }
+}
+
+/**
+ * The one size a row of chips takes (a range or an order row), each chip as wide as its label and [pad] on both sides,
+ * [gap] apart, the row [width] wide: [style] when the whole row fits at it, else the largest step of [rvShrinkToFit]'s
+ * range at which it does, its line height scaled with it. Before the row is measured ([width] 0) it is [style].
+ */
+@Composable
+internal fun rvChipRowFit(labels: List<String>, style: TextStyle, pad: Dp, gap: Dp, width: Dp): TextStyle {
+    val measurer = rememberTextMeasurer()
+    val room = with(LocalDensity.current) { (width - pad * 2 * labels.size - gap * (labels.size - 1)).toPx() }
+    return remember(labels, style, room, measurer) {
+        if (width.value == 0f) style else rvLargestFit(style) { at -> labels.sumOf { measurer.measure(scripted(it), at, maxLines = 1).size.width } <= room }
     }
+}
+
+/**
+ * [style] when it [fits], else the largest step of [FIT_STEP] down to [FIT_MIN] of its size that does, its line height
+ * scaled as Compose scales an auto size's; the smallest when none does. Sizes are shares of the full one, so each keeps
+ * the style's unit.
+ */
+private fun rvLargestFit(style: TextStyle, fits: (TextStyle) -> Boolean): TextStyle {
+    val full = style.fontSize.value
+    val at = { size: Float -> style.copy(fontSize = style.fontSize * (size / full), lineHeight = style.lineHeight * (size / full)) }
+    if (fits(style)) return style
+    val min = full * FIT_MIN
+    val steps = ((full - min) / FIT_STEP).toInt()
+    return at((steps downTo 0).map { min + it * FIT_STEP }.firstOrNull { it < full && fits(at(it)) } ?: min)
 }
 
 /** Whether [text] in [style] fits on one line [width] px wide, whole: no ellipsis, nothing past the edge. */

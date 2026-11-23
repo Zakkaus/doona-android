@@ -68,6 +68,12 @@ class RvShotTest {
     fun trafficDark() = traffic("traffic", dark = true)
 
     @Test
+    fun trafficFs115() = traffic("traffic", dark = false, fontScale = RV_FS115)
+
+    @Test
+    fun trafficFs200() = traffic("traffic", dark = false, fontScale = RV_FS200)
+
+    @Test
     fun trafficScrubLight() = traffic("traffic-scrub", dark = false, scrub = SCRUB)
 
     @Test
@@ -83,8 +89,8 @@ class RvShotTest {
     @Composable
     private fun Global() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global)
 
-    private fun traffic(screen: String, dark: Boolean, scrub: Int? = null) =
-        compose.rvShot(screen, dark) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }
+    private fun traffic(screen: String, dark: Boolean, scrub: Int? = null, fontScale: Float = 1f) =
+        compose.rvShot(screen, dark, fontScale = fontScale) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }
 
     private companion object {
         /** The scrolled golden moves the content this far, past the header, so the bottom bar collapses. */

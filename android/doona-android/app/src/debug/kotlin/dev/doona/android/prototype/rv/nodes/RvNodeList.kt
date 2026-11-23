@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -37,7 +36,6 @@ import dev.doona.android.prototype.rv.LocalRvTestingNodes
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
-import dev.doona.android.prototype.rv.RvChartSize
 import dev.doona.android.prototype.rv.RvDelta
 import dev.doona.android.prototype.rv.RvEmptyState
 import dev.doona.android.prototype.rv.RvFlag
@@ -46,7 +44,7 @@ import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLatencyChange
 import dev.doona.android.prototype.rv.RvLatencyText
 import dev.doona.android.prototype.rv.RvPageHeader
-import dev.doona.android.prototype.rv.RvRangePill
+import dev.doona.android.prototype.rv.RvRangeRow
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSearchPill
@@ -77,9 +75,8 @@ internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit) 
     Column(verticalArrangement = Arrangement.spacedBy(RvSpace.controlStack)) {
         RvSearchPill(NOT_WIRED, Modifier.fillMaxWidth())
         // The control row's gap below measures from the selected chip's shadow, the edge the eye sees.
-        Row(Modifier.padding(bottom = rvRaisedReach).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-            RvNodeSort.entries.forEach { RvRangePill(stringResource(it.label), selected = it == sort) { onSort(it) } }
-        }
+        val sorts = RvNodeSort.entries
+        RvRangeRow(sorts.map { stringResource(it.label) }, sorts.indexOf(sort), { onSort(sorts[it]) }, Modifier.padding(bottom = rvRaisedReach))
     }
 }
 
