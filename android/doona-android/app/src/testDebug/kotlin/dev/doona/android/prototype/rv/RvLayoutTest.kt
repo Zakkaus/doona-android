@@ -65,7 +65,8 @@ import kotlin.math.abs
  * Measures the library's layout parts on every RV page against the tokens (plans/reviews/spacing-audit.md), so no page
  * drifts from the Revolut grid without a failure: the large title (or the mark above it) under the bar, its caption and
  * control row on the gutter at the header's gaps, then the first card or section title one header gap under them (a
- * control gap under a control row); every card, section title and footer on the
+ * control gap under a control row), a tab home's first content and an in-page search's list one search gap under the
+ * search; every card, section title and footer on the
  * gutter, cards 16 dp apart, a section title 24 dp under what is above it and 12 dp over its card; rows 58 or 82 dp edge
  * to edge in their card; segmented controls 36 dp, 16 dp inside a card or on the gutter. The parts are found by their
  * [RvPart] tags; each page is the composition its golden records. A failure lists every drift on the page in dp.
@@ -197,7 +198,7 @@ class RvLayoutTest {
     }
 
     private fun ComposeContentTestRule.parts(): Map<String, List<Rect>> {
-        val tags = listOf(RvPart.MARK, RvPart.TITLE, RvPart.CAPTION, RvPart.CONTROL, RvPart.CARD, RvPart.SECTION, RvPart.FOOTER, RvPart.BLOCK, RvPart.ROW, RvPart.SEGMENTED)
+        val tags = listOf(RvPart.MARK, RvPart.TITLE, RvPart.CAPTION, RvPart.CONTROL, RvPart.SEARCH, RvPart.CARD, RvPart.SECTION, RvPart.FOOTER, RvPart.BLOCK, RvPart.ROW, RvPart.SEGMENTED)
         // The merged tree: a picture of a page (主題's preview) clears its semantics, so its cards are not the page's.
         return tags.associateWith { tag ->
             onAllNodesWithTag(tag).fetchSemanticsNodes().map { node ->
@@ -219,7 +220,7 @@ class RvLayoutTest {
 
 /**
  * How a page starts under the bar: a large title, a centred header (a detail page's, as a block) where a large title
- * would start, its own hero (not measured), or a tab home's first content, [RvSpace.tabTop] under its bar
+ * would start, its own hero (not measured), or a tab home's first content, [RvSpace.searchGap] under its bar's search
  * ([RvChrome.tabBarTop]).
  */
 private enum class Top { Title, Header, Hero, Tab }
@@ -247,7 +248,7 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
             Top.Title -> head?.let { expect("header's top", it.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no large title")
             Top.Header -> blocks().firstOrNull()?.let { expect("header's top", it.second.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no header")
             Top.Hero -> Unit
-            Top.Tab -> blocks().firstOrNull()?.let { expect("tab's first content", it.second.top, barBottom + RvSpace.tabTop.value) } ?: drift.add("no content")
+            Top.Tab -> blocks().firstOrNull()?.let { expect("tab's first content under the search", it.second.top, barBottom + RvSpace.searchGap.value) } ?: drift.add("no content")
         }
     }
 
@@ -284,7 +285,7 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
 
     /** The column's top-level blocks, top first: a card inside a control or another card is part of it. */
     private fun blocks(): List<Pair<String, Rect>> {
-        val kinds = listOf(RvPart.MARK, RvPart.TITLE, RvPart.CAPTION, RvPart.CONTROL, RvPart.SECTION, RvPart.FOOTER)
+        val kinds = listOf(RvPart.MARK, RvPart.TITLE, RvPart.CAPTION, RvPart.CONTROL, RvPart.SEARCH, RvPart.SECTION, RvPart.FOOTER)
         val loose = kinds.flatMap { kind -> parts.getValue(kind).map { kind to it } }
         // A block is measured as a card; the cards in a block or a control are part of it.
         val outer = cards.filter { card -> (holders + cards).none { it != card && it.contains(card) } }.map { RvPart.CARD to it }
@@ -357,6 +358,9 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
             // A footer ends its group; a card with no section title over it starts the next as a section title would.
             (RvPart.FOOTER to RvPart.CARD) to RvSpace.sectionAbove,
             (RvPart.SECTION to RvPart.CARD) to RvSpace.sectionBelow,
+            // An in-page search is a control of the page over the list it searches, which sits as a tab's under its bar.
+            (RvPart.CARD to RvPart.SEARCH) to RvSpace.controlGap,
+            (RvPart.SEARCH to RvPart.CARD) to RvSpace.searchGap,
         )
 
         /** On a tab home every block sits one gap from the next, a control row too (rv-fix-4e). */

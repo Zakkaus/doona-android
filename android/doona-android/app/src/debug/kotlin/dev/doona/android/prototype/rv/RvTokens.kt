@@ -33,13 +33,17 @@ internal object RvSpace {
     val heroToActions = 64.dp
 
     /**
-     * Under a tab home's bar (策略, 連線), Revolut's rule (rv-fix-4e, 36 Android screens with the search bar): on a flat
-     * page the first block sits [tabTop] under the bar's controls (Payments' banner 14.1 dp under them), and the blocks
-     * under it sit [tabBlockGap] apart (a caption, a control row, the first card). 活動's hero keeps its own top
-     * ([headerTop]) and puts its first card [tabBlockGap] under its round actions, as Revolut's first card sits 16 dp
-     * under the last element of its hero.
+     * From a search control's bottom to the first content under it, on every page with a search: a tab home's bar
+     * (策略, 連線) and an in-page field over the list it searches (依 App). Revolut's field sits 37 px over its card
+     * (p1-search: ring's bottom row 299, card's top row 336; p1-payments: pill to banner card about the same), 14.5 dp at
+     * 2.55 px/dp (its 44 dp controls are 112 px, its 16 dp gutter 41 px), and its blocks then sit 16 dp apart. Ours is the
+     * block gap: nothing sits closer to a card than cards sit to each other (android-ui rule 12), and it is 1.5 dp from
+     * the measure, so the search is the column's first block and every block under it is one gap from the next.
+     * 活動's hero keeps its own top ([headerTop]) and puts its first card [tabBlockGap] under its round actions.
      */
-    val tabTop = 14.dp
+    val searchGap = 16.dp
+
+    /** Between the blocks of a tab home (a caption, a control row, the first card), as Revolut's flat tabs set them. */
     val tabBlockGap = 16.dp
 
     /** From the round actions' labels to the first card (measured §5: the action row ends 1360 px, the card starts 1400). */

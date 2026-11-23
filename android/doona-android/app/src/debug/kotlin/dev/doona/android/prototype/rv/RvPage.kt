@@ -209,13 +209,14 @@ internal fun RvControlRow(control: @Composable () -> Unit, gap: Dp = RvSpace.con
 
 /**
  * The head of a tab home (策略, 連線), which has no large title, as Revolut's tabs have none (revolut-ux3 §5): the
- * bar's room ([RvChrome.tabBarTop]), then [RvSpace.tabTop] to the first content. An optional [caption] ([RvCaption]
- * lines) and [control] row follow, and the first card after them, each [RvSpace.tabBlockGap] under the one above.
+ * bar's room ([RvChrome.tabBarTop]), then [RvSpace.searchGap] from its search capsule to the first content. An optional
+ * [caption] ([RvCaption] lines) and [control] row follow, and the first card after them, each [RvSpace.tabBlockGap] under
+ * the one above.
  */
 @Composable
 internal fun RvTabHeader(insets: WindowInsets, caption: (@Composable ColumnScope.() -> Unit)? = null, control: (@Composable () -> Unit)? = null) {
     RvBarSpacer(insets, RvChrome.tabBarTop)
-    Spacer(Modifier.height(RvSpace.tabTop))
+    Spacer(Modifier.height(RvSpace.searchGap))
     caption?.let {
         Column(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CAPTION), verticalArrangement = Arrangement.spacedBy(RvSpace.tight), content = it)
     }
@@ -224,6 +225,18 @@ internal fun RvTabHeader(insets: WindowInsets, caption: (@Composable ColumnScope
         Box(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CONTROL)) { it() }
     }
     if (caption != null || control != null) Spacer(Modifier.height(RvSpace.tabBlockGap))
+}
+
+/**
+ * An in-page search field ([field], given the modifier that sizes and tags it) over the list it searches: a control of
+ * the page, [RvSpace.controlGap] under what is above it, and the list [RvSpace.searchGap] under it, as a tab's content
+ * sits under its bar's capsule.
+ */
+@Composable
+internal fun RvSearchSlot(field: @Composable (Modifier) -> Unit) {
+    Spacer(Modifier.height(RvSpace.controlGap))
+    field(Modifier.fillMaxWidth().testTag(RvPart.SEARCH))
+    Spacer(Modifier.height(RvSpace.searchGap))
 }
 
 /** A pushed page's large title alone: [RvPageHeader] with no caption and no control. */

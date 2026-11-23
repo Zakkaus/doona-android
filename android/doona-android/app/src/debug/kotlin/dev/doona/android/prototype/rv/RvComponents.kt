@@ -259,6 +259,9 @@ internal object RvPart {
     const val TITLE = "rv-title"
     const val CAPTION = "rv-caption"
     const val CONTROL = "rv-control"
+
+    /** An in-page search field ([RvSearchSlot]). */
+    const val SEARCH = "rv-search"
     const val CARD = "rv-card"
     const val SECTION = "rv-section"
     const val FOOTER = "rv-footer"

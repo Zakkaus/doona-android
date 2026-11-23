@@ -38,6 +38,7 @@ import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSearchField
+import dev.doona.android.prototype.rv.RvSearchSlot
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSkeletonCard
 import dev.doona.android.prototype.rv.RvSkeletonFade
@@ -60,7 +61,7 @@ internal class RvPerAppActions(
 /**
  * 依 App, a page of 設定, in DNS's language: the large title under the back bar, then one card of the three policies as
  * radio rows. Under 只有勾選的 and 勾選的以外 a card lists the phone's apps, each its icon, name and package with a switch,
- * and the search field ([RvSearchField], the node picker's) stands over that card, a control row of the page; a search
+ * and the search field ([RvSearchField], the node picker's, in [RvSearchSlot]) stands over that card; a search
  * that matches nothing says so in the library's empty caption. 只有勾選的 with nothing checked says what it needs under the policies, as a field says
  * its error ([RvFieldMessage]), and cannot be saved. 儲存 floats at the foot, enabled only when the edits can be saved, since a save rebuilds
  * the tunnel. A save under way, a failed one and a tunnel that would not come back after one show at the top: a busy
@@ -94,9 +95,7 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
                 if (state.needsApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
             }
             if (listed) {
-                Spacer(Modifier.height(RvSpace.controlGap))
-                RvSearchField(null, state.query, actions.query, Modifier.fillMaxWidth().testTag(RvPart.CONTROL), hint = hint)
-                Spacer(Modifier.height(RvSpace.controlGap))
+                RvSearchSlot { RvSearchField(null, state.query, actions.query, it, hint = hint) }
                 Apps(state, actions)
             }
         }
