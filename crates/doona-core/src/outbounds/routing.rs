@@ -7,7 +7,7 @@ use crate::rules::Network;
 use crate::rules::policy::Policy;
 use crate::score::{Score, family};
 use honk_config::node::Node;
-use honk_outbound::alive::ProbeDomain;
+use honk_outbound::alive::{IpVersion, ProbeDomain};
 use honk_outbound::group::{
     ScoreAttempt, ScoreContinuation, ScoreSelectionContext, ScoreSelectionEntry, ScoreTarget,
     SelectionNetwork,
@@ -113,8 +113,24 @@ impl View {
         self.table.mode
     }
 
-    pub fn has_main_group(&self) -> bool {
-        self.table.published.is_some() && self.table.selected.contains_key(self.policy().main())
+    pub fn has_main_node(&self) -> bool {
+        let table = &self.table;
+        if table.published.is_none() {
+            return false;
+        }
+        match table.selected.get(self.policy().main()) {
+            Some(Leaf::Node(_)) => true,
+            Some(Leaf::Score(owner)) => table.score.as_ref().is_some_and(|score| {
+                [IpVersion::V4, IpVersion::V6].into_iter().any(|family| {
+                    !score
+                        .manager
+                        .peek_selection_plan_for_domain(owner, ProbeDomain::Tcp, family)
+                        .nodes
+                        .is_empty()
+                })
+            }),
+            None => false,
+        }
     }
 
     /// The node `group` (an id such as `g-Proxy`) sends traffic to, and what dials it; `None`

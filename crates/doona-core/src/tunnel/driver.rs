@@ -490,7 +490,7 @@ impl Driver {
         let Some(flow) = self.nat.flows.get_mut(&n) else {
             return Ok(());
         };
-        flow.queues.waker.rearm();
+        flow.waker.rearm();
         let (from, to) = (flow.remote, flow.client);
         let mut replies = Vec::with_capacity(UDP_DRAIN);
         while replies.len() < UDP_DRAIN
@@ -500,7 +500,7 @@ impl Driver {
         }
         if replies.len() == UDP_DRAIN {
             // More may be queued: come back after the events already waiting.
-            flow.queues.waker.wake();
+            flow.waker.wake();
         }
         for d in replies {
             self.send_udp((from, to), &d.bytes, tun)?;

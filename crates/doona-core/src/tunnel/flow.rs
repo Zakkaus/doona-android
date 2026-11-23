@@ -63,15 +63,11 @@ pub(crate) struct Waker {
 
 impl Waker {
     pub fn new(key: Key, events: Events) -> Arc<Waker> {
-        Arc::new(Self::for_key(key, events))
-    }
-
-    pub fn for_key(key: Key, events: Events) -> Waker {
-        Waker {
+        Arc::new(Waker {
             key,
             queued: AtomicBool::new(false),
             events,
-        }
+        })
     }
 
     /// Queues a wake unless one is queued already.

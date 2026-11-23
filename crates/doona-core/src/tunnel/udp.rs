@@ -8,8 +8,8 @@
 //! open. Android 17 refuses a datagram to a node on the local network with `EPERM` while doona
 //! lacks the permission, so the first send through such a node reports how it went (ARCH D26).
 //!
-//! Score counts an association once. Idle after an accepted peer reply is success; without a reply,
-//! idle is a timeout unless a local queue dropped traffic.
+//! Score counts an association once. Reply-idle after an accepted peer reply is success;
+//! a locally dropped reply is not evidence against the node.
 
 mod exchange;
 use exchange::exchange;
@@ -31,8 +31,8 @@ use std::io::{self, ErrorKind};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{
-    AtomicBool, AtomicUsize,
-    Ordering::{AcqRel, Acquire, Relaxed},
+    AtomicUsize,
+    Ordering::{AcqRel, Acquire},
 };
 use std::time::Duration;
 use tokio::net::UdpSocket;
@@ -111,18 +111,13 @@ impl Datagram {
     }
 }
 
-pub(super) struct Queues {
-    pub waker: Waker,
-    dropped: AtomicBool,
-}
-
 /// The driver's side of one association.
 pub(crate) struct Association {
     pub client: SocketAddr,
     pub remote: SocketAddr,
     up: mpsc::Sender<Datagram>,
     pub down: mpsc::Receiver<Datagram>,
-    pub queues: Arc<Queues>,
+    pub waker: Arc<Waker>,
 }
 
 /// The driver's associations, by id and by address pair.
@@ -139,7 +134,7 @@ pub(crate) struct Opened {
     pub id: u64,
     pub up: mpsc::Receiver<Datagram>,
     pub down: mpsc::Sender<Datagram>,
-    queues: Arc<Queues>,
+    waker: Arc<Waker>,
     budget: Arc<Budget>,
     idle: Duration,
 }
@@ -176,8 +171,6 @@ impl Nat {
                 && let Some(d) = Datagram::copy(payload, &self.budget)
             {
                 slot.send(d);
-            } else {
-                flow.queues.dropped.store(true, Relaxed);
             }
             return None;
         }
@@ -201,10 +194,7 @@ impl Nat {
         let (up_tx, up_rx) = mpsc::channel(DEPTH * 8);
         up_tx.try_send(first).expect("new association has room");
         let (down_tx, down_rx) = mpsc::channel(DEPTH * 8);
-        let queues = Arc::new(Queues {
-            waker: Waker::for_key(Key::Udp(id), events.clone()),
-            dropped: AtomicBool::new(false),
-        });
+        let waker = Waker::new(Key::Udp(id), events.clone());
         self.by_pair.insert((client, remote), id);
         self.flows.insert(
             id,
@@ -213,14 +203,14 @@ impl Nat {
                 remote,
                 up: up_tx,
                 down: down_rx,
-                queues: Arc::clone(&queues),
+                waker: Arc::clone(&waker),
             },
         );
         Opened {
             id,
             up: up_rx,
             down: down_tx,
-            queues,
+            waker,
             budget: Arc::clone(&self.budget),
             idle: self.idle,
         }

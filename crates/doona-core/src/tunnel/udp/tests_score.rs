@@ -11,14 +11,14 @@ enum Reply {
     Foreign,
     Silent,
     OverBudget,
-    UplinkDrop,
+    Stalled,
 }
 
 async fn association(outbounds: &Outbounds, peer: &UdpSocket, reply: Reply, packets: u8) -> usize {
     let remote = peer.local_addr().unwrap();
     let pair = (([127, 0, 0, 1], 1234).into(), remote);
     let mut nat = Nat::new(Budget::new(64), Duration::from_millis(500));
-    let (events, _wakes) = mpsc::unbounded_channel();
+    let (events, wakes) = mpsc::unbounded_channel();
     let session = Arc::new(Session::new(0, Default::default()));
     let open = || {
         Some(Route::of(
@@ -31,11 +31,22 @@ async fn association(outbounds: &Outbounds, peer: &UdpSocket, reply: Reply, pack
     };
     let (opened, route) = nat.send(pair, &[0], &events, open).unwrap();
     let id = opened.id;
+    if matches!(reply, Reply::Stalled) {
+        let (upstream, reporter) = route.bind_udp(remote).await.unwrap();
+        let UdpUpstream::Proxy(t, ..) = upstream else {
+            panic!("expected proxy transport")
+        };
+        let blocked = UdpUpstream::Proxy(Arc::new(Stalled(t)), remote, None);
+        let fill = fill_after_reply(peer, wakes, &mut nat, pair, &events);
+        let (_, filled) = tokio::join!(
+            exchange(opened, &blocked, Tally::new(None), reporter.as_ref()),
+            tokio::time::timeout(Duration::from_secs(5), fill)
+        );
+        filled.expect("first reply did not reach the driver");
+        return nat.flows[&id].down.len();
+    }
     for i in 1..packets {
         nat.send(pair, &[i], &events, open);
-    }
-    if matches!(reply, Reply::UplinkDrop) {
-        nat.send(pair, &[0; 65], &events, open);
     }
     let serve = async {
         let mut buf = [0; 1];
@@ -51,7 +62,8 @@ async fn association(outbounds: &Outbounds, peer: &UdpSocket, reply: Reply, pack
                     .await
                     .unwrap(),
                 Reply::OverBudget => peer.send_to(&[1; 65], from).await.unwrap(),
-                Reply::Silent | Reply::UplinkDrop => 0,
+                Reply::Silent => 0,
+                Reply::Stalled => unreachable!(),
             };
         }
     };
@@ -109,9 +121,69 @@ fn reply_idle_succeeds_but_unanswered_idle_fails() {
 }
 
 #[test]
-fn local_queue_loss_does_not_charge_the_node() {
-    for reply in [Reply::OverBudget, Reply::UplinkDrop] {
-        let (b, queued) = trial(reply, 1);
-        assert_eq!((b.trial_cancelled, b.trial_failure, queued), (1, 0, 0));
+fn local_reply_loss_does_not_charge_the_node() {
+    let (b, queued) = trial(Reply::OverBudget, 1);
+    assert_eq!((b.trial_cancelled, b.trial_failure, queued), (1, 0, 0));
+}
+
+#[test]
+fn a_stalled_send_times_out_even_after_a_reply_and_queue_overflow() {
+    let (b, queued) = trial(Reply::Stalled, 1);
+    assert_eq!((b.trial_failure, b.trial_success, queued), (1, 0, 1));
+}
+
+async fn fill_after_reply(
+    peer: &UdpSocket,
+    mut wakes: mpsc::UnboundedReceiver<Event>,
+    nat: &mut Nat,
+    pair: (SocketAddr, SocketAddr),
+    events: &Events,
+) {
+    let mut buf = [0];
+    let (_, from) = peer.recv_from(&mut buf).await.unwrap();
+    peer.send_to(&buf, from).await.unwrap();
+    assert!(matches!(wakes.recv().await, Some(Event::Wake(Key::Udp(_)))));
+    tokio::time::pause();
+    tokio::time::advance(nat.idle / 2).await;
+    for _ in 0..=DEPTH * 8 {
+        nat.send(pair, &[1], events, || unreachable!());
+    }
+}
+
+/// The first datagram is forwarded; the next send blocks on the carrier.
+#[derive(Debug)]
+struct Stalled(Arc<dyn PacketTransport>);
+
+impl PacketTransport for Stalled {
+    fn relay_addr(&self) -> SocketAddr {
+        self.0.relay_addr()
+    }
+
+    fn send_packet<'a, 'b, 't>(
+        &'a self,
+        data: &'b [u8],
+    ) -> std::pin::Pin<Box<dyn Future<Output = io::Result<()>> + Send + 't>>
+    where
+        'a: 't,
+        'b: 't,
+        Self: 't,
+    {
+        if data == [0] {
+            self.0.send_packet(data)
+        } else {
+            Box::pin(std::future::pending())
+        }
+    }
+
+    fn recv_packet<'a, 'b, 't>(
+        &'a self,
+        buf: &'b mut [u8],
+    ) -> std::pin::Pin<Box<dyn Future<Output = io::Result<(usize, SocketAddr)>> + Send + 't>>
+    where
+        'a: 't,
+        'b: 't,
+        Self: 't,
+    {
+        self.0.recv_packet(buf)
     }
 }

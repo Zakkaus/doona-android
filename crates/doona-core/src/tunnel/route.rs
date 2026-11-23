@@ -176,7 +176,7 @@ impl Route {
         let view = outbounds.view();
         match view.mode().unwrap_or(mode) {
             Mode::Direct => Route::Direct,
-            Mode::Global | Mode::Rule if view.has_main_group() => {
+            Mode::Global | Mode::Rule if view.has_main_node() => {
                 Route::Resolver(view, Arc::clone(session))
             }
             _ => Route::Refuse,

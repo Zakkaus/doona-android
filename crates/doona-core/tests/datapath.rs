@@ -84,7 +84,8 @@ fn direct_tcp_reaches_the_original_destination_both_ways() {
 #[test]
 fn direct_tcp_to_a_closed_port_is_reset() {
     let mut s = setup("Direct", vec![]);
-    let id = s.client.connect(servers::closed_port());
+    let (dst, _socket) = servers::closed_port();
+    let id = s.client.connect(dst);
     let reset = s.client.until(WAIT, |c| c.read_now(id).is_err());
     assert!(reset);
     assert!(matches!(
@@ -116,7 +117,8 @@ fn dns_over_udp(c: &mut Client, to: SocketAddr, q: &[u8]) -> Vec<u8> {
 fn dns_is_answered_over_tcp_upstream_and_truncated_for_udp() {
     let (resolver, seen) = servers::dns_server();
     // The first upstream refuses connections; the second answers.
-    let mut s = setup("Direct", vec![servers::closed_port(), resolver]);
+    let (closed, _socket) = servers::closed_port();
+    let mut s = setup("Direct", vec![closed, resolver]);
     let c = &mut s.client;
 
     let a = dns_over_udp(c, RESOLVER, &servers::query(1, "a.example", None));

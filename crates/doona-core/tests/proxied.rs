@@ -119,7 +119,8 @@ fn a_selection_change_applies_to_new_flows_only() {
 #[test]
 fn a_failed_dial_resets_the_flow_at_once() {
     let (echo, echo_seen) = servers::tcp_echo();
-    let mut s = setup(&[socks_link(servers::closed_port(), "gone")], vec![]);
+    let (gone, _socket) = servers::closed_port();
+    let mut s = setup(&[socks_link(gone, "gone")], vec![]);
     let begun = Instant::now();
     let id = s.client.connect(echo);
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
@@ -141,7 +142,8 @@ fn a_failed_dial_resets_the_flow_at_once() {
 #[test]
 fn a_failed_dial_through_a_node_on_the_local_network_is_a_warning() {
     let (echo, echo_seen) = servers::tcp_echo();
-    let mut s = setup(&[socks_link(servers::closed_port(), "gone")], vec![]);
+    let (gone, _socket) = servers::closed_port();
+    let mut s = setup(&[socks_link(gone, "gone")], vec![]);
     let id = s.client.connect(echo);
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
     assert_eq!(s.g.snapshot().warning, None);

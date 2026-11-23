@@ -349,6 +349,7 @@ fn a_flow_paused_across_two_commits_routes_by_one_of_them() {
 /// decision 10), whatever server the query was sent to.
 #[test]
 fn dns_goes_through_the_main_group_unless_direct() {
+    use honk_outbound::alive::{IpVersion, ProbeDomain};
     let (outbounds, model) = published(Options::default());
     let session = session();
     let dns = |mode| {
@@ -360,6 +361,22 @@ fn dns_goes_through_the_main_group_unless_direct() {
     assert_eq!(target(&dns(Mode::Direct)), "direct");
     let empty = Outbounds::new(Arc::default()).unwrap();
     assert!(Route::dns(Inbound::Tun, Mode::Rule, &empty, &session).refused());
+    for family in [IpVersion::V4, IpVersion::V6] {
+        assert!(
+            !dns(Mode::Global).refused(),
+            "a resolver family is still usable"
+        );
+        for node in &model.nodes {
+            model
+                .score
+                .alive
+                .report_unavailable_forced(node.uuid, ProbeDomain::Tcp, family);
+        }
+    }
+    assert!(
+        dns(Mode::Global).refused(),
+        "main group has no usable TCP node"
+    );
 }
 
 #[tokio::test]
