@@ -38,7 +38,9 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAction
 import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvFloatingNav
+import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvBarHeight
 import dev.doona.android.prototype.rv.rvDotMap
@@ -143,6 +145,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
         RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
         RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, onPerApp, perAppValue(state.perApp))
     }
+    RvFootnote(stringResource(R.string.rv_settings_connection_footer), inset = RvSpace.gutter - RvSettingsSpace.margin)
 }
 
 @Composable

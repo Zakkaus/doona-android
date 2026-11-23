@@ -23,8 +23,10 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.RvChevron
+import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvRowPress
 import dev.doona.android.prototype.rv.rvSystemScheme
@@ -32,7 +34,7 @@ import dev.doona.android.prototype.rv.rvSystemScheme
 /**
  * The page 進階 → DNS opens (features-gap item 11, v0.2), in 主題's language: the large title, then one titled card of
  * servers, each its name over its address with a radio, and 自訂 last, which opens an address field (rv-pages-a's text
- * field, not wired here).
+ * field, not wired here); a footer says the query goes out through the main node (rule-mode decision 10).
  */
 @Composable
 internal fun RvDnsScreen(selected: RvDnsUpstream, onSelect: (RvDnsUpstream) -> Unit, onBack: () -> Unit, onCustom: () -> Unit = NOT_WIRED) {
@@ -50,6 +52,7 @@ internal fun RvDnsScreen(selected: RvDnsUpstream, onSelect: (RvDnsUpstream) -> U
                     RvChevron()
                 }
             }
+            RvFootnote(stringResource(R.string.rv_settings_dns_footer), inset = RvSpace.gutter - RvSettingsSpace.margin)
         }
         Spacer(Modifier.height(RvSettingsSpace.bottom))
         Spacer(Modifier.windowInsetsBottomHeight(insets))

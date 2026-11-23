@@ -7,6 +7,7 @@
     <string name="rv_settings_notify_drop">断开连接时通知</string>
     <string name="rv_settings_per_app">按应用的代理</string>
     <string name="rv_settings_per_app_value">只代理 %1$d 个应用</string>
+    <string name="rv_settings_connection_footer">只有选中的应用经由代理，其他应用与局域网地址直接连接。</string>
 
     <string name="rv_settings_group_subscription">订阅</string>
     <string name="rv_settings_auto_update">自动更新</string>
@@ -42,6 +43,7 @@
     <string name="rv_settings_dns_server">服务器</string>
     <string name="rv_settings_dns_custom">自定义</string>
     <string name="rv_settings_dns_custom_sub">输入地址</string>
+    <string name="rv_settings_dns_footer">规则与全局模式下，DNS 查询经由主节点发出。</string>
 
     <string name="rv_report_title">报告问题</string>
     <string name="rv_report_export">导出诊断报告</string>

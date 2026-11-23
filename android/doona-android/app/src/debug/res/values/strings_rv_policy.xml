@@ -2,6 +2,9 @@
 <resources>
     <string name="rv_policy_test_all">Test every group</string>
     <string name="rv_policy_update_subscriptions">Update subscriptions</string>
+    <string name="rv_policy_mode_direct">All traffic connects directly, without a proxy</string>
+    <string name="rv_policy_mode_global">All traffic goes through the main node</string>
+    <string name="rv_policy_mode_rule">Rules route traffic; the rest goes through the main node</string>
     <string name="rv_policy_groups">Groups</string>
     <string name="rv_policy_group_auto">Auto</string>
     <string name="rv_policy_kind_select">Manual</string>
@@ -10,7 +13,9 @@
         <item quantity="one">%1$d node</item>
         <item quantity="other">%1$d nodes</item>
     </plurals>
+    <string name="rv_template_cn_direct_line">Mainland China sites connect directly</string>
     <string name="rv_policy_rules">Routing rules</string>
+    <string name="rv_policy_rules_order">Rules are checked from the top; the first match applies</string>
     <plurals name="rv_policy_see_all_rules">
         <item quantity="one">See all %1$d rule</item>
         <item quantity="other">See all %1$d rules</item>
@@ -31,6 +36,7 @@
     <string name="rv_policy_block_quic">Block QUIC</string>
     <string name="rv_policy_selected">Selected %1$s · %2$s</string>
     <string name="rv_policy_auto">Auto</string>
+    <string name="rv_policy_auto_note">Picks the node with the lowest latency (50 ms tolerance)</string>
     <string name="rv_policy_test_group">Test this group</string>
     <string name="rv_policy_nodes">Nodes</string>
     <plurals name="rv_policy_see_all_nodes">
@@ -78,9 +84,13 @@
         <item quantity="other">%1$d rules</item>
     </plurals>
     <string name="rv_template_services">By service</string>
+    <string name="rv_template_services_line">Streaming, AI and other services each get a group</string>
     <string name="rv_template_regions">By region</string>
+    <string name="rv_template_regions_line">One group for each region</string>
     <string name="rv_template_homebound">Homebound</string>
+    <string name="rv_template_homebound_line">Abroad, mainland China sites go through the proxy</string>
     <string name="rv_template_gfw">Blocked sites only</string>
+    <string name="rv_template_gfw_line">Only blocked sites go through the proxy</string>
     <string name="rv_template_needs_geosite">Needs GEOSITE</string>
     <string name="rv_template_in_use">In use</string>
     <string name="rv_template_review">Review changes</string>

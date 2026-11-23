@@ -2,7 +2,10 @@ package dev.doona.android.prototype.rv.policy
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,6 +20,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
@@ -30,7 +34,9 @@ import dev.doona.android.prototype.rv.RvMenuItem
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
+import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvRowPress
 import dev.doona.android.prototype.rv.rvSystemScheme
@@ -51,12 +57,12 @@ internal class RvRulesRoutes(
 )
 
 /**
- * All rules (查看全部 on 策略), in the 策略 card's grammar: the large title; any rules held for a later 套用, with the
- * button that applies them; every rule in order, each with where it sends and today's bytes, an off or skipped rule
- * saying so; how many are in use, off and skipped, as D34 counts them; and the way to the effective config, which shows
- * what the core compiled. The bar's pencil turns on [editing], for reordering (first match wins, so order matters): a
- * long press lifts a rule to drag it, and 完成 ends it. A rule opens its page; a long press its menu. 刪除 asks in the
- * library's confirm sheet.
+ * All rules (查看全部 on 策略), in the 策略 card's grammar: the large title and, unless reordering, one line on how rules
+ * are tried; any rules held for a later 套用, with the button that applies them; every rule in order, each with where
+ * it sends and today's bytes, an off or skipped rule saying so; how many are in use, off and skipped, as D34 counts
+ * them; and the way to the effective config, which shows what the core compiled. The bar's pencil turns on [editing],
+ * for reordering (first match wins, so order matters): a long press lifts a rule to drag it, and 完成 ends it. A rule
+ * opens its page; a long press its menu. 刪除 asks in the library's confirm sheet.
  */
 @Composable
 internal fun RvRulesPage(
@@ -77,6 +83,11 @@ internal fun RvRulesPage(
         bottomAction = { BottomAction(pending.size, editing, routes) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
+        if (!editing) {
+            RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.gutter), color = Rv.colors.textSecondary)
+            // The order line keeps the page's first card a control's gap under it, as before RvPageHeader.
+            Spacer(Modifier.height(RvSpace.controlGap))
+        }
         RvGutter {
             if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
             RulesCard(rules, editing, routes)

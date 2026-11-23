@@ -2,6 +2,9 @@
 <resources>
     <string name="rv_policy_test_all">测试所有策略组</string>
     <string name="rv_policy_update_subscriptions">更新订阅</string>
+    <string name="rv_policy_mode_direct">所有流量直接连接，不经代理</string>
+    <string name="rv_policy_mode_global">所有流量经由主节点</string>
+    <string name="rv_policy_mode_rule">按规则分流，其余流量经由主节点</string>
     <string name="rv_policy_groups">策略组</string>
     <string name="rv_policy_group_auto">自动</string>
     <string name="rv_policy_kind_select">手动选择</string>
@@ -9,7 +12,9 @@
     <plurals name="rv_policy_node_count">
         <item quantity="other">%1$d 个节点</item>
     </plurals>
+    <string name="rv_template_cn_direct_line">中国大陆网站直接连接</string>
     <string name="rv_policy_rules">分流规则</string>
+    <string name="rv_policy_rules_order">由上而下匹配，第一条匹配的规则生效</string>
     <plurals name="rv_policy_see_all_rules">
         <item quantity="other">查看全部 %1$d 条</item>
     </plurals>
@@ -28,6 +33,7 @@
     <string name="rv_policy_block_quic">屏蔽 QUIC</string>
     <string name="rv_policy_selected">已选 %1$s · %2$s</string>
     <string name="rv_policy_auto">自动</string>
+    <string name="rv_policy_auto_note">自动选择延迟最低的节点（容差 50 毫秒）</string>
     <string name="rv_policy_test_group">测试此组</string>
     <string name="rv_policy_nodes">节点</string>
     <plurals name="rv_policy_see_all_nodes">
@@ -70,9 +76,13 @@
         <item quantity="other">%1$d 条</item>
     </plurals>
     <string name="rv_template_services">按服务分流</string>
+    <string name="rv_template_services_line">流媒体、AI 等服务各用一个策略组</string>
     <string name="rv_template_regions">按地区分流</string>
+    <string name="rv_template_regions_line">每个地区一个策略组</string>
     <string name="rv_template_homebound">回国</string>
+    <string name="rv_template_homebound_line">在海外时，中国大陆网站经由代理</string>
     <string name="rv_template_gfw">只代理被封锁的网站</string>
+    <string name="rv_template_gfw_line">只有被封锁的网站经由代理</string>
     <string name="rv_template_needs_geosite">需 GEOSITE</string>
     <string name="rv_template_in_use">使用中</string>
     <string name="rv_template_review">查看更改</string>

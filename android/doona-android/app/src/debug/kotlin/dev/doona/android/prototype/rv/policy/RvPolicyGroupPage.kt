@@ -54,7 +54,8 @@ import dev.doona.android.prototype.rv.rvSystemScheme
  * A group's page, pushed from its row or the main node card, in the 節點 page's grammar: the back disc and the group's
  * name as the large title; how the group picks and how many nodes it has, and the node it uses in the nodes page's
  * status chip; then its nodes fastest first in 節點's rows, the chosen one badged. In a selector a tap picks the node; a
- * url-test group picks for itself, so its rows do not respond and its choice's line begins with 自動.
+ * url-test group picks for itself, so its rows do not respond, a note says how it picks and its choice's line begins
+ * with 自動.
  * 測試此組 floats at the bottom as the page's primary button.
  */
 @Composable
@@ -79,11 +80,12 @@ internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelec
     }
 }
 
-/** The header's caption: the kind and the node count. */
+/** The header's caption: the kind and the node count, and for url-test the rule it picks by. */
 @Composable
 private fun Caption(group: RvPolicyGroup) {
     val count = pluralStringResource(R.plurals.rv_policy_node_count, group.members.size, group.members.size)
     RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)
+    if (group.kind == RvGroupKind.Auto) RvCaption(stringResource(R.string.rv_policy_auto_note))
 }
 
 /** The nodes, fastest first: the first [ROWS], then 查看全部, which opens the rest in place. */

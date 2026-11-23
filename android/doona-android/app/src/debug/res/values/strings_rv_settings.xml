@@ -8,6 +8,7 @@
     <string name="rv_settings_notify_drop">Notify when disconnected</string>
     <string name="rv_settings_per_app">Per-app proxy</string>
     <string name="rv_settings_per_app_value">%1$d apps only</string>
+    <string name="rv_settings_connection_footer">Only the selected apps go through the proxy. Other apps and local-network addresses connect directly.</string>
 
     <string name="rv_settings_group_subscription">Subscriptions</string>
     <string name="rv_settings_auto_update">Auto-update</string>
@@ -49,6 +50,7 @@
     <string name="rv_settings_dns_server">Server</string>
     <string name="rv_settings_dns_custom">Custom</string>
     <string name="rv_settings_dns_custom_sub">Enter an address</string>
+    <string name="rv_settings_dns_footer">In rule and global mode, DNS queries go through the main node.</string>
 
     <string name="rv_report_title">Report a problem</string>
     <string name="rv_report_export">Export diagnostic report</string>

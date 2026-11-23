@@ -288,11 +288,12 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
         blocks.filter { it.second.bottom <= lower.second.top + TOLERANCE && it.second.overlapsAcross(lower.second) }.maxByOrNull { it.second.bottom }?.let { it to lower }
     }
 
-    /** Rows run edge to edge in their card at 58 or 82 dp. */
+    /** Rows run edge to edge in their card at 58 or 82 dp, or taller where their text wraps (the one row rule). */
     private fun rows() {
         for (row in parts.getValue(RvPart.ROW)) {
             val card = cards.firstOrNull { it.contains(row) } ?: continue
-            if (ROW_HEIGHTS.none { abs(row.height - it.value) <= TOLERANCE }) drift.add("row at ${row.top} dp is ${row.height} dp, not 58 or 82")
+            val grown = row.height > RvSize.rowTwoLine.value + TOLERANCE
+            if (!grown && ROW_HEIGHTS.none { abs(row.height - it.value) <= TOLERANCE }) drift.add("row at ${row.top} dp is ${row.height} dp, not 58 or 82")
             expect("row's start at ${row.top} dp", row.left, card.left)
             expect("row's end at ${row.top} dp", row.right, card.right)
         }

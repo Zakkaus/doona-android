@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -78,10 +79,10 @@ internal class RvPolicyRoutes(
 
 /**
  * The 策略 tab, a control page in the language of 設定 and 節點 (rv-policy-STATE.md has the synthesis behind it): the
- * large title with two glass actions in the bar; the mode as FlClash's three segments alone in a card. 規則: the main
- * node, which carries whatever no rule sends elsewhere (its card opens the main node's picker); the groups, each with
- * how it picks and the node it uses (a row pushes its page); the rules in order with today's bytes, as Karing lists
- * them; and the template and the switches that shape the rules. 全域 has one decision,
+ * large title with two glass actions in the bar; the mode as FlClash's three segments in a card with one line saying
+ * what it does. 規則: the main node, which carries whatever no rule sends elsewhere (its card opens the main node's
+ * picker); the groups, each with how it picks and the node it uses (a row pushes its page); the rules in order with
+ * today's bytes, as Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
  * the node everything goes through, so under the mode the page is the node picker itself; 直連 shows the mode alone.
  */
 @Composable
@@ -120,10 +121,10 @@ internal fun RvPolicyScreen(state: RvPolicyState, onChange: (RvPolicyState) -> U
     }
 }
 
-/** 規則 | 全域 | 直連 alone in a card, as Revolut sets a segmented control. */
+/** 規則 | 全域 | 直連 in a card, as Revolut sets a segmented control, and one line under it saying what the mode does. */
 @Composable
 private fun ModeCard(mode: RvRouteMode, onMode: (RvRouteMode) -> Unit) {
-    RvControlCard(null) {
+    RvControlCard(stringResource(mode.line)) {
         RvSegmented(MODES.map { stringResource(it.label) }, MODES.indexOf(mode), { onMode(MODES[it]) })
     }
 }
@@ -180,13 +181,14 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit) {
 }
 
 /**
- * The rules (規則 only): each one as what it matches over its kind, where the traffic ends (the group's node, or 直連's
- * arrow) and the group over today's bytes; then the rest of the list.
+ * The rules (規則 only): how they are tried, then each one as what it matches over its kind, where the traffic ends
+ * (the group's node, or 直連's arrow) and the group over today's bytes; then the rest of the list.
  */
 @Composable
 private fun RulesCard(onAll: () -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_policy_rules))
+        RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = Rv.colors.textSecondary)
         RvPolicyData.rules.forEach { RvRuleRow(it) }
         RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_rules, RvPolicyData.RULES, RvPolicyData.RULES), onAll)
     }
@@ -223,6 +225,13 @@ private val RvRouteMode.label: Int
         RvRouteMode.Rule -> R.string.rv_mode_rule
         RvRouteMode.Global -> R.string.mode_global
         RvRouteMode.Direct -> R.string.mode_direct
+    }
+
+private val RvRouteMode.line: Int
+    get() = when (this) {
+        RvRouteMode.Rule -> R.string.rv_policy_mode_rule
+        RvRouteMode.Global -> R.string.rv_policy_mode_global
+        RvRouteMode.Direct -> R.string.rv_policy_mode_direct
     }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
