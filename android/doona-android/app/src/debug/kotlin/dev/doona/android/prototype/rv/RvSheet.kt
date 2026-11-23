@@ -157,15 +157,16 @@ internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable Co
 }
 
 /**
- * A question before something that cannot be taken back or needs the user's yes: [title], [body], an optional [extra]
- * (stat rows, a field), then [confirm] as the primary button and [dismiss] as the neutral secondary pill under it, as a
- * card's notice sets its action: no action of the sheet is a coloured text link (the owner, 2026-11-23).
+ * A question before something that cannot be taken back or needs the user's yes: [title], an optional [body], an
+ * optional [extra] (stat rows, a field), then [confirm] as the primary button and [dismiss] as the neutral secondary
+ * pill under it, as a card's notice sets its action: no action of the sheet is a coloured text link (the owner,
+ * 2026-11-23).
  */
 @Composable
 internal fun RvConfirmSheet(
     visible: Boolean,
     title: String,
-    body: String,
+    body: String?,
     confirm: String,
     dismiss: String,
     onConfirm: () -> Unit,
@@ -180,7 +181,7 @@ internal fun RvConfirmSheet(
 @Composable
 internal fun ColumnScope.RvConfirmContent(
     title: String,
-    body: String,
+    body: String?,
     confirm: String,
     dismiss: String,
     onConfirm: () -> Unit,
@@ -192,8 +193,10 @@ internal fun ColumnScope.RvConfirmContent(
     // The words on the card-content line, as a card's rows set theirs.
     val text = Modifier.padding(horizontal = RvSpace.rowPadding)
     RvText(title, Rv.type.section, text, maxLines = TITLE_LINES)
-    Spacer(Modifier.height(RvSheetSize.titleToBody))
-    RvText(body, Rv.type.rowSub, text, color = Rv.colors.textSecondary, maxLines = BODY_LINES)
+    body?.let {
+        Spacer(Modifier.height(RvSheetSize.titleToBody))
+        RvText(it, Rv.type.rowSub, text, color = Rv.colors.textSecondary, maxLines = BODY_LINES)
+    }
     extra?.let {
         Spacer(Modifier.height(RvSpace.gutter))
         it()

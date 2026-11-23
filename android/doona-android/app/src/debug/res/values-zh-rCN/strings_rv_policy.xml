@@ -2,9 +2,6 @@
 <resources>
     <string name="rv_policy_test_all">测试所有策略组</string>
     <string name="rv_policy_update_subscriptions">更新订阅</string>
-    <string name="rv_policy_mode_rule">按规则分流，其余走主节点</string>
-    <string name="rv_policy_mode_global">全部流量走主节点</string>
-    <string name="rv_policy_mode_direct">全部流量不经代理</string>
     <string name="rv_policy_groups">策略组</string>
     <string name="rv_policy_group_auto">自动</string>
     <string name="rv_policy_kind_select">手动选择</string>
@@ -13,7 +10,6 @@
         <item quantity="other">%1$d 个节点</item>
     </plurals>
     <string name="rv_policy_rules">分流规则</string>
-    <string name="rv_policy_rules_order">由上而下匹配，第一条匹配的规则生效</string>
     <plurals name="rv_policy_see_all_rules">
         <item quantity="other">查看全部 %1$d 条</item>
     </plurals>
@@ -32,7 +28,6 @@
     <string name="rv_policy_block_quic">屏蔽 QUIC</string>
     <string name="rv_policy_selected">已选 %1$s · %2$s</string>
     <string name="rv_policy_auto">自动</string>
-    <string name="rv_policy_auto_note">自动选择延迟最低的节点（容差 50 毫秒）</string>
     <string name="rv_policy_test_group">测试此组</string>
     <string name="rv_policy_nodes">节点</string>
     <plurals name="rv_policy_see_all_nodes">
@@ -46,9 +41,6 @@
     <string name="rv_policy_match_full">完整域名</string>
     <string name="rv_policy_match_suffix">域名后缀</string>
     <string name="rv_policy_match_keyword">关键词</string>
-    <string name="rv_policy_match_full_line">只匹配 %1$s</string>
-    <string name="rv_policy_match_suffix_line">%1$s 及其所有子域名</string>
-    <string name="rv_policy_match_keyword_line">域名包含 %1$s</string>
     <string name="rv_policy_send_to">送往</string>
     <string name="rv_policy_no_proxy">不经代理</string>
     <plurals name="rv_policy_other_groups">
@@ -59,9 +51,8 @@
     <string name="rv_policy_apply">应用</string>
     <string name="rv_policy_match_cidr">IP 段</string>
     <string name="rv_policy_rule_off">已停用</string>
-    <string name="rv_policy_rule_skipped">不支持，已跳过</string>
+    <string name="rv_policy_rule_skipped">已跳过</string>
     <string name="rv_rules_reorder">调整顺序</string>
-    <string name="rv_rules_edit_line">长按规则后拖动，即可调整顺序</string>
     <string name="rv_rules_done">完成</string>
     <plurals name="rv_rules_apply_held">
         <item quantity="other">应用 %1$d 条规则</item>
@@ -72,20 +63,14 @@
     <string name="rv_rules_in_use">生效</string>
     <string name="rv_rules_off">已停用</string>
     <string name="rv_rules_skipped">已跳过</string>
-    <string name="rv_rules_skipped_line">尚未支持 GEOSITE，这类规则会跳过</string>
     <plurals name="rv_rules_count">
         <item quantity="other">%1$d 条</item>
     </plurals>
-    <string name="rv_template_cn_direct_line">中国大陆网站直连</string>
     <string name="rv_template_services">按服务分流</string>
-    <string name="rv_template_services_line">流媒体、AI 等服务各走一组</string>
     <string name="rv_template_regions">按地区分流</string>
-    <string name="rv_template_regions_line">每个地区一个策略组</string>
     <string name="rv_template_homebound">回国</string>
-    <string name="rv_template_homebound_line">在海外使用，中国大陆网站走代理</string>
     <string name="rv_template_gfw">只代理被封锁的网站</string>
-    <string name="rv_template_gfw_line">只有被封锁的网站走代理</string>
-    <string name="rv_template_needs_geosite">需要 GEOSITE，尚未支持</string>
+    <string name="rv_template_needs_geosite">需 GEOSITE</string>
     <string name="rv_template_in_use">使用中</string>
     <string name="rv_template_review">查看更改</string>
     <string name="rv_template_note">应用前会先列出更改</string>
@@ -123,13 +108,10 @@
     <string name="rv_rule_edit_need_cidr">请输入 IP 段</string>
     <string name="rv_rule_edit_bad_domain">只能使用英文字母、数字、连字符和点</string>
     <string name="rv_rule_edit_bad_cidr">IP 段的格式为 91.108.56.0/22</string>
-    <string name="rv_rule_edit_cidr_line">%1$s 内的地址</string>
-    <string name="rv_rule_edit_geoip_line">GeoIP 数据中属于中国大陆的地址</string>
-    <string name="rv_rule_edit_private_line">私有地址不进通道，此规则匹配不到连接</string>
     <string name="rv_rule_edit_enabled">启用</string>
     <string name="rv_rule_edit_delete">删除规则</string>
     <string name="rv_rule_delete_title">删除这条规则？</string>
-    <string name="rv_rule_delete_body">“%1$s”会从列表移除，原本匹配它的连接改由下一条匹配的规则决定。</string>
+    <string name="rv_rule_delete_body">“%1$s”会从列表移除。</string>
     <string name="rv_rule_delete_confirm">删除</string>
     <string name="rv_rule_delete_cancel">取消</string>
     <string name="rv_rule_menu_edit">编辑</string>

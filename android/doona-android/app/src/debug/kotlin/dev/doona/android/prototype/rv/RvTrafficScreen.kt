@@ -23,6 +23,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
@@ -37,8 +38,8 @@ import dev.doona.android.prototype.rv.data.RvSession
 import dev.doona.android.prototype.rv.data.RvSessionSeconds
 
 /**
- * The page a traffic tile opens, 流量詳情 on the bar beside the back disc, in the language of Revolut's stock page: 下載
- * or 上傳 picked at the top, each on its own scale; the rate as the hero with small decimals and when it was; the
+ * The page a traffic tile opens, 流量詳情 as the large title, in the language of Revolut's stock page: 下載 or 上傳
+ * picked in the header's control row, each on its own scale; the rate as the hero with small decimals and when it was; the
  * range's chart full-bleed; the range chips and two round buttons; and the connection's figures in a Key stats card. A
  * finger on the chart shows that point in the hero until it lifts. 1 分 is the live minute; 5 分, 15 分 and 1 小時 are
  * [RvSessionSeconds]' windows ending now, derived from [session], and a new range cross-fades the chart (G5).
@@ -61,21 +62,23 @@ internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack:
     // How long one point of the chart spans: a second over 1 分, a minute over 1 小時.
     val step = RV_RANGE_SECONDS[range] / RV_RANGE_POINTS * MS_PER_SECOND
     val live = if (upload) state.upRate else state.downRate
-    RvScrollPage(stringResource(R.string.rv_traffic_title), insets, onBack = onBack, compact = true) {
-        RvPageTop(insets)
-        Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-            val options = listOf(stringResource(R.string.ui_download), stringResource(R.string.ui_upload))
-            RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 })
+    val title = stringResource(R.string.rv_traffic_title)
+    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+        val options = listOf(stringResource(R.string.ui_download), stringResource(R.string.ui_upload))
+        RvPageHeader(title, titleBlock, insets, control = { RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 }) })
+        // The rate, its chart and the ranges are one block of the page's column, as 活動's pager is.
+        Column(Modifier.testTag(RvPart.BLOCK)) {
+            Column(Modifier.padding(horizontal = RvSpace.gutter)) {
+                val shown = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
+                // A scrubbed point shows its rate and when it ended; lifting the finger brings back the live rate.
+                val at = shown?.let { format.clock(session.nowEpochMs - (values.lastIndex - it) * step) }
+                Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), at)
+            }
             Spacer(Modifier.height(RvSpace.chartGap))
-            val shown = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
-            // A scrubbed point shows its rate and when it ended; lifting the finger brings back the live rate.
-            val at = shown?.let { format.clock(session.nowEpochMs - (values.lastIndex - it) * step) }
-            Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), at)
+            RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate, scrub, onScrub = { scrub = it }, range = range)
+            Spacer(Modifier.height(RvChartSize.pillClear))
+            Ranges(range) { range = it }
         }
-        Spacer(Modifier.height(RvSpace.chartGap))
-        RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate, scrub, onScrub = { scrub = it }, range = range)
-        Spacer(Modifier.height(RvChartSize.pillClear))
-        Ranges(range) { range = it }
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             RvSectionTitle(stringResource(R.string.rv_this_connection))
             ConnectionCard(session, upload, format)

@@ -33,7 +33,7 @@ import dev.doona.android.prototype.rv.rvSystemScheme
 /**
  * The page 進階 → DNS opens (features-gap item 11, v0.2), in 主題's language: the large title, then one titled card of
  * servers, each its name over its address with a radio, and 自訂 last, which opens an address field (rv-pages-a's text
- * field, not wired here); a footer says the query goes out through the main node (rule-mode decision 10).
+ * field, not wired here).
  */
 @Composable
 internal fun RvDnsScreen(selected: RvDnsUpstream, onSelect: (RvDnsUpstream) -> Unit, onBack: () -> Unit, onCustom: () -> Unit = NOT_WIRED) {
@@ -42,7 +42,8 @@ internal fun RvDnsScreen(selected: RvDnsUpstream, onSelect: (RvDnsUpstream) -> U
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            RvSettingsSection(stringResource(R.string.rv_settings_dns_server))
+            // The first section sits on the header's gap, as 主題's does.
+            RvSettingsSection(stringResource(R.string.rv_settings_dns_server), first = true)
             RvSettingsCard {
                 RvDnsUpstream.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == selected, { onSelect(it) }, subtitle = it.address) }
                 // No glyph, so its text lines up with the servers above it.
@@ -50,7 +51,6 @@ internal fun RvDnsScreen(selected: RvDnsUpstream, onSelect: (RvDnsUpstream) -> U
                     RvChevron()
                 }
             }
-            RvSettingsFooter(stringResource(R.string.rv_settings_dns_footer))
         }
         Spacer(Modifier.height(RvSettingsSpace.bottom))
         Spacer(Modifier.windowInsetsBottomHeight(insets))

@@ -274,13 +274,18 @@ internal fun RvPrimaryButton(
     val fill = if (colors.dark) Color.White else colors.text
     val source = interactionSource ?: remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val shown = if (pressed && enabled) colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill) else fill
+    // Disabled, the pill is opaque in the colour its faded fill gives over the page, so a list scrolling under a floating
+    // action never shows through it; its label in the page's colour looks as it did faded.
+    val shown = when {
+        !enabled -> fill.copy(alpha = RvAlpha.DISABLED).compositeOver(colors.page)
+        pressed -> colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill)
+        else -> fill
+    }
     val lift = if (enabled) Modifier.rvSoftShadow(CircleShape, size.primaryShadow, size.primaryShadowDrop, RvAlpha.CTA_SHADOW) else Modifier
     Box(
         modifier
             .fillMaxWidth()
             .heightIn(min = size.primary)
-            .graphicsLayer { alpha = if (enabled) 1f else RvAlpha.DISABLED }
             .then(lift)
             .clip(CircleShape)
             .background(shown)
@@ -373,13 +378,22 @@ internal fun RvTextField(
                     }
                     trailing?.invoke()
                 }
-                (error ?: supporting)?.let {
-                    val pad = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, top = RvSpace.subGap)
-                    RvText(it, Rv.type.rowSub, pad, color = if (error != null) colors.error else colors.textSecondary, maxLines = MESSAGE_LINES)
-                }
+                (error ?: supporting)?.let { RvFieldMessage(it, error = error != null) }
             }
         },
     )
+}
+
+/**
+ * The message under a field or a form's card: [text] in the row's 17 sp, on the card's content inset, [RvSpace.subGap]
+ * under what it describes, in the error hue when it is an [error] (else in secondary ink), wrapping to two lines.
+ * [RvTextField] sets its supporting and error text with it; a form whose choice cannot be saved says why with it under
+ * that choice's card (依 App's 至少要勾選一個 App).
+ */
+@Composable
+internal fun RvFieldMessage(text: String, modifier: Modifier = Modifier, error: Boolean = true) {
+    val pad = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, top = RvSpace.subGap)
+    RvText(text, Rv.type.rowSub, modifier.then(pad), color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = MESSAGE_LINES)
 }
 
 /** What the user types, with every run of CJK set in Noto as [RvText] sets it; the text itself is unchanged. */

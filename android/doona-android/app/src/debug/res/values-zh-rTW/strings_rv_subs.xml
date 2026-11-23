@@ -15,8 +15,7 @@
     <string name="rv_sub_updates">更新</string>
     <string name="rv_sub_auto_update">自動更新</string>
     <string name="rv_sub_user_agent">User-Agent</string>
-    <string name="rv_sub_user_agent_default">與 Clash 相容（預設）</string>
-    <string name="rv_sub_user_agent_note">目前所有訂閱共用預設的 User-Agent，尚不能個別設定。</string>
+    <string name="rv_sub_user_agent_default">預設</string>
     <string name="rv_sub_section">訂閱</string>
     <string name="rv_sub_name">名稱</string>
     <string name="rv_sub_link">連結</string>
@@ -34,6 +33,6 @@
     <string name="rv_add_not_subscription_reason">這個連結傳回的內容不是訂閱。請確認這是服務商提供的訂閱連結。</string>
     <string name="rv_add_too_large">訂閱內容超過 %1$s 的上限。</string>
     <string name="rv_import_title">加入 %1$s</string>
-    <string name="rv_import_body">這個連結來自其他 App，來源為 %1$s。加入後，doona 會下載其中的節點清單。</string>
+    <string name="rv_import_body">這個連結來自其他 App，來源為 %1$s。</string>
     <string name="rv_import_add">加入</string>
 </resources>

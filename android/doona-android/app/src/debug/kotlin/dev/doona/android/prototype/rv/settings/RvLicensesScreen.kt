@@ -59,13 +59,13 @@ internal object RvLicenses {
 }
 
 /**
- * 授權條款, a page of 設定's 關於, in DNS's language: one card of the components, each its name over its licence with no
+ * 開放原始碼授權, a page of 設定's 關於, in DNS's language: one card of the components, each its name over its licence with no
  * glyph, as DNS's 自訂 row; a row opens the licence's text ([onOpen]).
  */
 @Composable
 internal fun RvLicensesScreen(onOpen: (Int) -> Unit, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val title = stringResource(R.string.rv_licenses_title)
+    val title = stringResource(R.string.rv_settings_licenses)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {

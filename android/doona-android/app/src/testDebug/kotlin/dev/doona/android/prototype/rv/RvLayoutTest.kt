@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.toSize
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
+import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvRouteMode
@@ -22,12 +23,20 @@ import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
+import dev.doona.android.prototype.rv.policy.RvEffectiveConfigPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
+import dev.doona.android.prototype.rv.policy.RvRuleDraft
+import dev.doona.android.prototype.rv.policy.RvRuleEditPage
+import dev.doona.android.prototype.rv.policy.RvTemplateData
+import dev.doona.android.prototype.rv.policy.RvTemplateImpactPage
+import dev.doona.android.prototype.rv.policy.RvTemplatePage
+import dev.doona.android.prototype.rv.settings.RvDnsScreen
+import dev.doona.android.prototype.rv.settings.RvDnsUpstream
 import dev.doona.android.prototype.rv.settings.RvExport
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvLogLevel
@@ -75,7 +84,7 @@ class RvLayoutTest {
     fun activity() = measure("activity", Top.Hero) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
     @Test
-    fun traffic() = measure("traffic", Top.Compact) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
+    fun traffic() = measure("traffic", Top.Title) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
 
     @Test
     fun policyRule() = measure("policy", Top.Title) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
@@ -98,7 +107,19 @@ class RvLayoutTest {
     }
 
     @Test
-    fun ruleFlow() = measure("policy-flow", Top.Compact) { RvPolicyRulePage(RvPolicyData.connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
+    fun ruleFlow() = measure("policy-flow", Top.Title) { RvPolicyRulePage(RvPolicyData.connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
+
+    @Test
+    fun ruleEdit() = measure("rule-edit", Top.Title) { RvRuleEditPage(RvRuleDraft.of(RvPolicyData.allRules[GITHUB]), onChange = {}, onBack = {}, onApply = {}, onDelete = {}) }
+
+    @Test
+    fun template() = measure("template", Top.Title) { RvTemplatePage(RvTemplateData.cnDirect, RvTemplateData.services, onSelect = {}, onBack = {}, onReview = {}) }
+
+    @Test
+    fun templateImpact() = measure("template-impact", Top.Title) { RvTemplateImpactPage(RvTemplateData.impact, onBack = {}, onApply = {}) }
+
+    @Test
+    fun effectiveConfig() = measure("effective-config", Top.Title) { RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}) }
 
     @Test
     fun nodesPage() = measure("nodes-page", Top.Title) { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) }
@@ -122,7 +143,13 @@ class RvLayoutTest {
     }
 
     @Test
+    fun dns() = measure("settings-dns", Top.Title) { RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}) }
+
+    @Test
     fun report() = measure("report", Top.Title) { RvReportScreen(RvLogLevel.Info, RvExport.Failed, onLevel = {}, onExport = {}, onBack = {}) }
+
+    @Test
+    fun connections() = measure("connections", Top.Title) { RvConnectionsPage(RvPolicyData.connections) }
 
     @Test
     fun connection() = measure("connection", Top.Header) { RvConnectionDetail(RvPolicyData.connections[YOUTUBE], onBack = {}, onClose = {}, onNewRule = {}) }
@@ -178,14 +205,17 @@ class RvLayoutTest {
     private companion object {
         /** YouTube's connection, whose host wraps. */
         const val YOUTUBE = 3
+
+        /** github.com, the second of the user's rules, as `rule-edit` shows it. */
+        const val GITHUB = 5
     }
 }
 
 /**
- * How a page starts under the bar: a large title, a compact page's first part, a centred header (a detail page's, as a
- * block) where a large title would start, or its own hero (not measured).
+ * How a page starts under the bar: a large title, a centred header (a detail page's, as a block) where a large title
+ * would start, or its own hero (not measured).
  */
-private enum class Top { Title, Compact, Header, Hero }
+private enum class Top { Title, Header, Hero }
 
 /** One page's parts in dp, and the drifts found in them. */
 private class Measure(private val parts: Map<String, List<Rect>>, private val barBottom: Float) {
@@ -208,7 +238,6 @@ private class Measure(private val parts: Map<String, List<Rect>>, private val ba
         val head = (parts.getValue(RvPart.MARK) + parts.getValue(RvPart.TITLE)).minByOrNull { it.top }
         when (top) {
             Top.Title -> head?.let { expect("header's top", it.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no large title")
-            Top.Compact -> blocks().firstOrNull()?.let { expect("first part's top", it.second.top, barBottom + RvSpace.headerGap.value) }
             Top.Header -> blocks().firstOrNull()?.let { expect("header's top", it.second.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no header")
             Top.Hero -> Unit
         }

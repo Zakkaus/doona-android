@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -27,6 +28,7 @@ import dev.doona.android.prototype.rv.RV_NAV_CONNECTIONS
 import dev.doona.android.prototype.rv.RV_NAV_FOUR
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAppDisc
+import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvEmptyCaption
 import dev.doona.android.prototype.rv.RvFilterChip
@@ -35,6 +37,7 @@ import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLongPressTiming
+import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
@@ -59,11 +62,12 @@ internal class RvConnectionsRoutes(
 )
 
 /**
- * 連線, the proposed fourth tab (features-gap Q5, option A), in the language of 節點: the large title with search in the
- * bar; a line counting the open connections and their bytes; the app and order chips; then one card of the connections
+ * 連線, the proposed fourth tab (features-gap Q5, option A), in the language of 節點: the shared page header, its large
+ * title with search in the bar, a caption counting the open connections and their bytes, and the app and order chips as
+ * its control row; then one card of the connections
  * open now ([connections], newest first), each its app's icon, where it went over the app and the rule's group, and its
  * bytes over how long it has been open. A connection opens its page. While [query] is set, the search field replaces
- * the line and the chips and the card keeps the connections whose host or app holds it. With the tunnel off
+ * the caption and the chips and the card keeps the connections whose host or app holds it. With the tunnel off
  * ([connected] false), or nothing matching, the card says so in the library's empty caption, with no action: 連線 is
  * 活動's, and the bar's close ends a search. The bar always has four tabs here. Host names are shown from memory and
  * never logged (D21).
@@ -94,7 +98,11 @@ internal fun RvConnectionsPage(
                 RvFloatingNav(RV_NAV_CONNECTIONS, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
             },
         ) { titleBlock ->
-            RvLargeTitle(title, titleBlock, insets)
+            if (connected && query == null) {
+                RvPageHeader(title, titleBlock, insets, caption = { Summary(connections) }, control = { Filters(routes.filter) })
+            } else {
+                RvLargeTitle(title, titleBlock, insets)
+            }
             if (connected) Connections(connections, query, routes, nowEpochMs) else Disconnected()
             Spacer(Modifier.height(rvNavClearance(insets)))
         }
@@ -107,18 +115,11 @@ private fun Disconnected() {
     RvGutter { RvEmptyCaption(stringResource(R.string.rv_conn_off_title), stringResource(R.string.rv_conn_off_line)) }
 }
 
-/** The line or the search field, the chips, and the card of connections, or the empty state when none match. */
+/** The search field while searching, then the card of connections, or the empty state when none match. */
 @Composable
 private fun Connections(connections: List<RvConnection>, query: String?, routes: RvConnectionsRoutes, nowEpochMs: Long) {
     val shown = if (query.isNullOrBlank()) connections else connections.filter { it.host.contains(query, ignoreCase = true) || it.app.contains(query, ignoreCase = true) }
-    if (query == null) {
-        Summary(connections)
-        Row(Modifier.padding(horizontal = RvSpace.gutter), verticalAlignment = Alignment.CenterVertically) {
-            RvFilterChip(stringResource(R.string.rv_conn_all_apps), routes.filter)
-            Spacer(Modifier.weight(1f))
-            RvFilterChip(stringResource(R.string.rv_conn_newest), routes.filter)
-        }
-    } else {
+    if (query != null) {
         RvTextField(
             query,
             { routes.query(it) },
@@ -127,9 +128,9 @@ private fun Connections(connections: List<RvConnection>, query: String?, routes:
             placeholder = stringResource(R.string.rv_conn_search_hint),
             supporting = pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size),
         )
+        // The search field is the page's control row: the first card follows a control's gap under it.
+        Spacer(Modifier.height(RvSpace.controlGap))
     }
-    // The search field is the page's control row: the first card follows a control's gap under it.
-    Spacer(Modifier.height(RvSpace.controlGap))
     RvGutter {
         if (shown.isEmpty()) {
             RvEmptyCaption(stringResource(R.string.rv_conn_none_title), stringResource(R.string.rv_conn_none_line))
@@ -140,18 +141,23 @@ private fun Connections(connections: List<RvConnection>, query: String?, routes:
     }
 }
 
-/** How many connections are open and what they moved each way, as 節點's line under its title. */
+/** How many connections are open and what they moved each way: the header's caption, as 節點's. */
 @Composable
 private fun Summary(connections: List<RvConnection>) {
     val format = rememberRvFormat()
     val down = format.bytes(connections.sumOf { it.downBytes }).toString()
     val up = format.bytes(connections.sumOf { it.upBytes }).toString()
-    RvText(
-        pluralStringResource(R.plurals.rv_conn_summary, connections.size, connections.size, down, up),
-        Rv.type.rowSub,
-        Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.subGap * 2),
-        color = Rv.colors.textSecondary,
-    )
+    RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, connections.size, down, up))
+}
+
+/** The app and order chips, the header's control row: one at each end of the gutter. */
+@Composable
+private fun Filters(onFilter: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        RvFilterChip(stringResource(R.string.rv_conn_all_apps), onFilter)
+        Spacer(Modifier.weight(1f))
+        RvFilterChip(stringResource(R.string.rv_conn_newest), onFilter)
+    }
 }
 
 /**

@@ -25,12 +25,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
+import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvMenu
 import dev.doona.android.prototype.rv.RvMenuItem
 import dev.doona.android.prototype.rv.RvPrimaryButton
@@ -39,7 +39,6 @@ import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
-import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvSystemScheme
@@ -83,24 +82,24 @@ private val CIDR = Regex("""(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d|[12]\
 private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")
 
 /**
- * A rule's page (全部規則 → a rule), in the quick rule's grammar: the compact title; 比對 as a chip that opens the six
- * kinds in a menu, the value in the library's text field (none for GEOIP CN and private ranges), and one line on what
- * the rule covers, or what is wrong with the value; 送往, the quick rule's list; a card with 啟用 and 刪除規則, which
- * asks first; and 套用 floating at the bottom, off while the value is wrong.
+ * A rule's page (全部規則 → a rule), in the quick rule's grammar: the large title; 比對 as a chip that opens the six
+ * kinds in a menu, then the value in the library's text field with what is wrong with it under it (no value for
+ * GEOIP CN and private ranges); 送往, the quick rule's list; a card with 啟用 and 刪除規則,
+ * which asks first; and 套用 floating at the bottom, off while the value is wrong.
  */
 @Composable
 internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit, onBack: () -> Unit, onApply: () -> Unit, onDelete: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var confirming by rememberSaveable { mutableStateOf(false) }
+    val title = stringResource(R.string.rv_rule_edit_title)
     RvScrollPage(
-        stringResource(R.string.rv_rule_edit_title),
+        title,
         insets,
         onBack = onBack,
-        compact = true,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = draft.problem == null) },
-    ) {
-        RvBarSpacer(insets)
-        RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter))
+    ) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
+        RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter), first = true)
         MatchFields(draft, onChange)
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
@@ -128,7 +127,7 @@ internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit,
     )
 }
 
-/** The kind chip and its menu, the value field when the kind takes one, and the line under them. */
+/** The kind chip and its menu, then the value field when the kind takes one. */
 @Composable
 private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
     var choosing by remember { mutableStateOf(false) }
@@ -140,9 +139,9 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
             RvFilterChip(stringResource(draft.kind.label), { choosing = true })
             RvMenu(choosing, { choosing = false }, items)
         }
-        Spacer(Modifier.height(RvSpace.sectionBelow))
-        val problem = draft.problem?.let { stringResource(it) }
         if (draft.needsValue) {
+            val problem = draft.problem?.let { stringResource(it) }
+            Spacer(Modifier.height(RvSpace.sectionBelow))
             RvTextField(
                 draft.value,
                 { onChange(draft.copy(value = it.trim())) },
@@ -154,24 +153,10 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
                     },
                 ),
                 placeholder = stringResource(if (draft.kind == RvMatchKind.Cidr) R.string.rv_rule_edit_cidr_hint else R.string.rv_rule_edit_domain_hint),
-                supporting = if (problem == null) draft.covers() else null,
                 error = problem,
             )
-        } else {
-            RvText(draft.covers(), Rv.type.rowSub, color = Rv.colors.textSecondary)
         }
     }
-}
-
-/** What the rule covers, as the quick rule says it under its choice. */
-@Composable
-private fun RvRuleDraft.covers(): String = when (kind) {
-    RvMatchKind.Full -> stringResource(R.string.rv_policy_match_full_line, value)
-    RvMatchKind.Suffix -> stringResource(R.string.rv_policy_match_suffix_line, value)
-    RvMatchKind.Keyword -> stringResource(R.string.rv_policy_match_keyword_line, value)
-    RvMatchKind.Cidr -> stringResource(R.string.rv_rule_edit_cidr_line, value)
-    RvMatchKind.GeoIpCn -> stringResource(R.string.rv_rule_edit_geoip_line)
-    RvMatchKind.Private -> stringResource(R.string.rv_rule_edit_private_line)
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

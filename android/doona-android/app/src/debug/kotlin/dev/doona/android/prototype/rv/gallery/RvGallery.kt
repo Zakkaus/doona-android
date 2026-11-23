@@ -74,12 +74,11 @@ private fun Section(title: Int, content: @Composable () -> Unit) {
 @Composable
 internal fun RvGalleryFields() {
     val link = stringResource(R.string.rv_add_link)
-    val hint = stringResource(R.string.rv_add_link_hint)
     Column(verticalArrangement = Arrangement.spacedBy(RvSpace.chartGap)) {
-        RvTextField("", {}, link, placeholder = RV_LINK_PLACEHOLDER, supporting = hint)
-        RvTextField(RV_SAMPLE_LINK, {}, link, supporting = hint)
+        RvTextField("", {}, link, placeholder = RV_LINK_PLACEHOLDER)
+        RvTextField(RV_SAMPLE_LINK, {}, link)
         RvTextField(RV_SAMPLE_LINK, {}, link, error = stringResource(R.string.rv_add_not_subscription))
-        RvTextField(RvData.subscriptions.first().name, {}, stringResource(R.string.rv_add_name), supporting = stringResource(R.string.rv_add_name_hint), enabled = false)
+        RvTextField(RvData.subscriptions.first().name, {}, stringResource(R.string.rv_add_name), enabled = false)
     }
 }
 

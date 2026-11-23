@@ -45,9 +45,8 @@ import kotlin.math.roundToInt
 /**
  * The one scaffold of every page but 活動: the page scrolls under [RvBar], whose strip blurs it once it moves under the
  * bar. A large-title page (設定, 統計, 節點, 主題) puts [content]'s `titleBlock` modifier on the block that ends with its
- * [RvLargeTitle]; as that block's bottom edge passes under the bar, the 20 sp [title] fades in on the bar. A [compact]
- * page (流量詳情, a node) has only the bar's title, from the start. [onBack] adds the back disc and puts the title beside
- * it; without it (a tab home) the title is centred. The content starts at the screen's top, so it begins with
+ * [RvLargeTitle]; as that block's bottom edge passes under the bar, the 20 sp [title] fades in on the bar. [onBack] adds
+ * the back disc and puts the title beside it; without it (a tab home) the title is centred. The content starts at the screen's top, so it begins with
  * [RvBarSpacer]. [actions] puts round glass buttons ([RvGlassButton]) at the bar's end, on its row and in 48 dp
  * targets, as 活動's top bar has them. [bottomAction] floats a page's one action (an [RvPrimaryButton]) on the gutter,
  * 16 dp above the inset, with no scrim; the page keeps its room under the content, so the last card scrolls clear of
@@ -61,7 +60,6 @@ internal fun RvScrollPage(
     insets: WindowInsets,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
-    compact: Boolean = false,
     scroll: ScrollState = rememberScrollState(),
     actions: (@Composable (RvGlass) -> Unit)? = null,
     bottomAction: (@Composable () -> Unit)? = null,
@@ -74,7 +72,7 @@ internal fun RvScrollPage(
     val barBottom = with(density) { insets.getTop(this) + rvBarHeight().roundToPx() }
     val fade = with(density) { RvChrome.collapse.toPx() }
     // 0 while the large title is clear of the bar, 1 once its bottom edge is under it.
-    val collapse = if (compact) ({ 1f }) else ({ ((barBottom + fade - titleBottom) / fade).coerceIn(0f, 1f) })
+    val collapse = { ((barBottom + fade - titleBottom) / fade).coerceIn(0f, 1f) }
     val glass = rememberRvGlass()
     var actionHeight by remember { mutableIntStateOf(0) }
     Box(modifier.fillMaxSize()) {
@@ -84,7 +82,7 @@ internal fun RvScrollPage(
             if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() }))
         }
         RvBar(glass, insets, rvShade(scroll), Modifier.align(Alignment.TopStart)) {
-            if (field != null) FieldBar(glass, onBack, field) else TitleBar(title, onBack, compact, collapse)
+            if (field != null) FieldBar(glass, onBack, field) else TitleBar(title, onBack, collapse)
         }
         actions?.let {
             // Each disc keeps its 48 dp target, so the gap between targets is the gap between discs less the overhangs.
@@ -109,9 +107,8 @@ internal fun RvScrollPage(
 
 /** The bar's title, faded in by [collapse], beside the back disc or centred without one. */
 @Composable
-private fun TitleBar(title: String, onBack: (() -> Unit)?, compact: Boolean, collapse: () -> Float) {
-    // A large title is the heading for a screen reader, and the bar's only repeats it.
-    val semantics = if (compact) Modifier.semantics { heading() } else Modifier.clearAndSetSemantics {}
+private fun TitleBar(title: String, onBack: (() -> Unit)?, collapse: () -> Float) {
+    // The page's large title is the heading for a screen reader, and the bar's only repeats it.
     RvText(
         title,
         Rv.type.barTitle,
@@ -119,7 +116,7 @@ private fun TitleBar(title: String, onBack: (() -> Unit)?, compact: Boolean, col
             .fillMaxWidth()
             .padding(start = if (onBack == null) RvChrome.titleStart - RvSpace.gutter else RvChrome.titleStart, end = RvChrome.titleStart - RvSpace.gutter)
             .graphicsLayer { alpha = collapse() }
-            .then(semantics),
+            .clearAndSetSemantics {},
         align = if (onBack == null) TextAlign.Center else TextAlign.Start,
     )
     onBack?.let { RvBackDisc(it) }
@@ -199,13 +196,6 @@ internal fun RvControlRow(control: @Composable () -> Unit) {
 /** A pushed page's large title alone: [RvPageHeader] with no caption and no control. */
 @Composable
 internal fun RvLargeTitle(text: String, titleBlock: Modifier, insets: WindowInsets) = RvPageHeader(text, titleBlock, insets)
-
-/** The top of a compact page (流量詳情, 新增規則), whose title is the bar's: the bar's room, then [RvSpace.headerGap]. */
-@Composable
-internal fun RvPageTop(insets: WindowInsets) {
-    RvBarSpacer(insets)
-    Spacer(Modifier.height(RvSpace.headerGap))
-}
 
 /** One line of a page header's caption, in secondary text, after an optional 16 dp [icon] in the same colour. */
 @Composable

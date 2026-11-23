@@ -2,9 +2,7 @@ package dev.doona.android.prototype.rv.policy
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.selection.selectable
@@ -24,10 +22,10 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAlpha
-import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
+import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRadio
 import dev.doona.android.prototype.rv.RvRow
@@ -40,9 +38,9 @@ import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
- * 範本 (the 策略 options row), doona web's routing modes on a phone: one card of templates, each its glyph, its name over
- * one line on what it does, and a radio; one the core cannot build yet is listed, dimmed, with the reason in place of
- * its line, and cannot be chosen. 檢視變更 opens the impact review, and only once a template other than [current] is
+ * 範本 (the 策略 options row), doona web's routing modes on a phone: one card of templates, each its glyph, its name and
+ * a radio, the one in use saying so under its name; one the core cannot build yet is listed, dimmed, with the reason
+ * under its name, and cannot be chosen. 檢視變更 opens the impact review, and only once a template other than [current] is
  * [selected].
  */
 @Composable
@@ -54,15 +52,14 @@ internal fun RvTemplatePage(
     onReview: () -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val title = stringResource(R.string.rv_policy_template)
     RvScrollPage(
-        stringResource(R.string.rv_policy_template),
+        title,
         insets,
         onBack = onBack,
-        compact = true,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_template_review), onReview, enabled = selected.id != current.id) },
-    ) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSpace.gutter))
+    ) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
         RvGutter {
             RvCard { RvTemplateData.all.forEach { TemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
         }
@@ -70,12 +67,11 @@ internal fun RvTemplatePage(
     }
 }
 
-/** One template; the one in use says so after its line. */
+/** One template; under its name, why it cannot be chosen, or that it is in use. */
 @Composable
 private fun TemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean, onSelect: () -> Unit) {
     val reason = template.unsupported
-    val line = reason?.let { stringResource(it) }
-        ?: (stringResource(template.line) + if (inUse) SEPARATOR + stringResource(R.string.rv_template_in_use) else "")
+    val line = reason?.let { stringResource(it) } ?: stringResource(R.string.rv_template_in_use).takeIf { inUse }
     val pick = Modifier
         .graphicsLayer { alpha = if (reason == null) 1f else RvAlpha.DISABLED }
         .selectable(selected, enabled = reason == null, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton, onClick = onSelect)
@@ -91,15 +87,14 @@ private fun TemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean,
 @Composable
 internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val title = stringResource(R.string.rv_template_review)
     RvScrollPage(
-        stringResource(R.string.rv_template_review),
+        title,
         insets,
         onBack = onBack,
-        compact = true,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply) },
-    ) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSpace.gutter))
+    ) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
         RvGutter { SummaryCard(impact) }
         RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { RvCard { impact.groups.forEach { ImpactGroupRow(it) } } }

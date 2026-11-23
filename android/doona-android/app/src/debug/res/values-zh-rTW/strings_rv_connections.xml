@@ -13,7 +13,7 @@
     <string name="rv_conn_started">開始時間</string>
     <string name="rv_conn_age">已連線</string>
     <string name="rv_conn_rule_index">第 %1$d 條規則</string>
-    <string name="rv_conn_no_domain">沒有網域，依位址比對</string>
+    <string name="rv_conn_no_domain">無網域</string>
     <string name="rv_conn_close">關閉連線</string>
     <string name="rv_conn_search_end">結束搜尋</string>
     <string name="rv_conn_search_hint">主機或 App</string>

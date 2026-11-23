@@ -17,10 +17,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
+import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
@@ -39,7 +39,7 @@ import dev.doona.android.prototype.rv.settings.rvSampleSettings
 
 /**
  * 檢視生效設定 (rule-mode R3's `effectiveConfig`, read-only), from 全部規則 and from 設定 → 進階, in node detail's grammar:
- * the compact title, then one card a section, each under its section title: 模式 with the main node; 策略組, each group
+ * the large title, then one card a section, each under its section title: 模式 with the main node; 策略組, each group
  * with how it picks, its first members and the node it uses; 規則, counted as D34 counts them, with the way to the list;
  * DNS; 依 App; and 來源, the template and the subscriptions the nodes come from. It ends with 複製 and 匯出 (the text
  * carries no credentials, D21).
@@ -54,9 +54,9 @@ internal fun RvEffectiveConfigPage(
     onExport: () -> Unit = {},
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    RvScrollPage(stringResource(R.string.rv_effective_title), insets, onBack = onBack, compact = true) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSpace.gutter))
+    val title = stringResource(R.string.rv_effective_title)
+    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
         RvGutter { ModeCard(policy) }
         Section(R.string.rv_policy_groups) { GroupsCard(policy) }
         Section(R.string.rv_policy_rules) { RulesCard(onRules) }

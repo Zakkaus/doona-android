@@ -13,7 +13,7 @@
     <string name="rv_conn_started">开始时间</string>
     <string name="rv_conn_age">已连接</string>
     <string name="rv_conn_rule_index">第 %1$d 条规则</string>
-    <string name="rv_conn_no_domain">没有域名，按地址匹配</string>
+    <string name="rv_conn_no_domain">无域名</string>
     <string name="rv_conn_close">关闭连接</string>
     <string name="rv_conn_search_end">结束搜索</string>
     <string name="rv_conn_search_hint">主机或应用</string>

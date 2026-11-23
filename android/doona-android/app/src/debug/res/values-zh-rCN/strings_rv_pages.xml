@@ -15,9 +15,7 @@
         <item quantity="other">订阅中的 %1$d 个节点会一并移除。</item>
     </plurals>
     <string name="rv_add_link">订阅链接</string>
-    <string name="rv_add_link_hint">支持 Clash、sing-box 与分享链接列表。</string>
     <string name="rv_add_name">名称（可选）</string>
-    <string name="rv_add_name_hint">名称只显示在 doona 中。</string>
     <string name="rv_add_not_subscription">这个链接返回的内容不是订阅。</string>
     <string name="rv_sub_failed_title">无法更新 %1$s</string>
     <plurals name="rv_sub_failed_reason">

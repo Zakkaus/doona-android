@@ -16,8 +16,7 @@
     <string name="rv_sub_updates">Updates</string>
     <string name="rv_sub_auto_update">Auto-update</string>
     <string name="rv_sub_user_agent">User-Agent</string>
-    <string name="rv_sub_user_agent_default">Clash-compatible (default)</string>
-    <string name="rv_sub_user_agent_note">Every subscription uses the default User-Agent; a subscription cannot set its own yet.</string>
+    <string name="rv_sub_user_agent_default">Default</string>
     <string name="rv_sub_section">Subscription</string>
     <string name="rv_sub_name">Name</string>
     <string name="rv_sub_link">Link</string>
@@ -35,6 +34,6 @@
     <string name="rv_add_not_subscription_reason">This link did not return a subscription. Check that it is the subscription link from your provider.</string>
     <string name="rv_add_too_large">The subscription is larger than the %1$s limit.</string>
     <string name="rv_import_title">Add %1$s</string>
-    <string name="rv_import_body">A link from another app, from %1$s. Once added, doona downloads its node list.</string>
+    <string name="rv_import_body">A link from another app, from %1$s.</string>
     <string name="rv_import_add">Add</string>
 </resources>

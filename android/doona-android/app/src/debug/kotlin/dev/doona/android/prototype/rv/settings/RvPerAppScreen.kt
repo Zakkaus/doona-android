@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv.settings
 
 import android.content.res.Configuration
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,26 +11,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAppDisc
 import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvEmptyCaption
+import dev.doona.android.prototype.rv.RvFieldMessage
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvPart
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -56,15 +56,15 @@ internal class RvPerAppActions(
  * 依 App, a page of 設定, in DNS's language: the large title under the back bar, then one card of the three policies as
  * radio rows. Under 只有勾選的 and 勾選的以外 a card lists the phone's apps, each its icon, name and package with a switch,
  * and the search field takes the bar beside the back disc, as the node picker's; a search that matches nothing says so
- * in the library's empty caption. 只有勾選的 with nothing checked says what it needs under the policies, as a group's
- * footer, and cannot be saved. 儲存 floats at the foot, enabled only when the edits can be saved, since a save rebuilds
+ * in the library's empty caption. 只有勾選的 with nothing checked says what it needs under the policies, as a field says
+ * its error ([RvFieldMessage]), and cannot be saved. 儲存 floats at the foot, enabled only when the edits can be saved, since a save rebuilds
  * the tunnel. A save under way, a failed one and a tunnel that would not come back after one show at the top: a busy
  * row, or the library's notice card with 重試.
  */
 @Composable
 internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val title = stringResource(R.string.perapp_title)
+    val title = stringResource(R.string.rv_settings_per_app)
     val listed = state.edited.policy != RvAppPolicy.All
     val hint = stringResource(R.string.perapp_search)
     RvScrollPage(
@@ -76,22 +76,20 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
         } else {
             null
         },
-        bottomAction = {
-            // The library's disabled pill is the whole button faded, so the list scrolling under it would show through;
-            // the page's colour under the pill keeps it as it looks on a bare page.
-            RvPrimaryButton(stringResource(R.string.perapp_save), actions.save, Modifier.background(Rv.colors.page, CircleShape), enabled = state.canSave)
-        },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.perapp_save), actions.save, enabled = state.canSave) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
             Status(state, actions)
-            RvSettingsCard {
-                RvAppPolicy.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == state.edited.policy, { actions.policy(it) }) }
+            // The policies and the error under them are one block of the column, as a field and its message are.
+            Column(Modifier.testTag(RvPart.BLOCK)) {
+                RvSettingsCard {
+                    RvAppPolicy.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == state.edited.policy, { actions.policy(it) }) }
+                }
+                if (state.needsApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
             }
-            if (state.needsApp) RvSettingsFooter(stringResource(R.string.rv_perapp_needs_app))
             if (listed) {
-                // A footer ends its group, so the list starts as the next group does.
-                Spacer(Modifier.height(if (state.needsApp) RvSpace.sectionAbove else RvSpace.cardGap))
+                Spacer(Modifier.height(RvSpace.cardGap))
                 Apps(state, actions)
             }
         }
