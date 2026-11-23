@@ -23,7 +23,6 @@
 
     <string name="rv_settings_group_advanced">進階</string>
     <string name="rv_settings_log_level">日誌等級</string>
-    <string name="rv_settings_log_level_value">一般</string>
 
     <string name="rv_settings_group_about">關於</string>
     <string name="rv_settings_version">版本</string>

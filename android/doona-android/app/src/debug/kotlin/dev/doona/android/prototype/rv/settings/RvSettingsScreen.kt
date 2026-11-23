@@ -113,7 +113,7 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
 
 /**
  * Where 設定's rows lead beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that
- * switch, D14), the DNS picker, the effective config, and 回報問題 from the hero's 匯出診斷.
+ * switch, D14), the DNS picker, the effective config, and 回報問題 from 進階's row and the hero's 匯出診斷.
  */
 internal class RvSettingsRoutes(
     val alwaysOn: () -> Unit = NOT_WIRED,
@@ -170,13 +170,16 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit) {
     }
 }
 
-/** 進階: the DNS server (the picker), the log level, and the effective config, read-only. */
+/**
+ * 進階: the DNS server (the picker); 回報問題, the page that holds the log level and the export, with the hero's 匯出診斷
+ * glyph; and the effective config, read-only.
+ */
 @Composable
 private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_advanced))
     RvSettingsCard {
         RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, stringResource(state.dns.label))
-        RvSettingsNavRow(stringResource(R.string.rv_settings_log_level), R.drawable.rv_settings_ic_description, NOT_WIRED, stringResource(R.string.rv_settings_log_level_value))
+        RvSettingsNavRow(stringResource(R.string.rv_report_title), R.drawable.rv_sym_ios_share, routes.report)
         RvSettingsNavRow(stringResource(R.string.rv_effective_open), R.drawable.rv_sym_rule, routes.effectiveConfig)
     }
 }

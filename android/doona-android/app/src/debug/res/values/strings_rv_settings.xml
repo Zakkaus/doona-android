@@ -26,7 +26,6 @@
     <string name="rv_settings_group_advanced">Advanced</string>
     <string name="rv_settings_dns" translatable="false">DNS</string>
     <string name="rv_settings_log_level">Log level</string>
-    <string name="rv_settings_log_level_value">Normal</string>
 
     <string name="rv_settings_group_about">About</string>
     <string name="rv_settings_version">Version</string>
