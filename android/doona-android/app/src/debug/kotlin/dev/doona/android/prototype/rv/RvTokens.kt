@@ -26,7 +26,7 @@ internal object RvSpace {
     val discToLabel = 8.dp
 
     /**
-     * From the status bar to the hero's caption: the top bar's row (12 + 44 dp), then 96 dp, as Revolut sets its caption
+     * From the status bar to the hero's caption: the top bar's row (6 + 44 dp), then 102 dp, as Revolut sets its caption
      * about 100 dp under the bar; the map's marker sits in that space, clear of the bar's glass.
      */
     val headerTop = 152.dp
@@ -166,8 +166,8 @@ internal object RvDots {
     val dot = 2.dp
 
     /**
-     * The selected node's place: centred, this far under the status bar, so its glow (26 dp) ends 14 dp under the top
-     * bar's controls (12 + 44 dp) and 30 dp above the caption ([RvSpace.headerTop]).
+     * The selected node's place: centred, this far under the status bar, so its glow (26 dp) ends 20 dp under the top
+     * bar's controls (6 + 44 dp) and 30 dp above the caption ([RvSpace.headerTop]).
      */
     val focusTop = 96.dp
     val marker = 6.dp
@@ -348,13 +348,16 @@ internal object RvAlpha {
 
 /**
  * The chrome of every page, after Revolut's measured top bar (§4) and floating bottom bar (§9): a row of 44 dp controls
- * 12 dp under the status bar (活動's duck, search pill and discs; a pushed page's back disc and title), a strip of blurred
+ * 6 dp under the status bar (活動's duck, search pill and discs; a pushed page's back disc and title), a strip of blurred
  * page behind the row once content scrolls under it, and a glass capsule 16 dp in from the sides whose bottom sits 40 dp
  * above the screen's edge, 60 dp tall, that shrinks to icons only, 336 x 52 dp, while the content scrolls up.
  */
 internal object RvChrome {
-    /** The controls' row: its top this far under the status bar, every control a 44 dp disc or pill in a 48 dp target. */
-    val barTop = 12.dp
+    /**
+     * The controls' row: its top this far under the status bar, every control a 44 dp disc or pill in a 48 dp target.
+     * Revolut's back disc sits 6 dp under its status bar (revolut-ux3 §5), and every bar's row is this one.
+     */
+    val barTop = 6.dp
     val control = 44.dp
     val controlGlyph = 24.dp
     val touchPad = (RvSize.touch - control) / 2
@@ -382,9 +385,9 @@ internal object RvChrome {
     /**
      * A page's large title, or the mark above it, this far under the bar's controls ([RvPageHeader] then sets what
      * follows), the same on every page: the title's ink starts 68.5 dp under the status bar and the first card 118 dp,
-     * where Revolut's pushed pages put them at 67.8 and 118.4 (revolut-ux3 §5).
+     * where Revolut's pushed pages put them at 67.8 and 118.4 (revolut-ux3 §5). With the controls' 6 + 44 dp, that is 14.
      */
-    val largeTitleTop = 8.dp
+    val largeTitleTop = 14.dp
 
     val navInset = 16.dp
     val navBottom = 40.dp
