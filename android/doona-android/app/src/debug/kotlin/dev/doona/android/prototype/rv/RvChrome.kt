@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -98,9 +99,9 @@ internal fun rvShade(scroll: ScrollState): () -> Float {
 }
 
 /**
- * 活動's top bar (measured §4): the duck mark in a disc, a search pill and two round buttons, 統計 and 訂閱, all 44 dp
- * glass over what scrolls under them, on [RvBar]'s strip. The pill opens [onSearch], 統計 [onStats] and 訂閱
- * [onSubscriptions]; the duck opens nothing in the sample.
+ * 活動's top bar (measured §4), as the owner approved it (609336cb): the duck mark in a 38 dp disc, a search pill and two
+ * round buttons, 統計 and 訂閱, all 40 dp glass ([RvControlLook.Activity]) over what scrolls under them, on [RvBar]'s
+ * strip. The pill opens [onSearch], 統計 [onStats] and 訂閱 [onSubscriptions]; the duck opens nothing in the sample.
  */
 @Composable
 internal fun RvTopBar(
@@ -114,17 +115,19 @@ internal fun RvTopBar(
     onSubscriptions: () -> Unit = NOT_WIRED,
 ) {
     RvBar(glass, insets, shade, modifier) {
-        // Each control keeps a 48 dp target round its 44 dp disc, so the gaps between targets are 4 dp narrower.
-        Row(Modifier.fillMaxSize().padding(horizontal = RvSpace.gutter - RvChrome.touchPad), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.minimumInteractiveComponentSize().size(RvChrome.control).rvControl(glass, CircleShape), contentAlignment = Alignment.Center) {
-                Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvChrome.markGlyph))
+        // Each control keeps a 48 dp target round its disc, so a gap between targets is narrower by their padding.
+        val pad = (RvSize.touch - RvActivityTokens.control) / 2
+        val markPad = (RvSize.touch - RvActivityTokens.mark) / 2
+        Row(Modifier.fillMaxSize().padding(start = RvSpace.gutter - markPad, end = RvSpace.gutter - pad), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.minimumInteractiveComponentSize().size(RvActivityTokens.mark).rvControl(glass, CircleShape, approved = true), contentAlignment = Alignment.Center) {
+                Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvActivityTokens.markGlyph))
             }
-            Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-            RvSearchPill(onSearch, Modifier.weight(1f), glass, pull)
-            Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
-            RvGlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
-            Spacer(Modifier.width(RvChrome.buttonGap - RvChrome.touchPad * 2))
-            RvGlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), onSubscriptions)
+            Spacer(Modifier.width(RvChrome.controlGap - markPad))
+            RvSearchPill(onSearch, Modifier.weight(1f), glass, pull, RvControlLook.Activity)
+            Spacer(Modifier.width(RvChrome.controlGap - pad))
+            RvGlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), RvControlLook.Activity, onStats)
+            Spacer(Modifier.width(RvChrome.buttonGap - pad * 2))
+            RvGlassButton(glass, R.drawable.rv_sym_dns, stringResource(R.string.rv_subscriptions), RvControlLook.Activity, onSubscriptions)
         }
     }
 }
@@ -135,8 +138,8 @@ internal fun RvTopBar(
  * box, as a node list's first row. On the bar it is also the pull-down's anchor ([barPill]).
  */
 @Composable
-internal fun RvSearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, glass: RvGlass? = null, pull: RvPullLook = RvPullLook.None) {
-    val fill = glass?.let { Modifier.barPill(pull).minimumInteractiveComponentSize().height(RvChrome.control).rvControl(it, CircleShape) }
+internal fun RvSearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, glass: RvGlass? = null, pull: RvPullLook = RvPullLook.None, look: RvControlLook = RvControlLook.Standard) {
+    val fill = glass?.let { Modifier.barPill(pull).minimumInteractiveComponentSize().height(look.size).rvControl(it, CircleShape, look.approved) }
         ?: Modifier.height(RvChrome.control).clip(CircleShape).background(Rv.colors.segmentTrack)
     Row(
         modifier
@@ -224,25 +227,51 @@ internal fun RvSearchField(
 }
 
 /**
- * A top bar's round action (活動's 統計 and 訂閱): a 44 dp glass disc with the soft shadow and, in dark, its rim, in a 48 dp
- * target, with a disc's press ([rvDiscPress]); [label] is for the screen reader.
+ * A bar's round action (a page's actions; 活動's 統計 and 訂閱 in their own look): a 44 dp glass disc with the soft shadow
+ * and, in dark, its rim, in a 48 dp target, with a disc's press ([rvDiscPress]); [label] is for the screen reader.
  */
 @Composable
-internal fun RvGlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, onClick: () -> Unit) {
+internal fun RvGlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, onClick: () -> Unit) = RvGlassButton(glass, icon, label, RvControlLook.Standard, onClick)
+
+/** [RvGlassButton] in [look]: 活動's top bar takes [RvControlLook.Activity]. */
+@Composable
+internal fun RvGlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String, look: RvControlLook, onClick: () -> Unit) {
     Box(
         Modifier
             .minimumInteractiveComponentSize()
-            .rvDiscPress(Modifier.size(RvChrome.control).rvControl(glass, CircleShape), onClick)
+            .rvDiscPress(Modifier.size(look.size).rvControl(glass, CircleShape, look.approved), onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
-    ) { RvGlyph(icon, RvChrome.controlGlyph, Rv.colors.text) }
+    ) { RvGlyph(icon, look.glyph, Rv.colors.text) }
 }
 
-/** A top bar control's fill: a very soft shadow in light, then the controls' glass, and its rim in dark. */
+/**
+ * A bar control's height and glyph, and whether it takes 活動's approved glass: [Standard] on every bar, [Activity] on
+ * 活動's top bar, as the owner approved it (609336cb).
+ */
+@Immutable
+internal class RvControlLook(val size: Dp, val glyph: Dp, val approved: Boolean) {
+    companion object {
+        val Standard = RvControlLook(RvChrome.control, RvChrome.controlGlyph, approved = false)
+        val Activity = RvControlLook(RvActivityTokens.control, RvActivityTokens.controlGlyph, approved = true)
+    }
+}
+
+/**
+ * A top bar control's fill: a very soft shadow in light, then the controls' glass, and its rim in dark. [approved] takes
+ * 活動's glass as the owner approved it (609336cb): the raised discs' colour over the blur, and no rim.
+ */
 @Composable
-private fun Modifier.rvControl(glass: RvGlass, shape: Shape): Modifier {
-    val rim = Rv.colors.controlRim?.let { Modifier.border(RvChrome.navRim, it, shape) } ?: Modifier
-    return rvSoftShadow(shape, RvChrome.controlShadow, RvChrome.controlShadowDrop, RvChrome.CONTROL_SHADOW_ALPHA).rvGlass(glass, shape, Rv.colors.controlGlass).then(rim)
+private fun Modifier.rvControl(glass: RvGlass, shape: Shape, approved: Boolean = false): Modifier {
+    val colors = Rv.colors
+    val tint = if (approved) {
+        val alpha = if (colors.dark) RvActivityTokens.CONTROL_GLASS_DARK else RvActivityTokens.CONTROL_GLASS_LIGHT
+        RvGlassTint(colors.discOnHeader.copy(alpha = alpha), colors.discOnHeader)
+    } else {
+        colors.controlGlass
+    }
+    val rim = colors.controlRim?.takeUnless { approved }?.let { Modifier.border(RvChrome.navRim, it, shape) } ?: Modifier
+    return rvSoftShadow(shape, RvChrome.controlShadow, RvChrome.controlShadowDrop, RvChrome.CONTROL_SHADOW_ALPHA).rvGlass(glass, shape, tint).then(rim)
 }
 
 @Composable

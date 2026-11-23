@@ -12,8 +12,12 @@ internal object RvActivityTokens {
     /** From the status bar to the hero's caption (shared: [RvSpace.headerTop]). */
     val headerTop = 72.dp
 
-    /** The node's place on the map, this far under the status bar: under the top bar's glass (shared: [RvDots.focusTop]). */
-    val focusTop = 40.dp
+    /**
+     * The node's place on the map, this far under the status bar, under the search pill's glass (shared:
+     * [RvDots.focusTop]): 609336cb's 40 dp less the 6 dp the bar's row has risen since (9e8044a7), so the marker stays
+     * hidden as it was.
+     */
+    val focusTop = 34.dp
 
     /** The round actions: the disc, the gap to its label, and from the labels to the first card. */
     val actionDisc = 52.dp
@@ -46,4 +50,15 @@ internal object RvActivityTokens {
     const val GRID_DARK = 0.025f
     const val BAND_LIGHT = 0.16f
     const val BAND_DARK = 0.22f
+
+    /**
+     * The top bar's controls: 40 dp (the duck's disc 38 dp, its glyph 26 dp) with 22 dp glyphs, their glass the raised
+     * discs' colour at these alphas over the blur, with no rim (shared: [RvChrome.control] and [RvColors.controlGlass]).
+     */
+    val control = 40.dp
+    val mark = 38.dp
+    val markGlyph = 26.dp
+    val controlGlyph = 22.dp
+    const val CONTROL_GLASS_LIGHT = 0.7f
+    const val CONTROL_GLASS_DARK = 0.6f
 }
