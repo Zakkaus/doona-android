@@ -172,14 +172,15 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
 
 /**
  * The screen's one tinted area: the dot map of the world in [dots] on the neutral page behind the header content,
- * centred on [focus] at [focusTop] from the header's top, none above [statusBar], and faint behind the hero's text at
- * [clear]. [live] moves it (a tab's fade, P2's stretch, the connected pulse, a pan to a new node).
+ * centred on [focus] at [focusTop] from the header's top, none above [statusBar] (with none given, the dots run up
+ * behind the status bar), and faint behind the hero's text at [clear]. [live] moves it (a tab's fade, P2's stretch, the
+ * connected pulse, a pan to a new node).
  */
 @Composable
 internal fun RvHeader(
     focus: RvPlace?,
     focusTop: Dp,
-    statusBar: Dp,
+    statusBar: Dp?,
     dots: Color,
     clear: Rect?,
     modifier: Modifier = Modifier,

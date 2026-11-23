@@ -31,18 +31,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.boundsInParent
-import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
@@ -170,36 +164,35 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
     // Direct traffic uses no node, so the map marks no place.
     val place = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.place }
     val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
-    var heroBounds by remember { mutableStateOf<Rect?>(null) }
     val pan = rvMapPan(place)
     val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null, motion.resting), pan?.first, pan?.second)
-    // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected.
-    RvHeader(place, statusBar + RvDots.focusTop, statusBar, if (running) Rv.colors.dots else Rv.colors.dotsIdle, heroBounds, live = live) {
+    // As the owner approved it (609336cb): the dots run up behind the status bar, as Revolut's texture does, and behind the
+    // hero's text at full strength, in the accent only while connected; the marker sits under the top bar's glass.
+    RvHeader(place, statusBar + RvDots.activityFocusTop, null, if (running) Rv.colors.dots else Rv.colors.dotsIdle, null, live = live) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
-        Spacer(Modifier.height(RvSpace.headerTop))
-        HeroBlock(state, ticking, mode, hero, Modifier.onPlaced { heroBounds = it.boundsInParent() }, motion.pushed)
+        Spacer(Modifier.height(RvSpace.activityHeaderTop))
+        HeroBlock(state, ticking, mode, hero, motion.pushed)
         if (motion.pushed == null) actions() else Box(motion.pushed) { actions() }
         Spacer(Modifier.height(RvSpace.actionsToCard))
     }
 }
 
 /**
- * The hero ([placed] where the map keeps its dots faint) and the gap under it, both [pushed] by the pull. H0 shows the
- * traffic. H1 shows it and the main node as two views a horizontal swipe turns between ([RvHeroPages]); 統計's pager dots
- * at the gap's top mark which one, and a tap on a dot shows its view. The dots take [RvSize.touch] of the gap, so the
- * actions stay where they are.
+ * The hero and the gap under it, both [pushed] by the pull. H0 shows the traffic. H1 shows it and the main node as two
+ * views a horizontal swipe turns between ([RvHeroPages]); 統計's pager dots at the gap's top mark which one, and a tap on
+ * a dot shows its view. The dots take [RvSize.touch] of the gap, so the actions stay where they are.
  */
 @Composable
-private fun HeroBlock(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, hero: HeroLook, placed: Modifier, pushed: Modifier?) {
+private fun HeroBlock(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, hero: HeroLook, pushed: Modifier?) {
     val moved = pushed ?: Modifier
     if (hero.swipe == RvHeroSwipe.Off) {
-        HeroFigure(ticking, mode, placed.then(moved))
+        HeroFigure(ticking, mode, moved)
         Spacer(Modifier.height(RvSpace.heroToActions))
         return
     }
     val pager = rememberRvHeroPager(HERO_VIEWS)
     val names = listOf(stringResource(R.string.rv_hero_all_traffic), stringResource(R.string.rv_main_node))
-    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(ticking, mode, Modifier) else MainNodeFigure(state, mode, hero.nodes) }
+    RvHeroPages(pager, names, moved) { if (it == 0) HeroFigure(ticking, mode, Modifier) else MainNodeFigure(state, mode, hero.nodes) }
     RvStatsDots(names.size, pager.view, moved, names, pager::show)
     Spacer(Modifier.height(RvSpace.heroToActions - RvSize.touch))
 }

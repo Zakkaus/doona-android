@@ -30,6 +30,12 @@ internal object RvSpace {
      * about 100 dp under the bar; the map's marker sits in that space, clear of the bar's glass.
      */
     val headerTop = 152.dp
+
+    /**
+     * 活動's own: from the status bar to the hero's caption, as the owner approved it (609336cb), with the map's marker
+     * under the top bar's glass. [headerTop] stays for 歡迎.
+     */
+    val activityHeaderTop = 72.dp
     val heroToActions = 64.dp
 
     /** From the round actions' labels to the first card (measured §5: the action row ends 1360 px, the card starts 1400). */
@@ -173,6 +179,9 @@ internal object RvDots {
      * bar's controls (6 + 44 dp) and 30 dp above the caption ([RvSpace.headerTop]).
      */
     val focusTop = 96.dp
+
+    /** 活動's own: its node's place this far under the status bar, under the top bar's glass, as at 609336cb. */
+    val activityFocusTop = 40.dp
     val marker = 6.dp
     val ring = 11.dp
     val ringStroke = 1.5.dp
