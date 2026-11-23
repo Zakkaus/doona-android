@@ -19,6 +19,7 @@ import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.reportDir
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
@@ -74,16 +75,19 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     private val launched = AtomicBoolean(false)
 
     /**
-     * Once per process: looks for a crash to offer the report for, removes what earlier runs left, parts of crash files
-     * and old report zips, and sends again the clears of picks that did not succeed. Not again for an activity created
-     * later, whose share sheet may hold a zip. Reads the disk on another thread.
+     * Looks for a crash to offer the report for, until a look in this process could read the crash files: one that could
+     * not leaves it to the next call. Once per process, also removes what earlier runs left, parts of crash files and old
+     * report zips, and sends again the clears of picks that did not succeed; not again for an activity created later,
+     * whose share sheet may hold a zip. Reads the disk on another thread, the job returned.
      */
-    fun checkCrashes() {
-        if (!launched.compareAndSet(false, true)) return
-        uiScope.launch(Dispatchers.IO) {
+    fun checkCrashes(): Job {
+        val first = launched.compareAndSet(false, true)
+        return uiScope.launch(Dispatchers.IO) {
             crashOffer.check()
-            crashFiles.sweep()
-            reports.sweep()
+            if (first) {
+                crashFiles.sweep()
+                reports.sweep()
+            }
         }
     }
 
