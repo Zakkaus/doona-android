@@ -254,3 +254,10 @@ fn a_fetch_from_a_local_address_that_never_connects_is_local_network() {
         }
     }
 }
+
+#[test]
+fn the_user_agent_reads_as_a_clash_meta_client() {
+    let agent = USER_AGENT.to_ascii_lowercase();
+    assert!(agent.starts_with("doona/"));
+    assert!(agent.contains("clash.meta") && agent.contains("mihomo"));
+}

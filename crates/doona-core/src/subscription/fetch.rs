@@ -32,7 +32,10 @@ const MAX_BODY: usize = 8 << 20;
 const MAX_HEAD: usize = 64 << 10;
 const MAX_LINE: usize = 1 << 10;
 const MAX_REDIRECTS: usize = 5;
-const USER_AGENT: &str = concat!("doona/", env!("CARGO_PKG_VERSION"));
+/// Subscription panels choose the format by User-Agent substrings, case-insensitively: `mihomo` or `clash.meta` gets
+/// Clash.Meta YAML with the newer protocols, plain `clash` gets Clash YAML, and an unknown agent often gets bare links.
+/// Clash clients send such an agent, so doona does too.
+const USER_AGENT: &str = concat!("doona/", env!("CARGO_PKG_VERSION"), " (clash.meta; mihomo)");
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct Fetched {
