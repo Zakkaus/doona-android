@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.prototype.rv.RV_GHOST_UP
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvFigure
@@ -50,7 +51,7 @@ import java.text.NumberFormat
  * [RvStatsState], not on the page (N-14). The chips and the tools are not wired in the sample.
  */
 @Composable
-internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
+internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_stats_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
@@ -63,7 +64,7 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
         })
         RvGutter { RvSpentCard(state) }
         Spacer(Modifier.height(RvSpace.cardGap))
-        DayTiles(state.today)
+        DayTiles(state.today, empty)
         Spacer(Modifier.height(RvSpace.cardGap))
         RvGutter {
             RvQuotaCard(state.subscriptions, state.nowEpochMs)
@@ -83,13 +84,13 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
  * connections needs the core, so that tile is v0.2.
  */
 @Composable
-private fun DayTiles(day: RvDay) {
+private fun DayTiles(day: RvDay, empty: RvStatsEmptyLook) {
     val locale = LocalConfiguration.current.locales[0]
     val format = rememberRvFormat()
     val count = day.connections?.sum()?.let { NumberFormat.getIntegerInstance(locale).format(it) }
     val tiles = listOf(
         RvDayTile(stringResource(R.string.ui_download), format.bytes(day.downTotal).figure(), day.down, Rv.colors.down.line, v02 = false),
-        RvDayTile(stringResource(R.string.ui_upload), format.bytes(day.upTotal).figure(), day.up, Rv.colors.up.line, v02 = false),
+        RvDayTile(stringResource(R.string.ui_upload), format.bytes(day.upTotal).figure(), day.up, Rv.colors.up.line, v02 = false, ghost = RV_GHOST_UP),
         RvDayTile(
             stringResource(R.string.rv_stats_connections),
             RvFigure(count ?: RV_NO_VALUE, ""),
@@ -109,7 +110,7 @@ private fun DayTiles(day: RvDay) {
             pageSize = PageSize.Fixed(width),
             pageSpacing = RvSpace.tileGap,
             verticalAlignment = Alignment.Top,
-        ) { page -> RvDayTileCard(tiles[page]) }
+        ) { page -> RvDayTileCard(tiles[page], empty = empty) }
     }
 }
 

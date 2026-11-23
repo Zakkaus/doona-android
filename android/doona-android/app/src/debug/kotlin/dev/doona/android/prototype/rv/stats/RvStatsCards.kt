@@ -19,12 +19,14 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
+import dev.doona.android.prototype.rv.RV_GHOST_DOWN
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvFigure
+import dev.doona.android.prototype.rv.RvGhostBars
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLegendItem
 import dev.doona.android.prototype.rv.RvRow
@@ -82,23 +84,34 @@ internal fun RvSpentCard(state: RvStatsState) {
  */
 private fun nowInHours(state: RvStatsState): Float = state.today.hours.lastIndex + (state.nowEpochMs % MS_PER_HOUR).toFloat() / MS_PER_HOUR
 
-/** One of the paged tiles: what it counts, its figure, and its bars by the hour. */
-internal class RvDayTile(val label: String, val figure: RvFigure, val hours: List<Long>?, val color: Color, val v02: Boolean)
+/** One of the paged tiles: what it counts, its figure, its bars by the hour, and its ghost bars' heights with no traffic. */
+internal class RvDayTile(val label: String, val figure: RvFigure, val hours: List<Long>?, val color: Color, val v02: Boolean, val ghost: FloatArray = RV_GHOST_DOWN)
+
+/**
+ * How a tile with no traffic today looks, for the owner to compare (brief pv-c1). [Grid] is today's: the empty grid
+ * and a short line. [Activity] (v1) is 活動's tile with no traffic ([RvSparkTile]): `目前沒有流量` under the figure and the
+ * tile's own ghost bars. [First] (v2) is the first statistics sample's (b02dbc0e): the ghost bars under the figure alone,
+ * one set of heights on every tile.
+ */
+internal enum class RvStatsEmptyLook { Grid, Activity, First }
 
 /**
  * A paged tile, Revolut's 'Income' card: its header, the day's figure, then a bar per hour along the bottom. With no
- * traffic, or no data, it shows the empty grid and a short line, never made-up bars (Addendum A).
+ * data it shows the empty grid and a short line, never made-up bars (Addendum A); with no traffic, as [empty] says.
  */
 @Composable
-internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier) {
+internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid) {
     RvCard(modifier.aspectRatio(1f)) {
         RvCardHeader(tile.label, tag = if (tile.v02) RV_V02 else null)
         Column(Modifier.weight(1f).then(cardBody)) {
             RvStatsFigure(tile.figure, Rv.type.tileValue, Rv.type.tileUnit)
-            Spacer(Modifier.weight(1f))
             val hours = tile.hours
+            val ghost = empty != RvStatsEmptyLook.Grid && hours != null && hours.all { it == 0L }
+            if (ghost && empty == RvStatsEmptyLook.Activity) RvText(stringResource(R.string.rv_no_traffic), Rv.type.tileCaption, color = Rv.colors.textSecondary)
+            Spacer(Modifier.weight(1f))
             when {
                 hours == null -> RvEmptyChart(stringResource(R.string.rv_stats_no_data), Modifier.height(RvStatsSize.bars))
+                ghost -> RvGhostBars(if (empty == RvStatsEmptyLook.First) RV_GHOST_DOWN else tile.ghost, Modifier.height(RvStatsSize.bars))
                 hours.all { it == 0L } -> RvEmptyChart(stringResource(R.string.rv_stats_nothing_today), Modifier.height(RvStatsSize.bars))
                 else -> RvHourBars(hours, tile.color)
             }
