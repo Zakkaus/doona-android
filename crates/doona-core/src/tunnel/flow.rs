@@ -3,6 +3,8 @@
 //! the driver through one unbounded event channel. Each flow has at most one wake queued (its
 //! [`Waker`] remembers), so that channel stays as short as the number of flows.
 
+use crate::dns::ToClient;
+use crate::dns::names::{Learned, Mapping};
 use crate::stats::meter::Tally;
 use bytes::{Buf, Bytes};
 use honk_netstack::FlowId;
@@ -14,6 +16,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering::AcqRel, Ordering::Relax
 use std::task::{Context, Poll, ready};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::{OwnedSemaphorePermit, mpsc};
 use tokio::time::Instant;
 use tokio_util::sync::{CancellationToken, PollSender};
@@ -38,12 +41,14 @@ pub(crate) enum Event {
     Finished { id: FlowId, failed: bool },
     /// A UDP association ended (idle, or its socket failed).
     UdpEnded(u64),
-    /// A DNS answer to send back from `from` (the address the query went to) to `to`. It keeps
-    /// its query's slot until the driver writes it, so queued answers stay bounded too.
+    /// A DNS answer to send back from `from` (the address the query went to) to `to`, and what it
+    /// maps once the tun takes it. It keeps its query's slot until the driver writes it, so queued
+    /// answers stay bounded too.
     DnsAnswer {
         from: SocketAddr,
         to: SocketAddr,
         payload: Vec<u8>,
+        learned: Option<Learned>,
         _slot: OwnedSemaphorePermit,
     },
 }
@@ -161,15 +166,44 @@ pub(crate) struct Ends {
     /// Client to upstream; dropped to pass on the client's FIN.
     pub up: Option<mpsc::Sender<Bytes>>,
     /// Upstream to client; closed by the task to pass on the upstream's FIN.
-    pub down: mpsc::Receiver<Bytes>,
+    pub down: Down,
     pub drain: Arc<Drain>,
+}
+
+/// A chunk for the client; the last chunk of a DNS answer carries what the answer maps.
+struct Chunk(Bytes, Option<Mapping>);
+
+impl Chunk {
+    /// Its bytes, once what it maps is put: the driver takes a chunk before any of it can leave.
+    fn take(self) -> Bytes {
+        if let Some(mapping) = self.1 {
+            mapping.put();
+        }
+        self.0
+    }
+}
+
+/// The driver's end of the channel to the client.
+pub(crate) struct Down(mpsc::Receiver<Chunk>);
+
+impl Down {
+    pub fn try_recv(&mut self) -> Result<Bytes, TryRecvError> {
+        self.0.try_recv().map(Chunk::take)
+    }
+
+    #[cfg(test)]
+    pub async fn recv(&mut self) -> Option<Bytes> {
+        self.0.recv().await.map(Chunk::take)
+    }
 }
 
 /// The task's end of a TCP flow: the client, as an async stream.
 pub(crate) struct FlowIo {
     up: mpsc::Receiver<Bytes>,
     unread: Bytes,
-    down: PollSender<Bytes>,
+    down: PollSender<Chunk>,
+    /// What the last chunk of the next write maps, when it ends a DNS answer.
+    mapping: Option<Mapping>,
     waker: Arc<Waker>,
     /// The payload the task took and gave, for its outbound's bytes of the day.
     tally: Tally,
@@ -184,13 +218,14 @@ pub(crate) fn pair(waker: Arc<Waker>, tally: Tally, idle: Duration) -> (Ends, Fl
     let drain = Arc::new(Drain::new(idle));
     let ends = Ends {
         up: Some(up_tx),
-        down: down_rx,
+        down: Down(down_rx),
         drain: Arc::clone(&drain),
     };
     let io = FlowIo {
         up: up_rx,
         unread: Bytes::new(),
         down: PollSender::new(down_tx),
+        mapping: None,
         waker,
         tally,
         drain,
@@ -229,6 +264,12 @@ impl AsyncRead for FlowIo {
     }
 }
 
+impl ToClient for FlowIo {
+    fn map_with_last_chunk(&mut self, mapping: Mapping) {
+        self.mapping = Some(mapping);
+    }
+}
+
 impl AsyncWrite for FlowIo {
     fn poll_write(
         self: Pin<&mut Self>,
@@ -239,9 +280,13 @@ impl AsyncWrite for FlowIo {
         let gone = |_| io::Error::from(ErrorKind::BrokenPipe);
         ready!(this.down.poll_reserve(cx)).map_err(gone)?;
         let n = data.len().min(CHUNK);
-        this.down
-            .send_item(Bytes::copy_from_slice(&data[..n]))
-            .map_err(gone)?;
+        let mapping = if n == data.len() {
+            this.mapping.take()
+        } else {
+            None
+        };
+        let chunk = Chunk(Bytes::copy_from_slice(&data[..n]), mapping);
+        this.down.send_item(chunk).map_err(gone)?;
         this.waker.wake();
         this.tally.down(n);
         Poll::Ready(Ok(n))
@@ -259,3 +304,6 @@ impl AsyncWrite for FlowIo {
         Poll::Ready(Ok(()))
     }
 }
+
+#[cfg(test)]
+mod tests;

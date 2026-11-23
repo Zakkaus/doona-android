@@ -332,11 +332,11 @@ fn rule_without_a_node_keeps_the_template_direct_rows() {
 }
 
 /// blockQuic refuses a QUIC five-tuple, and refuses its retransmits for a few seconds without
-/// another lookup, even when a name learned since would send it direct. A mode change, or a new
-/// policy, ends that. A UDP echo the rules send direct shows the driver has handled every
-/// datagram sent before it.
+/// another lookup, until a name learned since, a mode change or a new policy may route it
+/// otherwise. A UDP echo the rules send direct shows the driver has handled every datagram sent
+/// before it.
 #[test]
-fn a_five_tuple_block_quic_refused_stays_refused_until_the_mode_or_policy_changes() {
+fn a_five_tuple_block_quic_refused_stays_refused_until_a_name_mode_or_policy_changes() {
     let options = Options {
         dns_upstreams: vec![resolver([127, 0, 0, 5])],
         ..Options::default()
@@ -360,13 +360,6 @@ fn a_five_tuple_block_quic_refused_stays_refused_until_the_mode_or_policy_change
     r.client.send_udp(quic, b"initial");
     settle(&mut r);
     let base = r.opened();
-    // The answer names the address quic.test, which the rules send direct.
-    r.client.send_udp(RESOLVER, &query(9, "quic.test", None));
-    assert!(
-        r.client
-            .recv_udp(RESOLVER, Duration::from_secs(10))
-            .is_some()
-    );
     r.client.send_udp(quic, b"retransmit");
     settle(&mut r);
     assert_eq!(
@@ -374,19 +367,34 @@ fn a_five_tuple_block_quic_refused_stays_refused_until_the_mode_or_policy_change
         base,
         "the retransmit is refused as the first was"
     );
-    r.set_mode("Global");
-    r.set_mode("Rule");
-    r.client.send_udp(quic, b"after a switch");
+    // The answer names the address quic.test, which the rules send direct.
+    r.client.send_udp(RESOLVER, &query(9, "quic.test", None));
+    assert!(
+        r.client
+            .recv_udp(RESOLVER, Duration::from_secs(10))
+            .is_some()
+    );
+    r.client.send_udp(quic, b"after the name");
     settle(&mut r);
-    assert_eq!(r.opened(), base + 1, "direct by its name");
-    // An address the rules send to Proxy, until a new policy sends it direct.
+    assert_eq!(r.opened(), base + 1, "direct by the name learned since");
+    // An address the rules send to Proxy, until a switch to Direct.
     let other = SocketAddr::from(([127, 0, 0, 6], 443));
     r.client.send_udp(other, b"initial");
     settle(&mut r);
     assert_eq!(r.opened(), base + 1);
-    rules.insert(0, rule("IP-CIDR", &["127.0.0.6/32"], "DIRECT"));
-    r.rules_with(&[], &rules, block);
-    r.client.send_udp(other, b"after the policy");
+    r.set_mode("Direct");
+    r.client.send_udp(other, b"after a switch");
     settle(&mut r);
-    assert_eq!(r.opened(), base + 2, "direct by the new policy");
+    assert_eq!(r.opened(), base + 2, "direct after the switch");
+    r.set_mode("Rule");
+    // Another, until a new policy sends it direct.
+    let third = SocketAddr::from(([127, 0, 0, 7], 443));
+    r.client.send_udp(third, b"initial");
+    settle(&mut r);
+    assert_eq!(r.opened(), base + 2);
+    rules.insert(0, rule("IP-CIDR", &["127.0.0.7/32"], "DIRECT"));
+    r.rules_with(&[], &rules, block);
+    r.client.send_udp(third, b"after the policy");
+    settle(&mut r);
+    assert_eq!(r.opened(), base + 3, "direct by the new policy");
 }

@@ -5,13 +5,17 @@
 //! An answer too large for the client's UDP buffer goes back truncated (TC set, question only),
 //! so the client retries over TCP/53, which the core also serves. A query that no upstream
 //! answers, or whose route refuses it, gets SERVFAIL at once instead of a client timeout. What an
-//! answer maps goes to the generation's [`Names`] before the client sees it.
+//! answer maps ([`Learned`]) goes to the generation's [`Names`] as the driver hands the answer on,
+//! before the client can have all of it: over TCP as the driver takes the answer's last chunk (see
+//! [`ToClient`]), over UDP as the tun takes the datagram (see the driver). A flow the client opens
+//! to an address it got finds its name, however late the task that made the answer runs again; an
+//! answer the driver drops, or never takes, maps nothing.
 
 pub(crate) mod names;
 
 use crate::rules::Network;
 use crate::tunnel::route::Route;
-use names::Names;
+use names::{Learned, Mapping, Names};
 use std::io::{self, ErrorKind};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
@@ -166,12 +170,12 @@ async fn read_framed<S: AsyncRead + Unpin>(s: &mut S) -> io::Result<Vec<u8>> {
 }
 
 /// The answer to `query`, or SERVFAIL, as the client gets it over `network`: over UDP, held to the
-/// client's buffer (see [`fit_udp`]). None when `query` is not a query. The addresses that answer
-/// gives are mapped in `names` before it is returned, so a flow the client opens to one finds its
-/// name; a truncated answer gives none, and the client's retry over TCP maps them.
+/// client's buffer (see [`fit_udp`]). None when `query` is not a query. What it maps is the
+/// caller's to read and put once the answer is on its way; a truncated answer maps nothing, and the
+/// client's retry over TCP maps the addresses.
 pub(crate) async fn answer(
     upstreams: &[SocketAddr],
-    (route, names): (&Route, &Names),
+    route: &Route,
     query: &[u8],
     network: Network,
 ) -> Option<Vec<u8>> {
@@ -189,8 +193,14 @@ pub(crate) async fn answer(
     if network == Network::Udp {
         answer = fit_udp(answer, query);
     }
-    names.learn(query, &answer);
     Some(answer)
+}
+
+/// The stream DNS over TCP answers a client on: the task's end of the flow.
+pub(crate) trait ToClient: AsyncRead + AsyncWrite + Unpin {
+    /// Has `mapping` put as the driver takes the last chunk of the next write, before that chunk
+    /// can leave; dropped with the chunk if the driver never takes it.
+    fn map_with_last_chunk(&mut self, mapping: Mapping);
 }
 
 /// Answers the framed queries of one TCP/53 connection in turn until the client closes it. A query
@@ -198,11 +208,12 @@ pub(crate) async fn answer(
 /// driver resets the client and drops what it still holds for it: a client that sends neither a
 /// query nor its FIN, or never reads, cannot hold the connection or its buffers. Each wait has a
 /// fixed deadline on tokio's monotonic clock, so a late wakeup does not extend it. Answers still
-/// queued for the client when this returns are bounded by the driver (see `TcpFlow::finish`).
-pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
+/// queued for the client when this returns are bounded by the driver (see `TcpFlow::finish`). What
+/// an answer maps goes to `names` with the answer's last chunk.
+pub(crate) async fn serve_tcp<S: ToClient>(
     io: &mut S,
     upstreams: &[SocketAddr],
-    route: (&Route, &Names),
+    (route, names): (&Route, &Names),
     idle: Duration,
 ) -> io::Result<()> {
     loop {
@@ -212,6 +223,10 @@ pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
             Err(e) => return Err(e),
         };
         if let Some(a) = answer(upstreams, route, &query, Network::Tcp).await {
+            if let Some(learned) = Learned::read(&query, &a) {
+                // The frame is one write, so its last chunk ends the answer.
+                io.map_with_last_chunk(names.bind(learned));
+            }
             tokio::time::timeout(idle, write_framed(io, &a)).await??;
         }
     }
@@ -352,26 +367,15 @@ pub(crate) mod tests {
         addr
     }
 
+    /// A refused route answers SERVFAIL, which maps nothing.
     #[tokio::test]
-    async fn an_answer_maps_its_addresses_before_the_client_gets_it() {
-        let names = Names::new();
-        let upstreams = [upstream()];
-        let q = query(3, "Learn.Example", Some(1232));
-        let a = answer(&upstreams, (&Route::Direct, &names), &q, Network::Tcp)
-            .await
-            .unwrap();
-        assert_eq!(count(&a, 6), 2);
-        for host in [0, 1] {
-            let ip = std::net::IpAddr::from([10, 0, 0, host]);
-            assert_eq!(names.name(ip).as_deref(), Some("learn.example"));
-        }
-        // A refused route answers SERVFAIL and maps nothing.
-        let names = Names::new();
-        let a = answer(&upstreams, (&Route::Refuse, &names), &q, Network::Tcp)
+    async fn a_refused_route_answers_servfail_which_maps_nothing() {
+        let q = query(3, "learn.example", Some(1232));
+        let a = answer(&[upstream()], &Route::Refuse, &q, Network::Tcp)
             .await
             .unwrap();
         assert_eq!(a[3] & 0x0f, 2);
-        assert_eq!(names.len(), 0);
+        assert!(Learned::read(&q, &a).is_none());
     }
 
     #[test]
@@ -387,6 +391,12 @@ pub(crate) mod tests {
     }
 
     const IDLE: Duration = Duration::from_secs(30);
+
+    /// No driver takes these streams' chunks, and their answers here are SERVFAIL, which maps
+    /// nothing.
+    impl ToClient for tokio::io::DuplexStream {
+        fn map_with_last_chunk(&mut self, _: Mapping) {}
+    }
 
     /// Serves `server` with no upstream, so every query is answered SERVFAIL at once.
     fn served(mut server: tokio::io::DuplexStream) -> tokio::task::JoinHandle<io::Result<()>> {

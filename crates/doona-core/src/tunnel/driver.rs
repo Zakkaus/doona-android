@@ -12,6 +12,7 @@ use super::route::{Inbound, Route};
 use super::tcp::{self, Step, TcpFlow};
 use super::udp::{self, Budget, Nat};
 use super::{Gen, Session, Settings, StartSignal, Tun};
+use crate::dns::names::Learned;
 use crate::rules::Network;
 use crate::stats::meter::Tally;
 use crate::sys;
@@ -87,6 +88,8 @@ struct Driver {
     scratch: Vec<u8>,
     /// The length of a packet in `tx` the tun has not taken yet.
     pending_tx: Option<usize>,
+    /// What the packet in `tx` maps once the tun takes it, when it is a DNS answer.
+    pending_learned: Option<Learned>,
     up: u64,
     down: u64,
     /// Flows the apps opened: dialed TCP connections and UDP associations.
@@ -121,6 +124,7 @@ impl Driver {
             tx: vec![0; mtu + 64],
             scratch: vec![0; flow::CHUNK],
             pending_tx: None,
+            pending_learned: None,
             up: 0,
             down: 0,
             opened: 0,
@@ -234,24 +238,36 @@ impl Driver {
     }
 
     /// Writes the packet in `tx[..len]`; a full tun keeps it for [`Driver::retry_tx`].
-    fn write_tun(&mut self, tun: &Tun, len: usize) -> io::Result<()> {
+    fn write_tun(&mut self, tun: &Tun, len: usize) -> io::Result<Sent> {
         match tun.write(&self.tx[..len]) {
-            Ok(_) => self.down += len as u64,
+            Ok(_) => {
+                self.down += len as u64;
+                Ok(Sent::Taken)
+            }
             Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::Interrupted) => {
                 self.pending_tx = Some(len);
+                Ok(Sent::Waiting)
             }
-            Err(e) => return dropped_or_fatal(e),
+            Err(e) => dropped_or_fatal(e).map(|()| Sent::Dropped),
         }
-        Ok(())
     }
 
+    /// Writes the packet the tun had no room for. A DNS answer's names are put once it is taken,
+    /// and never when it is dropped.
     fn retry_tx(&mut self, tun: &Tun) -> io::Result<()> {
         let Some(len) = self.pending_tx else {
             return Ok(());
         };
+        let learned = self.pending_learned.take();
         match tun.write(&self.tx[..len]) {
-            Ok(_) => self.down += len as u64,
+            Ok(_) => {
+                self.down += len as u64;
+                if let Some(learned) = learned {
+                    self.gen_.session.names().put(learned);
+                }
+            }
             Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::Interrupted) => {
+                self.pending_learned = learned;
                 return Ok(());
             }
             Err(e) => dropped_or_fatal(e)?,
@@ -276,8 +292,12 @@ impl Driver {
             Event::Finished { id, failed: false } => self.finish_tcp(id),
             Event::UdpEnded(n) => self.nat.remove(n),
             Event::DnsAnswer {
-                from, to, payload, ..
-            } => return self.send_udp(from, to, &payload, tun),
+                from,
+                to,
+                payload,
+                learned,
+                ..
+            } => return self.send_dns((from, to), &payload, learned, tun),
         }
         Ok(())
     }
@@ -297,7 +317,8 @@ impl Driver {
             let route = if to_resolver {
                 dns_route(settings, session)
             } else {
-                new_route(settings, session, (dst, Network::Tcp))
+                let (to, mode) = ((dst, Network::Tcp), settings.mode.get());
+                Route::of(Inbound::Tun, to, mode, &settings.outbounds, session)
             };
             if route.refused() {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
@@ -418,7 +439,8 @@ impl Driver {
 
     /// A datagram from an app: UDP/53 to any address is DNS the core answers; nothing else
     /// listens on the virtual resolver; other datagrams follow the route their association
-    /// opened with. A five-tuple blockQuic refused lately is refused again without a route.
+    /// opened with. A five-tuple blockQuic refused lately is refused again without a route, unless
+    /// the mode was set, a routing published or an answer put in the names since.
     fn on_datagram(&mut self, src: SocketAddr, dst: SocketAddr, payload: &[u8]) {
         if dst.port() == 53 {
             let Ok(slot) = Arc::clone(&self.dns_slots).try_acquire_owned() else {
@@ -426,19 +448,23 @@ impl Driver {
             };
             let (upstreams, events) = (Arc::clone(&self.upstreams), self.events.clone());
             let route = dns_route(&self.settings, &self.gen_.session);
-            let via = (route, Arc::clone(&self.gen_.session));
-            let task = udp::answer_dns(payload.to_vec(), (src, dst), via, upstreams, events, slot);
+            let task =
+                udp::answer_dns(payload.to_vec(), (src, dst), route, upstreams, events, slot);
             self.gen_.spawn(task);
         } else if dst.ip() != IpAddr::V4(self.settings.dns) {
             let (settings, session) = (&self.settings, &self.gen_.session);
             let blocked = &mut self.blocked;
             let open = || {
-                let stamp = (settings.mode.changes(), settings.outbounds.routings());
+                // Read before the route looks anything up, and its mode from the same read.
+                let (mode, sets) = settings.mode.snapshot();
+                let (routings, names) = (settings.outbounds.routings(), session.names());
+                let stamp = (sets, routings, names.version());
                 let now = Instant::now();
                 if blocked.holds((src, dst), stamp, now) {
                     return None;
                 }
-                let route = new_route(settings, session, (dst, Network::Udp));
+                let to = (dst, Network::Udp);
+                let route = Route::of(Inbound::Tun, to, mode, &settings.outbounds, session);
                 if let Route::Blocked = route {
                     blocked.refuse((src, dst), stamp, now);
                 }
@@ -470,7 +496,7 @@ impl Driver {
             flow.waker.wake();
         }
         for d in replies {
-            self.send_udp(from, to, &d.bytes, tun)?;
+            self.send_udp((from, to), &d.bytes, tun)?;
         }
         Ok(())
     }
@@ -478,19 +504,48 @@ impl Driver {
     /// Sends a datagram to an app from `from`; dropped while the tun is full.
     fn send_udp(
         &mut self,
-        from: SocketAddr,
-        to: SocketAddr,
+        (from, to): (SocketAddr, SocketAddr),
         payload: &[u8],
         tun: &Tun,
-    ) -> io::Result<()> {
+    ) -> io::Result<Sent> {
         if self.pending_tx.is_some() {
-            return Ok(());
+            return Ok(Sent::Dropped);
         }
         match self.stack.udp_send_from(from, to, payload, &mut self.tx) {
             Ok(len) => self.write_tun(tun, len),
-            Err(_) => Ok(()),
+            Err(_) => Ok(Sent::Dropped),
         }
     }
+
+    /// Sends a DNS answer to an app. What it maps is put in the names once the tun takes it, before
+    /// the next packet is read, so a flow the app opens to an address it got finds its name; when
+    /// the answer waits for room, once [`Driver::retry_tx`] writes it; when it is dropped, never.
+    fn send_dns(
+        &mut self,
+        ends: (SocketAddr, SocketAddr),
+        payload: &[u8],
+        learned: Option<Learned>,
+        tun: &Tun,
+    ) -> io::Result<()> {
+        match self.send_udp(ends, payload, tun)? {
+            Sent::Taken => {
+                if let Some(learned) = learned {
+                    self.gen_.session.names().put(learned);
+                }
+            }
+            Sent::Waiting => self.pending_learned = learned,
+            Sent::Dropped => {}
+        }
+        Ok(())
+    }
+}
+
+/// What became of a packet written to the tun.
+enum Sent {
+    Taken,
+    /// Kept in `tx` until the tun has room.
+    Waiting,
+    Dropped,
 }
 
 /// A finished TCP flow's drain deadline as queued; the earliest is the heap's greatest.
@@ -517,12 +572,6 @@ impl PartialEq for Due {
 
 impl Eq for Due {}
 
-/// The route of a new flow of `session`'s generation from the tun to `dst`.
-fn new_route(settings: &Settings, session: &Arc<Session>, dst: (SocketAddr, Network)) -> Route {
-    let mode = settings.mode.get();
-    Route::of(Inbound::Tun, dst, mode, &settings.outbounds, session)
-}
-
 /// The route of DNS the core answers for `session`'s generation.
 fn dns_route(settings: &Settings, session: &Arc<Session>) -> Route {
     let mode = settings.mode.get();
@@ -537,3 +586,6 @@ fn dropped_or_fatal(e: io::Error) -> io::Result<()> {
         _ => Err(e),
     }
 }
+
+#[cfg(test)]
+mod tests;

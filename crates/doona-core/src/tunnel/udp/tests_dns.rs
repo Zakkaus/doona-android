@@ -1,35 +1,47 @@
-//! DNS over UDP through the core's answer path: the generation's names learn only from the
-//! answer the client gets, and only when it answers the question the client asked.
+//! DNS over UDP through the core's answer path: what the driver puts in the generation's names
+//! comes only from the answer the client gets, and only when it answers the question the client
+//! asked.
 
 use super::*;
+use crate::dns::names::Names;
 use crate::dns::tests::{answer_to, query, upstream_with};
 use std::net::IpAddr;
-use std::sync::Weak;
 use tokio::sync::Semaphore;
 
 /// What a client that sent `q` gets back through an upstream that answers with `answer`, and the
-/// session whose names learned from it.
-async fn exchange(answer: fn(&[u8]) -> Vec<u8>, q: &[u8]) -> (Vec<u8>, Arc<Session>) {
-    let session = Arc::new(Session::new(1, Weak::new()));
+/// names once the driver has put what the answer maps, as it does when the tun takes it.
+async fn exchange(answer: fn(&[u8]) -> Vec<u8>, q: &[u8]) -> (Vec<u8>, Names) {
     let (events, mut got) = mpsc::unbounded_channel();
     let slot = Arc::new(Semaphore::new(1)).try_acquire_owned().unwrap();
     let client = SocketAddr::from(([10, 0, 0, 2], 40_000));
     let server = SocketAddr::from(([10, 0, 0, 1], 53));
     let upstreams = Arc::from([upstream_with(answer)]);
-    let via = (Route::Direct, Arc::clone(&session));
-    answer_dns(q.to_vec(), (client, server), via, upstreams, events, slot).await;
-    match got.recv().await {
-        Some(Event::DnsAnswer { payload, .. }) => (payload, session),
-        _ => panic!("no answer"),
+    answer_dns(
+        q.to_vec(),
+        (client, server),
+        Route::Direct,
+        upstreams,
+        events,
+        slot,
+    )
+    .await;
+    let Some(Event::DnsAnswer {
+        payload, learned, ..
+    }) = got.recv().await
+    else {
+        panic!("no answer");
+    };
+    let names = Names::new();
+    if let Some(learned) = learned {
+        names.put(learned);
     }
+    (payload, names)
 }
 
 /// How many of the addresses `answer_to` gives, 10.0.0.0 on, have a name.
-fn named(session: &Session, hosts: u16) -> usize {
+fn named(names: &Names, hosts: u16) -> usize {
     let ip = |i: u16| IpAddr::from([10, 0, (i >> 8) as u8, i as u8]);
-    (0..hosts)
-        .filter(|&i| session.names().name(ip(i)).is_some())
-        .count()
+    (0..hosts).filter(|&i| names.name(ip(i)).is_some()).count()
 }
 
 /// An answer too large for the client's buffer goes back truncated, without an address, so the
@@ -38,13 +50,13 @@ fn named(session: &Session, hosts: u16) -> usize {
 #[tokio::test]
 async fn a_truncated_answer_maps_nothing() {
     let plain = query(5, "big.example", None);
-    let (sent, session) = exchange(|q| answer_to(q, 40), &plain).await;
+    let (sent, names) = exchange(|q| answer_to(q, 40), &plain).await;
     assert_eq!(sent[2] & 0x02, 0x02, "TC");
-    assert_eq!(named(&session, 40), 0);
+    assert_eq!(named(&names, 40), 0);
     let edns = query(6, "big.example", Some(4096));
-    let (sent, session) = exchange(|q| answer_to(q, 40), &edns).await;
+    let (sent, names) = exchange(|q| answer_to(q, 40), &edns).await;
     assert_eq!(sent[2] & 0x02, 0, "whole");
-    assert_eq!(named(&session, 40), 40);
+    assert_eq!(named(&names, 40), 40);
 }
 
 /// An answer with the query's id but another question maps nothing, though the client gets it;
@@ -56,14 +68,14 @@ async fn an_answer_to_another_question_maps_nothing() {
         let id = u16::from_be_bytes([q[0], q[1]]);
         answer_to(&query(id, "other.example", None), 2)
     };
-    let (sent, session) = exchange(other, &q).await;
+    let (sent, names) = exchange(other, &q).await;
     assert_eq!(sent[..2], q[..2]);
-    assert_eq!(named(&session, 2), 0);
+    assert_eq!(named(&names, 2), 0);
     let shouted = |q: &[u8]| {
         let mut a = answer_to(q, 2);
         a[13..18].make_ascii_uppercase();
         a
     };
-    let (_, session) = exchange(shouted, &q).await;
-    assert_eq!(named(&session, 2), 2);
+    let (_, names) = exchange(shouted, &q).await;
+    assert_eq!(named(&names, 2), 2);
 }

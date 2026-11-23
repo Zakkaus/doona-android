@@ -228,6 +228,114 @@ fn an_alias_loop_ends_the_chain() {
     );
 }
 
+/// A CNAME whose data is not exactly one name, ending where its RDLENGTH does, makes the whole answer
+/// map nothing: with no data, or data that stops inside its name, the alias would be read from the
+/// next record; trailing bytes are no name either.
+#[test]
+fn a_cname_whose_data_is_not_one_name_maps_nothing() {
+    let edge = wire("edge.example");
+    let mut trailing = edge.clone();
+    trailing.push(0);
+    // Data that stops after the label `edge`, so the next record's owner, `example`, would end it.
+    let cut = &edge[..5];
+    let cases: [(&str, Vec<Rr<'_>>); 3] = [
+        (
+            "no data: the next record's owner would be the alias",
+            vec![
+                Rr {
+                    owner: AT_QUESTION.to_vec(),
+                    kind: TYPE_CNAME,
+                    ttl: 300,
+                    data: &[],
+                },
+                Rr {
+                    owner: wire("other.example"),
+                    kind: TYPE_A,
+                    ttl: 300,
+                    data: &[203, 0, 113, 9],
+                },
+            ],
+        ),
+        (
+            "a byte after the name",
+            vec![
+                Rr {
+                    owner: AT_QUESTION.to_vec(),
+                    kind: TYPE_CNAME,
+                    ttl: 300,
+                    data: &trailing,
+                },
+                a(&[203, 0, 113, 10], 300),
+                Rr {
+                    owner: edge.clone(),
+                    kind: TYPE_A,
+                    ttl: 300,
+                    data: &[203, 0, 113, 11],
+                },
+            ],
+        ),
+        (
+            "a name that runs past its data",
+            vec![
+                Rr {
+                    owner: AT_QUESTION.to_vec(),
+                    kind: TYPE_CNAME,
+                    ttl: 300,
+                    data: cut,
+                },
+                Rr {
+                    owner: wire("example"),
+                    kind: TYPE_A,
+                    ttl: 300,
+                    data: &[203, 0, 113, 12],
+                },
+                Rr {
+                    owner: edge.clone(),
+                    kind: TYPE_A,
+                    ttl: 300,
+                    data: &[203, 0, 113, 13],
+                },
+            ],
+        ),
+    ];
+    for (case, records) in &cases {
+        let names = Names::new();
+        names.learn_at(&answer("www.netflix.com", records), 0);
+        let named: Vec<_> = (9..=13)
+            .filter_map(|host| Some((host, name_of(&names, v4(203, 0, 113, host), 1)?)))
+            .collect();
+        assert!(named.is_empty(), "{case}: {named:?}");
+    }
+}
+
+/// The question is compared by the name it reads, not its bytes: a query and an answer whose
+/// question is the same pointer, to a name further on in each, match only when the names do.
+#[test]
+fn questions_match_by_the_names_they_read() {
+    // A header, a question whose name points past it, then at 18 the name it points to.
+    let message = |flags: [u8; 2], answers: u8, rest: &[u8]| {
+        let mut m = vec![0x12, 0x34, flags[0], flags[1], 0, 1, 0, answers, 0, 0, 0, 0];
+        m.extend_from_slice(&[0xc0, 18, 0, 1, 0, 1]);
+        m.extend_from_slice(rest);
+        m
+    };
+    let query = message([0x01, 0x00], 0, &wire("asked.example"));
+    // The answer's record owner sits at 18, so the answer's question reads as that name.
+    let answer_for = |owner: &str| {
+        let mut rest = wire(owner);
+        rest.extend_from_slice(&[0, 1, 0, 1, 0, 0, 1, 44, 0, 4, 203, 0, 113, 9]);
+        message([0x81, 0x80], 1, &rest)
+    };
+    let names = Names::new();
+    names.learn(&query, &answer_for("other.example"));
+    assert_eq!(names.len(), 0, "a question of another name maps");
+    names.learn(&query, &answer_for("Asked.Example"));
+    assert_eq!(
+        names.name(v4(203, 0, 113, 9)).as_deref(),
+        Some("asked.example")
+    );
+}
+
 #[test]
 fn a_ttl_is_held_to_one_minute_and_one_hour() {
     let names = Names::new();
@@ -465,3 +573,8 @@ fn bench_cache_memory() {
         );
     }
 }
+
+/// Long CNAME chains, in a file of their own for the size limit.
+mod chains;
+/// CNAME data that does not decompress.
+mod malformed;

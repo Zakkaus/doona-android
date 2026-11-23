@@ -58,11 +58,13 @@ fn target(route: &Route) -> &str {
     }
 }
 
-/// Each set counts as a change, so a decision taken under the mode can tell it was set since.
+/// Each set leaves its mode and its count in the one word a snapshot reads, so a snapshot pairs a
+/// mode with the count of the set that left it, and a decision taken under it can tell the mode was
+/// set since.
 #[test]
 fn mode_cell_round_trips() {
     let cell = ModeCell::new(Mode::Direct);
-    let first = cell.changes();
+    let (_, first) = cell.snapshot();
     for (n, mode) in [
         Mode::Global,
         Mode::Rule,
@@ -75,7 +77,7 @@ fn mode_cell_round_trips() {
     {
         cell.set(mode);
         assert_eq!(cell.get(), mode);
-        assert_eq!(cell.changes(), first + n as u64 + 1);
+        assert_eq!(cell.snapshot(), (mode, first + n as u64 + 1));
     }
 }
 
