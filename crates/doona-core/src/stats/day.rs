@@ -125,16 +125,29 @@ impl Day {
     }
 
     /// A day read from a file: lists of the wrong length and maps past their bound are fixed
-    /// rather than trusted.
+    /// rather than trusted, and a rule id no rule has counts as [`OTHER`].
     fn sane(mut self) -> Day {
         self.up.resize(SLOTS, 0);
         self.down.resize(SLOTS, 0);
         self.flows.resize(HOURS, 0);
-        let (outbounds, rules) = (mem::take(&mut self.outbounds), mem::take(&mut self.rules));
+        let (outbounds, read) = (mem::take(&mut self.outbounds), mem::take(&mut self.rules));
         add_all(&mut self.outbounds, &outbounds, MAX_OUTBOUNDS);
+        let mut rules = BTreeMap::new();
+        for (id, moved) in &read {
+            let id = if rule_id(id) { id } else { OTHER };
+            bounded(&mut rules, usize::MAX, id, *moved);
+        }
         add_all(&mut self.rules, &rules, MAX_RULES);
         self
     }
+}
+
+/// Whether `id` is one a rule counts under: a row id (`r-` and 16 lowercase hex digits),
+/// `unmatched` or [`OTHER`].
+fn rule_id(id: &str) -> bool {
+    let row =
+        |hex: &str| hex.len() == 16 && hex.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
+    id == "unmatched" || id == OTHER || id.strip_prefix("r-").is_some_and(row)
 }
 
 /// Adds `moved` to `id` in `counts`; past `max` ids, a new one counts as [`OTHER`].

@@ -131,7 +131,7 @@ fn what_was_written_is_what_the_next_process_reads() {
         let stats = stats(&dir, &rt);
         let (session, _) = session();
         moved(&session, (40, 400, 1), 100);
-        let ruled = session.meters().get_ruled("g-Proxy", "r-match");
+        let ruled = session.meters().get_ruled("g-Proxy", "r-00000000000000aa");
         meter::Tally::new(Some(ruled)).down(60);
         stats.finish(&session, &at);
         // Dropping the runtime waits for the write on its blocking thread.
@@ -144,7 +144,7 @@ fn what_was_written_is_what_the_next_process_reads() {
     assert_eq!(usage.today.flows.iter().sum::<u64>(), 1);
     assert_eq!(usage.today.outbounds[0].down, 160);
     let rule = dto::RuleBytes {
-        id: "r-match".into(),
+        id: "r-00000000000000aa".into(),
         up: 0,
         down: 60,
         flows: 1,
@@ -498,4 +498,31 @@ fn a_file_written_before_rules_were_counted_keeps_its_outbounds() {
     assert_eq!(today.outbounds[0].id, "g-Proxy");
     assert_eq!((today.outbounds[0].up, today.outbounds[0].down), (5, 7));
     assert!(today.by_rule.is_empty());
+}
+
+/// A hand-edited `stats.json` never hands back arbitrary text as a rule id: a rule that is not a
+/// row id (`r-` and 16 lowercase hex digits), `unmatched` or `other` is read as `other`.
+#[test]
+fn a_rule_id_that_is_no_row_id_reads_as_other() {
+    let dir = TempDir::new("stats-rule-ids");
+    let day = NOW_MS / 86_400_000;
+    let rules = r#"{"https://u:p@example.invalid/sub?token=demo":[1,2,1],"r-0123456789ABCDEF":[10,20,1],"r-0123":[100,200,1],"r-0123456789abcdef":[3,4,1],"unmatched":[5,6,2],"other":[7,8,1]}"#;
+    let text = format!(
+        r#"{{"statsVersion":2,"usage":{{"full":[{{"day":{day},"up":[5],"down":[7],"flows":[1],"outbounds":{{"g-Proxy":[5,7]}},"rules":{rules}}}]}}}}"#
+    );
+    std::fs::write(dir.path().join("stats.json"), text).unwrap();
+    let rt = runtime();
+    let stats = stats(&dir, &rt);
+    let today = stats.usage(&wall(NOW_MS)).today;
+    let rules: Vec<_> = (today.by_rule.iter())
+        .map(|r| (r.id.as_str(), r.up, r.down, r.flows))
+        .collect();
+    assert_eq!(
+        rules,
+        [
+            ("other", 118, 230, 4),
+            ("r-0123456789abcdef", 3, 4, 1),
+            ("unmatched", 5, 6, 2)
+        ]
+    );
 }
