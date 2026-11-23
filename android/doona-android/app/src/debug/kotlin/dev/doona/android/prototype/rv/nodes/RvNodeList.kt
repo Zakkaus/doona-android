@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -60,6 +59,7 @@ import dev.doona.android.prototype.rv.data.RvPlace
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.rvNodeGroups
 import dev.doona.android.prototype.rv.rvRaisedReach
+import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -122,7 +122,7 @@ private fun PlaceRow(place: RvPlace, count: Int) {
 @Composable
 private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (String) -> Unit) {
     val inUse = stringResource(R.string.rv_nodes_in_use)
-    val pick = Modifier.selectable(current, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton) { onPick(node.id) }
+    val pick = Modifier.selectable(current, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton) { onPick(node.id) }
     val steady = stringResource(R.string.rv_nodes_stability, node.answered, node.history.size)
     val second: (@Composable () -> Unit)? = if (sort == RvNodeSort.Stability) {
         { RvText(steady, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) }

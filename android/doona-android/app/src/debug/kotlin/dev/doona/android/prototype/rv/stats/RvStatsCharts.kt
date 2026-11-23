@@ -34,7 +34,9 @@ import dev.doona.android.prototype.rv.RvChartSize
 import dev.doona.android.prototype.rv.RvPillInk
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvUsageSize
+import dev.doona.android.prototype.rv.rvChartMarker
 import dev.doona.android.prototype.rv.rvLatencyAxisTop
+import dev.doona.android.prototype.rv.rvMarkerChip
 import dev.doona.android.prototype.rv.rvPillSize
 import dev.doona.android.prototype.rv.rvValuePill
 import dev.doona.android.prototype.rv.scripted
@@ -134,10 +136,10 @@ internal fun RvQuotaRing(segments: List<RvRingSegment>, modifier: Modifier = Mod
  * Revolut's EPS chart turned to latency, in node detail's grammar (S04): a dot per tested node in its quality's hue,
  * sorted from the fastest, on hairlines at the top, the middle and zero, labelled at the right with the unit on the top
  * one, and a dotted line at the [median] with its value in the value pill at the line's end, which hides a label it would
- * cover. The axis leaves the slowest dot 5 % under the top. The current node ([selected], an index into [values]) stands
- * in a column of the primary colour's pale tint that stops [RvStatsSize.columnBelow] under the plot, apart from [label]'s
- * chip of the same tint. The dots are small enough that neighbours keep a gap at 47 nodes; the selected one is a step
- * larger and still clear of its neighbours.
+ * cover. The axis leaves the slowest dot 5 % under the top. The current node ([selected], an index into [values]) is
+ * marked with the library's [rvChartMarker] in the primary colour's pale tint, [label] in its chip, as node detail marks
+ * its picked test. The dots are small enough that neighbours keep a gap at 47 nodes; the selected one is a step larger
+ * and still clear of its neighbours.
  */
 @Composable
 internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, median: Int?, unit: String, modifier: Modifier = Modifier) {
@@ -154,13 +156,12 @@ internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, med
         val pill = median?.let { measurer.measure(scripted("$it $unit"), axisStyle) }
         val strip = maxOf(axis.maxOf { it.second.size.width }.toFloat(), pill?.let { rvPillSize(it).width } ?: 0f) + RvStatsSize.axisLabelGap.toPx()
         // At a large font scale the label could outgrow the chart: it ends in an ellipsis instead.
-        val chipMax = (size.width - 2 * RvStatsSize.labelChipPadH.toPx()).toInt().coerceAtLeast(0)
+        val chipMax = (size.width - 2 * RvChartSize.pillPadH.toPx()).toInt().coerceAtLeast(0)
         val chip = measurer.measure(label, chipStyle, TextOverflow.Ellipsis, maxLines = 1, constraints = Constraints(maxWidth = chipMax))
-        val chipH = chip.size.height + 2 * RvStatsSize.labelChipPadV.toPx()
         val plot = Plot(
             right = size.width - strip,
             top = axis.first().second.size.height / 2f,
-            bottom = size.height - chipH - RvStatsSize.labelChipGap.toPx(),
+            bottom = size.height - rvMarkerChip(chip.size.height.toFloat()) - RvChartSize.markerGap.toPx(),
             topMs = top,
         )
         val medianY = median?.let { plot.y(it) }
@@ -172,11 +173,7 @@ internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, med
         if (values.isEmpty()) return@Canvas
         val pitch = plot.right / values.size
         val x = { i: Int -> pitch * (i + 0.5f) }
-        selected?.let { i ->
-            val w = RvStatsSize.column.toPx()
-            drawRoundRect(colors.down.area, Offset(x(i) - w / 2, 0f), Size(w, plot.bottom + RvStatsSize.columnBelow.toPx()), CornerRadius(w / 2))
-            labelChip(chip, x(i), chipH, colors.down.area)
-        }
+        selected?.let { i -> rvChartMarker(x(i), pitch, RvStatsSize.latencyDotSelected.toPx(), plot.bottom, chip, colors.down.area) }
         values.forEachIndexed { i, ms ->
             if (i != selected) drawCircle(colors.quality(latencyTone(ms)), RvStatsSize.latencyDot.toPx() / 2, Offset(x(i), plot.y(ms)))
         }
@@ -201,16 +198,6 @@ private fun DrawScope.medianLine(plot: Plot, y: Float, text: TextLayoutResult, c
     drawLine(color, Offset(0f, y), Offset(plot.right, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots)
     val pill = rvPillSize(text)
     rvValuePill(text, Offset(size.width - pill.width, (y - pill.height / 2).coerceIn(0f, plot.bottom - pill.height)), ink)
-}
-
-/** [text] in a chip centred under [x] at the bottom of the chart, kept inside it. */
-private fun DrawScope.labelChip(text: TextLayoutResult, x: Float, height: Float, fill: Color) {
-    val padH = RvStatsSize.labelChipPadH.toPx()
-    val width = text.size.width + 2 * padH
-    val left = (x - width / 2).coerceAtMost(size.width - width).coerceAtLeast(0f)
-    val top = size.height - height
-    drawRoundRect(fill, Offset(left, top), Size(width, height), CornerRadius(height / 2))
-    drawText(text, topLeft = Offset(left + padH, top + RvStatsSize.labelChipPadV.toPx()))
 }
 
 /** Revolut's analyst bar: an 8 dp pill track with [fraction] of it filled by a gradient of [color], light to full. */

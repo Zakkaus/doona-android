@@ -16,7 +16,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,7 +26,7 @@ import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvPress
+import dev.doona.android.prototype.rv.rvRowPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -47,7 +46,7 @@ internal fun RvDnsScreen(selected: RvDnsUpstream, onSelect: (RvDnsUpstream) -> U
             RvSettingsCard {
                 RvDnsUpstream.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == selected, { onSelect(it) }, subtitle = it.address) }
                 // No glyph, so its text lines up with the servers above it.
-                RvSettingsRow(stringResource(R.string.rv_settings_dns_custom), Modifier.rvPress(RectangleShape, Role.Button, onCustom), subtitle = stringResource(R.string.rv_settings_dns_custom_sub)) {
+                RvSettingsRow(stringResource(R.string.rv_settings_dns_custom), Modifier.rvRowPress(Role.Button, onCustom), subtitle = stringResource(R.string.rv_settings_dns_custom_sub)) {
                     RvChevron()
                 }
             }

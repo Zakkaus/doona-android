@@ -36,6 +36,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
@@ -52,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.preferredFrameRate
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
@@ -220,14 +224,21 @@ internal fun rememberRvMotion(): RvMotionScale {
 
 /** The one press feedback: the content colour's state layer over the visible shape, up in [RvMotion.PRESS_MS]. */
 @Composable
-internal fun rvPressIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant)
+internal fun rvPressIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = null)
 
-private data class RvPressIndication(val color: Color, val instant: Boolean) : IndicationNodeFactory {
-    override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, color, instant)
+/**
+ * A row's press, the same layer as Revolut highlights a row (revolut-ux3 §1, §2): inset [RvSpace.tight] in the row, its
+ * corners [RvSize.highlightRadius], so inside a card it follows the card's corners.
+ */
+@Composable
+internal fun rvRowIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = RvSpace.tight)
+
+private data class RvPressIndication(val color: Color, val instant: Boolean, val inset: Dp?) : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, color, instant, inset)
 }
 
 /** Shows the layer while any press lasts; a short tap still shows it fully before it goes. */
-private class PressNode(private val source: InteractionSource, private val color: Color, private val instant: Boolean) :
+private class PressNode(private val source: InteractionSource, private val color: Color, private val instant: Boolean, private val inset: Dp?) :
     Modifier.Node(),
     DrawModifierNode {
     private val shown = Animatable(0f)
@@ -244,7 +255,14 @@ private class PressNode(private val source: InteractionSource, private val color
     override fun ContentDrawScope.draw() {
         drawContent()
         val a = shown.value
-        if (a > 0f) drawRect(color, alpha = RvAlpha.PRESSED * a)
+        if (a <= 0f) return
+        if (inset == null) {
+            drawRect(color, alpha = RvAlpha.PRESSED * a)
+        } else {
+            val i = inset.toPx()
+            val box = Size((size.width - 2 * i).coerceAtLeast(0f), (size.height - 2 * i).coerceAtLeast(0f))
+            drawRoundRect(color, Offset(i, i), box, CornerRadius(RvSize.highlightRadius.toPx()), alpha = RvAlpha.PRESSED * a)
+        }
     }
 }
 

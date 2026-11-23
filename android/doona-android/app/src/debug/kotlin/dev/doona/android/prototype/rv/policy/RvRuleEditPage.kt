@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -41,6 +40,7 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /** A rule being edited: how it matches, the value it matches (none for GEOIP CN and private ranges), where, if on. */
@@ -105,7 +105,7 @@ internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit,
         RvGutter {
             RvTargetCard(draft.targetId) { onChange(draft.copy(targetId = it)) }
             RvCard {
-                val toggle = Modifier.toggleable(draft.enabled, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.Switch) {
+                val toggle = Modifier.toggleable(draft.enabled, interactionSource = null, indication = rvRowIndication(), role = Role.Switch) {
                     onChange(draft.copy(enabled = it))
                 }
                 RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_rule_edit_enabled), null, toggle) { RvSwitch(draft.enabled) }

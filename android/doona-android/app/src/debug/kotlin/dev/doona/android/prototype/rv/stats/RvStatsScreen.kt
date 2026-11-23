@@ -79,8 +79,9 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit) {
 }
 
 /**
- * 下載, 上傳 and 連線次數 as Revolut's paged half tiles: two side by side, the third peeking at the edge, dots under them.
- * Download and upload come from the daily history; a count of opened connections needs the core, so that tile is v0.2.
+ * 下載, 上傳 and 連線次數 as Revolut's paged half tiles: two side by side as 活動's pair, the third past the edge, dots
+ * under them. Download and upload come from the daily history; a count of opened connections needs the core, so that
+ * tile is v0.2.
  */
 @Composable
 private fun DayTiles(day: RvDay) {
@@ -100,14 +101,14 @@ private fun DayTiles(day: RvDay) {
     )
     val pager = rememberPagerState { tiles.size }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // Two tiles, then the next one's edge at the screen's edge: 188 dp each on a 412 dp screen, as Revolut's.
-        val width = (maxWidth - RvSpace.gutter - RvStatsSpace.tileGap * 2 - RvStatsSpace.tilePeek) / 2
+        // Two tiles as 活動's pair: between the gutters, RvSpace.tileGap apart; the third starts past the screen's edge.
+        val width = (maxWidth - RvSpace.gutter * 2 - RvSpace.tileGap) / 2
         Column(Modifier.testTag(RvPart.BLOCK)) {
             HorizontalPager(
                 pager,
                 contentPadding = PaddingValues(horizontal = RvSpace.gutter),
                 pageSize = PageSize.Fixed(width),
-                pageSpacing = RvStatsSpace.tileGap,
+                pageSpacing = RvSpace.tileGap,
                 verticalAlignment = Alignment.Top,
             ) { page -> RvDayTileCard(tiles[page]) }
             Spacer(Modifier.height(RvStatsSpace.dotsGap))

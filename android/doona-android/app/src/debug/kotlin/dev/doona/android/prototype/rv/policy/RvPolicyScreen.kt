@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -59,7 +57,8 @@ import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.nodes.latencyColor
 import dev.doona.android.prototype.rv.nodes.latencyText
 import dev.doona.android.prototype.rv.rvNavClearance
-import dev.doona.android.prototype.rv.rvPress
+import dev.doona.android.prototype.rv.rvRowIndication
+import dev.doona.android.prototype.rv.rvRowPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -173,7 +172,7 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit) {
         { RvIconDisc(group.kind.glyph) },
         stringResource(group.name),
         stringResource(group.kind.label) + SEPARATOR + count,
-        Modifier.rvPress(RectangleShape, Role.Button, { onOpen(group.id) }),
+        Modifier.rvRowPress(Role.Button, { onOpen(group.id) }),
         titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End) },
         subtitleEnd = { RvText(latencyText(node.latencyMs), Rv.type.rowSub, color = latencyColor(node.latencyMs), align = TextAlign.End) },
         trailing = { RvChevron() },
@@ -213,7 +212,7 @@ private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit,
 /** A row whose whole width toggles its switch, as on 設定. */
 @Composable
 private fun SwitchRow(@DrawableRes icon: Int, title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    val toggle = Modifier.toggleable(checked, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.Switch, onValueChange = onChange)
+    val toggle = Modifier.toggleable(checked, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onChange)
     RvRow({ RvIconDisc(icon) }, title, null, toggle) { RvSwitch(checked) }
 }
 

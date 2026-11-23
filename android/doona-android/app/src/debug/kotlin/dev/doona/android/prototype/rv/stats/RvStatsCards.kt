@@ -3,7 +3,9 @@ package dev.doona.android.prototype.rv.stats
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -24,6 +26,7 @@ import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvFigure
 import dev.doona.android.prototype.rv.RvIconDisc
+import dev.doona.android.prototype.rv.RvLegendItem
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
@@ -88,7 +91,7 @@ internal class RvDayTile(val label: String, val figure: RvFigure, val hours: Lis
  */
 @Composable
 internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier) {
-    RvCard(modifier.height(RvStatsSize.tile)) {
+    RvCard(modifier.aspectRatio(1f)) {
         RvCardHeader(tile.label, tag = if (tile.v02) RV_V02 else null)
         Column(Modifier.weight(1f).then(cardBody)) {
             RvStatsFigure(tile.figure, Rv.type.tileValue, Rv.type.tileUnit)
@@ -150,18 +153,10 @@ private fun QuotaLegend(sub: RvSubscription, nowEpochMs: Long, segment: RvRingSe
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
     val used = format.bytesIn(sub.usedBytes, total)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RvStatsSwatch(segment.color)
-        Spacer(Modifier.width(RvSpace.subGap + RvSpace.tight))
-        RvText("${sub.name}$SEPARATOR$used / $total", Rv.type.rowSub, Modifier.weight(1f))
-        val expires = sub.expiresAtEpochMs?.let { stringResource(R.string.rv_expires, format.expiry(it, nowEpochMs)) }
-        RvText(expires ?: stringResource(R.string.rv_stats_no_expiry), Rv.type.tileCaption, color = Rv.colors.textSecondary, align = TextAlign.End)
-    }
-    Row(Modifier.padding(top = RvSpace.tight), verticalAlignment = Alignment.CenterVertically) {
-        RvStatsSwatch(segment.rest)
-        Spacer(Modifier.width(RvSpace.subGap + RvSpace.tight))
-        RvText(stringResource(R.string.rv_stats_quota_left, format.bytes(sub.leftBytes).toString()), Rv.type.rowSub, color = Rv.colors.textSecondary)
-    }
+    val expires = sub.expiresAtEpochMs?.let { stringResource(R.string.rv_expires, format.expiry(it, nowEpochMs)) }
+    val name = "${sub.name}$SEPARATOR$used / $total"
+    RvLegendItem(segment.color, name, Modifier.fillMaxWidth(), Rv.colors.text, expires ?: stringResource(R.string.rv_stats_no_expiry))
+    RvLegendItem(segment.rest, stringResource(R.string.rv_stats_quota_left, format.bytes(sub.leftBytes).toString()), Modifier.padding(top = RvSpace.tight))
 }
 
 /**

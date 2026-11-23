@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Indication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -41,7 +42,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -135,10 +135,18 @@ private const val ELLIPSIS = "\u2026"
  */
 @Composable
 internal fun Modifier.rvPress(shape: Shape, role: Role, onClick: () -> Unit, onLongClick: (() -> Unit)? = null): Modifier =
+    clip(shape).rvClick(rvPressIndication(), role, onClick, onLongClick)
+
+/** A row's press: [rvPress] with Revolut's row highlight ([rvRowIndication]) instead of the whole row's layer. */
+@Composable
+internal fun Modifier.rvRowPress(role: Role, onClick: () -> Unit, onLongClick: (() -> Unit)? = null): Modifier =
+    rvClick(rvRowIndication(), role, onClick, onLongClick)
+
+private fun Modifier.rvClick(indication: Indication, role: Role, onClick: () -> Unit, onLongClick: (() -> Unit)?): Modifier =
     if (onLongClick == null) {
-        clip(shape).clickable(interactionSource = null, indication = rvPressIndication(), role = role, onClick = onClick)
+        clickable(interactionSource = null, indication = indication, role = role, onClick = onClick)
     } else {
-        clip(shape).combinedClickable(interactionSource = null, indication = rvPressIndication(), role = role, onLongClick = onLongClick, onClick = onClick)
+        combinedClickable(interactionSource = null, indication = indication, role = role, onLongClick = onLongClick, onClick = onClick)
     }
 
 /**
@@ -303,7 +311,7 @@ internal fun RvRow(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     // The card clips the layer of its first and last row to its corners.
-    val press = onClick?.let { Modifier.rvPress(RectangleShape, Role.Button, it, onLongClick) } ?: Modifier
+    val press = onClick?.let { Modifier.rvRowPress(Role.Button, it, onLongClick) } ?: Modifier
     val lineWise = titleEnd != null || subtitleEnd != null
     Row(
         modifier

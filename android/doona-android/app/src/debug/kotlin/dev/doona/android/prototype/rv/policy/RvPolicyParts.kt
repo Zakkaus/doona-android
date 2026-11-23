@@ -2,7 +2,6 @@ package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +26,7 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rememberRvFormat
+import dev.doona.android.prototype.rv.rvRowIndication
 
 /**
  * Where a rule or a picked target sends traffic, as 活動's rule rows draw it: the flag of the node the group uses, or
@@ -110,7 +110,7 @@ internal fun RvTargetCard(targetId: String, onTarget: (String) -> Unit) {
 /** One destination: the group and the node it uses, or 直連; the whole row picks it. */
 @Composable
 private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Unit) {
-    val pick = Modifier.selectable(selected, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton, onClick = onSelect)
+    val pick = Modifier.selectable(selected, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton, onClick = onSelect)
     RvRow(
         { RvPolicyTarget(group) },
         group?.let { stringResource(it.name) } ?: stringResource(R.string.mode_direct),

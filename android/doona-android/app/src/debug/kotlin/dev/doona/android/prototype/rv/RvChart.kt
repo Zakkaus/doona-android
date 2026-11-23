@@ -57,8 +57,10 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Density
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvFormat
 import kotlinx.coroutines.launch
@@ -482,3 +484,24 @@ internal fun rvLatencyAxisTop(slowest: Int): Int = ceil(maxOf(slowest, 1) * LATE
 
 private const val LATENCY_HEADROOM = 1.05f
 private const val LATENCY_STEP = 100
+
+/**
+ * The picked point of a latency chart, as Revolut's EPS chart marks its picked year (§10.2): a column of [fill] behind
+ * the dot at [x], one [pitch] wide but no narrower than twice its [dot] and no wider than [RvChartSize.markerColumn],
+ * from the top to [RvChartSize.markerBelow] under [plotBottom]; and [label] in a chip of the same fill, the value pill's
+ * height and padding, [RvChartSize.markerGap] under the plot, kept inside the chart. Returns the chip's start and end.
+ */
+internal fun DrawScope.rvChartMarker(x: Float, pitch: Float, dot: Float, plotBottom: Float, label: TextLayoutResult, fill: Color): ClosedFloatingPointRange<Float> {
+    val column = pitch.coerceIn(2 * dot, RvChartSize.markerColumn.toPx())
+    drawRoundRect(fill, Offset(x - column / 2, 0f), Size(column, plotBottom + RvChartSize.markerBelow.toPx()), CornerRadius(column / 2))
+    val padH = RvChartSize.pillPadH.toPx()
+    val chip = Size(label.size.width + 2 * padH, rvMarkerChip(label.size.height.toFloat()))
+    val left = (x - chip.width / 2).coerceAtMost(size.width - chip.width).coerceAtLeast(0f)
+    val top = plotBottom + RvChartSize.markerGap.toPx()
+    drawRoundRect(fill, Offset(left, top), chip, CornerRadius(chip.height / 2))
+    drawText(label, topLeft = Offset(left + padH, top + (chip.height - label.size.height) / 2))
+    return left..(left + chip.width)
+}
+
+/** The marker chip's height round a label [text] px tall: the value pill's, or the label's at a large font scale. */
+internal fun Density.rvMarkerChip(text: Float): Float = maxOf(RvChartSize.pill.toPx(), text)

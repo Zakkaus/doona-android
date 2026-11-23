@@ -9,13 +9,6 @@ internal object RvStatsSpace {
     /** A card's inner padding, Revolut's 16 dp. */
     val pad = 16.dp
 
-    /**
-     * Between two paged tiles, and how much of the next tile shows at the screen's edge (measured §2, 03-analytics-a:
-     * 188 dp tiles 8 dp apart, the neighbour peeking 4 dp), so the row reads as one that scrolls.
-     */
-    val tileGap = 8.dp
-    val tilePeek = 4.dp
-
     /** From a card's figure block to its chart, and between a legend's lines. */
     val chartGap = 16.dp
     val legendGap = 10.dp
@@ -32,8 +25,7 @@ internal object RvStatsSize {
     /** The empty grid's rows. */
     const val GRID_ROWS = 6
 
-    /** A paged tile, Revolut's half tile, and its bar chart at the bottom (132 x 54 dp). */
-    val tile = 188.dp
+    /** A paged tile's bar chart at its bottom, Revolut's half tile's (132 x 54 dp). */
     val bars = 54.dp
     const val BAR_SHARE = 0.56f
     val barStub = 3.dp
@@ -46,25 +38,18 @@ internal object RvStatsSize {
     val dotIdle = 5.dp
     val dotPitch = 12.dp
 
-    /** The quota ring, Revolut's 'Total assets' (151 dp, 8 dp stroke), the card-coloured gap between its parts (S05), and its legend's rounded square. */
+    /** The quota ring, Revolut's 'Total assets' (151 dp, 8 dp stroke), and the card-coloured gap between its parts (S05). */
     val ring = 132.dp
     val ringStroke = 8.dp
     val ringGap = 2.dp
-    val legendSquare = 9.dp
 
     /**
      * The latency dot chart, after Revolut's EPS chart, in node detail's grammar: dots small enough to keep a gap at a
-     * 5.6 dp pitch (47 nodes), the current node's dot a step larger and its column, which stops 4 dp under the plot and
-     * 4 dp above its label chip (S04).
+     * 5.6 dp pitch (47 nodes), the current node's dot a step larger (S04); its marker is the library's.
      */
     val latency = 156.dp
     val latencyDot = 3.5.dp
     val latencyDotSelected = 5.5.dp
-    val column = 10.dp
-    val columnBelow = 4.dp
-    val labelChipPadH = 8.dp
-    val labelChipPadV = 3.dp
-    val labelChipGap = 8.dp
     val axisLabelGap = 8.dp
 
     /** Revolut's analyst bars: 8 dp rounded bars on a track, the figure after them. */

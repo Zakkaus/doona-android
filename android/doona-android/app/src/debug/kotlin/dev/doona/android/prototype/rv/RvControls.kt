@@ -91,6 +91,11 @@ internal object RvControlSize {
     val radioStroke = 2.dp
     val radioDot = 12.dp
 
+    /** A tag or status chip (§8: Revolut's tag chips are 36 dp tall, full round, with a 16 dp leading glyph). */
+    val tag = 36.dp
+    val tagPad = 12.dp
+    val tagGlyph = 16.dp
+
     /** A filter chip (§8 small action button): 40 dp tall, 16 dp before the label, 12 dp after the 16 dp chevron. */
     val chip = 40.dp
     val chipStart = 16.dp
@@ -397,13 +402,14 @@ private val RvScripted = VisualTransformation { TransformedText(scripted(it.text
 private const val MESSAGE_LINES = 2
 
 /**
- * A tag chip on a card's header (`v0.2`), Revolut's tag chips (measured §8): full round, the pill's fill and ink, flat.
+ * A tag chip on a card's header (`v0.2`), Revolut's tag chip (measured §8, [RvControlSize.tag]): full round, the pill's
+ * fill and ink, flat.
  * It is not the floating readout pill: tags cast no shadow (N-04).
  */
 @Composable
 internal fun RvTag(text: String, modifier: Modifier = Modifier) {
     Box(
-        modifier.height(RvChartSize.pill).clip(CircleShape).background(Rv.colors.pill).padding(horizontal = RvChartSize.pillPadH),
+        modifier.heightIn(min = RvControlSize.tag).clip(CircleShape).background(Rv.colors.pill).padding(horizontal = RvControlSize.tagPad),
         contentAlignment = Alignment.Center,
     ) { RvText(text, Rv.type.pill, color = Rv.colors.textSecondary) }
 }

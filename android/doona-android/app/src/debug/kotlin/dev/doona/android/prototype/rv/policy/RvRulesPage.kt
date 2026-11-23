@@ -11,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -33,7 +32,7 @@ import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvPress
+import dev.doona.android.prototype.rv.rvRowPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -124,7 +123,7 @@ private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRul
             val last = i == rules.lastIndex
             when {
                 editing -> RvRuleRow(rule)
-                last -> RvRuleRow(rule, Modifier.rvPress(RectangleShape, Role.Button, { routes.open(i) }))
+                last -> RvRuleRow(rule, Modifier.rvRowPress(Role.Button, { routes.open(i) }))
                 else -> RvLongPressMenu(ruleMenu(rule, { routes.open(i) }, { routes.toggle(i) }, { deleting = i }), { routes.open(i) }) { RvRuleRow(rule, it) }
             }
         }

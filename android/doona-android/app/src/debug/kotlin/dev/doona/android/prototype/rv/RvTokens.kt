@@ -264,6 +264,14 @@ internal object RvChartSize {
     val pillInset = 8.dp
     val pillClear = 6.dp
 
+    /**
+     * A latency chart's picked point ([rvChartMarker]): its column at its widest (node detail's, a picked year on
+     * Revolut's EPS chart), how far the column reaches under the plot, and from the plot to the chip.
+     */
+    val markerColumn = 24.dp
+    val markerBelow = 4.dp
+    val markerGap = 8.dp
+
     /** A range chip under the chart (only the selected one filled and raised), and the round buttons after the chips. */
     val range = 36.dp
     val rangePad = 12.dp

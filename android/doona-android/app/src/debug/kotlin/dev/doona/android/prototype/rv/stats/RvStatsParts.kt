@@ -79,12 +79,6 @@ private fun Triangle(up: Boolean, color: Color, side: Dp) {
     }
 }
 
-/** A legend entry's rounded square, Revolut's 9 dp. */
-@Composable
-internal fun RvStatsSwatch(color: Color) {
-    Box(Modifier.size(RvStatsSize.legendSquare).background(color))
-}
-
 /**
  * The pager's dots under the tiles: the current one larger and darker, the others in the control grey (3:1 on the page, S06).
  * Given [onPick], each dot is also a tab named by its [labels] entry, [RvSize.touch] high: a tap shows its page.

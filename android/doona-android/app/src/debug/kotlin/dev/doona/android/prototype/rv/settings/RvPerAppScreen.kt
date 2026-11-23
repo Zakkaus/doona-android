@@ -40,7 +40,7 @@ import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvPressIndication
+import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /** What the 依 App page does: pick a policy, check an app, search, save, and rebuild the tunnel after a failed one. */
@@ -130,7 +130,7 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions) {
  */
 @Composable
 private fun AppRow(app: RvApp, checked: Boolean, onToggle: (Boolean) -> Unit) {
-    val toggle = Modifier.toggleable(value = checked, interactionSource = null, indication = rvPressIndication(), role = Role.Switch, onValueChange = onToggle)
+    val toggle = Modifier.toggleable(value = checked, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onToggle)
     RvRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, toggle) { RvSwitch(checked) }
 }
 

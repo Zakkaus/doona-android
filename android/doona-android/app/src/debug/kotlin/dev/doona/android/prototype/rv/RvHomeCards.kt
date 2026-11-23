@@ -71,17 +71,22 @@ internal fun RvUsageLegend(day: RvDay, modifier: Modifier = Modifier) {
     val format = rememberRvFormat()
     val colors = Rv.colors
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(RvUsageSize.legendItemGap)) {
-        LegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${format.bytes(day.downTotal)}")
-        LegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${format.bytes(day.upTotal)}")
+        RvLegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${format.bytes(day.downTotal)}")
+        RvLegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${format.bytes(day.upTotal)}")
     }
 }
 
+/**
+ * A chart's legend entry, the one legend style: [color]'s square, then [text] at the chart caption's step in [ink], and,
+ * given [end], that text at the row's end, the entry filling its width.
+ */
 @Composable
-private fun LegendItem(color: Color, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+internal fun RvLegendItem(color: Color, text: String, modifier: Modifier = Modifier, ink: Color = Rv.colors.textSecondary, end: String? = null) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(RvUsageSize.legendSquare).background(color))
         Spacer(Modifier.width(RvUsageSize.legendGap))
-        RvText(text, Rv.type.tileCaption, color = Rv.colors.textSecondary)
+        RvText(text, Rv.type.tileCaption, if (end != null) Modifier.weight(1f) else Modifier, color = ink)
+        end?.let { RvText(it, Rv.type.tileCaption, color = Rv.colors.textSecondary, align = TextAlign.End) }
     }
 }
 

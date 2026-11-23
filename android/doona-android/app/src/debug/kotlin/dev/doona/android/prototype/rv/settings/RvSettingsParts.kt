@@ -21,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -40,8 +39,8 @@ import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvText
-import dev.doona.android.prototype.rv.rvPress
-import dev.doona.android.prototype.rv.rvPressIndication
+import dev.doona.android.prototype.rv.rvRowIndication
+import dev.doona.android.prototype.rv.rvRowPress
 import dev.doona.android.prototype.rv.scripted
 
 /** Text in a role; CJK runs in Noto, the rest in Inter. [maxLines] defaults to one, ending in an ellipsis. */
@@ -121,7 +120,7 @@ private fun FirstLine(content: @Composable () -> Unit) {
  */
 @Composable
 internal fun RvSettingsNavRow(title: String, @DrawableRes icon: Int?, onClick: () -> Unit, subtitle: String? = null) {
-    RvSettingsRow(title, Modifier.rvPress(RectangleShape, Role.Button, onClick), icon, subtitle = subtitle) { RvChevron() }
+    RvSettingsRow(title, Modifier.rvRowPress(Role.Button, onClick), icon, subtitle = subtitle) { RvChevron() }
 }
 
 /** A row that only shows a [value], as its second line. */
@@ -136,7 +135,7 @@ internal fun RvSettingsSwitchRow(title: String, @DrawableRes icon: Int, checked:
     val toggle = Modifier.toggleable(
         value = checked,
         interactionSource = null,
-        indication = rvPressIndication(),
+        indication = rvRowIndication(),
         role = Role.Switch,
         onValueChange = onChange,
     )
@@ -149,7 +148,7 @@ internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -
     val choose = Modifier.selectable(
         selected = selected,
         interactionSource = null,
-        indication = rvPressIndication(),
+        indication = rvRowIndication(),
         role = Role.RadioButton,
         onClick = onSelect,
     )

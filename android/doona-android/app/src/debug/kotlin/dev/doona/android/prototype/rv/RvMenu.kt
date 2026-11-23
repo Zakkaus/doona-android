@@ -33,7 +33,6 @@ import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -162,7 +161,7 @@ internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, 
                 Modifier
                     .fillMaxWidth()
                     .heightIn(min = RvMenuSize.row)
-                    .rvPress(RectangleShape, Role.Button, { onPick(item) })
+                    .rvRowPress(Role.Button, { onPick(item) })
                     .padding(horizontal = RvSpace.rowPadding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -190,7 +189,7 @@ internal fun RvLongPressMenu(items: List<RvMenuItem>, onClick: (() -> Unit)?, mo
                 Modifier
                     .pointerInput(Unit) { awaitEachGesture { touch = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position } }
                     // combinedClickable ticks on the long press.
-                    .rvPress(RectangleShape, Role.Button, onClick ?: {}, onLongClick = { open = true })
+                    .rvRowPress(Role.Button, onClick ?: {}, onLongClick = { open = true })
                     .rvMenuActions(items),
             )
         }

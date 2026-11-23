@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +47,7 @@ import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.nodes.latencyText
+import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -107,7 +107,7 @@ private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Un
     val pick = if (auto) {
         if (chosen) Modifier.semantics { stateDescription = picked } else Modifier
     } else {
-        Modifier.selectable(chosen, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton) { onSelect(node.id) }
+        Modifier.selectable(chosen, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton) { onSelect(node.id) }
     }
     RvRow(
         { RvFlag(node.place.name, RvSize.rowDisc, current = chosen) },

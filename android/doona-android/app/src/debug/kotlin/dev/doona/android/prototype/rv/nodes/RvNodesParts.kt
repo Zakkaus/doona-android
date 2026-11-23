@@ -26,6 +26,7 @@ import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAlpha
+import dev.doona.android.prototype.rv.RvControlSize
 import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvSpace
@@ -45,11 +46,6 @@ internal object RvNodesSize {
     /** The ▲▼ before a change (§7: a filled 8 dp triangle in the number's colour). */
     val delta = 8.dp
 
-    /** 'Market closed', the status chip: a tinted pill with a glyph. */
-    val status = 32.dp
-    val statusPad = 12.dp
-    val statusGlyph = 16.dp
-
     /**
      * The round companion beside the floating [dev.doona.android.prototype.rv.RvPrimaryButton] (§8, N06: a 56 dp disc
      * 8 dp from the 52 dp pill, on one centre line).
@@ -68,15 +64,15 @@ internal fun latencyColor(ms: Int?): Color = Rv.colors.quality(latencyTone(ms))
 @Composable
 internal fun latencyText(ms: Int?): String = ms?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE
 
-/** Revolut's 'Market closed' chip: a pill tinted in [color], its glyph and label in that colour. */
+/** Revolut's 'Market closed' chip, a tag chip tinted in [color]: its glyph and label in that colour. */
 @Composable
 internal fun RvStatusChip(@DrawableRes icon: Int, label: String, color: Color) {
     Row(
-        Modifier.heightIn(min = RvNodesSize.status).clip(CircleShape).background(color.copy(alpha = RvAlpha.STATUS_CHIP)).padding(horizontal = RvNodesSize.statusPad, vertical = RvSpace.tight),
+        Modifier.heightIn(min = RvControlSize.tag).clip(CircleShape).background(color.copy(alpha = RvAlpha.STATUS_CHIP)).padding(horizontal = RvControlSize.tagPad, vertical = RvSpace.tight),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(RvSpace.tight + RvSpace.tight / 2),
     ) {
-        RvGlyph(icon, RvNodesSize.statusGlyph, color)
+        RvGlyph(icon, RvControlSize.tagGlyph, color)
         RvText(label, Rv.type.action, color = color)
     }
 }

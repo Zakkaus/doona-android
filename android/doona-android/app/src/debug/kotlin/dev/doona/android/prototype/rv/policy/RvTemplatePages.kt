@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +35,7 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
+import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -75,7 +75,7 @@ private fun TemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean,
     val line = reason?.let { stringResource(it) } ?: stringResource(R.string.rv_template_in_use).takeIf { inUse }
     val pick = Modifier
         .graphicsLayer { alpha = if (reason == null) 1f else RvAlpha.DISABLED }
-        .selectable(selected, enabled = reason == null, interactionSource = null, indication = ripple(color = Rv.colors.stateLayer), role = Role.RadioButton, onClick = onSelect)
+        .selectable(selected, enabled = reason == null, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton, onClick = onSelect)
     RvRow({ RvIconDisc(template.glyph) }, stringResource(template.name), line, pick) { RvRadio(selected) }
 }
 

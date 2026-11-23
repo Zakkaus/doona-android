@@ -8,9 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -31,7 +29,9 @@ import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvChartSize
 import dev.doona.android.prototype.rv.RvPillInk
+import dev.doona.android.prototype.rv.rvChartMarker
 import dev.doona.android.prototype.rv.rvLatencyAxisTop
+import dev.doona.android.prototype.rv.rvMarkerChip
 import dev.doona.android.prototype.rv.rvPillSize
 import dev.doona.android.prototype.rv.rvValuePill
 import dev.doona.android.prototype.rv.scripted
@@ -43,10 +43,9 @@ import kotlin.math.roundToInt
  * timed out (drawn at the top: no answer is the slowest), the axis labels on the right, and every other test's time
  * under its dot. A dotted line marks [median], its value in a pill at the line's right end, where Revolut sets a
  * reference price; an axis label it would cover is left out. The strip for the labels is as wide as the widest of
- * them and the pill, [PLOT_GAP] clear of the plot (S7-15). The [selected] test is marked as the picked year on Revolut's
- * EPS chart: a tinted [COLUMN] behind its dot down the plot, and, apart from it, a [CHIP_HEIGHT] chip round its time,
- * [CHIP_PAD] wider than the time on each side (S7-14, N03). A time the chip would reach is left out. The dots are spread
- * so the widest time's chip fits inside the plot, and a tap picks the nearest test.
+ * them and the pill, [PLOT_GAP] clear of the plot (S7-15). The [selected] test is marked with the library's
+ * [rvChartMarker], as 統計's latency chart marks the current node (S7-14, N03). A time the chip would reach is left out.
+ * The dots are spread so the widest time's chip fits inside the plot, and a tap picks the nearest test.
  */
 @Composable
 internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -60,36 +59,36 @@ internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String
         picked = Rv.type.pill.copy(color = colors.positive, fontWeight = FontWeight.SemiBold),
         grid = colors.grid,
         reference = colors.reference,
-        chip = colors.positive.copy(alpha = if (colors.dark) CHIP_DARK else CHIP_LIGHT),
+        chip = colors.down.area,
         pill = RvPillInk(colors.pill, colors.raisedShadow),
         missed = colors.textSecondary,
         dots = history.map { colors.quality(latencyTone(it)) },
     )
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val pad = with(density) { CHIP_PAD.toPx() }
+    val pad = with(density) { RvChartSize.pillPadH.toPx() }
     val widest = times.maxOfOrNull { measurer.measure(it, look.picked).size.width } ?: 0
+    val chipHeight = with(density) { rvMarkerChip(times.firstOrNull()?.let { measurer.measure(it, look.picked).size.height.toFloat() } ?: 0f) }
     val pillWidth = medianText?.let { measurer.measure(scripted(it), look.label).size.width + with(density) { 2 * RvChartSize.pillPadH.toPx() } } ?: 0f
     val labelWidth = axis.maxOf { measurer.measure(scripted(it), look.label).size.width }.toFloat()
     val strip = maxOf(pillWidth, labelWidth) + with(density) { PLOT_GAP.toPx() }
     val pick by rememberUpdatedState(onSelect)
     Canvas(
-        modifier.fillMaxWidth().height(HEAD + PLOT + LABEL_GAP + CHIP_HEIGHT).pointerInput(history.size, widest, strip) {
+        modifier.fillMaxWidth().height(HEAD + PLOT + RvChartSize.markerGap + with(density) { chipHeight.toDp() }).pointerInput(history.size, widest, strip) {
             detectTapGestures { tap -> pick(Columns(size.width - strip, history.size, widest + 2 * pad).at(tap.x)) }
         },
     ) {
-        val plot = Plot(this, Columns(size.width - strip, history.size, widest + 2 * pad), strip)
+        val plot = Plot(this, Columns(size.width - strip, history.size, widest + 2 * pad), strip, chipHeight)
         val pill = medianText?.let { measurer.measure(scripted(it), look.label) }
         val medianY = median?.let { plot.y(it, top) }
         plot.grid(axis, measurer, look, avoid = if (pill != null && medianY != null) medianY to rvPillSize(pill).height else null)
         val picked = times.getOrNull(selected)?.let { measurer.measure(it, look.picked) }
-        val chip = picked?.let { plot.chip(selected, it, look.chip) }
+        val chip = picked?.let { plot.marker(selected, it, look.chip) }
         if (pill != null && medianY != null) plot.median(medianY, pill, look)
         history.forEachIndexed { i, ms -> plot.dot(i, ms?.let { plot.y(it, top) }, look.dots[i], look.missed) }
         times.forEachIndexed { i, time ->
             if (i != selected && i % 2 == times.lastIndex % 2) plot.time(i, measurer.measure(time, look.label), clearOf = chip)
         }
-        picked?.let { plot.time(selected, it, clearOf = null) }
     }
 }
 
@@ -101,6 +100,9 @@ private class Columns(private val right: Float, private val count: Int, chip: Fl
     val column = right / count
     private val edge = maxOf(column, chip) / 2
     private val step = if (count > 1) (right - 2 * edge) / (count - 1) else 0f
+
+    /** From one dot to the next: the slot the marker's column fills. */
+    val pitch = if (count > 1) step else column
 
     fun x(i: Int) = edge + step * i
 
@@ -121,12 +123,11 @@ private class DotsLook(
 )
 
 /** The chart's geometry in one [scope]: the [columns] across the plot, the axis labels in a [strip] at the right. */
-private class Plot(private val scope: DrawScope, private val columns: Columns, strip: Float) {
+private class Plot(private val scope: DrawScope, private val columns: Columns, strip: Float, private val chipHeight: Float) {
     private val head = with(scope) { HEAD.toPx() }
     private val bottom = head + with(scope) { PLOT.toPx() }
     private val right = scope.size.width - strip
-    private val chipTop = bottom + with(scope) { LABEL_GAP.toPx() }
-    private val chipHeight = with(scope) { CHIP_HEIGHT.toPx() }
+    private val chipTop = bottom + with(scope) { RvChartSize.markerGap.toPx() }
 
     fun x(i: Int) = columns.x(i)
 
@@ -146,13 +147,9 @@ private class Plot(private val scope: DrawScope, private val columns: Columns, s
         }
     }
 
-    /** The selected test's column behind its dot, and its chip round its [time]; returns the chip's start and end. */
-    fun chip(i: Int, time: TextLayoutResult, color: Color): ClosedFloatingPointRange<Float> = with(scope) {
-        val column = COLUMN.toPx()
-        drawRoundRect(color, Offset(x(i) - column / 2, 0f), Size(column, bottom + COLUMN_BELOW.toPx()), CornerRadius(column / 2))
-        val width = time.size.width + 2 * CHIP_PAD.toPx()
-        drawRoundRect(color, Offset(x(i) - width / 2, chipTop), Size(width, chipHeight), CornerRadius(chipHeight / 2))
-        (x(i) - width / 2)..(x(i) + width / 2)
+    /** The selected test's marker, its [time] in the chip; returns the chip's start and end. */
+    fun marker(i: Int, time: TextLayoutResult, color: Color): ClosedFloatingPointRange<Float> = with(scope) {
+        rvChartMarker(x(i), columns.pitch, DOT.toPx(), bottom, time, color)
     }
 
     /** The dotted median across the plot, its value in a pill at the strip's end. */
@@ -183,26 +180,14 @@ private class Plot(private val scope: DrawScope, private val columns: Columns, s
     }
 }
 
-private const val CHIP_LIGHT = 0.1f
-private const val CHIP_DARK = 0.16f
-
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f
 
-/** The plot, the gap from it to the times, room above for the top label, and the gap from the plot to the label strip. */
+/** The plot, room above for the top label, and the gap from the plot to the label strip. */
 private val PLOT = 140.dp
-private val LABEL_GAP = 8.dp
 private val HEAD = 10.dp
 private val PLOT_GAP = 8.dp
 
 /** The dots (§10.2: Revolut's EPS dots are 8 dp, N04) and a timed-out test's ring. */
 private val DOT = 8.dp
 private val RING = 1.5.dp
-
-/** The selected test's column behind its dot, reaching this far under the plot, apart from its time's chip. */
-private val COLUMN = 24.dp
-private val COLUMN_BELOW = 4.dp
-
-/** The selected time's chip: this much wider than its time on each side, this tall (S7-14). */
-private val CHIP_PAD = 8.dp
-private val CHIP_HEIGHT = 28.dp
