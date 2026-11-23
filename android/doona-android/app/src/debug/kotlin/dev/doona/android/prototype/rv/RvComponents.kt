@@ -214,9 +214,15 @@ internal fun RvControlCard(caption: String?, modifier: Modifier = Modifier, cont
     RvCard(modifier) {
         Column(Modifier.padding(RvSpace.rowPadding)) {
             control()
-            caption?.let { RvText(it, Rv.type.rowSub, Modifier.padding(top = RvSpace.controlToCaption), color = Rv.colors.textSecondary) }
+            caption?.let { RvControlLine(it) }
         }
     }
+}
+
+/** The line under a control in a card saying what the choice does: secondary text, [RvSpace.controlToCaption] under it. */
+@Composable
+internal fun RvControlLine(text: String, modifier: Modifier = Modifier) {
+    RvText(text, Rv.type.rowSub, modifier.padding(top = RvSpace.controlToCaption), color = Rv.colors.textSecondary)
 }
 
 /** Test tags of the library's layout parts, which `RvLayoutTest` measures on every page against these tokens. */

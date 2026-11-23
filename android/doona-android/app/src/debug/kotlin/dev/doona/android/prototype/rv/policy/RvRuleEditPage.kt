@@ -41,6 +41,7 @@ import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.rvInkStart
 import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
@@ -160,7 +161,8 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
                 error = problem,
             )
         } else {
-            RvText(draft.covers(), Rv.type.rowSub, color = Rv.colors.textSecondary)
+            val line = draft.covers()
+            RvText(line, Rv.type.rowSub, Modifier.rvInkStart(line, Rv.type.rowSub), color = Rv.colors.textSecondary)
         }
     }
 }

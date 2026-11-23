@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
@@ -11,16 +12,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.toSize
 
 /**
  * One line of text in a role; CJK runs in Noto, the rest in Inter. Cut short, it ends in an ellipsis right after the last
@@ -136,3 +146,28 @@ internal fun Modifier.rvFullLine(text: String, style: TextStyle): Modifier {
 
 /** The smallest a label shrinks to: half its size, at 2× the font size still the default size. */
 private const val FIT_MIN = 0.5f
+
+/**
+ * Moves [text] in [style] to the start by the blank its first glyph keeps before its ink (the side bearing), so the ink
+ * starts on the pixel where the text's box starts: on the edge of a control above it, not a pixel or two inside.
+ */
+@Composable
+internal fun Modifier.rvInkStart(text: String, style: TextStyle): Modifier {
+    val measurer = rememberTextMeasurer()
+    val glyph = if (text.isEmpty()) text else text.substring(0, Character.charCount(text.codePointAt(0)))
+    val px = remember(glyph, style, measurer) { if (glyph.isEmpty()) 0 else rvInkLeft(measurer.measure(scripted(glyph), style, maxLines = 1)) }
+    return offset { IntOffset(-px, 0) }
+}
+
+/** The first pixel column of [layout] with ink in it, the layout drawn alone into a bitmap. */
+private fun rvInkLeft(layout: TextLayoutResult): Int {
+    val size = layout.size
+    if (size.width == 0 || size.height == 0) return 0
+    val bitmap = ImageBitmap(size.width, size.height)
+    CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(bitmap), size.toSize()) { drawText(layout, Color.Black) }
+    val ink = bitmap.toPixelMap()
+    return (0 until ink.width).firstOrNull { x -> (0 until ink.height).any { y -> ink[x, y].alpha >= INK_COVER } } ?: 0
+}
+
+/** A pixel is ink from a quarter cover on: the faint edge of antialiasing does not read as where a glyph starts. */
+private const val INK_COVER = 0.25f

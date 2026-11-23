@@ -30,6 +30,7 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvControlCard
+import dev.doona.android.prototype.rv.RvControlLine
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
@@ -45,6 +46,7 @@ import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
+import dev.doona.android.prototype.rv.rvInkStart
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -93,13 +95,18 @@ private fun ConnectionCard(connection: RvConnection) {
     }
 }
 
-/** 完整網域 | 網域後綴 | 關鍵字 in a control card, as 策略's mode, and one line saying what the chosen way covers for this host. */
+/**
+ * 完整網域 | 網域後綴 | 關鍵字 in a control card, as 策略's mode, and one line saying what the chosen way covers for this
+ * host, its ink starting on the pixel of the track's edge.
+ */
 @Composable
 private fun MatchBy(host: String, matchBy: RvMatchBy, onMatchBy: (RvMatchBy) -> Unit) {
     val ways = RvMatchBy.entries
     RvGutter {
-        RvControlCard(stringResource(matchBy.line, matchBy.of(host))) {
+        RvControlCard(caption = null) {
             RvSegmented(ways.map { stringResource(it.label) }, ways.indexOf(matchBy), { onMatchBy(ways[it]) })
+            val line = stringResource(matchBy.line, matchBy.of(host))
+            RvControlLine(line, Modifier.rvInkStart(line, Rv.type.rowSub))
         }
     }
 }
