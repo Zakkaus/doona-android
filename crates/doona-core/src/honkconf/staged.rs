@@ -112,6 +112,31 @@ impl Tree {
         })
     }
 
+    pub(super) fn form_sources(
+        &self,
+    ) -> Result<
+        (
+            LoadedConfig,
+            Vec<honk_config::diagnostic::DetailedDiagnostic>,
+        ),
+        StoreError,
+    > {
+        if self.files.values().map(|s| s.len()).sum::<usize>() > LIMITS.max_bytes {
+            return Err(HonkConfigError::SourceLimit.into());
+        }
+        let parsed = self.parse()?;
+        if parsed.loaded.sources.iter().any(|s| {
+            parsed
+                .prepared
+                .get(s.path.as_path())
+                .is_some_and(|p| !p.escapes.is_empty())
+        }) {
+            return Err(StoreError::Incomplete);
+        }
+        self.read_companions(&parsed.loaded.config, None)?;
+        Ok((parsed.loaded, parsed.diagnostics))
+    }
+
     /// Without a parse, import keeps only `.dae` files. After repair, re-import to pick up hosts files.
     pub(super) fn capture_companions(
         &mut self,

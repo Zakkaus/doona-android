@@ -24,7 +24,7 @@ fn identical_rows_get_distinct_ids_by_occurrence() {
         panic!("three rows")
     };
     assert!(first != again && first != other && other != again);
-    assert!(first.starts_with("r-") && first.len() == 18, "{first}");
+    assert_eq!(again, "r-cf22ccecd67259fd");
     // A row's id follows its content, not its position: inserting a row before keeps it.
     let shifted = listed(&[b, a.clone(), a]);
     assert_eq!(ids(&shifted), [other, first, again]);

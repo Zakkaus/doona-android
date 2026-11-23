@@ -8,6 +8,7 @@
 
 mod declarations;
 mod draft;
+pub mod edit;
 mod rules;
 mod staged;
 mod store;
