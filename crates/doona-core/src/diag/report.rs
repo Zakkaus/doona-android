@@ -83,6 +83,15 @@ pub struct Diagnostics {
     pub crashes: Vec<CrashFile>,
 }
 
+/// `release` or `debug`.
+pub(crate) fn profile() -> &'static str {
+    if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    }
+}
+
 /// The library and how it was built.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CoreBuild {
@@ -104,12 +113,7 @@ impl CoreBuild {
         CoreBuild {
             version: env!("CARGO_PKG_VERSION").to_owned(),
             schema: crate::dto::SCHEMA,
-            profile: if cfg!(debug_assertions) {
-                "debug"
-            } else {
-                "release"
-            }
-            .to_owned(),
+            profile: profile().to_owned(),
             target: format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS),
             features,
         }
@@ -145,6 +149,12 @@ pub struct LastSnapshot {
 pub struct StatsSummary {
     pub traffic: Traffic,
     pub today: Today,
+}
+
+/// `clearCrashes`' arguments: the crash files the app exported.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClearCrashesArgs {
+    pub names: Vec<String>,
 }
 
 /// A file in `dataDir/crash/`.

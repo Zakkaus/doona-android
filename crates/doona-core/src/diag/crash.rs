@@ -1,41 +1,72 @@
 //! Crash files (core-api.md, `diagnostics`). The panic hook (`panics.rs`) writes one per panic to
-//! `dataDir/crash/<epochMs>.txt`: the message, the location and the backtrace, at most 64 KiB. The
-//! directory keeps the newest five; a process writes one file per panic location, so a panic that
-//! repeats in every flow costs one write. A panic on a thread of a core's runtime goes to that
-//! core's directory, one on any other thread (a JNI caller, a carrier) to the app's core, which
-//! `jni.rs` names; with neither, as on a unit test's own thread, nothing is written.
+//! `dataDir/crash/<epochMs>.txt`: where the panic happened, a message, and the stack as offsets in
+//! the loaded objects, at most 64 KiB. The directory keeps the newest five; a process writes one
+//! file per panic location, so a panic that repeats in every flow costs one write. A panic on a
+//! thread of a core's runtime goes to that core's directory, one on any other thread (a JNI
+//! caller, a carrier) to the app's core, which `jni.rs` names; with neither, as on a unit test's
+//! own thread, nothing is written.
 //!
-//! ARCH D21: the message may come from a dependency's format string, whose arguments the core
-//! cannot audit. A literal message is kept; a formatted one passes [`redact`]. The core's own
-//! panics format no user data (`panic!`, `expect`, `unreachable!` and `assert!` outside tests
-//! take literals only).
+//! ARCH D21: a panic's payload and its thread's name come from wherever it happened, a
+//! dependency's format string included, whose arguments the core cannot audit. A file holds
+//! neither. Its message is one of the core's own literal messages ([`OWN`], [`FAULT`]), or else
+//! `panic in <crate>::<module>` from the panic's source file; its location is a file and line of
+//! this crate, or a dependency's name and version; its thread is a runtime's of the core, or
+//! `other`.
+//!
+//! The hook minds its own safety. It writes into a buffer allocated with the core and copies
+//! nothing of the payload; it never logs, since a panic inside a logger that holds its lock would
+//! wait on that lock forever; and it only walks the stack, leaving the symbols to be found off the
+//! device, in the unstripped library.
 
-use super::report::{CoreBuild, CrashFile};
+use super::report::{self, CrashFile};
 use super::{Diag, Event, now_ms};
 use crate::api::lock;
 use crate::dto::ErrorCode;
-use std::cell::OnceCell;
+use std::cell::{Cell, OnceCell};
 use std::collections::HashSet;
-use std::fmt::Write as _;
+use std::ffi::{CStr, c_int, c_void};
+use std::fmt::{self, Write as _};
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::io::{self, ErrorKind, Write as _};
-use std::panic::PanicHookInfo;
+use std::io::{self, ErrorKind, Read as _, Write as _};
+use std::panic::{Location, PanicHookInfo};
 use std::path::PathBuf;
-use std::sync::{Mutex, OnceLock, Weak};
+use std::sync::{Mutex, MutexGuard, OnceLock, Weak};
 
 /// The directory under `dataDir`.
 pub(crate) const DIR: &str = "crash";
 pub(crate) const MAX_FILES: usize = 5;
 pub(crate) const MAX_BYTES: usize = 64 * 1024;
-/// How much of a message a file keeps.
-const MAX_MESSAGE: usize = 4 * 1024;
 /// The panic locations a process writes files for; past these it writes none.
 const MAX_LOCATIONS: usize = 64;
+/// The frames a file lists, innermost first.
+const MAX_FRAMES: usize = 64;
+/// The file being written; it takes its name once complete. Not a crash file's name, so neither
+/// `diagnostics` nor `clearCrashes` sees it, and the next write starts it over.
+const PART: &str = ".core.tmp";
+
+/// The messages of the core's own panic sites outside the tests, which name no data and are kept
+/// as they are: the `unreachable!()` of `structured/clash.rs` and `json/sing_box.rs`, that of
+/// `json/sing_box/tls.rs`, and [`FAULT`].
+const OWN: [&str; 2] = [
+    "internal error: entered unreachable code",
+    "internal error: entered unreachable code: stream_transport returned an unknown transport",
+];
+/// The fault hook's message (`tunnel/mod.rs`), only in the builds that have the hook: a release
+/// library holds no `debugFault`, which the app's release check looks for.
+#[cfg(any(test, feature = "fault-hook"))]
+const FAULT: Option<&str> = Some("debugFault");
+#[cfg(not(any(test, feature = "fault-hook")))]
+const FAULT: Option<&str> = None;
+/// The names the core gives its runtimes' threads (`api.rs`, `outbounds.rs`).
+const THREADS: [&str; 2] = ["doona-core", "doona-carrier"];
 
 thread_local! {
     /// The core whose runtime runs this thread.
     static HERE: OnceCell<Weak<Diag>> = const { OnceCell::new() };
+    /// Whether this thread holds a core's crash files: a panic it raises meanwhile writes no file,
+    /// as taking them again would wait forever.
+    static HOLDING: Cell<bool> = const { Cell::new(false) };
 }
 /// The app's core, for panics on threads no runtime of a core runs.
 static OTHERWISE: OnceLock<Weak<Diag>> = OnceLock::new();
@@ -52,8 +83,29 @@ pub(crate) fn report_otherwise(diag: &Weak<Diag>) {
     let _ = OTHERWISE.set(Weak::clone(diag));
 }
 
-/// For the panic hook: writes the crash file and records the panic in the ring.
+/// For the panic hook: writes the crash file and records the panic in the ring, without logging.
 pub(crate) fn on_panic(info: &PanicHookInfo<'_>) {
+    #[cfg(test)]
+    {
+        let ((), n) = crate::testutil::alloc::allocated(|| on_panic_here(info));
+        HOOK_ALLOCATED.with(|a| a.set(n));
+    }
+    #[cfg(not(test))]
+    on_panic_here(info);
+}
+
+#[cfg(test)]
+thread_local! {
+    static HOOK_ALLOCATED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// What the hook allocated for the calling thread's last panic.
+#[cfg(test)]
+pub(super) fn hook_allocated() -> usize {
+    HOOK_ALLOCATED.with(std::cell::Cell::get)
+}
+
+fn on_panic_here(info: &PanicHookInfo<'_>) {
     // A thread being torn down may have lost its slot; then the app's core takes the panic.
     let here = HERE.try_with(|h| h.get().cloned()).ok().flatten();
     let Some(diag) = here
@@ -73,77 +125,142 @@ pub(crate) fn on_panic(info: &PanicHookInfo<'_>) {
 
 pub(crate) enum Written {
     File,
-    /// This process wrote a file for the location already.
+    /// This process wrote a file for the location already, or for as many locations as it may.
     Repeated,
     Failed(ErrorKind),
 }
 
 /// A core's crash files.
 pub(crate) struct Crashes {
-    pub(super) dir: PathBuf,
-    /// Whether a file carries a backtrace. The unit tests leave it out: resolving one in a test
-    /// binary with its debug info takes long on a thread whose timing a test may measure.
-    pub(super) backtraces: bool,
+    dir: PathBuf,
+    /// Held while a file is written, published and the oldest removed, and while the files are
+    /// listed or removed: two panics at once leave five files, and a listing never sees six.
+    files: Mutex<Files>,
+    /// A full disk for the tests: a write past this many bytes fails; 0 for none.
+    #[cfg(test)]
+    pub(super) full_after: std::sync::atomic::AtomicUsize,
+}
+
+struct Files {
     /// Hashes of the locations this process wrote a file for.
-    written: Mutex<HashSet<u64>>,
+    written: HashSet<u64>,
+    /// The text of the file being written, allocated with the core.
+    text: String,
 }
 
 impl Crashes {
     pub fn new(dir: PathBuf) -> Crashes {
         Crashes {
             dir,
-            backtraces: !cfg!(test),
-            written: Mutex::new(HashSet::new()),
+            files: Mutex::new(Files {
+                written: HashSet::with_capacity(MAX_LOCATIONS),
+                text: String::with_capacity(MAX_BYTES),
+            }),
+            #[cfg(test)]
+            full_after: std::sync::atomic::AtomicUsize::new(0),
         }
     }
 
+    /// Writes the panic's file, unless this process wrote one for its location. A location
+    /// counts as written once its file is published: a write that failed is tried again.
     pub(crate) fn write(&self, info: &PanicHookInfo<'_>) -> Written {
         let key = info.location().map_or(0, |at| {
             let mut h = DefaultHasher::new();
             (at.file(), at.line(), at.column()).hash(&mut h);
             h.finish()
         });
-        {
-            let mut written = lock(&self.written);
-            if written.len() >= MAX_LOCATIONS || !written.insert(key) {
-                return Written::Repeated;
-            }
+        let Some(mut files) = self.hold() else {
+            return Written::Repeated;
+        };
+        let Files { written, text } = &mut *files.0;
+        if written.len() >= MAX_LOCATIONS || written.contains(&key) {
+            return Written::Repeated;
         }
-        match self.save(&report(info, self.backtraces)) {
-            Ok(_) => Written::File,
+        text.clear();
+        let _ = describe(&mut Bounded(text), info);
+        match self.publish(text) {
+            Ok(_) => {
+                written.insert(key);
+                Written::File
+            }
             Err(e) => Written::Failed(e.kind()),
         }
     }
 
-    /// Writes `text` as the newest file, after removing the oldest beyond the other four. Its
-    /// name's number is the time, or one past the newest file's when that is later, as for a
-    /// second panic in one millisecond: a name freed by the removal is never taken again.
+    /// Publishes `text` as the newest file, as the hook does.
+    #[cfg(test)]
     pub(super) fn save(&self, text: &str) -> io::Result<String> {
-        fs::create_dir_all(&self.dir)?;
-        let old = self.files();
-        let newest = old.last().map_or(0, |(at, ..)| at.saturating_add(1));
-        for (_, name, _) in old.iter().take((old.len() + 1).saturating_sub(MAX_FILES)) {
-            let _ = fs::remove_file(self.dir.join(name));
-        }
-        let mut at = u64::try_from(now_ms()).unwrap_or(0).max(newest);
-        for _ in 0..64 {
-            let name = format!("{at}.txt");
-            let path = self.dir.join(&name);
-            match fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(path)
-            {
-                Ok(mut file) => return file.write_all(text.as_bytes()).map(|()| name),
-                Err(e) if e.kind() == ErrorKind::AlreadyExists => at += 1,
-                Err(e) => return Err(e),
-            }
-        }
-        Err(ErrorKind::AlreadyExists.into())
+        let _files = self.hold();
+        self.publish(text)
     }
 
-    /// The `.txt` files with the number their names start with and their sizes, oldest first: by
-    /// that number (Kotlin names its crash files the same way), then by name.
+    /// Runs `f` holding the files, as a write does.
+    #[cfg(test)]
+    pub(super) fn holding(&self, f: impl FnOnce()) {
+        let _files = self.hold();
+        f();
+    }
+
+    /// The files, unless this thread holds them already, as when it panicked holding them.
+    fn hold(&self) -> Option<Held<'_>> {
+        if HOLDING.try_with(Cell::get).unwrap_or(false) {
+            return None;
+        }
+        let files = lock(&self.files);
+        let _ = HOLDING.try_with(|h| h.set(true));
+        Some(Held(files))
+    }
+
+    /// Writes `text` whole to [`PART`], then renames it to its name, then removes the oldest
+    /// files beyond the other four; on a failure, removes the part and leaves the rest. The name's
+    /// number is the time, or one past the newest file's when that is later, as for a second
+    /// panic in one millisecond: a name freed by a removal is never taken again. The caller holds
+    /// `files`.
+    fn publish(&self, text: &str) -> io::Result<String> {
+        fs::create_dir_all(&self.dir)?;
+        let part = self.dir.join(PART);
+        let old = match self.put(&part, text.as_bytes()) {
+            Ok(()) => self.files(),
+            Err(e) => {
+                let _ = fs::remove_file(&part);
+                return Err(e);
+            }
+        };
+        let newest = old.last().map_or(0, |(at, ..)| at.saturating_add(1));
+        let mut at = u64::try_from(now_ms()).unwrap_or(0).max(newest);
+        let mut name = format!("{at}.txt");
+        // A name the app took meanwhile is passed over: a rename would replace its file.
+        while fs::symlink_metadata(self.dir.join(&name)).is_ok() {
+            at += 1;
+            name = format!("{at}.txt");
+        }
+        if let Err(e) = fs::rename(&part, self.dir.join(&name)) {
+            let _ = fs::remove_file(&part);
+            return Err(e);
+        }
+        for (_, gone, _) in old.iter().take((old.len() + 1).saturating_sub(MAX_FILES)) {
+            let _ = fs::remove_file(self.dir.join(gone));
+        }
+        Ok(name)
+    }
+
+    /// Writes `bytes` to the file at `path`, created or emptied, and waits until they are on disk.
+    fn put(&self, path: &std::path::Path, bytes: &[u8]) -> io::Result<()> {
+        let mut file = fs::File::create(path)?;
+        #[cfg(test)]
+        match self.full_after.load(std::sync::atomic::Ordering::Relaxed) {
+            n if n > 0 && bytes.len() > n => {
+                file.write_all(&bytes[..n])?;
+                return Err(ErrorKind::StorageFull.into());
+            }
+            _ => {}
+        }
+        file.write_all(bytes)?;
+        file.sync_data()
+    }
+
+    /// The crash files with their names' numbers and their sizes, oldest first: by that number,
+    /// then by name. Anything else in the directory is left out.
     fn files(&self) -> Vec<(u64, String, u64)> {
         let Ok(dir) = fs::read_dir(&self.dir) else {
             return Vec::new();
@@ -151,13 +268,10 @@ impl Crashes {
         let mut files: Vec<(u64, String, u64)> = dir
             .flatten()
             .filter_map(|e| {
-                let meta = e.metadata().ok().filter(fs::Metadata::is_file)?;
                 let name = e.file_name().into_string().ok()?;
-                let digits = name
-                    .find(|c: char| !c.is_ascii_digit())
-                    .unwrap_or(name.len());
-                let at = name[..digits].parse().unwrap_or(0);
-                name.ends_with(".txt").then_some((at, name, meta.len()))
+                let at = number(&name)?;
+                let meta = e.metadata().ok().filter(fs::Metadata::is_file)?;
+                Some((at, name, meta.len()))
             })
             .collect();
         files.sort();
@@ -165,166 +279,281 @@ impl Crashes {
     }
 
     pub fn list(&self) -> Vec<CrashFile> {
+        let _files = self.hold();
         let files = self.files().into_iter();
         files
             .map(|(_, name, bytes)| CrashFile { name, bytes })
             .collect()
     }
 
-    /// Removes every file in the directory; answers how many.
-    pub fn clear(&self) -> io::Result<usize> {
-        let dir = match fs::read_dir(&self.dir) {
-            Ok(dir) => dir,
-            Err(e) if e.kind() == ErrorKind::NotFound => return Ok(0),
-            Err(e) => return Err(e),
-        };
+    /// Removes the files named, each a crash file's name ([`number`]); a name already gone is
+    /// passed over. Answers how many it removed.
+    pub fn remove(&self, names: &[String]) -> io::Result<usize> {
+        let _files = self.hold();
         let mut removed = 0;
-        for entry in dir.flatten() {
-            if entry.file_type().is_ok_and(|t| t.is_file()) {
-                fs::remove_file(entry.path())?;
-                removed += 1;
+        for name in names.iter().filter(|n| number(n).is_some()) {
+            match fs::remove_file(self.dir.join(name)) {
+                Ok(()) => removed += 1,
+                Err(e) if e.kind() == ErrorKind::NotFound => {}
+                Err(e) => return Err(e),
             }
         }
         Ok(removed)
     }
 }
 
-/// A crash file's text: `key: value` lines, a blank line, then the backtrace (core-api.md).
-fn report(info: &PanicHookInfo<'_>, backtraces: bool) -> String {
-    let build = CoreBuild::current();
-    let mut text = String::new();
-    let _ = writeln!(text, "source: core");
-    let _ = writeln!(text, "atEpochMs: {}", now_ms());
-    let _ = writeln!(
-        text,
-        "version: {} {} {}",
-        build.version, build.profile, build.target
-    );
-    let thread = fs::read_to_string("/proc/thread-self/comm").unwrap_or_default();
-    let _ = writeln!(text, "thread: {}", redact(thread.trim_end()));
-    if let Some(at) = info.location() {
-        let file = source_path(at.file());
-        let _ = writeln!(text, "location: {file}:{}:{}", at.line(), at.column());
+/// A core's crash files, held by this thread.
+struct Held<'a>(MutexGuard<'a, Files>);
+
+impl Drop for Held<'_> {
+    fn drop(&mut self) {
+        let _ = HOLDING.try_with(|h| h.set(false));
     }
-    let _ = writeln!(text, "message: {}", message(info));
-    if let Some(base) = base() {
-        let _ = writeln!(text, "base: {base:#x}");
-    }
-    let _ = writeln!(text, "\nbacktrace:");
-    if backtraces {
-        // `#` prints each frame's address, which `base` turns into an offset in the library.
-        let _ = writeln!(text, "{:#}", std::backtrace::Backtrace::force_capture());
-    } else {
-        let _ = writeln!(text, "not captured");
-    }
-    cap(&mut text, MAX_BYTES);
-    text
 }
 
-/// A literal message as it is, a formatted one through [`redact`].
-fn message(info: &PanicHookInfo<'_>) -> String {
-    let payload = info.payload();
-    let mut message = if let Some(literal) = payload.downcast_ref::<&'static str>() {
-        (*literal).to_owned()
-    } else if let Some(formatted) = payload.downcast_ref::<String>() {
-        redact(formatted)
-    } else {
-        "not text".to_owned()
-    };
-    cap(&mut message, MAX_MESSAGE);
-    message.replace('\n', " ")
+/// The number a crash file's name holds: `<epochMs>.txt` is the one name the core and the app
+/// give their crash files.
+pub(crate) fn number(name: &str) -> Option<u64> {
+    let digits = name.strip_suffix(".txt")?;
+    let digits =
+        (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())).then_some(digits);
+    digits?.parse().ok()
 }
 
-/// Cuts `text` to at most `max` bytes, at a character boundary.
-pub(super) fn cap(text: &mut String, max: usize) {
-    if text.len() > max {
-        let end = (0..=max)
+/// Text that fits in the string's room up to [`MAX_BYTES`]; the rest is dropped.
+pub(super) struct Bounded<'a>(pub &'a mut String);
+
+impl fmt::Write for Bounded<'_> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        let room = MAX_BYTES.saturating_sub(self.0.len());
+        if s.len() <= room {
+            self.0.push_str(s);
+            return Ok(());
+        }
+        let end = (0..=room)
             .rev()
-            .find(|&i| text.is_char_boundary(i))
+            .find(|&i| s.is_char_boundary(i))
             .unwrap_or(0);
-        text.truncate(end);
+        self.0.push_str(&s[..end]);
+        Err(fmt::Error)
     }
 }
 
-/// `message` with every part that may name a place, a credential or a node replaced by `…`:
-/// double-quoted text, back-quoted text other than a Rust path (`Option::unwrap()`), and each word
-/// holding `.`, `:`, `/`, `@`, `\`, `%`, `=`, `?`, `#` or a character outside ASCII, once the
-/// punctuation around it is set apart. URLs, addresses with or without a port, host names, e-mail
-/// addresses and names in other scripts go; an ASCII word without those characters stays.
-pub(crate) fn redact(message: &str) -> String {
-    let mut out = String::with_capacity(message.len());
-    let mut rest = message;
-    while let Some(i) = rest.find(['"', '`']) {
-        words(&rest[..i], &mut out);
-        let quote = &rest[i..=i];
-        let after = &rest[i + 1..];
-        out.push_str(quote);
-        match after.find(quote) {
-            Some(j) => {
-                let inner = &after[..j];
-                out.push_str(if quote == "`" && is_path(inner) {
-                    inner
-                } else {
-                    "…"
-                });
-                out.push_str(quote);
-                rest = &after[j + 1..];
-            }
-            None => {
-                out.push('…');
-                rest = "";
-            }
-        }
+/// A crash file's text: `key: value` lines, a blank line, then the frames (core-api.md).
+fn describe(w: &mut impl fmt::Write, info: &PanicHookInfo<'_>) -> fmt::Result {
+    writeln!(w, "source: core")?;
+    writeln!(w, "atEpochMs: {}", now_ms())?;
+    let (arch, os) = (std::env::consts::ARCH, std::env::consts::OS);
+    let version = env!("CARGO_PKG_VERSION");
+    writeln!(w, "version: {version} {} {arch}-{os}", report::profile())?;
+    writeln!(w, "thread: {}", thread())?;
+    let place = info
+        .location()
+        .map_or(Place::Unknown, |at| place(at.file()));
+    w.write_str("location: ")?;
+    location(w, &place, info.location())?;
+    w.write_str("\nmessage: ")?;
+    match info
+        .payload_as_str()
+        .filter(|m| OWN.contains(m) || FAULT == Some(*m))
+    {
+        Some(own) => w.write_str(own)?,
+        None => write!(w, "panic in {}", Module(&place))?,
     }
-    words(rest, &mut out);
-    out
+    writeln!(w, "\n\nbacktrace:")?;
+    frames(w)
 }
 
-fn words(text: &str, out: &mut String) {
-    let edge = |c: char| matches!(c, ',' | ';' | ':' | '.' | '!' | '?' | '(' | ')' | '[' | ']');
-    for piece in text.split_inclusive(char::is_whitespace) {
-        let word = piece.trim_end();
-        let inner = word.trim_start_matches(edge);
-        let lead = &word[..word.len() - inner.len()];
-        let core = inner.trim_end_matches(edge);
-        let trail = &inner[core.len()..];
-        let place = |c: char| !c.is_ascii() || ".:/@\\%=?#".contains(c);
-        if core.contains(place) {
-            out.push_str(lead);
-            out.push('…');
-            out.push_str(trail);
+/// `src/<file>.rs:<line>:<column>` in this crate, a dependency's name and version, or `unknown`.
+fn location(w: &mut impl fmt::Write, place: &Place<'_>, at: Option<&Location<'_>>) -> fmt::Result {
+    match (place, at) {
+        (Place::Ours { file, .. }, Some(at)) => write!(w, "{file}:{}:{}", at.line(), at.column()),
+        (Place::Theirs { dir, .. }, _) => match version_of(dir) {
+            (name, Some(version)) => write!(w, "{name} {version}"),
+            (name, None) => w.write_str(name),
+        },
+        _ => w.write_str("unknown"),
+    }
+}
+
+/// The calling thread's name when the core named it, else `other`: another thread's name may be
+/// anything.
+fn thread() -> &'static str {
+    let mut name = [0_u8; 16];
+    let read = fs::File::open("/proc/thread-self/comm").and_then(|mut f| f.read(&mut name));
+    let name = name.get(..read.unwrap_or(0)).unwrap_or_default();
+    let name = name.strip_suffix(b"\n").unwrap_or(name);
+    THREADS
+        .into_iter()
+        .find(|t| t.as_bytes() == name)
+        .unwrap_or("other")
+}
+
+/// Where a panic happened, by its source file.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum Place<'a> {
+    /// This crate: its file from the crate's directory on (`src/api/rules.rs`) and the module
+    /// (`api/rules`, empty for the crate's root).
+    Ours {
+        file: &'a str,
+        module: &'a str,
+    },
+    /// A dependency or the standard library: its source directory (`tokio-1.47.1`,
+    /// `honk-outbound`, `core`) and the module.
+    Theirs {
+        dir: &'a str,
+        module: &'a str,
+    },
+    Unknown,
+}
+
+/// `src/…` for this crate built in its own directory, else the directory before the last
+/// `/src/`: the crate's, whether under cargo's registry or git checkouts, rustc's `library`, or a
+/// workspace. Anything else, as a file generated in a build directory, is unknown.
+pub(super) fn place(file: &str) -> Place<'_> {
+    let (dir, file, rest) = match file.strip_prefix("src/") {
+        Some(rest) => (env!("CARGO_PKG_NAME"), file, rest),
+        None => match file.rfind("/src/") {
+            Some(i) => {
+                let start = file[..i].rfind('/').map_or(0, |j| j + 1);
+                (&file[start..i], &file[i + 1..], &file[i + 5..])
+            }
+            None => return Place::Unknown,
+        },
+    };
+    let module = rest.strip_suffix(".rs").map(|m| {
+        let m = m.strip_suffix("/mod").unwrap_or(m);
+        if matches!(m, "lib" | "main" | "mod") {
+            ""
         } else {
-            out.push_str(word);
+            m
         }
-        out.push_str(&piece[word.len()..]);
+    });
+    let plain = |text: &str, more: &str| {
+        text.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || more.contains(c))
+    };
+    match module {
+        Some(module) if !dir.is_empty() && plain(dir, "-.+") && plain(module, "/") => {
+            if dir == env!("CARGO_PKG_NAME") {
+                Place::Ours { file, module }
+            } else {
+                Place::Theirs { dir, module }
+            }
+        }
+        _ => Place::Unknown,
     }
 }
 
-/// A Rust path as std quotes it: `None`, `Option::unwrap()`, `Vec<u8>`.
-fn is_path(text: &str) -> bool {
-    let first = text.chars().next();
-    first.is_some_and(|c| c.is_ascii_alphabetic() || c == '_' || c == '&')
-        && text.len() <= 64
-        && text
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || "_:<>()&,!".contains(c))
+/// A source directory's crate name and version: `tokio-1.47.1` is `tokio` and `1.47.1`,
+/// `sha-1-0.10.6` is `sha-1` and `0.10.6`; a git checkout's or the standard library's has no
+/// version.
+pub(super) fn version_of(dir: &str) -> (&str, Option<&str>) {
+    let numeric = |p: &str| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit());
+    for (i, _) in dir.match_indices('-') {
+        let version = &dir[i + 1..];
+        let mut parts = version.splitn(3, '.');
+        let (major, minor) = (parts.next().unwrap_or(""), parts.next().unwrap_or(""));
+        let patch = parts.next().unwrap_or("");
+        if numeric(major) && numeric(minor) && patch.starts_with(|c: char| c.is_ascii_digit()) {
+            return (&dir[..i], Some(version));
+        }
+    }
+    (dir, None)
 }
 
-/// A source path from its crate's directory on: `tokio-1.47.1/src/runtime/park.rs` for a
-/// dependency, `src/api.rs` for this crate. The build machine's home stays out.
-pub(super) fn source_path(file: &str) -> &str {
-    match file.rfind("/src/") {
-        Some(i) => &file[file[..i].rfind('/').map_or(0, |j| j + 1)..],
-        None => file,
+/// A place's module as Rust names it: `doonacore::api::rules`, `tokio::runtime::park`.
+pub(super) struct Module<'a, 'p>(pub &'a Place<'p>);
+
+impl fmt::Display for Module<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (krate, module) = match self.0 {
+            Place::Ours { module, .. } => (env!("CARGO_CRATE_NAME"), *module),
+            Place::Theirs { dir, module } => (version_of(dir).0, *module),
+            Place::Unknown => return f.write_str("unknown"),
+        };
+        for c in krate.chars() {
+            f.write_char(if c == '-' { '_' } else { c })?;
+        }
+        for part in module.split('/').filter(|p| !p.is_empty()) {
+            write!(f, "::{part}")?;
+        }
+        Ok(())
     }
 }
 
-/// Where the object holding this code is loaded, so a backtrace's addresses become offsets in it.
-fn base() -> Option<usize> {
-    static ANCHOR: u8 = 0;
+/// The calling thread's frames, innermost first, one a line: `3 libdoonacore.so 0x1a2b3c`, the
+/// object's file name and the return address's offset in it (`?` and the address when no object
+/// holds it). addr2line or llvm-symbolizer turn an offset into a function against the unstripped
+/// library of the same build.
+fn frames(w: &mut impl fmt::Write) -> fmt::Result {
+    let mut stack = [0_usize; MAX_FRAMES];
+    let n = walk(&mut stack);
+    for (i, &address) in stack[..n].iter().enumerate() {
+        frame(w, i, address)?;
+    }
+    Ok(())
+}
+
+#[repr(C)]
+struct UnwindContext {
+    _opaque: [u8; 0],
+}
+
+type Step = extern "C" fn(*mut UnwindContext, *mut c_void) -> c_int;
+
+// The unwinder the standard library links: libgcc_s on Linux, LLVM's libunwind on Android.
+unsafe extern "C" {
+    fn _Unwind_Backtrace(step: Step, arg: *mut c_void) -> c_int;
+    fn _Unwind_GetIP(context: *mut UnwindContext) -> usize;
+}
+
+/// Fills `stack` with the calling thread's return addresses, innermost first; answers how many.
+/// Walks the unwind tables only: no symbol is looked up and nothing is allocated.
+fn walk(stack: &mut [usize; MAX_FRAMES]) -> usize {
+    struct Walk<'a> {
+        stack: &'a mut [usize; MAX_FRAMES],
+        n: usize,
+    }
+    extern "C" fn step(context: *mut UnwindContext, arg: *mut c_void) -> c_int {
+        const NO_REASON: c_int = 0;
+        const END_OF_STACK: c_int = 5;
+        // SAFETY: `arg` is the `Walk` that `walk` lends `_Unwind_Backtrace` for this call.
+        let walk = unsafe { &mut *arg.cast::<Walk<'_>>() };
+        // SAFETY: `context` is the one the unwinder passes to this callback.
+        let address = unsafe { _Unwind_GetIP(context) };
+        match walk.stack.get_mut(walk.n) {
+            Some(slot) if address != 0 => {
+                *slot = address;
+                walk.n += 1;
+                NO_REASON
+            }
+            _ => END_OF_STACK,
+        }
+    }
+    let mut walk = Walk { stack, n: 0 };
+    // SAFETY: `step` matches the callback type, and `walk` outlives the call that uses it.
+    unsafe { _Unwind_Backtrace(step, std::ptr::from_mut(&mut walk).cast()) };
+    walk.n
+}
+
+/// Frame `i`: the file name of the object holding `address`, without its directory, and the
+/// address's offset from where the object is loaded.
+fn frame(w: &mut impl fmt::Write, i: usize, address: usize) -> fmt::Result {
     let mut info = std::mem::MaybeUninit::<libc::Dl_info>::zeroed();
-    // SAFETY: `ANCHOR` is in this object, and `info` has room for what dladdr writes.
-    let found = unsafe { libc::dladdr(std::ptr::from_ref(&ANCHOR).cast(), info.as_mut_ptr()) };
+    // SAFETY: dladdr only reads the address, and `info` has room for what it writes.
+    let found = unsafe { libc::dladdr(address as *const c_void, info.as_mut_ptr()) };
     // SAFETY: all-zero bytes are a valid `Dl_info`, which dladdr filled when it returned nonzero.
-    (found != 0).then(|| unsafe { info.assume_init() }.dli_fbase as usize)
+    let info = unsafe { info.assume_init() };
+    if found == 0 || info.dli_fname.is_null() {
+        return writeln!(w, "{i} ? {address:#x}");
+    }
+    // SAFETY: dladdr's file name is a C string the loader keeps while the object stays loaded,
+    // which it does while its code is on this thread's stack.
+    let path = unsafe { CStr::from_ptr(info.dli_fname) }.to_bytes();
+    let name = path.rsplit(|&b| b == b'/').next().unwrap_or_default();
+    let name = std::str::from_utf8(name).ok();
+    let name = name.filter(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_graphic()));
+    let offset = address.wrapping_sub(info.dli_fbase as usize);
+    writeln!(w, "{i} {} {offset:#x}", name.unwrap_or("?"))
 }

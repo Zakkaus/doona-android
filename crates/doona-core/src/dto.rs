@@ -3,8 +3,8 @@
 //! Unknown fields are ignored; a missing required field fails to parse (`invalid_argument`).
 
 pub use crate::diag::report::{
-    CoreBuild, CrashFile, DiagEvent, Diagnostics, DiagnosticsArgs, LastSnapshot, Level, LevelArgs,
-    StatsSummary,
+    ClearCrashesArgs, CoreBuild, CrashFile, DiagEvent, Diagnostics, DiagnosticsArgs, LastSnapshot,
+    Level, LevelArgs, StatsSummary,
 };
 use serde::{Deserialize, Serialize};
 

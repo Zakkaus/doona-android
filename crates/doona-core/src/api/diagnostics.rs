@@ -6,11 +6,11 @@
 use super::{Core, Life, empty, error_reply, lock, ok, parse};
 use crate::catalog::Model;
 use crate::diag::report::{
-    CoreBuild, DiagEvent, Diagnostics, DiagnosticsArgs, LastSnapshot, Level, LevelArgs,
-    StatsSummary,
+    ClearCrashesArgs, CoreBuild, DiagEvent, Diagnostics, DiagnosticsArgs, LastSnapshot, Level,
+    LevelArgs, StatsSummary,
 };
-use crate::diag::{Count, Diag, Event, Seen};
-use crate::dto::{self, Empty, ErrorCode, Mode, Traffic};
+use crate::diag::{Count, Diag, Event, Seen, crash};
+use crate::dto::{self, ErrorCode, Mode, Traffic};
 use crate::state::{Loaded, State};
 use crate::stats::Clock;
 use std::sync::Arc;
@@ -126,11 +126,15 @@ impl Core {
         Ok(empty(()))
     }
 
-    /// `clearCrashes`: removes every crash file, as the app does after it exported them.
+    /// `clearCrashes`: removes the crash files named, those the app just exported; a file written
+    /// since stays. A name that is not a crash file's is refused.
     fn clear_crashes(&self, args: &str, event: &mut Event) -> Result<String, ErrorCode> {
-        let Empty {} = parse(args)?;
+        let ClearCrashesArgs { names } = parse(args)?;
+        if names.iter().any(|n| crash::number(n).is_none()) {
+            return Err(ErrorCode::InvalidArgument);
+        }
         let removed = match self.diag.crashes() {
-            Some(crashes) => crashes.clear().map_err(|e| {
+            Some(crashes) => crashes.remove(&names).map_err(|e| {
                 *event = event.io(e.kind());
                 ErrorCode::Internal
             })?,

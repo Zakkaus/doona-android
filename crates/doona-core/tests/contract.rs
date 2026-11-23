@@ -2,9 +2,9 @@
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
 use doonacore::dto::{
-    Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty, ErrorCode, Init, Level, LevelArgs, Mode,
-    ModeArgs, Nodes, NodesArgs, Reply, RuleSourceSpec, Rules, RulesArgs, SelectArgs, Snapshot,
-    SourceKind, StartConfig, Subscription, TargetKind, TrafficSeries, Usage,
+    ClearCrashesArgs, Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty, ErrorCode, Init, Level,
+    LevelArgs, Mode, ModeArgs, Nodes, NodesArgs, Reply, RuleSourceSpec, Rules, RulesArgs,
+    SelectArgs, Snapshot, SourceKind, StartConfig, Subscription, TargetKind, TrafficSeries, Usage,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -29,7 +29,8 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 21] = [
+const COVERED: [&str; 22] = [
+    "call-clear-crashes-args.json",
     "call-diagnostics-args.json",
     "call-error.json",
     "call-nodes-args.json",
@@ -280,4 +281,6 @@ fn diagnostics() {
     assert_eq!(args.level, Some(Level::Warn));
     let all: DiagnosticsArgs = serde_json::from_str("{}").unwrap();
     assert_eq!(all.level, None);
+    let exported = round_trip::<ClearCrashesArgs>("call-clear-crashes-args.json");
+    assert_eq!(exported.names, [report.crashes[0].name.as_str()]);
 }

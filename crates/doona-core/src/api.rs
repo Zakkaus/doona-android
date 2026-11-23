@@ -538,7 +538,11 @@ pub fn error_reply(code: ErrorCode) -> String {
     to_json(&Reply::<Empty>::Error(dto::CallError { code }))
 }
 
+/// A command's arguments: a JSON object, which serde would also take as an array, by position.
 fn parse<T: DeserializeOwned>(args: &str) -> Result<T, ErrorCode> {
+    if !args.trim_start().starts_with('{') {
+        return Err(ErrorCode::InvalidArgument);
+    }
     serde_json::from_str(args).map_err(|_| ErrorCode::InvalidArgument)
 }
 

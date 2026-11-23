@@ -19,8 +19,8 @@ pub(crate) fn count_on_this_thread(count: &Arc<AtomicU64>) {
 }
 
 /// Installs, once per process, a hook that counts each panic of a counting thread, writes its
-/// crash file (`diag/crash.rs`), then runs the hook installed before it (in the app, the one that
-/// logs the location only).
+/// crash file (`diag/crash.rs`), then runs the hook installed before it (in the app, one that
+/// does nothing; see `jni.rs`). None of them logs.
 pub(crate) fn install() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {

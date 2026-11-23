@@ -16,6 +16,7 @@ pub mod client;
 pub mod tuic;
 
 pub mod alloc;
+pub mod logs;
 
 /// A fresh directory under the system temp dir, removed on drop.
 pub struct TempDir(PathBuf);

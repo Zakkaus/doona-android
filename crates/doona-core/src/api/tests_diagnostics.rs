@@ -231,16 +231,15 @@ fn a_panic_on_the_core_s_runtime_writes_a_file_that_clear_crashes_removes() {
     let file = dir.path().join("crash").join(&report.crashes[0].name);
     let text = std::fs::read_to_string(&file).unwrap();
     assert_eq!(report.crashes[0].bytes, u64::try_from(text.len()).unwrap());
-    assert!(
-        text.contains("\nmessage: a task's literal panic\n"),
-        "{text}"
-    );
+    let message = "\nmessage: panic in doonacore::api::tests_diagnostics\n";
+    assert!(text.contains(message), "{text}");
     assert!(
         text.contains("\nlocation: src/api/tests_diagnostics.rs:"),
         "{text}"
     );
     assert!(names(&report).contains(&"panic"));
-    call(&core, "clearCrashes", json!({})).unwrap();
+    let names = json!({"names": [report.crashes[0].name]});
+    call(&core, "clearCrashes", names).unwrap();
     let cleared = diagnostics(&core, json!({}));
     assert!(cleared.crashes.is_empty() && !file.exists());
     let event = cleared
@@ -269,4 +268,53 @@ fn a_full_ring_is_one_bounded_reply() {
         reply.len()
     );
     assert!(reply.len() < 256 * 1024, "{}", reply.len());
+}
+
+/// `clearCrashes` removes the files the app exported and nothing else: a file written since stays,
+/// and a name the core does not give a crash file is refused.
+#[test]
+fn clear_crashes_removes_only_the_names_given() {
+    let dir = TempDir::new("api-diag-clear");
+    let core = Core::new(path(&dir)).unwrap();
+    let crash = dir.path().join("crash");
+    std::fs::create_dir_all(&crash).unwrap();
+    for name in ["100.txt", "200.txt"] {
+        std::fs::write(crash.join(name), name).unwrap();
+    }
+    let exported = json!({"names": ["100.txt", "300.txt"]});
+    call(&core, "clearCrashes", exported).unwrap();
+    assert!(!crash.join("100.txt").exists() && crash.join("200.txt").exists());
+    let report = diagnostics(&core, json!({}));
+    let event = report
+        .events
+        .iter()
+        .rev()
+        .find(|e| e.name == "clearCrashes");
+    assert_eq!(event.unwrap().counts["files"], 1);
+    for args in [
+        json!({}),
+        json!({"names": ["../state.json"]}),
+        json!({"names": ["notes.txt"]}),
+        json!(["200.txt"]),
+    ] {
+        let refused = call(&core, "clearCrashes", args.clone());
+        assert_eq!(refused, Err(ErrorCode::InvalidArgument), "{args}");
+    }
+    assert!(crash.join("200.txt").exists());
+}
+
+/// Arguments are a JSON object: an array is not read by position.
+#[test]
+fn arguments_must_be_an_object() {
+    let dir = TempDir::new("api-diag-args");
+    let core = Core::new(path(&dir)).unwrap();
+    for (command, args) in [
+        ("setLogLevel", json!(["debug"])),
+        ("setLogLevel", json!("debug")),
+        ("diagnostics", json!([null])),
+    ] {
+        let refused = call(&core, command, args.clone());
+        assert_eq!(refused, Err(ErrorCode::InvalidArgument), "{command} {args}");
+    }
+    assert_eq!(diagnostics(&core, json!({})).level, Level::Info);
 }

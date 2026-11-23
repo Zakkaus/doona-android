@@ -78,17 +78,14 @@ impl<T: Default, E: std::error::Error> ErrorPolicy<T, E> for ThrowInternal {
     }
 }
 
-/// Logs a panic's location only: the payload may quote an address or a URL. Once: the core
-/// installs its own hook over this one (`panics.rs`), which a second call would drop, and which
-/// writes the crash file before it runs this one.
+/// Replaces the default hook, which prints the payload, with one that does nothing: the payload
+/// may quote an address or a URL, and a hook that logged would wait forever on a logger that
+/// panicked while it held its lock. Once: the core installs its own hook over this one
+/// (`panics.rs`), which a second call would drop, and which writes the crash file and records the
+/// panic in the ring before it runs this one.
 fn install_panic_hook() {
     static ONCE: Once = Once::new();
-    ONCE.call_once(|| {
-        std::panic::set_hook(Box::new(|info| match info.location() {
-            Some(at) => log::error!("panic at {}:{}", at.file(), at.line()),
-            None => log::error!("panic"),
-        }));
-    });
+    ONCE.call_once(|| std::panic::set_hook(Box::new(|_| {})));
 }
 
 /// Only the core's own records reach logcat. honk's `tracing` events arrive as `log` records

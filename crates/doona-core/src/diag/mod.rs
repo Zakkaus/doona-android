@@ -253,10 +253,10 @@ impl Diag {
         }
     }
 
-    /// As [`Diag::record`], but gives up when the ring is in use: for the panic hook, which may
-    /// run on a thread that holds the ring.
+    /// As [`Diag::record`], for the panic hook: it gives up when the ring is in use, as by the
+    /// thread that panicked, and never logs, as a panic inside a logger that holds its lock would
+    /// wait on that lock forever.
     pub fn try_record(&self, event: Event) {
-        log::log!(event.level.log(), "{event}");
         if let Some(event) = self.stamped(event)
             && let Ok(mut ring) = self.ring.try_lock()
         {
@@ -273,11 +273,17 @@ impl Diag {
     }
 
     /// The events kept, oldest first, of `at_least` or more severe; and how many the ring let go.
+    /// Sorted by their times, keeping the ring's order between equal ones: an event is stamped
+    /// before the ring is taken, so one stamped first may be kept second.
     pub fn events(&self, at_least: Option<Level>) -> (Vec<Event>, u64) {
-        let ring = lock(&self.ring);
         let most = at_least.map_or(u8::MAX, Level::rank);
-        let events = ring.events.iter().filter(|e| e.level.rank() <= most);
-        (events.copied().collect(), ring.overwritten)
+        let (mut events, overwritten) = {
+            let ring = lock(&self.ring);
+            let events = ring.events.iter().filter(|e| e.level.rank() <= most);
+            (events.copied().collect::<Vec<_>>(), ring.overwritten)
+        };
+        events.sort_by_key(|e| e.at_ms);
+        (events, overwritten)
     }
 
     /// Notes what `snapshot` just answered.
