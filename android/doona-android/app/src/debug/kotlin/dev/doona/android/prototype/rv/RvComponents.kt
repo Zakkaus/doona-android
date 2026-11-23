@@ -27,13 +27,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
@@ -62,7 +58,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
@@ -78,58 +73,6 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
-
-/**
- * One line of text in a role; CJK runs in Noto, the rest in Inter. Cut short, it ends in an ellipsis right after the last
- * word that fits: the platform keeps the space after that word before its ellipsis (`IPLC …`), so the line is laid out
- * once more without it. The shorter text stays while the width does, and the whole text returns when the line gets more
- * room. [maxLines] lets it run to more lines, the last ending in the platform's ellipsis, and [overflow] may put the
- * ellipsis in the middle of a single line instead. Given [autoSize], a line too long for its width shrinks to fit.
- */
-@Composable
-internal fun RvText(
-    text: String,
-    style: TextStyle,
-    modifier: Modifier = Modifier,
-    color: Color = Rv.colors.text,
-    align: TextAlign = TextAlign.Start,
-    maxLines: Int = 1,
-    overflow: TextOverflow = TextOverflow.Ellipsis,
-    autoSize: TextAutoSize? = null,
-) {
-    var cut by remember(text) { mutableStateOf<RvCut?>(null) }
-    BasicText(
-        scripted(cut?.text ?: text),
-        modifier,
-        style.copy(color = color, textAlign = align),
-        onTextLayout = { layout ->
-            // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
-            val kept = cut
-            when {
-                maxLines != 1 || overflow != TextOverflow.Ellipsis || autoSize != null -> Unit
-                kept == null -> cut = rvCut(text, layout)
-                layout.layoutInput.constraints.maxWidth > kept.width -> cut = null
-            }
-        },
-        overflow = overflow,
-        maxLines = maxLines,
-        autoSize = autoSize,
-    )
-}
-
-/** A line cut at a word for [width] px. */
-private class RvCut(val width: Int, val text: String)
-
-/** [text] up to the last word that fits and an ellipsis, when the platform's cut of [layout] left a space before its own. */
-private fun rvCut(text: String, layout: TextLayoutResult): RvCut? {
-    if (!layout.isLineEllipsized(0)) return null
-    val end = layout.getLineEnd(0, visibleEnd = true).coerceAtMost(text.length)
-    val kept = text.substring(0, end).trimEnd()
-    val atSpace = kept.length < end || text.getOrNull(end)?.isWhitespace() == true
-    return if (atSpace && kept.isNotEmpty()) RvCut(layout.layoutInput.constraints.maxWidth, kept + ELLIPSIS) else null
-}
-
-private const val ELLIPSIS = "\u2026"
 
 /**
  * The one press feedback: the content colour's state layer, clipped to the visible [shape], up in [RvMotion.PRESS_MS].
@@ -234,7 +177,11 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
     return if (cut < 0) figure to "" else figure.substring(0, cut) to figure.substring(cut)
 }
 
-/** A round action: a disc with a glyph and its label under it; only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy]. */
+/**
+ * A round action: a disc with a glyph and its label under it, one line that shrinks to fit its column as a nav label
+ * does ([rvShrinkToFit]) and keeps its line's height, so nothing under it moves; only the disc takes the press
+ * ([rvDiscPress]). [busy] swaps the glyph for [RvBusy].
+ */
 @Composable
 internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, busy: Boolean = false) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -245,7 +192,9 @@ internal fun RvAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit
             }
         }
         Spacer(Modifier.height(RvSpace.discToLabel))
-        RvText(label, Rv.type.action, align = TextAlign.Center)
+        val style = Rv.type.action
+        val line = Modifier.padding(horizontal = RvSpace.actionLabelInset).rvFullLine(label, style)
+        RvText(label, style, line, align = TextAlign.Center, autoSize = rvShrinkToFit(style))
     }
 }
 

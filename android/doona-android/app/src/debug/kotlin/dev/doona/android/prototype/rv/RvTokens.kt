@@ -22,6 +22,9 @@ internal object RvSpace {
     /** From a round action's disc to its label (measured §6: 8 dp). */
     val discToLabel = 8.dp
 
+    /** A round action's label keeps this far in from its column's edges, so two labels shrunk to fit stay apart. */
+    val actionLabelInset = 4.dp
+
     /**
      * From the status bar to the hero's caption: the top bar's row (6 + 44 dp), then 102 dp, as Revolut sets its caption
      * about 100 dp under the bar; the map's marker sits in that space, clear of the bar's glass.
