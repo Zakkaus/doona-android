@@ -113,6 +113,9 @@ internal object RvSize {
     val rowDisc = 40.dp
     val rowGlyph = 22.dp
 
+    /** A notice card's glyph in its 40 dp disc (revolut-ux3 §3 and its 'For doona' notice: 24 dp), larger than a row's. */
+    val noticeGlyph = 24.dp
+
     /** A detail page's header mark, over its name: node detail's flag and a connection's app disc, one size on both. */
     val headerDisc = 48.dp
 

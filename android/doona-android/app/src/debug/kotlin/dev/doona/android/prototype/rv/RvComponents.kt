@@ -360,12 +360,12 @@ private fun RowLine(end: (@Composable () -> Unit)?, start: @Composable () -> Uni
 
 /**
  * A row's leading disc: a glyph on the raised fill. A detail page's header takes it at [RvSize.headerDisc]; the glyph
- * keeps the row's proportion to its disc.
+ * keeps the row's proportion to its disc unless [glyph] says otherwise (a notice's, [RvSize.noticeGlyph]).
  */
 @Composable
-internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc) {
+internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc, glyph: Dp = RvSize.rowGlyph * (size / RvSize.rowDisc)) {
     Box(Modifier.size(size).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
-        RvGlyph(icon, RvSize.rowGlyph * (size / RvSize.rowDisc), color)
+        RvGlyph(icon, glyph, color)
     }
 }
 
@@ -505,7 +505,7 @@ internal fun RvBanner(
     RvCard(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Column(Modifier.fillMaxWidth().padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.noticeToAction)) {
             Row(Modifier.fillMaxWidth()) {
-                RvIconDisc(icon)
+                RvIconDisc(icon, glyph = RvSize.noticeGlyph)
                 Spacer(Modifier.width(RvSpace.rowGap))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
                     RvText(title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
