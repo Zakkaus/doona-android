@@ -94,7 +94,8 @@ fun DoonaRadio(selected: Boolean, modifier: Modifier = Modifier) {
 /**
  * Revolut's segmented control (measured §8): a 36 dp pill track, visible on any surface, [items] in equal parts, the
  * [selected] one on a raised pill 2 dp inside it. Each part is a 48 dp target; the press lights only its pill. Those are
- * minimums: a label that a large font makes taller grows the track and the pill with it.
+ * minimums: a label that a large font makes taller grows the track and the pill with it. A tap on the part already
+ * selected calls nothing: [selected] may show a choice the caller maps from another, which a tap must not write back.
  */
 @Composable
 fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -110,7 +111,7 @@ fun DoonaSegmented(items: List<String>, selected: Int, onSelect: (Int) -> Unit, 
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .selectable(i == selected, interactionSource = source, indication = null, role = Role.Tab) { onSelect(i) }
+                        .selectable(i == selected, interactionSource = source, indication = null, role = Role.Tab) { if (i != selected) onSelect(i) }
                         .padding(vertical = (touch - chart.segment) / 2)
                         .padding(chart.segmentInset)
                         .then(if (i == selected) Modifier.raised(CircleShape) else Modifier.clip(CircleShape))
