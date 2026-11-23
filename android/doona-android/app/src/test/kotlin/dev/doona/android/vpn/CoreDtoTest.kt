@@ -23,6 +23,8 @@ class CoreDtoTest {
             "init.json", "start-config.json", "snapshot-running.json", "snapshot-died.json", "snapshot-stopped-catalog.json",
             "call-ok-empty.json", "call-ok-subscription.json", "call-error.json", "call-select-args.json",
             "call-ok-traffic-series.json", "call-ok-usage.json", "call-ok-nodes.json", "call-nodes-args.json",
+            "call-ok-rules.json", "call-rules-args.json", "call-set-rule-source-args.json", "call-ok-effective-config.json",
+            "call-set-mode-args.json",
         )
         val present = ContractFixtures.dir.listFiles { f -> f.extension == "json" }.orEmpty().map { it.name }.toSet()
         assertEquals(checked, present)
@@ -64,7 +66,7 @@ class CoreDtoTest {
     @Test
     fun catalogMapsToEngineTypes() {
         val catalog = checkNotNull(CoreJson.snapshot(fixture("snapshot-stopped-catalog.json")).catalog)
-        assertEquals(Mode.Global, catalog.mode)
+        assertEquals(CoreMode.Global, catalog.mode)
         val groups = catalog.groups.map(GroupDto::toGroup)
         assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), groups.map { it.id })
         val auto = groups[1]
@@ -84,6 +86,73 @@ class CoreDtoTest {
         assertEquals("s1", subscription.id)
         assertEquals(107374182400L, subscription.totalBytes)
         assertNull(subscription.error)
+    }
+
+    @Test
+    fun catalogCarriesTheMainGroupAndTheRuleSource() {
+        val catalog = checkNotNull(CoreJson.snapshot(fixture("snapshot-stopped-catalog.json")).catalog)
+        assertEquals("g-Proxy", catalog.mainGroupId)
+        val source = catalog.ruleSource
+        assertEquals("template", source.kind)
+        assertEquals("cn-direct", source.template)
+        assertEquals(2, source.version)
+        assertNull(source.subscriptionId)
+        assertFalse(source.options.blockQuic)
+        assertEquals(listOf(5, 23, 0), listOf(source.rules, source.lines, source.skipped))
+        assertEquals(91044300313602L, source.rulesRevision)
+        assertNull(source.error)
+    }
+
+    @Test
+    fun ruleModeMapsToGlobalUntilTheEngineKnowsIt() {
+        assertEquals(Mode.Global, CoreMode.Rule.toMode())
+        assertEquals(Mode.Global, CoreMode.Global.toMode())
+        assertEquals(Mode.Direct, CoreMode.Direct.toMode())
+        assertEquals(Mode.entries, Mode.entries.map { CoreMode.of(it).toMode() })
+    }
+
+    @Test
+    fun rulesPage() {
+        val rules = CoreJson.result(fixture("call-ok-rules.json"), RulesDto.serializer())
+        assertEquals(5, rules.total)
+        assertEquals(91044300313602L, rules.rulesRevision)
+        assertEquals(5, rules.rows.size)
+        val first = rules.rows.first()
+        assertEquals(listOf("GeoIp", "private", "direct", "direct"), listOf(first.kind, first.sample, first.target, first.targetKind))
+        assertNull(first.skipped)
+        val last = rules.rows.last()
+        assertEquals("Match", last.kind)
+        assertNull(last.sample)
+        assertEquals("g-Proxy", last.target)
+        assertEquals("group", last.targetKind)
+        assertEquals(listOf(0, 1, 2, 3, 4), rules.rows.map { it.index })
+    }
+
+    @Test
+    fun effectiveConfig() {
+        val config = CoreJson.result(fixture("call-ok-effective-config.json"), EffectiveConfigDto.serializer())
+        assertEquals(CoreMode.Rule, config.mode)
+        assertEquals("g-Proxy", config.mainGroupId)
+        assertEquals("g-Proxy", config.dnsVia)
+        assertEquals(listOf("1.1.1.1:53", "8.8.8.8:53"), config.dnsUpstreams)
+        assertEquals(91044300313602L, config.ruleSource.rulesRevision)
+        assertTrue(config.text.startsWith("# mode: Rule\n"))
+        assertTrue(config.text.endsWith("MATCH,Proxy\n"))
+        assertFalse(config.truncated)
+    }
+
+    @Test
+    fun ruleModeArgsEncodeAsTheFixtures() {
+        val source = CoreJson.encode(RuleSourceArgs.serializer(), RuleSourceArgs("template", "cn-direct", RuleOptionsDto(blockQuic = true)))
+        assertEquals(Json.parseToJsonElement(fixture("call-set-rule-source-args.json")), Json.parseToJsonElement(source))
+        // An option that is off is still sent: the core needs every option.
+        val off = CoreJson.encode(RuleSourceArgs.serializer(), RuleSourceArgs("template", "cn-direct", RuleOptionsDto(blockQuic = false)))
+        assertEquals("""{"kind":"template","template":"cn-direct","options":{"blockQuic":false}}""", off)
+
+        val mode = CoreJson.encode(ModeArgs.serializer(), ModeArgs(CoreMode.Rule))
+        assertEquals(Json.parseToJsonElement(fixture("call-set-mode-args.json")), Json.parseToJsonElement(mode))
+        val page = CoreJson.encode(RulesArgs.serializer(), RulesArgs(offset = 0, limit = 50))
+        assertEquals(Json.parseToJsonElement(fixture("call-rules-args.json")), Json.parseToJsonElement(page))
     }
 
     @Test
@@ -120,6 +189,12 @@ class CoreDtoTest {
         assertEquals(listOf("direct", "g-Proxy"), usage.today.outbounds.map { it.id })
         val yesterday = checkNotNull(usage.yesterday)
         assertEquals(yesterday.down.sum(), usage.days.last().down)
+        assertTrue(yesterday.byRule.isEmpty())
+        // Rule mode routed every flow today: its rules carry the same bytes as its outbounds.
+        assertEquals(listOf("r-6e59b550be7e592b", "r-8d066c6f0b6552cd"), usage.today.byRule.map { it.id })
+        assertEquals(listOf(276L, 398L), usage.today.byRule.map { it.flows })
+        assertEquals(usage.today.outbounds.sumOf { it.up }, usage.today.byRule.sumOf { it.up })
+        assertEquals(usage.today.outbounds.sumOf { it.down }, usage.today.byRule.sumOf { it.down })
 
         val nodes = CoreJson.result(fixture("call-ok-nodes.json"), NodesDto.serializer()).nodes
         assertEquals("trojan", nodes[0].protocol)

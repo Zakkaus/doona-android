@@ -235,6 +235,20 @@ class ServiceEngineTest {
     }
 
     @Test
+    fun aRuleModeCatalogShowsAsGlobal() = runBlocking {
+        val direct = ContractFixtures.read("snapshot-stopped-catalog.json").replace("\"mode\": \"Global\"", "\"mode\": \"Direct\"")
+        val rule = direct.replace("\"revision\": 7", "\"revision\": 8").replace("\"mode\": \"Direct\"", "\"mode\": \"Rule\"")
+        core.snapshotReplies += { direct }
+        assertTrue(engine.setMode(Mode.Direct).isSuccess)
+        assertEquals(Mode.Direct, engine.settings.value.mode)
+
+        core.snapshotReplies += { rule }
+        assertTrue(engine.setMode(Mode.Global).isSuccess)
+        assertEquals("setMode" to """{"mode":"Global"}""", core.calls.last())
+        assertEquals(Mode.Global, engine.settings.value.mode)
+    }
+
+    @Test
     fun aSlowSnapshotNeitherHoldsBackNorReplacesANewerCatalog() = runBlocking {
         val older = ContractFixtures.read("snapshot-stopped-catalog.json")
         val newer = older.replace("\"revision\": 7", "\"revision\": 8").replace("\"mode\": \"Global\"", "\"mode\": \"Direct\"")
