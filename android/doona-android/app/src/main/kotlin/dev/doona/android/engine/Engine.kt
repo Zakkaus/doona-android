@@ -74,10 +74,11 @@ interface Engine {
     suspend fun setLogLevel(level: LogLevel): Result<Unit>
 
     /**
-     * Deletes the crash files [names], sent after an export that included them succeeded. Only these go: a crash written
-     * since the export stays for the next one.
+     * Deletes the crash files [names], sent after an export that included them succeeded, with the [mark] of the
+     * [CoreDiagnostics] that listed them. Only these go, and only at or below [mark]: a crash written since the export
+     * stays for the next one, even when the same call is sent again.
      */
-    suspend fun clearCrashes(names: List<String>): Result<Unit>
+    suspend fun clearCrashes(names: List<String>, mark: Long): Result<Unit>
 }
 
 /**

@@ -15,16 +15,17 @@
 //!
 //! The hook minds its own safety. It writes into a buffer allocated with the core and copies
 //! nothing of the payload; it never logs, since a panic inside a logger that holds its lock would
-//! wait on that lock forever; and it only walks the stack, leaving the symbols to be found off the
-//! device, in the unstripped library.
+//! wait on that lock forever; and it takes the stack, as offsets and before the crash files, in
+//! `stack.rs`. A name is never taken twice: a new file's number is above every number a crash
+//! file had (the mark), which a clear never lowers and saves for the next start.
 
 use super::report::{self, CrashFile};
+use super::stack::Stack;
 use super::{Diag, Event, now_ms};
 use crate::api::lock;
 use crate::dto::ErrorCode;
 use std::cell::{Cell, OnceCell};
 use std::collections::HashSet;
-use std::ffi::{CStr, c_int, c_void};
 use std::fmt::{self, Write as _};
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -39,11 +40,11 @@ pub(crate) const MAX_FILES: usize = 5;
 pub(crate) const MAX_BYTES: usize = 64 * 1024;
 /// The panic locations a process writes files for; past these it writes none.
 const MAX_LOCATIONS: usize = 64;
-/// The frames a file lists, innermost first.
-const MAX_FRAMES: usize = 64;
 /// The file being written; it takes its name once complete. Not a crash file's name, so neither
 /// `diagnostics` nor `clearCrashes` sees it, and the next write starts it over.
 const PART: &str = ".core.tmp";
+/// The mark ([`Crashes::listing`]) as a clear leaves it, for a core that starts again.
+const MARK: &str = ".core.mark";
 
 /// The messages of the core's own panic sites outside the tests, which name no data and are kept
 /// as they are: the `unreachable!()` of `structured/clash.rs` and `json/sing_box.rs`, that of
@@ -99,6 +100,24 @@ thread_local! {
     static HOOK_ALLOCATED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
+#[cfg(test)]
+thread_local! {
+    static UNDER_LOCK: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// How often this thread walked or resolved its stack while it held crash files.
+#[cfg(test)]
+pub(super) fn stack_under_lock() -> usize {
+    UNDER_LOCK.with(std::cell::Cell::get)
+}
+
+#[cfg(test)]
+pub(super) fn note_stack_work() {
+    if HOLDING.try_with(Cell::get).unwrap_or(false) {
+        let _ = UNDER_LOCK.try_with(|n| n.set(n.get() + 1));
+    }
+}
+
 /// What the hook allocated for the calling thread's last panic.
 #[cfg(test)]
 pub(super) fn hook_allocated() -> usize {
@@ -139,6 +158,9 @@ pub(crate) struct Crashes {
     /// A full disk for the tests: a write past this many bytes fails; 0 for none.
     #[cfg(test)]
     pub(super) full_after: std::sync::atomic::AtomicUsize,
+    /// The time names are taken from, for the tests; 0 for the clock.
+    #[cfg(test)]
+    pub(super) clock: std::sync::atomic::AtomicU64,
 }
 
 struct Files {
@@ -146,6 +168,10 @@ struct Files {
     written: HashSet<u64>,
     /// The text of the file being written, allocated with the core.
     text: String,
+    /// The highest number a crash file had here: published, listed, or given to a clear, and
+    /// read from [`MARK`] at the first use. A new file's number is above it, and a clear never
+    /// lowers it, so a name is never taken twice and a clear sent again removes no newer file.
+    mark: Option<u64>,
 }
 
 impl Crashes {
@@ -155,9 +181,12 @@ impl Crashes {
             files: Mutex::new(Files {
                 written: HashSet::with_capacity(MAX_LOCATIONS),
                 text: String::with_capacity(MAX_BYTES),
+                mark: None,
             }),
             #[cfg(test)]
             full_after: std::sync::atomic::AtomicUsize::new(0),
+            #[cfg(test)]
+            clock: std::sync::atomic::AtomicU64::new(0),
         }
     }
 
@@ -169,16 +198,27 @@ impl Crashes {
             (at.file(), at.line(), at.column()).hash(&mut h);
             h.finish()
         });
+        let repeated = |w: &HashSet<u64>| w.len() >= MAX_LOCATIONS || w.contains(&key);
+        if self.hold().is_none_or(|files| repeated(&files.0.written)) {
+            return Written::Repeated;
+        }
+        // Taken before the files are (`stack.rs`), and checked again after: another thread may
+        // have written the location meanwhile.
+        let (stack, thread) = (Stack::capture(), thread());
         let Some(mut files) = self.hold() else {
             return Written::Repeated;
         };
-        let Files { written, text } = &mut *files.0;
-        if written.len() >= MAX_LOCATIONS || written.contains(&key) {
+        let Files {
+            written,
+            text,
+            mark,
+        } = &mut *files.0;
+        if repeated(written) {
             return Written::Repeated;
         }
         text.clear();
-        let _ = describe(&mut Bounded(text), info);
-        match self.publish(text) {
+        let _ = describe(&mut Bounded(text), info, thread, &stack);
+        match self.publish(text, mark) {
             Ok(_) => {
                 written.insert(key);
                 Written::File
@@ -190,8 +230,8 @@ impl Crashes {
     /// Publishes `text` as the newest file, as the hook does.
     #[cfg(test)]
     pub(super) fn save(&self, text: &str) -> io::Result<String> {
-        let _files = self.hold();
-        self.publish(text)
+        let mut files = self.hold().ok_or(ErrorKind::WouldBlock)?;
+        self.publish(text, &mut files.0.mark)
     }
 
     /// Runs `f` holding the files, as a write does.
@@ -213,35 +253,66 @@ impl Crashes {
 
     /// Writes `text` whole to [`PART`], then renames it to its name, then removes the oldest
     /// files beyond the other four; on a failure, removes the part and leaves the rest. The name's
-    /// number is the time, or one past the newest file's when that is later, as for a second
-    /// panic in one millisecond: a name freed by a removal is never taken again. The caller holds
-    /// `files`.
-    fn publish(&self, text: &str) -> io::Result<String> {
+    /// number is the time, or one past `mark` when that is later, as for a second panic in one
+    /// millisecond or a clock set back. The caller holds `files`.
+    fn publish(&self, text: &str, mark: &mut Option<u64>) -> io::Result<String> {
         fs::create_dir_all(&self.dir)?;
         let part = self.dir.join(PART);
-        let old = match self.put(&part, text.as_bytes()) {
-            Ok(()) => self.files(),
-            Err(e) => {
-                let _ = fs::remove_file(&part);
-                return Err(e);
-            }
-        };
-        let newest = old.last().map_or(0, |(at, ..)| at.saturating_add(1));
-        let mut at = u64::try_from(now_ms()).unwrap_or(0).max(newest);
-        let mut name = format!("{at}.txt");
-        // A name the app took meanwhile is passed over: a rename would replace its file.
-        while fs::symlink_metadata(self.dir.join(&name)).is_ok() {
-            at += 1;
-            name = format!("{at}.txt");
-        }
-        if let Err(e) = fs::rename(&part, self.dir.join(&name)) {
+        let published = self.put(&part, text.as_bytes()).and_then(|()| {
+            let old = self.listed(mark);
+            let (at, name) = self.free_name(mark.unwrap_or_default())?;
+            fs::rename(&part, self.dir.join(&name))?;
+            Ok((at, name, old))
+        });
+        let (at, name, old) = published.inspect_err(|_| {
             let _ = fs::remove_file(&part);
-            return Err(e);
-        }
+        })?;
+        *mark = Some(at);
         for (_, gone, _) in old.iter().take((old.len() + 1).saturating_sub(MAX_FILES)) {
             let _ = fs::remove_file(self.dir.join(gone));
         }
         Ok(name)
+    }
+
+    /// The first number past `mark`, and not before the time, whose name nothing holds (the app
+    /// may have taken one meanwhile, which a rename would replace). None past the largest number:
+    /// `invalid_data`.
+    fn free_name(&self, mark: u64) -> io::Result<(u64, String)> {
+        let exhausted = || io::Error::from(ErrorKind::InvalidData);
+        let mut at = mark.checked_add(1).ok_or_else(exhausted)?.max(self.now());
+        loop {
+            let name = format!("{at}.txt");
+            if fs::symlink_metadata(self.dir.join(&name)).is_err() {
+                return Ok((at, name));
+            }
+            at = at.checked_add(1).ok_or_else(exhausted)?;
+        }
+    }
+
+    /// The crash files, oldest first, with `mark` raised to the newest of them.
+    fn listed(&self, mark: &mut Option<u64>) -> Vec<(u64, String, u64)> {
+        let files = self.files();
+        let kept = mark.get_or_insert_with(|| self.saved_mark());
+        *kept = (*kept).max(files.last().map_or(0, |(at, ..)| *at));
+        files
+    }
+
+    /// The mark a clear saved in [`MARK`], or 0.
+    fn saved_mark(&self) -> u64 {
+        let mut digits = [0_u8; 24];
+        let read = fs::File::open(self.dir.join(MARK)).and_then(|mut f| f.read(&mut digits));
+        let digits = digits.get(..read.unwrap_or(0)).unwrap_or_default();
+        let digits = std::str::from_utf8(digits).ok();
+        digits.and_then(|d| d.trim().parse().ok()).unwrap_or(0)
+    }
+
+    fn now(&self) -> u64 {
+        #[cfg(test)]
+        match self.clock.load(std::sync::atomic::Ordering::Relaxed) {
+            0 => {}
+            set => return set,
+        }
+        u64::try_from(now_ms()).unwrap_or(0)
     }
 
     /// Writes `bytes` to the file at `path`, created or emptied, and waits until they are on disk.
@@ -278,20 +349,52 @@ impl Crashes {
         files
     }
 
-    pub fn list(&self) -> Vec<CrashFile> {
-        let _files = self.hold();
-        let files = self.files().into_iter();
-        files
-            .map(|(_, name, bytes)| CrashFile { name, bytes })
-            .collect()
+    /// The crash files, oldest first, and the mark: no file listed has a higher number, and no
+    /// file written from now on will have it or a lower one. `clearCrashes` takes it back.
+    pub fn listing(&self) -> (Vec<CrashFile>, u64) {
+        let Some(mut files) = self.hold() else {
+            return (Vec::new(), 0);
+        };
+        let mark = &mut files.0.mark;
+        let listed = self.listed(mark).into_iter();
+        let listed = listed.map(|(_, name, bytes)| CrashFile { name, bytes });
+        (listed.collect(), mark.unwrap_or_default())
     }
 
-    /// Removes the files named, each a crash file's name ([`number`]); a name already gone is
-    /// passed over. Answers how many it removed.
-    pub fn remove(&self, names: &[String]) -> io::Result<usize> {
-        let _files = self.hold();
+    #[cfg(test)]
+    pub(super) fn list(&self) -> Vec<CrashFile> {
+        self.listing().0
+    }
+
+    #[cfg(test)]
+    pub(super) fn mark(&self) -> u64 {
+        self.listing().1
+    }
+
+    /// Removes the files named whose numbers are `mark` or below, the mark of the listing they
+    /// were exported from; a name already gone is passed over. Raises the core's mark to `mark`
+    /// and saves it first, so a core that starts again takes no name at or below it. Answers how
+    /// many files it removed.
+    pub fn remove(&self, names: &[String], mark: u64) -> io::Result<usize> {
+        let Some(mut files) = self.hold() else {
+            return Ok(0);
+        };
+        let kept = &mut files.0.mark;
+        let _ = self.listed(kept);
+        let kept = kept.insert(kept.unwrap_or_default().max(mark));
+        fs::create_dir_all(&self.dir)?;
+        let part = self.dir.join(PART);
+        let saved = self.put(&part, kept.to_string().as_bytes());
+        saved
+            .and_then(|()| fs::rename(&part, self.dir.join(MARK)))
+            .inspect_err(|_| {
+                let _ = fs::remove_file(&part);
+            })?;
         let mut removed = 0;
-        for name in names.iter().filter(|n| number(n).is_some()) {
+        for name in names {
+            if number(name).is_none_or(|at| at > mark) {
+                continue;
+            }
             match fs::remove_file(self.dir.join(name)) {
                 Ok(()) => removed += 1,
                 Err(e) if e.kind() == ErrorKind::NotFound => {}
@@ -340,13 +443,18 @@ impl fmt::Write for Bounded<'_> {
 }
 
 /// A crash file's text: `key: value` lines, a blank line, then the frames (core-api.md).
-fn describe(w: &mut impl fmt::Write, info: &PanicHookInfo<'_>) -> fmt::Result {
+fn describe(
+    w: &mut impl fmt::Write,
+    info: &PanicHookInfo<'_>,
+    thread: &str,
+    stack: &Stack,
+) -> fmt::Result {
     writeln!(w, "source: core")?;
     writeln!(w, "atEpochMs: {}", now_ms())?;
     let (arch, os) = (std::env::consts::ARCH, std::env::consts::OS);
     let version = env!("CARGO_PKG_VERSION");
     writeln!(w, "version: {version} {} {arch}-{os}", report::profile())?;
-    writeln!(w, "thread: {}", thread())?;
+    writeln!(w, "thread: {thread}")?;
     let place = info
         .location()
         .map_or(Place::Unknown, |at| place(at.file()));
@@ -360,8 +468,7 @@ fn describe(w: &mut impl fmt::Write, info: &PanicHookInfo<'_>) -> fmt::Result {
         Some(own) => w.write_str(own)?,
         None => write!(w, "panic in {}", Module(&place))?,
     }
-    writeln!(w, "\n\nbacktrace:")?;
-    frames(w)
+    write!(w, "\n\nbacktrace:\n{stack}")
 }
 
 /// `src/<file>.rs:<line>:<column>` in this crate, a dependency's name and version, or `unknown`.
@@ -480,80 +587,4 @@ impl fmt::Display for Module<'_, '_> {
         }
         Ok(())
     }
-}
-
-/// The calling thread's frames, innermost first, one a line: `3 libdoonacore.so 0x1a2b3c`, the
-/// object's file name and the return address's offset in it (`?` and the address when no object
-/// holds it). addr2line or llvm-symbolizer turn an offset into a function against the unstripped
-/// library of the same build.
-fn frames(w: &mut impl fmt::Write) -> fmt::Result {
-    let mut stack = [0_usize; MAX_FRAMES];
-    let n = walk(&mut stack);
-    for (i, &address) in stack[..n].iter().enumerate() {
-        frame(w, i, address)?;
-    }
-    Ok(())
-}
-
-#[repr(C)]
-struct UnwindContext {
-    _opaque: [u8; 0],
-}
-
-type Step = extern "C" fn(*mut UnwindContext, *mut c_void) -> c_int;
-
-// The unwinder the standard library links: libgcc_s on Linux, LLVM's libunwind on Android.
-unsafe extern "C" {
-    fn _Unwind_Backtrace(step: Step, arg: *mut c_void) -> c_int;
-    fn _Unwind_GetIP(context: *mut UnwindContext) -> usize;
-}
-
-/// Fills `stack` with the calling thread's return addresses, innermost first; answers how many.
-/// Walks the unwind tables only: no symbol is looked up and nothing is allocated.
-fn walk(stack: &mut [usize; MAX_FRAMES]) -> usize {
-    struct Walk<'a> {
-        stack: &'a mut [usize; MAX_FRAMES],
-        n: usize,
-    }
-    extern "C" fn step(context: *mut UnwindContext, arg: *mut c_void) -> c_int {
-        const NO_REASON: c_int = 0;
-        const END_OF_STACK: c_int = 5;
-        // SAFETY: `arg` is the `Walk` that `walk` lends `_Unwind_Backtrace` for this call.
-        let walk = unsafe { &mut *arg.cast::<Walk<'_>>() };
-        // SAFETY: `context` is the one the unwinder passes to this callback.
-        let address = unsafe { _Unwind_GetIP(context) };
-        match walk.stack.get_mut(walk.n) {
-            Some(slot) if address != 0 => {
-                *slot = address;
-                walk.n += 1;
-                NO_REASON
-            }
-            _ => END_OF_STACK,
-        }
-    }
-    let mut walk = Walk { stack, n: 0 };
-    // SAFETY: `step` matches the callback type, and `walk` outlives the call that uses it.
-    unsafe { _Unwind_Backtrace(step, std::ptr::from_mut(&mut walk).cast()) };
-    walk.n
-}
-
-/// Frame `i`: the file name of the object holding `address`, without its directory, and the
-/// address's offset from where the object is loaded.
-fn frame(w: &mut impl fmt::Write, i: usize, address: usize) -> fmt::Result {
-    let mut info = std::mem::MaybeUninit::<libc::Dl_info>::zeroed();
-    // SAFETY: dladdr only reads the address, and `info` has room for what it writes.
-    let found = unsafe { libc::dladdr(address as *const c_void, info.as_mut_ptr()) };
-    // SAFETY: all-zero bytes are a valid `Dl_info`, which dladdr filled when it returned nonzero.
-    let info = unsafe { info.assume_init() };
-    if found == 0 || info.dli_fname.is_null() {
-        return writeln!(w, "{i} ? {address:#x}");
-    }
-    // SAFETY: dladdr's file name is a C string the loader keeps while the object stays loaded,
-    // which it does while its code is on this thread's stack.
-    let path = unsafe { CStr::from_ptr(info.dli_fname) }.to_bytes();
-    let name = path.rsplit(|&b| b == b'/').next().unwrap_or_default();
-    let name = std::str::from_utf8(name).ok();
-    let name = name.filter(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_graphic()));
-    let offset = address.wrapping_sub(info.dli_fbase as usize);
-    writeln!(w, "{i} {} {offset:#x}", name.unwrap_or("?"))
 }

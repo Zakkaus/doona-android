@@ -192,8 +192,8 @@ class ServiceEngine internal constructor(
     override suspend fun setLogLevel(level: LogLevel): Result<Unit> =
         command("setLogLevel", LevelArgs.serializer(), LevelArgs(CoreLevel.of(level)), Unit.serializer())
 
-    override suspend fun clearCrashes(names: List<String>): Result<Unit> =
-        command("clearCrashes", ClearCrashesArgs.serializer(), ClearCrashesArgs(names), Unit.serializer())
+    override suspend fun clearCrashes(names: List<String>, mark: Long): Result<Unit> =
+        command("clearCrashes", ClearCrashesArgs.serializer(), ClearCrashesArgs(names, mark), Unit.serializer())
 
     private suspend fun savePerApp(perApp: PerApp): Result<Unit> {
         val rebuild = try {

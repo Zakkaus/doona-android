@@ -10,6 +10,7 @@
 
 pub(crate) mod crash;
 pub mod report;
+mod stack;
 
 use crate::api::lock;
 use crate::dto::{ErrorCode, Snapshot};
@@ -325,3 +326,5 @@ pub(crate) fn now_ms() -> i64 {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_crash;

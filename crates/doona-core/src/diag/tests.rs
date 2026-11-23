@@ -110,7 +110,7 @@ fn recording_allocates_nothing_and_a_full_ring_is_its_one_buffer() {
 }
 
 /// Panics on a thread whose panics go to `diag`, and waits for it.
-fn panic_on(diag: &Arc<Diag>, panic: fn()) {
+pub(super) fn panic_on(diag: &Arc<Diag>, panic: fn()) {
     crate::panics::install();
     let target = Arc::downgrade(diag);
     let ended = std::thread::spawn(move || {
@@ -121,13 +121,13 @@ fn panic_on(diag: &Arc<Diag>, panic: fn()) {
     assert!(ended.is_err());
 }
 
-fn crashes(tag: &str) -> (TempDir, Arc<Diag>) {
+pub(super) fn crashes(tag: &str) -> (TempDir, Arc<Diag>) {
     let dir = TempDir::new(tag);
     let diag = Arc::new(Diag::new(Some(dir.path().join(crash::DIR))));
     (dir, diag)
 }
 
-fn read(dir: &TempDir, name: &str) -> String {
+pub(super) fn read(dir: &TempDir, name: &str) -> String {
     fs::read_to_string(dir.path().join(crash::DIR).join(name)).unwrap()
 }
 
@@ -199,7 +199,7 @@ fn files_are_ordered_by_their_number_and_removed_by_name() {
     let names =
         |c: &crash::Crashes| -> Vec<String> { c.list().into_iter().map(|f| f.name).collect() };
     assert_eq!(
-        crashes.remove(&["1.txt".to_owned()]).unwrap(),
+        crashes.remove(&["1.txt".to_owned()], 1).unwrap(),
         0,
         "no directory yet"
     );
@@ -210,7 +210,7 @@ fn files_are_ordered_by_their_number_and_removed_by_name() {
     }
     assert_eq!(names(crashes), ["3.txt", "20.txt", "100.txt"]);
     let exported = ["20.txt", "7.txt", "notes.txt"].map(str::to_owned);
-    assert_eq!(crashes.remove(&exported).unwrap(), 1);
+    assert_eq!(crashes.remove(&exported, crashes.mark()).unwrap(), 1);
     assert_eq!(names(crashes), ["3.txt", "100.txt"]);
     assert!(at.join("notes.txt").exists());
 }

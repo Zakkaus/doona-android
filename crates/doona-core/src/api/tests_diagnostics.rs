@@ -238,7 +238,7 @@ fn a_panic_on_the_core_s_runtime_writes_a_file_that_clear_crashes_removes() {
         "{text}"
     );
     assert!(names(&report).contains(&"panic"));
-    let names = json!({"names": [report.crashes[0].name]});
+    let names = json!({"names": [report.crashes[0].name], "mark": report.crash_mark});
     call(&core, "clearCrashes", names).unwrap();
     let cleared = diagnostics(&core, json!({}));
     assert!(cleared.crashes.is_empty() && !file.exists());
@@ -281,21 +281,24 @@ fn clear_crashes_removes_only_the_names_given() {
     for name in ["100.txt", "200.txt"] {
         std::fs::write(crash.join(name), name).unwrap();
     }
-    let exported = json!({"names": ["100.txt", "300.txt"]});
+    let mark = diagnostics(&core, json!({})).crash_mark;
+    assert_eq!(mark, 200);
+    let exported = json!({"names": ["100.txt", "300.txt"], "mark": 150});
     call(&core, "clearCrashes", exported).unwrap();
     assert!(!crash.join("100.txt").exists() && crash.join("200.txt").exists());
+    let above = json!({"names": ["200.txt"], "mark": 150});
+    call(&core, "clearCrashes", above).unwrap();
+    assert!(crash.join("200.txt").exists(), "above the mark given");
     let report = diagnostics(&core, json!({}));
-    let event = report
-        .events
-        .iter()
-        .rev()
-        .find(|e| e.name == "clearCrashes");
-    assert_eq!(event.unwrap().counts["files"], 1);
+    let clears = report.events.iter().filter(|e| e.name == "clearCrashes");
+    let removed: Vec<u32> = clears.map(|e| e.counts["files"]).collect();
+    assert_eq!(removed, [1, 0]);
     for args in [
         json!({}),
-        json!({"names": ["../state.json"]}),
-        json!({"names": ["notes.txt"]}),
-        json!(["200.txt"]),
+        json!({"names": ["200.txt"]}),
+        json!({"names": ["../state.json"], "mark": mark}),
+        json!({"names": ["notes.txt"], "mark": mark}),
+        json!([["200.txt"], mark]),
     ] {
         let refused = call(&core, "clearCrashes", args.clone());
         assert_eq!(refused, Err(ErrorCode::InvalidArgument), "{args}");

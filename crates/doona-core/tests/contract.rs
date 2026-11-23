@@ -283,4 +283,8 @@ fn diagnostics() {
     assert_eq!(all.level, None);
     let exported = round_trip::<ClearCrashesArgs>("call-clear-crashes-args.json");
     assert_eq!(exported.names, [report.crashes[0].name.as_str()]);
+    assert_eq!(
+        (report.crash_mark, exported.mark),
+        (1_795_300_150_000, 1_795_300_150_000)
+    );
 }

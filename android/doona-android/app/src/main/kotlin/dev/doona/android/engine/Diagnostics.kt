@@ -7,7 +7,8 @@ enum class LogLevel { Error, Warn, Info, Debug }
 data class CrashFile(val name: String, val bytes: Long)
 
 /**
- * What [Engine.diagnostics] returned: the ring's [level], the crash files waiting, oldest first, and [json], the core's
- * whole reply as JSON text for the export's report.
+ * What [Engine.diagnostics] returned: the ring's [level], the crash files waiting, oldest first, the [crashMark] that
+ * [Engine.clearCrashes] takes back with their names, and [json], the core's whole reply as JSON text for the export's
+ * report.
  */
-data class CoreDiagnostics(val level: LogLevel, val crashes: List<CrashFile>, val json: String)
+data class CoreDiagnostics(val level: LogLevel, val crashes: List<CrashFile>, val crashMark: Long, val json: String)

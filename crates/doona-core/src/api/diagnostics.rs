@@ -105,7 +105,8 @@ impl Core {
         };
         let today = self.stats.today(&Clock::now());
         let (events, overwritten) = self.diag.events(level);
-        let crashes = self.diag.crashes().map(|c| c.list()).unwrap_or_default();
+        let listing = self.diag.crashes().map(|c| c.listing());
+        let (crashes, crash_mark) = listing.unwrap_or_default();
         Ok(ok(Diagnostics {
             core: CoreBuild::current(),
             level: self.diag.level(),
@@ -114,6 +115,7 @@ impl Core {
             snapshot: self.diag.seen().map(last_snapshot),
             stats: StatsSummary { traffic, today },
             crashes,
+            crash_mark,
         }))
     }
 
@@ -126,15 +128,16 @@ impl Core {
         Ok(empty(()))
     }
 
-    /// `clearCrashes`: removes the crash files named, those the app just exported; a file written
-    /// since stays. A name that is not a crash file's is refused.
+    /// `clearCrashes`: removes the crash files named, those the app just exported, at or below the
+    /// mark their listing gave; a file written since stays. A name that is not a crash file's is
+    /// refused.
     fn clear_crashes(&self, args: &str, event: &mut Event) -> Result<String, ErrorCode> {
-        let ClearCrashesArgs { names } = parse(args)?;
+        let ClearCrashesArgs { names, mark } = parse(args)?;
         if names.iter().any(|n| crash::number(n).is_none()) {
             return Err(ErrorCode::InvalidArgument);
         }
         let removed = match self.diag.crashes() {
-            Some(crashes) => crashes.remove(&names).map_err(|e| {
+            Some(crashes) => crashes.remove(&names, mark).map_err(|e| {
                 *event = event.io(e.kind());
                 ErrorCode::Internal
             })?,

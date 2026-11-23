@@ -81,6 +81,10 @@ pub struct Diagnostics {
     pub stats: StatsSummary,
     /// Oldest first.
     pub crashes: Vec<CrashFile>,
+    /// No crash file listed has a higher number, and no file written from now on will have it
+    /// or a lower one: `clearCrashes` takes it back with the names it exported.
+    #[serde(rename = "crashMark")]
+    pub crash_mark: u64,
 }
 
 /// `release` or `debug`.
@@ -151,10 +155,12 @@ pub struct StatsSummary {
     pub today: Today,
 }
 
-/// `clearCrashes`' arguments: the crash files the app exported.
+/// `clearCrashes`' arguments: the crash files the app exported, and the `crashMark` of the
+/// `diagnostics` reply that listed them; a name above it is not removed.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClearCrashesArgs {
     pub names: Vec<String>,
+    pub mark: u64,
 }
 
 /// A file in `dataDir/crash/`.

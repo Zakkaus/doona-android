@@ -388,9 +388,9 @@ internal data class LevelArgs(val level: CoreLevel)
 @Serializable
 internal data class DiagnosticsArgs(val level: CoreLevel? = null)
 
-/** `clearCrashes`' arguments: the crash files the export took; the core deletes only these. */
+/** `clearCrashes`' arguments: the crash files the export took and its listing's `crashMark`; the core deletes only these. */
 @Serializable
-internal data class ClearCrashesArgs(val names: List<String>)
+internal data class ClearCrashesArgs(val names: List<String>, val mark: Long)
 
 /** `diagnostics`' reply: the build, the ring's [level] and its [events] (oldest first), and the [crashes] (oldest first). */
 @Serializable
@@ -404,8 +404,11 @@ internal data class DiagnosticsDto(
     val snapshot: LastSnapshotDto? = null,
     val stats: StatsSummaryDto,
     val crashes: List<CrashFileDto>,
+    /** No crash file listed has a higher number, and none written later will have it or a lower one. */
+    val crashMark: Long,
 ) {
-    fun toCoreDiagnostics(json: String) = CoreDiagnostics(level.toLogLevel(), crashes.map { CrashFile(it.name, it.bytes) }, json)
+    fun toCoreDiagnostics(json: String) =
+        CoreDiagnostics(level.toLogLevel(), crashes.map { CrashFile(it.name, it.bytes) }, crashMark, json)
 }
 
 /** The library and how it was built: [profile] `release` or `debug`, [target] as `aarch64-android`. */

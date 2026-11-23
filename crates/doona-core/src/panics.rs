@@ -19,8 +19,13 @@ pub(crate) fn count_on_this_thread(count: &Arc<AtomicU64>) {
 }
 
 /// Installs, once per process, a hook that counts each panic of a counting thread, writes its
-/// crash file (`diag/crash.rs`), then runs the hook installed before it (in the app, one that
-/// does nothing; see `jni.rs`). None of them logs.
+/// crash file (`diag/crash.rs`), then runs the hook installed before it.
+///
+/// In the app that hook is `jni.rs`'s, which does nothing: jni.rs installs it just before the
+/// first core, each copy of std keeps its own hook, so no other library in the app can put one
+/// under this, and no dependency linked into the library sets a hook. A Rust program that links
+/// the core as a library keeps whatever hook it set before, and the risk that it logs: the unit
+/// and integration tests need std's default hook to print a failed assertion.
 pub(crate) fn install() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {

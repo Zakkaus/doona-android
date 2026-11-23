@@ -238,6 +238,7 @@ class CoreDtoTest {
         val diagnostics = dto.toCoreDiagnostics(reply.json)
         assertEquals(LogLevel.Info, diagnostics.level)
         assertEquals(listOf(CrashFile("1795300150000.txt", 5123)), diagnostics.crashes)
+        assertEquals(1795300150000L, diagnostics.crashMark)
         // The export keeps the core's whole reply, not only what the app parsed.
         val ok = Json.parseToJsonElement(fixture("call-ok-diagnostics.json")).jsonObject.getValue("ok")
         assertEquals(ok, Json.parseToJsonElement(diagnostics.json))
@@ -251,7 +252,7 @@ class CoreDtoTest {
         assertEquals("{}", CoreJson.encode(DiagnosticsArgs.serializer(), DiagnosticsArgs(null)))
         val level = CoreJson.encode(LevelArgs.serializer(), LevelArgs(CoreLevel.Info))
         assertEquals(Json.parseToJsonElement(fixture("call-set-log-level-args.json")), Json.parseToJsonElement(level))
-        val clear = CoreJson.encode(ClearCrashesArgs.serializer(), ClearCrashesArgs(listOf("1795300150000.txt")))
+        val clear = CoreJson.encode(ClearCrashesArgs.serializer(), ClearCrashesArgs(listOf("1795300150000.txt"), 1795300150000L))
         assertEquals(Json.parseToJsonElement(fixture("call-clear-crashes-args.json")), Json.parseToJsonElement(clear))
         assertEquals(LogLevel.entries, LogLevel.entries.map { CoreLevel.of(it).toLogLevel() })
     }

@@ -89,9 +89,14 @@ class FakeEngine(
     /** None: the fake never crashes. A test sets some to stand for the core's crash files. */
     var crashes = emptyList<CrashFile>()
 
+    /** The highest number a crash file's name held, as the core's mark. */
+    private var crashMark = 0L
+
     override suspend fun diagnostics(level: LogLevel?): Result<CoreDiagnostics> {
+        crashMark = maxOf(crashMark, crashes.maxOfOrNull { it.name.removeSuffix(".txt").toLongOrNull() ?: 0L } ?: 0L)
         val files = crashes.joinToString(",") { """{"name":"${it.name}","bytes":${it.bytes}}""" }
-        return Result.success(CoreDiagnostics(logLevel, crashes, """{"level":"${logLevel.name.lowercase()}","crashes":[$files]}"""))
+        val json = """{"level":"${logLevel.name.lowercase()}","crashes":[$files],"crashMark":$crashMark}"""
+        return Result.success(CoreDiagnostics(logLevel, crashes, crashMark, json))
     }
 
     override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
@@ -99,8 +104,8 @@ class FakeEngine(
         return Result.success(Unit)
     }
 
-    override suspend fun clearCrashes(names: List<String>): Result<Unit> {
-        crashes = crashes.filterNot { it.name in names }
+    override suspend fun clearCrashes(names: List<String>, mark: Long): Result<Unit> {
+        crashes = crashes.filterNot { it.name in names && (it.name.removeSuffix(".txt").toLongOrNull() ?: Long.MAX_VALUE) <= mark }
         return Result.success(Unit)
     }
 
