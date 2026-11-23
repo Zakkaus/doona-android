@@ -12,8 +12,9 @@ import dev.doona.android.prototype.rv.rvIdleActivity
 
 /**
  * What 活動 says when it cannot carry traffic: no subscription yet (the empty state, in place of the cards); every node
- * failed its latency test; another app took the VPN; no network; the core stopped after the tunnel came up. A failed
- * subscription update keeps its nodes, so it is told on 訂閱, not here.
+ * failed its latency test; another app took the VPN; no network; the core stopped after the tunnel came up. And, once
+ * after doona crashed, that a crash log waits to be exported. A failed subscription update keeps its nodes, so it is
+ * told on 訂閱, not here.
  */
 internal enum class RvActivityNotice(val route: String) {
     NoSubscription("empty"),
@@ -21,6 +22,7 @@ internal enum class RvActivityNotice(val route: String) {
     VpnTaken("vpn-taken"),
     Offline("offline"),
     CoreStopped("core-stopped"),
+    Crash("crash"),
 }
 
 /**
@@ -33,13 +35,13 @@ internal fun rvNoticeActivity(notice: RvActivityNotice): ActivityUiState {
         RvActivityNotice.NoSubscription -> idle.copy(outboundGroupId = null, outbound = null, node = null)
         RvActivityNotice.NoNode -> idle.copy(node = idle.node?.copy(latencyMs = null, failed = true))
         RvActivityNotice.CoreStopped -> idle.copy(status = Status.Failed(FailureReason.CoreStopped))
-        RvActivityNotice.VpnTaken, RvActivityNotice.Offline -> idle
+        RvActivityNotice.VpnTaken, RvActivityNotice.Offline, RvActivityNotice.Crash -> idle
     }
 }
 
 /**
  * The notice's card: the empty state with 新增訂閱, or a banner with its reason and one action ([onAction]): 重新測試,
- * 重新連線 or 網路設定. Each banner keeps the error glyph but VPN (its power glyph) and the network (Wi-Fi off).
+ * 重新連線, 網路設定 or 匯出報告. Each banner keeps the error glyph but VPN (its power glyph) and the network (Wi-Fi off).
  */
 @Composable
 internal fun RvActivityNoticeCard(notice: RvActivityNotice, onAction: () -> Unit) {
@@ -75,5 +77,7 @@ internal fun RvActivityNoticeCard(notice: RvActivityNotice, onAction: () -> Unit
             stringResource(R.string.rv_reconnect),
             onAction,
         )
+
+        RvActivityNotice.Crash -> RvBanner(stringResource(R.string.rv_crash), stringResource(R.string.rv_crash_reason), stringResource(R.string.rv_crash_export), onAction)
     }
 }

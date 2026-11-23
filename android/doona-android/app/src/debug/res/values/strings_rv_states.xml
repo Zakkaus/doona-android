@@ -13,6 +13,9 @@
     <string name="rv_retest">Test again</string>
     <string name="rv_core_stopped">Disconnected</string>
     <string name="rv_core_stopped_reason">doona\'s core stopped, so traffic no longer goes through a node.</string>
+    <string name="rv_crash">doona crashed earlier</string>
+    <string name="rv_crash_reason">The crash log is kept and goes into the diagnostic report.</string>
+    <string name="rv_crash_export">Export report</string>
     <string name="rv_lan_ask_title">Allow local network access</string>
     <string name="rv_lan_ask_body">doona needs this permission to reach subscriptions and nodes on your local network.</string>
     <string name="rv_lan_ask_continue">Continue</string>

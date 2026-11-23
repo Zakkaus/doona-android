@@ -13,6 +13,9 @@
     <string name="rv_retest">重新測試</string>
     <string name="rv_core_stopped">連線已中斷</string>
     <string name="rv_core_stopped_reason">doona 的核心已停止運作，流量不再經過節點。</string>
+    <string name="rv_crash">doona 先前發生當機</string>
+    <string name="rv_crash_reason">當機記錄已保存，會附在診斷報告中。</string>
+    <string name="rv_crash_export">匯出報告</string>
     <string name="rv_lan_ask_title">允許存取區網</string>
     <string name="rv_lan_ask_body">連到區網上的訂閱和節點需要這項權限。</string>
     <string name="rv_lan_ask_continue">繼續</string>

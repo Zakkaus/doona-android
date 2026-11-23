@@ -314,12 +314,16 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
 
 /**
  * 活動 under a notice ([RvActivityNotice.route]): its action clears it (back to 活動), but the empty state's 新增訂閱 opens
- * the add page.
+ * the add page, and the crash notice's 匯出報告 opens 回報問題 exporting.
  */
 @Composable
 private fun NoticeActivity(notice: RvActivityNotice, routes: RvActivityRoutes, pages: RvSamplePages) {
     val empty = notice == RvActivityNotice.NoSubscription
-    val onNotice = if (empty) ({ pages.push(RvSubsRoutes.ADD) }) else pages.pop
+    val onNotice = when (notice) {
+        RvActivityNotice.NoSubscription -> ({ pages.push(RvSubsRoutes.ADD) })
+        RvActivityNotice.Crash -> ({ pages.push("$REPORT:${RvExport.Exporting.name}") })
+        else -> pages.pop
+    }
     RvActivityScreen(rvNoticeActivity(notice), onAction = {}, onConnect = {}, routes, notice = { RvActivityNoticeCard(notice, onNotice) }, noticeOnly = empty)
 }
 

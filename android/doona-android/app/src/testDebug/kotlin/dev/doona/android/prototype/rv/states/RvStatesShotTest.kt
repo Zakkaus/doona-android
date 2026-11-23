@@ -7,6 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.doona.android.prototype.rv.RV_FS115
+import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreen
 import dev.doona.android.prototype.rv.RvConfirmContent
 import dev.doona.android.prototype.rv.RvSheetLayout
@@ -33,8 +35,9 @@ import org.robolectric.annotation.GraphicsMode
  * The first run and the states that stop traffic, light and dark: the welcome page whole (`proto-rv-welcome-*`); 活動
  * with no subscription (`-activity-empty-*`), with every node failed (`-activity-no-node-*`), with the VPN taken
  * (`-activity-vpn-taken-*`), offline (`-activity-offline-*`) and after the core stopped (`-activity-core-stopped-*`), each
- * its first screen; and the local network prompts over 新增訂閱 with a link on the local network
- * (`-sub-add-lan-{ask,denied}-*`), drawn as their sheet's window draws them once in.
+ * its first screen, and once after a crash (`-activity-crash-*`, also fs115 and fs200); and the local network prompts
+ * over 新增訂閱 with a link on the local network (`-sub-add-lan-{ask,denied}-*`), drawn as their sheet's window draws them
+ * once in.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -70,6 +73,14 @@ class RvStatesShotTest {
 
     @Test fun coreStoppedDark() = notice(RvActivityNotice.CoreStopped, true)
 
+    @Test fun crashLight() = notice(RvActivityNotice.Crash, false)
+
+    @Test fun crashDark() = notice(RvActivityNotice.Crash, true)
+
+    @Test fun crashFs115() = notice(RvActivityNotice.Crash, false, RV_FS115)
+
+    @Test fun crashFs200() = notice(RvActivityNotice.Crash, false, RV_FS200)
+
     @Test fun lanAskLight() = shot("sub-add-lan-ask", false) { Lan("lan-ask", RvLanPrompt.Ask) }
 
     @Test fun lanAskDark() = shot("sub-add-lan-ask", true) { Lan("lan-ask", RvLanPrompt.Ask) }
@@ -104,10 +115,19 @@ class RvStatesShotTest {
         assertEquals(1, actions)
     }
 
-    private fun notice(notice: RvActivityNotice, dark: Boolean) = shot("activity-${notice.route}", dark) { Notice(notice) {} }
+    @Test
+    fun theCrashNoticeExports() {
+        var exports = 0
+        compose.setContent { Themed { Notice(RvActivityNotice.Crash) { exports++ } } }
+        compose.onNodeWithText(TODAY).assertExists()
+        compose.onNodeWithText(EXPORT).performClick()
+        assertEquals(1, exports)
+    }
 
-    private fun shot(name: String, dark: Boolean, whole: Boolean = false, content: @Composable () -> Unit) =
-        compose.rvShot(name, dark, before = { if (whole) assertWhole() }, content = content)
+    private fun notice(notice: RvActivityNotice, dark: Boolean, fontScale: Float = 1f) = shot("activity-${notice.route}", dark, fontScale = fontScale) { Notice(notice) {} }
+
+    private fun shot(name: String, dark: Boolean, whole: Boolean = false, fontScale: Float = 1f, content: @Composable () -> Unit) =
+        compose.rvShot(name, dark, before = { if (whole) assertWhole() }, fontScale = fontScale, content = content)
 
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
@@ -137,5 +157,6 @@ class RvStatesShotTest {
         const val ADD = "新增訂閱"
         const val TODAY = "今日用量"
         const val RECONNECT = "重新連線"
+        const val EXPORT = "匯出報告"
     }
 }
