@@ -15,12 +15,16 @@ import java.util.concurrent.atomic.AtomicBoolean
  * with the crash files a pick in that sheet clears. Kept in [file], so a pick that starts a new process finds its export,
  * and a late pick in an earlier sheet clears that export's files, never a newer crash. A record stays until its clear
  * succeeds, or until no sheet opened for it: a pick is noted first, so a clear that failed, or a process that ended
- * before the clear returned, leaves it [pending] for the next start. None is dropped to make room. A save that fails is
- * tried once more. Reads and writes the disk: call it off the main thread.
+ * before the clear returned, leaves it [pending] for the next start; a pick that cannot be noted clears nothing until a
+ * later save notes it. None is dropped to make room. A save that fails is tried once more. Reads and writes the disk:
+ * call it off the main thread.
  */
 class ExportTokens(private val file: () -> File) {
     /** Whether a file this version cannot decode was logged: once is enough. */
     private val undecodableLogged = AtomicBoolean(false)
+
+    /** The picks whose note failed ([picked]), by token: each save writes them picked, and the first that succeeds empties it. */
+    private val unsaved = HashSet<String>()
 
     /**
      * Keeps [crashes] for the export [token]; an [IOException] when it cannot, the file cannot be read or decoded or two
@@ -33,26 +37,36 @@ class ExportTokens(private val file: () -> File) {
     }
 
     /**
-     * The crash files of the export [token], after noting the pick, so that the next start sends the clear again until
-     * it succeeds ([forget]). Null for a token unknown or forgotten. A pick that cannot be noted, in two tries, still
-     * answers: the clear is sent, only not again.
+     * The crash files of the export [token], once the pick is noted on disk, so that the next start sends the clear
+     * again until it succeeds ([forget]). Null for a token unknown or forgotten, and for a pick that could not be noted,
+     * the records unread or two saves failed: that is logged ([PICK_UNSAVED]) and nothing is cleared, as a clear that
+     * failed would never be sent again. The pick is kept in memory and written with the next save that succeeds; the
+     * start after it sends the clear.
      */
     @Synchronized
     fun picked(token: String): ExportedCrashes? {
         val records = try {
             load()
         } catch (_: IOException) {
-            return null
+            return notNoted(token)
         }
         val record = records.find { it.token == token } ?: return null
         if (!record.picked) {
+            unsaved += token
             try {
-                save(records.map { if (it.token == token) it.copy(picked = true) else it })
+                save(records)
             } catch (_: IOException) {
-                // The clear is still sent; it is only not sent again should it fail.
+                return notNoted(token)
             }
         }
         return ExportedCrashes(record.names, record.mark)
+    }
+
+    /** A pick not on disk: kept for the next save ([unsaved]) and logged; null, so nothing is cleared. */
+    private fun notNoted(token: String): ExportedCrashes? {
+        unsaved += token
+        AppEvents.record(AppEventLevel.Warn, PICK_UNSAVED)
+        return null
     }
 
     /**
@@ -81,6 +95,7 @@ class ExportTokens(private val file: () -> File) {
      */
     @Synchronized
     fun forget(token: String) {
+        unsaved -= token
         try {
             val records = load()
             if (records.any { it.token == token }) save(records.filter { it.token != token })
@@ -109,13 +124,18 @@ class ExportTokens(private val file: () -> File) {
         }
     }
 
-    /** [write], and once more when it fails: a save that fails twice is an [IOException]. */
+    /**
+     * [write], with the picks not yet saved ([unsaved]) marked, and once more when it fails: a save that fails twice is an
+     * [IOException], and keeps them for the next.
+     */
     private fun save(records: List<Record>) {
+        val noted = records.map { if (it.token in unsaved) it.copy(picked = true) else it }
         try {
-            write(records)
+            write(noted)
         } catch (_: IOException) {
-            write(records)
+            write(noted)
         }
+        unsaved.clear()
     }
 
     /** Written whole beside the file and synced, then renamed onto it; a failed write keeps the records as they were. */
@@ -141,6 +161,9 @@ class ExportTokens(private val file: () -> File) {
     internal companion object {
         /** The event logged for a tokens file this version cannot decode. */
         const val TOKENS_UNDECODABLE = "report tokens: undecodable"
+
+        /** The event logged for a pick that could not be noted, so nothing was cleared. */
+        const val PICK_UNSAVED = "report tokens: pick not saved"
         private const val PART = ".part"
         private val SERIALIZER = ListSerializer(Record.serializer())
     }

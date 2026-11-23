@@ -148,7 +148,7 @@ internal fun crashText(
     appendLine(LOCATION + (frames?.firstOrNull() ?: UNKNOWN))
     appendLine("message: $CRASH_MESSAGE")
     appendLine()
-    appendLine("backtrace:")
+    appendLine(BACKTRACE)
     appendLine(EXCEPTION + names.type(type))
     frames?.forEach { appendLine(FRAME + it) }
 }

@@ -92,14 +92,25 @@ internal fun exportedCrash(bytes: ByteArray, names: KnownNames): ByteArray? {
     val text = bytes.decodeToString()
     return when {
         text.startsWith(CORE_SOURCE) -> bytes
-        text.startsWith(APP_HEADER) -> text.split('\n').mapNotNull { appLine(it, names) }.joinToString("\n").toByteArray()
+        text.startsWith(APP_HEADER) -> exportedApp(text.split('\n'), names).joinToString("\n").toByteArray()
         else -> null
+    }
+}
+
+/**
+ * The [lines] of an app crash file the export sends. A line that states a value ([STATED]) goes only at its place in the
+ * header, before [BACKTRACE]: once each, and never among the frames.
+ */
+private fun exportedApp(lines: List<String>, names: KnownNames): List<String> {
+    val backtrace = lines.indexOf(BACKTRACE).takeIf { it >= 0 } ?: lines.size
+    return lines.mapIndexedNotNull { at, line ->
+        if (at < backtrace && STATED[at]?.matches(line) == true) line else appLine(line, names)
     }
 }
 
 /** [line] of an app crash file ([crashText]) as the export sends it, or null when no line of the format has its shape. */
 private fun appLine(line: String, names: KnownNames): String? = when {
-    line in FIXED_LINES || STATED.any { it.matches(line) } -> line
+    line in FIXED_LINES -> line
 
     line == LOCATION + UNKNOWN -> line
 
@@ -134,6 +145,7 @@ private const val CORE_SOURCE = "source: core\n"
 internal const val LOCATION = "location: "
 internal const val EXCEPTION = "exception: "
 internal const val FRAME = "  at "
+internal const val BACKTRACE = "backtrace:"
 internal const val UNKNOWN = "unknown"
 
 /** A class name: plain identifiers, `[A-Za-z_$][A-Za-z0-9_$]*`, joined by dots (`[Ljava.lang.String;` would resolve to an array). */
@@ -154,8 +166,29 @@ private val FIXED_LINES = setOf(
     "thread: other",
     "message: $CRASH_MESSAGE",
     "",
-    "backtrace:",
+    BACKTRACE,
 )
 
-/** The lines that state the time and the app's version line ([AppInfo.crashVersion]). */
-private val STATED = listOf(Regex("""atEpochMs: \d{1,19}"""), Regex("""version: [A-Za-z0-9._+() -]{1,100}"""))
+/** A version name as the build sets it (`versionName`, `0.1`): up to four numbers joined by dots. */
+internal val VERSION_NAME = Regex("""\d{1,9}(?:\.\d{1,9}){0,3}""")
+
+/** The build types the app is built as. */
+internal val BUILD_TYPES = setOf("debug", "release")
+
+/** The ABIs Android names in `Build.SUPPORTED_ABIS`. */
+internal val ABIS = setOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86", "riscv64")
+
+/**
+ * The app's version line as [AppInfo.crashVersion] writes it, and the only one the export keeps: `<versionName> <build
+ * type> <ABI>-android`, each part [UNKNOWN] when it is none of the above. Any other text, a DNS name among them, goes.
+ */
+private val CRASH_VERSION = run {
+    // Letters, digits, `-` and `_` only: no part needs escaping.
+    fun oneOf(parts: Collection<String>) = (parts + UNKNOWN).joinToString("|")
+    Regex("version: (?:${VERSION_NAME.pattern}|$UNKNOWN) (?:${oneOf(BUILD_TYPES)}) (?:${oneOf(ABIS)})-android")
+}
+
+/** The lines that state a value, by their place in an app crash file ([crashText]): the time, then the app's version. */
+private val STATED = APP_HEADER.count { it == '\n' }.let { header ->
+    mapOf(header to Regex("""atEpochMs: \d{1,19}"""), header + 1 to CRASH_VERSION)
+}

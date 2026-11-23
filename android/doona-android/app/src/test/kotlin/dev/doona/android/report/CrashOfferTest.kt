@@ -67,6 +67,19 @@ class CrashOfferTest {
     }
 
     @Test
+    fun `a check that could not read the crash files leaves the offer to the next one`() {
+        // A file where the directory goes: the lock cannot be opened.
+        dir.writeText("x")
+        val offer = CrashOffer(CrashFiles(dir), seen)
+        offer.check()
+        assertFalse(offer.offered.value)
+        assertTrue(dir.delete())
+        crash(1_795_300_150_000)
+        offer.check()
+        assertTrue("one failed read hid the offer for the process", offer.offered.value)
+    }
+
+    @Test
     fun `an offer that never reached the screen is made again`() {
         crash(1_795_300_150_000)
         // The process ends, or the first-run page is up, before the banner is drawn.

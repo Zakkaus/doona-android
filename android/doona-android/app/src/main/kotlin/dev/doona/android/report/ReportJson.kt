@@ -39,8 +39,16 @@ data class AppInfo(
     val manufacturer: String,
     val model: String,
 ) {
-    /** The app's line in a crash file, as the core writes its own: version, build type, ABI. */
-    val crashVersion: String get() = "$version $buildType ${abis.firstOrNull() ?: "unknown"}-android"
+    /**
+     * The app's line in a crash file, as the core writes its own: version, build type, ABI. Only the grammar the export
+     * keeps: a part that is not a version name ([VERSION_NAME]), a build type or an ABI Android names is [UNKNOWN].
+     */
+    val crashVersion: String get() {
+        val name = version.takeIf(VERSION_NAME::matches) ?: UNKNOWN
+        val build = buildType.takeIf { it in BUILD_TYPES } ?: UNKNOWN
+        val abi = abis.firstOrNull()?.takeIf { it in ABIS } ?: UNKNOWN
+        return "$name $build $abi-android"
+    }
 
     companion object {
         fun of(context: Context): AppInfo {

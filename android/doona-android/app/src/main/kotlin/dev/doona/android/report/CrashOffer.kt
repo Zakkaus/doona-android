@@ -9,11 +9,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Whether to offer the report after a crash: once per new crash, from the first [check] of a process. A crash is new when
- * its file's number is above the number kept in [seen]. That number is raised only once the offer reached the screen
- * ([shown]): a process that ends first, or a page that never draws the offer, leaves the crash to be offered at the next
- * launch, and an offer the user saw is not made again even when they left without answering. The core's crash files
- * and the app's count alike.
+ * Whether to offer the report after a crash: once per new crash, from the first [check] of a process that reads the crash
+ * files. A crash is new when its file's number is above the number kept in [seen]. That number is raised only once the
+ * offer reached the screen ([shown]): a process that ends first, or a page that never draws the offer, leaves the crash to
+ * be offered at the next launch, and an offer the user saw is not made again even when they left without answering. The
+ * core's crash files and the app's count alike.
  */
 class CrashOffer(private val files: CrashFiles, locate: () -> File) {
     constructor(files: CrashFiles, seen: File) : this(files, { seen })
@@ -32,16 +32,18 @@ class CrashOffer(private val files: CrashFiles, locate: () -> File) {
     private val pending = AtomicLong(0)
 
     /**
-     * Reads the crash files, on the first call in a process only; it reads the disk, so call it off the main thread. A
-     * directory that cannot be read offers nothing.
+     * Reads the crash files, until one call in a process has read them; it reads the disk, so call it off the main thread.
+     * A directory that cannot be read offers nothing this time, and leaves the offer to the next call.
      */
     fun check() {
-        if (!checked.compareAndSet(false, true)) return
+        if (checked.get()) return
         val newest = try {
             files.newest()
         } catch (_: IOException) {
             return
         }
+        // Two calls that read at once: one offers.
+        if (!checked.compareAndSet(false, true)) return
         if (newest <= seenNumber()) return
         pending.set(newest)
         up.value = true

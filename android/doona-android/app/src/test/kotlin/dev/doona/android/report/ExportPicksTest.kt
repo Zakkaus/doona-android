@@ -65,6 +65,55 @@ class ExportPicksTest : ExportFixture() {
     }
 
     @Test
+    fun `a pick that cannot be noted clears nothing and is logged, and the next save notes it for the start after`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(crash, 1))
+        val engine = Recording(fake)
+        val export = export(engine)
+        val ready = export.build()!!
+        // A directory with a file in it holds the part's name: neither try can write it or remove it.
+        val blocked = tmp.root.resolve(tokensFile.name + ".part").apply { mkdirs() }
+        blocked.resolve("held").writeText("x")
+        export.picked(ready.token)
+        advanceUntilIdle()
+        assertEquals("cleared with the pick on no disk", 0, engine.cleared.size)
+        assertTrue(AppEvents.snapshot().toString(), AppEvents.snapshot().any { it.text == ExportTokens.PICK_UNSAVED })
+        export(engine).sweep()
+        advanceUntilIdle()
+        assertEquals("a start found a pick that was never saved", 0, engine.cleared.size)
+        assertTrue(blocked.deleteRecursively())
+        // The next export's token is saved with the pick.
+        assertNotNull(export.build())
+        export(engine).sweep()
+        advanceUntilIdle()
+        assertEquals(listOf(listOf(crash) to 1_795_300_150_000L), engine.cleared)
+    }
+
+    @Test
+    fun `a pick that comes while the tokens cannot be read clears nothing and is logged, and the next save notes it`() = runTest {
+        val fake = fixtureEngine()
+        val crash = appCrash(1_795_300_150_000)
+        fake.crashes = listOf(CrashFile(crash, 1))
+        val engine = Recording(fake)
+        val export = export(engine)
+        val ready = export.build()!!
+        assertTrue(tokensFile.setReadable(false))
+        try {
+            export.picked(ready.token)
+            advanceUntilIdle()
+        } finally {
+            tokensFile.setReadable(true)
+        }
+        assertEquals(0, engine.cleared.size)
+        assertTrue(AppEvents.snapshot().toString(), AppEvents.snapshot().any { it.text == ExportTokens.PICK_UNSAVED })
+        assertNotNull(export.build())
+        export(engine).sweep()
+        advanceUntilIdle()
+        assertEquals(listOf(listOf(crash) to 1_795_300_150_000L), engine.cleared)
+    }
+
+    @Test
     fun `a tokens file this version cannot decode is kept as it is, the export fails, and a code is logged`() = runTest {
         val later = """[{"token":"t1","names":["1795300140000.txt"],"mark":1795300140000,"picked":true,"sheet":"a later version's"}]"""
         tokensFile.writeText(later)
