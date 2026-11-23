@@ -50,6 +50,8 @@ aho-corasick = "1"
 # Rule mode's names of DNS answers, least recently used first out. Already in the graph through
 # honk-outbound.
 lru = "0.19"
+# Match excluded symlink names with the same glob syntax as honk's include loader.
+glob = "0.3"
 
 [features]
 # Debug builds of the app only (its Gradle build turns this on for the debug variant):

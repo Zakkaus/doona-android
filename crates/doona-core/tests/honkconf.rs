@@ -8,7 +8,7 @@ use std::{
 };
 
 use common::TempDir;
-use doonacore::honkconf::{Disposition, HonkConfigError, Summary, load};
+use doonacore::honkconf::{Disposition, HonkConfigError, HonkStore, Summary, load};
 use honk_config::Config;
 
 fn write(dir: &TempDir, name: &str, text: &str) -> PathBuf {
@@ -368,11 +368,11 @@ fn confined_includes_and_hosts() {
     assert_eq!(config.config().global.pprof_port, 1234);
     let records = config.unsupported();
     assert!(
-        records[..4]
+        records[..5]
             .iter()
             .all(|r| r.disposition == Disposition::Incomplete)
     );
-    assert_eq!(records[4].disposition, Disposition::Skip);
+    assert_eq!(records[5].disposition, Disposition::Skip);
     let codes: Vec<_> = records
         .iter()
         .map(|r| (r.reasons[0].code, r.locations[0].line))
@@ -383,6 +383,7 @@ fn confined_includes_and_hosts() {
             ("include_escape", 2),
             ("include_escape", 3),
             ("include_escape", 4),
+            ("include_escape", 5),
             ("include_escape", 8),
             ("use_host_escape", 10),
             ("daemon_listener", 1)
@@ -540,4 +541,34 @@ fn wildcard_retains_regular_matches_without_certifying_excluded_links() {
     assert_eq!(config.config().global.pprof_port, 1234);
     assert!(!config.complete());
     assert_eq!(config.unsupported()[0].reasons[0].code, "include_escape");
+}
+
+#[test]
+fn imported_sources_exclude_unreferenced_assets() {
+    let dir = TempDir::new("honk-assets");
+    let entry = write(&dir, "main.dae", "include { rules-*.dae }");
+    write(&dir, "rules-local.dae", "dns { use_host: names.txt }");
+    write(&dir, "example.dae", "dns { use_host: unrelated.txt }");
+    std::os::unix::fs::symlink("/absent", dir.path().join("rules-geoip.dat")).unwrap();
+    write(&dir, "names.txt", "127.0.0.1 example.test\n");
+    fs::write(dir.path().join("geoip.dat"), [0xff]).unwrap();
+    for i in 0..honk_config::parser::SourceLimits::DEFAULT.max_sources {
+        write(&dir, &format!("unrelated-{i}"), "not a source");
+    }
+    assert!(load(&entry).unwrap().unsupported().is_empty());
+    let data = TempDir::new("honk-assets-store");
+    let mut store = HonkStore::open(data.path()).unwrap();
+    let draft = store.import(&entry).unwrap();
+    let rev = store.apply(draft).unwrap();
+    let tree = data.path().join(format!("config/revisions/{rev}"));
+    let mut names: Vec<_> = fs::read_dir(&tree)
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    names.sort_unstable();
+    assert_eq!(names, ["main.dae", "names.txt", "rules-local.dae"]);
+    assert_eq!(
+        fs::read(tree.join("names.txt")).unwrap(),
+        b"127.0.0.1 example.test\n"
+    );
 }
