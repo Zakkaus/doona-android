@@ -152,9 +152,25 @@ internal object RvSize {
     val badgeRing = 2.dp
     val badgeCheck = 1.5.dp
     val badgeOverhang = 2.dp
+}
 
-    /** A long-press menu: a card of one-line rows this wide, floating by the row it belongs to. */
-    val menuWidth = 248.dp
+/**
+ * The menu's geometry: Revolut's long-press popup (revolut-ux3 §1: 200 dp wide, 20 dp round, rows of 50 dp with a 24 dp
+ * glyph at 16 dp and a 19 sp semibold label), held clear of the screen's edges.
+ */
+internal object RvMenuSize {
+    val minWidth = 200.dp
+    val maxWidth = 280.dp
+
+    /** One item: Revolut's popup row, 50 dp, shorter than a list's 58 dp row. */
+    val row = 50.dp
+
+    /** An anchored menu opens this far under its anchor, its end on the anchor's end. */
+    val anchorGap = 8.dp
+
+    /** The menu keeps the gutter from the window's edges, and room round it for its shadow inside the popup's window. */
+    val margin = RvSpace.gutter
+    val shadowRoom = RvChrome.navShadow
 }
 
 /** The one chevron (measured §7): 6.7 x 12.2 dp of 2 dp stroke in a 24 dp box. */

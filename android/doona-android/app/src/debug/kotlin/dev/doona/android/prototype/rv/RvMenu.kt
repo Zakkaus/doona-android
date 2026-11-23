@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.window.Popup
@@ -78,19 +77,6 @@ internal class RvMenuItem(
     val separated: Boolean = false,
     val onClick: () -> Unit,
 )
-
-/** The menu's geometry: Revolut's More card (20 dp round, rows with a leading glyph), held clear of the screen's edges. */
-internal object RvMenuSize {
-    val minWidth = 200.dp
-    val maxWidth = 280.dp
-
-    /** An anchored menu opens this far under its anchor, its end on the anchor's end. */
-    val anchorGap = 8.dp
-
-    /** The menu keeps the gutter from the window's edges, and room round it for its shadow inside the popup's window. */
-    val margin = RvSpace.gutter
-    val shadowRoom = RvChrome.navShadow
-}
 
 /**
  * The menu as a popup over the screen while [expanded]: at [at] (a point in the anchor, where a finger pressed) or, with
@@ -148,8 +134,8 @@ internal fun RvMenu(expanded: Boolean, onDismiss: () -> Unit, items: List<RvMenu
 
 /**
  * The menu's card: the raised fill (white in light, a lighter container with its rim in dark) over the capsule's soft
- * shadow in light, 20 dp round as every card, as wide as its longest label within [RvMenuSize]; a 58 dp row per item
- * with a 24 dp glyph and its label, as Revolut's settings rows (measured §7).
+ * shadow in light, 20 dp round as every card, as wide as its longest label within [RvMenuSize]; a [RvMenuSize.row] row
+ * per item with a 24 dp glyph and its label, as Revolut's long-press popup (revolut-ux3 §1).
  */
 @Composable
 internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, modifier: Modifier = Modifier) {
@@ -175,7 +161,7 @@ internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, 
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(min = RvSize.rowOneLine)
+                    .heightIn(min = RvMenuSize.row)
                     .rvPress(RectangleShape, Role.Button, { onPick(item) })
                     .padding(horizontal = RvSpace.rowPadding),
                 verticalAlignment = Alignment.CenterVertically,
