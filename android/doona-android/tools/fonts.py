@@ -1,11 +1,15 @@
 """Builds the app's Noto Sans TC files from doona's font package.
 
-Usage: python -I tools/fonts.py <doona checkout> <app/src/main dir>
+Usage: python -I tools/fonts.py <doona checkout> <app/src/main dir> [--add <file>...]
 Needs fontTools and brotli. doona ships Noto Sans TC as a variable font cut into unicode-range slices
 (@fontsource-variable/noto-sans-tc 5.3.0, SIL OFL 1.1). This script keeps the slices that hold a character the app
 shows (printable ASCII plus every character in the string resources and Kotlin sources), fixes each at the weights
 the type scale uses, merges them into one TrueType file per weight, and applies doona's metric overrides from
 src/fonts-tc.css:4 (ascent 100 %, descent 20 %, line gap 0).
+
+With --add, the files keep the characters they hold and gain those of the files named, and nothing else: a full
+rebuild also takes in every character the sources gained since the last one, which the screens drew in a fallback face
+until then, so their goldens change. A rebuild keeps the bounding box of the files it replaces (keep_bounds).
 """
 
 import io
@@ -43,10 +47,32 @@ def slices(package):
         yield package / "files" / src, ranges
 
 
+def keep_bounds(data, previous):
+    """[data], a built file, with the bounding box of the file it replaces: a character that reaches higher or lower
+    than the others would otherwise widen the box, and Android places text by it, so every line in the app would move.
+    A rebuild changes which characters the files hold and nothing else (tools/font_metrics.py compares two sets)."""
+    # Opened without recalculation, so saving keeps the box set here; the build's save computed everything else.
+    font = TTFont(io.BytesIO(data), recalcBBoxes=False)
+    head, old = font["head"], previous["head"]
+    head.xMin, head.yMin, head.xMax, head.yMax = old.xMin, old.yMin, old.xMax, old.yMax
+    buffer = io.BytesIO()
+    font.save(buffer)
+    return buffer.getvalue()
+
+
+def held_chars(main_dir):
+    """The characters the current files hold; every weight holds the same."""
+    return {chr(c) for c in TTFont(main_dir / "res/font/noto_sans_tc_w400.ttf").getBestCmap()}
+
+
 def main():
     doona, main_dir = Path(sys.argv[1]), Path(sys.argv[2])
     package = doona / "node_modules/@fontsource-variable/noto-sans-tc"
-    wanted = used_chars(main_dir)
+    if sys.argv[3:4] == ["--add"]:
+        added = {ch for path in sys.argv[4:] for ch in Path(path).read_text() if ord(ch) > 0x7F}
+        wanted = held_chars(main_dir) | added
+    else:
+        wanted = used_chars(main_dir)
     plan = {}
     for path, ranges in slices(package):
         hits = {ch for ch in wanted if any(lo <= ord(ch) <= hi for lo, hi in ranges)}
@@ -89,7 +115,9 @@ def main():
             os2.usWeightClass = weight
             buffer = io.BytesIO()
             merged.save(buffer)
-            (out_dir / ("noto_sans_tc_w%d.ttf" % weight)).write_bytes(buffer.getvalue())
+            out = out_dir / ("noto_sans_tc_w%d.ttf" % weight)
+            data = keep_bounds(buffer.getvalue(), TTFont(out)) if out.exists() else buffer.getvalue()
+            out.write_bytes(data)
     print("slices:", ", ".join(p.name for p in plan), "| chars:", sum(len(c) for c in plan.values()))
 
 

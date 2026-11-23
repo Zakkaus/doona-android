@@ -25,7 +25,11 @@ offset), `ContrastTest` and `ReachabilityTest`; `SpacingRulesTest`, `ProbeDetect
 `tools/duck.py` and `tools/fonts.py` rebuild the duck mark and the fonts from a doona checkout (fontTools and brotli for
 the fonts); `NOTICE` lists their licences. The font holds only the characters the string resources and Kotlin sources use, so
 rebuild it when either gains a character: `uv run --offline --no-project --with fonttools --with brotli python -I
-tools/fonts.py <doona checkout> app/src/main`. A character the font lacks falls back to a system face, in another weight.
+tools/fonts.py <doona checkout> app/src/main`. A character the font lacks falls back to a system face, in another weight
+and with a taller line, so a rebuild that takes in such a character moves the rows that show it. To add only the
+characters a change needs, pass `--add <files>` after `app/src/main`: the files keep what they hold and gain those
+characters. A rebuild keeps the bounding box of the files it replaces; `FontMetricsTest` pins the metrics, and
+`tools/font_metrics.py <old dir> <new dir>` compares two builds.
 
 ## Icons and flags
 
