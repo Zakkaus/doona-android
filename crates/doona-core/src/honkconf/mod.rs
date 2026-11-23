@@ -6,6 +6,7 @@
 //! Hosts companions are resolved under the imported entry directory, not the Linux
 //! `global.data_dir`. No full honk GeoIP/GEOSITE snapshot is linked into this runtime.
 
+pub mod bundle;
 mod declarations;
 mod draft;
 pub mod edit;

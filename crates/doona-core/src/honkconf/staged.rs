@@ -45,9 +45,13 @@ pub(super) struct Tree {
     pub links: HashSet<PathBuf>,
 }
 
+pub(super) fn is_honk_source(path: &Path) -> bool {
+    path.extension().is_some_and(|ext| ext == "dae")
+}
+
 impl Tree {
     pub(super) fn read(path: &Path) -> Result<Self, HonkConfigError> {
-        if path.extension().is_none_or(|ext| ext != "dae") {
+        if !is_honk_source(path) {
             return Err(HonkConfigError::NonNativeSource);
         }
         let source = DiagnosticSources::new(Some(path.into())).root();
@@ -77,7 +81,7 @@ impl Tree {
                         continue;
                     }
                 }
-                if path.extension().is_none_or(|ext| ext != "dae") {
+                if !is_honk_source(&path) {
                     continue;
                 }
                 let text = read_source(&path, &mut bytes, files.len(), kind.is_file())?;
@@ -94,7 +98,7 @@ impl Tree {
         })
     }
 
-    fn parse(&self) -> Result<Parsed<'_>, HonkConfigError> {
+    pub(super) fn parse(&self) -> Result<Parsed<'_>, HonkConfigError> {
         let root = self.entry.parent().unwrap();
         let reference = DiagnosticSources::new(Some(self.entry.clone())).root();
         let (overlay, prepared) = prepare(&self.files, &self.entry, root, &self.links, &reference)?;
@@ -173,7 +177,7 @@ impl Tree {
         Ok((config, companions))
     }
 
-    fn read_companions(
+    pub(super) fn read_companions(
         &self,
         config: &Config,
         edit: Option<(&Path, &str)>,
@@ -288,8 +292,8 @@ pub(super) fn confined<'a>(
     Ok(current)
 }
 
-struct Prepared<'a> {
-    doc: Document<'a>,
+pub(super) struct Prepared<'a> {
+    pub doc: Document<'a>,
     escapes: Vec<Escape>,
 }
 
@@ -315,8 +319,7 @@ fn glob_link<'a>(path: &Path, root: &Path, links: &'a HashSet<PathBuf>) -> Optio
         }
         let pattern = glob::Pattern::new(text).ok()?;
         if let Some(link) = links.iter().find(|link| {
-            (prefix != path || link.extension().is_some_and(|ext| ext == "dae"))
-                && pattern.matches_path_with(link, options)
+            (prefix != path || is_honk_source(link)) && pattern.matches_path_with(link, options)
         }) {
             return Some(link);
         }
@@ -326,39 +329,40 @@ fn glob_link<'a>(path: &Path, root: &Path, links: &'a HashSet<PathBuf>) -> Optio
 
 // Honk exposes include expansion but not its pattern spans. Match the byte boundaries
 // of parse_include_body: quoting matters only at a pattern start, not after `,` or `:`.
-fn escapes(doc: &Document<'_>, root: &Path, links: &HashSet<PathBuf>) -> Vec<Escape> {
-    let mut escaped = Vec::new();
-    for section in doc.sections().filter(|s| s.header() == "include") {
-        for entry in section
-            .body()
-            .into_iter()
-            .flatten()
-            .filter(|s| s.body().is_none())
-        {
+pub(super) fn include_patterns<'d>(
+    doc: &'d Document<'_>,
+) -> impl Iterator<Item = (&'d str, std::ops::Range<usize>)> {
+    doc.sections()
+        .filter(|s| s.header() == "include")
+        .flat_map(|s| s.body().into_iter().flatten())
+        .filter(|s| s.body().is_none())
+        .flat_map(|entry| {
             let mut text = entry.header();
-            while !text.is_empty() {
+            std::iter::from_fn(move || {
                 text = text.trim_ascii_start();
-                let Some((pattern, len)) = pattern_prefix(text) else {
-                    break;
-                };
-                let path = confined(root, Path::new(pattern), links);
-                let link = match &path {
-                    Err(link) => *link,
-                    Ok(path) => glob_link(path, root, links),
-                };
-                if path.is_err() || link.is_some() {
-                    let start = entry.header_span().end - text.len();
-                    escaped.push(Escape {
-                        span: start..start + len,
-                        blank: path.is_err(),
-                        link: link.map(Path::to_owned),
-                    });
-                }
+                let (pattern, len) = pattern_prefix(text)?;
+                let start = entry.header_span().end - text.len();
                 text = &text[len..];
-            }
-        }
-    }
-    escaped
+                Some((pattern, start..start + len))
+            })
+        })
+}
+
+fn escapes(doc: &Document<'_>, root: &Path, links: &HashSet<PathBuf>) -> Vec<Escape> {
+    include_patterns(doc)
+        .filter_map(|(pattern, span)| {
+            let path = confined(root, Path::new(pattern), links);
+            let link = match &path {
+                Err(link) => *link,
+                Ok(path) => glob_link(path, root, links),
+            };
+            (path.is_err() || link.is_some()).then(|| Escape {
+                span,
+                blank: path.is_err(),
+                link: link.map(Path::to_owned),
+            })
+        })
+        .collect()
 }
 
 fn pattern_prefix(text: &str) -> Option<(&str, usize)> {
@@ -389,10 +393,10 @@ pub(super) fn load(path: &Path) -> Result<HonkConfig, HonkConfigError> {
 
 type Documents<'a> = HashMap<&'a Path, Prepared<'a>>;
 
-struct Parsed<'a> {
-    loaded: LoadedConfig,
+pub(super) struct Parsed<'a> {
+    pub loaded: LoadedConfig,
     diagnostics: Vec<honk_config::diagnostic::DetailedDiagnostic>,
-    prepared: Documents<'a>,
+    pub prepared: Documents<'a>,
 }
 
 fn prepare<'a>(
