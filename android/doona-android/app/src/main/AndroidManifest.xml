@@ -22,6 +22,7 @@
         android:name=".app.DoonaApplication"
         android:allowBackup="false"
         android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.Doona">
 
         <activity

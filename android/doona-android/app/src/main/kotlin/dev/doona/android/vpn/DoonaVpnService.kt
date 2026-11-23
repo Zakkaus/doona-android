@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import dev.doona.android.R
 import dev.doona.android.app.DoonaApplication
+import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Traffic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -58,6 +59,7 @@ internal class DoonaVpnService :
             ACTION_START -> {
                 goForeground()
                 session.start(this, intent.getLongExtra(EXTRA_GENERATION, 0))
+                if (session.open) notifications.cancelDrop()
             }
 
             ACTION_STOP -> engine.controller.stop()
@@ -87,24 +89,27 @@ internal class DoonaVpnService :
         }
     }
 
-    /** The session ended: a failure stays visible as a notification, a stop removes it. */
-    private fun end(status: Status) {
+    private fun end(ended: Session) {
         foreground = false
-        if (status is Status.Failed) {
-            stopForeground(STOP_FOREGROUND_DETACH)
-            notifications.show(notifications.failed(status.reason))
-        } else {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            // Also posted when startForeground was refused, in which case stopForeground leaves it.
-            notifications.cancel()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        // Also posted when startForeground was refused, in which case stopForeground leaves it.
+        notifications.cancel()
+        val startId = lastStartId
+        scope.launch {
+            try {
+                notifications.showDrop(ended, AppSettings.get(this@DoonaVpnService)) {
+                    engine.controller.session.value == ended
+                }
+            } finally {
+                // A start that arrived meanwhile has a newer id, which keeps the service alive.
+                stopSelfResult(startId)
+            }
         }
-        // A start that arrived meanwhile has a newer id, which keeps the service alive.
-        stopSelfResult(lastStartId)
     }
 
     override fun onRevoke() {
         // The default implementation stops the service at once; the controller's status ends it instead.
-        engine.controller.stop()
+        engine.controller.revoke(this)
     }
 
     override fun onDestroy() {

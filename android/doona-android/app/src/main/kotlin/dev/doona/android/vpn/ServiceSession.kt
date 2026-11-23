@@ -19,11 +19,11 @@ internal class ServiceSession(private val controller: TunnelController) {
     }
 
     /** Calls [end] once for each session this instance started, with its terminal status. */
-    suspend fun follow(end: (Status) -> Unit) {
-        controller.session.collect { (g, status) ->
-            if (open && g >= generation && status.ended) {
+    suspend fun follow(end: (Session) -> Unit) {
+        controller.session.collect { session ->
+            if (open && session.generation >= generation && session.status.ended) {
                 generation = NONE
-                end(status)
+                end(session)
             }
         }
     }
