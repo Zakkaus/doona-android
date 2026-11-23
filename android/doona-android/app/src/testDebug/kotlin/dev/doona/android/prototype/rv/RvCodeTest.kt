@@ -84,6 +84,23 @@ class RvCodeTest {
         assertEquals(8, offsets.transformedToOriginal(11))
     }
 
+    /** A long file: the searched mapping and the one-pass colouring agree with counting the breaks one by one. */
+    @Test
+    fun aLongFileMapsAsCountingEachBreakWould() {
+        val source = List(LONG_FILE) { "  domain(geosite:cn) -> direct # 中國" }.joinToString("\n")
+        val shown = RvCodeShown(source)
+        val breaks = shown.breaks
+        assertEquals(2 * LONG_FILE, breaks.size)
+        for (o in 0..source.length) {
+            val t = o + breaks.count { it <= o }
+            assertEquals(t, shown.offsets.originalToTransformed(o))
+            assertEquals(o, shown.offsets.transformedToOriginal(t))
+        }
+        val colored = rvCodeText(source, rvCodeColors(RvColors(seedColorScheme(Seed.Cyan.argb, false), false))).spanStyles.filter { it.item.color != Color.Unspecified }
+        val expected = shown.spans.map { (it.start + breaks.count { b -> b <= it.start }) to (it.end + breaks.count { b -> b <= it.end }) }
+        assertEquals(expected, colored.map { it.start to it.end })
+    }
+
     /** Every role reads at 4.5:1 on the page, the card and a diff's added and removed lines, in both themes. */
     @Test
     fun everyRoleReadsOnThePageTheCardAndTheDiffTints() {
@@ -138,6 +155,9 @@ class RvCodeTest {
     private fun hueDistance(a: Float, b: Float) = abs(a - b).let { min(it, FULL_TURN - it) }
 
     private companion object {
+        /** Lines in the long file: as many rules as a large routing block holds. */
+        const val LONG_FILE = 1_000
+
         /** The owner's wallpaper, then a purple and a red seed, so the accent of another phone is covered too. */
         val SEEDS = listOf(Seed.Cyan.argb, 0xFF6750A4.toInt(), 0xFFB3261E.toInt())
         const val MIN_HUE_DISTANCE = 30f
