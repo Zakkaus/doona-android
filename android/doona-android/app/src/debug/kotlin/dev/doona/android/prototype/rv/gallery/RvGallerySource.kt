@@ -12,6 +12,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCodeText
+import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvDiffFile
 import dev.doona.android.prototype.rv.RvDiffKind.Added
 import dev.doona.android.prototype.rv.RvDiffKind.Removed
@@ -42,7 +43,7 @@ internal fun RvGallerySource() {
 
 /** The same file's diff after the fix: the line that named the missing group, and a rule added further down. */
 @Composable
-internal fun RvGalleryDiff(onOpen: (Int) -> Unit = {}) {
+internal fun RvGalleryDiff(onOpen: (RvDiffAt) -> Unit = {}) {
     RvSourceDiff(RV_GALLERY_DIFF, onOpen)
 }
 

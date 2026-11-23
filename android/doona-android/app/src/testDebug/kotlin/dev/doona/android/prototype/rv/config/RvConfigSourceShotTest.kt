@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
+import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
@@ -143,10 +144,21 @@ class RvConfigSourceShotTest {
 
     @Test
     fun aDiffLineOpensItsFileThere() {
-        var opened = "" to 0
-        compose.setContent { Themed { RvConfigDiffPage(RvConfigSourceData.diff, onBack = {}, onOpen = { file, line -> opened = file to line }) } }
+        var opened: Pair<String, RvDiffAt>? = null
+        compose.setContent { Themed { RvConfigDiffPage(RvConfigSourceData.diff, onBack = {}, onOpen = { file, at -> opened = file to at }) } }
         compose.onNodeWithContentDescription("新增，第 13 行：  domain(suffix: wiki.corp.example) -> direct").performScrollTo().performClick()
-        assertEquals(RvConfigSourceData.CN to 13, opened)
+        assertEquals(RvConfigSourceData.CN to RvDiffAt(13, base = false), opened)
+    }
+
+    /** Line 7 was removed from the base and added to the draft: each opens its own side. */
+    @Test
+    fun aRemovedLineOpensTheBaseAndItsReplacementTheDraft() {
+        var opened: Pair<String, RvDiffAt>? = null
+        compose.setContent { Themed { RvConfigDiffPage(RvConfigSourceData.diff, onBack = {}, onOpen = { file, at -> opened = file to at }) } }
+        compose.onNodeWithContentDescription("移除，第 7 行：  domain(keyword: 影音) -> proxy").performScrollTo().performClick()
+        assertEquals(RvConfigSourceData.CN to RvDiffAt(7, base = true), opened)
+        compose.onNodeWithContentDescription("新增，第 7 行：  domain(keyword: 影音) -> media").performScrollTo().performClick()
+        assertEquals(RvConfigSourceData.CN to RvDiffAt(7, base = false), opened)
     }
 
     @Composable

@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
+import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.assertWhole
@@ -119,10 +120,10 @@ class RvConfigTemplateShotTest {
 
     @Test
     fun aDiffLineOpensTheFileThere() {
-        var opened = "" to 0
-        compose.setContent { Themed { RvConfigTemplateApplyPage(RvConfigTemplateData.apply, onBack = {}, onOpen = { file, line -> opened = file to line }) } }
+        var opened: Pair<String, RvDiffAt>? = null
+        compose.setContent { Themed { RvConfigTemplateApplyPage(RvConfigTemplateData.apply, onBack = {}, onOpen = { file, at -> opened = file to at }) } }
         compose.onNodeWithContentDescription("新增，第 54 行：  domain(geosite:gfw) -> proxy").performScrollTo().performClick()
-        assertEquals(RvConfigData.ENTRY to 54, opened)
+        assertEquals(RvConfigData.ENTRY to RvDiffAt(54, base = false), opened)
     }
 
     @Composable

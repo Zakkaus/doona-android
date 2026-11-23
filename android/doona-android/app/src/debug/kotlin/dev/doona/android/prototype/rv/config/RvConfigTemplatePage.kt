@@ -19,6 +19,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvGutter
@@ -87,7 +88,7 @@ internal fun RvConfigTemplatePage(
  * opening the file at that line, and the line that only new connections follow it. 套用 floats over the scrim.
  */
 @Composable
-internal fun RvConfigTemplateApplyPage(apply: RvTemplateApply, onBack: () -> Unit, onApply: () -> Unit = {}, onOpen: (String, Int) -> Unit = { _, _ -> }) {
+internal fun RvConfigTemplateApplyPage(apply: RvTemplateApply, onBack: () -> Unit, onApply: () -> Unit = {}, onOpen: (String, RvDiffAt) -> Unit = { _, _ -> }) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_template_review)
     RvScrollPage(

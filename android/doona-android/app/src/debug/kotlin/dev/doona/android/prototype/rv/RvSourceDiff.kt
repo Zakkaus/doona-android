@@ -32,7 +32,14 @@ internal enum class RvDiffKind(val sign: String, val label: Int) {
 
 /** One line of a diff: [line] is its number in the candidate when it is kept or added, in the base when removed. */
 @Immutable
-internal class RvDiffLine(val kind: RvDiffKind, val line: Int, val text: String)
+internal class RvDiffLine(val kind: RvDiffKind, val line: Int, val text: String) {
+    /** Where a tap on this line opens its file: the base for a removed line, whose number counts there, else the candidate. */
+    val at get() = RvDiffAt(line, base = kind == RvDiffKind.Removed)
+}
+
+/** A place a diff opens its file at: [line] in the base revision when [base], else in the candidate. */
+@Immutable
+internal data class RvDiffAt(val line: Int, val base: Boolean)
 
 /** One file's changes: each run of changed lines with the lines kept round it, in the file's order. */
 @Immutable
@@ -48,17 +55,18 @@ internal class RvDiffFile(val source: String, val hunks: List<List<RvDiffLine>>)
  * 17 sp, highlighted ([RvCodeText]), wrapping (inside a long token too) and hanging under the line's own
  * indent; an added line is tinted in [RvColors.good] and a removed one in the error hue, as [RvStatusChip]
  * tints, the number and sign in that hue, so the sign and not the hue alone says which. A screen reader hears each line
- * as 新增 or 移除, its number and its text. A tap opens the file at that line ([onOpen] gets the line's number).
+ * as 新增 or 移除, its number and its text. A tap opens the file at that line ([onOpen] gets [RvDiffLine.at]: a removed
+ * line in the base, as its number counts there; the others in the candidate).
  * Runs are apart by [RvSpace.subGap]; their numbers show what lies between.
  */
 @Composable
-internal fun RvSourceDiff(file: RvDiffFile, onOpen: (Int) -> Unit, modifier: Modifier = Modifier) {
+internal fun RvSourceDiff(file: RvDiffFile, onOpen: (RvDiffAt) -> Unit, modifier: Modifier = Modifier) {
     val numbers = rvLineNumberStyle()
     val measurer = rememberTextMeasurer()
     val gutter = rvLineNumberWidth(measurer, file.hunks.maxOf { run -> run.maxOf { it.line } }, numbers)
     val signPx = remember(numbers, measurer) { measurer.measure(RvDiffKind.Removed.sign, numbers).size.width }
     val sign = with(LocalDensity.current) { signPx.toDp() }
-    val first = file.hunks.first().first { it.kind != RvDiffKind.Same }.line
+    val first = file.hunks.first().first { it.kind != RvDiffKind.Same }.at
     RvCard(modifier) {
         RvCardHeader(file.source, onClick = { onOpen(first) }, tag = stringResource(R.string.rv_diff_counts, file.added, file.removed), titleLines = Int.MAX_VALUE)
         file.hunks.forEachIndexed { i, run ->
@@ -73,7 +81,7 @@ internal fun RvSourceDiff(file: RvDiffFile, onOpen: (Int) -> Unit, modifier: Mod
 private class DiffColumns(val number: Dp, val sign: Dp, val style: TextStyle)
 
 @Composable
-private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: (Int) -> Unit) {
+private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: (RvDiffAt) -> Unit) {
     val colors = Rv.colors
     val hue = when (line.kind) {
         RvDiffKind.Same -> null
@@ -92,7 +100,7 @@ private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: (Int) -> Un
         Modifier
             .fillMaxWidth()
             .then(tint)
-            .rvRowPress(Role.Button, { onOpen(line.line) })
+            .rvRowPress(Role.Button, { onOpen(line.at) })
             .semantics(mergeDescendants = true) { contentDescription = label }
             .padding(horizontal = RvSpace.rowPadding),
     ) { parts, constraints ->

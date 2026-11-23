@@ -16,6 +16,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvCaption
+import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvGlassButton
@@ -84,7 +85,7 @@ internal fun RvConfigDiffPage(
     onBack: () -> Unit,
     onApply: () -> Unit = {},
     onReload: () -> Unit = {},
-    onOpen: (String, Int) -> Unit = { _, _ -> },
+    onOpen: (String, RvDiffAt) -> Unit = { _, _ -> },
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_template_review)
