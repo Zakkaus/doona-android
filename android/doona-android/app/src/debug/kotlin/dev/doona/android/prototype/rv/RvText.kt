@@ -132,24 +132,28 @@ private data class RvWrap(
         val worse = last + 1 > lines || torn || layout.isLineEllipsized(last) || layout.hasVisualOverflow
         return when {
             narrower > 0 -> if (worse) copy(narrower = -1) else null
-
             word >= 0 && worse -> copy(word = -2)
-
             last < 1 -> null
+            else -> breaks(text, torn) ?: lastLine(layout)
+        }
+    }
 
-            bound && torn -> copy(bound = false, unbound = true)
+    /** A meta line bound, a bound one that tore a part let go, or a torn value given its soft breaks. */
+    private fun breaks(text: String, torn: Boolean): RvWrap? = when {
+        bound && torn -> copy(bound = false, unbound = true)
+        !bound && !unbound && META_SEPARATOR in text -> copy(bound = true)
+        torn && !soft && rvSoftBreaks(text) != text -> copy(soft = true)
+        else -> null
+    }
 
-            !bound && !unbound && META_SEPARATOR in text -> copy(bound = true)
-
-            torn && !soft && rvSoftBreaks(text) != text -> copy(soft = true)
-
-            narrower < 0 -> null
-
-            else -> when (rvLastLetters(layout)) {
-                1 -> if (joined) shorten(layout) else copy(joined = true)
-                in 2 until LAST_LINE_LETTERS -> shorten(layout)
-                else -> null
-            }
+    /** A last line of one or two letters joined or shortened, until a narrower layout was dropped. */
+    private fun lastLine(layout: TextLayoutResult): RvWrap? = if (narrower < 0) {
+        null
+    } else {
+        when (rvLastLetters(layout)) {
+            1 -> if (joined) shorten(layout) else copy(joined = true)
+            in 2 until LAST_LINE_LETTERS -> shorten(layout)
+            else -> null
         }
     }
 
