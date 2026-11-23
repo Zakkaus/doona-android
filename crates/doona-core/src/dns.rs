@@ -5,17 +5,17 @@
 //! An answer too large for the client's UDP buffer goes back truncated (TC set, question only),
 //! so the client retries over TCP/53, which the core also serves. A query that no upstream
 //! answers, or whose route refuses it, gets SERVFAIL at once instead of a client timeout. What an
-//! answer maps ([`Learned`]) goes to the generation's [`Names`] once the answer is on its way: over
-//! TCP once its whole frame is written to the flow, which the driver hands to the stack; over UDP
-//! once the tun takes the datagram (see the driver), before the driver reads another packet, so a
-//! flow the client opens to an address it got finds its name. An answer whose write runs out of
-//! time, or that the driver drops, maps nothing.
+//! answer maps ([`Learned`]) goes to the generation's [`Names`] as the driver hands the answer on,
+//! before the client can have all of it: over TCP as the driver takes the answer's last chunk (see
+//! [`ToClient`]), over UDP as the tun takes the datagram (see the driver). A flow the client opens
+//! to an address it got finds its name, however late the task that made the answer runs again; an
+//! answer the driver drops, or never takes, maps nothing.
 
 pub(crate) mod names;
 
 use crate::rules::Network;
 use crate::tunnel::route::Route;
-use names::{Learned, Names};
+use names::{Learned, Mapping, Names};
 use std::io::{self, ErrorKind};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
@@ -196,14 +196,21 @@ pub(crate) async fn answer(
     Some(answer)
 }
 
+/// The stream DNS over TCP answers a client on: the task's end of the flow.
+pub(crate) trait ToClient: AsyncRead + AsyncWrite + Unpin {
+    /// Has `mapping` put as the driver takes the last chunk of the next write, before that chunk
+    /// can leave; dropped with the chunk if the driver never takes it.
+    fn map_with_last_chunk(&mut self, mapping: Mapping);
+}
+
 /// Answers the framed queries of one TCP/53 connection in turn until the client closes it. A query
 /// that takes `idle` to arrive, or an answer `idle` to be taken, ends it with `TimedOut`, so the
 /// driver resets the client and drops what it still holds for it: a client that sends neither a
 /// query nor its FIN, or never reads, cannot hold the connection or its buffers. Each wait has a
 /// fixed deadline on tokio's monotonic clock, so a late wakeup does not extend it. Answers still
 /// queued for the client when this returns are bounded by the driver (see `TcpFlow::finish`). What
-/// an answer maps goes to `names` once its whole frame is written.
-pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
+/// an answer maps goes to `names` with the answer's last chunk.
+pub(crate) async fn serve_tcp<S: ToClient>(
     io: &mut S,
     upstreams: &[SocketAddr],
     (route, names): (&Route, &Names),
@@ -216,12 +223,11 @@ pub(crate) async fn serve_tcp<S: AsyncRead + AsyncWrite + Unpin>(
             Err(e) => return Err(e),
         };
         if let Some(a) = answer(upstreams, route, &query, Network::Tcp).await {
-            // Read first, so the names change as soon as the frame is written.
-            let learned = Learned::read(&query, &a);
-            tokio::time::timeout(idle, write_framed(io, &a)).await??;
-            if let Some(learned) = learned {
-                names.put(learned);
+            if let Some(learned) = Learned::read(&query, &a) {
+                // The frame is one write, so its last chunk ends the answer.
+                io.map_with_last_chunk(names.bind(learned));
             }
+            tokio::time::timeout(idle, write_framed(io, &a)).await??;
         }
     }
     io.shutdown().await
@@ -386,6 +392,12 @@ pub(crate) mod tests {
 
     const IDLE: Duration = Duration::from_secs(30);
 
+    /// No driver takes these streams' chunks, and their answers here are SERVFAIL, which maps
+    /// nothing.
+    impl ToClient for tokio::io::DuplexStream {
+        fn map_with_last_chunk(&mut self, _: Mapping) {}
+    }
+
     /// Serves `server` with no upstream, so every query is answered SERVFAIL at once.
     fn served(mut server: tokio::io::DuplexStream) -> tokio::task::JoinHandle<io::Result<()>> {
         tokio::spawn(async move {
@@ -416,44 +428,6 @@ pub(crate) mod tests {
         assert!(took >= IDLE * 5 / 3, "{took:?}");
         assert!(took < IDLE * 5 / 3 + Duration::from_millis(10), "{took:?}");
         assert_eq!(client.read(&mut [0; 1]).await.unwrap(), 0, "closed");
-    }
-
-    /// An answer over TCP maps its addresses once its whole frame is written for the client; one
-    /// whose write runs out of time, as the client never reads, maps nothing.
-    #[tokio::test]
-    async fn a_tcp_answer_maps_its_addresses_once_written() {
-        let upstreams = [upstream()];
-        let idle = Duration::from_millis(300);
-        let ip = |host: u8| std::net::IpAddr::from([10, 0, 0, host]);
-        // One byte of room each way: the answer cannot leave while the client does not read.
-        let (mut server, mut client) = tokio::io::duplex(1);
-        let names = Names::new();
-        let serving = serve_tcp(&mut server, &upstreams, (&Route::Direct, &names), idle);
-        let q = query(3, "never.example", None);
-        let asking = write_framed(&mut client, &q);
-        let (served, asked) = tokio::join!(serving, asking);
-        asked.unwrap();
-        assert!(
-            matches!(served, Err(ref e) if e.kind() == ErrorKind::TimedOut),
-            "{served:?}"
-        );
-        assert_eq!(names.len(), 0, "mapped an answer the client never took");
-        drop(client);
-        // A client that reads gets the answer, and its addresses map.
-        let (mut server, mut client) = tokio::io::duplex(4096);
-        let serving = serve_tcp(&mut server, &upstreams, (&Route::Direct, &names), idle);
-        let asking = async {
-            write_framed(&mut client, &query(4, "taken.example", None)).await?;
-            let a = read_framed(&mut client).await?;
-            client.shutdown().await?;
-            io::Result::Ok(a)
-        };
-        let (served, asked) = tokio::join!(serving, asking);
-        served.unwrap();
-        assert_eq!(count(&asked.unwrap(), 6), 2);
-        for host in [0, 1] {
-            assert_eq!(names.name(ip(host)).as_deref(), Some("taken.example"));
-        }
     }
 
     /// A client that sends a query and never takes the answer is cut after the idle time too.

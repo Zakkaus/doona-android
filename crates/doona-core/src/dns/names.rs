@@ -7,9 +7,10 @@
 //! name, so domain rules miss them and the rules that match by address, or the last one, decide.
 //! The tun carries IPv4 only (`DoonaVpnService.tunBuilder`), so AAAA records name no flow.
 //!
-//! What an answer maps is read first ([`Learned`]) and put in the cache only once the answer is on
-//! its way to the client (see `dns.rs`), so an answer dropped, or one the client never takes, maps
-//! nothing.
+//! What an answer maps is read first ([`Learned`]) and put in the cache as the driver hands the
+//! answer to the client: over TCP as it takes the answer's last chunk ([`Mapping`], see `dns.rs`),
+//! over UDP as the tun takes the datagram. A flow the client opens after the whole answer finds the
+//! name; an answer dropped, or one the driver never takes, maps nothing.
 //!
 //! One cache per generation (see `Session`), at most [`CAPACITY`] addresses, the least recently
 //! used leaving first. A TTL is held to [`MIN_TTL`]–[`MAX_TTL`] on `CLOCK_BOOTTIME`, which counts
@@ -40,8 +41,12 @@ const CLASS_IN: u16 = 1;
 /// The longest name, without its final dot.
 const MAX_NAME: usize = 253;
 
-pub(crate) struct Names {
-    cache: Mutex<LruCache<Ipv4Addr, Entry>>,
+/// One generation's names; a clone is the same cache.
+#[derive(Clone)]
+pub(crate) struct Names(Arc<Cache>);
+
+struct Cache {
+    lru: Mutex<LruCache<Ipv4Addr, Entry>>,
     /// How many answers were put: a decision taken under one count can tell a name may have come
     /// since.
     puts: AtomicU64,
@@ -81,12 +86,31 @@ impl Learned {
     }
 }
 
+/// What an answer maps, bound to the names it goes to: it travels with the answer's last chunk
+/// over TCP, and the driver puts it as it takes that chunk (see `flow.rs`).
+pub(crate) struct Mapping {
+    learned: Learned,
+    names: Names,
+}
+
+impl Mapping {
+    pub fn put(self) {
+        self.names.put(self.learned);
+    }
+}
+
 impl Names {
     pub fn new() -> Names {
-        Names {
-            cache: Mutex::new(LruCache::unbounded()),
+        Names(Arc::new(Cache {
+            lru: Mutex::new(LruCache::unbounded()),
             puts: AtomicU64::new(0),
-        }
+        }))
+    }
+
+    /// `learned`, to be put in these names later, wherever the answer is when it leaves.
+    pub fn bind(&self, learned: Learned) -> Mapping {
+        let names = self.clone();
+        Mapping { learned, names }
     }
 
     /// Maps what an answer gave, from now on.
@@ -110,12 +134,12 @@ impl Names {
     /// How many answers were put so far. Read before a lookup, it tells a decision taken on what
     /// the lookup found whether an answer was put since: a count that moved on means one was.
     pub fn version(&self) -> u64 {
-        self.puts.load(Ordering::Acquire)
+        self.0.puts.load(Ordering::Acquire)
     }
 
     #[cfg(test)]
     pub fn len(&self) -> usize {
-        lock(&self.cache).len()
+        lock(&self.0.lru).len()
     }
 
     /// Maps `ip` to `name` for an hour, as an answer would.
@@ -123,8 +147,8 @@ impl Names {
     pub fn map(&self, ip: Ipv4Addr, name: &str) {
         let until_ms = sys::boot_ms() + u64::from(MAX_TTL) * 1000;
         let name = name.into();
-        lock(&self.cache).put(ip, Entry { name, until_ms });
-        self.puts.fetch_add(1, Ordering::Release);
+        lock(&self.0.lru).put(ip, Entry { name, until_ms });
+        self.0.puts.fetch_add(1, Ordering::Release);
     }
 
     /// Maps what `m` gives, whatever question it was sent for.
@@ -137,7 +161,7 @@ impl Names {
 
     fn put_at(&self, Learned { name, found }: Learned, now_ms: u64) {
         for batch in found.chunks(BATCH) {
-            let mut cache = lock(&self.cache);
+            let mut cache = lock(&self.0.lru);
             for &(addr, ttl) in batch {
                 if cache.len() >= CAPACITY && !cache.contains(&addr) {
                     cache.pop_lru();
@@ -148,14 +172,14 @@ impl Names {
             }
         }
         // Counted once every address can be looked up: a reader that sees the new count finds them.
-        self.puts.fetch_add(1, Ordering::Release);
+        self.0.puts.fetch_add(1, Ordering::Release);
     }
 
     pub(super) fn name_at(&self, ip: IpAddr, now_ms: u64) -> Option<Arc<str>> {
         let IpAddr::V4(addr) = ip.to_canonical() else {
             return None;
         };
-        let mut cache = lock(&self.cache);
+        let mut cache = lock(&self.0.lru);
         let live = cache
             .get(&addr)
             .map(|e| (e.until_ms > now_ms).then(|| Arc::clone(&e.name)))?;
