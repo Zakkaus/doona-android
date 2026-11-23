@@ -530,6 +530,12 @@ private const val DOT_LENGTH = 0.01f
 /** A latency chart's axis (node detail and 統計): up to the first whole 100 ms that leaves the slowest 5 % below the top. */
 internal fun rvLatencyAxisTop(slowest: Int): Int = ceil(maxOf(slowest, 1) * LATENCY_HEADROOM / LATENCY_STEP).toInt() * LATENCY_STEP
 
+/**
+ * The axis for a chart of one test, which then sits on its middle line, or as near it as whole 100 ms allow: the whole
+ * 100 ms nearest twice [value], never under [rvLatencyAxisTop] (92 → 200 ms, the dot just under 100; 50 → 100 ms).
+ */
+internal fun rvLatencyAxisMiddle(value: Int): Int = maxOf(rvLatencyAxisTop(value), (2f * value / LATENCY_STEP).roundToInt() * LATENCY_STEP)
+
 private const val LATENCY_HEADROOM = 1.05f
 private const val LATENCY_STEP = 100
 

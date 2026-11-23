@@ -35,7 +35,7 @@ import kotlin.math.abs
  * 節點詳情's latency chart with no test and with one (owner, item 7: 「沒有資料的字不居中…只有一筆也沒居中」): the plot is
  * read from the drawn hairlines (from the left edge to where the zero line ends, the top line to the zero line), not
  * from the code's own numbers. 尚無資料's box is centred on it both ways, the middle hairline stops short of it, and
- * one test's dot is at its horizontal centre.
+ * one test's dot is at its horizontal centre and, by its axis, within a tenth of the plot's height of its middle.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -73,6 +73,10 @@ class RvLatencyDotsTest {
         val xs = (0 until image.width).filter { x -> (0 until image.height).any { image.getPixel(x, it) == dot } }
         assertTrue("the dot is drawn", xs.isNotEmpty())
         assertEquals("the dot's centre across", plot.center.x, (xs.first() + xs.last() + 1) / 2f, PX)
+        // Down, its axis puts it on the middle line or near it, not alone under the top one (92 ms on 0–100 sat 8 % under the top).
+        val ys = (0 until image.height).filter { y -> (0 until image.width).any { image.getPixel(it, y) == dot } }
+        val band = plot.height * MIDDLE_BAND
+        assertEquals("the dot's centre down", plot.center.y, (ys.first() + ys.last() + 1) / 2f, band)
     }
 
     /** Below the frame's status bar, which draws over the top of the content. */
@@ -113,5 +117,8 @@ class RvLatencyDotsTest {
         /** One pixel either way, and `plotGap` (8 dp) at xhdpi. */
         const val PX = 1f
         const val GAP_PX = 16f
+
+        /** How far from the plot's middle one test may sit, as a share of the plot's height. */
+        const val MIDDLE_BAND = 0.1f
     }
 }

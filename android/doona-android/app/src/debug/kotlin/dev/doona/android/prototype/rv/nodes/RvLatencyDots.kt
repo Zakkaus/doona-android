@@ -36,6 +36,7 @@ import dev.doona.android.prototype.rv.RvChartSize
 import dev.doona.android.prototype.rv.RvPillInk
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.rvChartMarker
+import dev.doona.android.prototype.rv.rvLatencyAxisMiddle
 import dev.doona.android.prototype.rv.rvLatencyAxisTop
 import dev.doona.android.prototype.rv.rvMarkerChip
 import dev.doona.android.prototype.rv.rvPillSize
@@ -52,13 +53,15 @@ import kotlin.math.roundToInt
  * them and the pill, [RvLatencyDotsSize.plotGap] clear of the plot (S7-15). The [selected] test is marked with the library's
  * [rvChartMarker], as 統計's latency chart marks the current node (S7-14, N03). A time the chip would reach is left out.
  * The dots are spread so the widest time's chip fits inside the plot, and a tap picks the nearest test; a single test
- * sits at the plot's centre. With no test the plot keeps its grid and labels, and 尚無資料 sits at its centre, at the
+ * sits at the plot's centre, its axis chosen to put it on the middle line ([rvLatencyAxisMiddle]). With no test the plot keeps its grid and labels, and 尚無資料 sits at its centre, at the
  * size of an empty card's text, the middle hairline stopping [RvLatencyDotsSize.plotGap] short of it on either side.
  */
 @Composable
 internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val colors = Rv.colors
-    val top = rvLatencyAxisTop(history.filterNotNull().maxOrNull() ?: 0)
+    val slowest = history.filterNotNull().maxOrNull() ?: 0
+    // One test sits on the middle line, not alone under the top one (owner, item 7).
+    val top = if (history.size == 1) rvLatencyAxisMiddle(slowest) else rvLatencyAxisTop(slowest)
     // The unit on the top label only, as 統計's latency chart labels its axis (L-11).
     val axis = listOf(stringResource(R.string.latency_ms, top), "${top / 2}", "0")
     val medianText = median?.let { stringResource(R.string.latency_ms, it) }
