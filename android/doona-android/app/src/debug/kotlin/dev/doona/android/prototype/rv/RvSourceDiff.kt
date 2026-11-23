@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -11,6 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -80,20 +81,37 @@ private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: (Int) -> Un
     }
     val label = stringResource(line.kind.label, line.line, line.text)
     val tint = hue?.let { Modifier.background(it.copy(alpha = RvAlpha.STATUS_CHIP)) } ?: Modifier
-    Row(
+    val mark = hue ?: colors.textSecondary
+    Layout(
+        {
+            RvText(line.line.toString(), columns.style, Modifier.width(columns.number), color = mark, align = TextAlign.End)
+            RvText(line.kind.sign, columns.style, Modifier.width(columns.sign), color = mark, align = TextAlign.Center)
+            RvText(line.text, rvSourceStyle(), maxLines = Int.MAX_VALUE)
+        },
         Modifier
             .fillMaxWidth()
             .then(tint)
             .rvRowPress(Role.Button, { onOpen(line.line) })
             .semantics(mergeDescendants = true) { contentDescription = label }
             .padding(horizontal = RvSpace.rowPadding),
-    ) {
-        val mark = hue ?: colors.textSecondary
-        // The number and sign sit on the text's first baseline: a line with CJK in Noto sits lower in its line box.
-        RvText(line.line.toString(), columns.style, Modifier.width(columns.number).alignByBaseline(), color = mark, align = TextAlign.End)
-        Spacer(Modifier.width(RvSpace.tight))
-        RvText(line.kind.sign, columns.style, Modifier.width(columns.sign).alignByBaseline(), color = mark, align = TextAlign.Center)
-        Spacer(Modifier.width(RvSpace.tight))
-        RvText(line.text, rvSourceStyle(), Modifier.weight(1f).alignByBaseline(), maxLines = Int.MAX_VALUE)
+    ) { parts, constraints ->
+        val gap = RvSpace.tight.roundToPx()
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val number = parts[0].measure(loose)
+        val sign = parts[1].measure(loose)
+        val textStart = number.width + gap + sign.width + gap
+        val text = parts[2].measure(loose.copy(maxWidth = (constraints.maxWidth - textStart).coerceAtLeast(0)))
+        // The row is a whole number of line boxes (the number's one line is one box), so a line with CJK, whose Noto
+        // runs a pixel or two past the box, is as tall as one without; the text centres in it, and the number and
+        // sign sit on the text's first baseline.
+        val box = number.height.coerceAtLeast(1)
+        val height = (text.height + box / 2) / box * box
+        val textY = (height - text.height) / 2
+        val numberY = textY + text[FirstBaseline] - number[FirstBaseline]
+        layout(constraints.maxWidth, height.coerceAtLeast(box)) {
+            number.place(0, numberY)
+            sign.place(number.width + gap, numberY)
+            text.place(textStart, textY)
+        }
     }
 }

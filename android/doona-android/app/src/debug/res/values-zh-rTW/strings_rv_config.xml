@@ -35,4 +35,11 @@
     <string name="rv_config_reason_process">無法比對程式名稱</string>
     <string name="rv_config_reason_mac">無法比對 MAC 位址</string>
     <string name="rv_config_line">第 %1$d 行</string>
+    <string name="rv_config_source">原始碼</string>
+    <string name="rv_config_search">搜尋檔案</string>
+    <string name="rv_config_draft_base">草稿 · 依據第 %1$d 版</string>
+    <string name="rv_config_based_on">依據第 %1$d 版</string>
+    <string name="rv_config_stale_title">設定檔已更新</string>
+    <string name="rv_config_stale_reason">草稿依據第 %1$d 版，目前已套用第 %2$d 版。</string>
+    <string name="rv_config_reload">重新載入</string>
 </resources>

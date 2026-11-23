@@ -40,4 +40,11 @@
     <string name="rv_config_reason_process">No process names</string>
     <string name="rv_config_reason_mac">No MAC addresses</string>
     <string name="rv_config_line">Line %1$d</string>
+    <string name="rv_config_source">Source</string>
+    <string name="rv_config_search">Search the file</string>
+    <string name="rv_config_draft_base">Draft · based on revision %1$d</string>
+    <string name="rv_config_based_on">Against revision %1$d</string>
+    <string name="rv_config_stale_title">The configuration changed</string>
+    <string name="rv_config_stale_reason">This draft is based on revision %1$d; revision %2$d is now applied.</string>
+    <string name="rv_config_reload">Reload</string>
 </resources>

@@ -35,4 +35,11 @@
     <string name="rv_config_reason_process">无法匹配进程名</string>
     <string name="rv_config_reason_mac">无法匹配 MAC 地址</string>
     <string name="rv_config_line">第 %1$d 行</string>
+    <string name="rv_config_source">源码</string>
+    <string name="rv_config_search">搜索文件</string>
+    <string name="rv_config_draft_base">草稿 · 基于第 %1$d 版</string>
+    <string name="rv_config_based_on">基于第 %1$d 版</string>
+    <string name="rv_config_stale_title">配置文件已更新</string>
+    <string name="rv_config_stale_reason">草稿基于第 %1$d 版，当前已应用第 %2$d 版。</string>
+    <string name="rv_config_reload">重新加载</string>
 </resources>

@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
@@ -146,17 +147,21 @@ private fun DrawScope.drawLineNumbers(
 
 /**
  * Source text: the row subtitle's 17 sp with Inter's contextual alternates and ligatures off, so `->` stays two
- * characters and does not become Inter's arrow.
+ * characters and does not become Inter's arrow. Every line takes the full 24 sp line box, untrimmed, so a line set
+ * apart (a diff's row) is as tall with CJK in Noto, whose ascent and descent are taller than Inter's, as without.
  */
 @Composable
-internal fun rvSourceStyle(): TextStyle = Rv.type.rowSub.rvVerbatim()
+internal fun rvSourceStyle(): TextStyle = Rv.type.rowSub.rvVerbatim().copy(lineHeightStyle = FULL_LINE)
 
 /** [this] with Inter's contextual alternates and ligatures off, for any text that quotes source (`->` stays `->`). */
 internal fun TextStyle.rvVerbatim(): TextStyle = copy(fontFeatureSettings = VERBATIM)
 
 /** A line number: the row subtitle's 17 sp in tabular figures, so every number of a gutter ends on one edge. */
 @Composable
-internal fun rvLineNumberStyle(): TextStyle = Rv.type.rowSub.copy(fontFeatureSettings = RvTypeScale.TABULAR)
+internal fun rvLineNumberStyle(): TextStyle = Rv.type.rowSub.copy(fontFeatureSettings = RvTypeScale.TABULAR, lineHeightStyle = FULL_LINE)
+
+/** A line box that keeps its whole height on the first and last line, its text centred in it. */
+private val FULL_LINE = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
 
 /** The width of the gutter for [count] lines: the widest number in tabular figures, all its digits the same width. */
 @Composable
