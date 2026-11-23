@@ -365,6 +365,7 @@ impl Model {
             used_bytes: s.used_bytes,
             total_bytes: s.total_bytes,
             expires_at_epoch_ms: s.expires_at_epoch_ms,
+            user_agent: s.user_agent.clone(),
         }
     }
 

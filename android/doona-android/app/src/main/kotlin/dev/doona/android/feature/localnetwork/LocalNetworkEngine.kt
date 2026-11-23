@@ -38,8 +38,8 @@ class LocalNetworkEngine(
         engine.warning.collectLatest { if (it == ErrorCode.LocalNetwork) access.noticed() }
     }
 
-    override suspend fun addSubscription(url: String, name: String?): Result<Subscription> =
-        retried { engine.addSubscription(url, name) }
+    override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> =
+        retried { engine.addSubscription(url, name, userAgent) }
 
     override suspend fun updateSubscription(id: String): Result<Subscription> = retried { engine.updateSubscription(id) }
 

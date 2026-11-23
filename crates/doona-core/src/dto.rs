@@ -351,6 +351,8 @@ pub struct Subscription {
     pub used_bytes: Option<i64>,
     pub total_bytes: Option<i64>,
     pub expires_at_epoch_ms: Option<i64>,
+    /// The User-Agent its fetches send; null sends the default.
+    pub user_agent: Option<String>,
 }
 
 /// A `call` reply: `{"ok":<result>}` or `{"error":{"code":"…"}}`.
@@ -392,6 +394,18 @@ pub struct AddSubscriptionArgs {
     pub url: String,
     #[serde(deserialize_with = "Option::deserialize")]
     pub name: Option<String>,
+    /// Optional, unlike the other nullable keys: a caller from before it sends the default.
+    #[serde(default, rename = "userAgent")]
+    pub user_agent: Option<String>,
+}
+
+/// `setSubscriptionUserAgent`: null returns the subscription to the default.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscriptionUserAgentArgs {
+    pub id: String,
+    #[serde(deserialize_with = "Option::deserialize")]
+    pub user_agent: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

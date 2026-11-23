@@ -11,12 +11,14 @@ import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleTarget
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -34,6 +36,8 @@ class CoreDtoTest {
         "snapshot-stopped-catalog.json" to SnapshotDto.serializer(),
         "call-ok-empty.json" to Unit.serializer(),
         "call-ok-subscription.json" to SubscriptionDto.serializer(),
+        "call-add-subscription-args.json" to AddSubscriptionArgs.serializer(),
+        "call-set-subscription-user-agent-args.json" to SubscriptionUserAgentArgs.serializer(),
         "call-error.json" to CallErrorReplyDto.serializer(),
         "call-select-args.json" to SelectArgs.serializer(),
         "call-ok-traffic-series.json" to TrafficSeriesDto.serializer(),
@@ -126,6 +130,7 @@ class CoreDtoTest {
         assertEquals("s1", subscription.id)
         assertEquals(107374182400L, subscription.totalBytes)
         assertNull(subscription.error)
+        assertNull(subscription.userAgent)
     }
 
     @Test
@@ -245,10 +250,34 @@ class CoreDtoTest {
     }
 
     @Test
+    fun subscriptionArgsEncodeAsTheFixtures() {
+        val add = AddSubscriptionArgs("https://example.invalid/sub?token=REDACTED", name = null, userAgent = "clash-verge/v2.2.3")
+        val added = CoreJson.encode(AddSubscriptionArgs.serializer(), add)
+        assertEquals(Json.parseToJsonElement(fixture("call-add-subscription-args.json")), Json.parseToJsonElement(added))
+        // A null agent is sent as null: the core requires the key, and null means its default.
+        val reset = CoreJson.encode(SubscriptionUserAgentArgs.serializer(), SubscriptionUserAgentArgs("s1", userAgent = null))
+        assertEquals(Json.parseToJsonElement(fixture("call-set-subscription-user-agent-args.json")), Json.parseToJsonElement(reset))
+    }
+
+    /** As in the core: `addSubscription` may leave the agent out, `setSubscriptionUserAgent` may not. */
+    @Test
+    fun anAddWithoutTheAgentDecodesAndTheSetterNeedsItsKey() {
+        val keyless = """{"url":"https://example.invalid/sub","name":null}"""
+        val add = Json.decodeFromString(AddSubscriptionArgs.serializer(), keyless)
+        assertEquals(AddSubscriptionArgs("https://example.invalid/sub", name = null, userAgent = null), add)
+        // A null agent is left out, which the core reads as its default.
+        assertEquals(keyless, CoreJson.encode(AddSubscriptionArgs.serializer(), add))
+        assertThrows(SerializationException::class.java) {
+            Json.decodeFromString(SubscriptionUserAgentArgs.serializer(), """{"id":"s1"}""")
+        }
+    }
+
+    @Test
     fun callReplies() {
         assertEquals(Unit, CoreJson.result(fixture("call-ok-empty.json"), Unit.serializer()))
         val subscription = CoreJson.result(fixture("call-ok-subscription.json"), SubscriptionDto.serializer())
         assertEquals(2, subscription.nodes)
+        assertEquals("clash-verge/v2.2.3", subscription.toSubscription().userAgent)
         try {
             CoreJson.result(fixture("call-error.json"), Unit.serializer())
             fail("an error reply must throw")

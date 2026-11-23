@@ -176,8 +176,8 @@ class ServiceEngine internal constructor(
     override suspend fun testLatency(groupId: String?): Result<Unit> =
         command("testLatency", GroupArgs.serializer(), GroupArgs(groupId), Unit.serializer(), ordered = true)
 
-    override suspend fun addSubscription(url: String, name: String?): Result<Subscription> =
-        command("addSubscription", AddSubscriptionArgs.serializer(), AddSubscriptionArgs(url, name), SubscriptionDto.serializer())
+    override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> =
+        command("addSubscription", AddSubscriptionArgs.serializer(), AddSubscriptionArgs(url, name, userAgent), SubscriptionDto.serializer())
             .map(SubscriptionDto::toSubscription)
 
     override suspend fun updateSubscription(id: String): Result<Subscription> =
@@ -185,6 +185,14 @@ class ServiceEngine internal constructor(
 
     override suspend fun removeSubscription(id: String): Result<Unit> =
         command("removeSubscription", IdArgs.serializer(), IdArgs(id), Unit.serializer())
+
+    override suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription> =
+        command(
+            "setSubscriptionUserAgent",
+            SubscriptionUserAgentArgs.serializer(),
+            SubscriptionUserAgentArgs(id, userAgent),
+            SubscriptionDto.serializer(),
+        ).map(SubscriptionDto::toSubscription)
 
     override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
 
