@@ -39,9 +39,9 @@ class LocalNetworkEngineTest {
         val tests get() = tested.size
         var gate = CompletableDeferred(Unit)
 
-        override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+        override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
             adds++
-            return failures.removeFirstOrNull()?.let { Result.failure(EngineException(it)) } ?: fake.addSubscription(url, name)
+            return failures.removeFirstOrNull()?.let { Result.failure(EngineException(it)) } ?: fake.addSubscription(url, name, userAgent)
         }
 
         override suspend fun updateSubscription(id: String): Result<Subscription> {

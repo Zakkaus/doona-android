@@ -22,6 +22,7 @@ fn stored(id: &str, body: &str) -> StoredSubscription {
         error: None,
         links: parsed.links,
         document: parsed.document,
+        user_agent: None,
     }
 }
 

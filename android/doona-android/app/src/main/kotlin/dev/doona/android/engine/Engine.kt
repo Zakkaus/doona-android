@@ -53,12 +53,22 @@ interface Engine {
      */
     suspend fun testLatency(groupId: String? = null): Result<Unit>
 
-    /** Fetches [url], decodes its nodes and adds them to the group template. */
-    suspend fun addSubscription(url: String, name: String? = null): Result<Subscription>
+    /**
+     * Fetches [url], decodes its nodes and adds them to the group template. Its fetches send [userAgent] as the
+     * User-Agent, or the core's default when null; a value must be 1 to 256 bytes of printable ASCII and not blank, else
+     * [ErrorCode.InvalidArgument] before anything is fetched.
+     */
+    suspend fun addSubscription(url: String, name: String? = null, userAgent: String? = null): Result<Subscription>
 
     suspend fun updateSubscription(id: String): Result<Subscription>
 
     suspend fun removeSubscription(id: String): Result<Unit>
+
+    /**
+     * Sets the User-Agent the next fetches of subscription [id] send, or the default when [userAgent] is null, under the
+     * same rules as [addSubscription]; nothing is fetched now. Returns the subscription as the catalog shows it.
+     */
+    suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription>
 
     suspend fun setMode(mode: Mode): Result<Unit>
 
@@ -203,7 +213,10 @@ data class Catalog(
     val ruleSource: RuleSource,
 )
 
-/** Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. */
+/**
+ * Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. [userAgent] is
+ * the User-Agent its fetches send, null for the core's default; keep it out of logs and exports, as the URL.
+ */
 data class Subscription(
     val id: String,
     val name: String,
@@ -214,6 +227,7 @@ data class Subscription(
     val usedBytes: Long? = null,
     val totalBytes: Long? = null,
     val expiresAtEpochMs: Long? = null,
+    val userAgent: String? = null,
 )
 
 /** Which apps use the tunnel. doona itself never does: its own sockets go out directly. */

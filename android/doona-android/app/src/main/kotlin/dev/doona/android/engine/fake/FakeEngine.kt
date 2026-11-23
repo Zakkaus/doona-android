@@ -85,8 +85,9 @@ class FakeEngine(
 
     override suspend fun testLatency(groupId: String?): Result<Unit> = Result.success(Unit)
 
-    override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
-        val added = Subscription(id = "s${subscriptions.value.size + 1}", name = name ?: url, url = url, nodes = 0, updatedAtEpochMs = 0)
+    override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
+        val id = "s${subscriptions.value.size + 1}"
+        val added = Subscription(id = id, name = name ?: url, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = userAgent)
         subscriptions.update { it + added }
         return Result.success(added)
     }
@@ -97,6 +98,13 @@ class FakeEngine(
     override suspend fun removeSubscription(id: String): Result<Unit> {
         subscriptions.update { all -> all.filterNot { it.id == id } }
         return Result.success(Unit)
+    }
+
+    override suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription> {
+        val changed = subscriptions.value.firstOrNull { it.id == id }?.copy(userAgent = userAgent)
+            ?: return Result.failure(EngineException(ErrorCode.NotFound))
+        subscriptions.update { all -> all.map { if (it.id == id) changed else it } }
+        return Result.success(changed)
     }
 
     override suspend fun setMode(mode: Mode): Result<Unit> {

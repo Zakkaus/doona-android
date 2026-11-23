@@ -190,10 +190,10 @@ class PolicyFlowsTest {
         val fake = FakeEngine(subscriptions = emptyList())
         var calls = 0
         val engine = object : Engine by fake {
-            override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+            override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
                 calls++
                 gate.await()
-                return fake.addSubscription(url, name)
+                return fake.addSubscription(url, name, userAgent)
             }
         }
         show(engine, ActivityKey, PoliciesKey, SubscriptionsKey)

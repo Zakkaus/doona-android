@@ -1,5 +1,5 @@
 //! The download against loopback servers: lengths, chunks, bodies that end with the connection,
-//! redirects and their credentials, failures, and the quota header.
+//! redirects and their credentials, failures, the quota header and the User-Agent.
 
 use super::*;
 use crate::testutil::{http, response, target};
@@ -14,7 +14,11 @@ fn run<T>(f: impl Future<Output = T>) -> T {
 }
 
 fn get_url(url: &str) -> Result<Fetched, ErrorCode> {
-    run(fetch(parse_url(url).unwrap(), Duration::from_secs(30)))
+    run(fetch(
+        parse_url(url).unwrap(),
+        None,
+        Duration::from_secs(30),
+    ))
 }
 
 #[test]
@@ -249,7 +253,7 @@ fn a_fetch_from_a_local_address_that_never_connects_is_local_network() {
     for (url, want) in cases {
         for connect in [refused as Connect, unanswered] {
             let bound = Duration::from_millis(300);
-            let got = run(fetch_by(parse_url(url).unwrap(), bound, connect));
+            let got = run(fetch_by(parse_url(url).unwrap(), None, bound, connect));
             assert_eq!(got.err(), Some(want), "{url}");
         }
     }
@@ -260,4 +264,110 @@ fn the_user_agent_reads_as_a_clash_meta_client() {
     let agent = USER_AGENT.to_ascii_lowercase();
     assert!(agent.starts_with("doona/"));
     assert!(agent.contains("clash.meta") && agent.contains("mihomo"));
+}
+
+/// A subscription's own agent goes on the first request and on every hop after it, to another
+/// origin too; without one every request sends the default.
+#[test]
+fn a_subscriptions_agent_is_sent_on_every_hop() {
+    let heads = std::sync::Arc::new(Mutex::new(Vec::new()));
+    let (seen, seen_other) = (std::sync::Arc::clone(&heads), std::sync::Arc::clone(&heads));
+    let other = http(move |head| {
+        seen_other.lock().unwrap().push(head.to_owned());
+        response("200 OK", &[], b"moved")
+    });
+    let origin = http(move |head| {
+        seen.lock().unwrap().push(head.to_owned());
+        match target(head) {
+            "/sub" => response("302 Found", &[("Location", "/next")], b""),
+            _ => {
+                let location = format!("http://{other}/final");
+                response("307 Temporary Redirect", &[("Location", &location)], b"")
+            }
+        }
+    });
+    let url = format!("http://{origin}/sub");
+    for (agent, sent) in [
+        (Some("clash-verge/v2.2.3"), "clash-verge/v2.2.3"),
+        (None, USER_AGENT),
+    ] {
+        heads.lock().unwrap().clear();
+        let bound = Duration::from_secs(30);
+        let fetched = run(fetch(parse_url(&url).unwrap(), agent, bound)).unwrap();
+        assert_eq!(fetched.body, b"moved");
+        let heads = heads.lock().unwrap();
+        assert_eq!(heads.len(), 3, "{heads:?}");
+        for head in heads.iter() {
+            assert_eq!(head.matches("User-Agent:").count(), 1, "{head}");
+            assert!(
+                head.contains(&format!("\r\nUser-Agent: {sent}\r\n")),
+                "{head}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_user_agent_is_printable_ascii_of_1_to_256_bytes_and_not_blank() {
+    let longest = "x".repeat(256);
+    for (text, kept) in [
+        ("a", "a"),
+        ("mihomo/1.19.16", "mihomo/1.19.16"),
+        ("  clash-verge/v2.2.3 ", "clash-verge/v2.2.3"),
+        (
+            "Mozilla/5.0 (X11; Linux) ~!@#$%^&*()_+{}|:<>?",
+            "Mozilla/5.0 (X11; Linux) ~!@#$%^&*()_+{}|:<>?",
+        ),
+        (longest.as_str(), longest.as_str()),
+    ] {
+        assert_eq!(user_agent(text).as_deref(), Ok(kept), "{text}");
+    }
+    let too_long = "x".repeat(257);
+    let refused = [
+        "",
+        " ",
+        "   ",
+        too_long.as_str(),
+        "doona\r\nX-Injected: 1",
+        "doona\r\n\r\nGET /other HTTP/1.1",
+        "doona\nX-Injected: 1",
+        "doona\rX-Injected: 1",
+        "doona\0",
+        "doona\t1",
+        "doona\x7f",
+        "doona\x1b[0m",
+        "caf\u{e9}",
+        "\u{30c9}\u{30a5}\u{30fc}\u{30ca}",
+        "\u{ff2d}ihomo",
+    ];
+    for text in refused {
+        assert_eq!(
+            user_agent(text),
+            Err(ErrorCode::InvalidArgument),
+            "{text:?}"
+        );
+    }
+}
+
+/// The head is built only with an agent `user_agent` takes; anything else, which no command or
+/// `state.json` lets through, sends the default and adds no header.
+#[test]
+fn an_agent_with_a_line_break_never_reaches_the_request_head() {
+    let url = Url::parse("http://feed.example/sub").unwrap();
+    for agent in ["doona\r\nX-Injected: 1", "", "caf\u{e9}"] {
+        let head = String::from_utf8(request(&url, None, Some(agent))).unwrap();
+        assert!(
+            head.contains(&format!("\r\nUser-Agent: {USER_AGENT}\r\n")),
+            "{head}"
+        );
+        assert!(
+            !head.contains("X-Injected") && !head.contains("caf"),
+            "{head}"
+        );
+    }
+    let head = String::from_utf8(request(&url, None, Some("mihomo/1.19.16"))).unwrap();
+    assert!(
+        head.contains("\r\nUser-Agent: mihomo/1.19.16\r\n"),
+        "{head}"
+    );
 }

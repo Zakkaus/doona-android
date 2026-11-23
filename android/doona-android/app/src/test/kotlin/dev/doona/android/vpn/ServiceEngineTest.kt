@@ -523,6 +523,17 @@ class ServiceEngineTest {
     fun aSubscriptionReplyMapsToTheEngineType() = runBlocking {
         core.reply = ContractFixtures.read("call-ok-subscription.json")
         assertEquals(1073741824L, engine.addSubscription("https://example.invalid/sub").getOrThrow().usedBytes)
+        assertEquals("addSubscription" to """{"url":"https://example.invalid/sub","name":null,"userAgent":null}""", core.calls.single())
+    }
+
+    @Test
+    fun aSubscriptionsAgentIsSetWithoutAFetch() = runBlocking {
+        core.reply = ContractFixtures.read("call-ok-subscription.json")
+        assertEquals("clash-verge/v2.2.3", engine.setSubscriptionUserAgent("s1", "clash-verge/v2.2.3").getOrThrow().userAgent)
+        assertEquals("setSubscriptionUserAgent" to """{"id":"s1","userAgent":"clash-verge/v2.2.3"}""", core.calls.single())
+        core.reply = """{"error":{"code":"invalid_argument"}}"""
+        val refused = engine.setSubscriptionUserAgent("s1", "doona\r\nX: 1").exceptionOrNull() as EngineException
+        assertEquals(ErrorCode.InvalidArgument, refused.code)
     }
 
     /** A host that builds a tun for any routing; [installed] are the packages the device has. */

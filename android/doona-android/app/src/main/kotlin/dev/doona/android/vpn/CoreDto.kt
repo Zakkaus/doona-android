@@ -323,6 +323,7 @@ internal data class SubscriptionDto(
     val usedBytes: Long? = null,
     val totalBytes: Long? = null,
     val expiresAtEpochMs: Long? = null,
+    val userAgent: String? = null,
 ) {
     /** The error becomes an [ErrorCode] name, the same vocabulary as [EngineException]. */
     fun toSubscription() = Subscription(
@@ -335,6 +336,7 @@ internal data class SubscriptionDto(
         usedBytes = usedBytes,
         totalBytes = totalBytes,
         expiresAtEpochMs = expiresAtEpochMs,
+        userAgent = userAgent,
     )
 }
 
@@ -345,7 +347,11 @@ internal data class SelectArgs(val group: String, val memberId: String?)
 internal data class GroupArgs(val group: String?)
 
 @Serializable
-internal data class AddSubscriptionArgs(val url: String, val name: String?)
+internal data class AddSubscriptionArgs(val url: String, val name: String?, val userAgent: String?)
+
+/** `setSubscriptionUserAgent`: the key is required, and null returns the subscription to the default. */
+@Serializable
+internal data class SubscriptionUserAgentArgs(val id: String, val userAgent: String?)
 
 @Serializable
 internal data class IdArgs(val id: String)

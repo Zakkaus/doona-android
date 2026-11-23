@@ -8,6 +8,7 @@
     "error": null,
     "usedBytes": 1073741824,
     "totalBytes": 107374182400,
-    "expiresAtEpochMs": 1798000000000
+    "expiresAtEpochMs": 1798000000000,
+    "userAgent": "clash-verge/v2.2.3"
   }
 }

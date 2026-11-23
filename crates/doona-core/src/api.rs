@@ -422,6 +422,9 @@ impl Core {
             "removeSubscription" => {
                 parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
+            "setSubscriptionUserAgent" => parse(args)
+                .and_then(|a| self.set_subscription_user_agent(a))
+                .map(ok),
             "trafficSeries" => self.traffic_series(args),
             "usage" => self.usage(args),
             "nodes" => self.nodes(args),
@@ -574,3 +577,5 @@ mod tests_localnet;
 mod tests_rule_source;
 #[cfg(test)]
 mod tests_rules;
+#[cfg(test)]
+mod tests_user_agent;
