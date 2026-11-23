@@ -28,6 +28,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
@@ -71,7 +72,7 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
             HistoryCard(node, times, picked) { picked = it }
         }
         RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { StatsCard(node, times.last()) }
+        RvGutter { StatsCard(node, times.lastOrNull() ?: RV_NO_VALUE) }
         // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
         Spacer(Modifier.height(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter))
         Spacer(Modifier.windowInsetsBottomHeight(insets))
@@ -103,15 +104,20 @@ private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets:
     )
 }
 
-/** 延遲紀錄: the header, the picked test's latency over its time and the median, and the dot chart. */
+/** 延遲紀錄: the header, the picked test's latency over its time and the median (a dash with no test), and the dot chart. */
 @Composable
 private fun HistoryCard(node: RvNode, times: List<String>, picked: Int, onPick: (Int) -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_history))
         Column(Modifier.padding(horizontal = RvSpace.rowPadding)) {
-            Figure(latencyText(node.history[picked]))
-            val median = node.medianMs?.let { SEPARATOR + stringResource(R.string.rv_nodes_median, latencyText(it)) }.orEmpty()
-            RvText(times[picked] + median, Rv.type.tileCaption, color = Rv.colors.textSecondary)
+            if (node.history.isEmpty()) {
+                // No test yet: a dash for the figure, and the chart's plot with its labels and the empty line in it.
+                Figure(RV_NO_VALUE)
+            } else {
+                Figure(latencyText(node.history[picked]))
+                val median = node.medianMs?.let { SEPARATOR + stringResource(R.string.rv_nodes_median, latencyText(it)) }.orEmpty()
+                RvText(times[picked] + median, Rv.type.tileCaption, color = Rv.colors.textSecondary)
+            }
             Spacer(Modifier.height(RvSpace.barGap))
             RvLatencyDots(node.history, node.medianMs, times, picked, onPick)
         }
