@@ -94,11 +94,12 @@ internal fun RvSubDetail(
         confirm = stringResource(R.string.rv_save),
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = {
-            onUserAgent(state.userAgent.takeUnless { it.isBlank() })
+            onUserAgent(rvAgentOf(state.userAgent))
             close()
         },
         onDismiss = close,
-    ) { RvUserAgentField(state.userAgent) { onChange(state.copy(userAgent = it)) } }
+        confirmEnabled = rvAgentValid(state.userAgent),
+    ) { RvUserAgentField(state.userAgent, { onChange(state.copy(userAgent = it)) }) }
     RvConfirmSheet(
         visible = state.sheet == RvSubSheet.Delete,
         title = stringResource(R.string.rv_sub_delete_title, sub.name),
@@ -117,14 +118,24 @@ internal fun RvRenameField(name: String, onName: (String) -> Unit) {
 }
 
 /**
- * The User-Agent sheet's field, named by the sheet's title. Empty while the subscription sends the default, which it
- * shows as its placeholder: the value doona sends, not a hint.
+ * A subscription's User-Agent field, in the User-Agent sheet (named by its title) and on 新增訂閱 (named by [label]).
+ * Empty while the subscription sends the default, which it shows as its placeholder: the value doona sends, not a hint.
+ * A value the core would refuse shows the inline error.
  */
 @Composable
-internal fun RvUserAgentField(userAgent: String, onUserAgent: (String) -> Unit) {
+internal fun RvUserAgentField(userAgent: String, onUserAgent: (String) -> Unit, label: String? = null, enabled: Boolean = true) {
     val default = stringResource(R.string.rv_sub_user_agent_value, stringResource(R.string.rv_settings_version_value))
-    RvTextField(userAgent, onUserAgent, label = null, name = stringResource(R.string.rv_sub_user_agent), placeholder = default)
+    val error = if (rvAgentValid(userAgent)) null else stringResource(R.string.rv_sub_user_agent_invalid)
+    RvTextField(userAgent, onUserAgent, label, name = stringResource(R.string.rv_sub_user_agent), placeholder = default, error = error, enabled = enabled)
 }
+
+/** Whether [agent] can be saved, by the core's rule: empty or blank for the default, else 256 printable ASCII characters at most. */
+internal fun rvAgentValid(agent: String) = agent.length <= MAX_AGENT && agent.all { it in ' '..'~' }
+
+/** What a valid typed User-Agent saves: null for the default, else the value trimmed, as the core keeps it. */
+internal fun rvAgentOf(agent: String): String? = agent.trim().ifEmpty { null }
+
+private const val MAX_AGENT = 256
 
 /** Revolut's Key stats card (measured §11): what the subscription holds and when it was last fetched. */
 @Composable

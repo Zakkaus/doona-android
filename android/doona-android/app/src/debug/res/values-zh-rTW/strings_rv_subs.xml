@@ -16,6 +16,7 @@
     <string name="rv_sub_auto_update">自動更新</string>
     <string name="rv_sub_user_agent">User-Agent</string>
     <string name="rv_sub_user_agent_default">預設</string>
+    <string name="rv_sub_user_agent_invalid">最多 256 個可列印的 ASCII 字元</string>
     <string name="rv_sub_section">訂閱</string>
     <string name="rv_sub_name">名稱</string>
     <string name="rv_sub_link">連結</string>

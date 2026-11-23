@@ -24,8 +24,8 @@ internal object RvSubsRoutes {
 /**
  * The subscription pages with invented behaviour: 訂閱 (`subs`, or `subs:failed` with Harbor Cloud's failed update), a
  * subscription (`sub:<id>`), and 新增訂閱 (`sub-add`, or `sub-add:<phase>`: `importing`, `done`, `unreachable`,
- * `not-subscription`, `too-large`, and `lan-ask` or `lan-denied` with a link on the local network). An import runs for
- * [IMPORT_MS] and then lists Harbor Cloud's nodes.
+ * `not-subscription`, `too-large`, `lan-ask` or `lan-denied` with a link on the local network, and `user-agent` or
+ * `user-agent-invalid` with a User-Agent typed). An import runs for [IMPORT_MS] and then lists Harbor Cloud's nodes.
  */
 @Composable
 internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit) {
@@ -56,7 +56,7 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
             LaunchedEffect(state.phase) {
                 if (state.phase is RvAddPhase.Importing) {
                     delay(IMPORT_MS)
-                    state = state.copy(phase = RvAddPhase.Done(RvData.subscriptions.first()))
+                    state = state.copy(phase = RvAddPhase.Done(RvData.subscriptions.first().copy(userAgent = rvAgentOf(state.userAgent))))
                 }
             }
             RvSubAdd(
@@ -85,11 +85,17 @@ internal fun rvAddSample(phase: String): RvAddState {
         "too-large" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.TooLarge))
         "lan-ask" -> typed.copy(link = RV_LAN_LINK, name = "", lan = RvLanPrompt.Ask)
         "lan-denied" -> typed.copy(link = RV_LAN_LINK, name = "", lan = RvLanPrompt.Denied)
+        "user-agent" -> typed.copy(userAgent = RV_SAMPLE_AGENT)
+        "user-agent-invalid" -> typed.copy(userAgent = RV_SAMPLE_AGENT + RV_SAMPLE_AGENT_BAD)
         else -> RvAddState()
     }
 }
 
 private const val FAILED = "failed"
+
+/** A User-Agent as a client sends it, and a tail the core refuses (not printable ASCII). */
+internal const val RV_SAMPLE_AGENT = "clash.meta/1.19.0"
+internal const val RV_SAMPLE_AGENT_BAD = " 測試"
 
 /** A subscription served on the local network, which needs the local network permission. */
 internal const val RV_LAN_LINK = "http://192.168.1.20/sub.yaml"

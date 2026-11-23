@@ -16,6 +16,7 @@
     </plurals>
     <string name="rv_add_link">订阅网址</string>
     <string name="rv_add_name">名称（可选）</string>
+    <string name="rv_add_user_agent">User-Agent（可选）</string>
     <string name="rv_add_not_subscription">这个链接返回的内容不是订阅。</string>
     <string name="rv_sub_failed_title">无法更新 %1$s</string>
     <plurals name="rv_sub_failed_reason">

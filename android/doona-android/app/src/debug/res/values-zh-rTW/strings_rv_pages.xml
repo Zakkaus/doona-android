@@ -16,6 +16,7 @@
     </plurals>
     <string name="rv_add_link">訂閱網址</string>
     <string name="rv_add_name">名稱（選填）</string>
+    <string name="rv_add_user_agent">User-Agent（選填）</string>
     <string name="rv_add_not_subscription">這個連結傳回的內容不是訂閱。</string>
     <string name="rv_sub_failed_title">無法更新 %1$s</string>
     <plurals name="rv_sub_failed_reason">

@@ -50,14 +50,15 @@ internal sealed interface RvAddPhase {
 }
 
 /**
- * The add page's state: the link and the optional name typed so far, whether the clipboard's description says it holds
- * a link (read from the description only, so Android shows no paste notice until the row is tapped), the phase, and
- * the local network prompt a link on the local network raises at 匯入.
+ * The add page's state: the link and the optional name and User-Agent typed so far, whether the clipboard's description
+ * says it holds a link (read from the description only, so Android shows no paste notice until the row is tapped), the
+ * phase, and the local network prompt a link on the local network raises at 匯入.
  */
 @Immutable
 internal data class RvAddState(
     val link: String = "",
     val name: String = "",
+    val userAgent: String = "",
     val clipboardHasLink: Boolean = true,
     val phase: RvAddPhase = RvAddPhase.Editing,
     val lan: RvLanPrompt? = null,
@@ -65,7 +66,9 @@ internal data class RvAddState(
 
 /**
  * 新增訂閱, a pushed page with the large title, which collapses onto the bar as the page scrolls. While nothing is typed and the clipboard holds a link, a row offers it (the content
- * is read only when the row is tapped). Then the link and an optional name, and 匯入. While importing, the fields rest
+ * is read only when the row is tapped). Then the link, an optional name and an optional User-Agent (empty for the
+ * default, which is its placeholder; a value the core would refuse shows the inline error and holds 匯入), and 匯入.
+ * While importing, the fields rest
  * and a card shows the download over the bar; when done, a card says what came in (nodes, format, protocols) and 完成
  * returns; when it fails, the banner gives the reason and 重試, and the fields keep what was typed. A link on the local
  * network asks first ([RvLanSheet]); its confirmation runs [onLanConfirm].
@@ -89,7 +92,8 @@ internal fun RvSubAdd(
             if (phase is RvAddPhase.Done) {
                 RvPrimaryButton(stringResource(R.string.rv_done), onBack)
             } else {
-                RvPrimaryButton(stringResource(R.string.rv_add_import), onImport, enabled = phase !is RvAddPhase.Importing && state.link.startsWith(HTTP))
+                val ready = state.link.startsWith(HTTP) && rvAgentValid(state.userAgent)
+                RvPrimaryButton(stringResource(R.string.rv_add_import), onImport, enabled = phase !is RvAddPhase.Importing && ready)
             }
         },
     ) { titleBlock ->
@@ -127,6 +131,7 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
             keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri),
         )
         RvTextField(state.name, { onChange(state.copy(name = it)) }, stringResource(R.string.rv_add_name), enabled = editable)
+        RvUserAgentField(state.userAgent, { onChange(state.copy(userAgent = it)) }, stringResource(R.string.rv_add_user_agent), editable)
     }
     if (phase is RvAddPhase.Importing) Progress(phase)
 }

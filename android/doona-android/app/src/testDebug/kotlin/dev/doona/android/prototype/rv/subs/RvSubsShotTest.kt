@@ -30,6 +30,8 @@ import dev.doona.android.prototype.rv.rvSampleActivity
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,7 +43,8 @@ import org.robolectric.annotation.GraphicsMode
  * The subscription pages, light and dark, each page whole in one capture: 訂閱 (`proto-rv-subs-*`), with a failed update
  * (`-subs-failed-*`), with the long-press menu open on Harbor Cloud (`-subs-menu-*`) and with the delete question
  * (`-subs-delete-*`); a subscription's page (`-sub-detail-*`), its rename sheet (`-sub-detail-rename-*`) and its
- * User-Agent sheet (`-sub-detail-user-agent-*`); 新增訂閱 with the clipboard's row (`-sub-add-*`), importing, done, and
+ * User-Agent sheet (`-sub-detail-user-agent-*`); 新增訂閱 with the clipboard's row (`-sub-add-*`), with a User-Agent
+ * typed (`-sub-add-user-agent-*`) and with one the core refuses (`-sub-add-user-agent-invalid-*`), importing, done, and
  * failed for each reason; and the deep link's question over 活動 (`-sub-import-*`). Sheets are drawn as their window
  * draws them once in.
  */
@@ -107,6 +110,14 @@ class RvSubsShotTest {
 
     @Test fun notSubscriptionDark() = shot("sub-add-not-subscription", true) { Add("not-subscription") }
 
+    @Test fun addUserAgentLight() = shot("sub-add-user-agent", false) { Add("user-agent") }
+
+    @Test fun addUserAgentDark() = shot("sub-add-user-agent", true) { Add("user-agent") }
+
+    @Test fun addUserAgentInvalidLight() = shot("sub-add-user-agent-invalid", false) { Add("user-agent-invalid") }
+
+    @Test fun addUserAgentInvalidDark() = shot("sub-add-user-agent-invalid", true) { Add("user-agent-invalid") }
+
     @Test fun tooLargeLight() = shot("sub-add-too-large", false) { Add("too-large") }
 
     @Test fun tooLargeDark() = shot("sub-add-too-large", true) { Add("too-large") }
@@ -149,6 +160,15 @@ class RvSubsShotTest {
         compose.onNodeWithText(SAVE).performClick()
         assertEquals(listOf(TYPED_AGENT, null), saved)
         assertEquals(null, state.sheet)
+    }
+
+    /** The core's rule (`fetch::user_agent`): empty or blank is the default; else 256 printable ASCII characters at most. */
+    @Test
+    fun aUserAgentIsCheckedAndSavedByTheCoresRule() {
+        listOf("", "   ", RV_SAMPLE_AGENT, "x".repeat(256), " ~").forEach { assertTrue(it, rvAgentValid(it)) }
+        listOf("x".repeat(257), "a\nb", "a\u0000", RV_SAMPLE_AGENT + RV_SAMPLE_AGENT_BAD).forEach { assertFalse(it, rvAgentValid(it)) }
+        assertEquals(null, rvAgentOf("   "))
+        assertEquals(RV_SAMPLE_AGENT, rvAgentOf(" $RV_SAMPLE_AGENT "))
     }
 
     private fun shot(name: String, dark: Boolean, whole: Boolean = true, content: @Composable () -> Unit) =
@@ -199,7 +219,7 @@ class RvSubsShotTest {
         Box(Modifier.fillMaxSize()) {
             Detail()
             Sheet(stringResource(R.string.rv_sub_user_agent), null, stringResource(R.string.rv_save)) {
-                RvUserAgentField("") {}
+                RvUserAgentField("", {})
             }
         }
     }

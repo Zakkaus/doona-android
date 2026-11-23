@@ -18,6 +18,7 @@
     </plurals>
     <string name="rv_add_link">Subscription URL</string>
     <string name="rv_add_name">Name (optional)</string>
+    <string name="rv_add_user_agent">User-Agent (optional)</string>
     <string name="rv_add_not_subscription">This link did not return a subscription.</string>
     <string name="rv_sub_failed_title">Could not update %1$s</string>
     <plurals name="rv_sub_failed_reason">
