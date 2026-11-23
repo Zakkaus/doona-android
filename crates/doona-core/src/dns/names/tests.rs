@@ -576,3 +576,5 @@ fn bench_cache_memory() {
 
 /// Long CNAME chains, in a file of their own for the size limit.
 mod chains;
+/// CNAME data that does not decompress.
+mod malformed;

@@ -201,8 +201,8 @@ enum Data {
     Alias(usize),
 }
 
-/// A CNAME record whose data is not one name that ends where the data does: the answer is not
-/// read further.
+/// A CNAME record whose data is not one name that decompresses and ends where the data does: the
+/// answer is not read further.
 struct Malformed;
 
 /// The addresses, with their TTLs, of the A records in the answer section from `at` that `name`
@@ -246,7 +246,8 @@ fn reached(m: &[u8], name: &str, mut at: usize) -> Option<Vec<(Ipv4Addr, u32)>> 
 }
 
 /// The offset past a record, and for an A or CNAME record in IN, its owner's name and what it
-/// holds; `Malformed` for a CNAME whose name does not end exactly where its data does.
+/// holds; `Malformed` for a CNAME whose name does not end exactly where its data does, or does not
+/// decompress.
 type Record = (usize, Result<Option<(String, Data)>, Malformed>);
 
 /// The record at `at`; none when it runs past the message.
@@ -263,8 +264,11 @@ fn record(m: &[u8], at: usize) -> Option<Record> {
         (TYPE_A, CLASS_IN) => <[u8; 4]>::try_from(data)
             .ok()
             .map(|o| Data::A(Ipv4Addr::from(o), ttl.clamp(MIN_TTL, MAX_TTL))),
-        // With no data, or too little, the name would run on into the next record.
-        (TYPE_CNAME, CLASS_IN) if skip_name(m, at + 10) != Some(end) => {
+        // With no data, or too little, the name would run on into the next record; a pointer out
+        // of the message, or one that loops, gives no name at all.
+        (TYPE_CNAME, CLASS_IN)
+            if skip_name(m, at + 10) != Some(end) || !walk(m, at + 10, |_| true) =>
+        {
             return Some((end, Err(Malformed)));
         }
         (TYPE_CNAME, CLASS_IN) => Some(Data::Alias(at + 10)),
@@ -275,36 +279,50 @@ fn record(m: &[u8], at: usize) -> Option<Record> {
 
 /// The name at `at`, compressed or not, lower case and dot-separated; none when a label holds
 /// anything but letters, digits, `-` and `_` (a dot inside a label would make another name), when
-/// it is the root or longer than a name can be, or when it does not end within 128 labels and
-/// pointers.
-fn read_name(m: &[u8], mut at: usize) -> Option<String> {
+/// it is the root or longer than a name can be, or when it does not decompress (see [`walk`]).
+fn read_name(m: &[u8], at: usize) -> Option<String> {
     let mut name = String::new();
+    let read = walk(m, at, |label| {
+        if !label
+            .iter()
+            .all(|b| b.is_ascii_alphanumeric() || b"-_".contains(b))
+        {
+            return false;
+        }
+        if !name.is_empty() {
+            name.push('.');
+        }
+        name.extend(label.iter().map(|b| char::from(b.to_ascii_lowercase())));
+        name.len() <= MAX_NAME
+    });
+    (read && !name.is_empty()).then_some(name)
+}
+
+/// Gives `label` each label of the name at `at` in turn, pointers followed. True when the name
+/// decompresses, ending within the message and within 128 labels and pointers, and `label` took
+/// every label; a pointer out of the message or one that loops never ends.
+fn walk(m: &[u8], mut at: usize, mut label: impl FnMut(&[u8]) -> bool) -> bool {
     for _ in 0..128 {
-        let len = *m.get(at)?;
+        let Some(&len) = m.get(at) else {
+            return false;
+        };
         match len & 0xc0 {
-            0x00 if len == 0 => return (!name.is_empty()).then_some(name),
+            0x00 if len == 0 => return true,
             0x00 => {
-                let label = m.get(at + 1..at + 1 + usize::from(len))?;
-                if !label
-                    .iter()
-                    .all(|b| b.is_ascii_alphanumeric() || b"-_".contains(b))
-                {
-                    return None;
+                let end = at + 1 + usize::from(len);
+                if !m.get(at + 1..end).is_some_and(&mut label) {
+                    return false;
                 }
-                if !name.is_empty() {
-                    name.push('.');
-                }
-                name.extend(label.iter().map(|b| char::from(b.to_ascii_lowercase())));
-                if name.len() > MAX_NAME {
-                    return None;
-                }
-                at += 1 + usize::from(len);
+                at = end;
             }
-            0xc0 => at = usize::from(u16_at(m, at)? & 0x3fff),
-            _ => return None,
+            0xc0 => match u16_at(m, at) {
+                Some(to) => at = usize::from(to & 0x3fff),
+                None => return false,
+            },
+            _ => return false,
         }
     }
-    None
+    false
 }
 
 #[cfg(test)]
