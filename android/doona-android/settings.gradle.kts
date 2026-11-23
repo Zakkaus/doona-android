@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "doona-android"
 include(":app")
+include(":benchmark")
