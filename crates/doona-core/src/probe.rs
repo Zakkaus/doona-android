@@ -9,6 +9,7 @@
 
 use crate::api::lock;
 use crate::catalog::{Plan, Round, Shared, Target};
+use crate::diag::{Count, Event};
 use crate::dto::ErrorCode;
 use crate::localnet::Lookups;
 use crate::outbounds::{Carriers, Registries};
@@ -18,7 +19,8 @@ use honk_config::node::Node;
 use honk_outbound::proxy::ProxyRegistry;
 use honk_outbound::runtime::OutboundRuntimeRegistry;
 use std::sync::Arc;
-use std::time::Duration;
+use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
+use std::time::{Duration, Instant};
 use tokio::runtime::Handle;
 use tokio::sync::Semaphore;
 use tokio_util::sync::CancellationToken;
@@ -85,7 +87,8 @@ impl Probes {
         cancel: CancellationToken,
         published: Option<Published>,
     ) {
-        let round = plan.round();
+        let (round, planned) = (plan.round(), plan.targets.len());
+        let tally = Arc::new(Tally::default());
         let proxies = shared.outbounds.proxies();
         let probes = plan.targets.into_iter().map(|target| {
             let job = ProbeJob {
@@ -98,12 +101,16 @@ impl Probes {
                 lookups: Lookups::default(),
             };
             let carriers = published.as_ref().map(|(_, c)| Arc::clone(c));
-            self.one(Arc::clone(shared), (job, carriers), target, cancel.clone())
+            let ending = (cancel.clone(), Arc::clone(&tally));
+            self.one(Arc::clone(shared), (job, carriers), target, ending)
         });
         let probes = futures_util::future::join_all(probes);
         let ended = Ended {
             shared: Arc::clone(shared),
             round,
+            planned,
+            tally,
+            begun: Instant::now(),
         };
         rt.spawn(async move {
             let _ended = ended;
@@ -119,7 +126,7 @@ impl Probes {
         shared: Arc<Shared>,
         (job, carriers): (ProbeJob, Option<Arc<Carriers>>),
         target: Target,
-        cancel: CancellationToken,
+        (cancel, tally): (CancellationToken, Arc<Tally>),
     ) -> impl Future<Output = ()> + Send + 'static {
         let permits = Arc::clone(&self.permits);
         let prober = Arc::clone(&self.prober);
@@ -145,6 +152,7 @@ impl Probes {
                 .flatten()
                 .map(|d| u32::try_from(d.as_millis()).unwrap_or(u32::MAX).max(1));
             let error = failure(ms, &lookups, &target);
+            tally.count(ms.is_some());
             let mut c = lock(&shared.catalog);
             // `cancel` is cancelled under the catalog lock, so a stop that returned is never undone.
             if !cancel.is_cancelled() && c.model.record(&target, ms, error) {
@@ -163,10 +171,31 @@ fn failure(ms: Option<u32>, lookups: &Lookups, target: &Target) -> Option<ErrorC
     local.then_some(ErrorCode::LocalNetwork)
 }
 
+/// The probes of a test that measured, and those that failed, for its event in the ring.
+#[derive(Default)]
+struct Tally {
+    measured: AtomicU32,
+    failed: AtomicU32,
+}
+
+impl Tally {
+    fn count(&self, measured: bool) {
+        let counter = if measured {
+            &self.measured
+        } else {
+            &self.failed
+        };
+        counter.fetch_add(1, Relaxed);
+    }
+}
+
 /// Ends a test when its task ends, finished or cancelled.
 struct Ended {
     shared: Arc<Shared>,
     round: Round,
+    planned: usize,
+    tally: Arc<Tally>,
+    begun: Instant,
 }
 
 impl Drop for Ended {
@@ -175,5 +204,17 @@ impl Drop for Ended {
         c.model.finish(&self.round);
         c.revision += 1;
         self.shared.stats.end_round();
+        drop(c);
+        let (measured, failed) = (&self.tally.measured, &self.tally.failed);
+        let (measured, failed) = (measured.load(Relaxed), failed.load(Relaxed));
+        let event = Event::info("probeRound").count(Count::Probes, self.planned);
+        let event = event.count(Count::Failed, failed).since(self.begun);
+        let finished = usize::try_from(measured + failed).is_ok_and(|n| n >= self.planned);
+        let event = if finished {
+            event
+        } else {
+            event.detail("cancelled")
+        };
+        self.shared.diag.record(event);
     }
 }

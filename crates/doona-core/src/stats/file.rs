@@ -9,6 +9,7 @@
 use super::day::Usage;
 use super::latency::Tests;
 use crate::api::lock;
+use crate::diag::{Diag, Event};
 use crate::state::{sync_dir, write_synced};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 /// The layout version of both files: 2 keeps days by date, and the latency tests apart.
 pub(crate) const STATS_VERSION: u32 = 2;
@@ -54,14 +55,17 @@ pub(crate) struct StatsFile {
     name: &'static str,
     /// One write at a time; each takes the newest data once it holds this.
     writing: Mutex<()>,
+    /// Where a file that cannot be read or written is recorded.
+    diag: Arc<Diag>,
 }
 
 impl StatsFile {
-    pub fn new(dir: &Path, name: &'static str) -> StatsFile {
+    pub fn new(dir: &Path, name: &'static str, diag: Arc<Diag>) -> StatsFile {
         StatsFile {
             dir: dir.to_path_buf(),
             name,
             writing: Mutex::new(()),
+            diag,
         }
     }
 
@@ -72,7 +76,8 @@ impl StatsFile {
             Ok(text) => text,
             Err(e) => {
                 if e.kind() != ErrorKind::NotFound {
-                    log::warn!("stats: {} unreadable ({:?}), empty", self.name, e.kind());
+                    let event = Event::warn("statsRead").io(e.kind()).detail(self.name);
+                    self.diag.record(event);
                 }
                 return T::default();
             }
@@ -85,11 +90,12 @@ impl StatsFile {
         {
             Some(data) => data,
             None => {
-                log::warn!("stats: {} was unusable; set aside, empty", self.name);
                 let aside = self.dir.join(format!("{}.unreadable", self.name));
+                let mut event = Event::warn("statsSetAside").detail(self.name);
                 if let Err(e) = fs::rename(&path, aside) {
-                    log::warn!("stats: not set aside ({:?})", e.kind());
+                    event = event.io(e.kind());
                 }
+                self.diag.record(event);
                 T::default()
             }
         }
@@ -115,7 +121,8 @@ impl StatsFile {
             .map_err(io::Error::from)
             .and_then(|bytes| self.write(&bytes));
         if let Err(e) = &written {
-            log::warn!("stats: {} not written ({:?})", self.name, e.kind());
+            let event = Event::warn("statsWrite").io(e.kind()).detail(self.name);
+            self.diag.record(event);
         }
         written.is_ok()
     }

@@ -4,6 +4,11 @@ use super::*;
 use crate::subscription::parse;
 use crate::testutil::fixture;
 
+/// The catalog `state` gives, its failures recorded nowhere.
+fn load(state: &State) -> Model {
+    super::load(state, &Diag::default())
+}
+
 fn stored(id: &str, body: &str) -> StoredSubscription {
     let parsed = parse::parse(&fixture(body)).unwrap();
     StoredSubscription {

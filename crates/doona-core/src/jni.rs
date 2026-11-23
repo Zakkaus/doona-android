@@ -9,6 +9,7 @@
 //! `allow(deprecated)` on each declaration (<https://github.com/jni-rs/jni-rs/issues/846>).
 
 use crate::api::{self, Core};
+use crate::diag::{Event, crash};
 use crate::dto::ErrorCode;
 use crate::sys;
 use jni::errors::{ErrorPolicy, Result};
@@ -56,7 +57,12 @@ impl<T: Default, E: std::error::Error> ErrorPolicy<T, E> for ThrowInternal {
         _captures: &mut Self::Captures<'unowned_env_local, 'native_method>,
         _err: E,
     ) -> Result<T> {
-        log::error!("jni call failed");
+        match core() {
+            Some(c) => c
+                .diag()
+                .record(Event::error("jni").code(ErrorCode::Internal)),
+            None => log::error!("jni call failed"),
+        }
         throw_code(env, ErrorCode::Internal);
         Ok(T::default())
     }
@@ -73,7 +79,8 @@ impl<T: Default, E: std::error::Error> ErrorPolicy<T, E> for ThrowInternal {
 }
 
 /// Logs a panic's location only: the payload may quote an address or a URL. Once: the core
-/// installs its own hook over this one (`panics.rs`), which a second call would drop.
+/// installs its own hook over this one (`panics.rs`), which a second call would drop, and which
+/// writes the crash file before it runs this one.
 fn install_panic_hook() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
@@ -122,6 +129,8 @@ fn init<'local>(
             install_panic_hook();
             match Core::new(&dir) {
                 Ok(c) => {
+                    // The panics of threads no runtime of the core runs: JNI callers, carriers.
+                    crash::report_otherwise(&std::sync::Arc::downgrade(c.diag()));
                     let _ = CORE.set(c);
                 }
                 Err(code) => {

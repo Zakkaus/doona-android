@@ -18,6 +18,7 @@ mod udp;
 
 use crate::api::lock;
 use crate::catalog::Shared;
+use crate::diag::{Count, Event};
 use crate::dns::names::Names;
 use crate::dto::{ErrorCode, Traffic};
 use crate::localnet::Trace;
@@ -328,8 +329,18 @@ impl Session {
         self.failed.load(Relaxed)
     }
 
-    fn fail(&self) {
-        self.failed.store(true, Relaxed);
+    /// Marks the session failed; answers whether it was not before.
+    fn fail(&self) -> bool {
+        !self.failed.swap(true, Relaxed)
+    }
+
+    /// Records `event` with the generation in the core's ring (none without a catalog).
+    fn record(&self, event: Event) {
+        if let Some(shared) = self.catalog.upgrade() {
+            shared
+                .diag
+                .record(event.count(Count::Generation, self.generation));
+        }
     }
 
     /// What `snapshot` reports besides a dead data path: `local_network` while the latest dial
@@ -394,6 +405,8 @@ impl Session {
             if let Some(c) = &mut catalog {
                 c.revision += 1;
             }
+            drop((warned, catalog));
+            self.record(Event::warning(on));
         }
     }
 
@@ -439,7 +452,9 @@ impl Gen {
 
     /// The data path cannot go on: `snapshot` reports `internal` until `stop`.
     pub fn die(&self) {
-        self.session.fail();
+        if self.session.fail() {
+            self.session.record(Event::died());
+        }
         self.cancel.cancel();
     }
 }
@@ -554,16 +569,9 @@ impl Tunnel {
             rx.recv_timeout(until.saturating_duration_since(Instant::now()))
                 .is_ok()
         };
-        let ms = begun.elapsed().as_millis();
-        let generation = g.session.generation;
-        if done && closed {
-            log::info!("generation {generation} stopped in {ms} ms");
-        } else {
-            log::warn!(
-                "generation {generation}: {} tasks detached, carriers closed {closed}, {ms} ms",
-                g.tracker.len()
-            );
-        }
+        let detached = (!done).then(|| g.tracker.len());
+        g.session
+            .record(Event::stopped(detached, closed).since(begun));
     }
 }
 

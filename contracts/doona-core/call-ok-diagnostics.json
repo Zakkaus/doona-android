@@ -1,0 +1,41 @@
+{
+  "ok": {
+    "core": {
+      "version": "0.1.0",
+      "schema": 2,
+      "profile": "release",
+      "target": "aarch64-android",
+      "features": []
+    },
+    "level": "info",
+    "events": [
+      {"atEpochMs": 1795299990000, "level": "info", "name": "init", "code": null, "detail": null, "counts": {"nodes": 2, "subscriptions": 1}, "ms": null},
+      {"atEpochMs": 1795299995120, "level": "info", "name": "updateSubscription", "code": null, "detail": null, "counts": {"nodes": 2}, "ms": 1840},
+      {"atEpochMs": 1795299996300, "level": "info", "name": "testLatency", "code": null, "detail": null, "counts": {"probes": 2}, "ms": 3},
+      {"atEpochMs": 1795299999990, "level": "info", "name": "start", "code": null, "detail": null, "counts": {"generation": 3}, "ms": 412},
+      {"atEpochMs": 1795300001300, "level": "info", "name": "probeRound", "code": null, "detail": null, "counts": {"failed": 1, "probes": 2}, "ms": 5001},
+      {"atEpochMs": 1795300004000, "level": "warn", "name": "warning", "code": "local_network", "detail": null, "counts": {"generation": 3}, "ms": null},
+      {"atEpochMs": 1795300100000, "level": "warn", "name": "updateSubscription", "code": "fetch_failed", "detail": null, "counts": {}, "ms": 30000},
+      {"atEpochMs": 1795300150000, "level": "error", "name": "panic", "code": "internal", "detail": null, "counts": {}, "ms": null},
+      {"atEpochMs": 1795300150900, "level": "error", "name": "died", "code": "internal", "detail": null, "counts": {"generation": 3}, "ms": null},
+      {"atEpochMs": 1795300155000, "level": "warn", "name": "stopped", "code": null, "detail": "detached", "counts": {"generation": 3, "tasks": 1}, "ms": 900},
+      {"atEpochMs": 1795300155300, "level": "info", "name": "setMode", "code": null, "detail": "Rule", "counts": {}, "ms": 12}
+    ],
+    "overwritten": 0,
+    "snapshot": {
+      "atEpochMs": 1795300154000,
+      "revision": 42,
+      "running": false,
+      "generation": 3,
+      "error": "internal",
+      "warning": null
+    },
+    "stats": {
+      "traffic": {"upTotal": 0, "downTotal": 0, "activeFlows": 0, "upPeak": 0, "downPeak": 0},
+      "today": {"upTotal": 104857600, "downTotal": 1073741824, "yesterdayByNow": null}
+    },
+    "crashes": [
+      {"name": "1795300150000.txt", "bytes": 5123}
+    ]
+  }
+}

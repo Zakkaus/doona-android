@@ -240,7 +240,7 @@ fn keeping_the_same_nodes_defers_latency_writes_to_round_end() {
 
     stats.end_round();
     drop(rt);
-    let saved = StatsFile::new(dir.path(), file::LATENCY).load::<LatencyFile>();
+    let saved = StatsFile::new(dir.path(), file::LATENCY, Arc::default()).load::<LatencyFile>();
     assert_eq!(saved.latency["n-a"][0], latency::Test(1_000, Some(38)));
 }
 
@@ -343,9 +343,9 @@ fn failed_final_writes_retry_without_another_fold() {
         .await
         .expect("the files were not written again after stop");
     });
-    let usage = StatsFile::new(dir.path(), file::USAGE).load::<UsageFile>();
+    let usage = StatsFile::new(dir.path(), file::USAGE, Arc::default()).load::<UsageFile>();
     assert_eq!(usage.usage.today(&at).1, 2);
-    let latency = StatsFile::new(dir.path(), file::LATENCY).load::<LatencyFile>();
+    let latency = StatsFile::new(dir.path(), file::LATENCY, Arc::default()).load::<LatencyFile>();
     assert_eq!(latency.latency["n-a"][0], latency::Test(1_000, Some(38)));
 }
 

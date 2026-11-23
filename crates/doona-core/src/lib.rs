@@ -5,6 +5,7 @@
 pub mod api;
 mod bootstrap;
 mod catalog;
+mod diag;
 mod dns;
 pub mod dto;
 mod groups;

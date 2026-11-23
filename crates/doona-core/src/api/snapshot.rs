@@ -52,6 +52,7 @@ impl Core {
                 catalog,
             },
         };
+        self.diag.saw(&snapshot);
         to_json(&snapshot)
     }
 

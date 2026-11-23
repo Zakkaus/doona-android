@@ -18,8 +18,9 @@ pub(crate) fn count_on_this_thread(count: &Arc<AtomicU64>) {
     });
 }
 
-/// Installs, once per process, a hook that counts each panic of a counting thread, then runs the
-/// hook installed before it (in the app, the one that logs the location only).
+/// Installs, once per process, a hook that counts each panic of a counting thread, writes its
+/// crash file (`diag/crash.rs`), then runs the hook installed before it (in the app, the one that
+/// logs the location only).
 pub(crate) fn install() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
@@ -27,6 +28,7 @@ pub(crate) fn install() {
         std::panic::set_hook(Box::new(move |info| {
             // A thread being torn down may have lost its slot; its panic is not counted.
             let _ = COUNT.try_with(|c| c.get().map(|count| count.fetch_add(1, Relaxed)));
+            crate::diag::crash::on_panic(info);
             previous(info);
         }));
     });

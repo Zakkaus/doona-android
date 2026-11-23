@@ -3,10 +3,11 @@
 
 use crate::bootstrap;
 use crate::catalog::{self, CatalogState, Shared};
+use crate::diag::{Count, Diag, Event, crash};
 use crate::dto::{self, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply, StartConfig};
 use crate::outbounds::Outbounds;
 use crate::probe::{self, Prober, Probes};
-use crate::state::{Loaded, State, Store};
+use crate::state::{State, Store};
 use crate::stats::Stats;
 use crate::tunnel::route::ModeCell;
 use crate::tunnel::{self, Gate, Launch, STOP_WAIT, Settings, Tun, Tunnel};
@@ -21,6 +22,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
+mod diagnostics;
 #[cfg(feature = "fault-hook")]
 mod fault;
 mod rules;
@@ -97,6 +99,8 @@ pub struct Core {
     panics: Arc<AtomicU64>,
     /// The rate history, the day's usage and the latency history (see `stats.rs`).
     stats: Arc<Stats>,
+    /// The event ring and the crash files (see `diag/`).
+    diag: Arc<Diag>,
     #[cfg(test)]
     hooks: hooks::Hooks,
 }
@@ -143,32 +147,36 @@ impl Core {
             log::error!("init: state unreadable ({:?})", e.kind());
             ErrorCode::Internal
         })?;
-        if loaded == Loaded::SetAside {
-            log::warn!("init: state.json was unusable; set aside, defaults in use");
-        }
+        let diag = Arc::new(Diag::new(Some(store.dir().join(crash::DIR))));
         let panics = Arc::new(AtomicU64::new(0));
         crate::panics::install();
-        let counted = Arc::clone(&panics);
+        let (counted, reported) = (Arc::clone(&panics), Arc::downgrade(&diag));
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(WORKERS)
             .thread_name("doona-core")
-            .on_thread_start(move || crate::panics::count_on_this_thread(&counted))
+            .on_thread_start(move || {
+                crate::panics::count_on_this_thread(&counted);
+                crash::report_here(&reported);
+            })
             .enable_all()
             .build()
             .map_err(|_| ErrorCode::Internal)?;
         bootstrap::install();
         bootstrap::use_servers(options.bootstrap_fallback.clone());
-        let model = catalog::load(&state);
+        let model = catalog::load(&state, &diag);
+        diagnostics::loaded(&diag, &state, &model, loaded);
         let outbounds = Arc::new(Outbounds::new(Arc::clone(&panics))?);
         let built = outbounds.build(&model.nodes);
         let mode = Arc::new(ModeCell::new(state.mode));
         let catalog = CatalogState::new(state, model);
-        let stats = Arc::new(Stats::new(store.dir(), runtime.handle().clone()));
+        let stats = Stats::with_diag(store.dir(), runtime.handle().clone(), &diag);
+        let stats = Arc::new(stats);
         stats.keep_nodes(|id| catalog.model.has(id));
         let shared = Arc::new(Shared {
             catalog: Mutex::new(catalog),
             outbounds,
             stats: Arc::clone(&stats),
+            diag: Arc::clone(&diag),
         });
         shared.publish_nodes(&lock(&shared.catalog), built);
         let probes = Probes::new(prober, &options.probe_url);
@@ -186,6 +194,7 @@ impl Core {
             refreshing: Mutex::new(HashSet::new()),
             panics,
             stats,
+            diag,
             #[cfg(test)]
             hooks: hooks::Hooks::default(),
         })
@@ -208,11 +217,13 @@ impl Core {
         let result = self
             .settings(config)
             .and_then(|settings| self.start_generation(tun, settings, deadline));
-        let ms = begun.elapsed().as_millis();
-        match result {
-            Ok(g) => log::info!("start {g}: up in {ms} ms"),
-            Err(code) => log::warn!("start failed: {} after {ms} ms", code.as_str()),
-        }
+        self.diag.record(
+            match result {
+                Ok(g) => Event::info("start").count(Count::Generation, g),
+                Err(code) => Event::warn("start").code(code),
+            }
+            .since(begun),
+        );
         result.map(drop)
     }
 
@@ -390,17 +401,24 @@ impl Core {
         }
     }
 
+    /// Runs `command`; its event in the ring carries what the arm notes on it (see
+    /// `api/diagnostics.rs`).
     pub fn call(&self, command: &str, args: &str) -> String {
-        let reply = match command {
-            "setMode" => parse(args).and_then(|a: ModeArgs| self.set_mode(a.mode).map(empty)),
+        self.traced(command, |event| match command {
+            "setMode" => parse(args).and_then(|a: ModeArgs| {
+                *event = event.detail(diagnostics::mode_name(a.mode));
+                self.set_mode(a.mode).map(empty)
+            }),
             "select" => parse(args).and_then(|a| self.select(a).map(empty)),
-            "testLatency" => {
-                parse(args).and_then(|a: GroupArgs| self.test_latency(a.group).map(empty))
-            }
-            "addSubscription" => parse(args).and_then(|a| self.add_subscription(a).map(ok)),
-            "updateSubscription" => {
-                parse(args).and_then(|a: IdArgs| self.update_subscription(&a.id).map(ok))
-            }
+            "testLatency" => parse(args)
+                .and_then(|a: GroupArgs| self.test_latency(a.group))
+                .map(|probes| diagnostics::probing(event, probes)),
+            "addSubscription" => parse(args)
+                .and_then(|a| self.add_subscription(a))
+                .map(|s| diagnostics::refreshed(event, s)),
+            "updateSubscription" => parse(args)
+                .and_then(|a: IdArgs| self.update_subscription(&a.id))
+                .map(|s| diagnostics::refreshed(event, s)),
             "removeSubscription" => {
                 parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
@@ -412,11 +430,7 @@ impl Core {
             "effectiveConfig" => self.effective_config(args),
             #[cfg(feature = "fault-hook")]
             "debugFault" => self.fault().map(empty),
-            _ => Err(ErrorCode::InvalidArgument),
-        };
-        reply.unwrap_or_else(|code| {
-            log::info!("call {}: {}", command_name(command), code.as_str());
-            error_reply(code)
+            _ => self.diagnostic(command, args, event),
         })
     }
 
@@ -436,7 +450,7 @@ impl Core {
     fn commit_state(
         &self,
         next: State,
-        command: &str,
+        command: &'static str,
         deadline: Option<Instant>,
     ) -> Result<(), ErrorCode> {
         self.write(&next, command, deadline)?;
@@ -459,7 +473,7 @@ impl Core {
     fn write(
         &self,
         next: &State,
-        command: &str,
+        command: &'static str,
         deadline: Option<Instant>,
     ) -> Result<(), ErrorCode> {
         let mut late = false;
@@ -475,7 +489,8 @@ impl Core {
             return Err(ErrorCode::Busy);
         }
         written.map_err(|e| {
-            log::error!("{command}: state not written ({:?})", e.kind());
+            self.diag
+                .record(Event::error("stateWrite").io(e.kind()).detail(command));
             ErrorCode::Internal
         })
     }
@@ -523,28 +538,6 @@ pub fn error_reply(code: ErrorCode) -> String {
     to_json(&Reply::<Empty>::Error(dto::CallError { code }))
 }
 
-/// A command name fit for the log: the closed list, never caller text.
-fn command_name(command: &str) -> &'static str {
-    const KNOWN: [&str; 12] = [
-        "select",
-        "testLatency",
-        "addSubscription",
-        "updateSubscription",
-        "removeSubscription",
-        "setMode",
-        "trafficSeries",
-        "usage",
-        "nodes",
-        "rules",
-        "setRuleSource",
-        "effectiveConfig",
-    ];
-    KNOWN
-        .into_iter()
-        .find(|k| *k == command)
-        .unwrap_or("unknown")
-}
-
 fn parse<T: DeserializeOwned>(args: &str) -> Result<T, ErrorCode> {
     serde_json::from_str(args).map_err(|_| ErrorCode::InvalidArgument)
 }
@@ -567,6 +560,8 @@ mod tests;
 mod tests_carriers;
 #[cfg(test)]
 mod tests_catalog;
+#[cfg(test)]
+mod tests_diagnostics;
 #[cfg(test)]
 mod tests_latency;
 #[cfg(test)]

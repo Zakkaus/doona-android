@@ -2,6 +2,10 @@
 //! `vpn/CoreDto.kt`; `contracts/doona-core/*.json` holds the examples both sides test against.
 //! Unknown fields are ignored; a missing required field fails to parse (`invalid_argument`).
 
+pub use crate::diag::report::{
+    CoreBuild, CrashFile, DiagEvent, Diagnostics, DiagnosticsArgs, LastSnapshot, Level, LevelArgs,
+    StatsSummary,
+};
 use serde::{Deserialize, Serialize};
 
 /// The contract schema this core speaks; `init` returns it. Schema 2 added `Rule` to the modes,

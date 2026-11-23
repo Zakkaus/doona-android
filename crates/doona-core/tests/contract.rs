@@ -2,9 +2,9 @@
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
 use doonacore::dto::{
-    EffectiveConfig, Empty, ErrorCode, Init, Mode, ModeArgs, Nodes, NodesArgs, Reply,
-    RuleSourceSpec, Rules, RulesArgs, SelectArgs, Snapshot, SourceKind, StartConfig, Subscription,
-    TargetKind, TrafficSeries, Usage,
+    Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty, ErrorCode, Init, Level, LevelArgs, Mode,
+    ModeArgs, Nodes, NodesArgs, Reply, RuleSourceSpec, Rules, RulesArgs, SelectArgs, Snapshot,
+    SourceKind, StartConfig, Subscription, TargetKind, TrafficSeries, Usage,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -29,9 +29,11 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 18] = [
+const COVERED: [&str; 21] = [
+    "call-diagnostics-args.json",
     "call-error.json",
     "call-nodes-args.json",
+    "call-ok-diagnostics.json",
     "call-ok-effective-config.json",
     "call-ok-empty.json",
     "call-ok-nodes.json",
@@ -41,6 +43,7 @@ const COVERED: [&str; 18] = [
     "call-ok-usage.json",
     "call-rules-args.json",
     "call-select-args.json",
+    "call-set-log-level-args.json",
     "call-set-mode-args.json",
     "call-set-rule-source-args.json",
     "init.json",
@@ -250,4 +253,31 @@ fn rule_source_args_and_the_effective_config() {
     // Nodes by code only, never by display name or endpoint (ARCH D21).
     assert!(config.text.contains("now n-369a8a63)") && !config.text.contains("hk-01"));
     assert!(!config.text.contains("192.0.2."));
+}
+
+#[test]
+fn diagnostics() {
+    let report = ok(round_trip::<Reply<Diagnostics>>("call-ok-diagnostics.json"));
+    assert_eq!(report.core.schema, doonacore::dto::SCHEMA);
+    assert_eq!((report.level, report.overwritten), (Level::Info, 0));
+    let events = &report.events;
+    assert!(
+        events
+            .windows(2)
+            .all(|w| w[0].at_epoch_ms <= w[1].at_epoch_ms)
+    );
+    assert!(events.iter().all(|e| e.counts.len() <= 2));
+    let died = events.iter().find(|e| e.name == "died").unwrap();
+    assert_eq!(
+        (died.level, died.code.as_deref()),
+        (Level::Error, Some("internal"))
+    );
+    assert_eq!(report.snapshot.unwrap().error, Some(ErrorCode::Internal));
+    assert_eq!(report.crashes[0].name, "1795300150000.txt");
+    let level = round_trip::<LevelArgs>("call-set-log-level-args.json");
+    assert_eq!(level.level, Level::Info);
+    let args = round_trip::<DiagnosticsArgs>("call-diagnostics-args.json");
+    assert_eq!(args.level, Some(Level::Warn));
+    let all: DiagnosticsArgs = serde_json::from_str("{}").unwrap();
+    assert_eq!(all.level, None);
 }

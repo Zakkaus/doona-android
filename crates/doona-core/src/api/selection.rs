@@ -28,9 +28,9 @@ impl Core {
         self.commit_state(next, "select", None)
     }
 
-    /// Starts probing the nodes of `group`, or of every group, and returns at once; the groups
-    /// show `testing` until the test ends.
-    pub(super) fn test_latency(&self, group: Option<String>) -> Result<(), ErrorCode> {
+    /// Starts probing the nodes of `group`, or of every group, and returns at once with how many
+    /// probes it started; the groups show `testing` until the test ends.
+    pub(super) fn test_latency(&self, group: Option<String>) -> Result<usize, ErrorCode> {
         // Any registry to build again is built here, outside the lifecycle lock.
         self.shared.outbounds.prepare()?;
         #[cfg(test)]
@@ -51,9 +51,9 @@ impl Core {
             c.revision += 1;
             (plan, c.probes.clone(), published)
         };
-        log::info!("testLatency: {} probes", plan.targets.len());
+        let probes = plan.targets.len();
         let rt = self.runtime.handle();
         self.probes.spawn(rt, &self.shared, plan, cancel, published);
-        Ok(())
+        Ok(probes)
     }
 }

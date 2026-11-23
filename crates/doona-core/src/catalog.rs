@@ -3,6 +3,7 @@
 //! choices of UrlTest groups, and which groups are testing. It changes only under the core's
 //! catalog lock, in sections that never wait on I/O.
 
+use crate::diag::{Diag, Event};
 use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member, Mode, RuleSourceSpec};
 use crate::groups::{self, GroupDef};
 use crate::ids::{self, is_group};
@@ -65,14 +66,14 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
 /// The nodes `state.json` lists, each subscription with a new incarnation. Only a file edited
 /// by hand holds a subscription over a node budget, or a document that gives no node; that one is
 /// shown without nodes.
-pub(crate) fn load(state: &State) -> Model {
+pub(crate) fn load(state: &State, diag: &Diag) -> Model {
     let mut nodes = Vec::new();
     let mut incarnations = HashMap::new();
     for s in &state.subscriptions {
         let parsed = stored_nodes(s).and_then(|p| within_budget(nodes.len(), &p).map(|()| p));
         match parsed {
             Ok(parsed) => nodes.extend(entries(&s.id, parsed)),
-            Err(code) => log::warn!("load: a subscription's nodes are not shown ({code:?})"),
+            Err(code) => diag.record(Event::warn("loadSubscription").code(code)),
         }
         incarnations.insert(s.id.clone(), incarnation());
     }
@@ -116,6 +117,8 @@ pub(crate) struct Shared {
     pub outbounds: Arc<Outbounds>,
     /// Where the probes record each node's latency tests.
     pub stats: Arc<Stats>,
+    /// Where probe rounds and the data path's health are recorded.
+    pub diag: Arc<Diag>,
 }
 
 impl Shared {

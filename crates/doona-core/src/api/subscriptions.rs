@@ -57,13 +57,7 @@ impl Core {
         };
         let fresh = refreshed(&mut stored, parsed, userinfo);
         next.subscriptions.push(stored);
-        let added = self.commit_nodes(next, &id, fresh, "addSubscription", Some(deadline))?;
-        log::info!(
-            "addSubscription: {} nodes in {} ms",
-            added.nodes,
-            begun.elapsed().as_millis()
-        );
-        Ok(added)
+        self.commit_nodes(next, &id, fresh, "addSubscription", Some(deadline))
     }
 
     pub(super) fn update_subscription(&self, id: &str) -> Result<dto::Subscription, ErrorCode> {
@@ -111,13 +105,7 @@ impl Core {
             }
         };
         let fresh = refreshed(stored, parsed, userinfo);
-        let updated = self.commit_nodes(next, id, fresh, "updateSubscription", Some(deadline))?;
-        log::info!(
-            "updateSubscription: {} nodes in {} ms",
-            updated.nodes,
-            begun.elapsed().as_millis()
-        );
-        Ok(updated)
+        self.commit_nodes(next, id, fresh, "updateSubscription", Some(deadline))
     }
 
     pub(super) fn remove_subscription(&self, id: &str) -> Result<(), ErrorCode> {
@@ -183,7 +171,7 @@ impl Core {
         mut next: State,
         changed: &str,
         fresh: Vec<Arc<NodeEntry>>,
-        command: &str,
+        command: &'static str,
         deadline: Option<Instant>,
     ) -> Result<dto::Subscription, ErrorCode> {
         if !fresh.is_empty() && !self.shared.stats.forgetting_written() {

@@ -11,6 +11,7 @@ pub(crate) mod meter;
 pub(crate) mod ring;
 
 use crate::api::lock;
+use crate::diag::Diag;
 use crate::dto;
 use crate::sys;
 use crate::tunnel::Session;
@@ -165,10 +166,17 @@ impl Pending {
 }
 
 impl Stats {
-    /// The stats saved in `dir`, written on `runtime`'s blocking threads.
+    /// The stats saved in `dir`, written on `runtime`'s blocking threads, without diagnostics.
+    #[cfg(test)]
     pub fn new(dir: &Path, runtime: Handle) -> Stats {
-        let usage_file = StatsFile::new(dir, file::USAGE);
-        let latency_file = StatsFile::new(dir, file::LATENCY);
+        Stats::with_diag(dir, runtime, &Arc::default())
+    }
+
+    /// The stats saved in `dir`, written on `runtime`'s blocking threads; a file that cannot be
+    /// read or written is recorded in `diag`.
+    pub fn with_diag(dir: &Path, runtime: Handle, diag: &Arc<Diag>) -> Stats {
+        let usage_file = StatsFile::new(dir, file::USAGE, Arc::clone(diag));
+        let latency_file = StatsFile::new(dir, file::LATENCY, Arc::clone(diag));
         let inner = Inner {
             ring: Ring::new(),
             usage: usage_file.load::<UsageFile>().usage.sane(),
