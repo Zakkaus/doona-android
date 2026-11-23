@@ -195,14 +195,14 @@ private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
 }
 
 /**
- * 全域's node picker: the node list's search and order, then every subscription's nodes (or every country's, under 地區);
- * a tap makes the node the main node.
+ * 全域's node picker: the node list's order (the search is the tab bar's), then every subscription's nodes (or every
+ * country's, under 地區); a tap makes the node the main node.
  */
 @Composable
 private fun GlobalPicker(state: RvPolicyState, onChange: (RvPolicyState) -> Unit) {
     val main = state.group(RvPolicyData.main)
     val groups = remember(state.nodeSort) { rvNodeGroups(RvData.nodes, RvData.subscriptions, state.nodeSort) }
-    RvControlRow({ RvNodeListControls(state.nodeSort) { onChange(state.copy(nodeSort = it)) } }, RvSpace.tabBlockGap)
+    RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, search = false) }, RvSpace.tabBlockGap)
     RvNodeGroups(groups, main.selectedId, state.nodeSort) { onChange(state.choose(main.id, it)) }
 }
 
