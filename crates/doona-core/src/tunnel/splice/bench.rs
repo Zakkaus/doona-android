@@ -1,21 +1,27 @@
 //! What a TCP relay costs through the flow task, its gate included: throughput and CPU time a
 //! chunk, with 1,500 B and 32 KiB chunks, from the driver's end of a flow through `splice` to an
-//! upstream in memory, and back. The driver's part passes each chunk as the driver does, with the
-//! gate readings of a pump (`TcpFlow::verdict` before and after it, `moved` for each chunk the
-//! stack takes). The upstream never blocks, so the numbers are the relay's, the channels' and the
-//! gate's. Each case runs on one thread (the driver's part and the relay take turns: the steadiest
-//! CPU time a chunk), then on two, the relay on a worker as the driver's flow tasks are (each
-//! chunk also wakes the other thread). CPU time is the process's, every thread. Then the gate's
-//! own operations, alone on one thread. Run in release on the desktop:
+//! upstream in memory, and back. The driver's part serves the flow as the driver does: it waits
+//! for the flow's wake on the event channel and re-arms it, then moves what it can without waiting,
+//! with the gate readings of a pump (`TcpFlow::verdict` before and after it, `moved` for each chunk
+//! the stack takes). The upstream never blocks, so the numbers are the relay's, the channels', the
+//! wakes' and the gate's; it moves nothing before the clocks start. Each case runs on one thread
+//! (the driver's part and the relay take turns: the steadiest CPU time a chunk), then on two, the
+//! relay on a worker as the driver's flow tasks are (a wake then crosses threads). CPU time is the
+//! process's, every thread. Then the gate's own operations, alone on one thread. Run in release on
+//! the desktop:
 //! `cargo test --locked --release --lib tunnel::splice::bench -- --ignored --nocapture --test-threads 1`;
-//! the numbers are in `fixa-fix5-STATE.md`.
+//! the numbers are in `fixa-fix5-STATE.md` (fix 6).
 
 use super::*;
-use crate::tunnel::flow::Ends;
+use crate::tunnel::flow::{Ends, Event};
 use bytes::Bytes;
+use std::future::Future;
 use std::hint::black_box;
+use std::sync::Arc;
 use std::task::{Context, Waker};
 use std::time::Instant;
+use tokio::sync::mpsc::error::TryRecvError;
+use tokio::sync::{mpsc, oneshot};
 
 /// Chunks a run moves, by size: about 600 MB at 1,500 B, 1.3 GB at 32 KiB.
 const RUNS: [(usize, usize); 2] = [(1500, 400_000), (CHUNK, 40_000)];
@@ -26,7 +32,7 @@ static DATA: [u8; CHUNK] = [7; CHUNK];
 
 /// The driver's ends of a relay, the relay, and the driver's gate readings, for the tree measured.
 mod shim {
-    use super::Upstream;
+    use super::{Flow, Upstream};
     use crate::stats::meter::Tally;
     use crate::tunnel::flow::{self, Ends, FlowIo, Key, Waker};
     use crate::tunnel::gate::Task;
@@ -38,17 +44,22 @@ mod shim {
     use tokio::task::JoinHandle;
 
     /// A fresh relay flow whose task splices to `upstream`, spawned on the runtime.
-    pub fn spawn_relay(mut upstream: Upstream) -> (Ends, JoinHandle<()>) {
+    pub fn spawn_relay(mut upstream: Upstream) -> (Flow, JoinHandle<()>) {
         let (events, wakes) = mpsc::unbounded_channel();
         let waker = Waker::new(Key::Udp(0), events);
+        let driver = std::sync::Arc::clone(&waker);
         let relay = Task::Relay;
         let (ends, mut io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE, relay);
         let gate = io.gate();
         let task = tokio::spawn(async move {
             let _ = until_given_up(&gate, splice(&mut io, &mut upstream, &gate)).await;
-            drop(wakes);
         });
-        (ends, task)
+        let flow = Flow {
+            ends,
+            waker: driver,
+            wakes,
+        };
+        (flow, task)
     }
 
     /// What the driver reads of the flow's gate for one verdict.
@@ -80,14 +91,33 @@ mod shim {
     }
 }
 
+/// A relay flow as the driver holds it: its ends, and its wakes on the event channel.
+pub(super) struct Flow {
+    ends: Ends,
+    waker: Arc<crate::tunnel::flow::Waker>,
+    wakes: mpsc::UnboundedReceiver<Event>,
+}
+
 /// An upstream in memory: it takes every write at once, and gives `give` chunks of `size` bytes,
-/// then its FIN; giving nothing, it sends its FIN once `expect` bytes were written to it.
+/// then its FIN; giving nothing, it sends its FIN once `expect` bytes were written to it. It does
+/// nothing until `start` fires.
 pub(super) struct Upstream {
     size: usize,
     give: usize,
     expect: usize,
     taken: usize,
     reader: Option<Waker>,
+    start: Option<oneshot::Receiver<()>>,
+}
+
+impl Upstream {
+    fn started(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        if let Some(start) = &mut self.start {
+            let _ = std::task::ready!(Pin::new(start).poll(cx));
+            self.start = None;
+        }
+        Poll::Ready(())
+    }
 }
 
 impl AsyncRead for Upstream {
@@ -97,6 +127,7 @@ impl AsyncRead for Upstream {
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
         let this = self.get_mut();
+        std::task::ready!(this.started(cx));
         if this.give > 0 {
             assert!(buf.remaining() >= this.size);
             this.give -= 1;
@@ -112,10 +143,11 @@ impl AsyncRead for Upstream {
 impl AsyncWrite for Upstream {
     fn poll_write(
         self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
+        cx: &mut Context<'_>,
         data: &[u8],
     ) -> Poll<io::Result<usize>> {
         let this = self.get_mut();
+        std::task::ready!(this.started(cx));
         this.taken += data.len();
         if this.taken >= this.expect
             && let Some(reader) = this.reader.take()
@@ -160,61 +192,80 @@ fn cpu() -> std::time::Duration {
 /// One run: `chunks` of `size` bytes relayed `way`; MB/s and CPU ns a chunk.
 async fn run(way: Way, size: usize, chunks: usize) -> (f64, f64) {
     let total = size * chunks;
-    let upstream = match way {
-        Way::Up => Upstream {
-            size,
-            give: 0,
-            expect: total,
-            taken: 0,
-            reader: None,
-        },
-        Way::Down | Way::DownAfterFin => Upstream {
-            size,
-            give: chunks,
-            expect: 0,
-            taken: 0,
-            reader: None,
-        },
+    let (start, started) = oneshot::channel();
+    let give = match way {
+        Way::Up => 0,
+        Way::Down | Way::DownAfterFin => chunks,
     };
-    let (mut ends, relay) = shim::spawn_relay(upstream);
-    let mut up = ends.up.take();
-    if let Way::DownAfterFin = way {
-        up = None;
-    }
+    let upstream = Upstream {
+        size,
+        give,
+        expect: total - give * size,
+        taken: 0,
+        reader: None,
+        start: Some(started),
+    };
+    let (mut flow, relay) = shim::spawn_relay(upstream);
+    let mut up = flow.ends.up.take();
+    let send = match way {
+        Way::Up => Some(chunks),
+        Way::Down => None,
+        Way::DownAfterFin => {
+            up = None;
+            shim::client_fin(&flow.ends);
+            None
+        }
+    };
     let (wall, cpu0) = (Instant::now(), cpu());
-    match way {
-        Way::Up => {
-            let tx = up.take().unwrap();
-            for _ in 0..chunks {
-                shim::reading(&ends);
-                tx.send(Bytes::copy_from_slice(&DATA[..size]))
-                    .await
-                    .unwrap();
-                shim::reading(&ends);
-            }
-            drop(tx);
-            while ends.down.recv().await.is_some() {}
-        }
-        Way::Down | Way::DownAfterFin => {
-            let mut got = 0;
-            while let Some(chunk) = recv(&mut ends).await {
-                shim::reading(&ends);
-                got += black_box(chunk).len();
-                shim::moved(&ends);
-                shim::reading(&ends);
-            }
-            assert_eq!(got, total);
-            drop(up);
-        }
-    }
+    let _ = start.send(());
+    let got = drive(&mut flow, &mut up, send, size).await;
+    assert_eq!(got, give * size);
+    drop(up);
     relay.await.unwrap();
     let (wall, cpu) = (wall.elapsed(), cpu() - cpu0);
     let mbps = total as f64 / wall.as_secs_f64() / 1e6;
     (mbps, cpu.as_nanos() as f64 / chunks as f64)
 }
 
-async fn recv(ends: &mut Ends) -> Option<Bytes> {
-    ends.down.recv().await
+/// The driver's part of a run, as it serves the flow: it moves what it can without waiting, the
+/// gate read before and after as a pump does, then waits for the flow's wake and re-arms it. With
+/// `send`, that many chunks go up, then the client's FIN. The bytes the client got, once the relay
+/// closed the client's side.
+async fn drive(
+    flow: &mut Flow,
+    up: &mut Option<mpsc::Sender<Bytes>>,
+    mut send: Option<usize>,
+    size: usize,
+) -> usize {
+    let mut got = 0;
+    loop {
+        shim::reading(&flow.ends);
+        if let (Some(left), Some(tx)) = (send.as_mut(), up.as_ref()) {
+            while *left > 0 && tx.try_send(Bytes::copy_from_slice(&DATA[..size])).is_ok() {
+                *left -= 1;
+            }
+            if *left == 0 {
+                (*up, send) = (None, None);
+                shim::client_fin(&flow.ends);
+            }
+        }
+        let closed = loop {
+            match flow.ends.down.try_recv() {
+                Ok(chunk) => {
+                    got += black_box(chunk).len();
+                    shim::moved(&flow.ends);
+                }
+                Err(TryRecvError::Empty) => break false,
+                Err(TryRecvError::Disconnected) => break true,
+            }
+        };
+        shim::reading(&flow.ends);
+        if closed {
+            return got;
+        }
+        flow.wakes.recv().await;
+        flow.waker.rearm();
+    }
 }
 
 fn median(mut v: Vec<f64>) -> f64 {
