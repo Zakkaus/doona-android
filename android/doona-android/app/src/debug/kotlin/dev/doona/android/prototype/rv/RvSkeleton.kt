@@ -296,7 +296,7 @@ internal fun RvSkeletonLine(style: TextStyle, width: Float, modifier: Modifier =
 
 /** A chart's or a bar's place: a block [height] tall across the room, in [shape]. */
 @Composable
-internal fun RvSkeletonBlock(height: Dp, modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(RvSize.highlightRadius)) {
+internal fun RvSkeletonBlock(height: Dp, modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(Rv.highlightRadius)) {
     Box(modifier.fillMaxWidth().height(height).clip(shape).background(Rv.colors.track))
 }
 

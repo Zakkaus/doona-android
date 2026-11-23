@@ -222,7 +222,7 @@ internal fun rvActionRowFit(labels: List<String>, column: Dp): TextStyle = rvRow
 /** A grouped card: rows run edge to edge inside its rounded fill; no border, no shadow. */
 @Composable
 internal fun RvCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().testTag(RvPart.CARD).clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
+    Column(modifier.fillMaxWidth().testTag(RvPart.CARD).clip(RoundedCornerShape(Rv.cardRadius)).background(Rv.colors.card), content = content)
 }
 
 /**
@@ -307,7 +307,8 @@ internal fun RvAppDisc(packageName: String, label: String? = null, size: Dp = Rv
  */
 @Composable
 internal fun RvSeeAll(text: String, onClick: () -> Unit) {
-    val shape = remember { RoundedCornerShape(bottomStart = RvSize.cardRadius, bottomEnd = RvSize.cardRadius) }
+    val radius = Rv.cardRadius
+    val shape = remember(radius) { RoundedCornerShape(bottomStart = radius, bottomEnd = radius) }
     Box(
         Modifier.fillMaxWidth().height(RvSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
         contentAlignment = Alignment.Center,
@@ -392,7 +393,7 @@ internal fun RvChevron(modifier: Modifier = Modifier, color: Color = Rv.colors.c
  */
 @Composable
 internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: String? = null) {
-    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSize.highlightRadius), Role.Button, it) } ?: Modifier
+    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(Rv.highlightRadius), Role.Button, it) } ?: Modifier
     Row(
         Modifier
             .padding(top = RvSpace.headerInset)
@@ -415,7 +416,7 @@ internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: Str
  */
 @Composable
 internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, first: Boolean = false) {
-    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSize.highlightRadius), Role.Button, it) } ?: Modifier
+    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(Rv.highlightRadius), Role.Button, it) } ?: Modifier
     val above = if (first) Modifier else Modifier.padding(top = RvSpace.sectionAbove)
     Row(modifier.then(above).padding(bottom = RvSpace.sectionBelow).testTag(RvPart.SECTION).then(press), verticalAlignment = Alignment.CenterVertically) {
         RvText(title, Rv.type.section, Modifier.semantics { heading() })

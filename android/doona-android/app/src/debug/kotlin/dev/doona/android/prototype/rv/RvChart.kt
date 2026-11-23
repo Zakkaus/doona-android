@@ -126,7 +126,7 @@ internal fun RvSparkTile(
     widest: List<RvFigure> = emptyList(),
 ) {
     val type = Rv.type
-    RvCard(modifier.fillMaxHeight().rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, onClick)) {
+    RvCard(modifier.fillMaxHeight().rvPress(RoundedCornerShape(Rv.cardRadius), Role.Button, onClick)) {
         Column(Modifier.fillMaxWidth().rvSquareAtLeast().padding(RvChartSize.tilePad)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // One tile layout in every state and on every page: the in-card header's 19 sp, the value at the tile's size (L-03).

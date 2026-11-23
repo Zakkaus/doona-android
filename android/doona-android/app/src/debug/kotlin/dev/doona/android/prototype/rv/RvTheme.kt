@@ -23,6 +23,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import dev.doona.android.designsystem.components.Tone
 import kotlin.math.max
@@ -287,7 +288,20 @@ internal object Rv {
     val motion: RvMotionScale
         @Composable @ReadOnlyComposable
         get() = LocalRv.current.motion
+
+    /** Every card's corner: [RvSize.cardRadius] unless a preview sets [LocalRvCardRadius]. */
+    val cardRadius: Dp
+        @Composable @ReadOnlyComposable
+        get() = LocalRvCardRadius.current
+
+    /** A highlight inside a card: the card's corner less [RvSpace.tight], as Revolut's row press follows its card. */
+    val highlightRadius: Dp
+        @Composable @ReadOnlyComposable
+        get() = LocalRvCardRadius.current - RvSpace.tight
 }
+
+/** Preview only: the card corner a sample is drawn at. No page sets it, so the token [RvSize.cardRadius] rules. */
+internal val LocalRvCardRadius = staticCompositionLocalOf { RvSize.cardRadius }
 
 /**
  * The sample's tokens for [content], and its overscroll: the platform's stretch on Android 12 and later (Compose's

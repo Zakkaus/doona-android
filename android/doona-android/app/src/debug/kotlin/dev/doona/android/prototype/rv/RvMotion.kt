@@ -230,21 +230,21 @@ internal fun rememberRvMotion(): RvMotionScale {
 
 /** The one press feedback: the content colour's state layer over the visible shape, up in [RvMotion.PRESS_MS]. */
 @Composable
-internal fun rvPressIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = null)
+internal fun rvPressIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = null, radius = Rv.highlightRadius)
 
 /**
  * A row's press, the same layer as Revolut highlights a row (revolut-ux3 §1, §2): inset [RvSpace.tight] in the row, its
- * corners [RvSize.highlightRadius], so inside a card it follows the card's corners.
+ * corners [Rv.highlightRadius], so inside a card it follows the card's corners.
  */
 @Composable
-internal fun rvRowIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = RvSpace.tight)
+internal fun rvRowIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = RvSpace.tight, radius = Rv.highlightRadius)
 
-private data class RvPressIndication(val color: Color, val instant: Boolean, val inset: Dp?) : IndicationNodeFactory {
-    override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, color, instant, inset)
+private data class RvPressIndication(val color: Color, val instant: Boolean, val inset: Dp?, val radius: Dp) : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, color, instant, inset, radius)
 }
 
 /** Shows the layer while any press lasts; a short tap still shows it fully before it goes. */
-private class PressNode(private val source: InteractionSource, private val color: Color, private val instant: Boolean, private val inset: Dp?) :
+private class PressNode(private val source: InteractionSource, private val color: Color, private val instant: Boolean, private val inset: Dp?, private val radius: Dp) :
     Modifier.Node(),
     DrawModifierNode {
     private val shown = Animatable(0f)
@@ -267,7 +267,7 @@ private class PressNode(private val source: InteractionSource, private val color
         } else {
             val i = inset.toPx()
             val box = Size((size.width - 2 * i).coerceAtLeast(0f), (size.height - 2 * i).coerceAtLeast(0f))
-            drawRoundRect(color, Offset(i, i), box, CornerRadius(RvSize.highlightRadius.toPx()), alpha = RvAlpha.PRESSED * a)
+            drawRoundRect(color, Offset(i, i), box, CornerRadius(radius.toPx()), alpha = RvAlpha.PRESSED * a)
         }
     }
 }
