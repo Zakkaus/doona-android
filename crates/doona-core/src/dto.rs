@@ -121,8 +121,8 @@ pub struct Usage {
     pub days: Vec<DayTotal>,
 }
 
-/// One local day: 24 hours of bytes each way and of flows the apps opened, and the bytes of each
-/// outbound the day's flows went through.
+/// One local day: 24 hours of bytes each way and of flows the apps opened, the bytes of each
+/// outbound the day's flows went through, and those and the flows of each rule that routed them.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DayUsage {
     /// `2026-11-22`.
@@ -131,6 +131,9 @@ pub struct DayUsage {
     pub down: Vec<u64>,
     pub flows: Vec<u64>,
     pub outbounds: Vec<OutboundBytes>,
+    /// Empty outside Rule mode.
+    #[serde(rename = "byRule")]
+    pub by_rule: Vec<RuleBytes>,
 }
 
 /// The payload one outbound carried: `id` is the route's target, the group a flow went through
@@ -142,6 +145,18 @@ pub struct OutboundBytes {
     pub id: String,
     pub up: u64,
     pub down: u64,
+}
+
+/// The payload and the flows of one rule in Rule mode, in id order: `id` is the row's id as
+/// `rules` lists it, `unmatched` for flows no row matched (they went through the main group), and
+/// `other` holds what went past 64 rules in a day. A day's rules carry the same bytes as its
+/// outbounds for the flows Rule mode routed.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuleBytes {
+    pub id: String,
+    pub up: u64,
+    pub down: u64,
+    pub flows: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

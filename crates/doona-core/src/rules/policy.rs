@@ -89,6 +89,21 @@ impl Policy {
         }
     }
 
+    /// A policy of `specs` compiled over `groups`, with the rows listed as `rules` lists them.
+    #[cfg(test)]
+    pub fn listed(
+        main: &str,
+        groups: &[GroupDef],
+        is_node: &dyn Fn(&str) -> bool,
+        specs: &[RuleSpec],
+    ) -> Policy {
+        let rules = RuleSet::compile(groups, is_node, specs).ok();
+        Policy {
+            listing: Listing::new("test", specs, rules.as_ref()),
+            ..Policy::new(main, rules, Options::default())
+        }
+    }
+
     pub fn main(&self) -> &str {
         &self.main
     }
@@ -125,18 +140,37 @@ impl Policy {
     /// Where rule mode sends `flow`: its first matching rule's target, the main group when none
     /// matches. With `blockQuic`, QUIC bound for a group is rejected.
     pub fn choose<'a>(&'a self, flow: &Flow<'_>) -> Choice<'a> {
+        self.route(flow).0
+    }
+
+    /// [`Policy::choose`]'s choice, and the rule that made it for `byRule`: the matched row's id
+    /// as `rules` lists it, or `unmatched` when no row matched and the flow went to the main
+    /// group.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "route.rs records the rule once r2-fix2 merges")
+    )]
+    pub fn decide<'a>(&'a self, flow: &Flow<'_>) -> (Choice<'a>, &'a str) {
+        let (choice, row) = self.route(flow);
+        let listed = row.and_then(|i| self.listing.rows.get(i));
+        (choice, listed.map_or("unmatched", |r| r.id.as_str()))
+    }
+
+    /// The choice, and the index of the row that matched.
+    fn route<'a>(&'a self, flow: &Flow<'_>) -> (Choice<'a>, Option<usize>) {
         let rules = self.rules.as_ref();
-        let matched = rules.and_then(|r| Some(&r.rows()[r.matched(flow)?].target));
+        let row = rules.and_then(|r| r.matched(flow));
+        let matched = rules.zip(row).map(|(r, i)| &r.rows()[i].target);
         let group = match matched {
-            Some(Target::Direct) => return Choice::Direct,
-            Some(Target::Reject) => return Choice::Reject,
+            Some(Target::Direct) => return (Choice::Direct, row),
+            Some(Target::Reject) => return (Choice::Reject, row),
             Some(Target::Group(id)) => id.as_str(),
             None => self.main.as_str(),
         };
         if self.block_quic && flow.network == Network::Udp && flow.port == QUIC_PORT {
-            return Choice::Blocked;
+            return (Choice::Blocked, row);
         }
-        Choice::Group(group)
+        (Choice::Group(group), row)
     }
 }
 

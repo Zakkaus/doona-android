@@ -164,6 +164,33 @@ fn stats_replies() {
     assert_eq!(last.date, yesterday.date);
     assert_eq!(last.down, yesterday.down.iter().sum::<u64>());
     assert_eq!(usage.today.outbounds[0].id, "direct");
+    // Today's rules are rows of the template's listing, and carry its outbounds' bytes: the
+    // GEOIP,CN row the direct bytes, MATCH the g-Proxy bytes. Yesterday was a Global day.
+    let rows = ok(round_trip::<Reply<Rules>>("call-ok-rules.json")).rows;
+    let target = |id: &str| {
+        let row = rows.iter().find(|r| r.id == id);
+        row.unwrap_or_else(|| panic!("{id} is not a template row"))
+            .target
+            .clone()
+    };
+    for rule in &usage.today.by_rule {
+        let outbound = usage
+            .today
+            .outbounds
+            .iter()
+            .find(|o| o.id == target(&rule.id));
+        let outbound = outbound.unwrap();
+        assert_eq!(
+            (rule.up, rule.down),
+            (outbound.up, outbound.down),
+            "{}",
+            rule.id
+        );
+    }
+    assert_eq!(usage.today.by_rule.len(), usage.today.outbounds.len());
+    let flows: u64 = usage.today.by_rule.iter().map(|r| r.flows).sum();
+    assert_eq!(flows, usage.today.flows.iter().sum::<u64>());
+    assert!(yesterday.by_rule.is_empty());
     let nodes = ok(round_trip::<Reply<Nodes>>("call-ok-nodes.json")).nodes;
     assert_eq!(nodes[0].tests[1].ms, None);
     assert_eq!(nodes[1].transport, "quic");

@@ -131,6 +131,8 @@ fn what_was_written_is_what_the_next_process_reads() {
         let stats = stats(&dir, &rt);
         let (session, _) = session();
         moved(&session, (40, 400, 1), 100);
+        let ruled = session.meters().get_ruled("g-Proxy", "r-match");
+        meter::Tally::new(Some(ruled)).down(60);
         stats.finish(&session, &at);
         // Dropping the runtime waits for the write on its blocking thread.
     }
@@ -140,7 +142,14 @@ fn what_was_written_is_what_the_next_process_reads() {
     assert_eq!(again.today(&at).down_total, 400);
     let usage = again.usage(&at);
     assert_eq!(usage.today.flows.iter().sum::<u64>(), 1);
-    assert_eq!(usage.today.outbounds[0].down, 100);
+    assert_eq!(usage.today.outbounds[0].down, 160);
+    let rule = dto::RuleBytes {
+        id: "r-match".into(),
+        up: 0,
+        down: 60,
+        flows: 1,
+    };
+    assert_eq!(usage.today.by_rule, [rule]);
     // The rate history is not kept: a new process starts with an empty hour.
     assert!(again.series(60, false, &at).0.down.iter().all(|&b| b == 0));
 }
@@ -434,4 +443,59 @@ fn a_clock_that_stays_ahead_is_believed_and_a_long_sleep_at_once() {
     let back = clock(&base, last + 2 + asleep, NOW_MS);
     stats.fold(&session, &back, false);
     assert_eq!(counted(), Some(NOW_MS / day_ms));
+}
+
+/// In Rule mode a flow's meter is also its rule's: the day's `byRule` carries the bytes its
+/// outbounds carry for the same flows, and the flows opened under each rule.
+#[test]
+fn rule_bytes_add_up_to_the_outbound_bytes() {
+    let (dir, rt) = (TempDir::new("stats-rules"), runtime());
+    let stats = stats(&dir, &rt);
+    let (session, base) = session();
+    let ruled = |target, rule| meter::Tally::new(Some(session.meters().get_ruled(target, rule)));
+    let cn = ruled(meter::DIRECT, "r-cn");
+    let streaming = ruled("g-Streaming", "r-streaming");
+    let (first, second) = (ruled("g-Proxy", "unmatched"), ruled("g-Proxy", "unmatched"));
+    cn.up(70);
+    cn.down(700);
+    streaming.down(5000);
+    first.up(30);
+    second.down(9);
+    let at = clock(&base, 1, NOW_MS);
+    stats.fold(&session, &at, false);
+    let today = stats.usage(&at).today;
+    let rules: Vec<_> = (today.by_rule.iter())
+        .map(|r| (r.id.as_str(), r.up, r.down, r.flows))
+        .collect();
+    assert_eq!(
+        rules,
+        [
+            ("r-cn", 70, 700, 1),
+            ("r-streaming", 0, 5000, 1),
+            ("unmatched", 30, 9, 2)
+        ]
+    );
+    let sum = |bytes: Vec<(u64, u64)>| bytes.iter().fold((0, 0), |(u, d), b| (u + b.0, d + b.1));
+    assert_eq!(
+        sum(today.by_rule.iter().map(|r| (r.up, r.down)).collect()),
+        sum(today.outbounds.iter().map(|o| (o.up, o.down)).collect())
+    );
+    assert_eq!(today.outbounds.len(), 3);
+    drop((cn, streaming, first, second));
+}
+
+#[test]
+fn a_file_written_before_rules_were_counted_keeps_its_outbounds() {
+    let dir = TempDir::new("stats-no-rules");
+    let day = NOW_MS / 86_400_000;
+    let text = format!(
+        r#"{{"statsVersion":2,"usage":{{"full":[{{"day":{day},"up":[5],"down":[7],"flows":[1],"outbounds":{{"g-Proxy":[5,7]}}}}]}}}}"#
+    );
+    std::fs::write(dir.path().join("stats.json"), text).unwrap();
+    let rt = runtime();
+    let stats = stats(&dir, &rt);
+    let today = stats.usage(&wall(NOW_MS)).today;
+    assert_eq!(today.outbounds[0].id, "g-Proxy");
+    assert_eq!((today.outbounds[0].up, today.outbounds[0].down), (5, 7));
+    assert!(today.by_rule.is_empty());
 }
