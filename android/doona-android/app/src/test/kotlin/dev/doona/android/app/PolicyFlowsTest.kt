@@ -72,7 +72,7 @@ class PolicyFlowsTest {
         compose.onNodeWithText("jp-01").performClick()
         compose.runOnIdle {
             val auto = engine.groups.value.single { it.id == "g-Auto" }
-            assertEquals("n-jp1", auto.selectedId)
+            assertEquals("n-85d011c7e5f60718", auto.selectedId)
             assertTrue(auto.pinned)
         }
         compose.onNodeWithText("Return to automatic").assertExists()

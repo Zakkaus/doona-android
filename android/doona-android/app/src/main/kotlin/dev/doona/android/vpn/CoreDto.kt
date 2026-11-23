@@ -1,7 +1,11 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.CrashFile
+import dev.doona.android.engine.DayTotal
+import dev.doona.android.engine.DayUsage
+import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
@@ -9,7 +13,17 @@ import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.OutboundBytes
+import dev.doona.android.engine.RuleBytes
+import dev.doona.android.engine.RuleKind
+import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.RuleRow
+import dev.doona.android.engine.RuleSkip
+import dev.doona.android.engine.RuleSource
+import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.Usage
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -89,7 +103,9 @@ internal data class TrafficSeriesDto(
 
 /** `usage`'s reply: today and yesterday by the hour, and the finished days of the last 31 that had bytes. */
 @Serializable
-internal data class UsageDto(val today: DayUsageDto, val yesterday: DayUsageDto? = null, val days: List<DayTotalDto>)
+internal data class UsageDto(val today: DayUsageDto, val yesterday: DayUsageDto? = null, val days: List<DayTotalDto>) {
+    fun toUsage() = Usage(today.toDayUsage(), yesterday?.toDayUsage(), days.map { DayTotal(it.date, it.up, it.down) })
+}
 
 /** One local day ([date] as `2026-11-22`): 24 hours of bytes each way and of flows opened, and each outbound's bytes. */
 @Serializable
@@ -101,7 +117,16 @@ internal data class DayUsageDto(
     val outbounds: List<OutboundBytesDto>,
     /** Each rule's payload and flows in Rule mode, in id order: a row id, `unmatched`, or `other` past 64 in a day. */
     val byRule: List<RuleBytesDto> = emptyList(),
-)
+) {
+    fun toDayUsage() = DayUsage(
+        date = date,
+        up = up,
+        down = down,
+        flows = flows,
+        outbounds = outbounds.map { OutboundBytes(it.id, it.up, it.down) },
+        byRule = byRule.map { RuleBytes(it.id, it.up, it.down, it.flows) },
+    )
+}
 
 /** An outbound's payload: [id] is a group (`g-Proxy`), a node, `direct`, or `other` past 64 in a day. */
 @Serializable
@@ -133,37 +158,23 @@ internal data class NodeInfoDto(
 @Serializable
 internal data class LatencyTestDto(val atEpochMs: Long, val ms: Int? = null)
 
-/** A mode as the core's JSON carries it; the engine has no Rule yet. */
-@Serializable
-internal enum class CoreMode {
-    Global,
-    Direct,
-    Rule,
-    ;
-
-    /** Until K1, Rule shows as Global: the node card keeps the main group's node, which carries the flows no rule matched. */
-    fun toMode(): Mode = when (this) {
-        Global, Rule -> Mode.Global
-        Direct -> Mode.Direct
-    }
-
-    companion object {
-        fun of(mode: Mode): CoreMode = when (mode) {
-            Mode.Global -> Global
-            Mode.Direct -> Direct
-        }
-    }
-}
-
 /** [mainGroupId] is the group Global sends every flow through, and Rule the flows no rule matched. */
 @Serializable
 internal data class CatalogDto(
-    val mode: CoreMode,
+    val mode: Mode,
     val groups: List<GroupDto>,
     val subscriptions: List<SubscriptionDto>,
     val mainGroupId: String,
     val ruleSource: RuleSourceDto,
-)
+) {
+    fun toCatalog() = Catalog(
+        mode = mode,
+        groups = groups.map(GroupDto::toGroup),
+        subscriptions = subscriptions.map(SubscriptionDto::toSubscription),
+        mainGroupId = mainGroupId,
+        ruleSource = ruleSource.toRuleSource(),
+    )
+}
 
 /**
  * Where Rule mode's rules come from and what compiled of them: [rules] rows, [lines] values, [skipped] lines not
@@ -183,15 +194,26 @@ internal data class RuleSourceDto(
     val skipped: Int,
     val rulesRevision: Long,
     val error: String? = null,
-)
+) {
+    fun toRuleSource() =
+        RuleSource(template, version, subscriptionId, options.toRuleOptions(), rules, lines, skipped, rulesRevision, error?.let(::errorCodeOf))
+}
 
 /** What a user can change in a template. No default: an argument must carry every option. */
 @Serializable
-internal data class RuleOptionsDto(val blockQuic: Boolean)
+internal data class RuleOptionsDto(val blockQuic: Boolean) {
+    fun toRuleOptions() = RuleOptions(blockQuic)
+
+    companion object {
+        fun of(options: RuleOptions) = RuleOptionsDto(options.blockQuic)
+    }
+}
 
 /** `rules`' reply: [total] rows in the source, [rows] the page asked for. */
 @Serializable
-internal data class RulesDto(val rulesRevision: Long, val total: Int, val rows: List<RuleRowDto>)
+internal data class RulesDto(val rulesRevision: Long, val total: Int, val rows: List<RuleRowDto>) {
+    fun toRulePage() = RulePage(rulesRevision, total, rows.map(RuleRowDto::toRuleRow))
+}
 
 /**
  * One row of rules: [kind] is `DomainSuffix`, `GeoIp`, `Match` and the like, or the source's own name for a kind not
@@ -209,12 +231,24 @@ internal data class RuleRowDto(
     val targetKind: String,
     val skipped: String? = null,
     val skippedLines: Int,
-)
+) {
+    fun toRuleRow() = RuleRow(
+        id = id,
+        index = index,
+        kind = RuleKind.entries.firstOrNull { it.name == kind },
+        kindName = kind,
+        sample = sample,
+        count = count,
+        target = ruleTargetOf(target, targetKind),
+        skipped = skipped?.let { RULE_SKIPS[it] ?: RuleSkip.UnsupportedKind },
+        skippedLines = skippedLines,
+    )
+}
 
 /** `effectiveConfig`'s reply: where flows and DNS go, and the rules as Clash-style text, capped at 1 MiB ([truncated]). */
 @Serializable
 internal data class EffectiveConfigDto(
-    val mode: CoreMode,
+    val mode: Mode,
     val mainGroupId: String,
     /** `direct` in Direct, else the main group's id. */
     val dnsVia: String,
@@ -222,6 +256,33 @@ internal data class EffectiveConfigDto(
     val ruleSource: RuleSourceDto,
     val text: String,
     val truncated: Boolean,
+) {
+    fun toEffectiveConfig() = EffectiveConfig(
+        mode = mode,
+        mainGroupId = mainGroupId,
+        dnsVia = if (dnsVia == DIRECT) RuleTarget.Direct else RuleTarget.Group(dnsVia),
+        dnsUpstreams = dnsUpstreams,
+        ruleSource = ruleSource.toRuleSource(),
+        text = text,
+        truncated = truncated,
+    )
+}
+
+private const val DIRECT = "direct"
+private const val REJECT = "reject"
+
+/** A rule's [target] by its [targetKind]: `direct`, `reject`, or a group, whose id is the target. */
+private fun ruleTargetOf(target: String, targetKind: String): RuleTarget = when (targetKind) {
+    DIRECT -> RuleTarget.Direct
+    REJECT -> RuleTarget.Reject
+    else -> RuleTarget.Group(target)
+}
+
+/** An unknown reason from a newer core reads as [RuleSkip.UnsupportedKind]. */
+private val RULE_SKIPS = mapOf(
+    "unsupported_kind" to RuleSkip.UnsupportedKind,
+    "geodata_missing" to RuleSkip.GeodataMissing,
+    "app_rule" to RuleSkip.AppRule,
 )
 
 @Serializable
@@ -290,7 +351,7 @@ internal data class AddSubscriptionArgs(val url: String, val name: String?)
 internal data class IdArgs(val id: String)
 
 @Serializable
-internal data class ModeArgs(val mode: CoreMode)
+internal data class ModeArgs(val mode: Mode)
 
 /** `rules`' page: [limit] is 1 to 500. */
 @Serializable
@@ -298,7 +359,11 @@ internal data class RulesArgs(val offset: Int, val limit: Int)
 
 /** `setRuleSource`: schema 2 knows [kind] `template` only. */
 @Serializable
-internal data class RuleSourceArgs(val kind: String, val template: String, val options: RuleOptionsDto)
+internal data class RuleSourceArgs(val kind: String, val template: String, val options: RuleOptionsDto) {
+    companion object {
+        fun template(template: String, options: RuleOptions) = RuleSourceArgs("template", template, RuleOptionsDto.of(options))
+    }
+}
 
 /** `trafficSeries`' window, 1 to 3600 seconds. */
 @Serializable
@@ -309,10 +374,10 @@ internal data class SeriesArgs(val seconds: Long)
 internal data class NodesArgs(val ids: List<String>?)
 
 @Serializable
-private data class CallErrorDto(val code: String)
+internal data class CallErrorDto(val code: String)
 
 @Serializable
-private data class CallErrorReplyDto(val error: CallErrorDto)
+internal data class CallErrorReplyDto(val error: CallErrorDto)
 
 private val ERROR_CODES = mapOf(
     "invalid_argument" to ErrorCode.InvalidArgument,

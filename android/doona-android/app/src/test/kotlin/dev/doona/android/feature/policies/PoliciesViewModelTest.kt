@@ -48,13 +48,13 @@ class PoliciesViewModelTest {
 
     @Test
     fun `shows each group with its current member and the node under it`() = runTest {
-        val vm = collected(FakeEngine())
+        val vm = collected(FakeEngine(FakeEngine.SAMPLE_GROUPS))
         val items = vm.uiState.value.items
         assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), items.map { it.group.id })
         assertEquals("g-Auto", items[0].current?.id)
-        assertEquals("n-hk1", items[0].node?.id)
+        assertEquals("n-369a8a63c1d2e3f4", items[0].node?.id)
         assertEquals(42, items[0].node?.latencyMs)
-        assertEquals("n-hk1", items[1].current?.id)
+        assertEquals("n-369a8a63c1d2e3f4", items[1].current?.id)
     }
 
     @Test
@@ -96,7 +96,7 @@ class PoliciesViewModelTest {
 
     @Test
     fun `the filter narrows the list to selectors or to automatic groups`() = runTest {
-        val vm = collected(FakeEngine())
+        val vm = collected(FakeEngine(FakeEngine.SAMPLE_GROUPS))
         vm.onAction(PoliciesAction.SetFilter(GroupFilter.Manual))
         assertEquals(listOf("g-Proxy"), vm.uiState.value.visible.map { it.group.id })
         vm.onAction(PoliciesAction.SetFilter(GroupFilter.Auto))

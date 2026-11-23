@@ -47,7 +47,7 @@ class ActivityViewModelTest {
         assertEquals(Status.Running(sinceEpochMs = 0), state.status)
         assertEquals("g-Proxy", state.outboundGroupId)
         assertEquals("Auto", state.outbound)
-        assertEquals("n-hk1", state.node?.id)
+        assertEquals("n-369a8a63c1d2e3f4", state.node?.id)
     }
 
     @Test
@@ -101,6 +101,13 @@ class ActivityViewModelTest {
         val vm = collected(FakeEngine(status = Status.Running(sinceEpochMs = 0)))
         vm.onAction(ActivityAction.SetMode(Mode.Direct))
         assertNull(vm.uiState.value.node)
+    }
+
+    @Test
+    fun `rule mode keeps the node of the flows no rule matched until the policy page shows rules`() = runTest {
+        val vm = collected(FakeEngine(status = Status.Running(sinceEpochMs = 0), mode = Mode.Rule))
+        assertEquals(Mode.Rule, vm.uiState.value.mode)
+        assertEquals("n-369a8a63c1d2e3f4", vm.uiState.value.node?.id)
     }
 
     @Test

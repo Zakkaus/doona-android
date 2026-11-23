@@ -13,12 +13,16 @@ import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
+import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Status
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emitAll
@@ -39,12 +43,12 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import java.io.IOException
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 
 @RunWith(AndroidJUnit4::class)
 class ServiceEngineTest {
@@ -54,6 +58,9 @@ class ServiceEngineTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val core = FakeCore()
     private val requested = CopyOnWriteArrayList<Long>()
+
+    /** Where the engine reaches the core; set before the engine is first used. */
+    private var io: CoroutineDispatcher = Dispatchers.IO
 
     /** Sends a requested start to the service; the system may find none or refuse it. */
     @Volatile
@@ -95,7 +102,7 @@ class ServiceEngineTest {
         }
         val perAppSettings = PerAppSettings(store)
         val controller = TunnelController(core, opener, { perAppSettings.perApp.first() }, scope, killProcess = {})
-        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, Dispatchers.IO, scope, perAppRetryMs = 50)
+        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, io, scope, perAppRetryMs = 50)
     }
 
     @After
@@ -245,17 +252,97 @@ class ServiceEngineTest {
     }
 
     @Test
-    fun aRuleModeCatalogShowsAsGlobal() = runBlocking {
-        val direct = ContractFixtures.read("snapshot-stopped-catalog.json").replace("\"mode\": \"Global\"", "\"mode\": \"Direct\"")
-        val rule = direct.replace("\"revision\": 7", "\"revision\": 8").replace("\"mode\": \"Direct\"", "\"mode\": \"Rule\"")
-        core.snapshotReplies += { direct }
-        assertTrue(engine.setMode(Mode.Direct).isSuccess)
-        assertEquals(Mode.Direct, engine.settings.value.mode)
-
+    fun aRuleModeCatalogCarriesRuleItsMainGroupAndItsSource() = runBlocking {
+        assertEquals(null, engine.catalog.value)
+        val rule = ContractFixtures.read("snapshot-stopped-catalog.json").replace("\"mode\": \"Global\"", "\"mode\": \"Rule\"")
         core.snapshotReplies += { rule }
-        assertTrue(engine.setMode(Mode.Global).isSuccess)
-        assertEquals("setMode" to """{"mode":"Global"}""", core.calls.last())
-        assertEquals(Mode.Global, engine.settings.value.mode)
+        assertTrue(engine.setMode(Mode.Rule).isSuccess)
+        assertEquals("setMode" to """{"mode":"Rule"}""", core.calls.single())
+        assertEquals(Mode.Rule, engine.settings.value.mode)
+        val catalog = checkNotNull(engine.catalog.value)
+        assertEquals(Mode.Rule to "g-Proxy", catalog.mode to catalog.mainGroupId)
+        assertEquals(listOf("cn-direct", 5, 91044300313602L), catalog.ruleSource.let { listOf(it.template, it.rules, it.rulesRevision) })
+        // The flows that repeat parts of it agree.
+        assertEquals(catalog.groups to catalog.subscriptions, engine.groups.value to engine.subscriptions.value)
+    }
+
+    @Test
+    fun aCatalogIsNeverSeenHalfPublished() = runBlocking {
+        val both = ContractFixtures.read("snapshot-stopped-catalog.json")
+            .replace("\"mode\": \"Global\"", "\"mode\": \"Rule\"").replace("\"blockQuic\": false", "\"blockQuic\": true")
+        core.snapshotReplies += { both }
+        // Collected undispatched: it sees each value as it is published.
+        val seen = CopyOnWriteArrayList<Pair<Mode, Boolean>>()
+        val watcher = launch(Dispatchers.Unconfined) {
+            engine.catalog.collect { catalog -> catalog?.let { seen += it.mode to it.ruleSource.options.blockQuic } }
+        }
+        assertTrue(engine.setMode(Mode.Rule).isSuccess)
+        watcher.cancel()
+        assertEquals(listOf(Mode.Rule to true), seen.toList())
+    }
+
+    @Test
+    fun aReadTheCallerLeavesBeforeTheCoreIsReachedNeverReachesIt() = runBlocking {
+        val dispatched = CountDownLatch(1)
+        val gate = CountDownLatch(1)
+        val threads = CopyOnWriteArrayList<Thread>()
+        io = Executor { task ->
+            // Listed before the test is told, so the test waits for every task the read dispatched.
+            threads += thread {
+                gate.await()
+                task.run()
+            }
+            dispatched.countDown()
+        }.asCoroutineDispatcher()
+        val reader = scope.launch { engine.effectiveConfig() }
+        assertTrue(dispatched.await(5, TimeUnit.SECONDS))
+        reader.cancel()
+        gate.countDown()
+        reader.join()
+        threads.forEach { it.join(5_000) }
+        assertFalse("effectiveConfig" in core.entered)
+    }
+
+    @Test
+    fun rulesAreReadThePageAsked() = runBlocking {
+        core.reply = ContractFixtures.read("call-ok-rules.json")
+        val page = engine.rules(offset = 50, limit = 25).getOrThrow()
+        assertEquals("rules" to """{"offset":50,"limit":25}""", core.calls.single())
+        assertEquals(listOf(91044300313602L, 5L), listOf(page.rulesRevision, page.total.toLong()))
+        assertEquals(RuleTarget.Group("g-Streaming"), page.rows[1].target)
+    }
+
+    @Test
+    fun ruleModeCommandsSendTheirArgsAndMapTheReplies() = runBlocking {
+        assertTrue(engine.setRuleSource("cn-direct", RuleOptions(blockQuic = true)).isSuccess)
+        core.reply = ContractFixtures.read("call-ok-effective-config.json")
+        val config = engine.effectiveConfig().getOrThrow()
+        core.reply = ContractFixtures.read("call-ok-usage.json")
+        val usage = engine.usage().getOrThrow()
+        val sent = listOf(
+            "setRuleSource" to """{"kind":"template","template":"cn-direct","options":{"blockQuic":true}}""",
+            "effectiveConfig" to "{}",
+            "usage" to "{}",
+        )
+        assertEquals(sent, core.calls.toList())
+        assertEquals(Mode.Rule to RuleTarget.Group("g-Proxy"), config.mode to config.dnsVia)
+        assertEquals(listOf("r-6e59b550be7e592b", "r-8d066c6f0b6552cd"), usage.today.byRule.map { it.id })
+    }
+
+    @Test
+    fun ruleModeErrorsKeepTheirCodes() = runBlocking {
+        fun Result<*>.code() = (exceptionOrNull() as EngineException).code
+        core.reply = """{"error":{"code":"invalid_argument"}}"""
+        assertEquals(ErrorCode.InvalidArgument, engine.rules(offset = 0, limit = 501).code())
+        core.reply = """{"error":{"code":"not_found"}}"""
+        assertEquals(ErrorCode.NotFound, engine.setRuleSource("later", RuleOptions()).code())
+        core.reply = """{"error":{"code":"parse_failed"}}"""
+        assertEquals(ErrorCode.ParseFailed, engine.setRuleSource("cn-direct", RuleOptions()).code())
+        // A reply without its fields cannot be read.
+        core.reply = """{"ok":{"rulesRevision":1}}"""
+        assertEquals(ErrorCode.Internal, engine.rules(offset = 0, limit = 50).code())
+        assertEquals(ErrorCode.Internal, engine.effectiveConfig().code())
+        assertEquals(ErrorCode.Internal, engine.usage().code())
     }
 
     @Test
@@ -461,56 +548,5 @@ class ServiceEngineTest {
         override fun bootstrapDns() = error("unused")
 
         override fun establish(routing: AppRouting, mtu: Int) = error("unused")
-    }
-
-    private class FakeCore : CoreBridge {
-        @Volatile var reply = """{"ok":{}}"""
-
-        @Volatile var schema = CORE_SCHEMA
-
-        @Volatile var callGate: CountDownLatch? = null
-
-        @Volatile var callError: Throwable? = null
-
-        @Volatile var snapshotError: Throwable? = null
-        val callEntered = CountDownLatch(1)
-
-        /** Every call that reached the core, logged before [callGate] holds it. */
-        val entered = CopyOnWriteArrayList<String>()
-        val calls = CopyOnWriteArrayList<Pair<String, String>>()
-        val snapshots = AtomicInteger()
-
-        /** Served first, in order, before the fixtures. */
-        val snapshotReplies = ConcurrentLinkedQueue<() -> String>()
-
-        /** Whether the running fixture keeps its `local_network` warning. */
-        @Volatile var warns = true
-
-        /** Runs as the core starts a generation. */
-        @Volatile var onStart: () -> Unit = {}
-
-        override fun init(dataDir: String) = """{"schema":$schema}"""
-
-        override fun start(tunFd: Int, configJson: String) = onStart()
-
-        override fun stop() = Unit
-
-        // The catalog fixture is revision 7; the running fixture is the same revision without a catalog.
-        override fun snapshot(sinceRevision: Long): String {
-            snapshots.incrementAndGet()
-            snapshotError?.let { throw it }
-            snapshotReplies.poll()?.let { return it() }
-            val fixture = ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
-            return if (warns) fixture else fixture.replace("\"warning\": \"local_network\"", "\"warning\": null")
-        }
-
-        override fun call(command: String, argsJson: String): String {
-            entered += command
-            callEntered.countDown()
-            callGate?.await()
-            calls += command to argsJson
-            callError?.let { throw it }
-            return reply
-        }
     }
 }

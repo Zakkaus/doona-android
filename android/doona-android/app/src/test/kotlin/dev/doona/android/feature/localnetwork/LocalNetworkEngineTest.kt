@@ -142,7 +142,7 @@ class LocalNetworkEngineTest {
         fake.groups.update { groups -> groups.map { it.copy(testing = true) } }
         assertTrue(engine.testLatency("g-Auto").isSuccess)
         assertNull("nothing is asked while the test runs", access.prompt.value)
-        val failed = { m: Member -> if (m.id == "n-hk2") m.copy(failed = true, error = ErrorCode.LocalNetwork) else m }
+        val failed = { m: Member -> if (m.id == "n-4b1e07d9a2c3b4d5") m.copy(failed = true, error = ErrorCode.LocalNetwork) else m }
         fake.groups.update { groups -> groups.map { g -> g.copy(testing = false, members = g.members.map(failed)) } }
         answer(allowed = true)
         assertEquals(2, scripted.tests)

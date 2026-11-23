@@ -1,8 +1,11 @@
 package dev.doona.android.engine.fake
 
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.CrashFile
+import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
@@ -10,21 +13,34 @@ import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.Traffic
+import dev.doona.android.engine.Usage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlin.math.sin
 
-/** Deterministic in-memory [Engine] for previews and screenshot tests; it never touches the network or a tunnel. */
+/**
+ * Deterministic in-memory [Engine] for previews and screenshot tests; it never touches the network or a tunnel. Its
+ * groups are the template's and its rules, effective config and usage [FakeRuleMode]'s, so every group a rule sends to
+ * exists. The goldens pass [SAMPLE_GROUPS], which they were drawn with.
+ */
 class FakeEngine(
-    groups: List<Group> = SAMPLE_GROUPS,
+    groups: List<Group> = TEMPLATE_GROUPS,
     subscriptions: List<Subscription> = SAMPLE_SUBSCRIPTIONS,
     status: Status = Status.Stopped,
     traffic: Traffic = Traffic(),
+    mode: Mode = Mode.Global,
 ) : Engine {
     override val ready = MutableStateFlow(true)
     override val status = MutableStateFlow(status)
@@ -32,7 +48,17 @@ class FakeEngine(
     override val groups = MutableStateFlow(groups)
     override val subscriptions = MutableStateFlow(subscriptions)
     override val settings: StateFlow<Settings> get() = settingsFlow
-    private val settingsFlow = MutableStateFlow(Settings())
+    private val settingsFlow = MutableStateFlow(Settings(mode = mode))
+    private val ruleSource = MutableStateFlow(FakeRuleMode.SOURCE)
+
+    /**
+     * Follows the flows above as each changes, also when a test sets one directly: Unconfined collects in the writer's
+     * thread before the write returns.
+     */
+    override val catalog: StateFlow<Catalog?> =
+        combine(this.groups, this.subscriptions, settingsFlow, ruleSource) { all, subscribed, settings, source ->
+            Catalog(settings.mode, all, subscribed, FakeRuleMode.MAIN_GROUP_ID, source)
+        }.stateIn(CoroutineScope(Dispatchers.Unconfined), SharingStarted.Eagerly, null)
 
     /** True: the fake's policy is there from the start; a test sets false to stand for a stored policy still being read. */
     override val perAppLoaded = MutableStateFlow(true)
@@ -78,6 +104,25 @@ class FakeEngine(
         return Result.success(Unit)
     }
 
+    /** Pages [FakeRuleMode.ROWS] as the core pages its rows, and refuses the limits the core refuses. */
+    override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
+        if (offset < 0 || limit !in 1..MAX_RULES_PAGE) return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val rows = FakeRuleMode.ROWS
+        return Result.success(RulePage(FakeRuleMode.SOURCE.rulesRevision, rows.size, rows.drop(offset).take(limit)))
+    }
+
+    /** Only the template's options change: they change no row. */
+    override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> {
+        if (template != FakeRuleMode.TEMPLATE) return Result.failure(EngineException(ErrorCode.NotFound))
+        ruleSource.update { it.copy(options = options) }
+        return Result.success(Unit)
+    }
+
+    override suspend fun effectiveConfig(): Result<EffectiveConfig> =
+        Result.success(FakeRuleMode.effectiveConfig(settingsFlow.value.mode, groups.value, ruleSource.value))
+
+    override suspend fun usage(): Result<Usage> = Result.success(FakeRuleMode.USAGE)
+
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
         settingsFlow.update { it.copy(perApp = perApp) }
         return Result.success(Unit)
@@ -110,11 +155,20 @@ class FakeEngine(
     }
 
     companion object {
+        private const val MAX_RULES_PAGE = 500
+
         private fun node(id: String, name: String, latencyMs: Int?) =
             Member(id = id, name = name, latencyMs = latencyMs, subscriptionId = "s1")
 
-        private val NODES = listOf(node("n-hk1", "hk-01", 42), node("n-hk2", "hk-02", 57), node("n-jp1", "jp-01", 88), node("n-us1", "us-01", 171))
+        /** Ids of the core's shape, `n-` and 16 hex digits, so effectiveConfig's codes are too; in the order of their names. */
+        private val NODES = listOf(
+            node("n-369a8a63c1d2e3f4", "hk-01", 42),
+            node("n-4b1e07d9a2c3b4d5", "hk-02", 57),
+            node("n-85d011c7e5f60718", "jp-01", 88),
+            node("n-c2f5a8e1b3c4d5e6", "us-01", 171),
+        )
 
+        /** The group template before rule mode: Proxy, Auto and one region. The goldens were drawn with it. */
         val SAMPLE_GROUPS = listOf(
             Group(
                 id = "g-Proxy",
@@ -123,9 +177,17 @@ class FakeEngine(
                 members = listOf(Member(id = "g-Auto", name = "Auto", isGroup = true), Member(id = "g-HK", name = "HK", isGroup = true)) + NODES,
                 selectedId = "g-Auto",
             ),
-            Group(id = "g-Auto", name = "Auto", kind = GroupKind.UrlTest, members = NODES, selectedId = "n-hk1"),
-            Group(id = "g-HK", name = "HK", kind = GroupKind.UrlTest, members = NODES.take(2), selectedId = "n-hk1"),
+            Group(id = "g-Auto", name = "Auto", kind = GroupKind.UrlTest, members = NODES, selectedId = NODES[0].id),
+            Group(id = "g-HK", name = "HK", kind = GroupKind.UrlTest, members = NODES.take(2), selectedId = NODES[0].id),
         )
+
+        /** The template as the core builds it: [SAMPLE_GROUPS] with the 串流 and AI selectors, which follow Proxy until the user picks. */
+        val TEMPLATE_GROUPS: List<Group> = run {
+            val proxy = SAMPLE_GROUPS.first()
+            val follower = Member(id = proxy.id, name = proxy.name, isGroup = true)
+            fun selector(name: String) = Group("g-$name", name, GroupKind.Selector, listOf(follower) + proxy.members, selectedId = proxy.id)
+            SAMPLE_GROUPS.take(2) + selector("Streaming") + selector("AI") + SAMPLE_GROUPS.drop(2)
+        }
 
         /** A minute of download near 3.9 MB/s and upload near 330 KB/s: two slow waves around each level. */
         val SAMPLE_TRAFFIC: Traffic = run {

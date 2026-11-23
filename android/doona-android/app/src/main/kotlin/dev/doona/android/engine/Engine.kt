@@ -24,6 +24,12 @@ interface Engine {
     val perAppLoaded: StateFlow<Boolean>
 
     /**
+     * The core's catalog, published whole, so a reader never sees part of one catalog beside part of another. Null until
+     * it is read. [groups], [subscriptions] and [Settings.mode] repeat parts of it for the screens that read them alone.
+     */
+    val catalog: StateFlow<Catalog?>
+
+    /**
      * A problem the running tunnel reports without stopping: [ErrorCode.LocalNetwork] once a connection through a node on
      * the local network failed in this run (ARCH D26). Null otherwise, and whenever the tunnel is not running.
      */
@@ -55,6 +61,25 @@ interface Engine {
     suspend fun removeSubscription(id: String): Result<Unit>
 
     suspend fun setMode(mode: Mode): Result<Unit>
+
+    /**
+     * Up to [limit] rows of the rule source, 1 to 500, from the row [offset]; none past the end. A page whose
+     * [RulePage.rulesRevision] differs from the [catalog]'s rule source is stale: read it again. This and the other reads
+     * below run in the caller's job: a caller that leaves first stops them.
+     */
+    suspend fun rules(offset: Int, limit: Int): Result<RulePage>
+
+    /**
+     * Makes the template [template] with [options] the rule source; new flows use it at once. Fails with
+     * [ErrorCode.NotFound] for a template the core does not have.
+     */
+    suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit>
+
+    /** What routes flows and DNS now, with the rules as text for the read-only 生效設定 page. */
+    suspend fun effectiveConfig(): Result<EffectiveConfig>
+
+    /** Today's and yesterday's bytes by the hour, by outbound and by rule, and the totals of the last 31 days. */
+    suspend fun usage(): Result<Usage>
 
     /**
      * Stores [perApp] and applies it: a running tunnel is rebuilt, which drops open connections, and the call returns
@@ -130,8 +155,11 @@ data class Traffic(
     val downHistory: List<Long> = emptyList(),
 )
 
-/** Global sends everything through the template's first group. Rule arrives with the simple routing templates. */
-enum class Mode { Global, Direct }
+/**
+ * Global sends every flow through the main group and Direct sends every flow straight out. Rule sends each new flow
+ * where the first rule that matches it says, and a flow no rule matched through the main group.
+ */
+enum class Mode { Global, Direct, Rule }
 
 enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Fallback(false) }
 
@@ -161,6 +189,18 @@ data class Group(
     val selectedId: String?,
     val pinned: Boolean = false,
     val testing: Boolean = false,
+)
+
+/**
+ * One revision of the core's catalog. [mainGroupId] is the group [Mode.Global] sends every flow through, and [Mode.Rule]
+ * each flow no rule matched; [ruleSource] is where Rule's rules come from, present in every mode.
+ */
+data class Catalog(
+    val mode: Mode,
+    val groups: List<Group>,
+    val subscriptions: List<Subscription>,
+    val mainGroupId: String,
+    val ruleSource: RuleSource,
 )
 
 /** Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. */

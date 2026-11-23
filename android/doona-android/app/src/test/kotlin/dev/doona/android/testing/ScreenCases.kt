@@ -40,8 +40,8 @@ internal class PageLayout(val shows: Set<LayoutRole>, val rhythm: List<Dp>)
 /** A screen as the tests render it: a name for files and messages, its [layout] when the spacing rules apply, and its content. */
 internal class ScreenCase(val name: String, val layout: PageLayout?, val content: @Composable () -> Unit)
 
-/** A connected engine with a minute of traffic: the data every screen test and golden shows. */
-fun sampleEngine() = FakeEngine(status = Status.Running(sinceEpochMs = 0), traffic = FakeEngine.SAMPLE_TRAFFIC)
+/** A connected engine with a minute of traffic over the groups the goldens were drawn with: the data every screen test and golden shows. */
+fun sampleEngine() = FakeEngine(groups = FakeEngine.SAMPLE_GROUPS, status = Status.Running(sinceEpochMs = 0), traffic = FakeEngine.SAMPLE_TRAFFIC)
 
 /**
  * Every screen of the app. A screen lane adds its screens here and so gets the spacing check and the goldens; it also
