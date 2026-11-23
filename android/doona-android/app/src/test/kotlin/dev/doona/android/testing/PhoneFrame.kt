@@ -31,7 +31,11 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 
 /** A phone's status bar (time, Wi-Fi, battery) and gesture handle, drawn over the app in the theme's text colour. */
 @Composable
-fun PhoneFrame(content: @Composable () -> Unit) {
+fun PhoneFrame(content: @Composable () -> Unit) = PhoneFrame(gesture = true, content)
+
+/** The same frame; with three-button navigation ([gesture] false) it draws no handle, and the content draws its own bar. */
+@Composable
+fun PhoneFrame(gesture: Boolean, content: @Composable () -> Unit) {
     val ink = DoonaTheme.colors.text
     CompositionLocalProvider(LocalFrameInsets provides FrameInsets) {
         Box(Modifier.fillMaxSize()) {
@@ -56,14 +60,16 @@ fun PhoneFrame(content: @Composable () -> Unit) {
                     drawRect(ink, topLeft = Offset(size.width - 1.5.dp.toPx(), size.height * 0.3f), size = Size(1.5.dp.toPx(), size.height * 0.4f))
                 }
             }
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 10.dp)
-                    .size(width = 108.dp, height = 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(ink),
-            )
+            if (gesture) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 10.dp)
+                        .size(width = 108.dp, height = 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(ink),
+                )
+            }
         }
     }
 }
