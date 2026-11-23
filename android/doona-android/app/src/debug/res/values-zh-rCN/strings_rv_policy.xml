@@ -41,6 +41,9 @@
     <string name="rv_policy_match_full">完整域名</string>
     <string name="rv_policy_match_suffix">域名后缀</string>
     <string name="rv_policy_match_keyword">关键词</string>
+    <string name="rv_policy_match_full_line">只匹配 %1$s</string>
+    <string name="rv_policy_match_suffix_line">%1$s 及其所有子域名</string>
+    <string name="rv_policy_match_keyword_line">域名包含 %1$s</string>
     <string name="rv_policy_send_to">送往</string>
     <string name="rv_policy_no_proxy">不经代理</string>
     <plurals name="rv_policy_other_groups">
@@ -107,6 +110,9 @@
     <string name="rv_rule_edit_need_cidr">请输入 IP 段</string>
     <string name="rv_rule_edit_bad_domain">只能使用英文字母、数字、连字符和点</string>
     <string name="rv_rule_edit_bad_cidr">IP 段的格式为 91.108.56.0/22</string>
+    <string name="rv_rule_edit_cidr_line">%1$s 内的地址</string>
+    <string name="rv_rule_edit_geoip_line">GeoIP 数据中属于中国大陆的地址</string>
+    <string name="rv_rule_edit_private_line">私有地址不进通道，此规则匹配不到连接</string>
     <string name="rv_rule_edit_enabled">启用</string>
     <string name="rv_rule_edit_delete">删除规则</string>
     <string name="rv_rule_delete_title">删除这条规则？</string>

@@ -45,6 +45,9 @@
     <string name="rv_policy_match_full">Domain</string>
     <string name="rv_policy_match_suffix">Suffix</string>
     <string name="rv_policy_match_keyword">Keyword</string>
+    <string name="rv_policy_match_full_line">Only %1$s</string>
+    <string name="rv_policy_match_suffix_line">%1$s and all its subdomains</string>
+    <string name="rv_policy_match_keyword_line">Domains containing %1$s</string>
     <string name="rv_policy_send_to">Send to</string>
     <string name="rv_policy_no_proxy">No proxy</string>
     <plurals name="rv_policy_other_groups">
@@ -120,6 +123,9 @@
     <string name="rv_rule_edit_need_cidr">Enter an IP range</string>
     <string name="rv_rule_edit_bad_domain">Use letters, digits, hyphens and dots only</string>
     <string name="rv_rule_edit_bad_cidr">Write the range as 91.108.56.0/22</string>
+    <string name="rv_rule_edit_cidr_line">Addresses in %1$s</string>
+    <string name="rv_rule_edit_geoip_line">Addresses GeoIP places in mainland China</string>
+    <string name="rv_rule_edit_private_line">Private addresses stay outside the tunnel, so this rule matches nothing</string>
     <string name="rv_rule_edit_enabled">On</string>
     <string name="rv_rule_edit_delete">Delete rule</string>
     <string name="rv_rule_delete_title">Delete this rule?</string>

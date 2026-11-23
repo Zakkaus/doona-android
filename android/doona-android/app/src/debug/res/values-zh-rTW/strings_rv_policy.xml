@@ -41,6 +41,9 @@
     <string name="rv_policy_match_full">完整網域</string>
     <string name="rv_policy_match_suffix">網域後綴</string>
     <string name="rv_policy_match_keyword">關鍵字</string>
+    <string name="rv_policy_match_full_line">只比對 %1$s</string>
+    <string name="rv_policy_match_suffix_line">%1$s 和它的所有子網域</string>
+    <string name="rv_policy_match_keyword_line">網域含有 %1$s</string>
     <string name="rv_policy_send_to">送往</string>
     <string name="rv_policy_no_proxy">不經代理</string>
     <plurals name="rv_policy_other_groups">
@@ -107,6 +110,9 @@
     <string name="rv_rule_edit_need_cidr">請輸入 IP 段</string>
     <string name="rv_rule_edit_bad_domain">只能使用英文字母、數字、連字號和點</string>
     <string name="rv_rule_edit_bad_cidr">IP 段的格式為 91.108.56.0/22</string>
+    <string name="rv_rule_edit_cidr_line">%1$s 內的位址</string>
+    <string name="rv_rule_edit_geoip_line">GeoIP 資料中屬於中國大陸的位址</string>
+    <string name="rv_rule_edit_private_line">私有位址不進通道，這條規則比對不到連線</string>
     <string name="rv_rule_edit_enabled">啟用</string>
     <string name="rv_rule_edit_delete">刪除規則</string>
     <string name="rv_rule_delete_title">刪除這條規則？</string>

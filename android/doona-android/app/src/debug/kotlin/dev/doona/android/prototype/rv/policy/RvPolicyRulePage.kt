@@ -50,7 +50,7 @@ import dev.doona.android.prototype.rv.rvSystemScheme
 /**
  * The quick rule, opened from a connection (doona web's one rule dialog, Karing's 選擇分流類型), in node detail's
  * grammar: the large title; the connection as a key-stats card, with the rule it matched and the
- * node it went through; how the new rule matches; where it sends, the groups drawn as 活動
+ * node it went through; how the new rule matches, with what that choice covers; where it sends, the groups drawn as 活動
  * draws a destination; where it goes in the list, before the rule that matched; and 套用 floating at the bottom.
  */
 @Composable
@@ -72,7 +72,7 @@ internal fun RvPolicyRulePage(
         RvLargeTitle(title, titleBlock, insets)
         RvGutter { ConnectionCard(connection) }
         RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter))
-        MatchBy(rule.matchBy) { onChange(rule.copy(matchBy = it)) }
+        MatchBy(connection.host, rule.matchBy) { onChange(rule.copy(matchBy = it)) }
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvTargetCard(rule.targetId) { onChange(rule.copy(targetId = it)) }
@@ -93,12 +93,12 @@ private fun ConnectionCard(connection: RvConnection) {
     }
 }
 
-/** 完整網域 | 網域後綴 | 關鍵字 alone in a control card, as 策略's mode. */
+/** 完整網域 | 網域後綴 | 關鍵字 in a control card, as 策略's mode, and one line saying what the chosen way covers for this host. */
 @Composable
-private fun MatchBy(matchBy: RvMatchBy, onMatchBy: (RvMatchBy) -> Unit) {
+private fun MatchBy(host: String, matchBy: RvMatchBy, onMatchBy: (RvMatchBy) -> Unit) {
     val ways = RvMatchBy.entries
     RvGutter {
-        RvControlCard(null) {
+        RvControlCard(stringResource(matchBy.line, matchBy.of(host))) {
             RvSegmented(ways.map { stringResource(it.label) }, ways.indexOf(matchBy), { onMatchBy(ways[it]) })
         }
     }

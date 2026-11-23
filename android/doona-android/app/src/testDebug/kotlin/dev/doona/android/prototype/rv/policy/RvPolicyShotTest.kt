@@ -141,7 +141,7 @@ class RvPolicyShotTest {
         const val WHOLE_RULE = "+h1937dp"
         const val WHOLE_SELECT = "+h1136dp"
         const val WHOLE_AUTO = "+h1124dp"
-        const val WHOLE_FLOW = "+h1259dp"
+        const val WHOLE_FLOW = "+h1292dp"
 
         /** 全域 scrolled this far shows the second subscription's card under the bar. */
         const val GLOBAL_SCROLL = 1048f
