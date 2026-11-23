@@ -459,6 +459,7 @@ impl Core {
         self.write(&next, command, deadline)?;
         {
             let mut c = lock(&self.shared.catalog);
+            c.model.update_pins(&c.state.selections, &next.selections);
             c.state = next;
             c.revision += 1;
             self.mode.set(c.state.mode);
@@ -577,5 +578,7 @@ mod tests_localnet;
 mod tests_rule_source;
 #[cfg(test)]
 mod tests_rules;
+#[cfg(test)]
+mod tests_score;
 #[cfg(test)]
 mod tests_user_agent;

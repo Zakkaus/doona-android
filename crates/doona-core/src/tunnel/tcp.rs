@@ -5,7 +5,7 @@ use super::Session;
 use super::flow::{Ends, Event, Events, FlowIo, Waker};
 use super::gate::Gate;
 use super::route::Route;
-use super::splice::splice;
+use super::splice::score::relay;
 use crate::dns;
 use bytes::{Buf, Bytes};
 use honk_netstack::{FlowId, Refuse, Stack, StreamError, TcpState};
@@ -267,17 +267,19 @@ pub(super) async fn until_given_up<F: Future>(gate: &Gate, task: F) -> Option<F:
     }
 }
 
-/// Dials `dst` through `route` and splices the two streams (see [`splice`]); both sides close when
+/// Dials `dst` through `route` and splices the two streams; both sides close when
 /// the splice ends. The relay's last shutdown publishes its clean end in the gate, so the driver
 /// releases the flow rather than resets it, however late this task runs again or its event comes.
 pub(crate) async fn dial(io: FlowIo, id: FlowId, dst: SocketAddr, route: Route, events: Events) {
     let gate = io.gate();
     let work = async {
-        let failed = match route.connect(dst).await {
-            Ok(mut upstream) => {
+        let failed = match route.connect_tcp(dst).await {
+            Ok((mut upstream, reporter)) => {
                 let _ = events.send(Event::Connected(id));
                 let mut io = io;
-                splice(&mut io, &mut upstream, &gate).await.is_err()
+                relay(&mut io, &mut upstream, &gate, reporter)
+                    .await
+                    .is_err()
             }
             Err(_) => {
                 drop(io);

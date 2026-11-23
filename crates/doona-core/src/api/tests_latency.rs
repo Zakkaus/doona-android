@@ -75,6 +75,7 @@ fn setup(stand: &Stand) -> (TempDir, Feeds, Core) {
     feeds.set("/sub", &fixture("links.txt"));
     let core = Core::with_prober(dir.path().to_str().unwrap(), stand.prober());
     add(&core, &feeds, "/sub").unwrap();
+    super::lock(&core.shared.catalog).model.groups[1].kind = crate::dto::GroupKind::UrlTest;
     (dir, feeds, core)
 }
 

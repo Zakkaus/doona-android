@@ -135,6 +135,10 @@ impl Trace {
         seen.reached.flatten().or(seen.last)
     }
 
+    pub fn reached_peer(&self) -> Option<IpAddr> {
+        lock(&self.0).reached.flatten()
+    }
+
     /// Records `event` as honk reports it; for tests that stand in for honk.
     #[cfg(test)]
     pub fn record(&self, event: &FlowEvent) {

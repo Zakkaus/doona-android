@@ -11,6 +11,8 @@ use std::pin::Pin;
 use std::task::{Poll, ready};
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf};
 
+pub(super) mod score;
+
 /// Splices `client`, the flow's end (gated itself), and `upstream` until both directions end, each
 /// side's FIN passed on to the other, as `copy_bidirectional` does. Each FIN and each byte read or
 /// written goes to the gate: once the flow has moved no byte for its idle time after a FIN, the

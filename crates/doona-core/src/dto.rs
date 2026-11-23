@@ -56,6 +56,7 @@ pub enum Mode {
 pub enum GroupKind {
     Selector,
     UrlTest,
+    Score,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

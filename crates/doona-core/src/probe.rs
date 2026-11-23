@@ -11,7 +11,7 @@ use crate::api::lock;
 use crate::catalog::{Plan, Round, Shared, Target};
 use crate::diag::{Count, Event};
 use crate::dto::ErrorCode;
-use crate::localnet::Lookups;
+use crate::localnet::{Lookups, Trace, literal};
 use crate::outbounds::{Carriers, Registries};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
@@ -135,7 +135,8 @@ impl Probes {
                 return;
             };
             let lookups = job.lookups.clone();
-            let probe = prober(job);
+            let trace = Trace::default();
+            let probe = trace.scope(prober(job));
             let probe = async {
                 match &carriers {
                     Some(carriers) => carriers.run(probe).await.ok().flatten(),
@@ -156,6 +157,12 @@ impl Probes {
             let mut c = lock(&shared.catalog);
             // `cancel` is cancelled under the catalog lock, so a stop that returned is never undone.
             if !cancel.is_cancelled() && c.model.record(&target, ms, error) {
+                if let Some(ip) = trace.reached_peer() {
+                    c.model.score.available(target.entry.uuid, ip);
+                }
+                if let Some(ip) = trace.peer().or_else(|| literal(target.entry.node.host())) {
+                    c.model.score.probe(target.entry.uuid, ip, ms);
+                }
                 c.revision += 1;
                 shared.publish(&c);
                 (shared.stats).record_latency(&target.entry.id, target.began_ms, ms);

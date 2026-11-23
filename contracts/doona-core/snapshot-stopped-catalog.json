@@ -69,7 +69,7 @@
       {
         "id": "g-Auto",
         "name": "Auto",
-        "kind": "UrlTest",
+        "kind": "Score",
         "selectedId": "n-7f3a19c2",
         "pinned": false,
         "testing": true,
@@ -207,7 +207,7 @@
       {
         "id": "g-HK",
         "name": "HK",
-        "kind": "UrlTest",
+        "kind": "Score",
         "selectedId": "n-7f3a19c2",
         "pinned": false,
         "testing": false,

@@ -341,7 +341,7 @@ fn the_effective_config_names_every_node_by_its_code() {
         let code = format!("n-{}", &id[2..10]);
         assert!(text.contains(&code), "{name} as {code}: {text}");
     }
-    assert!(text.contains("# group HK (UrlTest, now n-"), "{text}");
+    assert!(text.contains("# group HK (Score, now n-"), "{text}");
     reply["ruleSource"]["rulesRevision"] = json!(0);
     let whole = reply.to_string().to_lowercase();
     let forbidden = [
