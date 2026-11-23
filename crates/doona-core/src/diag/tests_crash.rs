@@ -16,14 +16,14 @@ fn entries(dir: &TempDir) -> Vec<String> {
     names
 }
 
-/// A file whose name holds the largest number leaves no name to take: nothing is written, and
-/// the hook does not overflow.
+/// A file whose name holds the largest number a crash file may have leaves no name to take:
+/// nothing is written, and the hook does not overflow.
 #[test]
 fn past_the_largest_number_nothing_is_written() {
     let (dir, diag) = crashes("diag-crash-max");
     let at = dir.path().join(crash::DIR);
     fs::create_dir_all(&at).unwrap();
-    let max = format!("{}.txt", u64::MAX);
+    let max = format!("{}.txt", crash::MAX_NUMBER);
     fs::write(at.join(&max), "x").unwrap();
     let crashes = diag.crashes().unwrap();
     assert!(crashes.save("source: core\n").is_err());
@@ -47,25 +47,30 @@ fn a_cleared_name_is_never_taken_again() {
     let exported = [first.clone()];
     let mark = crashes.mark();
     assert_eq!(mark, 100);
-    assert_eq!(crashes.remove(&exported, mark).unwrap(), 1);
+    assert_eq!(crashes.remove(&exported, mark).unwrap(), Some(1));
     let second = crashes.save("source: core\n").unwrap();
     assert_eq!(second, "101.txt");
     assert_eq!(
         crashes.remove(&exported, mark).unwrap(),
-        0,
+        Some(0),
         "the clear sent again"
     );
     assert_eq!(crashes.list().len(), 1, "a crash file and the mark's");
     assert_eq!(
         crashes.remove(std::slice::from_ref(&second), mark).unwrap(),
-        0,
-        "above the mark"
+        Some(0),
+        "above the mark given"
     );
     assert_eq!(
         crashes
             .remove(std::slice::from_ref(&second), crashes.mark())
             .unwrap(),
-        1
+        Some(1)
+    );
+    assert_eq!(
+        crashes.remove(&[], 102).unwrap(),
+        None,
+        "above the core's own"
     );
     let again = crash::Crashes::new(dir.path().join(crash::DIR));
     again.clock.store(100, Relaxed);

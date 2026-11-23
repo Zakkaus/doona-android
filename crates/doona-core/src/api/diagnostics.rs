@@ -129,8 +129,8 @@ impl Core {
     }
 
     /// `clearCrashes`: removes the crash files named, those the app just exported, at or below the
-    /// mark their listing gave; a file written since stays. A name that is not a crash file's is
-    /// refused.
+    /// mark their listing gave; a file written since stays. A name that is not a crash file's, or
+    /// a mark above the core's, is refused.
     fn clear_crashes(&self, args: &str, event: &mut Event) -> Result<String, ErrorCode> {
         let ClearCrashesArgs { names, mark } = parse(args)?;
         if names.iter().any(|n| crash::number(n).is_none()) {
@@ -141,8 +141,9 @@ impl Core {
                 *event = event.io(e.kind());
                 ErrorCode::Internal
             })?,
-            None => 0,
+            None => Some(0),
         };
+        let removed = removed.ok_or(ErrorCode::InvalidArgument)?;
         *event = event.count(Count::Files, removed);
         Ok(empty(()))
     }

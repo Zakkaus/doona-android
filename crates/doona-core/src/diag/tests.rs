@@ -199,8 +199,8 @@ fn files_are_ordered_by_their_number_and_removed_by_name() {
     let names =
         |c: &crash::Crashes| -> Vec<String> { c.list().into_iter().map(|f| f.name).collect() };
     assert_eq!(
-        crashes.remove(&["1.txt".to_owned()], 1).unwrap(),
-        0,
+        crashes.remove(&["1.txt".to_owned()], 0).unwrap(),
+        Some(0),
         "no directory yet"
     );
     let at = dir.path().join(crash::DIR);
@@ -210,7 +210,7 @@ fn files_are_ordered_by_their_number_and_removed_by_name() {
     }
     assert_eq!(names(crashes), ["3.txt", "20.txt", "100.txt"]);
     let exported = ["20.txt", "7.txt", "notes.txt"].map(str::to_owned);
-    assert_eq!(crashes.remove(&exported, crashes.mark()).unwrap(), 1);
+    assert_eq!(crashes.remove(&exported, crashes.mark()).unwrap(), Some(1));
     assert_eq!(names(crashes), ["3.txt", "100.txt"]);
     assert!(at.join("notes.txt").exists());
 }

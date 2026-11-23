@@ -321,3 +321,56 @@ fn arguments_must_be_an_object() {
     }
     assert_eq!(diagnostics(&core, json!({})).level, Level::Info);
 }
+
+async fn elsewhere() {
+    panic!("another literal panic")
+}
+
+/// A clear cannot raise the mark past what the core gave out: a larger mark is refused, and
+/// crash files are still written, by this core and by the next on the same directory.
+#[test]
+fn a_clear_cannot_raise_the_mark() {
+    let dir = TempDir::new("api-diag-mark");
+    let core = Core::new(path(&dir)).unwrap();
+    let huge = json!({"names": [], "mark": u64::MAX});
+    assert_eq!(
+        call(&core, "clearCrashes", huge),
+        Err(ErrorCode::InvalidArgument)
+    );
+    let given = diagnostics(&core, json!({})).crash_mark;
+    let past = json!({"names": [], "mark": given + 1});
+    assert_eq!(
+        call(&core, "clearCrashes", past),
+        Err(ErrorCode::InvalidArgument)
+    );
+    let task = core.runtime.spawn(literal());
+    assert!(core.runtime.block_on(task).is_err());
+    assert_eq!(diagnostics(&core, json!({})).crashes.len(), 1);
+    drop(core);
+    let again = Core::new(path(&dir)).unwrap();
+    let task = again.runtime.spawn(elsewhere());
+    assert!(again.runtime.block_on(task).is_err());
+    assert_eq!(diagnostics(&again, json!({})).crashes.len(), 2);
+}
+
+/// `crashMark` fits Kotlin's Long: a file numbered past the largest millisecond time the core
+/// names a file with is not a crash file.
+#[test]
+fn the_mark_fits_a_long() {
+    let dir = TempDir::new("api-diag-long");
+    let core = Core::new(path(&dir)).unwrap();
+    let crash = dir.path().join("crash");
+    std::fs::create_dir_all(&crash).unwrap();
+    for name in ["9223372036854775808.txt", "1795300150000.txt"] {
+        std::fs::write(crash.join(name), name).unwrap();
+    }
+    let report = diagnostics(&core, json!({}));
+    assert!(
+        i64::try_from(report.crash_mark).is_ok(),
+        "{}",
+        report.crash_mark
+    );
+    assert_eq!(report.crash_mark, 1_795_300_150_000);
+    let names: Vec<&str> = report.crashes.iter().map(|c| c.name.as_str()).collect();
+    assert_eq!(names, ["1795300150000.txt"]);
+}

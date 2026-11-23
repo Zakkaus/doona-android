@@ -45,6 +45,9 @@ const MAX_LOCATIONS: usize = 64;
 const PART: &str = ".core.tmp";
 /// The mark ([`Crashes::listing`]) as a clear leaves it, for a core that starts again.
 const MARK: &str = ".core.mark";
+/// The largest number a crash file's name holds: a millisecond time, 13 digits, until the year
+/// 2286. Far below 2^63, so the mark fits Kotlin's `Long`.
+pub(crate) const MAX_NUMBER: u64 = 9_999_999_999_999;
 
 /// The messages of the core's own panic sites outside the tests, which name no data and are kept
 /// as they are: the `unreachable!()` of `structured/clash.rs` and `json/sing_box.rs`, that of
@@ -168,8 +171,8 @@ struct Files {
     written: HashSet<u64>,
     /// The text of the file being written, allocated with the core.
     text: String,
-    /// The highest number a crash file had here: published, listed, or given to a clear, and
-    /// read from [`MARK`] at the first use. A new file's number is above it, and a clear never
+    /// The highest number a crash file had here, published or listed, and read from [`MARK`] at
+    /// the first use. A new file's number is above it, and a clear never
     /// lowers it, so a name is never taken twice and a clear sent again removes no newer file.
     mark: Option<u64>,
 }
@@ -278,15 +281,15 @@ impl Crashes {
     /// may have taken one meanwhile, which a rename would replace). None past the largest number:
     /// `invalid_data`.
     fn free_name(&self, mark: u64) -> io::Result<(u64, String)> {
-        let exhausted = || io::Error::from(ErrorKind::InvalidData);
-        let mut at = mark.checked_add(1).ok_or_else(exhausted)?.max(self.now());
-        loop {
+        let mut at = mark.saturating_add(1).max(self.now());
+        while at <= MAX_NUMBER {
             let name = format!("{at}.txt");
             if fs::symlink_metadata(self.dir.join(&name)).is_err() {
                 return Ok((at, name));
             }
-            at = at.checked_add(1).ok_or_else(exhausted)?;
+            at += 1;
         }
+        Err(ErrorKind::InvalidData.into())
     }
 
     /// The crash files, oldest first, with `mark` raised to the newest of them.
@@ -303,7 +306,8 @@ impl Crashes {
         let read = fs::File::open(self.dir.join(MARK)).and_then(|mut f| f.read(&mut digits));
         let digits = digits.get(..read.unwrap_or(0)).unwrap_or_default();
         let digits = std::str::from_utf8(digits).ok();
-        digits.and_then(|d| d.trim().parse().ok()).unwrap_or(0)
+        let mark = digits.and_then(|d| d.trim().parse().ok());
+        mark.filter(|&m| m <= MAX_NUMBER).unwrap_or(0)
     }
 
     fn now(&self) -> u64 {
@@ -372,16 +376,20 @@ impl Crashes {
     }
 
     /// Removes the files named whose numbers are `mark` or below, the mark of the listing they
-    /// were exported from; a name already gone is passed over. Raises the core's mark to `mark`
-    /// and saves it first, so a core that starts again takes no name at or below it. Answers how
-    /// many files it removed.
-    pub fn remove(&self, names: &[String], mark: u64) -> io::Result<usize> {
+    /// were exported from; a name already gone is passed over. Saves the core's own mark first, so
+    /// a core that starts again takes no name at or below it. A `mark` above the core's, which no
+    /// listing gave, is refused (none): saved, it would leave no name to take. Answers how many
+    /// files it removed.
+    pub fn remove(&self, names: &[String], mark: u64) -> io::Result<Option<usize>> {
         let Some(mut files) = self.hold() else {
-            return Ok(0);
+            return Ok(Some(0));
         };
         let kept = &mut files.0.mark;
         let _ = self.listed(kept);
-        let kept = kept.insert(kept.unwrap_or_default().max(mark));
+        let kept = kept.unwrap_or_default();
+        if mark > kept {
+            return Ok(None);
+        }
         fs::create_dir_all(&self.dir)?;
         let part = self.dir.join(PART);
         let saved = self.put(&part, kept.to_string().as_bytes());
@@ -401,7 +409,7 @@ impl Crashes {
                 Err(e) => return Err(e),
             }
         }
-        Ok(removed)
+        Ok(Some(removed))
     }
 }
 
@@ -414,13 +422,13 @@ impl Drop for Held<'_> {
     }
 }
 
-/// The number a crash file's name holds: `<epochMs>.txt` is the one name the core and the app
-/// give their crash files.
+/// The number a crash file's name holds: `<epochMs>.txt`, at most [`MAX_NUMBER`], is the one
+/// name the core and the app give their crash files.
 pub(crate) fn number(name: &str) -> Option<u64> {
     let digits = name.strip_suffix(".txt")?;
     let digits =
         (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())).then_some(digits);
-    digits?.parse().ok()
+    digits?.parse().ok().filter(|&at| at <= MAX_NUMBER)
 }
 
 /// Text that fits in the string's room up to [`MAX_BYTES`]; the rest is dropped.
