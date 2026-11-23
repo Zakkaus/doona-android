@@ -109,6 +109,6 @@ class RvConfigOverviewShotTest {
 
     private companion object {
         const val WHOLE_OVERVIEW = "+h1695dp"
-        const val WHOLE_UNSUPPORTED_FS200 = "+h1047dp"
+        const val WHOLE_UNSUPPORTED_FS200 = "+h1092dp"
     }
 }

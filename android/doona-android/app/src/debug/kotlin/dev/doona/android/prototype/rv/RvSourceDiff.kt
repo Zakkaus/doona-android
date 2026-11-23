@@ -21,7 +21,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import dev.doona.android.R
 
 /** What a line of a diff is: kept as it was, added in the candidate, or removed from the base. */
@@ -46,7 +45,8 @@ internal class RvDiffFile(val source: String, val hunks: List<List<RvDiffLine>>)
  * The source diff (config plan, history and diff; also the editor's check and a template's preview): one card per file,
  * headed by [RvCardHeader] with the file, wrapping when the path is wider than the card, and a tag of its added and
  * removed lines, which opens the file at its first change. Each line is a row: its number (the gutter of [RvSourceField]), a sign, and the text in the row subtitle's
- * 17 sp, wrapping and hanging under the line's own indent; an added line is tinted in [RvColors.good] and a removed one in the error hue, as [RvStatusChip]
+ * 17 sp, highlighted ([RvCodeText]), wrapping (inside a long token too) and hanging under the line's own
+ * indent; an added line is tinted in [RvColors.good] and a removed one in the error hue, as [RvStatusChip]
  * tints, the number and sign in that hue, so the sign and not the hue alone says which. A screen reader hears each line
  * as 新增 or 移除, its number and its text. A tap opens the file at that line ([onOpen] gets the line's number).
  * Runs are apart by [RvSpace.subGap]; their numbers show what lies between.
@@ -56,7 +56,6 @@ internal fun RvSourceDiff(file: RvDiffFile, onOpen: (Int) -> Unit, modifier: Mod
     val numbers = rvLineNumberStyle()
     val measurer = rememberTextMeasurer()
     val gutter = rvLineNumberWidth(measurer, file.hunks.maxOf { run -> run.maxOf { it.line } }, numbers)
-    val space = rvSpaceWidth(rvSourceStyle(), measurer)
     val signPx = remember(numbers, measurer) { measurer.measure(RvDiffKind.Removed.sign, numbers).size.width }
     val sign = with(LocalDensity.current) { signPx.toDp() }
     val first = file.hunks.first().first { it.kind != RvDiffKind.Same }.line
@@ -64,14 +63,14 @@ internal fun RvSourceDiff(file: RvDiffFile, onOpen: (Int) -> Unit, modifier: Mod
         RvCardHeader(file.source, onClick = { onOpen(first) }, tag = stringResource(R.string.rv_diff_counts, file.added, file.removed), titleLines = Int.MAX_VALUE)
         file.hunks.forEachIndexed { i, run ->
             if (i > 0) Spacer(Modifier.height(RvSpace.subGap))
-            run.forEach { DiffLine(it, DiffColumns(gutter, sign, numbers, space), onOpen) }
+            run.forEach { DiffLine(it, DiffColumns(gutter, sign, numbers), onOpen) }
         }
         Spacer(Modifier.height(RvSpace.rowPadding))
     }
 }
 
 /** The widths of a diff line's number and sign, and the figures they are set in. */
-private class DiffColumns(val number: Dp, val sign: Dp, val style: TextStyle, val space: TextUnit)
+private class DiffColumns(val number: Dp, val sign: Dp, val style: TextStyle)
 
 @Composable
 private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: (Int) -> Unit) {
@@ -88,7 +87,7 @@ private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: (Int) -> Un
         {
             RvText(line.line.toString(), columns.style, Modifier.width(columns.number), color = mark, align = TextAlign.End)
             RvText(line.kind.sign, columns.style, Modifier.width(columns.sign), color = mark, align = TextAlign.Center)
-            RvText(line.text, rvSourceStyle().copy(textIndent = rvHang(rvBlankColumns(line.text), columns.space)), maxLines = Int.MAX_VALUE)
+            RvCodeText(line.text, rvSourceStyle())
         },
         Modifier
             .fillMaxWidth()

@@ -32,6 +32,7 @@ import dev.doona.android.prototype.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
+import dev.doona.android.prototype.rv.RvCodeText
 import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvPart
 import dev.doona.android.prototype.rv.RvRadio
@@ -82,7 +83,7 @@ internal fun RvSettingsRow(
     modifier: Modifier = Modifier,
     @DrawableRes icon: Int? = null,
     subtitle: String? = null,
-    titleStyle: TextStyle = Rv.type.rowTitle,
+    code: Boolean = false,
     titleLines: Int = RV_ROW_TITLE_LINES,
     trailing: (@Composable () -> Unit)? = null,
 ) {
@@ -100,7 +101,7 @@ internal fun RvSettingsRow(
                 Spacer(Modifier.width(RvSettingsSpace.glyphGap))
             }
             Column(Modifier.weight(1f)) {
-                RvText(title, titleStyle, maxLines = titleLines)
+                if (code) RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines) else RvText(title, Rv.type.rowTitle, maxLines = titleLines)
                 subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
             }
             trailing?.let {
@@ -120,7 +121,7 @@ private fun FirstLine(content: @Composable () -> Unit) {
  * A row that opens something, then a chevron; its optional [subtitle] is the row's second line, so the row is the
  * two-line 82 dp one: a value, as Revolut's Appearance rows show Theme over "Light - Glass" (§13.3), or what the row
  * leads to. A row of a plain list (the licences) has no [icon], so its text starts on the card's padding, as DNS's 自訂.
- * A title that is source text (a skipped declaration) takes [titleStyle] with Inter's ligatures off (`rvVerbatim`) and
+ * A title that is honk text (a skipped declaration) is [code], highlighted as all honk text is ([RvCodeText]), and takes
  * [titleLines] as many lines as it needs: what the user looks for in the file is the text, so it is never cut. A [mark]
  * (a status chip, 使用中) stands before the chevron.
  */
@@ -130,11 +131,11 @@ internal fun RvSettingsNavRow(
     @DrawableRes icon: Int?,
     onClick: () -> Unit,
     subtitle: String? = null,
-    titleStyle: TextStyle = Rv.type.rowTitle,
+    code: Boolean = false,
     titleLines: Int = RV_ROW_TITLE_LINES,
     mark: (@Composable () -> Unit)? = null,
 ) {
-    RvSettingsRow(title, Modifier.rvRowPress(Role.Button, onClick), icon, subtitle = subtitle, titleStyle = titleStyle, titleLines = titleLines) {
+    RvSettingsRow(title, Modifier.rvRowPress(Role.Button, onClick), icon, subtitle = subtitle, code = code, titleLines = titleLines) {
         RvNavEnd(mark)
     }
 }

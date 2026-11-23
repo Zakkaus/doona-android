@@ -15,7 +15,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvGutter
@@ -25,7 +24,6 @@ import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvSystemScheme
-import dev.doona.android.prototype.rv.rvVerbatim
 import dev.doona.android.prototype.rv.settings.RvSettingsNavRow
 
 /**
@@ -54,7 +52,7 @@ internal fun RvConfigSkippedPage(state: RvConfigState, onBack: () -> Unit, onOpe
 private fun SkippedRow(record: RvSkipped, onOpen: (RvSkipped) -> Unit) {
     val reasons = record.reasons.map { stringResource(it.label) }.joinToString(stringResource(R.string.rv_effective_list_separator))
     val line = rvConfigLine(listOf(stringResource(R.string.rv_config_line, record.line), reasons))
-    RvSettingsNavRow(record.text, null, { onOpen(record) }, subtitle = line, titleStyle = Rv.type.rowTitle.rvVerbatim(), titleLines = Int.MAX_VALUE)
+    RvSettingsNavRow(record.text, null, { onOpen(record) }, subtitle = line, code = true, titleLines = Int.MAX_VALUE)
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

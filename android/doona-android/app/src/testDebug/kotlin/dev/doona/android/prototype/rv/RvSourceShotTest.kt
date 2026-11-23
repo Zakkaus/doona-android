@@ -17,6 +17,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import dev.doona.android.prototype.rv.gallery.RV_GALLERY_SOURCE
+import dev.doona.android.prototype.rv.gallery.RvGalleryCode
 import dev.doona.android.prototype.rv.gallery.RvGalleryDiff
 import dev.doona.android.prototype.rv.gallery.RvGallerySource
 import dev.doona.android.prototype.rv.gallery.rvByteOf
@@ -29,9 +30,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The two library parts the configuration pages need (PV-f item 1), each on the page under the status bar in light,
- * dark and the two larger font sizes: the source field with a mark after a multibyte word (`proto-rv-source-field-*`)
- * and the diff of that file after the fix (`proto-rv-source-diff-*`); then what each does.
+ * The library parts the configuration pages need (PV-f item 1, round 2 item 3), each on the page under the status bar
+ * in light, dark and the two larger font sizes: the source field with a mark after a multibyte word
+ * (`proto-rv-source-field-*`), the diff of that file after the fix (`proto-rv-source-diff-*`), and code text with every
+ * role doona colours (`proto-rv-code-text-*`); then what each does.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -71,6 +73,22 @@ class RvSourceShotTest {
     @Test
     @Config(qualifiers = "+h915dp")
     fun diffFs200() = compose.rvShot("source-diff", dark = false, fontScale = RV_FS200) { Page { RvGalleryDiff() } }
+
+    @Test
+    @Config(qualifiers = "+h440dp")
+    fun codeLight() = compose.rvShot("code-text", dark = false) { Page { RvGalleryCode() } }
+
+    @Test
+    @Config(qualifiers = "+h440dp")
+    fun codeDark() = compose.rvShot("code-text", dark = true) { Page { RvGalleryCode() } }
+
+    @Test
+    @Config(qualifiers = "+h520dp")
+    fun codeFs115() = compose.rvShot("code-text", dark = false, fontScale = RV_FS115) { Page { RvGalleryCode() } }
+
+    @Test
+    @Config(qualifiers = "+h915dp")
+    fun codeFs200() = compose.rvShot("code-text", dark = false, fontScale = RV_FS200) { Page { RvGalleryCode() } }
 
     @Test
     fun aByteOffsetLandsOnTheCharacterItCounts() {

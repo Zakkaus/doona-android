@@ -37,7 +37,6 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
@@ -58,8 +57,9 @@ internal class RvSourceMark(val start: Int, val end: Int, val message: String)
 
 /**
  * The multiline source field (config plan, source editor): a card holding the file's text in the row subtitle's 17 sp,
- * wrapping, with each line's number in a gutter at its start, in secondary ink and tabular figures, [RvSpace.trailingGap]
- * before the text. Each of [marks] is tinted in the error hue as [RvStatusChip] tints its label and underlined, so the
+ * wrapping (also inside a long token, [rvCodeBreaks]), highlighted as all honk text is ([RvCodeText]'s roles), with
+ * each line's number in a gutter at its start, in secondary ink and tabular figures, [RvSpace.trailingGap] before the
+ * text. Each of [marks] is tinted in the error hue as [RvStatusChip] tints its label and underlined, so the
  * hue is not the only sign; its line's number turns the error hue. Under the card each mark's message
  * ([RvFieldMessage], led by its line) moves the cursor onto its span when tapped. The caller owns [value], so it can
  * also open the field at a span ([rvSourceSelection]). [name] (the file) names the field for a screen reader, which
@@ -76,6 +76,8 @@ internal fun RvSourceField(
     val colors = Rv.colors
     val text = value.text
     val ranges = remember(text, marks) { marks.map { rvSourceSelection(text, it) } }
+    val shown = remember(text) { RvCodeShown(text) }
+    val inks = rememberRvCodeColors()
     val lines = remember(text) { lineStarts(text) }
     val marked = remember(lines, ranges) { ranges.map { lineOf(lines, it.start) }.toSet() }
     val style = rvSourceStyle()
@@ -100,12 +102,11 @@ internal fun RvSourceField(
                         marks.firstOrNull()?.let { error(it.message) }
                     }
                     .drawBehind {
-                        val shown = layout ?: return@drawBehind
                         val ink = SourceInk(numbers.copy(color = colors.textSecondary), numbers.copy(color = colors.error))
-                        drawLineNumbers(measurer, shown, lines, marked, ink, gutter.toPx())
+                        drawLineNumbers(measurer, layout ?: return@drawBehind, LineAnchors(lines, shown.offsets), marked, ink, gutter.toPx())
                     },
                 textStyle = style.copy(color = colors.text),
-                visualTransformation = SourceMarks(ranges, tint, space),
+                visualTransformation = SourceMarks(shown, ranges, tint, space, inks),
                 onTextLayout = { layout = it },
                 cursorBrush = SolidColor(colors.positive),
                 decorationBox = { field ->
@@ -130,6 +131,9 @@ internal fun RvSourceField(
 /** The two inks of the gutter: a line's number, and the number of a line that holds a mark. */
 private class SourceInk(val plain: TextStyle, val marked: TextStyle)
 
+/** Where each line starts in the source ([starts]) and where the shown text, with its breaks, has it ([offsets]). */
+private class LineAnchors(val starts: IntArray, val offsets: RvCodeOffsets)
+
 /**
  * Each line's number, ending at [right] and on the baseline of the line's first row in [layout] (a row with CJK in Noto
  * sits lower in its line box), so a wrapped line keeps one number; a line holding a mark in the marked ink.
@@ -137,13 +141,13 @@ private class SourceInk(val plain: TextStyle, val marked: TextStyle)
 private fun DrawScope.drawLineNumbers(
     measurer: TextMeasurer,
     layout: TextLayoutResult,
-    lines: IntArray,
+    lines: LineAnchors,
     marked: Set<Int>,
     ink: SourceInk,
     right: Float,
 ) {
-    lines.forEachIndexed { i, start ->
-        val row = layout.getLineForOffset(start.coerceAtMost(layout.layoutInput.text.length))
+    lines.starts.forEachIndexed { i, start ->
+        val row = layout.getLineForOffset(lines.offsets.originalToTransformed(start).coerceAtMost(layout.layoutInput.text.length))
         val number = measurer.measure((i + 1).toString(), if (i in marked) ink.marked else ink.plain)
         drawText(number, topLeft = Offset(right - number.size.width, layout.getLineBaseline(row) - number.firstBaseline))
     }
@@ -176,34 +180,33 @@ internal fun rvLineNumberWidth(measurer: TextMeasurer, count: Int, style: TextSt
 }
 
 /**
- * The source as the field draws it: CJK runs in Noto, as [RvText] sets them, each marked span tinted, and each line a
- * paragraph of its own that hangs by its indent ([rvHang]; [space] is one blank's width). A paragraph that ends in a
- * line feed shows an empty line after it, so the feed is drawn as a word joiner, which has no width and keeps every
- * offset where it was; a text that ends in a feed gets one more joiner for its last, empty line.
+ * The source as the field draws it ([shown]): CJK runs in Noto, as [RvText] sets them, a break opportunity inside each
+ * long token, each token in its role's ink ([addCode]), then each marked span tinted over it, and each line a paragraph of its own that
+ * hangs by its indent ([rvHang]; [space] is one blank's width). A paragraph that ends in a line feed shows an empty line
+ * after it, so the feed is drawn as a word joiner, which has no width and keeps its offset; a text that ends in a feed
+ * gets one more joiner for its last, empty line. [RvCodeOffsets] maps the cursor past the inserted breaks.
  */
-private data class SourceMarks(val ranges: List<TextRange>, val tint: SpanStyle, val space: TextUnit) : VisualTransformation {
+private data class SourceMarks(val shown: RvCodeShown, val ranges: List<TextRange>, val tint: SpanStyle, val space: TextUnit, val inks: RvCodeColors) :
+    VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val source = text.text
+        val view = if (shown.source == source) shown else RvCodeShown(source)
+        val at = view.offsets::originalToTransformed
         val closed = source.endsWith('\n')
-        val shown = buildAnnotatedString {
-            append(scripted(source.replace('\n', LINE_END) + if (closed) LINE_END.toString() else ""))
-            ranges.forEach { addStyle(tint, it.start.coerceAtMost(text.length), it.end.coerceAtMost(text.length)) }
+        val total = source.length + if (closed) 1 else 0
+        val drawn = buildAnnotatedString {
+            append(scripted(view.text.replace('\n', LINE_END) + if (closed) LINE_END.toString() else ""))
+            addCode(view, inks)
+            ranges.forEach { addStyle(tint, at(it.start.coerceAtMost(source.length)), at(it.end.coerceAtMost(source.length))) }
             var from = 0
-            while (from < length) {
-                val end = source.indexOf('\n', from).let { if (it < 0 || it + 1 >= length) length else it + 1 }
-                addStyle(ParagraphStyle(textIndent = rvHang(rvBlankColumns(source.substring(from, end.coerceAtMost(source.length))), space)), from, end)
+            while (from < total) {
+                val end = source.indexOf('\n', from).let { if (it < 0 || it + 1 >= total) total else it + 1 }
+                addStyle(ParagraphStyle(textIndent = rvHang(rvBlankColumns(source.substring(from, end.coerceAtMost(source.length))), space)), at(from), at(end))
                 from = end
             }
         }
-        return TransformedText(shown, if (closed) ClosedText(source.length) else OffsetMapping.Identity)
+        return TransformedText(drawn, view.offsets)
     }
-}
-
-/** The offsets of a text whose displayed form has one joiner more than its [length]. */
-private class ClosedText(private val length: Int) : OffsetMapping {
-    override fun originalToTransformed(offset: Int) = offset
-
-    override fun transformedToOriginal(offset: Int) = offset.coerceAtMost(length)
 }
 
 private const val LINE_END = '\u2060'

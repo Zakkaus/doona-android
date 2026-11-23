@@ -50,6 +50,7 @@ internal fun RvGalleryScreen(onBack: () -> Unit) {
         Section(R.string.rv_gallery_menu) { RvGalleryMenuCard(onDelete = { deleting = it }) }
         Section(R.string.rv_gallery_banner) { RvGalleryBanners() }
         Section(R.string.rv_gallery_empty) { RvGalleryEmpty() }
+        Section(R.string.rv_gallery_code) { RvGalleryCode() }
         Section(R.string.rv_gallery_source) { RvGallerySource() }
         Section(R.string.rv_gallery_diff) { RvGalleryDiff() }
         Section(R.string.rv_gallery_sheet) { RvPrimaryButton(stringResource(R.string.rv_menu_delete), { deleting = RvData.subscriptions.first() }) }

@@ -1,13 +1,17 @@
 package dev.doona.android.prototype.rv.gallery
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.R
+import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvCodeText
 import dev.doona.android.prototype.rv.RvDiffFile
 import dev.doona.android.prototype.rv.RvDiffKind.Added
 import dev.doona.android.prototype.rv.RvDiffKind.Removed
@@ -16,6 +20,17 @@ import dev.doona.android.prototype.rv.RvDiffLine
 import dev.doona.android.prototype.rv.RvSourceDiff
 import dev.doona.android.prototype.rv.RvSourceField
 import dev.doona.android.prototype.rv.RvSourceMark
+import dev.doona.android.prototype.rv.RvSpace
+import dev.doona.android.prototype.rv.rvSourceStyle
+
+/**
+ * Code text ([RvCodeText]) on a card: a short file with every role doona colours, a comment, keywords (a section, where
+ * a rule sends, `fallback`), strings, numbers, calls, keys, the operator and punctuation.
+ */
+@Composable
+internal fun RvGalleryCode() {
+    RvCard { RvCodeText(RV_GALLERY_CODE, rvSourceStyle(), Modifier.padding(RvSpace.rowPadding)) }
+}
 
 /** The source field holding a small rules file, with one mark after a multibyte word: a group the file does not declare. */
 @Composable
@@ -43,6 +58,21 @@ internal val RV_GALLERY_SOURCE = """
       domain(keyword: 影音) -> $MISSING
       domain(suffix: video.example) -> media
       fallback: proxy
+    }
+""".trimIndent()
+
+internal val RV_GALLERY_CODE = """
+    # 香港節點
+    group {
+      hk {
+        filter: name(regex: '港|HK')
+        policy: min_avg10
+      }
+    }
+    routing {
+      !pname(helper) && dport(443) -> block
+      dip(10.0.0.0/8) -> direct
+      fallback: hk
     }
 """.trimIndent()
 

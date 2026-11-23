@@ -3,6 +3,7 @@
     <string name="rv_source_line">第 %1$d 行：%2$s</string>
     <string name="rv_diff_added_line">新增，第 %1$d 行：%2$s</string>
     <string name="rv_diff_removed_line">移除，第 %1$d 行：%2$s</string>
+    <string name="rv_gallery_code">原始碼文字</string>
     <string name="rv_gallery_source">原始碼欄位</string>
     <string name="rv_gallery_diff">差異</string>
     <string name="rv_config_unknown_group">找不到策略組 %1$s</string>

@@ -4,6 +4,7 @@
     <string name="rv_diff_added_line">Added, line %1$d: %2$s</string>
     <string name="rv_diff_removed_line">Removed, line %1$d: %2$s</string>
     <string name="rv_diff_counts" translatable="false">+%1$d −%2$d</string>
+    <string name="rv_gallery_code">Source text</string>
     <string name="rv_gallery_source">Source field</string>
     <string name="rv_gallery_diff">Diff</string>
     <string name="rv_config_unknown_group">No group named %1$s</string>
