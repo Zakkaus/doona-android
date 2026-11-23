@@ -7,8 +7,8 @@
 //! The packet loop and its error handling follow crates/honk-android/src/engine.rs.
 
 use super::blocked::Blocked;
-use super::drain::Drains;
 use super::flow::{self, Event, Events, Key, Waker};
+use super::gate::Drains;
 use super::route::{Inbound, Route};
 use super::tcp::{self, Step, TcpFlow};
 use super::udp::{self, Budget, Nat};
@@ -289,7 +289,7 @@ impl Driver {
                 }
             }
             Event::Finished { id, failed: true } => self.reset_tcp(id),
-            // The clean end is in the flow's drain already.
+            // The clean end is in the flow's gate already.
             Event::Finished { id, failed: false } => self.service_tcp(id),
             Event::UdpEnded(n) => self.nat.remove(n),
             Event::DnsAnswer {
@@ -352,17 +352,15 @@ impl Driver {
         let drain = self.settings.tcp_drain;
         let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(meter), drain);
         let flow = TcpFlow::new(ends, waker, dst.is_none());
-        let (events, cancel) = (self.events.clone(), flow.cancel.clone());
+        let events = self.events.clone();
         self.dns_flows += usize::from(flow.dns);
         self.tcp.insert(id, flow);
         match dst {
-            Some(dst) => self
-                .gen_
-                .spawn(tcp::dial(io, id, dst, route, events, cancel)),
+            Some(dst) => self.gen_.spawn(tcp::dial(io, id, dst, route, events)),
             None => {
                 let upstreams = Arc::clone(&self.upstreams);
                 let via = (route, Arc::clone(&self.gen_.session));
-                let task = tcp::serve_dns(io, id, via, upstreams, drain, events, cancel);
+                let task = tcp::serve_dns(io, id, via, upstreams, drain, events);
                 self.gen_.spawn(task);
             }
         }
@@ -422,7 +420,7 @@ impl Driver {
     fn end_tcp(&mut self, id: FlowId, step: Step) {
         if let Some(flow) = self.remove_tcp(id) {
             if matches!(step, Step::Failed) {
-                flow.cancel.cancel();
+                flow.give_up();
             }
             self.stack.tcp_close(id);
         }
@@ -432,7 +430,7 @@ impl Driver {
     /// never answered, and end the task if it still runs.
     fn reset_tcp(&mut self, id: FlowId) {
         if let Some(flow) = self.remove_tcp(id) {
-            flow.cancel.cancel();
+            flow.give_up();
             if flow.connected {
                 self.stack.tcp_abort(id);
             } else {

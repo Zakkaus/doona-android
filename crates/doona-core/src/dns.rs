@@ -224,6 +224,8 @@ pub(crate) async fn serve_tcp<S: ToClient>(
             Err(e) => return Err(e),
         };
         if let Some(a) = answer(upstreams, route, &query, Network::Tcp).await {
+            #[cfg(test)]
+            crate::tunnel::pause::at(crate::tunnel::pause::Point::Answered).await;
             if let Some(learned) = Learned::read(&query, &a) {
                 // The frame is one write, so its last chunk ends the answer.
                 io.map_with_last_chunk(names.bind(learned));

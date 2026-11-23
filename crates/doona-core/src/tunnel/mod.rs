@@ -7,9 +7,11 @@
 //! within the same deadline (see `outbounds.rs`).
 
 mod blocked;
-mod drain;
 mod driver;
 mod flow;
+mod gate;
+#[cfg(test)]
+pub(crate) mod pause;
 pub mod route;
 mod splice;
 mod tcp;

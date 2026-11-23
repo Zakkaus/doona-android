@@ -3,7 +3,7 @@
 //! the driver through one unbounded event channel. Each flow has at most one wake queued (its
 //! [`Waker`] remembers), so that channel stays as short as the number of flows.
 
-use super::drain::Drain;
+use super::gate::Gate;
 use crate::dns::ToClient;
 use crate::dns::names::{Learned, Mapping};
 use crate::stats::meter::Tally;
@@ -90,7 +90,7 @@ pub(crate) struct Ends {
     pub up: Option<mpsc::Sender<Bytes>>,
     /// Upstream to client; closed by the task to pass on the upstream's FIN.
     pub down: Down,
-    pub drain: Arc<Drain>,
+    pub gate: Arc<Gate>,
 }
 
 /// A chunk for the client; the last chunk of a DNS answer carries what the answer maps.
@@ -120,8 +120,15 @@ impl Down {
     }
 }
 
-/// The task's end of a TCP flow: the client, as an async stream.
+/// The task's end of a TCP flow: the client, as an async stream. Each read, write and shutdown
+/// runs inside the flow's gate (see `gate.rs`).
 pub(crate) struct FlowIo {
+    chan: Chan,
+    gate: Arc<Gate>,
+}
+
+/// The channels to the driver, under the gate.
+struct Chan {
     up: mpsc::Receiver<Bytes>,
     unread: Bytes,
     down: PollSender<Chunk>,
@@ -130,35 +137,76 @@ pub(crate) struct FlowIo {
     waker: Arc<Waker>,
     /// The payload the task took and gave, for its outbound's bytes of the day.
     tally: Tally,
-    drain: Arc<Drain>,
 }
 
 /// A TCP flow's channels: the payload counts in `tally`, and after a FIN the driver cuts the flow
-/// once it has gone `idle` without progress (see `drain.rs`).
+/// once it has gone `idle` without progress (see `gate.rs`).
 pub(crate) fn pair(waker: Arc<Waker>, tally: Tally, idle: Duration) -> (Ends, FlowIo) {
     let (up_tx, up_rx) = mpsc::channel(DEPTH);
     let (down_tx, down_rx) = mpsc::channel(DEPTH);
-    let drain = Arc::new(Drain::new(idle, Arc::clone(&waker)));
+    let gate = Arc::new(Gate::new(idle, Arc::clone(&waker)));
     let ends = Ends {
         up: Some(up_tx),
         down: Down(down_rx),
-        drain: Arc::clone(&drain),
+        gate: Arc::clone(&gate),
     };
-    let io = FlowIo {
+    let chan = Chan {
         up: up_rx,
         unread: Bytes::new(),
         down: PollSender::new(down_tx),
         mapping: None,
         waker,
         tally,
-        drain,
     };
-    (ends, io)
+    (ends, FlowIo { chan, gate })
 }
 
 impl FlowIo {
-    pub fn drain(&self) -> Arc<Drain> {
-        Arc::clone(&self.drain)
+    pub fn gate(&self) -> Arc<Gate> {
+        Arc::clone(&self.gate)
+    }
+}
+
+impl Chan {
+    fn poll_read(&mut self, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<io::Result<()>> {
+        if self.unread.is_empty() {
+            match ready!(self.up.poll_recv(cx)) {
+                Some(chunk) => {
+                    self.unread = chunk;
+                    // Room in the channel: the driver may have a chunk waiting for it.
+                    self.waker.wake();
+                }
+                None => return Poll::Ready(Ok(())),
+            }
+        }
+        let n = buf.remaining().min(self.unread.len());
+        buf.put_slice(&self.unread[..n]);
+        self.unread.advance(n);
+        self.tally.up(n);
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_write(&mut self, cx: &mut Context<'_>, data: &[u8]) -> Poll<io::Result<usize>> {
+        let gone = |_| io::Error::from(ErrorKind::BrokenPipe);
+        ready!(self.down.poll_reserve(cx)).map_err(gone)?;
+        let n = data.len().min(CHUNK);
+        let mapping = if n == data.len() {
+            self.mapping.take()
+        } else {
+            None
+        };
+        let chunk = Chunk(Bytes::copy_from_slice(&data[..n]), mapping);
+        self.down.send_item(chunk).map_err(gone)?;
+        self.waker.wake();
+        self.tally.down(n);
+        Poll::Ready(Ok(n))
+    }
+
+    /// Passes the upstream's FIN on: the driver sees the channel close after its last chunk.
+    fn close(&mut self) -> Poll<io::Result<()>> {
+        self.down.close();
+        self.waker.wake();
+        Poll::Ready(Ok(()))
     }
 }
 
@@ -169,27 +217,14 @@ impl AsyncRead for FlowIo {
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
         let this = self.get_mut();
-        if this.unread.is_empty() {
-            match ready!(this.up.poll_recv(cx)) {
-                Some(chunk) => {
-                    this.unread = chunk;
-                    // Room in the channel: the driver may have a chunk waiting for it.
-                    this.waker.wake();
-                }
-                None => return Poll::Ready(Ok(())),
-            }
-        }
-        let n = buf.remaining().min(this.unread.len());
-        buf.put_slice(&this.unread[..n]);
-        this.unread.advance(n);
-        this.tally.up(n);
-        Poll::Ready(Ok(()))
+        let chan = &mut this.chan;
+        this.gate.poll_read(buf, |buf| chan.poll_read(cx, buf))
     }
 }
 
 impl ToClient for FlowIo {
     fn map_with_last_chunk(&mut self, mapping: Mapping) {
-        self.mapping = Some(mapping);
+        self.chan.mapping = Some(mapping);
     }
 }
 
@@ -200,31 +235,18 @@ impl AsyncWrite for FlowIo {
         data: &[u8],
     ) -> Poll<io::Result<usize>> {
         let this = self.get_mut();
-        let gone = |_| io::Error::from(ErrorKind::BrokenPipe);
-        ready!(this.down.poll_reserve(cx)).map_err(gone)?;
-        let n = data.len().min(CHUNK);
-        let mapping = if n == data.len() {
-            this.mapping.take()
-        } else {
-            None
-        };
-        let chunk = Chunk(Bytes::copy_from_slice(&data[..n]), mapping);
-        this.down.send_item(chunk).map_err(gone)?;
-        this.waker.wake();
-        this.tally.down(n);
-        Poll::Ready(Ok(n))
+        let chan = &mut this.chan;
+        this.gate.poll_write(|| chan.poll_write(cx, data))
     }
 
     fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         Poll::Ready(Ok(()))
     }
 
-    /// Passes the upstream's FIN on: the driver sees the channel close after its last chunk.
     fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         let this = self.get_mut();
-        this.down.close();
-        this.waker.wake();
-        Poll::Ready(Ok(()))
+        let chan = &mut this.chan;
+        this.gate.poll_shutdown(|| chan.close())
     }
 }
 
