@@ -1,37 +1,38 @@
 //! The relay of a dialed TCP flow: the client's stream and the upstream's, spliced until both
-//! directions end. It reports the drain's events (see `drain.rs`) and never reads the deadline:
-//! the driver cuts the flow by cancelling its task.
+//! directions end. Every poll of either stream runs inside the flow's gate (see `gate.rs`), which
+//! records what moved; the relay never reads the deadline, and the driver cuts the flow by giving
+//! it up.
 
-use super::drain::Drain;
 use super::flow::CHUNK;
+use super::gate::{Gate, Gated};
 use std::future::poll_fn;
 use std::io;
 use std::pin::Pin;
 use std::task::{Poll, ready};
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf};
 
-/// Splices `client` and `upstream` until both directions end, each side's FIN passed on to the
-/// other, as `copy_bidirectional` does. Each FIN and each byte read or written goes to the drain:
-/// once the flow has moved no byte for the drain's idle time after a FIN, the driver gives it up,
-/// so a peer that never closes, never reads or keeps its window shut cannot keep the flow, its
-/// buffers and its task. An error in either direction ends both.
-pub(super) async fn splice<C, U>(client: &mut C, upstream: &mut U, drain: &Drain) -> io::Result<()>
+/// Splices `client`, the flow's end (gated itself), and `upstream` until both directions end, each
+/// side's FIN passed on to the other, as `copy_bidirectional` does. Each FIN and each byte read or
+/// written goes to the gate: once the flow has moved no byte for its idle time after a FIN, the
+/// driver gives it up, so a peer that never closes, never reads or keeps its window shut cannot
+/// keep the flow, its buffers and its task. An error in either direction ends both.
+pub(super) async fn splice<C, U>(client: &mut C, upstream: &mut U, gate: &Gate) -> io::Result<()>
 where
     C: AsyncRead + AsyncWrite + Unpin + ?Sized,
     U: AsyncRead + AsyncWrite + Unpin + ?Sized,
 {
+    let mut upstream = Gated { gate, io: upstream };
     let (mut client_rd, mut client_wr) = tokio::io::split(client);
-    let (mut upstream_rd, mut upstream_wr) = tokio::io::split(upstream);
+    let (mut upstream_rd, mut upstream_wr) = tokio::io::split(&mut upstream);
     tokio::try_join!(
-        copy_way(&mut client_rd, &mut upstream_wr, drain),
-        copy_way(&mut upstream_rd, &mut client_wr, drain),
+        copy_way(&mut client_rd, &mut upstream_wr),
+        copy_way(&mut upstream_rd, &mut client_wr),
     )
     .map(drop)
 }
 
-/// Copies `rd` to `wr` until `rd`'s FIN, then flushes `wr` and shuts its write side down. The FIN
-/// goes to the drain before the final flush and shutdown, which may block.
-async fn copy_way<R, W>(rd: &mut R, wr: &mut W, drain: &Drain) -> io::Result<()>
+/// Copies `rd` to `wr` until `rd`'s FIN, then flushes `wr` and shuts its write side down.
+async fn copy_way<R, W>(rd: &mut R, wr: &mut W) -> io::Result<()>
 where
     R: AsyncRead + Unpin,
     W: AsyncWrite + Unpin,
@@ -56,19 +57,9 @@ where
         })
         .await?;
         if n == 0 {
-            drain.fin();
             break;
         }
-        drain.moved();
-        let mut rest = &buf[..n];
-        while !rest.is_empty() {
-            let written = wr.write(rest).await?;
-            if written == 0 {
-                return Err(io::ErrorKind::WriteZero.into());
-            }
-            drain.moved();
-            rest = &rest[written..];
-        }
+        wr.write_all(&buf[..n]).await?;
         unflushed = true;
     }
     wr.flush().await?;
@@ -76,19 +67,24 @@ where
 }
 
 #[cfg(test)]
+mod bench;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::stats::meter::Tally;
-    use crate::tunnel::flow::{self, DEPTH, Ends, Event, Key, Waker};
+    use crate::tunnel::flow::{self, DEPTH, Ends, Event, FlowIo, Key, Waker};
+    use crate::tunnel::gate::Task;
     use crate::tunnel::tcp::{DRAIN_DEADLINE, until_given_up};
     use bytes::Bytes;
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst};
+    use std::task::Context;
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, DuplexStream, duplex};
     use tokio::sync::mpsc;
     use tokio::task::JoinHandle;
     use tokio::time::{Instant, sleep_until};
-    use tokio_util::sync::CancellationToken;
 
     /// How late a timer of the paused clock may fire: tokio's timers count whole milliseconds.
     const LATE: Duration = Duration::from_millis(10);
@@ -103,37 +99,36 @@ mod tests {
     fn relay(request: Option<&'static [u8]>) -> (Ends, DuplexStream, Relay) {
         let (events, wakes) = mpsc::unbounded_channel();
         let waker = Waker::new(Key::Udp(0), events);
-        let (mut ends, mut io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE);
+        let (mut ends, mut io) = flow::pair(
+            Arc::clone(&waker),
+            Tally::new(None),
+            DRAIN_DEADLINE,
+            Task::Relay,
+        );
         if let Some(request) = request {
             let up = ends.up.take().unwrap();
             up.try_send(Bytes::from_static(request)).unwrap();
         }
         let (mut upstream, server) = duplex(CHUNK);
-        let drain = io.drain();
-        let cancel = CancellationToken::new();
-        tokio::spawn(keep(Arc::clone(&drain), waker, wakes, cancel.clone()));
+        let gate = io.gate();
+        tokio::spawn(keep(Arc::clone(&gate), waker, wakes));
         let relay = tokio::spawn(async move {
-            until_given_up(&cancel, splice(&mut io, &mut upstream, &drain)).await
+            until_given_up(&gate, splice(&mut io, &mut upstream, &gate)).await
         });
         (ends, server, relay)
     }
 
-    /// The driver's part for one flow, without a stack: woken by the drain, it waits for the
-    /// deadline, and gives the flow up (cancels its task) once that has passed, as
-    /// `Driver::expire_drains` does on `TcpFlow::verdict`.
-    async fn keep(
-        drain: Arc<Drain>,
-        waker: Arc<Waker>,
-        mut wakes: mpsc::UnboundedReceiver<Event>,
-        cancel: CancellationToken,
-    ) {
+    /// The driver's part for one flow, without a stack: woken as the drain begins, it waits for
+    /// the deadline, and gives the flow up once that has passed, as `Driver::expire_drains` does
+    /// on `TcpFlow::verdict`.
+    async fn keep(gate: Arc<Gate>, waker: Arc<Waker>, mut wakes: mpsc::UnboundedReceiver<Event>) {
         loop {
             waker.rearm();
-            if drain.read().expired {
-                cancel.cancel();
+            if gate.read().expired {
+                gate.give_up();
                 return;
             }
-            match drain.deadline() {
+            match gate.deadline() {
                 Some(at) => tokio::select! {
                     () = sleep_until(at) => {}
                     _ = wakes.recv() => {}
@@ -205,7 +200,7 @@ mod tests {
         // What the driver does when the client's FIN arrives behind them.
         drop(up);
         let fin_at = Instant::now();
-        ends.drain.fin();
+        ends.gate.fin();
         let ended = tokio::time::timeout(2 * DRAIN_DEADLINE, relay).await;
         assert!(matches!(ended, Ok(Ok(None))), "{ended:?}");
         let idle = fin_at.elapsed();
@@ -241,7 +236,7 @@ mod tests {
         let (ends, _server, relay) = relay(None);
         tokio::task::yield_now().await;
         // What the driver does when it sees the client's FIN.
-        ends.drain.fin();
+        ends.gate.fin();
         // The process is stopped: the clock jumps before the relay runs.
         tokio::time::advance(2 * DRAIN_DEADLINE).await;
         let ended = tokio::time::timeout(LATE, relay).await;
@@ -249,10 +244,10 @@ mod tests {
     }
 
     /// Data that arrives while the process is stopped past the deadline does not revive the flow:
-    /// the relay may move it before the driver looks, but it counts for nothing.
+    /// the relay, which runs before the driver looks, does not move it.
     #[tokio::test(start_paused = true)]
     async fn data_that_arrives_during_a_stop_does_not_revive_an_expired_flow() {
-        let (_ends, mut server, relay) = relay(Some(b"GET"));
+        let (mut ends, mut server, relay) = relay(Some(b"GET"));
         let mut request = Vec::new();
         server.read_to_end(&mut request).await.unwrap();
         // The process is stopped: the upstream sends, and the clock passes the deadline.
@@ -260,6 +255,11 @@ mod tests {
         tokio::time::advance(2 * DRAIN_DEADLINE).await;
         let ended = tokio::time::timeout(LATE, relay).await;
         assert!(matches!(ended, Ok(Ok(None))), "{ended:?}");
+        assert_eq!(
+            ends.down.recv().await,
+            None,
+            "the late data reached the client"
+        );
     }
 
     /// The driver gives the flow up as the upstream, which had stopped reading, takes what it
@@ -274,13 +274,13 @@ mod tests {
                 Waker::new(Key::Udp(0), events),
                 Tally::new(None),
                 DRAIN_DEADLINE,
+                Task::Relay,
             );
-            let drain = io.drain();
+            let gate = io.gate();
+            let given_up = Arc::clone(&gate);
             let (mut upstream, mut server) = duplex(CHUNK);
-            let cancel = CancellationToken::new();
-            let given_up = cancel.clone();
             let relay = tokio::spawn(async move {
-                until_given_up(&given_up, splice(&mut io, &mut upstream, &drain)).await
+                until_given_up(&gate, splice(&mut io, &mut upstream, &gate)).await
             });
             let up = ends.up.take().unwrap();
             for _ in 0..3 {
@@ -292,12 +292,190 @@ mod tests {
             // The upstream holds one chunk, and the relay waits to write the next.
             let mut held = vec![0; CHUNK];
             server.read_exact(&mut held).await.unwrap();
-            cancel.cancel();
+            given_up.give_up();
             assert!(matches!(relay.await, Ok(None)));
             let mut more = Vec::new();
             server.read_to_end(&mut more).await.unwrap();
             wrote += usize::from(!more.is_empty());
         }
         assert_eq!(wrote, 0, "rounds that wrote after the cancel");
+    }
+
+    /// A stream that runs `hook` as its first read or write starts, in the middle of the relay's
+    /// poll: as if the relay's thread were descheduled there. Once `given_up` is set, it counts
+    /// what it writes in `after`.
+    struct Hooked<T> {
+        io: T,
+        on_read: Option<Box<dyn FnOnce() + Send>>,
+        on_write: Option<Box<dyn FnOnce() + Send>>,
+        given_up: Arc<AtomicBool>,
+        after: Arc<AtomicUsize>,
+    }
+
+    impl<T> Hooked<T> {
+        fn new(io: T) -> Hooked<T> {
+            Hooked {
+                io,
+                on_read: None,
+                on_write: None,
+                given_up: Arc::default(),
+                after: Arc::default(),
+            }
+        }
+    }
+
+    impl<T: AsyncRead + Unpin> AsyncRead for Hooked<T> {
+        fn poll_read(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &mut ReadBuf<'_>,
+        ) -> Poll<io::Result<()>> {
+            let this = self.get_mut();
+            if let Some(hook) = this.on_read.take() {
+                hook();
+            }
+            Pin::new(&mut this.io).poll_read(cx, buf)
+        }
+    }
+
+    impl<T: AsyncWrite + Unpin> AsyncWrite for Hooked<T> {
+        fn poll_write(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            data: &[u8],
+        ) -> Poll<io::Result<usize>> {
+            let this = self.get_mut();
+            if let Some(hook) = this.on_write.take() {
+                hook();
+            }
+            let n = ready!(Pin::new(&mut this.io).poll_write(cx, data))?;
+            if this.given_up.load(SeqCst) {
+                this.after.fetch_add(n, SeqCst);
+            }
+            Poll::Ready(Ok(n))
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            Pin::new(&mut self.get_mut().io).poll_flush(cx)
+        }
+
+        fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            Pin::new(&mut self.get_mut().io).poll_shutdown(cx)
+        }
+    }
+
+    /// The flow's waker, and the driver's end of the wakes it sends.
+    type Wakes = (Arc<Waker>, mpsc::UnboundedReceiver<Event>);
+
+    /// A fresh flow whose client has sent `GET` and keeps its side open, its gate, and its wakes.
+    fn asked() -> (Ends, FlowIo, Arc<Gate>, Wakes) {
+        let (events, woken) = mpsc::unbounded_channel();
+        let waker = Waker::new(Key::Udp(0), events);
+        let pair = flow::pair(
+            Arc::clone(&waker),
+            Tally::new(None),
+            DRAIN_DEADLINE,
+            Task::Relay,
+        );
+        let (ends, io) = pair;
+        let up = ends.up.as_ref().unwrap();
+        up.try_send(Bytes::from_static(b"GET")).unwrap();
+        let gate = io.gate();
+        (ends, io, gate, (waker, woken))
+    }
+
+    /// The relay has passed its cancel check and starts to read the client's request when its
+    /// thread is descheduled; the driver gives the flow up meanwhile. The relay writes nothing of
+    /// the request upstream when it runs again.
+    #[tokio::test(start_paused = true)]
+    async fn a_relay_given_up_as_it_reads_writes_nothing_upstream() {
+        let (_ends, io, gate, _) = asked();
+        let driver = Arc::clone(&gate);
+        let mut client = Hooked::new(io);
+        client.on_read = Some(Box::new(move || {
+            driver.give_up();
+        }));
+        let (mut upstream, mut server) = duplex(CHUNK);
+        let relay = tokio::spawn(async move {
+            until_given_up(&gate, splice(&mut client, &mut upstream, &gate)).await
+        });
+        assert!(matches!(relay.await, Ok(None)));
+        let mut got = Vec::new();
+        server.read_to_end(&mut got).await.unwrap();
+        assert!(
+            got.is_empty(),
+            "wrote {got:?} upstream after the flow was given up"
+        );
+    }
+
+    /// The relay is in the middle of its write upstream when its thread is descheduled; the driver,
+    /// on a thread of its own, gives the flow up meanwhile, and ends it once no poll is in progress
+    /// (as `Driver::stop_tcp`): it waits for nothing, and is woken by the write's end. Nothing
+    /// reaches the upstream once the driver ends the flow.
+    #[tokio::test(start_paused = true)]
+    async fn a_relay_given_up_in_the_middle_of_a_write_writes_nothing_after() {
+        let (_ends, mut io, gate, (waker, mut woken)) = asked();
+        let (near, _server) = duplex(CHUNK);
+        let mut upstream = Hooked::new(near);
+        let (given_up, after) = (Arc::clone(&upstream.given_up), Arc::clone(&upstream.after));
+        let driver = Arc::clone(&gate);
+        upstream.on_write = Some(Box::new(move || {
+            let (done, finished) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                loop {
+                    waker.rearm();
+                    if driver.give_up() {
+                        break;
+                    }
+                    woken.blocking_recv();
+                }
+                given_up.store(true, SeqCst);
+                let _ = done.send(());
+            });
+            // Time for the driver to end the flow, unless it waits for the write's end.
+            let _ = finished.recv_timeout(Duration::from_millis(200));
+        }));
+        let relay = tokio::spawn(async move {
+            until_given_up(&gate, splice(&mut io, &mut upstream, &gate)).await
+        });
+        assert!(matches!(relay.await, Ok(None)));
+        assert_eq!(
+            after.load(SeqCst),
+            0,
+            "bytes written upstream after the give-up"
+        );
+    }
+
+    /// The deadline passes while the driver is descheduled, so nothing gives the flow up: the
+    /// relay, waiting to write upstream, writes nothing when the upstream takes data again.
+    #[tokio::test(start_paused = true)]
+    async fn a_relay_writes_nothing_upstream_after_the_deadline_though_not_given_up() {
+        let (events, _) = mpsc::unbounded_channel();
+        let waker = Waker::new(Key::Udp(0), events);
+        let (mut ends, mut io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE, Task::Relay);
+        let gate = io.gate();
+        let (mut upstream, mut server) = duplex(CHUNK);
+        let relay = tokio::spawn(async move {
+            until_given_up(&gate, splice(&mut io, &mut upstream, &gate)).await
+        });
+        let up = ends.up.take().unwrap();
+        for _ in 0..3 {
+            up.send(Bytes::from(vec![7; CHUNK])).await.unwrap();
+        }
+        drop(up);
+        ends.gate.fin();
+        for _ in 0..8 {
+            tokio::task::yield_now().await;
+        }
+        tokio::time::advance(2 * DRAIN_DEADLINE).await;
+        // The upstream takes the chunk it held: the relay could write the next.
+        let mut held = vec![0; CHUNK];
+        server.read_exact(&mut held).await.unwrap();
+        let late = tokio::time::timeout(LATE, server.read(&mut [0; 1])).await;
+        assert!(
+            late.is_err(),
+            "the relay wrote upstream after the deadline: {late:?}"
+        );
+        relay.abort();
     }
 }

@@ -5,6 +5,7 @@ use super::*;
 use crate::dns::names::{Learned, Names};
 use crate::dns::serve_tcp;
 use crate::dns::tests::{answer_to, query, upstream_with};
+use crate::tunnel::gate::Task;
 use crate::tunnel::route::Route;
 use std::net::IpAddr;
 use tokio::io::AsyncWriteExt;
@@ -26,6 +27,10 @@ struct Driven<'a> {
 impl ToClient for Driven<'_> {
     fn map_with_last_chunk(&mut self, mapping: Mapping) {
         self.io.map_with_last_chunk(mapping);
+    }
+
+    fn resolving(&mut self, bound: Option<Duration>) {
+        self.io.resolving(bound);
     }
 }
 
@@ -72,7 +77,12 @@ async fn an_answer_over_tcp_is_mapped_before_the_driver_takes_its_last_byte() {
     let idle = Duration::from_secs(30);
     let (events, _) = mpsc::unbounded_channel();
     // The key only names the flow in its wakes, which nothing reads here.
-    let (mut ends, io) = pair(Waker::new(Key::Udp(0), events), Tally::new(None), idle);
+    let (mut ends, io) = pair(
+        Waker::new(Key::Udp(0), events),
+        Tally::new(None),
+        idle,
+        Task::Dns,
+    );
     let q = query(5, "race.example", None);
     let mut framed = (q.len() as u16).to_be_bytes().to_vec();
     framed.extend_from_slice(&q);
@@ -92,7 +102,7 @@ async fn an_answer_over_tcp_is_mapped_before_the_driver_takes_its_last_byte() {
     };
     let upstreams = [upstream_with(|q| answer_to(q, 2))];
     let via = (&Route::Direct, &names);
-    serve_tcp(&mut driven, &upstreams, via, idle).await.unwrap();
+    serve_tcp(&mut driven, &upstreams, via).await.unwrap();
     let seen = driven.seen.expect("the driver took the whole answer");
     assert_eq!(
         seen.as_deref(),
@@ -114,6 +124,7 @@ async fn what_an_answer_maps_is_put_as_the_driver_takes_its_last_chunk() {
         Arc::clone(&waker),
         Tally::new(None),
         Duration::from_secs(30),
+        Task::Dns,
     );
     io.map_with_last_chunk(names.bind(Learned::read(&q, &answered).unwrap()));
     io.write_all(&vec![0; 2 * CHUNK + 1]).await.unwrap();
@@ -125,7 +136,7 @@ async fn what_an_answer_maps_is_put_as_the_driver_takes_its_last_chunk() {
     assert_eq!(names.len(), 2);
     // Written, never taken.
     let names = Names::new();
-    let (ends, mut io) = pair(waker, Tally::new(None), Duration::from_secs(30));
+    let (ends, mut io) = pair(waker, Tally::new(None), Duration::from_secs(30), Task::Dns);
     io.map_with_last_chunk(names.bind(Learned::read(&q, &answered).unwrap()));
     io.write_all(b"x").await.unwrap();
     drop(ends);

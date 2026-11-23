@@ -201,34 +201,46 @@ pub(crate) trait ToClient: AsyncRead + AsyncWrite + Unpin {
     /// Has `mapping` put as the driver takes the last chunk of the next write, before that chunk
     /// can leave; dropped with the chunk if the driver never takes it.
     fn map_with_last_chunk(&mut self, mapping: Mapping);
+
+    /// The session waits for the resolver, which gives up within `bound` (`Some`), or no longer.
+    /// Before the client's FIN that wait is not idle up to `bound`, however short the drain.
+    fn resolving(&mut self, bound: Option<Duration>);
 }
 
-/// Answers the framed queries of one TCP/53 connection in turn until the client closes it. A query
-/// that takes `idle` to arrive, or an answer `idle` to be taken, ends it with `TimedOut`, so the
-/// driver resets the client and drops what it still holds for it: a client that sends neither a
-/// query nor its FIN, or never reads, cannot hold the connection or its buffers. Each wait has a
-/// fixed deadline on tokio's monotonic clock, so a late wakeup does not extend it. From the
-/// client's FIN on, the driver also bounds the connection as any flow, answers still queued for the
-/// client included (see `tunnel/drain.rs`). What an answer maps goes to `names` with the answer's
-/// last chunk.
+/// Answers the framed queries of one TCP/53 connection in turn until the client closes it. It has
+/// no timer of its own: the driver resets a connection that moves nothing for its idle time, before
+/// or after the client's FIN, and drops what it still holds for the client (see `tunnel/gate.rs`),
+/// so a client that sends neither a query nor its FIN, or never reads, cannot hold the connection
+/// or its buffers. Each byte of a query read or of an answer written counts as progress there, and
+/// before the client's FIN the wait for the resolver is not idle up to the resolver's own bound,
+/// [`EXCHANGE`] an upstream: the driver cuts a resolver that never returns, as one whose outbound
+/// holds its thread, without it. What an answer maps goes to `names` with the answer's last chunk.
 pub(crate) async fn serve_tcp<S: ToClient>(
     io: &mut S,
     upstreams: &[SocketAddr],
     (route, names): (&Route, &Names),
-    idle: Duration,
 ) -> io::Result<()> {
+    let tries = u32::try_from(upstreams.len()).unwrap_or(u32::MAX);
+    let bound = EXCHANGE.saturating_mul(tries);
     loop {
-        let query = match tokio::time::timeout(idle, read_framed(io)).await? {
+        let query = match read_framed(io).await {
             Ok(q) => q,
             Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
             Err(e) => return Err(e),
         };
-        if let Some(a) = answer(upstreams, route, &query, Network::Tcp).await {
+        io.resolving(Some(bound));
+        #[cfg(test)]
+        crate::tunnel::pause::at(crate::tunnel::pause::Point::Resolving).await;
+        let reply = answer(upstreams, route, &query, Network::Tcp).await;
+        io.resolving(None);
+        if let Some(a) = reply {
+            #[cfg(test)]
+            crate::tunnel::pause::at(crate::tunnel::pause::Point::Answered).await;
             if let Some(learned) = Learned::read(&query, &a) {
                 // The frame is one write, so its last chunk ends the answer.
                 io.map_with_last_chunk(names.bind(learned));
             }
-            tokio::time::timeout(idle, write_framed(io, &a)).await??;
+            write_framed(io, &a).await?;
         }
     }
     io.shutdown().await
@@ -389,68 +401,5 @@ pub(crate) mod tests {
         assert_eq!(skip_name(&[3, b'a'], 0), None);
         assert!(!is_query(&answer_to(&q, 1)));
         assert!(is_query(&q));
-    }
-
-    const IDLE: Duration = Duration::from_secs(30);
-
-    /// No driver takes these streams' chunks, and their answers here are SERVFAIL, which maps
-    /// nothing.
-    impl ToClient for tokio::io::DuplexStream {
-        fn map_with_last_chunk(&mut self, _: Mapping) {}
-    }
-
-    /// Serves `server` with no upstream, so every query is answered SERVFAIL at once.
-    fn served(mut server: tokio::io::DuplexStream) -> tokio::task::JoinHandle<io::Result<()>> {
-        tokio::spawn(async move {
-            let via = (&Route::Direct, &Names::new());
-            serve_tcp(&mut server, &[], via, IDLE).await
-        })
-    }
-
-    /// A client that sends no query and no FIN is cut, as a failure, `IDLE` after its last answer.
-    #[tokio::test(start_paused = true)]
-    async fn a_silent_tcp_client_is_closed_after_the_idle_time() {
-        let (server, mut client) = tokio::io::duplex(4096);
-        let serving = served(server);
-        let begun = tokio::time::Instant::now();
-        // A query within the idle time is answered, and the idle time starts again.
-        tokio::time::sleep(IDLE * 2 / 3).await;
-        write_framed(&mut client, &query(7, "example.com", None))
-            .await
-            .unwrap();
-        assert_eq!(read_framed(&mut client).await.unwrap()[..2], [0, 7]);
-        // Without the bound this waits forever; the timeout turns that into a failure.
-        let ended = tokio::time::timeout(2 * IDLE, serving).await;
-        assert!(
-            matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == ErrorKind::TimedOut),
-            "{ended:?}"
-        );
-        let took = begun.elapsed();
-        assert!(took >= IDLE * 5 / 3, "{took:?}");
-        assert!(took < IDLE * 5 / 3 + Duration::from_millis(10), "{took:?}");
-        assert_eq!(client.read(&mut [0; 1]).await.unwrap(), 0, "closed");
-    }
-
-    /// A client that sends a query and never takes the answer is cut after the idle time too.
-    #[tokio::test(start_paused = true)]
-    async fn a_tcp_client_that_never_reads_is_closed_after_the_idle_time() {
-        // One byte of room each way: the answer cannot leave while the client does not read.
-        let (server, mut client) = tokio::io::duplex(1);
-        let serving = served(server);
-        let begun = tokio::time::Instant::now();
-        write_framed(&mut client, &query(7, "example.com", None))
-            .await
-            .unwrap();
-        let ended = tokio::time::timeout(2 * IDLE, serving).await;
-        assert!(
-            matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == ErrorKind::TimedOut),
-            "{ended:?}"
-        );
-        let took = begun.elapsed();
-        assert!(
-            took >= IDLE && took < IDLE + Duration::from_millis(10),
-            "{took:?}"
-        );
-        drop(client);
     }
 }

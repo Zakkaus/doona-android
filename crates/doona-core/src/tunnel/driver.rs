@@ -7,10 +7,11 @@
 //! The packet loop and its error handling follow crates/honk-android/src/engine.rs.
 
 use super::blocked::Blocked;
-use super::drain::Drains;
 use super::flow::{self, Event, Events, Key, Waker};
+use super::gate::Drains;
+use super::gate::Task;
 use super::route::{Inbound, Route};
-use super::tcp::{self, Step, TcpFlow};
+use super::tcp::{self, Step, Stop, TcpFlow};
 use super::udp::{self, Budget, Nat};
 use super::{Gen, Session, Settings, StartSignal, Tun};
 use crate::dns::names::Learned;
@@ -180,7 +181,7 @@ impl Driver {
         self.accept();
         while let Some((id, ready)) = self.stack.poll_event() {
             if ready.contains(Ready::ERROR) {
-                self.end_tcp(id, Step::Failed);
+                self.stop_tcp(id, Stop::Release);
             } else {
                 self.service_tcp(id);
             }
@@ -281,15 +282,15 @@ impl Driver {
             Event::Wake(Key::Tcp(id)) => self.service_tcp(id),
             Event::Wake(Key::Udp(n)) => return self.service_udp(n, tun),
             Event::Connected(id) => {
-                if let Some(f) = self.tcp.get_mut(&id) {
+                if let Some(f) = self.tcp.get_mut(&id).filter(|f| f.stopping.is_none()) {
                     f.connected = true;
                     if self.stack.tcp_complete(id).is_err() {
-                        self.end_tcp(id, Step::Failed);
+                        self.stop_tcp(id, Stop::Release);
                     }
                 }
             }
-            Event::Finished { id, failed: true } => self.reset_tcp(id),
-            // The clean end is in the flow's drain already.
+            Event::Finished { id, failed: true } => self.stop_tcp(id, Stop::Reset),
+            // The clean end is in the flow's gate already.
             Event::Finished { id, failed: false } => self.service_tcp(id),
             Event::UdpEnded(n) => self.nat.remove(n),
             Event::DnsAnswer {
@@ -350,19 +351,26 @@ impl Driver {
         let meter = dst.and_then(|_| route.meter(&self.gen_.session));
         self.opened += u64::from(dst.is_some());
         let drain = self.settings.tcp_drain;
-        let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(meter), drain);
-        let flow = TcpFlow::new(ends, waker, dst.is_none());
-        let (events, cancel) = (self.events.clone(), flow.cancel.clone());
+        let serves = if dst.is_some() {
+            Task::Relay
+        } else {
+            Task::Dns
+        };
+        let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(meter), drain, serves);
+        let mut flow = TcpFlow::new(ends, waker, dst.is_none());
+        // A drain begun at accept (the core's DNS) is queued now, not at the flow's first event.
+        if let Some(at) = flow.due() {
+            self.drains.push(at, id);
+        }
+        let events = self.events.clone();
         self.dns_flows += usize::from(flow.dns);
         self.tcp.insert(id, flow);
         match dst {
-            Some(dst) => self
-                .gen_
-                .spawn(tcp::dial(io, id, dst, route, events, cancel)),
+            Some(dst) => self.gen_.spawn(tcp::dial(io, id, dst, route, events)),
             None => {
                 let upstreams = Arc::clone(&self.upstreams);
                 let via = (route, Arc::clone(&self.gen_.session));
-                let task = tcp::serve_dns(io, id, via, upstreams, drain, events, cancel);
+                let task = tcp::serve_dns(io, id, via, upstreams, events);
                 self.gen_.spawn(task);
             }
         }
@@ -373,6 +381,10 @@ impl Driver {
             return;
         };
         flow.waker.rearm();
+        // Given up while a poll of its task was in progress: this may be that poll's end.
+        if let Some(how) = flow.stopping {
+            return self.stop_tcp(id, how);
+        }
         let step = flow.pump(&mut self.stack, id, &mut self.scratch);
         self.settle_tcp(id, step);
     }
@@ -386,8 +398,10 @@ impl Driver {
                     self.drains.push(at, id);
                 }
             }
-            Step::Expired => self.reset_tcp(id),
-            step => self.end_tcp(id, step),
+            // The poll in progress wakes the driver as it exits.
+            Step::Busy => {}
+            Step::Expired => self.stop_tcp(id, Stop::Reset),
+            Step::Close | Step::Failed => self.stop_tcp(id, Stop::Release),
         }
     }
 
@@ -418,26 +432,15 @@ impl Driver {
         Some(flow)
     }
 
-    /// Releases a flow whose directions are done, or whose stack side failed.
-    fn end_tcp(&mut self, id: FlowId, step: Step) {
-        if let Some(flow) = self.remove_tcp(id) {
-            if matches!(step, Step::Failed) {
-                flow.cancel.cancel();
-            }
-            self.stack.tcp_close(id);
-        }
-    }
-
-    /// The upstream failed, or the drain ran out: reset the client, or refuse its SYN if it was
-    /// never answered, and end the task if it still runs.
-    fn reset_tcp(&mut self, id: FlowId) {
-        if let Some(flow) = self.remove_tcp(id) {
-            flow.cancel.cancel();
-            if flow.connected {
-                self.stack.tcp_abort(id);
-            } else {
-                self.stack.tcp_refuse(id, Refuse::Rst);
-            }
+    /// Gives a flow up and ends it `how` (see `TcpFlow::stop`): released when its directions are
+    /// done or its stack side failed; reset (its SYN refused, if never answered) when its upstream
+    /// failed or its drain ran out. At once, or when the poll of its task in progress ends and wakes
+    /// the driver: the driver never waits for a poll.
+    fn stop_tcp(&mut self, id: FlowId, how: Stop) {
+        if self.tcp.get_mut(&id).is_some_and(|flow| flow.stop(how))
+            && let Some(flow) = self.remove_tcp(id)
+        {
+            flow.end(&mut self.stack, id);
         }
     }
 
