@@ -2,9 +2,7 @@ package dev.doona.android.prototype.rv.policy
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.selection.selectable
@@ -24,10 +22,10 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAlpha
-import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
+import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRadio
 import dev.doona.android.prototype.rv.RvRow
@@ -54,15 +52,14 @@ internal fun RvTemplatePage(
     onReview: () -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val title = stringResource(R.string.rv_policy_template)
     RvScrollPage(
-        stringResource(R.string.rv_policy_template),
+        title,
         insets,
         onBack = onBack,
-        compact = true,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_template_review), onReview, enabled = selected.id != current.id) },
-    ) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSpace.gutter))
+    ) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
         RvGutter {
             RvCard { RvTemplateData.all.forEach { TemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
         }
@@ -91,15 +88,14 @@ private fun TemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean,
 @Composable
 internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val title = stringResource(R.string.rv_template_review)
     RvScrollPage(
-        stringResource(R.string.rv_template_review),
+        title,
         insets,
         onBack = onBack,
-        compact = true,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply) },
-    ) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSpace.gutter))
+    ) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
         RvGutter { SummaryCard(impact) }
         RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { RvCard { impact.groups.forEach { ImpactGroupRow(it) } } }

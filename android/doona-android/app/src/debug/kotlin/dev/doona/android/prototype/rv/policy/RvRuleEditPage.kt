@@ -25,12 +25,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
+import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvMenu
 import dev.doona.android.prototype.rv.RvMenuItem
 import dev.doona.android.prototype.rv.RvPrimaryButton
@@ -82,7 +82,7 @@ private val CIDR = Regex("""(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d|[12]\
 private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")
 
 /**
- * A rule's page (全部規則 → a rule), in the quick rule's grammar: the compact title; 比對 as a chip that opens the six
+ * A rule's page (全部規則 → a rule), in the quick rule's grammar: the large title; 比對 as a chip that opens the six
  * kinds in a menu, then the value in the library's text field with what the rule covers, or what is wrong with the
  * value, under it (no value for GEOIP CN and private ranges); 送往, the quick rule's list; a card with 啟用 and 刪除規則,
  * which asks first; and 套用 floating at the bottom, off while the value is wrong.
@@ -91,15 +91,15 @@ private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")
 internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit, onBack: () -> Unit, onApply: () -> Unit, onDelete: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var confirming by rememberSaveable { mutableStateOf(false) }
+    val title = stringResource(R.string.rv_rule_edit_title)
     RvScrollPage(
-        stringResource(R.string.rv_rule_edit_title),
+        title,
         insets,
         onBack = onBack,
-        compact = true,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = draft.problem == null) },
-    ) {
-        RvBarSpacer(insets)
-        RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter))
+    ) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
+        RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter), first = true)
         MatchFields(draft, onChange)
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {

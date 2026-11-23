@@ -113,15 +113,15 @@ class RvRulesShotTest {
         const val WHOLE_RULES = "+h1679dp"
         const val WHOLE_EDIT = "+h1415dp"
         const val WHOLE_PENDING = "+h1969dp"
-        const val WHOLE_IMPACT = "+h1405dp"
-        const val WHOLE_EDIT_RULE = "+h1049dp"
-        const val WHOLE_ERROR_RULE = "+h1094dp"
+        const val WHOLE_IMPACT = "+h1447dp"
+        const val WHOLE_EDIT_RULE = "+h1093dp"
+        const val WHOLE_ERROR_RULE = "+h1121dp"
 
         /** github.com, the second of the user's rules. */
         const val GITHUB = 5
 
         /** Telegram's range with a prefix past /32: the field says how to write it, and 套用 is off. */
         val BAD_RANGE = RvRuleDraft(RvMatchKind.Cidr, "91.108.56.0/33", "main")
-        const val WHOLE_EFFECTIVE = "+h2065dp"
+        const val WHOLE_EFFECTIVE = "+h2098dp"
     }
 }

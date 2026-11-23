@@ -33,7 +33,7 @@ import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvControlCard
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
-import dev.doona.android.prototype.rv.RvPageTop
+import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRadio
 import dev.doona.android.prototype.rv.RvRow
@@ -50,7 +50,7 @@ import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * The quick rule, opened from a connection (doona web's one rule dialog, Karing's 選擇分流類型), in node detail's
- * grammar: the compact title beside the back disc; the connection as a key-stats card, with the rule it matched and the
+ * grammar: the large title; the connection as a key-stats card, with the rule it matched and the
  * node it went through; how the new rule matches, with what that choice covers; where it sends, the groups drawn as 活動
  * draws a destination; where it goes in the list, before the rule that matched; and 套用 floating at the bottom.
  */
@@ -63,14 +63,14 @@ internal fun RvPolicyRulePage(
     onApply: () -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val title = stringResource(R.string.rv_policy_new_rule)
     RvScrollPage(
-        stringResource(R.string.rv_policy_new_rule),
+        title,
         insets,
         onBack = onBack,
-        compact = true,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply) },
-    ) {
-        RvPageTop(insets)
+    ) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
         RvGutter { ConnectionCard(connection) }
         RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter))
         MatchBy(connection.host, rule.matchBy) { onChange(rule.copy(matchBy = it)) }
