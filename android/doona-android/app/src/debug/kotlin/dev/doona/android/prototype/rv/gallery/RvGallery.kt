@@ -39,11 +39,14 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvSubscription
+import dev.doona.android.prototype.rv.states.RvActivityNotice
+import dev.doona.android.prototype.rv.states.rvActivityBanner
+import dev.doona.android.prototype.rv.subs.rvFailedBanner
 import dev.doona.android.prototype.rv.subs.rvSubscriptionMenu
 
 /**
  * The library's new parts in one page, for the owner to try on a phone (route `gallery`): the text field in its states,
- * subscription rows whose long press opens the menu, the error banner, the empty state, the loading skeleton, and the
+ * subscription rows whose long press opens the menu, the banner in its three kinds, the empty state, the loading skeleton, and the
  * confirm sheet behind a button. The goldens draw the same parts.
  */
 @Composable
@@ -102,19 +105,13 @@ internal fun RvGalleryMenuCard(onDelete: (RvSubscription) -> Unit = {}) {
     }
 }
 
-/** The banner for a subscription that did not update, for no network, and for a VPN another app took. */
+/** The banner in each of its kinds: a subscription that did not update (error), no network (warning), a crash's log (info). */
 @Composable
 internal fun RvGalleryBanners() {
     val sub = RvData.subscriptions.first()
     Column(verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap)) {
-        RvBanner(
-            stringResource(R.string.rv_sub_failed_title, sub.name),
-            pluralStringResource(R.plurals.rv_sub_failed_reason, sub.nodes, sub.nodes),
-            stringResource(R.string.rv_retry),
-            {},
-        )
-        RvBanner(stringResource(R.string.rv_offline), stringResource(R.string.rv_offline_reason), stringResource(R.string.rv_network_settings), {}, icon = R.drawable.rv_sym_wifi_off)
-        RvBanner(stringResource(R.string.rv_vpn_taken), stringResource(R.string.rv_vpn_taken_reason), stringResource(R.string.rv_reconnect), {}, icon = R.drawable.rv_sym_power)
+        RvBanner(rvFailedBanner(sub) {})
+        listOf(RvActivityNotice.Offline, RvActivityNotice.Crash).forEach { notice -> rvActivityBanner(notice) {}?.let { RvBanner(it) } }
     }
 }
 

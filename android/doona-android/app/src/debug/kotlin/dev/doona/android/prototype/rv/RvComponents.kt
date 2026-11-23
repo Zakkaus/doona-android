@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -429,34 +430,54 @@ internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style:
 }
 
 /**
- * A notice card, as Revolut's notice card with a button (revolut-ux3 §3): 16 dp padding on every side; a row's 40 dp
- * disc with the notice's glyph in ink, its top on the title's line; the [title] over its [reason] (wrapping, in
- * secondary ink) 16 dp after the disc; then, [RvSpace.noticeToAction] under the text, the one [action] as the
- * full-width secondary pill. No hue anywhere: Revolut's notice is neutral, and the owner ruled out a red glyph over a
- * teal action (2026-11-23). A screen reader announces it when it appears.
+ * What a banner says, by kind; the kind alone picks the glyph, so every banner of a kind looks the same. [Error]: an
+ * action failed or a part stopped (a failed switch, save, export, import or update; the core stopped; every node failed).
+ * [Warning]: something outside doona stops traffic (no network, another app's VPN). [Info]: nothing is broken now, the
+ * banner offers something (the log of an earlier crash). The glyphs are the log levels' on 回報問題.
+ */
+internal enum class RvNoticeKind(@DrawableRes val glyph: Int) {
+    Error(R.drawable.rv_sym_error),
+    Warning(R.drawable.rv_nodes_ic_warning),
+    Info(R.drawable.rv_sym_info),
+}
+
+/** One banner: its [kind], the [title] over its [reason], and the one [action] that [onAction] runs. */
+@Immutable
+internal class RvNotice(val kind: RvNoticeKind, val title: String, val reason: String, val action: String, val onAction: () -> Unit)
+
+/**
+ * The one banner of the RV pages, as Revolut's notice card with a button (revolut-ux3 §3): 16 dp padding on every side;
+ * a row's 40 dp disc with its kind's glyph in ink, its top on the title's line; the title over its reason (wrapping, in
+ * secondary ink) 16 dp after the disc; then, [RvSpace.noticeToAction] under the text, the one action as the full-width
+ * secondary pill. No hue anywhere: Revolut's notice is neutral, and the owner ruled out a red glyph over a teal action
+ * (2026-11-23). A screen reader announces it when it appears. A page places it with [RvBannerSlot] (or [RvGutter]'s
+ * `banner`), never by itself.
  */
 @Composable
-internal fun RvBanner(
-    title: String,
-    reason: String,
-    action: String,
-    onAction: () -> Unit,
-    modifier: Modifier = Modifier,
-    @DrawableRes icon: Int = R.drawable.rv_sym_error,
-) {
+internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
     RvCard(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Column(Modifier.fillMaxWidth().padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.noticeToAction)) {
             Row(Modifier.fillMaxWidth()) {
-                RvIconDisc(icon, glyph = RvSize.noticeGlyph)
+                RvIconDisc(notice.kind.glyph, glyph = RvSize.noticeGlyph)
                 Spacer(Modifier.width(RvSpace.rowGap))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-                    RvText(title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
-                    RvText(reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
+                    RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
+                    RvText(notice.reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
                 }
             }
-            RvSecondaryButton(action, onAction)
+            RvSecondaryButton(notice.action, notice.onAction)
         }
     }
+}
+
+/**
+ * Where a page's banner sits, the same on every page: first in the page's body, right under its header (活動's hero
+ * and actions, a large title, the tab's header, the picker's title and caption), so it takes the place of the first
+ * card, on the gutter, [RvSpace.cardGap] over what follows. Nothing without a [banner].
+ */
+@Composable
+internal fun RvBannerSlot(banner: RvNotice?) {
+    if (banner != null) RvBanner(banner, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.cardGap))
 }
 
 /**
@@ -502,9 +523,13 @@ internal fun RvFootnote(text: String, modifier: Modifier = Modifier, inset: Dp =
     RvText(text, Rv.type.rowSub, modifier.then(pad), color = Rv.colors.textSecondary, maxLines = FOOTNOTE_LINES)
 }
 
+/** A page's body: its cards on the gutter, [RvSpace.cardGap] apart, under the page's [banner] in [RvBannerSlot]. */
 @Composable
-internal fun RvGutter(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap), content = content)
+internal fun RvGutter(modifier: Modifier = Modifier, banner: RvNotice? = null, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxWidth()) {
+        RvBannerSlot(banner)
+        Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap), content = content)
+    }
 }
 
 internal const val RV_NO_VALUE = "—"

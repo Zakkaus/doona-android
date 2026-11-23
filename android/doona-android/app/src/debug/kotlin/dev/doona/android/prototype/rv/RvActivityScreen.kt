@@ -76,8 +76,9 @@ import kotlinx.coroutines.launch
  * download and upload as two of Revolut's square home tiles (either opens the traffic page), and three more cards as
  * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
  * floating glass bottom bar (§9), which shrinks while the content scrolls up. It renders [ActivityUiState]; the engine
- * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. A [notice] (a banner) heads
- * the cards; with [noticeOnly] (the empty state) it stands in their place. While [loading] (before the engine is ready)
+ * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. A [banner] heads the cards
+ * ([RvGutter]'s slot); with no subscription, [noSubscription] puts the empty state with 新增訂閱 (which runs it) in their
+ * place, as on 策略. While [loading] (before the engine is ready)
  * the hero's three lines and the cards are skeletons of themselves ([RvSkeletonHero], [ActivitySkeleton]), and the
  * content fades in over them in place; the map, the actions, the bar and the nav are there from the start.
  */
@@ -92,8 +93,8 @@ internal fun RvActivityScreen(
     subscriptions: List<RvSubscription> = RvData.subscriptions,
     pull: RvPullLook = RvPullLook.None,
     hero: RvHeroSwipe = RvHeroSwipe.Off,
-    notice: (@Composable () -> Unit)? = null,
-    noticeOnly: Boolean = false,
+    banner: RvNotice? = null,
+    noSubscription: (() -> Unit)? = null,
     loading: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -118,9 +119,15 @@ internal fun RvActivityScreen(
             // The pull blurs and fades the page; the bars stay sharp, so the search pill, the picker's anchor, can grow.
             Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
                 Header(steady, ticking, mode, motion, insets, look) { HeroActions(steady, onAction, onConnect, routes.test) }
-                RvGutter(pushed ?: Modifier) {
-                    notice?.invoke()
-                    if (!noticeOnly) {
+                RvGutter(pushed ?: Modifier, banner) {
+                    if (noSubscription != null) {
+                        RvEmptyState(
+                            stringResource(R.string.rv_empty_subscription),
+                            stringResource(R.string.rv_empty_subscription_line),
+                            stringResource(R.string.rv_add_subscription),
+                            noSubscription,
+                        )
+                    } else {
                         RvSkeletonCards(loading, { ActivitySkeleton() }) {
                             OutboundCard(steady, mode, routes, nodes)
                             TrafficTiles(state, routes.traffic)

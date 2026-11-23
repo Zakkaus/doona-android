@@ -15,12 +15,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvProgress
 import dev.doona.android.prototype.rv.RvRow
@@ -98,17 +99,8 @@ internal fun RvSubAdd(
         },
     ) { titleBlock ->
         RvLargeTitle(stringResource(R.string.rv_add_subscription), titleBlock, insets)
-        RvGutter {
-            when (phase) {
-                is RvAddPhase.Done -> Imported(phase.sub)
-
-                is RvAddPhase.Failed -> {
-                    Failure(phase.failure, onImport)
-                    Form(state, onChange, onPaste)
-                }
-
-                else -> Form(state, onChange, onPaste)
-            }
+        RvGutter(banner = (phase as? RvAddPhase.Failed)?.let { failure(it.failure, onImport) }) {
+            if (phase is RvAddPhase.Done) Imported(phase.sub) else Form(state, onChange, onPaste)
         }
     }
     RvLanSheet(state.lan, onLanConfirm, onDismiss = { onChange(state.copy(lan = null)) })
@@ -163,14 +155,15 @@ private fun Imported(sub: RvSubscription) {
     }
 }
 
+/** A failed import, an error, over the form: why, and 重試 importing again. */
 @Composable
-private fun Failure(failure: RvAddFailure, onRetry: () -> Unit) {
+private fun failure(failure: RvAddFailure, onRetry: () -> Unit): RvNotice {
     val reason = when (failure) {
         RvAddFailure.Unreachable -> stringResource(R.string.rv_add_unreachable)
         RvAddFailure.NotSubscription -> stringResource(R.string.rv_add_not_subscription_reason)
         RvAddFailure.TooLarge -> stringResource(R.string.rv_add_too_large, RV_MAX_BODY)
     }
-    RvBanner(stringResource(R.string.rv_add_failed), reason, stringResource(R.string.rv_retry), onRetry)
+    return RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_add_failed), reason, stringResource(R.string.rv_retry), onRetry)
 }
 
 /**

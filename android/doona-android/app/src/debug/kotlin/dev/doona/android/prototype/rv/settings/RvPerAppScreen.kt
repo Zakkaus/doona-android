@@ -24,13 +24,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RvAppDisc
-import dev.doona.android.prototype.rv.RvBanner
+import dev.doona.android.prototype.rv.RvBannerSlot
 import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvEmptyCaption
 import dev.doona.android.prototype.rv.RvFieldMessage
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.RvPart
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
@@ -78,8 +80,12 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
         bottomAction = { RvPrimaryButton(stringResource(R.string.perapp_save), actions.save, enabled = state.canSave) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
+        RvBannerSlot(failure(state, actions))
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
-            Status(state, actions)
+            if (state.save == RvSave.Saving) {
+                RvCard { BusyRow(stringResource(R.string.rv_perapp_saving)) }
+                Spacer(Modifier.height(RvSpace.cardGap))
+            }
             // The policies and the error under them are one block of the column, as a field and its message are.
             Column(Modifier.testTag(RvPart.BLOCK)) {
                 RvSettingsCard {
@@ -97,21 +103,16 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
     }
 }
 
-/** The save's state over the policies, followed by a card's gap: under way, failed, or stored without a tunnel. */
+/** A failed save, or one stored whose tunnel would not come back: errors, with 重試 saving or reconnecting again. */
 @Composable
-private fun Status(state: RvPerAppState, actions: RvPerAppActions) {
-    when {
-        state.save == RvSave.Saving -> RvCard { BusyRow(stringResource(R.string.rv_perapp_saving)) }
-
-        state.save == RvSave.Failed ->
-            RvBanner(stringResource(R.string.rv_perapp_save_failed), stringResource(R.string.rv_report_failed_reason), stringResource(R.string.rv_retry), actions.save)
-
-        state.rebuildFailed ->
-            RvBanner(stringResource(R.string.rv_perapp_rebuild_failed), stringResource(R.string.vpn_failure_start_failed), stringResource(R.string.rv_retry), actions.reconnect)
-
-        else -> return
+private fun failure(state: RvPerAppState, actions: RvPerAppActions): RvNotice? {
+    val (title, reason, retry) = when {
+        state.save == RvSave.Saving -> return null
+        state.save == RvSave.Failed -> Triple(R.string.rv_perapp_save_failed, R.string.rv_report_failed_reason, actions.save)
+        state.rebuildFailed -> Triple(R.string.rv_perapp_rebuild_failed, R.string.vpn_failure_start_failed, actions.reconnect)
+        else -> return null
     }
-    Spacer(Modifier.height(RvSpace.cardGap))
+    return RvNotice(RvNoticeKind.Error, stringResource(title), stringResource(reason), stringResource(R.string.rv_retry), retry)
 }
 
 /**

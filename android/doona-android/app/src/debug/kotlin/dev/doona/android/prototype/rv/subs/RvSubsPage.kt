@@ -19,7 +19,6 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.LocalRvUpdating
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
@@ -32,6 +31,8 @@ import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLongPressMenu
 import dev.doona.android.prototype.rv.RvMenuItem
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvProgress
 import dev.doona.android.prototype.rv.RvRow
@@ -83,9 +84,11 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
     val updateAll: (@Composable (RvGlass) -> Unit)? =
         if (empty) null else ({ RvGlassButton(it, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) })
     val add: (@Composable () -> Unit)? = if (empty) null else ({ RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) })
+    // A failed update's banner waits for the cards: while they load it is not known yet.
+    val failed = state.subscriptions.firstOrNull { it.id == state.failedId }?.takeUnless { loading }?.let { rvFailedBanner(it) { actions.update(it.id) } }
     RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter {
+        RvGutter(banner = failed) {
             if (empty) {
                 RvEmptyState(
                     stringResource(R.string.rv_empty_subscription),
@@ -95,7 +98,6 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
                 )
             } else {
                 RvSkeletonCards(loading, { SubsSkeleton() }) {
-                    state.subscriptions.firstOrNull { it.id == state.failedId }?.let { FailedBanner(it) { actions.update(it.id) } }
                     state.subscriptions.forEach { SubscriptionCard(it, actions) }
                 }
             }
@@ -113,16 +115,15 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
     )
 }
 
-/** The banner of a subscription whose last update failed: it keeps its last nodes, and 重試 updates it again. */
+/** The banner of a subscription whose last update failed, an error: it keeps its last nodes, and 重試 updates it again. */
 @Composable
-internal fun FailedBanner(sub: RvSubscription, onRetry: () -> Unit) {
-    RvBanner(
-        stringResource(R.string.rv_sub_failed_title, sub.name),
-        pluralStringResource(R.plurals.rv_sub_failed_reason, sub.nodes, sub.nodes),
-        stringResource(R.string.rv_retry),
-        onRetry,
-    )
-}
+internal fun rvFailedBanner(sub: RvSubscription, onRetry: () -> Unit) = RvNotice(
+    RvNoticeKind.Error,
+    stringResource(R.string.rv_sub_failed_title, sub.name),
+    pluralStringResource(R.plurals.rv_sub_failed_reason, sub.nodes, sub.nodes),
+    stringResource(R.string.rv_retry),
+    onRetry,
+)
 
 /** A subscription: its row, with a busy bar before the chevron while it updates ([LocalRvUpdating], as the node picker's row), then its use. */
 @Composable

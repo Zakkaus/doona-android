@@ -41,6 +41,7 @@ import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLatencyChange
+import dev.doona.android.prototype.rv.RvNotice
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSearchPill
@@ -96,7 +97,7 @@ internal class RvPolicyRoutes(
  * With no subscription there is nothing to route: [noSubscription], when set, puts the empty state with 新增訂閱 (which
  * runs it) in place of the cards, as 活動 does; the bar and the nav stay. While [loading] (before the engine is ready)
  * the cards are skeletons of the mode card, the main node's and the groups' ([PolicySkeleton]), and the cards fade in
- * over them in place.
+ * over them in place. A [banner] (a failed action: a mode switch) heads the cards in [RvGutter]'s slot.
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -105,6 +106,7 @@ internal fun RvPolicyScreen(
     routes: RvPolicyRoutes = RvPolicyRoutes(),
     noSubscription: (() -> Unit)? = null,
     loading: Boolean = false,
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -126,7 +128,7 @@ internal fun RvPolicyScreen(
     ) {
         RvTabHeader(insets)
         // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
-        RvGutter {
+        RvGutter(banner = banner) {
             if (noSubscription != null) {
                 RvEmptyState(
                     stringResource(R.string.rv_empty_subscription),

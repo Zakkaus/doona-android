@@ -21,12 +21,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvMenuAnchor
 import dev.doona.android.prototype.rv.RvMenuItem
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvTheme
@@ -56,10 +57,12 @@ internal fun RvReportScreen(level: RvLogLevel, export: RvExport, onLevel: (RvLog
     val title = stringResource(R.string.rv_report_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter {
-            if (export == RvExport.Failed) {
-                RvBanner(stringResource(R.string.rv_report_failed), stringResource(R.string.rv_report_failed_reason), stringResource(R.string.rv_retry), onExport)
-            }
+        val failed = if (export == RvExport.Failed) {
+            RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_report_failed), stringResource(R.string.rv_report_failed_reason), stringResource(R.string.rv_retry), onExport)
+        } else {
+            null
+        }
+        RvGutter(banner = failed) {
             RvSettingsCard {
                 LevelRow(level, onLevel)
                 ExportRow(export, onExport)

@@ -69,6 +69,7 @@ import dev.doona.android.prototype.rv.LocalRvUpdating
 import dev.doona.android.prototype.rv.RV_NO_VALUE
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBackDisc
+import dev.doona.android.prototype.rv.RvBannerSlot
 import dev.doona.android.prototype.rv.RvBar
 import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCaption
@@ -84,6 +85,7 @@ import dev.doona.android.prototype.rv.RvLatencyChange
 import dev.doona.android.prototype.rv.RvLongPressTiming
 import dev.doona.android.prototype.rv.RvMenuAnchor
 import dev.doona.android.prototype.rv.RvMotion
+import dev.doona.android.prototype.rv.RvNotice
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvSearchField
@@ -119,7 +121,8 @@ internal const val RV_PICKER = "rv-picker"
  * away and come back. [section] gives the n-th section (0 the bar, 1 the title, then each group) its modifier, for P3's
  * staggered drop; [stretch] moves the list down by that many pixels while a pull at its top would close the picker. As
  * the [searchPage] (brief rv-gestures G7) its field is the search pill's, and the keyboard comes up once the page has
- * arrived.
+ * arrived. A [banner] (a failed action: a node switch) stands under the title and its caption, in [RvBannerSlot], and
+ * drops with them.
  */
 @Composable
 internal fun RvNodePicker(
@@ -132,6 +135,7 @@ internal fun RvNodePicker(
     section: (Int) -> Modifier = { Modifier },
     stretch: () -> Float = { 0f },
     searchPage: Boolean = false,
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val focus = remember { FocusRequester() }
@@ -161,6 +165,7 @@ internal fun RvNodePicker(
             Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll).graphicsLayer { translationY = stretch() }) {
                 Column(section(1)) {
                     RvPageHeader(stringResource(R.string.rv_nodes_title), Modifier, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) })
+                    RvBannerSlot(banner)
                 }
                 var first = 0
                 subscriptions.forEachIndexed { i, sub ->

@@ -1,13 +1,14 @@
 package dev.doona.android.prototype.rv.states
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityUiState
-import dev.doona.android.prototype.rv.RvBanner
-import dev.doona.android.prototype.rv.RvEmptyState
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.rvIdleActivity
 
 /**
@@ -40,44 +41,32 @@ internal fun rvNoticeActivity(notice: RvActivityNotice): ActivityUiState {
 }
 
 /**
- * The notice's card: the empty state with 新增訂閱, or a banner with its reason and one action ([onAction]): 重新測試,
- * 重新連線, 網路設定 or 匯出報告. Each banner keeps the error glyph but VPN (its power glyph) and the network (Wi-Fi off).
+ * The notice's banner, with one action ([onAction]): 重新測試, 重新連線, 網路設定 or 匯出報告; none with no subscription,
+ * where 活動 shows the empty state instead. Its kind picks its glyph: the core stopping and every node failing are errors;
+ * another app's VPN and no network, outside doona, warnings; the crash's log, past and nothing broken now, info.
  */
 @Composable
-internal fun RvActivityNoticeCard(notice: RvActivityNotice, onAction: () -> Unit) {
-    when (notice) {
-        RvActivityNotice.NoSubscription -> RvEmptyState(
-            stringResource(R.string.rv_empty_subscription),
-            stringResource(R.string.rv_empty_subscription_line),
-            stringResource(R.string.rv_add_subscription),
-            onAction,
-        )
-
-        RvActivityNotice.NoNode -> RvBanner(stringResource(R.string.rv_no_node), stringResource(R.string.rv_no_node_reason), stringResource(R.string.rv_retest), onAction)
-
-        RvActivityNotice.VpnTaken -> RvBanner(
-            stringResource(R.string.rv_vpn_taken),
-            stringResource(R.string.rv_vpn_taken_reason),
-            stringResource(R.string.rv_reconnect),
-            onAction,
-            icon = R.drawable.rv_sym_power,
-        )
-
-        RvActivityNotice.Offline -> RvBanner(
-            stringResource(R.string.rv_offline),
-            stringResource(R.string.rv_offline_reason),
-            stringResource(R.string.rv_network_settings),
-            onAction,
-            icon = R.drawable.rv_sym_wifi_off,
-        )
-
-        RvActivityNotice.CoreStopped -> RvBanner(
-            stringResource(R.string.rv_core_stopped),
-            stringResource(R.string.rv_core_stopped_reason),
-            stringResource(R.string.rv_reconnect),
-            onAction,
-        )
-
-        RvActivityNotice.Crash -> RvBanner(stringResource(R.string.rv_crash), stringResource(R.string.rv_crash_reason), stringResource(R.string.rv_crash_export), onAction)
+internal fun rvActivityBanner(notice: RvActivityNotice, onAction: () -> Unit): RvNotice? {
+    val (kind, title, reason, action) = when (notice) {
+        RvActivityNotice.NoSubscription -> return null
+        RvActivityNotice.NoNode -> Words(RvNoticeKind.Error, R.string.rv_no_node, R.string.rv_no_node_reason, R.string.rv_retest)
+        RvActivityNotice.VpnTaken -> Words(RvNoticeKind.Warning, R.string.rv_vpn_taken, R.string.rv_vpn_taken_reason, R.string.rv_reconnect)
+        RvActivityNotice.Offline -> Words(RvNoticeKind.Warning, R.string.rv_offline, R.string.rv_offline_reason, R.string.rv_network_settings)
+        RvActivityNotice.CoreStopped -> Words(RvNoticeKind.Error, R.string.rv_core_stopped, R.string.rv_core_stopped_reason, R.string.rv_reconnect)
+        RvActivityNotice.Crash -> Words(RvNoticeKind.Info, R.string.rv_crash, R.string.rv_crash_reason, R.string.rv_crash_export)
     }
+    return RvNotice(kind, stringResource(title), stringResource(reason), stringResource(action), onAction)
 }
+
+/** A failed action's title (pv-d M8): 策略's mode switch, a node switch in a picker. */
+internal enum class RvActionFailed(@StringRes val title: Int) {
+    SwitchMode(R.string.rv_failed_switch_mode),
+    SwitchNode(R.string.rv_failed_switch_node),
+}
+
+/** The banner a failed [action] leaves where it happened: what failed over the engine's own [reason], and 重試 ([onRetry]). */
+@Composable
+internal fun rvActionFailedBanner(action: RvActionFailed, @StringRes reason: Int, onRetry: () -> Unit) =
+    RvNotice(RvNoticeKind.Error, stringResource(action.title), stringResource(reason), stringResource(R.string.rv_retry), onRetry)
+
+private data class Words(val kind: RvNoticeKind, @StringRes val title: Int, @StringRes val reason: Int, @StringRes val action: Int)
