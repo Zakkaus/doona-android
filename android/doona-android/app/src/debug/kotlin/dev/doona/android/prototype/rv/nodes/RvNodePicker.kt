@@ -71,6 +71,7 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBackDisc
 import dev.doona.android.prototype.rv.RvBar
 import dev.doona.android.prototype.rv.RvBusy
+import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvChrome
@@ -79,11 +80,11 @@ import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvFrames
 import dev.doona.android.prototype.rv.RvGlyph
 import dev.doona.android.prototype.rv.RvIconDisc
-import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLatencyChange
 import dev.doona.android.prototype.rv.RvLongPressTiming
 import dev.doona.android.prototype.rv.RvMenuAnchor
 import dev.doona.android.prototype.rv.RvMotion
+import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvSearchField
 import dev.doona.android.prototype.rv.RvSize
@@ -110,14 +111,15 @@ import kotlinx.coroutines.flow.first
 internal const val RV_PICKER = "rv-picker"
 
 /**
- * The node picker 活動's pull-down opens (ARCH D30), built from the 節點 page's parts: the bar holds the back disc and
- * the search pill as a field; under the large title, one card per subscription, its 訂閱 row (usage and end date, which
- * opens and closes the group) over its nodes in 節點's rows, the [currentId] node's flag checked. A tap on a node picks it
- * ([onPick]: the caller switches and closes); a long press or the row's info mark opens its page ([onDetail]). Typing
- * filters by name, code, protocol or place; rows and groups that stop matching fold away and come back. [section] gives
- * the n-th section (0 the bar, 1 the title, then each group) its modifier, for P3's staggered drop; [stretch] moves the
- * list down by that many pixels while a pull at its top would close the picker. As the [searchPage] (brief rv-gestures
- * G7) its field is the search pill's, and the keyboard comes up once the page has arrived.
+ * The node picker 活動's pull-down opens (ARCH D30), built from the 節點 page's parts: the bar holds the back disc and the
+ * search pill as a field; under the large title and its caption ([RvPageHeader]), one card per subscription, its 訂閱 row
+ * (usage and end date, which opens and closes the group) over its nodes in 節點's rows, the [currentId] node's flag
+ * checked. A tap on a node picks it ([onPick]: the caller switches and closes); a long press or the row's info mark
+ * opens its page ([onDetail]). Typing filters by name, code, protocol or place; rows and groups that stop matching fold
+ * away and come back. [section] gives the n-th section (0 the bar, 1 the title, then each group) its modifier, for P3's
+ * staggered drop; [stretch] moves the list down by that many pixels while a pull at its top would close the picker. As
+ * the [searchPage] (brief rv-gestures G7) its field is the search pill's, and the keyboard comes up once the page has
+ * arrived.
  */
 @Composable
 internal fun RvNodePicker(
@@ -158,8 +160,7 @@ internal fun RvNodePicker(
             // A pull down at the top, which closes the picker, moves the list under the bar with the finger.
             Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll).graphicsLayer { translationY = stretch() }) {
                 Column(section(1)) {
-                    RvLargeTitle(stringResource(R.string.rv_nodes_title), Modifier, insets)
-                    RvText(stringResource(R.string.rv_main_node_hint), Rv.type.rowSub, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.subGap * 2), color = Rv.colors.textSecondary)
+                    RvPageHeader(stringResource(R.string.rv_nodes_title), Modifier, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) })
                 }
                 var first = 0
                 subscriptions.forEachIndexed { i, sub ->
