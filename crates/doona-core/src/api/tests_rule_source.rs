@@ -266,10 +266,10 @@ fn the_effective_config_text_ends_at_a_line_boundary_past_its_cap() {
             std::sync::Arc::clone(&c.model.policy),
         )
     };
-    let full = effective(catalog.clone(), &policy, &[], usize::MAX);
+    let full = effective(catalog.clone(), &policy, &[], &[], usize::MAX);
     assert!(!full.truncated);
     let cap = full.text.len() / 2;
-    let cut = effective(catalog, &policy, &[], cap);
+    let cut = effective(catalog, &policy, &[], &[], cap);
     assert!(cut.truncated && cut.text.len() <= cap);
     assert!(cut.text.ends_with('\n') && full.text.starts_with(&cut.text));
     assert!(full.text.len() > cut.text.len());
@@ -290,4 +290,80 @@ fn the_set_rule_source_fixture_turns_block_quic_on() {
     let args = contract_text("call-set-rule-source-args.json");
     assert_eq!(core.call("setRuleSource", &args), r#"{"ok":{}}"#);
     assert_eq!(quic_abroad(&core), "blocked");
+}
+
+/// Nodes whose display names carry their own endpoint or a credential (ARCH D21), with two
+/// plain names. The comment after each link is the kind of leak its name holds.
+const LEAKY_NODES: &[u8] = b"trojan://p1@192.0.2.1:443#hk-01
+trojan://p2@192.0.2.2:443#jp-01
+trojan://p3@192.0.2.3:8003#hk%20192.0.2.3
+trojan://p4@edge.example.invalid:8004#EDGE.Example.Invalid%20node
+trojan://p5@192.0.2.5:8005#sg%3A8005
+trojan://p6@192.0.2.6:8006#a%3A%2F%2Fb
+trojan://p7@192.0.2.7:8007#ops%40team
+trojan://p8@192.0.2.8:8008#x%20Token%3D1
+trojan://p9@192.0.2.9:8009#x%20KEY%3D2
+trojan://p10@192.0.2.10:8010#x%20Pass%3D3
+trojan://p11@192.0.2.11:8011#x%20UUID%20z
+trojan://p12@192.0.2.12:8012#https%3A%2F%2Fu%3Ap%40sub.invalid%2Fs%3Ftoken%3Ddemo
+trojan://p13@192.0.2.13:8013
+";
+
+/// A Clash node without a name, which Clash names after its server and port.
+const CLASH_UNNAMED: &[u8] =
+    b"proxies:\n  - {type: trojan, server: 198.51.100.7, port: 9443, password: pw}\n";
+
+#[test]
+fn the_effective_config_codes_a_node_name_that_carries_an_endpoint_or_credential() {
+    let dir = TempDir::new("rules-effective-leaky");
+    let feeds = Feeds::new();
+    feeds.set("/leaky", LEAKY_NODES);
+    feeds.set("/clash", CLASH_UNNAMED);
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/leaky").unwrap();
+    add(&core, &feeds, "/clash").unwrap();
+    let mut nodes: Vec<(String, String)> = catalog(&core)
+        .groups
+        .iter()
+        .flat_map(|g| &g.members)
+        .filter(|m| !m.is_group)
+        .map(|m| (m.id.clone(), m.name.clone()))
+        .collect();
+    nodes.sort();
+    nodes.dedup();
+    assert_eq!(nodes.len(), 14, "{nodes:?}");
+    assert!(nodes.iter().any(|(_, n)| n == "trojan-198.51.100.7:9443"));
+    let mut reply = call(&core, "effectiveConfig", json!({})).unwrap();
+    let text = reply["text"].as_str().unwrap().to_owned();
+    for (id, name) in &nodes {
+        let code = format!("n-{}", &id[2..10]);
+        if name == "hk-01" || name == "jp-01" {
+            assert!(text.contains(&format!(" {name}")), "{name}: {text}");
+            assert!(!text.contains(&code), "{name} kept its name: {text}");
+        } else {
+            assert!(!text.contains(name.as_str()), "{name}: {text}");
+            assert!(text.contains(&code), "{name} as {code}: {text}");
+        }
+    }
+    reply["ruleSource"]["rulesRevision"] = json!(0);
+    let whole = reply.to_string().to_lowercase();
+    let forbidden = [
+        "192.0.2.",
+        "198.51.100.",
+        "example.invalid",
+        "sub.invalid",
+        ":443",
+        ":80",
+        ":9443",
+        "://",
+        "@",
+        "token=",
+        "key=",
+        "pass=",
+        "uuid",
+        "u:p",
+    ];
+    for leak in forbidden {
+        assert!(!whole.contains(leak), "{leak}: {whole}");
+    }
 }

@@ -4,13 +4,16 @@
 //! held.
 
 use super::{Core, lock, parse, to_json};
+use crate::catalog::NodeEntry;
 use crate::dto::{
-    Catalog, EffectiveConfig, Empty, ErrorCode, Mode, Reply, RuleSourceSpec, RulesArgs,
+    Catalog, EffectiveConfig, Empty, ErrorCode, Member, Mode, Reply, RuleSourceSpec, RulesArgs,
 };
+use crate::ids;
 use crate::rules::export::Capped;
 use crate::rules::policy::Policy;
 use crate::rules::template;
 use crate::state::State;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -18,6 +21,50 @@ use std::sync::Arc;
 const MAX_PAGE: u32 = 500;
 /// `effectiveConfig`'s text ends at a line boundary within this many bytes.
 const MAX_TEXT: usize = 1 << 20;
+/// Fragments of a name that may carry a credential, matched in lowercase.
+const SECRET_HINTS: [&str; 6] = ["://", "@", "token=", "key=", "pass=", "uuid"];
+
+/// What `effectiveConfig` needs of a node to name it (ARCH D21): its id, display name and
+/// endpoint, copied under the catalog lock.
+pub(super) struct NodeName {
+    id: String,
+    name: String,
+    host: String,
+    port: u16,
+}
+
+impl NodeName {
+    fn of(entry: &NodeEntry) -> Self {
+        NodeName {
+            id: entry.id.clone(),
+            name: entry.name.clone(),
+            host: entry.node.host.clone(),
+            port: entry.node.port,
+        }
+    }
+
+    /// The display name, or `n-` and the id's first 8 hex digits when the name holds the
+    /// node's server, its port after a colon, or a fragment that may carry a credential.
+    fn shown(&self) -> String {
+        let name = self.name.to_lowercase();
+        let host = self.host.to_lowercase();
+        let bare = host.trim_start_matches('[').trim_end_matches(']');
+        let leaks = (!bare.is_empty() && name.contains(bare))
+            || name.contains(&format!(":{}", self.port))
+            || SECRET_HINTS.iter().any(|hint| name.contains(hint));
+        if leaks {
+            code(&self.id)
+        } else {
+            self.name.clone()
+        }
+    }
+}
+
+/// `n-` and the first 8 hex digits of node `id`.
+fn code(id: &str) -> String {
+    let hex = id.strip_prefix("n-").unwrap_or(id);
+    format!("n-{}", hex.get(..8).unwrap_or(hex))
+}
 
 impl Core {
     /// `rules`: `limit` rows (1 to 500) from `offset`; none past the end.
@@ -63,28 +110,41 @@ impl Core {
     /// `effectiveConfig`: the mode, where DNS goes, the rules' provenance and the rules as text.
     pub(super) fn effective_config(&self, args: &str) -> Result<String, ErrorCode> {
         let Empty {} = parse(args)?;
-        let (catalog, policy) = {
+        let (catalog, policy, nodes) = {
             let c = lock(&self.shared.catalog);
-            (c.model.catalog(&c.state), Arc::clone(&c.model.policy))
+            let nodes: Vec<NodeName> = c.model.nodes.iter().map(|e| NodeName::of(e)).collect();
+            (
+                c.model.catalog(&c.state),
+                Arc::clone(&c.model.policy),
+                nodes,
+            )
         };
         let upstreams = &self.options.dns_upstreams;
-        let config = effective(catalog, &policy, upstreams, MAX_TEXT);
+        let config = effective(catalog, &policy, &nodes, upstreams, MAX_TEXT);
         Ok(to_json(&Reply::Ok(config)))
     }
 }
 
 /// `effectiveConfig`'s reply for `catalog` and its `policy`, the text capped at `cap` bytes: a
 /// comment each for the mode, the source, the main group, DNS and every group with its members
-/// and current choice, then the rules. Nodes appear by display name only (ARCH D21).
+/// and current choice, then the rules. A node of `nodes` appears by its display name, or by a
+/// code where that name could show its endpoint or a credential (ARCH D21).
 pub(super) fn effective(
     catalog: Catalog,
     policy: &Policy,
+    nodes: &[NodeName],
     upstreams: &[SocketAddr],
     cap: usize,
 ) -> EffectiveConfig {
     let name = |id: &str| match catalog.groups.iter().find(|g| g.id == id) {
         Some(g) => g.name.clone(),
         None => id.strip_prefix("g-").unwrap_or(id).to_owned(),
+    };
+    let shown: HashMap<&str, String> = nodes.iter().map(|n| (n.id.as_str(), n.shown())).collect();
+    let member = |m: &Member| match shown.get(m.id.as_str()) {
+        Some(name) => name.clone(),
+        None if ids::is_group(&m.id) => m.name.clone(),
+        None => code(&m.id),
     };
     let main = catalog.main_group_id.clone();
     let direct = catalog.mode == Mode::Direct;
@@ -112,14 +172,10 @@ pub(super) fn effective(
         upstreams.join(", ")
     ));
     for g in &catalog.groups {
-        let member = |id: &str| {
-            g.members
-                .iter()
-                .find(|m| m.id == id)
-                .map(|m| m.name.as_str())
-        };
-        let now = g.selected_id.as_deref().and_then(member).unwrap_or("none");
-        let members: Vec<&str> = g.members.iter().map(|m| m.name.as_str()).collect();
+        let selected = g.selected_id.as_deref();
+        let now = g.members.iter().find(|m| Some(m.id.as_str()) == selected);
+        let now = now.map_or_else(|| "none".to_owned(), member);
+        let members: Vec<String> = g.members.iter().map(member).collect();
         let kind = g.kind;
         out.line(&format!(
             "# group {} ({kind:?}, now {now}): {}",
