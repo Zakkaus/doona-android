@@ -250,6 +250,24 @@ fn a_panic_on_the_core_s_runtime_writes_a_file_that_clear_crashes_removes() {
     assert_eq!(event.counts["files"], 1);
 }
 
+/// Crash files that cannot be listed under the directory's lock fail `diagnostics`: a reply
+/// never lists six, and the app exports its own listing instead.
+#[test]
+fn crash_files_that_cannot_be_listed_fail_diagnostics() {
+    let dir = TempDir::new("api-diag-unlisted");
+    let core = Core::new(path(&dir)).unwrap();
+    let crash = dir.path().join("crash");
+    // The lock's name is a directory: it cannot be opened.
+    std::fs::create_dir_all(crash.join(".lock")).unwrap();
+    for n in 1..=6 {
+        std::fs::write(crash.join(format!("179530000000{n}.txt")), "x").unwrap();
+    }
+    let refused = call(&core, "diagnostics", json!({}));
+    assert_eq!(refused, Err(ErrorCode::Internal));
+    std::fs::remove_dir(crash.join(".lock")).unwrap();
+    assert_eq!(diagnostics(&core, json!({})).crashes.len(), 5);
+}
+
 /// What a full ring costs as a reply, printed for the record.
 #[test]
 fn a_full_ring_is_one_bounded_reply() {

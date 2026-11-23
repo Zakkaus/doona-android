@@ -7,8 +7,13 @@
 //! file. Such a lock belongs to the process, so it would not keep out the core in the same
 //! process, and `flock` does not see it at all. The core takes an open file description lock
 //! (`F_OFD_SETLKW`), which conflicts with a traditional one even within one process (fcntl(2)),
-//! and with that of another description, as of a second core. A panic does not wait: it tries
-//! (`F_OFD_SETLK`) for [`PANIC_WAIT`], then gives up its file. A clear waits.
+//! and with that of another description, as of a core in another process. A panic does not
+//! wait: it tries (`F_OFD_SETLK`) for [`PANIC_WAIT`], then gives up its file. A clear waits.
+//!
+//! Closing any descriptor of the lock's file drops every traditional lock the process holds on
+//! it, the app's included, so the core never closes one: it opens one descriptor per directory
+//! for the process's life ([`SLOTS`]) and takes and releases its lock on that one. Threads of the
+//! process share the description, whose lock does not keep them apart, so a mutex does.
 //!
 //! Earlier versions claimed a name by creating `<n>.txt` empty, and could leave six files. Under
 //! the lock an empty `<n>.txt` is such a placeholder, never a crash file: neither listed nor
@@ -18,7 +23,9 @@
 use std::fs;
 use std::io::{self, ErrorKind, Read as _};
 use std::os::fd::AsRawFd;
-use std::path::Path;
+use std::os::unix::fs::MetadataExt as _;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, MutexGuard, PoisonError, TryLockError};
 use std::time::{Duration, Instant};
 
 /// The lock's file; no crash file's name.
@@ -49,56 +56,128 @@ pub(crate) fn number(name: &str) -> Option<u64> {
     digits?.parse().ok().filter(|&at| at <= MAX_NUMBER)
 }
 
-/// A crash directory this core holds, until dropped.
+/// A directory's lock descriptor, opened on first use.
+type Slot = Mutex<Option<fs::File>>;
+
+/// One slot per directory a core of this process locked, never freed: its descriptor stays open
+/// for the process's life, however often its lock fails.
+static SLOTS: Mutex<Vec<(PathBuf, &'static Slot)>> = Mutex::new(Vec::new());
+
+/// The slot of `dir`, made on its first use.
+fn slot(dir: &Path) -> &'static Slot {
+    let mut slots = SLOTS.lock().unwrap_or_else(PoisonError::into_inner);
+    if let Some((_, slot)) = slots.iter().find(|(known, _)| known == dir) {
+        return slot;
+    }
+    let slot: &'static Slot = Box::leak(Box::new(Mutex::new(None)));
+    slots.push((dir.to_path_buf(), slot));
+    slot
+}
+
+/// A crash directory this core holds, until dropped: the lock taken on its slot's descriptor,
+/// and the slot, which another thread of the process waits for meanwhile.
 pub(super) struct DirLock {
-    _file: fs::File,
+    held: MutexGuard<'static, Option<fs::File>>,
 }
 
 impl DirLock {
     /// Makes the directory, takes its lock, then removes what writes the system ended left: parts
     /// (`<n>.part-core`, `<n>.part-app`) and those of earlier versions (`.core.tmp`, `.app.tmp`,
     /// `.core-<pid>.tmp`, `.app-<random>.tmp`). Waits as long as another holds the lock, or with
-    /// `until`, as a panic does, tries until then and fails with `TimedOut`.
+    /// `until`, as a panic does, tries until then and fails with `TimedOut`. A lock that fails
+    /// keeps the descriptor in its slot for the next try.
     pub(super) fn take(dir: &Path, until: Option<Instant>) -> io::Result<DirLock> {
         fs::create_dir_all(dir)?;
-        let mut open = fs::OpenOptions::new();
-        let file = open.read(true).write(true).create(true).truncate(false);
-        let file = file.open(dir.join(LOCK))?;
-        if let Err(e) = lock(&file, until) {
-            // Closing a descriptor of the file drops every traditional lock this process holds on
-            // it, the app's included: this one stays open.
-            std::mem::forget(file);
-            return Err(e);
-        }
+        let mut held = wait(slot(dir), until)?;
+        let path = dir.join(LOCK);
+        let file = match held.take() {
+            Some(file) if names(&file, &path) => file,
+            old => {
+                // A directory made again has a lock file of its own; the old one's descriptor
+                // stays open too, as closing it could drop the app's lock.
+                if let Some(old) = old {
+                    std::mem::forget(old);
+                }
+                let mut open = fs::OpenOptions::new();
+                open.read(true).write(true).create(true).truncate(false);
+                open.open(&path)?
+            }
+        };
+        lock(held.insert(file), until)?;
+        let taken = DirLock { held };
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             if entry.file_name().to_str().is_some_and(left_over) {
                 let _ = fs::remove_file(entry.path());
             }
         }
-        Ok(DirLock { _file: file })
+        Ok(taken)
+    }
+}
+
+impl Drop for DirLock {
+    /// Releases the lock and keeps the descriptor. Only this description's lock goes: releasing
+    /// a whole-file lock, which splits none, does not fail.
+    fn drop(&mut self) {
+        if let Some(file) = self.held.as_ref() {
+            let _ = whole(file, libc::F_UNLCK, libc::F_OFD_SETLK);
+        }
+    }
+}
+
+/// The slot, waited for as long as another thread holds it, or with `until`, until then.
+fn wait(
+    slot: &'static Slot,
+    until: Option<Instant>,
+) -> io::Result<MutexGuard<'static, Option<fs::File>>> {
+    let Some(until) = until else {
+        return Ok(slot.lock().unwrap_or_else(PoisonError::into_inner));
+    };
+    loop {
+        match slot.try_lock() {
+            Ok(held) => return Ok(held),
+            Err(TryLockError::Poisoned(held)) => return Ok(held.into_inner()),
+            Err(TryLockError::WouldBlock) if Instant::now() < until => std::thread::sleep(RETRY),
+            Err(TryLockError::WouldBlock) => return Err(ErrorKind::TimedOut.into()),
+        }
+    }
+}
+
+/// Whether `file` is the one `path` names now.
+fn names(file: &fs::File, path: &Path) -> bool {
+    match (file.metadata(), fs::metadata(path)) {
+        (Ok(open), Ok(named)) => open.dev() == named.dev() && open.ino() == named.ino(),
+        _ => false,
     }
 }
 
 /// Takes the write lock on the whole of `file`: waits as long as another holds it, or with `until`
 /// tries until then.
 fn lock(file: &fs::File, until: Option<Instant>) -> io::Result<()> {
-    // SAFETY: a zeroed flock is a valid one; l_len 0 covers the whole file, as the JVM's does.
-    let mut lock: libc::flock = unsafe { std::mem::zeroed() };
-    lock.l_type = libc::F_WRLCK as libc::c_short;
-    lock.l_whence = libc::SEEK_SET as libc::c_short;
     let wait = if until.is_some() {
         libc::F_OFD_SETLK
     } else {
         libc::F_OFD_SETLKW
     };
-    // SAFETY: `lock` outlives each call, and the descriptor is open.
-    while unsafe { libc::fcntl(file.as_raw_fd(), wait, &lock) } != 0 {
-        if let Some(pause) = retry(io::Error::last_os_error(), until, Instant::now())? {
+    while let Err(e) = whole(file, libc::F_WRLCK, wait) {
+        if let Some(pause) = retry(e, until, Instant::now())? {
             std::thread::sleep(pause);
         }
     }
     Ok(())
+}
+
+/// Sets a lock of `kind` (`F_WRLCK`, `F_UNLCK`) on the whole of `file` with `command`.
+fn whole(file: &fs::File, kind: libc::c_int, command: libc::c_int) -> io::Result<()> {
+    // SAFETY: a zeroed flock is a valid one; l_len 0 covers the whole file, as the JVM's does.
+    let mut lock: libc::flock = unsafe { std::mem::zeroed() };
+    lock.l_type = kind as libc::c_short;
+    lock.l_whence = libc::SEEK_SET as libc::c_short;
+    // SAFETY: `lock` outlives the call, and the descriptor is open.
+    match unsafe { libc::fcntl(file.as_raw_fd(), command, &lock) } {
+        0 => Ok(()),
+        _ => Err(io::Error::last_os_error()),
+    }
 }
 
 /// What a try of the lock that failed with `e` at `now` leads to: another try at once after an

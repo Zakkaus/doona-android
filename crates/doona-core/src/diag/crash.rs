@@ -204,10 +204,9 @@ impl Crashes {
     /// Writes the panic's file, unless this process wrote one for its location. A location
     /// counts as written once its file is published: a write that failed is tried again. Waits
     /// for the files and the directory until [`PANIC_WAIT`] has passed, then gives up; a location
-    /// given up on counts as written too, as a panic repeated in every flow would wait each time
-    /// and leave the lock's descriptor open each time (`crash_dir.rs`). The locations are kept
-    /// apart from the files, so a panic that could not have the files, which a clear may hold
-    /// while it waits for the directory, still notes its own.
+    /// given up on counts as written too, as a panic repeated in every flow would wait each time.
+    /// The locations are kept apart from the files, so a panic that could not have the files,
+    /// which a clear may hold while it waits for the directory, still notes its own.
     pub(crate) fn write(&self, info: &PanicHookInfo<'_>) -> Written {
         let until = Some(Instant::now() + PANIC_WAIT);
         let key = info.location().map_or(1, |at| {
@@ -307,7 +306,7 @@ impl Crashes {
         }
         let (part, name) = (self.dir.join(format!("{at}{PART}")), format!("{at}.txt"));
         let published = self.put(&part, text.as_bytes()).and_then(|()| {
-            self.trim(&present)?;
+            self.trim(&present, MAX_FILES - 1)?;
             fs::rename(&part, self.dir.join(&name))
         });
         published.inspect_err(|_| drop(fs::remove_file(&part)))?;
@@ -316,10 +315,10 @@ impl Crashes {
         Ok(name)
     }
 
-    /// Removes the oldest of `present` until one more leaves [`MAX_FILES`]. A file that will not
-    /// go stops the write: published, it would leave six.
-    fn trim(&self, present: &[Listed]) -> io::Result<()> {
-        let over = (present.len() + 1).saturating_sub(MAX_FILES);
+    /// Removes the oldest of `present` until `keep` remain. A file that will not go is an error:
+    /// a write would publish a sixth, a listing would hold six.
+    fn trim(&self, present: &[Listed], keep: usize) -> io::Result<()> {
+        let over = present.len().saturating_sub(keep);
         for (_, gone, _) in &present[..over] {
             #[cfg(test)]
             if self.stuck.load(std::sync::atomic::Ordering::Relaxed) {
@@ -371,50 +370,37 @@ impl Crashes {
 
     /// The crash files, oldest first, and the mark: no file listed has a higher number, and no
     /// file written from now on will have it or a lower one. `clearCrashes` takes it back. Under
-    /// the directory's lock, the oldest files past five, which earlier versions left, go first; a
-    /// file that will not go is listed still. Without the lock, as when the directory cannot be
-    /// made, the files are listed as they are. An empty file is no crash file, and what cannot be
-    /// read leaves the mark lower, which a clear only narrows.
-    pub fn listing(&self) -> (Vec<CrashFile>, u64) {
-        let Ok(Some(mut files)) = self.hold(None) else {
-            return (Vec::new(), 0);
+    /// the directory's lock, the oldest files past five, which earlier versions left, go first. A
+    /// lock that cannot be taken, or a file past five that will not go, is an error: a listing
+    /// never holds six. An empty file is no crash file, and what cannot be read leaves the mark
+    /// lower, which a clear only narrows.
+    pub fn listing(&self) -> io::Result<(Vec<CrashFile>, u64)> {
+        let Some(mut files) = self.hold(None)? else {
+            return Ok((Vec::new(), 0));
         };
-        let lock = DirLock::take(&self.dir, None);
+        let lock = DirLock::take(&self.dir, None)?;
         let mut listed = crash_dir::scan(&self.dir).unwrap_or_default();
         listed.retain(|(.., bytes)| *bytes > 0);
-        if lock.is_ok() {
-            let over = listed.len().saturating_sub(MAX_FILES);
-            let stays = |(_, name, _): &Listed| {
-                fs::remove_file(self.dir.join(name)).is_err_and(|e| e.kind() != ErrorKind::NotFound)
-            };
-            let mut seen = 0;
-            listed.retain(|file| {
-                seen += 1;
-                seen > over || stays(file)
-            });
-        }
+        self.trim(&listed, MAX_FILES)?;
+        let listed = listed.split_off(listed.len().saturating_sub(MAX_FILES));
         drop(lock);
         let newest = listed.last().map_or(0, |(at, ..)| *at);
         let saved = crash_dir::saved_mark(&self.dir).unwrap_or(0);
         let mark = files.0.mark.unwrap_or_default().max(saved).max(newest);
         files.0.mark = Some(mark);
         let listed = listed.into_iter();
-        (
-            listed
-                .map(|(_, name, bytes)| CrashFile { name, bytes })
-                .collect(),
-            mark,
-        )
+        let listed = listed.map(|(_, name, bytes)| CrashFile { name, bytes });
+        Ok((listed.collect(), mark))
     }
 
     #[cfg(test)]
     pub(super) fn list(&self) -> Vec<CrashFile> {
-        self.listing().0
+        self.listing().expect("listing").0
     }
 
     #[cfg(test)]
     pub(super) fn mark(&self) -> u64 {
-        self.listing().1
+        self.listing().expect("listing").1
     }
 
     /// Under the directory's lock, removes the files named whose numbers are `mark` or below, the

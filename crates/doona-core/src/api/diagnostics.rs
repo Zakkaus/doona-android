@@ -88,7 +88,7 @@ impl Core {
         event: &mut Event,
     ) -> Result<String, ErrorCode> {
         match command {
-            "diagnostics" => self.diagnostics(args),
+            "diagnostics" => self.diagnostics(args, event),
             "setLogLevel" => self.set_log_level(args, event),
             "clearCrashes" => self.clear_crashes(args, event),
             _ => Err(ErrorCode::InvalidArgument),
@@ -96,8 +96,9 @@ impl Core {
     }
 
     /// `diagnostics`: the ring (from `level` up), what the last snapshot said, the stats, the
-    /// crash files and the build.
-    fn diagnostics(&self, args: &str) -> Result<String, ErrorCode> {
+    /// crash files and the build. Crash files that cannot be listed, at most five under the
+    /// directory's lock, fail it (`internal`): the app then exports its own listing.
+    fn diagnostics(&self, args: &str, traced: &mut Event) -> Result<String, ErrorCode> {
         let DiagnosticsArgs { level } = parse(args)?;
         let traffic = match &*lock(&self.life) {
             Life::Running(tunnel) => tunnel.session().traffic(),
@@ -105,7 +106,11 @@ impl Core {
         };
         let today = self.stats.today(&Clock::now());
         let (events, overwritten) = self.diag.events(level);
-        let listing = self.diag.crashes().map(|c| c.listing());
+        let listing = self.diag.crashes().map(|c| c.listing()).transpose();
+        let listing = listing.map_err(|e| {
+            *traced = traced.io(e.kind());
+            ErrorCode::Internal
+        })?;
         let (crashes, crash_mark) = listing.unwrap_or_default();
         Ok(ok(Diagnostics {
             core: CoreBuild::current(),

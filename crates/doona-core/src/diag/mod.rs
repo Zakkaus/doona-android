@@ -331,3 +331,5 @@ pub(crate) fn now_ms() -> i64 {
 mod tests;
 #[cfg(test)]
 mod tests_crash;
+#[cfg(test)]
+mod tests_dir;

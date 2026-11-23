@@ -157,7 +157,7 @@ fn the_app_writing_at_once_takes_no_name_twice_and_five_remain() {
 }
 
 /// The crash files' numbers in `dir`, lowest first.
-fn numbers(dir: &Path) -> Vec<u64> {
+pub(super) fn numbers(dir: &Path) -> Vec<u64> {
     let mut numbers: Vec<u64> = fs::read_dir(dir)
         .unwrap()
         .filter_map(|e| {
@@ -198,7 +198,7 @@ fn app_write(dir: &Path, now: u64) -> String {
 
 /// The directory's lock as the app takes it (`CrashFiles.kt`): the JVM's `FileChannel.lock`, a
 /// traditional fcntl lock on the whole of `.lock`, released when the file closes.
-fn app_lock(dir: &Path) -> fs::File {
+pub(super) fn app_lock(dir: &Path) -> fs::File {
     use std::os::fd::AsRawFd;
     let file = fs::OpenOptions::new()
         .read(true)
