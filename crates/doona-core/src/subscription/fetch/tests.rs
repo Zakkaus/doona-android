@@ -92,10 +92,9 @@ fn failures_are_fetch_failed() {
         "/loop" => response("302 Found", &[("Location", "/loop")], b""),
         "/missing" => response("404 Not Found", &[], b""),
         "/short" => b"HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\nshort".to_vec(),
-        "/large" => b"HTTP/1.1 200 OK\r\nContent-Length: 9000000\r\n\r\n".to_vec(),
         _ => b"not http\r\n\r\n".to_vec(),
     });
-    for path in ["/loop", "/missing", "/short", "/large", "/garbage"] {
+    for path in ["/loop", "/missing", "/short", "/garbage"] {
         let result = get_url(&format!("http://{addr}{path}"));
         assert_eq!(result.err(), Some(ErrorCode::FetchFailed), "{path}");
     }
@@ -104,6 +103,26 @@ fn failures_are_fetch_failed() {
         get_url("http://127.0.0.1:1/").err(),
         Some(ErrorCode::FetchFailed)
     );
+}
+
+#[test]
+fn streamed_bodies_obey_the_same_limit_with_or_without_chunks() {
+    run(async {
+        let bytes = |n| tokio::io::repeat(0).take(n as u64);
+        assert_eq!(
+            read_to_end(&mut bytes(MAX_BODY)).await.unwrap().len(),
+            MAX_BODY
+        );
+        assert_eq!(
+            read_to_end(&mut bytes(MAX_BODY + 1)).await,
+            Err(ErrorCode::TooLarge)
+        );
+        let chunks = format!("1\r\nx\r\n{MAX_BODY:x}\r\n");
+        assert_eq!(
+            read_chunked(&mut chunks.as_bytes()).await,
+            Err(ErrorCode::TooLarge)
+        );
+    });
 }
 
 #[test]
