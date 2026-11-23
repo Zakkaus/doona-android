@@ -3,7 +3,7 @@
 //! choices of UrlTest groups, and which groups are testing. It changes only under the core's
 //! catalog lock, in sections that never wait on I/O.
 
-use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member};
+use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member, Mode};
 use crate::groups::{self, GroupDef};
 use crate::ids::{self, is_group};
 use crate::outbounds::{Built, Outbounds, Routing};
@@ -119,10 +119,11 @@ pub(crate) struct Shared {
 }
 
 impl Shared {
-    /// Publishes each group's current node, and the policy, to the data path; called with `c`
-    /// locked.
+    /// Publishes the mode, each group's current node and the policy to the data path; called with
+    /// `c` locked.
     pub fn publish(&self, c: &CatalogState) {
-        self.outbounds.select(c.model.routing(&c.state.selections));
+        let routing = c.model.routing(&c.state.selections, c.state.mode);
+        self.outbounds.select(routing);
     }
 
     /// Publishes `built`, the registry for `c`'s node set, each group's current node and the
@@ -130,7 +131,7 @@ impl Shared {
     /// rule with groups of another node set; `c` is locked.
     pub fn publish_nodes(&self, c: &CatalogState, built: Built) {
         self.outbounds
-            .replace(built, c.model.routing(&c.state.selections));
+            .replace(built, c.model.routing(&c.state.selections, c.state.mode));
     }
 }
 
@@ -494,11 +495,12 @@ impl Model {
         }
     }
 
-    /// What the data path routes new flows by: each group's node now, and the policy.
-    pub fn routing(&self, selections: &BTreeMap<String, String>) -> Routing {
+    /// What the data path routes new flows by under `mode`: each group's node now, and the policy.
+    pub fn routing(&self, selections: &BTreeMap<String, String>, mode: Mode) -> Routing {
         Routing {
             selected: self.leaves(selections),
             policy: Arc::clone(&self.policy),
+            mode,
         }
     }
 

@@ -446,7 +446,7 @@ impl Outbounds {
         }
     }
 
-    /// Publishes each group's current node and the policy.
+    /// Publishes the mode, each group's current node and the policy.
     pub(crate) fn select(&self, routing: Routing) {
         let mut table = self.table.write().unwrap_or_else(|e| e.into_inner());
         *table = Arc::new(Table::new(table.published.clone(), routing));
@@ -480,6 +480,7 @@ impl Outbounds {
             published: Some(published),
             selected: table.selected.clone(),
             policy: Arc::clone(&table.policy),
+            mode: table.mode,
         });
         Ok(())
     }

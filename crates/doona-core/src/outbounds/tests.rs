@@ -4,6 +4,7 @@
 use super::{Outbounds, Registries, Routing};
 use crate::api::lock;
 use crate::catalog::{NodeEntry, entries};
+use crate::dto::Mode;
 use crate::subscription::parse::parse;
 use crate::testutil::one_dial_ceiling;
 use honk_config::node::Node;
@@ -69,8 +70,15 @@ fn published() -> (Outbounds, Vec<Arc<NodeEntry>>) {
         .iter()
         .map(|n| (n.id.clone(), Arc::clone(&n.node)))
         .collect();
-    let policy = Arc::default();
-    outbounds.replace(built, Routing { selected, policy });
+    let (policy, mode) = (Arc::default(), Mode::Global);
+    outbounds.replace(
+        built,
+        Routing {
+            selected,
+            policy,
+            mode,
+        },
+    );
     (outbounds, nodes)
 }
 

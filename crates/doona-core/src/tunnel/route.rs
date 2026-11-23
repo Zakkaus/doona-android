@@ -33,8 +33,9 @@ use tokio::net::{TcpStream, UdpSocket};
 /// A dial, through a node or straight out, gives up after this long.
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// The committed mode, read by every new flow, and how many times it was set, in one word: the
-/// low [`MODE_BITS`] hold the mode, the rest the count.
+/// The committed mode, which every new flow reads first (see [`Route::of`]), and how many times it
+/// was set, in one word: the low [`MODE_BITS`] hold the mode, the rest the count. A commit sets it
+/// before it publishes the routing.
 #[derive(Debug)]
 pub struct ModeCell(AtomicU64);
 
@@ -99,8 +100,12 @@ pub(crate) enum Route {
 pub(crate) type Upstream = Box<dyn AsyncReadWrite>;
 
 impl Route {
-    /// The route of a new flow of `session`'s generation from `inbound` to `dst` over `network`,
-    /// under `mode`. Called once a flow, when it opens.
+    /// The route of a new flow of `session`'s generation from `inbound` to `dst` over `network`.
+    /// `mode` is the mode cell's reading, taken first: Direct sends the flow straight out, which a
+    /// committed setting does, as the cell is set before the routing is published. Any other
+    /// reading routes by the mode and the policy the routing holds, published together, so a flow
+    /// that paused across commits never pairs one commit's mode with another's policy. Called once
+    /// a flow, when it opens.
     pub fn of(
         inbound: Inbound,
         (dst, network): (SocketAddr, Network),
@@ -114,6 +119,10 @@ impl Route {
             return Route::Direct;
         }
         let view = outbounds.view();
+        let mode = view.mode().unwrap_or(mode);
+        if mode == Mode::Direct {
+            return Route::Direct;
+        }
         let policy = view.policy();
         let group = if mode == Mode::Rule {
             // A name is looked up only when a rule could match it.
@@ -139,7 +148,8 @@ impl Route {
     }
 
     /// The route of DNS the core answers for `session`'s generation: straight out in Direct, else
-    /// through the main group, whatever server the query was sent to.
+    /// through the main group, whatever server the query was sent to. `mode` is read as in
+    /// [`Route::of`].
     pub fn dns(
         inbound: Inbound,
         mode: Mode,
@@ -147,12 +157,13 @@ impl Route {
         session: &Arc<Session>,
     ) -> Route {
         let Inbound::Tun = inbound;
-        match mode {
+        if mode == Mode::Direct {
+            return Route::Direct;
+        }
+        let view = outbounds.view();
+        match view.mode().unwrap_or(mode) {
             Mode::Direct => Route::Direct,
-            Mode::Global | Mode::Rule => {
-                let view = outbounds.view();
-                Route::through(&view, view.policy().main(), session)
-            }
+            Mode::Global | Mode::Rule => Route::through(&view, view.policy().main(), session),
         }
     }
 

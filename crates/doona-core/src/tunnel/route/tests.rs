@@ -18,13 +18,29 @@ fn published(options: Options) -> (Outbounds, Model) {
     let links = b"socks5://127.0.0.1:1#a\nsocks5://127.0.0.1:2#b\nsocks5://127.0.0.1:3#c\n";
     let nodes = entries("s1", parse(links).unwrap().nodes);
     let mut model = Model::new(nodes, HashMap::from([("s1".to_owned(), 1)]));
-    let ids: Vec<String> = model.nodes.iter().map(|n| n.id.clone()).collect();
-    let is_node = |id: &str| ids.iter().any(|n| n == id);
-    model.policy = Arc::new(Policy::template(&model.groups, &is_node, options));
+    model.policy = template(&model, options);
     let outbounds = Outbounds::new(Arc::default()).unwrap();
     let built = outbounds.build(&model.nodes);
-    outbounds.replace(built, model.routing(&BTreeMap::new()));
+    outbounds.replace(built, model.routing(&BTreeMap::new(), Mode::Rule));
     (outbounds, model)
+}
+
+/// The template's policy of `options` over `model`'s groups.
+fn template(model: &Model, options: Options) -> Arc<Policy> {
+    let ids: Vec<String> = model.nodes.iter().map(|n| n.id.clone()).collect();
+    let is_node = |id: &str| ids.iter().any(|n| n == id);
+    Arc::new(Policy::template(&model.groups, &is_node, options))
+}
+
+/// Publishes `model`'s routing under `mode`.
+fn publish(outbounds: &Outbounds, model: &Model, mode: Mode) {
+    outbounds.select(model.routing(&BTreeMap::new(), mode));
+}
+
+/// What a commit does with `model` under `mode`: the mode cell first, then the routing.
+fn commit(cell: &ModeCell, outbounds: &Outbounds, model: &Model, mode: Mode) {
+    cell.set(mode);
+    publish(outbounds, model, mode);
 }
 
 fn session() -> Arc<Session> {
@@ -83,12 +99,15 @@ fn mode_cell_round_trips() {
 
 #[test]
 fn direct_and_global_route_as_before_and_rule_follows_the_rules() {
-    let (outbounds, _model) = published(Options::default());
+    let (outbounds, model) = published(Options::default());
     let session = session();
     session.names().map(ABROAD.into(), "www.netflix.com");
     session.names().map([104, 18, 0, 1].into(), "chatgpt.com");
     session.names().map([104, 19, 0, 1].into(), "example.org");
-    let route = |dst, mode| Route::of(Inbound::Tun, dst, mode, &outbounds, &session);
+    let route = |dst, mode| {
+        publish(&outbounds, &model, mode);
+        Route::of(Inbound::Tun, dst, mode, &outbounds, &session)
+    };
     for dst in [tcp(ABROAD, 443), tcp(CN, 443), tcp([10, 0, 0, 1], 80)] {
         assert_eq!(target(&route(dst, Mode::Direct)), "direct");
         assert_eq!(target(&route(dst, Mode::Global)), "g-Proxy");
@@ -134,7 +153,12 @@ fn reject_and_a_group_without_a_node_are_refused_never_direct() {
     let set = RuleSet::compile(&groups, &|id| model.has(id), &rules).unwrap();
     let policy = Arc::new(Policy::new("g-Proxy", Some(set), Options::default()));
     let selected = model.leaves(&BTreeMap::new());
-    outbounds.select(Routing { selected, policy });
+    let mode = Mode::Rule;
+    outbounds.select(Routing {
+        selected,
+        policy,
+        mode,
+    });
     let session = session();
     let route = |dst| Route::of(Inbound::Tun, dst, Mode::Rule, &outbounds, &session);
     for dst in [
@@ -172,10 +196,13 @@ fn without_a_node_rule_keeps_its_direct_rows_and_refuses_the_rest() {
     let model = Model::new(Vec::new(), HashMap::new());
     let outbounds = Outbounds::new(Arc::default()).unwrap();
     let built = outbounds.build(&model.nodes);
-    outbounds.replace(built, model.routing(&BTreeMap::new()));
+    outbounds.replace(built, model.routing(&BTreeMap::new(), Mode::Rule));
     let session = session();
     session.names().map(ABROAD.into(), "www.netflix.com");
-    let route = |dst, mode| Route::of(Inbound::Tun, dst, mode, &outbounds, &session);
+    let route = |dst, mode| {
+        publish(&outbounds, &model, mode);
+        Route::of(Inbound::Tun, dst, mode, &outbounds, &session)
+    };
     for dst in [
         tcp([192, 168, 1, 1], 80),
         udp([192, 168, 1, 1], 5353),
@@ -192,6 +219,7 @@ fn without_a_node_rule_keeps_its_direct_rows_and_refuses_the_rest() {
     ] {
         assert!(route(dst, Mode::Rule).refused(), "{dst:?}");
     }
+    publish(&outbounds, &model, Mode::Rule);
     assert!(Route::dns(Inbound::Tun, Mode::Rule, &outbounds, &session).refused());
 }
 
@@ -202,7 +230,7 @@ fn direct_routes_while_a_swap_holds_the_table() {
     let (outbounds, model) = published(Options::default());
     let stale = outbounds.build(&model.nodes);
     let newer = outbounds.build(&model.nodes);
-    outbounds.replace(newer, model.routing(&BTreeMap::new()));
+    outbounds.replace(newer, model.routing(&BTreeMap::new(), Mode::Rule));
     let (inside, entered) = std::sync::mpsc::channel();
     let (release, released) = std::sync::mpsc::channel::<()>();
     outbounds.on_build(move || {
@@ -212,7 +240,7 @@ fn direct_routes_while_a_swap_holds_the_table() {
     let session = session();
     let (routed, got) = std::sync::mpsc::channel();
     std::thread::scope(|s| {
-        s.spawn(|| outbounds.replace(stale, model.routing(&BTreeMap::new())));
+        s.spawn(|| outbounds.replace(stale, model.routing(&BTreeMap::new(), Mode::Rule)));
         let wait = Duration::from_secs(10);
         entered
             .recv_timeout(wait)
@@ -229,10 +257,13 @@ fn direct_routes_while_a_swap_holds_the_table() {
 
 #[test]
 fn block_quic_refuses_quic_bound_for_a_group() {
-    let (outbounds, _model) = published(Options { block_quic: true });
+    let (outbounds, model) = published(Options { block_quic: true });
     let session = session();
     session.names().map(ABROAD.into(), "youtube.com");
-    let route = |dst, mode| Route::of(Inbound::Tun, dst, mode, &outbounds, &session);
+    let route = |dst, mode| {
+        publish(&outbounds, &model, mode);
+        Route::of(Inbound::Tun, dst, mode, &outbounds, &session)
+    };
     for dst in [udp(ABROAD, 443), udp([104, 20, 0, 1], 443)] {
         let blocked = route(dst, Mode::Rule);
         assert!(blocked.refused() && !blocked.carries_udp(), "{dst:?}");
@@ -245,13 +276,34 @@ fn block_quic_refuses_quic_bound_for_a_group() {
     assert_eq!(target(&route(udp(ABROAD, 443), Mode::Global)), "g-Proxy");
 }
 
+/// A new UDP/443 flow reads mode Rule and pauses; Direct, then blockQuic off, are committed in
+/// turn; the flow resumes. It goes as one committed setting sends it, never through a group: the
+/// old one refused it, the new one sends it direct.
+#[test]
+fn a_flow_paused_across_two_commits_routes_by_one_of_them() {
+    let (outbounds, mut model) = published(Options { block_quic: true });
+    let cell = ModeCell::new(Mode::Rule);
+    let session = session();
+    session.names().map(ABROAD.into(), "youtube.com");
+    let (mode, _) = cell.snapshot();
+    commit(&cell, &outbounds, &model, Mode::Direct);
+    model.policy = template(&model, Options { block_quic: false });
+    commit(&cell, &outbounds, &model, Mode::Direct);
+    let route = Route::of(Inbound::Tun, udp(ABROAD, 443), mode, &outbounds, &session);
+    let to = target(&route);
+    assert!(matches!(to, "blocked" | "direct"), "went {to}");
+}
+
 /// DNS the core answers goes through the main group in Rule as in Global (rule-mode.md
 /// decision 10), whatever server the query was sent to.
 #[test]
 fn dns_goes_through_the_main_group_unless_direct() {
-    let (outbounds, _model) = published(Options::default());
+    let (outbounds, model) = published(Options::default());
     let session = session();
-    let dns = |mode| Route::dns(Inbound::Tun, mode, &outbounds, &session);
+    let dns = |mode| {
+        publish(&outbounds, &model, mode);
+        Route::dns(Inbound::Tun, mode, &outbounds, &session)
+    };
     assert_eq!(target(&dns(Mode::Rule)), "g-Proxy");
     assert_eq!(target(&dns(Mode::Global)), "g-Proxy");
     assert_eq!(target(&dns(Mode::Direct)), "direct");
@@ -315,7 +367,7 @@ fn bench_route_per_flow() {
     let outbounds = Outbounds::new(Arc::default()).unwrap();
     outbounds.replace(
         outbounds.build(&model.nodes),
-        model.routing(&BTreeMap::new()),
+        model.routing(&BTreeMap::new(), Mode::Rule),
     );
     let session = session();
     let named: Vec<Ipv4Addr> = (0..CAPACITY as u32)
@@ -354,6 +406,7 @@ fn bench_route_per_flow() {
         })
         .collect();
     for mode in [Mode::Direct, Mode::Global, Mode::Rule] {
+        publish(&outbounds, &model, mode);
         let route = |dst| Route::of(Inbound::Tun, dst, mode, &outbounds, &session);
         println!("route, {mode:?}: {} ns/flow", per_flow(route, &flows));
     }
