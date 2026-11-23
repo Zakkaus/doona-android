@@ -89,7 +89,7 @@ class RvShotTest {
         const val SCROLLED_DP = 400f
 
         /** A screen as tall as the whole 活動 page, for the full captures. */
-        const val FULL_PAGE = "+h1951dp"
+        const val FULL_PAGE = "+h1675dp"
 
         /** The second the scrubbed golden holds a finger on: inside the sustained download. */
         const val SCRUB = 30
