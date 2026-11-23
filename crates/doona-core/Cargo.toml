@@ -77,6 +77,11 @@ strip = true
 # Every JNI entry point catches panics; abort would turn a caught panic into a process kill.
 panic = "unwind"
 
+[profile.ci-release]
+inherits = "release"
+lto = "thin"
+codegen-units = 16
+
 # honk's own workspace overrides (its root Cargo.toml at the pinned revision): the REALITY hooks of
 # its boring-sys fork and its Quinn fork. Git dependencies do not carry them, so they are repeated.
 [patch.crates-io]

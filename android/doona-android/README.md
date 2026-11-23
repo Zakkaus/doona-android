@@ -21,6 +21,10 @@ tools/check-tokens.sh                                 # no dp, sp, colour or alp
 tools/check-layers.sh                                 # material3 and tokens stay in designsystem/, feature/ builds no interactive element
 ```
 
+To reproduce the pull request APK, run `./gradlew assembleRelease -Pdoona.coreProfile=ci-release`.
+This builds the Rust core with thin LTO and 16 codegen units. For the shipping APK, run `./gradlew assembleRelease`
+without the property to use fat LTO and one codegen unit.
+
 Goldens (`app/src/test/screenshots`, fake data only) cover every screen at 412 × 915 dp in zh-TW in light, dark and at
 font scale 1.15 and 2.0, plus a 840 dp wide window and a 915 × 412 dp landscape one, and the seven component gallery
 pages (`designsystem/components/*Gallery.kt`, `ComponentPreviews.kt` has the previews) in the four phone variants. Each render also goes through
