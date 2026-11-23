@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
@@ -25,7 +26,9 @@ import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
+import dev.doona.android.prototype.rv.nodes.RvStatusChip
+import dev.doona.android.prototype.rv.rvKeepRuns
+import dev.doona.android.prototype.rv.rvKeepTail
 import dev.doona.android.prototype.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.settings.RvSettingsNavRow
 
@@ -59,8 +62,14 @@ internal fun RvConfigHistoryPage(
 @Composable
 private fun RevisionRow(revision: RvRevision, head: Boolean, onRevision: (Int) -> Unit) {
     val origin = revision.restored?.let { stringResource(revision.origin.label, it) } ?: stringResource(revision.origin.label)
-    val parts = listOfNotNull(rvConfigWhen(revision.appliedAtEpochMs), origin, if (head) stringResource(R.string.rv_template_in_use) else null)
-    RvSettingsNavRow(stringResource(R.string.rv_config_revision, revision.rev), null, { onRevision(revision.rev) }, subtitle = parts.joinToString(SEPARATOR))
+    val inUse: (@Composable () -> Unit)? = if (head) ({ RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_template_in_use), Rv.colors.positive) }) else null
+    RvSettingsNavRow(
+        stringResource(R.string.rv_config_revision, revision.rev),
+        null,
+        { onRevision(revision.rev) },
+        subtitle = rvConfigLine(listOf(rvConfigWhen(revision.appliedAtEpochMs), origin)),
+        mark = inUse,
+    )
 }
 
 /**
@@ -81,13 +90,14 @@ internal fun RvConfigImportPage(
     val title = stringResource(R.string.rv_config_import)
     val review: (@Composable () -> Unit)? = if (state.refusedAtLimit) null else ({ RvPrimaryButton(stringResource(R.string.rv_template_review), {}, enabled = false) })
     RvScrollPage(title, insets, onBack = onBack, bottomAction = review) { titleBlock ->
-        val caption = if (state.refusedAtLimit) state.name else state.name + SEPARATOR + stringResource(R.string.rv_config_draft)
-        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(caption) })
+        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(state.name) })
         if (state.refusedAtLimit) {
             RvGutter {
                 RvBanner(
                     stringResource(R.string.rv_config_import_refused),
-                    pluralStringResource(R.plurals.rv_config_import_limit, RvConfigHistoryData.LIMIT_FILES, RvConfigHistoryData.LIMIT_FILES, RvConfigHistoryData.LIMIT_SIZE),
+                    rvKeepTail(
+                        rvKeepRuns(pluralStringResource(R.plurals.rv_config_import_limit, RvConfigHistoryData.LIMIT_FILES, RvConfigHistoryData.LIMIT_FILES, RvConfigHistoryData.LIMIT_SIZE)),
+                    ),
                     stringResource(R.string.rv_config_pick_again),
                     onPickAgain,
                 )
@@ -96,7 +106,7 @@ internal fun RvConfigImportPage(
         } else {
             RvGutter {
                 RvBanner(
-                    stringResource(R.string.rv_config_escape_title),
+                    rvKeepTail(stringResource(R.string.rv_config_escape_title)),
                     stringResource(R.string.rv_source_line, state.escapeLine, state.escapePath),
                     stringResource(R.string.rv_config_edit_source),
                     onEditSource,
@@ -108,7 +118,7 @@ internal fun RvConfigImportPage(
                     state.files.forEach { file ->
                         val origin = file.parent?.let { stringResource(R.string.rv_config_included_by, it) } ?: stringResource(R.string.rv_config_entry)
                         val lines = pluralStringResource(R.plurals.rv_config_lines, file.lines, file.lines)
-                        RvSettingsNavRow(file.path, null, { onFile(file.path) }, subtitle = origin + SEPARATOR + lines)
+                        RvSettingsNavRow(file.path, null, { onFile(file.path) }, subtitle = rvConfigLine(listOf(origin, lines)))
                     }
                 }
             }

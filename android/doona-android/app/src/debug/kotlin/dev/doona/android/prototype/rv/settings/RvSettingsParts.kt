@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -120,7 +121,8 @@ private fun FirstLine(content: @Composable () -> Unit) {
  * two-line 82 dp one: a value, as Revolut's Appearance rows show Theme over "Light - Glass" (§13.3), or what the row
  * leads to. A row of a plain list (the licences) has no [icon], so its text starts on the card's padding, as DNS's 自訂.
  * A title that is source text (a skipped declaration) takes [titleStyle] with Inter's ligatures off (`rvVerbatim`) and
- * [titleLines] as many lines as it needs: what the user looks for in the file is the text, so it is never cut.
+ * [titleLines] as many lines as it needs: what the user looks for in the file is the text, so it is never cut. A [mark]
+ * (a status chip, 使用中) stands before the chevron.
  */
 @Composable
 internal fun RvSettingsNavRow(
@@ -130,8 +132,20 @@ internal fun RvSettingsNavRow(
     subtitle: String? = null,
     titleStyle: TextStyle = Rv.type.rowTitle,
     titleLines: Int = RV_ROW_TITLE_LINES,
+    mark: (@Composable () -> Unit)? = null,
 ) {
-    RvSettingsRow(title, Modifier.rvRowPress(Role.Button, onClick), icon, subtitle = subtitle, titleStyle = titleStyle, titleLines = titleLines) { RvChevron() }
+    RvSettingsRow(title, Modifier.rvRowPress(Role.Button, onClick), icon, subtitle = subtitle, titleStyle = titleStyle, titleLines = titleLines) {
+        if (mark == null) {
+            RvChevron()
+        } else {
+            // A chip is taller than the first line it is centred on, so it is not held to that line's height.
+            Row(Modifier.wrapContentHeight(unbounded = true), verticalAlignment = Alignment.CenterVertically) {
+                mark()
+                Spacer(Modifier.width(RvSpace.trailingGap))
+                RvChevron()
+            }
+        }
+    }
 }
 
 /** A row that only shows a [value], as its second line. */

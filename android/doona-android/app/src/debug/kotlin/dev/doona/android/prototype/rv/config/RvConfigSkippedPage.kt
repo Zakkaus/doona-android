@@ -24,7 +24,6 @@ import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.rvVerbatim
 import dev.doona.android.prototype.rv.settings.RvSettingsNavRow
@@ -54,7 +53,7 @@ internal fun RvConfigSkippedPage(state: RvConfigState, onBack: () -> Unit, onOpe
 @Composable
 private fun SkippedRow(record: RvSkipped, onOpen: (RvSkipped) -> Unit) {
     val reasons = record.reasons.map { stringResource(it.label) }.joinToString(stringResource(R.string.rv_effective_list_separator))
-    val line = stringResource(R.string.rv_config_line, record.line) + SEPARATOR + reasons
+    val line = rvConfigLine(listOf(stringResource(R.string.rv_config_line, record.line), reasons))
     RvSettingsNavRow(record.text, null, { onOpen(record) }, subtitle = line, titleStyle = Rv.type.rowTitle.rvVerbatim(), titleLines = Int.MAX_VALUE)
 }
 

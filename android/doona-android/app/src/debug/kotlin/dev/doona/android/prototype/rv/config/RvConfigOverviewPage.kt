@@ -26,7 +26,6 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RV_NOW
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rememberRvFormat
 import dev.doona.android.prototype.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.settings.RvSettingsNavRow
@@ -86,7 +85,7 @@ private fun FilesCard(state: RvConfigState, onFile: (String) -> Unit) {
                 pluralStringResource(R.plurals.rv_config_lines, file.lines, file.lines),
                 if (skipped > 0) pluralStringResource(R.plurals.rv_config_skipped_count, skipped, skipped) else null,
             )
-            RvSettingsNavRow(file.path, null, { onFile(file.path) }, subtitle = parts.joinToString(SEPARATOR))
+            RvSettingsNavRow(file.path, null, { onFile(file.path) }, subtitle = rvConfigLine(parts))
         }
     }
 }

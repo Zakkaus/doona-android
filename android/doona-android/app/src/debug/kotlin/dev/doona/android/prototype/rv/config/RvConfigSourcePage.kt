@@ -27,6 +27,8 @@ import dev.doona.android.prototype.rv.RvSourceDiff
 import dev.doona.android.prototype.rv.RvSourceField
 import dev.doona.android.prototype.rv.RvSourceMark
 import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.rvKeepRuns
+import dev.doona.android.prototype.rv.rvKeepTail
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -53,6 +55,7 @@ internal fun RvConfigSourcePage(
         onBack = onBack,
         actions = { glass -> RvGlassButton(glass, R.drawable.rv_sym_search, stringResource(R.string.rv_config_search), onSearch) },
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_template_review), onReview, enabled = draft.diagnostic == null) },
+        actionScrim = true,
     ) { titleBlock ->
         RvPageHeader(
             title,
@@ -86,13 +89,14 @@ internal fun RvConfigDiffPage(
         insets,
         onBack = onBack,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = !diff.stale) },
+        actionScrim = true,
     ) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_based_on, diff.baseRev)) })
         RvGutter {
             if (diff.stale) {
                 RvBanner(
                     stringResource(R.string.rv_config_stale_title),
-                    stringResource(R.string.rv_config_stale_reason, diff.baseRev, diff.headRev),
+                    rvKeepTail(rvKeepRuns(stringResource(R.string.rv_config_stale_reason, diff.baseRev, diff.headRev))),
                     stringResource(R.string.rv_config_reload),
                     onReload,
                     icon = R.drawable.rv_sym_sync_alt,

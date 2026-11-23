@@ -96,6 +96,24 @@ private fun Modifier.fadeOutBottom(fade: Dp, alpha: () -> Float): Modifier = gra
     drawRect(Brush.verticalGradient(listOf(Color.Black, Color.Transparent), size.height - fade.toPx(), size.height), blendMode = BlendMode.DstIn)
 }
 
+/**
+ * The strip behind a floating bottom action, [RvBar]'s upside down: the page's content blurred under the same glass tint
+ * to the bottom edge, fading in over [RvChrome.stripFade] at its top, so what scrolls under the action (a file's code) is
+ * blurred, not cut off at a line. It fills [modifier]'s box; the action stands on it.
+ */
+@Composable
+internal fun RvActionStrip(glass: RvGlass, modifier: Modifier = Modifier) {
+    Box(modifier.fadeInTop(RvChrome.stripFade).rvGlass(glass, RectangleShape, Rv.colors.barGlass))
+}
+
+/** Draws this element with its first [fade] fading in from nothing, so what it covers is not cut off at a line. */
+private fun Modifier.fadeInTop(fade: Dp): Modifier = graphicsLayer {
+    compositingStrategy = CompositingStrategy.Offscreen
+}.drawWithContent {
+    drawContent()
+    drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black), 0f, fade.toPx()), blendMode = BlendMode.DstIn)
+}
+
 /** How far the strip behind a bar has faded in: fully once the content has scrolled [RvChrome.shadeAfter] under it. */
 @Composable
 internal fun rvShade(scroll: ScrollState): () -> Float {
