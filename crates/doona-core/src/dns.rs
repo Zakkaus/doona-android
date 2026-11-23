@@ -207,9 +207,10 @@ pub(crate) trait ToClient: AsyncRead + AsyncWrite + Unpin {
 /// that takes `idle` to arrive, or an answer `idle` to be taken, ends it with `TimedOut`, so the
 /// driver resets the client and drops what it still holds for it: a client that sends neither a
 /// query nor its FIN, or never reads, cannot hold the connection or its buffers. Each wait has a
-/// fixed deadline on tokio's monotonic clock, so a late wakeup does not extend it. Answers still
-/// queued for the client when this returns are bounded by the driver (see `TcpFlow::finish`). What
-/// an answer maps goes to `names` with the answer's last chunk.
+/// fixed deadline on tokio's monotonic clock, so a late wakeup does not extend it. From the
+/// client's FIN on, the driver also bounds the connection as any flow, answers still queued for the
+/// client included (see `tunnel/drain.rs`). What an answer maps goes to `names` with the answer's
+/// last chunk.
 pub(crate) async fn serve_tcp<S: ToClient>(
     io: &mut S,
     upstreams: &[SocketAddr],

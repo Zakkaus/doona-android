@@ -7,6 +7,7 @@
 //! within the same deadline (see `outbounds.rs`).
 
 mod blocked;
+mod drain;
 mod driver;
 mod flow;
 pub mod route;

@@ -8,6 +8,7 @@ use super::splice::splice;
 use crate::dns;
 use bytes::{Buf, Bytes};
 use honk_netstack::{FlowId, Stack, StreamError, TcpState};
+use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -16,7 +17,7 @@ use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 /// Once either side's FIN has arrived, a flow may go this long without a byte read or written in
-/// either direction before it is cut (see `flow::Drain`). honk's `DRAIN_DEADLINE` (honk
+/// either direction before it is cut (see `drain.rs`). honk's `DRAIN_DEADLINE` (honk
 /// 7cd8b13c). A TCP/53 connection to the core's DNS may idle as long (see `dns::serve_tcp`).
 pub(crate) const DRAIN_DEADLINE: Duration = Duration::from_secs(30);
 
@@ -36,16 +37,17 @@ pub(crate) struct TcpFlow {
     down_shut: bool,
     /// The SYN was answered: the stack has data for us.
     pub connected: bool,
-    /// The task ended cleanly: both directions ended, and it closed its side of `down`. The tail it
-    /// left in `down` must reach the stack by the drain's deadline (see [`TcpFlow::finish`]).
-    pub finished: bool,
+    /// The client's FIN was seen and given to the drain.
+    client_fin: bool,
+    /// The drain deadline queued in the driver's timer for this flow (see [`TcpFlow::due`]).
+    timer: Option<Instant>,
     /// Served by the core's DNS, not an app's connection: not counted in `activeFlows`.
     pub dns: bool,
 }
 
 pub(crate) enum Step {
     Keep,
-    /// Both directions are done: release the handle.
+    /// The task ended cleanly and the stack has the tail and the FIN: release the handle.
     Close,
     /// The stack side failed: release the handle and end the task.
     Failed,
@@ -66,37 +68,62 @@ impl TcpFlow {
             down_pending: None,
             down_shut: false,
             connected: dns,
-            finished: false,
+            client_fin: false,
+            timer: None,
             dns,
         }
     }
 
-    /// Moves what can move in both directions without blocking; once the drain's deadline has
-    /// passed, nothing more.
+    /// Moves what can move in both directions without blocking, unless the flow is settled (see
+    /// [`TcpFlow::verdict`]): before any I/O, so that nothing moves after the deadline, and after.
     pub fn pump(&mut self, stack: &mut Stack, id: FlowId, scratch: &mut [u8]) -> Step {
-        if self.ends.drain.expired() {
-            return Step::Expired;
+        if let Some(step) = self.verdict() {
+            return step;
         }
         if self.pump_up(stack, id, scratch).is_err() || self.pump_down(stack, id).is_err() {
             return Step::Failed;
         }
-        if self.finished && self.down_shut && self.down_pending.is_none() {
-            Step::Close
+        self.verdict().unwrap_or(Step::Keep)
+    }
+
+    /// What becomes of the flow, decided here alone, release before reset: a flow whose task ended
+    /// cleanly, with its tail and FIN handed to the stack, is released, however late the driver
+    /// hears that the task ended; otherwise one whose drain deadline has passed is reset, a tail
+    /// still in the channel included. `None` while neither holds.
+    pub fn verdict(&self) -> Option<Step> {
+        let drain = self.ends.drain.read();
+        if drain.ended && self.down_shut && self.down_pending.is_none() {
+            Some(Step::Close)
+        } else if drain.expired {
+            Some(Step::Expired)
         } else {
-            Step::Keep
+            None
         }
     }
 
-    /// The task ended cleanly. From now on the driver keeps the drain's deadline: by then the tail
-    /// must be handed to the stack, or the flow is reset. Returns the deadline as it stands.
-    pub fn finish(&mut self) -> Instant {
-        self.finished = true;
-        // Begun already: the task's directions ended at FINs.
-        self.ends.drain.begin(Instant::now())
+    /// The drain deadline for the driver to queue in its timer: once the drain has begun, unless
+    /// the flow waits for an entry no later already.
+    pub fn due(&mut self) -> Option<Instant> {
+        let at = self.ends.drain.deadline()?;
+        if self.timer.is_some_and(|queued| queued <= at) {
+            return None;
+        }
+        self.timer = Some(at);
+        Some(at)
     }
 
-    pub fn deadline(&self) -> Option<Instant> {
-        self.ends.drain.deadline()
+    /// Whether the flow waits for its entry for `at` in the driver's timer.
+    pub fn waits_for(&self, at: Instant) -> bool {
+        self.timer == Some(at)
+    }
+
+    /// The driver's timer reached `at` for this flow: false when the flow no longer waits for it.
+    pub fn fires(&mut self, at: Instant) -> bool {
+        let fires = self.waits_for(at);
+        if fires {
+            self.timer = None;
+        }
+        fires
     }
 
     fn pump_up(
@@ -108,7 +135,7 @@ impl TcpFlow {
         if !self.connected {
             return Ok(());
         }
-        if !self.ends.drain.has_begun()
+        if !self.client_fin
             && matches!(
                 stack.tcp_state(id),
                 Some(
@@ -121,7 +148,8 @@ impl TcpFlow {
         {
             // The client's FIN arrived; data before it may still wait here or in the channel, and
             // the drain counts from now all the same, however late the task learns of it.
-            self.ends.drain.begin(Instant::now());
+            self.client_fin = true;
+            self.ends.drain.fin();
         }
         while let Some(tx) = &self.ends.up {
             if let Some(chunk) = self.up_pending.take() {
@@ -160,8 +188,7 @@ impl TcpFlow {
                 match stack.tcp_write(id, &chunk) {
                     Ok(n) => {
                         // Progress, though the chunk is not done: a slow client keeps the flow.
-                        // `pump` has checked the deadline.
-                        let _ = self.ends.drain.moved();
+                        self.ends.drain.moved();
                         chunk.advance(n);
                         if !chunk.is_empty() {
                             self.down_pending = Some(chunk);
@@ -193,8 +220,23 @@ impl TcpFlow {
     }
 }
 
+/// Runs a flow's task until it ends, or until the driver gives the flow up. Cancellation first:
+/// once the flow is given up, none of the task's I/O runs again, though it be ready at the same
+/// time (tokio-util's `run_until_cancelled` prefers the task).
+pub(super) async fn until_given_up<F: Future>(
+    cancel: &CancellationToken,
+    task: F,
+) -> Option<F::Output> {
+    tokio::select! {
+        biased;
+        () = cancel.cancelled() => None,
+        out = task => Some(out),
+    }
+}
+
 /// Dials `dst` through `route` and splices the two streams (see [`splice`]); both sides close when
-/// the splice ends, and a splice cut at the drain time fails, so the driver resets the client.
+/// the splice ends. A clean end goes to the drain before the driver hears of it, so that its timer
+/// releases the flow rather than resets it, however late the event comes.
 pub(crate) async fn dial(
     io: FlowIo,
     id: FlowId,
@@ -203,11 +245,11 @@ pub(crate) async fn dial(
     events: Events,
     cancel: CancellationToken,
 ) {
+    let drain = io.drain();
     let work = async {
         let failed = match route.connect(dst).await {
             Ok(mut upstream) => {
                 let _ = events.send(Event::Connected(id));
-                let drain = io.drain();
                 let mut io = io;
                 splice(&mut io, &mut upstream, &drain).await.is_err()
             }
@@ -216,17 +258,17 @@ pub(crate) async fn dial(
                 true
             }
         };
+        if !failed {
+            drain.ended();
+        }
         let _ = events.send(Event::Finished { id, failed });
     };
-    tokio::select! {
-        () = cancel.cancelled() => {}
-        () = work => {}
-    }
+    until_given_up(&cancel, work).await;
 }
 
 /// Answers the framed DNS queries of a TCP/53 connection to the virtual resolver; `session`'s
 /// names learn what the answers map. One that sends no query or takes no answer for `idle` fails,
-/// so the driver resets the client.
+/// so the driver resets the client; after the client's FIN the drain bounds it as any flow.
 pub(crate) async fn serve_dns(
     mut io: FlowIo,
     id: FlowId,
@@ -236,18 +278,19 @@ pub(crate) async fn serve_dns(
     events: Events,
     cancel: CancellationToken,
 ) {
+    let drain = io.drain();
     let work = async {
         let via = (&route, session.names());
         let failed = dns::serve_tcp(&mut io, &upstreams, via, idle)
             .await
             .is_err();
         drop(io);
+        if !failed {
+            drain.ended();
+        }
         let _ = events.send(Event::Finished { id, failed });
     };
-    tokio::select! {
-        () = cancel.cancelled() => {}
-        () = work => {}
-    }
+    until_given_up(&cancel, work).await;
 }
 
 #[cfg(test)]
@@ -256,8 +299,7 @@ mod tests {
     use crate::stats::meter::Tally;
     use crate::tunnel::flow::{self, CHUNK, DEPTH, Key};
     use honk_netstack::{AcceptOpts, AcceptWhen, Config, ExcludeSet, Mode};
-    use std::io;
-    use tokio::io::{AsyncWriteExt, duplex};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt, duplex};
     use tokio::sync::mpsc;
 
     /// How late a timer of the paused clock may fire: tokio's timers count whole milliseconds.
@@ -276,8 +318,8 @@ mod tests {
 
     /// After its FIN the client reads a little every two thirds of the deadline. The stack takes
     /// each piece from the chunk the driver holds, so the relay, waiting on the full queue, moves
-    /// nothing all that time; the pieces count as progress, and the flow is cut only a deadline
-    /// after the client stops.
+    /// nothing all that time; the pieces count as progress, and the flow is due to be cut only a
+    /// deadline after the client stops. The driver's reset then ends the relay.
     #[tokio::test(start_paused = true)]
     async fn a_client_that_reads_slowly_keeps_the_flow_in_the_middle_of_a_chunk() {
         let (mut wire, app, id) = Wire::connected();
@@ -288,7 +330,10 @@ mod tests {
         flow.connected = true;
         let drain = io.drain();
         let (mut upstream, mut server) = duplex(CHUNK);
-        let relay = tokio::spawn(async move { splice(&mut io, &mut upstream, &drain).await });
+        let cancel = flow.cancel.clone();
+        let relay = tokio::spawn(async move {
+            until_given_up(&cancel, splice(&mut io, &mut upstream, &drain)).await
+        });
         // The upstream sends more than the client, the stack and the queue hold, and never closes.
         tokio::spawn(async move {
             let _ = server.write_all(&vec![7; 4 << 20]).await;
@@ -308,7 +353,7 @@ mod tests {
         assert!(held >= CHUNK / 2, "{held}");
         for _ in 0..3 {
             tokio::time::sleep(DRAIN_DEADLINE * 2 / 3).await;
-            assert!(!relay.is_finished(), "a client that reads was cut");
+            assert!(flow.verdict().is_none(), "a client that reads was cut");
             wire.take(app, 4096);
             assert!(matches!(
                 flow.pump(&mut wire.core, id, &mut scratch),
@@ -320,20 +365,17 @@ mod tests {
             held = now;
         }
         let stopped = Instant::now();
-        let ended = tokio::time::timeout(2 * DRAIN_DEADLINE, relay).await;
-        assert!(
-            matches!(ended, Ok(Ok(Err(ref e))) if e.kind() == io::ErrorKind::TimedOut),
-            "{ended:?}"
-        );
-        let idle = stopped.elapsed();
-        assert!(
-            idle >= DRAIN_DEADLINE && idle <= DRAIN_DEADLINE + LATE,
-            "{idle:?}"
-        );
+        tokio::time::sleep_until(stopped + DRAIN_DEADLINE - LATE).await;
+        assert!(flow.verdict().is_none(), "cut before the deadline");
+        tokio::time::sleep_until(stopped + DRAIN_DEADLINE).await;
+        assert!(matches!(flow.verdict(), Some(Step::Expired)));
         assert!(matches!(
             flow.pump(&mut wire.core, id, &mut scratch),
             Step::Expired
         ));
+        assert!(!relay.is_finished(), "the relay never ends itself");
+        flow.cancel.cancel();
+        assert!(matches!(relay.await, Ok(None)));
     }
 
     /// An app's stack and the core's, back to back, with one connection between them.
@@ -425,8 +467,116 @@ mod tests {
         let pumped = Instant::now();
         assert_eq!(flow.up_pending.as_deref(), Some(&b"GET"[..]));
         assert!(!flow.up_eof, "the FIN is still in the stack");
-        assert!(io.drain().has_begun());
-        let deadline = io.drain().deadline().unwrap();
+        let deadline = io.drain().deadline().expect("the drain has begun");
         assert!(seen + DRAIN_DEADLINE <= deadline && deadline <= pumped + DRAIN_DEADLINE);
+    }
+
+    /// The task passes the upstream's reply and FIN on and ends cleanly; the driver hands both to
+    /// the stack, and hears of the end only after the drain's deadline (the process stopped). The
+    /// tail is the client's: the flow is released, not reset, whether the driver's timer or the
+    /// task's event comes first.
+    #[tokio::test(start_paused = true)]
+    async fn a_tail_handed_over_is_released_however_late_the_end_is_heard_of() {
+        let (mut wire, app, id) = Wire::connected();
+        let (events, _) = mpsc::unbounded_channel();
+        let waker = Waker::new(Key::Tcp(id), events);
+        let (ends, mut io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE);
+        let mut flow = TcpFlow::new(ends, waker, false);
+        flow.connected = true;
+        let mut scratch = vec![0; CHUNK];
+        wire.client.tcp_write(app, b"GET").unwrap();
+        wire.client.tcp_shutdown(app).unwrap();
+        wire.settle();
+        assert!(matches!(
+            flow.pump(&mut wire.core, id, &mut scratch),
+            Step::Keep
+        ));
+        let mut request = Vec::new();
+        io.read_to_end(&mut request).await.unwrap();
+        assert_eq!(request, b"GET");
+        io.write_all(b"200").await.unwrap();
+        io.shutdown().await.unwrap();
+        let drain = io.drain();
+        drop(io);
+        assert!(matches!(
+            flow.pump(&mut wire.core, id, &mut scratch),
+            Step::Keep
+        ));
+        wire.settle();
+        assert!(flow.down_shut && flow.down_pending.is_none());
+        // What the task does as it ends, before it sends `Finished`.
+        drain.ended();
+        tokio::time::advance(2 * DRAIN_DEADLINE).await;
+        // The driver's timer settles the flow without I/O, the event with a pump: either releases.
+        assert!(matches!(flow.verdict(), Some(Step::Close)), "reset");
+        let step = flow.pump(&mut wire.core, id, &mut scratch);
+        assert!(matches!(step, Step::Close), "reset");
+    }
+
+    /// A query arrives as the driver gives the DNS flow up: the task does not answer it, though it
+    /// could at once. A select without `biased` picks its first branch at random: 32 rounds.
+    #[tokio::test]
+    async fn a_flow_given_up_moves_nothing_more_though_its_io_is_ready() {
+        let (_wire, _app, id) = Wire::connected();
+        let session = Arc::new(Session::new(1, std::sync::Weak::new()));
+        let mut answered = 0;
+        for _ in 0..32 {
+            let (events, _) = mpsc::unbounded_channel();
+            let waker = Waker::new(Key::Tcp(id), events.clone());
+            let (mut ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE);
+            let cancel = CancellationToken::new();
+            let via = (Route::Direct, Arc::clone(&session));
+            let none: Arc<[SocketAddr]> = Arc::from([]);
+            let task = tokio::spawn(serve_dns(
+                io,
+                id,
+                via,
+                none,
+                DRAIN_DEADLINE,
+                events,
+                cancel.clone(),
+            ));
+            tokio::task::yield_now().await;
+            let q = crate::dns::tests::query(7, "example.com", None);
+            let mut framed = u16::try_from(q.len()).unwrap().to_be_bytes().to_vec();
+            framed.extend_from_slice(&q);
+            let up = ends.up.take().unwrap();
+            up.try_send(Bytes::from(framed)).unwrap();
+            cancel.cancel();
+            task.await.unwrap();
+            answered += usize::from(ends.down.try_recv().is_ok());
+        }
+        assert_eq!(answered, 0, "rounds answered after the cancel");
+    }
+
+    /// The task sees the first FIN, the upstream's: the drain wakes the driver, which queues the
+    /// deadline once. A later FIN changes nothing and a byte moved puts the deadline off, so neither
+    /// queues an entry; the one queued comes, finds the flow alive, and the later deadline is queued
+    /// in its place.
+    #[tokio::test(start_paused = true)]
+    async fn the_first_fin_from_the_task_wakes_the_driver_to_queue_the_drain() {
+        let (_wire, _app, id) = Wire::connected();
+        let (events, mut woken) = mpsc::unbounded_channel();
+        let waker = Waker::new(Key::Tcp(id), events);
+        let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(None), DRAIN_DEADLINE);
+        let mut flow = TcpFlow::new(ends, waker, false);
+        assert_eq!(flow.due(), None, "no drain before a FIN");
+        let drain = io.drain();
+        drain.fin();
+        assert!(matches!(woken.try_recv(), Ok(Event::Wake(Key::Tcp(k))) if k == id));
+        flow.waker.rearm();
+        let first = flow.due().unwrap();
+        assert_eq!(first, Instant::now() + DRAIN_DEADLINE);
+        assert_eq!(flow.due(), None, "queued once");
+        tokio::time::sleep(DRAIN_DEADLINE / 2).await;
+        drain.fin();
+        drain.moved();
+        assert!(woken.try_recv().is_err(), "woken for no earlier deadline");
+        assert_eq!(flow.due(), None);
+        tokio::time::sleep_until(first).await;
+        assert!(flow.fires(first));
+        assert!(flow.verdict().is_none());
+        assert_eq!(flow.due(), Some(first + DRAIN_DEADLINE / 2));
+        assert!(!flow.fires(first), "an entry the flow no longer waits for");
     }
 }

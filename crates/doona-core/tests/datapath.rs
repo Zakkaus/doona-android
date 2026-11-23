@@ -346,3 +346,49 @@ fn dns_answers_the_client_never_takes_are_reset_after_the_drain_time() {
     assert!(reset, "the core still holds the session");
     assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
 }
+
+/// After its FIN the client takes none of the answers, and the resolver is slow to answer the last
+/// query. The answers before it fill everything between the core and the client, so nothing moves
+/// after the FIN: the session is reset a drain time later, while that answer is still coming, not
+/// a drain time after the core starts to write it.
+#[test]
+fn a_dns_session_whose_last_answer_is_slow_is_reset_a_drain_time_after_nothing_moved() {
+    let (resolver, _) = servers::dns_server();
+    let options = Options {
+        dns_upstreams: vec![resolver],
+        tcp_drain: DRAIN,
+        ..Options::default()
+    };
+    let mut s = setup_with("Direct", options);
+    let id = s.client.connect(RESOLVER);
+    // Five answers of about 64 KB fill the client's window, the core's buffers and the queue (see
+    // above); the sixth comes after servers::SLOW.
+    let mut queries = Vec::new();
+    for i in 0..6 {
+        let name = if i == 5 {
+            "slow.huge.example"
+        } else {
+            "huge.example"
+        };
+        let q = servers::query(i, name, None);
+        queries.extend_from_slice(&(q.len() as u16).to_be_bytes());
+        queries.extend_from_slice(&q);
+    }
+    let mut sent = 0;
+    assert!(s.client.until(WAIT, |c| {
+        sent += c.write_now(id, &queries[sent..]);
+        sent == queries.len()
+    }));
+    s.client.shutdown(id);
+    let fin = Instant::now();
+    let reset = s
+        .client
+        .until(servers::SLOW, |c| c.state(id) == Some(TcpState::Closed));
+    let took = fin.elapsed();
+    assert!(
+        reset,
+        "the core still holds the session {took:?} after the FIN"
+    );
+    assert!(took < DRAIN + Duration::from_secs(1), "{took:?}");
+    assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
+}

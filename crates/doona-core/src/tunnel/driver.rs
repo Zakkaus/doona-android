@@ -7,6 +7,7 @@
 //! The packet loop and its error handling follow crates/honk-android/src/engine.rs.
 
 use super::blocked::Blocked;
+use super::drain::Drains;
 use super::flow::{self, Event, Events, Key, Waker};
 use super::route::{Inbound, Route};
 use super::tcp::{self, Step, TcpFlow};
@@ -19,8 +20,7 @@ use crate::sys;
 use honk_netstack::{
     AcceptOpts, AcceptWhen, Config, ExcludeSet, FlowId, Mode, Ready, Refuse, Rx, Stack,
 };
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::HashMap;
 use std::io::{self, ErrorKind};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -76,8 +76,8 @@ struct Driver {
     tcp: HashMap<FlowId, TcpFlow>,
     /// How many of `tcp` the core's DNS serves.
     dns_flows: usize,
-    /// The flows of `tcp` whose task ended while their tail still waits for the client.
-    tails: BinaryHeap<Due>,
+    /// The deadlines of the flows of `tcp` whose drain has begun.
+    drains: Drains,
     nat: Nat,
     /// The UDP five-tuples blockQuic refused lately.
     blocked: Blocked,
@@ -116,7 +116,7 @@ impl Driver {
             events,
             tcp: HashMap::new(),
             dns_flows: 0,
-            tails: BinaryHeap::new(),
+            drains: Drains::default(),
             nat: Nat::new(Budget::new(udp::QUEUED_BYTES), idle),
             blocked: Blocked::new(),
             dns_slots: Arc::new(Semaphore::new(DNS_IN_FLIGHT)),
@@ -165,11 +165,10 @@ impl Driver {
         }
     }
 
-    /// The stack's next timer or the first tail's deadline, whichever comes first.
+    /// The stack's next timer or the first drain's deadline, whichever comes first.
     fn next_deadline(&self) -> Option<time::Instant> {
         let stack = self.stack.poll_timeout().map(time::Instant::from_std);
-        let tail = self.tails.peek().map(|due| due.0);
-        stack.into_iter().chain(tail).min()
+        stack.into_iter().chain(self.drains.next()).min()
     }
 
     /// Timers, new connections, stack events, output, and the counters `snapshot` reads.
@@ -178,7 +177,6 @@ impl Driver {
         if self.stack.poll_timeout().is_some_and(|d| d <= now) {
             self.stack.handle_timeout(now);
         }
-        self.expire_tails();
         self.accept();
         while let Some((id, ready)) = self.stack.poll_event() {
             if ready.contains(Ready::ERROR) {
@@ -187,6 +185,8 @@ impl Driver {
                 self.service_tcp(id);
             }
         }
+        // Last, so the timer's earliest entry is a live one when the driver next sleeps.
+        self.expire_drains();
         self.stack.take_tx_wakeup();
         while self.pending_tx.is_none() {
             let Some(len) = self.stack.poll_transmit(now, &mut self.tx) else {
@@ -289,7 +289,8 @@ impl Driver {
                 }
             }
             Event::Finished { id, failed: true } => self.reset_tcp(id),
-            Event::Finished { id, failed: false } => self.finish_tcp(id),
+            // The clean end is in the flow's drain already.
+            Event::Finished { id, failed: false } => self.service_tcp(id),
             Event::UdpEnded(n) => self.nat.remove(n),
             Event::DnsAnswer {
                 from,
@@ -372,39 +373,42 @@ impl Driver {
             return;
         };
         flow.waker.rearm();
-        match flow.pump(&mut self.stack, id, &mut self.scratch) {
-            Step::Keep => {}
+        let step = flow.pump(&mut self.stack, id, &mut self.scratch);
+        self.settle_tcp(id, step);
+    }
+
+    /// Keeps a flow, with its drain's deadline queued once the drain has begun; or releases or
+    /// resets it.
+    fn settle_tcp(&mut self, id: FlowId, step: Step) {
+        match step {
+            Step::Keep => {
+                if let Some(at) = self.tcp.get_mut(&id).and_then(TcpFlow::due) {
+                    self.drains.push(at, id);
+                }
+            }
             Step::Expired => self.reset_tcp(id),
             step => self.end_tcp(id, step),
         }
     }
 
-    /// The task ended cleanly. The flow closes once its tail is handed to the stack; until then the
-    /// driver keeps the drain's deadline, and resets the flow when it passes.
-    fn finish_tcp(&mut self, id: FlowId) {
-        let Some(deadline) = self.tcp.get_mut(&id).map(TcpFlow::finish) else {
-            return;
-        };
-        self.service_tcp(id);
-        if self.tcp.contains_key(&id) {
-            self.tails.push(Due(deadline, id));
-        }
-    }
-
-    /// Resets each finished flow whose drain has run out with its tail not handed to the stack.
-    /// A flow that moved since its entry was queued is queued again for its new deadline.
-    fn expire_tails(&mut self) {
+    /// Settles each flow whose queued drain deadline has come, without I/O (see
+    /// [`TcpFlow::verdict`]): released, reset, or queued again when a byte moved since. An entry
+    /// no flow waits for, as the flow is gone or queued another, is dropped once it is the
+    /// earliest, so the driver never wakes for one.
+    fn expire_drains(&mut self) {
         let now = time::Instant::now();
-        while let Some(&Due(at, id)) = self.tails.peek()
-            && at <= now
-        {
-            self.tails.pop();
-            // Gone already: closed, or reset by a pump that found it expired.
-            match self.tcp.get(&id).and_then(TcpFlow::deadline) {
-                Some(deadline) if deadline > now => self.tails.push(Due(deadline, id)),
-                Some(_) => self.reset_tcp(id),
-                None => {}
+        while let Some((at, id)) = self.drains.peek() {
+            let Some(flow) = self.tcp.get_mut(&id).filter(|flow| flow.waits_for(at)) else {
+                self.drains.pop();
+                continue;
+            };
+            if at > now {
+                return;
             }
+            self.drains.pop();
+            flow.fires(at);
+            let step = flow.verdict().unwrap_or(Step::Keep);
+            self.settle_tcp(id, step);
         }
     }
 
@@ -547,30 +551,6 @@ enum Sent {
     Waiting,
     Dropped,
 }
-
-/// A finished TCP flow's drain deadline as queued; the earliest is the heap's greatest.
-#[derive(Clone, Copy)]
-struct Due(time::Instant, FlowId);
-
-impl Ord for Due {
-    fn cmp(&self, other: &Due) -> Ordering {
-        other.0.cmp(&self.0)
-    }
-}
-
-impl PartialOrd for Due {
-    fn partial_cmp(&self, other: &Due) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for Due {
-    fn eq(&self, other: &Due) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl Eq for Due {}
 
 /// The route of DNS the core answers for `session`'s generation.
 fn dns_route(settings: &Settings, session: &Arc<Session>) -> Route {

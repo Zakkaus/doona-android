@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use std::sync::{Arc, mpsc};
+use std::time::Duration;
 
 /// Counts what a server saw.
 #[derive(Default)]
@@ -207,8 +208,12 @@ pub fn truncated(m: &[u8]) -> bool {
     m[2] & 0x02 != 0
 }
 
+/// How long [`dns_server`] takes to answer a name containing "slow", within the core's 5 s for
+/// one upstream.
+pub const SLOW: Duration = Duration::from_secs(3);
+
 /// A DNS-over-TCP resolver: a name containing "big" gets 60 records, one containing "huge" 4000
-/// (about 64 KB), any other one.
+/// (about 64 KB), any other one; a name containing "slow" is answered after [`SLOW`].
 pub fn dns_server() -> (SocketAddr, Arc<Seen>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
@@ -232,6 +237,9 @@ fn serve_dns(mut conn: TcpStream, seen: &Seen) {
             return;
         }
         seen.datagrams.fetch_add(1, Relaxed);
+        if q.windows(4).any(|w| w == b"slow") {
+            std::thread::sleep(SLOW);
+        }
         let records = if q.windows(4).any(|w| w == b"huge") {
             4000
         } else if q.windows(3).any(|w| w == b"big") {
