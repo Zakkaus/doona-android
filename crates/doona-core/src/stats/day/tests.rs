@@ -319,3 +319,42 @@ fn a_damaged_file_is_fixed() {
         (SLOTS, SLOTS, HOURS, 5)
     );
 }
+
+/// A day from a file whose counts pass `u64::MAX` once added up, by ids folded into `other`, by its
+/// quarters, or with a day or a total of the same date, is dropped: no panic, and no count that
+/// wrapped.
+#[test]
+fn a_day_whose_counts_overflow_when_added_is_dropped() {
+    let mut rules = Day::new(3);
+    rules.rules.insert("bad".into(), [u64::MAX, 0, 0]);
+    rules.rules.insert(OTHER.into(), [1, 0, 0]);
+    let mut outbounds = Day::new(4);
+    for i in 0..MAX_OUTBOUNDS + 2 {
+        outbounds
+            .outbounds
+            .insert(format!("n-{i:03}"), [u64::MAX / 2 + 1, 0]);
+    }
+    let mut quarters = Day::new(5);
+    quarters.up[0] = u64::MAX;
+    quarters.down[1] = 1;
+    let mut fine = Day::new(6);
+    fine.up[0] = 7;
+    fine.rules.insert("bad".into(), [1, 0, 0]);
+    fine.rules.insert(OTHER.into(), [1, 0, 0]);
+    let mut again = Day::new(6);
+    again.down[0] = u64::MAX;
+    let t = |up| Total {
+        day: 1,
+        up,
+        down: 0,
+    };
+    let read = Usage {
+        full: vec![rules, outbounds, quarters, fine, again],
+        days: vec![t(u64::MAX), t(1)],
+    }
+    .sane();
+    assert_eq!(kept(&read), [6]);
+    assert_eq!(read.full[0].rules[OTHER], [2, 0, 0]);
+    assert_eq!((read.full[0].up[0], read.full[0].down[0]), (7, 0));
+    assert_eq!(read.days, [t(u64::MAX)]);
+}

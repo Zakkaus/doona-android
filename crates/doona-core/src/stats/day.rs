@@ -103,42 +103,60 @@ impl Day {
 
     /// Adds an outbound's bytes; past [`MAX_OUTBOUNDS`] targets, a new one counts as [`OTHER`].
     fn count(&mut self, id: &str, up: u64, down: u64) {
-        bounded(&mut self.outbounds, MAX_OUTBOUNDS, id, [up, down]);
+        // A count that would pass u64::MAX stays as it was; only a wrong file gets near.
+        let _ = bounded(&mut self.outbounds, MAX_OUTBOUNDS, id, [up, down]);
     }
 
     /// Adds a rule's bytes and flows; past [`MAX_RULES`] rules, a new one counts as [`OTHER`].
     fn count_rule(&mut self, id: &str, moved: [u64; 3]) {
-        bounded(&mut self.rules, MAX_RULES, id, moved);
+        let _ = bounded(&mut self.rules, MAX_RULES, id, moved);
     }
 
-    /// Adds every count of `other`, quarter by quarter.
-    fn merge(&mut self, other: &Day) {
+    /// Adds every count of `other`, quarter by quarter. None, with `self` unchanged, when the
+    /// two pass `u64::MAX` together (see [`Day::sane`]).
+    fn merge(&mut self, other: &Day) -> Option<()> {
+        let mut sum = self.clone();
         for (mine, theirs) in [
-            (&mut self.up, &other.up),
-            (&mut self.down, &other.down),
-            (&mut self.flows, &other.flows),
+            (&mut sum.up, &other.up),
+            (&mut sum.down, &other.down),
+            (&mut sum.flows, &other.flows),
         ] {
-            mine.iter_mut().zip(theirs).for_each(|(a, b)| *a += b);
+            for (a, b) in mine.iter_mut().zip(theirs) {
+                *a = a.checked_add(*b)?;
+            }
         }
-        add_all(&mut self.outbounds, &other.outbounds, MAX_OUTBOUNDS);
-        add_all(&mut self.rules, &other.rules, MAX_RULES);
+        sum.adds_up()?;
+        add_all(&mut sum.outbounds, &other.outbounds, MAX_OUTBOUNDS)?;
+        add_all(&mut sum.rules, &other.rules, MAX_RULES)?;
+        *self = sum;
+        Some(())
+    }
+
+    /// Whether the quarters both ways add up within `u64`, as the day's total and yesterday's
+    /// by a time of day add them.
+    fn adds_up(&self) -> Option<()> {
+        (self.up.iter().chain(&self.down)).try_fold(0u64, |sum, n| sum.checked_add(*n))?;
+        Some(())
     }
 
     /// A day read from a file: lists of the wrong length and maps past their bound are fixed
-    /// rather than trusted, and a rule id no rule has counts as [`OTHER`].
-    fn sane(mut self) -> Day {
+    /// rather than trusted, and a rule id no rule has counts as [`OTHER`]. None when its counts
+    /// pass `u64::MAX` once added up, its quarters both ways or the ids folded into one: no day
+    /// comes near, so the file is wrong, and the day is dropped rather than wrapped.
+    fn sane(mut self) -> Option<Day> {
         self.up.resize(SLOTS, 0);
         self.down.resize(SLOTS, 0);
         self.flows.resize(HOURS, 0);
+        self.adds_up()?;
         let (outbounds, read) = (mem::take(&mut self.outbounds), mem::take(&mut self.rules));
-        add_all(&mut self.outbounds, &outbounds, MAX_OUTBOUNDS);
+        add_all(&mut self.outbounds, &outbounds, MAX_OUTBOUNDS)?;
         let mut rules = BTreeMap::new();
         for (id, moved) in &read {
             let id = if rule_id(id) { id } else { OTHER };
-            bounded(&mut rules, usize::MAX, id, *moved);
+            bounded(&mut rules, usize::MAX, id, *moved)?;
         }
-        add_all(&mut self.rules, &rules, MAX_RULES);
-        self
+        add_all(&mut self.rules, &rules, MAX_RULES)?;
+        Some(self)
     }
 }
 
@@ -150,32 +168,39 @@ fn rule_id(id: &str) -> bool {
     id == "unmatched" || id == OTHER || id.strip_prefix("r-").is_some_and(row)
 }
 
-/// Adds `moved` to `id` in `counts`; past `max` ids, a new one counts as [`OTHER`].
+/// Adds `moved` to `id` in `counts`; past `max` ids, a new one counts as [`OTHER`]. None, with
+/// the id's counts left as they were, when one would pass `u64::MAX`.
 fn bounded<const N: usize>(
     counts: &mut BTreeMap<String, [u64; N]>,
     max: usize,
     id: &str,
     moved: [u64; N],
-) {
+) -> Option<()> {
     let full = counts.len() >= max && !counts.contains_key(id);
     let entry = counts
         .entry(if full { OTHER } else { id }.to_owned())
         .or_insert([0; N]);
-    entry.iter_mut().zip(moved).for_each(|(a, b)| *a += b);
+    let mut sum = *entry;
+    for (a, b) in sum.iter_mut().zip(moved) {
+        *a = a.checked_add(b)?;
+    }
+    *entry = sum;
+    Some(())
 }
 
 /// Adds every count of `from` to `counts` under `max`. [`OTHER`] comes last, so an id that fits
 /// stays apart however it sorts against `other`, and a day written at its bound reads back as it
-/// was.
+/// was. None at the first count that would pass `u64::MAX`.
 fn add_all<const N: usize>(
     counts: &mut BTreeMap<String, [u64; N]>,
     from: &BTreeMap<String, [u64; N]>,
     max: usize,
-) {
+) -> Option<()> {
     let ids = from.iter().filter(|(id, _)| *id != OTHER);
     for (id, moved) in ids.chain(from.get_key_value(OTHER)) {
-        bounded(counts, max, id, *moved);
+        bounded(counts, max, id, *moved)?;
     }
+    Some(())
 }
 
 /// A day's totals.
@@ -234,7 +259,8 @@ impl Usage {
         self.full.retain(|d| {
             let wrong = d.day > ahead;
             if wrong {
-                today.merge(d);
+                // Past u64::MAX only from a wrong file: today stays as it was.
+                let _ = today.merge(d);
             }
             !wrong
         });
@@ -247,11 +273,13 @@ impl Usage {
         at.saturating_sub(over)
     }
 
-    /// Keeps `day` in full, merged with a kept day of its date; the oldest beyond [`FULL`] keep
-    /// only their totals.
+    /// Keeps `day` in full, merged with a kept day of its date, or dropped when the two pass
+    /// `u64::MAX` together; the oldest beyond [`FULL`] keep only their totals.
     fn keep(&mut self, day: Day) {
         match self.full.iter_mut().find(|d| d.day == day.day) {
-            Some(kept) => kept.merge(&day),
+            Some(kept) => {
+                let _ = kept.merge(&day);
+            }
             None => {
                 let at = self.full.partition_point(|d| d.day < day.day);
                 self.full.insert(at, day);
@@ -273,15 +301,20 @@ impl Usage {
         }
     }
 
-    /// Keeps a day's totals, added to any kept for its date; past [`KEPT_DAYS`], the oldest go.
+    /// Keeps a day's totals, added to any kept for its date, unless the two pass `u64::MAX`
+    /// together (a wrong file); past [`KEPT_DAYS`], the oldest go.
     fn total(&mut self, t: Total) {
-        if t.up + t.down == 0 {
+        if (t.up, t.down) == (0, 0) {
             return;
         }
         match self.days.binary_search_by_key(&t.day, |k| k.day) {
             Ok(i) => {
-                self.days[i].up += t.up;
-                self.days[i].down += t.down;
+                let kept = &mut self.days[i];
+                if let (Some(up), Some(down)) =
+                    (kept.up.checked_add(t.up), kept.down.checked_add(t.down))
+                {
+                    (kept.up, kept.down) = (up, down);
+                }
             }
             Err(i) => self.days.insert(i, t),
         }
@@ -341,8 +374,8 @@ impl Usage {
         for t in self.days {
             usage.total(t);
         }
-        for d in self.full {
-            usage.keep(d.sane());
+        for d in self.full.into_iter().filter_map(Day::sane) {
+            usage.keep(d);
         }
         usage
     }
