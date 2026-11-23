@@ -93,6 +93,7 @@ struct Seen {
     chose_local: bool,
     /// The node address it chose last.
     last: Option<IpAddr>,
+    failed: Option<IpAddr>,
     /// `Some` once a transport to the node came up (connected, or an existing one reused), with
     /// its address when honk knows it.
     reached: Option<Option<IpAddr>>,
@@ -135,6 +136,16 @@ impl Trace {
         seen.reached.flatten().or(seen.last)
     }
 
+    /// Only transport events establish proxy availability. A failed URL request need not
+    /// mean the connection to its proxy failed.
+    pub fn availability(&self) -> Option<(IpAddr, bool)> {
+        let seen = lock(&self.0);
+        match seen.reached {
+            Some(peer) => peer.map(|ip| (ip, true)),
+            None => seen.failed.map(|ip| (ip, false)),
+        }
+    }
+
     /// Records `event` as honk reports it; for tests that stand in for honk.
     #[cfg(test)]
     pub fn record(&self, event: &FlowEvent) {
@@ -156,6 +167,8 @@ impl Seen {
                 }
                 if *status == TransportStatus::Succeeded {
                     self.reach(ip);
+                } else if *status == TransportStatus::Failed {
+                    self.failed = ip;
                 }
             }
             FlowEvent::TransportAttached { server_addr, .. } => {

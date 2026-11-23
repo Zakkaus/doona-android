@@ -35,6 +35,7 @@
     <string name="act_cpu">CPU usage</string>
     <string name="policy_kind_selector">Manual</string>
     <string name="policy_kind_urltest">Fastest on average</string>
+    <string name="policy_kind_score">Score</string>
     <string name="policy_kind_fallback">First available</string>
     <string name="policy_kind_fixed">Fixed</string>
     <string name="policy_healthy">%1$d available</string>

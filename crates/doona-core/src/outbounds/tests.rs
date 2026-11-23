@@ -68,12 +68,13 @@ fn published() -> (Outbounds, Vec<Arc<NodeEntry>>) {
     let built = outbounds.build(&nodes);
     let selected = nodes
         .iter()
-        .map(|n| (n.id.clone(), Arc::clone(&n.node)))
+        .map(|n| (n.id.clone(), super::Leaf::Node(Arc::clone(&n.node))))
         .collect();
     let (policy, mode) = (Arc::default(), Mode::Global);
     outbounds.replace(
         built,
         Routing {
+            score: crate::catalog::Model::new(nodes.clone(), Default::default()).score,
             selected,
             policy,
             mode,

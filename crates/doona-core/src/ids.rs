@@ -5,9 +5,17 @@
 
 use uuid::Uuid;
 
+pub(crate) fn scoped_uuid(subscription: &str, endpoint: Uuid) -> Uuid {
+    Uuid::new_v5(&endpoint, subscription.as_bytes())
+}
+
 /// `n-` and 16 hex digits: a node of `subscription` with honk's endpoint identity `endpoint`.
+#[cfg(test)]
 pub(crate) fn node_id(subscription: &str, endpoint: Uuid) -> String {
-    let hash = Uuid::new_v5(&endpoint, subscription.as_bytes());
+    short_id(scoped_uuid(subscription, endpoint))
+}
+
+pub(crate) fn short_id(hash: Uuid) -> String {
     let mut first = [0; 8];
     first.copy_from_slice(&hash.as_bytes()[..8]);
     format!("n-{:016x}", u64::from_be_bytes(first))

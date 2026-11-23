@@ -17,6 +17,7 @@ pub mod outbounds;
 mod panics;
 mod probe;
 mod rules;
+mod score;
 pub mod state;
 mod stats;
 mod subscription;

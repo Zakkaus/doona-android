@@ -171,7 +171,7 @@ data class Traffic(
  */
 enum class Mode { Global, Direct, Rule }
 
-enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Fallback(false) }
+enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Score(false), Fallback(false) }
 
 /**
  * A node or a nested group. [id] stays the same across subscription refreshes; [name] is only for display and may

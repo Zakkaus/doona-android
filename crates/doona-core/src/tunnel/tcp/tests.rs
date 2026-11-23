@@ -5,6 +5,7 @@ use crate::stats::meter::Tally;
 use crate::tunnel::flow::{self, CHUNK, DEPTH, Key};
 use crate::tunnel::gate::Task;
 use crate::tunnel::pause;
+use crate::tunnel::splice::splice;
 use honk_netstack::{AcceptOpts, AcceptWhen, Config, ExcludeSet, Mode};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, duplex};
 use tokio::sync::mpsc;

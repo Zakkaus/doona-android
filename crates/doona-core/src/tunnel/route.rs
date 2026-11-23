@@ -18,7 +18,7 @@ use super::Session;
 use super::udp::UdpUpstream;
 use crate::dto::Mode;
 use crate::localnet::{self, Trace};
-use crate::outbounds::{Dialer, Outbounds, View};
+use crate::outbounds::{Dialer, Outbounds};
 use crate::rules::policy::Choice;
 use crate::rules::{Flow, Network};
 use crate::stats::meter::{DIRECT, Meter};
@@ -29,6 +29,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::time::Duration;
 use tokio::net::{TcpStream, UdpSocket};
+
+mod connect;
 
 /// A dial, through a node or straight out, gives up after this long.
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -126,13 +128,14 @@ impl Route {
             return Route::Direct;
         }
         let policy = view.policy();
+        let name = std::cell::OnceCell::new();
+        let domain = || {
+            name.get_or_init(|| session.names().name(dst.ip()))
+                .as_deref()
+        };
         let (group, rule) = if mode == Mode::Rule {
-            // A name is looked up only when a rule could match it.
-            let name = (policy.wants_names())
-                .then(|| session.names().name(dst.ip()))
-                .flatten();
             let flow = Flow {
-                domain: name.as_deref(),
+                domain: if policy.wants_names() { domain() } else { None },
                 ip: dst.ip(),
                 port: dst.port(),
                 network,
@@ -146,7 +149,7 @@ impl Route {
         } else {
             (policy.main(), None)
         };
-        Route::through(&view, group, rule, session)
+        Route::through(view.for_flow(group, dst, network, domain), rule, session)
     }
 
     /// The route of DNS the core answers for `session`'s generation: straight out in Direct, else
@@ -165,19 +168,16 @@ impl Route {
         let view = outbounds.view();
         match view.mode().unwrap_or(mode) {
             Mode::Direct => Route::Direct,
-            Mode::Global | Mode::Rule => Route::through(&view, view.policy().main(), None, session),
+            Mode::Global | Mode::Rule => {
+                Route::through(view.dialer(view.policy().main()), None, session)
+            }
         }
     }
 
     /// Through the node `group` selects in `view`, chosen by `rule` in Rule mode; refused while
     /// the group has no node, never direct.
-    fn through(
-        view: &View<'_>,
-        group: &str,
-        rule: Option<Arc<str>>,
-        session: &Arc<Session>,
-    ) -> Route {
-        view.dialer(group).map_or(Route::Refuse, |mut d| {
+    fn through(dialer: Option<Dialer>, rule: Option<Arc<str>>, session: &Arc<Session>) -> Route {
+        dialer.map_or(Route::Refuse, |mut d| {
             d.rule = rule;
             Route::Proxy(Arc::new(d), Arc::clone(session))
         })
@@ -213,26 +213,18 @@ impl Route {
     }
 
     pub async fn connect(&self, dst: SocketAddr) -> io::Result<Upstream> {
+        self.connect_tcp(dst).await.map(|(stream, _)| stream)
+    }
+
+    pub(super) async fn connect_tcp(&self, dst: SocketAddr) -> io::Result<connect::Connected> {
         match self {
             Route::Direct | Route::RuleDirect(_) => {
                 let s = within(TcpStream::connect(dst)).await??;
                 // The app's own segments arrive already sized; Nagle would only add delay.
                 s.set_nodelay(true)?;
-                Ok(Box::new(s))
+                Ok((Box::new(s), None))
             }
-            Route::Proxy(d, session) => {
-                let (registry, proxies, id) =
-                    (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
-                let (trace, began) = (Trace::default(), session.begin_dial());
-                let dial = trace.scope(async move {
-                    proxies
-                        .dial_runtime(registry, id, dst, None, CONNECT_TIMEOUT)
-                        .await
-                });
-                let dialed = flatten(within(d.on_carriers(dial)).await).map(|c| c.stream);
-                session.dialed(began, &trace, dialed.is_ok());
-                dialed
-            }
+            Route::Proxy(d, session) => connect::connect(d, session, dst).await,
             Route::Refuse | Route::Blocked => Err(ErrorKind::PermissionDenied.into()),
         }
     }

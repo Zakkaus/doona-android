@@ -114,7 +114,7 @@ class CoreDtoTest {
         val groups = catalog.groups.map(GroupDto::toGroup)
         assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), groups.map { it.id })
         val auto = groups[1]
-        assertEquals(GroupKind.UrlTest, auto.kind)
+        assertEquals(GroupKind.Score, auto.kind)
         assertTrue(auto.testing)
         // Two distinct endpoints may share a display name; their ids differ.
         assertEquals(listOf("hk-01", "hk-01"), auto.members.map { it.name })

@@ -200,6 +200,7 @@ fn reject_and_a_group_without_a_node_are_refused_never_direct() {
     let selected = model.leaves(&BTreeMap::new());
     let mode = Mode::Rule;
     outbounds.select(Routing {
+        score: Arc::clone(&model.score),
         selected,
         policy,
         mode,

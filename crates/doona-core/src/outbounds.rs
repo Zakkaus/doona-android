@@ -41,7 +41,7 @@ mod routing;
 pub(crate) use self::layers::Registries;
 use self::layers::layers;
 use self::routing::Table;
-pub(crate) use self::routing::{Routing, View};
+pub(crate) use self::routing::{Leaf, Routing, View};
 
 /// Threads of a carriers runtime: the protocol work of every proxied flow (TLS, QUIC, session
 /// framing) runs there.
@@ -92,6 +92,7 @@ pub struct Dialer {
     pub group: Arc<str>,
     /// The rule that chose the group in Rule mode, for `byRule`; none in Global and for DNS.
     pub rule: Option<Arc<str>>,
+    pub(crate) score: Option<routing::Attempt>,
     pub node: Arc<Node>,
     pub registry: Arc<OutboundRuntimeRegistry>,
     pub proxies: Arc<ProxyRegistry>,
@@ -428,6 +429,7 @@ impl Outbounds {
                 p.registries.0.iter().for_each(|r| p.carriers.adopt(r));
             }
             let old = table.published.clone();
+            routing.score.manager.publish_score_membership();
             *table = Arc::new(Table::new(published, routing));
             self.routings.fetch_add(1, Relaxed);
             (old, reused)
@@ -481,6 +483,7 @@ impl Outbounds {
         *table = Arc::new(Table {
             published: Some(published),
             selected: table.selected.clone(),
+            score: table.score.clone(),
             policy: Arc::clone(&table.policy),
             mode: table.mode,
         });

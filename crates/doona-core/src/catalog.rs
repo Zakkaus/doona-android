@@ -4,16 +4,18 @@
 //! catalog lock, in sections that never wait on I/O.
 
 use crate::diag::{Diag, Event};
-use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member, Mode, RuleSourceSpec};
+use crate::dto::{self, Catalog, ErrorCode, GroupKind, Member, RuleSourceSpec};
 use crate::groups::{self, GroupDef};
 use crate::ids::{self, is_group};
-use crate::outbounds::{Built, Outbounds, Routing};
+use crate::outbounds::{Built, Outbounds};
 use crate::rules::policy::Policy;
 use crate::rules::template;
+use crate::score::Score;
 use crate::state::{State, StoredSubscription};
 use crate::stats::{Clock, Stats};
 use crate::subscription::parse;
 use honk_config::node::Node;
+use honk_outbound::group::{ScorePolicyState, SelectionNetwork};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
@@ -38,6 +40,7 @@ pub(crate) fn incarnation() -> u64 {
 #[derive(Debug)]
 pub(crate) struct NodeEntry {
     pub id: String,
+    pub uuid: uuid::Uuid,
     pub name: String,
     pub subscription: String,
     pub node: Arc<Node>,
@@ -53,8 +56,10 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
             } else {
                 node.name.clone()
             };
+            let uuid = ids::scoped_uuid(subscription, node.id);
             Arc::new(NodeEntry {
-                id: ids::node_id(subscription, node.id),
+                id: ids::short_id(uuid),
+                uuid,
                 name,
                 subscription: subscription.to_owned(),
                 node: Arc::new(node),
@@ -77,7 +82,7 @@ pub(crate) fn load(state: &State, diag: &Diag) -> Model {
         }
         incarnations.insert(s.id.clone(), incarnation());
     }
-    Model::sourced(nodes, incarnations, &state.rule_source)
+    Model::sourced(nodes, incarnations, &state.rule_source, Arc::default())
 }
 
 /// The nodes `state.json` keeps for `s`, parsed again: from its structured document when it has
@@ -133,6 +138,7 @@ impl Shared {
     /// policy in one step, so a new flow never pairs a node with a registry that lacks it, nor a
     /// rule with groups of another node set; `c` is locked.
     pub fn publish_nodes(&self, c: &CatalogState, built: Built) {
+        c.model.restore_pins(&c.state.selections);
         self.outbounds
             .replace(built, c.model.routing(&c.state.selections, c.state.mode));
     }
@@ -164,8 +170,9 @@ impl CatalogState {
     }
 }
 
+mod routing;
+
 /// The nodes of every subscription and the groups over them.
-#[derive(Default)]
 pub(crate) struct Model {
     /// Every subscription's nodes, in subscription then feed order.
     pub nodes: Vec<Arc<NodeEntry>>,
@@ -173,6 +180,7 @@ pub(crate) struct Model {
     /// The incarnation each subscription's nodes belong to; a refresh gives a new one.
     pub incarnations: HashMap<String, u64>,
     pub groups: Vec<GroupDef>,
+    pub score: Arc<Score>,
     /// What chooses a new flow's group: the main group, and the rules of `state.json`'s source
     /// over `groups`.
     pub policy: Arc<Policy>,
@@ -224,7 +232,12 @@ impl Model {
     /// The groups over `nodes` under the template's default policy.
     #[cfg(test)]
     pub fn new(nodes: Vec<Arc<NodeEntry>>, incarnations: HashMap<String, u64>) -> Model {
-        Model::sourced(nodes, incarnations, &RuleSourceSpec::default())
+        Model::sourced(
+            nodes,
+            incarnations,
+            &RuleSourceSpec::default(),
+            Arc::default(),
+        )
     }
 
     /// The groups over `nodes`, and the policy of `source` over them.
@@ -232,6 +245,7 @@ impl Model {
         nodes: Vec<Arc<NodeEntry>>,
         incarnations: HashMap<String, u64>,
         source: &RuleSourceSpec,
+        state: Arc<ScorePolicyState>,
     ) -> Model {
         let index: HashMap<String, usize> = nodes
             .iter()
@@ -244,13 +258,18 @@ impl Model {
             .collect();
         let groups = groups::template(&named);
         let policy = compile(&groups, &index, source);
+        let score = Arc::new(Score::new(&groups, &nodes, &index, state));
         Model {
             nodes,
             index,
             incarnations,
             groups,
             policy: Arc::new(policy),
-            ..Model::default()
+            score,
+            latency: HashMap::new(),
+            auto: HashMap::new(),
+            testing: HashMap::new(),
+            next_probe: 0,
         }
     }
 
@@ -276,7 +295,12 @@ impl Model {
                 }
             }
         }
-        Model::sourced(nodes, incarnations, &state.rule_source)
+        Model::sourced(
+            nodes,
+            incarnations,
+            &state.rule_source,
+            self.score.manager.score_state(),
+        )
     }
 
     /// Compiles `source` over the groups and nodes as they are, for new flows.
@@ -370,7 +394,16 @@ impl Model {
     }
 
     fn group_dto(&self, g: &GroupDef, selections: &BTreeMap<String, String>) -> dto::Group {
-        let (selected, pinned) = groups::selected(g, selections.get(&g.id), self.auto.get(&g.id));
+        let (selected, pinned) = if g.kind == GroupKind::Score {
+            (
+                self.score.selected(&g.id),
+                self.score
+                    .manager
+                    .has_override(&g.id, SelectionNetwork::Tcp),
+            )
+        } else {
+            groups::selected(g, selections.get(&g.id), self.auto.get(&g.id))
+        };
         dto::Group {
             id: g.id.clone(),
             name: g.name.clone(),
@@ -515,40 +548,6 @@ impl Model {
                 }
             }
         }
-    }
-
-    /// What the data path routes new flows by under `mode`: each group's node now, and the policy.
-    pub fn routing(&self, selections: &BTreeMap<String, String>, mode: Mode) -> Routing {
-        Routing {
-            selected: self.leaves(selections),
-            policy: Arc::clone(&self.policy),
-            mode,
-        }
-    }
-
-    /// The node each group sends traffic to now, following nested groups.
-    pub fn leaves(&self, selections: &BTreeMap<String, String>) -> HashMap<String, Arc<Node>> {
-        self.groups
-            .iter()
-            .filter_map(|g| Some((g.id.clone(), self.leaf(g, selections, 0)?)))
-            .collect()
-    }
-
-    fn leaf(
-        &self,
-        g: &GroupDef,
-        selections: &BTreeMap<String, String>,
-        depth: u8,
-    ) -> Option<Arc<Node>> {
-        let member = groups::selected(g, selections.get(&g.id), self.auto.get(&g.id)).0?;
-        if is_group(member) {
-            if depth >= MAX_DEPTH {
-                return None;
-            }
-            return self.leaf(self.group(member)?, selections, depth + 1);
-        }
-        let &i = self.index.get(member)?;
-        Some(Arc::clone(&self.nodes[i].node))
     }
 }
 

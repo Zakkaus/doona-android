@@ -1,0 +1,144 @@
+use super::{CONNECT_TIMEOUT, Dialer, Session, Trace, Upstream};
+use crate::api::lock;
+use honk_outbound::group::{ScoreBusinessGuard, ScoreContinuation, ScoreOutcome, ScoreReporter};
+use honk_outbound::runtime::DialScope;
+use std::io::{self, ErrorKind};
+use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
+use tokio::time::{Instant, timeout_at};
+
+pub(super) type Connected = (Upstream, Option<ScoreReporter>);
+
+struct Setup {
+    scope: Arc<DialScope>,
+    progress: Arc<Mutex<Progress>>,
+    original: ScoreContinuation,
+}
+
+struct Progress {
+    waiting: Option<ScoreBusinessGuard>,
+    started: Option<ScoreReporter>,
+}
+
+impl Setup {
+    fn new(d: &Dialer, guard: ScoreBusinessGuard) -> Self {
+        let original = guard.continuation();
+        let progress = Arc::new(Mutex::new(Progress {
+            waiting: Some(guard),
+            started: None,
+        }));
+        let start = Arc::clone(&progress);
+        let scope = d.registry.dial_scope(move || {
+            let mut p = lock(&start);
+            p.started = p.waiting.take().map(ScoreBusinessGuard::start);
+        });
+        Self {
+            scope,
+            progress,
+            original,
+        }
+    }
+
+    fn failed(self, outcome: ScoreOutcome) -> Option<ScoreContinuation> {
+        let mut p = lock(&self.progress);
+        if let Some(guard) = p.waiting.take() {
+            guard.finish(outcome);
+        }
+        if let Some(reporter) = p.started.take() {
+            reporter.setup_failed(outcome);
+        }
+        match outcome {
+            ScoreOutcome::Rejected | ScoreOutcome::Cancelled | ScoreOutcome::Shutdown => None,
+            _ => Some(self.original),
+        }
+    }
+}
+
+pub(super) async fn connect(
+    first: &Dialer,
+    session: &Session,
+    dst: SocketAddr,
+) -> io::Result<Connected> {
+    let deadline = Instant::now() + CONNECT_TIMEOUT;
+    match dial(first, session, dst, deadline).await {
+        Ok(stream) => Ok(stream),
+        Err((error, original)) => {
+            if Instant::now() >= deadline {
+                return Err(error);
+            }
+            let Some(retry) = original.and_then(|c| first.retry(&c)) else {
+                return Err(error);
+            };
+            dial(&retry, session, dst, deadline)
+                .await
+                .map_err(|(e, _)| e)
+        }
+    }
+}
+
+async fn dial(
+    d: &Dialer,
+    session: &Session,
+    dst: SocketAddr,
+    deadline: Instant,
+) -> Result<Connected, (io::Error, Option<ScoreContinuation>)> {
+    let guard = d
+        .score
+        .as_ref()
+        .map(|s| s.feedback.begin())
+        .transpose()
+        .map_err(|_| (ErrorKind::PermissionDenied.into(), None))?;
+    let setup = guard.map(|g| Setup::new(d, g));
+    let scope = setup.as_ref().map(|s| Arc::clone(&s.scope));
+    let (registry, proxies, id) = (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
+    let (trace, began) = (Trace::default(), session.begin_dial());
+    let work = trace.scope(async move {
+        let dial = proxies.dial_runtime(
+            registry,
+            id,
+            dst,
+            None,
+            deadline.saturating_duration_since(Instant::now()),
+        );
+        match scope {
+            Some(scope) => scope.scope(dial).await,
+            None => dial.await,
+        }
+    });
+    let result = match timeout_at(deadline, d.on_carriers(work)).await {
+        Ok(Ok(Err(_))) if d.registry.is_shutdown() => {
+            Err((ScoreOutcome::Shutdown, ErrorKind::NotConnected.into()))
+        }
+        Ok(Ok(result)) => result.map_err(|e| {
+            (
+                ScoreOutcome::from_error(&e),
+                ErrorKind::ConnectionRefused.into(),
+            )
+        }),
+        Ok(Err(e)) => Err((ScoreOutcome::Shutdown, e)),
+        Err(_)
+            if setup
+                .as_ref()
+                .is_some_and(|s| s.scope.is_waiting_for_admission()) =>
+        {
+            Err((ScoreOutcome::Rejected, ErrorKind::TimedOut.into()))
+        }
+        Err(_) => Err((ScoreOutcome::Timeout, ErrorKind::TimedOut.into())),
+    };
+    session.dialed(began, &trace, result.is_ok());
+    if let Some(attempt) = &d.score
+        && let Some((ip, available)) = trace.availability()
+    {
+        attempt.available(ip, available);
+    }
+    match result {
+        Ok(stream) => {
+            let reporter = setup.and_then(|s| lock(&s.progress).started.take());
+            if let Some(r) = &reporter {
+                r.setup_succeeded();
+            }
+            Ok((stream.stream, reporter))
+        }
+        Err((outcome, error)) => Err((error, setup.and_then(|s| s.failed(outcome)))),
+    }
+}
