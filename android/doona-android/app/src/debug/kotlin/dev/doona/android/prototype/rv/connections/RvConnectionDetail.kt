@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,13 +25,13 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAppDisc
 import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvChrome
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvHero
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvPart
-import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
@@ -54,9 +55,9 @@ import dev.doona.android.prototype.rv.rvSystemScheme
  * bar's controls): the app's disc, its name (which the bar takes over as the header scrolls under it), the bytes it
  * moved as the hero figure, and where it went, the whole host and port, wrapped; then its key-value card (TCP or UDP,
  * when it started, how long it has run, its bytes each way); its path from the app through the rule and the group to
- * the node, one row each as the other pages draw them (直連 ends at the arrow); 關閉連線 alone in its card with its glyph
- * in the error hue, as 訂閱's 刪除訂閱; and 新增規則 floating at the bottom, which opens the quick rule from this
- * connection.
+ * the node, one row each as the other pages draw them (直連 ends at the arrow); 新增規則 alone in its card, the row 規則
+ * draws for it, which opens the quick rule from this connection; and 關閉連線 alone in the last card with its glyph in
+ * the error hue, as 訂閱's 刪除訂閱. The bar holds only the back disc: nothing on the page belongs in a menu.
  */
 @Composable
 internal fun RvConnectionDetail(
@@ -67,19 +68,17 @@ internal fun RvConnectionDetail(
     nowEpochMs: Long = RV_NOW,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    RvScrollPage(
-        connection.app,
-        insets,
-        onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_new_rule), onNewRule) },
-    ) { titleBlock ->
+    RvScrollPage(connection.app, insets, onBack = onBack) { titleBlock ->
         Header(connection, titleBlock, insets)
         RvGutter { StatsCard(connection, nowEpochMs) }
         RvSectionTitle(stringResource(R.string.rv_conn_path), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             PathCard(connection)
+            RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.rv_policy_new_rule), null, onClick = onNewRule) { RvChevron() } }
             RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_close, Rv.colors.error) }, stringResource(R.string.rv_conn_close), null, onClick = onClose) }
         }
+        Spacer(Modifier.height(RvSpace.cardGap))
+        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

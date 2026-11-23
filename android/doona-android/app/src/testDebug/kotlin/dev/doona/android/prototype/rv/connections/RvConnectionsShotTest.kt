@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
@@ -34,6 +35,7 @@ import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -49,10 +51,10 @@ import org.robolectric.annotation.GraphicsMode
  * The 連線 tab with four tabs in the bar (`proto-rv-connections-*`), YouTube's connection page
  * (`proto-rv-connection-*`, also fs115 and fs200) and Telegram's, which has no domain (`proto-rv-connection-ip-*`); the
  * tab searching for `google` (`proto-rv-connections-search-*`) and with the tunnel off (`proto-rv-connections-off-*`),
- * light and dark, each in one capture of the whole page; that a tap or a long press on a row opens its page; and the
- * library's app disc (`proto-rv-app-disc-*`): an installed app's icon (the
- * test's own package, given the duck as its icon) over an app the phone does not have. The sample apps are not installed under Robolectric, so the pages show the
- * fallback glyph; on a phone each row shows the app's own icon.
+ * light and dark, each in one capture of the whole page; that a tap or a long press on a row opens its page, and that
+ * the page's 新增規則 and 關閉連線 rows act; and the library's app disc (`proto-rv-app-disc-*`): an installed app's icon
+ * (the test's own package, given the duck as its icon) over an app the phone does not have. The sample apps are not
+ * installed under Robolectric, so the pages show the fallback glyph; on a phone each row shows the app's own icon.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -131,6 +133,17 @@ class RvConnectionsShotTest {
         assertEquals(listOf(YOUTUBE, YOUTUBE), opened)
     }
 
+    @Test
+    fun itsRowsAddARuleAndCloseIt() {
+        val tapped = mutableListOf<String>()
+        compose.setContent {
+            Themed { RvConnectionDetail(RvPolicyData.connections[YOUTUBE], onBack = {}, onClose = { tapped += CLOSE }, onNewRule = { tapped += NEW_RULE }) }
+        }
+        compose.onNodeWithText(rvText(R.string.rv_policy_new_rule)).performScrollTo().performClick()
+        compose.onNodeWithText(rvText(R.string.rv_conn_close)).performScrollTo().performClick()
+        assertEquals(listOf(NEW_RULE, CLOSE), tapped)
+    }
+
     /** Gives the test's own package a launcher-style icon (the duck on white), as a phone's installed app has one. */
     private fun installIcon() {
         val context = RuntimeEnvironment.getApplication()
@@ -165,15 +178,17 @@ class RvConnectionsShotTest {
         const val DOONA = "dev.doona.android"
         const val ICON_INSET = 0.2f
         const val ABSENT = "org.telegram.messenger"
+        const val NEW_RULE = "new rule"
+        const val CLOSE = "close"
 
         /** Windows as tall as each whole page, so one capture holds it to its end. */
         const val WHOLE_LIST = "+h958dp"
-        const val WHOLE_DETAIL = "+h1153dp"
+        const val WHOLE_DETAIL = "+h1159dp"
 
         /** YouTube's page, whose host wraps after a dot at the larger font sizes. */
-        const val WHOLE_WRAPPED = "+h1133dp"
-        const val WHOLE_WRAPPED_FS115 = "+h1140dp"
-        const val WHOLE_WRAPPED_FS200 = "+h1306dp"
+        const val WHOLE_WRAPPED = "+h1139dp"
+        const val WHOLE_WRAPPED_FS115 = "+h1146dp"
+        const val WHOLE_WRAPPED_FS200 = "+h1317dp"
 
         /** Past the menus' 500 ms ([RvMotion.LONG_PRESS_MS]), which the page's rows take. */
         const val LONG_PRESS_MS = 700L
