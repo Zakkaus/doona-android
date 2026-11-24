@@ -13,6 +13,46 @@ pub(super) fn bad() -> io::Error {
 }
 
 type Span = Range<u64>;
+fn varint(reader: &mut impl Read) -> io::Result<u64> {
+    let mut n = 0;
+    for shift in (0..64).step_by(7) {
+        let mut b = [0];
+        reader.read_exact(&mut b).map_err(|_| bad())?;
+        if shift == 63 && b[0] > 1 {
+            return Err(bad());
+        }
+        n |= u64::from(b[0] & 127) << shift;
+        if b[0] < 128 {
+            return Ok(n);
+        }
+    }
+    Err(bad())
+}
+
+/// Tag, scalar value (varint fields only), and number of payload bytes after the header.
+fn header(reader: &mut impl Read) -> io::Result<(u64, u64, u64)> {
+    let tag = varint(reader)?;
+    if tag >> 3 == 0 {
+        return Err(bad());
+    }
+    let (scalar, len) = match tag & 7 {
+        0 => (varint(reader)?, 0),
+        1 => (0, 8),
+        2 => (0, varint(reader)?),
+        5 => (0, 4),
+        _ => return Err(bad()),
+    };
+    Ok((tag, scalar, len))
+}
+
+pub(super) fn next<'a>(bytes: &mut &'a [u8]) -> io::Result<(u64, u64, &'a [u8])> {
+    let (tag, n, len) = header(bytes)?;
+    let (field, rest) = bytes
+        .split_at_checked(usize::try_from(len).map_err(|_| bad())?)
+        .ok_or_else(bad)?;
+    *bytes = rest;
+    Ok((tag, n, field))
+}
 struct FileWire {
     reader: BufReader<File>,
     pos: u64,
@@ -23,40 +63,10 @@ impl FileWire {
         self.pos = pos;
         Ok(())
     }
-    fn varint(&mut self, end: u64) -> io::Result<u64> {
-        let mut n = 0;
-        for shift in (0..64).step_by(7) {
-            if self.pos >= end {
-                return Err(bad());
-            }
-            let mut b = [0];
-            self.reader.read_exact(&mut b)?;
-            self.pos += 1;
-            if shift == 63 && b[0] > 1 {
-                return Err(bad());
-            }
-            n |= u64::from(b[0] & 127) << shift;
-            if b[0] < 128 {
-                return Ok(n);
-            }
-        }
-        Err(bad())
-    }
     fn field(&mut self, end: u64) -> io::Result<(u64, Span)> {
-        let tag = self.varint(end)?;
-        if tag >> 3 == 0 {
-            return Err(bad());
-        }
-        let len = match tag & 7 {
-            0 => {
-                self.varint(end)?;
-                0
-            }
-            1 => 8,
-            2 => self.varint(end)?,
-            5 => 4,
-            _ => return Err(bad()),
-        };
+        let mut bounded = (&mut self.reader).take(end - self.pos);
+        let (tag, _, len) = header(&mut bounded)?;
+        self.pos = end - bounded.limit();
         if len > end - self.pos {
             return Err(bad());
         }

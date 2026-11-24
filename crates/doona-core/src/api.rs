@@ -215,8 +215,10 @@ impl Core {
         })
     }
 
-    /// Owns the duplicate `tun`, including on failure. Replaces a running generation;
-    /// concurrent starts return `busy`. One deadline covers startup and cleanup.
+    /// Starts a new generation on `tun`, the duplicate of Kotlin's descriptor, which it owns
+    /// from here on: every failure closes it. A generation still running is stopped first; a
+    /// `start` already under way makes this one `busy`. Returns by one deadline, cleanup
+    /// included.
     pub fn start(&self, tun: OwnedFd, config: &str) -> Result<(), ErrorCode> {
         let dns_revision = self.bootstrap_revision.load(Relaxed);
         let begun = Instant::now();
@@ -510,29 +512,6 @@ impl Core {
                 .record(Event::error("stateWrite").io(e.kind()).detail(command));
             ErrorCode::Internal
         })
-    }
-}
-
-#[cfg(test)]
-impl Core {
-    /// A core whose generations run `launch` instead of the driver and must start within
-    /// `bound`.
-    pub(crate) fn with_launch(data_dir: &str, launch: Launch, bound: Duration) -> Core {
-        let store = Store::new(Path::new(data_dir));
-        Core::build(store, Options::default(), (launch, bound), probe::urltest()).unwrap()
-    }
-
-    /// A core that keeps its state through `store`.
-    pub(crate) fn with_store(store: Store) -> Core {
-        let launch = (tunnel::drive as Launch, START_BOUND);
-        Core::build(store, Options::default(), launch, probe::urltest()).unwrap()
-    }
-
-    /// A core whose latency probes run `prober`.
-    pub(crate) fn with_prober(data_dir: &str, prober: Prober) -> Core {
-        let store = Store::new(Path::new(data_dir));
-        let launch = (tunnel::drive as Launch, START_BOUND);
-        Core::build(store, Options::default(), launch, prober).unwrap()
     }
 }
 

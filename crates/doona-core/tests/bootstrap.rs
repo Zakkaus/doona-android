@@ -391,8 +391,9 @@ fn a_local_name_unicast_dns_cannot_resolve_keeps_fetch_failed() {
 /// generation, not finish the metadata request using a direct socket.
 #[test]
 fn asset_update_uses_selected_proxy_and_disconnect_cancels_it() {
+    use std::io::{Read, Write};
     let _s = serial();
-    let (resolver, _) = servers::udp_resolver();
+    let (resolver, seen) = servers::udp_resolver();
     let proxy = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     proxy.set_nonblocking(true).unwrap();
     let feed = servers::feed(format!("socks5://{}#geo", proxy.local_addr().unwrap()));
@@ -408,6 +409,19 @@ fn asset_update_uses_selected_proxy_and_disconnect_cancels_it() {
         connection = proxy.accept().ok();
         connection.is_some()
     }));
+    let (mut stream, _) = connection.unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(3)))
+        .unwrap();
+    let mut greeting = [0; 3];
+    stream.read_exact(&mut greeting).unwrap();
+    assert_eq!(greeting, [5, 1, 0]);
+    stream.write_all(&[5, 0]).unwrap();
+    let expected = b"\x05\x01\x00\x03\x0eapi.github.com\x01\xbb";
+    let mut target = [0; 21];
+    stream.read_exact(&mut target).unwrap();
+    assert_eq!(&target, expected);
+    assert_eq!(seen.datagrams.load(Relaxed), 0);
     assert_eq!(update(), r#"{"error":{"code":"busy"}}"#);
     core.stop();
     assert!(common::wait_for(Duration::from_secs(3), || {
@@ -416,5 +430,5 @@ fn asset_update_uses_selected_proxy_and_disconnect_cancels_it() {
         status["ok"]["reason"] == "disconnected"
             && status["ok"]["updateWaitingForNextStart"] == false
     }));
-    drop(connection);
+    drop(stream);
 }

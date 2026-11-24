@@ -16,12 +16,16 @@ use std::{
 struct Site {
     names: domain::Index,
     regex: Vec<Regex>,
+    skipped: u32,
 }
 impl Site {
     fn load(list: &mut wire::List, selector: &str) -> io::Result<Option<Self>> {
         let mut parts = selector.split('@').map(str::trim);
         let code = parts.next().unwrap();
         let attrs: Vec<_> = parts.filter(|p| !p.is_empty()).collect();
+        if unsupported_filter(selector) {
+            return Ok(None);
+        }
         let mut seen = vec![false; attrs.len()];
         let mut site = Self::default();
         let found = list.records(code, |bytes| {
@@ -31,7 +35,10 @@ impl Site {
             match kind {
                 0 => site.names.add_keyword(value, 0),
                 1 => {
-                    site.regex.push(Regex::new(value).map_err(|_| wire::bad())?);
+                    match Regex::new(value) {
+                        Ok(re) => site.regex.push(re),
+                        Err(_) => site.skipped += 1,
+                    }
                     Ok(())
                 }
                 2 => site.names.add_suffix(value, 0),
@@ -118,16 +125,27 @@ pub(super) struct Matches {
     ips: Vec<(u32, bool, Arc<lpm::Trie>)>,
     sites: Vec<(u32, bool, Arc<Site>)>,
 }
+pub(super) fn unsupported_filter(value: &str) -> bool {
+    value
+        .split('@')
+        .skip(1)
+        .any(|attr| attr.trim().starts_with('!'))
+}
+
 impl Matches {
-    pub fn add(&mut self, data: &Data, kind: &Kind, value: &str, row: u32) -> bool {
+    pub fn add(&mut self, data: &Data, kind: &Kind, value: &str, row: u32) -> Option<u32> {
         let code = value
             .strip_prefix('!')
             .unwrap_or(value)
             .to_ascii_lowercase();
         let invert = value.starts_with('!');
         match kind {
-            Kind::GeoSite => bind(&mut self.sites, data.sites.get(&code), row, invert),
-            Kind::GeoIp => bind(&mut self.ips, data.ips.get(&code), row, invert),
+            Kind::GeoSite => {
+                let site = data.sites.get(&code)?;
+                bind(&mut self.sites, Some(site), row, invert);
+                Some(site.skipped)
+            }
+            Kind::GeoIp => bind(&mut self.ips, data.ips.get(&code), row, invert).then_some(0),
             _ => unreachable!(),
         }
     }

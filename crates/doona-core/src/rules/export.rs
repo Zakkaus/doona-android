@@ -22,10 +22,18 @@ impl Listing {
             for (column, value) in row.values.iter().enumerate() {
                 out.rule(
                     &format!("{kind},{value},{target}"),
-                    row.skip.filter(|_| {
-                        matches!(row.kind, Kind::Skipped { .. })
-                            || row.missing.binary_search(&(column as u32)).is_ok()
-                    }),
+                    if row.missing.binary_search(&(column as u32)).is_ok() {
+                        Some(
+                            if row.kind == Kind::GeoSite && super::dat::unsupported_filter(value) {
+                                Skip::UnsupportedKind
+                            } else {
+                                Skip::GeodataMissing
+                            },
+                        )
+                    } else {
+                        row.skip
+                            .filter(|_| matches!(row.kind, Kind::Skipped { .. }))
+                    },
                 );
             }
             if out.truncated {

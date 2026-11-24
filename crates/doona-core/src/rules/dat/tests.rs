@@ -87,6 +87,31 @@ fn mihomo_geosite_types_and_attribute_conjunction() {
     assert_eq!(at(&inverted, "8.8.8.8"), None);
 }
 #[test]
+fn invalid_regexp_skips_one_entry_not_the_generation() {
+    let dir = TempDir::new("geo-invalid-regexp");
+    fixture(dir.path());
+    fs::write(
+        dir.path().join("geosite.dat"),
+        entry(
+            "media",
+            &[domain(1, "(?=foo)", &[]), domain(3, "good.test", &[])],
+        ),
+    )
+    .unwrap();
+    let rows = [
+        rule("GEOSITE", &["media"], "DIRECT"),
+        rule("GEOIP", &["US"], "DIRECT"),
+        rule("GEOSITE", &["media@!ads"], "REJECT"),
+    ];
+    let set = compiled(dir.path(), &rows);
+    assert_eq!(named(&set, "good.test"), Some(0));
+    assert_eq!(at(&set, "8.8.8.8"), Some(1));
+    let listing = crate::rules::listing::Listing::new("fixture", &rows, Some(&set)).page(0, 3);
+    assert_eq!(listing.rows[0].skipped_lines, 1);
+    assert_eq!(listing.rows[0].skipped.as_deref(), Some("geodata_missing"));
+    assert_eq!(listing.rows[2].skipped.as_deref(), Some("unsupported_kind"));
+}
+#[test]
 fn geoip_uses_dat_only_except_private_and_lan() {
     let dir = TempDir::new("ip-parity");
     fixture(dir.path());

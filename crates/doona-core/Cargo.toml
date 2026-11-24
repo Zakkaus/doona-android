@@ -27,7 +27,7 @@ bytes = "1"
 futures-util = "0.3"
 serde_json = "1"
 tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
-tokio-util = { version = "0.7", features = ["rt", "io-util"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 # The subscription download and parser. Every one of these is already in the graph through
 # honk-config and honk-outbound, so the library links no new TLS stack: BoringSSL with the
 # webpki roots, as honk-outbound's own TLS. serde_yaml reads Clash documents, as honk-config's
@@ -48,10 +48,6 @@ webpki-root-certs = "1"
 # through regex.
 aho-corasick = "1"
 regex = "1"
-quick-protobuf = "0.8"
-hyper = { version = "1", features = ["client", "http1"] }
-hyper-util = { version = "0.1", features = ["tokio"] }
-http-body-util = "0.1"
 # Rule mode's names of DNS answers, least recently used first out. Already in the graph through
 # honk-outbound.
 lru = "0.19"

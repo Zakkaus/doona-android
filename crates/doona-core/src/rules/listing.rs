@@ -50,7 +50,17 @@ impl Listing {
                     kind: spec.kind.clone(),
                     values: spec.values.clone(),
                     target: spec.target.clone(),
-                    skip: skip(&spec.kind, skipped),
+                    skip: if spec.kind == Kind::GeoSite
+                        && skipped > 0
+                        && spec
+                            .values
+                            .iter()
+                            .any(|v| super::dat::unsupported_filter(v))
+                    {
+                        Some(Skip::UnsupportedKind)
+                    } else {
+                        skip(&spec.kind, skipped)
+                    },
                     skipped,
                     missing: (0..spec.values.len() as u32)
                         .filter(|col| {
