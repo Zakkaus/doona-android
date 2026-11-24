@@ -1,0 +1,13 @@
+{
+  "command": "setBootstrapDns",
+  "running": [
+    {"args":{"servers":["127.0.0.1"]},"reply":{"ok":{}}},
+    {"args":{"servers":[]},"reply":{"error":{"code":"invalid_argument"}}},
+    {"args":{"servers":["127.0.0.2","dns.example"]},"reply":{"error":{"code":"invalid_argument"}}},
+    {"args":{},"reply":{"error":{"code":"invalid_argument"}}},
+    {"args":{"servers":"127.0.0.1"},"reply":{"error":{"code":"invalid_argument"}}}
+  ],
+  "stopped": [
+    {"args":{"servers":["127.0.0.2"]},"reply":{"error":{"code":"busy"}}}
+  ]
+}
