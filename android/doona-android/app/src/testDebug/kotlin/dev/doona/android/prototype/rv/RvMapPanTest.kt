@@ -8,6 +8,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSpot
 import dev.doona.android.designsystem.rv.rvMapLand
 import dev.doona.android.designsystem.rv.rvMapSpot
+import dev.doona.android.designsystem.rv.rvMarkerAt
 import dev.doona.android.prototype.rv.data.RvCity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -43,6 +44,22 @@ class RvMapPanTest {
             RvPlace.FR to (46.23f to 2.21f), RvPlace.NL to (52.13f to 5.29f), RvPlace.RU to (61.52f to 105.32f),
         )
         core.forEach { (place, at) -> assertEquals("$place", at, place.lat to place.lon) }
+    }
+
+    @Test
+    fun twoCitiesOfOneCellAreMarkedApart() {
+        val pitch = PITCH_PX
+        val centre = Offset(CENTRE_X, CENTRE_Y)
+        listOf(RvCity.Taipei to RvCity.Taichung, RvCity.Seoul to RvCity.Chuncheon).forEach { (a, b) ->
+            // One cell: the map under both is the same, so only the marker can tell them apart.
+            assertEquals("$a and $b share a cell", centre, rvMapSpot(a.lat, a.lon, b.lat, b.lon, centre, pitch))
+            val apart = (rvMarkerAt(a.spot, centre, pitch) - rvMarkerAt(b.spot, centre, pitch)).getDistance()
+            assertTrue("$a and $b are marked $apart px apart", apart >= pitch / 4)
+        }
+        spots.forEach { (name, at) ->
+            val mark = rvMarkerAt(at, centre, pitch)
+            assertTrue("$name's marker stays inside its cell: $mark", abs(mark.x - centre.x) <= pitch / 2 && abs(mark.y - centre.y) <= pitch / 2)
+        }
     }
 
     @Test
@@ -104,6 +121,11 @@ class RvMapPanTest {
         const val HALF_TURN = 180f
         const val FULL_TURN = 360f
         const val EPSILON = 1e-3f
+
+        // RvDots.pitch (5.5 dp) at 2 px per dp, and a centre anywhere on the map.
+        const val PITCH_PX = 11f
+        const val CENTRE_X = 412f
+        const val CENTRE_Y = 300f
 
         /** doona-core `regions/data.rs`, in its order. */
         const val CORE_REGIONS = "HK TW JP SG US KR CA GB DE FR NL RU AU IN TR BR AR MY TH VN PH ID AE CH SE FI IT ES PL MO NZ MX NO DK IE " +
