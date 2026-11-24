@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -81,6 +82,7 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * The one press feedback: the content colour's state layer, clipped to the visible [shape], up in [RvMotion.PRESS_MS].
@@ -337,10 +339,27 @@ internal fun RvSeeAll(text: String, onClick: () -> Unit) {
 
 /** A thin pill bar, #13's goal progress: [fraction] of it in the positive colour on the raised track. */
 @Composable
-internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) {
+internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) = RvProgress({ fraction }, modifier)
+
+/**
+ * [RvProgress] with its [fraction] read as the fill is measured rather than composed, so a fill that moves every frame
+ * ([RvBusy]) measures the fill alone, in a track of a fixed size, and composes nothing.
+ */
+@Composable
+internal fun RvProgress(fraction: () -> Float, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().height(RvSize.progress).clip(CircleShape).background(Rv.colors.track)) {
-        Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(Rv.colors.positive))
+        Box(Modifier.rvFillWidth(fraction).fillMaxHeight().clip(CircleShape).background(Rv.colors.positive))
     }
+}
+
+/**
+ * `fillMaxWidth(fraction())` with the fraction read while measuring: the content gets the same width, and the node keeps
+ * the whole width, so a new fraction never measures its parent again.
+ */
+private fun Modifier.rvFillWidth(fraction: () -> Float): Modifier = layout { measurable, constraints ->
+    val width = (constraints.maxWidth * fraction().coerceIn(0f, 1f)).roundToInt().coerceIn(constraints.minWidth, constraints.maxWidth)
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(constraints.maxWidth, placeable.height) { placeable.placeRelative(0, 0) }
 }
 
 /**

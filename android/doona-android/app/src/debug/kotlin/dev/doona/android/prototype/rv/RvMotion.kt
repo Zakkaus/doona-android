@@ -370,9 +370,10 @@ internal fun Modifier.rvMoves(): Modifier {
 @Composable
 internal fun RvBusy(modifier: Modifier = Modifier) {
     if (Rv.motion.instant) return RvProgress(RvMotion.BUSY_STILL, modifier)
-    val fill by rememberInfiniteTransition(label = "busy").animateFloat(0f, 1f, infiniteRepeatable(tween(RvMotion.BUSY_MS, easing = RvMotion.Standard), RepeatMode.Restart), label = "fill")
-    // An ambient loop: a layer of its own, so a frame of it redraws the bar alone, voting the normal rate.
-    RvProgress(fill, modifier.preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {})
+    val fill = rememberInfiniteTransition(label = "busy").animateFloat(0f, 1f, infiniteRepeatable(tween(RvMotion.BUSY_MS, easing = RvMotion.Standard), RepeatMode.Restart), label = "fill")
+    // An ambient loop: a layer of its own, so a frame of it redraws the bar alone, voting the normal rate; the fill is
+    // read as it is measured, so a frame composes nothing.
+    RvProgress({ fill.value }, modifier.preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {})
 }
 
 /**
