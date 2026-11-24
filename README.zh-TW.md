@@ -36,6 +36,21 @@ APK 位於 `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`。`assem
 
 [`.github/workflows/android.yml`](.github/workflows/android.yml) 列出 CI 執行的檢查。
 
+## 驗證 Geo 資料版本
+
+在倉庫根目錄使用 `uv` 與 Python 3.11 以上版本，下載鎖定版本的 MetaCubeX 完整 DAT 檔，並將 `geo-manifest.json` 寫入獨立的輸出目錄。Rust 驗證工具沿用 `doona-core` 的工具鏈與 honk commit；在主機上建置還需要 CMake 和 libclang。
+
+```sh
+bundle=$(mktemp -d)
+uv run crates/doona-core/tools/update_geo.py "$bundle"
+uv run crates/doona-core/tools/update_geo.py --check "$bundle"
+(cd crates/doona-core/tools/geo-check && DAE_LOCATION_ASSET="$bundle" cargo run --locked -- tests/fixtures/required-labels.dae)
+```
+
+[每週排程](.github/workflows/geo-bundle.yml) 驗證最新版本後，只向 `v1/base` 提出更新版本鎖定檔的 PR。排程必須放在預設分支。啟用 **Allow GitHub Actions to create and approve pull requests**，預設 token 才能建立 PR。[`GITHUB_TOKEN` 建立的 PR 不會自動執行 CI](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)；有寫入權限的維護者須選擇 **Approve workflows to run**。DAT 檔不進倉庫，也不打包進 APK。
+
+MetaCubeX 會替換 `latest` 的附件，並強制推送 `release` 分支。版本鎖定檔使用含 commit SHA 的快照 URL，大小與 SHA-256 取自 release API。URL 不會指向新版內容，但 GitHub 可能回收舊的 `release` commit；是否設置第一方鏡像仍由維護者決定。
+
 ## 執行測試
 
 執行測試需要 `adb`，以及開啟 USB 偵錯的手機。也可以拔掉傳輸線、改用無線 adb 執行，量測期間手機就不會被 USB 充電。安裝 APK、用 `run.sh` 執行測試計畫、用 `analyze.py` 把 Perfetto trace 換算成能耗和喚醒次數，都寫在 [`android/scripts/README.md`](android/scripts/README.md)。

@@ -1,0 +1,13 @@
+routing {
+    !domain(geosite:doona-missing) -> direct
+    fallback: direct
+}
+
+dns {
+    routing {
+        request {
+            qname(geosite:cn@nope) -> asis
+            fallback: asis
+        }
+    }
+}

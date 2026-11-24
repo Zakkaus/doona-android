@@ -1,0 +1,18 @@
+[package]
+name = "doona-geo-check"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+publish = false
+
+[dependencies]
+anyhow = "1"
+honk-config = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2" }
+honk-core = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2", default-features = false }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[patch.crates-io]
+boring-sys = { git = "https://github.com/Glassyiris/boring-sys", rev = "3beb573b65ecaa69b7eefe3c2fecd074b97facd2" }
+quinn = { git = "https://github.com/Glassyiris/quinn", rev = "11f1de84c28305a3c98ace6d681c35219a8d1e6c" }
+quinn-proto = { git = "https://github.com/Glassyiris/quinn", rev = "11f1de84c28305a3c98ace6d681c35219a8d1e6c" }

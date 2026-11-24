@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "release_date": "2026-11-23",
+  "files": {
+    "geoip.dat": {
+      "source": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/5f22a3b3371d1a489fb3d0df25d00db049a6a603/geoip.dat",
+      "version": "5f22a3b3371d1a489fb3d0df25d00db049a6a603",
+      "size_bytes": 16503149,
+      "sha256": "d4ec4c5e5d5a38c1399964ea9fd8c94288426a3b31b483904b67819fc07f4466"
+    },
+    "geosite.dat": {
+      "source": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/5f22a3b3371d1a489fb3d0df25d00db049a6a603/geosite.dat",
+      "version": "5f22a3b3371d1a489fb3d0df25d00db049a6a603",
+      "size_bytes": 4350624,
+      "sha256": "06ca12228fbea293e003c68ab71e5071d3af7e491f972266fbc5466e531c4f70"
+    }
+  }
+}

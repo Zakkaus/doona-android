@@ -1,0 +1,108 @@
+name: Update geo bundle pins
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geo-bundle-v1-base
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      base_inputs: ${{ steps.candidate.outputs.base_inputs }}
+      pins: ${{ steps.candidate.outputs.pins }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: v1/base
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Test the update tool and check the honk pin
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          uv run --no-project --python '>=3.11' python -m unittest discover -s crates/doona-core/tools -p test_update_geo.py
+          uv run --no-project --python '>=3.11' python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          def dependencies(manifest):
+              return tomllib.loads(Path(manifest).read_text(encoding="utf-8"))["dependencies"]
+
+          core = dependencies("crates/doona-core/Cargo.toml")["honk-config"]
+          verifier = dependencies("crates/doona-core/tools/geo-check/Cargo.toml")
+          for name in ("honk-config", "honk-core"):
+              if any(verifier[name][key] != core[key] for key in ("git", "rev")):
+                  raise SystemExit(f"geo-check {name} pin differs from doona-core")
+          PY
+      - name: Fetch and verify the newest release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          uv run crates/doona-core/tools/update_geo.py --latest "$RUNNER_TEMP/geo-bundle"
+      - name: Check required geo labels and reject missing labels
+        working-directory: crates/doona-core/tools/geo-check
+        env:
+          DAE_LOCATION_ASSET: ${{ runner.temp }}/geo-bundle
+        run: |
+          cargo run --locked -- tests/fixtures/required-labels.dae
+          if output=$(cargo run --locked -- tests/fixtures/missing-labels.dae 2>&1); then
+            echo 'Geo verifier accepted missing labels' >&2
+            exit 1
+          fi
+          printf '%s\n' "$output"
+          grep -F 'doona-missing' <<< "$output"
+          grep -F 'cn@nope' <<< "$output"
+          grep -F 'geo bundle failed coverage' <<< "$output"
+      - name: Export verified pins only when changed
+        id: candidate
+        run: |
+          manifest="$RUNNER_TEMP/geo-bundle/geo-manifest.json"
+          if ! cmp -s "$manifest" crates/doona-core/tools/geo-pins.json; then
+            inputs=$(git ls-tree HEAD -- crates/doona-core/{tools,Cargo.toml,rust-toolchain.toml,.cargo})
+            printf 'base_inputs=%s\n' "$(git hash-object --stdin <<< "$inputs")" >> "$GITHUB_OUTPUT"
+            pins=$(jq -c . "$manifest")
+            printf 'pins=%s\n' "$pins" >> "$GITHUB_OUTPUT"
+          fi
+
+  propose:
+    needs: verify
+    if: needs.verify.outputs.pins != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: v1/base
+          persist-credentials: false
+      - name: Stage verified pins
+        env:
+          BASE_INPUTS: ${{ needs.verify.outputs.base_inputs }}
+          PINS: ${{ needs.verify.outputs.pins }}
+        run: |
+          inputs=$(git ls-tree HEAD -- crates/doona-core/{tools,Cargo.toml,rust-toolchain.toml,.cargo})
+          if [ "$(git hash-object --stdin <<< "$inputs")" != "$BASE_INPUTS" ]; then
+            echo 'Geo verifier inputs changed during verification. Dispatch the workflow again.' >&2
+            exit 1
+          fi
+          jq . <<< "$PINS" > crates/doona-core/tools/geo-pins.json
+      - name: Open or update the pins pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          base: v1/base
+          branch: automation/geo-bundle-pins
+          add-paths: crates/doona-core/tools/geo-pins.json
+          sign-commits: true
+          commit-message: 'build(geo): update MetaCubeX pins'
+          title: 'build(geo): update MetaCubeX pins'
+          body: 'Refresh the MetaCubeX release snapshot after verifying both DAT checksums and required geo labels with the pinned honk.'
