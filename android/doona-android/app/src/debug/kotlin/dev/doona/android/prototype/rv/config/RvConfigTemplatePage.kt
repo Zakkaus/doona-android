@@ -124,7 +124,7 @@ private fun TemplatesCard(templates: List<RvConfigTemplate>, current: RvConfigTe
 @Composable
 private fun Section(@StringRes title: Int) = RvSectionTitle(stringResource(title), Modifier.padding(horizontal = RvSpace.gutter))
 
-/** doona's options, in 策略's switch rows: 擋廣告 and 擋 QUIC as 策略 names them, and NetworkManager 直連, a rule only Linux can match. */
+/** doona's options, in 策略's switch rows: 封鎖廣告 and 封鎖 QUIC as 策略 names them, and NetworkManager 直連, a rule only Linux can match. */
 @Composable
 private fun OptionsCard(options: RvTemplateOptions, onChange: (RvTemplateOptions) -> Unit) {
     RvCard {

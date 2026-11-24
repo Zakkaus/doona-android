@@ -18,7 +18,7 @@
     <string name="backend_connected">Connected</string>
     <string name="login_submit">Connect</string>
     <string name="settings_profile">Profile</string>
-    <string name="act_mode">Mode</string>
+    <string name="act_mode">Outbound mode</string>
     <string name="mode_rule">Rule</string>
     <string name="mode_direct">Direct</string>
     <string name="mode_global">Global</string>

@@ -92,6 +92,9 @@ the desktop's `~/.cache/android-dev/env.sh` points `CARGO_TARGET_DIR` elsewhere.
 
 ## Docs and commits
 
+- UI strings in en, zh-TW and zh-CN use the terms in
+  [`android/doona-android/docs/glossary.md`](android/doona-android/docs/glossary.md): one word per
+  concept and locale. A new string reuses a listed term before it coins one.
 - `README.md` (English) and `README.zh-TW.md` change together.
 - `doc/en` and `doc/zh` change together. `doc/zh` uses Simplified Chinese, as in honk.
 - Commit subjects are English and conventional (`feat(android): ...`, `build: ...`). Commits,

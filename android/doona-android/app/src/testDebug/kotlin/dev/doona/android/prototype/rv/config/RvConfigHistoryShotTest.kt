@@ -200,7 +200,7 @@ class RvConfigHistoryShotTest {
         var restored = false
         compose.setContent { Themed { RvConfigRevisionPage(revision(UNNAMED), listOf(RvConfigHistoryData.restoreDiff), onBack = {}, onRestore = { restored = true }) } }
         compose.onNodeWithText("未命名").assertExists()
-        compose.onNodeWithText("還原").performClick()
+        compose.onNodeWithText("復原").performClick()
         assertEquals(true, restored)
     }
 

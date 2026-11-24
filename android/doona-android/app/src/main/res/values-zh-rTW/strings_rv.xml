@@ -36,13 +36,13 @@
     <string name="rv_main_node">主節點</string>
     <string name="rv_main_node_hint">選擇的節點會成為主節點</string>
     <string name="rv_hero_all_traffic">全部流量</string>
-    <string name="rv_hero_show">顯示%1$s</string>
+    <string name="rv_hero_show">顯示 %1$s</string>
     <string name="rv_direct_note">所有流量直接連線，不經代理</string>
     <string name="rv_rule_streaming">串流</string>
-    <string name="rv_rule_domestic">國內與區網</string>
+    <string name="rv_rule_domestic">國內與區域網路</string>
     <string name="rv_rule_ai">AI</string>
     <plurals name="rv_see_all_rules">
-        <item quantity="other">查看全部 %1$d 條分流</item>
+        <item quantity="other">檢視全部 %1$d 條規則</item>
     </plurals>
     <!-- Long-press menus (G3). -->
     <string name="rv_menu_set_main">設為主節點</string>

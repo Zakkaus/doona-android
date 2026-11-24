@@ -8,5 +8,5 @@
     <string name="rv_rules_parse_failed_reason">The source\'s content is malformed.</string>
     <string name="rv_rules_read_failed">Could not read the rules</string>
     <string name="rv_effective_failed">Could not read the effective config</string>
-    <string name="rv_effective_truncated">The exported text was cut</string>
+    <string name="rv_effective_truncated">The exported text was truncated</string>
 </resources>

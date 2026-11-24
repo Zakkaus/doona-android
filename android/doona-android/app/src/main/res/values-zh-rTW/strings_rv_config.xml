@@ -6,11 +6,11 @@
     <string name="rv_gallery_code">原始碼文字</string>
     <string name="rv_gallery_source">原始碼欄位</string>
     <string name="rv_gallery_diff">差異</string>
-    <string name="rv_config_unknown_group">找不到策略組 %1$s</string>
+    <string name="rv_config_unknown_group">找不到策略群組 %1$s</string>
     <string name="rv_config_title">設定檔</string>
     <string name="rv_config_applied">第 %1$d 版 · %2$s 套用</string>
     <string name="rv_config_files">檔案</string>
-    <string name="rv_config_entry">主檔</string>
+    <string name="rv_config_entry">主設定檔</string>
     <string name="rv_config_included_by">由 %1$s 引入</string>
     <plurals name="rv_config_lines">
         <item quantity="other">%1$d 行</item>
@@ -28,12 +28,12 @@
         <item quantity="other">%1$d 項已略過</item>
     </plurals>
     <plurals name="rv_config_see_all_items">
-        <item quantity="other">查看全部 %1$d 項</item>
+        <item quantity="other">檢視全部 %1$d 項</item>
     </plurals>
-    <string name="rv_config_history">版本紀錄</string>
+    <string name="rv_config_history">版本記錄</string>
     <string name="rv_config_import">匯入設定檔</string>
     <string name="rv_config_reason_linux">僅限 Linux</string>
-    <string name="rv_config_reason_process">無法比對程式名稱</string>
+    <string name="rv_config_reason_process">無法比對行程名稱</string>
     <string name="rv_config_reason_mac">無法比對 MAC 位址</string>
     <string name="rv_config_line">第 %1$d 行</string>
     <string name="rv_config_source">原始碼</string>
@@ -45,9 +45,9 @@
     <string name="rv_config_reload">重新載入</string>
     <string name="rv_config_revision">第 %1$d 版</string>
     <string name="rv_config_origin_import">匯入</string>
-    <string name="rv_config_origin_restore">還原自第 %1$d 版</string>
+    <string name="rv_config_origin_restore">復原自第 %1$d 版</string>
     <string name="rv_config_unnamed">未命名</string>
-    <string name="rv_config_restore">還原</string>
+    <string name="rv_config_restore">復原</string>
     <string name="rv_config_export">匯出設定檔</string>
     <string name="rv_config_import_refused">無法匯入</string>
     <plurals name="rv_config_import_limit">
@@ -58,10 +58,10 @@
     <string name="rv_config_escape_title">引入的檔案在匯入範圍外</string>
     <string name="rv_config_edit_source">編輯原始碼</string>
     <string name="rv_template_global">全域代理</string>
-    <string name="rv_template_global_line">區網以外的流量都經由代理</string>
-    <string name="rv_template_single">單一策略組</string>
-    <string name="rv_template_single_line">代理流量都經由同一個策略組</string>
-    <string name="rv_template_by_service_line">Telegram、Apple 與國外媒體各用一個策略組</string>
+    <string name="rv_template_global_line">區域網路以外的流量都經由代理</string>
+    <string name="rv_template_single">單一策略群組</string>
+    <string name="rv_template_single_line">代理流量都經由同一個策略群組</string>
+    <string name="rv_template_by_service_line">Telegram、Apple 與國外媒體各用一個策略群組</string>
     <string name="rv_template_more">更多範本</string>
     <string name="rv_template_options">選項</string>
     <string name="rv_template_nm_direct">NetworkManager 直連</string>

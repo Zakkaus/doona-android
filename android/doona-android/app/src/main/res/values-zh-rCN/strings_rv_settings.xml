@@ -40,7 +40,7 @@
     <string name="rv_settings_preview">预览</string>
     <string name="rv_settings_always_on">始终开启的 VPN</string>
     <string name="rv_settings_always_on_sub">系统 VPN 设置</string>
-    <string name="rv_settings_quick_tile">添加到快速设置</string>
+    <string name="rv_settings_quick_tile">添加到快捷设置</string>
     <string name="rv_settings_quick_tile_sub">不打开应用也能连接或断开连接</string>
     <string name="rv_settings_quick_tile_manual">从屏幕顶部向下滑动两次，点按铅笔图标，再将 doona 图块拖到上方。</string>
     <string name="rv_settings_dns_alidns">阿里 DNS</string>

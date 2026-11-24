@@ -8,7 +8,7 @@
     <string name="rv_policy_groups">策略组</string>
     <string name="rv_policy_group_auto">自动</string>
     <string name="rv_policy_kind_select">手动选择</string>
-    <string name="rv_policy_kind_auto">自动测速</string>
+    <string name="rv_policy_kind_auto">平均最快</string>
     <plurals name="rv_policy_node_count">
         <item quantity="other">%1$d 个节点</item>
     </plurals>
@@ -28,7 +28,7 @@
     <string name="rv_policy_rest_kind">未匹配以上规则</string>
     <string name="rv_policy_template">模板</string>
     <string name="rv_policy_template_value">绕过中国大陆</string>
-    <string name="rv_policy_new_rule">添加规则</string>
+    <string name="rv_policy_new_rule">新建规则</string>
     <string name="rv_policy_block_ads">屏蔽广告</string>
     <string name="rv_policy_block_quic">屏蔽 QUIC</string>
     <string name="rv_policy_selected">已选 %1$s · %2$s</string>
@@ -41,9 +41,9 @@
     </plurals>
     <string name="rv_policy_target">目标</string>
     <string name="rv_policy_app">应用</string>
-    <string name="rv_policy_matched">匹配规则</string>
+    <string name="rv_policy_matched">命中规则</string>
     <string name="rv_policy_via">当前经由</string>
-    <string name="rv_policy_match_by">匹配方式</string>
+    <string name="rv_policy_match_by">依据</string>
     <string name="rv_policy_match_full">完整域名</string>
     <string name="rv_policy_match_suffix">域名后缀</string>
     <string name="rv_policy_match_keyword">关键词</string>
@@ -81,9 +81,9 @@
     <string name="rv_template_regions_line">每个地区一个策略组</string>
     <string name="rv_template_homebound">回国</string>
     <string name="rv_template_homebound_line">在海外时，中国大陆网站经由代理</string>
-    <string name="rv_template_gfw">只代理被封锁的网站</string>
-    <string name="rv_template_gfw_line">只有被封锁的网站经由代理</string>
-    <string name="rv_template_needs_geosite">需 GEOSITE</string>
+    <string name="rv_template_gfw">只代理 GFW 名单</string>
+    <string name="rv_template_gfw_line">只有 GFW 名单中的网站经由代理</string>
+    <string name="rv_template_needs_geosite">需 geosite</string>
     <string name="rv_template_in_use">使用中</string>
     <string name="rv_template_review">查看更改</string>
     <string name="rv_template_from_to">%1$s → %2$s</string>
@@ -97,8 +97,8 @@
     <string name="rv_policy_change_keep">沿用</string>
     <string name="rv_policy_change_change">更改</string>
     <string name="rv_policy_change_remove">移除</string>
-    <string name="rv_effective_title">生效设置</string>
-    <string name="rv_effective_open">查看生效设置</string>
+    <string name="rv_effective_title">生效配置</string>
+    <string name="rv_effective_open">查看生效配置</string>
     <string name="rv_effective_mode">模式</string>
     <string name="rv_effective_members_more">%1$s 等 %2$d 个</string>
     <string name="rv_effective_list_separator">、</string>
@@ -122,7 +122,7 @@
     <string name="rv_rule_edit_bad_cidr">IP 段的格式为 91.108.56.0/22</string>
     <string name="rv_rule_edit_cidr_line">%1$s 内的地址</string>
     <string name="rv_rule_edit_geoip_line">GeoIP 数据中属于中国大陆的地址</string>
-    <string name="rv_rule_edit_private_line">私有地址不进通道，此规则匹配不到连接</string>
+    <string name="rv_rule_edit_private_line">私有地址不经通道，此规则匹配不到连接</string>
     <string name="rv_rule_edit_enabled">启用</string>
     <string name="rv_rule_edit_delete">删除规则</string>
     <string name="rv_rule_delete_title">删除这条规则？</string>

@@ -4,10 +4,10 @@
     <string name="rv_settings_check_update">檢查更新</string>
 
     <string name="rv_settings_group_connection">連線</string>
-    <string name="rv_settings_notify_drop">斷線時通知</string>
+    <string name="rv_settings_notify_drop">中斷連線時通知</string>
     <string name="rv_settings_per_app">依 App</string>
     <string name="rv_settings_per_app_value">只代理 %1$d 個 App</string>
-    <string name="rv_settings_connection_footer">只有選取的 App 經由代理，其他 App 與區網位址直接連線。</string>
+    <string name="rv_settings_connection_footer">只有選取的 App 經由代理，其他 App 與區域網路位址直接連線。</string>
 
     <string name="rv_settings_group_subscription">訂閱</string>
     <string name="rv_settings_auto_update">自動更新</string>
@@ -40,7 +40,7 @@
     <string name="rv_settings_preview">預覽</string>
     <string name="rv_settings_always_on">永久連線的 VPN</string>
     <string name="rv_settings_always_on_sub">系統 VPN 設定</string>
-    <string name="rv_settings_quick_tile">加到快速設定</string>
+    <string name="rv_settings_quick_tile">新增至快速設定</string>
     <string name="rv_settings_quick_tile_sub">不開啟 App 也能連線或中斷連線</string>
     <string name="rv_settings_quick_tile_manual">從螢幕頂端向下滑動兩次，輕觸鉛筆圖示，再將 doona 圖塊拖曳到上方。</string>
     <string name="rv_settings_dns_alidns">阿里 DNS</string>

@@ -8,7 +8,7 @@
     <string name="rv_update_latest">已是最新</string>
     <string name="rv_update_new">有新版本 %1$s</string>
     <string name="rv_update_new_reason">目前版本 %1$s。</string>
-    <string name="rv_update_view">在 GitHub 查看</string>
+    <string name="rv_update_view">在 GitHub 檢視</string>
     <string name="rv_update_failed">無法檢查更新</string>
 
     <string name="rv_settings_geodata">GeoIP/GeoSite</string>
@@ -42,7 +42,7 @@
     <string name="rv_redact_nodes">節點位址與連接埠</string>
     <string name="rv_redact_nodes_sub">伺服器的網域、IP 與連接埠</string>
     <string name="rv_redact_ip">我的 IP 位址</string>
-    <string name="rv_redact_ip_sub">本機的公網與區網 IP</string>
+    <string name="rv_redact_ip_sub">本機的公開 IP 與區域網路 IP</string>
     <string name="rv_redact_domains">造訪的網域</string>
     <string name="rv_redact_domains_sub">連線與 DNS 查詢裡的網域</string>
     <string name="rv_redact_apps">App 名稱</string>

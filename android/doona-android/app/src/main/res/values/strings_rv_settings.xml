@@ -2,7 +2,7 @@
 <!-- The Revolut-style sample of the settings and theme pages (prototype/rv/settings), debug builds only. -->
 <resources>
     <string name="rv_settings_export_diagnostics">Export</string>
-    <string name="rv_settings_check_update">Update</string>
+    <string name="rv_settings_check_update">Check for updates</string>
 
     <string name="rv_settings_group_connection">Connection</string>
     <string name="rv_settings_notify_drop">Notify when disconnected</string>

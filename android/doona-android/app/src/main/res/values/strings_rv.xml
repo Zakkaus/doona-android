@@ -28,8 +28,8 @@
     <string name="rv_stats">Statistics</string>
     <string name="rv_subscriptions">Subscriptions</string>
     <string name="rv_today_usage">Today\'s usage</string>
-    <string name="rv_less_than_yesterday">%1$s less than yesterday by now</string>
-    <string name="rv_more_than_yesterday">%1$s more than yesterday by now</string>
+    <string name="rv_less_than_yesterday">%1$s less than yesterday at this time</string>
+    <string name="rv_more_than_yesterday">%1$s more than yesterday at this time</string>
     <string name="rv_remaining">left</string>
     <string name="rv_subscription_usage">%1$s / %2$s · ends %3$s</string>
     <string name="rv_fastest_nodes">Fastest nodes</string>

@@ -15,7 +15,7 @@
     </plurals>
     <string name="rv_nodes_all">全部節點</string>
     <plurals name="rv_nodes_see_all">
-        <item quantity="other">查看全部 %1$d 個</item>
+        <item quantity="other">檢視全部 %1$d 個</item>
     </plurals>
     <string name="rv_nodes_region_asia">亞洲</string>
     <string name="rv_nodes_region_oceania">大洋洲</string>
@@ -78,14 +78,14 @@
     <string name="rv_nodes_place_eg">埃及</string>
     <string name="rv_nodes_place_kh">柬埔寨</string>
     <string name="rv_nodes_place_other">其他</string>
-    <string name="rv_nodes_in_use">目前使用中</string>
+    <string name="rv_nodes_in_use">使用中</string>
     <string name="rv_nodes_latency_high">延遲偏高</string>
-    <string name="rv_nodes_history">延遲紀錄</string>
+    <string name="rv_nodes_history">延遲記錄</string>
     <string name="rv_nodes_median">中位數 %1$s</string>
     <string name="rv_nodes_details">節點資訊</string>
     <string name="rv_nodes_protocol">協定</string>
     <string name="rv_nodes_server">伺服器</string>
-    <string name="rv_nodes_port">埠</string>
+    <string name="rv_nodes_port">連接埠</string>
     <string name="rv_nodes_transport">傳輸方式</string>
     <string name="rv_nodes_subscription">來自訂閱</string>
     <string name="rv_nodes_last_test">上次測試</string>

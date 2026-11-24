@@ -7,7 +7,7 @@
     <string name="rv_stats_month">本月</string>
     <string name="rv_stats_used">已用流量</string>
     <string name="rv_stats_vs_yesterday">比昨天同时段</string>
-    <string name="rv_stats_nothing_today">今天还没有流量</string>
+    <string name="rv_stats_nothing_today">今天尚无流量</string>
     <string name="rv_stats_no_data">尚无数据</string>
     <string name="rv_stats_connections">连接次数</string>
     <string name="rv_stats_quota">订阅额度</string>
@@ -18,9 +18,9 @@
     <string name="rv_stats_nodes">节点分布</string>
     <string name="rv_stats_latency">延迟分布</string>
     <string name="rv_stats_ms">毫秒</string>
-    <string name="rv_stats_median">中位数 · 已测试 %1$d 个</string>
+    <string name="rv_stats_median">中位数 · 已测试 %1$d 个节点</string>
     <string name="rv_stats_split">分流比例</string>
-    <string name="rv_stats_via_proxy">经过代理</string>
+    <string name="rv_stats_via_proxy">经由代理</string>
     <string name="rv_stats_proxy">代理</string>
     <string name="rv_stats_direct">直连</string>
     <string name="rv_stats_tools">工具</string>

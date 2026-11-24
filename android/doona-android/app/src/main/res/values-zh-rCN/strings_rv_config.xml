@@ -10,7 +10,7 @@
     <string name="rv_config_title">配置文件</string>
     <string name="rv_config_applied">第 %1$d 版 · %2$s 应用</string>
     <string name="rv_config_files">文件</string>
-    <string name="rv_config_entry">主文件</string>
+    <string name="rv_config_entry">主配置文件</string>
     <string name="rv_config_included_by">由 %1$s 引入</string>
     <plurals name="rv_config_lines">
         <item quantity="other">%1$d 行</item>
@@ -45,9 +45,9 @@
     <string name="rv_config_reload">重新加载</string>
     <string name="rv_config_revision">第 %1$d 版</string>
     <string name="rv_config_origin_import">导入</string>
-    <string name="rv_config_origin_restore">还原自第 %1$d 版</string>
+    <string name="rv_config_origin_restore">恢复自第 %1$d 版</string>
     <string name="rv_config_unnamed">未命名</string>
-    <string name="rv_config_restore">还原</string>
+    <string name="rv_config_restore">恢复</string>
     <string name="rv_config_export">导出配置文件</string>
     <string name="rv_config_import_refused">无法导入</string>
     <plurals name="rv_config_import_limit">

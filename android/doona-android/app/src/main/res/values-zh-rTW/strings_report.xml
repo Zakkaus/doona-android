@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 診斷報告（report/）：系統分享選單的標題。 -->
 <resources>
-    <string name="report_share_title">傳送診斷報告</string>
+    <string name="report_share_title">分享診斷報告</string>
 </resources>

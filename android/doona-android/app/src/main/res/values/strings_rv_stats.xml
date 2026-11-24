@@ -7,7 +7,7 @@
     <string name="rv_stats_week">This week</string>
     <string name="rv_stats_month">This month</string>
     <string name="rv_stats_used">Data used</string>
-    <string name="rv_stats_vs_yesterday">vs. yesterday by now</string>
+    <string name="rv_stats_vs_yesterday">vs. yesterday at this time</string>
     <string name="rv_stats_nothing_today">No data used today</string>
     <string name="rv_stats_no_data">No data yet</string>
     <string name="rv_stats_connections">Connections</string>

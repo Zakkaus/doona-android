@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="vpn_channel_name">VPN 连接</string>
+    <string name="vpn_drop_channel_name">VPN 断开连接通知</string>
     <string name="vpn_status_starting">连接中…</string>
     <string name="vpn_status_running">已连接</string>
     <string name="vpn_status_stopping">断开连接中…</string>

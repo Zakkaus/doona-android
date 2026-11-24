@@ -165,6 +165,6 @@ class RvSourceShotTest {
         val TOP = 72.dp
         const val WORD = "stream"
         const val FILE = "rules/media.dae"
-        const val MESSAGE = "找不到策略組 stream"
+        const val MESSAGE = "找不到策略群組 stream"
     }
 }

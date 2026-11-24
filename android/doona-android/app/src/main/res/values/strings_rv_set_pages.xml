@@ -8,7 +8,7 @@
     <string name="rv_about_honk_sub">Proxy engine · %1$s</string>
 
     <string name="rv_update_latest">Up to date</string>
-    <string name="rv_update_new">Version %1$s is out</string>
+    <string name="rv_update_new">Version %1$s is available</string>
     <string name="rv_update_new_reason">Current version %1$s.</string>
     <string name="rv_update_view">View on GitHub</string>
     <string name="rv_update_failed">Could not check for updates</string>

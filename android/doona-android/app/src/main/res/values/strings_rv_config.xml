@@ -61,7 +61,7 @@
     </plurals>
     <string name="rv_config_pick_again">Choose another file</string>
     <string name="rv_config_still_in_use">Revision %1$d is still in use.</string>
-    <string name="rv_config_escape_title">An include is outside the import</string>
+    <string name="rv_config_escape_title">An included file is outside the import</string>
     <string name="rv_config_edit_source">Edit source</string>
     <string name="rv_template_global">Global proxy</string>
     <string name="rv_template_global_line">Everything but the local network goes through the proxy</string>

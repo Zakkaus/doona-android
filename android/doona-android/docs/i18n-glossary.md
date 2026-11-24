@@ -1,5 +1,7 @@
 # i18n glossary (en / zh-TW / zh-CN)
 
+Superseded by [`glossary.md`](glossary.md) (2026-11-25) wherever the two differ, for example 區域網路, not 區網.
+
 Terminology for `android/doona-android/app/src/main/res/values*` and
 `app/src/debug/res/values*`, aligned with the doona web catalogues
 (`/home/zakk/code/doona/src/i18n/locales/*.json`) and, where the web app has no

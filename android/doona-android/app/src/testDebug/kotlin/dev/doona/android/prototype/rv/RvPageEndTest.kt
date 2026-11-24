@@ -138,7 +138,7 @@ class RvPageEndTest {
             Page("依 App") { RvPerAppScreen(rvPerAppLookSample(""), RvPerAppActions(), onBack = {}) },
             Page("回報問題") { RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), {}, onBack = {}) },
             Page("規則") { RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}) },
-            Page("策略組") { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) },
+            Page("策略群組") { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) },
         ),
     )
 

@@ -103,17 +103,17 @@ class RvConfigTemplateShotTest {
         compose.setContent { Themed { Chooser(RvConfigTemplateData.bypass, RvConfigTemplateData.bypass) } }
         compose.onNodeWithText(REVIEW).assertIsNotEnabled()
         // Semantics clicks: scrolled into view, a row's foot may sit under the floating 檢視變更.
-        compose.onNodeWithText("擋廣告").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText("封鎖廣告").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         compose.onNodeWithText(REVIEW).assertIsEnabled()
-        compose.onNodeWithText("擋廣告").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText("封鎖廣告").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         compose.onNodeWithText(REVIEW).assertIsNotEnabled()
     }
 
     @Test
     fun optionsStartAsDoonasDefaults() {
         compose.setContent { Themed { Chooser(null, RvConfigTemplateData.regions) } }
-        compose.onNodeWithText("擋廣告").performScrollTo().assertIsOff()
-        compose.onNodeWithText("擋 QUIC").performScrollTo().assertIsOn()
+        compose.onNodeWithText("封鎖廣告").performScrollTo().assertIsOff()
+        compose.onNodeWithText("封鎖 QUIC").performScrollTo().assertIsOn()
         // A semantics click: scrolled into view, the row's foot sits under the floating 建立設定檔.
         compose.onNodeWithText("NetworkManager 直連").performScrollTo().assertIsOn().performSemanticsAction(SemanticsActions.OnClick).assertIsOff()
     }
