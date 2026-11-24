@@ -47,6 +47,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitch
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowToggle
+import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.designsystem.rv.rvSystemScheme
 
 /** What the 依 App page does: pick a policy, check an app, search, save, and rebuild the tunnel after a failed one. */
@@ -134,12 +135,14 @@ private fun failure(state: RvPerAppState, actions: RvPerAppActions): RvNotice? {
 
 /**
  * The apps, or the empty caption when the search matches none; while they are read, a skeleton of their rows, which a
- * screen reader reads as the apps loading.
+ * screen reader reads as the apps loading. The skeleton's card runs past the window's foot as the list does
+ * ([rvSkeletonRowsToFill]); its rows stop above 儲存's room, as the list's last row clears it ([LocalRvContentFloor]).
  */
 @Composable
 private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppLook) {
     val loading = stringResource(R.string.rv_perapp_loading)
-    RvSkeletonFade(state.installed == null, { RvSkeletonCard(description = loading) { repeat(SKELETON_APPS) { RvSkeletonRow(it) } } }) {
+    val rows = rvSkeletonRowsToFill()
+    RvSkeletonFade(state.installed == null, { RvSkeletonCard(description = loading) { repeat(rows) { RvSkeletonRow(it) } } }) {
         val shown = state.shown
         if (shown.isEmpty()) {
             RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
@@ -148,9 +151,6 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppL
         }
     }
 }
-
-/** The app rows the skeleton shows: what the first screen holds under the search field. */
-private const val SKELETON_APPS = 6
 
 /**
  * One app: its own icon (the fallback glyph when the phone does not have it), its name over its package, and a switch

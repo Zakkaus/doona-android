@@ -184,6 +184,7 @@ private fun RvRangePill(label: String, selected: Boolean, style: TextStyle, heig
     Box(
         Modifier
             .height(height)
+            .testTag(RvPart.FRAME)
             .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
             .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick)
             .padding(horizontal = RvChartSize.rangePad),

@@ -52,9 +52,11 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonChips
 import dev.doona.android.designsystem.rv.RvSkeletonControlCard
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
 import dev.doona.android.designsystem.rv.RvSkeletonFade
 import dev.doona.android.designsystem.rv.RvSkeletonHeader
 import dev.doona.android.designsystem.rv.RvSkeletonRow
+import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTabHeader
@@ -63,6 +65,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvNavClearance
 import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowPress
+import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort
@@ -182,29 +185,35 @@ private fun PolicyContent(state: RvPolicyState, onChange: (RvPolicyState) -> Uni
 }
 
 /**
- * [PolicyContent]'s skeleton in [mode]'s layout, each part where its content lands: the mode card; under 規則 the main
- * node's card and the groups' first rows; under 全域 the order chips and a subscription's card of nodes; under 直連 nothing
- * more.
+ * [PolicyContent]'s skeleton in [mode]'s layout, each part on the lines of what replaces it: the mode card with its
+ * caption; under 規則 the main node's card (its header, the node over its latency and change) and the groups' card (its
+ * header, each group over its node and latency before the chevron); under 全域 the order chips and a subscription's
+ * card of nodes; under 直連 nothing more. The groups' and the nodes' cards run past the window's foot
+ * ([rvSkeletonRowsToFill]), as their lists do, so the content keeps the edges in view where they stood.
  */
 @Composable
 private fun PolicySkeleton(mode: RvRouteMode) {
+    val rows = rvSkeletonRowsToFill()
     RvGutter {
-        RvSkeletonControlCard()
+        RvSkeletonControlCard(stringResource(mode.line))
         if (mode == RvRouteMode.Rule) {
             RvSkeletonCard {
-                RvSkeletonHeader()
-                RvSkeletonRow(0, end = true)
+                RvSkeletonHeader(stringResource(R.string.rv_main_node))
+                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency)
             }
             RvSkeletonCard {
-                RvSkeletonHeader()
-                repeat(SKELETON_GROUPS) { RvSkeletonRow(it + 1, end = true) }
+                RvSkeletonHeader(stringResource(R.string.rv_policy_groups))
+                repeat(rows) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.Node, chevron = true) }
             }
         }
     }
     if (mode == RvRouteMode.Global) {
-        RvControlRow({ RvSkeletonChips(RvNodeSort.entries.size, Modifier.padding(bottom = rvRaisedReach)) }, RvSpace.tabBlockGap)
+        RvControlRow({ RvSkeletonChips(RvNodeSort.entries.map { stringResource(it.label) }, Modifier.padding(bottom = rvRaisedReach)) }, RvSpace.tabBlockGap)
         RvGutter {
-            RvSkeletonCard { repeat(SKELETON_GROUPS + 1) { RvSkeletonRow(it, end = true) } }
+            RvSkeletonCard {
+                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value)
+                repeat(rows) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.Latency) }
+            }
         }
     }
 }
@@ -302,9 +311,6 @@ private fun ValueRow(@DrawableRes icon: Int, title: String, value: String, onCli
         }
     }
 }
-
-/** The groups' rows the skeleton shows: what the first screen holds under the main node's card. */
-private const val SKELETON_GROUPS = 3
 
 private val MODES = listOf(RvRouteMode.Rule, RvRouteMode.Global, RvRouteMode.Direct)
 

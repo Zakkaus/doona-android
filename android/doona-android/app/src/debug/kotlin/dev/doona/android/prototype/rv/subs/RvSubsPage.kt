@@ -42,6 +42,7 @@ import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonCards
 import dev.doona.android.designsystem.rv.RvSkeletonGoal
 import dev.doona.android.designsystem.rv.RvSkeletonRow
+import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.rememberRvFormat
@@ -150,12 +151,12 @@ private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions) {
     }
 }
 
-/** 訂閱's cards while it loads: subscription cards, each its row and its quota's goal. */
+/** 訂閱's cards while it loads: subscription cards, each its row (the name over its nodes and update, the chevron's room) and its quota's goal. */
 @Composable
 private fun SubsSkeleton() {
     repeat(SKELETON_CARDS) {
         RvSkeletonCard {
-            RvSkeletonRow(it)
+            RvSkeletonRow(it, RvSkeletonText.Mixed, chevron = true)
             RvSkeletonGoal()
         }
     }

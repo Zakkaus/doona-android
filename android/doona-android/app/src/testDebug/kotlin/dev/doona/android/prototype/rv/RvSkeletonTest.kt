@@ -28,21 +28,12 @@ import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSkeletonCard
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
 import dev.doona.android.designsystem.rv.RvSkeletonRow
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.gallery.RvGallerySkeleton
-import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
-import dev.doona.android.prototype.rv.settings.RvPerAppActions
-import dev.doona.android.prototype.rv.settings.RvPerAppScreen
-import dev.doona.android.prototype.rv.settings.rvPerAppSample
-import dev.doona.android.prototype.rv.subs.RvSubsActions
-import dev.doona.android.prototype.rv.subs.RvSubsPage
-import dev.doona.android.prototype.rv.subs.RvSubsState
 import dev.doona.android.testing.drawFully
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -58,13 +49,10 @@ import kotlin.math.roundToInt
  * 活動, 策略 (in each of its modes) and 訂閱 before the engine is ready: a skeleton of each page's cards ([RvSkeletonCards];
  * on 活動 also of the hero's lines), under the real header, bar and nav. Goldens `proto-rv-<page>-loading-light|dark|fs115|fs200` at
  * animator scale 0 (the shimmer stands still), the library's parts as the gallery shows them (`proto-rv-skeleton-*`),
- * and per page a frame strip of the content replacing its skeleton (`proto-rv-<page>-loading-frames-light`: the
- * skeleton, then [AFTER_LOAD] ms after the data came, each time under its frame) and one of the shimmer's band.
- *
- * No jump: on each page, and on the per-app list, the content lands where its skeleton stood. At 1.0 every skeleton card
- * and row has the top (and every row the height) of the card or row that replaces it; at 2.0, where the content's text
- * wraps as long as it is, the first card replaced keeps its top, and a skeleton row is as tall as a row whose text keeps
- * one line.
+ * and per page (策略 in each mode, and 依 App) a frame strip of the content replacing its skeleton
+ * (`proto-rv-<page>-loading-frames-light`: the skeleton, then [AFTER_LOAD] ms after the data came, each time under its
+ * frame) and one of the shimmer's band. A skeleton row is as tall as a row whose text keeps one line; that every part
+ * lands where its skeleton stood is [RvSkeletonBoundsTest]'s.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -137,29 +125,11 @@ class RvSkeletonTest {
 
     @Test fun subsFrames() = frames(SUBS)
 
-    @Test fun activityKeepsItsPlaces() = places(ACTIVITY, 1f)
+    @Test fun policyGlobalFrames() = frames(POLICY_GLOBAL)
 
-    @Test fun activityKeepsItsPlacesFs200() = places(ACTIVITY, RV_FS200)
+    @Test fun policyDirectFrames() = frames(POLICY_DIRECT)
 
-    @Test fun policyKeepsItsPlaces() = places(POLICY, 1f)
-
-    @Test fun policyKeepsItsPlacesFs200() = places(POLICY, RV_FS200)
-
-    @Test fun policyGlobalKeepsItsPlaces() = places(POLICY_GLOBAL, 1f)
-
-    @Test fun policyGlobalKeepsItsPlacesFs200() = places(POLICY_GLOBAL, RV_FS200)
-
-    @Test fun policyDirectKeepsItsPlaces() = places(POLICY_DIRECT, 1f)
-
-    @Test fun policyDirectKeepsItsPlacesFs200() = places(POLICY_DIRECT, RV_FS200)
-
-    @Test fun subsKeepsItsPlaces() = places(SUBS, 1f)
-
-    @Test fun subsKeepsItsPlacesFs200() = places(SUBS, RV_FS200)
-
-    @Test fun perAppKeepsItsPlaces() = places(PER_APP, 1f)
-
-    @Test fun perAppKeepsItsPlacesFs200() = places(PER_APP, RV_FS200)
+    @Test fun perAppFrames() = frames(PER_APP)
 
     @Test fun aSkeletonRowIsAsTallAsItsRow() = rowHeights(1f)
 
@@ -207,33 +177,6 @@ class RvSkeletonTest {
         rvStrip(shots, first.height, dark = false).captureRoboImage("$SHOTS/proto-rv-$page-loading-frames-light.png")
     }
 
-    /** The cards and rows with the skeleton, then with the content in its place: where they stand, in dp. */
-    private fun places(page: String, fontScale: Float) {
-        rvAnimatorScale(0f)
-        val loading = mutableStateOf(true)
-        compose.rvContent(dark = false, fontScale) { Page(page, loading.value) }
-        compose.waitForIdle()
-        val skeleton = compose.parts()
-        loading.value = false
-        compose.waitForIdle()
-        val loaded = compose.parts()
-        val drift = mutableListOf<String>()
-        val cards = skeleton.getValue(RvPart.CARD)
-        // The skeleton stands for the page's own cards, every one of them, before any is compared with what replaces it.
-        assertEquals("$page's cards while it loads", SKELETON_CARDS.getValue(page), cards.size)
-        // At 2.0 only the first card replaced keeps its place: under it the content's text wraps as long as it is.
-        val kept = if (fontScale == 1f) cards.size else (if (page == PER_APP) PER_APP_CARDS_ABOVE else 0) + 1
-        assertTrue("$page has fewer cards loaded than its skeleton", loaded.getValue(RvPart.CARD).size >= cards.size)
-        cards.take(kept).zip(loaded.getValue(RvPart.CARD)).forEachIndexed { i, (card, real) -> same(drift, "card $i's top", card.top, real.top) }
-        if (fontScale == 1f) {
-            skeleton.getValue(RvPart.ROW).zip(loaded.getValue(RvPart.ROW)).forEachIndexed { i, (row, real) ->
-                same(drift, "row $i's top", row.top, real.top)
-                same(drift, "row $i's height", row.height, real.height)
-            }
-        }
-        assertTrue("$page at $fontScale moves when its content comes:\n" + drift.joinToString("\n"), drift.isEmpty())
-    }
-
     /** Real rows (a two-line row, one with an end, a one-line row; in Han and in Latin) over their skeletons, as tall. */
     private fun rowHeights(fontScale: Float) {
         rvAnimatorScale(0f)
@@ -246,8 +189,8 @@ class RvSkeletonTest {
                 }
                 RvSkeletonCard {
                     RvSkeletonRow(0)
-                    RvSkeletonRow(1, end = true)
-                    RvSkeletonRow(2, subtitle = false)
+                    RvSkeletonRow(1, end = RvSkeletonEnd.Value)
+                    RvSkeletonRow(2, subtitle = null)
                 }
             }
         }
@@ -283,35 +226,16 @@ class RvSkeletonTest {
     }
 
     @Composable
-    private fun Page(page: String, loading: Boolean) {
-        when (page) {
-            ACTIVITY -> RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}, loading = loading)
-            POLICY -> RvPolicyScreen(RvPolicyState(), onChange = {}, loading = loading)
-            POLICY_GLOBAL -> RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Global), onChange = {}, loading = loading)
-            POLICY_DIRECT -> RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}, loading = loading)
-            SUBS -> RvSubsPage(RvSubsState(), RvSubsActions(), loading = loading)
-            else -> RvPerAppScreen(rvPerAppSample(if (loading) "loading" else ""), RvPerAppActions(), onBack = {})
-        }
-    }
+    private fun Page(page: String, loading: Boolean) = RvSkeletonPage(page, loading)
 
     private companion object {
         val SHOTS = System.getProperty("doona.shots") ?: "src/test/screenshots"
-        const val ACTIVITY = "activity"
-        const val POLICY = "policy"
-        const val SUBS = "subs"
-        const val PER_APP = "perapp"
-        const val POLICY_GLOBAL = "policy-global"
-        const val POLICY_DIRECT = "policy-direct"
-
-        /**
-         * The cards each page shows while it loads, the cards of the content they stand for: 活動's rules card and its two
-         * tiles; 策略's mode card, then under 規則 the main node's and the groups', under 全域 a subscription's nodes, under
-         * 直連 none; 訂閱's two subscriptions; 依 App's policies card (real) over its list's.
-         */
-        val SKELETON_CARDS = mapOf(ACTIVITY to 3, POLICY to 3, POLICY_GLOBAL to 2, POLICY_DIRECT to 1, SUBS to 2, PER_APP to 2)
-
-        /** The per-app page's policies card stands over its list, loaded or not. */
-        const val PER_APP_CARDS_ABOVE = 1
+        const val ACTIVITY = RvSkeletonPages.ACTIVITY
+        const val POLICY = RvSkeletonPages.POLICY
+        const val SUBS = RvSkeletonPages.SUBS
+        const val PER_APP = RvSkeletonPages.PER_APP
+        const val POLICY_GLOBAL = RvSkeletonPages.POLICY_GLOBAL
+        const val POLICY_DIRECT = RvSkeletonPages.POLICY_DIRECT
 
         /**
          * About a third and two thirds into the cross-fade ([RvMotion.HERO_FADE_MS]), which starts some frames after the

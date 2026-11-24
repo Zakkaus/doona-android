@@ -191,7 +191,7 @@ internal fun RvSparkline(values: List<Float>, color: Color, modifier: Modifier =
     val colors = Rv.colors
     val glide = rememberRvGlide(values)
     // A layer of its own: a frame of the glide records the line alone, not the page around it with the glass over it.
-    Canvas(modifier.fillMaxWidth().height(RvChartSize.spark).graphicsLayer {}) {
+    Canvas(modifier.fillMaxWidth().height(RvChartSize.spark).testTag(RvPart.FRAME).graphicsLayer {}) {
         if (values.size < 2) return@Canvas
         val stroke = RvChartSize.sparkStroke.toPx()
         val scale = Scale(values.max() * RvChartSize.SPARK_HEADROOM, 0f, size.height - stroke / 2)
@@ -220,7 +220,7 @@ private inline fun DrawScope.gliding(glide: RvGlide, values: List<Float>, right:
 @Composable
 internal fun RvGhostBars(heights: FloatArray, modifier: Modifier = Modifier) {
     val ghost = Rv.colors.ghost
-    Canvas(modifier.fillMaxWidth().height(RvChartSize.spark)) {
+    Canvas(modifier.fillMaxWidth().height(RvChartSize.spark).testTag(RvPart.FRAME)) {
         val bar = RvChartSize.ghostBar.toPx()
         val pitch = (size.width - bar) / (RvChartSize.GHOST_BARS - 1)
         heights.forEachIndexed { i, height ->

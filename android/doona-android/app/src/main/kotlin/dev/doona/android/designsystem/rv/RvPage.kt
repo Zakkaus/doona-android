@@ -24,7 +24,9 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,6 +36,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -84,9 +87,15 @@ internal fun RvScrollPage(
     val collapse = { ((barBottom + fade - titleBottom) / fade).coerceIn(0f, 1f) }
     val glass = rememberRvGlass()
     var actionHeight by remember { mutableIntStateOf(0) }
-    Box(modifier.fillMaxSize()) {
+    // The page's foot in root px, and from it where the content stops being in the clear above the bottom action.
+    var foot by remember { mutableFloatStateOf(Float.MAX_VALUE) }
+    val gap = with(density) { RvSpace.gutter.toPx() }
+    val floor = remember(gap) { { foot - gap - actionHeight } }
+    Box(modifier.fillMaxSize().onGloballyPositioned { foot = it.positionInRoot().y + it.size.height }) {
         Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
-            content(Modifier.onGloballyPositioned { titleBottom = it.boundsInWindow().bottom.roundToInt() })
+            CompositionLocalProvider(LocalRvContentFloor provides floor.takeIf { bottomAction != null }) {
+                content(Modifier.onGloballyPositioned { titleBottom = it.boundsInWindow().bottom.roundToInt() })
+            }
             // The bottom action's room: the gap above it, then the action with its 16 dp over the inset.
             if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() }))
         }

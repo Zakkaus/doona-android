@@ -86,6 +86,7 @@ import dev.doona.android.designsystem.rv.RvSeries
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonCards
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
 import dev.doona.android.designsystem.rv.RvSkeletonFade
 import dev.doona.android.designsystem.rv.RvSkeletonHero
 import dev.doona.android.designsystem.rv.RvSkeletonRow
@@ -180,7 +181,7 @@ internal fun RvActivityScreen(
                             noSubscription,
                         )
                     } else {
-                        RvSkeletonCards(loading, { ActivitySkeleton() }) {
+                        RvSkeletonCards(loading, { ActivitySkeleton(mode) }) {
                             OutboundCard(steady, mode, routes, nodes)
                             TrafficTiles(state, routes.traffic)
                             RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
@@ -458,15 +459,20 @@ private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
     ) { RvText(format.bytes(rule.bytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
 }
 
-/** 活動's cards while it loads: the outbound card's four rows and its see-all line, then the two traffic tiles. */
+/**
+ * 活動's cards while it loads, each part on the lines of what replaces it: the outbound card's rows (出站模式 over the
+ * [mode], whose words the page knows, and its chevron's room; the main node over its latency and change; the rule
+ * groups over their bytes) and its see-all line, then the two traffic tiles under their captions.
+ */
 @Composable
-private fun ActivitySkeleton() {
+private fun ActivitySkeleton(mode: RvRouteMode) {
     RvSkeletonCard {
-        RvSkeletonRow(0)
-        repeat(RULE_ROWS + 1) { RvSkeletonRow(it + 1, end = true) }
+        RvSkeletonRow(0, chevron = true, title = stringResource(R.string.act_mode), subtitleText = stringResource(mode.label))
+        RvSkeletonRow(1, end = RvSkeletonEnd.Latency)
+        repeat(RULE_ROWS) { RvSkeletonRow(it + 2, end = RvSkeletonEnd.Value) }
         RvSkeletonSeeAll()
     }
-    RvSkeletonTiles()
+    RvSkeletonTiles(listOf(stringResource(R.string.ui_download), stringResource(R.string.ui_upload)))
 }
 
 /**

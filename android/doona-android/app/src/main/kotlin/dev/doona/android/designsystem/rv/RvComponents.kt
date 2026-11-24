@@ -313,6 +313,17 @@ internal object RvPart {
     /** A busy bar standing in for a row's end while a test runs. */
     const val BUSY = "rv-busy"
     const val SEGMENTED = "rv-segmented"
+
+    /** A skeleton's line of text, its block (a chart's or a bar's place) and its disc, each in the bounds of the part it stands for. */
+    const val SKELETON_LINE = "rv-skeleton-line"
+    const val SKELETON_BLOCK = "rv-skeleton-block"
+    const val SKELETON_DISC = "rv-skeleton-disc"
+
+    /** What a skeleton's block stands for: a chart's frame, a progress track, a range chip. */
+    const val FRAME = "rv-frame"
+
+    /** A line of text set with a glyph before it ([RvInline]), measured as one line. */
+    const val TEXT_LINE = "rv-text-line"
 }
 
 /**
@@ -403,7 +414,7 @@ internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) = RvProg
  */
 @Composable
 internal fun RvProgress(fraction: () -> Float, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().height(RvSize.progress).clip(CircleShape).background(Rv.colors.track)) {
+    Box(modifier.fillMaxWidth().height(RvSize.progress).testTag(RvPart.FRAME).clip(CircleShape).background(Rv.colors.track)) {
         Box(Modifier.rvFillWidth(fraction).fillMaxHeight().clip(CircleShape).background(Rv.colors.positive))
     }
 }
@@ -521,7 +532,7 @@ internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClic
 /** A small glyph before a label in the same colour: the header's sub line. */
 @Composable
 internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.tight)) {
+    Row(modifier.testTag(RvPart.TEXT_LINE), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.tight)) {
         RvGlyph(icon, RvSize.inlineGlyph, color)
         RvText(text, style, color = color)
     }

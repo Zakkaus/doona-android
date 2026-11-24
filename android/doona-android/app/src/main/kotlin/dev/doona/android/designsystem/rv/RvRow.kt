@@ -45,7 +45,7 @@ import kotlin.math.min
  *
  * [titleEnd] and [subtitleEnd] put a value at the end of the title's line and of the subtitle's line instead of one
  * trailing column beside both: each line then shares its width only with its own end. The start keeps its width up to
- * [TITLE_SHARE] of the line, the end takes what it needs of the rest, and the start gets what is left, so a long name
+ * [RV_ROW_TITLE_SHARE] of the line, the end takes what it needs of the rest, and the start gets what is left, so a long name
  * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
  * text column to its widest end. [trailing] (a chevron) still follows after both lines.
  *
@@ -302,10 +302,10 @@ internal const val RV_ROW_TITLE_LINES = 2
 internal const val RV_ROW_SUBTITLE_LINES = 3
 
 /** The share of a line a row's title keeps, if it needs it, before the end of the line takes the rest. */
-private const val TITLE_SHARE = 0.4f
+internal const val RV_ROW_TITLE_SHARE = 0.4f
 
 /**
- * One line of a line-wise [RvRow]: [start] keeps its own width up to [TITLE_SHARE] of the line, [end] takes what it
+ * One line of a line-wise [RvRow]: [start] keeps its own width up to [RV_ROW_TITLE_SHARE] of the line, [end] takes what it
  * needs of the rest, and [start] then gets what the end leaves. Where [end] does not fit whole on that line, or [start]
  * ([text], when given) does not read well beside it or would take more lines there than on the whole line, [end] goes
  * under [start] on the line's end and each has the whole line, so neither is cut or squeezed; the middle of its line is
@@ -320,7 +320,7 @@ private fun RowLine(end: (@Composable () -> Unit)?, text: RowText?, figure: Bool
     }) { parts, constraints ->
         val width = constraints.maxWidth
         val gap = if (parts.size > 1) RvSpace.trailingGap.roundToPx() else 0
-        val keep = min(parts[0].maxIntrinsicWidth(constraints.maxHeight), (width * TITLE_SHARE).toInt())
+        val keep = min(parts[0].maxIntrinsicWidth(constraints.maxHeight), (width * RV_ROW_TITLE_SHARE).toInt())
         val room = max(0, width - keep - gap)
         val endWidth = parts.getOrNull(1)?.maxIntrinsicWidth(constraints.maxHeight)
         val beside = endWidth == null || (endWidth <= room && (text == null || measurer.keeps(text, max(0, width - endWidth - gap), width)))

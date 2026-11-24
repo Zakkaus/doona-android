@@ -32,6 +32,7 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonControlCard
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
 import dev.doona.android.designsystem.rv.RvSkeletonGoal
 import dev.doona.android.designsystem.rv.RvSkeletonHeader
 import dev.doona.android.designsystem.rv.RvSkeletonRow
@@ -152,7 +153,8 @@ internal fun RvGalleryEmpty(onAdd: () -> Unit = {}) {
 
 /**
  * The skeleton's parts as a page shows them while it loads: a control card, a card with its header, a row without an
- * end, two rows with one and its see-all line, the tiles, and a card with a goal under its row.
+ * end, a row with a value over a smaller line and one with a value, and its see-all line, the tiles, and a card with a
+ * goal under its row.
  */
 @Composable
 internal fun RvGallerySkeleton() {
@@ -161,8 +163,8 @@ internal fun RvGallerySkeleton() {
         RvSkeletonCard {
             RvSkeletonHeader()
             RvSkeletonRow(0)
-            RvSkeletonRow(1, end = true)
-            RvSkeletonRow(2, end = true)
+            RvSkeletonRow(1, end = RvSkeletonEnd.Latency)
+            RvSkeletonRow(2, end = RvSkeletonEnd.Value)
             RvSkeletonSeeAll()
         }
         RvSkeletonTiles()
