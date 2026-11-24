@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv.nodes
 import android.content.res.Configuration
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -52,6 +53,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvWorldMap
+import dev.doona.android.designsystem.rv.rvEndFirstLine
 import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
@@ -196,8 +198,9 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
 
 /**
  * A node in its part of the world: the flag (badged in use), the name, `協定 · 地區`, and its latency over its change. With
- * [score]'s [RvScoreLook.Marks] the line begins with the node's 「Score 選用」 mark where a Score group chose it; with
- * [RvScoreLook.Composite] the latency stands over the node's 綜合評分 in place of its change.
+ * [score]'s [RvScoreLook.Marks] the line begins with the node's 「Score 選用」 mark where a Score group chose it, each `·`
+ * held to the word after it so a wrapped line never ends on one; with [RvScoreLook.Composite] the latency stands over the
+ * node's 綜合評分 in place of its change, in the same trailing end, so nothing else in the row moves.
  */
 @Composable
 private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (String) -> Unit, score: RvScoreLook?) {
@@ -209,18 +212,32 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
         RvRow(
             { RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
             node.name,
-            listOfNotNull(mark, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
+            listOfNotNull(mark, node.protocol, stringResource(node.place.label)).joinToString(if (mark != null) HELD_SEPARATOR else SEPARATOR),
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
             onClick = { onOpen(node.id) },
             onLongClick = menu,
-            titleEnd = if (composite) ({ RvLatencyText(node.latencyMs, node.timedOut) }) else null,
-            subtitleEnd = if (composite) ({ RvText(compositeText(node), Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) }) else null,
-            trailing = if (composite) null else ({ RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id) }),
-        )
+        ) {
+            if (composite) LatencyOverComposite(node) else RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id)
+        }
+    }
+}
+
+/**
+ * [RvLatencyChange]'s two lines with the node's 綜合評分 in place of its change: the same type role ([Rv.type.rowSub], as
+ * [dev.doona.android.designsystem.rv.RvDelta] writes it), so the end is as tall and the row's text stays where it is.
+ */
+@Composable
+private fun LatencyOverComposite(node: RvNode) {
+    Column(horizontalAlignment = Alignment.End) {
+        Box(Modifier.rvEndFirstLine()) { RvLatencyText(node.latencyMs, node.timedOut) }
+        RvText(compositeText(node), Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)
     }
 }
 
 internal const val SEPARATOR = " · "
+
+/** [SEPARATOR] with a no-break space after the dot: a line may break before the dot, never after it. */
+private const val HELD_SEPARATOR = " ·\u00A0"
 private const val TOP_COLUMNS = 4
 private const val REGION_ROWS = 5
 

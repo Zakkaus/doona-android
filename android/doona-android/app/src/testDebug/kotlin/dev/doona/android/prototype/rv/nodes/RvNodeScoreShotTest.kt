@@ -126,7 +126,8 @@ class RvNodeScoreShotTest {
             .flatMap { it.config[SemanticsProperties.Text] }
             .map { it.text.replace(WORD_JOINER, "") }
             .filter { MARK in it }
-        assertEquals(listOf("Score 選用 TCP · VLESS · 香港", "Score 選用 UDP · Trojan · 香港"), marked)
+        // Each dot is held to the word after it (a no-break space), so a wrapped line never ends on a dot.
+        assertEquals(listOf("Score 選用 TCP ·\u00A0VLESS ·\u00A0香港", "Score 選用 UDP ·\u00A0Trojan ·\u00A0香港"), marked)
         val points = compose.onAllNodesWithText("分", substring = true, useUnmergedTree = true).fetchSemanticsNodes()
             .flatMap { it.config[SemanticsProperties.Text] }
             .filter { it.text.replace(WORD_JOINER, "").matches(POINTS) }
@@ -212,7 +213,7 @@ class RvNodeScoreShotTest {
         const val PAGE_A_FS200 = "+h4852dp"
         const val PAGE_B = "+h2881dp"
         const val PAGE_B_FS115 = "+h2899dp"
-        const val PAGE_B_FS200 = "+h4185dp"
+        const val PAGE_B_FS200 = "+h4844dp"
         const val DETAIL_A = "+h1208dp"
         const val DETAIL_A_FS115 = "+h1216dp"
         const val DETAIL_A_FS200 = "+h1390dp"
