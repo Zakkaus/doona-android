@@ -1,0 +1,17 @@
+# Label coverage only; PR 10 owns the production template.
+# Legacy cn-direct v2: crates/doona-core/src/rules/template.rs.
+routing {
+    dip(geoip:private) -> direct
+    dip(geoip:cn) -> direct
+    fallback: direct
+}
+
+# The config plan names geosite:cn for DNS qname routing.
+dns {
+    routing {
+        request {
+            qname(geosite:cn) -> asis
+            fallback: asis
+        }
+    }
+}

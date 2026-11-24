@@ -44,12 +44,12 @@ APK 位於 `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`。`assem
 bundle=$(mktemp -d)
 uv run crates/doona-core/tools/update_geo.py "$bundle"
 uv run crates/doona-core/tools/update_geo.py --check "$bundle"
-(cd crates/doona-core/tools/geo-check && cargo run --locked -- "$bundle" ../../templates)
+(cd crates/doona-core/tools/geo-check && DAE_LOCATION_ASSET="$bundle" cargo run --locked -- tests/fixtures/required-labels.dae)
 ```
 
-[每週排程](.github/workflows/geo-bundle.yml) 驗證最新版本後，只向 `v1/base` 提出更新版本鎖定檔的 PR。排程必須放在預設分支。啟用 **Allow GitHub Actions to create and approve pull requests**，預設 token 才能建立 PR。DAT 檔不進倉庫，也不打包進 APK。
+[每週排程](.github/workflows/geo-bundle.yml) 驗證最新版本後，只向 `v1/base` 提出更新版本鎖定檔的 PR。排程必須放在預設分支。啟用 **Allow GitHub Actions to create and approve pull requests**，預設 token 才能建立 PR。[`GITHUB_TOKEN` 建立的 PR 不會自動執行 CI](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)；有寫入權限的維護者須選擇 **Approve workflows to run**。DAT 檔不進倉庫，也不打包進 APK。
 
-MetaCubeX 會替換 `latest` 的附件，並強制推送 `release` 分支。版本鎖定檔使用含 commit SHA 的快照 URL，大小與 SHA-256 取自 release API。URL 不會指向新版內容，但上游不保證保留舊快照。
+MetaCubeX 會替換 `latest` 的附件，並強制推送 `release` 分支。版本鎖定檔使用含 commit SHA 的快照 URL，大小與 SHA-256 取自 release API。URL 不會指向新版內容，但 GitHub 可能回收舊的 `release` commit；是否設置第一方鏡像仍由維護者決定。
 
 ## 執行測試
 

@@ -761,7 +761,8 @@ dependencies = [
  "anyhow",
  "honk-config",
  "honk-core",
- "regex",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

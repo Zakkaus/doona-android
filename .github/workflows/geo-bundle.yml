@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     outputs:
-      base_sha: ${{ steps.candidate.outputs.base_sha }}
+      base_inputs: ${{ steps.candidate.outputs.base_inputs }}
       pins: ${{ steps.candidate.outputs.pins }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,8 +28,8 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          uv run --no-project python -m unittest discover -s crates/doona-core/tools -p test_update_geo.py
-          uv run --no-project python - <<'PY'
+          uv run --no-project --python '>=3.11' python -m unittest discover -s crates/doona-core/tools -p test_update_geo.py
+          uv run --no-project --python '>=3.11' python - <<'PY'
           import tomllib
           from pathlib import Path
 
@@ -43,17 +43,31 @@ jobs:
                   raise SystemExit(f"geo-check {name} pin differs from doona-core")
           PY
       - name: Fetch and verify the newest release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           uv run crates/doona-core/tools/update_geo.py --latest "$RUNNER_TEMP/geo-bundle"
-      - name: Decode both DATs and check template labels
+      - name: Check required geo labels and reject missing labels
         working-directory: crates/doona-core/tools/geo-check
-        run: cargo run --locked -- "$RUNNER_TEMP/geo-bundle" ../../templates
+        env:
+          DAE_LOCATION_ASSET: ${{ runner.temp }}/geo-bundle
+        run: |
+          cargo run --locked -- tests/fixtures/required-labels.dae
+          if output=$(cargo run --locked -- tests/fixtures/missing-labels.dae 2>&1); then
+            echo 'Geo verifier accepted missing labels' >&2
+            exit 1
+          fi
+          printf '%s\n' "$output"
+          grep -F 'doona-missing' <<< "$output"
+          grep -F 'cn@nope' <<< "$output"
+          grep -F 'geo bundle failed coverage' <<< "$output"
       - name: Export verified pins only when changed
         id: candidate
         run: |
           manifest="$RUNNER_TEMP/geo-bundle/geo-manifest.json"
           if ! cmp -s "$manifest" crates/doona-core/tools/geo-pins.json; then
-            printf 'base_sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            inputs=$(git ls-tree HEAD -- crates/doona-core/{tools,Cargo.toml,rust-toolchain.toml,.cargo})
+            printf 'base_inputs=%s\n' "$(git hash-object --stdin <<< "$inputs")" >> "$GITHUB_OUTPUT"
             pins=$(jq -c . "$manifest")
             printf 'pins=%s\n' "$pins" >> "$GITHUB_OUTPUT"
           fi
@@ -73,11 +87,12 @@ jobs:
           persist-credentials: false
       - name: Stage verified pins
         env:
-          BASE_SHA: ${{ needs.verify.outputs.base_sha }}
+          BASE_INPUTS: ${{ needs.verify.outputs.base_inputs }}
           PINS: ${{ needs.verify.outputs.pins }}
         run: |
-          if [ "$(git rev-parse HEAD)" != "$BASE_SHA" ]; then
-            echo 'v1/base changed during verification. Dispatch the workflow again.' >&2
+          inputs=$(git ls-tree HEAD -- crates/doona-core/{tools,Cargo.toml,rust-toolchain.toml,.cargo})
+          if [ "$(git hash-object --stdin <<< "$inputs")" != "$BASE_INPUTS" ]; then
+            echo 'Geo verifier inputs changed during verification. Dispatch the workflow again.' >&2
             exit 1
           fi
           jq . <<< "$PINS" > crates/doona-core/tools/geo-pins.json
@@ -90,4 +105,4 @@ jobs:
           sign-commits: true
           commit-message: 'build(geo): update MetaCubeX pins'
           title: 'build(geo): update MetaCubeX pins'
-          body: 'Refresh the MetaCubeX release snapshot after verifying both DAT checksums and template coverage with the pinned honk.'
+          body: 'Refresh the MetaCubeX release snapshot after verifying both DAT checksums and required geo labels with the pinned honk.'

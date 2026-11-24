@@ -54,6 +54,30 @@ class GeoBundleTest(unittest.TestCase):
         self.assertEqual(result.exception.code, 1)
         self.assertIn(detail, error.getvalue())
 
+    def check_latest_failure(self, detail, assets):
+        metadata = {
+            "releases/latest": {
+                "published_at": "2026-11-23T02:58:26Z",
+                "assets": assets,
+            },
+            "branches/release": {"commit": {"sha": "a" * 40}},
+        }
+        with patch.object(update_geo, "get_json", side_effect=metadata.__getitem__):
+            self.check_failure(detail, "--latest")
+        self.assertFalse(self.bundle.exists())
+
+    def test_latest_rejects_null_digest(self):
+        self.check_latest_failure(
+            "geoip.dat: release has no published SHA-256",
+            [{"name": "geoip.dat", "digest": None, "size": 10}],
+        )
+
+    def test_latest_rejects_missing_asset(self):
+        self.check_latest_failure(
+            "geosite.dat: missing from the MetaCubeX release",
+            [{"name": "geoip.dat", "digest": "sha256:" + "a" * 64, "size": 10}],
+        )
+
     def test_manifest_and_check(self):
         self.fetch()
         self.assertEqual(

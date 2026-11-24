@@ -55,17 +55,20 @@ and write `geo-manifest.json` to a separate output directory. The Rust verifier 
 bundle=$(mktemp -d)
 uv run crates/doona-core/tools/update_geo.py "$bundle"
 uv run crates/doona-core/tools/update_geo.py --check "$bundle"
-(cd crates/doona-core/tools/geo-check && cargo run --locked -- "$bundle" ../../templates)
+(cd crates/doona-core/tools/geo-check && DAE_LOCATION_ASSET="$bundle" cargo run --locked -- tests/fixtures/required-labels.dae)
 ```
 
 [The weekly workflow](.github/workflows/geo-bundle.yml) verifies the newest release before proposing
 a pins-only pull request to `v1/base`. The schedule requires the workflow on the default branch.
 Enable **Allow GitHub Actions to create and approve pull requests** so the default token can open
-the PR. The DATs are not checked in or packaged into the APK.
+the PR. [`GITHUB_TOKEN` pull request checks](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)
+do not run automatically; a maintainer with write access must select **Approve workflows to run**.
+The DATs are not checked in or packaged into the APK.
 
 MetaCubeX replaces its `latest` assets and force-pushes its `release` branch. The pins use
 commit-qualified snapshot URLs, with sizes and SHA-256 digests from the release API. The URLs
-cannot move to newer bytes, but upstream does not guarantee retention of old snapshots.
+cannot move to newer bytes, but GitHub may garbage-collect old `release` commits. A first-party
+mirror is an open owner decision.
 
 ## Run a bench
 

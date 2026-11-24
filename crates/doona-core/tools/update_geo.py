@@ -1,10 +1,16 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
+
 """Fetch or verify a MetaCubeX geo bundle without third-party Python packages."""
 
 import argparse
 import hashlib
 import json
+import os
 import re
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from urllib.request import Request, urlopen
@@ -21,6 +27,8 @@ def get_json(endpoint):
     request = Request(
         f"{API}/{endpoint}", headers={"Accept": "application/vnd.github+json"}
     )
+    if token := os.environ.get("GITHUB_TOKEN"):
+        request.add_unredirected_header("Authorization", f"Bearer {token}")
     with urlopen(request, timeout=60) as response:
         return json.load(response)
 
@@ -36,7 +44,8 @@ def latest_pins():
     assets = {asset["name"]: asset for asset in release["assets"]}
     files = {}
     for name in FILES:
-        asset = assets[name]
+        if (asset := assets.get(name)) is None:
+            raise ValueError(f"{name}: missing from the MetaCubeX release")
         digest = asset["digest"]
         if not isinstance(digest, str) or not digest.startswith("sha256:"):
             raise ValueError(f"{name}: release has no published SHA-256")
@@ -52,9 +61,6 @@ def latest_pins():
 def validate_manifest(manifest):
     if manifest["version"] != 1:
         raise ValueError("unsupported geo manifest version")
-    release_date = manifest["release_date"]
-    if date.fromisoformat(release_date).isoformat() != release_date:
-        raise ValueError("release_date must be an ISO UTC date (YYYY-MM-DD)")
     for name in FILES:
         pin = manifest["files"][name]
         size = pin["size_bytes"]
@@ -62,11 +68,6 @@ def validate_manifest(manifest):
             raise ValueError(f"{name}: size_bytes must be in 1..{MAX_BYTES}")
         if not re.fullmatch(r"[0-9a-f]{64}", pin["sha256"]):
             raise ValueError(f"{name}: invalid SHA-256 pin")
-        source, version = pin["source"], pin["version"]
-        if not isinstance(source, str) or not source.startswith("https://"):
-            raise ValueError(f"{name}: HTTPS source required")
-        if not isinstance(version, str) or not version:
-            raise ValueError(f"{name}: immutable version required")
 
 
 def verify(name, pin, source, target=None):
