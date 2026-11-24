@@ -114,6 +114,7 @@
     <string name="error_invalid_argument">Invalid value</string>
     <string name="error_not_found">Not found</string>
     <string name="error_fetch_failed">Could not download the subscription</string>
+    <string name="error_too_large">The subscription is too large</string>
     <string name="error_parse_failed">Could not read the subscription</string>
     <string name="error_no_nodes">The subscription has no nodes</string>
     <string name="error_busy">Another change is in progress. Try again.</string>

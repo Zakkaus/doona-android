@@ -1,7 +1,7 @@
 //! The group template over the nodes of every subscription (core-api.md, Identity and group
 //! template), version 2: `Proxy`, a Selector over `Auto`, the region groups and every node; `Auto`,
-//! a UrlTest over every node; `Streaming` and `AI`, Selectors over `Proxy` and Proxy's members, for
-//! the template's rules (`rules/template.rs`); then one UrlTest per region found in node names.
+//! Score over every node; `Streaming` and `AI`, Selectors over `Proxy` and Proxy's members, for
+//! the template's rules (`rules/template.rs`); then one Score group per region found in node names.
 //! And the selection rules each group follows.
 
 use crate::dto::GroupKind;
@@ -98,7 +98,7 @@ pub(crate) fn template(nodes: &[(&str, &str)]) -> Vec<GroupDef> {
                 .filter(|(_, tag)| **tag == Some(region.name))
                 .map(|(id, _)| id.clone())
                 .collect();
-            (!members.is_empty()).then(|| url_test(region.name, members))
+            (!members.is_empty()).then(|| score(region.name, members))
         })
         .collect();
     let mut proxy = vec![group_id(AUTO)];
@@ -109,7 +109,7 @@ pub(crate) fn template(nodes: &[(&str, &str)]) -> Vec<GroupDef> {
     ruled.extend(proxy.iter().cloned());
     let mut groups = vec![
         selector(PROXY, proxy),
-        url_test(AUTO, all),
+        score(AUTO, all),
         selector(STREAMING, ruled.clone()),
         selector(AI, ruled),
     ];
@@ -126,11 +126,11 @@ fn selector(name: &str, members: Vec<String>) -> GroupDef {
     }
 }
 
-fn url_test(name: &str, members: Vec<String>) -> GroupDef {
+fn score(name: &str, members: Vec<String>) -> GroupDef {
     GroupDef {
         id: group_id(name),
         name: name.to_owned(),
-        kind: GroupKind::UrlTest,
+        kind: GroupKind::Score,
         members,
     }
 }
@@ -176,7 +176,7 @@ pub(crate) fn selected<'a>(
         return (Some(pinned), true);
     }
     let own = match group.kind {
-        GroupKind::UrlTest => member(auto),
+        GroupKind::UrlTest | GroupKind::Score => member(auto),
         GroupKind::Selector => None,
     };
     (own.or(group.members.first().map(String::as_str)), false)
@@ -257,8 +257,8 @@ mod tests {
             assert_eq!(selected(ruled, None, None), (Some("g-Proxy"), false));
         }
         assert_eq!(groups[4].members, ["n-2", "n-3"]);
-        assert!(groups[4..].iter().all(|g| g.kind == GroupKind::UrlTest));
-        assert_eq!(groups[1].kind, GroupKind::UrlTest);
+        assert!(groups[4..].iter().all(|g| g.kind == GroupKind::Score));
+        assert_eq!(groups[1].kind, GroupKind::Score);
         assert!(template(&[]).is_empty());
     }
 

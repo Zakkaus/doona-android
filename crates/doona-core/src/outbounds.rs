@@ -41,7 +41,7 @@ mod routing;
 pub(crate) use self::layers::Registries;
 use self::layers::layers;
 use self::routing::Table;
-pub(crate) use self::routing::{Routing, View};
+pub(crate) use self::routing::{Leaf, Routing, View};
 
 /// Threads of a carriers runtime: the protocol work of every proxied flow (TLS, QUIC, session
 /// framing) runs there.
@@ -82,6 +82,7 @@ struct Current {
 #[derive(Clone)]
 struct Published {
     registries: Registries,
+    proxies: Arc<ProxyRegistry>,
     carriers: Arc<Carriers>,
 }
 
@@ -92,6 +93,7 @@ pub struct Dialer {
     pub group: Arc<str>,
     /// The rule that chose the group in Rule mode, for `byRule`; none in Global and for DNS.
     pub rule: Option<Arc<str>>,
+    pub(crate) score: Option<routing::Attempt>,
     pub node: Arc<Node>,
     pub registry: Arc<OutboundRuntimeRegistry>,
     pub proxies: Arc<ProxyRegistry>,
@@ -284,9 +286,8 @@ impl Outbounds {
     }
 
     /// What new flows are routed by now.
-    pub(crate) fn view(&self) -> View<'_> {
+    pub(crate) fn view(&self) -> View {
         View {
-            outbounds: self,
             table: self.table(),
         }
     }
@@ -360,6 +361,7 @@ impl Outbounds {
             Some((registries, reused)) => (
                 Some(Published {
                     registries,
+                    proxies: Arc::clone(&self.proxies),
                     carriers,
                 }),
                 reused,
@@ -428,6 +430,7 @@ impl Outbounds {
                 p.registries.0.iter().for_each(|r| p.carriers.adopt(r));
             }
             let old = table.published.clone();
+            routing.score.publish(table.score.as_deref());
             *table = Arc::new(Table::new(published, routing));
             self.routings.fetch_add(1, Relaxed);
             (old, reused)
@@ -481,6 +484,7 @@ impl Outbounds {
         *table = Arc::new(Table {
             published: Some(published),
             selected: table.selected.clone(),
+            score: table.score.clone(),
             policy: Arc::clone(&table.policy),
             mode: table.mode,
         });

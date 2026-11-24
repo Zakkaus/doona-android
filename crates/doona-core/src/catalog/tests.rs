@@ -9,12 +9,22 @@ fn load(state: &State) -> Model {
     super::load(state, &Diag::default())
 }
 
+fn urltest(mut model: Model) -> Model {
+    for g in &mut model.groups {
+        if g.kind == GroupKind::Score {
+            g.kind = GroupKind::UrlTest;
+        }
+    }
+    model
+}
+
 fn stored(id: &str, body: &str) -> StoredSubscription {
     let parsed = parse::parse(&fixture(body)).unwrap();
     StoredSubscription {
         id: id.to_owned(),
         name: id.to_owned(),
         url: format!("https://{id}.invalid/"),
+        format: Some(parsed.format),
         updated_at_epoch_ms: None,
         used_bytes: None,
         total_bytes: None,
@@ -22,6 +32,7 @@ fn stored(id: &str, body: &str) -> StoredSubscription {
         error: None,
         links: parsed.links,
         document: parsed.document,
+        user_agent: None,
     }
 }
 
@@ -97,15 +108,15 @@ fn the_template_follows_the_fixture_names() {
         groups,
         [
             ("g-Proxy", GroupKind::Selector, 16),
-            ("g-Auto", GroupKind::UrlTest, 9),
+            ("g-Auto", GroupKind::Score, 9),
             ("g-Streaming", GroupKind::Selector, 17),
             ("g-AI", GroupKind::Selector, 17),
-            ("g-HK", GroupKind::UrlTest, 3),
-            ("g-TW", GroupKind::UrlTest, 1),
-            ("g-JP", GroupKind::UrlTest, 1),
-            ("g-SG", GroupKind::UrlTest, 1),
-            ("g-US", GroupKind::UrlTest, 1),
-            ("g-KR", GroupKind::UrlTest, 1),
+            ("g-HK", GroupKind::Score, 3),
+            ("g-TW", GroupKind::Score, 1),
+            ("g-JP", GroupKind::Score, 1),
+            ("g-SG", GroupKind::Score, 1),
+            ("g-US", GroupKind::Score, 1),
+            ("g-KR", GroupKind::Score, 1),
         ]
     );
     let proxy = &catalog.groups[0];
@@ -130,7 +141,7 @@ fn the_template_follows_the_fixture_names() {
 #[test]
 fn the_fastest_node_wins_and_a_failed_round_keeps_the_choice() {
     let s = state(&[("s1", "links.txt")]);
-    let mut model = load(&s);
+    let mut model = urltest(load(&s));
     let plan = model.plan(Some("g-Auto")).unwrap();
     assert_eq!(plan.targets.len(), 9);
     let (a, b) = (&plan.targets[3], &plan.targets[5]);
@@ -221,10 +232,19 @@ fn leaves_follow_pins_and_nested_groups() {
     let model = load(&s);
     let first = &model.nodes[0];
     let leaves = model.leaves(&s.selections);
-    assert_eq!(leaves["g-Proxy"].id, first.node.id);
+    assert_eq!(
+        leaves["g-Proxy"].peek(&model.score).unwrap().id,
+        first.node.id
+    );
     let last = &model.nodes[8];
     let pinned = BTreeMap::from([("g-Proxy".to_owned(), last.id.clone())]);
-    assert_eq!(model.leaves(&pinned)["g-Proxy"].id, last.node.id);
+    assert_eq!(
+        model.leaves(&pinned)["g-Proxy"]
+            .peek(&model.score)
+            .unwrap()
+            .id,
+        last.node.id
+    );
     assert!(load(&State::default()).leaves(&s.selections).is_empty());
 }
 
@@ -261,7 +281,7 @@ fn a_subscription_that_takes_the_catalog_over_its_budget_loads_empty() {
 #[test]
 fn only_a_success_of_the_current_round_replaces_the_choice() {
     let s = state(&[("s1", "links.txt")]);
-    let mut model = load(&s);
+    let mut model = urltest(load(&s));
     let auto = |m: &Model| m.catalog(&s).groups[1].selected_id.clone().unwrap();
     let plan = model.plan(Some("g-Auto")).unwrap();
     let id = |i: usize| plan.targets[i].entry.id.clone();
@@ -293,7 +313,7 @@ fn only_a_success_of_the_current_round_replaces_the_choice() {
 #[test]
 fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
     let s = state(&[("s1", "links.txt")]);
-    let mut model = load(&s);
+    let mut model = urltest(load(&s));
     let hk = |m: &Model, s: &State| hk_of(&m.catalog(s)).selected_id.clone().unwrap();
     let plan = model.plan(Some("g-HK")).unwrap();
     let ids: Vec<_> = plan.targets.iter().map(|t| t.entry.id.clone()).collect();
@@ -306,7 +326,7 @@ fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
     next.subscriptions[0]
         .links
         .retain(|l| !l.ends_with("#HK-02"));
-    let mut refreshed = model.with(&next, "s1", fresh(&next.subscriptions[0]));
+    let mut refreshed = urltest(model.with(&next, "s1", fresh(&next.subscriptions[0])));
     refreshed.carry(&model);
     assert_eq!(hk(&refreshed, &next), ids[1]);
     // With nothing measured, a choice that is still a member stays.
@@ -314,7 +334,7 @@ fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
     for t in &round.targets {
         assert!(refreshed.record(t, None, None));
     }
-    let mut again = refreshed.with(&next, "s1", fresh(&next.subscriptions[0]));
+    let mut again = urltest(refreshed.with(&next, "s1", fresh(&next.subscriptions[0])));
     again.carry(&refreshed);
     assert_eq!(hk(&again, &next), ids[1]);
 }
@@ -322,7 +342,7 @@ fn a_refresh_that_drops_the_choice_picks_the_fastest_survivor() {
 #[test]
 fn a_refresh_during_a_round_ranks_survivors_by_their_kept_times() {
     let s = state(&[("s1", "links.txt")]);
-    let mut model = load(&s);
+    let mut model = urltest(load(&s));
     let hk = |m: &Model, s: &State| hk_of(&m.catalog(s)).selected_id.clone().unwrap();
     let plan = model.plan(Some("g-HK")).unwrap();
     let ids: Vec<_> = plan.targets.iter().map(|t| t.entry.id.clone()).collect();
@@ -337,7 +357,7 @@ fn a_refresh_during_a_round_ranks_survivors_by_their_kept_times() {
     next.subscriptions[0]
         .links
         .retain(|l| !l.ends_with("#HK-02"));
-    let mut refreshed = model.with(&next, "s1", fresh(&next.subscriptions[0]));
+    let mut refreshed = urltest(model.with(&next, "s1", fresh(&next.subscriptions[0])));
     refreshed.carry(&model);
     assert_eq!(hk(&refreshed, &next), ids[1]);
     // The round's results are dropped, and its end changes nothing.

@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+        container.checkCrashes()
         // A recreated activity or one reopened from recents must not repeat the request that first launched it.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (savedInstanceState == null && !fromHistory) handle(intent)

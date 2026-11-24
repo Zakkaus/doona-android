@@ -27,7 +27,7 @@ class ReleaseHooksTest {
     @Test
     fun noReceiverTakesTheDebugActions() {
         assertThrows(ClassNotFoundException::class.java) { Class.forName("dev.doona.android.vpn.DebugHooks") }
-        for (action in listOf("dev.doona.android.debug.MTU", "dev.doona.android.debug.FAULT")) {
+        for (action in listOf("dev.doona.android.debug.MTU", "dev.doona.android.debug.FAULT", "dev.doona.android.debug.EXPORT")) {
             val intent = Intent(action).setPackage(context.packageName)
             assertTrue(action, context.packageManager.queryBroadcastReceivers(intent, 0).isEmpty())
         }

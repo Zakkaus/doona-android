@@ -1,10 +1,12 @@
 //! Every example payload in `contracts/doona-core/` parses into its DTO and serializes back to the
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
+use doonacore::dto::score::ScoreState;
 use doonacore::dto::{
-    ClearCrashesArgs, Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty, ErrorCode, Init, Level,
-    LevelArgs, Mode, ModeArgs, Nodes, NodesArgs, Reply, RuleSourceSpec, Rules, RulesArgs,
-    SelectArgs, Snapshot, SourceKind, StartConfig, Subscription, TargetKind, TrafficSeries, Usage,
+    AddSubscriptionArgs, ClearCrashesArgs, Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty,
+    ErrorCode, Init, Level, LevelArgs, Mode, ModeArgs, Nodes, NodesArgs, Reply, RuleSourceSpec,
+    Rules, RulesArgs, SelectArgs, Snapshot, SourceKind, StartConfig, Subscription,
+    SubscriptionUserAgentArgs, TargetKind, TrafficSeries, Usage,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -29,7 +31,8 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 22] = [
+const COVERED: [&str; 26] = [
+    "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-diagnostics-args.json",
     "call-error.json",
@@ -39,14 +42,17 @@ const COVERED: [&str; 22] = [
     "call-ok-empty.json",
     "call-ok-nodes.json",
     "call-ok-rules.json",
+    "call-ok-score-state.json",
     "call-ok-subscription.json",
     "call-ok-traffic-series.json",
     "call-ok-usage.json",
     "call-rules-args.json",
+    "call-score-state-args.json",
     "call-select-args.json",
     "call-set-log-level-args.json",
     "call-set-mode-args.json",
     "call-set-rule-source-args.json",
+    "call-set-subscription-user-agent-args.json",
     "init.json",
     "snapshot-died.json",
     "snapshot-running.json",
@@ -79,13 +85,21 @@ fn init_and_start_config() {
 #[test]
 fn call_replies_and_args() {
     let error = round_trip::<Reply<Empty>>("call-error.json");
-    assert!(matches!(error, Reply::Error(e) if e.code.as_str() == "fetch_failed"));
+    assert!(matches!(error, Reply::Error(e) if e.code == ErrorCode::TooLarge));
     assert_eq!(
         round_trip::<Reply<Empty>>("call-ok-empty.json"),
         Reply::Ok(Empty {})
     );
     let sub = round_trip::<Reply<Subscription>>("call-ok-subscription.json");
-    assert!(matches!(sub, Reply::Ok(s) if s.id == "s1" && s.nodes == 2));
+    let agent = Some("clash-verge/v2.2.3");
+    assert!(
+        matches!(sub, Reply::Ok(s) if s.id == "s1" && s.nodes == 2 && s.user_agent.as_deref() == agent)
+    );
+    let add = round_trip::<AddSubscriptionArgs>("call-add-subscription-args.json");
+    assert_eq!((add.name, add.user_agent.as_deref()), (None, agent));
+    // Null returns the subscription to the default agent, as the stopped catalog shows.
+    let set = round_trip::<SubscriptionUserAgentArgs>("call-set-subscription-user-agent-args.json");
+    assert_eq!((set.id.as_str(), set.user_agent), ("s1", None));
     let mode = round_trip::<ModeArgs>("call-set-mode-args.json");
     assert_eq!(mode.mode, Mode::Rule);
     let select = round_trip::<SelectArgs>("call-select-args.json");
@@ -108,6 +122,7 @@ fn snapshots() {
     assert_eq!(stopped.today.yesterday_by_now, None);
     let catalog = stopped.catalog.unwrap();
     assert_eq!(catalog.mode, Mode::Global);
+    assert_eq!(catalog.subscriptions[0].user_agent, None);
     assert_eq!(catalog.groups.len(), 5);
     // Two members share a display name but not an id.
     let proxy = &catalog.groups[0];
@@ -136,6 +151,11 @@ fn missing_required_fields_fail_and_unknown_ones_are_ignored() {
     .unwrap();
     assert_eq!(config.mtu, 1500);
     assert!(serde_json::from_str::<SelectArgs>(r#"{"memberId":null}"#).is_err());
+    // `userAgent` is optional in `addSubscription` only: a caller from before it sends the default.
+    let add: AddSubscriptionArgs =
+        serde_json::from_str(r#"{"url":"https://example.invalid/","name":null}"#).unwrap();
+    assert_eq!(add.user_agent, None);
+    assert!(serde_json::from_str::<SubscriptionUserAgentArgs>(r#"{"id":"s1"}"#).is_err());
 }
 
 fn ok<T>(reply: Reply<T>) -> T {
@@ -143,6 +163,15 @@ fn ok<T>(reply: Reply<T>) -> T {
         Reply::Ok(value) => value,
         Reply::Error(e) => panic!("an error reply: {e:?}"),
     }
+}
+
+#[test]
+fn score_state_fixtures() {
+    round_trip::<Empty>("call-score-state-args.json");
+    let state = ok(round_trip::<Reply<ScoreState>>("call-ok-score-state.json"));
+    let g = &state.groups[0];
+    assert_ne!(g.tcp.selected_id, g.udp.selected_id);
+    assert_eq!(g.tcp.challengers[0].node_id, g.udp.selected_id);
 }
 
 #[test]

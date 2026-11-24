@@ -53,7 +53,7 @@ object FakeRuleMode {
     )
 
     /** The compiled rules in the effective config's text, one per value. */
-    private val LINES = listOf("GEOIP,private,DIRECT") +
+    internal val LINES = listOf("GEOIP,private,DIRECT") +
         listOf(
             "netflix.com", "netflix.net", "nflxext.com", "nflximg.net", "nflxso.net", "nflxvideo.net", "youtube.com",
             "googlevideo.com", "ytimg.com", "disneyplus.com", "bamgrid.com", "dssott.com", "max.com", "primevideo.com",
@@ -104,7 +104,7 @@ object FakeRuleMode {
      * The effective config the core would give for [mode], [groups] and [source]: the same header and group comments,
      * each node by its code only, then the template's rule lines.
      */
-    fun effectiveConfig(mode: Mode, groups: List<Group>, source: RuleSource): EffectiveConfig {
+    fun effectiveConfig(mode: Mode, groups: List<Group>, source: RuleSource, lines: List<String> = LINES): EffectiveConfig {
         fun name(id: String) = groups.firstOrNull { it.id == id }?.name ?: id.removePrefix("g-")
         fun member(m: Member) = if (m.isGroup) m.name else NodeCodes.codeOf(m.id)
         val direct = mode == Mode.Direct
@@ -120,7 +120,7 @@ object FakeRuleMode {
                 val now = g.members.firstOrNull { it.id == g.selectedId }?.let(::member) ?: "none"
                 appendLine("# group ${g.name} (${g.kind}, now $now): ${g.members.joinToString(", ", transform = ::member)}")
             }
-            LINES.forEach(::appendLine)
+            lines.forEach(::appendLine)
         }
         val via = if (direct) RuleTarget.Direct else RuleTarget.Group(MAIN_GROUP_ID)
         return EffectiveConfig(mode, MAIN_GROUP_ID, via, DNS_UPSTREAMS, source, text, truncated = false)

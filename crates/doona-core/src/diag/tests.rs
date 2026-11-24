@@ -1,10 +1,11 @@
 //! The ring, its level, and the crash files: their cap, their order, a repeated location, and
 //! what a formatted message keeps.
 
-use super::crash::{self, MAX_BYTES, MAX_FILES, Module, Place, place, version_of};
+use super::crash::{self, MAX_BYTES, MAX_FILES};
+use super::place::{Module, Place, place, version_of};
 use super::report::Level;
 use super::*;
-use crate::testutil::{TempDir, alloc};
+use crate::testutil::{TempDir, alloc, logs};
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
@@ -107,6 +108,27 @@ fn recording_allocates_nothing_and_a_full_ring_is_its_one_buffer() {
         "{held}"
     );
     assert!(held <= 192 * 1024, "{held}");
+}
+
+/// While any test watches the log for a text, the test logger formats every record on the thread
+/// that logs it; that formatting is the logger's, so a record still allocates nothing.
+#[test]
+fn recording_allocates_nothing_while_another_thread_watches_the_log() {
+    let diag = Diag::default();
+    let (watching, watched) = std::sync::mpsc::channel();
+    let (done, ended) = std::sync::mpsc::channel::<()>();
+    let watcher = std::thread::spawn(move || {
+        logs::mentioning("ringWatchedElsewhere", || {
+            watching.send(()).unwrap();
+            ended.recv().unwrap();
+        })
+        .1
+    });
+    watched.recv().unwrap();
+    let ((), allocated) = alloc::allocated(|| diag.record(Event::warn("ringWatchedElsewhere")));
+    done.send(()).unwrap();
+    assert_eq!(watcher.join().unwrap(), 1, "the watch saw the record");
+    assert_eq!(allocated, 0);
 }
 
 /// Panics on a thread whose panics go to `diag`, and waits for it.
@@ -426,7 +448,10 @@ fn concurrent_publishes_keep_five_files() {
                 });
             }
         });
-        let n = fs::read_dir(dir.path().join(crash::DIR)).unwrap().count();
+        let n = fs::read_dir(dir.path().join(crash::DIR)).unwrap();
+        let n = n
+            .filter(|e| e.as_ref().unwrap().file_name() != ".lock")
+            .count();
         assert!(n <= MAX_FILES, "round {round}: {n} files");
     }
 }
@@ -449,6 +474,7 @@ fn a_failed_write_leaves_no_file_and_is_tried_again() {
     let mut present: Vec<String> = fs::read_dir(&at)
         .unwrap()
         .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .filter(|n| n != ".lock")
         .collect();
     present.sort();
     assert_eq!(present, old, "nothing evicted, no part left");

@@ -28,9 +28,9 @@ import org.robolectric.annotation.Config
 class LanEngine(private val granted: () -> Boolean, private val fake: FakeEngine = FakeEngine()) : Engine by fake {
     var adds = 0
 
-    override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+    override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
         adds++
-        return if (granted()) fake.addSubscription(url, name) else Result.failure(EngineException(ErrorCode.LocalNetwork))
+        return if (granted()) fake.addSubscription(url, name, userAgent) else Result.failure(EngineException(ErrorCode.LocalNetwork))
     }
 }
 

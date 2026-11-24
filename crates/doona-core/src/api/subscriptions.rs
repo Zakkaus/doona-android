@@ -1,12 +1,12 @@
-//! `addSubscription`, `updateSubscription` and `removeSubscription`. The download and the parse
-//! run with no lock held; the result commits under the writer lock, and an update commits only
-//! if its subscription still has the incarnation it had when the update began (core-api.md,
-//! Commit rule). One deadline covers the download, the parse and the wait for the writer; work
-//! that misses it is dropped before it commits.
+//! `addSubscription`, `updateSubscription`, `removeSubscription` and `setSubscriptionUserAgent`.
+//! The download and the parse run with no lock held; the result commits under the writer lock,
+//! and an update commits only if its subscription still has the incarnation it had when the update
+//! began (core-api.md, Commit rule). One deadline covers the download, the parse and the wait for
+//! the writer; work that misses it is dropped before it commits.
 
 use super::{Core, lock};
 use crate::catalog::{self, NodeEntry};
-use crate::dto::{self, AddSubscriptionArgs, ErrorCode};
+use crate::dto::{self, AddSubscriptionArgs, ErrorCode, SubscriptionUserAgentArgs};
 use crate::groups;
 use crate::state::{State, StoredSubscription};
 use crate::subscription::fetch::{self, Userinfo};
@@ -30,12 +30,14 @@ impl Core {
         let begun = Instant::now();
         let deadline = begun + self.options.subscription_bound;
         let url = fetch::parse_url(&args.url)?;
+        let agent = args.user_agent.as_deref().map(fetch::user_agent);
+        let agent = agent.transpose()?;
         let name = args
             .name
             .map(|n| n.trim().to_owned())
             .filter(|n| !n.is_empty())
             .unwrap_or_else(|| url.host_str().unwrap_or_default().to_owned());
-        let (parsed, userinfo) = self.download(url, deadline)?;
+        let (parsed, userinfo) = self.download(url, agent.clone(), deadline)?;
         let _writer = self.writer_until(deadline)?;
         let mut next = {
             let c = lock(&self.shared.catalog);
@@ -47,6 +49,7 @@ impl Core {
             id: id.clone(),
             name,
             url: args.url.trim().to_owned(),
+            format: None,
             updated_at_epoch_ms: None,
             used_bytes: None,
             total_bytes: None,
@@ -54,6 +57,7 @@ impl Core {
             error: None,
             links: Vec::new(),
             document: None,
+            user_agent: agent,
         };
         let fresh = refreshed(&mut stored, parsed, userinfo);
         next.subscriptions.push(stored);
@@ -63,14 +67,15 @@ impl Core {
     pub(super) fn update_subscription(&self, id: &str) -> Result<dto::Subscription, ErrorCode> {
         let begun = Instant::now();
         let deadline = begun + self.options.subscription_bound;
-        let (url, incarnation) = {
+        let (url, agent, incarnation) = {
             let c = lock(&self.shared.catalog);
             let s = c.state.subscriptions.iter().find(|s| s.id == id);
             let s = s.ok_or(ErrorCode::NotFound)?;
-            (s.url.clone(), c.model.incarnations.get(id).copied())
+            let incarnation = c.model.incarnations.get(id).copied();
+            (s.url.clone(), s.user_agent.clone(), incarnation)
         };
         let _refreshing = Refreshing::begin(&self.refreshing, id)?;
-        let downloaded = fetch::parse_url(&url).and_then(|url| self.download(url, deadline));
+        let downloaded = fetch::parse_url(&url).and_then(|url| self.download(url, agent, deadline));
         // Out of time: the result, or the failure it would record, is dropped.
         let _writer = match self.writer_until(deadline) {
             Ok(writer) => writer,
@@ -120,16 +125,43 @@ impl Core {
             .map(drop)
     }
 
-    /// Fetches `url` on the runtime, leaving a share of the time to `deadline` for the parse,
-    /// which runs on a blocking thread, and the writer. This thread waits for both with its own
-    /// timer, so the deadline holds even while every worker is busy; a parse still running at it
-    /// is `fetch_failed`, and its result is dropped.
-    fn download(&self, url: Url, deadline: Instant) -> Result<(Parsed, Userinfo), ErrorCode> {
+    /// Sets the User-Agent the subscription's next fetches send, null for the default, and fetches
+    /// nothing. An update already under way sends the agent it began with and keeps this one.
+    pub(super) fn set_subscription_user_agent(
+        &self,
+        args: SubscriptionUserAgentArgs,
+    ) -> Result<dto::Subscription, ErrorCode> {
+        let agent = args.user_agent.as_deref().map(fetch::user_agent);
+        let agent = agent.transpose()?;
+        let _writer = lock(&self.writer);
+        let mut next = lock(&self.shared.catalog).state.clone();
+        let stored = next.subscriptions.iter_mut().find(|s| s.id == args.id);
+        let stored = stored.ok_or(ErrorCode::NotFound)?;
+        if stored.user_agent != agent {
+            stored.user_agent = agent;
+            self.commit_state(next, "setSubscriptionUserAgent", None)?;
+        }
+        let c = lock(&self.shared.catalog);
+        let s = c.state.subscriptions.iter().find(|s| s.id == args.id);
+        s.map(|s| c.model.subscription(s))
+            .ok_or(ErrorCode::NotFound)
+    }
+
+    /// Fetches `url` with `agent` (the default when none) on the runtime, leaving a share of the
+    /// time to `deadline` for the parse, which runs on a blocking thread, and the writer. This
+    /// thread waits for both with its own timer, so the deadline holds even while every worker is
+    /// busy; a parse still running at it is `fetch_failed`, and its result is dropped.
+    fn download(
+        &self,
+        url: Url,
+        agent: Option<String>,
+        deadline: Instant,
+    ) -> Result<(Parsed, Userinfo), ErrorCode> {
         let left = deadline.saturating_duration_since(Instant::now());
         let fetching = left - left / AFTER_FETCH;
         let (tx, rx) = std::sync::mpsc::channel();
         self.runtime.spawn(async move {
-            let downloaded = match fetch::fetch(url, fetching).await {
+            let downloaded = match fetch::fetch(url, agent.as_deref(), fetching).await {
                 Ok(fetched) => tokio::task::spawn_blocking(move || {
                     parse::parse(&fetched.body).map(|parsed| (parsed, fetched.userinfo))
                 })
@@ -205,6 +237,7 @@ fn refreshed(
     parsed: Parsed,
     info: Userinfo,
 ) -> Vec<Arc<NodeEntry>> {
+    stored.format = Some(parsed.format);
     stored.updated_at_epoch_ms = Some(now_ms());
     stored.used_bytes = info.used_bytes;
     stored.total_bytes = info.total_bytes;
@@ -221,11 +254,13 @@ fn removed(id: &str) -> dto::Subscription {
         name: String::new(),
         url: String::new(),
         nodes: 0,
+        format: None,
         updated_at_epoch_ms: None,
         error: None,
         used_bytes: None,
         total_bytes: None,
         expires_at_epoch_ms: None,
+        user_agent: None,
     }
 }
 

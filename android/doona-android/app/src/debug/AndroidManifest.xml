@@ -17,8 +17,8 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/rv_shortcuts" />
         </activity>
-        <!-- Debug builds only: adb's hooks for measurements and the core-failure check (vpn/DebugHooks.kt). Only the
-             shell and the system hold DUMP, so no other app can send these. -->
+        <!-- Debug builds only: adb's hooks for measurements, the core-failure check and the report export
+             (vpn/DebugHooks.kt). Only the shell and the system hold DUMP, so no other app can send these. -->
         <receiver
             android:name=".vpn.DebugHooks"
             android:exported="true"
@@ -26,6 +26,7 @@
             <intent-filter>
                 <action android:name="dev.doona.android.debug.MTU" />
                 <action android:name="dev.doona.android.debug.FAULT" />
+                <action android:name="dev.doona.android.debug.EXPORT" />
             </intent-filter>
         </receiver>
     </application>

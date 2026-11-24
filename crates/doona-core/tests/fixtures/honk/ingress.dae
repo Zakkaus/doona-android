@@ -1,0 +1,1 @@
+global { tproxy_port: 12345 }

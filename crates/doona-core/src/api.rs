@@ -26,6 +26,7 @@ mod diagnostics;
 #[cfg(feature = "fault-hook")]
 mod fault;
 mod rules;
+mod score;
 mod selection;
 mod snapshot;
 mod subscriptions;
@@ -422,15 +423,13 @@ impl Core {
             "removeSubscription" => {
                 parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
-            "trafficSeries" => self.traffic_series(args),
-            "usage" => self.usage(args),
-            "nodes" => self.nodes(args),
-            "rules" => self.rules(args),
+            "setSubscriptionUserAgent" => parse(args)
+                .and_then(|a| self.set_subscription_user_agent(a))
+                .map(ok),
             "setRuleSource" => parse(args).and_then(|a| self.set_rule_source(a).map(empty)),
-            "effectiveConfig" => self.effective_config(args),
             #[cfg(feature = "fault-hook")]
             "debugFault" => self.fault().map(empty),
-            _ => self.diagnostic(command, args, event),
+            _ => self.query_or_diagnostic(command, args, event),
         })
     }
 
@@ -456,6 +455,7 @@ impl Core {
         self.write(&next, command, deadline)?;
         {
             let mut c = lock(&self.shared.catalog);
+            c.model.update_pins(&c.state.selections, &next.selections);
             c.state = next;
             c.revision += 1;
             self.mode.set(c.state.mode);
@@ -574,3 +574,7 @@ mod tests_localnet;
 mod tests_rule_source;
 #[cfg(test)]
 mod tests_rules;
+#[cfg(test)]
+mod tests_score;
+#[cfg(test)]
+mod tests_user_agent;

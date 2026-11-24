@@ -1,7 +1,7 @@
 """Regenerates the :icons module from a pinned commit of google/material-design-icons.
 
 Usage: python -I tools/gen_icons.py --work DIR
-DIR is a new, empty directory outside the repository (on the desktop, one under /scratch/ssd): the script fetches the
+DIR is a new, empty directory outside the repository: the script fetches the
 upstream commit there, and nothing is written into the repository but the module's output.
 
 The module holds the complete Material Symbols Rounded set (Apache-2.0), filled (FILL 1), weight 500, 24 px, as vector

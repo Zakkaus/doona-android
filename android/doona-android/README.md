@@ -6,6 +6,12 @@ and radius scales, sizes); `theme` names them as roles (`DoonaTheme.colors.surfa
 `.spacing.section`, `.type.body`); `components` holds the `Doona*` components, each with its defaults next to it. Screens
 and components read roles only.
 
+Auto and the region groups use honk's Score policy. Proxy and the rule groups remain Selectors.
+Pinning a Score member overrides automatic selection until you clear the pin. A TCP setup failure
+can try one other eligible member before the app sends any data; the retry shares the original deadline.
+A network outage does not permanently exclude failed nodes or start background probes. A subscription
+refresh keeps probe latency for unchanged nodes.
+
 ```sh
 . ~/.cache/android-dev/env.sh
 ./gradlew spotlessCheck :app:lintDebug :app:testDebugUnitTest verifyRoborazziDebug
@@ -14,6 +20,10 @@ and components read roles only.
 tools/check-tokens.sh                                 # no dp, sp, colour or alpha literal outside designsystem/tokens (bar a component's own Defaults object)
 tools/check-layers.sh                                 # material3 and tokens stay in designsystem/, feature/ builds no interactive element
 ```
+
+To reproduce the pull request APK, run `./gradlew assembleRelease -Pdoona.coreProfile=ci-release`.
+This builds the Rust core with thin LTO and 16 codegen units. For the shipping APK, run `./gradlew assembleRelease`
+without the property to use fat LTO and one codegen unit.
 
 Goldens (`app/src/test/screenshots`, fake data only) cover every screen at 412 × 915 dp in zh-TW in light, dark and at
 font scale 1.15 and 2.0, plus a 840 dp wide window and a 915 × 412 dp landscape one, and the seven component gallery
@@ -25,14 +35,18 @@ offset), `ContrastTest` and `ReachabilityTest`; `SpacingRulesTest`, `ProbeDetect
 `tools/duck.py` and `tools/fonts.py` rebuild the duck mark and the fonts from a doona checkout (fontTools and brotli for
 the fonts); `NOTICE` lists their licences. The font holds only the characters the string resources and Kotlin sources use, so
 rebuild it when either gains a character: `uv run --offline --no-project --with fonttools --with brotli python -I
-tools/fonts.py <doona checkout> app/src/main`. A character the font lacks falls back to a system face, in another weight.
+tools/fonts.py <doona checkout> app/src/main`. A character the font lacks falls back to a system face, in another weight
+and with a taller line, so a rebuild that takes in such a character moves the rows that show it. To add only the
+characters a change needs, pass `--add <files>` after `app/src/main`: the files keep what they hold and gain those
+characters. A rebuild keeps the bounding box of the files it replaces; `FontMetricsTest` pins the metrics, and
+`tools/font_metrics.py <old dir> <new dir>` compares two builds.
 
 ## Icons and flags
 
 `:icons` holds the complete Material Symbols Rounded set (Apache-2.0): filled, weight 500, 24 px, one vector drawable
 `sym_<name>` each, and the weight-600 variants `sym_add_w600` and `sym_close_w600`. `tools/gen_icons.py` regenerates the
-module from a pinned commit of google/material-design-icons; `--work` is a new directory outside the repository, on
-the desktop one under `/scratch/ssd`. The app names an icon only by a static `dev.doona.android.icons.R.drawable.sym_*`
+module from a pinned commit of google/material-design-icons; `--work` is a new, empty directory outside the
+repository. The app names an icon only by a static `dev.doona.android.icons.R.drawable.sym_*`
 field, so the release build's resource shrinker keeps the ones the code uses and strips the rest;
 `tools/check-layers.sh` fails on `getIdentifier(` anywhere, which would keep them all. `NOTICE` and the modules'
 `NOTICE` files list the licences.

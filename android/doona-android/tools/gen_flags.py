@@ -1,7 +1,7 @@
 """Regenerates the :flags module from a pinned commit of HatScripts/circle-flags.
 
 Usage: python -I tools/gen_flags.py --work DIR
-DIR is a new, empty directory outside the repository (on the desktop, one under /scratch/ssd): the script fetches the
+DIR is a new, empty directory outside the repository: the script fetches the
 upstream commit there, and nothing is written into the repository but the module's output.
 
 The module holds every flag of upstream's flags/*.svg (countries, territories, and the subnational and other flags it

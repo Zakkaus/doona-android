@@ -32,7 +32,7 @@ mod json;
 use self::bounded::{Bounded, Budget};
 use self::guard::Scan;
 use super::parse::{Admission, Parsed, opens_like_a_document};
-use crate::dto::ErrorCode;
+use crate::dto::{ErrorCode, SubscriptionFormat};
 use honk_config::node::Node;
 use serde::de::DeserializeSeed;
 use serde_yaml::{Mapping, Value};
@@ -62,7 +62,7 @@ pub(super) fn parse(text: &str) -> Result<Option<Parsed>, ErrorCode> {
 fn nodes(value: Value) -> Result<Parsed, ErrorCode> {
     let mut admission = Admission::default();
     let mut kept = Vec::new();
-    let key = emit_structured(value, &mut |entry, node| {
+    let (format, key) = emit_structured(value, &mut |entry, node| {
         let over = || anyhow::anyhow!("more nodes than one subscription may bring");
         if let Some(node) = node
             && admission.admit(node).map_err(|_| over())?
@@ -90,6 +90,7 @@ fn nodes(value: Value) -> Result<Parsed, ErrorCode> {
         return Err(ErrorCode::ParseFailed);
     }
     Ok(Parsed {
+        format,
         links: Vec::new(),
         nodes: admission.nodes,
         document: Some(document),
@@ -130,20 +131,25 @@ fn parse_structured_value(content: &str, scan: Scan) -> Option<Value> {
 /// `proxies` sequence is a Clash document, any other a sing-box or SIP008 one, and a sequence a
 /// bare SIP008 array. Returns the key the entries go under in the stored document, `None` for a
 /// bare array.
-fn emit_structured(value: Value, emit: &mut Emit<'_>) -> anyhow::Result<Option<&'static str>> {
+fn emit_structured(
+    value: Value,
+    emit: &mut Emit<'_>,
+) -> anyhow::Result<(SubscriptionFormat, Option<&'static str>)> {
     if let Value::Mapping(root) = &value
         && let Some(proxies) = yaml_value(root, "proxies").and_then(Value::as_sequence)
     {
         emit_clash_proxies(proxies, emit)?;
-        return Ok(Some("proxies"));
+        return Ok((SubscriptionFormat::Clash, Some("proxies")));
     }
-    let key = match &value {
-        Value::Mapping(root) if root.contains_key("outbounds") => Some("outbounds"),
-        Value::Mapping(_) => Some("servers"),
-        _ => None,
+    let format_and_key = match &value {
+        Value::Mapping(root) if root.contains_key("outbounds") => {
+            (SubscriptionFormat::SingBox, Some("outbounds"))
+        }
+        Value::Mapping(_) => (SubscriptionFormat::Sip008, Some("servers")),
+        _ => (SubscriptionFormat::Sip008, None),
     };
     json::emit_json_subscription(value, emit)?;
-    Ok(key)
+    Ok(format_and_key)
 }
 
 fn emit_clash_proxies(proxies: &[Value], emit: &mut Emit<'_>) -> anyhow::Result<()> {

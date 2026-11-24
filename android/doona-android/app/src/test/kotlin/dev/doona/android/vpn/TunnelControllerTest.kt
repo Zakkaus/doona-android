@@ -6,6 +6,7 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
+import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -45,7 +46,7 @@ class TunnelControllerTest {
     private val killed = CountDownLatch(1)
     private val controller = TunnelController(
         core = core,
-        opener = CoreOpener(core, "/data", Dispatchers.IO),
+        opener = CoreOpener(core, { "/data" }, Dispatchers.IO),
         perApp = { perAppError?.let { throw it } ?: perApp },
         scope = scope,
         killProcess = { killed.countDown() },
@@ -97,14 +98,33 @@ class TunnelControllerTest {
         start()
         assertTrue(core.startEntered.await(5, TimeUnit.SECONDS))
 
-        controller.stop()
-        assertEquals(Status.Stopping, controller.status.value)
+        controller.revoke(host)
+        assertTrue(Status.Stopping in seen)
         release.countDown()
 
-        awaitStatus { it == Status.Stopped }
+        assertEquals(Status.Failed(FailureReason.Revoked), awaitStatus(Status::ended))
         assertEquals(listOf("start", "stop"), core.events)
         assertTrue(host.tuns.single().closed)
         assertFalse(seen.any { it is Status.Running })
+    }
+
+    @Test
+    fun revocationFailsARunningTunnelButLeavesAnExplicitStopStopped() {
+        startRunning()
+        controller.revoke(host)
+        assertEquals(Status.Failed(FailureReason.Revoked), awaitStatus(Status::ended))
+
+        startRunning()
+        controller.stop()
+        controller.revoke(host)
+        assertEquals(Status.Stopped, awaitStatus(Status::ended))
+    }
+
+    @Test
+    fun revokeFromAnotherHostLeavesTheOwnersTunnelRunning() {
+        val running = startRunning()
+        controller.revoke(FakeHost())
+        assertEquals(running, controller.status.value)
     }
 
     @Test
@@ -223,7 +243,7 @@ class TunnelControllerTest {
         startRunning()
         perApp = PerApp(AppPolicy.ExceptListed, setOf(FIREFOX))
         controller.rebuild()
-        assertEquals(Status.Starting, controller.status.value)
+        assertTrue(Status.Starting in seen.dropWhile { it !is Status.Running })
         awaitStatus { it is Status.Running }
         assertEquals(listOf("start", "stop", "start"), core.events)
         assertEquals(AppRouting.Exclude(setOf(FIREFOX, SELF)), host.routings.last())
@@ -351,7 +371,7 @@ class TunnelControllerTest {
         val session = ServiceSession(controller)
         val ended = CopyOnWriteArrayList<Status>()
         Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { main ->
-            scope.launch(main) { session.follow { ended += it } }
+            scope.launch(main) { session.follow { ended += it.status } }
             repeat(2) { round ->
                 // The start fails while the main thread is still busy, so the service never sees Starting; the second
                 // failure also equals the first.
@@ -433,5 +453,15 @@ class TunnelControllerTest {
     private companion object {
         const val SELF = "dev.doona.android"
         const val FIREFOX = "org.mozilla.firefox"
+    }
+
+    @Test
+    fun aRefusalIsLoggedByItsCodeAlone() {
+        core.startError = IllegalStateException("fetch https://sub.example.net/api?token=tk_5ecret failed")
+        start()
+        awaitStatus { it is Status.Failed }
+        val refusal = AppEvents.snapshot().last { "refused" in it.text }.text
+        assertFalse(refusal, "://" in refusal || "tk_5ecret" in refusal)
+        assertTrue(refusal, refusal.endsWith("Internal"))
     }
 }

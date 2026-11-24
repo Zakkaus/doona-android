@@ -91,6 +91,7 @@ val coreCheckout = MessageDigest.getInstance("SHA-256")
     .take(8)
     .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 val skipCore = providers.gradleProperty("doona.skipCore").orNull.toBoolean()
+val coreProfile = providers.gradleProperty("doona.coreProfile").getOrElse("release")
 
 androidComponents {
     onVariants { variant ->
@@ -111,7 +112,7 @@ androidComponents {
                     "-o", outputDir.get().asFile.absolutePath,
                     // Cargo applies `lto` only when every crate type of the unit supports it; the manifest's `rlib`
                     // (for the host tests) would turn fat LTO off, so build the cdylib alone.
-                    "rustc", "--lib", "--crate-type", "cdylib", "--release", "--locked",
+                    "rustc", "--lib", "--crate-type", "cdylib", "--profile", coreProfile, "--locked",
                 ) + features
             }
             environment("PATH", cargoBin + File.pathSeparator + System.getenv("PATH"))
@@ -126,6 +127,7 @@ androidComponents {
             ).withPropertyName("manifests").withPathSensitivity(PathSensitivity.RELATIVE)
             inputs.property("ndk", coreNdk)
             inputs.property("features", features)
+            inputs.property("profile", coreProfile)
             inputs.property("target", "arm64-v8a android-31")
             doFirst {
                 // cargo-ndk 4.1.2 keeps a copy in -o that is newer than Cargo's artifact and never removes other
@@ -283,6 +285,7 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.navigation3)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.datastore.preferences)
+    implementation(libs.work.runtime)
 
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)

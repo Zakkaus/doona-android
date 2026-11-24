@@ -1,6 +1,7 @@
 //! DNS the core answers itself (core-api.md, "DNS and UDP"): a query that reaches the virtual
 //! resolver, or any UDP/53, is forwarded as DNS over TCP through the flow's route, to the first
 //! upstream that answers. TCP works through any outbound, including those without UDP.
+//! Score selects for each resolver's TCP socket. Retries of one query share one business start.
 //!
 //! An answer too large for the client's UDP buffer goes back truncated (TC set, question only),
 //! so the client retries over TCP/53, which the core also serves. A query that no upstream
@@ -15,11 +16,13 @@ pub(crate) mod names;
 
 use crate::rules::Network;
 use crate::tunnel::route::Route;
+use honk_outbound::group::{ScoreContinuation, ScoreOutcome};
 use names::{Learned, Mapping, Names};
 use std::io::{self, ErrorKind};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::time::{Instant, timeout_at};
 
 /// The upstream resolvers, in order.
 pub const UPSTREAMS: [SocketAddr; 2] = [
@@ -139,19 +142,50 @@ pub fn fit_udp(answer: Vec<u8>, query: &[u8]) -> Vec<u8> {
 /// Sends `query` to each upstream in turn through `route`; the first answer with the query's
 /// id wins.
 async fn exchange(upstreams: &[SocketAddr], route: &Route, query: &[u8]) -> Option<Vec<u8>> {
+    let mut original = None;
     for &server in upstreams {
-        match tokio::time::timeout(EXCHANGE, exchange_one(server, route, query)).await {
-            Ok(Ok(a)) if a.len() >= HEADER && a[..2] == query[..2] => return Some(a),
-            _ => {}
+        if let Ok(answer) = exchange_one(server, route, query, &mut original).await {
+            return Some(answer);
         }
     }
     None
 }
 
-async fn exchange_one(server: SocketAddr, route: &Route, query: &[u8]) -> io::Result<Vec<u8>> {
-    let mut s = route.connect(server).await?;
-    write_framed(&mut s, query).await?;
-    read_framed(&mut s).await
+async fn exchange_one(
+    server: SocketAddr,
+    route: &Route,
+    query: &[u8],
+    original: &mut Option<ScoreContinuation>,
+) -> io::Result<Vec<u8>> {
+    let deadline = Instant::now() + EXCHANGE;
+    let (mut stream, reporter) = route.connect_until(server, deadline, original).await?;
+    let exchange = async {
+        let timed = reporter.as_ref().map(|r| (r, std::time::Instant::now()));
+        write_framed(&mut stream, query).await?;
+        if let Some((r, started)) = timed {
+            r.tx_completed(query.len() as u64 + 2, started);
+        }
+        let answer = read_framed(&mut stream).await?;
+        if answer.len() < HEADER || answer[..2] != query[..2] {
+            return Err(ErrorKind::InvalidData.into());
+        }
+        if let Some(r) = &reporter {
+            r.first_response();
+            r.rx(answer.len() as u64 + 2);
+        }
+        Ok(answer)
+    };
+    let result = timeout_at(deadline, exchange)
+        .await
+        .map_err(io::Error::from)
+        .and_then(|r| r);
+    if let Some(r) = reporter {
+        r.finish(match &result {
+            Ok(_) => ScoreOutcome::Success,
+            Err(e) => ScoreOutcome::from_io_error(e),
+        });
+    }
+    result
 }
 
 async fn write_framed<S: AsyncWrite + Unpin>(s: &mut S, m: &[u8]) -> io::Result<()> {
@@ -378,6 +412,47 @@ pub(crate) mod tests {
             }
         });
         addr
+    }
+
+    #[test]
+    fn resolver_retry_counts_one_tcp_query_across_two_targets() {
+        use crate::dto::Mode;
+        use crate::tunnel::Session;
+        use crate::tunnel::route::{Inbound, tests::published_links};
+        use honk_outbound::group::SelectionNetwork;
+        use std::sync::Arc;
+
+        let (proxy, connections) = crate::testutil::socks5();
+        let links = format!("socks5://{proxy}#dns");
+        let (outbounds, model) =
+            published_links(links.as_bytes(), Default::default(), Mode::Global);
+        let session = Arc::new(Session::new(0, Default::default()));
+        let route = Route::dns(Inbound::Tun, Mode::Global, &outbounds, &session);
+        let wrong_id = upstream_with(|q| {
+            let mut a = answer_to(q, 1);
+            a[0] ^= 1;
+            a
+        });
+        let q = query(71, "dns.example", None);
+        let servers = [wrong_id, upstream()];
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let reply = runtime
+            .block_on(answer(&servers, &route, &q, Network::Udp))
+            .unwrap();
+        assert_eq!(reply, answer_to(&q, 2));
+        assert_eq!(connections.load(std::sync::atomic::Ordering::Relaxed), 2);
+        let manager = &model.score.manager;
+        assert_eq!(manager.score_cache_snapshot().exact_cells, 2);
+        assert_eq!(manager.score_state().root_business_starts(), 1);
+        assert_eq!(
+            manager
+                .score_budget_counters("g-Auto", SelectionNetwork::Tcp)
+                .business_starts,
+            1
+        );
     }
 
     /// A refused route answers SERVFAIL, which maps nothing.

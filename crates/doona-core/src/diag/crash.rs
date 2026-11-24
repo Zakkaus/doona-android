@@ -17,22 +17,27 @@
 //! nothing of the payload; it never logs, since a panic inside a logger that holds its lock would
 //! wait on that lock forever; and it takes the stack, as offsets and before the crash files, in
 //! `stack.rs`. A name is never taken twice: a new file's number is above every number a crash
-//! file had (the mark), which a clear never lowers and saves for the next start.
+//! file had (the mark), which a clear never lowers and saves for the next start. The app writes
+//! into the same directory by the same rules, and both take the directory's lock (`crash_dir.rs`).
 
+use super::crash_dir::{self, DirLock, Listed, MARK, PANIC_WAIT, RETRY};
+pub(crate) use super::crash_dir::{MAX_NUMBER, MIN_NUMBER, number};
+use super::place::{Module, Place, place, version_of};
 use super::report::{self, CrashFile};
 use super::stack::Stack;
 use super::{Diag, Event, now_ms};
 use crate::api::lock;
 use crate::dto::ErrorCode;
 use std::cell::{Cell, OnceCell};
-use std::collections::HashSet;
-use std::fmt::{self, Write as _};
+use std::fmt;
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{self, ErrorKind, Read as _, Write as _};
 use std::panic::{Location, PanicHookInfo};
 use std::path::PathBuf;
-use std::sync::{Mutex, MutexGuard, OnceLock, Weak};
+use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+use std::sync::{Mutex, MutexGuard, OnceLock, TryLockError, Weak};
+use std::time::Instant;
 
 /// The directory under `dataDir`.
 pub(crate) const DIR: &str = "crash";
@@ -40,14 +45,11 @@ pub(crate) const MAX_FILES: usize = 5;
 pub(crate) const MAX_BYTES: usize = 64 * 1024;
 /// The panic locations a process writes files for; past these it writes none.
 const MAX_LOCATIONS: usize = 64;
-/// The file being written; it takes its name once complete. Not a crash file's name, so neither
-/// `diagnostics` nor `clearCrashes` sees it, and the next write starts it over.
-const PART: &str = ".core.tmp";
-/// The mark ([`Crashes::listing`]) as a clear leaves it, for a core that starts again.
-const MARK: &str = ".core.mark";
-/// The largest number a crash file's name holds: a millisecond time, 13 digits, until the year
-/// 2286. Far below 2^63, so the mark fits Kotlin's `Long`.
-pub(crate) const MAX_NUMBER: u64 = 9_999_999_999_999;
+/// A file being written is `<n>.part-core` (the app's `<n>.part-app`) and takes its name `<n>.txt`
+/// once complete. Neither command sees it: no crash file's name.
+const PART: &str = ".part-core";
+/// The mark ([`MARK`]) is written here first.
+const MARK_PART: &str = ".core.tmp";
 
 /// The messages of the core's own panic sites outside the tests, which name no data and are kept
 /// as they are: the `unreachable!()` of `structured/clash.rs` and `json/sing_box.rs`, that of
@@ -147,7 +149,8 @@ fn on_panic_here(info: &PanicHookInfo<'_>) {
 
 pub(crate) enum Written {
     File,
-    /// This process wrote a file for the location already, or for as many locations as it may.
+    /// This process wrote a file for the location already, or gave up on it, or wrote one for as
+    /// many locations as it may.
     Repeated,
     Failed(ErrorKind),
 }
@@ -155,6 +158,8 @@ pub(crate) enum Written {
 /// A core's crash files.
 pub(crate) struct Crashes {
     dir: PathBuf,
+    /// The locations this process wrote a file for, or gave up on.
+    written: Locations,
     /// Held while a file is written, published and the oldest removed, and while the files are
     /// listed or removed: two panics at once leave five files, and a listing never sees six.
     files: Mutex<Files>,
@@ -164,16 +169,20 @@ pub(crate) struct Crashes {
     /// The time names are taken from, for the tests; 0 for the clock.
     #[cfg(test)]
     pub(super) clock: std::sync::atomic::AtomicU64,
+    /// A file that will not go, for the tests: trimming fails.
+    #[cfg(test)]
+    pub(super) stuck: std::sync::atomic::AtomicBool,
+    /// An entry that cannot be read, for the tests: a listing's scan fails.
+    #[cfg(test)]
+    pub(super) unscanned: std::sync::atomic::AtomicBool,
 }
 
 struct Files {
-    /// Hashes of the locations this process wrote a file for.
-    written: HashSet<u64>,
     /// The text of the file being written, allocated with the core.
     text: String,
-    /// The highest number a crash file had here, published or listed, and read from [`MARK`] at
-    /// the first use. A new file's number is above it, and a clear never
-    /// lowers it, so a name is never taken twice and a clear sent again removes no newer file.
+    /// The highest number a crash file had here, published or listed, or in [`MARK`], read again
+    /// each time. A new file's number is above it, and a clear never lowers it, so a name is
+    /// never taken twice and a clear sent again removes no newer file.
     mark: Option<u64>,
 }
 
@@ -181,8 +190,8 @@ impl Crashes {
     pub fn new(dir: PathBuf) -> Crashes {
         Crashes {
             dir,
+            written: Locations([const { AtomicU64::new(0) }; MAX_LOCATIONS]),
             files: Mutex::new(Files {
-                written: HashSet::with_capacity(MAX_LOCATIONS),
                 text: String::with_capacity(MAX_BYTES),
                 mark: None,
             }),
@@ -190,124 +199,154 @@ impl Crashes {
             full_after: std::sync::atomic::AtomicUsize::new(0),
             #[cfg(test)]
             clock: std::sync::atomic::AtomicU64::new(0),
+            #[cfg(test)]
+            stuck: std::sync::atomic::AtomicBool::new(false),
+            #[cfg(test)]
+            unscanned: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
     /// Writes the panic's file, unless this process wrote one for its location. A location
-    /// counts as written once its file is published: a write that failed is tried again.
+    /// counts as written once its file is published: a write that failed is tried again. Waits
+    /// for the files and the directory until [`PANIC_WAIT`] has passed, then gives up; a location
+    /// given up on counts as written too, as a panic repeated in every flow would wait each time.
+    /// The locations are kept apart from the files, so a panic that could not have the files,
+    /// which a clear may hold while it waits for the directory, still notes its own.
     pub(crate) fn write(&self, info: &PanicHookInfo<'_>) -> Written {
-        let key = info.location().map_or(0, |at| {
+        let until = Some(Instant::now() + PANIC_WAIT);
+        let key = info.location().map_or(1, |at| {
             let mut h = DefaultHasher::new();
             (at.file(), at.line(), at.column()).hash(&mut h);
-            h.finish()
+            h.finish().max(1)
         });
-        let repeated = |w: &HashSet<u64>| w.len() >= MAX_LOCATIONS || w.contains(&key);
-        if self.hold().is_none_or(|files| repeated(&files.0.written)) {
+        // A thread that panicked holding the files writes none: taking them again would wait.
+        if self.written.has(key) || HOLDING.try_with(Cell::get).unwrap_or(false) {
             return Written::Repeated;
         }
-        // Taken before the files are (`stack.rs`), and checked again after: another thread may
-        // have written the location meanwhile.
+        // Taken before the files are (`stack.rs`); the location is checked again after, as
+        // another thread may have written it meanwhile.
         let (stack, thread) = (Stack::capture(), thread());
-        let Some(mut files) = self.hold() else {
-            return Written::Repeated;
+        let mut files = match self.hold(until) {
+            Ok(Some(files)) => files,
+            Ok(None) => return Written::Repeated,
+            Err(e) => {
+                self.written.add(key);
+                return Written::Failed(e.kind());
+            }
         };
-        let Files {
-            written,
-            text,
-            mark,
-        } = &mut *files.0;
-        if repeated(written) {
+        if self.written.has(key) {
             return Written::Repeated;
         }
+        let Files { text, mark } = &mut *files.0;
         text.clear();
         let _ = describe(&mut Bounded(text), info, thread, &stack);
-        match self.publish(text, mark) {
+        match self.publish(text, mark, until) {
             Ok(_) => {
-                written.insert(key);
+                self.written.add(key);
                 Written::File
             }
-            Err(e) => Written::Failed(e.kind()),
+            Err(e) => {
+                if e.kind() == ErrorKind::TimedOut {
+                    self.written.add(key);
+                }
+                Written::Failed(e.kind())
+            }
         }
     }
 
-    /// Publishes `text` as the newest file, as the hook does.
+    /// Publishes `text` as the newest file, as the hook does, but waits for the directory as long
+    /// as another holds it.
     #[cfg(test)]
     pub(super) fn save(&self, text: &str) -> io::Result<String> {
-        let mut files = self.hold().ok_or(ErrorKind::WouldBlock)?;
-        self.publish(text, &mut files.0.mark)
+        let mut files = self.hold(None)?.ok_or(ErrorKind::WouldBlock)?;
+        self.publish(text, &mut files.0.mark, None)
     }
 
     /// Runs `f` holding the files, as a write does.
     #[cfg(test)]
     pub(super) fn holding(&self, f: impl FnOnce()) {
-        let _files = self.hold();
+        let _files = self.hold(None);
         f();
     }
 
-    /// The files, unless this thread holds them already, as when it panicked holding them.
-    fn hold(&self) -> Option<Held<'_>> {
+    /// The files, unless this thread holds them already, as when it panicked holding them (none).
+    /// With `until`, waits for another thread to let go of them only until then (`TimedOut`).
+    fn hold(&self, until: Option<Instant>) -> io::Result<Option<Held<'_>>> {
         if HOLDING.try_with(Cell::get).unwrap_or(false) {
-            return None;
+            return Ok(None);
         }
-        let files = lock(&self.files);
+        let files = match until {
+            None => lock(&self.files),
+            Some(until) => loop {
+                match self.files.try_lock() {
+                    Ok(files) => break files,
+                    Err(TryLockError::Poisoned(files)) => break files.into_inner(),
+                    Err(_) if Instant::now() < until => std::thread::sleep(RETRY),
+                    Err(_) => return Err(ErrorKind::TimedOut.into()),
+                }
+            },
+        };
         let _ = HOLDING.try_with(|h| h.set(true));
-        Some(Held(files))
+        Ok(Some(Held(files)))
     }
 
-    /// Writes `text` whole to [`PART`], then renames it to its name, then removes the oldest
-    /// files beyond the other four; on a failure, removes the part and leaves the rest. The name's
-    /// number is the time, or one past `mark` when that is later, as for a second panic in one
-    /// millisecond or a clock set back. The caller holds `files`.
-    fn publish(&self, text: &str, mark: &mut Option<u64>) -> io::Result<String> {
-        fs::create_dir_all(&self.dir)?;
-        let part = self.dir.join(PART);
-        let published = self.put(&part, text.as_bytes()).and_then(|()| {
-            let old = self.listed(mark);
-            let (at, name) = self.free_name(mark.unwrap_or_default())?;
-            fs::rename(&part, self.dir.join(&name))?;
-            Ok((at, name, old))
-        });
-        let (at, name, old) = published.inspect_err(|_| {
-            let _ = fs::remove_file(&part);
-        })?;
-        *mark = Some(at);
-        for (_, gone, _) in old.iter().take((old.len() + 1).saturating_sub(MAX_FILES)) {
-            let _ = fs::remove_file(self.dir.join(gone));
+    /// Under the directory's lock, waited for until `until`: writes `text` to `<n>`[`PART`] until
+    /// it is on disk, removes the oldest files so that five remain with it, and renames it
+    /// `<n>.txt`; on a failure, removes the part. Then the placeholders go, which the new name is
+    /// above. The number is one past `mark`, which [`Crashes::listed`] raises to every name
+    /// present and the saved mark, or the time if later, and at least [`MIN_NUMBER`]: a clock set
+    /// back cannot give an earlier name. Caller holds `files`.
+    fn publish(
+        &self,
+        text: &str,
+        mark: &mut Option<u64>,
+        until: Option<Instant>,
+    ) -> io::Result<String> {
+        let _lock = DirLock::take(&self.dir, until)?;
+        let (present, placeholders) = self.listed(mark)?;
+        let at = mark.unwrap_or_default().saturating_add(1);
+        let at = at.max(self.now()).max(MIN_NUMBER);
+        if at > MAX_NUMBER {
+            return Err(ErrorKind::InvalidData.into());
         }
+        let (part, name) = (self.dir.join(format!("{at}{PART}")), format!("{at}.txt"));
+        let published = self.put(&part, text.as_bytes()).and_then(|()| {
+            self.trim(&present, MAX_FILES - 1)?;
+            fs::rename(&part, self.dir.join(&name))
+        });
+        published.inspect_err(|_| drop(fs::remove_file(&part)))?;
+        *mark = Some(at);
+        crash_dir::discard(&self.dir, &placeholders);
         Ok(name)
     }
 
-    /// The first number past `mark`, and not before the time, whose name nothing holds (the app
-    /// may have taken one meanwhile, which a rename would replace). None past the largest number:
-    /// `invalid_data`.
-    fn free_name(&self, mark: u64) -> io::Result<(u64, String)> {
-        let mut at = mark.saturating_add(1).max(self.now());
-        while at <= MAX_NUMBER {
-            let name = format!("{at}.txt");
-            if fs::symlink_metadata(self.dir.join(&name)).is_err() {
-                return Ok((at, name));
+    /// Removes the oldest of `present` until `keep` remain. A file that will not go is an error:
+    /// a write would publish a sixth, a listing would hold six.
+    fn trim(&self, present: &[Listed], keep: usize) -> io::Result<()> {
+        let over = present.len().saturating_sub(keep);
+        for (_, gone, _) in &present[..over] {
+            #[cfg(test)]
+            if self.stuck.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(ErrorKind::PermissionDenied.into());
             }
-            at += 1;
+            match fs::remove_file(self.dir.join(gone)) {
+                Err(e) if e.kind() != ErrorKind::NotFound => return Err(e),
+                _ => {}
+            }
         }
-        Err(ErrorKind::InvalidData.into())
+        Ok(())
     }
 
-    /// The crash files, oldest first, with `mark` raised to the newest of them.
-    fn listed(&self, mark: &mut Option<u64>) -> Vec<(u64, String, u64)> {
-        let files = self.files();
-        let kept = mark.get_or_insert_with(|| self.saved_mark());
-        *kept = (*kept).max(files.last().map_or(0, |(at, ..)| *at));
-        files
-    }
-
-    /// The mark a clear saved in [`MARK`], or 0.
-    fn saved_mark(&self) -> u64 {
-        let mut digits = [0_u8; 24];
-        let read = fs::File::open(self.dir.join(MARK)).and_then(|mut f| f.read(&mut digits));
-        let digits = digits.get(..read.unwrap_or(0)).unwrap_or_default();
-        let digits = std::str::from_utf8(digits).ok();
-        let mark = digits.and_then(|d| d.trim().parse().ok());
-        mark.filter(|&m| m <= MAX_NUMBER).unwrap_or(0)
+    /// Under the directory's lock: the crash files, oldest first, and the empty placeholders of
+    /// earlier versions, with `mark` raised to every number named, theirs included, and to the
+    /// mark a clear saved, which another core may have saved meanwhile. A mark or directory that
+    /// cannot be read is an error: the mark could come out too low.
+    fn listed(&self, mark: &mut Option<u64>) -> io::Result<(Vec<Listed>, Vec<Listed>)> {
+        let saved = crash_dir::saved_mark(&self.dir)?;
+        let named = crash_dir::scan(&self.dir)?;
+        let newest = named.last().map_or(0, |(at, ..)| *at);
+        *mark = Some(mark.unwrap_or_default().max(saved).max(newest));
+        Ok(named.into_iter().partition(|(.., bytes)| *bytes > 0))
     }
 
     fn now(&self) -> u64 {
@@ -334,70 +373,78 @@ impl Crashes {
         file.sync_data()
     }
 
-    /// The crash files with their names' numbers and their sizes, oldest first: by that number,
-    /// then by name. Anything else in the directory is left out.
-    fn files(&self) -> Vec<(u64, String, u64)> {
-        let Ok(dir) = fs::read_dir(&self.dir) else {
-            return Vec::new();
-        };
-        let mut files: Vec<(u64, String, u64)> = dir
-            .flatten()
-            .filter_map(|e| {
-                let name = e.file_name().into_string().ok()?;
-                let at = number(&name)?;
-                let meta = e.metadata().ok().filter(fs::Metadata::is_file)?;
-                Some((at, name, meta.len()))
-            })
-            .collect();
-        files.sort();
-        files
-    }
-
     /// The crash files, oldest first, and the mark: no file listed has a higher number, and no
-    /// file written from now on will have it or a lower one. `clearCrashes` takes it back.
-    pub fn listing(&self) -> (Vec<CrashFile>, u64) {
-        let Some(mut files) = self.hold() else {
-            return (Vec::new(), 0);
+    /// file written from now on will have it or a lower one. `clearCrashes` takes it back. Under
+    /// the directory's lock, the oldest files past five, which earlier versions left, go first. A
+    /// lock that cannot be taken, a directory or entry that cannot be read, or a file past five
+    /// that will not go, is an error: a listing never holds six, nor reads as empty when it is
+    /// not. An empty file is no crash file, and a mark that cannot be read leaves the mark lower,
+    /// which a clear only narrows.
+    pub fn listing(&self) -> io::Result<(Vec<CrashFile>, u64)> {
+        let Some(mut files) = self.hold(None)? else {
+            return Ok((Vec::new(), 0));
         };
-        let mark = &mut files.0.mark;
-        let listed = self.listed(mark).into_iter();
+        let lock = DirLock::take(&self.dir, None)?;
+        let scanned = crash_dir::scan(&self.dir);
+        #[cfg(test)]
+        let scanned = if self.unscanned.load(std::sync::atomic::Ordering::Relaxed) {
+            Err(ErrorKind::PermissionDenied.into())
+        } else {
+            scanned
+        };
+        let mut listed = scanned?;
+        listed.retain(|(.., bytes)| *bytes > 0);
+        self.trim(&listed, MAX_FILES)?;
+        let listed = listed.split_off(listed.len().saturating_sub(MAX_FILES));
+        drop(lock);
+        let newest = listed.last().map_or(0, |(at, ..)| *at);
+        let saved = crash_dir::saved_mark(&self.dir).unwrap_or(0);
+        let mark = files.0.mark.unwrap_or_default().max(saved).max(newest);
+        files.0.mark = Some(mark);
+        let listed = listed.into_iter();
         let listed = listed.map(|(_, name, bytes)| CrashFile { name, bytes });
-        (listed.collect(), mark.unwrap_or_default())
+        Ok((listed.collect(), mark))
     }
 
     #[cfg(test)]
     pub(super) fn list(&self) -> Vec<CrashFile> {
-        self.listing().0
+        self.listing().expect("listing").0
     }
 
     #[cfg(test)]
     pub(super) fn mark(&self) -> u64 {
-        self.listing().1
+        self.listing().expect("listing").1
     }
 
-    /// Removes the files named whose numbers are `mark` or below, the mark of the listing they
-    /// were exported from; a name already gone is passed over. Saves the core's own mark first, so
-    /// a core that starts again takes no name at or below it. A `mark` above the core's, which no
-    /// listing gave, is refused (none): saved, it would leave no name to take. Answers how many
-    /// files it removed.
+    /// Under the directory's lock, removes the files named whose numbers are `mark` or below, the
+    /// mark of the listing they were exported from; a name already gone is passed over. Saves the
+    /// core's own mark first, so no core takes a name at or below it, then removes the
+    /// placeholders and the oldest files past five that earlier versions left. A `mark` above the
+    /// core's, which no listing gave, is refused (none): saved, it would leave no name to take.
+    /// Answers how many files it removed.
     pub fn remove(&self, names: &[String], mark: u64) -> io::Result<Option<usize>> {
-        let Some(mut files) = self.hold() else {
+        let Ok(Some(mut files)) = self.hold(None) else {
             return Ok(Some(0));
         };
+        let _lock = DirLock::take(&self.dir, None)?;
         let kept = &mut files.0.mark;
-        let _ = self.listed(kept);
+        let (present, placeholders) = self.listed(kept)?;
         let kept = kept.unwrap_or_default();
         if mark > kept {
             return Ok(None);
         }
-        fs::create_dir_all(&self.dir)?;
-        let part = self.dir.join(PART);
+        let part = self.dir.join(MARK_PART);
         let saved = self.put(&part, kept.to_string().as_bytes());
         saved
             .and_then(|()| fs::rename(&part, self.dir.join(MARK)))
             .inspect_err(|_| {
                 let _ = fs::remove_file(&part);
             })?;
+        crash_dir::discard(&self.dir, &placeholders);
+        crash_dir::discard(
+            &self.dir,
+            &present[..present.len().saturating_sub(MAX_FILES)],
+        );
         let mut removed = 0;
         for name in names {
             if number(name).is_none_or(|at| at > mark) {
@@ -422,13 +469,34 @@ impl Drop for Held<'_> {
     }
 }
 
-/// The number a crash file's name holds: `<epochMs>.txt`, at most [`MAX_NUMBER`], is the one
-/// name the core and the app give their crash files.
-pub(crate) fn number(name: &str) -> Option<u64> {
-    let digits = name.strip_suffix(".txt")?;
-    let digits =
-        (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())).then_some(digits);
-    digits?.parse().ok().filter(|&at| at <= MAX_NUMBER)
+/// The locations a process wrote a file for or gave up on, by a hash other than 0, which marks a
+/// free slot. Without a lock: a panic notes its location whatever another thread holds.
+struct Locations([AtomicU64; MAX_LOCATIONS]);
+
+impl Locations {
+    /// Whether a panic at `key` writes no file: one was written for it, or for as many locations
+    /// as a process may have.
+    fn has(&self, key: u64) -> bool {
+        let mut full = true;
+        for slot in &self.0 {
+            match slot.load(Relaxed) {
+                0 => full = false,
+                held if held == key => return true,
+                _ => {}
+            }
+        }
+        full
+    }
+
+    fn add(&self, key: u64) {
+        for slot in &self.0 {
+            match slot.compare_exchange(0, key, Relaxed, Relaxed) {
+                Ok(_) => return,
+                Err(held) if held == key => return,
+                Err(_) => {}
+            }
+        }
+    }
 }
 
 /// Text that fits in the string's room up to [`MAX_BYTES`]; the rest is dropped.
@@ -502,97 +570,4 @@ fn thread() -> &'static str {
         .into_iter()
         .find(|t| t.as_bytes() == name)
         .unwrap_or("other")
-}
-
-/// Where a panic happened, by its source file.
-#[derive(Debug, PartialEq, Eq)]
-pub(super) enum Place<'a> {
-    /// This crate: its file from the crate's directory on (`src/api/rules.rs`) and the module
-    /// (`api/rules`, empty for the crate's root).
-    Ours {
-        file: &'a str,
-        module: &'a str,
-    },
-    /// A dependency or the standard library: its source directory (`tokio-1.47.1`,
-    /// `honk-outbound`, `core`) and the module.
-    Theirs {
-        dir: &'a str,
-        module: &'a str,
-    },
-    Unknown,
-}
-
-/// `src/…` for this crate built in its own directory, else the directory before the last
-/// `/src/`: the crate's, whether under cargo's registry or git checkouts, rustc's `library`, or a
-/// workspace. Anything else, as a file generated in a build directory, is unknown.
-pub(super) fn place(file: &str) -> Place<'_> {
-    let (dir, file, rest) = match file.strip_prefix("src/") {
-        Some(rest) => (env!("CARGO_PKG_NAME"), file, rest),
-        None => match file.rfind("/src/") {
-            Some(i) => {
-                let start = file[..i].rfind('/').map_or(0, |j| j + 1);
-                (&file[start..i], &file[i + 1..], &file[i + 5..])
-            }
-            None => return Place::Unknown,
-        },
-    };
-    let module = rest.strip_suffix(".rs").map(|m| {
-        let m = m.strip_suffix("/mod").unwrap_or(m);
-        if matches!(m, "lib" | "main" | "mod") {
-            ""
-        } else {
-            m
-        }
-    });
-    let plain = |text: &str, more: &str| {
-        text.chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || more.contains(c))
-    };
-    match module {
-        Some(module) if !dir.is_empty() && plain(dir, "-.+") && plain(module, "/") => {
-            if dir == env!("CARGO_PKG_NAME") {
-                Place::Ours { file, module }
-            } else {
-                Place::Theirs { dir, module }
-            }
-        }
-        _ => Place::Unknown,
-    }
-}
-
-/// A source directory's crate name and version: `tokio-1.47.1` is `tokio` and `1.47.1`,
-/// `sha-1-0.10.6` is `sha-1` and `0.10.6`; a git checkout's or the standard library's has no
-/// version.
-pub(super) fn version_of(dir: &str) -> (&str, Option<&str>) {
-    let numeric = |p: &str| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit());
-    for (i, _) in dir.match_indices('-') {
-        let version = &dir[i + 1..];
-        let mut parts = version.splitn(3, '.');
-        let (major, minor) = (parts.next().unwrap_or(""), parts.next().unwrap_or(""));
-        let patch = parts.next().unwrap_or("");
-        if numeric(major) && numeric(minor) && patch.starts_with(|c: char| c.is_ascii_digit()) {
-            return (&dir[..i], Some(version));
-        }
-    }
-    (dir, None)
-}
-
-/// A place's module as Rust names it: `doonacore::api::rules`, `tokio::runtime::park`.
-pub(super) struct Module<'a, 'p>(pub &'a Place<'p>);
-
-impl fmt::Display for Module<'_, '_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (krate, module) = match self.0 {
-            Place::Ours { module, .. } => (env!("CARGO_CRATE_NAME"), *module),
-            Place::Theirs { dir, module } => (version_of(dir).0, *module),
-            Place::Unknown => return f.write_str("unknown"),
-        };
-        for c in krate.chars() {
-            f.write_char(if c == '-' { '_' } else { c })?;
-        }
-        for part in module.split('/').filter(|p| !p.is_empty()) {
-            write!(f, "::{part}")?;
-        }
-        Ok(())
-    }
 }

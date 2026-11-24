@@ -9,6 +9,7 @@
     <string name="vpn_rates">上传 %1$s/秒，下载 %2$s/秒</string>
     <string name="vpn_action_disconnect">断开连接</string>
     <string name="vpn_failed_title">VPN 已断开连接</string>
+    <string name="vpn_drop_revoked">其他 VPN 应用或系统设置关闭了 VPN。</string>
     <string name="vpn_failure_no_allowed_apps">列表中的应用均未安装。</string>
     <string name="vpn_failure_start_failed">无法启动 VPN。</string>
     <string name="vpn_failure_core_stopped">连接意外中断。</string>

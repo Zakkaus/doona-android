@@ -14,14 +14,18 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
+import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableJob
@@ -77,6 +81,8 @@ class ServiceEngine internal constructor(
     override val status: StateFlow<Status> get() = controller.status
     private val _traffic = MutableStateFlow(Traffic())
     override val traffic: StateFlow<Traffic> = _traffic.asStateFlow()
+    private val _today = MutableStateFlow(TodayTraffic())
+    override val today: StateFlow<TodayTraffic> = _today.asStateFlow()
     private val _groups = MutableStateFlow(emptyList<Group>())
     override val groups: StateFlow<List<Group>> = _groups.asStateFlow()
     private val _subscriptions = MutableStateFlow(emptyList<Subscription>())
@@ -176,8 +182,8 @@ class ServiceEngine internal constructor(
     override suspend fun testLatency(groupId: String?): Result<Unit> =
         command("testLatency", GroupArgs.serializer(), GroupArgs(groupId), Unit.serializer(), ordered = true)
 
-    override suspend fun addSubscription(url: String, name: String?): Result<Subscription> =
-        command("addSubscription", AddSubscriptionArgs.serializer(), AddSubscriptionArgs(url, name), SubscriptionDto.serializer())
+    override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> =
+        command("addSubscription", AddSubscriptionArgs.serializer(), AddSubscriptionArgs(url, name, userAgent), SubscriptionDto.serializer())
             .map(SubscriptionDto::toSubscription)
 
     override suspend fun updateSubscription(id: String): Result<Subscription> =
@@ -185,6 +191,14 @@ class ServiceEngine internal constructor(
 
     override suspend fun removeSubscription(id: String): Result<Unit> =
         command("removeSubscription", IdArgs.serializer(), IdArgs(id), Unit.serializer())
+
+    override suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription> =
+        command(
+            "setSubscriptionUserAgent",
+            SubscriptionUserAgentArgs.serializer(),
+            SubscriptionUserAgentArgs(id, userAgent),
+            SubscriptionDto.serializer(),
+        ).map(SubscriptionDto::toSubscription)
 
     override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
 
@@ -198,6 +212,15 @@ class ServiceEngine internal constructor(
         read("effectiveConfig", Unit.serializer(), Unit, EffectiveConfigDto.serializer()).map(EffectiveConfigDto::toEffectiveConfig)
 
     override suspend fun usage(): Result<Usage> = read("usage", Unit.serializer(), Unit, UsageDto.serializer()).map(UsageDto::toUsage)
+
+    override suspend fun trafficSeries(seconds: Long): Result<TrafficSeries> =
+        read("trafficSeries", SeriesArgs.serializer(), SeriesArgs(seconds), TrafficSeriesDto.serializer()).map(TrafficSeriesDto::toTrafficSeries)
+
+    override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
+        read("nodes", NodesArgs.serializer(), NodesArgs(ids), NodesDto.serializer()).map(NodesDto::toNodes)
+
+    override suspend fun scoreState(): Result<ScoreState> =
+        read("scoreState", Unit.serializer(), Unit, ScoreStateDto.serializer()).map(ScoreStateDto::toScoreState)
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
@@ -312,6 +335,7 @@ class ServiceEngine internal constructor(
         return try {
             withContext(io) {
                 CoreJson.snapshot(core.snapshot(revision)).also { snapshot ->
+                    _today.value = snapshot.today.toTodayTraffic()
                     snapshot.catalog?.let { publish(snapshot.revision, it.toCatalog()) }
                     lastWarning.value = during to snapshot.warning?.let(::errorCodeOf)
                 }
@@ -373,7 +397,7 @@ class ServiceEngine internal constructor(
         var previous: TrafficSample? = null
         while (true) {
             poll()?.let { snapshot ->
-                val sample = TrafficSample(snapshot.traffic.upTotal, snapshot.traffic.downTotal, SystemClock.elapsedRealtime())
+                val sample = TrafficSample(snapshot.traffic, SystemClock.elapsedRealtime())
                 val baseline = previous
                 _traffic.update { it.next(baseline, sample) }
                 previous = sample
@@ -402,8 +426,9 @@ class ServiceEngine internal constructor(
             val app = context.applicationContext
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val core = DeferredCore { NativeCore }
-            // noBackupFilesDir keeps state.json, which holds subscription URLs with tokens, out of every backup.
-            val opener = CoreOpener(core, app.noBackupFilesDir.path, Dispatchers.IO)
+            // noBackupFilesDir keeps state.json, which holds subscription URLs with tokens, out of every backup. Asking for
+            // it makes it, which is disk work: the opener asks on IO.
+            val opener = CoreOpener(core, { app.noBackupFilesDir.path }, Dispatchers.IO)
             val perApp = PerAppSettings.create(app)
             val controller = TunnelController(
                 core = core,

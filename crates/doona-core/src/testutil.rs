@@ -12,6 +12,11 @@ mod cert;
 #[allow(dead_code)]
 #[path = "../tests/common/client.rs"]
 pub mod client;
+#[allow(dead_code)]
+#[path = "../tests/common/servers.rs"]
+pub mod servers;
+#[path = "../tests/common/socks.rs"]
+pub mod socks;
 #[path = "../tests/common/tuic.rs"]
 pub mod tuic;
 
@@ -195,7 +200,7 @@ pub fn socks5_with(
     (addr, count)
 }
 
-fn relay_socks(mut client: std::net::TcpStream, connect: Connect) -> std::io::Result<()> {
+pub fn relay_socks(mut client: std::net::TcpStream, connect: Connect) -> std::io::Result<()> {
     use std::io::{Read, Write};
     let mut greeting = [0u8; 2];
     client.read_exact(&mut greeting)?;

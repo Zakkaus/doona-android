@@ -17,12 +17,13 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// The commands, by the names the log may hold; never caller text.
-const COMMANDS: [&str; 15] = [
+const COMMANDS: [&str; 17] = [
     "select",
     "testLatency",
     "addSubscription",
     "updateSubscription",
     "removeSubscription",
+    "setSubscriptionUserAgent",
     "setMode",
     "setRuleSource",
     "setLogLevel",
@@ -30,22 +31,25 @@ const COMMANDS: [&str; 15] = [
     "trafficSeries",
     "usage",
     "nodes",
+    "scoreState",
     "rules",
     "effectiveConfig",
     "diagnostics",
 ];
 /// The reads among them that screens repeat.
-const READS: [&str; 6] = [
+const READS: [&str; 7] = [
     "trafficSeries",
     "usage",
     "nodes",
+    "scoreState",
     "rules",
     "effectiveConfig",
     "diagnostics",
 ];
 
 impl Core {
-    /// Runs `run`, which may note counts and a detail on the command's event, then records it.
+    /// Runs `run`, which may note counts, a detail and a code on the command's event, then records
+    /// it; a failure's code is the reply's unless `run` noted one.
     pub(super) fn traced(
         &self,
         command: &str,
@@ -70,7 +74,10 @@ impl Core {
                     ErrorCode::Internal => Level::Error,
                     _ => Level::Warn,
                 };
-                self.diag.record(Event { level, ..event }.code(code));
+                // An I/O kind `run` noted says more than the reply's code: kept.
+                let mut event = Event { level, ..event };
+                event.code = event.code.or(Some(code.as_str()));
+                self.diag.record(event);
                 error_reply(code)
             }
         }
@@ -80,15 +87,21 @@ impl Core {
         &self.diag
     }
 
-    /// The commands of this file; any other is `invalid_argument`.
-    pub(super) fn diagnostic(
+    /// Live reads and diagnostics; unknown commands are `invalid_argument`.
+    pub(super) fn query_or_diagnostic(
         &self,
         command: &str,
         args: &str,
         event: &mut Event,
     ) -> Result<String, ErrorCode> {
         match command {
-            "diagnostics" => self.diagnostics(args),
+            "trafficSeries" => self.traffic_series(args),
+            "usage" => self.usage(args),
+            "nodes" => self.nodes(args),
+            "scoreState" => self.score_state(args),
+            "rules" => self.rules(args),
+            "effectiveConfig" => self.effective_config(args),
+            "diagnostics" => self.diagnostics(args, event),
             "setLogLevel" => self.set_log_level(args, event),
             "clearCrashes" => self.clear_crashes(args, event),
             _ => Err(ErrorCode::InvalidArgument),
@@ -96,8 +109,9 @@ impl Core {
     }
 
     /// `diagnostics`: the ring (from `level` up), what the last snapshot said, the stats, the
-    /// crash files and the build.
-    fn diagnostics(&self, args: &str) -> Result<String, ErrorCode> {
+    /// crash files and the build. Crash files that cannot be listed, at most five under the
+    /// directory's lock, fail it (`internal`): the app then exports its own listing.
+    fn diagnostics(&self, args: &str, traced: &mut Event) -> Result<String, ErrorCode> {
         let DiagnosticsArgs { level } = parse(args)?;
         let traffic = match &*lock(&self.life) {
             Life::Running(tunnel) => tunnel.session().traffic(),
@@ -105,7 +119,11 @@ impl Core {
         };
         let today = self.stats.today(&Clock::now());
         let (events, overwritten) = self.diag.events(level);
-        let listing = self.diag.crashes().map(|c| c.listing());
+        let listing = self.diag.crashes().map(|c| c.listing()).transpose();
+        let listing = listing.map_err(|e| {
+            *traced = traced.io(e.kind());
+            ErrorCode::Internal
+        })?;
         let (crashes, crash_mark) = listing.unwrap_or_default();
         Ok(ok(Diagnostics {
             core: CoreBuild::current(),

@@ -81,7 +81,7 @@ class FirstRunViewModelTest {
     fun `adding shows its busy state`() = runTest {
         val answer = CompletableDeferred<Result<Subscription>>()
         val engine = object : Engine by FakeEngine(subscriptions = emptyList()) {
-            override suspend fun addSubscription(url: String, name: String?) = answer.await()
+            override suspend fun addSubscription(url: String, name: String?, userAgent: String?) = answer.await()
         }
         val vm = collected(engine)
         vm.fields.url.setTextAndPlaceCursorAtEnd("https://example.invalid/x")
@@ -94,7 +94,7 @@ class FirstRunViewModelTest {
     @Test
     fun `a failed add keeps the address and shows the code until dismissed`() = runTest {
         val engine = object : Engine by FakeEngine(subscriptions = emptyList()) {
-            override suspend fun addSubscription(url: String, name: String?) = Result.failure<Subscription>(EngineException(ErrorCode.FetchFailed))
+            override suspend fun addSubscription(url: String, name: String?, userAgent: String?) = Result.failure<Subscription>(EngineException(ErrorCode.FetchFailed))
         }
         val vm = collected(engine)
         vm.fields.url.setTextAndPlaceCursorAtEnd("https://example.invalid/x")

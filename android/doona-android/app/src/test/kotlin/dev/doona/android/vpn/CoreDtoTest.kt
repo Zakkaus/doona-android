@@ -10,13 +10,16 @@ import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.SubscriptionFormat
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -34,12 +37,16 @@ class CoreDtoTest {
         "snapshot-stopped-catalog.json" to SnapshotDto.serializer(),
         "call-ok-empty.json" to Unit.serializer(),
         "call-ok-subscription.json" to SubscriptionDto.serializer(),
+        "call-add-subscription-args.json" to AddSubscriptionArgs.serializer(),
+        "call-set-subscription-user-agent-args.json" to SubscriptionUserAgentArgs.serializer(),
         "call-error.json" to CallErrorReplyDto.serializer(),
         "call-select-args.json" to SelectArgs.serializer(),
         "call-ok-traffic-series.json" to TrafficSeriesDto.serializer(),
         "call-ok-usage.json" to UsageDto.serializer(),
         "call-ok-nodes.json" to NodesDto.serializer(),
         "call-nodes-args.json" to NodesArgs.serializer(),
+        "call-ok-score-state.json" to ScoreStateDto.serializer(),
+        "call-score-state-args.json" to Unit.serializer(),
         "call-ok-rules.json" to RulesDto.serializer(),
         "call-rules-args.json" to RulesArgs.serializer(),
         "call-set-rule-source-args.json" to RuleSourceArgs.serializer(),
@@ -110,7 +117,7 @@ class CoreDtoTest {
         val groups = catalog.groups.map(GroupDto::toGroup)
         assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), groups.map { it.id })
         val auto = groups[1]
-        assertEquals(GroupKind.UrlTest, auto.kind)
+        assertEquals(GroupKind.Score, auto.kind)
         assertTrue(auto.testing)
         // Two distinct endpoints may share a display name; their ids differ.
         assertEquals(listOf("hk-01", "hk-01"), auto.members.map { it.name })
@@ -126,6 +133,7 @@ class CoreDtoTest {
         assertEquals("s1", subscription.id)
         assertEquals(107374182400L, subscription.totalBytes)
         assertNull(subscription.error)
+        assertNull(subscription.userAgent)
     }
 
     @Test
@@ -245,15 +253,41 @@ class CoreDtoTest {
     }
 
     @Test
+    fun subscriptionArgsEncodeAsTheFixtures() {
+        val add = AddSubscriptionArgs("https://example.invalid/sub?token=REDACTED", name = null, userAgent = "clash-verge/v2.2.3")
+        val added = CoreJson.encode(AddSubscriptionArgs.serializer(), add)
+        assertEquals(Json.parseToJsonElement(fixture("call-add-subscription-args.json")), Json.parseToJsonElement(added))
+        // A null agent is sent as null: the core requires the key, and null means its default.
+        val reset = CoreJson.encode(SubscriptionUserAgentArgs.serializer(), SubscriptionUserAgentArgs("s1", userAgent = null))
+        assertEquals(Json.parseToJsonElement(fixture("call-set-subscription-user-agent-args.json")), Json.parseToJsonElement(reset))
+    }
+
+    /** As in the core: `addSubscription` may leave the agent out, `setSubscriptionUserAgent` may not. */
+    @Test
+    fun anAddWithoutTheAgentDecodesAndTheSetterNeedsItsKey() {
+        val keyless = """{"url":"https://example.invalid/sub","name":null}"""
+        val add = Json.decodeFromString(AddSubscriptionArgs.serializer(), keyless)
+        assertEquals(AddSubscriptionArgs("https://example.invalid/sub", name = null, userAgent = null), add)
+        // A null agent is left out, which the core reads as its default.
+        assertEquals(keyless, CoreJson.encode(AddSubscriptionArgs.serializer(), add))
+        assertThrows(SerializationException::class.java) {
+            Json.decodeFromString(SubscriptionUserAgentArgs.serializer(), """{"id":"s1"}""")
+        }
+    }
+
+    @Test
     fun callReplies() {
         assertEquals(Unit, CoreJson.result(fixture("call-ok-empty.json"), Unit.serializer()))
         val subscription = CoreJson.result(fixture("call-ok-subscription.json"), SubscriptionDto.serializer())
         assertEquals(2, subscription.nodes)
+        val mapped = subscription.toSubscription()
+        assertEquals("clash-verge/v2.2.3", mapped.userAgent)
+        assertEquals(SubscriptionFormat.Clash, mapped.format)
         try {
             CoreJson.result(fixture("call-error.json"), Unit.serializer())
             fail("an error reply must throw")
         } catch (e: EngineException) {
-            assertEquals(ErrorCode.FetchFailed, e.code)
+            assertEquals(ErrorCode.TooLarge, e.code)
         }
     }
 
@@ -299,6 +333,21 @@ class CoreDtoTest {
         assertEquals(listOf(33, null, 31), nodes[0].tests.map { it.ms })
         assertEquals("quic", nodes[1].transport)
         assertTrue(nodes[1].tests.isEmpty())
+    }
+
+    @Test
+    fun scoreStateKeepsSubgroupSelectionAndDecodesNullIds() {
+        val reply = fixture("call-ok-score-state.json")
+            .replace("\"selectedId\": \"n-7f3a19c2\"", "\"selectedId\": \"g-HK\", \"future\": true")
+            .replace("\"nodeId\": \"n-0c41be77\"", "\"nodeId\": null")
+            .replace("\"selected\": \"other\", \"selectedId\": \"n-0c41be77\"", "\"selected\": null, \"selectedId\": null")
+        val score = CoreJson.result(reply, ScoreStateDto.serializer()).toScoreState()
+        val auto = score.groups.single()
+        assertEquals("g-HK", auto.tcp.selectedId)
+        assertEquals(listOf("n-7f3a19c2", "n-0c41be77"), auto.nodeIds)
+        assertNull(auto.tcp.challengers.single().nodeId)
+        assertNull(auto.udp.selected)
+        assertNull(auto.udp.selectedId)
     }
 
     @Test

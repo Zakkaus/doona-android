@@ -8,6 +8,8 @@ pub use crate::diag::report::{
 };
 use serde::{Deserialize, Serialize};
 
+pub mod score;
+
 /// The contract schema this core speaks; `init` returns it. Schema 2 added `Rule` to the modes,
 /// which a schema-1 app cannot read; later additions within it stay additive.
 pub const SCHEMA: u32 = 2;
@@ -19,6 +21,7 @@ pub enum ErrorCode {
     InvalidArgument,
     NotFound,
     FetchFailed,
+    TooLarge,
     ParseFailed,
     NoNodes,
     Busy,
@@ -34,6 +37,7 @@ impl ErrorCode {
             ErrorCode::InvalidArgument => "invalid_argument",
             ErrorCode::NotFound => "not_found",
             ErrorCode::FetchFailed => "fetch_failed",
+            ErrorCode::TooLarge => "too_large",
             ErrorCode::ParseFailed => "parse_failed",
             ErrorCode::NoNodes => "no_nodes",
             ErrorCode::Busy => "busy",
@@ -56,6 +60,7 @@ pub enum Mode {
 pub enum GroupKind {
     Selector,
     UrlTest,
+    Score,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -339,6 +344,16 @@ pub struct Member {
     pub subscription_id: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SubscriptionFormat {
+    ShareLinks,
+    Base64,
+    Clash,
+    SingBox,
+    Sip008,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Subscription {
@@ -346,11 +361,15 @@ pub struct Subscription {
     pub name: String,
     pub url: String,
     pub nodes: u32,
+    /// Format of the last successful fetch; null for subscriptions saved before it was recorded.
+    pub format: Option<SubscriptionFormat>,
     pub updated_at_epoch_ms: Option<i64>,
     pub error: Option<ErrorCode>,
     pub used_bytes: Option<i64>,
     pub total_bytes: Option<i64>,
     pub expires_at_epoch_ms: Option<i64>,
+    /// The User-Agent its fetches send; null sends the default.
+    pub user_agent: Option<String>,
 }
 
 /// A `call` reply: `{"ok":<result>}` or `{"error":{"code":"…"}}`.
@@ -392,6 +411,18 @@ pub struct AddSubscriptionArgs {
     pub url: String,
     #[serde(deserialize_with = "Option::deserialize")]
     pub name: Option<String>,
+    /// Optional, unlike the other nullable keys: a caller from before it sends the default.
+    #[serde(default, rename = "userAgent")]
+    pub user_agent: Option<String>,
+}
+
+/// `setSubscriptionUserAgent`: null returns the subscription to the default.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscriptionUserAgentArgs {
+    pub id: String,
+    #[serde(deserialize_with = "Option::deserialize")]
+    pub user_agent: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

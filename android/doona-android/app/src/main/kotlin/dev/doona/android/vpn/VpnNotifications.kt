@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.text.format.Formatter
 import dev.doona.android.R
+import dev.doona.android.data.settings.DropNoticeSettings
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Traffic
@@ -17,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import java.io.IOException
 
 /** doona's launcher activity; the app lane owns its class. */
 internal fun launchIntent(context: Context): Intent =
@@ -32,6 +35,8 @@ internal class VpnNotifications(private val context: Context) {
     fun createChannel() {
         val name = context.getString(R.string.vpn_channel_name)
         manager.createNotificationChannel(NotificationChannel(CHANNEL, name, NotificationManager.IMPORTANCE_LOW))
+        val dropName = context.getString(R.string.vpn_drop_channel_name)
+        manager.createNotificationChannel(NotificationChannel(DROP_CHANNEL, dropName, NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     /** Null once the session has ended. Rates show while running, if [traffic] is given. */
@@ -61,13 +66,25 @@ internal class VpnNotifications(private val context: Context) {
             .build()
     }
 
-    fun failed(reason: FailureReason): Notification = builder()
-        .setContentTitle(context.getString(R.string.vpn_failed_title))
-        .setContentText(context.getString(reasonText(reason)))
-        .setAutoCancel(true)
-        .build()
+    suspend fun showDrop(session: Session, settings: DropNoticeSettings, isCurrent: () -> Boolean) {
+        val body = reasonText((session.status as? Status.Failed)?.reason ?: return)
+        val enabled = try {
+            settings.notifyOnDrop.first()
+        } catch (e: IOException) {
+            VpnLog.warn("drop notification: settings read failed (${e.javaClass.simpleName})")
+            return
+        }
+        if (!enabled || !isCurrent()) return
+        val notification = builder(DROP_CHANNEL)
+            .setContentTitle(context.getString(R.string.vpn_failed_title))
+            .setContentText(context.getString(body))
+            .setOnlyAlertOnce(false)
+            .setAutoCancel(true)
+            .build()
+        manager.notify(DROP_ID, notification)
+    }
 
-    fun show(notification: Notification) = manager.notify(ID, notification)
+    fun cancelDrop() = manager.cancel(DROP_ID)
 
     fun cancel() = manager.cancel(ID)
 
@@ -82,13 +99,13 @@ internal class VpnNotifications(private val context: Context) {
             .collect { text ->
                 // Checked on the main thread, where the service ends a session: a late update must not repost it.
                 if (text != null && !status.value.ended) {
-                    show(ongoing(text))
+                    manager.notify(ID, ongoing(text))
                     delay(MIN_UPDATE_MS)
                 }
             }
     }
 
-    private fun builder(): Notification.Builder = Notification.Builder(context, CHANNEL)
+    private fun builder(channel: String = CHANNEL): Notification.Builder = Notification.Builder(context, channel)
         .setSmallIcon(R.drawable.ic_duck)
         .setContentIntent(PendingIntent.getActivity(context, 0, launchIntent(context), PendingIntent.FLAG_IMMUTABLE))
         .setOnlyAlertOnce(true)
@@ -99,11 +116,14 @@ internal class VpnNotifications(private val context: Context) {
         FailureReason.StartFailed -> R.string.vpn_failure_start_failed
         FailureReason.CoreStopped -> R.string.vpn_failure_core_stopped
         FailureReason.IncompatibleCore -> R.string.vpn_failure_incompatible_core
+        FailureReason.Revoked -> R.string.vpn_drop_revoked
     }
 
     companion object {
         const val ID = 1
         private const val CHANNEL = "vpn"
+        private const val DROP_CHANNEL = "vpn-drop"
+        private const val DROP_ID = 2
         private const val MIN_UPDATE_MS = 2_000L
     }
 }

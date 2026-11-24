@@ -11,6 +11,8 @@ thread_local! {
     /// that thread's count, so this is exact only for work kept on one thread.
     static LIVE: Cell<usize> = const { Cell::new(0) };
     static PEAK: Cell<usize> = const { Cell::new(0) };
+    /// Set while [`uncounted`] runs: what the thread allocates and frees then counts nowhere.
+    static PAUSED: Cell<bool> = const { Cell::new(false) };
 }
 
 struct Counting;
@@ -18,7 +20,14 @@ struct Counting;
 #[global_allocator]
 static COUNTING: Counting = Counting;
 
+fn paused() -> bool {
+    PAUSED.try_with(Cell::get).unwrap_or(false)
+}
+
 fn count(bytes: usize) {
+    if paused() {
+        return;
+    }
     // Not counted once the thread's locals are gone.
     let _ = ALLOCATED.try_with(|a| a.set(a.get().saturating_add(bytes)));
     let _ = LIVE.try_with(|live| {
@@ -29,6 +38,9 @@ fn count(bytes: usize) {
 }
 
 fn uncount(bytes: usize) {
+    if paused() {
+        return;
+    }
     let _ = LIVE.try_with(|live| live.set(live.get().saturating_sub(bytes)));
 }
 
@@ -58,6 +70,21 @@ unsafe impl GlobalAlloc for Counting {
         // SAFETY: as for `alloc`.
         unsafe { System.dealloc(ptr, layout) }
     }
+}
+
+/// What `f` returns; nothing this thread allocates or frees while it runs is counted. For the
+/// tests' own machinery that runs inside the code a test measures, as the test logger formatting
+/// a record: a block it allocates should be freed within it too.
+pub fn uncounted<T>(f: impl FnOnce() -> T) -> T {
+    /// Puts back what was set before, however `f` ends.
+    struct Resume(bool);
+    impl Drop for Resume {
+        fn drop(&mut self) {
+            let _ = PAUSED.try_with(|p| p.set(self.0));
+        }
+    }
+    let _resume = Resume(PAUSED.with(|p| p.replace(true)));
+    f()
 }
 
 /// What `f` returns, and the bytes this thread allocated while it ran, freed or not.

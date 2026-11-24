@@ -2,6 +2,7 @@
 <!-- The VPN service's notification and quick settings tile. -->
 <resources>
     <string name="vpn_channel_name">VPN connection</string>
+    <string name="vpn_drop_channel_name">VPN disconnection alerts</string>
     <string name="vpn_status_starting">Connecting…</string>
     <string name="vpn_status_running">Connected</string>
     <string name="vpn_status_stopping">Disconnecting…</string>
@@ -11,6 +12,7 @@
     <string name="vpn_rates">Up %1$s/s, down %2$s/s</string>
     <string name="vpn_action_disconnect">Disconnect</string>
     <string name="vpn_failed_title">VPN disconnected</string>
+    <string name="vpn_drop_revoked">Another VPN app or the system settings turned off the VPN.</string>
     <string name="vpn_failure_no_allowed_apps">None of the apps on the list is installed.</string>
     <string name="vpn_failure_start_failed">The VPN could not start.</string>
     <string name="vpn_failure_core_stopped">The connection stopped unexpectedly.</string>

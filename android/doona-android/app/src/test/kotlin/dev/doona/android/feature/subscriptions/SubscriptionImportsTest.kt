@@ -27,7 +27,7 @@ class SubscriptionImportsTest {
         val calls = mutableListOf<Pair<String, String?>>()
         var answer = CompletableDeferred<Result<Subscription>>()
 
-        override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+        override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
             calls += url to name
             return answer.await()
         }
@@ -92,7 +92,7 @@ class SubscriptionImportsTest {
     @Test
     fun `an error that is not an engine error is internal`() = runTest {
         val engine = object : Engine by FakeEngine() {
-            override suspend fun addSubscription(url: String, name: String?): Result<Subscription> = Result.failure(IllegalStateException("boom"))
+            override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> = Result.failure(IllegalStateException("boom"))
         }
         val imports = SubscriptionImports(engine, appScope())
         imports.start("https://example.invalid/a", null)

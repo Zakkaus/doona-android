@@ -88,8 +88,10 @@ internal class TunnelController(
         true
     }
 
-    /** The user's stop and the system's revoke alike. */
     fun stop() = close(accept = { it.active }, Status.Stopped)
+
+    /** Revocation stops only the tunnel owned by this service, and cannot turn a user's stop into a drop. */
+    fun revoke(host: TunHost) = close(accept = { it.active && this.host === host }, Status.Failed(FailureReason.Revoked))
 
     /**
      * The service [host] is going away: stops the session only if [host] took it. A service that took none, such as one
@@ -202,9 +204,11 @@ internal class TunnelController(
             try {
                 core.start(it.fd, config)
             } catch (e: IllegalStateException) {
-                // Only the core speaks in codes: it reports its own as the message of this exception.
-                VpnLog.warn("start $g: the core refused with ${e.message}")
-                return Status.Failed(FailureReason.StartFailed, errorCodeOf(e.message.orEmpty()))
+                // Only the core speaks in codes: it reports its own as the message of this exception. The log takes the
+                // code it maps to, never the message itself, which the diagnostic report carries (ARCH D21).
+                val code = errorCodeOf(e.message.orEmpty())
+                VpnLog.warn("start $g: the core refused with ${code.name}")
+                return Status.Failed(FailureReason.StartFailed, code)
             }
         }
         coreRunning = true

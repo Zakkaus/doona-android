@@ -35,17 +35,17 @@ impl Listing {
     /// skipped; none are counted when the source did not compile.
     pub fn new(source: &str, specs: &[RuleSpec], compiled: Option<&RuleSet>) -> Listing {
         let mut seen: HashMap<Uuid, u32> = HashMap::new();
+        let mut key = RuleKey::default();
+        let ns = namespace();
         let rows: Vec<Listed> = specs
             .iter()
             .enumerate()
             .map(|(i, spec)| {
-                let base = digest(source, spec);
-                let occurrence = seen.entry(base).or_default();
-                let id = Uuid::new_v5(&base, &occurrence.to_be_bytes());
-                *occurrence += 1;
+                let base = key.listing_digest(&ns, source, spec);
+                let id = occurrence_id(base, seen.entry(base).or_default());
                 let skipped = compiled.map_or(0, |set| set.rows()[i].skipped);
                 Listed {
-                    id: format!("r-{:016x}", first_bits(id, 8)).into(),
+                    id: id.into(),
                     kind: spec.kind.clone(),
                     values: spec.values.clone(),
                     target: spec.target.clone(),
@@ -125,22 +125,43 @@ fn namespace() -> Uuid {
     Uuid::new_v5(&Uuid::NAMESPACE_URL, b"doona:rules")
 }
 
-/// A hash of a row without its position: each field with its length, so no two rows encode the
-/// same.
-fn digest(source: &str, spec: &RuleSpec) -> Uuid {
-    let target = match &spec.target {
-        Target::Direct => "direct",
-        Target::Reject => "reject",
-        Target::Group(id) => id,
-    };
-    let fields = [source, kind_name(&spec.kind), target];
-    let values = spec.values.iter().map(String::as_str);
-    let mut bytes = Vec::new();
-    for field in fields.into_iter().chain(values) {
-        bytes.extend_from_slice(&(field.len() as u64).to_be_bytes());
-        bytes.extend_from_slice(field.as_bytes());
+#[derive(Default)]
+pub(crate) struct RuleKey(Vec<u8>);
+
+impl RuleKey {
+    pub(crate) fn field(&mut self, value: impl AsRef<[u8]>) {
+        let bytes = value.as_ref();
+        self.0
+            .extend_from_slice(&(bytes.len() as u64).to_be_bytes());
+        self.0.extend_from_slice(bytes);
     }
-    Uuid::new_v5(&namespace(), &bytes)
+
+    pub(crate) fn finish(&mut self, ns: &Uuid) -> Uuid {
+        let base = Uuid::new_v5(ns, &self.0);
+        self.0.clear();
+        base
+    }
+
+    /// Hash the row without its position. Length-prefixed fields distinguish different value boundaries.
+    fn listing_digest(&mut self, ns: &Uuid, source: &str, spec: &RuleSpec) -> Uuid {
+        let target = match &spec.target {
+            Target::Direct => "direct",
+            Target::Reject => "reject",
+            Target::Group(id) => id,
+        };
+        let fields = [source, kind_name(&spec.kind), target];
+        let values = spec.values.iter().map(String::as_str);
+        for field in fields.into_iter().chain(values) {
+            self.field(field);
+        }
+        self.finish(ns)
+    }
+}
+
+pub(crate) fn occurrence_id(base: Uuid, occurrence: &mut u32) -> String {
+    let id = Uuid::new_v5(&base, &occurrence.to_be_bytes());
+    *occurrence += 1;
+    format!("r-{:016x}", first_bits(id, 8))
 }
 
 /// The first `n` bytes of `id` as a number.

@@ -12,6 +12,7 @@ interface Engine {
     val ready: StateFlow<Boolean>
     val status: StateFlow<Status>
     val traffic: StateFlow<Traffic>
+    val today: StateFlow<TodayTraffic>
     val groups: StateFlow<List<Group>>
     val subscriptions: StateFlow<List<Subscription>>
     val settings: StateFlow<Settings>
@@ -53,12 +54,22 @@ interface Engine {
      */
     suspend fun testLatency(groupId: String? = null): Result<Unit>
 
-    /** Fetches [url], decodes its nodes and adds them to the group template. */
-    suspend fun addSubscription(url: String, name: String? = null): Result<Subscription>
+    /**
+     * Fetches [url], decodes its nodes and adds them to the group template. Its fetches send [userAgent] as the
+     * User-Agent, or the core's default when null; a value must be 1 to 256 bytes of printable ASCII and not blank, else
+     * [ErrorCode.InvalidArgument] before anything is fetched.
+     */
+    suspend fun addSubscription(url: String, name: String? = null, userAgent: String? = null): Result<Subscription>
 
     suspend fun updateSubscription(id: String): Result<Subscription>
 
     suspend fun removeSubscription(id: String): Result<Unit>
+
+    /**
+     * Sets the User-Agent the next fetches of subscription [id] send, or the default when [userAgent] is null, under the
+     * same rules as [addSubscription]; nothing is fetched now. Returns the subscription as the catalog shows it.
+     */
+    suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription>
 
     suspend fun setMode(mode: Mode): Result<Unit>
 
@@ -80,6 +91,15 @@ interface Engine {
 
     /** Today's and yesterday's bytes by the hour, by outbound and by rule, and the totals of the last 31 days. */
     suspend fun usage(): Result<Usage>
+
+    /** The last [seconds] (1 to 3600) of rates, including data before disconnect. */
+    suspend fun trafficSeries(seconds: Long): Result<TrafficSeries>
+
+    /** All nodes in catalog order when [ids] is null; otherwise in request order, omitting unknown ids. */
+    suspend fun nodes(ids: List<String>? = null): Result<List<NodeInfo>>
+
+    /** Live TCP and UDP Score evidence, independent of the catalog revision; reading starts no trial. */
+    suspend fun scoreState(): Result<ScoreState>
 
     /**
      * Stores [perApp] and applies it: a running tunnel is rebuilt, which drops open connections, and the call returns
@@ -111,7 +131,7 @@ interface Engine {
  * [LocalNetwork]: the failed connection or download went to an address on the local network, which Android 17 lets doona
  * reach only with the `ACCESS_LOCAL_NETWORK` permission (ARCH D26).
  */
-enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, ParseFailed, NoNodes, Busy, Internal, LocalNetwork }
+enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, TooLarge, ParseFailed, NoNodes, Busy, Internal, LocalNetwork }
 
 class EngineException(val code: ErrorCode) : Exception(code.name)
 
@@ -143,6 +163,9 @@ enum class FailureReason {
 
     /** The bundled core speaks another contract schema. */
     IncompatibleCore,
+
+    /** Android revoked VPN authorization, for example when another VPN took over. */
+    Revoked,
 }
 
 /** Rates in bytes per second; totals in bytes since connect; histories hold the last 60 one-second rates, oldest first. */
@@ -153,6 +176,9 @@ data class Traffic(
     val downTotal: Long = 0,
     val upHistory: List<Long> = emptyList(),
     val downHistory: List<Long> = emptyList(),
+    val activeFlows: Int = 0,
+    val upPeak: Long = 0,
+    val downPeak: Long = 0,
 )
 
 /**
@@ -161,7 +187,7 @@ data class Traffic(
  */
 enum class Mode { Global, Direct, Rule }
 
-enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Fallback(false) }
+enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Score(false), Fallback(false) }
 
 /**
  * A node or a nested group. [id] stays the same across subscription refreshes; [name] is only for display and may
@@ -203,7 +229,12 @@ data class Catalog(
     val ruleSource: RuleSource,
 )
 
-/** Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. */
+enum class SubscriptionFormat { ShareLinks, Base64, Sip008, Clash, SingBox }
+
+/**
+ * Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. [userAgent] is
+ * the User-Agent its fetches send, null for the core's default; keep it out of logs and exports, as the URL.
+ */
 data class Subscription(
     val id: String,
     val name: String,
@@ -214,6 +245,9 @@ data class Subscription(
     val usedBytes: Long? = null,
     val totalBytes: Long? = null,
     val expiresAtEpochMs: Long? = null,
+    val userAgent: String? = null,
+    /** Format of the last successful fetch, when known. */
+    val format: SubscriptionFormat? = null,
 )
 
 /** Which apps use the tunnel. doona itself never does: its own sockets go out directly. */

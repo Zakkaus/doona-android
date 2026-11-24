@@ -103,7 +103,8 @@ fn ech_discovery_asks_the_start_config_resolvers() {
     let core = new_core(&dir, resolver.port(), vec![dead_resolver()]);
     subscribe(&core, &format!("http://{feed}/sub")).unwrap();
     let mut client = start(&core, r#"["127.0.0.1"]"#);
-    let id = client.connect(servers::closed_port());
+    let (dst, _socket) = servers::closed_port();
+    let id = client.connect(dst);
     assert!(client.until(Duration::from_secs(10), |c| c.read_now(id).is_err()));
     assert_eq!(seen.https.load(Relaxed), 1);
 }
@@ -189,7 +190,7 @@ fn a_refused_start_keeps_the_running_list() {
 #[test]
 fn a_subscription_host_on_the_local_network_is_local_network() {
     let _s = serial();
-    let closed = servers::closed_port();
+    let (closed, _socket) = servers::closed_port();
     let cases = [
         (Ipv4Addr::new(224, 0, 0, 1), ErrorCode::LocalNetwork),
         (Ipv4Addr::LOCALHOST, ErrorCode::FetchFailed),
@@ -267,10 +268,11 @@ fn a_probe_counts_the_address_it_dialed_not_an_earlier_lookup() {
     let (resolver, _) = servers::udp_resolver_to(Ipv4Addr::new(224, 0, 0, 1));
     let feed = servers::feed("socks5://nas.lan.doona.test:1080#nas".to_owned());
     let dir = TempDir::new("boot-lan-probe");
+    let (closed, _socket) = servers::closed_port();
     let options = Options {
         bootstrap_port: resolver.port(),
         bootstrap_fallback: vec![resolver],
-        probe_url: format!("http://{}/generate_204", servers::closed_port()),
+        probe_url: format!("http://{closed}/generate_204"),
         ..Options::default()
     };
     let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();

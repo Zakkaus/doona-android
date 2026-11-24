@@ -11,6 +11,7 @@ import dev.doona.android.R
 import dev.doona.android.app.DoonaApplication
 import dev.doona.android.app.MainActivity
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -90,7 +91,7 @@ class ToggleTileService : TileService() {
                 is Status.Running -> R.string.vpn_status_running
                 Status.Stopping -> R.string.vpn_status_stopping
                 Status.Stopped -> R.string.vpn_status_stopped
-                is Status.Failed -> R.string.vpn_status_failed
+                is Status.Failed -> if (status.reason == FailureReason.Revoked) R.string.vpn_drop_revoked else R.string.vpn_status_failed
             },
         )
         tile.updateTile()

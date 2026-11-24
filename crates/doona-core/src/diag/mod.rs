@@ -9,6 +9,8 @@
 //! ring's lock is never taken on the data path.
 
 pub(crate) mod crash;
+mod crash_dir;
+mod place;
 pub mod report;
 mod stack;
 
@@ -185,6 +187,7 @@ pub(super) fn io_code(kind: ErrorKind) -> &'static str {
         ErrorKind::StorageFull | ErrorKind::QuotaExceeded => "storage_full",
         ErrorKind::ReadOnlyFilesystem => "read_only",
         ErrorKind::InvalidData => "invalid_data",
+        ErrorKind::TimedOut => "timed_out",
         _ => "io",
     }
 }
@@ -328,3 +331,5 @@ pub(crate) fn now_ms() -> i64 {
 mod tests;
 #[cfg(test)]
 mod tests_crash;
+#[cfg(test)]
+mod tests_dir;

@@ -74,7 +74,7 @@ class NodeCodesTest {
         val text = CoreJson.result(ContractFixtures.read("call-ok-effective-config.json"), EffectiveConfigDto.serializer()).text
         val shown = NodeCodes(groups).onScreen(text)
         assertTrue("# group Proxy (Selector, now Auto): Auto, HK, JP, hk-01, jp-01" in shown.lines())
-        assertTrue("# group Auto (UrlTest, now hk-01): hk-01, jp-01" in shown.lines())
+        assertTrue("# group Auto (Score, now hk-01): hk-01, jp-01" in shown.lines())
         assertFalse("n-369a8a63" in shown || "n-85d011c7" in shown)
         // Only the group lines change.
         fun others(text: String) = text.lines().filterNot { it.startsWith("# group ") }

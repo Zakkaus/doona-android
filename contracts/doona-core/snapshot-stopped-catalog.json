@@ -69,7 +69,7 @@
       {
         "id": "g-Auto",
         "name": "Auto",
-        "kind": "UrlTest",
+        "kind": "Score",
         "selectedId": "n-7f3a19c2",
         "pinned": false,
         "testing": true,
@@ -207,7 +207,7 @@
       {
         "id": "g-HK",
         "name": "HK",
-        "kind": "UrlTest",
+        "kind": "Score",
         "selectedId": "n-7f3a19c2",
         "pinned": false,
         "testing": false,
@@ -239,11 +239,13 @@
         "name": "harbor",
         "url": "https://example.invalid/sub?token=REDACTED",
         "nodes": 2,
+        "format": "clash",
         "updatedAtEpochMs": 1795300000000,
         "error": null,
         "usedBytes": 1073741824,
         "totalBytes": 107374182400,
-        "expiresAtEpochMs": 1798000000000
+        "expiresAtEpochMs": 1798000000000,
+        "userAgent": null
       }
     ],
     "mainGroupId": "g-Proxy",

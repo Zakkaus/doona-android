@@ -32,7 +32,13 @@ const MAX_BODY: usize = 8 << 20;
 const MAX_HEAD: usize = 64 << 10;
 const MAX_LINE: usize = 1 << 10;
 const MAX_REDIRECTS: usize = 5;
-const USER_AGENT: &str = concat!("doona/", env!("CARGO_PKG_VERSION"));
+/// Subscription panels choose the format by User-Agent substrings, case-insensitively: `mihomo` or `clash.meta` gets
+/// Clash.Meta YAML with the newer protocols, plain `clash` gets Clash YAML, and an unknown agent often gets bare links.
+/// Clash clients send such an agent, so doona does too.
+pub(crate) const USER_AGENT: &str =
+    concat!("doona/", env!("CARGO_PKG_VERSION"), " (clash.meta; mihomo)");
+/// The longest User-Agent a subscription may carry instead.
+const MAX_USER_AGENT: usize = 256;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct Fetched {
@@ -64,19 +70,41 @@ pub(crate) fn parse_url(text: &str) -> Result<Url, ErrorCode> {
     Ok(url)
 }
 
-/// Downloads `url` within `bound`, redirects included. A failure is `fetch_failed`, or
-/// `local_network` while the dial that failed or ran out of time had a local address to try.
-pub(crate) async fn fetch(url: Url, bound: Duration) -> Result<Fetched, ErrorCode> {
-    fetch_by(url, bound, tcp).await
+/// A subscription's own User-Agent as `addSubscription` and `setSubscriptionUserAgent` take it,
+/// trimmed: 1 to 256 bytes of printable ASCII (0x20 to 0x7E), so no CR, LF, NUL or other control
+/// can end the header or add another, and not blank, because no agent means [`USER_AGENT`].
+pub(crate) fn user_agent(text: &str) -> Result<String, ErrorCode> {
+    let printable = text.bytes().all(|b| matches!(b, 0x20..=0x7e));
+    let trimmed = text.trim();
+    if !printable || text.len() > MAX_USER_AGENT || trimmed.is_empty() {
+        return Err(ErrorCode::InvalidArgument);
+    }
+    Ok(trimmed.to_owned())
+}
+
+/// Downloads `url` within `bound`, redirects included, sending `agent`, or [`USER_AGENT`] when
+/// there is none, on every request. An oversized body is `too_large`; other failures are
+/// `fetch_failed`, or `local_network` if the failed dial had a local address to try.
+pub(crate) async fn fetch(
+    url: Url,
+    agent: Option<&str>,
+    bound: Duration,
+) -> Result<Fetched, ErrorCode> {
+    fetch_by(url, agent, bound, tcp).await
 }
 
 /// Makes one TCP connection of a fetch, or none.
 type Connect = fn(SocketAddr) -> BoxFuture<'static, Option<TcpStream>>;
 
 /// [`fetch`] with each connection made by `connect`; tests stand in for the network with it.
-async fn fetch_by(url: Url, bound: Duration, connect: Connect) -> Result<Fetched, ErrorCode> {
+async fn fetch_by(
+    url: Url,
+    agent: Option<&str>,
+    bound: Duration,
+    connect: Connect,
+) -> Result<Fetched, ErrorCode> {
     let dials = Dials::new(connect);
-    tokio::time::timeout(bound, follow(url, &dials))
+    tokio::time::timeout(bound, follow(url, agent, &dials))
         .await
         .unwrap_or_else(|_| Err(dials.failure()))
 }
@@ -135,7 +163,7 @@ impl Dials {
     }
 }
 
-async fn follow(mut url: Url, dials: &Dials) -> Result<Fetched, ErrorCode> {
+async fn follow(mut url: Url, agent: Option<&str>, dials: &Dials) -> Result<Fetched, ErrorCode> {
     // The URL's user information becomes Basic auth, sent only to the origin.
     let auth = basic_auth(&url);
     let _ = url.set_username("");
@@ -143,7 +171,8 @@ async fn follow(mut url: Url, dials: &Dials) -> Result<Fetched, ErrorCode> {
     let origin = url.clone();
     for hop in 0..=MAX_REDIRECTS {
         let same = same_origin(&origin, &url);
-        let location = match get(&url, auth.as_deref().filter(|_| same), dials).await? {
+        let auth = auth.as_deref().filter(|_| same);
+        let location = match get(&url, auth, agent, dials).await? {
             Reply::Body(fetched) => return Ok(fetched),
             Reply::Redirect(location) => location,
         };
@@ -220,10 +249,15 @@ fn private_literal(url: &Url) -> bool {
     }
 }
 
-async fn get(url: &Url, auth: Option<&str>, dials: &Dials) -> Result<Reply, ErrorCode> {
+async fn get(
+    url: &Url,
+    auth: Option<&str>,
+    agent: Option<&str>,
+    dials: &Dials,
+) -> Result<Reply, ErrorCode> {
     let port = url.port_or_known_default().ok_or(ErrorCode::FetchFailed)?;
     let stream = connect(url, port, dials).await?;
-    let request = request(url, auth);
+    let request = request(url, auth, agent);
     if url.scheme() == "https" {
         let host = url.host_str().ok_or(ErrorCode::FetchFailed)?;
         let host = host.trim_start_matches('[').trim_end_matches(']');
@@ -273,7 +307,12 @@ static CONNECTOR: LazyLock<Option<SslConnector>> = LazyLock::new(|| {
     Some(builder.build())
 });
 
-fn request(url: &Url, auth: Option<&str>) -> Vec<u8> {
+/// The request head. An agent [`user_agent`] would refuse, which neither the commands nor
+/// `state.json` let through, gives way to [`USER_AGENT`] rather than reach the head.
+fn request(url: &Url, auth: Option<&str>, agent: Option<&str>) -> Vec<u8> {
+    let agent = agent
+        .filter(|a| user_agent(a).is_ok())
+        .unwrap_or(USER_AGENT);
     let mut target = url.path().to_owned();
     if let Some(query) = url.query() {
         target.push('?');
@@ -284,7 +323,7 @@ fn request(url: &Url, auth: Option<&str>) -> Vec<u8> {
         None => url.host_str().unwrap_or_default().to_owned(),
     };
     let mut head = format!(
-        "GET {target} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: {USER_AGENT}\r\nAccept: */*\r\n\
+        "GET {target} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: {agent}\r\nAccept: */*\r\n\
          Accept-Encoding: identity\r\nConnection: close\r\n"
     );
     if let Some(auth) = auth {
@@ -385,7 +424,7 @@ async fn read_exact<R: AsyncRead + Unpin>(
     length: usize,
 ) -> Result<Vec<u8>, ErrorCode> {
     if length > MAX_BODY {
-        return Err(ErrorCode::FetchFailed);
+        return Err(ErrorCode::TooLarge);
     }
     let mut body = vec![0; length];
     reader
@@ -409,7 +448,7 @@ async fn read_to_end<R: AsyncRead + Unpin>(reader: &mut R) -> Result<Vec<u8>, Er
         Err(_) => return Err(ErrorCode::FetchFailed),
     }
     if body.len() > MAX_BODY {
-        return Err(ErrorCode::FetchFailed);
+        return Err(ErrorCode::TooLarge);
     }
     Ok(body)
 }
@@ -425,8 +464,8 @@ async fn read_chunked<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<Vec<u8>
             while !read_line(reader).await?.trim().is_empty() {}
             return Ok(body);
         }
-        if body.len() + size > MAX_BODY {
-            return Err(ErrorCode::FetchFailed);
+        if size > MAX_BODY - body.len() {
+            return Err(ErrorCode::TooLarge);
         }
         let start = body.len();
         body.resize(start + size, 0);

@@ -187,7 +187,7 @@ class SubscriptionsViewModelTest {
     fun `an address that is not http or https is refused before the engine is asked`() = runTest {
         var asked = false
         val engine = object : Engine by FakeEngine() {
-            override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+            override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
                 asked = true
                 return Result.failure(engineException())
             }
@@ -222,9 +222,9 @@ class SubscriptionsViewModelTest {
         var sent: String? = "unset"
         val fake = FakeEngine()
         val engine = object : Engine by fake {
-            override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+            override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
                 sent = name
-                return fake.addSubscription(url, name)
+                return fake.addSubscription(url, name, userAgent)
             }
         }
         val vm = collected(engine)
@@ -238,7 +238,7 @@ class SubscriptionsViewModelTest {
         val answer = CompletableDeferred<Result<Subscription>>()
         var calls = 0
         val engine = object : Engine by FakeEngine() {
-            override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+            override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
                 calls++
                 return answer.await()
             }
@@ -259,7 +259,7 @@ class SubscriptionsViewModelTest {
     @Test
     fun `a failed add keeps what was typed and shows the code until dismissed`() = runTest {
         val engine = object : Engine by FakeEngine() {
-            override suspend fun addSubscription(url: String, name: String?) = Result.failure<Subscription>(engineException(ErrorCode.ParseFailed))
+            override suspend fun addSubscription(url: String, name: String?, userAgent: String?) = Result.failure<Subscription>(engineException(ErrorCode.ParseFailed))
         }
         val vm = collected(engine)
         vm.onAction(SubscriptionsAction.OpenForm)
@@ -285,10 +285,10 @@ class SubscriptionsViewModelTest {
         var calls = 0
         var answer = CompletableDeferred<Result<Subscription>>()
 
-        override suspend fun addSubscription(url: String, name: String?): Result<Subscription> {
+        override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
             calls++
             val result = answer.await()
-            if (result.isSuccess) base.addSubscription(url, name)
+            if (result.isSuccess) base.addSubscription(url, name, userAgent)
             return result
         }
     }
