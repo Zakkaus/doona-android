@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import dev.doona.android.designsystem.rv.RvAlpha
-import dev.doona.android.designsystem.rv.RvCodeHue
 import dev.doona.android.designsystem.rv.RvCodeKind
 import dev.doona.android.designsystem.rv.RvCodeShown
 import dev.doona.android.designsystem.rv.RvCodeSpan
@@ -20,6 +19,9 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * The code highlighter: doona web's `daeTokens.test.ts` cases as they are (the port must read honk text as doona does),
@@ -140,15 +142,9 @@ class RvCodeTest {
         }
     }
 
-    /**
-     * One colour per role, as an editor gives it: seven hues in each theme, none from the scheme, and on every seed seven
-     * distinct inks once each reads on its grounds (a dark page is tinted by the seed, so how far an ink lightens may differ).
-     */
+    /** Every role keeps a colour of its own on every seed, light and dark, once each reads on its grounds. */
     @Test
     fun eachRoleHasItsOwnColour() {
-        for (hues in listOf(RvCodeHue.light, RvCodeHue.dark)) {
-            assertEquals(7, setOf(hues.comment, hues.keyword, hues.string, hues.number, hues.function, hues.key, hues.punctuation).size)
-        }
         for (seed in SEEDS) {
             for (dark in listOf(false, true)) {
                 val code = rvCodeColors(RvColors(seedColorScheme(seed, dark), dark))
@@ -158,11 +154,47 @@ class RvCodeTest {
         }
     }
 
+    /**
+     * On the owner's wallpaper a call, in the theme's tertiary, stays at least [MIN_HUE_DISTANCE] round the colour wheel
+     * from the diff's added green and removed red, light and dark. A keyword keeps the accent, as the owner asked, and a
+     * string a softer accent, though a cyan accent sits near the added green; the diff marks its lines with + and − and
+     * their tint as well.
+     */
+    @Test
+    fun aCallStaysAwayFromTheDiffsGreenAndRed() {
+        for (dark in listOf(false, true)) {
+            val c = RvColors(seedColorScheme(Seed.Cyan.argb, dark), dark)
+            val call = rvCodeColors(c).function
+            for (mark in listOf(c.good, c.error)) {
+                assertTrue("${if (dark) "dark" else "light"} ${call.hue()} vs ${mark.hue()}", hueDistance(call.hue(), mark.hue()) >= MIN_HUE_DISTANCE)
+            }
+        }
+    }
+
+    private fun Color.hue(): Float {
+        val hi = max(red, max(green, blue))
+        val lo = min(red, min(green, blue))
+        val span = hi - lo
+        val sector = when (hi) {
+            red -> ((green - blue) / span).mod(SECTORS)
+            green -> (blue - red) / span + 2
+            else -> (red - green) / span + 4
+        }
+        return sector * DEGREES_PER_SECTOR
+    }
+
+    private fun hueDistance(a: Float, b: Float) = abs(a - b).let { min(it, FULL_TURN - it) }
+
     private companion object {
         /** Lines in the long file: as many rules as a large routing block holds. */
         const val LONG_FILE = 1_000
 
         /** The owner's wallpaper, then a purple and a red seed, so the accent of another phone is covered too. */
         val SEEDS = listOf(Seed.Cyan.argb, 0xFF6750A4.toInt(), 0xFFB3261E.toInt())
+
+        const val MIN_HUE_DISTANCE = 30f
+        const val SECTORS = 6f
+        const val DEGREES_PER_SECTOR = 60f
+        const val FULL_TURN = 360f
     }
 }
