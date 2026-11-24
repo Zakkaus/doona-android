@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 
 /**
@@ -63,11 +64,13 @@ internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
 /**
  * Where a page's banner sits, the same on every page: first in the page's body, right under its header (活動's hero
  * and actions, a large title, the tab's header, the picker's title and caption), so it takes the place of the first
- * card, on the gutter, [RvSpace.cardGap] over what follows. Nothing without a [banner].
+ * card, on the gutter, [gapBelow] over what follows: [RvSpace.cardGap] before a card, [RvSpace.none] before a part that brings its
+ * own gap above (a footnote's [RvSpace.footnoteAbove], a section title's [RvSpace.sectionAbove]). Nothing without a
+ * [banner].
  */
 @Composable
-internal fun RvBannerSlot(banner: RvNotice?) {
-    if (banner != null) RvBanner(banner, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.cardGap))
+internal fun RvBannerSlot(banner: RvNotice?, gapBelow: Dp = RvSpace.cardGap) {
+    if (banner != null) RvBanner(banner, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = gapBelow))
 }
 
 /**

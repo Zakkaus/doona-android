@@ -25,6 +25,7 @@ import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
@@ -119,6 +120,7 @@ internal fun RvConfigImportPage(
                     stringResource(R.string.rv_config_pick_again),
                     onPickAgain,
                 ),
+                gapBelow = RvSpace.none,
             )
             RvFootnote(stringResource(R.string.rv_config_still_in_use, state.headRev))
         } else {
@@ -130,6 +132,7 @@ internal fun RvConfigImportPage(
                     stringResource(R.string.rv_config_edit_source),
                     onEditSource,
                 ),
+                gapBelow = RvSpace.none,
             )
             RvConfigSection(R.string.rv_config_files) {
                 RvCard {

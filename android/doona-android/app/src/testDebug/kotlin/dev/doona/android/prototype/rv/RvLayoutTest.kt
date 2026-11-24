@@ -13,6 +13,8 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.prototype.rv.config.RvConfigHistoryData
+import dev.doona.android.prototype.rv.config.RvConfigImportPage
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
@@ -129,6 +131,12 @@ class RvLayoutTest {
 
     @Test
     fun effectiveConfig() = measure("effective-config", Top.Title) { RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}) }
+
+    @Test
+    fun importLimit() = measure("config-import-limit", Top.Title) { RvConfigImportPage(RvConfigHistoryData.limit, onBack = {}) }
+
+    @Test
+    fun importEscape() = measure("config-import-escape", Top.Title) { RvConfigImportPage(RvConfigHistoryData.escape, onBack = {}) }
 
     /** 策略's value rows (範本, 設定檔) end their value a trailing gap before the chevron, as the node picker's row does. */
     @Test

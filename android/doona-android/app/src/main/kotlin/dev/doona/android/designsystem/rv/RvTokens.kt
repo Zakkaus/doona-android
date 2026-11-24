@@ -12,6 +12,9 @@ internal object RvSpace {
     /** Between stacked cards (measured §2: 16 dp). */
     val cardGap = 16.dp
 
+    /** No gap of a part's own: what follows brings it (a footnote's [footnoteAbove], a section title's [sectionAbove]). */
+    val none = 0.dp
+
     /** Start and end padding of a row inside a card, and of the chart card (measured §7: 16 dp). */
     val rowPadding = 16.dp
 
