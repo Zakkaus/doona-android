@@ -1,4 +1,4 @@
-use super::{StaticResult, invalid, unsupported};
+use super::{StaticReason, StaticResult, invalid, unsupported};
 use crate::dto::ManualNode;
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
@@ -17,11 +17,11 @@ pub(super) fn link(draft: ManualNode) -> Result<(Option<String>, String), Static
         options,
     } = draft;
     if port == 0 {
-        return Err(invalid("port"));
+        return Err(invalid(StaticReason::Port));
     }
     let server = match server.parse::<std::net::Ipv6Addr>() {
         Ok(ip) => Host::Ipv6(ip),
-        Err(_) => Host::parse(&server).map_err(|_| invalid("server"))?,
+        Err(_) => Host::parse(&server).map_err(|_| invalid(StaticReason::Server))?,
     };
     let endpoint = format!("{server}:{port}");
     let auth = Credentials {
@@ -50,7 +50,7 @@ struct Credentials<'a> {
 impl Credentials<'_> {
     fn link(&self, scheme: &str, endpoint: &str) -> Result<String, StaticResult> {
         if scheme == "vmess" {
-            self.only(&["uuid"])?;
+            self.only(&[StaticReason::Uuid])?;
             return Ok(format!(
                 "vmess://{}",
                 URL_SAFE_NO_PAD.encode(format!("auto:{}@{endpoint}", self.uuid()?))
@@ -63,53 +63,53 @@ impl Credentials<'_> {
     fn fields(&self, scheme: &str) -> Result<(Option<&str>, Option<&str>), StaticResult> {
         let (username, password) = match scheme {
             "vless" => {
-                self.only(&["uuid"])?;
+                self.only(&[StaticReason::Uuid])?;
                 let uuid = self.uuid()?;
                 (Some(uuid), None)
             }
             "tuic" | "juicity" => {
-                self.only(&["uuid", "password"])?;
+                self.only(&[StaticReason::Uuid, StaticReason::Password])?;
                 (Some(self.uuid()?), Some(self.password()?))
             }
             "trojan" | "anytls" | "hysteria2" => {
-                self.only(&["password"])?;
+                self.only(&[StaticReason::Password])?;
                 (Some(self.password()?), None)
             }
             "ss" => self.shadowsocks()?,
             "socks5" => {
-                self.only(&["username", "password"])?;
+                self.only(&[StaticReason::Username, StaticReason::Password])?;
                 (self.username, self.password)
             }
-            _ => return Err(unsupported("protocol")),
+            _ => return Err(unsupported(StaticReason::Protocol)),
         };
         Ok((username, password))
     }
 
     fn shadowsocks(&self) -> Result<(Option<&str>, Option<&str>), StaticResult> {
-        self.only(&["cipher", "password"])?;
+        self.only(&[StaticReason::Cipher, StaticReason::Password])?;
         let cipher = self
             .cipher
             .filter(|s| !s.is_empty())
-            .ok_or_else(|| invalid("cipher"))?;
+            .ok_or_else(|| invalid(StaticReason::Cipher))?;
         Ok((Some(cipher), Some(self.password()?)))
     }
 
     fn uuid(&self) -> Result<&str, StaticResult> {
         self.uuid
             .filter(|s| uuid::Uuid::parse_str(s).is_ok())
-            .ok_or_else(|| invalid("uuid"))
+            .ok_or_else(|| invalid(StaticReason::Uuid))
     }
     fn password(&self) -> Result<&str, StaticResult> {
         self.password
             .filter(|s| !s.is_empty())
-            .ok_or_else(|| invalid("password"))
+            .ok_or_else(|| invalid(StaticReason::Password))
     }
-    fn only(&self, allowed: &[&str]) -> Result<(), StaticResult> {
+    fn only(&self, allowed: &[StaticReason]) -> Result<(), StaticResult> {
         for (key, value) in [
-            ("username", self.username),
-            ("password", self.password),
-            ("uuid", self.uuid),
-            ("cipher", self.cipher),
+            (StaticReason::Username, self.username),
+            (StaticReason::Password, self.password),
+            (StaticReason::Uuid, self.uuid),
+            (StaticReason::Cipher, self.cipher),
         ] {
             if value.is_some() && !allowed.contains(&key) {
                 return Err(unsupported(key));

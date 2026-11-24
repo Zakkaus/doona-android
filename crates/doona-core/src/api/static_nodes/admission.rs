@@ -1,21 +1,23 @@
-use super::{StaticResult, invalid, unsupported};
-use crate::subscription::parse::admit;
+use super::{StaticReason, StaticResult, invalid, unsupported};
+use crate::subscription::parse::{admit, is_chained_link};
 use honk_config::node::Node;
 use url::form_urlencoded;
 
 /// The feed parser silently drops unusable entries and honk reads only the first hop of a chain.
 /// An editor must explain those cases without ever returning the link or a parser diagnostic.
 pub(super) fn parse(link: &str) -> Result<Node, StaticResult> {
-    if link.contains("->") {
-        return Err(unsupported("chain"));
+    if is_chained_link(link) {
+        return Err(unsupported(StaticReason::Chain));
     }
     if link.len() > 8192 {
-        return Err(invalid("link_length"));
+        return Err(invalid(StaticReason::LinkLength));
     }
     if link.chars().any(char::is_control) {
-        return Err(invalid("link"));
+        return Err(invalid(StaticReason::Link));
     }
-    let (scheme, payload) = link.split_once("://").ok_or_else(|| invalid("link"))?;
+    let (scheme, payload) = link
+        .split_once("://")
+        .ok_or_else(|| invalid(StaticReason::Link))?;
     let scheme = scheme.to_ascii_lowercase();
     if !matches!(
         scheme.as_str(),
@@ -30,7 +32,7 @@ pub(super) fn parse(link: &str) -> Result<Node, StaticResult> {
             | "juicity"
             | "anytls"
     ) {
-        return Err(unsupported("protocol"));
+        return Err(unsupported(StaticReason::Protocol));
     }
     let body = payload.split('#').next().unwrap();
     let (authority, query) = body.split_once('?').unwrap_or((body, ""));
@@ -40,7 +42,10 @@ pub(super) fn parse(link: &str) -> Result<Node, StaticResult> {
     let options = form_urlencoded::parse(query.as_bytes());
     check_uri(&scheme, authority, options)?;
     let mut parsed = admit(std::iter::once(link)).expect("one link is within the feed node budget");
-    let node = parsed.nodes.pop().ok_or_else(|| invalid("link"))?;
+    let node = parsed
+        .nodes
+        .pop()
+        .ok_or_else(|| invalid(StaticReason::Link))?;
     check_transport(&node, options)?;
     credentials(&node)?;
     Ok(node)
@@ -55,15 +60,15 @@ fn check_uri(
     if (authority.contains('@') || !matches!(scheme, "ss" | "vmess" | "vless"))
         && authority.trim_end_matches('/').contains('/')
     {
-        return Err(unsupported("path"));
+        return Err(unsupported(StaticReason::Path));
     }
     let mut seen = std::collections::HashSet::new();
     for (key, value) in options {
         if !supported_key(scheme, &key, &value) {
-            return Err(unsupported("option"));
+            return Err(unsupported(StaticReason::Option));
         }
         if !seen.insert(key) {
-            return Err(invalid("duplicate_option"));
+            return Err(invalid(StaticReason::DuplicateOption));
         }
     }
     Ok(())
@@ -88,7 +93,7 @@ fn check_transport(node: &Node, options: form_urlencoded::Parse<'_>) -> Result<(
             _ => true,
         };
         if !applies {
-            return Err(unsupported("option"));
+            return Err(unsupported(StaticReason::Option));
         }
     }
     Ok(())
@@ -111,13 +116,13 @@ fn credentials(node: &Node) -> Result<(), StaticResult> {
                 {
                     Ok(())
                 }
-                _ => Err(invalid("credentials")),
+                _ => Err(invalid(StaticReason::Credentials)),
             };
         }
         _ => return Ok(()),
     };
     if password.as_deref().is_none_or(str::is_empty) {
-        return Err(invalid("password"));
+        return Err(invalid(StaticReason::Password));
     }
     Ok(())
 }
@@ -128,11 +133,11 @@ fn ss_credentials(c: &honk_config::node::ShadowsocksConfig) -> Result<(), Static
         .password
         .as_deref()
         .filter(|s| !s.is_empty())
-        .ok_or_else(|| invalid("password"))?;
+        .ok_or_else(|| invalid(StaticReason::Password))?;
     let cipher = c
         .encryption
         .as_deref()
-        .ok_or_else(|| invalid("cipher"))?
+        .ok_or_else(|| invalid(StaticReason::Cipher))?
         .to_ascii_lowercase();
     let bytes = match cipher.as_str() {
         "aes-128-gcm" | "aes-256-gcm" | "chacha20-ietf-poly1305" | "chacha20-poly1305" => {
@@ -141,7 +146,7 @@ fn ss_credentials(c: &honk_config::node::ShadowsocksConfig) -> Result<(), Static
         "2022-blake3-aes-128-gcm" => 16,
         "2022-blake3-aes-256-gcm" => 32,
         "2022-blake3-chacha20-poly1305" if !password.contains(':') => 32,
-        _ => return Err(unsupported("cipher")),
+        _ => return Err(unsupported(StaticReason::Cipher)),
     };
     let mut key = [0; 32];
     if password
@@ -150,7 +155,7 @@ fn ss_credentials(c: &honk_config::node::ShadowsocksConfig) -> Result<(), Static
     {
         Ok(())
     } else {
-        Err(invalid("password"))
+        Err(invalid(StaticReason::Password))
     }
 }
 
@@ -195,7 +200,7 @@ fn vmess_options(authority: &str) -> Result<(), StaticResult> {
     let bytes = [STANDARD, STANDARD_NO_PAD, URL_SAFE, URL_SAFE_NO_PAD]
         .into_iter()
         .find_map(|e| e.decode(authority).ok())
-        .ok_or_else(|| invalid("link"))?;
+        .ok_or_else(|| invalid(StaticReason::Link))?;
     if !bytes
         .iter()
         .find(|b| !b.is_ascii_whitespace())
@@ -204,7 +209,7 @@ fn vmess_options(authority: &str) -> Result<(), StaticResult> {
         return Ok(());
     }
     let obj: serde_json::Map<String, serde_json::Value> =
-        serde_json::from_slice(&bytes).map_err(|_| invalid("link"))?;
+        serde_json::from_slice(&bytes).map_err(|_| invalid(StaticReason::Link))?;
     vmess_fields(&obj)
 }
 
@@ -230,7 +235,7 @@ fn vmess_fields(obj: &serde_json::Map<String, serde_json::Value>) -> Result<(), 
             _ => false,
         };
         if !supported {
-            return Err(unsupported("option"));
+            return Err(unsupported(StaticReason::Option));
         }
     }
     Ok(())

@@ -3,8 +3,8 @@
 use super::{Core, lock};
 use crate::catalog::{MAX_NODES, NodeEntry};
 use crate::dto::{
-    ErrorCode, IdArgs, StaticBatch, StaticDraft, StaticInput, StaticNode, StaticRemove,
-    StaticResult, StaticResults, StaticUpdate,
+    ErrorCode, IdArgs, StaticBatch, StaticDraft, StaticInput, StaticNode, StaticReason,
+    StaticRemove, StaticResult, StaticResults, StaticUpdate,
 };
 use crate::ids;
 use crate::state::State;
@@ -15,12 +15,12 @@ use std::sync::Arc;
 mod admission;
 mod manual;
 
-fn entry(mut node: Node, name: &str, uuid: uuid::Uuid) -> Arc<NodeEntry> {
-    name.clone_into(&mut node.name);
+fn entry(mut node: Node, stored: &StaticNode, uuid: uuid::Uuid) -> Arc<NodeEntry> {
+    node.name.clone_from(&stored.name);
     Arc::new(NodeEntry {
-        id: ids::short_id(uuid),
+        id: stored.id.clone(),
         uuid,
-        name: name.to_owned(),
+        name: stored.name.clone(),
         subscription: None,
         node: Arc::new(node),
     })
@@ -29,7 +29,7 @@ fn entry(mut node: Node, name: &str, uuid: uuid::Uuid) -> Arc<NodeEntry> {
 pub(crate) fn stored_entry(stored: &StaticNode) -> Result<Arc<NodeEntry>, StaticResult> {
     let node = admission::parse(&stored.link)?;
     let uuid = ids::static_uuid(&node);
-    Ok(entry(node, &stored.name, uuid))
+    Ok(entry(node, stored, uuid))
 }
 
 struct Candidate {
@@ -39,11 +39,11 @@ struct Candidate {
 }
 
 impl Candidate {
-    fn parse(row: StaticInput) -> Result<Self, StaticResult> {
+    fn parse(row: StaticInput, catalog: &crate::score::Score) -> Result<Self, StaticResult> {
         let (name, link) = match row {
             StaticInput::Draft(StaticDraft::Link { name, link }) => (name, link.trim().to_owned()),
             StaticInput::Draft(StaticDraft::Manual(manual)) => manual::link(manual)?,
-            StaticInput::Malformed(_) => return Err(invalid("fields")),
+            StaticInput::Malformed(_) => return Err(invalid(StaticReason::Fields)),
         };
         let node = admission::parse(&link)?;
         let fallback = if link.contains('#') || !node.name.ends_with(&node.host) {
@@ -61,12 +61,15 @@ impl Candidate {
         };
         let name = name.as_deref().unwrap_or(fallback).trim();
         if name.is_empty() || name.chars().any(char::is_control) {
-            return Err(invalid("name"));
+            return Err(invalid(StaticReason::Name));
         }
         let name = name.to_owned();
         let uuid = ids::static_uuid(&node);
         let stored = StaticNode {
-            id: ids::short_id(uuid),
+            id: catalog
+                .entries
+                .get(&uuid)
+                .map_or_else(|| ids::short_id(uuid), |e| e.id.clone()),
             name,
             link,
         };
@@ -74,20 +77,16 @@ impl Candidate {
     }
 
     fn into_parts(self) -> (StaticNode, Arc<NodeEntry>) {
-        let entry = entry(self.node, &self.stored.name, self.uuid);
+        let entry = entry(self.node, &self.stored, self.uuid);
         (self.stored, entry)
     }
 }
 
-fn invalid(reason: &str) -> StaticResult {
-    StaticResult::Invalid {
-        reason: reason.to_owned(),
-    }
+fn invalid(reason: StaticReason) -> StaticResult {
+    StaticResult::Invalid { reason }
 }
-fn unsupported(reason: &str) -> StaticResult {
-    StaticResult::Unsupported {
-        reason: reason.to_owned(),
-    }
+fn unsupported(reason: StaticReason) -> StaticResult {
+    StaticResult::Unsupported { reason }
 }
 
 impl Core {
@@ -117,10 +116,11 @@ impl Core {
             return Err(ErrorCode::InvalidArgument);
         }
         let _writer = commit.then(|| lock(&self.writer));
-        let (mut ids, mut names, mut remaining) = {
+        let (catalog, mut ids, mut names, mut remaining) = {
             let c = lock(&self.shared.catalog);
             let nodes = &c.state.static_nodes;
             (
+                Arc::clone(&c.model.score),
                 nodes.iter().map(|s| s.id.clone()).collect::<HashSet<_>>(),
                 nodes.iter().map(|s| s.name.clone()).collect::<HashSet<_>>(),
                 MAX_NODES - c.model.nodes.len(),
@@ -129,7 +129,7 @@ impl Core {
         let mut staged = Vec::new();
         let mut rows = Vec::with_capacity(args.rows.len());
         for input in args.rows {
-            let mut candidate = match Candidate::parse(input) {
+            let mut candidate = match Candidate::parse(input, &catalog) {
                 Ok(c) => c,
                 Err(row) => {
                     rows.push(row);
@@ -142,7 +142,7 @@ impl Core {
                 continue;
             }
             if remaining == 0 {
-                rows.push(invalid("catalog_full"));
+                rows.push(invalid(StaticReason::CatalogFull));
                 continue;
             }
             ids.insert(id.clone());
@@ -183,7 +183,8 @@ impl Core {
     pub(super) fn update_static(&self, args: StaticUpdate) -> Result<StaticResult, ErrorCode> {
         let _writer = lock(&self.writer);
         let (mut next, i) = self.editor_state(&args.expected)?;
-        let candidate = match Candidate::parse(args.node) {
+        let catalog = Arc::clone(&lock(&self.shared.catalog).model.score);
+        let candidate = match Candidate::parse(args.node, &catalog) {
             Ok(c) => c,
             Err(row) => return Ok(row),
         };

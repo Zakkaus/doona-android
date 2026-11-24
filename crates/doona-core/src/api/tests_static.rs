@@ -70,6 +70,7 @@ fn static_only_restart_dials_and_preserves_only_the_same_endpoints_history() {
     assert_eq!(add_link(&core, &link)["id"], id);
     assert_eq!(history(&core, &id), json!([]));
     call(&core, "select", json!({"group":"g-Proxy","memberId":id})).unwrap();
+    assert!(catalog(&core).groups[0].pinned);
     call(
         &core,
         "removeStaticNode",
@@ -83,6 +84,8 @@ fn static_only_restart_dials_and_preserves_only_the_same_endpoints_history() {
     assert_eq!(shown.groups[0].selected_id.as_deref(), Some("g-Auto"));
     assert_eq!(shown.groups[1].members.len(), 1);
     assert_eq!(shown.groups[1].members[0].id, new);
+    assert_eq!(add_link(&core, &link)["id"], id);
+    assert!(!catalog(&core).groups[0].pinned);
 }
 
 #[test]
@@ -135,8 +138,55 @@ fn feed_refresh_and_removal_cannot_write_a_static_or_expose_a_provider_link() {
 fn chain_never_installs_its_first_hop() {
     let dir = TempDir::new("static-chain");
     let core = Core::new(path(&dir)).unwrap();
-    let reply = add_link(&core, "socks5://192.0.2.8:1080 -> socks5://192.0.2.9:1080");
+    let reply = add_link(
+        &core,
+        "socks5://192.0.2.8:1080#HK->JP -> socks5://192.0.2.9:1080",
+    );
     assert_eq!(reply, json!({"status":"unsupported","reason":"chain"}));
     assert!(catalog(&core).groups.is_empty());
     assert!(!dir.path().join("state.json").exists());
+}
+
+#[test]
+fn a_rename_keeps_an_in_flight_latency_result() {
+    use futures_util::FutureExt;
+    use std::{sync::Arc, time::Duration};
+    let dir = TempDir::new("static-rename-probe");
+    let (release, gate) = tokio::sync::watch::channel(false);
+    let core = Core::with_prober(
+        path(&dir),
+        Arc::new(move |_| {
+            let mut gate = gate.clone();
+            async move {
+                gate.wait_for(|ready| *ready).await.unwrap();
+                Some(Duration::from_millis(42))
+            }
+            .boxed()
+        }),
+    );
+    let link = "socks5://192.0.2.1:1080#HK";
+    let id = add_link(&core, link)["id"].clone();
+    call(&core, "testLatency", json!({"group":"g-Auto"})).unwrap();
+    let rename = json!({"expected":read(&core,&id),"node":{"kind":"link","link":link,"name":"JP"}});
+    call(&core, "updateStaticNode", rename).unwrap();
+    release.send(true).unwrap();
+    let shown = wait_for(&core, |c| c.groups.iter().all(|g| !g.testing));
+    let leaf = &shown.groups[1].members[0];
+    assert_eq!(leaf.name, "JP");
+    assert_eq!(leaf.latency_ms, Some(42));
+}
+
+#[test]
+fn a_reloaded_endpoint_uses_its_stored_editor_id() {
+    let dir = TempDir::new("static-stored-id");
+    let link = "socks5://192.0.2.1:1080";
+    let id = "n-0000000000000001";
+    let stored = json!({"id":id,"name":"HK","link":link});
+    let state = json!({"stateVersion":1,"mode":"Global","staticNodes":[stored]});
+    std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
+    let core = Core::new(path(&dir)).unwrap();
+    assert_eq!(catalog(&core).groups[1].members[0].id, id);
+    assert_eq!(add_link(&core, link), json!({"status":"duplicate","id":id}));
+    let rename = json!({"expected":stored,"node":{"kind":"link","link":link,"name":"JP"}});
+    assert_eq!(call(&core, "updateStaticNode", rename).unwrap()["id"], id);
 }

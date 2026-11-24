@@ -508,10 +508,13 @@ impl Model {
     /// arrive in.
     pub fn record(&mut self, target: &Target, ms: Option<u32>, error: Option<ErrorCode>) -> bool {
         let entry = &target.entry;
-        let current = self
-            .index
-            .get(&entry.id)
-            .is_some_and(|&i| Arc::ptr_eq(&self.nodes[i], entry));
+        // A rename replaces the immutable name but keeps a static endpoint's probe generation.
+        // Removing it drops its latency entry; a later probe gets a fresh generation on re-add.
+        let current = entry.subscription.is_none()
+            || self
+                .index
+                .get(&entry.id)
+                .is_some_and(|&i| Arc::ptr_eq(&self.nodes[i], entry));
         let Some(latency) = self
             .latency
             .get_mut(&entry.id)

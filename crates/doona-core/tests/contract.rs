@@ -33,11 +33,12 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 28] = [
+const COVERED: [&str; 30] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-diagnostics-args.json",
     "call-error-state-write.json",
+    "call-error-static-row-count.json",
     "call-error.json",
     "call-nodes-args.json",
     "call-ok-diagnostics.json",
@@ -46,6 +47,7 @@ const COVERED: [&str; 28] = [
     "call-ok-nodes.json",
     "call-ok-rules.json",
     "call-ok-score-state.json",
+    "call-ok-static-limits.json",
     "call-ok-subscription.json",
     "call-ok-traffic-series.json",
     "call-ok-usage.json",
@@ -98,6 +100,44 @@ fn static_editor_fixture_is_an_executable_session() {
             step["reply"],
             "{command}"
         );
+    }
+}
+
+#[test]
+fn static_batch_limit_replies() {
+    use serde_json::json;
+    let dir = common::TempDir::new("contract-static-limits");
+    let nodes: Vec<_> = (1..=5000)
+        .map(|port| {
+            json!({
+                "id":format!("n-{port:016x}"), "name":port.to_string(),
+                "link":format!("socks5://192.0.2.1:{port}")
+            })
+        })
+        .collect();
+    let state = json!({"stateVersion":1,"mode":"Global","staticNodes":nodes});
+    std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    let link = "socks5://192.0.2.2:1080#";
+    let long = format!("{link}{}", "x".repeat(8193 - link.len()));
+    let rows =
+        json!({"rows":[{"kind":"link","link":long},{"kind":"link","link":link}]}).to_string();
+    for command in ["previewStaticNodes", "addStaticNodes"] {
+        for count in [0, 201] {
+            let args = json!({"rows":vec![Value::Null; count]}).to_string();
+            let reply: Value = serde_json::from_str(&core.call(command, &args)).unwrap();
+            assert_eq!(reply, read("call-error-static-row-count.json"));
+        }
+        let reply: Value = serde_json::from_str(&core.call(command, &rows)).unwrap();
+        assert_eq!(reply, read("call-ok-static-limits.json"));
+    }
+}
+
+#[test]
+fn unknown_static_reasons_do_not_decode() {
+    for status in ["invalid", "unsupported"] {
+        let reply = serde_json::json!({"status":status,"reason":"unknown"});
+        assert!(serde_json::from_value::<doonacore::dto::StaticResult>(reply).is_err());
     }
 }
 
