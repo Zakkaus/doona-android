@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -47,15 +48,16 @@ import kotlin.math.abs
 /**
  * 已用流量, Revolut's 'Spent' card: today's bytes in both directions, the change against yesterday by the same time, and
  * the day stacked by direction in the right part of the card over its legend, as 活動's 今日用量 draws it (N-11). The
- * app-side daily history backs it in v0.1.
+ * app-side daily history backs it in v0.1. On a day with no usage yet it looks as [empty] says.
  */
 @Composable
-internal fun RvSpentCard(state: RvStatsState) {
+internal fun RvSpentCard(state: RvStatsState, empty: RvSpentEmptyLook = RvSpentEmptyLook.Curve) {
     val format = rememberRvFormat()
     val day = state.today
+    val chart = !(day.quiet && empty == RvSpentEmptyLook.Text)
     RvCard(Modifier.height(RvStatsSize.spent)) {
         Row(Modifier.weight(1f)) {
-            Column(Modifier.weight(1f - RvStatsSize.SPENT_CHART_SHARE)) {
+            Column(Modifier.weight(if (chart) 1f - RvStatsSize.SPENT_CHART_SHARE else 1f)) {
                 RvCardHeader(stringResource(R.string.rv_stats_used))
                 Column(Modifier.padding(horizontal = RvStatsSpace.pad)) {
                     RvStatsFigure(format.bytes(day.total).figure())
@@ -72,12 +74,26 @@ internal fun RvSpentCard(state: RvStatsState) {
                     }
                 }
             }
-            RvUsageChart(day, nowInHours(state), Modifier.weight(RvStatsSize.SPENT_CHART_SHARE).fillMaxHeight().padding(top = RvStatsSpace.pad, end = RvStatsSpace.pad))
+            if (chart) {
+                val share = Modifier.weight(RvStatsSize.SPENT_CHART_SHARE)
+                RvUsageChart(day, nowInHours(state), share.testTag(RV_SPENT_CHART).fillMaxHeight().padding(top = RvStatsSpace.pad, end = RvStatsSpace.pad))
+            }
         }
         Spacer(Modifier.height(RvUsageSize.chartAboveLegend))
         RvUsageLegend(day, cardBody)
     }
 }
+
+/**
+ * How 已用流量 looks on a day with no usage yet, for the owner to compare (owner-fix2 item 13). [Curve] (A) is today's:
+ * the day's chart, its grid and the line along zero up to now. [Text] (B) leaves the chart out and gives its width to
+ * the text, so `今天還沒有流量` shows whole at every font size; the figure and the legend stay where they are, and the card
+ * keeps its height.
+ */
+internal enum class RvSpentEmptyLook { Curve, Text }
+
+/** The test tag of 已用流量's chart. */
+internal const val RV_SPENT_CHART = "rv-spent-chart"
 
 /**
  * The current hour's index plus the share of it gone: where the running total ends. The share comes from the instant
