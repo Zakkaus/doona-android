@@ -10,6 +10,7 @@ import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.SubscriptionFormat
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.serializer
@@ -277,12 +278,14 @@ class CoreDtoTest {
         assertEquals(Unit, CoreJson.result(fixture("call-ok-empty.json"), Unit.serializer()))
         val subscription = CoreJson.result(fixture("call-ok-subscription.json"), SubscriptionDto.serializer())
         assertEquals(2, subscription.nodes)
-        assertEquals("clash-verge/v2.2.3", subscription.toSubscription().userAgent)
+        val mapped = subscription.toSubscription()
+        assertEquals("clash-verge/v2.2.3", mapped.userAgent)
+        assertEquals(SubscriptionFormat.Clash, mapped.format)
         try {
             CoreJson.result(fixture("call-error.json"), Unit.serializer())
             fail("an error reply must throw")
         } catch (e: EngineException) {
-            assertEquals(ErrorCode.FetchFailed, e.code)
+            assertEquals(ErrorCode.TooLarge, e.code)
         }
     }
 

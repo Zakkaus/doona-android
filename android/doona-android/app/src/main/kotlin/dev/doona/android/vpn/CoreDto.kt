@@ -25,6 +25,7 @@ import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
@@ -336,6 +337,7 @@ internal data class SubscriptionDto(
     val totalBytes: Long? = null,
     val expiresAtEpochMs: Long? = null,
     val userAgent: String? = null,
+    val format: String? = null,
 ) {
     /** The error becomes an [ErrorCode] name, the same vocabulary as [EngineException]. */
     fun toSubscription() = Subscription(
@@ -349,8 +351,17 @@ internal data class SubscriptionDto(
         totalBytes = totalBytes,
         expiresAtEpochMs = expiresAtEpochMs,
         userAgent = userAgent,
+        format = SUBSCRIPTION_FORMATS[format],
     )
 }
+
+private val SUBSCRIPTION_FORMATS = mapOf(
+    "share_links" to SubscriptionFormat.ShareLinks,
+    "base64" to SubscriptionFormat.Base64,
+    "sip008" to SubscriptionFormat.Sip008,
+    "clash" to SubscriptionFormat.Clash,
+    "sing_box" to SubscriptionFormat.SingBox,
+)
 
 @Serializable
 internal data class SelectArgs(val group: String, val memberId: String?)
@@ -402,6 +413,7 @@ private val ERROR_CODES = mapOf(
     "invalid_argument" to ErrorCode.InvalidArgument,
     "not_found" to ErrorCode.NotFound,
     "fetch_failed" to ErrorCode.FetchFailed,
+    "too_large" to ErrorCode.TooLarge,
     "parse_failed" to ErrorCode.ParseFailed,
     "no_nodes" to ErrorCode.NoNodes,
     "busy" to ErrorCode.Busy,

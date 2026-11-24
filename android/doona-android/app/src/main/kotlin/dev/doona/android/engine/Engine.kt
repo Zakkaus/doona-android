@@ -128,7 +128,7 @@ interface Engine {
  * [LocalNetwork]: the failed connection or download went to an address on the local network, which Android 17 lets doona
  * reach only with the `ACCESS_LOCAL_NETWORK` permission (ARCH D26).
  */
-enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, ParseFailed, NoNodes, Busy, Internal, LocalNetwork }
+enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, TooLarge, ParseFailed, NoNodes, Busy, Internal, LocalNetwork }
 
 class EngineException(val code: ErrorCode) : Exception(code.name)
 
@@ -226,6 +226,8 @@ data class Catalog(
     val ruleSource: RuleSource,
 )
 
+enum class SubscriptionFormat { ShareLinks, Base64, Sip008, Clash, SingBox }
+
 /**
  * Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. [userAgent] is
  * the User-Agent its fetches send, null for the core's default; keep it out of logs and exports, as the URL.
@@ -241,6 +243,8 @@ data class Subscription(
     val totalBytes: Long? = null,
     val expiresAtEpochMs: Long? = null,
     val userAgent: String? = null,
+    /** Format of the last successful fetch, when known. */
+    val format: SubscriptionFormat? = null,
 )
 
 /** Which apps use the tunnel. doona itself never does: its own sockets go out directly. */

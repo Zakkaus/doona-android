@@ -30,6 +30,8 @@ const MAX_VMESS_PAYLOAD: usize = 16 << 10;
 /// of each node, or for a structured body, the document of the entries they came from.
 #[derive(Debug)]
 pub(crate) struct Parsed {
+    /// Base64-wrapped Clash and SIP008 bodies report their inner format; only wrapped share links
+    /// report [`SubscriptionFormat::Base64`].
     pub format: SubscriptionFormat,
     pub links: Vec<String>,
     pub nodes: Vec<Node>,

@@ -1,3 +1,4 @@
 <resources>
     <string name="policy_kind_score">综合评分</string>
+    <string name="error_too_large">订阅内容太大</string>
 </resources>
