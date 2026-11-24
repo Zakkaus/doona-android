@@ -195,3 +195,4 @@ def test_the_map_in_the_tree_names_each_screen_once_and_every_screen_is_on_the_b
     named = rv_board.baseline_of(baselines)
     # 服務規則 is named as it is after owner-fix3 renames it (rules-service-b at 4dcd0f57).
     assert named.keys() - screens <= {"rules-service"}
+    assert "welcome" in screens

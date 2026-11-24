@@ -1,5 +1,10 @@
 [
  {
+  "page": "歡迎",
+  "state": "首次啟動",
+  "screen": "welcome"
+ },
+ {
   "page": "活動",
   "state": "已連線（規則）",
   "screen": "activity"
