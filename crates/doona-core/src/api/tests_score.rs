@@ -95,9 +95,20 @@ fn global_and_rule_follow_score_pins_then_return_to_automatic() {
     }
 }
 
+fn flow_nodes(core: &Core, group: &str) -> [String; 2] {
+    let view = core.shared.outbounds.view();
+    let dst = ([1, 1, 1, 1], 443).into();
+    [Network::Tcp, Network::Udp].map(|net| {
+        view.for_flow(group, dst, net, || None, None)
+            .unwrap()
+            .node
+            .name
+            .clone()
+    })
+}
+
 #[test]
 fn network_pins_route_nested_groups_independently() {
-    use crate::rules::Network::{Tcp, Udp};
     let dir = TempDir::new("api-network-select");
     let feeds = Feeds::new();
     let first = b"socks5://127.0.0.1:1#a\n";
@@ -120,24 +131,7 @@ fn network_pins_route_nested_groups_independently() {
         }
         call(c, "select", args).unwrap();
     };
-    let routes = |c: &Core| {
-        [Tcp, Udp].map(|net| {
-            c.shared
-                .outbounds
-                .view()
-                .for_flow(
-                    "g-Streaming",
-                    "1.1.1.1:443".parse().unwrap(),
-                    net,
-                    || None,
-                    None,
-                )
-                .unwrap()
-                .node
-                .name
-                .clone()
-        })
-    };
+    let routes = |c: &Core| flow_nodes(c, "g-Streaming");
     select(&core, None, Some(&ids[1]));
     assert_eq!(routes(&core), ["b", "b"]);
     select(&core, Some("tcp"), Some(&ids[0]));
@@ -152,6 +146,8 @@ fn network_pins_route_nested_groups_independently() {
     select(&core, None, Some(&ids[0]));
     select(&core, Some("udp"), Some(&ids[1]));
     assert_eq!(routes(&core), ["a", "b"]);
+    select(&core, Some("tcp"), Some(&ids[1]));
+    assert_eq!(routes(&core), ["b", "b"]);
     feeds.set("/sub", first);
     call(&core, "updateSubscription", json!({"id":"s1"})).unwrap();
     assert_eq!(routes(&core), ["a", "a"]);
@@ -179,6 +175,21 @@ fn score_catalog_reports_each_networks_choice_after_restart() {
         json!({"group":"g-Auto", "memberId":b, "network":"udp"}),
     )
     .unwrap();
+    assert_eq!(flow_nodes(&core, "g-Auto"), ["a", "b"]);
+    let live = &catalog(&core).groups[1];
+    assert!(live.networks_differ);
+    assert!(live.tcp_pinned && live.udp_pinned);
+    assert_eq!(live.tcp_selected_id.as_ref(), Some(a));
+    assert_eq!(live.udp_selected_id.as_ref(), Some(b));
+    call(
+        &core,
+        "select",
+        json!({"group":"g-Auto", "memberId":null, "network":"tcp"}),
+    )
+    .unwrap();
+    let reset = &catalog(&core).groups[1];
+    assert!(!reset.tcp_pinned && reset.udp_pinned);
+    assert!(reset.networks_differ);
     drop(core);
     let core = Core::new(path(&dir)).unwrap();
     let group = &catalog(&core).groups[1];

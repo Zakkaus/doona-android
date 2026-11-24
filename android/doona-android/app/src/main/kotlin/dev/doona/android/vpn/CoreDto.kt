@@ -8,8 +8,6 @@ import dev.doona.android.engine.DayUsage
 import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
@@ -337,22 +335,6 @@ private val RULE_SKIPS = mapOf(
     "geodata_missing" to RuleSkip.GeodataMissing,
     "app_rule" to RuleSkip.AppRule,
 )
-
-@Serializable
-internal data class GroupDto(
-    val id: String,
-    val name: String,
-    val kind: GroupKind,
-    val selectedId: String? = null,
-    val tcpSelectedId: String? = selectedId,
-    val udpSelectedId: String? = selectedId,
-    val networksDiffer: Boolean = false,
-    val pinned: Boolean,
-    val testing: Boolean,
-    val members: List<MemberDto>,
-) {
-    fun toGroup() = Group(id, name, kind, members.map(MemberDto::toMember), selectedId, pinned, testing)
-}
 
 @Serializable
 internal data class MemberDto(

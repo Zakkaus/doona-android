@@ -233,7 +233,8 @@ fn leaves_follow_pins_and_nested_groups() {
     let first = &model.nodes[0];
     let leaves = model.leaves(&s);
     assert_eq!(
-        leaves["g-Proxy"][0]
+        leaves["g-Proxy"]
+            .tcp
             .as_ref()
             .unwrap()
             .peek(&model.score)
@@ -244,7 +245,8 @@ fn leaves_follow_pins_and_nested_groups() {
     let last = &model.nodes[8];
     s.selections.insert("g-Proxy".into(), last.id.clone());
     assert_eq!(
-        model.leaves(&s)["g-Proxy"][0]
+        model.leaves(&s)["g-Proxy"]
+            .tcp
             .as_ref()
             .unwrap()
             .peek(&model.score)

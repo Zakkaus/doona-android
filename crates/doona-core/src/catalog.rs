@@ -421,8 +421,8 @@ impl Model {
     }
 
     fn group_dto(&self, g: &GroupDef, state: &State) -> dto::Group {
-        let (tcp, pinned) = self.choice(g, state, dto::Network::Tcp);
-        let (udp, _) = self.choice(g, state, dto::Network::Udp);
+        let (tcp, tcp_pinned) = self.choice(g, state, dto::Network::Tcp);
+        let (udp, udp_pinned) = self.choice(g, state, dto::Network::Udp);
         dto::Group {
             id: g.id.clone(),
             name: g.name.clone(),
@@ -431,7 +431,9 @@ impl Model {
             tcp_selected_id: tcp.map(str::to_owned),
             udp_selected_id: udp.map(str::to_owned),
             networks_differ: tcp != udp,
-            pinned,
+            pinned: tcp_pinned,
+            tcp_pinned,
+            udp_pinned,
             testing: self.testing.contains_key(&g.id),
             members: g.members.iter().map(|m| self.member(m)).collect(),
         }

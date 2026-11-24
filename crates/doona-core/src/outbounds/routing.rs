@@ -22,6 +22,12 @@ pub(crate) enum Leaf {
     Score(Arc<str>),
 }
 
+#[derive(Clone)]
+pub(crate) struct NetworkLeaves {
+    pub tcp: Option<Leaf>,
+    pub udp: Option<Leaf>,
+}
+
 impl Leaf {
     pub fn peek<'a>(&'a self, score: &'a Score) -> Option<&'a Arc<Node>> {
         match self {
@@ -67,7 +73,7 @@ pub(super) struct Table {
     pub(super) published: Option<Published>,
     pub(super) score: Option<Arc<Score>>,
     /// Group id to the node it sends traffic to, nested groups followed.
-    pub(super) selected: HashMap<Arc<str>, [Option<Leaf>; 2]>,
+    pub(super) selected: HashMap<Arc<str>, NetworkLeaves>,
     /// What chooses a new flow's group.
     pub(super) policy: Arc<Policy>,
     /// The mode it was published with; `None` before the first publication.
@@ -91,7 +97,7 @@ impl Table {
 /// the groups of another node set, nor one commit's mode with another's policy.
 pub(crate) struct Routing {
     pub score: Arc<Score>,
-    pub selected: HashMap<Arc<str>, [Option<Leaf>; 2]>,
+    pub selected: HashMap<Arc<str>, NetworkLeaves>,
     pub policy: Arc<Policy>,
     pub mode: Mode,
 }
@@ -120,7 +126,7 @@ impl View {
         match table
             .selected
             .get(self.policy().main())
-            .and_then(|pair| pair[Network::Tcp as usize].as_ref())
+            .and_then(|pair| pair.tcp.as_ref())
         {
             Some(Leaf::Node(_)) => true,
             Some(Leaf::Score(owner)) => table.score.as_ref().is_some_and(|score| {
@@ -140,7 +146,7 @@ impl View {
     /// while the group does not exist or has no node.
     pub fn dialer(&self, group: &str) -> Option<Dialer> {
         let (group, pair) = self.table.selected.get_key_value(group)?;
-        let leaf = pair[Network::Tcp as usize].as_ref()?;
+        let leaf = pair.tcp.as_ref()?;
         self.table
             .dialer(group, leaf.peek(self.table.score.as_deref()?)?, None)
     }
@@ -154,7 +160,10 @@ impl View {
         original: Option<&ScoreContinuation>,
     ) -> Option<Dialer> {
         let (group, pair) = self.table.selected.get_key_value(group)?;
-        let leaf = pair[network as usize].as_ref()?;
+        let leaf = match network {
+            Network::Tcp => pair.tcp.as_ref(),
+            Network::Udp => pair.udp.as_ref(),
+        }?;
         let score = self.table.score.as_ref()?;
         let owner = match leaf {
             Leaf::Score(owner) => owner,

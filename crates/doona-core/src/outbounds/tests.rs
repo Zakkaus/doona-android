@@ -71,7 +71,10 @@ fn published() -> (Outbounds, Vec<Arc<NodeEntry>>) {
         .map(|n| {
             (
                 Arc::from(n.id.as_str()),
-                std::array::from_fn(|_| Some(super::Leaf::Node(Arc::clone(&n.node)))),
+                super::NetworkLeaves {
+                    tcp: Some(super::Leaf::Node(Arc::clone(&n.node))),
+                    udp: Some(super::Leaf::Node(Arc::clone(&n.node))),
+                },
             )
         })
         .collect();

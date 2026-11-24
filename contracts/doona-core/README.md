@@ -16,7 +16,7 @@ The two `hk-01` nodes are distinct endpoints with the same display name, and the
 
 `select` without `network` sets or clears both pins and removes any separate choices for that group. Pass `"network":"tcp"` or `"network":"udp"` to change only that network. A null `memberId` restores the group's own choice on the affected networks. A node without UDP support does not gain a fallback.
 
-Each catalog group reports `tcpSelectedId` and `udpSelectedId`, its direct member IDs (null when no member is selected). `networksDiffer` compares those IDs, not the leaves of nested groups. The legacy `selectedId` and `pinned` describe TCP.
+Each catalog group reports `tcpSelectedId` and `udpSelectedId`, its effective direct member IDs (null when no member is selected). `networksDiffer` compares those IDs, not the leaves of nested groups. It can be true when Score chooses different members automatically. `tcpPinned` and `udpPinned` tell whether the user pinned each network. The legacy `selectedId` and `pinned` describe TCP.
 
 `catalog/static-member.json` is the complete `g-Proxy` member from `snapshot(-1)` after adding `socks5://192.0.2.1:1080#example` to an empty core. Decode it as one member: `isGroup` is false and `subscriptionId` is explicitly null.
 

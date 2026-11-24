@@ -29,6 +29,8 @@
         "udpSelectedId": "n-0c41be77",
         "networksDiffer": true,
         "pinned": false,
+        "tcpPinned": false,
+        "udpPinned": true,
         "testing": false,
         "members": [
           {
@@ -78,6 +80,8 @@
         "udpSelectedId": "n-7f3a19c2",
         "networksDiffer": false,
         "pinned": false,
+        "tcpPinned": false,
+        "udpPinned": false,
         "testing": true,
         "members": [
           {
@@ -109,6 +113,8 @@
         "udpSelectedId": "g-Proxy",
         "networksDiffer": false,
         "pinned": false,
+        "tcpPinned": false,
+        "udpPinned": false,
         "testing": false,
         "members": [
           {
@@ -167,6 +173,8 @@
         "udpSelectedId": "g-Proxy",
         "networksDiffer": false,
         "pinned": false,
+        "tcpPinned": false,
+        "udpPinned": false,
         "testing": false,
         "members": [
           {
@@ -225,6 +233,8 @@
         "udpSelectedId": "n-7f3a19c2",
         "networksDiffer": false,
         "pinned": false,
+        "tcpPinned": false,
+        "udpPinned": false,
         "testing": false,
         "members": [
           {

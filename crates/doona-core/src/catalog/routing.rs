@@ -1,6 +1,6 @@
 use super::{GroupDef, GroupKind, MAX_DEPTH, Model, groups, is_group};
 use crate::dto::Network;
-use crate::outbounds::{Leaf, Routing};
+use crate::outbounds::{Leaf, NetworkLeaves, Routing};
 use crate::state::State;
 use honk_outbound::group::{SelectionNetwork, SelectorMember, SelectorNetworks};
 use std::collections::HashMap;
@@ -35,18 +35,15 @@ impl Model {
         }
     }
 
-    pub fn leaves(&self, state: &State) -> HashMap<Arc<str>, [Option<Leaf>; 2]> {
-        let split = !state.tcp_selections.is_empty() || !state.udp_selections.is_empty();
+    pub fn leaves(&self, state: &State) -> HashMap<Arc<str>, NetworkLeaves> {
         self.groups
             .iter()
             .map(|g| {
-                let tcp = self.leaf(g, state, Network::Tcp, 0);
-                let udp = if split && g.kind != GroupKind::Score {
-                    self.leaf(g, state, Network::Udp, 0)
-                } else {
-                    tcp.clone()
+                let leaves = NetworkLeaves {
+                    tcp: self.leaf(g, state, Network::Tcp, 0),
+                    udp: self.leaf(g, state, Network::Udp, 0),
                 };
-                (Arc::from(g.id.as_str()), [tcp, udp])
+                (Arc::from(g.id.as_str()), leaves)
             })
             .collect()
     }
@@ -74,23 +71,19 @@ impl Model {
 
     pub fn update_pins(&self, old: Option<&State>, next: &State) {
         for g in self.groups.iter().filter(|g| g.kind == GroupKind::Score) {
-            let changed = |net| {
-                let member = next.pin(&g.id, net);
-                (member != old.and_then(|s| s.pin(&g.id, net))).then_some(member)
-            };
-            let tcp = changed(Network::Tcp);
-            let udp = changed(Network::Udp);
-            if let Some(member) = tcp
-                && tcp == udp
-            {
-                self.set_pin(g, member, SelectorNetworks::Both);
-            } else {
-                if let Some(member) = tcp {
-                    self.set_pin(g, member, SelectorNetworks::Tcp);
-                }
-                if let Some(member) = udp {
-                    self.set_pin(g, member, SelectorNetworks::Udp);
-                }
+            let tcp = next.pin(&g.id, Network::Tcp);
+            let udp = next.pin(&g.id, Network::Udp);
+            let changed_tcp = tcp != old.and_then(|s| s.pin(&g.id, Network::Tcp));
+            let changed_udp = udp != old.and_then(|s| s.pin(&g.id, Network::Udp));
+            if changed_tcp && changed_udp && tcp == udp {
+                self.set_pin(g, tcp, SelectorNetworks::Both);
+                continue;
+            }
+            if changed_tcp {
+                self.set_pin(g, tcp, SelectorNetworks::Tcp);
+            }
+            if changed_udp {
+                self.set_pin(g, udp, SelectorNetworks::Udp);
             }
         }
     }

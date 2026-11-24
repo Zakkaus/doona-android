@@ -326,6 +326,10 @@ pub struct Group {
     #[serde(default)]
     pub networks_differ: bool,
     pub pinned: bool,
+    #[serde(default)]
+    pub tcp_pinned: bool,
+    #[serde(default)]
+    pub udp_pinned: bool,
     pub testing: bool,
     pub members: Vec<Member>,
 }
