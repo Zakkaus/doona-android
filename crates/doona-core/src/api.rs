@@ -343,7 +343,7 @@ impl Core {
             self.options.bootstrap_port,
             &self.options.bootstrap_fallback,
         );
-        let resolvers = bootstrap::servers(&config.bootstrap_dns, port, fallback)
+        let resolvers = bootstrap::servers(&config.bootstrap_dns, port, Some(fallback))
             .ok_or(ErrorCode::InvalidArgument)?;
         let view = self.shared.outbounds.view();
         if self.mode.get() == Mode::Global && view.dialer(view.policy().main()).is_none() {
@@ -407,6 +407,7 @@ impl Core {
     /// `api/diagnostics.rs`).
     pub fn call(&self, command: &str, args: &str) -> String {
         self.traced(command, |event| match command {
+            "setBootstrapDns" => parse(args).and_then(|a| self.set_bootstrap_dns(a).map(empty)),
             "setMode" => parse(args).and_then(|a: ModeArgs| {
                 *event = event.detail(diagnostics::mode_name(a.mode));
                 self.set_mode(a.mode).map(empty)
@@ -432,6 +433,17 @@ impl Core {
             "debugFault" => self.fault().map(empty),
             _ => self.static_or_query(command, args, event),
         })
+    }
+
+    fn set_bootstrap_dns(&self, args: bootstrap::SetArgs) -> Result<(), ErrorCode> {
+        let resolvers = bootstrap::servers(&args.servers, self.options.bootstrap_port, None)
+            .ok_or(ErrorCode::InvalidArgument)?;
+        let life = lock(&self.life);
+        if !matches!(&*life, Life::Running(t) if !t.session().failed()) {
+            return Err(ErrorCode::Busy);
+        }
+        bootstrap::use_servers(resolvers);
+        Ok(())
     }
 
     /// Commits the mode to `state.json` first; new flows read it from then on.

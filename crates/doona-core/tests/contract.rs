@@ -33,7 +33,7 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 30] = [
+const COVERED: [&str; 31] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-diagnostics-args.json",
@@ -59,6 +59,7 @@ const COVERED: [&str; 30] = [
     "call-set-rule-source-args.json",
     "call-set-subscription-user-agent-args.json",
     "init.json",
+    "set-bootstrap-dns.json",
     "snapshot-died.json",
     "snapshot-running.json",
     "snapshot-stopped-catalog.json",
