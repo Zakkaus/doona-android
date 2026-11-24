@@ -3,10 +3,9 @@
 <resources>
     <string name="rv_about_title">About doona</string>
     <string name="rv_about_github">GitHub project</string>
-    <string name="rv_about_github_action" translatable="false">GitHub</string>
-    <string name="rv_about_report_action">Report</string>
     <string name="rv_about_privacy">Privacy</string>
-    <string name="rv_about_versions">Version %1$s · core %2$s · honk %3$s</string>
+    <string name="rv_about_core">Core</string>
+    <string name="rv_about_honk" translatable="false">honk</string>
 
     <string name="rv_update_latest">Up to date</string>
     <string name="rv_update_new">Version %1$s is out</string>

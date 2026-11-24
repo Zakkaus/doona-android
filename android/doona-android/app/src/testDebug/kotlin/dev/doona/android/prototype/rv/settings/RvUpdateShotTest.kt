@@ -1,9 +1,11 @@
 package dev.doona.android.prototype.rv.settings
 
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -11,6 +13,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
@@ -20,6 +23,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvAction
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -41,8 +45,8 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * 檢查更新 on the 關於 page, each light, dark, fs115 and fs200: while it asks GitHub (`proto-rv-settings-update-checking-*`,
  * at animator scale 0, so the busy bar rests half full), with nothing newer (`-update-latest-*`), with a newer release
- * (`-update-new-*`) and with no answer (`-update-failed-*`). Then what the banners' actions do, and that each round
- * action is one named button and 檢查更新 takes no second check while one runs.
+ * (`-update-new-*`) and with no answer (`-update-failed-*`). Then what the banners' actions do, that the row takes no
+ * second check while one runs, and that 設定's hero action, which takes the same label, is one named button.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -105,12 +109,29 @@ class RvUpdateShotTest {
     }
 
     @Test
-    fun eachRoundActionIsOneNamedButton() {
+    fun aCheckUnderWayTakesNoSecondOnThePage() {
         var checks = 0
-        compose.setContent { Themed { Page(RvUpdate.Idle, RvAboutRoutes(checkUpdate = { checks++ })) } }
-        val labels = listOf(R.string.rv_about_github_action, R.string.rv_about_report_action, R.string.rv_settings_check_update)
-        labels.forEach { compose.onNodeWithText(rvText(it)).assertHasClickAction().assert(IS_BUTTON).assertIsEnabled() }
-        // No click node a screen reader finds is left without a name, as each disc alone was.
+        compose.setContent { Themed { Page(RvUpdate.Checking, RvAboutRoutes(checkUpdate = { checks++ })) } }
+        val row = compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertHasNoClickAction()
+        row.performClick()
+        assertEquals(0, checks)
+    }
+
+    @Test
+    fun nothingNewerIsTheRowsSecondLineAndShowsNoBanner() {
+        compose.setContent { Themed { Page(RvUpdate.Latest) } }
+        compose.onNodeWithText(rvText(R.string.rv_update_latest)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
+    }
+
+    /** 設定's hero action, which takes [rvUpdateLabel] when it is wired: one named button, busy and deaf while it checks. */
+    @Test
+    fun theHeroActionIsOneNamedButton() {
+        var checks = 0
+        compose.setContent { Themed { HeroAction(RvUpdate.Idle) { checks++ } } }
+        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertHasClickAction().assert(IS_BUTTON).assertIsEnabled()
+        // No click node a screen reader finds is left without a name, as the disc alone was.
         val nameless = hasClickAction() and SemanticsMatcher.keyNotDefined(SemanticsProperties.Text) and
             SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription) and SemanticsMatcher.keyNotDefined(SemanticsProperties.HideFromAccessibility)
         compose.onAllNodes(nameless).assertCountEquals(0)
@@ -119,21 +140,13 @@ class RvUpdateShotTest {
     }
 
     @Test
-    fun aCheckUnderWayTakesNoSecond() {
+    fun theHeroActionTakesNoSecondCheck() {
         var checks = 0
-        compose.setContent { Themed { Page(RvUpdate.Checking, RvAboutRoutes(checkUpdate = { checks++ })) } }
+        compose.setContent { Themed { HeroAction(RvUpdate.Checking) { checks++ } } }
         val action = compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertIsNotEnabled()
         action.performClick()
         action.performSemanticsAction(SemanticsActions.OnClick)
         assertEquals(0, checks)
-    }
-
-    @Test
-    fun nothingNewerRenamesTheActionAndShowsNoBanner() {
-        compose.setContent { Themed { Page(RvUpdate.Latest) } }
-        compose.onNodeWithText(rvText(R.string.rv_update_latest)).assertExists()
-        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertDoesNotExist()
-        compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
     }
 
     /** When the check ends, the action is named by its new word from the first frame; the old one fades out unread. */
@@ -141,7 +154,7 @@ class RvUpdateShotTest {
     fun theWordFadingOutIsNotRead() {
         var update by mutableStateOf<RvUpdate>(RvUpdate.Idle)
         compose.mainClock.autoAdvance = false
-        compose.setContent { Themed { Page(update) } }
+        compose.setContent { Themed { HeroAction(update) {} } }
         compose.mainClock.advanceTimeByFrame()
         // The write reaches the composition once the main thread is idle.
         compose.runOnIdle { update = RvUpdate.Latest }
@@ -162,6 +175,12 @@ class RvUpdateShotTest {
 
     @Composable
     private fun Page(update: RvUpdate, routes: RvAboutRoutes = RvAboutRoutes()) = RvAboutScreen(rvSampleVersions, onBack = {}, routes = routes, update = update)
+
+    @Composable
+    private fun HeroAction(update: RvUpdate, onCheck: () -> Unit) {
+        val checking = update == RvUpdate.Checking
+        RvAction(R.drawable.rv_settings_ic_update, rvUpdateLabel(update), onCheck, Modifier.width(RvSettingsSpace.actionColumn), busy = checking, enabled = !checking)
+    }
 
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)

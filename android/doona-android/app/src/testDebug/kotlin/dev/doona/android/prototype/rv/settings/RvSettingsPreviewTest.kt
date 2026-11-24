@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -51,11 +52,11 @@ class RvSettingsPreviewTest {
     @Test
     fun aboutOpensItsReportAndBothGoBack() {
         app(RvSettingsPreviewRoutes.ABOUT)
-        heading(R.string.app_name)
-        compose.onNodeWithText(rvText(R.string.rv_about_report_action)).performClick()
+        heading(R.string.rv_about_title)
+        compose.onNodeWithText(rvText(R.string.rv_report_title)).performClick()
         heading(R.string.rv_report_title)
         back()
-        heading(R.string.app_name)
+        heading(R.string.rv_about_title)
         back()
         heading(R.string.hub_settings)
     }
@@ -66,7 +67,7 @@ class RvSettingsPreviewTest {
         compose.mainClock.autoAdvance = false
         compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).performClick()
         compose.mainClock.advanceTimeBy(FRAMES_MS)
-        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertIsNotEnabled()
+        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertHasNoClickAction()
         compose.mainClock.advanceTimeBy(RV_CHECK_MS + FRAMES_MS)
         compose.onNodeWithText(RuntimeEnvironment.getApplication().getString(R.string.rv_update_new, RV_SAMPLE_RELEASE)).assertExists()
     }

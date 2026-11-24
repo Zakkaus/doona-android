@@ -102,18 +102,18 @@ class RvSettingsShotTest {
 
     @Test
     @Config(qualifiers = LONG_PAGE)
-    fun perAppAndLicensesOpenTheirPages() {
+    fun perAppAndAboutOpenTheirPages() {
         var perApp = 0
-        var licenses = 0
+        var about = 0
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(perApp = { perApp++ }, licenses = { licenses++ }))
+                RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(perApp = { perApp++ }, about = { about++ }))
             }
         }
         compose.onNodeWithText(rvText(R.string.rv_settings_per_app)).performClick()
-        compose.onNodeWithText(rvText(R.string.rv_settings_licenses)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_about_title)).performClick()
         assertEquals(1, perApp)
-        assertEquals(1, licenses)
+        assertEquals(1, about)
     }
 
     @Test

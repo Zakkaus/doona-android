@@ -271,7 +271,7 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         dns = { pages.push(DNS) },
         effectiveConfig = { pages.push(RvPolicyPreviewRoutes.EFFECTIVE) },
         report = { pages.push(REPORT) },
-        licenses = { pages.push(LICENSES) },
+        about = { pages.push(RvSettingsPreviewRoutes.ABOUT) },
     )
     RvSettingsScreen(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes)
 }

@@ -1,22 +1,12 @@
 package dev.doona.android.prototype.rv.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.width
 import dev.doona.android.R
-import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -25,19 +15,17 @@ import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 關於, the two layouts for the owner, each light, dark, fs115 and fs200: A, 設定's 關於 group with GitHub 專案 added
- * (`proto-rv-settings-about-a-*`), and B, 設定's one 關於 doona row (`-settings-about-b-*`) and the page it opens
- * (`-settings-about-*`); the groups are drawn as 設定 draws its last group, on the page under the status bar. Then what
- * their rows and actions open, and how the page's round actions share a narrow screen.
+ * 關於 doona, the page 設定's 關於 row opens, light, dark, fs115 and fs200 (`proto-rv-settings-about-*`); 設定's row
+ * itself is in 設定's goldens. Then that the page names its versions and what each row and 設定's row open.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -55,46 +43,22 @@ class RvAboutShotTest {
     @Test fun pageFs200() = compose.rvShot("settings-about", dark = false, fontScale = RV_FS200) { Page() }
 
     @Test
-    @Config(qualifiers = GROUP_A)
-    fun groupALight() = compose.rvShot("settings-about-a", dark = false) { GroupA() }
-
-    @Test
-    @Config(qualifiers = GROUP_A)
-    fun groupADark() = compose.rvShot("settings-about-a", dark = true) { GroupA() }
-
-    @Test
-    @Config(qualifiers = GROUP_A_FS115)
-    fun groupAFs115() = compose.rvShot("settings-about-a", dark = false, fontScale = RV_FS115) { GroupA() }
-
-    @Test
-    @Config(qualifiers = GROUP_A_FS200)
-    fun groupAFs200() = compose.rvShot("settings-about-a", dark = false, fontScale = RV_FS200) { GroupA() }
-
-    @Test
-    @Config(qualifiers = GROUP_B)
-    fun groupBLight() = compose.rvShot("settings-about-b", dark = false) { GroupB() }
-
-    @Test
-    @Config(qualifiers = GROUP_B)
-    fun groupBDark() = compose.rvShot("settings-about-b", dark = true) { GroupB() }
-
-    @Test
-    @Config(qualifiers = GROUP_B_FS115)
-    fun groupBFs115() = compose.rvShot("settings-about-b", dark = false, fontScale = RV_FS115) { GroupB() }
-
-    @Test
-    @Config(qualifiers = GROUP_B_FS200)
-    fun groupBFs200() = compose.rvShot("settings-about-b", dark = false, fontScale = RV_FS200) { GroupB() }
-
-    @Test
-    fun theNameIsThePagesHeadingAndTheVersionsSitUnderIt() {
+    fun theTitleIsThePagesHeadingAndEachVersionIsARow() {
         compose.setContent { Themed { Page() } }
-        compose.onNode(hasText(rvText(R.string.app_name)) and isHeading()).assertExists()
-        compose.onNodeWithText(versionLine()).assertExists()
+        compose.onNode(hasText(rvText(R.string.rv_about_title)) and isHeading()).assertExists()
+        for ((label, value) in listOf(
+            rvText(R.string.rv_settings_version) to rvSampleVersions.app,
+            rvText(R.string.rv_about_core) to rvSampleVersions.core,
+            rvText(R.string.rv_about_honk) to rvSampleVersions.honk,
+        )) {
+            compose.onNodeWithText(label).assertExists()
+            // The app and the core share 0.1.0 in the sample.
+            assertTrue(compose.onAllNodes(hasText(value)).fetchSemanticsNodes().isNotEmpty())
+        }
     }
 
     @Test
-    fun eachActionAndRowOpensItsRoute() {
+    fun eachRowOpensItsRoute() {
         val opened = mutableListOf<String>()
         val routes = RvAboutRoutes(
             github = { opened += "github" },
@@ -104,85 +68,23 @@ class RvAboutShotTest {
             privacy = { opened += "privacy" },
         )
         compose.setContent { Themed { RvAboutScreen(rvSampleVersions, onBack = {}, routes = routes) } }
-        for (id in listOf(R.string.rv_about_github_action, R.string.rv_about_report_action, R.string.rv_settings_check_update, R.string.rv_settings_licenses, R.string.rv_about_privacy)) {
+        for (id in listOf(R.string.rv_about_github, R.string.rv_report_title, R.string.rv_settings_check_update, R.string.rv_settings_licenses, R.string.rv_about_privacy)) {
             compose.onNodeWithText(rvText(id)).performClick()
         }
         assertEquals(listOf("github", "report", "update", "licenses", "privacy"), opened)
     }
 
     @Test
-    fun theActionsKeepSettingsColumnsWhereTheyFit() {
-        compose.setContent { Themed { Page() } }
-        actions().forEach { assertEquals(RvSettingsSpace.actionColumn.value, it.width.value, 0.5f) }
-    }
-
-    /** At 320 dp three 96 dp columns would need 336 with the gutters: they share the 288 between them alike instead. */
-    @Test
-    @Config(qualifiers = "+w320dp")
-    fun onANarrowScreenTheActionsShareTheWidth() {
-        compose.setContent { Themed { Page() } }
-        val bounds = actions()
-        val share = (320f - RvSpace.gutter.value * 2 - RvSettingsSpace.actionGap.value * 2) / 3
-        bounds.forEach { assertEquals(share, it.width.value, 0.5f) }
-        assertEquals(RvSpace.gutter.value, bounds.first().left.value, 0.5f)
-        assertEquals(320f - RvSpace.gutter.value, bounds.last().right.value, 0.5f)
-    }
-
-    private fun actions() = listOf(R.string.rv_about_github_action, R.string.rv_about_report_action, R.string.rv_settings_check_update).map {
-        compose.onNodeWithText(rvText(it)).getUnclippedBoundsInRoot()
-    }
-
-    @Test
-    fun groupAOpensTheLicencesAndTheRepository() {
-        val opened = mutableListOf<String>()
-        compose.setContent { Themed { RvAboutGroup(VERSION, onLicenses = { opened += "licenses" }, onGithub = { opened += "github" }) } }
-        compose.onNodeWithText(rvText(R.string.rv_settings_licenses)).performClick()
-        compose.onNodeWithText(rvText(R.string.rv_about_github)).performClick()
-        assertEquals(listOf("licenses", "github"), opened)
-    }
-
-    @Test
-    fun groupBsRowOpensThePage() {
+    fun settingsRowOpensThePage() {
         var opened = 0
-        compose.setContent { Themed { RvAboutEntry(VERSION, onOpen = { opened++ }) } }
+        compose.setContent { Themed { RvAboutEntry(rvSampleVersions.app, onOpen = { opened++ }) } }
         compose.onNodeWithText(rvText(R.string.rv_about_title)).performClick()
         assertEquals(1, opened)
     }
-
-    private fun versionLine() =
-        RuntimeEnvironment.getApplication().getString(R.string.rv_about_versions, rvSampleVersions.app, rvSampleVersions.core, rvSampleVersions.honk)
 
     @Composable
     private fun Page() = RvAboutScreen(rvSampleVersions, onBack = {})
 
     @Composable
-    private fun GroupA() = Strip { RvAboutGroup(VERSION, onLicenses = {}, onGithub = {}) }
-
-    @Composable
-    private fun GroupB() = Strip { RvAboutEntry(VERSION, onOpen = {}) }
-
-    /** 設定's last group on the page's colour, on its margin, under the frame's status bar. */
-    @Composable
-    private fun Strip(content: @Composable () -> Unit) {
-        Column(Modifier.fillMaxSize().background(Rv.colors.page).padding(top = TOP).padding(horizontal = RvSettingsSpace.margin)) { content() }
-    }
-
-    @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
-
-    private companion object {
-        /** 設定's 版本 row value. */
-        const val VERSION = "0.1.0"
-
-        /** The frame's status bar; the section title keeps its own 24 dp above it. */
-        val TOP = 24.dp
-
-        /** As tall as each strip at each font size, so its group ends a gutter above the frame's foot. */
-        const val GROUP_A = "+h340dp"
-        const val GROUP_A_FS115 = "+h360dp"
-        const val GROUP_A_FS200 = "+h480dp"
-        const val GROUP_B = "+h220dp"
-        const val GROUP_B_FS115 = "+h240dp"
-        const val GROUP_B_FS200 = "+h320dp"
-    }
 }

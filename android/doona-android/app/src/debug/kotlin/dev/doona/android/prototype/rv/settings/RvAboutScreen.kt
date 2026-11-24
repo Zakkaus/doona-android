@@ -1,43 +1,30 @@
 package dev.doona.android.prototype.rv.settings
 
 import android.content.res.Configuration
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
-import dev.doona.android.designsystem.rv.RV_ROW_SUBTITLE_LINES
-import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvAction
 import dev.doona.android.designsystem.rv.RvBannerSlot
-import dev.doona.android.designsystem.rv.RvBarSpacer
+import dev.doona.android.designsystem.rv.RvBusy
+import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
 
@@ -61,21 +48,7 @@ internal class RvAboutRoutes(
     val privacy: () -> Unit = NOT_WIRED,
 )
 
-/**
- * Layout A: 設定's 關於 group as it is, 版本 over its [version] and the licences, with GitHub 專案 after them, a row that
- * opens the repository in the browser ([onGithub]).
- */
-@Composable
-internal fun RvAboutGroup(version: String, onLicenses: () -> Unit, onGithub: () -> Unit) {
-    RvSettingsSection(stringResource(R.string.rv_settings_group_about))
-    RvSettingsCard {
-        RvSettingsValueRow(stringResource(R.string.rv_settings_version), R.drawable.rv_settings_ic_info, version)
-        RvSettingsNavRow(stringResource(R.string.rv_settings_licenses), R.drawable.rv_sym_license, onLicenses)
-        RvSettingsNavRow(stringResource(R.string.rv_about_github), R.drawable.rv_sym_link, onGithub)
-    }
-}
-
-/** Layout B: 設定's 關於 group as one row, 關於 doona over the app's [version], that opens [RvAboutScreen]. */
+/** 設定's 關於 group: one row, 關於 doona over the app's [version], that opens [RvAboutScreen]. */
 @Composable
 internal fun RvAboutEntry(version: String, onOpen: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_about))
@@ -83,21 +56,30 @@ internal fun RvAboutEntry(version: String, onOpen: () -> Unit) {
 }
 
 /**
- * 關於 doona, the page layout B's row opens: 設定's hero form on a pushed page (the mark beside the centred name, its
- * title collapsing into the bar beside the back disc), with the [versions] under the name, then three round actions,
- * GitHub, 回報問題 and 檢查更新, and one card of the licences and the privacy page, as Revolut's Security page sets its
- * mark, title, round actions and cards (§13.3). Where the [update] check stands shows on its action and, when it needs
- * the user, in the page's banner over the card ([rvUpdateNotice]).
+ * 關於 doona, a page of 設定 in the other pages' form: the large title, then three cards [RvSettingsSpace.cardGap] apart
+ * with no section title, as Revolut's About us (§13.3): the [versions] as a list of values; GitHub 專案, 回報問題 and
+ * 檢查更新; the licences and the privacy page. Where the [update] check stands shows on its row and, when it needs the
+ * user, in the page's banner under the title ([rvUpdateNotice]).
  */
 @Composable
 internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes: RvAboutRoutes = RvAboutRoutes(), update: RvUpdate = RvUpdate.Idle) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    RvScrollPage(stringResource(R.string.rv_about_title), insets, onBack = onBack) { titleBlock ->
-        Hero(titleBlock, insets, versions, routes, update)
-        // No title over the card: it follows the round actions as Revolut's first card follows its hero's (§5).
-        Spacer(Modifier.height(RvSpace.actionsToCard))
+    val title = stringResource(R.string.rv_about_title)
+    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
         RvBannerSlot(rvUpdateNotice(update, versions.app, routes.release, routes.checkUpdate))
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin), verticalArrangement = Arrangement.spacedBy(RvSettingsSpace.cardGap)) {
+            // No glyph: a list of values, as the licences and 回報問題's 分享的內容.
+            RvSettingsCard {
+                RvSettingsRow(stringResource(R.string.rv_settings_version), subtitle = versions.app)
+                RvSettingsRow(stringResource(R.string.rv_about_core), subtitle = versions.core)
+                RvSettingsRow(stringResource(R.string.rv_about_honk), subtitle = versions.honk)
+            }
+            RvSettingsCard {
+                RvSettingsNavRow(stringResource(R.string.rv_about_github), R.drawable.rv_sym_github, routes.github)
+                RvSettingsNavRow(stringResource(R.string.rv_report_title), R.drawable.rv_sym_ios_share, routes.report)
+                UpdateRow(update, routes.checkUpdate)
+            }
             RvSettingsCard {
                 RvSettingsNavRow(stringResource(R.string.rv_settings_licenses), R.drawable.rv_sym_license, routes.licenses)
                 RvSettingsNavRow(stringResource(R.string.rv_about_privacy), R.drawable.rv_sym_vpn_lock, routes.privacy)
@@ -109,48 +91,16 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
 }
 
 /**
- * 設定's hero without its dot map: the mark beside the centred name ([titleBlock]), the version line under it as a
- * page header's caption, and the round actions as far under that block as 設定's are under its title, in 設定's columns
- * or, where three of those do not fit, in equal shares of the width, their labels one size ([rvActionRowFit]). While the
- * [update] check runs, its disc holds the busy bar and takes no tap.
+ * 檢查更新 as a row: while it asks, the busy bar at its end and no tap, as 回報問題's 匯出診斷報告 while it exports; once
+ * nothing is newer, 已是最新 as its second line; otherwise a row that starts the check ([onCheck]).
  */
 @Composable
-private fun Hero(titleBlock: Modifier, insets: WindowInsets, versions: RvAboutVersions, routes: RvAboutRoutes, update: RvUpdate) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), horizontalAlignment = Alignment.CenterHorizontally) {
-        RvBarSpacer(insets)
-        Spacer(Modifier.height(RvSettingsSpace.heroTop))
-        Row(titleBlock, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.markGap)) {
-            Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvSettingsSize.mark))
-            RvSettingsText(stringResource(R.string.app_name), Rv.type.largeTitle, Modifier.semantics { heading() })
-        }
-        Spacer(Modifier.height(RvSpace.captionGap))
-        RvText(
-            stringResource(R.string.rv_about_versions, versions.app, versions.core, versions.honk),
-            Rv.type.rowSub,
-            color = Rv.colors.textSecondary,
-            align = TextAlign.Center,
-            maxLines = RV_ROW_SUBTITLE_LINES,
-        )
-        Spacer(Modifier.height(RvSettingsSpace.titleToActions))
-        val labels = listOf(
-            stringResource(R.string.rv_about_github_action),
-            stringResource(R.string.rv_about_report_action),
-            rvUpdateLabel(update),
-        )
-        BoxWithConstraints(contentAlignment = Alignment.Center) {
-            // 設定's columns where they fit; on a narrower screen (320 dp leaves 288 between the gutters) the three share
-            // the width alike, and their labels take the size of the column they really get.
-            val width = minOf(RvSettingsSpace.actionColumn, (maxWidth - RvSettingsSpace.actionGap * (labels.size - 1)) / labels.size)
-            val style = rvActionRowFit(labels, width)
-            val column = Modifier.width(width)
-            Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
-                RvAction(R.drawable.rv_sym_link, labels[0], routes.github, column, labelStyle = style)
-                RvAction(R.drawable.rv_sym_ios_share, labels[1], routes.report, column, labelStyle = style)
-                // A check under way takes no second one.
-                val checking = update == RvUpdate.Checking
-                RvAction(R.drawable.rv_settings_ic_update, labels[2], routes.checkUpdate, column, busy = checking, labelStyle = style, enabled = !checking)
-            }
-        }
+private fun UpdateRow(update: RvUpdate, onCheck: () -> Unit) {
+    val label = stringResource(R.string.rv_settings_check_update)
+    when (update) {
+        RvUpdate.Checking -> RvSettingsRow(label, icon = R.drawable.rv_settings_ic_update) { RvBusy(Modifier.width(RvSize.busy)) }
+        RvUpdate.Latest -> RvSettingsNavRow(label, R.drawable.rv_settings_ic_update, onCheck, stringResource(R.string.rv_update_latest))
+        else -> RvSettingsNavRow(label, R.drawable.rv_settings_ic_update, onCheck)
     }
 }
 

@@ -161,12 +161,6 @@ internal fun RvNavEnd(mark: (@Composable () -> Unit)?) {
     }
 }
 
-/** A row that only shows a [value], as its second line. */
-@Composable
-internal fun RvSettingsValueRow(title: String, @DrawableRes icon: Int, value: String) {
-    RvSettingsRow(title, icon = icon, subtitle = value)
-}
-
 /** A row whose whole width toggles its switch. */
 @Composable
 internal fun RvSettingsSwitchRow(title: String, @DrawableRes icon: Int, checked: Boolean, onChange: (Boolean) -> Unit, subtitle: String? = null) {

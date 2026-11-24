@@ -2,9 +2,8 @@
 <resources>
     <string name="rv_about_title">關於 doona</string>
     <string name="rv_about_github">GitHub 專案</string>
-    <string name="rv_about_report_action">回報問題</string>
     <string name="rv_about_privacy">隱私</string>
-    <string name="rv_about_versions">版本 %1$s · 核心 %2$s · honk %3$s</string>
+    <string name="rv_about_core">核心</string>
 
     <string name="rv_update_latest">已是最新</string>
     <string name="rv_update_new">有新版本 %1$s</string>
