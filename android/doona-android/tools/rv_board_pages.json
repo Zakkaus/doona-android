@@ -1,0 +1,752 @@
+[
+ {
+  "page": "活動",
+  "state": "已連線（規則）",
+  "screen": "activity"
+ },
+ {
+  "page": "活動",
+  "state": "已連線（全域）",
+  "screen": "activity-global"
+ },
+ {
+  "page": "活動",
+  "state": "已連線（直連）",
+  "screen": "activity-direct"
+ },
+ {
+  "page": "活動",
+  "state": "未連線",
+  "screen": "activity-idle"
+ },
+ {
+  "page": "活動",
+  "state": "連線中",
+  "screen": "activity-starting"
+ },
+ {
+  "page": "活動",
+  "state": "中斷中",
+  "screen": "activity-stopping"
+ },
+ {
+  "page": "活動",
+  "state": "載入中",
+  "screen": "activity-loading"
+ },
+ {
+  "page": "活動",
+  "state": "空",
+  "screen": "activity-empty"
+ },
+ {
+  "page": "活動",
+  "state": "無節點",
+  "screen": "activity-no-node"
+ },
+ {
+  "page": "活動",
+  "state": "無網路",
+  "screen": "activity-offline"
+ },
+ {
+  "page": "活動",
+  "state": "錯誤：無法啟動",
+  "screen": "activity-failed-start"
+ },
+ {
+  "page": "活動",
+  "state": "錯誤：沒有可用節點",
+  "screen": "activity-failed-no-nodes"
+ },
+ {
+  "page": "活動",
+  "state": "錯誤：沒有 App",
+  "screen": "activity-failed-no-apps"
+ },
+ {
+  "page": "活動",
+  "state": "錯誤：不相容",
+  "screen": "activity-failed-incompatible"
+ },
+ {
+  "page": "活動",
+  "state": "錯誤：核心當機",
+  "screen": "activity-crash"
+ },
+ {
+  "page": "活動",
+  "state": "錯誤：核心已停止",
+  "screen": "activity-core-stopped"
+ },
+ {
+  "page": "活動",
+  "state": "錯誤：VPN 被占用",
+  "screen": "activity-vpn-taken"
+ },
+ {
+  "page": "活動",
+  "state": "錯誤：未允許 VPN（v1）",
+  "screen": "activity-consent-denied-v1"
+ },
+ {
+  "page": "活動",
+  "state": "錯誤：未允許 VPN（v2）",
+  "screen": "activity-consent-denied-v2"
+ },
+ {
+  "page": "活動",
+  "state": "未允許通知（v1）",
+  "screen": "activity-notify-denied-v1"
+ },
+ {
+  "page": "活動",
+  "state": "未允許通知（v2）",
+  "screen": "activity-notify-denied-v2"
+ },
+ {
+  "page": "活動",
+  "state": "詢問區網權限",
+  "screen": "activity-lan-ask"
+ },
+ {
+  "page": "活動",
+  "state": "未允許區網",
+  "screen": "activity-lan-denied"
+ },
+ {
+  "page": "VPN 權限",
+  "state": "正常",
+  "screen": "perm-vpn"
+ },
+ {
+  "page": "通知權限",
+  "state": "正常",
+  "screen": "perm-notify"
+ },
+ {
+  "page": "流量",
+  "state": "正常",
+  "screen": "traffic"
+ },
+ {
+  "page": "統計",
+  "state": "正常",
+  "screen": "stats"
+ },
+ {
+  "page": "統計",
+  "state": "空（a）",
+  "screen": "stats-empty-a"
+ },
+ {
+  "page": "統計",
+  "state": "空（b）",
+  "screen": "stats-empty-b"
+ },
+ {
+  "page": "統計",
+  "state": "空（v1）",
+  "screen": "stats-empty-v1"
+ },
+ {
+  "page": "統計",
+  "state": "空（v2）",
+  "screen": "stats-empty-v2"
+ },
+ {
+  "page": "節點選擇（下拉）",
+  "state": "正常",
+  "screen": "node-picker"
+ },
+ {
+  "page": "節點選擇（下拉）",
+  "state": "錯誤",
+  "screen": "node-picker-action-failed"
+ },
+ {
+  "page": "節點",
+  "state": "正常",
+  "screen": "nodes-page"
+ },
+ {
+  "page": "節點",
+  "state": "空",
+  "screen": "nodes-page-empty"
+ },
+ {
+  "page": "節點詳情",
+  "state": "正常",
+  "screen": "node-detail"
+ },
+ {
+  "page": "節點詳情",
+  "state": "無延遲紀錄",
+  "screen": "node-detail-probes0"
+ },
+ {
+  "page": "節點詳情",
+  "state": "區網提示",
+  "screen": "node-detail-local-network"
+ },
+ {
+  "page": "訂閱",
+  "state": "正常",
+  "screen": "subs"
+ },
+ {
+  "page": "訂閱",
+  "state": "載入中",
+  "screen": "subs-loading"
+ },
+ {
+  "page": "訂閱",
+  "state": "空",
+  "screen": "subs-empty"
+ },
+ {
+  "page": "訂閱",
+  "state": "錯誤",
+  "screen": "subs-failed"
+ },
+ {
+  "page": "訂閱",
+  "state": "更新中",
+  "screen": "subs-updating"
+ },
+ {
+  "page": "訂閱",
+  "state": "選單",
+  "screen": "subs-menu"
+ },
+ {
+  "page": "訂閱",
+  "state": "刪除確認",
+  "screen": "subs-delete"
+ },
+ {
+  "page": "訂閱詳情",
+  "state": "正常",
+  "screen": "sub-detail"
+ },
+ {
+  "page": "訂閱詳情",
+  "state": "無流量資訊",
+  "screen": "sub-detail-noquota"
+ },
+ {
+  "page": "訂閱詳情",
+  "state": "重新命名",
+  "screen": "sub-detail-rename"
+ },
+ {
+  "page": "訂閱詳情",
+  "state": "User-Agent",
+  "screen": "sub-detail-user-agent"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "正常",
+  "screen": "sub-add"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "匯入中",
+  "screen": "sub-add-importing"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "完成",
+  "screen": "sub-add-done"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "錯誤：無法連線",
+  "screen": "sub-add-unreachable"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "錯誤：不是訂閱",
+  "screen": "sub-add-not-subscription"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "錯誤：太大",
+  "screen": "sub-add-too-large"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "User-Agent",
+  "screen": "sub-add-user-agent"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "錯誤：User-Agent",
+  "screen": "sub-add-user-agent-invalid"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "詢問區網權限",
+  "screen": "sub-add-lan-ask"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "未允許區網",
+  "screen": "sub-add-lan-denied"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "新增中",
+  "screen": "sub-adding-unknown"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "匯入",
+  "screen": "sub-import"
+ },
+ {
+  "page": "新增訂閱",
+  "state": "SIP008",
+  "screen": "sub-sip008"
+ },
+ {
+  "page": "策略",
+  "state": "規則",
+  "screen": "policy"
+ },
+ {
+  "page": "策略",
+  "state": "全域",
+  "screen": "policy-global"
+ },
+ {
+  "page": "策略",
+  "state": "直連",
+  "screen": "policy-direct"
+ },
+ {
+  "page": "策略",
+  "state": "載入中（規則）",
+  "screen": "policy-loading"
+ },
+ {
+  "page": "策略",
+  "state": "載入中（全域）",
+  "screen": "policy-global-loading"
+ },
+ {
+  "page": "策略",
+  "state": "載入中（直連）",
+  "screen": "policy-direct-loading"
+ },
+ {
+  "page": "策略",
+  "state": "空",
+  "screen": "policy-empty"
+ },
+ {
+  "page": "策略",
+  "state": "錯誤",
+  "screen": "policy-action-failed"
+ },
+ {
+  "page": "策略",
+  "state": "設定檔入口",
+  "screen": "policy-config-entry"
+ },
+ {
+  "page": "策略組",
+  "state": "手動選擇",
+  "screen": "policy-group-select"
+ },
+ {
+  "page": "策略組",
+  "state": "自動測速",
+  "screen": "policy-group-auto"
+ },
+ {
+  "page": "策略組",
+  "state": "測速中",
+  "screen": "policy-group-testing"
+ },
+ {
+  "page": "選擇節點",
+  "state": "正常",
+  "screen": "policy-picker"
+ },
+ {
+  "page": "選擇節點",
+  "state": "空",
+  "screen": "policy-picker-empty"
+ },
+ {
+  "page": "選擇節點",
+  "state": "測速中",
+  "screen": "policy-picker-testing"
+ },
+ {
+  "page": "連線的規則",
+  "state": "正常",
+  "screen": "policy-flow"
+ },
+ {
+  "page": "規則",
+  "state": "正常",
+  "screen": "rules"
+ },
+ {
+  "page": "規則",
+  "state": "待套用",
+  "screen": "rules-pending"
+ },
+ {
+  "page": "規則",
+  "state": "編輯",
+  "screen": "rules-edit"
+ },
+ {
+  "page": "規則",
+  "state": "錯誤：無法解析",
+  "screen": "rules-error-parse"
+ },
+ {
+  "page": "規則",
+  "state": "錯誤：無法讀取",
+  "screen": "rules-error-read"
+ },
+ {
+  "page": "編輯規則",
+  "state": "正常",
+  "screen": "rule-edit"
+ },
+ {
+  "page": "編輯規則",
+  "state": "錯誤",
+  "screen": "rule-edit-error"
+ },
+ {
+  "page": "服務規則",
+  "state": "a",
+  "screen": "rules-service-a"
+ },
+ {
+  "page": "服務規則",
+  "state": "b",
+  "screen": "rules-service-b"
+ },
+ {
+  "page": "範本",
+  "state": "正常",
+  "screen": "template"
+ },
+ {
+  "page": "範本影響",
+  "state": "正常",
+  "screen": "template-impact"
+ },
+ {
+  "page": "生效設定",
+  "state": "正常",
+  "screen": "effective-config"
+ },
+ {
+  "page": "生效設定",
+  "state": "錯誤",
+  "screen": "effective-config-failed"
+ },
+ {
+  "page": "生效設定",
+  "state": "截斷",
+  "screen": "effective-config-truncated"
+ },
+ {
+  "page": "設定檔",
+  "state": "正常",
+  "screen": "config-overview"
+ },
+ {
+  "page": "設定檔",
+  "state": "略過引入",
+  "screen": "config-overview-skipped-include"
+ },
+ {
+  "page": "設定檔",
+  "state": "錯誤：不支援",
+  "screen": "config-unsupported"
+ },
+ {
+  "page": "設定檔",
+  "state": "錯誤：超過上限",
+  "screen": "config-import-limit"
+ },
+ {
+  "page": "設定檔",
+  "state": "錯誤：路徑越界",
+  "screen": "config-import-escape"
+ },
+ {
+  "page": "設定檔原始碼",
+  "state": "正常",
+  "screen": "config-source"
+ },
+ {
+  "page": "設定檔原始碼",
+  "state": "錯誤",
+  "screen": "config-source-error"
+ },
+ {
+  "page": "設定檔歷史",
+  "state": "正常",
+  "screen": "config-history"
+ },
+ {
+  "page": "設定檔歷史",
+  "state": "已命名",
+  "screen": "config-history-named"
+ },
+ {
+  "page": "設定檔歷史",
+  "state": "選單",
+  "screen": "config-history-menu"
+ },
+ {
+  "page": "設定檔歷史",
+  "state": "重新命名",
+  "screen": "config-history-rename"
+ },
+ {
+  "page": "設定檔版本",
+  "state": "正常",
+  "screen": "config-revision"
+ },
+ {
+  "page": "設定檔版本",
+  "state": "已命名",
+  "screen": "config-revision-named"
+ },
+ {
+  "page": "設定檔差異",
+  "state": "正常",
+  "screen": "config-diff"
+ },
+ {
+  "page": "設定檔差異",
+  "state": "過期",
+  "screen": "config-diff-stale"
+ },
+ {
+  "page": "新範本",
+  "state": "正常",
+  "screen": "config-template-new"
+ },
+ {
+  "page": "新範本",
+  "state": "差異",
+  "screen": "config-template-diff"
+ },
+ {
+  "page": "連線",
+  "state": "已連線",
+  "screen": "connections"
+ },
+ {
+  "page": "連線",
+  "state": "未連線",
+  "screen": "connections-off"
+ },
+ {
+  "page": "連線",
+  "state": "搜尋",
+  "screen": "connections-search"
+ },
+ {
+  "page": "連線詳情",
+  "state": "正常",
+  "screen": "connection"
+ },
+ {
+  "page": "連線詳情",
+  "state": "IP",
+  "screen": "connection-ip"
+ },
+ {
+  "page": "設定",
+  "state": "正常",
+  "screen": "settings"
+ },
+ {
+  "page": "設定",
+  "state": "檢查更新中",
+  "screen": "settings-update-checking"
+ },
+ {
+  "page": "設定",
+  "state": "已是最新",
+  "screen": "settings-update-latest"
+ },
+ {
+  "page": "設定",
+  "state": "有新版本",
+  "screen": "settings-update-new"
+ },
+ {
+  "page": "設定",
+  "state": "錯誤：無法檢查更新",
+  "screen": "settings-update-failed"
+ },
+ {
+  "page": "設定",
+  "state": "GeoIP 與 GeoSite",
+  "screen": "settings-geodata-idle"
+ },
+ {
+  "page": "設定",
+  "state": "GeoIP 與 GeoSite 更新中",
+  "screen": "settings-geodata-updating"
+ },
+ {
+  "page": "設定",
+  "state": "GeoIP 與 GeoSite 已更新",
+  "screen": "settings-geodata-updated"
+ },
+ {
+  "page": "設定",
+  "state": "GeoIP 與 GeoSite 已是最新",
+  "screen": "settings-geodata-latest"
+ },
+ {
+  "page": "設定",
+  "state": "GeoIP 與 GeoSite 等待中",
+  "screen": "settings-geodata-waiting"
+ },
+ {
+  "page": "設定",
+  "state": "錯誤：GeoIP 與 GeoSite",
+  "screen": "settings-geodata-failed"
+ },
+ {
+  "page": "設定",
+  "state": "快速設定",
+  "screen": "settings-tile"
+ },
+ {
+  "page": "設定",
+  "state": "快速設定（手動）",
+  "screen": "settings-tile-manual"
+ },
+ {
+  "page": "設定",
+  "state": "設定檔入口",
+  "screen": "settings-config-entry"
+ },
+ {
+  "page": "關於",
+  "state": "正常",
+  "screen": "settings-about"
+ },
+ {
+  "page": "主題",
+  "state": "正常",
+  "screen": "settings-theme"
+ },
+ {
+  "page": "語言",
+  "state": "正常",
+  "screen": "settings-language"
+ },
+ {
+  "page": "DNS",
+  "state": "正常",
+  "screen": "settings-dns"
+ },
+ {
+  "page": "更新間隔",
+  "state": "正常",
+  "screen": "settings-interval"
+ },
+ {
+  "page": "日誌等級",
+  "state": "資訊",
+  "screen": "settings-log-level"
+ },
+ {
+  "page": "日誌等級",
+  "state": "除錯",
+  "screen": "settings-log-level-debug"
+ },
+ {
+  "page": "依 App",
+  "state": "正常",
+  "screen": "perapp"
+ },
+ {
+  "page": "依 App",
+  "state": "僅選取的 App",
+  "screen": "perapp-only"
+ },
+ {
+  "page": "依 App",
+  "state": "選取的 App 以外",
+  "screen": "perapp-except"
+ },
+ {
+  "page": "依 App",
+  "state": "載入中",
+  "screen": "perapp-loading"
+ },
+ {
+  "page": "依 App",
+  "state": "搜尋",
+  "screen": "perapp-search"
+ },
+ {
+  "page": "依 App",
+  "state": "無結果",
+  "screen": "perapp-no-result"
+ },
+ {
+  "page": "依 App",
+  "state": "未選取",
+  "screen": "perapp-none-selected"
+ },
+ {
+  "page": "依 App",
+  "state": "儲存中",
+  "screen": "perapp-saving"
+ },
+ {
+  "page": "依 App",
+  "state": "錯誤：無法儲存",
+  "screen": "perapp-save-failed"
+ },
+ {
+  "page": "依 App",
+  "state": "錯誤：無法重建",
+  "screen": "perapp-rebuild-failed"
+ },
+ {
+  "page": "回報問題",
+  "state": "正常",
+  "screen": "report"
+ },
+ {
+  "page": "回報問題",
+  "state": "產生中",
+  "screen": "report-building"
+ },
+ {
+  "page": "回報問題",
+  "state": "錯誤",
+  "screen": "report-failed"
+ },
+ {
+  "page": "開放原始碼授權",
+  "state": "正常",
+  "screen": "licenses"
+ },
+ {
+  "page": "授權全文",
+  "state": "正常",
+  "screen": "license-text"
+ }
+]

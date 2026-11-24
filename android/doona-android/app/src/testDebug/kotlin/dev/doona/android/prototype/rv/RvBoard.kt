@@ -109,6 +109,7 @@ private fun ComposeContentTestRule.write(dir: File, name: String, top: Top, star
     val json = JSONObject()
         .put("name", name)
         .put("top", top.name)
+        .put("bar", rvBarBottom(top).toDouble())
         .put("scrolled", scrolled.toDouble())
         .put("width", (bitmap.width / density.density).toDouble())
         .put("height", (bitmap.height / density.density).toDouble())
