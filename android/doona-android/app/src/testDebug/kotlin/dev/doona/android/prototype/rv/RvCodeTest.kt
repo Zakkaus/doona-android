@@ -3,6 +3,9 @@ package dev.doona.android.prototype.rv
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import dev.doona.android.designsystem.rv.RvAlpha
 import dev.doona.android.designsystem.rv.RvCodeKind
 import dev.doona.android.designsystem.rv.RvCodeShown
@@ -12,6 +15,7 @@ import dev.doona.android.designsystem.rv.RvContrast
 import dev.doona.android.designsystem.rv.rvCodeBreaks
 import dev.doona.android.designsystem.rv.rvCodeColors
 import dev.doona.android.designsystem.rv.rvCodeSpans
+import dev.doona.android.designsystem.rv.rvCodeStyle
 import dev.doona.android.designsystem.rv.rvCodeText
 import dev.doona.android.designsystem.rv.rvContrast
 import org.junit.Assert.assertArrayEquals
@@ -83,6 +87,14 @@ class RvCodeTest {
         val code = rvCodeColors(RvColors(seedColorScheme(Seed.Cyan.argb, false), false))
         RvCodeKind.entries.forEach { kind -> assertEquals("$kind", null, code.style(kind).fontWeight) }
         assertEquals("a keyword keeps the accent", code.keyword, code.style(RvCodeKind.Block).color)
+    }
+
+    @Test
+    fun codeInABoldStyleIsDrawnRegular() {
+        // A skipped declaration is a row title (semibold); code is never bolder than in the source field (owner, 2026-11-25).
+        val title = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 19.sp)
+        assertEquals(FontWeight.Normal, title.rvCodeStyle().fontWeight)
+        assertEquals(19.sp, title.rvCodeStyle().fontSize)
     }
 
     /** Every role reads at 4.5:1 on the page, the card and a diff's added and removed lines, in both themes. */

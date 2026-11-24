@@ -17,6 +17,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
@@ -126,14 +127,14 @@ internal fun rvCodeText(source: String, colors: RvCodeColors, spans: List<RvCode
 }
 
 /**
- * honk text in [style], highlighted as honk-config reads it ([rvCodeTokens], [rvCodeColors]) with Inter's ligatures
- * off ([rvVerbatim]), plain text in ink: every place that shows honk's configuration text uses it, or [RvSourceField].
+ * honk text in [style]'s size, highlighted as honk-config reads it ([rvCodeTokens], [rvCodeColors]) in code's own look
+ * ([rvCodeStyle]), plain text in ink: every place that shows honk's configuration text uses it, or [RvSourceField].
  * Each line wraps, inside a long token too, and hangs under its own indent ([rvHang]); [maxLines] is per line.
  */
 @Composable
 internal fun RvCodeText(code: String, style: TextStyle, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE) {
     val colors = rememberRvCodeColors()
-    val shown = style.rvVerbatim().copy(color = Rv.colors.text)
+    val shown = style.rvCodeStyle().copy(color = Rv.colors.text)
     val space = rvSpaceWidth(shown, rememberTextMeasurer())
     val lines = remember(code) { rvCodeLines(code) }
     if (lines.size == 1) {
@@ -142,6 +143,12 @@ internal fun RvCodeText(code: String, style: TextStyle, modifier: Modifier = Mod
         Column(modifier) { lines.forEach { CodeLine(it, shown, space, colors, Modifier, maxLines) } }
     }
 }
+
+/**
+ * [this] as code is drawn: Inter's ligatures off ([rvVerbatim]) and the regular weight, so code in a row title (a skipped
+ * declaration) is no bolder than in the source field (owner 2026-11-25: no bold anywhere code is drawn).
+ */
+internal fun TextStyle.rvCodeStyle(): TextStyle = rvVerbatim().copy(fontWeight = FontWeight.Normal)
 
 /** One line of a code text and its coloured tokens, at offsets within the line. */
 @Immutable
