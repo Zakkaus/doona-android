@@ -518,7 +518,10 @@ impl Tunnel {
         &self.gen_.session
     }
 
-    /// Panics in a task of the generation, which ends its data path as a crash would.
+    pub(crate) fn cancellation(&self) -> CancellationToken {
+        self.gen_.cancel.clone()
+    }
+
     #[cfg(feature = "fault-hook")]
     pub fn fault(&self) {
         self.gen_.spawn(async { panic!("debugFault") });

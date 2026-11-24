@@ -28,6 +28,7 @@ pub(crate) struct Listed {
     /// Why lines of the row were not compiled, and how many were not.
     pub skip: Option<Skip>,
     pub skipped: u32,
+    pub missing: Vec<u32>,
 }
 
 impl Listing {
@@ -51,6 +52,11 @@ impl Listing {
                     target: spec.target.clone(),
                     skip: skip(&spec.kind, skipped),
                     skipped,
+                    missing: (0..spec.values.len() as u32)
+                        .filter(|col| {
+                            compiled.is_some_and(|set| set.missing.contains(&(i as u32, *col)))
+                        })
+                        .collect(),
                 }
             })
             .collect();
@@ -101,7 +107,7 @@ impl Listed {
 fn skip(kind: &Kind, skipped: u32) -> Option<Skip> {
     match kind {
         Kind::Skipped { reason, .. } => Some(*reason),
-        Kind::GeoIp if skipped > 0 => Some(Skip::GeodataMissing),
+        Kind::GeoIp | Kind::GeoSite if skipped > 0 => Some(Skip::GeodataMissing),
         _ => None,
     }
 }
@@ -114,6 +120,7 @@ fn kind_name(kind: &Kind) -> &str {
         Kind::DomainKeyword => "DomainKeyword",
         Kind::IpCidr => "IpCidr",
         Kind::GeoIp => "GeoIp",
+        Kind::GeoSite => "GeoSite",
         Kind::DstPort => "DstPort",
         Kind::Network => "Network",
         Kind::Match => "Match",

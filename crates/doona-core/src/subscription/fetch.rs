@@ -292,7 +292,7 @@ async fn connect(url: &Url, port: u16, dials: &Dials) -> Result<TcpStream, Error
 }
 
 /// BoringSSL with the webpki roots, as honk-outbound's TLS; built once.
-static CONNECTOR: LazyLock<Option<SslConnector>> = LazyLock::new(|| {
+pub(crate) static CONNECTOR: LazyLock<Option<SslConnector>> = LazyLock::new(|| {
     let mut builder = SslConnector::builder(SslMethod::tls()).ok()?;
     builder
         .set_min_proto_version(Some(SslVersion::TLS1_2))

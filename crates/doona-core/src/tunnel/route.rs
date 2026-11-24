@@ -222,7 +222,6 @@ impl Route {
         }
     }
 
-    #[cfg(test)]
     pub async fn connect(&self, dst: SocketAddr) -> io::Result<Upstream> {
         self.connect_tcp(dst).await.map(|(stream, _)| stream)
     }

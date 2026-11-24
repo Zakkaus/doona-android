@@ -22,6 +22,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
+mod assets;
 mod diagnostics;
 #[cfg(feature = "fault-hook")]
 mod fault;
@@ -78,6 +79,7 @@ pub struct Core {
     runtime: Runtime,
     options: Options,
     store: Store,
+    assets: Arc<assets::Assets>,
     /// The catalog and the data path's view of it, shared with probe tasks.
     shared: Arc<Shared>,
     /// Serializes the commands that write `state.json`, so a slow write never holds the
@@ -187,6 +189,7 @@ impl Core {
         Ok(Core {
             runtime,
             options,
+            assets: Arc::new(assets::Assets::new(store.dir())),
             store,
             shared,
             mode,
@@ -212,17 +215,14 @@ impl Core {
         })
     }
 
-    /// Starts a new generation on `tun`, the duplicate of Kotlin's descriptor, which it owns
-    /// from here on: every failure closes it. A generation still running is stopped first; a
-    /// `start` already under way makes this one `busy`. Returns by one deadline, cleanup
-    /// included.
+    /// Owns the duplicate `tun`, including on failure. Replaces a running generation;
+    /// concurrent starts return `busy`. One deadline covers startup and cleanup.
     pub fn start(&self, tun: OwnedFd, config: &str) -> Result<(), ErrorCode> {
         let dns_revision = self.bootstrap_revision.load(Relaxed);
         let begun = Instant::now();
         let deadline = begun + self.launch.1;
-        let result = self
-            .settings(config)
-            .and_then(|settings| self.start_generation(tun, settings, deadline, dns_revision));
+        let result = parse(config)
+            .and_then(|config| self.start_generation(tun, config, deadline, dns_revision));
         self.diag.record(
             match result {
                 Ok(g) => Event::info("start").count(Count::Generation, g),
@@ -236,10 +236,11 @@ impl Core {
     fn start_generation(
         &self,
         tun: OwnedFd,
-        (settings, resolvers): (Settings, Vec<SocketAddr>),
+        config: StartConfig,
         deadline: Instant,
         dns_revision: u64,
     ) -> Result<i64, ErrorCode> {
+        let (settings, resolvers) = self.settings(&config)?;
         let rt = self.runtime.handle();
         let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
         let gate = Gate::new();
@@ -249,6 +250,7 @@ impl Core {
             old.wait(rt, deadline);
             self.retire(&session);
         }
+        self.activate_assets(config.geo_asset_dir, &gate, deadline)?;
         let started = Tunnel::start(
             rt,
             tun,
@@ -339,8 +341,7 @@ impl Core {
     /// after `stop`). A malformed address or a nonempty list with no surviving scope is
     /// `invalid_argument`. Global with no node in the main group is `no_nodes`, as it would refuse
     /// every flow. Rule may still send flows direct and refuse those bound for a group with no node.
-    fn settings(&self, config: &str) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
-        let config: StartConfig = parse(config)?;
+    fn settings(&self, config: &StartConfig) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
         if config.mtu < MIN_MTU {
             return Err(ErrorCode::InvalidArgument);
         }

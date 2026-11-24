@@ -386,3 +386,35 @@ fn a_local_name_unicast_dns_cannot_resolve_keeps_fetch_failed() {
         Err(ErrorCode::FetchFailed)
     );
 }
+
+/// Hold the proxy handshake open: the update must be busy until stop cancels this
+/// generation, not finish the metadata request using a direct socket.
+#[test]
+fn asset_update_uses_selected_proxy_and_disconnect_cancels_it() {
+    let _s = serial();
+    let (resolver, _) = servers::udp_resolver();
+    let proxy = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    proxy.set_nonblocking(true).unwrap();
+    let feed = servers::feed(format!("socks5://{}#geo", proxy.local_addr().unwrap()));
+    let dir = TempDir::new("geo-outbound");
+    let core = new_core(&dir, resolver.port(), vec![resolver]);
+    subscribe(&core, &format!("http://{feed}/sub")).unwrap();
+    let _client = start(&core, "[]");
+    let update = || core.call("configAssets", r#"{"action":"update"}"#);
+    let reply: serde_json::Value = serde_json::from_str(&update()).unwrap();
+    assert_eq!(reply["ok"]["lastResult"], "checking");
+    let mut connection = None;
+    assert!(common::wait_for(Duration::from_secs(3), || {
+        connection = proxy.accept().ok();
+        connection.is_some()
+    }));
+    assert_eq!(update(), r#"{"error":{"code":"busy"}}"#);
+    core.stop();
+    assert!(common::wait_for(Duration::from_secs(3), || {
+        let status: serde_json::Value =
+            serde_json::from_str(&core.call("configAssets", "{}")).unwrap();
+        status["ok"]["reason"] == "disconnected"
+            && status["ok"]["updateWaitingForNextStart"] == false
+    }));
+    drop(connection);
+}

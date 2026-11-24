@@ -71,7 +71,7 @@ fn skipped_lines_carry_their_reason() {
         shown,
         [
             ("GeoIp", Some("geodata_missing"), 2),
-            ("GEOSITE", Some("geodata_missing"), 2),
+            ("GeoSite", Some("geodata_missing"), 2),
             ("PROCESS-NAME", Some("app_rule"), 1),
             ("Match", None, 0),
         ]

@@ -301,7 +301,7 @@ fn without_a_name_domain_rows_miss_and_ip_rows_still_apply() {
 #[test]
 fn unsupported_kinds_are_skipped_counted_and_never_match() {
     let set = compile(&[
-        rule("GEOSITE", &["netflix"], "Streaming"),
+        rule("IP-ASN", &["13335"], "Streaming"),
         rule("RULE-SET", &["streaming"], "Streaming"),
         rule(
             "PROCESS-NAME",

@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 pub mod location;
 pub mod score;
+mod start;
+pub use start::StartConfig;
 
 /// Schema 3 admits catalog leaves without a subscription and adds the static editor commands.
 pub const SCHEMA: u32 = 3;
@@ -65,18 +67,6 @@ pub enum GroupKind {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Init {
     pub schema: u32,
-}
-
-/// `start`'s config. The tun was built with the same values.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StartConfig {
-    pub mtu: u16,
-    pub ipv4: std::net::Ipv4Addr,
-    /// The virtual resolver the tun advertises; DNS sent to it is answered by the core.
-    pub dns: std::net::Ipv4Addr,
-    /// Android resolver addresses, including scoped IPv6 (e.g. `fe80::1%wlan0`).
-    pub bootstrap_dns: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

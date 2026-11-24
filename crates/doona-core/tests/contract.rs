@@ -66,15 +66,17 @@ fn catalog_member_locations() {
     );
 }
 
-const COVERED: [&str; 32] = [
+const COVERED: [&str; 34] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
+    "call-config-assets-update-args.json",
     "call-diagnostics-args.json",
     "call-error-bootstrap-dns.json",
     "call-error-state-write.json",
     "call-error-static-row-count.json",
     "call-error.json",
     "call-nodes-args.json",
+    "call-ok-config-assets.json",
     "call-ok-diagnostics.json",
     "call-ok-effective-config.json",
     "call-ok-empty.json",

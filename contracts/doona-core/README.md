@@ -2,6 +2,8 @@
 
 Example payloads for `plans/v1/core-api.md` (schema 3). `static-nodes.json` is an ordered editor session: execute the commands against a fresh core and compare each reply. Credentials in the examples are invented.
 
+`call-ok-config-assets.json` is the `configAssets` status before any DAT is installed. `call-config-assets-update-args.json` starts a check through the connected proxy. A verified download stays pending until the next tunnel start; it does not change the running policy.
+
 `call-error-static-row-count.json` covers empty batches and batches over 200 rows. `call-ok-static-limits.json` shows two row errors in a full catalog: an oversized link and a new endpoint with no room left.
 
 `call-set-bootstrap-dns-args.json` includes an IPv6 resolver scoped to `wlan0`. In any tunnel state the reply is `call-ok-empty.json` on success or `call-error-bootstrap-dns.json` for invalid arguments. A rejected request leaves the previous resolvers in use.

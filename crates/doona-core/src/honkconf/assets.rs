@@ -1,5 +1,4 @@
-//! Admission of raw DAT bytes to private staging. A staged pair is not an active policy:
-//! activation also requires honk label checks and publication of both routers.
+//! SHA-256 admission for pairs of geo DATs. The caller publishes verified staging files.
 
 use boring::sha::Sha256;
 use std::fs::{self, File};
@@ -37,6 +36,28 @@ impl Release {
 
     pub fn commit(&self) -> &str {
         &self.commit
+    }
+
+    pub(crate) fn manifest(&self) -> serde_json::Value {
+        let mut files = serde_json::Map::new();
+        for (name, pin) in FILES.iter().zip(&self.pins) {
+            use std::fmt::Write;
+            let mut digest = String::with_capacity(64);
+            for byte in pin.sha256 {
+                write!(digest, "{byte:02x}").expect("write to String");
+            }
+            files.insert((*name).into(), serde_json::json!({"version":self.commit,"source":Source::Upstream.url(&self.commit,name),"size_bytes":pin.size_bytes,"sha256":digest}));
+        }
+        serde_json::json!({"version":1,"release_date":self.date,"files":files})
+    }
+
+    pub(crate) fn verify(&self, dir: &Path) -> io::Result<()> {
+        let mut buf = [0; 32 * 1024];
+        for (name, pin) in FILES.iter().zip(&self.pins) {
+            transfer(File::open(dir.join(name))?, &mut io::sink(), pin, &mut buf)
+                .map_err(Attempt::into_io)?;
+        }
+        Ok(())
     }
 
     /// Verify extracted APK files against the manifest read from the APK. Never reuse a stage.
@@ -131,9 +152,19 @@ fn copy_verified(
     pin: &Pin,
     buf: &mut [u8],
 ) -> Result<(), Attempt> {
+    let mut file = File::create(target).map_err(Attempt::Disk)?;
+    transfer(source, &mut file, pin, buf)?;
+    file.sync_all().map_err(Attempt::Disk)
+}
+
+fn transfer(
+    source: impl Read,
+    file: &mut impl Write,
+    pin: &Pin,
+    buf: &mut [u8],
+) -> Result<(), Attempt> {
     let mut source = source.take(pin.size_bytes + 1);
     let mut remaining = pin.size_bytes;
-    let mut file = File::create(target).map_err(Attempt::Disk)?;
     let mut hash = Sha256::new();
     loop {
         let n = source.read(buf).map_err(Attempt::Source)?;
@@ -152,5 +183,5 @@ fn copy_verified(
     if hash.finish() != pin.sha256 {
         return Err(Attempt::Source(invalid("geo SHA-256 mismatch")));
     }
-    file.sync_all().map_err(Attempt::Disk)
+    Ok(())
 }

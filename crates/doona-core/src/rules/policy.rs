@@ -57,10 +57,20 @@ impl Policy {
     /// the rows that go direct still apply and a flow a group would carry is refused (rule-mode.md
     /// decision 9). The template always compiles (tests hold it to a full catalog and to none), so
     /// a failure is logged and leaves every flow to the main group.
+    #[cfg(test)]
     pub fn template(
         groups: &[GroupDef],
         is_node: &dyn Fn(&str) -> bool,
         options: Options,
+    ) -> Policy {
+        Self::template_with_data(groups, is_node, options, None)
+    }
+
+    pub fn template_with_data(
+        groups: &[GroupDef],
+        is_node: &dyn Fn(&str) -> bool,
+        options: Options,
+        data: Option<&super::dat::Data>,
     ) -> Policy {
         let rows = template::rules();
         let empty;
@@ -70,7 +80,7 @@ impl Policy {
         } else {
             groups
         };
-        let rules = RuleSet::compile_template(groups, is_node, &rows)
+        let rules = RuleSet::compile_source(super::Origin::Template, groups, is_node, &rows, data)
             .inspect_err(|code| log::error!("rules: template refused ({})", code.as_str()))
             .ok();
         let source = format!("template:{}", template::ID);

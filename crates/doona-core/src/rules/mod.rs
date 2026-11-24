@@ -2,15 +2,16 @@
 //! limits, the compiled set a flow is matched against, doona's template, the policy `Route::of`
 //! chooses a group by, and the rows as the contract lists them.
 //!
-//! A source is groups ([`GroupDef`]) and rows of rules ([`RuleSpec`]). [`RuleSet::compile`]
+//! A source is groups ([`GroupDef`]) and rows of rules ([`RuleSpec`]). [`RuleSet::compile_source`]
 //! checks the whole source before it builds anything ([`limits`]) and refuses it as
 //! `parse_failed` past a limit, when a member, a group or a target is missing, when groups form a
 //! cycle or when a value does not parse. A kind or a GeoIP code without data is skipped and
 //! counted, never guessed. The set keeps one index per matcher, each giving the first row it
 //! matches; the smallest of them is the first rule that matches the flow. A flow is matched once,
-//! when it opens, never per packet, in time that does not grow with the number of rules.
+//! when it opens, never per packet. DAT selectors share their compiled matchers across rows.
 
 mod compile;
+pub(crate) mod dat;
 mod domain;
 pub(crate) mod export;
 mod geoip;
@@ -41,7 +42,7 @@ pub(crate) enum Kind {
     DomainKeyword,
     /// `IP-CIDR` and `IP-CIDR6`: the destination address, of either family.
     IpCidr,
-    /// `GEOIP`: `CN`, `private` or `LAN`; another code is skipped as `geodata_missing`.
+    GeoSite,
     GeoIp,
     /// `DST-PORT`: `443`, `8000-9000`, or several joined by `/`, read as Mihomo reads them.
     DstPort,
@@ -50,7 +51,10 @@ pub(crate) enum Kind {
     /// `MATCH`: every flow; takes no value.
     Match,
     /// A kind this core does not compile: its values are skipped and counted.
-    Skipped { name: Box<str>, reason: Skip },
+    Skipped {
+        name: Box<str>,
+        reason: Skip,
+    },
 }
 
 impl Kind {
@@ -72,10 +76,11 @@ impl Kind {
             "DOMAIN-KEYWORD" => Kind::DomainKeyword,
             "IP-CIDR" | "IP-CIDR6" => Kind::IpCidr,
             "GEOIP" => Kind::GeoIp,
+            "GEOSITE" => Kind::GeoSite,
             "DST-PORT" => Kind::DstPort,
             "NETWORK" => Kind::Network,
             "MATCH" => Kind::Match,
-            "GEOSITE" | "IP-ASN" | "SRC-GEOIP" | "SRC-IP-ASN" => skipped(Skip::GeodataMissing),
+            "IP-ASN" | "SRC-GEOIP" | "SRC-IP-ASN" => skipped(Skip::GeodataMissing),
             // Rules never see apps (ARCH D24).
             "PROCESS-NAME"
             | "PROCESS-PATH"
@@ -157,7 +162,9 @@ pub(crate) struct RuleSet {
     domains: domain::Index,
     ips: lpm::Trie,
     /// The first row of each GeoIP code compiled, by row.
-    geo: Vec<(u32, geoip::Code)>,
+    geo: Vec<(u32, geoip::Code, bool)>,
+    loaded: dat::Matches,
+    missing: std::collections::HashSet<(u32, u32)>,
     ports: ports::Index,
     /// The first `NETWORK` row of TCP and of UDP.
     networks: [u32; 2],
@@ -169,26 +176,34 @@ impl RuleSet {
     /// Compiles an imported source of `groups` and `rules`, or refuses all of it. `is_node` tells
     /// whether a member that is not a group (`n-…`) is a node the catalog holds; one that is not
     /// refuses the source, as a missing group does.
-    #[cfg_attr(
-        not(test),
-        allow(dead_code, reason = "R4's importer compiles a subscription's")
-    )]
+    #[cfg(test)]
     pub(crate) fn compile(
         groups: &[GroupDef],
         is_node: &dyn Fn(&str) -> bool,
         rules: &[RuleSpec],
     ) -> Result<RuleSet, ErrorCode> {
-        compile::compile(Origin::Imported, groups, is_node, rules)
+        Self::compile_source(Origin::Imported, groups, is_node, rules, None)
+    }
+
+    pub(crate) fn compile_source(
+        origin: Origin,
+        groups: &[GroupDef],
+        is_node: &dyn Fn(&str) -> bool,
+        rules: &[RuleSpec],
+        data: Option<&dat::Data>,
+    ) -> Result<RuleSet, ErrorCode> {
+        compile::compile(origin, groups, is_node, rules, data)
     }
 
     /// Compiles doona's template as [`RuleSet::compile`] does an imported source, but its groups
     /// follow the node cap instead of [`limits::MAX_MEMBERS`] ([`Origin::Template`]).
+    #[cfg(test)]
     pub(crate) fn compile_template(
         groups: &[GroupDef],
         is_node: &dyn Fn(&str) -> bool,
         rules: &[RuleSpec],
     ) -> Result<RuleSet, ErrorCode> {
-        compile::compile(Origin::Template, groups, is_node, rules)
+        compile::compile(Origin::Template, groups, is_node, rules, None)
     }
 
     /// The first row that matches `flow`, `None` when no row does: the caller's main group then.
@@ -198,11 +213,12 @@ impl RuleSet {
         best = best.min(self.ports.first(flow.port));
         let ip = flow.ip.to_canonical();
         best = best.min(self.ips.first(ip));
-        for &(row, code) in &self.geo {
-            if row < best && code.contains(ip) {
+        for &(row, code, invert) in &self.geo {
+            if row < best && code.contains(ip) != invert {
                 best = row;
             }
         }
+        best = self.loaded.first(flow, best);
         if let Some(name) = flow.domain {
             best = self.domains.first(name, best);
         }
@@ -215,7 +231,7 @@ impl RuleSet {
 
     /// Whether a row matches names: without one, a flow's name changes nothing.
     pub(crate) fn has_names(&self) -> bool {
-        self.domains.len() > 0
+        self.domains.len() > 0 || self.loaded.has_names()
     }
 
     /// The lines skipped in all rows.
