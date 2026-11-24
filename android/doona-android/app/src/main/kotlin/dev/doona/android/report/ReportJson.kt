@@ -118,6 +118,8 @@ internal fun reportJson(
                     put("atEpochMs", e.atEpochMs)
                     put("level", e.level.name.lowercase())
                     put("text", scrubber.eventText(e))
+                    scrubber.domain(e)?.let { put("domain", it) }
+                    scrubber.appName(e)?.let { put("appName", it) }
                 }
             }
         }

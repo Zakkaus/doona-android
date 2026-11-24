@@ -92,6 +92,34 @@ fn a_clash_document_gives_the_nodes_of_its_share_links() {
 }
 
 #[test]
+fn chained_clash_proxies_are_skipped() {
+    for key in [
+        "dialer-proxy",
+        "underlying-proxy",
+        "dialer_proxy",
+        "underlying_proxy",
+    ] {
+        let entry = format!(
+            "{{type: trojan, server: exit.test, port: 443, password: p, name: exit, {key}: front}}"
+        );
+        let direct = "{type: trojan, server: front.test, port: 443, password: p, name: front}";
+        let body = format!("proxies:\n- {entry}\n- {direct}");
+        let parsed = parse(body.as_bytes()).unwrap();
+        assert_eq!(names(&parsed), ["front"], "{key}");
+        let mapping = serde_yaml::from_str(&entry).unwrap();
+        assert_eq!(
+            super::clash::parse_clash_proxy(&mapping, Some("h3")).unwrap_err(),
+            (None, "chaining is unsupported"),
+            "{key}"
+        );
+        for inactive in ["''", "null"] {
+            let body = body.replace(&format!("{key}: front"), &format!("{key}: {inactive}"));
+            assert_eq!(names(&parse(body.as_bytes()).unwrap()), ["exit", "front"]);
+        }
+    }
+}
+
+#[test]
 fn a_sing_box_document_gives_the_nodes_of_its_share_links() {
     // Selector, URLTest, direct, block and DNS outbounds, SSH, Tor and a trojan without TLS are
     // skipped; so is the route.

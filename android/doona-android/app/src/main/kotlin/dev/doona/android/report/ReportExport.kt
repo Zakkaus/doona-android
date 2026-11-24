@@ -91,7 +91,7 @@ class ReportExport(
         return try {
             withContext(io) {
                 val addresses = if (options.showOwnAddresses) ownAddresses() else emptyList()
-                write(core, engineView, events, addresses, failure).also {
+                write(core, engineView, events, addresses, failure, ReportScrubber(options)).also {
                     logLevels.endCapture()
                     AppEvents.action("export", "write", if (core.isSuccess) "ok" else "partial", code ?: "ok")
                 }
@@ -179,8 +179,8 @@ class ReportExport(
         events: List<AppEvent>,
         addresses: List<InetAddress>,
         failure: ReportFailure?,
+        scrubber: ReportScrubber,
     ): ReportZip {
-        val scrubber = ReportScrubber()
         val listing = core.getOrNull()
         val names = listing?.crashes?.map { it.name } ?: crashes.list().map { it.name }
         // Left out, with their names: a file gone since the listing, an empty one, which is no crash file, and an app file
