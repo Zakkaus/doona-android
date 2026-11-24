@@ -12,4 +12,8 @@
     <string name="rv_update_view">在 GitHub 查看</string>
     <string name="rv_update_failed">无法检查更新</string>
     <string name="rv_update_offline">没有网络连接。</string>
+
+    <plurals name="rv_interval_hours">
+        <item quantity="other">每 %1$d 小时</item>
+    </plurals>
 </resources>
