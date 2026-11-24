@@ -48,7 +48,7 @@ class VpnDropNotificationTest {
 
     @Test
     fun unexpectedFailureIsDismissibleAndKeepsTheFailureReason() = runBlocking {
-        notifications.showDrop(Session(1, Status.Failed(FailureReason.CoreStopped), revoked = false), settings) { true }
+        notifications.showDrop(Session(1, Status.Failed(FailureReason.CoreStopped)), settings) { true }
         val posted = manager.activeNotifications.single()
         assertNotEquals(VpnNotifications.ID, posted.id)
         assertEquals(NotificationManager.IMPORTANCE_DEFAULT, manager.getNotificationChannel(posted.notification.channelId).importance)
@@ -58,8 +58,8 @@ class VpnDropNotificationTest {
 
     @Test
     fun explicitStopAndSupersededDropAreSilentButRevocationAlerts() = runBlocking {
-        notifications.showDrop(Session(1, Status.Stopped, revoked = false), settings) { true }
-        val revoked = Session(2, Status.Stopped, revoked = true)
+        notifications.showDrop(Session(1, Status.Stopped), settings) { true }
+        val revoked = Session(2, Status.Failed(FailureReason.Revoked))
         notifications.showDrop(revoked, settings) { false }
         assertTrue(manager.activeNotifications.isEmpty())
         notifications.showDrop(revoked, settings) { true }
@@ -72,7 +72,7 @@ class VpnDropNotificationTest {
     @Test
     fun turningOffThePreferenceSuppressesUnexpectedDrops() = runBlocking {
         settings.setNotifyOnDrop(false)
-        val failure = Session(1, Status.Failed(FailureReason.CoreStopped), revoked = false)
+        val failure = Session(1, Status.Failed(FailureReason.CoreStopped))
         notifications.showDrop(failure, settings) { true }
         assertTrue(manager.activeNotifications.isEmpty())
 
@@ -84,7 +84,7 @@ class VpnDropNotificationTest {
     @Test
     fun anUnreadablePreferenceDoesNotOptTheUserIn() = runBlocking {
         folder.root.resolve("settings.preferences_pb").writeBytes(ByteArray(8) { -1 })
-        notifications.showDrop(Session(1, Status.Failed(FailureReason.CoreStopped), revoked = false), settings) { true }
+        notifications.showDrop(Session(1, Status.Failed(FailureReason.CoreStopped)), settings) { true }
         assertTrue(manager.activeNotifications.isEmpty())
     }
 }

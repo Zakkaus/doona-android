@@ -9,16 +9,20 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
+import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,25 +35,34 @@ import kotlinx.coroutines.flow.update
 import kotlin.math.sin
 
 /**
- * Deterministic in-memory [Engine] for previews and screenshot tests; it never touches the network or a tunnel. Its
- * groups are the template's and its rules, effective config and usage [FakeRuleMode]'s, so every group a rule sends to
- * exists. The goldens pass [SAMPLE_GROUPS], which they were drawn with.
+ * Deterministic in-memory [Engine] for previews and screenshot tests; it never touches the network or a tunnel.
+ * The default dataset follows the core's rule template. The goldens pass [SAMPLE_GROUPS], which they were drawn with.
  */
-class FakeEngine(
-    groups: List<Group> = TEMPLATE_GROUPS,
-    subscriptions: List<Subscription> = SAMPLE_SUBSCRIPTIONS,
-    status: Status = Status.Stopped,
-    traffic: Traffic = Traffic(),
-    mode: Mode = Mode.Global,
+class FakeEngine internal constructor(
+    groups: List<Group>,
+    subscriptions: List<Subscription>,
+    status: Status,
+    traffic: Traffic,
+    mode: Mode,
+    private val data: FakeData,
 ) : Engine {
+    constructor(
+        groups: List<Group> = TEMPLATE_GROUPS,
+        subscriptions: List<Subscription> = SAMPLE_SUBSCRIPTIONS,
+        status: Status = Status.Stopped,
+        traffic: Traffic = Traffic(),
+        mode: Mode = Mode.Global,
+    ) : this(groups, subscriptions, status, traffic, mode, FakeData(nodes = nodeInfo(groups)))
+
     override val ready = MutableStateFlow(true)
     override val status = MutableStateFlow(status)
     override val traffic = MutableStateFlow(traffic)
+    override val today: StateFlow<TodayTraffic> = MutableStateFlow(data.today)
     override val groups = MutableStateFlow(groups)
     override val subscriptions = MutableStateFlow(subscriptions)
     override val settings: StateFlow<Settings> get() = settingsFlow
     private val settingsFlow = MutableStateFlow(Settings(mode = mode))
-    private val ruleSource = MutableStateFlow(FakeRuleMode.SOURCE)
+    private val ruleSource = MutableStateFlow(data.source)
 
     /** The number in the next subscription id: as in the core, an id is never given twice, also after a removal. */
     private var nextSubscription = (subscriptions.maxOfOrNull(::subscriptionNumber) ?: 0) + 1
@@ -124,11 +137,11 @@ class FakeEngine(
         return Result.success(Unit)
     }
 
-    /** Pages [FakeRuleMode.ROWS] as the core pages its rows, and refuses the limits the core refuses. */
+    /** Pages the sample's rows and refuses the limits the core refuses. */
     override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
         if (offset < 0 || limit !in 1..MAX_RULES_PAGE) return Result.failure(EngineException(ErrorCode.InvalidArgument))
-        val rows = FakeRuleMode.ROWS
-        return Result.success(RulePage(FakeRuleMode.SOURCE.rulesRevision, rows.size, rows.drop(offset).take(limit)))
+        val rows = data.rows
+        return Result.success(RulePage(ruleSource.value.rulesRevision, rows.size, rows.drop(offset).take(limit)))
     }
 
     /** Only the template's options change: they change no row. */
@@ -139,9 +152,21 @@ class FakeEngine(
     }
 
     override suspend fun effectiveConfig(): Result<EffectiveConfig> =
-        Result.success(FakeRuleMode.effectiveConfig(settingsFlow.value.mode, groups.value, ruleSource.value))
+        Result.success(FakeRuleMode.effectiveConfig(settingsFlow.value.mode, groups.value, ruleSource.value, data.configLines))
 
-    override suspend fun usage(): Result<Usage> = Result.success(FakeRuleMode.USAGE)
+    override suspend fun usage(): Result<Usage> = Result.success(data.usage)
+
+    override suspend fun trafficSeries(seconds: Long): Result<TrafficSeries> {
+        if (seconds !in 1L..3_600L) return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val live = traffic.value
+        val series = data.series ?: SampleSeries(0, live.upHistory, live.downHistory)
+        return Result.success(series.window(seconds.toInt()))
+    }
+
+    private val nodesById = data.nodes.associateBy { it.id }
+
+    override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
+        Result.success(if (ids == null) data.nodes else ids.mapNotNull(nodesById::get))
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
         settingsFlow.update { it.copy(perApp = perApp) }
@@ -187,6 +212,15 @@ class FakeEngine(
             node("n-85d011c7e5f60718", "jp-01", 88),
             node("n-c2f5a8e1b3c4d5e6", "us-01", 171),
         )
+
+        private fun nodeInfo(groups: List<Group>): List<NodeInfo> = groups.asSequence()
+            .flatMap { it.members }
+            .filterNot { it.isGroup }
+            .distinctBy { it.id }
+            .mapIndexed { index, member ->
+                val tests = if (member.failed || member.latencyMs != null) listOf(LatencyTest(0, member.latencyMs)) else emptyList()
+                NodeInfo(member.id, "trojan", "node-${index + 1}.example.net", 443, "tcp", true, tests)
+            }.toList()
 
         /** The group template before rule mode: Proxy, Auto and one region. The goldens were drawn with it. */
         val SAMPLE_GROUPS = listOf(

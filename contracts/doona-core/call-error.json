@@ -1,5 +1,5 @@
 {
   "error": {
-    "code": "fetch_failed"
+    "code": "too_large"
   }
 }

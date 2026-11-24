@@ -8,8 +8,9 @@
 //! open. Android 17 refuses a datagram to a node on the local network with `EPERM` while doona
 //! lacks the permission, so the first send through such a node reports how it went (ARCH D26).
 //!
-//! Score counts an association once. Reply-idle after an accepted peer reply is success;
-//! a locally dropped reply is not evidence against the node.
+//! Score counts an association once. At idle, a peer reply counts as success; a locally lost
+//! reply or an uplink dropped by the shared budget excuses silence, not a failed send.
+//! A packet-local congestion timeout drops only that datagram. A stalled QUIC path ends the flow.
 
 mod exchange;
 use exchange::exchange;
@@ -31,8 +32,8 @@ use std::io::{self, ErrorKind};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{
-    AtomicUsize,
-    Ordering::{AcqRel, Acquire},
+    AtomicBool, AtomicUsize,
+    Ordering::{AcqRel, Acquire, Relaxed},
 };
 use std::time::Duration;
 use tokio::net::UdpSocket;
@@ -111,13 +112,18 @@ impl Datagram {
     }
 }
 
+pub(super) struct Queues {
+    pub waker: Waker,
+    local_drop: AtomicBool,
+}
+
 /// The driver's side of one association.
 pub(crate) struct Association {
     pub client: SocketAddr,
     pub remote: SocketAddr,
     up: mpsc::Sender<Datagram>,
     pub down: mpsc::Receiver<Datagram>,
-    pub waker: Arc<Waker>,
+    pub queues: Arc<Queues>,
 }
 
 /// The driver's associations, by id and by address pair.
@@ -134,7 +140,7 @@ pub(crate) struct Opened {
     pub id: u64,
     pub up: mpsc::Receiver<Datagram>,
     pub down: mpsc::Sender<Datagram>,
-    waker: Arc<Waker>,
+    queues: Arc<Queues>,
     budget: Arc<Budget>,
     idle: Duration,
 }
@@ -167,10 +173,12 @@ impl Nat {
     ) -> Option<(Opened, Route)> {
         if let Some(id) = self.by_pair.get(&(client, remote)) {
             let flow = &self.flows[id];
-            if let Ok(slot) = flow.up.try_reserve()
-                && let Some(d) = Datagram::copy(payload, &self.budget)
-            {
-                slot.send(d);
+            if let Ok(slot) = flow.up.try_reserve() {
+                if let Some(d) = Datagram::copy(payload, &self.budget) {
+                    slot.send(d);
+                } else {
+                    flow.queues.local_drop.store(true, Relaxed);
+                }
             }
             return None;
         }
@@ -194,7 +202,10 @@ impl Nat {
         let (up_tx, up_rx) = mpsc::channel(DEPTH * 8);
         up_tx.try_send(first).expect("new association has room");
         let (down_tx, down_rx) = mpsc::channel(DEPTH * 8);
-        let waker = Waker::new(Key::Udp(id), events.clone());
+        let queues = Arc::new(Queues {
+            waker: Waker::for_key(Key::Udp(id), events.clone()),
+            local_drop: AtomicBool::new(false),
+        });
         self.by_pair.insert((client, remote), id);
         self.flows.insert(
             id,
@@ -203,14 +214,14 @@ impl Nat {
                 remote,
                 up: up_tx,
                 down: down_rx,
-                waker: Arc::clone(&waker),
+                queues: Arc::clone(&queues),
             },
         );
         Opened {
             id,
             up: up_rx,
             down: down_tx,
-            waker,
+            queues,
             budget: Arc::clone(&self.budget),
             idle: self.idle,
         }
@@ -294,7 +305,10 @@ pub(crate) fn relay(
     async move {
         let id = o.id;
         if let Ok((upstream, reporter)) = route.bind_udp(remote).await {
-            exchange(o, &upstream, tally, reporter.as_ref()).await;
+            let outcome = exchange(o, &upstream, tally, reporter.as_ref()).await;
+            if let Some(r) = reporter {
+                r.finish(outcome);
+            }
         }
         let _ = events.send(Event::UdpEnded(id));
     }

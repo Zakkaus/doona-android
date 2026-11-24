@@ -49,6 +49,7 @@ impl Core {
             id: id.clone(),
             name,
             url: args.url.trim().to_owned(),
+            format: None,
             updated_at_epoch_ms: None,
             used_bytes: None,
             total_bytes: None,
@@ -236,6 +237,7 @@ fn refreshed(
     parsed: Parsed,
     info: Userinfo,
 ) -> Vec<Arc<NodeEntry>> {
+    stored.format = Some(parsed.format);
     stored.updated_at_epoch_ms = Some(now_ms());
     stored.used_bytes = info.used_bytes;
     stored.total_bytes = info.total_bytes;
@@ -252,6 +254,7 @@ fn removed(id: &str) -> dto::Subscription {
         name: String::new(),
         url: String::new(),
         nodes: 0,
+        format: None,
         updated_at_epoch_ms: None,
         error: None,
         used_bytes: None,

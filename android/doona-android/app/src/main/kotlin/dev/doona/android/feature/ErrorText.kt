@@ -12,6 +12,7 @@ fun ErrorCode.messageRes(): Int = when (this) {
     ErrorCode.InvalidArgument -> R.string.error_invalid_argument
     ErrorCode.NotFound -> R.string.error_not_found
     ErrorCode.FetchFailed -> R.string.error_fetch_failed
+    ErrorCode.TooLarge -> R.string.error_too_large
     ErrorCode.ParseFailed -> R.string.error_parse_failed
     ErrorCode.NoNodes -> R.string.error_no_nodes
     ErrorCode.Busy -> R.string.error_busy
@@ -29,4 +30,5 @@ fun FailureReason.messageRes(): Int = when (this) {
     FailureReason.StartFailed -> R.string.status_failed_start
     FailureReason.CoreStopped -> R.string.status_failed_core_stopped
     FailureReason.IncompatibleCore -> R.string.status_failed_incompatible_core
+    FailureReason.Revoked -> R.string.vpn_drop_revoked
 }
