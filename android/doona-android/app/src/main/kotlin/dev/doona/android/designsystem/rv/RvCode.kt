@@ -96,7 +96,7 @@ private fun Regex.end(line: String, pos: Int): Int? = matchAt(line, pos)?.let { 
 
 // doona's patterns in Java's syntax with JavaScript's classes spelled out (`\w`, `\d`, `\s`, `\b`), so the device's ICU
 // regex, whose `\w` takes every script, reads them as the tests do.
-private const val WS = """[\t\x0B\f\r    -     　﻿]"""
+private const val WS = """[\t\x0B\f\r \u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]"""
 private const val ARROW = "->"
 private const val PUNCTUATION = "{}()&|!,:"
 private val SPACE = Regex("$WS+")
