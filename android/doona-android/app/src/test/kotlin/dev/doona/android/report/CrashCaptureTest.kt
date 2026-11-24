@@ -45,7 +45,7 @@ class CrashCaptureTest {
         assertEquals("other", head["thread"])
         assertEquals(CRASH_MESSAGE, head["message"])
         assertTrue(head["location"]!!.startsWith("dev.doona.android.report.CrashCaptureTest."))
-        val trace = text.substringAfter("\n\nbacktrace:\n").lines().filter { it.isNotEmpty() }
+        val trace = text.substringAfter("\n\nbacktrace:\n").substringBefore("\n$BREADCRUMBS\n").lines().filter { it.isNotEmpty() }
         assertEquals("exception: java.lang.IllegalStateException", trace.first())
         assertEquals("the cause is not read", 1, trace.count { !it.startsWith("  at ") })
         // The test's own frames are code the app holds, written as they are; any other is redacted.

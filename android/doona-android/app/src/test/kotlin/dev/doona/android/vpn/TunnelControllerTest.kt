@@ -50,6 +50,8 @@ class TunnelControllerTest {
         perApp = { perAppError?.let { throw it } ?: perApp },
         scope = scope,
         killProcess = { killed.countDown() },
+        endDebugCapture = {},
+        expireDebugCapture = { null },
         startBoundMs = 300,
         stopDeadlineMs = 200,
     )
@@ -222,11 +224,14 @@ class TunnelControllerTest {
     @Test
     fun aThrowingStopEndsTheProcessInsteadOfReportingStopped() {
         startRunning()
+        AppEvents.clear()
         core.stopError = IllegalStateException("internal")
         controller.stop()
         assertTrue(killed.await(5, TimeUnit.SECONDS))
         assertEquals(Status.Stopping, controller.status.value)
         assertFalse(seen.dropWhile { it !is Status.Running }.contains(Status.Stopped))
+        val entries = AppEvents.snapshot().map { it.text }.filter { it.startsWith("command=stop") || it.startsWith("stop ") }
+        assertEquals(listOf("command=stop phase=complete outcome=failed code=Internal"), entries)
     }
 
     @Test
@@ -457,11 +462,11 @@ class TunnelControllerTest {
 
     @Test
     fun aRefusalIsLoggedByItsCodeAlone() {
+        AppEvents.clear()
         core.startError = IllegalStateException("fetch https://sub.example.net/api?token=tk_5ecret failed")
         start()
         awaitStatus { it is Status.Failed }
-        val refusal = AppEvents.snapshot().last { "refused" in it.text }.text
-        assertFalse(refusal, "://" in refusal || "tk_5ecret" in refusal)
-        assertTrue(refusal, refusal.endsWith("Internal"))
+        val entries = AppEvents.snapshot().map { it.text.substringBefore(" elapsedMs=") }
+        assertEquals(listOf("command=start phase=complete outcome=failed code=Internal"), entries)
     }
 }

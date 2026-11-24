@@ -1,9 +1,14 @@
 package dev.doona.android.report
 
+import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.CrashFile
+import dev.doona.android.engine.Engine
+import dev.doona.android.engine.LogLevel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -50,6 +55,114 @@ class ReportExportTest : ExportFixture() {
         assertEquals(2, report["events"]!!.jsonArray.size)
         assertEquals("Pixel 9", report["device"]!!.jsonObject["model"]!!.jsonPrimitive.content)
         assertTrue(report["diagnostics"] is JsonObject)
+    }
+
+    @Test
+    fun `a written report contains Debug diagnostics before the capture ends`() = runTest {
+        val engine = fixtureEngine()
+        val logLevels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        logLevels.set(LogLevel.Debug).getOrThrow()
+
+        val report = entries(export(engine, logLevels = logLevels).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
+        val diagnostics = Json.parseToJsonElement(report).jsonObject.getValue("diagnostics").jsonObject
+        assertEquals("debug", diagnostics.getValue("level").jsonPrimitive.content)
+        runCurrent()
+        assertEquals(LogLevel.Info, logLevels.level.value)
+        assertEquals(LogLevel.Info, engine.diagnostics().getOrThrow().level)
+        assertEquals("command=export phase=write outcome=ok code=ok", AppEvents.snapshot().last().text)
+    }
+
+    @Test
+    fun `the report after a restart carries the crash's last fifty bounded events`() = runTest {
+        val text = "command=updateSubscription phase=complete outcome=ok code=ok"
+        val at = 1_795_300_100_000L
+        repeat(220) { AppEvents.record(AppEventLevel.Info, "$text elapsedMs=$it", at + it) }
+        val secret = "command=select phase=complete outcome=failed code=privatehost"
+        AppEvents.record(AppEventLevel.Warn, secret, at + 220)
+        AppEvents.record(AppEventLevel.Warn, "GET https://private.example/secret", at + 221)
+        val crash = appCrash(1_795_300_150_000)
+        AppEvents.clear()
+
+        val file = crashDir.resolve(crash)
+        assertTrue(file.length() <= 64 * 1024)
+        val expected = (170 until 220).map { "$BREADCRUMB${at + it} Info $text elapsedMs=$it" }
+        assertEquals(expected, file.readLines().filter { it.startsWith(BREADCRUMB) })
+        val report = export(Recording(fixtureEngine(), coreUp = false)).build()!!
+        assertEquals(file.readText(), entries(report.file).getValue("crash/$crash"))
+    }
+
+    @Test
+    fun `a report is ready even while Info is blocked`() = runTest {
+        val engine = fixtureEngine()
+        val resetStarted = CompletableDeferred<Unit>()
+        val resetAllowed = CompletableDeferred<Unit>()
+        val levels = LogLevelController({ level ->
+            if (level == LogLevel.Info) {
+                resetStarted.complete(Unit)
+                resetAllowed.await()
+            }
+            engine.setLogLevel(level)
+        }, backgroundScope) { testScheduler.currentTime }
+        levels.set(LogLevel.Debug).getOrThrow()
+
+        val building = async { export(engine, logLevels = levels).build() }
+        runCurrent()
+        assertTrue(resetStarted.isCompleted)
+        assertTrue("reset is holding up the report", building.isCompleted)
+        val zip = building.await()!!.file
+        assertTrue(ReportExport.REPORT_ENTRY in entries(zip))
+        resetAllowed.complete(Unit)
+        runCurrent()
+        assertEquals(LogLevel.Info, engine.diagnostics().getOrThrow().level)
+        assertTrue(zip.isFile)
+    }
+
+    @Test
+    fun `export checks the elapsed deadline before the diagnostics have returned`() = runTest {
+        var elapsed = 0L
+        val fake = fixtureEngine()
+        val levels = LogLevelController(fake::setLogLevel, backgroundScope) { elapsed }
+        val diagnosticsAllowed = CompletableDeferred<Unit>()
+        val engine = object : Engine by fake {
+            override suspend fun diagnostics(level: LogLevel?) = fake.diagnostics(level).also { diagnosticsAllowed.await() }
+        }
+        levels.set(LogLevel.Debug).getOrThrow()
+        runCurrent()
+        elapsed += 3_600_000
+
+        val building = async { export(engine, logLevels = levels).build() }
+        runCurrent()
+        assertEquals(LogLevel.Info, fake.diagnostics().getOrThrow().level)
+        diagnosticsAllowed.complete(Unit)
+        assertTrue(building.await()!!.file.isFile)
+    }
+
+    @Test
+    fun `cancellation returning from IO keeps a completed report`() = runTest {
+        val engine = fixtureEngine()
+        val levels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        val files = CrashFiles(crashDir)
+        val building = Job(coroutineContext[Job])
+        val report = ReportExport(
+            engine,
+            files,
+            CrashOffer(files, tmp.root.resolve("seen")),
+            {
+                building.cancel()
+                outDir
+            },
+            tokens,
+            { app },
+            this,
+            StandardTestDispatcher(testScheduler),
+            levels,
+        )
+        async(building) { report.build() }.join()
+        runCurrent()
+
+        val zips = outDir.listFiles()!!.filter { it.extension == "zip" }
+        assertEquals("the completed zip was deleted", 1, zips.size)
+        assertTrue(ReportExport.REPORT_ENTRY in entries(zips.single()))
     }
 
     @Test
@@ -114,7 +227,9 @@ class ReportExportTest : ExportFixture() {
         val files = CrashFiles(crashDir)
         val offer = CrashOffer(files, tmp.root.resolve("seen")).apply { check() }
         assertTrue(offer.offered.value)
-        ReportExport(fixtureEngine(), files, offer, { outDir }, tokens, { app }, this, StandardTestDispatcher(testScheduler)).build()
+        val engine = fixtureEngine()
+        val logLevels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        ReportExport(engine, files, offer, { outDir }, tokens, { app }, this, StandardTestDispatcher(testScheduler), logLevels).build()
         assertFalse(offer.offered.value)
     }
 

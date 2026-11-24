@@ -6,7 +6,9 @@ import android.content.Intent
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Status
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -16,7 +18,9 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowSystemClock
 import org.robolectric.shadows.ShadowVpnService
+import java.time.Duration
 
 @RunWith(AndroidJUnit4::class)
 @Config(application = FakeEngineApplication::class)
@@ -26,6 +30,21 @@ class MainActivityTest {
 
     @Before
     fun setUp() = shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+
+    @Test
+    fun `resuming after deep sleep ends an expired capture`() {
+        Robolectric.buildActivity(MainActivity::class.java).setup().use { activity ->
+            val levels = app.container.logLevels
+            runBlocking { levels.set(LogLevel.Debug).getOrThrow() }
+            activity.pause()
+            ShadowSystemClock.simulateDeepSleep(Duration.ofHours(1))
+            assertEquals(LogLevel.Debug, levels.level.value)
+            assertEquals(0L, levels.remainingMs())
+
+            activity.resume()
+            assertEquals(LogLevel.Info, levels.level.value)
+        }
+    }
 
     @Test
     fun `the connect entry connects when consent is already given`() {

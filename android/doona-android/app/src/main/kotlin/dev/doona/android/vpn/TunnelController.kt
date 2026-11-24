@@ -1,10 +1,12 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -35,6 +37,8 @@ internal class TunnelController(
     /** Runs the stop watchdogs; must not share a thread with [run]. */
     private val scope: CoroutineScope,
     private val killProcess: () -> Unit,
+    private val endDebugCapture: () -> Unit,
+    private val expireDebugCapture: () -> Job?,
     private val startBoundMs: Long = START_BOUND_MS,
     private val stopDeadlineMs: Long = STOP_DEADLINE_MS,
     private val clock: () -> Long = System::currentTimeMillis,
@@ -125,7 +129,7 @@ internal class TunnelController(
             // Under the lock, so the stop cannot publish its status between this check and the kill.
             synchronized(lock) {
                 if (handled < g) {
-                    VpnLog.warn("stop $g not reached in ${startBoundMs + stopDeadlineMs} ms; ending the process")
+                    VpnLog.action("stop", "deadline", "failed", ErrorCode.Internal.name, startBoundMs + stopDeadlineMs)
                     killProcess()
                 }
             }
@@ -156,6 +160,8 @@ internal class TunnelController(
 
     /** The caller holds [lock]. */
     private fun show(g: Long, status: Status) {
+        // A flow collector may miss a short-lived session or its terminal status before the next start.
+        if (status.ended && !_status.value.ended) endDebugCapture()
         _status.value = status
         _session.value = Session(g, status)
     }
@@ -167,23 +173,21 @@ internal class TunnelController(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            VpnLog.warn("start $g threw ${e.javaClass.simpleName}")
             Status.Failed(FailureReason.StartFailed)
         } catch (e: LinkageError) {
-            VpnLog.warn("start $g threw ${e.javaClass.simpleName}")
             Status.Failed(FailureReason.StartFailed)
         }
         val ms = (System.nanoTime() - begun) / 1_000_000
         when {
             failure != null -> {
-                VpnLog.warn("start $g failed: $failure after $ms ms")
+                VpnLog.action("start", "complete", "failed", failure.code?.name ?: failure.reason.name, ms)
                 publish(g, failure)
             }
 
-            publish(g, Status.Running(clock())) -> VpnLog.info("start $g up after $ms ms")
+            publish(g, Status.Running(clock())) -> VpnLog.action("start", "complete", "ok", "ok", ms)
 
             else -> {
-                VpnLog.info("start $g superseded after $ms ms")
+                VpnLog.action("start", "complete", "superseded", "ok", ms)
                 stopCore()
             }
         }
@@ -195,8 +199,8 @@ internal class TunnelController(
         if (schema != CORE_SCHEMA) return Status.Failed(FailureReason.IncompatibleCore)
         val routing = AppRouting.resolve(perApp(), host.selfPackage, host::installed) ?: return Status.Failed(FailureReason.NoAllowedApps)
         val mtu = host.mtu
-        VpnLog.info("start $g: mtu $mtu")
         val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(host.bootstrapDns(), mtu))
+        expireDebugCapture()?.join()
         if (!isCurrent(g)) return null
         val tun = host.establish(routing, mtu) ?: return Status.Failed(FailureReason.StartFailed)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
@@ -207,7 +211,6 @@ internal class TunnelController(
                 // Only the core speaks in codes: it reports its own as the message of this exception. The log takes the
                 // code it maps to, never the message itself, which the diagnostic report carries (ARCH D21).
                 val code = errorCodeOf(e.message.orEmpty())
-                VpnLog.warn("start $g: the core refused with ${code.name}")
                 return Status.Failed(FailureReason.StartFailed, code)
             }
         }
@@ -222,7 +225,7 @@ internal class TunnelController(
         // A native call cannot be cancelled: if stop hangs, only ending the process frees the tun.
         val watchdog = scope.launch {
             delay(stopDeadlineMs)
-            VpnLog.warn("stop exceeded $stopDeadlineMs ms; ending the process")
+            VpnLog.action("stop", "deadline", "failed", ErrorCode.Internal.name, stopDeadlineMs)
             killProcess()
         }
         val failure = try {
@@ -236,12 +239,12 @@ internal class TunnelController(
             watchdog.cancel()
         }
         if (failure != null) {
+            VpnLog.action("stop", "complete", "failed", ErrorCode.Internal.name)
             // The core may still hold the duplicate fd: nothing may report the tunnel stopped until the process is gone.
-            VpnLog.warn("stop threw ${failure.javaClass.simpleName}; ending the process")
             killProcess()
             awaitCancellation()
         }
-        VpnLog.info("stop after ${(System.nanoTime() - begun) / 1_000_000} ms")
+        VpnLog.action("stop", "complete", "ok", "ok", (System.nanoTime() - begun) / 1_000_000)
     }
 
     private sealed interface Command {
