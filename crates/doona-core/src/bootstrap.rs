@@ -2,9 +2,9 @@
 //! latency-probe hosts and subscription hosts (core-api.md, "start config"). Each is asked of the
 //! underlying network's resolvers in order, over the direct path (doona is outside its own VPN).
 //! `start` uses 1.1.1.1 and 8.8.8.8 when `bootstrapDns` is empty. `setBootstrapDns` replaces
-//! that list on a network change. Each lookup keeps its list until it finishes. The last accepted
-//! list stays in use after `stop`; before the first `start` the fallback is used. honk keeps its
-//! hooks per process, so the list is per process too. `/etc/resolv.conf` is never read: the hook claims
+//! that list on a network change. Each lookup keeps its list until it finishes. `stop` leaves
+//! the list in place; until the first start or update the fallback serves. honk keeps its hooks
+//! per process, so the list is per process too. `/etc/resolv.conf` is never read: the hook claims
 //! every name, and the record lookups honk makes itself (a TLS node's ECH configuration, from its
 //! server name's HTTPS record) go to honk's global resolver, which is always the first of the list.
 
@@ -20,16 +20,12 @@ pub const FALLBACK: [SocketAddr; 2] = [
     SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53),
 ];
 
-#[derive(serde::Deserialize)]
-pub(crate) struct SetArgs {
-    pub servers: Vec<String>,
-}
-
 /// The resolvers in use, in order; none until a core sets them, and then the fallback serves.
 static SERVERS: RwLock<Vec<SocketAddr>> = RwLock::new(Vec::new());
 
 /// Makes `servers` the resolvers every lookup asks from now on, and the first of them honk's
 /// global resolver: without one, honk would read `/etc/resolv.conf` for the records it looks up.
+/// The two stores have separate locks: a concurrent lookup can see either valid configuration.
 pub(crate) fn use_servers(servers: Vec<SocketAddr>) {
     let first = servers.first().unwrap_or(&FALLBACK[0]).to_string();
     honk_outbound::bootstrap::set_global(BootstrapResolver::parse(&first));
