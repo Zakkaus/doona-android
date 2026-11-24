@@ -1,5 +1,17 @@
 import com.android.build.api.artifact.SingleArtifact
+import groovy.json.JsonSlurper
+import java.io.IOException
+import java.io.OutputStream
+import java.net.URI
+import java.nio.channels.FileChannel
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.nio.file.StandardOpenOption.CREATE
+import java.nio.file.StandardOpenOption.WRITE
+import java.security.DigestInputStream
 import java.security.MessageDigest
+import java.util.HexFormat
 import java.util.zip.ZipFile
 
 plugins {
@@ -48,6 +60,82 @@ abstract class CheckNoFaultHook : DefaultTask() {
     }
 }
 
+abstract class GenerateGeoAssets : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val pinsFile: RegularFileProperty
+
+    @get:Internal
+    abstract val cacheDir: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val pins = pinsFile.get().asFile
+        val files = (JsonSlurper().parse(pins) as Map<*, *>)["files"] as Map<*, *>
+        val cache = cacheDir.get().asFile.toPath()
+        val geo = outputDir.get().dir("geo").asFile
+        Files.createDirectories(cache)
+        Files.createDirectories(geo.toPath())
+
+        // Variants and worktrees can share a Gradle user home. Publish each verified download only once.
+        synchronized(GenerateGeoAssets::class.java) {
+            FileChannel.open(cache.resolve("download.lock"), CREATE, WRITE).use { channel ->
+                channel.lock().use {
+                    for (name in listOf("geoip.dat", "geosite.dat")) {
+                        val pin = files[name] as Map<*, *>
+                        val sha = pin["sha256"] as String
+                        val size = (pin["size_bytes"] as Number).toLong()
+                        if (!sha.matches(Regex("[0-9a-f]{64}"))) {
+                            throw GradleException("Invalid SHA-256 pin for $name in $pins: $sha")
+                        }
+                        val cached = cache.resolve(sha).toFile()
+                        if (cached.exists()) {
+                            verify(cached, name, size, sha)
+                        } else {
+                            download(pin["source"] as String, cached, name, size, sha)
+                        }
+                        cached.copyTo(geo.resolve(name), overwrite = true)
+                    }
+                }
+            }
+        }
+        pins.copyTo(geo.resolve("pins.json"), overwrite = true)
+    }
+
+    private fun download(source: String, cached: File, name: String, size: Long, sha: String) {
+        val temp = Files.createTempFile(cached.parentFile.toPath(), "$sha-", ".tmp")
+        try {
+            val connection = URI.create(source).toURL().openConnection().apply {
+                connectTimeout = 30_000
+                readTimeout = 30_000
+            }
+            connection.getInputStream().use { input -> Files.copy(input, temp, REPLACE_EXISTING) }
+            verify(temp.toFile(), name, size, sha)
+            Files.move(temp, cached.toPath(), ATOMIC_MOVE)
+        } catch (e: IOException) {
+            throw GradleException("Could not download $name from $source into the Geo cache", e)
+        } finally {
+            Files.deleteIfExists(temp)
+        }
+    }
+
+    private fun verify(file: File, name: String, size: Long, sha: String) {
+        val actualSize = Files.size(file.toPath())
+        if (actualSize != size) {
+            throw GradleException("Geo $name size mismatch at $file: expected $size bytes, got $actualSize")
+        }
+        val digest = MessageDigest.getInstance("SHA-256")
+        DigestInputStream(file.inputStream(), digest).use { it.transferTo(OutputStream.nullOutputStream()) }
+        val actualSha = HexFormat.of().formatHex(digest.digest())
+        if (actualSha != sha) {
+            throw GradleException("Geo $name SHA-256 mismatch at $file: expected $sha, got $actualSha")
+        }
+    }
+}
+
 val coreDir = rootProject.file("../../crates/doona-core")
 val coreNdk = "30.0.16248370"
 val coreSymbols = listOf("init", "start", "stop", "snapshot", "call")
@@ -71,7 +159,22 @@ val coreCheckout = MessageDigest.getInstance("SHA-256")
 val skipCore = providers.gradleProperty("doona.skipCore").orNull.toBoolean()
 val coreProfile = providers.gradleProperty("doona.coreProfile").getOrElse("release")
 
+// -Pdoona.skipGeo=true leaves the DATs out of offline JVM tests and fast local builds.
+val skipGeo = providers.gradleProperty("doona.skipGeo").orNull.toBoolean()
+val geoPins = coreDir.resolve("tools/geo-pins.json")
+val geoCache = gradle.gradleUserHomeDir.resolve("caches/doona-geo")
+
 androidComponents {
+    onVariants { variant ->
+        if (skipGeo) return@onVariants
+        val name = variant.name.replaceFirstChar { it.uppercase() }
+        val generateGeo = tasks.register<GenerateGeoAssets>("generate${name}GeoAssets") {
+            description = "Verifies the pinned GeoIP and GeoSite DATs and generates APK assets."
+            pinsFile.fileValue(geoPins)
+            cacheDir.fileValue(geoCache)
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(generateGeo, GenerateGeoAssets::outputDir)
+    }
     onVariants { variant ->
         if (skipCore) return@onVariants
         // The debug variant's core also takes `call("debugFault")`, the fault the core-failure check uses; release has none.
