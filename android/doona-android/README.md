@@ -49,9 +49,11 @@ Selecting Debug starts a one-hour capture measured in elapsed time, including de
 when the app writes a report. If the core refuses the reset, the app retries once. The app
 never saves the level.
 
-The app keeps 200 recent events, including command, phase, outcome and code for core actions
-and report exports. A JVM crash file preserves up to 50 recent allowlisted action entries within
-the 64 KiB file limit.
+The app and VPN service share a ring of 200 recent events. One background writer saves each
+event's time, level and scrubbed text in the app's no-backup directory. Reports load the saved
+events after a restart. Visited domains and app package names stay in memory; a process that dies
+before a write finishes can lose the newest events. A JVM crash file preserves up to 50
+allowlisted actions from its own process within the 64 KiB file limit.
 
 The ZIP records each group's TCP and UDP choices and pins using scrubbed node and group identifiers.
 

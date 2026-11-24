@@ -5,6 +5,7 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Status
+import dev.doona.android.report.SUBSCRIPTION_READY_TIMEOUT
 import dev.doona.android.vpn.VpnLog
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
@@ -47,7 +48,10 @@ internal class SubscriptionRefresh(
         try {
             if (!settings.subscriptionUpdate.first().enabled) return Outcome.Skipped
             val engine = engine()
-            if (withTimeoutOrNull(15.seconds) { engine.ready.first { it } } == null) return Outcome.Failed
+            if (withTimeoutOrNull(15.seconds) { engine.ready.first { it } } == null) {
+                VpnLog.warn(SUBSCRIPTION_READY_TIMEOUT)
+                return Outcome.Failed
+            }
             var outcome = Outcome.Completed
             for (sub in engine.subscriptions.value) {
                 // Disabling auto-update during a fetch must stop the rest of the batch.

@@ -4,7 +4,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
@@ -139,20 +138,7 @@ class ExportTokens(private val file: () -> File) {
     }
 
     /** Written whole beside the file and synced, then renamed onto it; a failed write keeps the records as they were. */
-    private fun write(records: List<Record>) {
-        val target = file()
-        val part = File(target.parentFile, target.name + PART)
-        try {
-            FileOutputStream(part).use {
-                it.write(Json.encodeToString(SERIALIZER, records).toByteArray())
-                it.fd.sync()
-            }
-            if (!part.renameTo(target)) throw IOException("not renamed")
-        } catch (e: IOException) {
-            part.delete()
-            throw e
-        }
-    }
+    private fun write(records: List<Record>) = file().replaceSynced(Json.encodeToString(SERIALIZER, records).encodeToByteArray())
 
     /** One export: its token, the crash files a pick clears, and whether the user picked an app in its sheet. */
     @Serializable
@@ -164,7 +150,6 @@ class ExportTokens(private val file: () -> File) {
 
         /** The event logged for a pick that could not be noted, so nothing was cleared. */
         const val PICK_UNSAVED = "report tokens: pick not saved"
-        private const val PART = ".part"
         private val SERIALIZER = ListSerializer(Record.serializer())
     }
 }
