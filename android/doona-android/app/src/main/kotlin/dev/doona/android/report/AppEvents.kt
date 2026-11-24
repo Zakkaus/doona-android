@@ -15,12 +15,18 @@ internal val actionText = Regex(ACTION_TEXT)
 /** How severe an app event is. */
 enum class AppEventLevel { Info, Warn }
 
-/** One event of the app: time, level, and a fixed-format diagnostic message. */
-data class AppEvent(val atEpochMs: Long, val level: AppEventLevel, val text: String)
+/** Optional identifiers come from structured records, never from parsing log text. */
+data class AppEvent(
+    val atEpochMs: Long,
+    val level: AppEventLevel,
+    val text: String,
+    val visitedDomain: String? = null,
+    val appPackage: String? = null,
+)
 
 /**
- * The app's last [CAPACITY] events, oldest first, for the diagnostic report. Process-wide, written from any thread. Its
- * writers hold to ARCH D21 (`VpnLog`): no URL, node address, credential or DNS name, and no exception message.
+ * The app's last [CAPACITY] events, oldest first, for the diagnostic report. Process-wide, written from any thread.
+ * Event text follows ARCH D21 (`VpnLog`): no URL, node address, credential, DNS name or exception message.
  */
 object AppEvents {
     const val CAPACITY = 200
@@ -31,8 +37,14 @@ object AppEvents {
     private val lock = Any()
     private val ring = ArrayDeque<AppEvent>(CAPACITY)
 
-    fun record(level: AppEventLevel, text: String, atEpochMs: Long = System.currentTimeMillis()): AppEvent {
-        val event = AppEvent(atEpochMs, level, text.take(MAX_TEXT))
+    fun record(
+        level: AppEventLevel,
+        text: String,
+        atEpochMs: Long = System.currentTimeMillis(),
+        visitedDomain: String? = null,
+        appPackage: String? = null,
+    ): AppEvent {
+        val event = AppEvent(atEpochMs, level, text.take(MAX_TEXT), visitedDomain, appPackage)
         synchronized(lock) {
             if (ring.size == CAPACITY) ring.removeFirst()
             ring.addLast(event)
