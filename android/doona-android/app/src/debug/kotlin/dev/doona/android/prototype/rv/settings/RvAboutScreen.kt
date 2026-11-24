@@ -64,7 +64,7 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin), verticalArrangement = Arrangement.spacedBy(RvSettingsSpace.cardGap)) {
             RvSettingsCard {
                 RvSettingsRow(stringResource(R.string.app_name), icon = R.drawable.rv_settings_ic_info, subtitle = versions.app)
-                RvSettingsRow(stringResource(R.string.rv_about_honk), icon = R.drawable.rv_sym_bolt, subtitle = stringResource(R.string.rv_about_honk_sub, versions.honk))
+                RvSettingsRow(stringResource(R.string.rv_about_honk), icon = R.drawable.rv_sym_memory, subtitle = stringResource(R.string.rv_about_honk_sub, versions.honk))
             }
             RvSettingsCard {
                 RvSettingsNavRow(stringResource(R.string.rv_about_github), R.drawable.rv_sym_github, routes.github)
