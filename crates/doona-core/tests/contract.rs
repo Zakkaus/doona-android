@@ -66,7 +66,7 @@ fn catalog_member_locations() {
     );
 }
 
-const COVERED: [&str; 34] = [
+const COVERED: [&str; 36] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-config-assets-update-args.json",
@@ -81,12 +81,14 @@ const COVERED: [&str; 34] = [
     "call-ok-effective-config.json",
     "call-ok-empty.json",
     "call-ok-nodes.json",
+    "call-ok-recent-flows.json",
     "call-ok-rules.json",
     "call-ok-score-state.json",
     "call-ok-static-limits.json",
     "call-ok-subscription.json",
     "call-ok-traffic-series.json",
     "call-ok-usage.json",
+    "call-recent-flows-args.json",
     "call-rules-args.json",
     "call-score-state-args.json",
     "call-select-args.json",
@@ -301,6 +303,12 @@ fn score_state_fixtures() {
     let g = &state.groups[0];
     assert_ne!(g.tcp.selected_id, g.udp.selected_id);
     assert_eq!(g.tcp.challengers[0].node_id, g.udp.selected_id);
+}
+
+#[test]
+fn recent_flow_fixtures() {
+    round_trip::<Empty>("call-recent-flows-args.json");
+    round_trip::<Reply<doonacore::dto::recent::RecentFlows>>("call-ok-recent-flows.json");
 }
 
 #[test]

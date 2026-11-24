@@ -8,6 +8,7 @@ pub use crate::diag::report::{
 use serde::{Deserialize, Serialize};
 
 pub mod location;
+pub mod recent;
 pub mod score;
 mod start;
 pub use start::StartConfig;

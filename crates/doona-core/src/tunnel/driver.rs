@@ -15,6 +15,7 @@ use super::tcp::{self, Step, Stop, TcpFlow};
 use super::udp::{self, Budget, Nat};
 use super::{Gen, Session, Settings, StartSignal, Tun};
 use crate::dns::names::Learned;
+use crate::dto::recent::Protocol;
 use crate::rules::Network;
 use crate::stats::meter::Tally;
 use crate::sys;
@@ -325,14 +326,14 @@ impl Driver {
             if route.refused() {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
             } else {
-                self.open_tcp(syn.id, route, (!to_resolver).then_some(dst));
+                self.open_tcp(syn.id, syn.client, route, (!to_resolver).then_some(dst));
             }
         }
     }
 
     /// Accepts `id` and spawns its task: a dial to `dst`, or with no `dst` the DNS server. A
     /// dialed flow's SYN-ACK waits for the upstream, so a refused dial reaches the app as RST.
-    fn open_tcp(&mut self, id: FlowId, route: Route, dst: Option<SocketAddr>) {
+    fn open_tcp(&mut self, id: FlowId, local: SocketAddr, route: Route, dst: Option<SocketAddr>) {
         let when = match dst {
             Some(_) => AcceptWhen::Deferred {
                 deadline: DIAL_DEADLINE,
@@ -349,6 +350,11 @@ impl Driver {
         let waker = Waker::new(Key::Tcp(id), self.events.clone());
         // The core's own DNS is not an app's flow, nor an outbound's bytes.
         let meter = dst.and_then(|_| route.meter(&self.gen_.session));
+        let recent = dst.zip(meter.as_ref()).and_then(|(dst, m)| {
+            self.gen_
+                .session
+                .record_flow(Protocol::Tcp, local, dst, m.outbound())
+        });
         self.opened += u64::from(dst.is_some());
         let drain = self.settings.tcp_drain;
         let serves = if dst.is_some() {
@@ -358,6 +364,7 @@ impl Driver {
         };
         let (ends, io) = flow::pair(Arc::clone(&waker), Tally::new(meter), drain, serves);
         let mut flow = TcpFlow::new(ends, waker, dst.is_none());
+        flow.recent = recent;
         // A drain begun at accept (the core's DNS) is queued now, not at the flow's first event.
         if let Some(at) = flow.due() {
             self.drains.push(at, id);
@@ -480,6 +487,13 @@ impl Driver {
             if let Some((opened, route)) = self.nat.send((src, dst), payload, &self.events, open) {
                 self.opened += 1;
                 let meter = route.meter(&self.gen_.session);
+                self.nat
+                    .flows
+                    .get_mut(&opened.id)
+                    .expect("new association")
+                    .recent = meter
+                    .as_ref()
+                    .and_then(|m| session.record_flow(Protocol::Udp, src, dst, m.outbound()));
                 let relay = udp::relay(opened, dst, (route, meter), self.events.clone());
                 self.gen_.spawn(relay);
             }
