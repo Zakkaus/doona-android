@@ -18,7 +18,7 @@ refresh keeps probe latency for unchanged nodes.
 ./gradlew recordRoborazziDebug                        # rewrite the goldens in app/src/test/screenshots after a change you meant
 ./gradlew recordRoborazziDebug -Ddoona.shots=<dir>    # the same renders in <dir>, to look at without touching the goldens
 tools/check-tokens.sh                                 # no dp, sp, colour or alpha literal outside designsystem/tokens (bar a component's own Defaults object)
-tools/check-layers.sh                                 # material3 and tokens stay in designsystem/, feature/ builds no interactive element
+tools/check-layers.sh                                 # material3 and tokens stay in designsystem/; feature/ and the RV pages build no interactive element
 ```
 
 To reproduce the pull request APK, run `./gradlew assembleRelease -Pdoona.coreProfile=ci-release`.

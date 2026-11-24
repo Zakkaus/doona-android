@@ -6,14 +6,14 @@
 # and screens read the roles. The one exception is the metrics of a single component: an
 # `object Doona<Component>Defaults` in designsystem/components may hold its own dp literals (D17, layer 3).
 #
-# The RV library (app/src/debug/kotlin/.../prototype/rv): the token files are RvTokens.kt and the features'
-# `Rv<Feature>Tokens.kt`. A component's own metrics may sit in its named object, `object Rv<Component>Size` or
+# The RV library (app/src/main/kotlin/.../designsystem/rv) and the RV pages (app/src/debug/kotlin/.../prototype/rv):
+# the token files are RvTokens.kt and the features' `Rv<Feature>Tokens.kt`. A component's own metrics may sit in its named object, `object Rv<Component>Size` or
 # `RvMotion`, as the app's Defaults objects do. A value that is literal on purpose (the zero end of an interpolation,
 # a gradient's transparent end) carries `// literal: <reason>` on its line.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 src="$root/app/src/main/kotlin"
-rv="$root/app/src/debug/kotlin/dev/doona/android/prototype/rv"
+rv="$src/dev/doona/android/designsystem/rv $root/app/src/debug/kotlin/dev/doona/android/prototype/rv"
 pattern='[0-9]\.(dp|sp)\b|\.(dp|sp)\b[^(]|(^|[^A-Za-z_.])Dp\(|Color\(0x|\b0x[0-9A-Fa-f]{8}\b|TextUnit\(|\balpha[[:space:]]*=[[:space:]]*[0-9]'
 exempt=$(mktemp)
 trap 'rm -f "$exempt"' EXIT
@@ -23,14 +23,16 @@ find "$src" -path '*/designsystem/components/*' -name '*.kt' -exec awk '
     inside { print FILENAME ":" FNR ":" }
     /^}/ { inside = 0 }
 ' {} + > "$exempt"
-find "$rv" -name '*.kt' -exec awk '
+# shellcheck disable=SC2086 # $rv is two directories
+find $rv -name '*.kt' -exec awk '
     /^(internal )?object Rv[A-Za-z]*(Size|Motion)[ {]/ { inside = 1 }
     inside { print FILENAME ":" FNR ":" }
     /^}/ { inside = 0 }
 ' {} + >> "$exempt"
 hits=$(
-    grep -rnE "$pattern" --include='*.kt' "$src" | grep -vE '/designsystem/tokens/' || true
-    grep -rnE "$pattern" --include='*.kt' "$rv" | grep -vE '/Rv[A-Za-z]*Tokens\.kt:' | grep -vE '// literal: [^ ]' || true
+    grep -rnE "$pattern" --include='*.kt' "$src" | grep -vE '/designsystem/(tokens|rv)/' || true
+    # shellcheck disable=SC2086
+    grep -rnE "$pattern" --include='*.kt' $rv | grep -vE '/Rv[A-Za-z]*Tokens\.kt:' | grep -vE '// literal: [^ ]' || true
 )
 hits=$(printf '%s\n' "$hits" | grep -vF -f "$exempt" | sed '/^$/d' || true)
 if [ -n "$hits" ]; then
