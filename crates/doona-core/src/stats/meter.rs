@@ -34,6 +34,10 @@ pub(crate) struct Meter {
 }
 
 impl Meter {
+    pub(crate) fn outbound(&self) -> &Arc<str> {
+        &self.id
+    }
+
     fn new(id: &str, rule: Option<&str>) -> Meter {
         Meter {
             id: id.into(),

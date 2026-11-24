@@ -25,6 +25,8 @@ pub(crate) const DRAIN_DEADLINE: Duration = Duration::from_secs(30);
 /// The driver's state for one accepted connection.
 pub(crate) struct TcpFlow {
     ends: Ends,
+    pub recent: Option<super::recent::Handle>,
+    sniffed: bool,
     pub waker: Arc<Waker>,
     /// Read from the stack, not yet taken by the task.
     up_pending: Option<Bytes>,
@@ -74,6 +76,8 @@ impl TcpFlow {
     pub fn new(ends: Ends, waker: Arc<Waker>, dns: bool) -> TcpFlow {
         TcpFlow {
             ends,
+            recent: None,
+            sniffed: false,
             waker,
             up_pending: None,
             up_eof: false,
@@ -208,7 +212,15 @@ impl TcpFlow {
             }
             match stack.tcp_read(id, scratch) {
                 Ok(0) => self.up_eof = true,
-                Ok(n) => self.up_pending = Some(Bytes::copy_from_slice(&scratch[..n])),
+                Ok(n) => {
+                    if !self.sniffed {
+                        self.sniffed = true;
+                        if let Some(handle) = &self.recent {
+                            handle.sniff(&scratch[..n]);
+                        }
+                    }
+                    self.up_pending = Some(Bytes::copy_from_slice(&scratch[..n]));
+                }
                 Err(StreamError::WouldBlock) => return Ok(()),
                 Err(e) => return Err(e),
             }

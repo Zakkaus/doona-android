@@ -58,6 +58,8 @@ class CoreDtoTest {
         "call-nodes-args.json" to NodesArgs.serializer(),
         "call-ok-score-state.json" to ScoreStateDto.serializer(),
         "call-score-state-args.json" to Unit.serializer(),
+        "call-ok-recent-flows.json" to RecentFlowsDto.serializer(),
+        "call-recent-flows-args.json" to Unit.serializer(),
         "call-ok-rules.json" to RulesDto.serializer(),
         "call-rules-args.json" to RulesArgs.serializer(),
         "call-set-rule-source-args.json" to RuleSourceArgs.serializer(),

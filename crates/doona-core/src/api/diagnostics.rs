@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// The commands, by the names the log may hold; never caller text.
-const COMMANDS: [&str; 24] = [
+const COMMANDS: [&str; 25] = [
     "previewStaticNodes",
     "addStaticNodes",
     "readStaticNode",
@@ -38,17 +38,19 @@ const COMMANDS: [&str; 24] = [
     "usage",
     "nodes",
     "scoreState",
+    "recentFlows",
     "rules",
     "effectiveConfig",
     "diagnostics",
     "configAssets",
 ];
 /// The reads among them that screens repeat.
-const READS: [&str; 8] = [
+const READS: [&str; 9] = [
     "trafficSeries",
     "usage",
     "nodes",
     "scoreState",
+    "recentFlows",
     "rules",
     "effectiveConfig",
     "diagnostics",
@@ -107,6 +109,14 @@ impl Core {
             "usage" => self.usage(args),
             "nodes" => self.nodes(args),
             "scoreState" => self.score_state(args),
+            "recentFlows" => {
+                let dto::Empty {} = parse(args)?;
+                let flows = match &*lock(&self.life) {
+                    Life::Running(tunnel) => tunnel.session().recent.read(),
+                    _ => Default::default(),
+                };
+                Ok(ok(flows))
+            }
             "rules" => self.rules(args),
             "effectiveConfig" => self.effective_config(args),
             "configAssets" => self.config_assets(args),
