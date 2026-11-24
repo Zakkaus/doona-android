@@ -10,6 +10,7 @@ import dev.doona.android.engine.StaticNodeDraft
 import dev.doona.android.engine.StaticNodeDraftException
 import dev.doona.android.engine.StaticNodeReason
 import dev.doona.android.engine.StaticNodeResult
+import dev.doona.android.engine.StaticNodeUpdateResult
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -63,7 +64,7 @@ class StaticNodesTest {
         read.checkCall()
 
         val invalidName = serve()
-        val nameResult = engine.updateStaticNode(hk, StaticNodeDraft.Link("socks5://192.0.2.1:1080", name = " ")).getOrThrow()
+        val nameResult: StaticNodeUpdateResult = engine.updateStaticNode(hk, StaticNodeDraft.Link("socks5://192.0.2.1:1080", name = " ")).getOrThrow()
         assertEquals(StaticNodeResult.Invalid(StaticNodeReason.Name), nameResult)
         invalidName.checkCall()
 
@@ -84,17 +85,15 @@ class StaticNodesTest {
         rename.checkCall()
         engine.checkCatalog(renamed, tokyo)
 
+        val beforeFailures = core.snapshots.get()
         val stale = serve()
-        assertEquals(ErrorCode.Busy, engine.updateStaticNode(hk, StaticNodeDraft.Link("socks5://192.0.2.3:1080")).errorCode())
-        stale.checkCall()
+        stale.checkFailure(engine.updateStaticNode(hk, StaticNodeDraft.Link("socks5://192.0.2.3:1080")), ErrorCode.Busy, beforeFailures)
 
         val staleRemoval = serve()
-        assertEquals(ErrorCode.Busy, engine.removeStaticNode(hk, confirmed = true).errorCode())
-        staleRemoval.checkCall()
+        staleRemoval.checkFailure(engine.removeStaticNode(hk, confirmed = true), ErrorCode.Busy, beforeFailures)
 
         val notConfirmed = serve()
-        assertEquals(ErrorCode.InvalidArgument, engine.removeStaticNode(renamed, confirmed = false).errorCode())
-        notConfirmed.checkCall()
+        notConfirmed.checkFailure(engine.removeStaticNode(renamed, confirmed = false), ErrorCode.InvalidArgument, beforeFailures)
         engine.checkCatalog(renamed, tokyo)
 
         val remove = serve()
@@ -103,12 +102,11 @@ class StaticNodesTest {
         remove.checkCall()
         engine.checkCatalog(tokyo)
 
+        val afterRemove = core.snapshots.get()
         val repeatedRemoval = serve()
-        assertEquals(ErrorCode.NotFound, engine.removeStaticNode(renamed, confirmed = true).errorCode())
-        repeatedRemoval.checkCall()
+        repeatedRemoval.checkFailure(engine.removeStaticNode(renamed, confirmed = true), ErrorCode.NotFound, afterRemove)
         val removedEdit = serve()
-        assertEquals(ErrorCode.NotFound, engine.updateStaticNode(renamed, StaticNodeDraft.Link("socks5://192.0.2.1:1080")).errorCode())
-        removedEdit.checkCall()
+        removedEdit.checkFailure(engine.updateStaticNode(renamed, StaticNodeDraft.Link("socks5://192.0.2.1:1080")), ErrorCode.NotFound, afterRemove)
         engine.checkCatalog(tokyo)
 
         val fieldErrors = serve(session.next().withoutRow(2))
@@ -137,6 +135,7 @@ class StaticNodesTest {
             assertEquals(ErrorCode.InvalidArgument, engine.addStaticNodes(drafts).errorCode())
         }
         assertEquals(listOf(0, 0, 201, 201), core.calls.map { (_, args) -> Json.parseToJsonElement(args).jsonObject.getValue("rows").jsonArray.size })
+        assertEquals(0, core.snapshots.get())
     }
 
     @Test
@@ -149,8 +148,10 @@ class StaticNodesTest {
 
         val uuid = "00000000-0000-4000-8000-000000000001"
         val draft = StaticNodeDraft.Manual.create("vless", "192.0.2.2", 443, uuid = uuid, options = mapOf("type" to "ws", "path" to "/test")).getOrThrow()
+        val beforeFailure = core.snapshots.get()
         core.reply = ContractFixtures.read("call-error-state-write.json")
         assertEquals(ErrorCode.Internal, engine.addStaticNodes(listOf(draft)).errorCode())
+        assertEquals(beforeFailure, core.snapshots.get())
         val (command, args) = core.calls.last()
         assertEquals("addStaticNodes", command)
         assertEquals(
@@ -160,6 +161,16 @@ class StaticNodesTest {
             Json.parseToJsonElement(args),
         )
         engine.checkCatalog(hk)
+    }
+
+    @Test
+    fun updateRejectsBatchOnlyReplyStatusesWithoutPolling() = runTest {
+        val engine = engine()
+        for (status in listOf("ready", "added")) {
+            core.reply = """{"ok":{"status":"$status","id":"${hk.id}","name":"HK","protocol":"socks5"}}"""
+            assertEquals(ErrorCode.Internal, engine.updateStaticNode(hk, StaticNodeDraft.Link(hk.link)).errorCode())
+            assertEquals(0, core.snapshots.get())
+        }
     }
 
     @Test
@@ -265,6 +276,12 @@ class StaticNodesTest {
         val (actualCommand, actualArgs) = core.calls.last()
         assertEquals(command, actualCommand)
         assertEquals(args, Json.parseToJsonElement(actualArgs))
+    }
+
+    private fun StaticNodeCallFixture.checkFailure(result: Result<*>, code: ErrorCode, snapshotsBefore: Int) {
+        assertEquals(code, result.errorCode())
+        checkCall()
+        assertEquals(snapshotsBefore, core.snapshots.get())
     }
 
     private fun ServiceEngine.checkCatalog(vararg nodes: StaticNode) {

@@ -18,7 +18,9 @@ import dev.doona.android.engine.Traffic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -49,6 +51,18 @@ internal class DoonaVpnService :
         connectivity = getSystemService(ConnectivityManager::class.java)
         scope.launch { session.follow(::end) }
         scope.launch { notifications.keepCurrent(engine.status, ratesWhileSeen()) }
+        scope.launch { followLockdown() }
+    }
+
+    private suspend fun followLockdown() {
+        engine.status.collectLatest { status ->
+            if (status.ended) engine.updateLockdown(false)
+            if (status !is Status.Running) return@collectLatest
+            while (true) {
+                engine.updateLockdown(isLockdownEnabled)
+                delay(LOCKDOWN_REFRESH_MS)
+            }
+        }
     }
 
     /** Rates for the notification, collected only while someone can read it, so a hidden one requests no samples. */
@@ -131,6 +145,7 @@ internal class DoonaVpnService :
 
     override fun onDestroy() {
         scope.cancel()
+        engine.updateLockdown(false)
         // Only the session this instance took: a start requested after this instance stopped itself is not its own.
         engine.controller.release(this)
         super.onDestroy()
@@ -182,6 +197,7 @@ internal class DoonaVpnService :
     }
 
     companion object {
+        private const val LOCKDOWN_REFRESH_MS = 5_000L
         private const val ACTION_START = "dev.doona.android.vpn.START"
         private const val ACTION_STOP = "dev.doona.android.vpn.STOP"
         private const val EXTRA_GENERATION = "generation"

@@ -26,6 +26,7 @@ import dev.doona.android.engine.Settings
 import dev.doona.android.engine.StaticNode
 import dev.doona.android.engine.StaticNodeDraft
 import dev.doona.android.engine.StaticNodeResult
+import dev.doona.android.engine.StaticNodeUpdateResult
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.TodayTraffic
@@ -70,8 +71,8 @@ import java.io.IOException
 /**
  * The process-wide [Engine] behind the UI, the tile and the notification (ARCH D2). The tunnel status is the
  * [TunnelController]'s; the catalog, traffic and actions come from the core. The catalog is read after `init`, after
- * every command that is not a read, and whenever a snapshot shows a new revision. Snapshots are taken every 5 s while running (health),
- * every second while running and someone collects [traffic], and every second while a latency test runs.
+ * every command that can change it, and whenever a snapshot shows a new revision. Snapshots are taken every 5 s while
+ * running (health), every second while running and someone collects [traffic], and every second during a latency test.
  */
 class ServiceEngine internal constructor(
     private val core: CoreBridge,
@@ -106,6 +107,10 @@ class ServiceEngine internal constructor(
     override val settings: StateFlow<Settings> = _settings.asStateFlow()
     private val _perAppLoaded = MutableStateFlow(false)
     override val perAppLoaded: StateFlow<Boolean> = _perAppLoaded.asStateFlow()
+
+    internal fun updateLockdown(enabled: Boolean) {
+        _settings.update { if (it.lockdownEnabled == enabled) it else it.copy(lockdownEnabled = enabled) }
+    }
 
     /**
      * The last snapshot's warning and the session that ran as it was taken. [warning] shows it only while that session
@@ -225,22 +230,34 @@ class ServiceEngine internal constructor(
             .map(StaticNodeRowsDto::toRows)
 
     override suspend fun addStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> =
-        command("addStaticNodes", StaticNodeBatchArgs.serializer(), StaticNodeBatchArgs(rows.map(StaticNodeDraftDto::of)), StaticNodeRowsDto.serializer())
-            .map(StaticNodeRowsDto::toRows)
+        command(
+            "addStaticNodes",
+            StaticNodeBatchArgs.serializer(),
+            StaticNodeBatchArgs(rows.map(StaticNodeDraftDto::of)),
+            StaticNodeRowsDto.serializer(),
+            pollOnFailure = false,
+        ).map(StaticNodeRowsDto::toRows)
 
     override suspend fun readStaticNode(id: String): Result<StaticNode> =
         read("readStaticNode", IdArgs.serializer(), IdArgs(id), StaticNodeDto.serializer()).map(StaticNodeDto::toStaticNode)
 
-    override suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeResult> =
+    override suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeUpdateResult> =
         command(
             "updateStaticNode",
             StaticNodeUpdateArgs.serializer(),
             StaticNodeUpdateArgs(StaticNodeDto.of(expected), StaticNodeDraftDto.of(node)),
-            StaticNodeRowDto.serializer(),
-        ).map(StaticNodeRowDto::toRow)
+            StaticNodeRowDto.Update.serializer(),
+            pollOnFailure = false,
+        ).map(StaticNodeRowDto.Update::toRow)
 
     override suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit> =
-        command("removeStaticNode", StaticNodeRemoveArgs.serializer(), StaticNodeRemoveArgs(StaticNodeDto.of(expected), confirmed), Unit.serializer())
+        command(
+            "removeStaticNode",
+            StaticNodeRemoveArgs.serializer(),
+            StaticNodeRemoveArgs(StaticNodeDto.of(expected), confirmed),
+            Unit.serializer(),
+            pollOnFailure = false,
+        )
 
     override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
 
@@ -331,6 +348,7 @@ class ServiceEngine internal constructor(
         args: A,
         result: DeserializationStrategy<R>,
         ordered: Boolean = false,
+        pollOnFailure: Boolean = true,
     ): Result<R> {
         val turn = if (ordered) takeTurn() else null
         // The core commits a command it has begun, so the refresh after it must run even if the caller is cancelled.
@@ -347,7 +365,8 @@ class ServiceEngine internal constructor(
             val reply = outcome ?: Result.failure(EngineException(ErrorCode.Internal))
             val code = (reply.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
             VpnLog.action(name, if (outcome == null) "dispatch" else "complete", if (reply.isSuccess) "ok" else "failed", code, (System.nanoTime() - begun) / 1_000_000)
-            if (outcome != null) poll()
+            // A failed subscription refresh can still publish its error in the catalog; failed static commands cannot.
+            if (outcome != null && (pollOnFailure || outcome.isSuccess)) poll()
             reply
         }.await()
     }

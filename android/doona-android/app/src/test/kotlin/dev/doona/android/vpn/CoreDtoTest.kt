@@ -18,7 +18,9 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -143,6 +145,15 @@ class CoreDtoTest {
         assertEquals(107374182400L, subscription.totalBytes)
         assertNull(subscription.error)
         assertNull(subscription.userAgent)
+    }
+
+    @Test
+    fun dnsFailureIsAProbeErrorOnTheNode() {
+        val payload = """{"id":"n-dns","name":"DNS","failed":true,"error":"dns_failed","isGroup":false}"""
+        val member = Json.decodeFromString(MemberDto.serializer(), payload).toMember()
+        assertTrue(member.failed)
+        assertNull(member.latencyMs)
+        assertEquals(ErrorCode.DnsFailed, member.error)
     }
 
     @Test
@@ -315,6 +326,20 @@ class CoreDtoTest {
             listOf(StaticNodeResult.Invalid(StaticNodeReason.LinkLength), StaticNodeResult.Invalid(StaticNodeReason.CatalogFull)),
             reply.toRows(),
         )
+    }
+
+    @Test
+    fun coreStaticNodeBatchesDecodeFieldsAndPortErrors() {
+        val calls = Json.decodeFromString<List<StaticNodeCallFixture>>(fixture("static-nodes.json"))
+        val reasons = mapOf("fields" to StaticNodeReason.Fields, "port" to StaticNodeReason.Port)
+        val invalid = calls.flatMap { call ->
+            val rows = call.reply["ok"]?.jsonObject?.get("rows")?.jsonArray.orEmpty()
+            rows.mapNotNull { row ->
+                val reason = row.jsonObject["reason"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                reasons[reason]?.let { expected -> expected to Json.decodeFromJsonElement(StaticNodeRowDto.serializer(), row).toRow() }
+            }
+        }.toMap()
+        assertEquals(reasons.values.associateWith { StaticNodeResult.Invalid(it) }, invalid)
     }
 
     @Test
