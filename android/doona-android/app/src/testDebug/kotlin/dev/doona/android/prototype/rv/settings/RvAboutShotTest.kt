@@ -61,23 +61,28 @@ class RvAboutShotTest {
         val routes = RvAboutRoutes(
             github = { opened += "github" },
             report = { opened += "report" },
-            checkUpdate = { opened += "update" },
             licenses = { opened += "licenses" },
             privacy = { opened += "privacy" },
         )
         compose.setContent { Themed { RvAboutScreen(rvSampleVersions, onBack = {}, routes = routes) } }
-        for (id in listOf(R.string.rv_about_github, R.string.rv_report_title, R.string.rv_settings_check_update, R.string.rv_settings_licenses, R.string.rv_about_privacy)) {
+        for (id in listOf(R.string.rv_about_github, R.string.rv_report_title, R.string.rv_settings_licenses, R.string.rv_about_privacy)) {
             compose.onNodeWithText(rvText(id)).performClick()
         }
-        assertEquals(listOf("github", "report", "update", "licenses", "privacy"), opened)
+        // 檢查更新 is on 設定 now (owner-fix2 item 18).
+        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertDoesNotExist()
+        assertEquals(listOf("github", "report", "licenses", "privacy"), opened)
     }
 
+    /** 設定's 關於 card: 關於 doona opens the page, and 檢查更新 under it checks. */
     @Test
     fun settingsRowOpensThePage() {
         var opened = 0
-        compose.setContent { Themed { RvAboutEntry(rvSampleVersions.app, onOpen = { opened++ }) } }
+        var checks = 0
+        compose.setContent { Themed { RvAboutEntry(rvSampleVersions.app, onOpen = { opened++ }, onCheck = { checks++ }) } }
         compose.onNodeWithText(rvText(R.string.rv_about_title)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).performClick()
         assertEquals(1, opened)
+        assertEquals(1, checks)
     }
 
     @Composable

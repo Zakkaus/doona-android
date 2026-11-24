@@ -16,8 +16,8 @@ import kotlinx.coroutines.delay
 /**
  * The 設定 sub-page samples in the preview, reached by route only (the `page` or `stack` extra of the sample's
  * activity): 設定's rows lead to them once the owner has picked 關於's layout and the rows are wired, so 設定 itself
- * does not change here. `about:new` and `about:failed` end 關於's check with a newer release or no answer (else nothing
- * newer). 回報問題 is the preview's `report` page ([RvReportSample]).
+ * does not change here. 回報問題 is the preview's `report` page ([RvReportSample]); 設定's update check is
+ * [rvUpdateSample].
  */
 internal object RvSettingsPreviewRoutes {
     const val ABOUT = "about"
@@ -30,9 +30,8 @@ internal object RvSettingsPreviewRoutes {
 /** The sample at [route], each choosing as the real page would; [push] opens a page over it and [pop] goes back. */
 @Composable
 internal fun RvSettingsPreview(route: String, push: (String) -> Unit, pop: () -> Unit) {
-    val state = route.substringAfter(':', "")
     when (route.substringBefore(':')) {
-        RvSettingsPreviewRoutes.ABOUT -> AboutSample(state, push, pop)
+        RvSettingsPreviewRoutes.ABOUT -> RvAboutScreen(rvSampleVersions, onBack = pop, routes = RvAboutRoutes(report = { push(REPORT) }, licenses = { push(LICENSES) }))
 
         RvSettingsPreviewRoutes.LANGUAGE -> {
             var selected by rememberSaveable { mutableStateOf(RvLanguage.TraditionalChinese) }
@@ -48,25 +47,26 @@ internal fun RvSettingsPreview(route: String, push: (String) -> Unit, pop: () ->
     }
 }
 
-/** 關於 doona: 檢查更新 asks for [RV_CHECK_MS], then ends as [state] says; 回報問題 and the licences open their pages. */
+/** 設定's update check in the sample: where it stands, and the check, which asks for [RV_CHECK_MS] and ends as [outcome] says. */
+internal class RvUpdateSample(val update: RvUpdate, val check: () -> Unit)
+
+/**
+ * 設定's 檢查更新 (the hero's action and 關於's row): it asks for [RV_CHECK_MS], then ends with a newer release when
+ * [outcome] is `new`, with no answer when it is `failed`, else with nothing newer (`settings:new`, `settings:failed`).
+ */
 @Composable
-private fun AboutSample(state: String, push: (String) -> Unit, pop: () -> Unit) {
+internal fun rvUpdateSample(outcome: String): RvUpdateSample {
     var update by remember { mutableStateOf<RvUpdate>(RvUpdate.Idle) }
     LaunchedEffect(update) {
         if (update != RvUpdate.Checking) return@LaunchedEffect
         delay(RV_CHECK_MS)
-        update = when (state) {
+        update = when (outcome) {
             NEW -> RvUpdate.Available(RV_SAMPLE_RELEASE)
             FAILED -> RvUpdate.Failed
             else -> RvUpdate.Latest
         }
     }
-    val routes = RvAboutRoutes(
-        report = { push(REPORT) },
-        checkUpdate = { update = RvUpdate.Checking },
-        licenses = { push(LICENSES) },
-    )
-    RvAboutScreen(rvSampleVersions, onBack = pop, routes = routes, update = update)
+    return RvUpdateSample(update) { update = RvUpdate.Checking }
 }
 
 /**

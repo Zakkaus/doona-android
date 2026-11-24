@@ -35,6 +35,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NAV_SETTINGS
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAction
+import dev.doona.android.designsystem.rv.RvBanner
 import dev.doona.android.designsystem.rv.RvBarSpacer
 import dev.doona.android.designsystem.rv.RvFloatingNav
 import dev.doona.android.designsystem.rv.RvFootnote
@@ -58,8 +59,10 @@ import dev.doona.android.prototype.rv.rvHeroArt
  * switches turn; the rows that open something are not wired, 主題 opens [onOpenTheme] and the nav's tabs [onTab].
  * [configRev] is a preview flag (PV-f): set, 進階 gains 設定檔 with the applied revision, which opens the configuration's
  * overview ([RvSettingsRoutes.config]). [geoData] is a sample flag too (owner-fix2 item 16): set, 進階 ends with the
- * GeoIP／GeoSite row ([RvGeoDataRow]), whose 更新 runs [RvSettingsRoutes.geoUpdate]. Over the page, the sheet that tells
- * how to add the quick settings tile by hand while the state holds it open.
+ * GeoIP／GeoSite row ([RvGeoDataRow]), whose 更新 runs [RvSettingsRoutes.geoUpdate]. Where the [update] check stands
+ * shows on the hero's 檢查更新 action, on the 檢查更新 row in 關於 ([RvAboutEntry]) and, when it needs the user, in the
+ * banner under the hero ([rvUpdateNotice]). Over the page, the sheet that tells how to add the quick settings tile by
+ * hand while the state holds it open.
  */
 @Composable
 internal fun RvSettingsScreen(
@@ -70,6 +73,7 @@ internal fun RvSettingsScreen(
     routes: RvSettingsRoutes = RvSettingsRoutes(),
     configRev: Int? = null,
     geoData: RvGeoData? = null,
+    update: RvUpdate = RvUpdate.Idle,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -80,13 +84,18 @@ internal fun RvSettingsScreen(
         overlay = { glass -> RvFloatingNav(RV_NAV_SETTINGS, onTab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter)) },
         end = RvPageEnd.Nav,
     ) { titleBlock ->
-        Hero(titleBlock, insets, routes.report)
+        Hero(titleBlock, insets, routes, update)
+        val version = stringResource(R.string.rv_settings_version_value)
+        // The banner stands where the first section title would, which then keeps its own gap above it (as 回報問題's).
+        rvUpdateNotice(update, version, routes.release, routes.checkUpdate)?.let {
+            RvBanner(it, Modifier.padding(start = RvSpace.gutter, top = RvSpace.sectionAbove, end = RvSpace.gutter))
+        }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             ConnectionGroup(state, onChange, routes)
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme)
             AdvancedGroup(state, routes, configRev, geoData)
-            RvAboutEntry(stringResource(R.string.rv_settings_version_value), routes.about)
+            RvAboutEntry(version, routes.about, update, routes.checkUpdate)
         }
     }
     val manual = stringResource(R.string.rv_settings_quick_tile_manual)
@@ -95,10 +104,11 @@ internal fun RvSettingsScreen(
 
 /**
  * The mark beside the centred title ([titleBlock]), on a faint dot texture that runs up behind the bar, and the two
- * round actions under it, their labels one size ([rvActionRowFit]); 匯出診斷 opens 回報問題 ([onReport]).
+ * round actions under it, their labels one size ([rvActionRowFit]); 匯出診斷 opens 回報問題, and 檢查更新 runs the
+ * same check as 關於's row, named by its [update] ([rvUpdateLabel]) and busy, deaf to a second tap, while it asks.
  */
 @Composable
-private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Unit) {
+private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsRoutes, update: RvUpdate) {
     val status = with(LocalDensity.current) { insets.getTop(this).toDp() }
     Box(Modifier.fillMaxWidth()) {
         // No dot on the status bar's clock (S8-08): the map starts under it, as 活動's does.
@@ -115,11 +125,13 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
                 RvSettingsText(stringResource(R.string.hub_settings), Rv.type.largeTitle, Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(RvSettingsSpace.titleToActions))
-            val labels = listOf(stringResource(R.string.rv_settings_export_diagnostics), stringResource(R.string.rv_settings_check_update))
+            val labels = listOf(stringResource(R.string.rv_settings_export_diagnostics), rvUpdateLabel(update))
             val style = rvActionRowFit(labels, RvSettingsSpace.actionColumn)
+            val checking = update == RvUpdate.Checking
             Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
-                RvAction(R.drawable.rv_sym_ios_share, labels[0], onReport, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
-                RvAction(R.drawable.rv_settings_ic_update, labels[1], NOT_WIRED, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
+                RvAction(R.drawable.rv_sym_ios_share, labels[0], routes.report, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
+                val column = Modifier.width(RvSettingsSpace.actionColumn)
+                RvAction(R.drawable.rv_settings_ic_update, labels[1], routes.checkUpdate, column, busy = checking, labelStyle = style, enabled = !checking)
             }
         }
     }
@@ -128,7 +140,9 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
 /**
  * Where 設定 leads beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row
  * and the hero's 匯出診斷, 關於 doona (which holds the licences), and the configuration's overview (with the preview flag); and 加到快速設定
- * ([addTile]), the system's dialog or the sheet that tells how; and the GeoIP／GeoSite update ([geoUpdate], with its sample flag).
+ * ([addTile]), the system's dialog or the sheet that tells how; the GeoIP／GeoSite update ([geoUpdate], with its sample flag); and
+ * the update check ([checkUpdate], the hero's action and 關於's row) and a newer release's GitHub page ([release]). The app
+ * downloads nothing: the release opens in the browser.
  */
 internal class RvSettingsRoutes(
     val alwaysOn: () -> Unit = NOT_WIRED,
@@ -140,6 +154,8 @@ internal class RvSettingsRoutes(
     val about: () -> Unit = NOT_WIRED,
     val config: () -> Unit = NOT_WIRED,
     val geoUpdate: () -> Unit = NOT_WIRED,
+    val checkUpdate: () -> Unit = NOT_WIRED,
+    val release: () -> Unit = NOT_WIRED,
 )
 
 /**

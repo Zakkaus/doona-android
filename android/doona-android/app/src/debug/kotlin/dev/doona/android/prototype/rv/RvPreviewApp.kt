@@ -75,6 +75,7 @@ import dev.doona.android.prototype.rv.settings.previewDark
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
+import dev.doona.android.prototype.rv.settings.rvUpdateSample
 import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.states.RvActivityNotice
 import dev.doona.android.prototype.rv.states.RvPermission
@@ -221,7 +222,7 @@ private fun RvSamplePage(
             RvNodeDetail(node, current = node.id == run.currentId, RvData.testTimes, onBack = pages.pop, onUse = { run.currentId = node.id }, onTest = {})
         }
 
-        SETTINGS -> SettingsPage(settings, onSettings, pages)
+        SETTINGS -> SettingsPage(settings, onSettings, pages, route.substringAfter(':', ""))
 
         THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pages.pop)
 
@@ -261,13 +262,14 @@ private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions,
 }
 
 /**
- * 設定: its always-on row opens the system's VPN settings, 加到快速設定 adds the app's real tile ([rvQuickTile]), and
- * DNS and 檢視生效設定 push their pages.
+ * 設定: its always-on row opens the system's VPN settings, 加到快速設定 adds the app's real tile ([rvQuickTile]),
+ * DNS and 檢視生效設定 push their pages, and 檢查更新 ends as `settings:<outcome>` says ([rvUpdateSample]).
  */
 @Composable
-private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit, pages: RvSamplePages) {
+private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit, pages: RvSamplePages, outcome: String) {
     val context = LocalContext.current
     val tile = rvQuickTile(settings, onSettings)
+    val update = rvUpdateSample(outcome)
     val routes = RvSettingsRoutes(
         alwaysOn = { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
         addTile = tile.add,
@@ -276,8 +278,9 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         effectiveConfig = { pages.push(RvPolicyPreviewRoutes.EFFECTIVE) },
         report = { pages.push(REPORT) },
         about = { pages.push(RvSettingsPreviewRoutes.ABOUT) },
+        checkUpdate = update.check,
     )
-    RvSettingsScreen(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes)
+    RvSettingsScreen(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
 }
 
 /** 設定's 依 App, and 授權條款 with each licence's text (`license:<n>`). */

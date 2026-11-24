@@ -196,8 +196,11 @@ class RvLayoutTest {
     @Test
     fun about() = measure("settings-about", Top.Title) { RvAboutScreen(rvSampleVersions, onBack = {}) }
 
+    /** 設定 with a failed update check: the banner under the hero, a section's gap above and below it (owner-fix2 item 18). */
     @Test
-    fun aboutUpdateFailed() = measure("settings-update-failed", Top.Title) { RvAboutScreen(rvSampleVersions, onBack = {}, update = RvUpdate.Failed) }
+    fun settingsUpdateFailed() = measure("settings-update-failed", Top.Hero) {
+        RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, update = RvUpdate.Failed)
+    }
 
     @Test
     fun interval() = measure("settings-interval", Top.Title) { RvIntervalScreen(RvData.UPDATE_HOURS, onSelect = {}, onBack = {}) }

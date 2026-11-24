@@ -2,27 +2,33 @@ package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.REPORT
 import dev.doona.android.prototype.rv.RvMotionOptions
 import dev.doona.android.prototype.rv.RvPreviewApp
 import dev.doona.android.prototype.rv.RvSampleStart
 import dev.doona.android.prototype.rv.SETTINGS
+import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvText
+import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -62,13 +68,22 @@ class RvSettingsPreviewTest {
         heading(R.string.hub_settings)
     }
 
+    /**
+     * 設定's check as the preview runs it ([rvUpdateSample], `settings:new`): from the hero's action (關於's row runs the
+     * same), it asks, taking no second, then ends as its outcome says.
+     */
     @Test
-    fun aboutsCheckRunsThenEndsAsItsRouteSays() {
-        app("${RvSettingsPreviewRoutes.ABOUT}:new")
+    fun settingsCheckRunsThenEndsAsItsOutcomeSays() {
+        compose.setContent {
+            val sample = rvUpdateSample("new")
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(checkUpdate = sample.check), update = sample.update)
+            }
+        }
         compose.mainClock.autoAdvance = false
-        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).performClick()
+        compose.onAllNodesWithText(rvText(R.string.rv_settings_check_update)).onFirst().performClick()
         compose.mainClock.advanceTimeBy(FRAMES_MS)
-        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertHasNoClickAction()
+        compose.onAllNodes(hasText(rvText(R.string.rv_settings_check_update)) and hasClickAction() and isEnabled()).assertCountEquals(0)
         compose.mainClock.advanceTimeBy(RV_CHECK_MS + FRAMES_MS)
         compose.onNodeWithText(RuntimeEnvironment.getApplication().getString(R.string.rv_update_new, RV_SAMPLE_RELEASE)).assertExists()
     }

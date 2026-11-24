@@ -246,11 +246,11 @@ class RvGeoDataShotTest {
          * The approved page's window at each font size plus the row, so the page ends as its own golden does. At fs200
          * the title wraps beside 更新, and the second line too where a state follows the date.
          */
-        const val WHOLE = "+h1680dp"
-        const val WHOLE_FS115 = "+h1703dp"
-        const val FS200_IDLE = "+h2175dp"
-        const val FS200_UPDATING = "+h2172dp"
-        const val FS200_WRAPPED = "+h2216dp"
+        const val WHOLE = "+h1762dp"
+        const val WHOLE_FS115 = "+h1785dp"
+        const val FS200_IDLE = "+h2281dp"
+        const val FS200_UPDATING = "+h2278dp"
+        const val FS200_WRAPPED = "+h2322dp"
 
         const val WORD_JOINER = "⁠"
         const val ZERO_WIDTH_SPACE = "​"
