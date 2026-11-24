@@ -287,7 +287,10 @@ pub fn udp_resolver() -> (SocketAddr, Arc<Seen>) {
 
 /// [`udp_resolver`] answering A queries with `answer`.
 pub fn udp_resolver_to(answer: std::net::Ipv4Addr) -> (SocketAddr, Arc<Seen>) {
-    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    udp_resolver_from(UdpSocket::bind("127.0.0.1:0").unwrap(), answer)
+}
+
+pub fn udp_resolver_from(socket: UdpSocket, answer: std::net::Ipv4Addr) -> (SocketAddr, Arc<Seen>) {
     let addr = socket.local_addr().unwrap();
     let seen = Arc::new(Seen::default());
     let s = Arc::clone(&seen);

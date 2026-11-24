@@ -17,6 +17,9 @@ internal interface TunHost {
     /** The subset of [packages] installed for this user and visible to doona. */
     fun installed(packages: Set<String>): Set<String>
 
+    /** Whether Android currently blocks connections outside this VPN. */
+    val lockdownEnabled: Boolean
+
     /** The default network's resolvers, read before [establish]. */
     fun bootstrapDns(): List<String>
 

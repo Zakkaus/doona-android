@@ -43,8 +43,7 @@
             android:targetActivity=".app.MainActivity" />
 
         <!-- systemExempted is allowed for VPN apps; lint only knows the exact-alarm criterion.
-             https://developer.android.com/develop/background-work/services/fgs/service-types#system-exempted
-             Always-on is declared unsupported until doona protects its own sockets (ARCH D14). -->
+             https://developer.android.com/develop/background-work/services/fgs/service-types#system-exempted -->
         <service
             android:name=".vpn.DoonaVpnService"
             android:exported="false"
@@ -54,9 +53,6 @@
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
-            <meta-data
-                android:name="android.net.VpnService.SUPPORTS_ALWAYS_ON"
-                android:value="false" />
         </service>
 
         <provider
