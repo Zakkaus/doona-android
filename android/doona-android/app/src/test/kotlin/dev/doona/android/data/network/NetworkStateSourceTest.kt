@@ -9,7 +9,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.NetworkTransport
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -60,14 +59,23 @@ class NetworkStateSourceTest {
     @Test
     fun captivePortalAndFailedProbeStayOnlineButUnvalidated() = runTest {
         val state = observeNetwork()
+        val signIn = mutableListOf<Boolean>()
+        backgroundScope.launch { state.captivePortal.collect { signIn += it } }
+        testScheduler.runCurrent()
         val callback = (manager.networkCallbacks - existing).single()
         val caps = capabilities(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)
         callback.onCapabilitiesChanged(wifi, caps)
         testScheduler.runCurrent()
         assertTrue(state.value.online)
         assertFalse(state.value.validated)
+        assertEquals(listOf(false, true), signIn)
 
         shadowOf(caps).removeCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)
+        callback.onCapabilitiesChanged(wifi, caps)
+        testScheduler.runCurrent()
+        assertFalse(state.value.validated)
+        assertEquals(listOf(false, true, false), signIn)
+
         shadowOf(caps).addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         callback.onCapabilitiesChanged(wifi, caps)
         testScheduler.runCurrent()
@@ -78,6 +86,7 @@ class NetworkStateSourceTest {
         testScheduler.runCurrent()
         assertTrue(state.value.online)
         assertFalse(state.value.validated)
+        assertFalse(signIn.last())
 
         shadowOf(caps).removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         callback.onCapabilitiesChanged(wifi, caps)
@@ -91,7 +100,7 @@ class NetworkStateSourceTest {
         testScheduler.runCurrent()
         assertEquals(existing, manager.networkCallbacks)
         val first = backgroundScope.launch { state.collect {} }
-        val second = backgroundScope.launch { state.collect {} }
+        val second = backgroundScope.launch { state.captivePortal.collect {} }
         testScheduler.runCurrent()
         val callback = (manager.networkCallbacks - existing).single()
         first.cancel()
@@ -111,7 +120,7 @@ class NetworkStateSourceTest {
         assertEquals(existing, manager.networkCallbacks)
     }
 
-    private fun TestScope.observeNetwork(): StateFlow<NetworkState> {
+    private fun TestScope.observeNetwork(): NetworkStateSource {
         val state = networkState(app, backgroundScope)
         backgroundScope.launch { state.collect {} }
         testScheduler.runCurrent()

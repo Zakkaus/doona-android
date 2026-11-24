@@ -29,6 +29,8 @@ internal class FakeCore : CoreBridge {
     /** Whether the running fixture keeps its `local_network` warning. */
     @Volatile var warns = true
 
+    @Volatile var dataPathAlive = true
+
     /** Runs as the core starts a generation. */
     @Volatile var onStart: () -> Unit = {}
 
@@ -43,7 +45,7 @@ internal class FakeCore : CoreBridge {
         snapshots.incrementAndGet()
         snapshotError?.let { throw it }
         snapshotReplies.poll()?.let { return it() }
-        val fixture = ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
+        val fixture = ContractFixtures.read(if (sinceRevision < 7 || !dataPathAlive) "snapshot-stopped-catalog.json" else "snapshot-running.json")
         return if (warns) fixture else fixture.replace("\"warning\": \"local_network\"", "\"warning\": null")
     }
 

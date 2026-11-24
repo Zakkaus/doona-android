@@ -299,12 +299,27 @@ class TunnelControllerTest {
     @Test
     fun aDeadDataPathFailsTheSessionItWasSeenIn() {
         val running = startRunning()
-        controller.coreStopped(Status.Running(running.sinceEpochMs - 1))
+        val session = runBlocking { withTimeout(5_000) { controller.session.first { it.status == running } } }
+        controller.coreStopped(session.copy(generation = session.generation - 1))
         assertEquals(running, controller.status.value)
 
-        controller.coreStopped(running)
+        controller.coreStopped(session)
         assertEquals(Status.Failed(FailureReason.CoreStopped), awaitStatus { it is Status.Failed })
         assertEquals(listOf("start", "stop"), core.events)
+    }
+
+    @Test
+    fun lockdownReportsAPlatformRefusalWithoutBuildingATunnel() = runBlocking {
+        host.lockdownEnabled = true
+        start()
+        val refused = withTimeout(5_000) { controller.session.first { it.status is Status.Failed } }
+        assertEquals(VpnStartBlock.Lockdown, refused.startBlock)
+        assertTrue(host.tuns.isEmpty())
+        assertTrue(core.events.isEmpty())
+
+        host.lockdownEnabled = false
+        startRunning()
+        assertNull(controller.session.value.startBlock)
     }
 
     @Test
@@ -440,6 +455,7 @@ class TunnelControllerTest {
     private class FakeHost : TunHost {
         override val selfPackage = SELF
         override var mtu = StartConfigDto.MTU
+        override var lockdownEnabled = false
         val routings = CopyOnWriteArrayList<AppRouting>()
         val mtus = CopyOnWriteArrayList<Int>()
         val tuns = CopyOnWriteArrayList<FakeTun>()

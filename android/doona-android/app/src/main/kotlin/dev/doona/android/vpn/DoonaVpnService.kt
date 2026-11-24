@@ -55,6 +55,7 @@ internal class DoonaVpnService :
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         lastStartId = startId
+        var restart = START_NOT_STICKY
         when (intent?.action) {
             ACTION_START -> {
                 goForeground()
@@ -62,11 +63,20 @@ internal class DoonaVpnService :
                 if (session.open) notifications.cancelDrop()
             }
 
+            SERVICE_INTERFACE -> {
+                if (!session.open) goForeground()
+                if (session.startSystem(this, ::stopSelf)) {
+                    notifications.cancelDrop()
+                    // Android redelivers the system start after process death; an explicit stop cancels it.
+                    restart = START_REDELIVER_INTENT
+                }
+            }
+
             ACTION_STOP -> engine.disconnect()
         }
         // Nothing of ours to follow: a stop with no session, or a start that a disconnect replaced on its way here.
         if (!session.open) stopSelfResult(startId)
-        return START_NOT_STICKY
+        return restart
     }
 
     /** Must run before onStartCommand returns, even for a repeated start: it came from startForegroundService. */
@@ -122,6 +132,8 @@ internal class DoonaVpnService :
     override val selfPackage: String get() = packageName
 
     override val mtu: Int get() = tunMtu()
+
+    override val lockdownEnabled: Boolean get() = isLockdownEnabled
 
     override fun installed(packages: Set<String>): Set<String> = packages.filterTo(mutableSetOf()) { name ->
         try {

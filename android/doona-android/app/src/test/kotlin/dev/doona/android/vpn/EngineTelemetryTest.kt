@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -104,6 +105,65 @@ class EngineTelemetryTest {
         engine.disconnect()
         runCurrent()
         assertEquals(today, engine.today.value)
+    }
+
+    @Test
+    fun theHealthCheckReportsCoreDeathThenRestartsASystemSession() = runTest {
+        val engine = engine()
+        var starts = 0
+        core.onStart = { starts++ }
+        val service = ServiceSession(engine.controller)
+        backgroundScope.launch { service.follow { engine.controller.release(Host) } }
+        assertTrue(service.startSystem(Host) { error("Unexpected cancellation") })
+        runCurrent()
+        assertTrue(engine.status.value is Status.Running)
+
+        reportDeadCore()
+        assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
+
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertTrue(engine.status.value is Status.Running)
+        assertEquals(2, starts)
+    }
+
+    @Test
+    fun manualStopCancelsPendingSystemRecoveryAndRedelivery() = runTest {
+        val engine = engine()
+        var starts = 0
+        var redeliveryCancelled = false
+        core.onStart = { starts++ }
+        assertTrue(engine.controller.startSystem(Host) { redeliveryCancelled = true } != null)
+        runCurrent()
+        reportDeadCore()
+        assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
+
+        engine.disconnect()
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertEquals(Status.Stopped, engine.status.value)
+        assertEquals(1, starts)
+        assertTrue(redeliveryCancelled)
+    }
+
+    @Test
+    fun aFailedManualSessionDoesNotRestart() = runTest {
+        val engine = engine()
+        var starts = 0
+        core.onStart = { starts++ }
+        start(engine)
+        reportDeadCore()
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
+        assertEquals(1, starts)
+    }
+
+    private fun TestScope.reportDeadCore() {
+        core.dataPathAlive = false
+        advanceTimeBy(5_000)
+        runCurrent()
+        core.dataPathAlive = true
     }
 
     @Test
@@ -227,6 +287,7 @@ class EngineTelemetryTest {
 
     private object Host : TunHost {
         override val selfPackage = "dev.doona.android"
+        override val lockdownEnabled = false
 
         override fun installed(packages: Set<String>) = packages
 

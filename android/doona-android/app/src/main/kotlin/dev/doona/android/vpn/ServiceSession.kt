@@ -18,10 +18,15 @@ internal class ServiceSession(private val controller: TunnelController) {
         if (controller.start(host, requested)) generation = requested
     }
 
+    fun startSystem(host: TunHost, cancelRestart: () -> Unit): Boolean {
+        generation = controller.startSystem(host, cancelRestart) ?: return false
+        return true
+    }
+
     /** Calls [end] once for each session this instance started, with its terminal status. */
     suspend fun follow(end: (Session) -> Unit) {
         controller.session.collect { session ->
-            if (open && session.generation >= generation && session.status.ended) {
+            if (open && session.generation >= generation && session.status.ended && !session.recovering) {
                 generation = NONE
                 end(session)
             }

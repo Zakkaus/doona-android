@@ -80,6 +80,10 @@ class ServiceEngine internal constructor(
     private val _ready = MutableStateFlow(false)
     override val ready: StateFlow<Boolean> = _ready.asStateFlow()
     override val status: StateFlow<Status> get() = controller.status
+
+    /** Platform start refusal; null for other session outcomes. */
+    val startBlock = controller.session.map { it.startBlock }.distinctUntilChanged()
+
     private val _traffic = MutableStateFlow(Traffic())
     override val traffic: StateFlow<Traffic> = _traffic.asStateFlow()
     private val _today = MutableStateFlow(TodayTraffic())
@@ -396,13 +400,13 @@ class ServiceEngine internal constructor(
 
     /** Runs whatever the screen does, so a core that dies with the screen off is noticed (ARCH D10). */
     private suspend fun checkHealth() {
-        controller.status.collectLatest { status ->
-            if (status !is Status.Running) return@collectLatest
+        controller.session.collectLatest { session ->
+            if (session.status !is Status.Running) return@collectLatest
             while (true) {
                 delay(HEALTH_INTERVAL_MS)
                 if (poll()?.alive != true) {
                     VpnLog.warn("health check: data path down")
-                    controller.coreStopped(status)
+                    controller.coreStopped(session)
                     return@collectLatest
                 }
             }
