@@ -34,6 +34,18 @@ class RvMapPanTest {
     }
 
     @Test
+    fun theFirstTwelveTakeTheCoresAnchorsToo() {
+        // doona-core regions/data.rs (regions3, 4e6929b5): one table, the sample's first twelve no longer kept apart.
+        val core = mapOf(
+            RvPlace.HK to (22.4f to 114.11f), RvPlace.TW to (23.7f to 120.96f), RvPlace.JP to (36.2f to 138.25f),
+            RvPlace.SG to (1.35f to 103.82f), RvPlace.US to (37.09f to -95.71f), RvPlace.KR to (35.91f to 127.77f),
+            RvPlace.CA to (56.13f to -106.35f), RvPlace.GB to (55.38f to -3.44f), RvPlace.DE to (51.17f to 10.45f),
+            RvPlace.FR to (46.23f to 2.21f), RvPlace.NL to (52.13f to 5.29f), RvPlace.RU to (61.52f to 105.32f),
+        )
+        core.forEach { (place, at) -> assertEquals("$place", at, place.lat to place.lon) }
+    }
+
+    @Test
     fun everyPanTakesTheShortWayAndEndsOnTheSpot() {
         spots.forEach { (name, at) ->
             starts.forEach { from ->

@@ -24,19 +24,18 @@ internal data class RvSpot(val lat: Float, val lon: Float)
  * The one table of the countries and regions nodes are in, by ISO code (the enum's name, which also picks the flag): the
  * name every page shows, the part of the world (the UN's: the Middle East is Asia, Russia is Europe), and the centroid
  * in degrees for the maps. doona-core's 54 regions in its order (`regions/data.rs`: doona web's 40 from
- * `src/dae/regions.ts`, then 14 the core adds), with the core's centroids, except: the sample's first twelve countries
- * keep the anchors their approved maps were drawn with, and Sweden's sits one 2-degree cell west of the core's, which
- * falls on the Baltic in [RvLandMask].
+ * `src/dae/regions.ts`, then 14 the core adds), with the core's centroids, except Sweden's, which sits one 2-degree cell
+ * west of the core's: that falls on the Baltic in [RvLandMask].
  */
 internal enum class RvPlace(@StringRes val label: Int, val region: RvRegion, val lat: Float, val lon: Float) {
-    HK(R.string.rv_nodes_place_hk, RvRegion.Asia, 22.35f, 114.15f),
+    HK(R.string.rv_nodes_place_hk, RvRegion.Asia, 22.4f, 114.11f),
     TW(R.string.rv_nodes_place_tw, RvRegion.Asia, 23.7f, 120.96f),
     JP(R.string.rv_nodes_place_jp, RvRegion.Asia, 36.2f, 138.25f),
     SG(R.string.rv_nodes_place_sg, RvRegion.Asia, 1.35f, 103.82f),
-    US(R.string.rv_nodes_place_us, RvRegion.Americas, 39.83f, -98.58f),
-    KR(R.string.rv_nodes_place_kr, RvRegion.Asia, 35.9f, 127.8f),
+    US(R.string.rv_nodes_place_us, RvRegion.Americas, 37.09f, -95.71f),
+    KR(R.string.rv_nodes_place_kr, RvRegion.Asia, 35.91f, 127.77f),
     CA(R.string.rv_nodes_place_ca, RvRegion.Americas, 56.13f, -106.35f),
-    GB(R.string.rv_nodes_place_gb, RvRegion.Europe, 54f, -2f),
+    GB(R.string.rv_nodes_place_gb, RvRegion.Europe, 55.38f, -3.44f),
     DE(R.string.rv_nodes_place_de, RvRegion.Europe, 51.17f, 10.45f),
     FR(R.string.rv_nodes_place_fr, RvRegion.Europe, 46.23f, 2.21f),
     NL(R.string.rv_nodes_place_nl, RvRegion.Europe, 52.13f, 5.29f),
