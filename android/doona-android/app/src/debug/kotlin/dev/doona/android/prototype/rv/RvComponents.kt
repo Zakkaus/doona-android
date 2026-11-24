@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,21 +59,18 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.hideFromAccessibility
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -514,89 +510,6 @@ internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style:
 }
 
 /**
- * What a banner says, by kind; the kind alone picks the glyph, so every banner of a kind looks the same. [Error]: an
- * action failed or a part stopped (a failed switch, save, export, import or update; the core stopped; every node failed).
- * [Warning]: something outside doona stops traffic (no network, another app's VPN). [Info]: nothing is broken now, the
- * banner offers something (the log of an earlier crash). The glyphs are the log levels' on 回報問題.
- */
-internal enum class RvNoticeKind(@DrawableRes val glyph: Int) {
-    Error(R.drawable.rv_sym_error),
-    Warning(R.drawable.rv_nodes_ic_warning),
-    Info(R.drawable.rv_sym_info),
-}
-
-/** One banner: its [kind], the [title] over its [reason], and the one [action] that [onAction] runs. */
-@Immutable
-internal class RvNotice(val kind: RvNoticeKind, val title: String, val reason: String, val action: String, val onAction: () -> Unit)
-
-/**
- * The one banner of the RV pages, as Revolut's notice card with a button (revolut-ux3 §3): 16 dp padding on every side;
- * a row's 40 dp disc with its kind's glyph in ink, its top on the title's line; the title over its reason (wrapping, in
- * secondary ink) 16 dp after the disc; then, [RvSpace.noticeToAction] under the text, the one action as the full-width
- * secondary pill. No hue anywhere: Revolut's notice is neutral, and the owner ruled out a red glyph over a teal action
- * (2026-11-23). A screen reader announces it when it appears. A page places it with [RvBannerSlot] (or [RvGutter]'s
- * `banner`), never by itself.
- */
-@Composable
-internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
-    RvCard(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
-        Column(Modifier.fillMaxWidth().padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.noticeToAction)) {
-            Row(Modifier.fillMaxWidth()) {
-                RvIconDisc(notice.kind.glyph, glyph = RvSize.noticeGlyph)
-                Spacer(Modifier.width(RvSpace.rowGap))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-                    RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
-                    RvText(notice.reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
-                }
-            }
-            RvSecondaryButton(notice.action, notice.onAction)
-        }
-    }
-}
-
-/**
- * Where a page's banner sits, the same on every page: first in the page's body, right under its header (活動's hero
- * and actions, a large title, the tab's header, the picker's title and caption), so it takes the place of the first
- * card, on the gutter, [RvSpace.cardGap] over what follows. Nothing without a [banner].
- */
-@Composable
-internal fun RvBannerSlot(banner: RvNotice?) {
-    if (banner != null) RvBanner(banner, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.cardGap))
-}
-
-/**
- * An empty state where a section is not set up yet (活動 with no subscription), as Revolut's product that is not opened
- * (revolut-ux3 §4): no glyph, no disc and no card, the [title] over one [line], centred, then the one [action] as the
- * full-width primary pill on the caller's gutter. The title keeps the row title's step: Revolut's 44 sp is the hero's,
- * not a notice's. For data that is empty inside a card, [RvEmptyCaption].
- */
-@Composable
-internal fun RvEmptyState(title: String, line: String, action: String, onAction: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().padding(vertical = RvSpace.chartGap), horizontalAlignment = Alignment.CenterHorizontally) {
-        RvText(title, Rv.type.rowTitle, align = TextAlign.Center, maxLines = BANNER_TITLE_LINES)
-        Spacer(Modifier.height(RvSpace.emptyLine))
-        RvText(line, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center, maxLines = BANNER_REASON_LINES)
-        Spacer(Modifier.height(RvSpace.chartGap))
-        RvPrimaryButton(action, onAction)
-    }
-}
-
-/**
- * An empty state inside a card (連線 with the tunnel off, a search that matches nothing), as Revolut's tile with no data
- * (revolut-ux3 §4): the card holds its [title] and a 17 sp [caption] under it, both at the start on the card's 16 dp
- * padding, and no glyph, disc or action.
- */
-@Composable
-internal fun RvEmptyCaption(title: String, caption: String, modifier: Modifier = Modifier) {
-    RvCard(modifier) {
-        Column(Modifier.fillMaxWidth().padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-            RvText(title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
-            RvText(caption, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
-        }
-    }
-}
-
-/**
  * The one footnote: what a group of cards means, under its last card in secondary text at the row subtitle's step,
  * [RvSpace.footnoteAbove] under it and on the gutter as the section titles, three lines at most: [inset] in from its
  * parent, less whatever a column it sits in already insets. 13/18 is for chart captions and legends only.
@@ -618,7 +531,5 @@ internal fun RvGutter(modifier: Modifier = Modifier, banner: RvNotice? = null, c
 
 internal const val RV_NO_VALUE = "—"
 
-/** A banner's or an empty state's title wraps to two lines at most, and its reason, line or caption to three. */
-private const val BANNER_TITLE_LINES = 2
-private const val BANNER_REASON_LINES = 3
+/** A footnote wraps to three lines at most. */
 private const val FOOTNOTE_LINES = 3
