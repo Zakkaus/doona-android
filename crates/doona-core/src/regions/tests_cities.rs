@@ -170,7 +170,7 @@ fn mainland_ports_are_not_hong_kong_exits() {
         ("广州港01", "CN", "guangzhou"),
         ("上海港 IPLC", "CN", "shanghai"),
         ("廣州港 01", "CN", "guangzhou"),
-        ("广州 港01", "CN", "guangzhou"),
+        ("广州 港01", "HK", "hong-kong"),
         ("广港IPLC", "HK", "hong-kong"),
         ("沪港 01", "HK", "hong-kong"),
         ("香港01", "HK", "hong-kong"),
@@ -180,6 +180,13 @@ fn mainland_ports_are_not_hong_kong_exits() {
     assert_location("港|01", Some("HK"), None);
     assert_location("港湾", None, None);
     assert_location("港IPLCbackup", None, None);
+}
+
+#[test]
+fn glued_provider_prefixes_do_not_hide_mainland_ports() {
+    for name in ["VIP广州港01", "测试广州港01", "节点广州港 01"] {
+        assert_location(name, Some("CN"), Some("guangzhou"));
+    }
 }
 
 #[test]
@@ -200,6 +207,8 @@ fn relay_exits_follow_transit_tags() {
 fn spacing_variants_preserve_alias_boundaries() {
     for (name, iso, city) in [
         ("日 本", "JP", None),
+        ("日 本 01", "JP", None),
+        ("IPLC日 本IEPL", "JP", None),
         ("新 加 坡", "SG", Some("singapore")),
         ("香 港 01", "HK", Some("hong-kong")),
         ("Hong  Kong", "HK", Some("hong-kong")),
@@ -214,6 +223,19 @@ fn spacing_variants_preserve_alias_boundaries() {
     assert_location("Los  Angelesville", None, None);
     assert_location("ACME  INC", None, None);
     assert_location("OTP  01", None, None);
+}
+
+#[test]
+fn spaced_han_aliases_do_not_cross_word_boundaries() {
+    for name in [
+        "精英 国际",
+        "完美 国际",
+        "节日 本地",
+        "节日 本 01",
+        "日 本地",
+    ] {
+        assert_location(name, None, None);
+    }
 }
 
 #[test]

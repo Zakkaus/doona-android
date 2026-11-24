@@ -172,6 +172,7 @@ fn alias_tail<'a>(key: &str, text: &'a str) -> Option<&'a str> {
 fn candidates(
     name: &str,
     scan: std::ops::Range<usize>,
+    wanted: impl Fn(&Alias) -> bool,
 ) -> impl Iterator<Item = (Rank, &'static Alias)> {
     MATCHER
         .patterns
@@ -179,8 +180,15 @@ fn candidates(
         .filter_map(move |m| {
             let id = m.pattern().as_usize();
             let a = &MATCHER.aliases[id];
-            let tail = alias_tail(&a.key[m.len()..], &name[m.end()..])?;
-            Some(((m.start(), Reverse(name.len() - tail.len()), id), a))
+            if !wanted(a) {
+                return None;
+            }
+            let mut end = m.end();
+            if m.len() != a.key.len() {
+                let tail = alias_tail(&a.key[m.len()..], &name[end..])?;
+                end = name.len() - tail.len();
+            }
+            Some(((m.start(), Reverse(end), id), a))
         })
 }
 
@@ -283,21 +291,41 @@ fn word_before(prefix: &str) -> bool {
         .is_some_and(unicode::letter_or_mark)
 }
 
-fn follows_alias(prefix: &str, wanted: impl Fn(&Alias) -> bool) -> bool {
+fn preceding_aliases(
+    prefix: &str,
+    wanted: impl Fn(&Alias) -> bool,
+) -> impl Iterator<Item = (Rank, &'static Alias)> {
     let end = prefix.len();
-    // A match can span arbitrarily many spaces, but not more non-space characters than its key.
-    let start = prefix
-        .char_indices()
-        .rev()
-        .filter(|&(_, c)| !c.is_whitespace())
-        .nth(MATCHER.max_key_len)
-        .map_or(0, |(i, c)| i + c.len_utf8());
-    candidates(prefix, start..end).any(|((start, Reverse(stop), _), a)| {
-        stop == end
-            && wanted(a)
-            && (!a.exact || &prefix[start..] == a.key)
-            && (!a.bounded || !word_before(&prefix[..start]))
+    let start = end.saturating_sub(MATCHER.max_key_len);
+    candidates(prefix, start..end, wanted).filter(move |&((start, Reverse(stop), _), a)| {
+        stop == end && end - start == a.key.len() && (!a.exact || &prefix[start..] == a.key)
     })
+}
+
+fn mainland_port(prefix: &str) -> Option<(Rank, &'static Alias)> {
+    if !prefix.ends_with(han) {
+        return None;
+    }
+    // The suffix 港 identifies a full city even when a provider prefix is glued to it.
+    preceding_aliases(prefix, |a| {
+        a.iso == "CN" && a.city.is_some() && a.key.starts_with(han) && !a.numbered_code
+    })
+    .min_by_key(|(rank, _)| *rank)
+}
+
+fn spaced_han(a: &Alias, width: usize) -> bool {
+    width != a.key.len() && a.key.starts_with(han)
+}
+
+fn han_gap_boundaries(prefix: &str, tail: &str) -> bool {
+    (!word_before(prefix) || relay::ascii_tag_end(prefix))
+        && (!tail.chars().next().is_some_and(unicode::letter_or_mark)
+            || relay::ascii_tag_start(tail))
+}
+
+fn follows_region(prefix: &str, iso: &str) -> bool {
+    preceding_aliases(prefix, |a| a.iso == iso && a.city.is_none())
+        .any(|((start, _, _), a)| !a.bounded || !word_before(&prefix[..start]))
 }
 
 fn accepts(a: &Alias, name: &str, start: usize, end: usize) -> bool {
@@ -310,19 +338,17 @@ fn accepts(a: &Alias, name: &str, start: usize, end: usize) -> bool {
         return false;
     }
     if a.key == "港" {
-        let prefix = name[..start].trim_end();
-        return relay::hong_kong_tail(tail)
-            && !(word_before(prefix)
-                && follows_alias(prefix, |a| a.iso == "CN" && a.city.is_some()));
+        return relay::hong_kong_tail(tail);
+    }
+    if spaced_han(a, text.len()) {
+        return han_gap_boundaries(&name[..start], tail);
     }
     !a.bounded || accepts_bounded(a, &name[..start], tail)
 }
 
 fn accepts_bounded(a: &Alias, prefix: &str, tail: &str) -> bool {
     let han_city = a.city.is_some() && a.key.starts_with(han);
-    if word_before(prefix)
-        && !(han_city && follows_alias(prefix, |r| r.iso == a.iso && r.city.is_none()))
-    {
+    if word_before(prefix) && !(han_city && follows_region(prefix, a.iso)) {
         return false;
     }
     if a.numbered_code && tail.starts_with(|c: char| c.is_ascii_digit()) {
@@ -339,8 +365,17 @@ fn matches(name: &str) -> impl Iterator<Item = (Rank, &'static Alias)> {
 }
 
 fn matches_in(name: &str, end: usize) -> impl Iterator<Item = (Rank, &'static Alias)> {
-    candidates(name, 0..end)
-        .filter(move |&((start, Reverse(stop), _), a)| accepts(a, name, start, stop))
+    candidates(name, 0..end, |_| true).filter_map(move |(rank @ (start, Reverse(stop), _), a)| {
+        if !accepts(a, name, start, stop) {
+            return None;
+        }
+        if a.key == "港"
+            && let Some(((city_start, _, id), city)) = mainland_port(&name[..start])
+        {
+            return Some(((city_start, Reverse(stop), id), city));
+        }
+        Some((rank, a))
+    })
 }
 
 fn country(code: &[u8]) -> Option<(&'static str, Coordinates)> {

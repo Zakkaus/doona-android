@@ -1,6 +1,7 @@
 //! Compact Chinese relay labels name the mainland entry first and the overseas exit second.
 use super::{
-    Location, MATCHER, Site, candidates, country, han, matches, strip_ascii_case, unicode,
+    Location, MATCHER, Site, candidates, country, han, han_gap_boundaries, matches, matches_in,
+    spaced_han, strip_ascii_case, unicode,
 };
 use std::cmp::Reverse;
 
@@ -8,6 +9,23 @@ const TRANSIT_TAGS: &[&str] = &[
     "IPLC", "IEPL", "BGP", "CN2", "GIA", "专线", "專線", "中转", "中轉",
 ];
 const NODE_TAGS: &[&str] = &["节点", "節點"];
+
+pub(super) fn ascii_tag_start(text: &str) -> bool {
+    TRANSIT_TAGS
+        .iter()
+        .any(|tag| tag.is_ascii() && strip_tag(text, tag).is_some())
+}
+
+pub(super) fn ascii_tag_end(text: &str) -> bool {
+    TRANSIT_TAGS
+        .iter()
+        .any(|tag| tag.is_ascii() && ends_with_tag(text, tag))
+}
+
+fn ends_with_tag(text: &str, tag: &str) -> bool {
+    text.get(text.len().saturating_sub(tag.len())..)
+        .is_some_and(|tail| tail.eq_ignore_ascii_case(tag))
+}
 
 pub(super) fn tag_start(text: &str) -> bool {
     TRANSIT_TAGS
@@ -21,11 +39,10 @@ fn left_boundary(prefix: &str) -> bool {
         .chars()
         .next_back()
         .is_some_and(unicode::letter_or_mark)
-        || TRANSIT_TAGS.iter().chain(NODE_TAGS).any(|s| {
-            prefix
-                .get(prefix.len().saturating_sub(s.len())..)
-                .is_some_and(|p| p.eq_ignore_ascii_case(s))
-        })
+        || TRANSIT_TAGS
+            .iter()
+            .chain(NODE_TAGS)
+            .any(|tag| ends_with_tag(prefix, tag))
 }
 
 fn destination(c: char) -> Option<(&'static str, &'static str)> {
@@ -76,16 +93,15 @@ pub(super) fn hong_kong_tail(tail: &str) -> bool {
 fn route_after(entry: &str, tail: &str) -> Option<Location> {
     let dest = route_destination(tail);
     if let Some(rest) = dest.strip_prefix('港') {
-        // Without a route marker, 港 after a full mainland city name means a port.
-        let port = dest.len() == tail.trim_start().len() && entry.chars().nth(1).is_some();
+        // A separator distinguishes a Hong Kong exit from a mainland port.
+        let port = dest.len() == tail.len() && entry.chars().nth(1).is_some();
         if port || !hong_kong_tail(rest) {
             return None;
         }
     } else if (dest.len() != tail.len() || dest.starts_with('香'))
-        && let Some((_, a)) =
-            super::matches_in(dest, dest.len().min(MATCHER.patterns.max_pattern_len()))
-                .filter(|(rank, a)| rank.0 == 0 && a.iso != "CN")
-                .min_by_key(|(rank, _)| *rank)
+        && let Some((_, a)) = matches_in(dest, dest.len().min(MATCHER.patterns.max_pattern_len()))
+            .filter(|(rank, a)| rank.0 == 0 && a.iso != "CN")
+            .min_by_key(|(rank, _)| *rank)
     {
         return Some(super::refine(dest, a.iso, a.center, a.city));
     }
@@ -105,15 +121,17 @@ fn exit_after(tail: &str) -> Option<Location> {
     let rest = super::alias_tail(suffix, rest)
         .or_else(|| other.and_then(|key| super::alias_tail(key, rest)))
         .unwrap_or(rest);
-    let city = matches(rest)
-        .filter(|(_, a)| a.iso == iso && a.city.is_some())
-        .min_by_key(|(r, _)| *r);
+    // Reject invalid compact exits before scanning the suffix for a city.
     if rest.chars().next().is_some_and(unicode::letter_or_mark)
         && !tag_start(rest)
-        && !city.is_some_and(|(rank, _)| rank.0 == 0)
+        && !matches_in(rest, rest.len().min(MATCHER.patterns.max_pattern_len()))
+            .any(|(rank, a)| rank.0 == 0 && a.iso == iso && a.city.is_some())
     {
         return None;
     }
+    let city = matches(rest)
+        .filter(|(_, a)| a.iso == iso && a.city.is_some())
+        .min_by_key(|(r, _)| *r);
     let (_, center) = country(iso.as_bytes())?;
     let city = city.and_then(|(_, a)| a.city).or_else(|| match iso {
         "HK" | "SG" => super::cities::SITES.iter().find(|s| s.iso == iso),
@@ -130,11 +148,12 @@ pub(super) fn exit(name: &str) -> Option<Location> {
     if !name.contains(han) {
         return None;
     }
-    for ((start, Reverse(end), _), a) in candidates(name, 0..name.len()) {
-        if a.iso == "CN"
-            && a.city.is_some()
-            && a.key.starts_with(han)
-            && left_boundary(&name[..start])
+    let entries = candidates(name, 0..name.len(), |a| {
+        a.iso == "CN" && a.city.is_some() && a.key.starts_with(han)
+    });
+    for ((start, Reverse(end), _), a) in entries {
+        if left_boundary(&name[..start])
+            && (!spaced_han(a, end - start) || han_gap_boundaries(&name[..start], &name[end..]))
             && let Some(exit) = route_after(a.key, &name[end..])
         {
             return Some(exit);

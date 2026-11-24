@@ -145,7 +145,15 @@ impl RefKey {
         }
         let word = |c: char| c.is_alphabetic() || c == '\u{301}';
         if self.text == "港" && tail.chars().next().is_some_and(word) {
-            return ["iplc", "节点"].iter().any(|tag| tail.starts_with(tag));
+            return [
+                "iplc", "iepl", "bgp", "cn2", "gia", "专线", "專線", "节点", "節點", "中转", "中轉",
+            ]
+            .iter()
+            .any(|tag| {
+                tail.strip_prefix(tag).is_some_and(|rest| {
+                    !tag.is_ascii() || !rest.chars().next().is_some_and(|c| word(c) && !han(c))
+                })
+            });
         }
         if self.bounded
             && (lower[..offset].chars().next_back().is_some_and(word)
@@ -235,6 +243,11 @@ fn web_case_forms_surroundings_and_ordered_pairs() {
         keys.push(iso);
         keys.extend(aliases.split('|'));
         firsts.push(aliases.split('|').next().unwrap());
+    }
+    for tag in [
+        "IEPL", "BGP", "CN2", "GIA", "专线", "專線", "中转", "中轉", "節點",
+    ] {
+        oracle.check(&format!("港{tag}01"));
     }
     for &key in &keys {
         let title: String = key
