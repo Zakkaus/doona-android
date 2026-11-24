@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBannerSlot
 import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvFootnote
@@ -171,7 +172,8 @@ private fun Actions(ready: Boolean, actions: RvReportActions) {
     Column {
         RvPrimaryButton(stringResource(R.string.rv_report_github), actions.github, enabled = ready)
         Spacer(Modifier.height(RvSpace.controlStack))
-        RvSecondaryButton(stringResource(R.string.rv_report_share), actions.share, enabled = ready)
+        // The pair floats over the page as it scrolls: the secondary is opaque on it, as the primary is.
+        RvSecondaryButton(stringResource(R.string.rv_report_share), actions.share, enabled = ready, over = Rv.colors.page)
     }
 }
 

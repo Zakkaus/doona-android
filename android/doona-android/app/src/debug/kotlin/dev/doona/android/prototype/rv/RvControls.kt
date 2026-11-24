@@ -367,10 +367,17 @@ internal fun RvPrimaryButton(
  * [RvControlSize.secondary] tall on the filter chip's neutral fill (the segment track, which reads on a card, a sheet
  * and the page), its 17 sp semibold [label] in ink, centred; pressed, the state layer. It never takes a hue, so it never
  * pairs a green or teal action with a red glyph. Its target reaches 48 dp through Compose's touch target expansion.
- * Disabled, as [RvPrimaryButton], the whole pill is at [RvAlpha.DISABLED] and takes no press.
+ * Disabled, the whole pill is at [RvAlpha.DISABLED] and takes no press. Floating where a page scrolls under it, it takes
+ * the colour it stands on as [over] and, as [RvPrimaryButton], is opaque in the colours it shows there, faded or not,
+ * so nothing under it shows through.
  */
 @Composable
-internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, over: Color? = null) {
+    val colors = Rv.colors
+    val track = over?.let { colors.segmentTrack.compositeOver(it) } ?: colors.segmentTrack
+    val faded = { color: Color -> if (enabled || over == null) color else color.copy(alpha = RvAlpha.DISABLED).compositeOver(over) }
+    // A pill with nothing under it to hide fades as one layer.
+    val layer = if (enabled || over != null) Modifier else Modifier.graphicsLayer { alpha = RvAlpha.DISABLED }
     val press = if (enabled) {
         Modifier.rvPress(CircleShape, Role.Button, onClick)
     } else {
@@ -383,13 +390,13 @@ internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Mod
         modifier
             .fillMaxWidth()
             .heightIn(min = RvControlSize.secondary)
-            .then(if (enabled) Modifier else Modifier.graphicsLayer { alpha = RvAlpha.DISABLED })
+            .then(layer)
             .clip(CircleShape)
-            .background(Rv.colors.segmentTrack)
+            .background(faded(track))
             .then(press)
             .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
         contentAlignment = Alignment.Center,
-    ) { RvText(label, Rv.type.action, color = Rv.colors.text, align = TextAlign.Center) }
+    ) { RvText(label, Rv.type.action, color = faded(colors.text), align = TextAlign.Center) }
 }
 
 /**
