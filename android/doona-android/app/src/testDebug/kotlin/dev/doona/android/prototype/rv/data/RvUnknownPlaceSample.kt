@@ -4,7 +4,7 @@ import dev.doona.android.designsystem.rv.RvPlace
 
 /** The node [from] the sample, as a subscription lists it with a name that gives no country. */
 private fun unknown(from: String, id: String, name: String) =
-    RvData.nodes.first { it.id == from }.copy(id = id, name = name, short = name, place = RvPlace.Other)
+    RvData.nodes.first { it.id == from }.copy(id = id, name = name, short = name, place = RvPlace.Other, city = null)
 
 /**
  * One Taiwan node and three whose names give no country. Premium 01 answers faster than the Taiwan node, so it would

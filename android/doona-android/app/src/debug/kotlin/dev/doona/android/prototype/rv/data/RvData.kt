@@ -93,7 +93,10 @@ internal object RvData {
     val testTimes: List<Long> = rvTestTimes()
     val current: RvNode = nodes.first { it.id == CURRENT_ID }
 
-    fun node(id: String): RvNode? = nodes.firstOrNull { it.id == id }
+    /** Nodes in places the 48 leave out ([rvWorldNodes]): for the map's pans and the node list's parts of the world. */
+    val worldNodes: List<RvNode> = rvWorldNodes(nodes)
+
+    fun node(id: String): RvNode? = nodes.firstOrNull { it.id == id } ?: worldNodes.firstOrNull { it.id == id }
 
     val subscriptions = listOf(
         RvSubscription("s1", RV_HARBOR, nodes.count { it.subscription == RV_HARBOR }, UPDATED, 61_700_000_000, 200_000_000_000, 1_805_112_000_000, "sub.harbor-cloud.example", RvSubFormat.Clash),

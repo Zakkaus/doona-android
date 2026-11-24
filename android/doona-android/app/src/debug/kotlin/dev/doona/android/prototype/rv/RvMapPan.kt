@@ -8,18 +8,18 @@ import dev.doona.android.designsystem.rv.RV_MAP_REST_LAT
 import dev.doona.android.designsystem.rv.RV_MAP_REST_LON
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvMotion
-import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.designsystem.rv.RvSpot
 import kotlinx.coroutines.launch
 
 /**
- * Where the map is centred while it pans to [place] after a node switch, over [RvMotion.MOVE_MS] the short way round
+ * Where the map is centred while it pans to [spot] after a node switch, over [RvMotion.MOVE_MS] the short way round
  * ([rvPanLon]); with no place to mark it pans back to where it rests, so neither way jumps.
  */
 @Composable
-internal fun rvMapPan(place: RvPlace?): Pair<() -> Float, () -> Float> {
+internal fun rvMapPan(spot: RvSpot?): Pair<() -> Float, () -> Float> {
     val motion = Rv.motion
-    val toLat = place?.lat ?: RV_MAP_REST_LAT
-    val toLon = place?.lon ?: RV_MAP_REST_LON
+    val toLat = spot?.lat ?: RV_MAP_REST_LAT
+    val toLon = spot?.lon ?: RV_MAP_REST_LON
     val lat = remember { Animatable(toLat) }
     val lon = remember { Animatable(toLon) }
     LaunchedEffect(toLat, toLon) {

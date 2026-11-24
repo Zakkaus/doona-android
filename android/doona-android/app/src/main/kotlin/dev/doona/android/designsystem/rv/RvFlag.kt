@@ -25,10 +25,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
+import dev.doona.android.flags.flagResource
 
 /**
  * A country's flag as a disc of [size], wherever the sample draws one: HatScripts' circle-flags for [code] (ISO 3166
- * alpha-2, either case) with a 1 dp ring of black 8 % in light or white 10 % in dark (X-18). A code without artwork, or
+ * alpha-2, either case; [rvFlagArt]) with a 1 dp ring of black 8 % in light or white 10 % in dark (X-18). A code without artwork, or
  * none, gets the fallback disc with the code on it. The [current] node's flag carries a check badge at its bottom end,
  * so the current node is never marked by tint alone; its ring takes [ring], the colour the flag sits on. It grows in and
  * shrinks out over [RvMotion.FADE_MS] as the current node changes.
@@ -36,7 +37,7 @@ import dev.doona.android.R
 @Composable
 internal fun RvFlag(code: String?, size: Dp, modifier: Modifier = Modifier, current: Boolean = false, ring: Color = Rv.colors.card) {
     val colors = Rv.colors
-    val art = code?.let(::flagArt)
+    val art = code?.let(::rvFlagArt)
     Box(modifier.size(size)) {
         val disc = Modifier.matchParentSize().clip(CircleShape)
         if (art != null) {
@@ -85,9 +86,15 @@ private val CHECK_START = 0.31f to 0.52f
 private val CHECK_KNEE = 0.44f to 0.65f
 private val CHECK_END = 0.69f to 0.38f
 
-/** The circle-flags artwork the sample carries, by country code. */
+/**
+ * The circle-flags artwork for [code]: the library's own for the first twelve places, whose approved pages were drawn
+ * with it, else the `:flags` module's copy of the same set at the same revision (every place doona names has one).
+ */
 @DrawableRes
-private fun flagArt(code: String): Int? = when (code.uppercase()) {
+internal fun rvFlagArt(code: String): Int? = libraryFlag(code) ?: flagResource(code)
+
+@DrawableRes
+private fun libraryFlag(code: String): Int? = when (code.uppercase()) {
     "AU" -> R.drawable.rv_flag_au
     "CA" -> R.drawable.rv_flag_ca
     "DE" -> R.drawable.rv_flag_de

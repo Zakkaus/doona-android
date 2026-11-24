@@ -236,12 +236,12 @@ private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>, val load
 @Composable
 private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, motion: HeaderMotion, insets: WindowInsets, hero: HeroLook, actions: @Composable () -> Unit) {
     val running = state.status is Status.Running || state.status is Status.Starting
-    // Direct traffic uses no node, so the map marks no place.
-    val place = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.place }?.takeIf { it.mapped }
+    // Direct traffic uses no node, so the map marks no place; a node marks its city, or its country's centroid.
+    val spot = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.spot }
     val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
     var heroBounds by remember { mutableStateOf<Rect?>(null) }
-    val pan = rvMapPan(place)
-    val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null, motion.resting), pan.first, pan.second)
+    val pan = rvMapPan(spot)
+    val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && spot != null, motion.resting), pan.first, pan.second)
     // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected and in the fair
     // tone while it connects or disconnects (PV-c v3, the hero tinted by the connection state).
     val dots = when {
@@ -249,7 +249,7 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
         running -> Rv.colors.dots
         else -> Rv.colors.dotsIdle
     }
-    RvHeader(place, statusBar + RvDots.focusTop, statusBar, dots, heroBounds, live = live) {
+    RvHeader(spot, statusBar + RvDots.focusTop, statusBar, dots, heroBounds, live = live) {
         Spacer(Modifier.windowInsetsTopHeight(insets))
         Spacer(Modifier.height(RvSpace.headerTop))
         HeroBlock(state, ticking, mode, hero, Modifier.onPlaced { heroBounds = it.boundsInParent() }, motion.pushed)

@@ -160,7 +160,7 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
  */
 @Composable
 internal fun RvHeader(
-    focus: RvPlace?,
+    focus: RvSpot?,
     focusTop: Dp,
     statusBar: Dp,
     dots: Color,

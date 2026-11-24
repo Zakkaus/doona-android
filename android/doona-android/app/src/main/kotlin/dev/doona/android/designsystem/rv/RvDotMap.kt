@@ -58,13 +58,14 @@ private class DotRow(val y: Float, val dots: List<Offset>)
 
 /**
  * Revolut's dot texture (#07, #08) drawn as a world map behind the content: a dot on every land cell, in [color],
- * fading out toward the bottom so the round actions sit on the plain page. The map is centred on [focus]'s cell, which
+ * fading out toward the bottom so the round actions sit on the plain page. The map is centred on [focus]'s cell (a node's
+ * city, or its country's centroid), which
  * lands [focusTop] from the top and is marked with one brighter dot and a soft ring; with no focus it centres on East
  * Asia and marks nothing. With [fadeTop] (the status bar), no dot is drawn above it, so none sits on the clock (S5-03),
  * and they fade in over [RvDots.topFade] under it. Inside [clear] (the hero's text, in this element's coordinates) grown by
  * [RvDots.clearPad] they are kept faint, so no dot runs through the figures (S5-02).
  */
-internal fun Modifier.rvDotMap(focus: RvPlace?, color: Color, focusTop: Dp, clear: Rect? = null, fadeTop: Dp? = null, live: RvDotMotion = RV_STILL): Modifier = drawWithCache {
+internal fun Modifier.rvDotMap(focus: RvSpot?, color: Color, focusTop: Dp, clear: Rect? = null, fadeTop: Dp? = null, live: RvDotMotion = RV_STILL): Modifier = drawWithCache {
     val pitch = RvDots.pitch.toPx()
     val centre = Offset(size.width / 2f, focusTop.toPx())
     val rows = dotRows(live.lat?.invoke() ?: focus?.lat ?: RV_MAP_REST_LAT, live.lon?.invoke() ?: focus?.lon ?: RV_MAP_REST_LON, centre, pitch, size.height)
@@ -102,7 +103,7 @@ internal fun Modifier.rvDotMap(focus: RvPlace?, color: Color, focusTop: Dp, clea
  * the map (in a layer of its own), a frame of the loop redraws the ring alone, not the map and what lies on it. It
  * reads nothing else while the pulse is at 0.
  */
-internal fun Modifier.rvDotPulse(focus: RvPlace?, color: Color, focusTop: Dp, live: RvDotMotion): Modifier = drawBehind {
+internal fun Modifier.rvDotPulse(focus: RvSpot?, color: Color, focusTop: Dp, live: RvDotMotion): Modifier = drawBehind {
     val phase = live.pulse()
     if (focus == null || phase <= 0f) return@drawBehind
     val stretch = live.stretch() / size.height

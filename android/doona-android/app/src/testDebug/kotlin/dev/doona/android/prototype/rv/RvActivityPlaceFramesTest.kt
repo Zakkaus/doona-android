@@ -62,6 +62,14 @@ class RvActivityPlaceFramesTest {
 
     @Test fun connectGermanyDark() = connect(Place.DE, dark = true)
 
+    @Test fun connectUsEastLight() = connect(Place.US_EAST, dark = false)
+
+    @Test fun connectUsEastDark() = connect(Place.US_EAST, dark = true)
+
+    @Test fun connectDubaiLight() = connect(Place.DUBAI, dark = false)
+
+    @Test fun connectDubaiDark() = connect(Place.DUBAI, dark = true)
+
     @Test fun connectOtherLight() = connect(Place.OTHER, dark = false)
 
     @Test fun connectOtherDark() = connect(Place.OTHER, dark = true)
@@ -77,6 +85,14 @@ class RvActivityPlaceFramesTest {
     @Test fun disconnectGermanyLight() = disconnect(Place.DE, dark = false)
 
     @Test fun disconnectGermanyDark() = disconnect(Place.DE, dark = true)
+
+    @Test fun disconnectUsEastLight() = disconnect(Place.US_EAST, dark = false)
+
+    @Test fun disconnectUsEastDark() = disconnect(Place.US_EAST, dark = true)
+
+    @Test fun disconnectDubaiLight() = disconnect(Place.DUBAI, dark = false)
+
+    @Test fun disconnectDubaiDark() = disconnect(Place.DUBAI, dark = true)
 
     @Test fun disconnectOtherLight() = disconnect(Place.OTHER, dark = false)
 
@@ -141,16 +157,21 @@ class RvActivityPlaceFramesTest {
         return compose.onRoot().captureToImage()
     }
 
-    /** The strips' nodes: Tokyo, Los Angeles (across ±180 degrees from Asia), Frankfurt, and one whose name gives no country. */
+    /**
+     * The strips' nodes, each marked at its city: Tokyo, Los Angeles (across ±180 degrees from Asia), Frankfurt, Ashburn
+     * (the US east coast, across the Pacific too) and Dubai ([RvData.worldNodes]), and one whose name gives no country.
+     */
     private enum class Place(val tag: String, val nodeId: String) {
         JP("jp", "jp-01"),
         US_WEST("us-west", "us-01"),
         DE("de", "de-01"),
+        US_EAST("us-east", "us-07"),
+        DUBAI("dubai", "ae-01"),
         OTHER("other", "other-01"),
         ;
 
         /** Connected on this node, as the sample is on Hong Kong 02. */
-        fun state(): ActivityUiState = if (this == OTHER) rvSampleActivity(nodeId, rvUnknownPlaceNodes()) else rvSampleActivity(nodeId, RvData.nodes)
+        fun state(): ActivityUiState = if (this == OTHER) rvSampleActivity(nodeId, rvUnknownPlaceNodes()) else rvSampleActivity(nodeId, RvData.nodes + RvData.worldNodes)
     }
 
     private companion object {

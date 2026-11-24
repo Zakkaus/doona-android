@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.data
 
 import androidx.compose.runtime.Immutable
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.designsystem.rv.RvSpot
 import java.net.URLEncoder
 import java.util.Random
 import kotlin.math.roundToInt
@@ -19,6 +20,7 @@ internal data class RvNode(
     val name: String,
     val short: String,
     val place: RvPlace,
+    val city: RvCity?,
     val protocol: String,
     val host: String,
     val port: Int,
@@ -27,6 +29,9 @@ internal data class RvNode(
     val subscription: String,
     val history: List<Int?>,
 ) {
+    /** Where the maps mark the node: its city when its name gives one, else its country's centroid; none for 其他. */
+    val spot: RvSpot? get() = if (place.mapped) city?.spot ?: place.spot else null
+
     /** The last test's result; null for a test that timed out, and for a node with no test yet. */
     val latencyMs: Int? get() = history.lastOrNull()
 
@@ -96,14 +101,15 @@ internal fun RvNode.shareLink(): String {
 internal fun rvNodes(): List<RvNode> {
     val perPlace = mutableMapOf<RvPlace, Int>()
     return SPECS.mapIndexed { i, spec ->
-        val n = perPlace.merge(spec.place, 1, Int::plus)!!
+        val n = perPlace.merge(spec.city.place, 1, Int::plus)!!
         val number = n.toString().padStart(2, '0')
-        val code = spec.place.name
+        val code = spec.city.place.name
         RvNode(
             id = "${code.lowercase()}-$number",
-            name = "${spec.city} $number${spec.suffix}",
+            name = "${spec.city.en} $number${spec.suffix}",
             short = "$code $number",
-            place = spec.place,
+            place = spec.city.place,
+            city = spec.city,
             protocol = spec.protocol.label,
             host = "${code.lowercase()}$n.example.net",
             port = spec.protocol.port,
@@ -141,58 +147,58 @@ private enum class Proto(val label: String, val transport: String, val port: Int
     Tuic("TUIC", "QUIC", 8443, true),
 }
 
-/** A node before its numbers: where it is, its city name and an optional tag, its protocol, its base latency and spread. */
-private class Spec(val place: RvPlace, val city: String, val protocol: Proto, val base: Int, val spread: Int, val suffix: String = "")
+/** A node before its numbers: its city (and so its country), an optional tag, its protocol, its base latency and spread. */
+private class Spec(val city: RvCity, val protocol: Proto, val base: Int, val spread: Int, val suffix: String = "")
 
 private val SPECS = listOf(
-    Spec(RvPlace.HK, "Hong Kong", Proto.Trojan, 38, 10),
-    Spec(RvPlace.HK, "Hong Kong", Proto.Vless, 31, 6, " IPLC"),
-    Spec(RvPlace.HK, "Hong Kong", Proto.Ss, 44, 14),
-    Spec(RvPlace.HK, "Hong Kong", Proto.Hy2, 52, 22),
-    Spec(RvPlace.HK, "Hong Kong", Proto.TrojanWs, 41, 9, " IEPL"),
-    Spec(RvPlace.HK, "Hong Kong", Proto.Vmess, 63, 18),
-    Spec(RvPlace.TW, "Taipei", Proto.Trojan, 24, 5),
-    Spec(RvPlace.TW, "Taipei", Proto.Hy2, 29, 12),
-    Spec(RvPlace.TW, "Taichung", Proto.Ss, 35, 8),
-    Spec(RvPlace.TW, "Taipei", Proto.Vless, 27, 4),
-    Spec(RvPlace.TW, "Kaohsiung", Proto.Tuic, 39, 15),
-    Spec(RvPlace.JP, "Tokyo", Proto.Vless, 58, 9),
-    Spec(RvPlace.JP, "Tokyo", Proto.Trojan, 64, 16),
-    Spec(RvPlace.JP, "Osaka", Proto.Hy2, 71, 25),
-    Spec(RvPlace.JP, "Tokyo", Proto.Ss, 66, 11, " IPLC"),
-    Spec(RvPlace.JP, "Osaka", Proto.Vmess, 79, 13),
-    Spec(RvPlace.JP, "Tokyo", Proto.Tuic, 61, 20),
-    Spec(RvPlace.KR, "Seoul", Proto.Trojan, 74, 12),
-    Spec(RvPlace.KR, "Seoul", Proto.Vless, 82, 18),
-    Spec(RvPlace.KR, "Chuncheon", Proto.Ss, 91, 9),
-    Spec(RvPlace.SG, "Singapore", Proto.Trojan, 86, 14),
-    Spec(RvPlace.SG, "Singapore", Proto.Hy2, 97, 28),
-    Spec(RvPlace.SG, "Singapore", Proto.Vless, 92, 10),
-    Spec(RvPlace.SG, "Singapore", Proto.Ss, 104, 12),
-    Spec(RvPlace.SG, "Singapore", Proto.TrojanWs, 99, 17),
-    Spec(RvPlace.US, "Los Angeles", Proto.Vless, 152, 21),
-    Spec(RvPlace.US, "San Jose", Proto.Trojan, 161, 15),
-    Spec(RvPlace.US, "Seattle", Proto.Hy2, 174, 33),
-    Spec(RvPlace.US, "Los Angeles", Proto.Ss, 158, 12),
-    Spec(RvPlace.US, "New York", Proto.Vmess, 226, 24),
-    Spec(RvPlace.US, "Dallas", Proto.Tuic, 198, 19),
-    Spec(RvPlace.CA, "Vancouver", Proto.Trojan, 171, 14),
-    Spec(RvPlace.CA, "Toronto", Proto.Vless, 234, 27),
-    Spec(RvPlace.GB, "London", Proto.Trojan, 238, 18),
-    Spec(RvPlace.GB, "London", Proto.Hy2, 251, 40),
-    Spec(RvPlace.GB, "Manchester", Proto.Ss, 262, 15),
-    Spec(RvPlace.GB, "London", Proto.Vless, 244, 11),
-    Spec(RvPlace.DE, "Frankfurt", Proto.Vless, 221, 13),
-    Spec(RvPlace.DE, "Frankfurt", Proto.Trojan, 229, 22),
-    Spec(RvPlace.DE, "Berlin", Proto.Tuic, 247, 31),
-    Spec(RvPlace.NL, "Amsterdam", Proto.Trojan, 232, 16),
-    Spec(RvPlace.NL, "Amsterdam", Proto.Ss, 241, 10),
-    Spec(RvPlace.NL, "Rotterdam", Proto.Vmess, 268, 26),
-    Spec(RvPlace.FR, "Paris", Proto.Vless, 236, 14),
-    Spec(RvPlace.FR, "Marseille", Proto.Hy2, 214, 29),
-    Spec(RvPlace.AU, "Sydney", Proto.Trojan, 128, 17),
-    Spec(RvPlace.AU, "Melbourne", Proto.Vless, 141, 12),
-    Spec(RvPlace.AU, "Sydney", Proto.Ss, 136, 23),
+    Spec(RvCity.HongKong, Proto.Trojan, 38, 10),
+    Spec(RvCity.HongKong, Proto.Vless, 31, 6, " IPLC"),
+    Spec(RvCity.HongKong, Proto.Ss, 44, 14),
+    Spec(RvCity.HongKong, Proto.Hy2, 52, 22),
+    Spec(RvCity.HongKong, Proto.TrojanWs, 41, 9, " IEPL"),
+    Spec(RvCity.HongKong, Proto.Vmess, 63, 18),
+    Spec(RvCity.Taipei, Proto.Trojan, 24, 5),
+    Spec(RvCity.Taipei, Proto.Hy2, 29, 12),
+    Spec(RvCity.Taichung, Proto.Ss, 35, 8),
+    Spec(RvCity.Taipei, Proto.Vless, 27, 4),
+    Spec(RvCity.Kaohsiung, Proto.Tuic, 39, 15),
+    Spec(RvCity.Tokyo, Proto.Vless, 58, 9),
+    Spec(RvCity.Tokyo, Proto.Trojan, 64, 16),
+    Spec(RvCity.Osaka, Proto.Hy2, 71, 25),
+    Spec(RvCity.Tokyo, Proto.Ss, 66, 11, " IPLC"),
+    Spec(RvCity.Osaka, Proto.Vmess, 79, 13),
+    Spec(RvCity.Tokyo, Proto.Tuic, 61, 20),
+    Spec(RvCity.Seoul, Proto.Trojan, 74, 12),
+    Spec(RvCity.Seoul, Proto.Vless, 82, 18),
+    Spec(RvCity.Chuncheon, Proto.Ss, 91, 9),
+    Spec(RvCity.Singapore, Proto.Trojan, 86, 14),
+    Spec(RvCity.Singapore, Proto.Hy2, 97, 28),
+    Spec(RvCity.Singapore, Proto.Vless, 92, 10),
+    Spec(RvCity.Singapore, Proto.Ss, 104, 12),
+    Spec(RvCity.Singapore, Proto.TrojanWs, 99, 17),
+    Spec(RvCity.LosAngeles, Proto.Vless, 152, 21),
+    Spec(RvCity.SanJose, Proto.Trojan, 161, 15),
+    Spec(RvCity.Seattle, Proto.Hy2, 174, 33),
+    Spec(RvCity.LosAngeles, Proto.Ss, 158, 12),
+    Spec(RvCity.NewYork, Proto.Vmess, 226, 24),
+    Spec(RvCity.Dallas, Proto.Tuic, 198, 19),
+    Spec(RvCity.Vancouver, Proto.Trojan, 171, 14),
+    Spec(RvCity.Toronto, Proto.Vless, 234, 27),
+    Spec(RvCity.London, Proto.Trojan, 238, 18),
+    Spec(RvCity.London, Proto.Hy2, 251, 40),
+    Spec(RvCity.Manchester, Proto.Ss, 262, 15),
+    Spec(RvCity.London, Proto.Vless, 244, 11),
+    Spec(RvCity.Frankfurt, Proto.Vless, 221, 13),
+    Spec(RvCity.Frankfurt, Proto.Trojan, 229, 22),
+    Spec(RvCity.Berlin, Proto.Tuic, 247, 31),
+    Spec(RvCity.Amsterdam, Proto.Trojan, 232, 16),
+    Spec(RvCity.Amsterdam, Proto.Ss, 241, 10),
+    Spec(RvCity.Rotterdam, Proto.Vmess, 268, 26),
+    Spec(RvCity.Paris, Proto.Vless, 236, 14),
+    Spec(RvCity.Marseille, Proto.Hy2, 214, 29),
+    Spec(RvCity.Sydney, Proto.Trojan, 128, 17),
+    Spec(RvCity.Melbourne, Proto.Vless, 141, 12),
+    Spec(RvCity.Sydney, Proto.Ss, 136, 23),
 )
 
 /** sg-03's last rounds: fine at first, then slower each time. */
