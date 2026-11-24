@@ -58,9 +58,11 @@ internal class GeoRefresh(
         null
     }
 
+    // Periodic work runs anywhere inside each period, so a run can come a little before a full interval has passed.
+    // Half an interval is due enough; with the full interval an always-on session would refresh every other period.
     private fun GeoUpdateSchedule.due(now: Long): Boolean {
         val intervalMs = interval.duration?.inWholeMilliseconds ?: return false
-        return lastSuccessEpochMs == null || lastSuccessEpochMs < now - intervalMs
+        return lastSuccessEpochMs == null || lastSuccessEpochMs < now - intervalMs / 2
     }
 
     private suspend fun awaitResult(engine: Engine): Outcome {

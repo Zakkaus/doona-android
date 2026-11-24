@@ -129,7 +129,7 @@ class GeoRefreshTest {
 
         fake.disconnect()
         runCurrent()
-        now += 7.days.inWholeMilliseconds
+        now += (7.days / 2).inWholeMilliseconds // Half the weekly interval: not yet due.
         fake.connect()
         runCurrent()
         assertEquals(1, enqueues)

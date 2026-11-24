@@ -60,13 +60,11 @@ internal class GeoAssets(private val noBackupDir: () -> File, private val open: 
 
     private suspend fun copy(name: String, stage: File, buffer: ByteArray) {
         val context = coroutineContext
-        context.ensureActive()
         open("geo/$name").use { source ->
             stage.resolve(name).outputStream().use { target ->
                 while (true) {
                     context.ensureActive()
                     val count = source.read(buffer)
-                    context.ensureActive()
                     if (count < 0) break
                     target.write(buffer, 0, count)
                 }

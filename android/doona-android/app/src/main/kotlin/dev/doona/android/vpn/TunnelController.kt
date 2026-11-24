@@ -341,7 +341,6 @@ internal class TunnelController(
         if (!isCurrent(g)) return null
         val servers = host.bootstrapDns().ifEmpty { pendingBootstrapDns ?: bootstrapDns }
         val stage = geoAssets?.prepare(::activeGeoRelease)
-        currentCoroutineContext().ensureActive()
         return startWithTun(g, host, routing, mtu, servers, stage)
     }
 
