@@ -296,9 +296,15 @@ fn preceding_aliases(
     wanted: impl Fn(&Alias) -> bool,
 ) -> impl Iterator<Item = (Rank, &'static Alias)> {
     let end = prefix.len();
-    let start = end.saturating_sub(MATCHER.max_key_len);
+    // Whitespace can widen a match, but the number of possible starts stays bounded.
+    let start = prefix
+        .char_indices()
+        .rev()
+        .filter(|&(_, c)| !c.is_whitespace())
+        .nth(MATCHER.max_key_len)
+        .map_or(0, |(i, c)| i + c.len_utf8());
     candidates(prefix, start..end, wanted).filter(move |&((start, Reverse(stop), _), a)| {
-        stop == end && end - start == a.key.len() && (!a.exact || &prefix[start..] == a.key)
+        stop == end && (!a.exact || &prefix[start..] == a.key)
     })
 }
 
@@ -310,6 +316,9 @@ fn mainland_port(prefix: &str) -> Option<(Rank, &'static Alias)> {
     preceding_aliases(prefix, |a| {
         a.iso == "CN" && a.city.is_some() && a.key.starts_with(han) && !a.numbered_code
     })
+    .filter(|&((start, _, _), a)| {
+        !spaced_han(a, prefix.len() - start) || relay::left_boundary(&prefix[..start])
+    })
     .min_by_key(|(rank, _)| *rank)
 }
 
@@ -317,15 +326,17 @@ fn spaced_han(a: &Alias, width: usize) -> bool {
     width != a.key.len() && a.key.starts_with(han)
 }
 
-fn han_gap_boundaries(prefix: &str, tail: &str) -> bool {
-    (!word_before(prefix) || relay::ascii_tag_end(prefix))
-        && (!tail.chars().next().is_some_and(unicode::letter_or_mark)
-            || relay::ascii_tag_start(tail))
+fn region_left_boundary(a: &Alias, prefix: &str, width: usize) -> bool {
+    if spaced_han(a, width) {
+        relay::left_boundary(prefix)
+    } else {
+        !a.bounded || !word_before(prefix)
+    }
 }
 
 fn follows_region(prefix: &str, iso: &str) -> bool {
     preceding_aliases(prefix, |a| a.iso == iso && a.city.is_none())
-        .any(|((start, _, _), a)| !a.bounded || !word_before(&prefix[..start]))
+        .any(|((start, _, _), a)| region_left_boundary(a, &prefix[..start], prefix.len() - start))
 }
 
 fn accepts(a: &Alias, name: &str, start: usize, end: usize) -> bool {
@@ -338,10 +349,10 @@ fn accepts(a: &Alias, name: &str, start: usize, end: usize) -> bool {
         return false;
     }
     if a.key == "港" {
-        return relay::hong_kong_tail(tail);
+        return relay::right_boundary(tail);
     }
     if spaced_han(a, text.len()) {
-        return han_gap_boundaries(&name[..start], tail);
+        return relay::left_boundary(&name[..start]) && relay::right_boundary(tail);
     }
     !a.bounded || accepts_bounded(a, &name[..start], tail)
 }

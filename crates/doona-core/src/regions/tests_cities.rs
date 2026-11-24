@@ -226,6 +226,27 @@ fn spacing_variants_preserve_alias_boundaries() {
 }
 
 #[test]
+fn compact_relay_entries_may_contain_spaces() {
+    assert_location("广 州香港", Some("HK"), Some("hong-kong"));
+    assert_location("上 海专线东京", Some("JP"), Some("tokyo"));
+}
+
+#[test]
+fn han_tags_bound_spaced_aliases() {
+    for name in ["新 加 坡专线", "新 加 坡节点", "節點新 加 坡專線"] {
+        assert_location(name, Some("SG"), Some("singapore"));
+    }
+    assert_location("日 本中转", Some("JP"), None);
+    assert_location("香 港专线", Some("HK"), Some("hong-kong"));
+}
+
+#[test]
+fn spaced_aliases_do_not_separate_glued_locations() {
+    assert_location("日 本东京", Some("JP"), Some("tokyo"));
+    assert_location("广 州港01", Some("CN"), Some("guangzhou"));
+}
+
+#[test]
 fn spaced_han_aliases_do_not_cross_word_boundaries() {
     for name in [
         "精英 国际",
