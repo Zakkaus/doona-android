@@ -54,8 +54,9 @@ and report exports. A JVM crash file preserves up to 50 recent allowlisted actio
 the 64 KiB file limit.
 
 The ZIP omits node endpoints and local IP addresses by default. With either option enabled, it
-reads endpoints only for listed nodes or IPs from Android's active link. It does not collect
-visited domains or app names.
+reads endpoints only for listed nodes or IPs from Android's active link. For structured event
+records, the ZIP and GitHub draft omit visited domains by default and include app package names
+by default. Neither output extracts these fields from log text or collects new traffic data.
 Subscription links, tokens, credentials and raw payloads are not export options.
 
 A report can also include a prefilled GitHub link. The ZIP and link use the same scrubber and
