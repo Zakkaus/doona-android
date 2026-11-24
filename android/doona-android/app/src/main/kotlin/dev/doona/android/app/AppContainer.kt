@@ -5,9 +5,11 @@ import android.app.Application
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteException
 import android.os.Build
+import android.os.SystemClock
 import androidx.work.WorkManager
 import dev.doona.android.data.network.networkState
 import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
@@ -48,6 +50,8 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
 
     /** Outlives every screen: imports and local network prompts that a page started go on when it is left. */
     private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+
+    val logLevels: LogLevelController by lazy { LogLevelController({ engine.setLogLevel(it) }, uiScope, SystemClock::elapsedRealtime) }
 
     val networkState by lazy { networkState(application, uiScope) }
 
@@ -99,7 +103,7 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
      */
     val reports: ReportExport by lazy {
         val tokens = ExportTokens { File(application.noBackupFilesDir, "report-exports.json") }
-        ReportExport(engine, crashFiles, crashOffer, { reportDir(application) }, tokens, { AppInfo.of(application) }, uiScope, Dispatchers.IO)
+        ReportExport(engine, crashFiles, crashOffer, { reportDir(application) }, tokens, { AppInfo.of(application) }, uiScope, Dispatchers.IO, logLevels)
     }
 
     /** The diagnostic report for a page to export and share, and the crash offer; no UI of its own. */

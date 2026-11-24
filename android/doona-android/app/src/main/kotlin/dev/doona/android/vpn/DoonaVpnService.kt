@@ -62,7 +62,7 @@ internal class DoonaVpnService :
                 if (session.open) notifications.cancelDrop()
             }
 
-            ACTION_STOP -> engine.controller.stop()
+            ACTION_STOP -> engine.disconnect()
         }
         // Nothing of ours to follow: a stop with no session, or a start that a disconnect replaced on its way here.
         if (!session.open) stopSelfResult(startId)

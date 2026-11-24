@@ -101,11 +101,23 @@ internal fun exportedCrash(bytes: ByteArray, names: KnownNames): ByteArray? {
  * The [lines] of an app crash file the export sends. A line that states a value ([STATED]) goes only at its place in the
  * header, before [BACKTRACE]: once each, and never among the frames.
  */
-private fun exportedApp(lines: List<String>, names: KnownNames): List<String> {
+private fun exportedApp(lines: List<String>, names: KnownNames): List<String> = buildList {
     val backtrace = lines.indexOf(BACKTRACE).takeIf { it >= 0 } ?: lines.size
-    return lines.mapIndexedNotNull { at, line ->
-        if (at < backtrace && STATED[at]?.matches(line) == true) line else appLine(line, names)
+    val breadcrumbs = lines.indexOf(BREADCRUMBS).takeIf { it > backtrace } ?: lines.size
+    for (at in 0 until breadcrumbs) {
+        val line = lines[at]
+        if (at < backtrace && STATED[at]?.matches(line) == true) add(line) else appLine(line, names)?.let(::add)
     }
+    if (breadcrumbs == lines.size) return@buildList
+    add(BREADCRUMBS)
+    var count = 0
+    for (at in breadcrumbs + 1 until lines.size) {
+        val line = lines[at]
+        if (!BREADCRUMB_TEXT.matches(line)) continue
+        add(line)
+        if (++count == CRASH_EVENT_LIMIT) break
+    }
+    add("")
 }
 
 /** [line] of an app crash file ([crashText]) as the export sends it, or null when no line of the format has its shape. */
@@ -192,3 +204,5 @@ private val CRASH_VERSION = run {
 private val STATED = APP_HEADER.count { it == '\n' }.let { header ->
     mapOf(header to Regex("""atEpochMs: \d{1,19}"""), header + 1 to CRASH_VERSION)
 }
+
+private val BREADCRUMB_TEXT = Regex("$BREADCRUMB-?\\d{1,19} (?:Info|Warn) .{0,${AppEvents.MAX_TEXT}}", RegexOption.DOT_MATCHES_ALL)

@@ -41,6 +41,15 @@ characters a change needs, pass `--add <files>` after `app/src/main`: the files 
 characters. A rebuild keeps the bounding box of the files it replaces; `FontMetricsTest` pins the metrics, and
 `tools/font_metrics.py <old dir> <new dir>` compares two builds.
 
+## Diagnostic capture
+
+`AppContainer.logLevels` owns the core log level for the process. A new process starts at Info.
+Selecting Debug starts a one-hour capture. The countdown is available through `remainingMs()`;
+stopping the tunnel or writing a report ends the capture early. The app never saves the level.
+
+The app keeps 200 recent events, including command, phase, outcome and code for core actions
+and report exports. A JVM crash file preserves the newest 50 events within the 64 KiB file limit.
+
 ## Icons and flags
 
 `:icons` holds the complete Material Symbols Rounded set (Apache-2.0): filled, weight 500, 24 px, one vector drawable

@@ -1,6 +1,8 @@
 package dev.doona.android.report
 
+import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.CrashFile
+import dev.doona.android.engine.LogLevel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -50,6 +52,36 @@ class ReportExportTest : ExportFixture() {
         assertEquals(2, report["events"]!!.jsonArray.size)
         assertEquals("Pixel 9", report["device"]!!.jsonObject["model"]!!.jsonPrimitive.content)
         assertTrue(report["diagnostics"] is JsonObject)
+    }
+
+    @Test
+    fun `a written report contains Debug diagnostics before the capture ends`() = runTest {
+        val engine = fixtureEngine()
+        val logLevels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        logLevels.set(LogLevel.Debug).getOrThrow()
+
+        val report = entries(export(engine, logLevels = logLevels).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
+        val diagnostics = Json.parseToJsonElement(report).jsonObject.getValue("diagnostics").jsonObject
+        assertEquals("debug", diagnostics.getValue("level").jsonPrimitive.content)
+        assertEquals(LogLevel.Info, logLevels.level.value)
+        assertEquals(LogLevel.Info, engine.diagnostics().getOrThrow().level)
+        assertEquals("command=export phase=write outcome=ok code=ok", AppEvents.snapshot().last().text)
+    }
+
+    @Test
+    fun `the report after a restart carries the crash's last fifty bounded events`() = runTest {
+        val text = "日".repeat(200)
+        val at = 1_795_300_100_000L
+        repeat(220) { AppEvents.record(AppEventLevel.Info, text + "discarded tail", at + it) }
+        val crash = appCrash(1_795_300_150_000)
+        AppEvents.clear()
+
+        val file = crashDir.resolve(crash)
+        assertTrue(file.length() <= 64 * 1024)
+        val expected = (170 until 220).map { "$BREADCRUMB${at + it} Info $text" }
+        assertEquals(expected, file.readLines().filter { it.startsWith(BREADCRUMB) })
+        val report = export(Recording(fixtureEngine(), coreUp = false)).build()!!
+        assertEquals(file.readText(), entries(report.file).getValue("crash/$crash"))
     }
 
     @Test
@@ -114,7 +146,9 @@ class ReportExportTest : ExportFixture() {
         val files = CrashFiles(crashDir)
         val offer = CrashOffer(files, tmp.root.resolve("seen")).apply { check() }
         assertTrue(offer.offered.value)
-        ReportExport(fixtureEngine(), files, offer, { outDir }, tokens, { app }, this, StandardTestDispatcher(testScheduler)).build()
+        val engine = fixtureEngine()
+        val logLevels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        ReportExport(engine, files, offer, { outDir }, tokens, { app }, this, StandardTestDispatcher(testScheduler), logLevels).build()
         assertFalse(offer.offered.value)
     }
 

@@ -1,5 +1,6 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
@@ -176,14 +177,14 @@ internal class TunnelController(
         val ms = (System.nanoTime() - begun) / 1_000_000
         when {
             failure != null -> {
-                VpnLog.warn("start $g failed: $failure after $ms ms")
+                VpnLog.action("start", "complete", "failed", failure.code?.name ?: failure.reason.name, ms)
                 publish(g, failure)
             }
 
-            publish(g, Status.Running(clock())) -> VpnLog.info("start $g up after $ms ms")
+            publish(g, Status.Running(clock())) -> VpnLog.action("start", "complete", "ok", "ok", ms)
 
             else -> {
-                VpnLog.info("start $g superseded after $ms ms")
+                VpnLog.action("start", "complete", "superseded", "ok", ms)
                 stopCore()
             }
         }
@@ -222,7 +223,7 @@ internal class TunnelController(
         // A native call cannot be cancelled: if stop hangs, only ending the process frees the tun.
         val watchdog = scope.launch {
             delay(stopDeadlineMs)
-            VpnLog.warn("stop exceeded $stopDeadlineMs ms; ending the process")
+            VpnLog.action("stop", "deadline", "failed", ErrorCode.Internal.name, stopDeadlineMs)
             killProcess()
         }
         val failure = try {
@@ -236,12 +237,13 @@ internal class TunnelController(
             watchdog.cancel()
         }
         if (failure != null) {
+            VpnLog.action("stop", "complete", "failed", ErrorCode.Internal.name)
             // The core may still hold the duplicate fd: nothing may report the tunnel stopped until the process is gone.
             VpnLog.warn("stop threw ${failure.javaClass.simpleName}; ending the process")
             killProcess()
             awaitCancellation()
         }
-        VpnLog.info("stop after ${(System.nanoTime() - begun) / 1_000_000} ms")
+        VpnLog.action("stop", "complete", "ok", "ok", (System.nanoTime() - begun) / 1_000_000)
     }
 
     private sealed interface Command {

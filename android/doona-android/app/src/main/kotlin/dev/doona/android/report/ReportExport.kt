@@ -1,7 +1,9 @@
 package dev.doona.android.report
 
+import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +55,7 @@ class ReportExport(
     private val app: () -> AppInfo,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
+    private val logLevels: LogLevelController,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     /** Held while a zip is written and published, and while [sweep] removes parts: it never takes one being written. */
@@ -75,12 +78,17 @@ class ReportExport(
         var written: ReportZip? = null
         try {
             withContext(io) { written = write(core, engineView) }
+            logLevels.endCapture().join()
         } catch (e: CancellationException) {
             written?.let(::notOpened)
+            AppEvents.action("export", "write", "cancelled", "Cancelled")
             throw e
         } catch (_: IOException) {
+            AppEvents.action("export", "write", "failed", "IOException")
             return null
         }
+        val code = (core.exceptionOrNull() as? EngineException)?.code?.name
+        AppEvents.action("export", "write", if (core.isSuccess) "ok" else "partial", code ?: "ok")
         return written
     }
 

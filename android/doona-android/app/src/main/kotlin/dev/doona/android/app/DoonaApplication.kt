@@ -25,7 +25,7 @@ open class DoonaApplication : Application(), Configuration.Provider {
     }
 
     /** The service-backed engine; JVM tests run the app with a fake one instead. */
-    protected open fun createEngine(): Engine = ServiceEngine.create(this)
+    protected open fun createEngine(): Engine = ServiceEngine.create(this) { container.logLevels.endCapture() }
 
     protected open fun createInstalledApps(): InstalledApps = PackageInstalledApps(this)
 }

@@ -50,7 +50,8 @@ internal class CrashHandler(
         try {
             threads.writer.call(deadline) {
                 val frames = threads.reader.call(System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(FRAMES_WAIT_MS)) { ownFrames(error) }
-                files.write(crashText(error.javaClass.name, frames, isMain(thread), version, System.currentTimeMillis()))
+                val events = AppEvents.snapshot(CRASH_EVENT_LIMIT)
+                files.write(crashText(error.javaClass.name, frames, isMain(thread), version, System.currentTimeMillis(), events = events))
             }
         } catch (_: Throwable) {
             // The process is ending: a crash file that could not be written is lost, the exception still goes on.
@@ -126,6 +127,10 @@ private const val OWN = "dev.doona."
  */
 private const val MAX_FRAMES = 16
 
+internal const val BREADCRUMBS = "breadcrumbs:"
+internal const val BREADCRUMB = "  event: "
+internal const val CRASH_EVENT_LIMIT = 50
+
 /**
  * A crash file's text for an exception of class [type], in the core's format: `key: value` lines, a blank line, then the
  * frames. After its source it states its format ([APP_FORMAT]), which the export reads ([exportedCrash]); then the app's
@@ -140,6 +145,7 @@ internal fun crashText(
     version: String,
     atEpochMs: Long,
     names: KnownNames = KnownNames(),
+    events: List<AppEvent> = emptyList(),
 ): String = buildString {
     append(APP_HEADER)
     appendLine("atEpochMs: $atEpochMs")
@@ -151,6 +157,14 @@ internal fun crashText(
     appendLine(BACKTRACE)
     appendLine(EXCEPTION + names.type(type))
     frames?.forEach { appendLine(FRAME + it) }
+    if (events.isNotEmpty()) {
+        appendLine(BREADCRUMBS)
+        for (event in events) {
+            append(BREADCRUMB).append(event.atEpochMs).append(' ').append(event.level).append(' ')
+            for (char in event.text) append(if (char == '\n' || char == '\r') ' ' else char)
+            appendLine()
+        }
+    }
 }
 
 /**

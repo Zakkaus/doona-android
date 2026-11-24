@@ -14,21 +14,28 @@ object AppEvents {
     const val CAPACITY = 200
 
     /** The longest text kept: an event is a line, not a document. */
-    private const val MAX_TEXT = 200
+    internal const val MAX_TEXT = 200
 
     private val lock = Any()
     private val ring = ArrayDeque<AppEvent>(CAPACITY)
 
-    fun record(level: AppEventLevel, text: String, atEpochMs: Long = System.currentTimeMillis()) {
+    fun record(level: AppEventLevel, text: String, atEpochMs: Long = System.currentTimeMillis()): AppEvent {
         val event = AppEvent(atEpochMs, level, text.take(MAX_TEXT))
         synchronized(lock) {
             if (ring.size == CAPACITY) ring.removeFirst()
             ring.addLast(event)
         }
+        return event
     }
 
-    /** The events kept now, oldest first. */
-    fun snapshot(): List<AppEvent> = synchronized(lock) { ring.toList() }
+    internal fun action(command: String, phase: String, outcome: String, code: String, elapsedMs: Long? = null): AppEvent {
+        val level = if (outcome == "failed" || outcome == "partial") AppEventLevel.Warn else AppEventLevel.Info
+        val elapsed = elapsedMs?.let { " elapsedMs=$it" }.orEmpty()
+        return record(level, "command=$command phase=$phase outcome=$outcome code=$code$elapsed")
+    }
+
+    /** The newest [limit] events kept now, oldest first. */
+    fun snapshot(limit: Int = CAPACITY): List<AppEvent> = synchronized(lock) { ring.takeLast(limit) }
 
     /** Drops every event; for tests, which share the process. */
     internal fun clear() = synchronized(lock) { ring.clear() }
