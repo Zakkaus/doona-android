@@ -153,6 +153,28 @@ fn subscription_hosts_use_the_fallback_then_the_last_list() {
 }
 
 #[test]
+fn stopped_handoff_resolves_subscription_without_a_start() {
+    let _s = serial();
+    let (new, seen) = servers::udp_resolver();
+    let dir = TempDir::new("boot-stopped");
+    let core = new_core(&dir, new.port(), vec![dead_resolver()]);
+    assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
+    let _client = start(&core, "[]");
+    core.stop();
+    let feed = servers::feed("socks5://127.0.0.1:1#s5".to_owned());
+    let url = format!("http://feed.doona.test:{}/sub", feed.port());
+    assert_eq!(subscribe(&core, &url), Err(ErrorCode::FetchFailed));
+    set_loopback_dns(&core);
+    assert_eq!(subscribe(&core, &url), Ok(()));
+    assert!(queries(&seen) > 0);
+}
+
+fn set_loopback_dns(core: &Core) {
+    let reply = core.call("setBootstrapDns", r#"{"servers":["127.0.0.1"]}"#);
+    assert_eq!(reply, r#"{"ok":{}}"#);
+}
+
+#[test]
 fn handoff_keeps_pending_lookup_and_live_flow_but_routes_new_lookups_to_new_dns() {
     let _s = serial();
     let old = UdpSocket::bind("127.0.0.2:0").unwrap();
@@ -169,24 +191,22 @@ fn handoff_keeps_pending_lookup_and_live_flow_but_routes_new_lookups_to_new_dns(
         |_| echo_seen.connections.load(Relaxed) == 1
     ));
 
-    let fixture: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../contracts/doona-core/set-bootstrap-dns.json"
-    ))
-    .unwrap();
-    let command = fixture["command"].as_str().unwrap();
-    let exercise = |state: &str| {
-        for step in fixture[state].as_array().unwrap() {
-            let reply = core.call(command, &step["args"].to_string());
-            let reply: serde_json::Value = serde_json::from_str(&reply).unwrap();
-            assert_eq!(reply, step["reply"]);
-        }
-    };
     let feed = servers::feed("socks5://127.0.0.1:1#s5".to_owned());
     let url = format!("http://feed.doona.test:{}/sub", feed.port());
     let old_seen = std::thread::scope(|scope| {
         let pending = scope.spawn(|| subscribe(&core, &url));
         old.peek_from(&mut [0]).unwrap(); // The query is queued but has no answer yet.
-        exercise("running");
+        set_loopback_dns(&core);
+        for invalid in [
+            r#"{"servers":[]}"#,
+            r#"{"servers":["127.0.0.2","dns.example"]}"#,
+            "{}",
+            r#"{"servers":"127.0.0.1"}"#,
+        ] {
+            let reply = core.call("setBootstrapDns", invalid);
+            let error = include_str!("../../../contracts/doona-core/call-error-bootstrap-dns.json");
+            assert_eq!(reply, error.trim());
+        }
         let (_, seen) = servers::udp_resolver_from(old, Ipv4Addr::LOCALHOST);
         pending.join().unwrap().unwrap();
         seen
@@ -201,8 +221,6 @@ fn handoff_keeps_pending_lookup_and_live_flow_but_routes_new_lookups_to_new_dns(
     );
     assert_eq!(queries(&old_seen), before);
     assert_eq!(client.exchange(flow, b"after").unwrap(), b"after");
-    core.stop();
-    exercise("stopped");
 }
 
 /// A refused `start` does not change the resolvers: `no_nodes` leaves the running
