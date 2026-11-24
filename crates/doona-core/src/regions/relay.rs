@@ -1,15 +1,19 @@
 //! Compact Chinese relay labels name the mainland entry first and the overseas exit second.
-use super::{Location, MATCHER, Site, country, matches, unicode};
+use super::{
+    Location, MATCHER, Site, candidates, country, han, matches, strip_ascii_case, unicode,
+};
+use std::cmp::Reverse;
 
-const TAGS: &[&str] = &[
-    "IPLC", "IEPL", "BGP", "专线", "專線", "节点", "節點", "中转", "中轉",
+const TRANSIT_TAGS: &[&str] = &[
+    "IPLC", "IEPL", "BGP", "CN2", "GIA", "专线", "專線", "中转", "中轉",
 ];
+const NODE_TAGS: &[&str] = &["节点", "節點"];
 
 pub(super) fn tag_start(text: &str) -> bool {
-    TAGS.iter().any(|s| {
-        text.get(..s.len())
-            .is_some_and(|p| p.eq_ignore_ascii_case(s))
-    })
+    TRANSIT_TAGS
+        .iter()
+        .chain(NODE_TAGS)
+        .any(|tag| strip_ascii_case(text, tag).is_some())
 }
 
 fn left_boundary(prefix: &str) -> bool {
@@ -17,7 +21,7 @@ fn left_boundary(prefix: &str) -> bool {
         .chars()
         .next_back()
         .is_some_and(unicode::letter_or_mark)
-        || TAGS.iter().any(|s| {
+        || TRANSIT_TAGS.iter().chain(NODE_TAGS).any(|s| {
             prefix
                 .get(prefix.len().saturating_sub(s.len())..)
                 .is_some_and(|p| p.eq_ignore_ascii_case(s))
@@ -41,23 +45,43 @@ fn destination(c: char) -> Option<(&'static str, &'static str)> {
     })
 }
 
+fn strip_tag<'a>(text: &'a str, tag: &str) -> Option<&'a str> {
+    let rest = strip_ascii_case(text, tag)?;
+    let inside_word = tag.is_ascii()
+        && rest
+            .chars()
+            .next()
+            .is_some_and(|c| !han(c) && unicode::letter_or_mark(c));
+    (!inside_word).then_some(rest)
+}
+
+fn route_destination(mut tail: &str) -> &str {
+    loop {
+        tail = tail.trim_start_matches(|c: char| c.is_whitespace() || "-→>~/|".contains(c));
+        let Some(rest) = TRANSIT_TAGS.iter().find_map(|tag| strip_tag(tail, tag)) else {
+            return tail;
+        };
+        tail = rest;
+    }
+}
+
+pub(super) fn hong_kong_tail(tail: &str) -> bool {
+    !tail.chars().next().is_some_and(unicode::letter_or_mark)
+        || TRANSIT_TAGS
+            .iter()
+            .chain(NODE_TAGS)
+            .any(|tag| strip_tag(tail, tag).is_some())
+}
+
 fn route_after(entry: &str, tail: &str) -> Option<Location> {
-    let dest = tail.trim_start_matches(|c: char| c.is_whitespace() || "-→>~/".contains(c));
+    let dest = route_destination(tail);
     if let Some(rest) = dest.strip_prefix('港') {
-        // After a full, adjoining city name this character means port, unless the label
-        // supplies explicit route evidence. The compact pair 深港 is unambiguous.
-        if dest.len() == tail.len()
-            && entry.chars().nth(1).is_some()
-            && !tag_start(rest.trim_start())
-            && !super::numbered(rest)
-        {
+        // Without a route marker, 港 after a full mainland city name means a port.
+        let port = dest.len() == tail.trim_start().len() && entry.chars().nth(1).is_some();
+        if port || !hong_kong_tail(rest) {
             return None;
         }
-        let suffix = rest.trim_start_matches(['-', '_', ' ']);
-        if !(rest.is_empty() || tag_start(suffix) || super::numbered(suffix)) {
-            return None;
-        }
-    } else if (dest.len() != tail.len() || dest.starts_with("香港"))
+    } else if (dest.len() != tail.len() || dest.starts_with('香'))
         && let Some((_, a)) =
             super::matches_in(dest, dest.len().min(MATCHER.patterns.max_pattern_len()))
                 .filter(|(rank, a)| rank.0 == 0 && a.iso != "CN")
@@ -73,14 +97,13 @@ fn exit_after(tail: &str) -> Option<Location> {
     let (iso, suffix) = destination(chars.next()?)?;
     let rest = chars.as_str();
     let other = match suffix {
-        "國" => "国",
-        "灣" => "湾",
-        "羅斯" => "罗斯",
-        s => s,
+        "國" => Some("国"),
+        "灣" => Some("湾"),
+        "羅斯" => Some("罗斯"),
+        _ => None,
     };
-    let rest = rest
-        .strip_prefix(suffix)
-        .or_else(|| rest.strip_prefix(other))
+    let rest = super::alias_tail(suffix, rest)
+        .or_else(|| other.and_then(|key| super::alias_tail(key, rest)))
         .unwrap_or(rest);
     let city = matches(rest)
         .filter(|(_, a)| a.iso == iso && a.city.is_some())
@@ -104,16 +127,15 @@ fn exit_after(tail: &str) -> Option<Location> {
 }
 
 pub(super) fn exit(name: &str) -> Option<Location> {
-    if !name.chars().any(|c| ('\u{3400}'..='\u{9fff}').contains(&c)) {
+    if !name.contains(han) {
         return None;
     }
-    for m in MATCHER.patterns.find_overlapping_iter(name) {
-        let a = &MATCHER.aliases[m.pattern().as_usize()];
+    for ((start, Reverse(end), _), a) in candidates(name, 0..name.len()) {
         if a.iso == "CN"
             && a.city.is_some()
-            && !a.key.is_ascii()
-            && left_boundary(&name[..m.start()])
-            && let Some(exit) = route_after(a.key, &name[m.end()..])
+            && a.key.starts_with(han)
+            && left_boundary(&name[..start])
+            && let Some(exit) = route_after(a.key, &name[end..])
         {
             return Some(exit);
         }

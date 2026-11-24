@@ -144,6 +144,9 @@ impl RefKey {
             return false;
         }
         let word = |c: char| c.is_alphabetic() || c == '\u{301}';
+        if self.text == "港" && tail.chars().next().is_some_and(word) {
+            return ["iplc", "节点"].iter().any(|tag| tail.starts_with(tag));
+        }
         if self.bounded
             && (lower[..offset].chars().next_back().is_some_and(word)
                 || tail.chars().next().is_some_and(word))
