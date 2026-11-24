@@ -8,6 +8,7 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
+import dev.doona.android.engine.Network
 import dev.doona.android.engine.fake.FakeEngine
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -45,9 +46,9 @@ class GroupViewModelTest {
         val selected = mutableListOf<Pair<String, String?>>()
         val probed = mutableListOf<String?>()
 
-        override suspend fun select(groupId: String, memberId: String?): Result<Unit> {
+        override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
             selected += groupId to memberId
-            return if (result.isSuccess) base.select(groupId, memberId) else result
+            return if (result.isSuccess) base.select(groupId, memberId, network) else result
         }
 
         override suspend fun testLatency(groupId: String?): Result<Unit> {
@@ -193,10 +194,10 @@ class GroupViewModelTest {
         val log = mutableListOf<String>()
         private var calls = 0
 
-        override suspend fun select(groupId: String, memberId: String?): Result<Unit> {
+        override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
             log += "start $memberId"
             if (calls++ == 0) gate.await()
-            return base.select(groupId, memberId).also { log += "end $memberId" }
+            return base.select(groupId, memberId, network).also { log += "end $memberId" }
         }
 
         override suspend fun testLatency(groupId: String?): Result<Unit> {
@@ -247,8 +248,8 @@ class GroupViewModelTest {
         var calls = 0
         val fake = FakeEngine()
         val engine = object : Engine by fake {
-            override suspend fun select(groupId: String, memberId: String?): Result<Unit> =
-                if (calls++ == 0) failure(ErrorCode.Busy) else fake.select(groupId, memberId)
+            override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> =
+                if (calls++ == 0) failure(ErrorCode.Busy) else fake.select(groupId, memberId, network)
         }
         val vm = collected(engine, "g-Proxy")
         vm.onAction(GroupAction.Select("n-369a8a63c1d2e3f4"))

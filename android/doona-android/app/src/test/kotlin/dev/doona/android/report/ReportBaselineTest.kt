@@ -5,13 +5,18 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.LogLevel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.net.InetAddress
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReportBaselineTest : ExportFixture() {
-    // The fixture is 25050034's output plus the dnsFailed count added since.
+    // The fixture is 25050034's output plus the dnsFailed count. Derive the added shared selections from that report.
     @Test
     fun `default ZIP entries match 25050034 without looking up endpoints or IPs`() = runTest {
         val fake = fixtureEngine()
@@ -51,9 +56,28 @@ class ReportBaselineTest : ExportFixture() {
         assertEquals(files.toSet(), actual.keys)
         for (name in files) {
             val original = requireNotNull(javaClass.getResource("/report/25050034/$name")).readText()
-            assertEquals(name, original, actual.getValue(name))
+            val contents = actual.getValue(name)
+            if (name == ReportExport.REPORT_ENTRY) {
+                assertEquals(withSharedSelections(original), Json.parseToJsonElement(contents))
+            } else {
+                assertEquals(name, original, contents)
+            }
         }
         assertEquals("default endpoint lookups", 0, nodeReads)
         assertEquals("default address lookups", 0, addressReads)
+    }
+
+    private fun withSharedSelections(original: String): JsonObject {
+        val report = Json.parseToJsonElement(original).jsonObject
+        val settings = report.getValue("settings").jsonObject
+        val catalog = settings.getValue("catalog").jsonObject
+        val groups = catalog.getValue("groups").jsonArray.map { element ->
+            val group = element.jsonObject
+            val selected = group.getValue("selected")
+            val pinned = group.getValue("pinned")
+            JsonObject(group + mapOf("tcpSelected" to selected, "udpSelected" to selected, "tcpPinned" to pinned, "udpPinned" to pinned))
+        }
+        val updatedCatalog = JsonObject(catalog + ("groups" to JsonArray(groups)))
+        return JsonObject(report + ("settings" to JsonObject(settings + ("catalog" to updatedCatalog))))
     }
 }

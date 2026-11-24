@@ -14,6 +14,7 @@ import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RecentFlow
@@ -102,10 +103,17 @@ class FakeEngine internal constructor(
         status.value = Status.Stopped
     }
 
-    override suspend fun select(groupId: String, memberId: String?): Result<Unit> {
+    override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
         groups.update { all ->
             all.map { g ->
-                if (g.id != groupId) g else g.copy(selectedId = memberId ?: g.members.firstOrNull()?.id, pinned = memberId != null)
+                if (g.id != groupId) {
+                    g
+                } else {
+                    val selection = Group.Selection(memberId ?: g.members.firstOrNull()?.id, pinned = memberId != null)
+                    val tcp = if (network == Network.Udp) g.tcp else selection
+                    val udp = if (network == Network.Tcp) g.udp else selection
+                    g.copy(tcp = tcp, udp = udp)
+                }
             }
         }
         return Result.success(Unit)

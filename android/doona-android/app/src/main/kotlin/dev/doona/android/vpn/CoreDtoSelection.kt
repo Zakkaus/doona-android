@@ -2,6 +2,7 @@ package dev.doona.android.vpn
 
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.Network
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -20,7 +21,11 @@ internal data class GroupDto(
     val testing: Boolean,
     val members: List<MemberDto>,
 ) {
-    fun toGroup() = Group(id, name, kind, members.map(MemberDto::toMember), selectedId, pinned, testing)
+    fun toGroup(): Group {
+        val tcp = Group.Selection(tcpSelectedId, tcpPinned)
+        val udp = Group.Selection(udpSelectedId, udpPinned)
+        return Group(id, name, kind, members.map(MemberDto::toMember), tcp, udp, testing)
+    }
 }
 
 @Serializable
@@ -30,6 +35,15 @@ internal enum class SelectionNetwork {
 
     @SerialName("udp")
     Udp,
+    ;
+
+    companion object {
+        fun of(network: Network?): SelectionNetwork? = when (network) {
+            Network.Tcp -> Tcp
+            Network.Udp -> Udp
+            null -> null
+        }
+    }
 }
 
 @Serializable
