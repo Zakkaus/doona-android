@@ -33,7 +33,12 @@ fn io_call(r: isize) -> std::io::Result<usize> {
 
 impl Client {
     pub fn new(peer: OwnedFd) -> Client {
+        Self::with_mode(peer, honk_netstack::Mode::Endpoint)
+    }
+
+    pub fn with_mode(peer: OwnedFd, mode: honk_netstack::Mode) -> Client {
         let mut cfg = Config::new([7; 32]);
+        cfg.mode = mode;
         cfg.local_v4 = Some(TUN_ADDR);
         cfg.mtu = MTU;
         Client {
@@ -71,7 +76,7 @@ impl Client {
     }
 
     /// Feeds every packet waiting on the socketpair to the stack; true if there was one.
-    fn receive(&mut self, now: Instant) -> bool {
+    pub fn receive(&mut self, now: Instant) -> bool {
         let fd = self.peer.as_raw_fd();
         let mut any = false;
         loop {
@@ -100,9 +105,14 @@ impl Client {
         }
     }
 
-    /// Moves packets both ways once, waiting up to a millisecond for input.
-    pub fn turn(&mut self) {
-        let fd = self.peer.as_raw_fd();
+    pub fn accept(&mut self) -> Option<FlowId> {
+        let id = self.st.poll_accept()?.id;
+        self.st.tcp_accept(id, Default::default()).unwrap();
+        Some(id)
+    }
+
+    /// Moves packets both ways once without waiting.
+    pub fn pump(&mut self) {
         let now = Instant::now();
         self.receive(now);
         if self.st.poll_timeout().is_some_and(|d| d <= now) {
@@ -112,6 +122,18 @@ impl Client {
         while let Some(n) = self.st.poll_transmit(now, &mut self.pkt) {
             self.send_packet(n);
         }
+    }
+
+    /// Borrows the next payload chunk until the next pump; an empty slice means EOF.
+    pub fn read_bulk(&mut self, id: FlowId) -> Result<&[u8], StreamError> {
+        let n = self.st.tcp_read(id, &mut self.buf)?;
+        Ok(&self.buf[..n])
+    }
+
+    /// Moves packets both ways once, waiting up to a millisecond for input.
+    pub fn turn(&mut self) {
+        self.pump();
+        let fd = self.peer.as_raw_fd();
         let mut pfd = libc::pollfd {
             fd,
             events: libc::POLLIN,
