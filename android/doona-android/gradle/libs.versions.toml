@@ -27,6 +27,7 @@ androidx-test-ext-junit = "1.3.0"
 androidx-test-espresso = "3.7.0"
 
 [libraries]
+android-gradle-api = { module = "com.android.tools.build:gradle-api", version.ref = "agp" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
