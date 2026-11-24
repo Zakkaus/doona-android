@@ -229,15 +229,49 @@ async fn a_stalled_send_times_out_even_after_a_reply_and_queue_overflow() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn a_congested_send_deadline_is_cancelled() {
-    let outcome = after_reply(Carrier::Datagram, Duration::from_secs(1)).await;
-    assert_eq!(outcome, ScoreOutcome::Cancelled);
+async fn a_congested_packet_does_not_end_the_association() {
+    let upstream = upstream(Carrier::Datagram, true);
+    let mut nat = Nat::new(Budget::new(64), IDLE);
+    let (events, _) = mpsc::unbounded_channel();
+    let opened = open(&mut nat, 1, 0, &events);
+    let mut run = std::pin::pin!(exchange(opened, &upstream, Tally::new(None), None));
+    nat.send(pair(1), &[1], &events, || unreachable!());
+    assert!(poll!(&mut run).is_pending());
+    advance(SEND_TIMEOUT).await;
+    assert!(
+        poll!(&mut run).is_pending(),
+        "one congested send ended the flow"
+    );
+
+    advance(Duration::from_secs(1)).await;
+    nat.send(pair(1), &[0], &events, || unreachable!());
+    assert!(poll!(&mut run).is_pending());
+    let tick = Duration::from_millis(1);
+    advance(IDLE - tick).await;
+    assert!(
+        poll!(&mut run).is_pending(),
+        "next uplink did not reset idle"
+    );
+    advance(tick).await;
+    assert_eq!(run.now_or_never(), Some(ScoreOutcome::Success));
 }
 
 #[tokio::test(start_paused = true)]
 async fn a_stalled_quic_path_overrides_packet_congestion() {
     let outcome = after_reply(Carrier::StalledQuic, Duration::from_secs(1)).await;
     assert_eq!(outcome, ScoreOutcome::NodeFailure);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_stalled_quic_path_fails_even_on_the_first_send() {
+    let upstream = upstream(Carrier::StalledQuic, false);
+    let mut nat = Nat::new(Budget::new(64), IDLE);
+    let (events, _) = mpsc::unbounded_channel();
+    let opened = open(&mut nat, 1, 1, &events);
+    let mut run = std::pin::pin!(exchange(opened, &upstream, Tally::new(None), None));
+    assert!(poll!(&mut run).is_pending());
+    advance(SEND_TIMEOUT).await;
+    assert_eq!(run.now_or_never(), Some(ScoreOutcome::NodeFailure));
 }
 
 #[tokio::test(start_paused = true)]

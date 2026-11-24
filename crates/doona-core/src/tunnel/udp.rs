@@ -10,6 +10,7 @@
 //!
 //! Score counts an association once. At idle, a peer reply counts as success; a locally lost
 //! reply or an uplink dropped by the shared budget excuses silence, not a failed send.
+//! A packet-local congestion timeout drops only that datagram. A stalled QUIC path ends the flow.
 
 mod exchange;
 use exchange::exchange;

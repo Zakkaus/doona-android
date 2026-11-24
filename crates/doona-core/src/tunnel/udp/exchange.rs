@@ -1,4 +1,4 @@
-use super::{Opened, Session, Tally, UdpUpstream, millis};
+use super::{Opened, Queues, Session, Tally, UdpUpstream, millis};
 use honk_outbound::group::{ScoreOutcome, ScoreReporter};
 use honk_outbound::proxy::{PacketErrorClass, packet_error_class};
 use std::io;
@@ -22,13 +22,27 @@ impl UdpUpstream {
         }
     }
 
-    fn send_outcome(&self, outcome: ScoreOutcome) -> ScoreOutcome {
-        if outcome == ScoreOutcome::Timeout
-            && matches!(self, Self::Proxy(t, ..) if t.send_timeout_is_congestion())
-        {
-            ScoreOutcome::Cancelled
-        } else {
-            outcome
+    fn send_timeout_outcome(&self) -> ScoreOutcome {
+        match self {
+            Self::Proxy(t, ..) if t.send_timeout_is_congestion() => {
+                self.terminal_outcome(ScoreOutcome::Cancelled)
+            }
+            _ => ScoreOutcome::Timeout,
+        }
+    }
+
+    fn idle_outcome(
+        &self,
+        error: Option<ScoreOutcome>,
+        replied: bool,
+        queues: &Queues,
+    ) -> ScoreOutcome {
+        match error {
+            Some(ScoreOutcome::Timeout) => self.send_timeout_outcome(),
+            Some(e) => e,
+            None if replied => ScoreOutcome::Success,
+            None if queues.local_drop.load(Relaxed) => ScoreOutcome::Cancelled,
+            None => ScoreOutcome::Timeout,
         }
     }
 
@@ -70,7 +84,12 @@ pub(super) async fn exchange(
             let timed = reporter.map(|r| (r, std::time::Instant::now()));
             let timeout = upstream.send_timeout(idle);
             let Ok(sent) = tokio::time::timeout(timeout, upstream.send(&d.bytes)).await else {
-                return upstream.send_outcome(ScoreOutcome::Timeout);
+                let outcome = upstream.send_timeout_outcome();
+                if outcome != ScoreOutcome::Cancelled {
+                    return outcome;
+                }
+                queues.local_drop.store(true, Relaxed);
+                continue;
             };
             if let (Some(session), Some(began)) = (first.take(), began) {
                 session.first_sent(began, &sent);
@@ -115,12 +134,7 @@ pub(super) async fn exchange(
         biased;
         outcome = sending => outcome,
         outcome = receiving => outcome,
-        () = reply_idle(begun, &last, idle) => match send_error {
-            Some(e) => upstream.send_outcome(e),
-            None if replied => ScoreOutcome::Success,
-            None if queues.local_drop.load(Relaxed) => ScoreOutcome::Cancelled,
-            None => ScoreOutcome::Timeout,
-        },
+        () = reply_idle(begun, &last, idle) => upstream.idle_outcome(send_error, replied, &queues),
     };
     upstream.terminal_outcome(outcome)
 }
