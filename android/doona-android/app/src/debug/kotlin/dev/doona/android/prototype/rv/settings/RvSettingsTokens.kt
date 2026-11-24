@@ -16,9 +16,8 @@ internal object RvSettingsSpace {
     val margin = 16.dp
     val cardGap = 16.dp
 
-    /** Start and end padding of a row, and from its glyph to its text. */
+    /** Start and end padding of a row. */
     val rowInset = 16.dp
-    val glyphGap = 16.dp
     val trailingGap = 12.dp
 
     val bottom = 24.dp
@@ -59,8 +58,6 @@ internal object RvSettingsSpace {
 }
 
 internal object RvSettingsSize {
-    val glyph = 24.dp
-
     /** The duck mark beside the hero's title. */
     val mark = 32.dp
 

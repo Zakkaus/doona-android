@@ -33,7 +33,7 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvCodeText
-import dev.doona.android.designsystem.rv.RvGlyph
+import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRadio
 import dev.doona.android.designsystem.rv.RvSectionTitle
@@ -75,16 +75,17 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
 }
 
 /**
- * A row of a card: a 24 dp glyph, a title over an optional subtitle, and trailing content, 58 dp tall with one line and
- * 82 with a subtitle, as [RvRow]; a subtitle that wraps makes it taller. The text block centres in that height, and the
- * glyph and the trailing control centre on its first line, which is where Revolut's rows keep them when the subtitle
- * wraps. That line is the one a one-line row keeps for its title (58 dp less its insets), or the title's own line where
- * it is taller ([rvOneLine]), so at a large font size they stay beside the title's first line. The row's touch
- * behaviour comes in [modifier], outside the padding, so the whole row is the target. A subtitle that says an action
- * failed is in the [error] hue, as a field's error message ([dev.doona.android.designsystem.rv.RvFieldMessage]).
- * An [action] (an in-card button, 40 dp, taller than a line) takes the trailing place instead and centres on the whole
- * row, title and subtitle together, so it neither rises above the row's text inset nor sits on one line of the two;
- * its end is the row's inset, where a chevron's box ends.
+ * A row of a card: the [icon]'s 40 dp disc ([RvIconDisc]), a title over an optional subtitle, and trailing content, 58 dp
+ * tall with one line and 82 with a subtitle, as [RvRow]; a subtitle that wraps makes it taller. The disc centres on the
+ * row and starts its text [RvSpace.rowGap] after it, as [RvRow]'s leading disc does, so every list row starts alike. The
+ * text block centres in the row's height, and the trailing control centres on its first line, which is where Revolut's
+ * rows keep it when the subtitle wraps. That line is the one a one-line row keeps for its title (58 dp less its insets),
+ * or the title's own line where it is taller ([rvOneLine]), so at a large font size it stays beside the title's first
+ * line. The row's touch behaviour comes in [modifier], outside the padding, so the whole row is the target. A subtitle
+ * that says an action failed is in the [error] hue, as a field's error message
+ * ([dev.doona.android.designsystem.rv.RvFieldMessage]). An [action] (an in-card button, 40 dp, taller than a line) takes
+ * the trailing place instead and centres on the whole row, title and subtitle together, so it neither rises above the
+ * row's text inset nor sits on one line of the two; its end is the row's inset, where a chevron's box ends.
  */
 @Composable
 internal fun RvSettingsRow(
@@ -106,24 +107,25 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
-        val text = rowText(title, icon, subtitle, code, titleLines, error, trailing)
-        if (action == null) {
-            Row(Modifier.fillMaxWidth().padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
-        } else {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
+        val text = rowText(title, subtitle, code, titleLines, error, trailing)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            icon?.let {
+                RvIconDisc(it)
+                Spacer(Modifier.width(RvSpace.rowGap))
+            }
+            Row(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
+            action?.let {
                 Spacer(Modifier.width(RvSettingsSpace.trailingGap))
-                action()
+                it()
             }
         }
     }
 }
 
-/** [RvSettingsRow]'s glyph, title over subtitle, and trailing control, the glyph and the control on the title's first line. */
+/** [RvSettingsRow]'s title over subtitle, and trailing control, the control on the title's first line. */
 @Composable
 private fun rowText(
     title: String,
-    @DrawableRes icon: Int?,
     subtitle: String?,
     code: Boolean,
     titleLines: Int,
@@ -132,10 +134,6 @@ private fun rowText(
 ): @Composable RowScope.() -> Unit {
     val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle))
     return {
-        icon?.let {
-            FirstLine(line) { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
-            Spacer(Modifier.width(RvSettingsSpace.glyphGap))
-        }
         Column(Modifier.weight(1f)) {
             if (code) RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines) else RvText(title, Rv.type.rowTitle, maxLines = titleLines)
             subtitle?.let { RvText(it, Rv.type.rowSub, color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }

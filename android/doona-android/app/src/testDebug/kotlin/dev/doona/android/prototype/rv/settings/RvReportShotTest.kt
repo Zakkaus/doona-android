@@ -260,13 +260,13 @@ class RvReportShotTest {
 
         /** As tall as the page in each state and font size (to the next whole dp), so its end sits above the actions as on the phone. */
         const val READY = "+h1177dp"
-        const val READY_FS115 = "+h1187dp"
+        const val READY_FS115 = "+h1209dp"
         const val READY_FS200 = "+h1820dp"
         const val BUILDING = "+h1259dp"
-        const val BUILDING_FS115 = "+h1269dp"
+        const val BUILDING_FS115 = "+h1291dp"
         const val BUILDING_FS200 = "+h1959dp"
         const val FAILED = "+h1335dp"
-        const val FAILED_FS115 = "+h1349dp"
+        const val FAILED_FS115 = "+h1371dp"
         const val FAILED_FS200 = "+h2053dp"
     }
 }

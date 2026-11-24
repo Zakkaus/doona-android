@@ -32,6 +32,7 @@ import dev.doona.android.designsystem.rv.LocalRvTesting
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvReadsWell
 import dev.doona.android.engine.Mode
@@ -48,7 +49,6 @@ import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.settings.RvSettingsRow
-import dev.doona.android.prototype.rv.settings.RvSettingsSize
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -339,7 +339,7 @@ class RvLargeTextTest {
 
     /**
      * A settings row (A4): at 2.0 its end control centres on the title's first line, with a subtitle under the title and
-     * with a title of two lines, as at 1.0; the glyph at its start shares that line.
+     * with a title of two lines, as at 1.0.
      */
     @Test
     fun settingsRowCentresOnItsFirstLine() {
@@ -348,7 +348,7 @@ class RvLargeTextTest {
         large {
             Column {
                 rows.forEachIndexed { i, (text, subtitle) ->
-                    RvSettingsRow(text, icon = R.drawable.rv_sym_settings, subtitle = subtitle) { Box(Modifier.size(RvSettingsSize.glyph).testTag("end$i")) }
+                    RvSettingsRow(text, icon = R.drawable.rv_sym_settings, subtitle = subtitle) { Box(Modifier.size(RvSize.actionGlyph).testTag("end$i")) }
                 }
             }
         }
