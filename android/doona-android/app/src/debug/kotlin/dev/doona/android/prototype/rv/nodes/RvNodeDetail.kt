@@ -66,7 +66,7 @@ internal fun RvNodeDetail(
     onUse: () -> Unit,
     onTest: () -> Unit,
     banner: RvNotice? = null,
-    score: RvScoreLook? = null,
+    score: RvScoreMarks? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val format = rememberRvFormat()
@@ -82,12 +82,12 @@ internal fun RvNodeDetail(
         // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
         end = RvPageEnd.Inset(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter),
     ) { titleBlock ->
-        Header(node, current, titleBlock, insets, (score as? RvScoreLook.Marks)?.mark(node.id))
+        Header(node, current, titleBlock, insets, score?.mark(node.id))
         RvGutter(banner = banner) {
             HistoryCard(node, times, picked) { choice = it }
         }
         RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { StatsCard(node, times.lastOrNull() ?: RV_NO_VALUE, score == RvScoreLook.Composite) }
+        RvGutter { StatsCard(node, times.lastOrNull() ?: RV_NO_VALUE) }
     }
 }
 
@@ -156,9 +156,8 @@ private fun Figure(text: String) {
 
 /** Key stats: what the share link says, the subscription it came from and when it was last tested. */
 @Composable
-private fun StatsCard(node: RvNode, lastTest: String, composite: Boolean) {
+private fun StatsCard(node: RvNode, lastTest: String) {
     RvCard {
-        if (composite) RvStatRow(stringResource(R.string.rv_score_composite), compositeText(node))
         RvStatRow(stringResource(R.string.rv_nodes_protocol), node.protocol)
         RvStatRow(stringResource(R.string.rv_nodes_server), node.host)
         RvStatRow(stringResource(R.string.rv_nodes_port), node.port.toString())

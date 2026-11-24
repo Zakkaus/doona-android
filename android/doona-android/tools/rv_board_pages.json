@@ -180,11 +180,6 @@
   "screen": "nodes-page-score-a"
  },
  {
-  "page": "節點",
-  "state": "綜合評分（b）",
-  "screen": "nodes-page-score-b"
- },
- {
   "page": "節點詳情",
   "state": "正常",
   "screen": "node-detail"
@@ -203,16 +198,6 @@
   "page": "節點詳情",
   "state": "Score 選用（a）",
   "screen": "node-detail-score-a"
- },
- {
-  "page": "節點詳情",
-  "state": "綜合評分（b）",
-  "screen": "node-detail-score-b"
- },
- {
-  "page": "節點詳情",
-  "state": "綜合評分（b）未測試",
-  "screen": "node-detail-score-b-untested"
  },
  {
   "page": "訂閱",

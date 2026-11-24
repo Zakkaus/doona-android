@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv.nodes
 import android.content.res.Configuration
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,7 +38,6 @@ import dev.doona.android.designsystem.rv.RvFilterChip
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
-import dev.doona.android.designsystem.rv.RvLatencyText
 import dev.doona.android.designsystem.rv.RvMenuAnchor
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvPageHeader
@@ -53,7 +51,6 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvWorldMap
-import dev.doona.android.designsystem.rv.rvEndFirstLine
 import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
@@ -79,7 +76,7 @@ internal fun RvNodesPage(
     onOpen: (String) -> Unit,
     onAllNodes: () -> Unit,
     onAdd: () -> Unit = {},
-    score: RvScoreLook? = null,
+    score: RvScoreMarks? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }
@@ -181,7 +178,7 @@ private fun MapCard(state: RvNodesPageState) {
  * Revolut's 56 dp 'See all' row (S7-12), which opens the rest in place.
  */
 @Composable
-private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String, onOpen: (String) -> Unit, score: RvScoreLook?) {
+private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String, onOpen: (String) -> Unit, score: RvScoreMarks?) {
     var all by rememberSaveable(region) { mutableStateOf(false) }
     // 查看全部 opens the card in place, its height growing over the move's time; a new test re-sorts the rows, each
     // moving to its new place.
@@ -198,15 +195,13 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
 
 /**
  * A node in its part of the world: the flag (badged in use), the name, `協定 · 地區`, and its latency over its change. With
- * [score]'s [RvScoreLook.Marks] the line begins with the node's 「Score 選用」 mark where a Score group chose it, each `·`
- * held to the word after it so a wrapped line never ends on one; with [RvScoreLook.Composite] the latency stands over the
- * node's 綜合評分 in place of its change, in the same trailing end, so nothing else in the row moves.
+ * [score] the line begins with the node's Score mark where a Score group chose it, each `·` held to the word after it so a
+ * wrapped line never ends on one.
  */
 @Composable
-private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (String) -> Unit, score: RvScoreLook?) {
+private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (String) -> Unit, score: RvScoreMarks?) {
     val inUse = stringResource(R.string.rv_nodes_in_use)
-    val mark = (score as? RvScoreLook.Marks)?.mark(node.id)
-    val composite = score == RvScoreLook.Composite
+    val mark = score?.mark(node.id)
     // A long press opens the row's menu; the box round the row moves when a test re-sorts the card.
     RvMenuAnchor(rvNodeMenu(node, current, LocalRvRowActions.current.useNode, onOpen), Modifier.rvMoves()) { menu, actions ->
         RvRow(
@@ -216,21 +211,7 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
             onClick = { onOpen(node.id) },
             onLongClick = menu,
-        ) {
-            if (composite) LatencyOverComposite(node) else RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id)
-        }
-    }
-}
-
-/**
- * [RvLatencyChange]'s two lines with the node's 綜合評分 in place of its change: the same type role ([Rv.type.rowSub], as
- * [dev.doona.android.designsystem.rv.RvDelta] writes it), so the end is as tall and the row's text stays where it is.
- */
-@Composable
-private fun LatencyOverComposite(node: RvNode) {
-    Column(horizontalAlignment = Alignment.End) {
-        Box(Modifier.rvEndFirstLine()) { RvLatencyText(node.latencyMs, node.timedOut) }
-        RvText(compositeText(node), Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)
+        ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id) }
     }
 }
 

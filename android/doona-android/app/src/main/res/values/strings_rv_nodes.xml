@@ -57,9 +57,7 @@
     <string name="rv_nodes_sort_region">Region</string>
     <string name="rv_nodes_stability">Steady %1$d/%2$d</string>
     <string name="rv_nodes_timed_out">Timed out</string>
-    <!-- Score on 節點 and a node's page: the mark of a node a Score group chose, and doona's own composite. -->
+    <!-- Score on 節點 and a node's page: the mark of a node a Score group chose. -->
     <string name="rv_score_pick">Chosen by Score</string>
     <string name="rv_score_pick_on">Chosen by Score (%1$s)</string>
-    <string name="rv_score_points">%1$d pts</string>
-    <string name="rv_score_composite">Overall score</string>
 </resources>
