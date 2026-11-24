@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
@@ -135,6 +136,26 @@ class RvSettingsPreviewTest {
         github.assertIsEnabled()
     }
 
+    @Test
+    fun debugCountsDownToInfo() {
+        compose.mainClock.autoAdvance = false
+        app(RvSettingsPreviewRoutes.LOG_LEVEL)
+        compose.mainClock.advanceTimeBy(FRAMES_MS)
+        compose.onNodeWithText(rvText(R.string.rv_log_debug)).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(FRAMES_MS)
+        val full = RV_DEBUG_HOURS * MINUTES
+        compose.onNodeWithText(left(full)).assertExists()
+        compose.mainClock.advanceTimeBy(MINUTE_MS)
+        compose.onNodeWithText(left(full - 1)).assertExists()
+        compose.mainClock.advanceTimeBy((full - 1) * MINUTE_MS)
+        compose.onNodeWithText(rvText(R.string.rv_log_info)).assertIsSelected()
+        compose.onNodeWithText(rvText(R.string.rv_log_debug)).assertIsNotSelected()
+        (0..full).forEach { compose.onNodeWithText(left(it)).assertDoesNotExist() }
+    }
+
+    private fun left(minutes: Int) = RuntimeEnvironment.getApplication().resources.getQuantityString(R.plurals.rv_log_debug_left, minutes, minutes)
+
     /** The row is under the floating pair, so it is turned as a screen reader turns it. */
     private fun turnAppsSwitch() {
         compose.onNodeWithText(rvText(R.string.rv_redact_apps)).performSemanticsAction(SemanticsActions.OnClick)
@@ -166,5 +187,8 @@ class RvSettingsPreviewTest {
 
         /** One frame of the test clock. */
         const val FRAME_MS = 16L
+
+        const val MINUTES = 60
+        const val MINUTE_MS = 60_000L
     }
 }

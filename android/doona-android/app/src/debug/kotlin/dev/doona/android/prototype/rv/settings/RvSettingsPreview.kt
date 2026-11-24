@@ -44,10 +44,7 @@ internal fun RvSettingsPreview(route: String, push: (String) -> Unit, pop: () ->
             RvIntervalScreen(hours, { hours = it }, onBack = pop)
         }
 
-        RvSettingsPreviewRoutes.LOG_LEVEL -> {
-            var level by rememberSaveable { mutableStateOf(RvLogLevel.Info) }
-            RvLogLevelScreen(level, RV_DEBUG_HOURS * MINUTES, { level = it }, onBack = pop)
-        }
+        RvSettingsPreviewRoutes.LOG_LEVEL -> LogLevelSample(pop)
 
         else -> ReportSample(failed = state == FAILED, pop)
     }
@@ -72,6 +69,29 @@ private fun AboutSample(state: String, push: (String) -> Unit, pop: () -> Unit) 
         licenses = { push(LICENSES) },
     )
     RvAboutScreen(rvSampleVersions, onBack = pop, routes = routes, update = update)
+}
+
+/**
+ * 日誌等級: 除錯, once chosen, counts its [RV_DEBUG_HOURS] down a minute at a time and then returns to 資訊 by itself,
+ * as the core does; choosing it again starts the count again.
+ */
+@Composable
+private fun LogLevelSample(pop: () -> Unit) {
+    var level by rememberSaveable { mutableStateOf(RvLogLevel.Info) }
+    var left by rememberSaveable { mutableIntStateOf(RV_DEBUG_HOURS * MINUTES) }
+    LaunchedEffect(level) {
+        if (level != RvLogLevel.Debug) return@LaunchedEffect
+        while (left > 0) {
+            delay(MINUTE_MS)
+            left--
+        }
+        level = RvLogLevel.Info
+    }
+    val select = { chosen: RvLogLevel ->
+        if (chosen == RvLogLevel.Debug) left = RV_DEBUG_HOURS * MINUTES
+        level = chosen
+    }
+    RvLogLevelScreen(level, left, select, onBack = pop)
 }
 
 /**
@@ -107,5 +127,6 @@ internal const val RV_CHECK_MS = 1_200L
 internal const val RV_BUILD_MS = 1_500L
 
 private const val MINUTES = 60
+private const val MINUTE_MS = 60_000L
 private const val NEW = "new"
 private const val FAILED = "failed"
