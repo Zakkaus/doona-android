@@ -158,8 +158,8 @@ jobs:
           tools/check-layers.sh
       - name: Check Kotlin format, lint, run the JVM tests and the screenshots
         working-directory: android/doona-android
-        # The JVM checks need no native library; the release job builds and checks it.
-        run: ./gradlew -Pdoona.skipCore=true spotlessCheck :app:lintDebug :icons:lintDebug :flags:lintDebug :app:testDebugUnitTest :flags:testDebugUnitTest :app:verifyRoborazziDebug
+        # The release job builds the native library and bundles Geo data; JVM checks need neither.
+        run: ./gradlew -Pdoona.skipCore=true -Pdoona.skipGeo=true spotlessCheck :app:lintDebug :icons:lintDebug :flags:lintDebug :app:testDebugUnitTest :flags:testDebugUnitTest :app:verifyRoborazziDebug
 
   doona-release:
     name: doona-android release APK
@@ -186,16 +186,30 @@ jobs:
           key: doona-core-android
           cache-on-failure: true
           save-if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      - name: Cache pinned Geo assets
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.gradle/caches/doona-geo
+          key: doona-geo-${{ hashFiles('crates/doona-core/tools/geo-pins.json') }}
       - name: Install the NDK, the API 37.1 platform and cargo-ndk
         run: |
           set -euo pipefail
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16248370" "platforms;android-37.1"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/30.0.16248370" >> "$GITHUB_ENV"
           cargo install --locked cargo-ndk@4.1.2
-      - name: Build the release APK with the core and check its 16 KiB page alignment
+      - name: Build the release APK and check its size and 16 KiB page alignment
         working-directory: android/doona-android
         run: |
           set -euo pipefail
           ./gradlew assembleRelease ${{ github.event_name == 'pull_request' && '-Pdoona.coreProfile=ci-release' || '' }}
           apk=app/build/outputs/apk/release/app-release.apk
+          # The PR profile produces the larger APK; its no-Geo size rounds up to 21 MiB.
+          # Owner decision (2026-11-24): ship the full DATs, measured at an additional 5,011,968 bytes.
+          max_apk_bytes=$((21 * 1024 * 1024 + 5011968))
+          apk_bytes=$(stat -c %s "$apk")
+          echo "Release APK: $apk_bytes bytes (limit: $max_apk_bytes)"
+          if (( apk_bytes > max_apk_bytes )); then
+            echo "::error::Release APK exceeds its size budget"
+            exit 1
+          fi
           "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/zipalign" -c -P 16 4 "$apk"
