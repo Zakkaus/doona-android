@@ -107,9 +107,9 @@ internal object RvServiceData {
 
 /**
  * 新增服務規則 (owner-fix2 item 14, the owner's B; doona web's ServiceRulesDialog on a phone, without its help line): the
- * large title, where the new rules send (送往, the rule pages' word), then web's five sections, each a title over a card
- * of services to tick, every row with the same generic glyph (no brand marks). A service with a rule already says where
- * that rule sends and cannot be ticked, as on web.
+ * large title, where the new rules go out (出站, the owner's word; owner-fix4 item 30), then web's five sections, each a
+ * title over a card of services to tick, every row with the same generic glyph (no brand marks). A service with a rule
+ * already says where that rule sends and cannot be ticked, as on web.
  */
 @Composable
 internal fun RvServiceRulesPage(
@@ -136,7 +136,7 @@ internal fun RvServiceRulesPage(
 private fun OutboundCard(onOutbound: () -> Unit) {
     val main = RvPolicyData.main
     RvCard {
-        RvRow({ RvPolicyTarget(main) }, stringResource(R.string.rv_policy_send_to), stringResource(main.name), onClick = onOutbound) { RvChevron() }
+        RvRow({ RvPolicyTarget(main) }, stringResource(R.string.rv_service_outbound), stringResource(main.name), onClick = onOutbound) { RvChevron() }
     }
 }
 

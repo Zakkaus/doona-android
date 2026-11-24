@@ -29,7 +29,8 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * 新增服務規則 (owner-fix2 item 14, the owner's B): doona web's five sections, each a title over its card
  * (`proto-rv-rules-service-*`), light, dark, fs115 and fs200, in a window that holds the whole page. The services come in
- * web's order under web's section titles, and the card above them says where the rules send with the rule pages' 送往.
+ * web's order under web's section titles, and the card above them says where the rules send:
+ * 出站 (owner-fix4 item 30: the owner kept 出站 over the rule pages' 送往).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -66,9 +67,9 @@ class RvServiceRulesShotTest {
     }
 
     @Test
-    fun theRulesSendToTheMainNodeInTheRulePagesWords() {
+    fun theRulesGoOutThroughTheMainNodeUnderOutbound() {
         compose.rvContent(dark = false) { RvServiceRulesPage(onBack = {}) }
-        compose.onNode(hasText(rvText(R.string.rv_policy_send_to)) and hasText(rvText(R.string.rv_main_node))).assertExists()
+        compose.onNode(hasText(rvText(R.string.rv_service_outbound)) and hasText(rvText(R.string.rv_main_node))).assertExists()
     }
 
     @Test
