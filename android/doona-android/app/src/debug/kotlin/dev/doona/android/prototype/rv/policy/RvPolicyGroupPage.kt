@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
@@ -50,7 +48,7 @@ import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.nodes.latencyText
-import dev.doona.android.prototype.rv.rvRowIndication
+import dev.doona.android.prototype.rv.rvRowSelect
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -118,7 +116,7 @@ private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Un
     val pick = if (auto) {
         if (chosen) Modifier.semantics { stateDescription = picked } else Modifier
     } else {
-        Modifier.selectable(chosen, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton) { onSelect(node.id) }
+        Modifier.rvRowSelect(chosen, { onSelect(node.id) })
     }
     RvRow(
         { RvFlag(node.place.flag, RvSize.rowDisc, current = chosen) },

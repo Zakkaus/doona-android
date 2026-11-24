@@ -84,6 +84,21 @@ internal fun RvText(
     )
 }
 
+/**
+ * Text whose spans carry their own style (a figure and its unit, a coloured change), laid out as the platform breaks it:
+ * none of [RvText]'s word cut or wrap steps.
+ */
+@Composable
+internal fun RvSpanText(
+    text: AnnotatedString,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    BasicText(text, modifier, style, overflow = overflow, maxLines = maxLines)
+}
+
 /** A line cut at a word for [width] px. */
 private class RvCut(val width: Int, val text: String)
 

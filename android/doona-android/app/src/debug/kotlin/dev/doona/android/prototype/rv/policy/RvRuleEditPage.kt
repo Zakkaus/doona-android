@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -18,7 +17,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
@@ -39,7 +37,7 @@ import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvInkStart
-import dev.doona.android.prototype.rv.rvRowIndication
+import dev.doona.android.prototype.rv.rvRowToggle
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /** A rule being edited: how it matches, the value it matches (none for GEOIP CN and private ranges), where, if on. */
@@ -109,9 +107,7 @@ internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit,
         RvGutter {
             RvTargetCard(draft.targetId) { onChange(draft.copy(targetId = it)) }
             RvCard {
-                val toggle = Modifier.toggleable(draft.enabled, interactionSource = null, indication = rvRowIndication(), role = Role.Switch) {
-                    onChange(draft.copy(enabled = it))
-                }
+                val toggle = Modifier.rvRowToggle(draft.enabled) { onChange(draft.copy(enabled = it)) }
                 RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_rule_edit_enabled), null, toggle) { RvSwitch(draft.enabled) }
                 RvRow({ RvIconDisc(R.drawable.rv_sym_delete) }, stringResource(R.string.rv_rule_edit_delete), null, onClick = { confirming = true })
             }

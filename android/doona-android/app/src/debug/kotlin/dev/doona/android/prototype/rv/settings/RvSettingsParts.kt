@@ -13,11 +13,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,11 +38,13 @@ import dev.doona.android.prototype.rv.RvRadio
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
+import dev.doona.android.prototype.rv.RvSpanText
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.rvOneLine
-import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvRowPress
+import dev.doona.android.prototype.rv.rvRowSelect
+import dev.doona.android.prototype.rv.rvRowToggle
 import dev.doona.android.prototype.rv.scripted
 
 /** Text in a role; CJK runs in Noto, the rest in Inter. [maxLines] defaults to one, ending in an ellipsis. */
@@ -58,7 +57,7 @@ internal fun RvSettingsText(
     align: TextAlign = TextAlign.Start,
     maxLines: Int = 1,
 ) {
-    BasicText(scripted(text), modifier, style.copy(color = color, textAlign = align), overflow = TextOverflow.Ellipsis, maxLines = maxLines)
+    RvSpanText(scripted(text), style.copy(color = color, textAlign = align), modifier, maxLines, TextOverflow.Ellipsis)
 }
 
 /** A settings group card: the library's card, 20 dp round as every card (N-06), rows edge to edge, no divider or shadow. */
@@ -171,18 +170,12 @@ internal fun RvSettingsValueRow(title: String, @DrawableRes icon: Int, value: St
 /** A row whose whole width toggles its switch. */
 @Composable
 internal fun RvSettingsSwitchRow(title: String, @DrawableRes icon: Int, checked: Boolean, onChange: (Boolean) -> Unit, subtitle: String? = null) {
-    val toggle = Modifier.toggleable(
-        value = checked,
-        interactionSource = null,
-        indication = rvRowIndication(),
-        role = Role.Switch,
-        onValueChange = onChange,
-    )
+    val toggle = Modifier.rvRowToggle(checked, onChange)
     RvSettingsRow(title, toggle, icon, subtitle) { RvSwitch(checked) }
 }
 
 /**
- * A settings card holding a radio list ([RvSettingsRadioRow]): one selectable group, so a screen reader tells each row's
+ * A settings card holding a radio list ([RvSettingsRadioRow]): one group of choices, so a screen reader tells each row's
  * place among the choices.
  */
 @Composable
@@ -191,12 +184,6 @@ internal fun RvSettingsRadioCard(modifier: Modifier = Modifier, content: @Compos
 /** A row of a radio list (in an [RvSettingsRadioCard]): the title over an optional [subtitle], and the radio at the end. */
 @Composable
 internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit, subtitle: String? = null) {
-    val choose = Modifier.selectable(
-        selected = selected,
-        interactionSource = null,
-        indication = rvRowIndication(),
-        role = Role.RadioButton,
-        onClick = onSelect,
-    )
+    val choose = Modifier.rvRowSelect(selected, onSelect)
     RvSettingsRow(title, choose, subtitle = subtitle) { RvRadio(selected) }
 }

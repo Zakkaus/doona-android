@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -22,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
@@ -60,7 +58,7 @@ import dev.doona.android.prototype.rv.data.RvPlace
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.rvNodeGroups
 import dev.doona.android.prototype.rv.rvRaisedReach
-import dev.doona.android.prototype.rv.rvRowIndication
+import dev.doona.android.prototype.rv.rvRowSelect
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -130,7 +128,7 @@ private fun PlaceRow(place: RvPlace, count: Int) {
 @Composable
 private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (String) -> Unit) {
     val inUse = stringResource(R.string.rv_nodes_in_use)
-    val pick = Modifier.selectable(current, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton) { onPick(node.id) }
+    val pick = Modifier.rvRowSelect(current, { onPick(node.id) })
     val steady = stringResource(R.string.rv_nodes_stability, node.answered, node.history.size)
     val testing = LocalRvTesting.current || node.id in LocalRvTestingNodes.current
     val second: (@Composable () -> Unit)? = if (sort == RvNodeSort.Stability) {

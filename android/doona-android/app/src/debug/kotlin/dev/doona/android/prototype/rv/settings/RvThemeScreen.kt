@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
@@ -37,7 +36,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -53,7 +51,7 @@ import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvPressIndication
+import dev.doona.android.prototype.rv.rvPressSelect
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -105,10 +103,7 @@ private fun ModeCard(appearance: RvAppearance, light: ColorScheme, dark: ColorSc
                 Column(
                     Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(Rv.highlightRadius))
-                        .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.RadioButton) {
-                            onChange(appearance.copy(mode = mode))
-                        }
+                        .rvPressSelect(RoundedCornerShape(Rv.highlightRadius), selected, { onChange(appearance.copy(mode = mode)) })
                         .padding(vertical = RvSettingsSpace.modePad),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -182,8 +177,7 @@ private fun AccentDisc(name: String, colour: Color, selected: Boolean, enabled: 
     Box(
         Modifier
             .size(RvSize.touch)
-            .clip(CircleShape)
-            .selectable(selected, interactionSource = null, indication = rvPressIndication(), enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .rvPressSelect(CircleShape, selected, onClick, enabled)
             .semantics { contentDescription = name },
         contentAlignment = Alignment.Center,
     ) {

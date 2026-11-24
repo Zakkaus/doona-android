@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +18,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
@@ -48,7 +46,7 @@ import dev.doona.android.prototype.rv.RvSkeletonRow
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvRowIndication
+import dev.doona.android.prototype.rv.rvRowToggle
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /** What the 依 App page does: pick a policy, check an app, search, save, and rebuild the tunnel after a failed one. */
@@ -162,7 +160,7 @@ private const val SKELETON_APPS = 6
 @Composable
 private fun AppRow(app: RvApp, checked: Boolean, look: RvPerAppLook, onToggle: (Boolean) -> Unit) {
     if (look != RvPerAppLook.Today) return RvCheckRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, checked, onToggle)
-    val toggle = Modifier.toggleable(value = checked, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onToggle)
+    val toggle = Modifier.rvRowToggle(checked, onToggle)
     RvRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, toggle) { RvSwitch(checked) }
 }
 

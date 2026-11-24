@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,7 +9,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.RV_NO_VALUE
@@ -26,7 +24,7 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rememberRvFormat
-import dev.doona.android.prototype.rv.rvRowIndication
+import dev.doona.android.prototype.rv.rvRowSelect
 
 /**
  * Where a rule or a picked target sends traffic, as 活動's rule rows draw it: the flag of the node the group uses, or
@@ -110,7 +108,7 @@ internal fun RvTargetCard(targetId: String, onTarget: (String) -> Unit) {
 /** One destination: the group and the node it uses, or 直連; the whole row picks it. */
 @Composable
 private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Unit) {
-    val pick = Modifier.selectable(selected, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton, onClick = onSelect)
+    val pick = Modifier.rvRowSelect(selected, onSelect)
     RvRow(
         { RvPolicyTarget(group) },
         group?.let { stringResource(it.name) } ?: stringResource(R.string.mode_direct),

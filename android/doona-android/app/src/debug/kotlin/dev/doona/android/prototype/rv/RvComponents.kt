@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -97,6 +98,25 @@ internal fun Modifier.rvPress(shape: Shape, role: Role, onClick: () -> Unit, onL
 @Composable
 internal fun Modifier.rvRowPress(role: Role, onClick: () -> Unit, onLongClick: (() -> Unit)? = null): Modifier =
     rvClick(rvRowIndication(), role, onClick, onLongClick)
+
+/** A radio row's choice: the whole row selects it, with [rvRowPress]'s highlight; while not [enabled] it takes no press. */
+@Composable
+internal fun Modifier.rvRowSelect(selected: Boolean, onClick: () -> Unit, enabled: Boolean = true): Modifier =
+    selectable(selected, enabled = enabled, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton, onClick = onClick)
+
+/** A switch row: the whole row toggles [value], with [rvRowPress]'s highlight. */
+@Composable
+internal fun Modifier.rvRowToggle(value: Boolean, onValueChange: (Boolean) -> Unit): Modifier =
+    toggleable(value, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onValueChange)
+
+/** A choice drawn as a tile or disc: clipped to [shape], it selects with [rvPress]'s layer; while not [enabled] it takes no press. */
+@Composable
+internal fun Modifier.rvPressSelect(shape: Shape, selected: Boolean, onClick: () -> Unit, enabled: Boolean = true): Modifier =
+    clip(shape).selectable(selected, interactionSource = null, indication = rvPressIndication(), enabled = enabled, role = Role.RadioButton, onClick = onClick)
+
+/** One of a set of page dots or tabs that picks its page, with no press layer of its own. */
+internal fun Modifier.rvTabSelect(selected: Boolean, onClick: () -> Unit): Modifier =
+    selectable(selected, interactionSource = null, indication = null, role = Role.Tab, onClick = onClick)
 
 private fun Modifier.rvClick(indication: Indication, role: Role, onClick: () -> Unit, onLongClick: (() -> Unit)?): Modifier =
     if (onLongClick == null) {

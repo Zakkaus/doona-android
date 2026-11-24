@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -41,6 +40,7 @@ import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
+import dev.doona.android.prototype.rv.RvSpanText
 import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
@@ -145,7 +145,7 @@ private fun Figure(text: String) {
         append(text.substring(0, cut))
         withStyle(type.cardUnit.toSpanStyle()) { append(scripted(text.substring(cut))) }
     }
-    BasicText(styled, style = type.cardValue.copy(color = Rv.colors.text), maxLines = 1)
+    RvSpanText(styled, type.cardValue.copy(color = Rv.colors.text), maxLines = 1)
 }
 
 /** Key stats: what the share link says, the subscription it came from and when it was last tested. */

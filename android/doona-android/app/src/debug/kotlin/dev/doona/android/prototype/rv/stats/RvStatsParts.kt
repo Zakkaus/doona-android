@@ -11,16 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -32,6 +29,8 @@ import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvFigure
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
+import dev.doona.android.prototype.rv.RvSpanText
+import dev.doona.android.prototype.rv.rvTabSelect
 import dev.doona.android.prototype.rv.scripted
 
 /** A card's figure: the number in [style], its unit in [unitStyle] on the same baseline. */
@@ -41,7 +40,7 @@ internal fun RvStatsFigure(figure: RvFigure, style: TextStyle = Rv.type.cardValu
         append(scripted(figure.whole))
         withStyle(unitStyle.toSpanStyle()) { append(scripted(figure.unit)) }
     }
-    BasicText(text, style = style.copy(color = Rv.colors.text), maxLines = 1)
+    RvSpanText(text, style.copy(color = Rv.colors.text), maxLines = 1)
 }
 
 /** Revolut's delta: a filled triangle and the change in [color], then what it compares with in secondary ink. */
@@ -55,7 +54,7 @@ internal fun RvStatsDelta(up: Boolean, change: String, against: String, color: C
             append(" ")
             append(scripted(against))
         }
-        BasicText(text, style = Rv.type.tileCaption.copy(color = Rv.colors.textSecondary), maxLines = 1)
+        RvSpanText(text, Rv.type.tileCaption.copy(color = Rv.colors.textSecondary), maxLines = 1)
     }
 }
 
@@ -90,7 +89,7 @@ internal fun RvStatsDots(count: Int, current: Int, modifier: Modifier = Modifier
             val tab = if (onPick == null) {
                 Modifier
             } else {
-                Modifier.height(RvSize.touch).selectable(i == current, interactionSource = null, indication = null, role = Role.Tab) { onPick(i) }.semantics { contentDescription = labels[i] }
+                Modifier.height(RvSize.touch).rvTabSelect(i == current) { onPick(i) }.semantics { contentDescription = labels[i] }
             }
             Box(tab.width(RvStatsSize.dotPitch), contentAlignment = Alignment.Center) {
                 val size = if (i == current) RvStatsSize.dot else RvStatsSize.dotIdle

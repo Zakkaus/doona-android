@@ -5,7 +5,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
@@ -36,7 +34,7 @@ import dev.doona.android.prototype.rv.RvStatRow
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.config.rvConfigPhrase
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
-import dev.doona.android.prototype.rv.rvRowIndication
+import dev.doona.android.prototype.rv.rvRowSelect
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
@@ -81,7 +79,7 @@ internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boole
     val title = stringResource(template.name).let { if (kept) rvConfigPhrase(listOf(it)) else it }
     val pick = Modifier
         .graphicsLayer { alpha = if (reason == null) 1f else RvAlpha.DISABLED }
-        .selectable(selected, enabled = reason == null, interactionSource = null, indication = rvRowIndication(), role = Role.RadioButton, onClick = onSelect)
+        .rvRowSelect(selected, onSelect, enabled = reason == null)
     RvRow({ RvIconDisc(template.glyph) }, title, line, pick) { RvRadio(selected) }
 }
 
