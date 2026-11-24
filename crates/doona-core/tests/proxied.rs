@@ -3,6 +3,9 @@
 //! through the `Proxy` group's node, never directly. A VMess node on a plain listener stands for
 //! an outbound without UDP: nothing but its TCP dials ever reach it.
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
+#[path = "proxied/bench.rs"]
+mod bench;
 mod common;
 
 use common::client::Client;
