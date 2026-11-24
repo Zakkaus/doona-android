@@ -35,8 +35,8 @@ import kotlin.math.abs
  * 節點詳情's latency chart with no test and with one (owner, item 7: 「沒有資料的字不居中…只有一筆也沒居中」): the plot is
  * read from the drawn hairlines (from the left edge to where the zero line ends, the top line to the zero line), not
  * from the code's own numbers. 尚無資料's box is centred on it both ways, the middle hairline stops short of it, and
- * one test's dot is at its centre, across and, by its axis, down, whatever its latency. With `latest` (item 9, sample B)
- * one test sits as far in from the plot's end as the latest of many, and carries its value in the axis pill.
+ * one test's dot is on its middle line, by its axis, whatever its latency. Across (item 22, the owner's B of item 9) one
+ * test sits as far in from the plot's end as the latest of many, and carries its value in the axis pill.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -61,10 +61,10 @@ class RvLatencyDotsTest {
         assertEquals("the middle hairline stops short of the line", background, image.getPixel((box.left - GAP_PX / 2).toInt(), middle))
     }
 
-    @Test fun oneTestSitsAtThePlotsCentre() = oneTest(ONE)
+    @Test fun oneTestSitsOnTheMiddleLine() = oneTest(ONE)
 
     /** A fast node's one test too: 20 ms on a 0–100 ms axis sat a fifth of the way up. */
-    @Test fun oneFastTestSitsAtThePlotsCentre() = oneTest(FAST)
+    @Test fun oneFastTestSitsOnTheMiddleLine() = oneTest(FAST)
 
     private fun oneTest(ms: Int) {
         var dot = 0
@@ -77,21 +77,20 @@ class RvLatencyDotsTest {
         val plot = plot(image)
         val xs = (0 until image.width).filter { x -> (0 until image.height).any { image.getPixel(x, it) == dot } }
         assertTrue("the dot is drawn", xs.isNotEmpty())
-        assertEquals("the dot's centre across", plot.center.x, (xs.first() + xs.last() + 1) / 2f, PX)
         // Down, its axis puts it on the middle line, not alone under the top one (92 ms on 0–100 sat 8 % under the top).
         val ys = (0 until image.height).filter { y -> (0 until image.width).any { image.getPixel(it, y) == dot } }
         assertEquals("$ms ms: the dot's centre down", plot.center.y, (ys.first() + ys.last() + 1) / 2f, DOT_PX)
     }
 
-    /** B: one test at the end is as far in from the plot's end as the latest of eight with the same time. */
+    /** One test is as far in from the plot's end as the latest of eight with the same time. */
     @Test
-    fun oneLatestTestSitsWhereTheLatestOfManyDoes() {
+    fun oneTestSitsWhereTheLatestOfManyDoes() {
         var dot = 0
         compose.rvContent(dark = false) {
             dot = Rv.colors.quality(latencyTone(ONE)).toArgb()
             Clear {
                 RvLatencyDots(List(MANY) { ONE }, null, List(MANY) { TIME }, -1, {}, Modifier.testTag(OTHER))
-                RvLatencyDots(listOf(ONE), null, listOf(TIME), -1, {}, Modifier.testTag(CHART), latest = true)
+                RvLatencyDots(listOf(ONE), null, listOf(TIME), -1, {}, Modifier.testTag(CHART))
             }
         }
         val fromEnd = { tag: String ->
@@ -106,13 +105,13 @@ class RvLatencyDotsTest {
         assertEquals("one test sits where the latest of many does", many, fromEnd(CHART), PX)
     }
 
-    /** B: on the dot's line a pill runs in from the chart's end; the centred chart has its middle label there, no pill. */
+    /** On the dot's line a pill runs in from the chart's end; many tests with no median have their middle label there, no pill. */
     @Test
-    fun oneLatestTestCarriesItsValueInTheAxisPill() {
+    fun oneTestCarriesItsValueInTheAxisPill() {
         compose.rvContent(dark = false) {
             Clear {
-                RvLatencyDots(listOf(ONE), null, listOf(TIME), -1, {}, Modifier.testTag(OTHER))
-                RvLatencyDots(listOf(ONE), null, listOf(TIME), -1, {}, Modifier.testTag(CHART), latest = true)
+                RvLatencyDots(List(MANY) { ONE }, null, List(MANY) { TIME }, -1, {}, Modifier.testTag(OTHER))
+                RvLatencyDots(listOf(ONE), null, listOf(TIME), -1, {}, Modifier.testTag(CHART))
             }
         }
         val run = { tag: String ->
@@ -122,7 +121,7 @@ class RvLatencyDotsTest {
             (image.width - 1 downTo 0).takeWhile { image.getPixel(it, y) != background }.size
         }
         assertTrue("the pill runs in from the end", run(CHART) >= PILL_PX)
-        assertTrue("no pill on the centred chart", run(OTHER) < PILL_PX)
+        assertTrue("no pill with no median", run(OTHER) < PILL_PX)
     }
 
     /** Below the frame's status bar, which draws over the top of the content. */

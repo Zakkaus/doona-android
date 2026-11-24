@@ -43,7 +43,6 @@
     <string name="rv_nodes_latency_high">High latency</string>
     <string name="rv_nodes_history">Latency history</string>
     <string name="rv_nodes_median">Median %1$s</string>
-    <string name="rv_nodes_trend_next">Test again to see the trend</string>
     <string name="rv_nodes_details">Node details</string>
     <string name="rv_nodes_protocol">Protocol</string>
     <string name="rv_nodes_server">Server</string>

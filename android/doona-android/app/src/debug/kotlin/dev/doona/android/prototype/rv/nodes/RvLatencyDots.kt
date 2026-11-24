@@ -54,9 +54,8 @@ import kotlin.math.roundToInt
  * them and the pill, [RvLatencyDotsSize.plotGap] clear of the plot (S7-15). The [selected] test is marked with the library's
  * [rvChartMarker], as 統計's latency chart marks the current node (S7-14, N03). A time the chip would reach is left out.
  * The dots are spread so the widest time's chip fits inside the plot, and a tap picks the nearest test; a single test
- * sits at the plot's centre, its axis chosen to put it on the middle line ([rvLatencyAxisMiddle]); with [latest] it sits
- * where the latest of many would, half its chip in from the plot's end, its value in the pill a median has, with no
- * dotted line (item 9, sample B). With no test the plot keeps its grid and labels, and 尚無資料 sits at its centre, at the
+ * sits where the latest of many would, half its chip in from the plot's end, its axis chosen to put it on the middle line
+ * ([rvLatencyAxisMiddle]), its value in the pill a median has, with no dotted line (the owner's B of item 9). With no test the plot keeps its grid and labels, and 尚無資料 sits at its centre, at the
  * size of an empty card's text, the middle hairline stopping [RvLatencyDotsSize.plotGap] short of it on either side.
  */
 @Composable
@@ -67,7 +66,6 @@ internal fun RvLatencyDots(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    latest: Boolean = false,
 ) {
     val colors = Rv.colors
     val slowest = history.filterNotNull().maxOrNull() ?: 0
@@ -75,8 +73,8 @@ internal fun RvLatencyDots(
     val top = if (history.size == 1) rvLatencyAxisMiddle(slowest) else rvLatencyAxisTop(slowest)
     // The unit on the top label only, as 統計's latency chart labels its axis (L-11).
     val axis = listOf(stringResource(R.string.latency_ms, top), "${top / 2}", "0")
-    // The pill at the strip's end: the median's, or with [latest] the one test's own value.
-    val pillMs = median ?: history.singleOrNull()?.takeIf { latest }
+    // The pill at the strip's end: the median's, or one test's own value.
+    val pillMs = median ?: history.singleOrNull()
     val pillText = pillMs?.let { stringResource(R.string.latency_ms, it) }
     val look = DotsLook(
         label = Rv.type.pill.copy(color = colors.textSecondary),
@@ -105,7 +103,7 @@ internal fun RvLatencyDots(
                 detectTapGestures { tap -> if (history.isNotEmpty()) pick(Columns(size.width - strip, history.size, widest + 2 * pad).at(tap.x)) }
             },
         ) {
-            val plot = Plot(this, Columns(size.width - strip, history.size, widest + 2 * pad, latest), strip, chipHeight)
+            val plot = Plot(this, Columns(size.width - strip, history.size, widest + 2 * pad), strip, chipHeight)
             val pill = pillText?.let { measurer.measure(scripted(it), look.label) }
             val pillY = pillMs?.let { plot.y(it, top) }
             val avoid = if (pill != null && pillY != null) pillY to rvPillSize(pill).height else null
@@ -129,14 +127,14 @@ internal fun RvLatencyDots(
 
 /**
  * Where [count] dots sit across a plot [right] wide: one column each, or, when the widest time's chip is wider than a
- * column, spread from half a [chip] in from either end, so no chip leaves the plot. One dot at the [end] sits where the
- * latest of many does, half a chip in from the plot's right.
+ * column, spread from half a [chip] in from either end, so no chip leaves the plot. One dot sits where the latest of many
+ * does, half a chip in from the plot's right.
  */
-private class Columns(private val right: Float, private val count: Int, chip: Float, end: Boolean = false) {
+private class Columns(private val right: Float, private val count: Int, chip: Float) {
     val column = right / count
     private val edge = maxOf(column, chip) / 2
     private val step = if (count > 1) (right - 2 * edge) / (count - 1) else 0f
-    private val first = if (end && count == 1) right - chip / 2 else edge
+    private val first = if (count == 1) right - chip / 2 else edge
 
     /** From one dot to the next: the slot the marker's column fills. */
     val pitch = if (count > 1) step else column

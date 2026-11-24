@@ -8,7 +8,6 @@ import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.rvTestTimes
 import dev.doona.android.prototype.rv.nodes.RV_NODES_DETAIL
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
-import dev.doona.android.prototype.rv.nodes.RvOneTest
 import dev.doona.android.prototype.rv.subs.RvSubAdd
 import dev.doona.android.prototype.rv.subs.RvSubDetail
 import dev.doona.android.prototype.rv.subs.RvSubDetailState
@@ -26,10 +25,8 @@ import org.robolectric.annotation.GraphicsMode
  * 新增訂閱 while the download has no known end (`proto-rv-sub-adding-unknown-*`: the busy bar in the row's trailing slot,
  * as 訂閱's row has it while it updates, and a dash for the byte count); a node with no probe record
  * (`-node-detail-probes0-*`: a dash for the figure and 上次測試, the plot's grid and labels with 尚無資料 at its centre)
- * and with one (`-node-detail-probes1-*`: its figure and time, no median, the one dot at the plot's centre with its
- * marker and time), these two also at fs115, and the pair for the owner (item 9) of a node with one: `-probes1-a-*`, no
- * chart, the figure and its time, the line that a second test draws the trend, and 測試延遲 in the card; `-probes1-b-*`,
- * the chart's frame with the dot where the latest of many sits, its value in the axis pill (light, dark, fs115, fs200);
+ * and with one (`-node-detail-probes1-*`: its figure and time, no median, the chart's frame with the one dot where the
+ * latest of many sits, its value in the axis pill, its marker and time), these two also at fs115;
  * a subscription whose provider sent no quota (`-sub-detail-noquota-*`) and
  * one in the SIP008 format (`-sub-sip008-*`). Light and dark hold the whole page, the larger sizes its first 915 dp. The
  * busy bar runs at animator scale 0, so it rests half full (recorded twice, byte-identical).
@@ -78,30 +75,6 @@ class RvDataRealismShotTest {
     @Test fun probes1Fs200() = shot("node-detail-probes1", fontScale = RV_FS200) { Probes(1) }
 
     @Test
-    @Config(qualifiers = WHOLE_NODE)
-    fun probes1ALight() = shot("node-detail-probes1-a", dark = false) { Probes(1, RvOneTest.Figure) }
-
-    @Test
-    @Config(qualifiers = WHOLE_NODE)
-    fun probes1ADark() = shot("node-detail-probes1-a", dark = true) { Probes(1, RvOneTest.Figure) }
-
-    @Test fun probes1AFs115() = shot("node-detail-probes1-a", fontScale = RV_FS115) { Probes(1, RvOneTest.Figure) }
-
-    @Test fun probes1AFs200() = shot("node-detail-probes1-a", fontScale = RV_FS200) { Probes(1, RvOneTest.Figure) }
-
-    @Test
-    @Config(qualifiers = WHOLE_NODE)
-    fun probes1BLight() = shot("node-detail-probes1-b", dark = false) { Probes(1, RvOneTest.Latest) }
-
-    @Test
-    @Config(qualifiers = WHOLE_NODE)
-    fun probes1BDark() = shot("node-detail-probes1-b", dark = true) { Probes(1, RvOneTest.Latest) }
-
-    @Test fun probes1BFs115() = shot("node-detail-probes1-b", fontScale = RV_FS115) { Probes(1, RvOneTest.Latest) }
-
-    @Test fun probes1BFs200() = shot("node-detail-probes1-b", fontScale = RV_FS200) { Probes(1, RvOneTest.Latest) }
-
-    @Test
     @Config(qualifiers = WHOLE_SUB)
     fun noQuotaLight() = shot("sub-detail-noquota", dark = false) { Detail(NO_QUOTA) }
 
@@ -132,7 +105,7 @@ class RvDataRealismShotTest {
 
     /** The detail page's node, as the engine has it after [probes] probes: the first of its sample tests, or none. */
     @Composable
-    private fun Probes(probes: Int, oneTest: RvOneTest = RvOneTest.Centred) {
+    private fun Probes(probes: Int) {
         val node = RvData.nodes.first { it.id == RV_NODES_DETAIL }
         RvNodeDetail(
             node.copy(history = node.history.take(probes)),
@@ -141,7 +114,6 @@ class RvDataRealismShotTest {
             onBack = {},
             onUse = {},
             onTest = {},
-            oneTest = oneTest,
         )
     }
 
