@@ -313,6 +313,9 @@ internal object RvPart {
     const val BLOCK = "rv-block"
     const val ROW = "rv-row"
 
+    /** A settings row's leading disc, held on the title's first line as its end is. */
+    const val DISC = "rv-disc"
+
     /** A busy bar standing in for a row's end while a test runs. */
     const val BUSY = "rv-busy"
     const val SEGMENTED = "rv-segmented"

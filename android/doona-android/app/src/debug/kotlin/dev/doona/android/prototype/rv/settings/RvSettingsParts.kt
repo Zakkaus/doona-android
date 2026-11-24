@@ -76,10 +76,11 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
 
 /**
  * A row of a card: the [icon]'s 40 dp disc ([RvIconDisc]), a title over an optional subtitle, and trailing content, 58 dp
- * tall with one line and 82 with a subtitle, as [RvRow]; a subtitle that wraps makes it taller. The disc centres on the
- * row and starts its text [RvSpace.rowGap] after it, as [RvRow]'s leading disc does, so every list row starts alike. The
- * text block centres in the row's height, and the trailing control centres on its first line, which is where Revolut's
- * rows keep it when the subtitle wraps. That line is the one a one-line row keeps for its title (58 dp less its insets),
+ * tall with one line and 82 with a subtitle, as [RvRow]; a subtitle that wraps makes it taller. The disc starts its text
+ * [RvSpace.rowGap] after it, as [RvRow]'s leading disc does, so every list row starts alike. The text block centres in
+ * the row's height, and both ends, the disc and the trailing control, centre on its first line: Revolut's settings rows
+ * keep both there when the text runs to more lines (privacy and accessibility dumps: icon and switch 2 px above the
+ * title line's centre), never on the row's centre. That line is the one a one-line row keeps for its title (58 dp less its insets),
  * or the title's own line where it is taller ([rvOneLine]), so at a large font size it stays beside the title's first
  * line. The row's touch behaviour comes in [modifier], outside the padding, so the whole row is the target. A subtitle
  * that says an action failed is in the [error] hue, as a field's error message
@@ -107,12 +108,8 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
-        val text = rowText(title, subtitle, code, titleLines, error, trailing)
+        val text = rowText(title, subtitle, code, titleLines, error, icon, trailing)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            icon?.let {
-                RvIconDisc(it)
-                Spacer(Modifier.width(RvSpace.rowGap))
-            }
             Row(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
             action?.let {
                 Spacer(Modifier.width(RvSettingsSpace.trailingGap))
@@ -122,7 +119,7 @@ internal fun RvSettingsRow(
     }
 }
 
-/** [RvSettingsRow]'s title over subtitle, and trailing control, the control on the title's first line. */
+/** [RvSettingsRow]'s disc, title over subtitle, and trailing control, the disc and the control on the title's first line. */
 @Composable
 private fun rowText(
     title: String,
@@ -130,10 +127,16 @@ private fun rowText(
     code: Boolean,
     titleLines: Int,
     error: Boolean,
+    @DrawableRes icon: Int?,
     trailing: (@Composable () -> Unit)?,
 ): @Composable RowScope.() -> Unit {
     val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle))
     return {
+        icon?.let {
+            // The disc (40 dp) is taller than a line box of a small font, so it is not held to the box's height.
+            FirstLine(line) { Box(Modifier.wrapContentHeight(unbounded = true).testTag(RvPart.DISC)) { RvIconDisc(it) } }
+            Spacer(Modifier.width(RvSpace.rowGap))
+        }
         Column(Modifier.weight(1f)) {
             if (code) RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines) else RvText(title, Rv.type.rowTitle, maxLines = titleLines)
             subtitle?.let { RvText(it, Rv.type.rowSub, color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
