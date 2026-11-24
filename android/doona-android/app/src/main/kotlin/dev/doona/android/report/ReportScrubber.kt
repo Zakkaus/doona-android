@@ -72,7 +72,7 @@ private val DNS_NAME = Regex("$LABEL(?:\\.$LABEL)*\\.?")
 private val IPV6_TEXT = Regex("[0-9a-fA-F:.]{2,45}")
 private val APP_PACKAGE = Regex("[a-zA-Z][a-zA-Z0-9_]*(?:\\.[a-zA-Z][a-zA-Z0-9_]*)+")
 private val METADATA = Regex("""[\p{L}\p{N} ._()+-]{1,64}""")
-private const val READ_COMMANDS = "trafficSeries|usage|nodes|scoreState|rules|effectiveConfig|diagnostics"
+private const val READ_COMMANDS = "trafficSeries|usage|nodes|scoreState|rules|effectiveConfig|diagnostics|recentFlows"
 internal val REPORT_COMMANDS = (ACTION_COMMANDS + "|" + READ_COMMANDS).split('|').toSet()
 private val READ_EVENT = Regex("(?:$READ_COMMANDS|$ACTION_COMMANDS): (?:${ACTION_CODES.joinToString("|")}) after \\d{1,19} ms")
 private const val EXCEPTION_CLASS = "[A-Z][A-Za-z0-9]*"
@@ -84,6 +84,8 @@ private val FAILURE_EVENT = Regex(
 )
 private val APP_MESSAGES = setOf(
     "health check: data path down",
+    TCP_FLOW_EVENT,
+    UDP_FLOW_EVENT,
     ExportTokens.PICK_UNSAVED,
     ExportTokens.TOKENS_UNDECODABLE,
 )

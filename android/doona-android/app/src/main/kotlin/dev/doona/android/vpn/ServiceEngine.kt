@@ -21,6 +21,7 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
+import dev.doona.android.engine.RecentFlow
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.ScoreState
@@ -295,6 +296,12 @@ class ServiceEngine internal constructor(
     override suspend fun diagnostics(level: LogLevel?): Result<CoreDiagnostics> =
         callCore("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
             .map { it.dto.toCoreDiagnostics(it.json) }
+
+    override suspend fun recentFlows(): Result<List<RecentFlow>> {
+        if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
+        return call("recentFlows", "{}", RecentFlowsDto.serializer())
+            .map(RecentFlowsDto::toRecentFlows)
+    }
 
     override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
         val outcome = if (opener.schema() == CORE_SCHEMA) {
