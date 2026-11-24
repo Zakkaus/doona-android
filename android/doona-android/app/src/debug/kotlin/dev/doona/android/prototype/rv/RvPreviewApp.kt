@@ -77,6 +77,9 @@ import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.states.RvActivityNotice
+import dev.doona.android.prototype.rv.states.RvPermission
+import dev.doona.android.prototype.rv.states.RvPermissionAsks
+import dev.doona.android.prototype.rv.states.RvPermissionSheet
 import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
@@ -105,7 +108,8 @@ internal enum class RvLaunch(val action: String?) {
  * How the sample starts: [connected] or not, whether connecting [fails], the [page] on top of its tab home (a route
  * such as `nodes` or `settings`) or a whole stack of [routes] (such as `policy`, `rules`), whether a latency [test] runs
  * a second after launch (for recording it), the shortcut it was [launch]ed by, whether 全部規則 holds two [pending]
- * quick rules.
+ * quick rules, and whether it is the [firstRun], when 連線 explains the VPN and the first connection the notification
+ * before each is asked ([RvPermissionAsks]).
  */
 @Immutable
 internal data class RvSampleStart(
@@ -116,6 +120,7 @@ internal data class RvSampleStart(
     val launch: RvLaunch = RvLaunch.None,
     val routes: List<String>? = null,
     val pending: Boolean = false,
+    val firstRun: Boolean = false,
 ) {
     val stack: List<String>
         get() = routes?.takeIf { it.isNotEmpty() } ?: when (page) {
@@ -149,7 +154,7 @@ internal fun RvPreviewApp(options: RvMotionOptions = RvMotionOptions(), start: R
 @Composable
 private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit) {
     val scope = rememberCoroutineScope()
-    val run = remember { RvSampleRun(scope, start.connected, start.fails) }
+    val run = remember { RvSampleRun(scope, start.connected, start.fails, explained = !start.firstRun) }
     var stack by rememberSaveable { mutableStateOf(start.stack) }
     val policy = remember { RvPolicyPreviewState(if (start.pending) RvPolicyData.pending else emptyList()) }
     // While connected the minute moves on each second.
@@ -161,7 +166,7 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
         run.test()
     }
     LaunchedEffect(start.launch) {
-        if (start.launch == RvLaunch.Connect) run.connect()
+        if (start.launch == RvLaunch.Connect) run.asks.connect()
         if (start.launch == RvLaunch.Disconnect) run.disconnect()
     }
     val pages = RvSamplePages(push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { i -> TABS[i]?.let { stack = listOf(it) } })
@@ -173,6 +178,7 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
         LocalRvRowActions provides actions,
     ) {
         RvStackHost(stack, onBack = pages.pop, options) { route -> RvSamplePage(route, run, options, settings, onSettings, policy, pages, start.launch == RvLaunch.Nodes) }
+        RvPermissionSheet(run.asks)
     }
 }
 
@@ -349,7 +355,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         pull,
         activity = { look ->
             val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) run.disconnect() }
-            RvActivityScreen(run.activity(rememberShownSecond({ run.second }, look)), onAction, run::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
+            RvActivityScreen(run.activity(rememberShownSecond({ run.second }, look)), onAction, run.asks::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
         },
         picker = { motion ->
             val pick: (String) -> Unit = {
@@ -403,10 +409,11 @@ internal fun rememberShownSecond(second: () -> Int, look: RvPullLook): Int {
  * What the sample runs by itself, at the sample's own pace: connecting takes [RV_CONNECT_MS] and ends connected, or
  * failed when it [fails]; disconnecting takes [RV_STOP_MS]; while connected the live minute moves on a [second] at a
  * time; a latency test runs [RV_TEST_MS] and gives every node a new result ([testNode] one node); the current node is
- * the one picked last. A row menu [update]s a subscription (as long as a test) or [delete]s it with its nodes.
+ * the one picked last. A row menu [update]s a subscription (as long as a test) or [delete]s it with its nodes. 連線 goes
+ * through [asks], where the VPN consent connects; unless the permissions were [explained], it explains them first.
  */
 @Stable
-internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean, private val fails: Boolean) {
+internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean, private val fails: Boolean, explained: Boolean = true) {
     var status by mutableStateOf(if (connected) Status.Running(RvData.session.startEpochMs) else Status.Stopped)
         private set
     var second by mutableIntStateOf(0)
@@ -423,6 +430,7 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
         private set
     private var rounds = 0
     private var link: Job? = null
+    val asks = RvPermissionAsks(explained) { if (it == RvPermission.Vpn) connect() }
 
     fun connect() {
         if (status is Status.Running || status == Status.Starting) return
@@ -432,6 +440,7 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
                 status = Status.Starting
                 delay(RV_CONNECT_MS)
                 status = if (fails) Status.Failed(FailureReason.StartFailed) else Status.Running(RvData.nowEpochMs)
+                asks.onStatus(status)
             }
         }
     }

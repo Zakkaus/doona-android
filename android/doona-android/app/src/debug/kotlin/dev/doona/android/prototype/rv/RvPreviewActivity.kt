@@ -35,8 +35,9 @@ import kotlin.concurrent.thread
  * `--es start idle` (start disconnected), `--ez fail true` (connecting fails), `--es page nodes` (start on a page over
  * 活動: nodes, stats, traffic, `gallery` (the library's parts), `welcome` (the first run), `state:<notice>` (活動 empty
  * or under a banner), `subs` (訂閱), or settings on its own; `--es route` is the same), `--es rv.route policy,rules`
- * (that stack of pages), `--ez rv.pending true` (全部規則 holds two quick rules) and `--ez test true` (a latency test a
- * second after launch). The launcher icon's shortcuts (xml/rv_shortcuts) open it with an action, [RvLaunch]:
+ * (that stack of pages), `--ez rv.pending true` (全部規則 holds two quick rules), `--ez rv.first true` (the first run:
+ * 連線 explains the VPN, the first connection the notification, before each is asked) and `--ez test true` (a latency
+ * test a second after launch). The launcher icon's shortcuts (xml/rv_shortcuts) open it with an action, [RvLaunch]:
  * `-a dev.doona.android.prototype.rv.CONNECT` starts disconnected and connects on screen, `.DISCONNECT` starts connected
  * and disconnects, `.NODES` starts with the node picker open. A recreated activity does not run its action again.
  */
@@ -63,6 +64,7 @@ class RvPreviewActivity : ComponentActivity() {
             launch = launch,
             routes = intent.getStringExtra(EXTRA_STACK)?.split(',')?.filter { it.isNotBlank() },
             pending = intent.getBooleanExtra(EXTRA_PENDING, false),
+            firstRun = intent.getBooleanExtra(EXTRA_FIRST, false),
         )
         preloadFonts(applicationContext)
         // Each gesture's frame times go to logcat (`adb logcat -s RvFrames`).
@@ -120,4 +122,5 @@ private const val EXTRA_PAGE = "page"
 private const val EXTRA_ROUTE = "route"
 private const val EXTRA_STACK = "rv.route"
 private const val EXTRA_PENDING = "rv.pending"
+private const val EXTRA_FIRST = "rv.first"
 private const val EXTRA_TEST = "test"
