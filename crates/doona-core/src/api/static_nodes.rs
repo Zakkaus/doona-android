@@ -21,6 +21,7 @@ fn entry(mut node: Node, stored: &StaticNode, uuid: uuid::Uuid) -> Arc<NodeEntry
         id: stored.id.clone(),
         uuid,
         name: stored.name.clone(),
+        location: crate::regions::locate(&stored.name),
         subscription: None,
         node: Arc::new(node),
     })

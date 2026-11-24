@@ -1,6 +1,5 @@
-//! The JSON payloads of the JNI contract (`plans/v1/core-api.md`, schema 3). Kotlin's twin is
-//! `vpn/CoreDto.kt`; `contracts/doona-core/*.json` holds the examples both sides test against.
-//! Unknown fields are ignored; a missing required field fails to parse (`invalid_argument`).
+//! JNI schema 3 (`plans/v1/core-api.md`); Kotlin's `vpn/CoreDto.kt` shares `contracts/doona-core/*.json`.
+//! Unknown fields are ignored; missing required fields yield `invalid_argument`.
 
 pub use crate::diag::report::{
     ClearCrashesArgs, CoreBuild, CrashFile, DiagEvent, Diagnostics, DiagnosticsArgs, LastSnapshot,
@@ -8,12 +7,12 @@ pub use crate::diag::report::{
 };
 use serde::{Deserialize, Serialize};
 
+pub mod location;
 pub mod score;
 
 /// Schema 3 admits catalog leaves without a subscription and adds the static editor commands.
 pub const SCHEMA: u32 = 3;
 
-/// The closed set of error codes, as `ErrorCode` in Kotlin's `Engine.kt`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorCode {
@@ -84,7 +83,7 @@ pub struct BootstrapDnsArgs {
     pub servers: Vec<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub revision: i64,
@@ -193,7 +192,7 @@ pub struct TrafficSeries {
     pub down_peak: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Catalog {
     pub mode: Mode,
@@ -321,7 +320,7 @@ pub struct EffectiveConfig {
     pub truncated: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Group {
     pub id: String,
@@ -333,18 +332,19 @@ pub struct Group {
     pub members: Vec<Member>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Member {
     pub id: String,
     pub name: String,
     pub latency_ms: Option<u32>,
     pub failed: bool,
-    /// Why the last probe failed, when the core knows: `local_network` when it was refused on its
-    /// way to the node at an address on the local network. Null otherwise, and for groups.
+    /// Known cause of the last probe failure, e.g. `local_network` or `dns_failed`; null for groups.
     pub error: Option<ErrorCode>,
     pub is_group: bool,
     pub subscription_id: Option<String>,
+    #[serde(flatten)]
+    pub location: location::Location,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
