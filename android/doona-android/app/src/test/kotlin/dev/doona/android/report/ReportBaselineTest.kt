@@ -11,6 +11,7 @@ import java.net.InetAddress
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReportBaselineTest : ExportFixture() {
+    // The fixture is 25050034's output plus the dnsFailed count added since.
     @Test
     fun `default ZIP entries match 25050034 without looking up endpoints or IPs`() = runTest {
         val fake = fixtureEngine()

@@ -78,11 +78,14 @@ data class StaticNode(val id: String, val name: String, val link: String) {
 sealed interface StaticNodeResult {
     data class Ready(val id: String, val name: String, val protocol: String) : StaticNodeResult
     data class Added(val id: String, val name: String, val protocol: String) : StaticNodeResult
-    data class Updated(val id: String, val name: String, val protocol: String) : StaticNodeResult
-    data class Duplicate(val id: String) : StaticNodeResult
-    data class Invalid(val reason: StaticNodeReason) : StaticNodeResult
-    data class Unsupported(val reason: StaticNodeReason) : StaticNodeResult
+    data class Updated(val id: String, val name: String, val protocol: String) : StaticNodeUpdateResult
+    data class Duplicate(val id: String) : StaticNodeUpdateResult
+    data class Invalid(val reason: StaticNodeReason) : StaticNodeUpdateResult
+    data class Unsupported(val reason: StaticNodeReason) : StaticNodeUpdateResult
 }
+
+/** An edit cannot produce a preview or a newly added node. */
+sealed interface StaticNodeUpdateResult : StaticNodeResult
 
 @Serializable
 enum class StaticNodeReason {

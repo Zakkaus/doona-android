@@ -44,24 +44,14 @@ internal fun ConnectivityManager.activeBootstrapDns(): List<String> {
 
 internal suspend fun ConnectivityManager.followBootstrapDns(refresh: (List<String>) -> Unit) {
     val callback = object : ConnectivityManager.NetworkCallback() {
-        private var selected: Network? = null
-
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-            selected = network.takeIf { capabilities.isBootstrapNetwork() }
-        }
-
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
-            if (network == selected) refresh(linkProperties.bootstrapServers())
-        }
-
-        override fun onLost(network: Network) {
-            if (network == selected) selected = null
+            refresh(linkProperties.bootstrapServers())
         }
     }
-    // Use Android's network ranking without asking it to bring up a different connection.
+    // Use Android's network ranking without asking it to bring up a different connection. NOT_VPN
+    // comes from the Builder's defaults, which is why it is not added here.
     val request = NetworkRequest.Builder()
         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
         .build()
     registerBestMatchingNetworkCallback(request, callback, Handler(Looper.getMainLooper()))
     try {

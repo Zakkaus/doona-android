@@ -81,7 +81,7 @@ interface Engine {
     suspend fun readStaticNode(id: String): Result<StaticNode>
 
     /** An edit based on a changed record fails with [ErrorCode.Busy]; a missing record fails with [ErrorCode.NotFound]. */
-    suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeResult>
+    suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeUpdateResult>
 
     /** Uses the same stale-record check as [updateStaticNode]; [confirmed] must be true to remove the node. */
     suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit>
@@ -270,4 +270,12 @@ data class PerApp(val policy: AppPolicy = AppPolicy.All, val packages: Set<Strin
 
 enum class AppPolicy { All, OnlyListed, ExceptListed }
 
-data class Settings(val mode: Mode = Mode.Global, val perApp: PerApp = PerApp())
+data class Settings(
+    val mode: Mode = Mode.Global,
+    val perApp: PerApp = PerApp(),
+    /**
+     * Whether Android blocks traffic outside this VPN. False when the VPN service is not running;
+     * while connecting or reconnecting it keeps the last reading taken while running.
+     */
+    val lockdownEnabled: Boolean = false,
+)

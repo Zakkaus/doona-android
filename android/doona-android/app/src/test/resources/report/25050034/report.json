@@ -77,7 +77,8 @@
                 "total": 3,
                 "tested": 1,
                 "failed": 1,
-                "localNetwork": 1
+                "localNetwork": 1,
+                "dnsFailed": 0
             },
             "nodeList": [
                 {
