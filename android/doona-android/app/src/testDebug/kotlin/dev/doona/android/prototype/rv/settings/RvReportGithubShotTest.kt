@@ -5,12 +5,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -100,12 +106,26 @@ class RvReportGithubShotTest {
         val ran = mutableListOf<String>()
         val actions = RvReportActions(github = { ran += "github" }, share = { ran += "share" })
         compose.setContent { Themed { RvReportGithubScreen(RvReportBuild.Ready(redaction.value), rvSampleReport, redaction.value, { redaction.value = it }, onBack = {}, actions = actions) } }
-        compose.onNodeWithText(rvText(R.string.rv_redact_apps)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_redact_ip)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_redact_nodes)).performClick()
-        assertEquals(RvRedaction(nodes = false, apps = true), redaction.value)
+        assertEquals(RvRedaction(nodes = false, ip = false), redaction.value)
         compose.onNodeWithText(rvText(R.string.rv_report_github)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_report_share)).performClick()
         assertEquals(listOf("github", "share"), ran)
+    }
+
+    /** The pair is one part: both pills as tall and as wide; two switches, then the line of what always goes. */
+    @Test
+    @Config(qualifiers = READY)
+    fun thePairIsOneSizeAndTwoThingsCanBeHidden() {
+        compose.setContent { Themed { RvReportGithubScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), {}, onBack = {}) } }
+        val github = compose.onNodeWithText(rvText(R.string.rv_report_github)).getUnclippedBoundsInRoot()
+        val share = compose.onNodeWithText(rvText(R.string.rv_report_share)).getUnclippedBoundsInRoot()
+        assertEquals(RvControlSize.primary.value, github.height.value, 0.5f)
+        assertEquals(github.height.value, share.height.value, 0.5f)
+        assertEquals(github.width.value, share.width.value, 0.5f)
+        compose.onAllNodes(isToggleable()).assertCountEquals(2)
+        compose.onNodeWithText(rvText(R.string.rv_redact_always)).assertExists()
     }
 
     /** A report written before a switch turned hides other things: it is not shared until it is written again. */
@@ -117,7 +137,7 @@ class RvReportGithubShotTest {
         val ran = mutableListOf<String>()
         val actions = RvReportActions(github = { ran += "github" }, share = { ran += "share" })
         compose.setContent { Themed { RvReportGithubScreen(build.value, rvSampleReport, redaction.value, { redaction.value = it }, onBack = {}, actions = actions) } }
-        compose.onNodeWithText(rvText(R.string.rv_redact_apps)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_redact_ip)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_report_building)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_report_github)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_report_share)).performClick()
@@ -173,14 +193,14 @@ class RvReportGithubShotTest {
         val IS_BUTTON = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
 
         /** As tall as the page in each state and font size (to the next whole dp), so its end sits above the actions as on the phone. */
-        const val READY = "+h1132dp"
-        const val READY_FS115 = "+h1139dp"
-        const val READY_FS200 = "+h1719dp"
-        const val BUILDING = "+h1206dp"
-        const val BUILDING_FS115 = "+h1213dp"
-        const val BUILDING_FS200 = "+h1850dp"
-        const val FAILED = "+h1282dp"
-        const val FAILED_FS115 = "+h1294dp"
-        const val FAILED_FS200 = "+h1944dp"
+        const val READY = "+h980dp"
+        const val READY_FS115 = "+h987dp"
+        const val READY_FS200 = "+h1433dp"
+        const val BUILDING = "+h1054dp"
+        const val BUILDING_FS115 = "+h1061dp"
+        const val BUILDING_FS200 = "+h1564dp"
+        const val FAILED = "+h1130dp"
+        const val FAILED_FS115 = "+h1142dp"
+        const val FAILED_FS200 = "+h1658dp"
     }
 }

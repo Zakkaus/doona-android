@@ -370,10 +370,18 @@ internal fun RvPrimaryButton(
  * pairs a green or teal action with a red glyph. Its target reaches 48 dp through Compose's touch target expansion.
  * Disabled, the whole pill is at [RvAlpha.DISABLED] and takes no press. Floating where a page scrolls under it, it takes
  * the colour it stands on as [over] and, as [RvPrimaryButton], is opaque in the colours it shows there, faded or not,
- * so nothing under it shows through.
+ * so nothing under it shows through. In [RvButtonPair] it takes the main pill's [height] and [labelStyle].
  */
 @Composable
-internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, over: Color? = null) {
+internal fun RvSecondaryButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    over: Color? = null,
+    height: Dp = RvControlSize.secondary,
+    labelStyle: TextStyle = Rv.type.action,
+) {
     val colors = Rv.colors
     val track = over?.let { colors.segmentTrack.compositeOver(it) } ?: colors.segmentTrack
     val faded = { color: Color -> if (enabled || over == null) color else color.copy(alpha = RvAlpha.DISABLED).compositeOver(over) }
@@ -390,14 +398,14 @@ internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Mod
     Box(
         modifier
             .fillMaxWidth()
-            .heightIn(min = RvControlSize.secondary)
+            .heightIn(min = height)
             .then(layer)
             .clip(CircleShape)
             .background(faded(track))
             .then(press)
             .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
         contentAlignment = Alignment.Center,
-    ) { RvText(label, Rv.type.action, color = faded(colors.text), align = TextAlign.Center) }
+    ) { RvText(label, labelStyle, color = faded(colors.text), align = TextAlign.Center) }
 }
 
 /**

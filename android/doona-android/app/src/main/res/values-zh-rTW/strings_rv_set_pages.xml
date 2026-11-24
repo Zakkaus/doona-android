@@ -40,10 +40,6 @@
     <string name="rv_redact_nodes_sub">伺服器的網域、IP 與連接埠</string>
     <string name="rv_redact_ip">我的 IP 位址</string>
     <string name="rv_redact_ip_sub">本機的公網與區網 IP</string>
-    <string name="rv_redact_domains">造訪的網域</string>
-    <string name="rv_redact_domains_sub">連線與 DNS 查詢裡的網域</string>
-    <string name="rv_redact_apps">App 名稱</string>
-    <string name="rv_redact_apps_sub">每條連線所屬的 App</string>
     <string name="rv_redact_always">訂閱連結與 Token 一律移除。</string>
     <string name="rv_report_github">在 GitHub 回報</string>
     <string name="rv_report_share">分享檔案</string>

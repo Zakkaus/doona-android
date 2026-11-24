@@ -25,13 +25,12 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBusy
+import dev.doona.android.designsystem.rv.RvButtonPair
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
-import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
@@ -49,11 +48,12 @@ internal sealed interface RvReportBuild {
 }
 
 /**
- * What the report hides on top of what it always removes: node addresses and ports, the phone's own IPs, the domains
- * it visited, and which app opened each connection. The first three start on, the app names off.
+ * What the report hides on top of what it always removes (subscription links, tokens): node addresses and ports, and the
+ * phone's own IPs; both start on. A v0.1 report holds no visited domain and no app name, so there is nothing to hide
+ * there (the backend drops both too).
  */
 @Immutable
-internal data class RvRedaction(val nodes: Boolean = true, val ip: Boolean = true, val domains: Boolean = true, val apps: Boolean = false)
+internal data class RvRedaction(val nodes: Boolean = true, val ip: Boolean = true)
 
 /** What the report holds, as its preview lists it: the versions, the phone, the settings in counts, and the log. */
 @Immutable
@@ -83,7 +83,7 @@ internal class RvReportActions(
  * build the library's banner with 重試; while the report is written, a busy row on top, as 依 App shows 正在儲存;
  * then 分享的內容, the preview, a plain list of values as the licences are; then 遮蔽, a switch for each thing it can
  * hide with one line of what that is, and the footer that subscription links and tokens always go. The two actions
- * stand at the foot as a sheet's pair ([RvConfirmContent]): 在 GitHub 回報 opens a prefilled issue the user attaches
+ * stand at the foot as the library's pair, one size ([RvButtonPair]): 在 GitHub 回報 opens a prefilled issue the user attaches
  * the file to, 分享檔案 hands it to the share sheet; both wait for the report. A report hides what the switches said
  * when it was written ([RvReportBuild.Ready]): once they say otherwise it is not shared, and the page shows it being
  * written again, as the caller does on each [onRedaction].
@@ -152,29 +152,17 @@ private fun Redaction(redaction: RvRedaction, onChange: (RvRedaction) -> Unit) {
             stringResource(R.string.rv_redact_nodes_sub),
         )
         RvSettingsSwitchRow(stringResource(R.string.rv_redact_ip), R.drawable.rv_sym_vpn_lock, redaction.ip, { onChange(redaction.copy(ip = it)) }, stringResource(R.string.rv_redact_ip_sub))
-        RvSettingsSwitchRow(
-            stringResource(R.string.rv_redact_domains),
-            R.drawable.rv_settings_ic_language,
-            redaction.domains,
-            { onChange(redaction.copy(domains = it)) },
-            stringResource(R.string.rv_redact_domains_sub),
-        )
-        RvSettingsSwitchRow(stringResource(R.string.rv_redact_apps), R.drawable.rv_sym_apps, redaction.apps, { onChange(redaction.copy(apps = it)) }, stringResource(R.string.rv_redact_apps_sub))
     }
 }
 
 /**
- * The two actions, the main one over the other, a sheet's gap apart; neither takes a tap until the report is [ready], written
- * with the redaction the switches show.
+ * The two actions as the library's pair, one size, the main one over the other; neither takes a tap until the report is
+ * [ready], written with the redaction the switches show. The pair floats over the page as it scrolls, so it is opaque
+ * on the page's colour.
  */
 @Composable
 private fun Actions(ready: Boolean, actions: RvReportActions) {
-    Column {
-        RvPrimaryButton(stringResource(R.string.rv_report_github), actions.github, enabled = ready)
-        Spacer(Modifier.height(RvSpace.controlStack))
-        // The pair floats over the page as it scrolls: the secondary is opaque on it, as the primary is.
-        RvSecondaryButton(stringResource(R.string.rv_report_share), actions.share, enabled = ready, over = Rv.colors.page)
-    }
+    RvButtonPair(stringResource(R.string.rv_report_github), actions.github, stringResource(R.string.rv_report_share), actions.share, enabled = ready, over = Rv.colors.page)
 }
 
 /** The banner of a build that failed: the export's own words, and 重試. */

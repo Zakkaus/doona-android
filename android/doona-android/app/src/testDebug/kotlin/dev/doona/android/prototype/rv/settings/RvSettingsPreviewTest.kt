@@ -6,7 +6,7 @@ import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
-import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
@@ -96,10 +96,10 @@ class RvSettingsPreviewTest {
         github.assertIsEnabled()
         // The row is under the floating pair, so it is turned as a screen reader turns it; the write reaches the
         // composition once the main thread is idle.
-        compose.onNodeWithText(rvText(R.string.rv_redact_apps)).performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText(rvText(R.string.rv_redact_ip)).performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         compose.mainClock.advanceTimeBy(FRAMES_MS)
-        compose.onNodeWithText(rvText(R.string.rv_redact_apps)).assertIsOn()
+        compose.onNodeWithText(rvText(R.string.rv_redact_ip)).assertIsOff()
         compose.onNodeWithText(rvText(R.string.rv_report_building)).assertExists()
         github.assertIsNotEnabled()
         compose.mainClock.advanceTimeBy(RV_BUILD_MS + FRAMES_MS)
@@ -112,7 +112,7 @@ class RvSettingsPreviewTest {
         app("${RvSettingsPreviewRoutes.REPORT_GITHUB}:failed")
         compose.mainClock.advanceTimeBy(FRAMES_MS)
         val github = compose.onNodeWithText(rvText(R.string.rv_report_github)).assertIsNotEnabled()
-        turnAppsSwitch()
+        turnIpSwitch()
         compose.mainClock.advanceTimeBy(FRAMES_MS)
         compose.onNodeWithText(rvText(R.string.rv_report_building)).assertExists()
         compose.mainClock.advanceTimeBy(RV_BUILD_MS + FRAMES_MS)
@@ -129,7 +129,7 @@ class RvSettingsPreviewTest {
         app(RvSettingsPreviewRoutes.REPORT_GITHUB)
         compose.mainClock.advanceTimeBy(RV_BUILD_MS - RV_BUILD_MS % FRAME_MS)
         val github = compose.onNodeWithText(rvText(R.string.rv_report_github)).assertIsNotEnabled()
-        turnAppsSwitch()
+        turnIpSwitch()
         compose.mainClock.advanceTimeBy(FRAME_MS)
         github.assertIsNotEnabled()
         compose.onNodeWithText(rvText(R.string.rv_report_building)).assertExists()
@@ -152,8 +152,8 @@ class RvSettingsPreviewTest {
     }
 
     /** The row is under the floating pair, so it is turned as a screen reader turns it. */
-    private fun turnAppsSwitch() {
-        compose.onNodeWithText(rvText(R.string.rv_redact_apps)).performSemanticsAction(SemanticsActions.OnClick)
+    private fun turnIpSwitch() {
+        compose.onNodeWithText(rvText(R.string.rv_redact_ip)).performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
     }
 
