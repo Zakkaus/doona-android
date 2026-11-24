@@ -44,7 +44,6 @@ import dev.doona.android.prototype.rv.policy.RvRuleEditPage
 import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.policy.RvTemplateImpactPage
 import dev.doona.android.prototype.rv.policy.RvTemplatePage
-import dev.doona.android.prototype.rv.settings.RV_SAMPLE_DEBUG_LEFT
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
 import dev.doona.android.prototype.rv.settings.RvDnsUpstream
@@ -201,10 +200,10 @@ class RvLayoutTest {
     fun interval() = measure("settings-interval", Top.Title) { RvIntervalScreen(RvData.UPDATE_HOURS, onSelect = {}, onBack = {}) }
 
     @Test
-    fun logLevel() = measure("settings-log-level", Top.Title) { RvLogLevelScreen(RvLogLevel.Info, RV_SAMPLE_DEBUG_LEFT, onSelect = {}, onBack = {}) }
+    fun logLevel() = measure("settings-log-level", Top.Title) { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) }
 
     @Test
-    fun logLevelDebug() = measure("settings-log-level-debug", Top.Title) { RvLogLevelScreen(RvLogLevel.Debug, RV_SAMPLE_DEBUG_LEFT, onSelect = {}, onBack = {}) }
+    fun logLevelDebug() = measure("settings-log-level-debug", Top.Title) { RvLogLevelScreen(RvLogLevel.Debug, onSelect = {}, onBack = {}) }
 
     @Test
     fun reportGithub() = measure("settings-report-github", Top.Title) {

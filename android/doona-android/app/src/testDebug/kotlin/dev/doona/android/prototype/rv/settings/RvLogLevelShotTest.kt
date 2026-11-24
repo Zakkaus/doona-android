@@ -1,9 +1,9 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -25,9 +25,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 日誌等級 at its default 資訊 (`proto-rv-settings-log-level-*`) and with 除錯 on, 52 minutes before it returns to 資訊
- * (`-log-level-debug-*`), each light, dark, fs115 and fs200; then that a row chooses its level and the countdown shows
- * only while 除錯 is on, following the minutes its caller gives.
+ * 日誌等級 at its default 資訊 (`proto-rv-settings-log-level-*`) and with 除錯 on (`-log-level-debug-*`, the name the
+ * countdown sample had, so the sheet compares the two), each light, dark, fs115 and fs200; then that a row chooses its
+ * level and that 除錯 adds no line to its row, the footer alone telling the hour.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -55,28 +55,22 @@ class RvLogLevelShotTest {
     @Test
     fun aRowChoosesItsLevel() {
         val picked = mutableListOf<RvLogLevel>()
-        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvLogLevelScreen(RvLogLevel.Info, RV_SAMPLE_DEBUG_LEFT, { picked += it }, onBack = {}) } }
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvLogLevelScreen(RvLogLevel.Info, { picked += it }, onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_log_info)).assertIsSelected()
         compose.onNodeWithText(rvText(R.string.rv_log_debug)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_log_error)).performClick()
         assertEquals(listOf(RvLogLevel.Debug, RvLogLevel.Error), picked)
-        compose.onNodeWithText(left()).assertDoesNotExist()
     }
 
     @Test
-    fun debugCountsDownToInfo() {
-        val level = mutableStateOf(RvLogLevel.Debug)
-        val minutes = mutableIntStateOf(RV_SAMPLE_DEBUG_LEFT)
-        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvLogLevelScreen(level.value, minutes.intValue, onSelect = {}, onBack = {}) } }
-        compose.onNodeWithText(left()).assertExists()
-        minutes.intValue = RV_SAMPLE_DEBUG_LEFT - 1
-        compose.onNodeWithText(left(RV_SAMPLE_DEBUG_LEFT - 1)).assertExists()
-        compose.onNodeWithText(left()).assertDoesNotExist()
-        level.value = RvLogLevel.Info
-        compose.onNodeWithText(left(RV_SAMPLE_DEBUG_LEFT - 1)).assertDoesNotExist()
+    fun debugAddsNoRowLineAndTheFooterTellsTheHour() {
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Page(RvLogLevel.Debug) } }
+        compose.onNodeWithText(rvText(R.string.rv_log_debug)).assertIsSelected()
+        // 資訊's 預設 is the only second line on the card.
+        compose.onAllNodes(hasText(rvText(R.string.rv_log_default))).assertCountEquals(1)
+        val footer = RuntimeEnvironment.getApplication().resources.getQuantityString(R.plurals.rv_log_debug_footer, RV_DEBUG_HOURS, RV_DEBUG_HOURS)
+        compose.onNodeWithText(footer).assertExists()
     }
-
-    private fun left(minutes: Int = RV_SAMPLE_DEBUG_LEFT) = RuntimeEnvironment.getApplication().resources.getQuantityString(R.plurals.rv_log_debug_left, minutes, minutes)
 
     @Test
     fun theRowsAreOneRadioGroup() {
@@ -85,5 +79,5 @@ class RvLogLevelShotTest {
     }
 
     @Composable
-    private fun Page(level: RvLogLevel) = RvLogLevelScreen(level, RV_SAMPLE_DEBUG_LEFT, onSelect = {}, onBack = {})
+    private fun Page(level: RvLogLevel) = RvLogLevelScreen(level, onSelect = {}, onBack = {})
 }

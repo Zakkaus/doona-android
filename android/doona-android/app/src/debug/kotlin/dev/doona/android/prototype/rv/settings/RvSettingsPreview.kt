@@ -72,26 +72,24 @@ private fun AboutSample(state: String, push: (String) -> Unit, pop: () -> Unit) 
 }
 
 /**
- * 日誌等級: 除錯, once chosen, counts its [RV_DEBUG_HOURS] down a minute at a time and then returns to 資訊 by itself,
- * as the core does; choosing it again starts the count again.
+ * 日誌等級: 除錯, once chosen, returns to 資訊 by itself after [RV_DEBUG_HOURS], as the core does; choosing it again
+ * starts the hour again.
  */
 @Composable
 private fun LogLevelSample(pop: () -> Unit) {
     var level by rememberSaveable { mutableStateOf(RvLogLevel.Info) }
-    var left by rememberSaveable { mutableIntStateOf(RV_DEBUG_HOURS * MINUTES) }
-    LaunchedEffect(level) {
+    // Each choice of 除錯 starts the hour again, so the effect is keyed on the choice, not only on the level.
+    var chosen by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(level, chosen) {
         if (level != RvLogLevel.Debug) return@LaunchedEffect
-        while (left > 0) {
-            delay(MINUTE_MS)
-            left--
-        }
+        delay(RV_DEBUG_HOURS * HOUR_MS)
         level = RvLogLevel.Info
     }
-    val select = { chosen: RvLogLevel ->
-        if (chosen == RvLogLevel.Debug) left = RV_DEBUG_HOURS * MINUTES
-        level = chosen
+    val select = { next: RvLogLevel ->
+        if (next == RvLogLevel.Debug) chosen++
+        level = next
     }
-    RvLogLevelScreen(level, left, select, onBack = pop)
+    RvLogLevelScreen(level, select, onBack = pop)
 }
 
 /**
@@ -126,7 +124,6 @@ internal const val RV_CHECK_MS = 1_200L
 /** How long the sample's report takes to write. */
 internal const val RV_BUILD_MS = 1_500L
 
-private const val MINUTES = 60
-private const val MINUTE_MS = 60_000L
+private const val HOUR_MS = 3_600_000L
 private const val NEW = "new"
 private const val FAILED = "failed"

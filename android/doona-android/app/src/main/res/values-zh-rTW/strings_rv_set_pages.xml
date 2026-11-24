@@ -17,11 +17,8 @@
     </plurals>
 
     <string name="rv_log_default">預設</string>
-    <plurals name="rv_log_debug_left">
-        <item quantity="other">%1$d 分鐘後改回資訊</item>
-    </plurals>
     <plurals name="rv_log_debug_footer">
-        <item quantity="other">除錯會在 %1$d 小時後自動改回資訊，用於重現單一問題。</item>
+        <item quantity="other">除錯會在 %1$d 小時後改回資訊。</item>
     </plurals>
 
     <string name="rv_report_shared">分享的內容</string>
