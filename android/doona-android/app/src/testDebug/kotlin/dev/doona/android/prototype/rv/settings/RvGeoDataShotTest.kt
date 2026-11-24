@@ -10,14 +10,19 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvFormat
+import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -201,6 +206,25 @@ class RvGeoDataShotTest {
         assertEquals(1, updates)
     }
 
+    /**
+     * The action centres on its whole row, title and subtitle together (owner-fix3 item 26), is the library's 40 dp
+     * in-card button, and ends at the row's inset, where the other rows' chevron boxes end: 更新, then 重試.
+     */
+    @Test
+    @Config(qualifiers = WHOLE)
+    fun theActionCentresOnItsRowAndEndsAtTheRowsInset() {
+        var shown by mutableStateOf(IDLE)
+        compose.setContent { Themed { Page(shown) } }
+        listOf(IDLE to R.string.rv_menu_update, FAILED to R.string.rv_retry).forEach { (data, label) ->
+            compose.runOnIdle { shown = data }
+            val row = compose.onNode(hasTestTag(RvPart.ROW) and hasAnyDescendant(hasText(rvText(R.string.rv_settings_geodata))), useUnmergedTree = true).getBoundsInRoot()
+            val button = compose.onNode(hasText(rvText(label)) and hasClickAction()).getBoundsInRoot()
+            assertEquals("$label centre", ((row.top + row.bottom) / 2).value, ((button.top + button.bottom) / 2).value, HALF_DP)
+            assertEquals("$label end", (row.right - RvSettingsSpace.rowInset).value, button.right.value, HALF_DP)
+            assertEquals("$label height", RvControlSize.secondary.value, (button.bottom - button.top).value, HALF_DP)
+        }
+    }
+
     /** Without the sample flag 設定 is as the owner approved it: no GeoIP／GeoSite row. */
     @Test
     @Config(qualifiers = WHOLE)
@@ -251,6 +275,8 @@ class RvGeoDataShotTest {
         const val FS200_IDLE = "+h2281dp"
         const val FS200_UPDATING = "+h2278dp"
         const val FS200_WRAPPED = "+h2322dp"
+
+        const val HALF_DP = 0.5f
 
         const val WORD_JOINER = "⁠"
         const val ZERO_WIDTH_SPACE = "​"
