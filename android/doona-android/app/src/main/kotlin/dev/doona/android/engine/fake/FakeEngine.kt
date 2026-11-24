@@ -17,6 +17,7 @@ import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
@@ -52,7 +53,7 @@ class FakeEngine internal constructor(
         status: Status = Status.Stopped,
         traffic: Traffic = Traffic(),
         mode: Mode = Mode.Global,
-    ) : this(groups, subscriptions, status, traffic, mode, FakeData(nodes = nodeInfo(groups)))
+    ) : this(groups, subscriptions, status, traffic, mode, FakeData(nodes = nodeInfo(groups), scoreState = sampleScoreState(groups)))
 
     override val ready = MutableStateFlow(true)
     override val status = MutableStateFlow(status)
@@ -167,6 +168,8 @@ class FakeEngine internal constructor(
 
     override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
         Result.success(if (ids == null) data.nodes else ids.mapNotNull(nodesById::get))
+
+    override suspend fun scoreState(): Result<ScoreState> = Result.success(data.scoreState)
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
         settingsFlow.update { it.copy(perApp = perApp) }

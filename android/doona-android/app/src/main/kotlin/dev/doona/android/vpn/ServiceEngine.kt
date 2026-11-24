@@ -19,6 +19,7 @@ import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
@@ -217,6 +218,9 @@ class ServiceEngine internal constructor(
 
     override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
         read("nodes", NodesArgs.serializer(), NodesArgs(ids), NodesDto.serializer()).map(NodesDto::toNodes)
+
+    override suspend fun scoreState(): Result<ScoreState> =
+        read("scoreState", Unit.serializer(), Unit, ScoreStateDto.serializer()).map(ScoreStateDto::toScoreState)
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.

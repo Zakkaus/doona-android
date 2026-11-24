@@ -57,6 +57,22 @@ class RvSampleEngineTest {
     }
 
     @Test
+    fun scoreSamplesKeepDifferentWinnersByNetworkAndAWaitingRegion() = runTest {
+        for (engine in listOf(FakeEngine(), rvSampleEngine())) {
+            val score = engine.scoreState().getOrThrow()
+            assertEquals(listOf("g-Auto", "g-HK"), score.groups.map { it.id })
+            val (auto, region) = score.groups
+            val nodes = engine.groups.value.first { it.id == auto.id }.members
+            assertEquals(nodes.map { it.id }, auto.nodeIds)
+            assertEquals(nodes[0].id, auto.tcp.selectedId)
+            assertEquals(nodes[1].id, auto.udp.selectedId)
+            assertEquals("observedUsable", auto.tcp.state)
+            assertEquals("provisional", region.tcp.state)
+            assertEquals("comparableTraffic", region.tcp.waitReason)
+        }
+    }
+
+    @Test
     fun commandsChangePreviewStateWithoutTheCore() = runTest {
         val engine = rvSampleEngine()
         engine.disconnect()

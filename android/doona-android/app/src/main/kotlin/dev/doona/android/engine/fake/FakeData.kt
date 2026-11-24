@@ -3,6 +3,7 @@ package dev.doona.android.engine.fake
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.RuleRow
 import dev.doona.android.engine.RuleSource
+import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
@@ -15,6 +16,7 @@ internal data class FakeData(
     val rows: List<RuleRow> = FakeRuleMode.ROWS,
     val configLines: List<String> = FakeRuleMode.LINES,
     val series: SampleSeries? = null,
+    val scoreState: ScoreState,
 )
 
 internal class SampleSeries(private val endEpochMs: Long, private val up: List<Long>, private val down: List<Long>) {

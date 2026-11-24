@@ -1,6 +1,7 @@
 //! Every example payload in `contracts/doona-core/` parses into its DTO and serializes back to the
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
+use doonacore::dto::score::ScoreState;
 use doonacore::dto::{
     AddSubscriptionArgs, ClearCrashesArgs, Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty,
     ErrorCode, Init, Level, LevelArgs, Mode, ModeArgs, Nodes, NodesArgs, Reply, RuleSourceSpec,
@@ -30,7 +31,7 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 24] = [
+const COVERED: [&str; 26] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-diagnostics-args.json",
@@ -41,10 +42,12 @@ const COVERED: [&str; 24] = [
     "call-ok-empty.json",
     "call-ok-nodes.json",
     "call-ok-rules.json",
+    "call-ok-score-state.json",
     "call-ok-subscription.json",
     "call-ok-traffic-series.json",
     "call-ok-usage.json",
     "call-rules-args.json",
+    "call-score-state-args.json",
     "call-select-args.json",
     "call-set-log-level-args.json",
     "call-set-mode-args.json",
@@ -160,6 +163,15 @@ fn ok<T>(reply: Reply<T>) -> T {
         Reply::Ok(value) => value,
         Reply::Error(e) => panic!("an error reply: {e:?}"),
     }
+}
+
+#[test]
+fn score_state_fixtures() {
+    round_trip::<Empty>("call-score-state-args.json");
+    let state = ok(round_trip::<Reply<ScoreState>>("call-ok-score-state.json"));
+    let g = &state.groups[0];
+    assert_ne!(g.tcp.selected_id, g.udp.selected_id);
+    assert_eq!(g.tcp.challengers[0].node_id, g.udp.selected_id);
 }
 
 #[test]
