@@ -116,8 +116,8 @@ internal fun RvReportScreen(
             Contents(preview)
             RvSettingsSection(stringResource(R.string.rv_report_redact))
             Redaction(redaction, onRedaction)
-            RvFootnote(stringResource(R.string.rv_redact_hint), inset = RvSpace.gutter - RvSettingsSpace.margin)
-            RvFootnote(stringResource(R.string.rv_redact_always), inset = RvSpace.gutter - RvSettingsSpace.margin)
+            // One paragraph, so it runs to the cards' right edge as 設定's connection footer does (owner-fix3 item 29).
+            RvFootnote(stringResource(R.string.rv_redact_footer), inset = RvSpace.gutter - RvSettingsSpace.margin)
         }
         Spacer(Modifier.height(RvSettingsSpace.bottom))
     }

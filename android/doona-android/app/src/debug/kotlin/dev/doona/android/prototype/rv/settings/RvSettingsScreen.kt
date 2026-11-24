@@ -58,10 +58,10 @@ import dev.doona.android.prototype.rv.rvHeroArt
  * There is no search capsule; the title collapses into the bar as the page scrolls. The state is the caller's, so the
  * switches turn; the rows that open something are not wired, 主題 opens [onOpenTheme] and the nav's tabs [onTab].
  * [configRev] is a preview flag (PV-f): set, 進階 gains 設定檔 with the applied revision, which opens the configuration's
- * overview ([RvSettingsRoutes.config]). [geoData] is a sample flag too (owner-fix2 item 16): set, 進階 ends with the
- * GeoIP／GeoSite row ([RvGeoDataRow]), whose 更新 runs [RvSettingsRoutes.geoUpdate]. Where the [update] check stands
- * shows on the hero's 檢查更新 action, on the 檢查更新 row in 關於 ([RvAboutEntry]) and, when it needs the user, in the
- * banner under the hero ([rvUpdateNotice]). Over the page, the sheet that tells how to add the quick settings tile by
+ * overview ([RvSettingsRoutes.config]). Just before 關於, the last group, 更新 holds 檢查更新 and the GeoIP／GeoSite row
+ * ([RvUpdateGroup]; [geoData], whose 更新 runs [RvSettingsRoutes.geoUpdate]). Where the [update] check stands shows on
+ * the hero's 檢查更新 action, on its row and, for a newer release, in the banner under the hero ([rvUpdateNotice]); a
+ * failed check only on its row. Over the page, the sheet that tells how to add the quick settings tile by
  * hand while the state holds it open.
  */
 @Composable
@@ -72,7 +72,7 @@ internal fun RvSettingsScreen(
     onTab: (Int) -> Unit = {},
     routes: RvSettingsRoutes = RvSettingsRoutes(),
     configRev: Int? = null,
-    geoData: RvGeoData? = null,
+    geoData: RvGeoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS),
     update: RvUpdate = RvUpdate.Idle,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -87,15 +87,16 @@ internal fun RvSettingsScreen(
         Hero(titleBlock, insets, routes, update)
         val version = stringResource(R.string.rv_settings_version_value)
         // The banner stands where the first section title would, which then keeps its own gap above it (as 回報問題's).
-        rvUpdateNotice(update, version, routes.release, routes.checkUpdate)?.let {
+        rvUpdateNotice(update, version, routes.release)?.let {
             RvBanner(it, Modifier.padding(start = RvSpace.gutter, top = RvSpace.sectionAbove, end = RvSpace.gutter))
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             ConnectionGroup(state, onChange, routes)
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme)
-            AdvancedGroup(state, routes, configRev, geoData)
-            RvAboutEntry(version, routes.about, update, routes.checkUpdate)
+            AdvancedGroup(state, routes, configRev)
+            RvUpdateGroup(version, update, routes.checkUpdate, geoData, routes.geoUpdate)
+            RvAboutEntry(version, routes.about)
         }
     }
     val manual = stringResource(R.string.rv_settings_quick_tile_manual)
@@ -214,11 +215,10 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit) {
 
 /**
  * 進階: the DNS server (the picker); 回報問題, the report page, with the hero's 匯出診斷
- * glyph; the effective config, read-only; and, with the sample flag, the data the rules read places and sites from,
- * last, beside the config it serves.
+ * glyph; the effective config, read-only.
  */
 @Composable
-private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?, geoData: RvGeoData?) {
+private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_advanced))
     RvSettingsCard {
         RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, stringResource(state.dns.label))
@@ -227,7 +227,6 @@ private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, conf
             RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, stringResource(R.string.rv_config_revision, configRev))
         }
         RvSettingsNavRow(stringResource(R.string.rv_effective_open), R.drawable.rv_sym_rule, routes.effectiveConfig)
-        geoData?.let { RvGeoDataRow(it, routes.geoUpdate) }
     }
 }
 

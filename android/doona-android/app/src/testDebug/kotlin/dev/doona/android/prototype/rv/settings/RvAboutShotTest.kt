@@ -73,16 +73,14 @@ class RvAboutShotTest {
         assertEquals(listOf("github", "report", "licenses", "privacy"), opened)
     }
 
-    /** 設定's 關於 card: 關於 doona opens the page, and 檢查更新 under it checks. */
+    /** 設定's 關於 card: one row, 關於 doona, which opens the page; 檢查更新 is in 更新 (owner-fix3 item 27). */
     @Test
     fun settingsRowOpensThePage() {
         var opened = 0
-        var checks = 0
-        compose.setContent { Themed { RvAboutEntry(rvSampleVersions.app, onOpen = { opened++ }, onCheck = { checks++ }) } }
+        compose.setContent { Themed { RvAboutEntry(rvSampleVersions.app, onOpen = { opened++ }) } }
         compose.onNodeWithText(rvText(R.string.rv_about_title)).performClick()
-        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertDoesNotExist()
         assertEquals(1, opened)
-        assertEquals(1, checks)
     }
 
     @Composable

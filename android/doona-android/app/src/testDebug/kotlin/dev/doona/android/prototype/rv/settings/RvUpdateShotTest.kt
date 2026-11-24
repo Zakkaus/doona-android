@@ -24,6 +24,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
@@ -46,11 +47,12 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 檢查更新 on 設定 (owner-fix2 item 18: it left 關於), the whole page, as 設定's own goldens, each light, dark, fs115
- * and fs200: while it asks GitHub (`proto-rv-settings-update-checking-*`, at animator scale 0, so the busy bars rest
- * half full), with nothing newer (`-update-latest-*`), with a newer release (`-update-new-*`) and with no answer
- * (`-update-failed-*`). Then the row's second line in each state, that the row and the hero take no second check
- * while one runs, what the banners' actions do, and that the hero's action, named by [rvUpdateLabel], is one named button.
+ * 檢查更新 on 設定 (owner-fix2 item 18; in the 更新 group since owner-fix3 item 27), the whole page, as 設定's own
+ * goldens, each light, dark, fs115 and fs200: while it asks GitHub (`proto-rv-settings-update-checking-*`, at animator
+ * scale 0, so the busy bars rest half full), with nothing newer (`-update-latest-*`), with a newer release
+ * (`-update-new-*`) and with no answer (`-update-failed-*`, on the row only). Then the row's second line in each state,
+ * that the row, its 重試 and the hero take no second check while one runs, what the banner's and 重試's actions do, and
+ * that the hero's action, named by [rvUpdateLabel], is one named button.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -145,18 +147,23 @@ class RvUpdateShotTest {
         }
     }
 
-    /** The whole row checks, and checks again after a failure; while it asks it takes no tap. */
+    /** The whole row checks; after a failure its 重試 checks again; while it asks it takes no tap. */
     @Test
     fun theRowChecksAndTakesNoSecondWhileItAsks() {
         var checks = 0
-        var update by mutableStateOf<RvUpdate>(RvUpdate.Failed)
+        var update by mutableStateOf<RvUpdate>(RvUpdate.Idle)
         compose.setContent { Themed { Row(update) { checks++ } } }
         compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertHasClickAction().assert(IS_BUTTON).performClick()
         assertEquals(1, checks)
+        update = RvUpdate.Failed
+        compose.waitForIdle()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertHasClickAction().performClick()
+        assertEquals(2, checks)
         update = RvUpdate.Checking
         compose.waitForIdle()
         compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertHasNoClickAction().performClick()
-        assertEquals(1, checks)
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
+        assertEquals(2, checks)
     }
 
     @Test
@@ -168,12 +175,14 @@ class RvUpdateShotTest {
         assertEquals(1, opened)
     }
 
+    /** A check that got no answer says so on its row only (owner-fix3 item 27): its line, 重試 at its end, no banner. */
     @Test
-    fun aFailedCheckIsToldAndRetried() {
+    fun aFailedCheckIsToldOnItsRowOnlyAndRetried() {
         var checks = 0
         compose.setContent { Themed { Page(RvUpdate.Failed, RvSettingsRoutes(checkUpdate = { checks++ })) } }
-        compose.onNodeWithText(rvText(R.string.rv_update_failed)).assertExists()
-        compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
+        compose.onNode(line("${rvText(R.string.rv_settings_version_value)} · ${rvText(R.string.rv_update_failed)}"), useUnmergedTree = true).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_update_failed)).assertDoesNotExist()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).performScrollTo().performClick()
         assertEquals(1, checks)
     }
 
@@ -254,19 +263,19 @@ class RvUpdateShotTest {
 
     private companion object {
         /**
-         * 設定's whole page with the 檢查更新 row ([RvSettingsShotTest]'s frames), and with the banner and its section gap
-         * over it: 158.5 / 163.5 / 193.5 dp (a newer release), 157.5 / 162 / 190.5 dp (no answer), so every state ends as
-         * 設定's own golden does. A frame is a whole dp, rounded up.
+         * 設定's whole page ([RvSettingsShotTest]'s frames), and with a newer release's banner and its section gap over it,
+         * so every state ends as 設定's own golden does; a failed check has no banner, its row only, and wraps its line
+         * at fs200. A frame is a whole dp, rounded up.
          */
-        const val WHOLE = "+h1680dp"
-        const val WHOLE_FS115 = "+h1703dp"
-        const val WHOLE_FS200 = "+h2130dp"
-        const val NEW_WHOLE = "+h1839dp"
-        const val NEW_WHOLE_FS115 = "+h1867dp"
-        const val NEW_WHOLE_FS200 = "+h2324dp"
-        const val FAILED_WHOLE = "+h1838dp"
-        const val FAILED_WHOLE_FS115 = "+h1865dp"
-        const val FAILED_WHOLE_FS200 = "+h2321dp"
+        const val WHOLE = "+h1764dp"
+        const val WHOLE_FS115 = "+h1789dp"
+        const val WHOLE_FS200 = "+h2289dp"
+        const val NEW_WHOLE = "+h1923dp"
+        const val NEW_WHOLE_FS115 = "+h1953dp"
+        const val NEW_WHOLE_FS200 = "+h2523dp"
+        const val FAILED_WHOLE = WHOLE
+        const val FAILED_WHOLE_FS115 = WHOLE_FS115
+        const val FAILED_WHOLE_FS200 = "+h2329dp"
 
         const val WORD_JOINER = "\u2060"
         const val ZERO_WIDTH_SPACE = "\u200B"

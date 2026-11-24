@@ -544,11 +544,12 @@ internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style:
 /**
  * The one footnote: what a group of cards means, under its last card in secondary text at the row subtitle's step,
  * [RvSpace.footnoteAbove] under it and on the gutter as the section titles, three lines at most: [inset] in from its
- * parent, less whatever a column it sits in already insets. 13/18 is for chart captions and legends only.
+ * parent, less whatever a column it sits in already insets. Its box spans that column as the cards above it do, so a
+ * paragraph runs to their right edge. 13/18 is for chart captions and legends only.
  */
 @Composable
 internal fun RvFootnote(text: String, modifier: Modifier = Modifier, inset: Dp = RvSpace.gutter) {
-    val pad = Modifier.padding(start = inset, top = RvSpace.footnoteAbove, end = inset).testTag(RvPart.FOOTER)
+    val pad = Modifier.padding(start = inset, top = RvSpace.footnoteAbove, end = inset).fillMaxWidth().testTag(RvPart.FOOTER)
     RvText(text, Rv.type.rowSub, modifier.then(pad), color = Rv.colors.textSecondary, maxLines = FOOTNOTE_LINES)
 }
 

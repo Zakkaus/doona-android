@@ -134,7 +134,6 @@
     <string name="rv_rule_menu_on">啟用</string>
     <string name="rv_rule_menu_delete">刪除</string>
     <string name="rv_service_add">新增服務規則</string>
-    <string name="rv_service_outbound">出站</string>
     <string name="rv_service_has_rule">已有規則：%1$s</string>
     <string name="rv_service_games">遊戲</string>
     <string name="rv_service_media">影音</string>

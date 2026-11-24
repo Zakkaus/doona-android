@@ -8,25 +8,19 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
-import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
-import dev.doona.android.prototype.rv.config.rvConfigLine
 
 /**
  * The versions 關於 names: the app's, and the honk revision its proxy engine is built on, short. The core is not named:
@@ -46,45 +40,13 @@ internal class RvAboutRoutes(
     val privacy: () -> Unit = NOT_WIRED,
 )
 
-/**
- * 設定's 關於 group: 關於 doona over the app's [version], which opens [RvAboutScreen], then 檢查更新 ([RvUpdateRow]),
- * which checks that same version, so the two rows about the app's version stand together (owner-fix2 item 18).
- */
+/** 設定's 關於 group, its last: 關於 doona over the app's [version], which opens [RvAboutScreen]. */
 @Composable
-internal fun RvAboutEntry(version: String, onOpen: () -> Unit, update: RvUpdate = RvUpdate.Idle, onCheck: () -> Unit = NOT_WIRED) {
+internal fun RvAboutEntry(version: String, onOpen: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_about))
     RvSettingsCard {
         RvSettingsNavRow(stringResource(R.string.rv_about_title), R.drawable.rv_settings_ic_info, onOpen, version)
-        RvUpdateRow(update, version, onCheck)
     }
-}
-
-/**
- * 檢查更新 as a row, the whole row the target: the app's [version] as its second line, then where the check stands,
- * after the dot: nothing yet, 已是最新, the newer version, or 無法檢查更新 in the error hue (as 設定's GeoIP／GeoSite
- * row says its failure); the row checks again ([onCheck]). While it asks, the busy bar at its end and no tap, as
- * 回報問題's busy row while it writes. What needs the user (a newer release, no answer) is also 設定's banner.
- */
-@Composable
-internal fun RvUpdateRow(update: RvUpdate, version: String, onCheck: () -> Unit) {
-    val label = stringResource(R.string.rv_settings_check_update)
-    // Each part whole, so a line that wraps at a large font size breaks after the dot, never inside 已是最新.
-    val line = rvConfigLine(listOfNotNull(version, updateState(update)))
-    if (update == RvUpdate.Checking) {
-        RvSettingsRow(label, icon = R.drawable.rv_settings_ic_update, subtitle = line) { RvBusy(Modifier.width(RvSize.busy)) }
-    } else {
-        val press = Modifier.rvRowPress(Role.Button, onCheck)
-        RvSettingsRow(label, press, R.drawable.rv_settings_ic_update, subtitle = line, error = update == RvUpdate.Failed) { RvNavEnd(null) }
-    }
-}
-
-/** What follows the version on 檢查更新's second line. */
-@Composable
-private fun updateState(update: RvUpdate): String? = when (update) {
-    RvUpdate.Latest -> stringResource(R.string.rv_update_latest)
-    is RvUpdate.Available -> stringResource(R.string.rv_update_new, update.version)
-    RvUpdate.Failed -> stringResource(R.string.rv_update_failed)
-    RvUpdate.Idle, RvUpdate.Checking -> null
 }
 
 /**
@@ -102,7 +64,7 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin), verticalArrangement = Arrangement.spacedBy(RvSettingsSpace.cardGap)) {
             RvSettingsCard {
                 RvSettingsRow(stringResource(R.string.app_name), icon = R.drawable.rv_settings_ic_info, subtitle = versions.app)
-                RvSettingsRow(stringResource(R.string.rv_about_honk), icon = R.drawable.rv_sym_bolt, subtitle = stringResource(R.string.rv_about_honk_sub, versions.honk))
+                RvSettingsRow(stringResource(R.string.rv_about_honk), icon = R.drawable.rv_sym_memory, subtitle = stringResource(R.string.rv_about_honk_sub, versions.honk))
             }
             RvSettingsCard {
                 RvSettingsNavRow(stringResource(R.string.rv_about_github), R.drawable.rv_sym_github, routes.github)

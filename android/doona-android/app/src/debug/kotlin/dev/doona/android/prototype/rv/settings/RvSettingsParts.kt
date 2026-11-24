@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -81,6 +82,9 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
  * it is taller ([rvOneLine]), so at a large font size they stay beside the title's first line. The row's touch
  * behaviour comes in [modifier], outside the padding, so the whole row is the target. A subtitle that says an action
  * failed is in the [error] hue, as a field's error message ([dev.doona.android.designsystem.rv.RvFieldMessage]).
+ * An [action] (an in-card button, 40 dp, taller than a line) takes the trailing place instead and centres on the whole
+ * row, title and subtitle together, so it neither rises above the row's text inset nor sits on one line of the two;
+ * its end is the row's inset, where a chevron's box ends.
  */
 @Composable
 internal fun RvSettingsRow(
@@ -91,6 +95,7 @@ internal fun RvSettingsRow(
     code: Boolean = false,
     titleLines: Int = RV_ROW_TITLE_LINES,
     error: Boolean = false,
+    action: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Box(
@@ -101,20 +106,43 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
-        val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle))
-        Row(Modifier.fillMaxWidth().padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top) {
-            icon?.let {
-                FirstLine(line) { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
-                Spacer(Modifier.width(RvSettingsSpace.glyphGap))
-            }
-            Column(Modifier.weight(1f)) {
-                if (code) RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines) else RvText(title, Rv.type.rowTitle, maxLines = titleLines)
-                subtitle?.let { RvText(it, Rv.type.rowSub, color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
-            }
-            trailing?.let {
+        val text = rowText(title, icon, subtitle, code, titleLines, error, trailing)
+        if (action == null) {
+            Row(Modifier.fillMaxWidth().padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
                 Spacer(Modifier.width(RvSettingsSpace.trailingGap))
-                FirstLine(line, it)
+                action()
             }
+        }
+    }
+}
+
+/** [RvSettingsRow]'s glyph, title over subtitle, and trailing control, the glyph and the control on the title's first line. */
+@Composable
+private fun rowText(
+    title: String,
+    @DrawableRes icon: Int?,
+    subtitle: String?,
+    code: Boolean,
+    titleLines: Int,
+    error: Boolean,
+    trailing: (@Composable () -> Unit)?,
+): @Composable RowScope.() -> Unit {
+    val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle))
+    return {
+        icon?.let {
+            FirstLine(line) { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
+            Spacer(Modifier.width(RvSettingsSpace.glyphGap))
+        }
+        Column(Modifier.weight(1f)) {
+            if (code) RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines) else RvText(title, Rv.type.rowTitle, maxLines = titleLines)
+            subtitle?.let { RvText(it, Rv.type.rowSub, color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
+        }
+        trailing?.let {
+            Spacer(Modifier.width(RvSettingsSpace.trailingGap))
+            FirstLine(line, it)
         }
     }
 }

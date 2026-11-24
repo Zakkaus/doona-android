@@ -148,7 +148,6 @@
     <string name="rv_rule_menu_delete">Delete</string>
     <!-- 新增服務規則 (owner-fix2 item 14 sample): doona web's rule.service.* wording. -->
     <string name="rv_service_add">Add service rules</string>
-    <string name="rv_service_outbound">Outbound</string>
     <string name="rv_service_has_rule">Has a rule: %1$s</string>
     <string name="rv_service_games">Games</string>
     <string name="rv_service_media">Media</string>

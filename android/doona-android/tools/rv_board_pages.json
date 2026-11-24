@@ -141,13 +141,8 @@
  },
  {
   "page": "統計",
-  "state": "空（a）",
+  "state": "空",
   "screen": "stats-empty-a"
- },
- {
-  "page": "統計",
-  "state": "空（b）",
-  "screen": "stats-empty-b"
  },
  {
   "page": "統計",
@@ -431,13 +426,8 @@
  },
  {
   "page": "服務規則",
-  "state": "a",
-  "screen": "rules-service-a"
- },
- {
-  "page": "服務規則",
-  "state": "b",
-  "screen": "rules-service-b"
+  "state": "正常",
+  "screen": "rules-service"
  },
  {
   "page": "範本",
