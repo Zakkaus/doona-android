@@ -49,7 +49,7 @@ internal fun RvIntervalScreen(selected: Int, onSelect: (Int) -> Unit, onBack: ()
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            RvSettingsCard {
+            RvSettingsRadioCard {
                 RV_INTERVAL_HOURS.forEach { hours ->
                     RvSettingsRadioRow(pluralStringResource(R.plurals.rv_interval_hours, hours, hours), hours == selected, { onSelect(hours) })
                 }

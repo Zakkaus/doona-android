@@ -59,6 +59,12 @@ class RvIntervalShotTest {
 
     private fun hours(n: Int) = RuntimeEnvironment.getApplication().resources.getQuantityString(R.plurals.rv_interval_hours, n, n)
 
+    @Test
+    fun theRowsAreOneRadioGroup() {
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Page() } }
+        compose.assertOneRadioGroup(RV_INTERVAL_HOURS.size)
+    }
+
     @Composable
     private fun Page() = RvIntervalScreen(RvData.UPDATE_HOURS, onSelect = {}, onBack = {})
 }

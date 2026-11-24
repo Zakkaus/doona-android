@@ -78,6 +78,12 @@ class RvLogLevelShotTest {
 
     private fun left(minutes: Int = RV_SAMPLE_DEBUG_LEFT) = RuntimeEnvironment.getApplication().resources.getQuantityString(R.plurals.rv_log_debug_left, minutes, minutes)
 
+    @Test
+    fun theRowsAreOneRadioGroup() {
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Page(RvLogLevel.Info) } }
+        compose.assertOneRadioGroup(RvLogLevel.entries.size)
+    }
+
     @Composable
     private fun Page(level: RvLogLevel) = RvLogLevelScreen(level, RV_SAMPLE_DEBUG_LEFT, onSelect = {}, onBack = {})
 }

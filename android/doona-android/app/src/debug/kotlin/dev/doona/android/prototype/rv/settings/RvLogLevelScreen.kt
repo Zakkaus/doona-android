@@ -46,7 +46,7 @@ internal fun RvLogLevelScreen(level: RvLogLevel, debugLeft: Int, onSelect: (RvLo
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            RvSettingsCard {
+            RvSettingsRadioCard {
                 RvLogLevel.entries.forEach {
                     RvSettingsRadioRow(stringResource(it.label), it == level, { onSelect(it) }, subtitle = levelLine(it, level, debugLeft))
                 }
