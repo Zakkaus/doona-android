@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
+import dev.doona.android.prototype.rv.REPORT
 import dev.doona.android.prototype.rv.RvMotionOptions
 import dev.doona.android.prototype.rv.RvPreviewApp
 import dev.doona.android.prototype.rv.RvSampleStart
@@ -89,7 +90,7 @@ class RvSettingsPreviewTest {
     fun theReportIsWrittenAgainAfterASwitchTurns() {
         // The clock stands still from the start, or waiting for the first frame would run the build to its end.
         compose.mainClock.autoAdvance = false
-        app(RvSettingsPreviewRoutes.REPORT_GITHUB)
+        app(REPORT)
         val github = compose.onNodeWithText(rvText(R.string.rv_report_github))
         github.assertIsNotEnabled()
         compose.mainClock.advanceTimeBy(RV_BUILD_MS + FRAMES_MS)
@@ -109,7 +110,7 @@ class RvSettingsPreviewTest {
     @Test
     fun aSwitchTurnedAfterAFailureWritesTheReportAgain() {
         compose.mainClock.autoAdvance = false
-        app("${RvSettingsPreviewRoutes.REPORT_GITHUB}:failed")
+        app("$REPORT:failed")
         compose.mainClock.advanceTimeBy(FRAMES_MS)
         val github = compose.onNodeWithText(rvText(R.string.rv_report_github)).assertIsNotEnabled()
         turnIpSwitch()
@@ -126,7 +127,7 @@ class RvSettingsPreviewTest {
     @Test
     fun aSwitchTurnedAsTheWriteEndsWritesItAgain() {
         compose.mainClock.autoAdvance = false
-        app(RvSettingsPreviewRoutes.REPORT_GITHUB)
+        app(REPORT)
         compose.mainClock.advanceTimeBy(RV_BUILD_MS - RV_BUILD_MS % FRAME_MS)
         val github = compose.onNodeWithText(rvText(R.string.rv_report_github)).assertIsNotEnabled()
         turnIpSwitch()

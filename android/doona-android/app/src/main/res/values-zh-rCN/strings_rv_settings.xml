@@ -49,7 +49,6 @@
     <string name="rv_settings_dns_footer">规则与全局模式下，DNS 查询经由主节点发出。</string>
 
     <string name="rv_report_title">报告问题</string>
-    <string name="rv_report_export">导出诊断报告</string>
     <string name="rv_report_failed">无法导出诊断报告</string>
     <string name="rv_report_failed_reason">doona 的核心没有响应。</string>
     <string name="rv_log_error">错误</string>

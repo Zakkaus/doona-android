@@ -23,7 +23,7 @@ import dev.doona.android.R
  * What a banner says, by kind; the kind alone picks the glyph, so every banner of a kind looks the same. [Error]: an
  * action failed or a part stopped (a failed switch, save, export, import or update; the core stopped; every node failed).
  * [Warning]: something outside doona stops traffic (no network, another app's VPN). [Info]: nothing is broken now, the
- * banner offers something (the log of an earlier crash). The glyphs are the log levels' on 回報問題.
+ * banner offers something (the log of an earlier crash). The glyphs are the log levels'.
  */
 internal enum class RvNoticeKind(@DrawableRes val glyph: Int) {
     Error(R.drawable.rv_sym_error),

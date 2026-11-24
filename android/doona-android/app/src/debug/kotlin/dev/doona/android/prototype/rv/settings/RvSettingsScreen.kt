@@ -194,7 +194,7 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit) {
 }
 
 /**
- * 進階: the DNS server (the picker); 回報問題, the page that holds the log level and the export, with the hero's 匯出診斷
+ * 進階: the DNS server (the picker); 回報問題, the report page, with the hero's 匯出診斷
  * glyph; and the effective config, read-only.
  */
 @Composable

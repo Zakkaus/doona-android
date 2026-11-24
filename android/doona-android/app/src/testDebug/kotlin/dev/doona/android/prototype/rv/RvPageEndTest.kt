@@ -41,7 +41,7 @@ import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvRedaction
 import dev.doona.android.prototype.rv.settings.RvReportBuild
-import dev.doona.android.prototype.rv.settings.RvReportGithubScreen
+import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.rvPerAppLookSample
 import dev.doona.android.prototype.rv.settings.rvSampleReport
@@ -134,7 +134,7 @@ class RvPageEndTest {
             Page("訂閱") { RvSubsPage(RvSubsState(), RvSubsActions()) },
             Page("訂閱詳情") { RvSubDetail(RvData.subscriptions.first(), RvSubDetailState(), {}, onBack = {}, onUpdate = {}) },
             Page("依 App") { RvPerAppScreen(rvPerAppLookSample(""), RvPerAppActions(), onBack = {}) },
-            Page("回報到 GitHub") { RvReportGithubScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), {}, onBack = {}) },
+            Page("回報問題") { RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), {}, onBack = {}) },
             Page("規則") { RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}) },
             Page("策略組") { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) },
         ),

@@ -40,6 +40,11 @@
     <string name="rv_redact_nodes_sub">服务器的域名、IP 与端口</string>
     <string name="rv_redact_ip">我的 IP 地址</string>
     <string name="rv_redact_ip_sub">本机的公网与局域网 IP</string>
+    <string name="rv_redact_domains">访问的域名</string>
+    <string name="rv_redact_domains_sub">连接与 DNS 查询中的域名</string>
+    <string name="rv_redact_apps">App 名称</string>
+    <string name="rv_redact_apps_sub">每个连接所属的 App</string>
+    <string name="rv_redact_hint">脱敏越多，问题越可能无法解答。</string>
     <string name="rv_redact_always">订阅链接与 Token 一律移除。</string>
     <string name="rv_report_github">在 GitHub 报告</string>
     <string name="rv_report_share">分享文件</string>

@@ -87,7 +87,7 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
 }
 
 /**
- * 檢查更新 as a row: while it asks, the busy bar at its end and no tap, as 回報問題's 匯出診斷報告 while it exports; once
+ * 檢查更新 as a row: while it asks, the busy bar at its end and no tap, as 回報問題's busy row while it writes; once
  * nothing is newer, 已是最新 as its second line; otherwise a row that starts the check ([onCheck]).
  */
 @Composable

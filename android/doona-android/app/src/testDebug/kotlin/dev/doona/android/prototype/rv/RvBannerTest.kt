@@ -16,11 +16,8 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
-import dev.doona.android.prototype.rv.settings.RvExport
-import dev.doona.android.prototype.rv.settings.RvLogLevel
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
-import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSave
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.states.RvActionFailed
@@ -89,7 +86,8 @@ class RvBannerTest {
 
     @Test fun perAppPlacesItsBanner() = places(PER_APP)
 
-    @Test fun reportPlacesItsBanner() = places(REPORT)
+    // Not 回報問題: it leads with a section title, so its banner takes the title's place and keeps the section's gap
+    // under it; RvLayoutTest.reportFailed measures that.
 
     private fun shot(page: String, dark: Boolean = false, fontScale: Float = 1f) =
         compose.rvShot("$page-action-failed", dark, fontScale = fontScale) { Page(page, banner = true) }
@@ -145,9 +143,7 @@ class RvBannerTest {
 
             SUB_ADD -> RvSubAdd(RvAddState(phase = if (banner) RvAddPhase.Failed(RvAddFailure.Unreachable) else RvAddPhase.Editing), {}, onPaste = {}, onImport = {}, onBack = {})
 
-            PER_APP -> RvPerAppScreen(rvPerAppSample("").copy(save = if (banner) RvSave.Failed else RvSave.Idle), RvPerAppActions(), onBack = {})
-
-            else -> RvReportScreen(RvLogLevel.Info, if (banner) RvExport.Failed else RvExport.Idle, onLevel = {}, onExport = {}, onBack = {})
+            else -> RvPerAppScreen(rvPerAppSample("").copy(save = if (banner) RvSave.Failed else RvSave.Idle), RvPerAppActions(), onBack = {})
         }
     }
 
@@ -161,7 +157,6 @@ class RvBannerTest {
         const val SUBS = "subs"
         const val SUB_ADD = "sub-add"
         const val PER_APP = "perapp"
-        const val REPORT = "report"
         const val TOLERANCE = 0.5f
     }
 }

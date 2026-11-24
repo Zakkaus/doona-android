@@ -47,7 +47,6 @@ import dev.doona.android.prototype.rv.policy.RvTemplatePage
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
 import dev.doona.android.prototype.rv.settings.RvDnsUpstream
-import dev.doona.android.prototype.rv.settings.RvExport
 import dev.doona.android.prototype.rv.settings.RvIntervalScreen
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvLogLevel
@@ -56,7 +55,6 @@ import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvRedaction
 import dev.doona.android.prototype.rv.settings.RvReportBuild
-import dev.doona.android.prototype.rv.settings.RvReportGithubScreen
 import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
@@ -168,9 +166,6 @@ class RvLayoutTest {
     fun dns() = measure("settings-dns", Top.Title) { RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}) }
 
     @Test
-    fun report() = measure("report", Top.Title) { RvReportScreen(RvLogLevel.Info, RvExport.Failed, onLevel = {}, onExport = {}, onBack = {}) }
-
-    @Test
     fun connections() = measure("connections", Top.Tab) { RvConnectionsPage(RvPolicyData.connections) }
 
     @Test
@@ -206,8 +201,13 @@ class RvLayoutTest {
     fun logLevelDebug() = measure("settings-log-level-debug", Top.Title) { RvLogLevelScreen(RvLogLevel.Debug, onSelect = {}, onBack = {}) }
 
     @Test
-    fun reportGithub() = measure("settings-report-github", Top.Title) {
-        RvReportGithubScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {})
+    fun report() = measure("report", Top.Title) {
+        RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {})
+    }
+
+    @Test
+    fun reportFailed() = measure("report-failed", Top.Title) {
+        RvReportScreen(RvReportBuild.Failed, rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {})
     }
 
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {

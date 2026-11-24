@@ -58,14 +58,12 @@ import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
-import dev.doona.android.prototype.rv.settings.RvExport
 import dev.doona.android.prototype.rv.settings.RvLicenseText
 import dev.doona.android.prototype.rv.settings.RvLicenses
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
-import dev.doona.android.prototype.rv.settings.RvLogLevel
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
-import dev.doona.android.prototype.rv.settings.RvReportScreen
+import dev.doona.android.prototype.rv.settings.RvReportSample
 import dev.doona.android.prototype.rv.settings.RvSave
 import dev.doona.android.prototype.rv.settings.RvSettingsPreview
 import dev.doona.android.prototype.rv.settings.RvSettingsPreviewRoutes
@@ -250,7 +248,7 @@ private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions,
             RvConnectionDetail(RvPolicyData.connections[i], onBack = pages.pop, onClose = pages.pop, onNewRule = { pages.push("${RvPolicyPreviewRoutes.RULE}:$i") })
         }
 
-        REPORT -> ReportPage(route, pages)
+        REPORT -> RvReportSample(failed = route.substringAfter(':', "") == REPORT_FAILED, pages.pop)
 
         else -> ActivityPage(route, run, options, pages, picking)
     }
@@ -307,22 +305,6 @@ private fun PerAppPage(route: String, settings: RvSettingsState, onSettings: (Rv
         reconnect = { state = state.copy(rebuildFailed = false) },
     )
     RvPerAppScreen(state, actions, onBack = pages.pop)
-}
-
-/**
- * 回報問題; `report:exporting` and `report:failed` open it in those states. An export writes for [RV_EXPORT_MS], then is
- * done, as the share sheet would take it from there.
- */
-@Composable
-private fun ReportPage(route: String, pages: RvSamplePages) {
-    var level by rememberSaveable { mutableStateOf(RvLogLevel.Info) }
-    var export by rememberSaveable { mutableStateOf(RvExport.entries.firstOrNull { it.name.equals(route.substringAfter(':', ""), ignoreCase = true) } ?: RvExport.Idle) }
-    LaunchedEffect(export) {
-        if (export != RvExport.Exporting) return@LaunchedEffect
-        delay(RV_EXPORT_MS)
-        export = RvExport.Idle
-    }
-    RvReportScreen(level, export, onLevel = { level = it }, onExport = { export = RvExport.Exporting }, onBack = pages.pop)
 }
 
 /** 連線; `connections:off` shows it with the tunnel off, and 連線 there opens it connected. */
@@ -382,12 +364,12 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
 
 /**
  * 活動 under a notice ([RvActivityNotice.route]): its action clears it (back to 活動), but the empty state's 新增訂閱 opens
- * the add page, and the crash notice's 匯出報告 opens 回報問題 exporting.
+ * the add page, and the crash notice's 匯出報告 opens 回報問題, which writes the report as it opens.
  */
 @Composable
 private fun NoticeActivity(notice: RvActivityNotice, routes: RvActivityRoutes, pages: RvSamplePages) {
     val add = { pages.push(RvSubsRoutes.ADD) }
-    val onNotice = if (notice == RvActivityNotice.Crash) ({ pages.push("$REPORT:${RvExport.Exporting.name}") }) else pages.pop
+    val onNotice = if (notice == RvActivityNotice.Crash) ({ pages.push(REPORT) }) else pages.pop
     val empty = notice == RvActivityNotice.NoSubscription
     RvActivityScreen(rvNoticeActivity(notice), onAction = {}, onConnect = {}, routes, banner = rvActivityBanner(notice, onNotice), noSubscription = if (empty) add else null)
 }
@@ -540,7 +522,6 @@ private fun RvNode.retested(round: Int): RvNode {
 internal const val RV_CONNECT_MS = 1_200L
 internal const val RV_STOP_MS = 400L
 internal const val RV_TEST_MS = 1_200L
-private const val RV_EXPORT_MS = 1_500L
 private const val RV_SAVE_MS = 1_200L
 private const val TEST_DELAY_MS = 1_000L
 private const val SWING = 12
@@ -556,6 +537,9 @@ internal const val SETTINGS = "settings"
 internal const val THEME = "theme"
 internal const val DNS = "dns"
 internal const val REPORT = "report"
+
+/** `report:failed` opens 回報問題 after a failed build; `report` writes the report as the page opens. */
+private const val REPORT_FAILED = "failed"
 internal const val PERAPP = "perapp"
 internal const val LICENSES = "licenses"
 internal const val LICENSE = "license"
