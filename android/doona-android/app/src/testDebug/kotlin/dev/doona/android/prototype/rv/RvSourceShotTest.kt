@@ -129,10 +129,12 @@ class RvSourceShotTest {
 
     @Test
     fun tappingALineOpensItsFileThere() {
-        var opened = 0
+        var opened: RvDiffAt? = null
         compose.setContent { Themed { RvGalleryDiff(onOpen = { opened = it }) } }
         compose.onNodeWithContentDescription("新增，第 12 行：  domain(suffix: radio.example) -> media").performClick()
-        assertEquals(12, opened)
+        assertEquals(RvDiffAt(12, base = false), opened)
+        compose.onNodeWithContentDescription("移除，第 3 行：  domain(keyword: 影音) -> stream").performClick()
+        assertEquals(RvDiffAt(3, base = true), opened)
     }
 
     @Composable

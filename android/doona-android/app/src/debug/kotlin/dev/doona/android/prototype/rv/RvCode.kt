@@ -132,9 +132,13 @@ internal fun rvCodeBreaks(text: String, spans: List<RvCodeSpan>): IntArray {
     val whole = spans.filter { it.kind == RvCodeKind.Comment || it.kind == RvCodeKind.Quoted }
     val keys = spans.filter { it.kind == RvCodeKind.VariableName }.map { it.end }.toSet()
     val breaks = ArrayList<Int>()
+    var next = 0
     for (i in 0 until text.length - 1) {
+        // [whole] is in text order, so the first span not yet ended is the only one that can hold i.
+        while (next < whole.size && whole[next].end <= i) next++
+        val inside = next < whole.size && whole[next].start <= i
         val after = text[i] in BREAK_AFTER || (text[i] == ':' && i in keys)
-        if (after && text[i + 1] !in NO_BREAK_BEFORE && whole.none { i in it.start until it.end }) breaks += i + 1
+        if (after && text[i + 1] !in NO_BREAK_BEFORE && !inside) breaks += i + 1
     }
     return breaks.toIntArray()
 }
@@ -150,12 +154,20 @@ internal const val RV_CODE_BREAK = '​'
  * end, as the source field's last joiner): an original offset at a break lands after it.
  */
 internal class RvCodeOffsets(private val breaks: IntArray, private val length: Int) : OffsetMapping {
-    override fun originalToTransformed(offset: Int): Int = offset + breaks.count { it <= offset }
+    override fun originalToTransformed(offset: Int): Int = offset + count { breaks[it] <= offset }
 
-    override fun transformedToOriginal(offset: Int): Int {
-        var before = 0
-        while (before < breaks.size && breaks[before] + before < offset) before++
-        return (offset - before).coerceAtMost(length)
+    // A break's shown offset is breaks[k] + k, which rises with k as breaks[k] does.
+    override fun transformedToOriginal(offset: Int): Int = (offset - count { breaks[it] + it < offset }).coerceAtMost(length)
+
+    /** How many indices of [breaks] pass [before], which holds for a first run of them only: a binary search. */
+    private inline fun count(before: (Int) -> Boolean): Int {
+        var low = 0
+        var high = breaks.size
+        while (low < high) {
+            val mid = (low + high) ushr 1
+            if (before(mid)) low = mid + 1 else high = mid
+        }
+        return low
     }
 }
 
@@ -178,7 +190,14 @@ internal class RvCodeShown(val source: String) {
 
 /** Colours each of [shown]'s spans by its role in [colors], at its place in the shown text. */
 internal fun AnnotatedString.Builder.addCode(shown: RvCodeShown, colors: RvCodeColors) {
-    shown.spans.forEach { addStyle(colors.style(it.kind), shown.offsets.originalToTransformed(it.start), shown.offsets.originalToTransformed(it.end)) }
+    // The spans are in text order, so one pass over the breaks places them all.
+    val breaks = shown.breaks
+    var before = 0
+    fun at(offset: Int): Int {
+        while (before < breaks.size && breaks[before] <= offset) before++
+        return offset + before
+    }
+    shown.spans.forEach { addStyle(colors.style(it.kind), at(it.start), at(it.end)) }
 }
 
 /** [source] as code text: CJK in Noto ([scripted]), each token in its role's ink, breakable inside a long token. */

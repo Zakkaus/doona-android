@@ -28,7 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -91,10 +91,7 @@ internal fun RvBar(
 private fun Modifier.fadeOutBottom(fade: Dp, alpha: () -> Float): Modifier = graphicsLayer {
     this.alpha = alpha()
     compositingStrategy = CompositingStrategy.Offscreen
-}.drawWithContent {
-    drawContent()
-    drawRect(Brush.verticalGradient(listOf(Color.Black, Color.Transparent), size.height - fade.toPx(), size.height), blendMode = BlendMode.DstIn)
-}
+}.fadeEdge(fade, atBottom = true)
 
 /**
  * The strip behind a floating bottom action, [RvBar]'s upside down: the page's content blurred under the same glass tint
@@ -109,9 +106,23 @@ internal fun RvActionStrip(glass: RvGlass, modifier: Modifier = Modifier) {
 /** Draws this element with its first [fade] fading in from nothing, so what it covers is not cut off at a line. */
 private fun Modifier.fadeInTop(fade: Dp): Modifier = graphicsLayer {
     compositingStrategy = CompositingStrategy.Offscreen
-}.drawWithContent {
-    drawContent()
-    drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black), 0f, fade.toPx()), blendMode = BlendMode.DstIn)
+}.fadeEdge(fade, atBottom = false)
+
+/**
+ * Masks this element's last [fade] to nothing ([atBottom]) or its first in from nothing; the element sits in an
+ * offscreen layer. The gradient is built once per size, not on every frame the bar or strip redraws.
+ */
+private fun Modifier.fadeEdge(fade: Dp, atBottom: Boolean): Modifier = drawWithCache {
+    val edge = fade.toPx()
+    val mask = if (atBottom) {
+        Brush.verticalGradient(listOf(Color.Black, Color.Transparent), size.height - edge, size.height)
+    } else {
+        Brush.verticalGradient(listOf(Color.Transparent, Color.Black), 0f, edge)
+    }
+    onDrawWithContent {
+        drawContent()
+        drawRect(mask, blendMode = BlendMode.DstIn)
+    }
 }
 
 /** How far the strip behind a bar has faded in: fully once the content has scrolled [RvChrome.shadeAfter] under it. */

@@ -1,13 +1,11 @@
 package dev.doona.android.prototype.rv.config
 
 import android.content.res.Configuration
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,12 +14,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvGutter
@@ -36,18 +34,17 @@ import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSourceDiff
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvStatRow
-import dev.doona.android.prototype.rv.RvSwitch
+import dev.doona.android.prototype.rv.RvSwitchRow
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.policy.RvTemplateRow
-import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * 範本 on the configuration side (doona's routing templates; `configDraft from: template`): doona's three templates that
  * add no group, 更多範本 with the four that do, the three options every template writes, and the groups the selected
  * template declares, each with how it picks (and the flag of a region group). With no configuration yet ([current]
- * null), 建立設定檔 makes the first revision; otherwise the one in use says so and 檢視變更 opens the diff once another
- * template is selected.
+ * null), 建立設定檔 makes the first revision; otherwise the one in use says so and 檢視變更 opens the diff once the choice
+ * differs from what the routing holds, as doona judges it: another template, or [options] other than the [held] ones.
  */
 @Composable
 internal fun RvConfigTemplatePage(
@@ -58,15 +55,17 @@ internal fun RvConfigTemplatePage(
     onOptions: (RvTemplateOptions) -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit = {},
+    held: RvTemplateOptions = RvTemplateOptions(),
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_policy_template)
     val next = if (current == null) R.string.rv_config_create else R.string.rv_template_review
+    val changed = current == null || selected.row.id != current.row.id || options != held
     RvScrollPage(
         title,
         insets,
         onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(next), onNext, enabled = current == null || selected.row.id != current.row.id) },
+        bottomAction = { RvPrimaryButton(stringResource(next), onNext, enabled = changed) },
         actionScrim = true,
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
@@ -89,7 +88,7 @@ internal fun RvConfigTemplatePage(
  * opening the file at that line, and the line that only new connections follow it. 套用 floats over the scrim.
  */
 @Composable
-internal fun RvConfigTemplateApplyPage(apply: RvTemplateApply, onBack: () -> Unit, onApply: () -> Unit = {}, onOpen: (String, Int) -> Unit = { _, _ -> }) {
+internal fun RvConfigTemplateApplyPage(apply: RvTemplateApply, onBack: () -> Unit, onApply: () -> Unit = {}, onOpen: (String, RvDiffAt) -> Unit = { _, _ -> }) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_template_review)
     RvScrollPage(
@@ -125,26 +124,19 @@ private fun TemplatesCard(templates: List<RvConfigTemplate>, current: RvConfigTe
 @Composable
 private fun Section(@StringRes title: Int) = RvSectionTitle(stringResource(title), Modifier.padding(horizontal = RvSpace.gutter))
 
-/** doona's options: 擋廣告 and 擋 QUIC as 策略 names them, and NetworkManager 直連, a rule only Linux can match. */
+/** doona's options, in 策略's switch rows: 擋廣告 and 擋 QUIC as 策略 names them, and NetworkManager 直連, a rule only Linux can match. */
 @Composable
 private fun OptionsCard(options: RvTemplateOptions, onChange: (RvTemplateOptions) -> Unit) {
     RvCard {
-        OptionRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), null, options.blockAds) { onChange(options.copy(blockAds = it)) }
-        OptionRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), null, options.blockQuic) { onChange(options.copy(blockQuic = it)) }
-        OptionRow(
+        RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), options.blockAds) { onChange(options.copy(blockAds = it)) }
+        RvSwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), options.blockQuic) { onChange(options.copy(blockQuic = it)) }
+        RvSwitchRow(
             R.drawable.rv_sym_arrow_right_alt,
             stringResource(R.string.rv_template_nm_direct),
-            stringResource(R.string.rv_config_reason_linux),
             options.networkManagerDirect,
+            stringResource(R.string.rv_config_reason_linux),
         ) { onChange(options.copy(networkManagerDirect = it)) }
     }
-}
-
-/** A row whose whole width toggles its switch, as 策略's options. */
-@Composable
-private fun OptionRow(@DrawableRes icon: Int, title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
-    val toggle = Modifier.toggleable(checked, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onChange)
-    RvRow({ RvIconDisc(icon) }, title, subtitle, toggle) { RvSwitch(checked) }
 }
 
 /**

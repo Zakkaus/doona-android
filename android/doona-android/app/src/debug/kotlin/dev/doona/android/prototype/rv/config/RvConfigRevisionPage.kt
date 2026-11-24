@@ -13,6 +13,7 @@ import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvChevron
 import dev.doona.android.prototype.rv.RvConfirmSheet
+import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvDiffFile
 import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvGutter
@@ -39,7 +40,7 @@ internal fun RvConfigRevisionPage(
     files: List<RvDiffFile>,
     onBack: () -> Unit,
     onRestore: () -> Unit = {},
-    onOpen: (String, Int) -> Unit = { _, _ -> },
+    onOpen: (String, RvDiffAt) -> Unit = { _, _ -> },
     rename: RvRevisionRename? = null,
     onRename: (RvRevisionRename?) -> Unit = {},
     onSaveName: (Int, String?) -> Unit = { _, _ -> },
