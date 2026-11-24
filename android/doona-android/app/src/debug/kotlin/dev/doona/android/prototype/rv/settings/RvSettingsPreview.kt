@@ -76,21 +76,28 @@ private fun AboutSample(state: String, push: (String) -> Unit, pop: () -> Unit) 
 
 /**
  * 回報問題 for GitHub: the report is written for [RV_BUILD_MS] when the page opens, again on 重試 and on each turn of a
- * switch, as the real page writes it with the redaction it shows; with [failed] the first build fails.
+ * switch, failed or not, as the real page writes it with the redaction it shows; with [failed] the first build fails.
+ * A write hides what the switches said when it began and says so in its [RvReportBuild.Ready]: a switch turned as it
+ * ends leaves it stale, and it is written again.
  */
 @Composable
 private fun ReportSample(failed: Boolean, pop: () -> Unit) {
     var redaction by remember { mutableStateOf(RvRedaction()) }
     var build by remember { mutableStateOf<RvReportBuild>(if (failed) RvReportBuild.Failed else RvReportBuild.Building) }
     val current = build
-    val stale = current is RvReportBuild.Ready && current.redaction != redaction
-    LaunchedEffect(redaction, current == RvReportBuild.Building || stale) {
+    val wanted = redaction
+    val stale = current is RvReportBuild.Ready && current.redaction != wanted
+    LaunchedEffect(wanted, current == RvReportBuild.Building || stale) {
         if (current != RvReportBuild.Building && !stale) return@LaunchedEffect
         delay(RV_BUILD_MS)
-        build = RvReportBuild.Ready(redaction)
+        build = RvReportBuild.Ready(wanted)
     }
     val actions = RvReportActions(retry = { build = RvReportBuild.Building })
-    RvReportGithubScreen(build, rvSampleReport, redaction, { redaction = it }, onBack = pop, actions = actions)
+    val turn = { next: RvRedaction ->
+        redaction = next
+        build = RvReportBuild.Building
+    }
+    RvReportGithubScreen(build, rvSampleReport, redaction, turn, onBack = pop, actions = actions)
 }
 
 /** How long the sample's update check asks before it answers. */

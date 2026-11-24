@@ -104,6 +104,43 @@ class RvSettingsPreviewTest {
         github.assertIsEnabled()
     }
 
+    @Test
+    fun aSwitchTurnedAfterAFailureWritesTheReportAgain() {
+        compose.mainClock.autoAdvance = false
+        app("${RvSettingsPreviewRoutes.REPORT_GITHUB}:failed")
+        compose.mainClock.advanceTimeBy(FRAMES_MS)
+        val github = compose.onNodeWithText(rvText(R.string.rv_report_github)).assertIsNotEnabled()
+        turnAppsSwitch()
+        compose.mainClock.advanceTimeBy(FRAMES_MS)
+        compose.onNodeWithText(rvText(R.string.rv_report_building)).assertExists()
+        compose.mainClock.advanceTimeBy(RV_BUILD_MS + FRAMES_MS)
+        github.assertIsEnabled()
+    }
+
+    /**
+     * A switch turned in the last frame of a write: the write ends before the page composes again, and must not take the
+     * new switches as the ones it hid. The build starts at 0 and ends at [RV_BUILD_MS], between two frames.
+     */
+    @Test
+    fun aSwitchTurnedAsTheWriteEndsWritesItAgain() {
+        compose.mainClock.autoAdvance = false
+        app(RvSettingsPreviewRoutes.REPORT_GITHUB)
+        compose.mainClock.advanceTimeBy(RV_BUILD_MS - RV_BUILD_MS % FRAME_MS)
+        val github = compose.onNodeWithText(rvText(R.string.rv_report_github)).assertIsNotEnabled()
+        turnAppsSwitch()
+        compose.mainClock.advanceTimeBy(FRAME_MS)
+        github.assertIsNotEnabled()
+        compose.onNodeWithText(rvText(R.string.rv_report_building)).assertExists()
+        compose.mainClock.advanceTimeBy(RV_BUILD_MS + FRAMES_MS)
+        github.assertIsEnabled()
+    }
+
+    /** The row is under the floating pair, so it is turned as a screen reader turns it. */
+    private fun turnAppsSwitch() {
+        compose.onNodeWithText(rvText(R.string.rv_redact_apps)).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+    }
+
     private fun choosesAndGoesBack(route: String, title: Int, row: Int) = choosesAndGoesBack(route, title, rvText(row))
 
     private fun choosesAndGoesBack(route: String, title: Int, row: String) {
@@ -126,5 +163,8 @@ class RvSettingsPreviewTest {
     private companion object {
         /** A few frames, for a state to show. */
         const val FRAMES_MS = 64L
+
+        /** One frame of the test clock. */
+        const val FRAME_MS = 16L
     }
 }
