@@ -70,6 +70,10 @@ class RvActivityPlaceFramesTest {
 
     @Test fun connectDubaiDark() = connect(Place.DUBAI, dark = true)
 
+    @Test fun connectMelbourneLight() = connect(Place.MELBOURNE, dark = false)
+
+    @Test fun connectMelbourneDark() = connect(Place.MELBOURNE, dark = true)
+
     @Test fun connectOtherLight() = connect(Place.OTHER, dark = false)
 
     @Test fun connectOtherDark() = connect(Place.OTHER, dark = true)
@@ -93,6 +97,10 @@ class RvActivityPlaceFramesTest {
     @Test fun disconnectDubaiLight() = disconnect(Place.DUBAI, dark = false)
 
     @Test fun disconnectDubaiDark() = disconnect(Place.DUBAI, dark = true)
+
+    @Test fun disconnectMelbourneLight() = disconnect(Place.MELBOURNE, dark = false)
+
+    @Test fun disconnectMelbourneDark() = disconnect(Place.MELBOURNE, dark = true)
 
     @Test fun disconnectOtherLight() = disconnect(Place.OTHER, dark = false)
 
@@ -159,7 +167,8 @@ class RvActivityPlaceFramesTest {
 
     /**
      * The strips' nodes, each marked at its city: Tokyo, Los Angeles (across ±180 degrees from Asia), Frankfurt, Ashburn
-     * (the US east coast, across the Pacific too) and Dubai ([RvData.worldNodes]), and one whose name gives no country.
+     * (the US east coast, across the Pacific too), Dubai ([RvData.worldNodes]) and Melbourne, and one whose name gives no
+     * country.
      */
     private enum class Place(val tag: String, val nodeId: String) {
         JP("jp", "jp-01"),
@@ -167,6 +176,7 @@ class RvActivityPlaceFramesTest {
         DE("de", "de-01"),
         US_EAST("us-east", "us-07"),
         DUBAI("dubai", "ae-01"),
+        MELBOURNE("melbourne", "au-02"),
         OTHER("other", "other-01"),
         ;
 

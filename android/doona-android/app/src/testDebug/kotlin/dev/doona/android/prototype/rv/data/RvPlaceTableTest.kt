@@ -42,6 +42,9 @@ class RvPlaceTableTest {
         assertEquals(RvSpot(35.68f, 139.69f), tokyo.spot)
         assertEquals(RvPlace.JP.spot, tokyo.copy(city = null).spot)
         assertNull(tokyo.copy(place = RvPlace.Other).spot)
+        val melbourne = RvData.nodes.first { it.id == "au-02" }
+        assertEquals("Melbourne 02", melbourne.name)
+        assertEquals(RvSpot(-37.81f, 144.96f), melbourne.spot)
         RvData.nodes.forEach { assertEquals(it.id, it.place, it.city?.place) }
     }
 

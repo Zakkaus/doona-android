@@ -16,7 +16,8 @@ import org.robolectric.annotation.GraphicsMode
  * The Revolut-style samples, light and dark, in the scheme of the owner's wallpaper, for the owner to judge next to
  * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`, routing by rules; in 全域 in
  * `proto-rv-activity-global-*`; disconnected in `proto-rv-activity-idle-*`, scrolled with the bottom bar collapsed in
- * `proto-rv-activity-scrolled-*`, and the whole page in one tall capture in `proto-rv-activity-full-*`, at 1.15× and 2.0× too) and the traffic page a tile opens (`proto-rv-traffic-*`, and
+ * `proto-rv-activity-scrolled-*`, and the whole page in one tall capture in `proto-rv-activity-full-*`, at 1.15× and 2.0× too;
+ * connected on Melbourne 02 in `proto-rv-activity-melbourne-*`) and the traffic page a tile opens (`proto-rv-traffic-*`, and
  * held at one second in `proto-rv-traffic-scrub-*`).
  */
 @RunWith(RobolectricTestRunner::class)
@@ -70,6 +71,18 @@ class RvShotTest {
     fun activityFullFs200() = activity("activity-full", dark = false, fontScale = RV_FS200) { assertWhole() }
 
     @Test
+    fun activityMelbourneLight() = activity("activity-melbourne", dark = false, nodeId = MELBOURNE)
+
+    @Test
+    fun activityMelbourneDark() = activity("activity-melbourne", dark = true, nodeId = MELBOURNE)
+
+    @Test
+    fun activityMelbourneFs115() = activity("activity-melbourne", dark = false, fontScale = RV_FS115, nodeId = MELBOURNE)
+
+    @Test
+    fun activityMelbourneFs200() = activity("activity-melbourne", dark = false, fontScale = RV_FS200, nodeId = MELBOURNE)
+
+    @Test
     fun trafficLight() = traffic("traffic", dark = false)
 
     @Test
@@ -91,8 +104,13 @@ class RvShotTest {
     @Config(qualifiers = RV_EN)
     fun activityEn() = activity("activity-en", dark = false)
 
-    private fun activity(screen: String, dark: Boolean, fontScale: Float = 1f, before: ComposeContentTestRule.() -> Unit = {}) =
-        compose.rvShot(screen, dark, before, fontScale) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+    private fun activity(
+        screen: String,
+        dark: Boolean,
+        fontScale: Float = 1f,
+        nodeId: String = RvData.CURRENT_ID,
+        before: ComposeContentTestRule.() -> Unit = {},
+    ) = compose.rvShot(screen, dark, before, fontScale) { RvActivityScreen(rvSampleActivity(nodeId), onAction = {}, onConnect = {}) }
 
     @Composable
     private fun Global() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global)
@@ -101,6 +119,9 @@ class RvShotTest {
         compose.rvShot(screen, dark, fontScale = fontScale) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }
 
     private companion object {
+        /** The node of the `activity-melbourne` sample. */
+        const val MELBOURNE = "au-02"
+
         /** The scrolled golden moves the content this far, past the header, so the bottom bar collapses. */
         const val SCROLLED_DP = 400f
 
