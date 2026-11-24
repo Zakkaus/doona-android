@@ -360,11 +360,20 @@ internal fun RvAppDisc(packageName: String, label: String? = null, size: Dp = Rv
 
 /**
  * A row of a list where several can be checked (依 App's apps): [RvRow] with its [leading] disc, [title] and [subtitle],
- * and a check at its end that the whole row toggles, as a switch row of 設定 toggles its switch.
+ * and a check at its end that the whole row toggles, as a switch row of 設定 toggles its switch. Not [enabled], the row
+ * takes no press: no layer, no toggle, and a screen reader hears it disabled.
  */
 @Composable
-internal fun RvCheckRow(leading: @Composable () -> Unit, title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
-    val toggle = Modifier.toggleable(value = checked, interactionSource = null, indication = rvRowIndication(), role = Role.Checkbox, onValueChange = onChange)
+internal fun RvCheckRow(
+    leading: @Composable () -> Unit,
+    title: String,
+    subtitle: String?,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val toggle = Modifier.toggleable(value = checked, enabled = enabled, interactionSource = null, indication = rvRowIndication(), role = Role.Checkbox, onValueChange = onChange)
     RvRow(leading, title, subtitle, modifier.then(toggle)) { Check(checked) }
 }
 

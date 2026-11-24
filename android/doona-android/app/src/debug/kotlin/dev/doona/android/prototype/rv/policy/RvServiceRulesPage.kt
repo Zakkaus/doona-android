@@ -16,8 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
@@ -155,8 +153,8 @@ private fun ServiceRow(service: RvService, checked: Boolean, onToggle: (String) 
     val rule = RvServiceData.rule(service)
     val title = service.label?.let { stringResource(it) } ?: service.name
     val has = rule?.let { stringResource(R.string.rv_service_has_rule, it.targetName()) }
-    val dim = if (rule == null) Modifier else Modifier.graphicsLayer { alpha = RvAlpha.DISABLED }.semantics { disabled() }
-    RvCheckRow({ RvIconDisc(service.glyph) }, title, has, checked && rule == null, { if (rule == null) onToggle(service.code) }, dim)
+    val dim = if (rule == null) Modifier else Modifier.graphicsLayer { alpha = RvAlpha.DISABLED }
+    RvCheckRow({ RvIconDisc(service.glyph) }, title, has, checked && rule == null, { onToggle(service.code) }, dim, enabled = rule == null)
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

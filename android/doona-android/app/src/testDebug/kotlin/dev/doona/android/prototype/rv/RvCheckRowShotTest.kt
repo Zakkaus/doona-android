@@ -11,16 +11,22 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvCheckRow
 import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.gallery.RvGalleryChecks
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -60,6 +66,19 @@ class RvCheckRowShotTest {
         compose.onNode(hasText(CALENDAR) and checkbox(ToggleableState.On)).assertExists()
         compose.onNodeWithText(BROWSER).performClick()
         compose.onNode(hasText(BROWSER) and checkbox(ToggleableState.Off)).assertExists()
+    }
+
+    /**
+     * A row not enabled is the toggle's own: a screen reader hears it disabled and a tap reaches nothing, with no guard in
+     * the caller's callback (so no press layer either; Robolectric draws none to compare).
+     */
+    @Test
+    fun aRowNotEnabledTakesNoTap() {
+        val changed = mutableListOf<Boolean>()
+        compose.setContent { Themed { Page { RvCard { RvCheckRow({ RvIconDisc(R.drawable.rv_sym_apps) }, CALENDAR, null, false, { changed += it }, enabled = false) } } } }
+        compose.onNode(hasText(CALENDAR) and checkbox(ToggleableState.Off)).assertIsNotEnabled().performClick()
+        compose.onNode(hasText(CALENDAR) and checkbox(ToggleableState.Off)).assertExists()
+        assertEquals("taps that reached the row", emptyList<Boolean>(), changed)
     }
 
     private fun checkbox(state: ToggleableState) =
