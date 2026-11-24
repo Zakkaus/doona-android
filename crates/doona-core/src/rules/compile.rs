@@ -13,6 +13,7 @@ pub(super) fn compile(
     groups: &[GroupDef],
     is_node: &dyn Fn(&str) -> bool,
     rules: &[RuleSpec],
+    data: Option<&super::dat::Data>,
 ) -> Result<RuleSet, ErrorCode> {
     limits::check(origin, groups, rules)?;
     let ids = graph::check(groups, is_node)?;
@@ -25,12 +26,14 @@ pub(super) fn compile(
         domains: domain::Index::default(),
         ips: lpm::Trie::default(),
         geo: Vec::new(),
+        loaded: Default::default(),
+        missing: Default::default(),
         ports: ports::Index::default(),
         networks: [NONE; 2],
         any: NONE,
     };
     for (row, rule) in rules.iter().enumerate() {
-        let skipped = set.add(row as u32, rule)?;
+        let skipped = set.add(row as u32, rule, data)?;
         set.rows.push(Row {
             kind: rule.kind.clone(),
             target: rule.target.clone(),
@@ -45,7 +48,12 @@ pub(super) fn compile(
 
 impl RuleSet {
     /// Adds the values of `rule`, row `row`; returns how many lines it skipped.
-    fn add(&mut self, row: u32, rule: &RuleSpec) -> Result<u32, ErrorCode> {
+    fn add(
+        &mut self,
+        row: u32,
+        rule: &RuleSpec,
+        data: Option<&super::dat::Data>,
+    ) -> Result<u32, ErrorCode> {
         let values = &rule.values;
         // A kind not compiled is skipped whole: a line a value, or one for a row without values,
         // as the limits count it. `limits::check` keeps the count under `MAX_LINES`.
@@ -57,8 +65,17 @@ impl RuleSet {
             return Err(ErrorCode::ParseFailed);
         }
         let mut skipped = 0;
-        for value in values {
-            skipped += u32::from(!self.add_value(&rule.kind, value, row)?);
+        for (column, value) in values.iter().enumerate() {
+            let added = match rule.kind {
+                Kind::GeoIp | Kind::GeoSite => self.add_geo(&rule.kind, value, row, data),
+                _ => self.add_value(&rule.kind, value, row)?.then_some(0),
+            };
+            if let Some(partial) = added {
+                skipped += partial;
+            } else {
+                self.missing.insert((row, column as u32));
+                skipped += 1;
+            }
         }
         if rule.kind == Kind::Match {
             self.any = self.any.min(row);
@@ -73,7 +90,7 @@ impl RuleSet {
             Kind::DomainSuffix => self.domains.add_suffix(value, row),
             Kind::DomainKeyword => self.domains.add_keyword(value, row),
             Kind::IpCidr => cidr(value).map(|(addr, len)| self.ips.insert(addr, len, row)),
-            Kind::GeoIp => return Ok(self.add_geoip(value, row)),
+            Kind::GeoIp | Kind::GeoSite => unreachable!("handled by add_geo"),
             Kind::DstPort => self.add_ports(value, row),
             Kind::Network => network(value).map(|n| {
                 let slot = &mut self.networks[n as usize];
@@ -85,16 +102,27 @@ impl RuleSet {
         added.map(|()| true)
     }
 
-    /// `false` for a code without data.
-    fn add_geoip(&mut self, value: &str, row: u32) -> bool {
-        let Some(code) = geoip::Code::parse(value) else {
-            return false;
-        };
-        // Rows come in order: the first of a code is the one that can match.
-        if !self.geo.iter().any(|g| g.1 == code) {
-            self.geo.push((row, code));
+    /// A bound selector returns the number of unusable entries, a missing one `None`.
+    fn add_geo(
+        &mut self,
+        kind: &Kind,
+        value: &str,
+        row: u32,
+        data: Option<&super::dat::Data>,
+    ) -> Option<u32> {
+        let invert = value.starts_with('!');
+        let builtin = geoip::Code::parse(value.strip_prefix('!').unwrap_or(value));
+        let use_builtin = *kind == Kind::GeoIp
+            && (data.is_none() || matches!(builtin, Some(geoip::Code::Private | geoip::Code::Lan)));
+        if !use_builtin {
+            return data.and_then(|d| self.loaded.add(d, kind, value, row));
         }
-        true
+        let code = builtin?;
+        // Rows come in order: the first of a code is the one that can match.
+        if !self.geo.iter().any(|g| g.1 == code && g.2 == invert) {
+            self.geo.push((row, code, invert));
+        }
+        Some(0)
     }
 
     fn add_ports(&mut self, value: &str, row: u32) -> Result<(), ErrorCode> {

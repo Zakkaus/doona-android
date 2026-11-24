@@ -1,10 +1,32 @@
 //! Points where a host test runs code on the core's own thread, to order it against a race
 //! without sleeping. Compiled into tests only.
 
-use super::{Core, lock};
+use super::{Core, Launch, Options, Prober, START_BOUND, Store, lock, probe, tunnel};
 use std::sync::Mutex;
 use std::time::Instant;
+use std::{path::Path, time::Duration};
 
+impl Core {
+    /// A core whose generations run `launch` instead of the driver and must start within
+    /// `bound`.
+    pub(crate) fn with_launch(data_dir: &str, launch: Launch, bound: Duration) -> Core {
+        let store = Store::new(Path::new(data_dir));
+        Core::build(store, Options::default(), (launch, bound), probe::urltest()).unwrap()
+    }
+
+    /// A core that keeps its state through `store`.
+    pub(crate) fn with_store(store: Store) -> Core {
+        let launch = (tunnel::drive as Launch, START_BOUND);
+        Core::build(store, Options::default(), launch, probe::urltest()).unwrap()
+    }
+
+    /// A core whose latency probes run `prober`.
+    pub(crate) fn with_prober(data_dir: &str, prober: Prober) -> Core {
+        let store = Store::new(Path::new(data_dir));
+        let launch = (tunnel::drive as Launch, START_BOUND);
+        Core::build(store, Options::default(), launch, prober).unwrap()
+    }
+}
 type Teardown = Box<dyn FnOnce(&Core) + Send>;
 type BeforeWrite = Box<dyn FnOnce(Instant) + Send>;
 

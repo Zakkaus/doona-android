@@ -15,6 +15,20 @@ fn add_link(core: &Core, link: &str) -> Value {
         .clone()
 }
 
+#[test]
+fn static_member_wire_contract() {
+    let dir = TempDir::new("static-member-contract");
+    let core = Core::new(path(&dir)).unwrap();
+    let added = add_link(&core, "socks5://192.0.2.1:1080#example");
+    let snapshot: Value = serde_json::from_str(&core.snapshot(-1)).unwrap();
+    let members = snapshot["catalog"]["groups"][0]["members"]
+        .as_array()
+        .unwrap();
+    let member = members.iter().find(|m| m["id"] == added["id"]).unwrap();
+    let fixture = include_str!("../../../../contracts/doona-core/catalog/static-member.json");
+    assert_eq!(member, &serde_json::from_str::<Value>(fixture).unwrap());
+}
+
 fn read(core: &Core, id: &Value) -> Value {
     call(core, "readStaticNode", json!({"id":id})).unwrap()
 }

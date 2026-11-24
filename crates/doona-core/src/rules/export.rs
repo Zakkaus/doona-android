@@ -3,7 +3,7 @@
 //! boundary.
 
 use super::listing::Listing;
-use super::{Kind, Skip, Target, geoip};
+use super::{Kind, Skip, Target};
 
 impl Listing {
     /// Writes each row as Clash lines, a line per value, to `out` until it is full. A value not
@@ -19,10 +19,21 @@ impl Listing {
             if row.values.is_empty() {
                 out.rule(&format!("{kind},{target}"), row.skip);
             }
-            for value in &row.values {
+            for (column, value) in row.values.iter().enumerate() {
                 out.rule(
                     &format!("{kind},{value},{target}"),
-                    value_skip(&row.kind, value),
+                    if row.missing.binary_search(&(column as u32)).is_ok() {
+                        Some(
+                            if row.kind == Kind::GeoSite && super::dat::unsupported_filter(value) {
+                                Skip::UnsupportedKind
+                            } else {
+                                Skip::GeodataMissing
+                            },
+                        )
+                    } else {
+                        row.skip
+                            .filter(|_| matches!(row.kind, Kind::Skipped { .. }))
+                    },
                 );
             }
             if out.truncated {
@@ -73,15 +84,6 @@ impl Capped {
     }
 }
 
-/// Why `value` of a `kind` row was not compiled, as `RuleSet::compile` decides it.
-fn value_skip(kind: &Kind, value: &str) -> Option<Skip> {
-    match kind {
-        Kind::Skipped { reason, .. } => Some(*reason),
-        Kind::GeoIp if geoip::Code::parse(value).is_none() => Some(Skip::GeodataMissing),
-        _ => None,
-    }
-}
-
 /// Clash's name of a kind.
 fn clash_name(kind: &Kind) -> &str {
     match kind {
@@ -90,6 +92,7 @@ fn clash_name(kind: &Kind) -> &str {
         Kind::DomainKeyword => "DOMAIN-KEYWORD",
         Kind::IpCidr => "IP-CIDR",
         Kind::GeoIp => "GEOIP",
+        Kind::GeoSite => "GEOSITE",
         Kind::DstPort => "DST-PORT",
         Kind::Network => "NETWORK",
         Kind::Match => "MATCH",

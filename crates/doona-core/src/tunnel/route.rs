@@ -222,6 +222,21 @@ impl Route {
         }
     }
 
+    pub(crate) async fn connect_host(&self, host: &str, port: u16) -> io::Result<Upstream> {
+        let Self::Proxy(d, session) = self else {
+            return Err(io::ErrorKind::NotConnected.into());
+        };
+        let dst = ([0, 0, 0, 0], port).into();
+        connect::connect(
+            d,
+            session,
+            (dst, Some(host)),
+            Instant::now() + CONNECT_TIMEOUT,
+            &mut None,
+        )
+        .await
+        .map(|(s, _)| s)
+    }
     #[cfg(test)]
     pub async fn connect(&self, dst: SocketAddr) -> io::Result<Upstream> {
         self.connect_tcp(dst).await.map(|(stream, _)| stream)
@@ -245,7 +260,9 @@ impl Route {
                 s.set_nodelay(true)?;
                 Ok((Box::new(s), None))
             }
-            Route::Proxy(d, session) => connect::connect(d, session, dst, deadline, original).await,
+            Route::Proxy(d, session) => {
+                connect::connect(d, session, (dst, None), deadline, original).await
+            }
             Route::Resolver(view, session) => {
                 let dialer = view
                     .for_flow(
@@ -256,7 +273,7 @@ impl Route {
                         original.as_ref(),
                     )
                     .ok_or(ErrorKind::PermissionDenied)?;
-                connect::connect(&dialer, session, dst, deadline, original).await
+                connect::connect(&dialer, session, (dst, None), deadline, original).await
             }
             Route::Refuse | Route::Blocked => Err(ErrorKind::PermissionDenied.into()),
         }
