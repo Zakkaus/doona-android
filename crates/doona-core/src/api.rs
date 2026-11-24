@@ -22,6 +22,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
+mod assets;
 mod diagnostics;
 #[cfg(feature = "fault-hook")]
 mod fault;
@@ -78,6 +79,7 @@ pub struct Core {
     runtime: Runtime,
     options: Options,
     store: Store,
+    assets: Arc<assets::Assets>,
     /// The catalog and the data path's view of it, shared with probe tasks.
     shared: Arc<Shared>,
     /// Serializes the commands that write `state.json`, so a slow write never holds the
@@ -187,6 +189,7 @@ impl Core {
         Ok(Core {
             runtime,
             options,
+            assets: Arc::new(assets::Assets::new(store.dir())),
             store,
             shared,
             mode,
@@ -220,9 +223,8 @@ impl Core {
         let dns_revision = self.bootstrap_revision.load(Relaxed);
         let begun = Instant::now();
         let deadline = begun + self.launch.1;
-        let result = self
-            .settings(config)
-            .and_then(|settings| self.start_generation(tun, settings, deadline, dns_revision));
+        let result = parse(config)
+            .and_then(|config| self.start_generation(tun, config, deadline, dns_revision));
         self.diag.record(
             match result {
                 Ok(g) => Event::info("start").count(Count::Generation, g),
@@ -236,10 +238,11 @@ impl Core {
     fn start_generation(
         &self,
         tun: OwnedFd,
-        (settings, resolvers): (Settings, Vec<SocketAddr>),
+        config: StartConfig,
         deadline: Instant,
         dns_revision: u64,
     ) -> Result<i64, ErrorCode> {
+        let (settings, resolvers) = self.settings(&config)?;
         let rt = self.runtime.handle();
         let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
         let gate = Gate::new();
@@ -249,6 +252,7 @@ impl Core {
             old.wait(rt, deadline);
             self.retire(&session);
         }
+        self.activate_assets(config.geo_asset_dir, &gate, deadline)?;
         let started = Tunnel::start(
             rt,
             tun,
@@ -339,8 +343,7 @@ impl Core {
     /// after `stop`). A malformed address or a nonempty list with no surviving scope is
     /// `invalid_argument`. Global with no node in the main group is `no_nodes`, as it would refuse
     /// every flow. Rule may still send flows direct and refuse those bound for a group with no node.
-    fn settings(&self, config: &str) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
-        let config: StartConfig = parse(config)?;
+    fn settings(&self, config: &StartConfig) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
         if config.mtu < MIN_MTU {
             return Err(ErrorCode::InvalidArgument);
         }
@@ -509,29 +512,6 @@ impl Core {
                 .record(Event::error("stateWrite").io(e.kind()).detail(command));
             ErrorCode::Internal
         })
-    }
-}
-
-#[cfg(test)]
-impl Core {
-    /// A core whose generations run `launch` instead of the driver and must start within
-    /// `bound`.
-    pub(crate) fn with_launch(data_dir: &str, launch: Launch, bound: Duration) -> Core {
-        let store = Store::new(Path::new(data_dir));
-        Core::build(store, Options::default(), (launch, bound), probe::urltest()).unwrap()
-    }
-
-    /// A core that keeps its state through `store`.
-    pub(crate) fn with_store(store: Store) -> Core {
-        let launch = (tunnel::drive as Launch, START_BOUND);
-        Core::build(store, Options::default(), launch, probe::urltest()).unwrap()
-    }
-
-    /// A core whose latency probes run `prober`.
-    pub(crate) fn with_prober(data_dir: &str, prober: Prober) -> Core {
-        let store = Store::new(Path::new(data_dir));
-        let launch = (tunnel::drive as Launch, START_BOUND);
-        Core::build(store, Options::default(), launch, prober).unwrap()
     }
 }
 

@@ -7,6 +7,7 @@
 //! within the same deadline (see `outbounds.rs`).
 
 mod blocked;
+mod control;
 mod driver;
 mod flow;
 mod gate;
@@ -516,12 +517,6 @@ impl Tunnel {
 
     pub fn session(&self) -> &Arc<Session> {
         &self.gen_.session
-    }
-
-    /// Panics in a task of the generation, which ends its data path as a crash would.
-    #[cfg(feature = "fault-hook")]
-    pub fn fault(&self) {
-        self.gen_.spawn(async { panic!("debugFault") });
     }
 
     /// Lets the driver serve the tun: `start` committed the generation.

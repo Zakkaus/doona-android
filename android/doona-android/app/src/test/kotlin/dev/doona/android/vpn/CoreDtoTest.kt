@@ -36,6 +36,8 @@ class CoreDtoTest {
     /** Each fixture's DTO; a reply's is that of its `ok` value. */
     private val dtos: Map<String, KSerializer<*>> = mapOf(
         "init.json" to InitDto.serializer(),
+        "call-config-assets-update-args.json" to ConfigAssetsArgs.serializer(),
+        "call-ok-config-assets.json" to ConfigAssetsDto.serializer(),
         "start-config.json" to StartConfigDto.serializer(),
         "snapshot-running.json" to SnapshotDto.serializer(),
         "snapshot-died.json" to SnapshotDto.serializer(),

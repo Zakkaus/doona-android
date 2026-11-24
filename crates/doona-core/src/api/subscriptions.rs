@@ -182,7 +182,7 @@ impl Core {
 
     /// The writer lock if it comes free before `deadline`, else `busy`. std's `Mutex` has no
     /// timed lock, so this polls; it waits for another command's commit, which is short.
-    fn writer_until(&self, deadline: Instant) -> Result<MutexGuard<'_, ()>, ErrorCode> {
+    pub(super) fn writer_until(&self, deadline: Instant) -> Result<MutexGuard<'_, ()>, ErrorCode> {
         loop {
             if Instant::now() >= deadline {
                 return Err(ErrorCode::Busy);

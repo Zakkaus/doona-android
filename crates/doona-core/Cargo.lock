@@ -613,6 +613,7 @@ dependencies = [
  "lru",
  "percent-encoding",
  "quinn",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",

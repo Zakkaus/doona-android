@@ -28,6 +28,7 @@ pub(crate) struct Listed {
     /// Why lines of the row were not compiled, and how many were not.
     pub skip: Option<Skip>,
     pub skipped: u32,
+    pub value_skips: Vec<(u32, Skip)>,
 }
 
 impl Listing {
@@ -44,13 +45,35 @@ impl Listing {
                 let base = key.listing_digest(&ns, source, spec);
                 let id = occurrence_id(base, seen.entry(base).or_default());
                 let skipped = compiled.map_or(0, |set| set.rows()[i].skipped);
+                let value_skips: Vec<_> = spec
+                    .values
+                    .iter()
+                    .enumerate()
+                    .filter(|(col, _)| {
+                        compiled.is_some_and(|s| s.missing.contains(&(i as u32, *col as u32)))
+                    })
+                    .map(|(col, value)| {
+                        let reason = if spec.kind == Kind::GeoSite
+                            && super::dat::unsupported_filter(value)
+                        {
+                            Skip::UnsupportedKind
+                        } else {
+                            Skip::GeodataMissing
+                        };
+                        (col as u32, reason)
+                    })
+                    .collect();
                 Listed {
                     id: id.into(),
                     kind: spec.kind.clone(),
                     values: spec.values.clone(),
                     target: spec.target.clone(),
-                    skip: skip(&spec.kind, skipped),
+                    skip: match spec.kind {
+                        Kind::Skipped { reason, .. } => Some(reason),
+                        _ => value_skips.first().map(|&(_, reason)| reason),
+                    },
                     skipped,
+                    value_skips,
                 }
             })
             .collect();
@@ -97,15 +120,6 @@ impl Listed {
     }
 }
 
-/// Why a row's lines were not compiled: its kind's reason, or a GeoIP code without data.
-fn skip(kind: &Kind, skipped: u32) -> Option<Skip> {
-    match kind {
-        Kind::Skipped { reason, .. } => Some(*reason),
-        Kind::GeoIp if skipped > 0 => Some(Skip::GeodataMissing),
-        _ => None,
-    }
-}
-
 /// The contract's name of a kind; a kind not compiled keeps the source's.
 fn kind_name(kind: &Kind) -> &str {
     match kind {
@@ -114,6 +128,7 @@ fn kind_name(kind: &Kind) -> &str {
         Kind::DomainKeyword => "DomainKeyword",
         Kind::IpCidr => "IpCidr",
         Kind::GeoIp => "GeoIp",
+        Kind::GeoSite => "GeoSite",
         Kind::DstPort => "DstPort",
         Kind::Network => "Network",
         Kind::Match => "Match",

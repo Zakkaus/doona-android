@@ -191,12 +191,12 @@ fn dst_port_refuses_what_mihomo_refuses() {
 /// compiled kind needs its values.
 #[test]
 fn a_skipped_kind_without_values_is_one_line_skipped() {
-    let geosite = RuleSpec {
-        kind: Kind::clash("GEOSITE"),
+    let unsupported = RuleSpec {
+        kind: Kind::clash("RULE-SET"),
         values: Vec::new(),
         target: Target::Direct,
     };
-    let set = compile(&[geosite]);
+    let set = compile(&[unsupported]);
     assert_eq!((set.rows()[0].skipped, set.skipped()), (1, 1));
 }
 
