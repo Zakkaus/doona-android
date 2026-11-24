@@ -10,9 +10,11 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.OutboundBytes
 import dev.doona.android.engine.RuleBytes
 import dev.doona.android.engine.RuleKind
@@ -23,6 +25,9 @@ import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFormat
+import dev.doona.android.engine.TodayTraffic
+import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerialName
@@ -85,7 +90,9 @@ internal data class TrafficDto(
 
 /** Today's bytes each way in local time, and yesterday's both ways together by the same time (null: none kept). */
 @Serializable
-internal data class TodayDto(val upTotal: Long = 0, val downTotal: Long = 0, val yesterdayByNow: Long? = null)
+internal data class TodayDto(val upTotal: Long = 0, val downTotal: Long = 0, val yesterdayByNow: Long? = null) {
+    fun toTodayTraffic() = TodayTraffic(upTotal, downTotal, yesterdayByNow)
+}
 
 /**
  * `trafficSeries`' reply: average bytes a second per point of [stepSeconds], oldest first, the fastest second of the
@@ -99,7 +106,9 @@ internal data class TrafficSeriesDto(
     val down: List<Long>,
     val upPeak: Long,
     val downPeak: Long,
-)
+) {
+    fun toTrafficSeries() = TrafficSeries(stepSeconds, endEpochMs, up, down, upPeak, downPeak)
+}
 
 /** `usage`'s reply: today and yesterday by the hour, and the finished days of the last 31 that had bytes. */
 @Serializable
@@ -140,7 +149,9 @@ internal data class DayTotalDto(val date: String, val up: Long, val down: Long)
 
 /** `nodes`' reply. */
 @Serializable
-internal data class NodesDto(val nodes: List<NodeInfoDto>)
+internal data class NodesDto(val nodes: List<NodeInfoDto>) {
+    fun toNodes() = nodes.map(NodeInfoDto::toNodeInfo)
+}
 
 /** What a node's share link says, and its last latency tests, oldest first. */
 @Serializable
@@ -152,7 +163,9 @@ internal data class NodeInfoDto(
     val transport: String,
     val tls: Boolean,
     val tests: List<LatencyTestDto>,
-)
+) {
+    fun toNodeInfo() = NodeInfo(id, protocol, server, port, transport, tls, tests.map { LatencyTest(it.atEpochMs, it.ms) })
+}
 
 /** A test: when its round began, and the time it measured; null when the probe failed. */
 @Serializable
@@ -324,6 +337,7 @@ internal data class SubscriptionDto(
     val totalBytes: Long? = null,
     val expiresAtEpochMs: Long? = null,
     val userAgent: String? = null,
+    val format: String? = null,
 ) {
     /** The error becomes an [ErrorCode] name, the same vocabulary as [EngineException]. */
     fun toSubscription() = Subscription(
@@ -337,8 +351,17 @@ internal data class SubscriptionDto(
         totalBytes = totalBytes,
         expiresAtEpochMs = expiresAtEpochMs,
         userAgent = userAgent,
+        format = SUBSCRIPTION_FORMATS[format],
     )
 }
+
+private val SUBSCRIPTION_FORMATS = mapOf(
+    "share_links" to SubscriptionFormat.ShareLinks,
+    "base64" to SubscriptionFormat.Base64,
+    "sip008" to SubscriptionFormat.Sip008,
+    "clash" to SubscriptionFormat.Clash,
+    "sing_box" to SubscriptionFormat.SingBox,
+)
 
 @Serializable
 internal data class SelectArgs(val group: String, val memberId: String?)
@@ -390,6 +413,7 @@ private val ERROR_CODES = mapOf(
     "invalid_argument" to ErrorCode.InvalidArgument,
     "not_found" to ErrorCode.NotFound,
     "fetch_failed" to ErrorCode.FetchFailed,
+    "too_large" to ErrorCode.TooLarge,
     "parse_failed" to ErrorCode.ParseFailed,
     "no_nodes" to ErrorCode.NoNodes,
     "busy" to ErrorCode.Busy,

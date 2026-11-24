@@ -2,7 +2,7 @@
 //! selections. The core owns this file (Kotlin's DataStore holds only the per-app policy).
 //! Writes replace it atomically: a temp file is written and synced, then renamed over the old one.
 
-use crate::dto::{ErrorCode, Mode, RuleSourceSpec};
+use crate::dto::{ErrorCode, Mode, RuleSourceSpec, SubscriptionFormat};
 use crate::rules::template;
 use crate::subscription::fetch;
 use serde::{Deserialize, Serialize};
@@ -96,6 +96,7 @@ pub struct StoredSubscription {
     pub id: String,
     pub name: String,
     pub url: String,
+    pub format: Option<SubscriptionFormat>,
     pub updated_at_epoch_ms: Option<i64>,
     #[serde(default, deserialize_with = "quota")]
     pub used_bytes: Option<i64>,
@@ -339,6 +340,7 @@ mod tests {
             id: id.to_owned(),
             name: id.to_owned(),
             url: format!("https://{id}.invalid/"),
+            format: None,
             updated_at_epoch_ms: None,
             used_bytes: None,
             total_bytes: None,
@@ -411,6 +413,7 @@ mod tests {
         assert_eq!(how, Loaded::Read);
         assert_eq!(state.mode, Mode::Direct);
         let (a, b) = (&state.subscriptions[0], &state.subscriptions[1]);
+        assert_eq!(a.format, None);
         assert_eq!((a.used_bytes, a.total_bytes), (None, None));
         assert_eq!(a.expires_at_epoch_ms, Some(7));
         assert_eq!((b.used_bytes, b.total_bytes), (Some(i64::MAX), Some(0)));

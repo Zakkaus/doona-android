@@ -67,11 +67,7 @@ internal class VpnNotifications(private val context: Context) {
     }
 
     suspend fun showDrop(session: Session, settings: DropNoticeSettings, isCurrent: () -> Boolean) {
-        val body = when {
-            session.revoked -> R.string.vpn_drop_revoked
-            session.status is Status.Failed -> reasonText(session.status.reason)
-            else -> return
-        }
+        val body = reasonText((session.status as? Status.Failed)?.reason ?: return)
         val enabled = try {
             settings.notifyOnDrop.first()
         } catch (e: IOException) {
@@ -120,6 +116,7 @@ internal class VpnNotifications(private val context: Context) {
         FailureReason.StartFailed -> R.string.vpn_failure_start_failed
         FailureReason.CoreStopped -> R.string.vpn_failure_core_stopped
         FailureReason.IncompatibleCore -> R.string.vpn_failure_incompatible_core
+        FailureReason.Revoked -> R.string.vpn_drop_revoked
     }
 
     companion object {

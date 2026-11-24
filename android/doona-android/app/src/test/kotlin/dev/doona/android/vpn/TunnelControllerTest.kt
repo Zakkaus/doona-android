@@ -102,20 +102,22 @@ class TunnelControllerTest {
         assertTrue(Status.Stopping in seen)
         release.countDown()
 
-        val terminal = runBlocking { withTimeout(5_000) { controller.session.first { it.status == Status.Stopped } } }
-        assertTrue(terminal.revoked)
+        assertEquals(Status.Failed(FailureReason.Revoked), awaitStatus(Status::ended))
         assertEquals(listOf("start", "stop"), core.events)
         assertTrue(host.tuns.single().closed)
         assertFalse(seen.any { it is Status.Running })
     }
 
     @Test
-    fun revokeDoesNotTurnAnExplicitStopIntoADrop() {
+    fun revocationFailsARunningTunnelButLeavesAnExplicitStopStopped() {
+        startRunning()
+        controller.revoke(host)
+        assertEquals(Status.Failed(FailureReason.Revoked), awaitStatus(Status::ended))
+
         startRunning()
         controller.stop()
         controller.revoke(host)
-        val terminal = runBlocking { withTimeout(5_000) { controller.session.first { it.status == Status.Stopped } } }
-        assertFalse(terminal.revoked)
+        assertEquals(Status.Stopped, awaitStatus(Status::ended))
     }
 
     @Test

@@ -128,6 +128,7 @@ fn a_subscription_is_added_shown_kept_across_a_restart_and_removed() {
     let core = Core::new(path(&dir)).unwrap();
     let added = add(&core, &feeds, "/sub").unwrap();
     assert_eq!(added["id"], "s1");
+    assert_eq!(added["format"], "base64");
     assert_eq!(added["nodes"], 9);
     assert_eq!(added["name"], "127.0.0.1");
     assert_eq!(added["usedBytes"], 3);
@@ -148,6 +149,7 @@ fn a_subscription_is_added_shown_kept_across_a_restart_and_removed() {
     drop(core);
     let again = Core::new(path(&dir)).unwrap();
     assert_eq!(node_ids(&catalog(&again)), node_ids(&shown));
+    assert_eq!(catalog(&again).subscriptions, shown.subscriptions);
     assert_eq!(
         call(&again, "removeSubscription", json!({"id": "s1"})),
         Ok(json!({}))
@@ -352,6 +354,45 @@ fn a_clash_subscription_keeps_its_ids_across_an_update_and_a_restart() {
     drop(core);
     let again = Core::new(path(&dir)).unwrap();
     assert_eq!(node_ids(&catalog(&again)), shown);
+}
+
+#[test]
+fn subscription_format_tracks_the_last_successful_parse() {
+    let dir = TempDir::new("api-format");
+    let feeds = Feeds::new();
+    let core = Core::new(path(&dir)).unwrap();
+    feeds.set("/sub", &fixture("links.txt"));
+    assert_eq!(add(&core, &feeds, "/sub").unwrap()["format"], "share_links");
+    for (file, format) in [
+        ("sip008.json", "sip008"),
+        ("clash.yaml", "clash"),
+        ("singbox.json", "sing_box"),
+        ("links.b64", "base64"),
+    ] {
+        feeds.set("/sub", &fixture(file));
+        let sub = call(&core, "updateSubscription", json!({"id": "s1"})).unwrap();
+        assert_eq!(sub["format"], format, "{file}");
+    }
+}
+
+#[test]
+fn oversized_subscription_on_add_and_update_keeps_the_previous_format() {
+    let dir = TempDir::new("api-too-large");
+    let feeds = Feeds::new();
+    let core = Core::new(path(&dir)).unwrap();
+    feeds.set("/sub", &fixture("sip008.json"));
+    add(&core, &feeds, "/sub").unwrap();
+    feeds.set("/sub", &vec![b'x'; 9 << 20]);
+    let added = add(&core, &feeds, "/sub").unwrap_err();
+    let updated = call(&core, "updateSubscription", json!({"id": "s1"})).unwrap_err();
+    assert_eq!(
+        (added.as_str(), updated.as_str()),
+        ("too_large", "too_large")
+    );
+    let snapshot: Value = serde_json::from_str(&core.snapshot(-1)).unwrap();
+    let sub = &snapshot["catalog"]["subscriptions"][0];
+    assert_eq!(sub["error"], "too_large");
+    assert_eq!(sub["format"], "sip008");
 }
 
 #[test]

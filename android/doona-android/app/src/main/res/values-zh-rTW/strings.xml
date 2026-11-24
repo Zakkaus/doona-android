@@ -105,6 +105,7 @@
     <string name="error_invalid_argument">值無效</string>
     <string name="error_not_found">找不到項目</string>
     <string name="error_fetch_failed">無法下載訂閱</string>
+    <string name="error_too_large">訂閱內容太大</string>
     <string name="error_parse_failed">無法解析訂閱</string>
     <string name="error_no_nodes">訂閱裡沒有節點</string>
     <string name="error_busy">另一項變更正在進行，請稍後再試</string>

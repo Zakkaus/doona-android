@@ -14,6 +14,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RuleOptions
@@ -21,7 +22,9 @@ import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
+import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableJob
@@ -77,6 +80,8 @@ class ServiceEngine internal constructor(
     override val status: StateFlow<Status> get() = controller.status
     private val _traffic = MutableStateFlow(Traffic())
     override val traffic: StateFlow<Traffic> = _traffic.asStateFlow()
+    private val _today = MutableStateFlow(TodayTraffic())
+    override val today: StateFlow<TodayTraffic> = _today.asStateFlow()
     private val _groups = MutableStateFlow(emptyList<Group>())
     override val groups: StateFlow<List<Group>> = _groups.asStateFlow()
     private val _subscriptions = MutableStateFlow(emptyList<Subscription>())
@@ -207,6 +212,12 @@ class ServiceEngine internal constructor(
 
     override suspend fun usage(): Result<Usage> = read("usage", Unit.serializer(), Unit, UsageDto.serializer()).map(UsageDto::toUsage)
 
+    override suspend fun trafficSeries(seconds: Long): Result<TrafficSeries> =
+        read("trafficSeries", SeriesArgs.serializer(), SeriesArgs(seconds), TrafficSeriesDto.serializer()).map(TrafficSeriesDto::toTrafficSeries)
+
+    override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
+        read("nodes", NodesArgs.serializer(), NodesArgs(ids), NodesDto.serializer()).map(NodesDto::toNodes)
+
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
         scope.async { savePerApp(perApp) }.await()
@@ -320,6 +331,7 @@ class ServiceEngine internal constructor(
         return try {
             withContext(io) {
                 CoreJson.snapshot(core.snapshot(revision)).also { snapshot ->
+                    _today.value = snapshot.today.toTodayTraffic()
                     snapshot.catalog?.let { publish(snapshot.revision, it.toCatalog()) }
                     lastWarning.value = during to snapshot.warning?.let(::errorCodeOf)
                 }
@@ -381,7 +393,7 @@ class ServiceEngine internal constructor(
         var previous: TrafficSample? = null
         while (true) {
             poll()?.let { snapshot ->
-                val sample = TrafficSample(snapshot.traffic.upTotal, snapshot.traffic.downTotal, SystemClock.elapsedRealtime())
+                val sample = TrafficSample(snapshot.traffic, SystemClock.elapsedRealtime())
                 val baseline = previous
                 _traffic.update { it.next(baseline, sample) }
                 previous = sample
