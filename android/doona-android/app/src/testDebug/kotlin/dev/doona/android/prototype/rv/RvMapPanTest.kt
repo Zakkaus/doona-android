@@ -6,8 +6,7 @@ import dev.doona.android.designsystem.rv.RvDots
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSpot
-import dev.doona.android.designsystem.rv.rvMapLand
-import dev.doona.android.designsystem.rv.rvMapSpot
+import dev.doona.android.designsystem.rv.rvDotRows
 import dev.doona.android.designsystem.rv.rvMarkerAt
 import dev.doona.android.prototype.rv.data.RvCity
 import org.junit.Assert.assertEquals
@@ -51,8 +50,8 @@ class RvMapPanTest {
         val pitch = PITCH_PX
         val centre = Offset(CENTRE_X, CENTRE_Y)
         listOf(RvCity.Taipei to RvCity.Taichung, RvCity.Seoul to RvCity.Chuncheon).forEach { (a, b) ->
-            // One cell: the map under both is the same, so only the marker can tell them apart.
-            assertEquals("$a and $b share a cell", centre, rvMapSpot(a.lat, a.lon, b.lat, b.lon, centre, pitch))
+            // One cell: the map drawn under both is the same, so only the marker can tell them apart.
+            assertEquals("$a and $b share a cell", dots(a.spot, centre), dots(b.spot, centre))
             val apart = (rvMarkerAt(a.spot, centre, pitch) - rvMarkerAt(b.spot, centre, pitch)).getDistance()
             assertTrue("$a and $b are marked $apart px apart", apart >= pitch / 4)
         }
@@ -88,6 +87,8 @@ class RvMapPanTest {
 
     @Test
     fun afterEveryPanThePlaceSitsOnLandInsideTheVisibleMap() {
+        // Every pan ends on the spot's own longitude (everyPanTakesTheShortWayAndEndsOnTheSpot), so the map it leaves is
+        // the one centred on the spot.
         WIDTHS.forEach { width ->
             // The marker's spot under the status bar, in dp; the map is centred across the screen's width.
             val centre = Offset(width / 2, RvDots.focusTop.value)
@@ -98,24 +99,38 @@ class RvMapPanTest {
             val top = RvDots.topFade.value + glow
             val bottom = RvSpace.headerTop.value - glow
             spots.forEach { (name, at) ->
-                assertTrue("$name lies on a land dot", rvMapLand(at.lat, at.lon))
-                starts.forEach { from ->
-                    val end = rvWrapLon(rvPanLon(from, at.lon))
-                    val spot = rvMapSpot(at.lat, end, at.lat, at.lon, centre, RvDots.pitch.value)
-                    assertTrue("$name from $from at ${width}dp lands at $spot", spot.x in left..right && spot.y in top..bottom)
-                }
+                val drawn = rvDotRows(at.lat, at.lon, centre, RvDots.pitch.value, HEIGHT_DP).flatMap { it.dots }
+                assertTrue("$name: the map draws a land dot under its marker", centre in drawn)
+                val mark = rvMarkerAt(at, centre, RvDots.pitch.value)
+                assertTrue("$name at ${width}dp is marked at $mark", mark.x in left..right && mark.y in top..bottom)
             }
         }
     }
 
     @Test
-    fun theSpotWrapsTheShortWayAcrossTheAntimeridian() {
-        val centre = Offset(0f, 0f)
-        // A map centred just west of 180 degrees draws a place just east of -180 a column or two to its right, not a
-        // whole world to its left.
-        val spot = rvMapSpot(0f, 179f, 0f, -179f, centre, 1f)
-        assertTrue("the place a degree past the antimeridian: $spot", spot.x in 0f..2f)
+    fun theMapWrapsAtTheAntimeridianAsItDrawsIt() {
+        val centre = Offset(CENTRE_X, CENTRE_Y)
+        // Chukotka runs past 180 degrees: centred a degree west of it, the map draws its east end right of the centre.
+        val west = rows(CHUKOTKA_LAT, 179f, centre)
+        val east = west.filter { (y, _) -> abs(y - centre.y) <= SEAM_ROWS * PITCH_PX }.flatMap { (_, xs) -> xs.filter { it > centre.x } }
+        assertTrue("land east of 180 degrees: $east", east.isNotEmpty())
+        // A whole turn either way draws the same map.
+        assertEquals(west, rows(CHUKOTKA_LAT, 179f - FULL_TURN, centre))
+        assertEquals(west, rows(CHUKOTKA_LAT, 179f + FULL_TURN, centre))
+        // A cell east, across the seam, the same land lies a pitch further left (the outermost columns aside).
+        val reach = centre.x - PITCH_PX * 2
+        val across = rows(CHUKOTKA_LAT, -179f, centre).map { (y, xs) -> y to xs.map { it + PITCH_PX } }
+        assertEquals(west.inside(centre.x, reach), across.inside(centre.x, reach))
     }
+
+    /** The land dots the map draws centred on [spot], everywhere in the window. */
+    private fun dots(spot: RvSpot, centre: Offset) = rvDotRows(spot.lat, spot.lon, centre, PITCH_PX, HEIGHT_PX).flatMap { it.dots }
+
+    /** Each band the map draws centred on [lat], [lon]: its y and its dots' x. */
+    private fun rows(lat: Float, lon: Float, centre: Offset) = rvDotRows(lat, lon, centre, PITCH_PX, HEIGHT_PX).map { row -> row.y to row.dots.map { it.x } }
+
+    /** The bands with only the dots less than [reach] from [centre] across. */
+    private fun List<Pair<Float, List<Float>>>.inside(centre: Float, reach: Float) = map { (y, xs) -> y to xs.filter { abs(it - centre) < reach } }
 
     private companion object {
         const val HALF_TURN = 180f
@@ -126,6 +141,12 @@ class RvMapPanTest {
         const val PITCH_PX = 11f
         const val CENTRE_X = 412f
         const val CENTRE_Y = 300f
+        const val HEIGHT_PX = 1830f
+        const val HEIGHT_DP = 915f
+
+        /** Chukotka, which 180 degrees runs through, and how many bands either side of it the seam test looks at. */
+        const val CHUKOTKA_LAT = 67f
+        const val SEAM_ROWS = 3
 
         /** doona-core `regions/data.rs`, in its order. */
         const val CORE_REGIONS = "HK TW JP SG US KR CA GB DE FR NL RU AU IN TR BR AR MY TH VN PH ID AE CH SE FI IT ES PL MO NZ MX NO DK IE " +

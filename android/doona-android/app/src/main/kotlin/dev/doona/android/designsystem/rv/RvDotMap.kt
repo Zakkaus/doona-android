@@ -54,7 +54,7 @@ private fun withoutSpecks(cells: List<BooleanArray>): List<BooleanArray> {
 }
 
 /** One band of latitude on screen: its height and the dots on it. */
-private class DotRow(val y: Float, val dots: List<Offset>)
+internal class RvDotRow(val y: Float, val dots: List<Offset>)
 
 /**
  * Revolut's dot texture (#07, #08) drawn as a world map behind the content: a dot on every land cell, in [color],
@@ -68,7 +68,7 @@ private class DotRow(val y: Float, val dots: List<Offset>)
 internal fun Modifier.rvDotMap(focus: RvSpot?, color: Color, focusTop: Dp, clear: Rect? = null, fadeTop: Dp? = null, live: RvDotMotion = RV_STILL): Modifier = drawWithCache {
     val pitch = RvDots.pitch.toPx()
     val centre = Offset(size.width / 2f, focusTop.toPx())
-    val rows = dotRows(live.lat?.invoke() ?: focus?.lat ?: RV_MAP_REST_LAT, live.lon?.invoke() ?: focus?.lon ?: RV_MAP_REST_LON, centre, pitch, size.height)
+    val rows = rvDotRows(live.lat?.invoke() ?: focus?.lat ?: RV_MAP_REST_LAT, live.lon?.invoke() ?: focus?.lon ?: RV_MAP_REST_LON, centre, pitch, size.height)
     val zone = clear?.inflate(RvDots.clearPad.toPx())
     val topFade = RvDots.topFade.toPx()
     val fadeFrom = fadeTop?.toPx()
@@ -114,8 +114,11 @@ internal fun Modifier.rvDotPulse(focus: RvSpot?, color: Color, focusTop: Dp, liv
 /** A band of the map: its [y], its dots drawn [full], and those kept [faint] under the hero's text. */
 private class DotBand(val y: Float, val full: List<Offset>, val faint: List<Offset>)
 
-/** The land dots of every band between the top and [height], placed so the cell at [lat], [lon] sits on [centre]. */
-private fun dotRows(lat: Float, lon: Float, centre: Offset, pitch: Float, height: Float): List<DotRow> {
+/**
+ * The land dots [rvDotMap] draws: every band between the top and [height], placed so the cell at [lat], [lon] sits on
+ * [centre].
+ */
+internal fun rvDotRows(lat: Float, lon: Float, centre: Offset, pitch: Float, height: Float): List<RvDotRow> {
     val focusCol = column(lon)
     val focusRow = row(lat)
     val reach = (centre.x / pitch).toInt() + 1
@@ -124,7 +127,7 @@ private fun dotRows(lat: Float, lon: Float, centre: Offset, pitch: Float, height
         if (y < -pitch || y > height) return@mapNotNull null
         // Columns wrap at the antimeridian, so a node near it still has land on both sides.
         val dots = (-reach..reach).filter { land[row][Math.floorMod(focusCol + it, RvLandMask.COLUMNS)] }.map { Offset(centre.x + it * pitch, y) }
-        DotRow(y, dots)
+        RvDotRow(y, dots)
     }
 }
 
@@ -133,16 +136,6 @@ private fun column(lon: Float): Int = floor((lon + DEGREES_WEST) / RvLandMask.CE
 
 /** The map's row of [lat], counted from [RvLandMask.NORTH] down. */
 private fun row(lat: Float): Int = floor((RvLandMask.NORTH - lat) / RvLandMask.CELL).toInt()
-
-/**
- * Where [rvDotMap] draws the dot of the cell at [lat], [lon] when the map is centred on [centreLat], [centreLon] at
- * [centre], its dots [pitch] apart: the columns wrap at the antimeridian, so the cell is taken the short way round.
- */
-internal fun rvMapSpot(centreLat: Float, centreLon: Float, lat: Float, lon: Float, centre: Offset, pitch: Float): Offset {
-    val half = RvLandMask.COLUMNS / 2
-    val columns = Math.floorMod(column(lon) - column(centreLon) + half, RvLandMask.COLUMNS) - half
-    return Offset(centre.x + columns * pitch, centre.y + (row(lat) - row(centreLat)) * pitch)
-}
 
 /**
  * Where [rvDotMap] marks [spot] when the map is centred on its cell at [centre], dots [pitch] apart: the cell's dot stands
@@ -154,9 +147,6 @@ internal fun rvMarkerAt(spot: RvSpot, centre: Offset, pitch: Float): Offset {
     val row = (RvLandMask.NORTH - spot.lat) / RvLandMask.CELL
     return Offset(centre.x + (col - floor(col) - HALF) * pitch, centre.y + (row - floor(row) - HALF) * pitch)
 }
-
-/** Whether [rvDotMap] draws a land dot in the cell at [lat], [lon]. */
-internal fun rvMapLand(lat: Float, lon: Float): Boolean = land.getOrNull(row(lat))?.get(Math.floorMod(column(lon), RvLandMask.COLUMNS)) == true
 
 /**
  * What moves on the dot map: [art] scales its alpha (a tab's hero fade), [stretch] pulls it that many pixels longer from
