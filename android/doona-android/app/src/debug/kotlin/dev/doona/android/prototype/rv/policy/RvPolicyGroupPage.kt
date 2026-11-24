@@ -46,6 +46,7 @@ import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
@@ -58,9 +59,12 @@ import dev.doona.android.prototype.rv.nodes.latencyText
  * url-test group picks for itself, so its rows do not respond, a note says how it picks and its choice's line begins
  * with 自動.
  * 測試此組 floats at the bottom as the page's primary button.
+ * A Score group ([score], what honk's `scoreState` reports for it) picks per network: in place of the status chip, a card
+ * for TCP and one for UDP say what each chose and how the challengers compare ([RvScoreCard]); the chosen rows' line
+ * begins with the networks that chose them.
  */
 @Composable
-internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelect: (String) -> Unit, onTest: () -> Unit) {
+internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelect: (String) -> Unit, onTest: () -> Unit, score: ScoreGroup? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val name = stringResource(group.name)
     RvScrollPage(
@@ -75,9 +79,19 @@ internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelec
             titleBlock,
             insets,
             caption = { Caption(group) },
-            control = { RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_policy_selected, node.name, latencyText(node.latencyMs)), Rv.colors.positive) },
+            control = if (score != null) {
+                null
+            } else {
+                { RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_policy_selected, node.name, latencyText(node.latencyMs)), Rv.colors.positive) }
+            },
         )
-        RvGutter { NodesCard(group, onSelect) }
+        RvGutter {
+            if (score != null) {
+                RvScoreCard(stringResource(R.string.ui_tcp), score.tcp, group.members)
+                RvScoreCard(stringResource(R.string.ui_udp), score.udp, group.members)
+            }
+            NodesCard(group, score, onSelect)
+        }
     }
 }
 
@@ -91,12 +105,12 @@ private fun Caption(group: RvPolicyGroup) {
 
 /** The nodes, fastest first: the first [ROWS], then 查看全部, which opens the rest in place. */
 @Composable
-private fun NodesCard(group: RvPolicyGroup, onSelect: (String) -> Unit) {
+private fun NodesCard(group: RvPolicyGroup, score: ScoreGroup?, onSelect: (String) -> Unit) {
     var all by rememberSaveable(group.id) { mutableStateOf(false) }
     RvCard {
         RvCardHeader(stringResource(R.string.rv_policy_nodes))
         val nodes = group.byLatency
-        for (node in if (all) nodes else nodes.take(ROWS)) NodeRow(group, node, onSelect)
+        for (node in if (all) nodes else nodes.take(ROWS)) NodeRow(group, score, node, onSelect)
         if (!all && nodes.size > ROWS) RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_nodes, nodes.size, nodes.size)) { all = true }
     }
 }
@@ -108,9 +122,10 @@ private fun NodesCard(group: RvPolicyGroup, onSelect: (String) -> Unit) {
  * and lines.
  */
 @Composable
-private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Unit) {
-    val chosen = node.id == group.selectedId
-    val auto = group.kind == RvGroupKind.Auto
+private fun NodeRow(group: RvPolicyGroup, score: ScoreGroup?, node: RvNode, onSelect: (String) -> Unit) {
+    val networks = score?.let { chosenOn(it, node.id) }
+    val chosen = if (score != null) networks != null else node.id == group.selectedId
+    val auto = group.kind != RvGroupKind.Select
     val picked = stringResource(R.string.rv_nodes_in_use)
     val testing = LocalRvTesting.current || node.id in LocalRvTestingNodes.current
     val pick = if (auto) {
@@ -121,13 +136,20 @@ private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Un
     RvRow(
         { RvFlag(node.place.flag, RvSize.rowDisc, current = chosen) },
         node.name,
-        listOfNotNull(stringResource(R.string.rv_policy_auto).takeIf { chosen && auto }, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
+        listOfNotNull(networks ?: stringResource(R.string.rv_policy_auto).takeIf { chosen && auto }, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
         pick,
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         subtitleEnd = node.changeMs?.let { { RvDelta(it) } },
         endBusy = testing,
     )
 }
+
+/** The networks on which a Score group chose [nodeId] (TCP, UDP or both), or null where it chose it on neither. */
+@Composable
+private fun chosenOn(score: ScoreGroup, nodeId: String): String? = listOfNotNull(
+    stringResource(R.string.ui_tcp).takeIf { score.tcp.selectedId == nodeId },
+    stringResource(R.string.ui_udp).takeIf { score.udp.selectedId == nodeId },
+).takeIf { it.isNotEmpty() }?.joinToString("/")
 
 /** As many rows as 節點's region cards show before their 查看全部, and a few more: a group is a list to pick from. */
 private const val ROWS = 8

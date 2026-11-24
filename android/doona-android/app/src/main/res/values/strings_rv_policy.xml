@@ -154,4 +154,15 @@
     <string name="rv_service_social">Social and messaging</string>
     <string name="rv_service_developer">Development and platforms</string>
     <string name="rv_service_all_games">All games</string>
+    <!-- A Score group: the node it chose on a network, its state, and how each challenger compares. -->
+    <string name="rv_score_selected">Selected</string>
+    <string name="rv_score_evaluating">Evaluating</string>
+    <string name="rv_score_wait_traffic">Waiting for comparable traffic</string>
+    <string name="rv_score_wait_budget">Waiting for test budget</string>
+    <string name="rv_score_wait_testing">Testing</string>
+    <string name="rv_score_wait_backoff">Retrying later</string>
+    <string name="rv_score_coverage">Evaluated %1$d/%2$d</string>
+    <string name="rv_score_faster">Faster</string>
+    <string name="rv_score_similar">Similar</string>
+    <string name="rv_score_slower">Slower</string>
 </resources>

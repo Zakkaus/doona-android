@@ -365,6 +365,21 @@
   "screen": "policy-group-testing"
  },
  {
+  "page": "策略組",
+  "state": "綜合評分",
+  "screen": "policy-group-score"
+ },
+ {
+  "page": "策略組",
+  "state": "綜合評分：評估中",
+  "screen": "policy-group-score-evaluating"
+ },
+ {
+  "page": "策略組",
+  "state": "綜合評分：沒有可用節點",
+  "screen": "policy-group-score-empty"
+ },
+ {
   "page": "選擇節點",
   "state": "正常",
   "screen": "policy-picker"

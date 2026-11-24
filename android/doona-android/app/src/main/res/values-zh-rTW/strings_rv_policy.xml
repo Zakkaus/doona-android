@@ -140,4 +140,15 @@
     <string name="rv_service_social">社群與通訊</string>
     <string name="rv_service_developer">開發與平台</string>
     <string name="rv_service_all_games">全部遊戲</string>
+    <!-- A Score group: the node it chose on a network, its state, and how each challenger compares. -->
+    <string name="rv_score_selected">已選定</string>
+    <string name="rv_score_evaluating">評估中</string>
+    <string name="rv_score_wait_traffic">等待可比較的流量</string>
+    <string name="rv_score_wait_budget">等待測試額度</string>
+    <string name="rv_score_wait_testing">測試中</string>
+    <string name="rv_score_wait_backoff">稍後重試</string>
+    <string name="rv_score_coverage">已評估 %1$d／%2$d</string>
+    <string name="rv_score_faster">較快</string>
+    <string name="rv_score_similar">相當</string>
+    <string name="rv_score_slower">較慢</string>
 </resources>
