@@ -6,6 +6,11 @@ use crate::dto::ErrorCode;
 use std::mem::MaybeUninit;
 use unsafe_libyaml::yaml_token_type_t;
 
+#[cfg(test)]
+thread_local! {
+    pub(super) static SCAN_CALLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// The most items, YAML events or JSON values, a structured body may describe; past it a body is
 /// `parse_failed` before any tree is built. serde_yaml lists every event of a document before it
 /// builds a value, at about 200 bytes an event: an 8 MiB body of one-digit items peaked at 836 MB.
@@ -71,6 +76,8 @@ fn scan(text: &str) -> Result<Scan, ErrorCode> {
         let parser = parser.as_mut_ptr();
         yaml_parser_set_input_string(parser, text.as_ptr(), text.len() as u64);
         scan = loop {
+            #[cfg(test)]
+            SCAN_CALLS.set(SCAN_CALLS.get() + 1);
             if yaml_parser_scan(parser, token.as_mut_ptr()).fail {
                 break Ok(Scan::Failed);
             }

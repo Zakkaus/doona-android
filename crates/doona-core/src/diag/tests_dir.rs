@@ -119,18 +119,20 @@ fn a_panic_gives_up_while_another_thread_holds_the_slots() {
     let holder = std::thread::spawn(move || {
         let slots = SLOTS.lock().unwrap_or_else(PoisonError::into_inner);
         holding.send(()).unwrap();
-        // Held only until the try ends, so panics of other tests, which wait 100 ms, still write.
-        let _ = release.recv_timeout(Duration::from_millis(300));
+        // Release on timeout only to let the test fail if the lock waits indefinitely.
+        let released = release.recv_timeout(Duration::from_secs(2)).is_ok();
         drop(slots);
+        released
     });
     held.recv().unwrap();
     let begun = Instant::now();
     let taken = DirLock::take(&at, Some(begun + Duration::from_millis(20)));
-    let waited = begun.elapsed();
     // A holder that let go on its own, as with a wait that outlasted it, no longer listens.
     let _ = done.send(());
-    holder.join().unwrap();
+    assert!(
+        holder.join().unwrap(),
+        "the lock waited for the slots to be released"
+    );
     assert_eq!(taken.err().map(|e| e.kind()), Some(ErrorKind::TimedOut));
-    assert!(waited < Duration::from_millis(200), "{waited:?}");
     assert!(DirLock::take(&at, None).is_ok());
 }

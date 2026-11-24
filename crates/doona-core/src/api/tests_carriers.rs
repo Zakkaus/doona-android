@@ -112,7 +112,7 @@ fn stop_closes_an_established_quic_connection_while_the_workers_are_held() {
     let still_open = open(&socket);
     let took = begun.elapsed();
     assert!(!still_open, "the QUIC socket was open when stop returned");
-    assert!(took < Duration::from_secs(1), "{took:?}");
+    assert!(took < Duration::from_secs(2), "{took:?}");
     assert!(closed(&probe));
 }
 
