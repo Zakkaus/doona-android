@@ -10,9 +10,12 @@ import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.StaticNodeReason
+import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.SubscriptionFormat
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -40,10 +43,13 @@ class CoreDtoTest {
         "call-add-subscription-args.json" to AddSubscriptionArgs.serializer(),
         "call-set-subscription-user-agent-args.json" to SubscriptionUserAgentArgs.serializer(),
         "call-error.json" to CallErrorReplyDto.serializer(),
+        "call-error-state-write.json" to CallErrorReplyDto.serializer(),
+        "call-error-static-row-count.json" to CallErrorReplyDto.serializer(),
         "call-select-args.json" to SelectArgs.serializer(),
         "call-ok-traffic-series.json" to TrafficSeriesDto.serializer(),
         "call-ok-usage.json" to UsageDto.serializer(),
         "call-ok-nodes.json" to NodesDto.serializer(),
+        "call-ok-static-limits.json" to StaticNodeRowsDto.serializer(),
         "call-nodes-args.json" to NodesArgs.serializer(),
         "call-ok-score-state.json" to ScoreStateDto.serializer(),
         "call-score-state-args.json" to Unit.serializer(),
@@ -56,6 +62,7 @@ class CoreDtoTest {
         "call-diagnostics-args.json" to DiagnosticsArgs.serializer(),
         "call-set-log-level-args.json" to LevelArgs.serializer(),
         "call-clear-crashes-args.json" to ClearCrashesArgs.serializer(),
+        "static-nodes.json" to ListSerializer(StaticNodeCallFixture.serializer()),
     )
 
     @Test
@@ -288,6 +295,33 @@ class CoreDtoTest {
             fail("an error reply must throw")
         } catch (e: EngineException) {
             assertEquals(ErrorCode.TooLarge, e.code)
+        }
+    }
+
+    @Test
+    fun aFailedStateWriteMapsToInternal() {
+        val failure = assertThrows(EngineException::class.java) {
+            CoreJson.result(fixture("call-error-state-write.json"), Unit.serializer())
+        }
+        assertEquals(ErrorCode.Internal, failure.code)
+    }
+
+    @Test
+    fun staticBatchLimitsAreRowErrors() {
+        val reply = CoreJson.result(fixture("call-ok-static-limits.json"), StaticNodeRowsDto.serializer())
+        assertEquals(
+            listOf(StaticNodeResult.Invalid(StaticNodeReason.LinkLength), StaticNodeResult.Invalid(StaticNodeReason.CatalogFull)),
+            reply.toRows(),
+        )
+    }
+
+    @Test
+    fun unknownStaticNodeReasonsFailDecoding() {
+        for (status in listOf("invalid", "unsupported")) {
+            val reply = """{"ok":{"rows":[{"status":"$status","reason":"unknown"}]}}"""
+            assertThrows(SerializationException::class.java) {
+                CoreJson.result(reply, StaticNodeRowsDto.serializer())
+            }
         }
     }
 

@@ -29,6 +29,8 @@ pub struct State {
     pub rule_source: RuleSourceSpec,
     #[serde(default)]
     pub subscriptions: Vec<StoredSubscription>,
+    #[serde(default)]
+    pub static_nodes: Vec<crate::dto::StaticNode>,
     /// Group id to the member id chosen by hand.
     #[serde(default)]
     pub selections: BTreeMap<String, String>,
@@ -82,6 +84,7 @@ impl Default for State {
             mode: Mode::Global,
             rule_source: RuleSourceSpec::default(),
             subscriptions: Vec::new(),
+            static_nodes: Vec::new(),
             selections: BTreeMap::new(),
             next_subscription: 1,
         }
@@ -214,7 +217,13 @@ pub(crate) fn sync_dir(dir: &Path) -> io::Result<()> {
 }
 
 pub(crate) fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
-    let mut f = File::create(path)?;
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut f = File::options()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)?;
     f.write_all(bytes)?;
     f.sync_all()
 }

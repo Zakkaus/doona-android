@@ -2,7 +2,7 @@
   "ok": {
     "core": {
       "version": "0.1.0",
-      "schema": 2,
+      "schema": 3,
       "profile": "release",
       "target": "aarch64-android",
       "features": []

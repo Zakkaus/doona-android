@@ -21,6 +21,9 @@ import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
+import dev.doona.android.engine.StaticNode
+import dev.doona.android.engine.StaticNodeDraft
+import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.TodayTraffic
@@ -53,8 +56,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.JsonClassDiscriminator
 import java.io.IOException
 
 /**
@@ -207,6 +214,28 @@ class ServiceEngine internal constructor(
             SubscriptionUserAgentArgs(id, userAgent),
             SubscriptionDto.serializer(),
         ).map(SubscriptionDto::toSubscription)
+
+    override suspend fun previewStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> =
+        read("previewStaticNodes", StaticNodeBatchArgs.serializer(), StaticNodeBatchArgs(rows.map(StaticNodeDraftDto::of)), StaticNodeRowsDto.serializer())
+            .map(StaticNodeRowsDto::toRows)
+
+    override suspend fun addStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> =
+        command("addStaticNodes", StaticNodeBatchArgs.serializer(), StaticNodeBatchArgs(rows.map(StaticNodeDraftDto::of)), StaticNodeRowsDto.serializer())
+            .map(StaticNodeRowsDto::toRows)
+
+    override suspend fun readStaticNode(id: String): Result<StaticNode> =
+        read("readStaticNode", IdArgs.serializer(), IdArgs(id), StaticNodeDto.serializer()).map(StaticNodeDto::toStaticNode)
+
+    override suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeResult> =
+        command(
+            "updateStaticNode",
+            StaticNodeUpdateArgs.serializer(),
+            StaticNodeUpdateArgs(StaticNodeDto.of(expected), StaticNodeDraftDto.of(node)),
+            StaticNodeRowDto.serializer(),
+        ).map(StaticNodeRowDto::toRow)
+
+    override suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit> =
+        command("removeStaticNode", StaticNodeRemoveArgs.serializer(), StaticNodeRemoveArgs(StaticNodeDto.of(expected), confirmed), Unit.serializer())
 
     override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
 
@@ -475,6 +504,66 @@ class ServiceEngine internal constructor(
             val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO, scope, expireDebugCapture)
             engine.launch(Dispatchers.IO.limitedParallelism(1))
             return engine
+        }
+    }
+}
+
+/** `nodes`: every node when [ids] is null. */
+@Serializable
+internal data class NodesArgs(val ids: List<String>?)
+
+@Serializable
+internal class StaticNodeRowsDto(val rows: List<StaticNodeRowDto>) {
+    fun toRows() = rows.map(StaticNodeRowDto::toRow)
+}
+
+@Serializable
+private class StaticNodeDto(val id: String, val name: String, val link: String) {
+    fun toStaticNode() = StaticNode(id, name, link)
+
+    companion object {
+        fun of(node: StaticNode) = StaticNodeDto(node.id, node.name, node.link)
+    }
+}
+
+@Serializable
+private class StaticNodeBatchArgs(val rows: List<StaticNodeDraftDto>)
+
+@Serializable
+private class StaticNodeUpdateArgs(val expected: StaticNodeDto, val node: StaticNodeDraftDto)
+
+@Serializable
+private class StaticNodeRemoveArgs(val expected: StaticNodeDto, val confirmed: Boolean)
+
+@OptIn(ExperimentalSerializationApi::class)
+@JsonClassDiscriminator("kind")
+@Serializable
+private sealed interface StaticNodeDraftDto {
+    @Serializable
+    @SerialName("link")
+    class Link(val link: String, val name: String? = null) : StaticNodeDraftDto
+
+    @Serializable
+    @SerialName("manual")
+    class Manual(
+        val protocol: String,
+        val server: String,
+        val port: Int,
+        val name: String? = null,
+        val username: String? = null,
+        val password: String? = null,
+        val uuid: String? = null,
+        val cipher: String? = null,
+        val options: Map<String, String> = emptyMap(),
+    ) : StaticNodeDraftDto
+
+    companion object {
+        fun of(draft: StaticNodeDraft): StaticNodeDraftDto = when (draft) {
+            is StaticNodeDraft.Link -> Link(draft.link, draft.name)
+
+            is StaticNodeDraft.Manual -> Manual(
+                draft.protocol, draft.server, draft.port, draft.name, draft.username, draft.password, draft.uuid, draft.cipher, draft.options,
+            )
         }
     }
 }
