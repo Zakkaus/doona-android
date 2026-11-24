@@ -278,7 +278,8 @@ private fun MainNodeFigure(state: ActivityUiState, mode: RvRouteMode, nodes: Lis
 /**
  * Connect or disconnect (busy while either is under way), the outbound mode, a latency test ([onTest]) and more, their
  * labels one size ([rvActionRowFit]). 中斷連線 holds from the connect's start to the disconnect's end, so a disconnect
- * under way keeps its word beside its busy bar and turns to 連線 with the glyph when it has ended.
+ * under way keeps its word beside its busy bar and turns to 連線 with the glyph when it has ended; while it is under way
+ * the action takes no tap.
  */
 @Composable
 private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, onTest: () -> Unit) {
@@ -294,7 +295,8 @@ private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Un
         Row(Modifier.fillMaxWidth()) {
             val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
             val toggle = if (on) ({ onAction(ActivityAction.Disconnect) }) else onConnect
-            RvAction(R.drawable.rv_sym_power, labels[0], toggle, Modifier.weight(1f), busy = state.status.busy, labelStyle = style)
+            // A disconnect under way takes no second one: the tap would only start it again.
+            RvAction(R.drawable.rv_sym_power, labels[0], toggle, Modifier.weight(1f), busy = state.status.busy, labelStyle = style, enabled = state.status != Status.Stopping)
             RvAction(R.drawable.rv_sym_directions, labels[1], { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f), labelStyle = style)
             RvAction(R.drawable.rv_sym_speed, labels[2], onTest, Modifier.weight(1f), labelStyle = style)
             RvAction(R.drawable.rv_sym_more_horiz, labels[3], NOT_WIRED, Modifier.weight(1f), labelStyle = style)
