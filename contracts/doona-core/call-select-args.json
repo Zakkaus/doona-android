@@ -1,4 +1,5 @@
 {
   "group": "g-Proxy",
-  "memberId": "n-0c41be77"
+  "memberId": "n-0c41be77",
+  "network": "tcp"
 }

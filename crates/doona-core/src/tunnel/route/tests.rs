@@ -8,11 +8,19 @@ use crate::rules::policy::Policy;
 use crate::rules::template::Options;
 use crate::rules::tests::{group, rule};
 use crate::rules::{Network, RuleSet};
+use crate::state::State;
 use crate::stats::meter::Tally;
 use crate::subscription::parse::parse;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::sync::Weak;
 use std::time::Duration;
+
+fn routing(model: &Model, mode: Mode) -> Routing {
+    model.routing(&State {
+        mode,
+        ..State::default()
+    })
+}
 
 /// Three SOCKS5 nodes, published with the template's groups and a policy of `options`.
 fn published(options: Options) -> (Outbounds, Model) {
@@ -26,7 +34,7 @@ pub(crate) fn published_links(links: &[u8], options: Options, mode: Mode) -> (Ou
     model.policy = template(&model, options);
     let outbounds = Outbounds::new(Arc::default()).unwrap();
     let built = outbounds.build(&model.nodes);
-    outbounds.replace(built, model.routing(&BTreeMap::new(), mode));
+    outbounds.replace(built, routing(&model, mode));
     (outbounds, model)
 }
 
@@ -39,7 +47,7 @@ fn template(model: &Model, options: Options) -> Arc<Policy> {
 
 /// Publishes `model`'s routing under `mode`.
 fn publish(outbounds: &Outbounds, model: &Model, mode: Mode) {
-    outbounds.select(model.routing(&BTreeMap::new(), mode));
+    outbounds.select(routing(model, mode));
 }
 
 /// What a commit does with `model` under `mode`: the mode cell first, then the routing.
@@ -202,7 +210,7 @@ fn reject_and_a_group_without_a_node_are_refused_never_direct() {
     ];
     let set = RuleSet::compile(&groups, &|id| model.has(id), &rules).unwrap();
     let policy = Arc::new(Policy::new("g-Proxy", Some(set), Options::default()));
-    let selected = model.leaves(&BTreeMap::new());
+    let selected = model.leaves(&State::default());
     let mode = Mode::Rule;
     outbounds.select(Routing {
         score: Arc::clone(&model.score),
@@ -247,7 +255,7 @@ fn without_a_node_rule_keeps_its_direct_rows_and_refuses_the_rest() {
     let model = Model::new(Vec::new(), HashMap::new());
     let outbounds = Outbounds::new(Arc::default()).unwrap();
     let built = outbounds.build(&model.nodes);
-    outbounds.replace(built, model.routing(&BTreeMap::new(), Mode::Rule));
+    outbounds.replace(built, routing(&model, Mode::Rule));
     let session = session();
     session.names().map(ABROAD.into(), "www.netflix.com");
     let route = |dst, mode| {
@@ -281,7 +289,7 @@ fn direct_routes_while_a_swap_holds_the_table() {
     let (outbounds, model) = published(Options::default());
     let stale = outbounds.build(&model.nodes);
     let newer = outbounds.build(&model.nodes);
-    outbounds.replace(newer, model.routing(&BTreeMap::new(), Mode::Rule));
+    outbounds.replace(newer, routing(&model, Mode::Rule));
     let (inside, entered) = std::sync::mpsc::channel();
     let (release, released) = std::sync::mpsc::channel::<()>();
     outbounds.on_build(move || {
@@ -291,7 +299,7 @@ fn direct_routes_while_a_swap_holds_the_table() {
     let session = session();
     let (routed, got) = std::sync::mpsc::channel();
     std::thread::scope(|s| {
-        s.spawn(|| outbounds.replace(stale, model.routing(&BTreeMap::new(), Mode::Rule)));
+        s.spawn(|| outbounds.replace(stale, routing(&model, Mode::Rule)));
         let wait = Duration::from_secs(10);
         entered
             .recv_timeout(wait)
@@ -433,10 +441,7 @@ fn bench_route_per_flow() {
     let nodes = entries("s1", parse(links.as_bytes()).unwrap().nodes);
     let model = Model::new(nodes, HashMap::from([("s1".to_owned(), 1)]));
     let outbounds = Outbounds::new(Arc::default()).unwrap();
-    outbounds.replace(
-        outbounds.build(&model.nodes),
-        model.routing(&BTreeMap::new(), Mode::Rule),
-    );
+    outbounds.replace(outbounds.build(&model.nodes), routing(&model, Mode::Rule));
     let session = session();
     let named: Vec<Ipv4Addr> = (0..CAPACITY as u32)
         .map(|i| {

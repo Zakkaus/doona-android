@@ -15,8 +15,7 @@ use crate::state::{State, StoredSubscription};
 use crate::stats::{Clock, Stats};
 use crate::subscription::parse;
 use honk_config::node::Node;
-use honk_outbound::group::SelectionNetwork;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
@@ -138,7 +137,7 @@ impl Shared {
     /// Publishes the mode, each group's current node and the policy to the data path; called with
     /// `c` locked.
     pub fn publish(&self, c: &CatalogState) {
-        let routing = c.model.routing(&c.state.selections, c.state.mode);
+        let routing = c.model.routing(&c.state);
         self.outbounds.select(routing);
     }
 
@@ -146,9 +145,8 @@ impl Shared {
     /// policy in one step, so a new flow never pairs a node with a registry that lacks it, nor a
     /// rule with groups of another node set; `c` is locked.
     pub fn publish_nodes(&self, c: &CatalogState, built: Built) {
-        c.model.restore_pins(&c.state.selections);
-        self.outbounds
-            .replace(built, c.model.routing(&c.state.selections, c.state.mode));
+        c.model.update_pins(None, &c.state);
+        self.outbounds.replace(built, c.model.routing(&c.state));
     }
 }
 
@@ -396,7 +394,7 @@ impl Model {
             groups: self
                 .groups
                 .iter()
-                .map(|g| self.group_dto(g, &state.selections))
+                .map(|g| self.group_dto(g, state))
                 .collect(),
             subscriptions: state
                 .subscriptions
@@ -422,23 +420,20 @@ impl Model {
         }
     }
 
-    fn group_dto(&self, g: &GroupDef, selections: &BTreeMap<String, String>) -> dto::Group {
-        let (selected, pinned) = if g.kind == GroupKind::Score {
-            (
-                self.score.selected(&g.id),
-                self.score
-                    .manager
-                    .has_override(&g.id, SelectionNetwork::Tcp),
-            )
-        } else {
-            groups::selected(g, selections.get(&g.id), self.auto.get(&g.id))
-        };
+    fn group_dto(&self, g: &GroupDef, state: &State) -> dto::Group {
+        let (tcp, tcp_pinned) = self.choice(g, state, dto::Network::Tcp);
+        let (udp, udp_pinned) = self.choice(g, state, dto::Network::Udp);
         dto::Group {
             id: g.id.clone(),
             name: g.name.clone(),
             kind: g.kind,
-            selected_id: selected.map(str::to_owned),
-            pinned,
+            selected_id: tcp.map(str::to_owned),
+            tcp_selected_id: tcp.map(str::to_owned),
+            udp_selected_id: udp.map(str::to_owned),
+            networks_differ: tcp != udp,
+            pinned: tcp_pinned,
+            tcp_pinned,
+            udp_pinned,
             testing: self.testing.contains_key(&g.id),
             members: g.members.iter().map(|m| self.member(m)).collect(),
         }

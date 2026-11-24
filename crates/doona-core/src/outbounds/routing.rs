@@ -22,6 +22,12 @@ pub(crate) enum Leaf {
     Score(Arc<str>),
 }
 
+#[derive(Clone)]
+pub(crate) struct NetworkLeaves {
+    pub tcp: Option<Leaf>,
+    pub udp: Option<Leaf>,
+}
+
 impl Leaf {
     pub fn peek<'a>(&'a self, score: &'a Score) -> Option<&'a Arc<Node>> {
         match self {
@@ -67,7 +73,7 @@ pub(super) struct Table {
     pub(super) published: Option<Published>,
     pub(super) score: Option<Arc<Score>>,
     /// Group id to the node it sends traffic to, nested groups followed.
-    pub(super) selected: HashMap<Arc<str>, Leaf>,
+    pub(super) selected: HashMap<Arc<str>, NetworkLeaves>,
     /// What chooses a new flow's group.
     pub(super) policy: Arc<Policy>,
     /// The mode it was published with; `None` before the first publication.
@@ -76,11 +82,10 @@ pub(super) struct Table {
 
 impl Table {
     pub(super) fn new(published: Option<Published>, routing: Routing) -> Table {
-        let selected = routing.selected.into_iter();
         Table {
             published,
             score: Some(routing.score),
-            selected: selected.map(|(group, node)| (group.into(), node)).collect(),
+            selected: routing.selected,
             policy: routing.policy,
             mode: Some(routing.mode),
         }
@@ -92,7 +97,7 @@ impl Table {
 /// the groups of another node set, nor one commit's mode with another's policy.
 pub(crate) struct Routing {
     pub score: Arc<Score>,
-    pub selected: HashMap<String, Leaf>,
+    pub selected: HashMap<Arc<str>, NetworkLeaves>,
     pub policy: Arc<Policy>,
     pub mode: Mode,
 }
@@ -118,7 +123,11 @@ impl View {
         if table.published.is_none() {
             return false;
         }
-        match table.selected.get(self.policy().main()) {
+        match table
+            .selected
+            .get(self.policy().main())
+            .and_then(|pair| pair.tcp.as_ref())
+        {
             Some(Leaf::Node(_)) => true,
             Some(Leaf::Score(owner)) => table.score.as_ref().is_some_and(|score| {
                 [IpVersion::V4, IpVersion::V6].into_iter().any(|family| {
@@ -136,7 +145,8 @@ impl View {
     /// The node `group` (an id such as `g-Proxy`) sends traffic to, and what dials it; `None`
     /// while the group does not exist or has no node.
     pub fn dialer(&self, group: &str) -> Option<Dialer> {
-        let (group, leaf) = self.table.selected.get_key_value(group)?;
+        let (group, pair) = self.table.selected.get_key_value(group)?;
+        let leaf = pair.tcp.as_ref()?;
         self.table
             .dialer(group, leaf.peek(self.table.score.as_deref()?)?, None)
     }
@@ -149,7 +159,11 @@ impl View {
         domain: impl FnOnce() -> Option<&'a str>,
         original: Option<&ScoreContinuation>,
     ) -> Option<Dialer> {
-        let (group, leaf) = self.table.selected.get_key_value(group)?;
+        let (group, pair) = self.table.selected.get_key_value(group)?;
+        let leaf = match network {
+            Network::Tcp => pair.tcp.as_ref(),
+            Network::Udp => pair.udp.as_ref(),
+        }?;
         let score = self.table.score.as_ref()?;
         let owner = match leaf {
             Leaf::Score(owner) => owner,

@@ -95,6 +95,115 @@ fn global_and_rule_follow_score_pins_then_return_to_automatic() {
     }
 }
 
+fn flow_nodes(core: &Core, group: &str) -> [String; 2] {
+    let view = core.shared.outbounds.view();
+    let dst = ([1, 1, 1, 1], 443).into();
+    [Network::Tcp, Network::Udp].map(|net| {
+        view.for_flow(group, dst, net, || None, None)
+            .unwrap()
+            .node
+            .name
+            .clone()
+    })
+}
+
+#[test]
+fn network_pins_route_nested_groups_independently() {
+    let dir = TempDir::new("api-network-select");
+    let feeds = Feeds::new();
+    let first = b"socks5://127.0.0.1:1#a\n";
+    feeds.set(
+        "/sub",
+        &[first.as_slice(), b"socks5://127.0.0.1:2#b\n"].concat(),
+    );
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    let ids: Vec<_> = lock(&core.shared.catalog)
+        .model
+        .nodes
+        .iter()
+        .map(|n| n.id.clone())
+        .collect();
+    let select = |c: &Core, net: Option<&str>, member: Option<&String>| {
+        let mut args = json!({"group":"g-Proxy", "memberId":member});
+        if let Some(net) = net {
+            args["network"] = json!(net);
+        }
+        call(c, "select", args).unwrap();
+    };
+    let routes = |c: &Core| flow_nodes(c, "g-Streaming");
+    select(&core, None, Some(&ids[1]));
+    assert_eq!(routes(&core), ["b", "b"]);
+    select(&core, Some("tcp"), Some(&ids[0]));
+    assert_eq!(routes(&core), ["a", "b"]);
+    select(&core, None, Some(&ids[1]));
+    assert_eq!(routes(&core), ["b", "b"]);
+    select(&core, Some("udp"), None);
+    assert_eq!(routes(&core), ["b", "a"]);
+    drop(core);
+    let core = Core::new(path(&dir)).unwrap();
+    assert_eq!(routes(&core), ["b", "a"]);
+    select(&core, None, Some(&ids[0]));
+    select(&core, Some("udp"), Some(&ids[1]));
+    assert_eq!(routes(&core), ["a", "b"]);
+    select(&core, Some("tcp"), Some(&ids[1]));
+    assert_eq!(routes(&core), ["b", "b"]);
+    feeds.set("/sub", first);
+    call(&core, "updateSubscription", json!({"id":"s1"})).unwrap();
+    assert_eq!(routes(&core), ["a", "a"]);
+    feeds.set(
+        "/sub",
+        &[first.as_slice(), b"socks5://127.0.0.1:2#b\n"].concat(),
+    );
+    call(&core, "updateSubscription", json!({"id":"s1"})).unwrap();
+    assert_eq!(routes(&core), ["a", "a"]);
+}
+
+#[test]
+fn score_catalog_reports_each_networks_choice_after_restart() {
+    let dir = TempDir::new("score-split");
+    let core = Core::new(path(&dir)).unwrap();
+    let feeds = Feeds::new();
+    feeds.set("/sub", b"socks5://127.0.0.1:1#a\nsocks5://127.0.0.1:2#b");
+    add(&core, &feeds, "/sub").unwrap();
+    let members = &catalog(&core).groups[1].members;
+    let (a, b) = (&members[0].id, &members[1].id);
+    pin(&core, "g-Auto", Some(a));
+    call(
+        &core,
+        "select",
+        json!({"group":"g-Auto", "memberId":b, "network":"udp"}),
+    )
+    .unwrap();
+    assert_eq!(flow_nodes(&core, "g-Auto"), ["a", "b"]);
+    let live = &catalog(&core).groups[1];
+    assert!(live.networks_differ);
+    assert!(live.tcp_pinned && live.udp_pinned);
+    assert_eq!(live.tcp_selected_id.as_ref(), Some(a));
+    assert_eq!(live.udp_selected_id.as_ref(), Some(b));
+    call(
+        &core,
+        "select",
+        json!({"group":"g-Auto", "memberId":null, "network":"tcp"}),
+    )
+    .unwrap();
+    let reset = &catalog(&core).groups[1];
+    assert!(!reset.tcp_pinned && reset.udp_pinned);
+    assert!(reset.networks_differ);
+    drop(core);
+    let core = Core::new(path(&dir)).unwrap();
+    let group = &catalog(&core).groups[1];
+    assert!(!group.tcp_pinned && group.udp_pinned);
+    assert!(group.networks_differ);
+    assert_eq!(group.tcp_selected_id.as_ref(), Some(a));
+    assert_eq!(group.udp_selected_id.as_ref(), Some(b));
+    pin(&core, "g-Auto", Some(b));
+    let group = &catalog(&core).groups[1];
+    assert!(!group.networks_differ);
+    assert_eq!(group.tcp_selected_id.as_ref(), Some(b));
+    assert_eq!(group.udp_selected_id.as_ref(), Some(b));
+}
+
 #[test]
 fn a_rejected_reload_keeps_score_evidence_and_authority() {
     let dir = TempDir::new("score-reload");

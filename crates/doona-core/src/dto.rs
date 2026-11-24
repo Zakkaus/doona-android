@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 pub mod location;
 pub mod recent;
 pub mod score;
+mod selection;
+pub use selection::{Network, SelectArgs};
 mod start;
 pub use start::StartConfig;
 
@@ -319,7 +321,15 @@ pub struct Group {
     pub name: String,
     pub kind: GroupKind,
     pub selected_id: Option<String>,
+    pub tcp_selected_id: Option<String>,
+    pub udp_selected_id: Option<String>,
+    #[serde(default)]
+    pub networks_differ: bool,
     pub pinned: bool,
+    #[serde(default)]
+    pub tcp_pinned: bool,
+    #[serde(default)]
+    pub udp_pinned: bool,
     pub testing: bool,
     pub members: Vec<Member>,
 }
@@ -386,14 +396,6 @@ pub struct Empty {}
 
 // Nullable argument keys are required (core-api.md writes `"group":null`): serde reads a
 // missing `Option` field as `None` unless it is deserialized as a plain value.
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SelectArgs {
-    pub group: String,
-    #[serde(deserialize_with = "Option::deserialize")]
-    pub member_id: Option<String>,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GroupArgs {
