@@ -44,9 +44,9 @@ internal enum class RvServiceSection(@StringRes val title: Int) {
 
 /**
  * A service doona web can write a rule for: its GeoSite [code], its [name] (a brand, the same in every language) or a
- * [label] where web translates it (全部遊戲, 巴哈姆特), its [section], and its row's [glyph]: the brand's Simple Icons
- * mark (`rv_brand_*`, owner-fix4 item 32; GitHub's `rv_sym_github`), or the generic apps glyph for a service Simple
- * Icons has no mark for.
+ * [label] where web translates it (全部遊戲, 巴哈姆特), its [section], and its row's [glyph]: the brand's mark
+ * (`rv_brand_*` from Simple Icons, Bootstrap Icons or Wikimedia Commons, see `app/src/main/BRAND_ICONS.md`; GitHub's
+ * `rv_sym_github`), or the generic apps glyph for a service no source has a mark for.
  */
 @Immutable
 internal class RvService(
@@ -63,18 +63,18 @@ internal object RvServiceData {
         games("steam", "Steam", R.drawable.rv_brand_steam),
         games("epicgames", "Epic Games", R.drawable.rv_brand_epicgames),
         games("playstation", "PlayStation", R.drawable.rv_brand_playstation),
-        games("xbox", "Xbox"),
-        games("nintendo", "Nintendo"),
-        games("blizzard", "Blizzard"),
+        games("xbox", "Xbox", R.drawable.rv_brand_xbox),
+        games("nintendo", "Nintendo", R.drawable.rv_brand_nintendo),
+        games("blizzard", "Blizzard", R.drawable.rv_brand_blizzard),
         games("ea", "EA", R.drawable.rv_brand_ea),
         games("ubisoft", "Ubisoft", R.drawable.rv_brand_ubisoft),
         games("riot", "Riot Games", R.drawable.rv_brand_riotgames),
         RvService("category-games", "All games", RvServiceSection.Games, R.string.rv_service_all_games),
         media("youtube", "YouTube", R.drawable.rv_brand_youtube),
         media("netflix", "Netflix", R.drawable.rv_brand_netflix),
-        media("disney", "Disney+"),
+        media("disney", "Disney+", R.drawable.rv_brand_disneyplus),
         media("hbo", "HBO", R.drawable.rv_brand_hbo),
-        media("primevideo", "Prime Video"),
+        media("primevideo", "Prime Video", R.drawable.rv_brand_primevideo),
         media("twitch", "Twitch", R.drawable.rv_brand_twitch),
         media("spotify", "Spotify", R.drawable.rv_brand_spotify),
         media("tiktok", "TikTok", R.drawable.rv_brand_tiktok),
@@ -87,13 +87,13 @@ internal object RvServiceData {
         social("instagram", "Instagram", R.drawable.rv_brand_instagram),
         social("whatsapp", "WhatsApp", R.drawable.rv_brand_whatsapp),
         social("line", "LINE", R.drawable.rv_brand_line),
-        RvService("openai", "OpenAI", RvServiceSection.Ai),
+        RvService("openai", "OpenAI", RvServiceSection.Ai, glyph = R.drawable.rv_brand_openai),
         RvService("anthropic", "Anthropic", RvServiceSection.Ai, glyph = R.drawable.rv_brand_anthropic),
         RvService("google-gemini", "Google Gemini", RvServiceSection.Ai, glyph = R.drawable.rv_brand_googlegemini),
         developer("github", "GitHub", R.drawable.rv_sym_github),
         developer("docker", "Docker", R.drawable.rv_brand_docker),
         developer("google", "Google", R.drawable.rv_brand_google),
-        developer("microsoft", "Microsoft"),
+        developer("microsoft", "Microsoft", R.drawable.rv_brand_microsoft),
         developer("apple", "Apple", R.drawable.rv_brand_apple),
     )
 

@@ -51,4 +51,12 @@ From doona src/logo.svg, converted by tools/duck.py.
 Simple Icons 16.38.1 (app/src/main/res/drawable/rv_brand_*.xml, the service rows of the prototype/rv sample)
 Brand glyphs from simple-icons (https://simpleicons.org), icons/<slug>.svg, converted to vector drawables by
 tools/gen_brand_icons.py with the paths unchanged. CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
-app/src/main/SIMPLE_ICONS.md lists which files and which icons. The marks remain their owners' trademarks.
+app/src/main/BRAND_ICONS.md lists which files and which icons. The marks remain their owners' trademarks.
+
+Bootstrap Icons 1.13.2 (app/src/main/res/drawable/rv_brand_{xbox,microsoft,openai}.xml, the same service rows)
+Copyright (c) 2019-2024 The Bootstrap Authors. icons/<name>.svg from twbs/icons v1.13.2, converted to vector drawables
+by tools/gen_brand_marks.py with the paths unchanged. MIT License: app/src/main/assets/licenses/bootstrap-icons-MIT.txt
+
+Wikimedia Commons (app/src/main/res/drawable/rv_brand_{nintendo,blizzard,disneyplus,primevideo}.xml, the same rows)
+Logos the Commons file pages mark public domain ({{PD-textlogo}}), converted by tools/gen_brand_marks.py with the paths
+unchanged. app/src/main/BRAND_ICONS.md gives each file page and checksum. The marks remain their owners' trademarks.

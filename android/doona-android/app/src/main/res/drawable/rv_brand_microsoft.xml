@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bootstrap Icons 1.13.2 "microsoft" (MIT; see app/src/main/BRAND_ICONS.md),
+     by tools/gen_brand_marks.py. Scaled so the mark's longer side is 20 of the 24 units, centred: it draws 20 dp of the
+     24 dp glyph as the Simple Icons marks do. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <group
+      android:scaleX="1.250000"
+      android:scaleY="1.250000"
+      android:translateX="2.00000"
+      android:translateY="2.00000">
+    <path
+        android:fillColor="@android:color/white"
+        android:fillType="nonZero"
+        android:pathData="M7.462 0H0v7.19h7.462zM16 0H8.538v7.19H16zM7.462 8.211H0V16h7.462zm8.538 0H8.538V16H16z" />
+  </group>
+</vector>

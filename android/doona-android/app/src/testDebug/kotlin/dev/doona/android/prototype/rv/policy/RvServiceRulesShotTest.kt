@@ -80,10 +80,10 @@ class RvServiceRulesShotTest {
     }
 
     @Test
-    fun aServiceWithoutASimpleIconsMarkKeepsTheGenericGlyph() {
+    fun aServiceWithoutALicensedMarkKeepsTheGenericGlyph() {
         val generic = RvServiceData.all.filter { it.glyph == R.drawable.rv_sym_apps }.map { it.code }
-        // Not in Simple Icons 16.38.1 (Blizzard has only Battle.net), plus 全部遊戲, which is no brand.
-        val none = listOf("xbox", "nintendo", "blizzard", "category-games", "disney", "primevideo", "bahamut", "openai", "microsoft")
+        // 全部遊戲 is no brand; 巴哈姆特's mark is under no licence any source offers (BRAND_ICONS.md).
+        val none = listOf("category-games", "bahamut")
         assertEquals(none, generic)
         val marks = RvServiceData.all.map { it.glyph }.filter { it != R.drawable.rv_sym_apps }
         assertEquals("one mark per service", marks.distinct(), marks)

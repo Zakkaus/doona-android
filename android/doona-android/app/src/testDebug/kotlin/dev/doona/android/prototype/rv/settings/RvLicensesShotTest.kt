@@ -91,8 +91,8 @@ class RvLicensesShotTest {
 
     private companion object {
         /** As tall as the whole 授權條款 page at each font size, so its last row shows as the phone shows it. */
-        const val LONG_PAGE = "+h1281dp"
-        const val LONG_PAGE_FS115 = "+h1281dp"
-        const val LONG_PAGE_FS200 = "+h1596dp"
+        const val LONG_PAGE = "+h1363dp"
+        const val LONG_PAGE_FS115 = "+h1363dp"
+        const val LONG_PAGE_FS200 = "+h1701dp"
     }
 }

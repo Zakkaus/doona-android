@@ -82,7 +82,7 @@ def main() -> None:
 
 
 TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
-<!-- Simple Icons {version} "{title}" (icons/{slug}.svg, CC0 1.0; see app/src/main/SIMPLE_ICONS.md). The 24-unit glyph sits in a
+<!-- Simple Icons {version} "{title}" (icons/{slug}.svg, CC0 1.0; see app/src/main/BRAND_ICONS.md). The 24-unit glyph sits in a
      28.8-unit box, so it draws 20 dp in the 24 dp glyph, as the Material Symbols glyphs beside it do; tinted as they are. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"

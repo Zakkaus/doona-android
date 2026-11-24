@@ -42,6 +42,7 @@ internal object RvLicenses {
     val all = listOf(
         RvLicense("AndroidX", "Apache-2.0", APACHE),
         RvLicense("BoringSSL", "Apache-2.0", "licenses/boringssl-LICENSE.txt"),
+        RvLicense("Bootstrap Icons", "MIT", "licenses/bootstrap-icons-MIT.txt"),
         RvLicense("circle-flags", "MIT", "licenses/circle-flags-MIT.txt"),
         RvLicense("honk", "GPL-3.0-only", "licenses/honk-GPL-3.0.txt"),
         RvLicense("Inter", "OFL-1.1", "licenses/inter-OFL.txt"),
