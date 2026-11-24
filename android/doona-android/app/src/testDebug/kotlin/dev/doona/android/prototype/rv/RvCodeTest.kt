@@ -114,6 +114,14 @@ class RvCodeTest {
         assertEquals(expected, colored.map { it.start to it.end })
     }
 
+    @Test
+    fun noRoleChangesTheWeight() {
+        // Colour only: every role keeps the weight the code is set in, so a keyword is as wide as plain text (owner, 2026-11-25).
+        val code = rvCodeColors(RvColors(seedColorScheme(Seed.Cyan.argb, false), false))
+        RvCodeKind.entries.forEach { kind -> assertEquals("$kind", null, code.style(kind).fontWeight) }
+        assertEquals("a keyword keeps the accent", code.keyword, code.style(RvCodeKind.Keyword).color)
+    }
+
     /** Every role reads at 4.5:1 on the page, the card and a diff's added and removed lines, in both themes. */
     @Test
     fun everyRoleReadsOnThePageTheCardAndTheDiffTints() {

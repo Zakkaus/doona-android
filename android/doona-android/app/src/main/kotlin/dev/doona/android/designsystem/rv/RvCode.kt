@@ -16,7 +16,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
@@ -238,7 +237,7 @@ private fun CodeLine(line: String, style: TextStyle, space: TextUnit, colors: Rv
 
 /**
  * The ink of each code role in one theme ([rvCodeColors]), all from the theme's colours (owner 2026-11-24: 「要麼就跟隨主題
- * 配色」): a keyword in the accent and bold, a call in the tertiary, a string a softer accent, a number a softer tertiary,
+ * 配色」): a keyword in the accent (in the code's own weight, never bold: owner 2026-11-25), a call in the tertiary, a string a softer accent, a number a softer tertiary,
  * a key the text, a comment the secondary ink, and punctuation with the operators between the secondary ink and the text.
  */
 @Immutable
@@ -253,7 +252,7 @@ internal data class RvCodeColors(
 ) {
     fun style(kind: RvCodeKind): SpanStyle = when (kind) {
         RvCodeKind.Comment -> SpanStyle(color = comment)
-        RvCodeKind.Keyword -> SpanStyle(color = keyword, fontWeight = FontWeight.Bold)
+        RvCodeKind.Keyword -> SpanStyle(color = keyword)
         RvCodeKind.Quoted -> SpanStyle(color = quoted)
         RvCodeKind.Number -> SpanStyle(color = number)
         RvCodeKind.PropertyName -> SpanStyle(color = function)
