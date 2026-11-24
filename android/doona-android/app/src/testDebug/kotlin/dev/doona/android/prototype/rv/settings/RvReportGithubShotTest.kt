@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -131,9 +132,17 @@ class RvReportGithubShotTest {
     @Test
     @Config(qualifiers = BUILDING)
     fun theActionsWaitForTheReport() {
-        compose.setContent { Themed { Page(RvReportBuild.Building) } }
-        compose.onNode(hasText(rvText(R.string.rv_report_github)) and HAS_CLICK).assertIsNotEnabled()
-        compose.onNode(hasText(rvText(R.string.rv_report_share)) and HAS_CLICK).assertIsNotEnabled()
+        val build = mutableStateOf<RvReportBuild>(RvReportBuild.Building)
+        val ran = mutableListOf<String>()
+        val actions = RvReportActions(github = { ran += "github" }, share = { ran += "share" })
+        compose.setContent { Themed { RvReportGithubScreen(build.value, rvSampleReport, RvRedaction(), {}, onBack = {}, actions = actions) } }
+        for (state in listOf(RvReportBuild.Building, RvReportBuild.Failed)) {
+            build.value = state
+            for (id in listOf(R.string.rv_report_github, R.string.rv_report_share)) {
+                compose.onNode(hasText(rvText(id)) and IS_BUTTON).assertIsNotEnabled().performClick()
+            }
+        }
+        assertEquals(emptyList<String>(), ran)
     }
 
     @Test
@@ -161,7 +170,7 @@ class RvReportGithubShotTest {
 
     private companion object {
         val READY_BUILD = RvReportBuild.Ready(RvRedaction())
-        val HAS_CLICK = SemanticsMatcher.keyIsDefined(SemanticsProperties.Role)
+        val IS_BUTTON = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
 
         /** As tall as the page in each state and font size (to the next whole dp), so its end sits above the actions as on the phone. */
         const val READY = "+h1132dp"
