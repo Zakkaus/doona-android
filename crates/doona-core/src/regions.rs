@@ -71,6 +71,7 @@ struct Alias {
 struct Matcher {
     patterns: AhoCorasick,
     aliases: Vec<Alias>,
+    max_key_len: usize,
 }
 
 const CAPITAL_ONLY: &str = "IN IT MY NO ID KZ AT BE LU CZ RO IS CL CO SA PK NG EG KH";
@@ -123,10 +124,73 @@ static MATCHER: LazyLock<Matcher> = LazyLock::new(|| {
     }
     let patterns = AhoCorasick::builder()
         .ascii_case_insensitive(true)
-        .build(aliases.iter().map(|a| a.key))
+        .build(aliases.iter().map(|a| alias_pattern(a.key)))
         .expect("static region aliases");
-    Matcher { patterns, aliases }
+    let max_key_len = aliases.iter().map(|a| a.key.len()).max().unwrap();
+    Matcher {
+        patterns,
+        aliases,
+        max_key_len,
+    }
 });
+
+fn han(c: char) -> bool {
+    ('\u{3400}'..='\u{9fff}').contains(&c)
+}
+
+fn alias_pattern(key: &str) -> &str {
+    if let Some(c) = key.chars().next().filter(|&c| han(c)) {
+        &key[..c.len_utf8()]
+    } else {
+        key.split_once(' ').map_or(key, |(head, _)| head)
+    }
+}
+
+fn strip_ascii_case<'a>(text: &'a str, key: &str) -> Option<&'a str> {
+    let (head, tail) = text.split_at_checked(key.len())?;
+    head.eq_ignore_ascii_case(key).then_some(tail)
+}
+
+// Only gaps inside a known alias are flexible. Boundaries use the original text.
+fn alias_tail<'a>(key: &str, text: &'a str) -> Option<&'a str> {
+    if let Some(tail) = strip_ascii_case(text, key) {
+        return Some(tail);
+    }
+    let mut tail = text;
+    if let Some(words) = key.strip_prefix(' ') {
+        for word in words.split(' ') {
+            tail = strip_ascii_case(tail.trim_start(), word)?;
+        }
+    } else {
+        for c in key.chars() {
+            tail = tail.trim_start().strip_prefix(c)?;
+        }
+    }
+    Some(tail)
+}
+
+fn candidates(
+    name: &str,
+    scan: std::ops::Range<usize>,
+    wanted: impl Fn(&Alias) -> bool,
+) -> impl Iterator<Item = (Rank, &'static Alias)> {
+    MATCHER
+        .patterns
+        .find_overlapping_iter(aho_corasick::Input::new(name).span(scan))
+        .filter_map(move |m| {
+            let id = m.pattern().as_usize();
+            let a = &MATCHER.aliases[id];
+            if !wanted(a) {
+                return None;
+            }
+            let mut end = m.end();
+            if m.len() != a.key.len() {
+                let tail = alias_tail(&a.key[m.len()..], &name[end..])?;
+                end = name.len() - tail.len();
+            }
+            Some(((m.start(), Reverse(end), id), a))
+        })
+}
 
 // Non-ASCII simple case folds whose result occurs in a Latin alias. Do not lowercase the whole
 // name: capital-only codes are case-sensitive, and e.g. dotted/dotless I do not fold to i in /iu.
@@ -227,20 +291,52 @@ fn word_before(prefix: &str) -> bool {
         .is_some_and(unicode::letter_or_mark)
 }
 
-fn follows_region(prefix: &str, iso: &str) -> bool {
+fn preceding_aliases(
+    prefix: &str,
+    wanted: impl Fn(&Alias) -> bool,
+) -> impl Iterator<Item = (Rank, &'static Alias)> {
     let end = prefix.len();
-    let start = end.saturating_sub(MATCHER.patterns.max_pattern_len());
-    MATCHER
-        .patterns
-        .find_overlapping_iter(aho_corasick::Input::new(prefix).span(start..end))
-        .any(|m| {
-            let a = &MATCHER.aliases[m.pattern().as_usize()];
-            m.end() == end
-                && a.city.is_none()
-                && a.iso == iso
-                && (!a.exact || &prefix[m.start()..] == a.key)
-                && (!a.bounded || !word_before(&prefix[..m.start()]))
-        })
+    // Whitespace can widen a match, but the number of possible starts stays bounded.
+    let start = prefix
+        .char_indices()
+        .rev()
+        .filter(|&(_, c)| !c.is_whitespace())
+        .nth(MATCHER.max_key_len)
+        .map_or(0, |(i, c)| i + c.len_utf8());
+    candidates(prefix, start..end, wanted).filter(move |&((start, Reverse(stop), _), a)| {
+        stop == end && (!a.exact || &prefix[start..] == a.key)
+    })
+}
+
+fn mainland_port(prefix: &str) -> Option<(Rank, &'static Alias)> {
+    if !prefix.ends_with(han) {
+        return None;
+    }
+    // The suffix 港 identifies a full city even when a provider prefix is glued to it.
+    preceding_aliases(prefix, |a| {
+        a.iso == "CN" && a.city.is_some() && a.key.starts_with(han) && !a.numbered_code
+    })
+    .filter(|&((start, _, _), a)| {
+        !spaced_han(a, prefix.len() - start) || relay::left_boundary(&prefix[..start])
+    })
+    .min_by_key(|(rank, _)| *rank)
+}
+
+fn spaced_han(a: &Alias, width: usize) -> bool {
+    width != a.key.len() && a.key.starts_with(han)
+}
+
+fn region_left_boundary(a: &Alias, prefix: &str, width: usize) -> bool {
+    if spaced_han(a, width) {
+        relay::left_boundary(prefix)
+    } else {
+        !a.bounded || !word_before(prefix)
+    }
+}
+
+fn follows_region(prefix: &str, iso: &str) -> bool {
+    preceding_aliases(prefix, |a| a.iso == iso && a.city.is_none())
+        .any(|((start, _, _), a)| region_left_boundary(a, &prefix[..start], prefix.len() - start))
 }
 
 fn accepts(a: &Alias, name: &str, start: usize, end: usize) -> bool {
@@ -252,12 +348,18 @@ fn accepts(a: &Alias, name: &str, start: usize, end: usize) -> bool {
     if !a.code.accepts(name, text, tail) {
         return false;
     }
-    if !a.bounded {
-        return true;
+    if a.key == "港" {
+        return relay::right_boundary(tail);
     }
-    let han_city =
-        a.city.is_some() && matches!(a.key.chars().next(), Some('\u{3400}'..='\u{9fff}'));
-    if word_before(&name[..start]) && !(han_city && follows_region(&name[..start], a.iso)) {
+    if spaced_han(a, text.len()) {
+        return relay::left_boundary(&name[..start]) && relay::right_boundary(tail);
+    }
+    !a.bounded || accepts_bounded(a, &name[..start], tail)
+}
+
+fn accepts_bounded(a: &Alias, prefix: &str, tail: &str) -> bool {
+    let han_city = a.city.is_some() && a.key.starts_with(han);
+    if word_before(prefix) && !(han_city && follows_region(prefix, a.iso)) {
         return false;
     }
     if a.numbered_code && tail.starts_with(|c: char| c.is_ascii_digit()) {
@@ -274,18 +376,17 @@ fn matches(name: &str) -> impl Iterator<Item = (Rank, &'static Alias)> {
 }
 
 fn matches_in(name: &str, end: usize) -> impl Iterator<Item = (Rank, &'static Alias)> {
-    MATCHER
-        .patterns
-        .find_overlapping_iter(aho_corasick::Input::new(name).span(0..end))
-        .filter_map(move |m| {
-            let id = m.pattern().as_usize();
-            let a = &MATCHER.aliases[id];
-            let (start, end) = (m.start(), m.end());
-            if !accepts(a, name, start, end) {
-                return None;
-            }
-            Some(((start, Reverse(end), id), a))
-        })
+    candidates(name, 0..end, |_| true).filter_map(move |(rank @ (start, Reverse(stop), _), a)| {
+        if !accepts(a, name, start, stop) {
+            return None;
+        }
+        if a.key == "港"
+            && let Some(((city_start, _, id), city)) = mainland_port(&name[..start])
+        {
+            return Some(((city_start, Reverse(stop), id), city));
+        }
+        Some((rank, a))
+    })
 }
 
 fn country(code: &[u8]) -> Option<(&'static str, Coordinates)> {

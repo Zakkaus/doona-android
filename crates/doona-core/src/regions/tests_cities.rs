@@ -148,15 +148,114 @@ fn provider_location_examples() {
         ("You can use this", "CA", None),
         ("Contact us", "US", None),
     ] {
-        let result = locate(name);
-        assert_eq!(
-            (
-                result.region.as_deref(),
-                result.city.map(|c| c.id).as_deref()
-            ),
-            (Some(iso), city),
-            "{name}"
-        );
+        assert_location(name, Some(iso), city);
+    }
+}
+
+fn assert_location(name: &str, region: Option<&str>, city: Option<&str>) {
+    let result = locate(name);
+    assert_eq!(
+        (
+            result.region.as_deref(),
+            result.city.map(|c| c.id).as_deref()
+        ),
+        (region, city),
+        "{name}"
+    );
+}
+
+#[test]
+fn mainland_ports_are_not_hong_kong_exits() {
+    for (name, iso, city) in [
+        ("广州港01", "CN", "guangzhou"),
+        ("上海港 IPLC", "CN", "shanghai"),
+        ("廣州港 01", "CN", "guangzhou"),
+        ("广州 港01", "HK", "hong-kong"),
+        ("广港IPLC", "HK", "hong-kong"),
+        ("沪港 01", "HK", "hong-kong"),
+        ("香港01", "HK", "hong-kong"),
+    ] {
+        assert_location(name, Some(iso), Some(city));
+    }
+    assert_location("港|01", Some("HK"), None);
+    assert_location("港湾", None, None);
+    assert_location("港IPLCbackup", None, None);
+}
+
+#[test]
+fn glued_provider_prefixes_do_not_hide_mainland_ports() {
+    for name in ["VIP广州港01", "测试广州港01", "节点广州港 01"] {
+        assert_location(name, Some("CN"), Some("guangzhou"));
+    }
+}
+
+#[test]
+fn relay_exits_follow_transit_tags() {
+    for (name, iso, city) in [
+        ("上海 IPLC 日本", "JP", None),
+        ("深圳 IEPL 香港 02", "HK", Some("hong-kong")),
+        ("广州 BGP 新加坡", "SG", Some("singapore")),
+        ("上海 IPLC 港01", "HK", Some("hong-kong")),
+        ("上海|cn2→GIA>中轉~專線/日本", "JP", None),
+        ("上海 BGPBackup 日本", "CN", Some("shanghai")),
+    ] {
+        assert_location(name, Some(iso), city);
+    }
+}
+
+#[test]
+fn spacing_variants_preserve_alias_boundaries() {
+    for (name, iso, city) in [
+        ("日 本", "JP", None),
+        ("日 本 01", "JP", None),
+        ("IPLC日 本IEPL", "JP", None),
+        ("新 加 坡", "SG", Some("singapore")),
+        ("香 港 01", "HK", Some("hong-kong")),
+        ("Hong  Kong", "HK", Some("hong-kong")),
+        ("HongKong", "HK", Some("hong-kong")),
+        ("Los  Angeles", "US", Some("los-angeles")),
+        ("上海 IPLC 日 本 大 阪", "JP", Some("osaka")),
+        ("深圳香 港 02", "HK", Some("hong-kong")),
+        ("廣州日 本東京01", "JP", Some("tokyo")),
+    ] {
+        assert_location(name, Some(iso), city);
+    }
+    assert_location("Los  Angelesville", None, None);
+    assert_location("ACME  INC", None, None);
+    assert_location("OTP  01", None, None);
+}
+
+#[test]
+fn compact_relay_entries_may_contain_spaces() {
+    assert_location("广 州香港", Some("HK"), Some("hong-kong"));
+    assert_location("上 海专线东京", Some("JP"), Some("tokyo"));
+}
+
+#[test]
+fn han_tags_bound_spaced_aliases() {
+    for name in ["新 加 坡专线", "新 加 坡节点", "節點新 加 坡專線"] {
+        assert_location(name, Some("SG"), Some("singapore"));
+    }
+    assert_location("日 本中转", Some("JP"), None);
+    assert_location("香 港专线", Some("HK"), Some("hong-kong"));
+}
+
+#[test]
+fn spaced_aliases_do_not_separate_glued_locations() {
+    assert_location("日 本东京", Some("JP"), Some("tokyo"));
+    assert_location("广 州港01", Some("CN"), Some("guangzhou"));
+}
+
+#[test]
+fn spaced_han_aliases_do_not_cross_word_boundaries() {
+    for name in [
+        "精英 国际",
+        "完美 国际",
+        "节日 本地",
+        "节日 本 01",
+        "日 本地",
+    ] {
+        assert_location(name, None, None);
     }
 }
 
