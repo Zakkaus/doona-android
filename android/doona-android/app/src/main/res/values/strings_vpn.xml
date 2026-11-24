@@ -16,7 +16,6 @@
     <string name="vpn_failure_no_allowed_apps">None of the apps on the list is installed.</string>
     <string name="vpn_failure_start_failed">The VPN could not start.</string>
     <string name="vpn_start_blocked_title">VPN blocked</string>
-    <string name="vpn_failure_lockdown">doona cannot run with “Block connections without VPN” on. To connect, turn it off for doona in Android’s VPN settings.</string>
     <string name="vpn_failure_foreground_refused">Android did not let doona start the VPN in the background. Open doona and try again.</string>
     <string name="vpn_failure_core_stopped">The connection stopped unexpectedly.</string>
     <string name="vpn_failure_incompatible_core">The VPN core does not match this version of doona.</string>

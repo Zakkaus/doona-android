@@ -146,7 +146,7 @@ interface Engine {
  * [LocalNetwork]: the failed connection or download went to an address on the local network, which Android 17 lets doona
  * reach only with the `ACCESS_LOCAL_NETWORK` permission (ARCH D26).
  */
-enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, TooLarge, ParseFailed, NoNodes, Busy, Internal, LocalNetwork }
+enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, TooLarge, ParseFailed, NoNodes, Busy, Internal, LocalNetwork, DnsFailed }
 
 class EngineException(val code: ErrorCode) : Exception(code.name)
 
@@ -207,7 +207,7 @@ enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Scor
 /**
  * A node or a nested group. [id] stays the same across subscription refreshes; [name] is only for display and may
  * repeat. [latencyMs] is null before the first probe and after a failed one; [failed] tells them apart, and [error] says
- * why the probe failed when the core knows: [ErrorCode.LocalNetwork] for a node on the local network.
+ * why the probe failed when known: [ErrorCode.DnsFailed] for DNS or [ErrorCode.LocalNetwork] for a local dial.
  */
 data class Member(
     val id: String,

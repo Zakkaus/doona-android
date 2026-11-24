@@ -6,9 +6,12 @@ import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.os.Handler
+import android.os.Looper
 import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.NetworkTransport
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +36,46 @@ internal fun ownAddresses(context: Context): List<InetAddress> {
     return connectivity.getLinkProperties(active)?.linkAddresses.orEmpty().map { it.address }
 }
 
-internal fun LinkProperties.bootstrapServers(): List<String> {
+internal fun ConnectivityManager.activeBootstrapDns(): List<String> {
+    val active = activeNetwork ?: return emptyList()
+    if (getNetworkCapabilities(active)?.isBootstrapNetwork() != true) return emptyList()
+    return getLinkProperties(active)?.bootstrapServers().orEmpty()
+}
+
+internal suspend fun ConnectivityManager.followBootstrapDns(refresh: (List<String>) -> Unit) {
+    val callback = object : ConnectivityManager.NetworkCallback() {
+        private var selected: Network? = null
+
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            selected = network.takeIf { capabilities.isBootstrapNetwork() }
+        }
+
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+            if (network == selected) refresh(linkProperties.bootstrapServers())
+        }
+
+        override fun onLost(network: Network) {
+            if (network == selected) selected = null
+        }
+    }
+    // Use Android's network ranking without asking it to bring up a different connection.
+    val request = NetworkRequest.Builder()
+        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+        .build()
+    registerBestMatchingNetworkCallback(request, callback, Handler(Looper.getMainLooper()))
+    try {
+        awaitCancellation()
+    } finally {
+        unregisterNetworkCallback(callback)
+    }
+}
+
+private fun NetworkCapabilities.isBootstrapNetwork() =
+    hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && !hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+
+/** Keeps link-local interface names for the core to resolve when it consumes the snapshot. */
+private fun LinkProperties.bootstrapServers(): List<String> {
     val iface = interfaceName
     return dnsServers.mapNotNull { server ->
         val address = server.hostAddress ?: return@mapNotNull null

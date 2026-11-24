@@ -10,6 +10,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.LinkProperties
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkInfo
 import android.net.RouteInfo
 import android.net.VpnService
 import android.os.Looper
@@ -44,6 +47,8 @@ import org.robolectric.annotation.Implements
 import org.robolectric.annotation.RealObject
 import org.robolectric.shadow.api.Shadow
 import org.robolectric.shadows.ShadowNetwork
+import org.robolectric.shadows.ShadowNetworkCapabilities
+import org.robolectric.shadows.ShadowNetworkInfo
 import org.robolectric.shadows.ShadowVpnService
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -92,26 +97,49 @@ class DoonaVpnServiceTest {
     }
 
     @Test
-    fun lockdownAtBootPostsAnExplanationWithDropAlertsOff() = withService { service, app, engine ->
-        shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
-        runBlocking { AppSettings.get(app).setNotifyOnDrop(false) }
+    fun aSystemStartWithLockdownEnabledReachesRunning() = withService { service, _, engine ->
         Shadow.extract<VpnPolicy>(service).lockdown = true
 
         service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
-        val failure = engine.awaitSession { it.status is Status.Failed }
-        assertEquals(VpnStartBlock.Lockdown, failure.startBlock)
-
-        shadowOf(Looper.getMainLooper()).idle()
-        val posted = app.getSystemService(NotificationManager::class.java).activeNotifications.single()
-        assertEquals(app.getString(R.string.vpn_failure_lockdown), posted.notification.extras.getString(Notification.EXTRA_BIG_TEXT))
+        val session = engine.awaitSession { it.status is Status.Running || it.status.ended }
+        assertTrue("Expected Running, got ${session.status}", session.status is Status.Running)
     }
 
     @Test
-    fun aBackgroundRestartDeniedForegroundHasATypedFailure() = withService { service, _, engine ->
+    fun aBackgroundRestartDeniedForegroundPostsAnExplanationWithDropAlertsOff() = withService { service, app, engine ->
+        shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        runBlocking { AppSettings.get(app).setNotifyOnDrop(false) }
         shadowOf(service).setThrowInStartForeground(ForegroundServiceStartNotAllowedException("background start refused"))
         service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), Service.START_FLAG_REDELIVERY, 1)
         val failure = engine.awaitSession { it.status is Status.Failed }
         assertEquals(VpnStartBlock.ForegroundStartNotAllowed, failure.startBlock)
+
+        runBlocking { withContext(app.lane) {} }
+        shadowOf(Looper.getMainLooper()).idle()
+        val posted = app.getSystemService(NotificationManager::class.java).activeNotifications.single()
+        assertEquals(app.getString(R.string.vpn_start_blocked_title), posted.notification.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals(app.getString(R.string.vpn_failure_foreground_refused), posted.notification.extras.getString(Notification.EXTRA_BIG_TEXT))
+    }
+
+    @Test
+    fun startWithAnActiveVpnUsesTheUnderlyingResolvers() = withService { service, app, engine ->
+        val connectivity = app.getSystemService(ConnectivityManager::class.java)
+        val manager = shadowOf(connectivity)
+        val wifi = ShadowNetwork.newInstance(100)
+        val underlying = internet(NetworkCapabilities.TRANSPORT_WIFI)
+
+        @Suppress("DEPRECATION") // Robolectric selects the active network by legacy type.
+        val vpnInfo = ShadowNetworkInfo.newInstance(NetworkInfo.DetailedState.CONNECTED, ConnectivityManager.TYPE_VPN, 0, true, true)
+        manager.setActiveNetworkInfo(vpnInfo)
+        val vpn = checkNotNull(connectivity.activeNetwork)
+        val virtual = internet(NetworkCapabilities.TRANSPORT_VPN)
+        manager.setNetworkCapabilities(vpn, virtual)
+        manager.setLinkProperties(vpn, dns("172.19.0.2"))
+
+        manager.networkCallbacks.forEach { it.publishDns(wifi, underlying, dns("192.0.2.53")) }
+        service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
+        engine.awaitSession { it.status is Status.Running }
+        assertTrue(app.core.configs.single().contains("\"bootstrapDns\":[\"192.0.2.53\"]"))
     }
 
     @Test
@@ -120,7 +148,9 @@ class DoonaVpnServiceTest {
         val connectivity = app.getSystemService(ConnectivityManager::class.java)
         val manager = shadowOf(connectivity)
         val cellular = checkNotNull(connectivity.activeNetwork)
-        val initial = LinkProperties().apply { setDnsServers(listOf(InetAddress.getByName("192.0.2.53"))) }
+        val cellCaps = internet(NetworkCapabilities.TRANSPORT_CELLULAR)
+        val initial = dns("192.0.2.53")
+        manager.setNetworkCapabilities(cellular, cellCaps)
         manager.setLinkProperties(cellular, initial)
 
         withService { service, _, engine ->
@@ -128,9 +158,10 @@ class DoonaVpnServiceTest {
             app.core.onStart = { starts++ }
             service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
             val session = engine.awaitSession { it.status is Status.Running }
-            manager.networkCallbacks.forEach { it.onLinkPropertiesChanged(cellular, initial) }
+            manager.networkCallbacks.forEach { it.publishDns(cellular, cellCaps, initial) }
 
             val wifi = ShadowNetwork.newInstance(100)
+            val wifiCaps = internet(NetworkCapabilities.TRANSPORT_WIFI)
             val ipv6 = InetAddress.getByName("fe80::1")
             val next = LinkProperties().apply {
                 interfaceName = "wlan0"
@@ -138,9 +169,11 @@ class DoonaVpnServiceTest {
             }
             val nextWifi = ShadowNetwork.newInstance(101)
             manager.networkCallbacks.forEach {
+                it.publishDns(wifi, wifiCaps, next)
                 it.onLinkPropertiesChanged(wifi, next)
-                it.onLinkPropertiesChanged(wifi, next)
-                it.onLinkPropertiesChanged(nextWifi, next)
+                it.onLinkPropertiesChanged(wifi, LinkProperties())
+                it.publishDns(nextWifi, wifiCaps, next)
+                it.publishDns(ShadowNetwork.newInstance(102), internet(NetworkCapabilities.TRANSPORT_VPN), dns("172.19.0.2"))
             }
 
             runBlocking {
@@ -154,13 +187,26 @@ class DoonaVpnServiceTest {
             engine.disconnect()
             engine.awaitSession { it.status == Status.Stopped }
         }
-        manager.networkCallbacks.forEach { it.onLinkPropertiesChanged(cellular, initial) }
+        manager.networkCallbacks.forEach { it.publishDns(cellular, cellCaps, initial) }
         runBlocking {
             withContext(app.lane) {
                 assertEquals(2, app.core.calls.size)
                 assertEquals("setBootstrapDns" to """{"servers":["192.0.2.53"]}""", app.core.calls.last())
             }
         }
+    }
+
+    private fun internet(transport: Int): NetworkCapabilities = ShadowNetworkCapabilities.newInstance().also { caps ->
+        shadowOf(caps).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        shadowOf(caps).addTransportType(transport)
+    }
+
+    private fun dns(address: String) = LinkProperties().apply { setDnsServers(listOf(InetAddress.getByName(address))) }
+
+    private fun ConnectivityManager.NetworkCallback.publishDns(network: Network, caps: NetworkCapabilities, properties: LinkProperties) {
+        onAvailable(network)
+        onCapabilitiesChanged(network, caps)
+        onLinkPropertiesChanged(network, properties)
     }
 
     private fun withService(test: (DoonaVpnService, LifecycleApplication, ServiceEngine) -> Unit) {

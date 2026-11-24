@@ -309,20 +309,6 @@ class TunnelControllerTest {
     }
 
     @Test
-    fun lockdownReportsAPlatformRefusalWithoutBuildingATunnel() = runBlocking {
-        host.lockdownEnabled = true
-        start()
-        val refused = withTimeout(5_000) { controller.session.first { it.status is Status.Failed } }
-        assertEquals(VpnStartBlock.Lockdown, refused.startBlock)
-        assertTrue(host.tuns.isEmpty())
-        assertTrue(core.events.isEmpty())
-
-        host.lockdownEnabled = false
-        startRunning()
-        assertNull(controller.session.value.startBlock)
-    }
-
-    @Test
     fun aSecondStartWhileStartingIsIgnored() {
         val release = CountDownLatch(1)
         core.startGate = release
@@ -455,7 +441,6 @@ class TunnelControllerTest {
     private class FakeHost : TunHost {
         override val selfPackage = SELF
         override var mtu = StartConfigDto.MTU
-        override var lockdownEnabled = false
         val routings = CopyOnWriteArrayList<AppRouting>()
         val mtus = CopyOnWriteArrayList<Int>()
         val tuns = CopyOnWriteArrayList<FakeTun>()
