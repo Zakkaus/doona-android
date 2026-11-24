@@ -86,6 +86,23 @@ fn an_answer_maps_its_addresses_to_the_question_name() {
 }
 
 #[test]
+fn diagnostics_peeks_only_the_ipv6_address_answered() {
+    let ip = "2001:db8::1234".parse::<std::net::Ipv6Addr>().unwrap();
+    let octets = ip.octets();
+    let rr = Rr {
+        owner: AT_QUESTION.to_vec(),
+        kind: TYPE_AAAA,
+        ttl: 300,
+        data: &octets,
+    };
+    let reply = answer_with("IPv6.Example", (TYPE_AAAA, CLASS_IN), &[rr]);
+    let names = Names::new();
+    names.learn(&reply, &reply);
+    assert_eq!(names.peek(ip.into()).as_deref(), Some("ipv6.example"));
+    assert_eq!(names.peek("2001:db8::1235".parse().unwrap()), None);
+}
+
+#[test]
 fn a_cname_chain_maps_to_the_question_name() {
     let names = Names::new();
     let edge = wire("ipv4-c001.1.oca.nflxvideo.net");

@@ -26,7 +26,7 @@ pub(crate) const DRAIN_DEADLINE: Duration = Duration::from_secs(30);
 pub(crate) struct TcpFlow {
     ends: Ends,
     pub recent: Option<super::recent::Handle>,
-    sniffed: bool,
+    sniff: super::sniff::Sniff,
     pub waker: Arc<Waker>,
     /// Read from the stack, not yet taken by the task.
     up_pending: Option<Bytes>,
@@ -77,7 +77,11 @@ impl TcpFlow {
         TcpFlow {
             ends,
             recent: None,
-            sniffed: false,
+            sniff: if dns {
+                super::sniff::Sniff::Done
+            } else {
+                super::sniff::Sniff::First
+            },
             waker,
             up_pending: None,
             up_eof: false,
@@ -211,13 +215,15 @@ impl TcpFlow {
                 return Ok(());
             }
             match stack.tcp_read(id, scratch) {
-                Ok(0) => self.up_eof = true,
+                Ok(0) => {
+                    self.up_eof = true;
+                    self.sniff = super::sniff::Sniff::Done;
+                }
                 Ok(n) => {
-                    if !self.sniffed {
-                        self.sniffed = true;
-                        if let Some(handle) = &self.recent {
-                            handle.sniff(&scratch[..n]);
-                        }
+                    if !matches!(self.sniff, super::sniff::Sniff::Done)
+                        && let Some(handle) = &self.recent
+                    {
+                        self.sniff.feed(&scratch[..n], |host| handle.set_name(host));
                     }
                     self.up_pending = Some(Bytes::copy_from_slice(&scratch[..n]));
                 }

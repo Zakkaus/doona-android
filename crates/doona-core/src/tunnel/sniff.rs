@@ -1,6 +1,55 @@
-//! Best-effort diagnostics on the first client chunk. Never buffer payload or delay forwarding
-//! for an incomplete header. Store only a hostname, not a request target or a header value.
-pub(super) fn host(bytes: &[u8]) -> Option<&str> {
+//! Diagnostic inspection never delays forwarding. Only an incomplete first TLS record needs a copy.
+const LIMIT: usize = 8192;
+
+pub(super) enum Sniff {
+    First,
+    Partial(Vec<u8>),
+    Done,
+}
+
+fn target(bytes: &[u8]) -> usize {
+    bytes.get(3..5).map_or(LIMIT, |n| {
+        (5 + usize::from(u16::from_be_bytes([n[0], n[1]]))).min(LIMIT)
+    })
+}
+
+impl Sniff {
+    pub fn feed(&mut self, chunk: &[u8], found: impl FnOnce(&str)) {
+        match self {
+            Self::Done => return,
+            Self::First => {
+                let prefix = &chunk[..chunk.len().min(LIMIT)];
+                if let Some(name) = host(prefix) {
+                    found(name);
+                } else if prefix.starts_with(&[22])
+                    && prefix.get(1).is_none_or(|v| *v == 3)
+                    && prefix.len() < target(prefix)
+                {
+                    let mut buf = Vec::with_capacity(target(prefix));
+                    buf.extend_from_slice(prefix);
+                    *self = Self::Partial(buf);
+                    return;
+                }
+            }
+            Self::Partial(buf) => {
+                let header = chunk.len().min(5usize.saturating_sub(buf.len()));
+                buf.extend_from_slice(&chunk[..header]);
+                let needed = target(buf) - buf.len();
+                let rest = &chunk[header..];
+                buf.extend_from_slice(&rest[..rest.len().min(needed)]);
+                if rest.len() < needed {
+                    return;
+                }
+                if let Some(name) = host(buf) {
+                    found(name);
+                }
+            }
+        }
+        *self = Self::Done;
+    }
+}
+
+fn host(bytes: &[u8]) -> Option<&str> {
     let name = match bytes.first()? {
         22 => sni(bytes)?,
         b'A'..=b'Z' => http(bytes)?,
@@ -33,11 +82,22 @@ fn http(bytes: &[u8]) -> Option<&str> {
 }
 
 /// TLS vectors have a big-endian length of one, two or three bytes.
+fn length(input: &mut &[u8], width: usize) -> Option<usize> {
+    Some(
+        input
+            .split_off(..width)?
+            .iter()
+            .fold(0, |n, &b| (n << 8) | usize::from(b)),
+    )
+}
+
+fn prefix<'a>(input: &mut &'a [u8], width: usize) -> Option<&'a [u8]> {
+    let n = length(input, width)?.min(input.len());
+    input.split_off(..n)
+}
+
 fn vector<'a>(input: &mut &'a [u8], width: usize) -> Option<&'a [u8]> {
-    let n = input
-        .split_off(..width)?
-        .iter()
-        .fold(0, |n, &b| (n << 8) | usize::from(b));
+    let n = length(input, width)?;
     input.split_off(..n)
 }
 
@@ -45,16 +105,16 @@ fn sni(mut record: &[u8]) -> Option<&str> {
     if record.split_off(..3)?[..2] != [22, 3] {
         return None;
     }
-    let mut handshake = vector(&mut record, 2)?;
+    let mut handshake = prefix(&mut record, 2)?;
     if handshake.split_off_first()? != &1 {
         return None;
     }
-    let mut hello = vector(&mut handshake, 3)?;
+    let mut hello = prefix(&mut handshake, 3)?;
     hello.split_off(..34)?; // protocol version and random
     vector(&mut hello, 1)?; // session ID
     vector(&mut hello, 2)?; // cipher suites
     vector(&mut hello, 1)?; // compression methods
-    server_name(vector(&mut hello, 2)?)
+    server_name(prefix(&mut hello, 2)?)
 }
 
 fn server_name(mut extensions: &[u8]) -> Option<&str> {
@@ -77,7 +137,7 @@ fn server_name(mut extensions: &[u8]) -> Option<&str> {
 
 #[cfg(test)]
 mod tests {
-    use super::host;
+    use super::{LIMIT, Sniff, host};
 
     #[test]
     fn only_complete_hostnames_are_reported() {
@@ -93,5 +153,54 @@ mod tests {
             host(b"GET / HTTP/1.1\r\nHost: name.test/token\r\n\r\n"),
             None
         );
+    }
+
+    fn hello(padding: usize, sni_first: bool) -> Vec<u8> {
+        let sni = b"\x00\x00\x00\x0d\x00\x0b\x00\x00\x08sni.test";
+        let mut pad = vec![0, 21];
+        pad.extend((padding as u16).to_be_bytes());
+        pad.resize(4 + padding, 0);
+        let len = sni.len() + pad.len();
+        let mut wire = vec![22, 3, 1];
+        wire.extend(((47 + len) as u16).to_be_bytes());
+        wire.extend([1, 0]);
+        wire.extend(((43 + len) as u16).to_be_bytes());
+        wire.extend([3, 3]);
+        wire.extend([0; 32]);
+        wire.extend([0, 0, 2, 19, 1, 1, 0]);
+        wire.extend((len as u16).to_be_bytes());
+        if sni_first {
+            wire.extend(sni);
+            wire.extend(pad);
+        } else {
+            wire.extend(pad);
+            wire.extend(sni);
+        }
+        wire
+    }
+
+    #[test]
+    fn sni_before_a_cut_needs_no_second_read() {
+        let bytes = hello(1700, true);
+        let mut sniff = Sniff::First;
+        let mut found = None;
+        sniff.feed(&bytes[..1400], |s| found = Some(s.to_owned()));
+        assert_eq!(found.as_deref(), Some("sni.test"));
+        assert!(matches!(sniff, Sniff::Done));
+    }
+
+    #[test]
+    fn later_sni_is_recovered_only_within_the_limit() {
+        for (padding, expected) in [(1700, Some("sni.test")), (LIMIT, None)] {
+            let bytes = hello(padding, false);
+            for cut in [1, 1400] {
+                let mut sniff = Sniff::First;
+                sniff.feed(&bytes[..cut], |_| panic!("SNI not present yet"));
+                let mut found = None;
+                sniff.feed(&bytes[cut..], |s| found = Some(s.to_owned()));
+                assert_eq!(found.as_deref(), expected);
+                assert!(matches!(sniff, Sniff::Done));
+            }
+        }
     }
 }

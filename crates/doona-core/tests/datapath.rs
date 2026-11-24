@@ -179,7 +179,7 @@ fn recent_app_connections_keep_the_tun_tuple_and_never_enter_reports() {
     );
     s.client.send_udp(udp, b"udp");
     assert_eq!(s.client.recv_udp(udp, WAIT).unwrap(), b"udp");
-    let request = b"GET /secret HTTP/1.1\r\nHost: private-http.test:80\r\n\r\n";
+    let request = b"GET /secret HTTP/1.1\r\nHost: Private-HTTP.TEST:80\r\n\r\n";
     let id = s.client.connect(tcp);
     assert_eq!(s.client.exchange(id, request).unwrap(), request);
     assert!(wait_for(WAIT, || {

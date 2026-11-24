@@ -5,7 +5,6 @@ use crate::api::lock;
 use crate::dto::recent::{Protocol, RecentFlow, RecentFlows};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 const CAPACITY: usize = 128;
 
@@ -18,14 +17,14 @@ struct Ring {
 }
 
 pub(crate) struct Recent {
-    start: Instant,
+    start_ms: u64,
     ring: Mutex<Ring>,
 }
 
 impl Recent {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
-            start: Instant::now(),
+            start_ms: crate::sys::boot_ms(),
             ring: Mutex::new(Ring {
                 next: 0,
                 slots: std::array::from_fn(|_| None),
@@ -105,7 +104,7 @@ impl Session {
             remote,
             name,
             outbound: Arc::clone(outbound),
-            started_ms: self.recent.start.elapsed().as_millis() as u64,
+            started_ms: crate::sys::boot_ms() - self.recent.start_ms,
             open: true,
         })
     }
@@ -117,12 +116,13 @@ pub(crate) struct Handle {
 }
 
 impl Handle {
-    pub fn sniff(&self, prefix: &[u8]) {
-        if let Some(host) = super::sniff::host(prefix) {
-            let name = Arc::from(host);
-            if let Some(row) = lock(&self.recent.ring).row(self.id) {
-                row.name = Some(name);
-            }
+    pub fn set_name(&self, host: &str) {
+        let mut name: Arc<str> = Arc::from(host);
+        Arc::get_mut(&mut name)
+            .expect("new hostname")
+            .make_ascii_lowercase();
+        if let Some(row) = lock(&self.recent.ring).row(self.id) {
+            row.name = Some(name);
         }
     }
 }
@@ -156,7 +156,7 @@ mod tests {
             drop(recent.push(row(port)));
         }
         let _newest = recent.push(row(128)).unwrap();
-        oldest.sniff(b"GET / HTTP/1.1\r\nHost: old.test\r\n\r\n");
+        oldest.set_name("old.test");
         drop(oldest);
         let flows = recent.read().flows;
         assert!(flows.iter().map(|f| f.local.port()).eq((1..=128).rev()));

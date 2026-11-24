@@ -111,11 +111,11 @@ impl Core {
             "scoreState" => self.score_state(args),
             "recentFlows" => {
                 let dto::Empty {} = parse(args)?;
-                let flows = match &*lock(&self.life) {
-                    Life::Running(tunnel) => tunnel.session().recent.read(),
-                    _ => Default::default(),
+                let session = match &*lock(&self.life) {
+                    Life::Running(tunnel) => Some(Arc::clone(tunnel.session())),
+                    _ => None,
                 };
-                Ok(ok(flows))
+                Ok(ok(session.map(|s| s.recent.read()).unwrap_or_default()))
             }
             "rules" => self.rules(args),
             "effectiveConfig" => self.effective_config(args),

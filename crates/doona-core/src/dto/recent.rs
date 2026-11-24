@@ -16,6 +16,7 @@ pub struct RecentFlow<T = String> {
     pub remote: SocketAddr,
     pub name: Option<T>,
     pub outbound: T,
+    /// Milliseconds since tunnel start on CLOCK_BOOTTIME, including suspend (Android elapsedRealtime).
     pub started_ms: u64,
     pub open: bool,
 }
