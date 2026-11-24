@@ -24,7 +24,7 @@ internal class GeoPins(val bytes: ByteArray, val files: List<GeoPin>) {
             } ?: invalid("expected a JSON object")
             if (manifest["version"] != 1) invalid("expected schema version 1")
             val files = manifest["files"] as? Map<*, *> ?: invalid("files must be an object")
-            if (files.size != 2) invalid("files must contain two DAT pins")
+            if (files.keys != setOf("geoip.dat", "geosite.dat")) invalid("files must pin geoip.dat and geosite.dat")
             return GeoPins(bytes, files.map { (name, value) ->
                 if (name !is String || !name.matches(Regex("[a-z0-9_-]+\\.dat"))) invalid("invalid DAT name: $name")
                 val pin = value as? Map<*, *> ?: invalid("$name must be an object")

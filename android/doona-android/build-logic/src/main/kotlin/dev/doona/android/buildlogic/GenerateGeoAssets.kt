@@ -20,6 +20,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.nio.file.attribute.FileTime
+import java.time.Duration
+import java.time.Instant
 import java.nio.file.StandardOpenOption.CREATE
 import java.nio.file.StandardOpenOption.WRITE
 import java.security.DigestInputStream
@@ -64,6 +67,8 @@ abstract class GenerateGeoAssets : DefaultTask() {
                         }
                     }
                     if (!Files.exists(cached)) download(cached, pin)
+                    // Pruning goes by age, so a checkout still using this entry keeps it fresh.
+                    Files.setLastModifiedTime(cached, FileTime.from(Instant.now()))
                     Files.copy(cached, geo.resolve(pin.name))
                 }
             }
@@ -71,11 +76,17 @@ abstract class GenerateGeoAssets : DefaultTask() {
         Files.write(geo.resolve("pins.json"), pins.bytes)
     }
 
+    // Other checkouts sharing the Gradle home may pin other releases, so an entry these pins do
+    // not name is removed only once no build has used it for CACHE_TTL. A .tmp file seen here is
+    // stale: downloads run under the same lock.
     private fun pruneCache(cache: Path, active: Set<String>) {
+        val cutoff = Instant.now().minus(CACHE_TTL)
         Files.list(cache).use { entries ->
             entries.forEach { entry ->
                 val name = entry.fileName.toString()
-                if (name.endsWith(".tmp") || (name.matches(sha256Pattern) && name !in active)) {
+                val unused = name.matches(sha256Pattern) && name !in active &&
+                    Files.getLastModifiedTime(entry).toInstant() < cutoff
+                if (name.endsWith(".tmp") || unused) {
                     Files.delete(entry)
                 }
             }
@@ -125,3 +136,5 @@ abstract class GenerateGeoAssets : DefaultTask() {
         return if (sha == pin.sha256) null else "Geo ${pin.name} SHA-256 mismatch at $file: expected ${pin.sha256}, got $sha"
     }
 }
+
+private val CACHE_TTL: Duration = Duration.ofDays(30)

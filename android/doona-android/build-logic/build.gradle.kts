@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
     compileOnly(libs.android.gradle.api)
-    implementation(localGroovy())
+    compileOnly(localGroovy())
 }
 
 gradlePlugin {
