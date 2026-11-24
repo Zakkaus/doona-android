@@ -1,19 +1,30 @@
 package dev.doona.android.prototype.rv.nodes
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort
+import dev.doona.android.prototype.rv.policy.RvPolicyData
+import dev.doona.android.prototype.rv.policy.RvPolicyPreview
+import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
+import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvScrollBy
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
+import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -96,6 +107,24 @@ class RvNodeListShotTest {
         assertEquals("search → order chips, dp", RvSpace.searchGap.value, gap, DP)
     }
 
+    /** The pill opens the search page over the picker; a node picked there becomes the main node and the page closes. */
+    @Test
+    fun theSearchPillOpensTheSearchAndItsPickIsTheMainNode() {
+        val state = RvPolicyPreviewState()
+        var route by mutableStateOf(RvPolicyPreviewRoutes.PICKER)
+        var popped = 0
+        compose.rvContent(dark = false) { RvPolicyPreview(route, state, rvSampleSettings(), { route = it }, { popped++ }, {}) }
+        compose.onNodeWithText(rvText(R.string.rv_search_nodes)).performClick()
+        compose.waitForIdle()
+        assertEquals(RvPolicyPreviewRoutes.PICKER_SEARCH, route)
+
+        val other = RvData.nodes.first { it.id != RvData.CURRENT_ID }
+        compose.onAllNodesWithText(other.name).onFirst().performClick()
+        compose.waitForIdle()
+        assertEquals(other.id, state.policy.group(RvPolicyData.main).selectedId)
+        assertEquals(1, popped)
+    }
+
     /** One subscription of six sample nodes: four answered, one timed out, one never tested, and a long name. */
     @Composable
     private fun Edges(sort: RvNodeSort) {
@@ -108,11 +137,11 @@ class RvNodeListShotTest {
                 else -> node
             }.copy(subscription = sub.name)
         }
-        RvNodePickerPage(nodes, listOf(sub), RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {})
+        RvNodePickerPage(nodes, listOf(sub), RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
     }
 
     @Composable
-    private fun Picker(sort: RvNodeSort) = RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {})
+    private fun Picker(sort: RvNodeSort) = RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
 
     private companion object {
         /** Scrolled this far, 臺灣's card ends under the bar and 香港's follows in full. */

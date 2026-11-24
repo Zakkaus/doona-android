@@ -72,7 +72,7 @@ class RvNoSubscriptionShotTest {
 
     @Composable
     private fun Picker() =
-        RvNodePickerPage(emptyList(), emptyList(), RvData.CURRENT_ID, RvNodeSort.Latency, onSort = {}, onPick = {}, onBack = {}, onTest = {})
+        RvNodePickerPage(emptyList(), emptyList(), RvData.CURRENT_ID, RvNodeSort.Latency, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
 
     @Composable
     private fun Nodes() = RvNodesPage(RvNodesPageState(emptyList(), RvData.CURRENT_ID, emptyList()), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {})

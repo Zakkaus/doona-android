@@ -112,7 +112,7 @@ class RvLargeTextTest {
     /** The main node's picker (X3): the same, its rows the pull-down picker's. */
     @Test
     fun policyPickerNodesAreWhole() {
-        large { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}) }
+        large { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) }
         assertShownNodesWhole()
     }
 
@@ -129,7 +129,7 @@ class RvLargeTextTest {
     /** The same on the main node's picker (B1), whose rows had their latency line by line at rest and a bar while testing. */
     @Test
     fun pickerTestKeepsTheRows() = assertTestKeepsRows(RvData.nodes.map { it.name }.distinct()) {
-        RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {})
+        RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
     }
 
     /** 策略's line under its mode (X2): the whole of what Rule does, its main-node clause included. */
@@ -164,7 +164,7 @@ class RvLargeTextTest {
     /** The node list's order chips (B3, X7): the same. */
     @Test
     fun orderChipsFitTheirRow() {
-        large { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}) }
+        large { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) }
         assertOneWholeSize(RvNodeSort.entries.map { rvText(it.label) })
     }
 
@@ -414,7 +414,7 @@ class RvLargeTextTest {
             { RvPolicyRulePage(connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) },
             { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) },
             { RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) },
-            { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}) },
+            { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) },
         )
         var page by mutableStateOf(0)
         large { CompositionLocalProvider(LocalRvTesting provides testing(), pages[page]) }

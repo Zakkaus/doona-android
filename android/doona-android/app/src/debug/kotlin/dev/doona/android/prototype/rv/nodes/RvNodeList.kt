@@ -50,7 +50,6 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.RvSubscriptionRow
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode
@@ -60,17 +59,17 @@ import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.rvNodeGroups
 
 /**
- * The node list's control row: the search pill (the sample does not type into it) when [search], [RvSpace.searchGap]
+ * The node list's control row: the search pill, which opens the search page ([onSearch]), unless that is null, [RvSpace.searchGap]
  * over the order as a row of Revolut's range chips, every key in view and the active one raised. Chips rather than a filter chip and its menu: a
  * filter chip's chevron promises a menu, which this library does not have, and four short keys fit on one row, so the
  * choice and the active key are one tap and one glance. A page whose bar already searches the nodes (策略's 全域) leaves
  * the pill out: one search per page (rule 9); the main node's pushed page has none in its bar, so its list keeps it.
  */
 @Composable
-internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, search: Boolean = true) {
+internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, onSearch: (() -> Unit)?) {
     Column {
-        if (search) {
-            RvSearchPill(NOT_WIRED, Modifier.fillMaxWidth())
+        if (onSearch != null) {
+            RvSearchPill(onSearch, Modifier.fillMaxWidth())
             // What it searches starts one search gap under it, as under every search (RvSearchSlot); here, the order.
             Spacer(Modifier.height(RvSpace.searchGap))
         }
@@ -151,7 +150,8 @@ private const val ROWS = 8
 /**
  * The main node's picker, pushed from 規則's 主節點 card: the back disc and 測試延遲 in the bar, 主節點 as the large title
  * over what the choice does, the search pill and the order, then the node list. A tap picks the node and stays, the
- * check moving to it. The order is the caller's ([sort], [onSort]), so the page keeps its last choice across visits.
+ * check moving to it. The order is the caller's ([sort], [onSort]), so the page keeps its last choice across visits;
+ * the search pill opens the search page ([onSearch]).
  * With no node (no subscription) the order has nothing to order and the list gives way to the empty state, whose 新增訂閱
  * runs [onAdd].
  */
@@ -165,6 +165,7 @@ internal fun RvNodePickerPage(
     onPick: (String) -> Unit,
     onBack: () -> Unit,
     onTest: () -> Unit,
+    onSearch: () -> Unit,
     onAdd: () -> Unit = {},
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -172,7 +173,7 @@ internal fun RvNodePickerPage(
     val test = stringResource(R.string.rv_test_latency)
     val groups = remember(nodes, subscriptions, sort) { rvNodeGroups(nodes, subscriptions, sort) }
     RvScrollPage(title, insets, onBack = onBack, actions = { glass -> RvGlassButton(glass, R.drawable.rv_sym_speed, test, onTest) }) { titleBlock ->
-        val controls: (@Composable () -> Unit)? = if (nodes.isEmpty()) null else ({ RvNodeListControls(sort, onSort) })
+        val controls: (@Composable () -> Unit)? = if (nodes.isEmpty()) null else ({ RvNodeListControls(sort, onSort, onSearch) })
         RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) }, control = controls)
         if (nodes.isEmpty()) {
             RvGutter {
@@ -197,6 +198,6 @@ private fun RvNodePickerPagePreview() {
     var current by remember { mutableStateOf(RvData.CURRENT_ID) }
     var sort by remember { mutableStateOf(RvNodeSort.Latency) }
     RvTheme(rvSystemScheme(dark), dark) {
-        RvNodePickerPage(RvData.nodes, RvData.subscriptions, current, sort, { sort = it }, { current = it }, onBack = {}, onTest = {})
+        RvNodePickerPage(RvData.nodes, RvData.subscriptions, current, sort, { sort = it }, { current = it }, onBack = {}, onTest = {}, onSearch = {})
     }
 }

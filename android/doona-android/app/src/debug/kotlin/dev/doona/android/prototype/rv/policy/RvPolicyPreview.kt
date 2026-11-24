@@ -6,9 +6,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.doona.android.designsystem.rv.RV_NAV_POLICY
+import dev.doona.android.prototype.rv.NODE
 import dev.doona.android.prototype.rv.SEARCH
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort
+import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.settings.RvSettingsState
 
@@ -61,9 +63,12 @@ internal object RvPolicyPreviewRoutes {
     const val EDIT = "edit"
     const val PICKER = "picker"
 
+    /** The search page over the main node's picker: a picked node becomes the main group's choice. */
+    const val PICKER_SEARCH = "picker-search"
+
     /** The 新增服務規則 sample (owner-fix2 item 14), reached by its route only. */
     const val SERVICES = "services"
-    val all = setOf(POLICY, GROUP, RULE, RULES, TEMPLATE, IMPACT, EFFECTIVE, EDIT, PICKER, SERVICES)
+    val all = setOf(POLICY, GROUP, RULE, RULES, TEMPLATE, IMPACT, EFFECTIVE, EDIT, PICKER, PICKER_SEARCH, SERVICES)
 }
 
 /**
@@ -99,6 +104,23 @@ internal fun RvPolicyPreview(
                 onPick = { state.policy = state.policy.choose(main.id, it) },
                 onBack = pop,
                 onTest = {},
+                onSearch = { push(r.PICKER_SEARCH) },
+            )
+        }
+
+        r.PICKER_SEARCH -> {
+            val main = state.policy.group(RvPolicyData.main)
+            RvNodePicker(
+                RvData.nodes,
+                RvData.subscriptions,
+                main.selectedId,
+                onPick = {
+                    state.policy = state.policy.choose(main.id, it)
+                    pop()
+                },
+                onDetail = { push("$NODE:$it") },
+                onClose = pop,
+                searchPage = true,
             )
         }
 

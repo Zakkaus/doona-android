@@ -68,7 +68,7 @@ class RvNodeRowsTestingShotTest {
 
     @Composable
     private fun Picker() = CompositionLocalProvider(LocalRvTesting provides true) {
-        RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Latency, onSort = {}, onPick = {}, onBack = {}, onTest = {})
+        RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Latency, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
     }
 
     @Composable

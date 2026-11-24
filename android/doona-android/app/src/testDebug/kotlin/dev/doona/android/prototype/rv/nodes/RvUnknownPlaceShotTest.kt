@@ -42,5 +42,5 @@ class RvUnknownPlaceShotTest {
     private fun shot(dark: Boolean = false, fontScale: Float = 1f) = compose.rvShot("policy-picker-unknown", dark, fontScale = fontScale) { Picker() }
 
     @Composable
-    private fun Picker() = RvNodePickerPage(rvUnknownPlaceNodes(), RvData.subscriptions, "tw-01", RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {})
+    private fun Picker() = RvNodePickerPage(rvUnknownPlaceNodes(), RvData.subscriptions, "tw-01", RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
 }
