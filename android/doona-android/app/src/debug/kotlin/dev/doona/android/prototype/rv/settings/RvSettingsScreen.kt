@@ -93,7 +93,7 @@ internal fun RvSettingsScreen(
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             ConnectionGroup(state, onChange, routes)
             SubscriptionGroup(state, onChange)
-            AppearanceGroup(state, onOpenTheme)
+            AppearanceGroup(state, onOpenTheme, routes.language)
             AdvancedGroup(state, routes, configRev)
             RvUpdateGroup(version, update, routes.checkUpdate, geoData, routes.geoUpdate)
             RvAboutEntry(version, routes.about)
@@ -142,8 +142,8 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsR
  * Where 設定 leads beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row
  * and the hero's 匯出診斷, 關於 doona (which holds the licences), and the configuration's overview (with the preview flag); and 加到快速設定
  * ([addTile]), the system's dialog or the sheet that tells how; the GeoIP/GeoSite update ([geoUpdate], with its sample flag); and
- * the update check ([checkUpdate], the hero's action and 關於's row) and a newer release's GitHub page ([release]). The app
- * downloads nothing: the release opens in the browser.
+ * the update check ([checkUpdate], the hero's action and 關於's row) and a newer release's GitHub page ([release]); and the
+ * language page ([language]). The app downloads nothing: the release opens in the browser.
  */
 internal class RvSettingsRoutes(
     val alwaysOn: () -> Unit = NOT_WIRED,
@@ -157,6 +157,7 @@ internal class RvSettingsRoutes(
     val geoUpdate: () -> Unit = NOT_WIRED,
     val checkUpdate: () -> Unit = NOT_WIRED,
     val release: () -> Unit = NOT_WIRED,
+    val language: () -> Unit = NOT_WIRED,
 )
 
 /**
@@ -205,11 +206,11 @@ private fun SubscriptionGroup(state: RvSettingsState, onChange: (RvSettingsState
 }
 
 @Composable
-private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit) {
+private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit, onOpenLanguage: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_appearance))
     RvSettingsCard {
         RvSettingsNavRow(stringResource(R.string.rv_settings_theme), R.drawable.rv_settings_ic_palette, onOpenTheme, stringResource(state.appearance.mode.label))
-        RvSettingsNavRow(stringResource(R.string.rv_settings_language), R.drawable.rv_settings_ic_language, NOT_WIRED, stringResource(R.string.rv_settings_language_value))
+        RvSettingsNavRow(stringResource(R.string.rv_settings_language), R.drawable.rv_settings_ic_language, onOpenLanguage, stringResource(state.language.label))
     }
 }
 

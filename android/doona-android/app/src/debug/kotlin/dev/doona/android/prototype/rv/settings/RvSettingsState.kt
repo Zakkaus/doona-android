@@ -41,6 +41,7 @@ internal data class RvSettingsState(
     val updateHours: Int,
     val appearance: RvAppearance,
     val dns: RvDnsUpstream,
+    val language: RvLanguage = RvLanguage.TraditionalChinese,
     val tileAdded: Boolean = true,
     val tileSheet: Boolean = false,
 ) {

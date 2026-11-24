@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
@@ -90,6 +91,19 @@ class RvSettingsPreviewTest {
 
     @Test
     fun languageChoosesAndGoesBack() = choosesAndGoesBack(RvSettingsPreviewRoutes.LANGUAGE, R.string.rv_settings_language, R.string.rv_language_english)
+
+    /** 設定's 語言 row opens the page; the language chosen there is the row's value back on 設定. */
+    @Test
+    fun theLanguageRowOpensThePageAndShowsTheChoice() {
+        app(SETTINGS)
+        compose.onNodeWithText(rvText(R.string.rv_settings_language)).performScrollTo().performClick()
+        compose.waitForIdle()
+        heading(R.string.rv_settings_language)
+        compose.onNodeWithText(rvText(R.string.rv_language_english)).performClick().assertIsSelected()
+        back()
+        heading(R.string.hub_settings)
+        compose.onNode(hasText(rvText(R.string.rv_settings_language)) and hasText(rvText(R.string.rv_language_english))).assertExists()
+    }
 
     @Test
     fun intervalChoosesAndGoesBack() {

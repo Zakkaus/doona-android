@@ -14,10 +14,10 @@ import dev.doona.android.prototype.rv.data.RvData
 import kotlinx.coroutines.delay
 
 /**
- * The 設定 sub-page samples in the preview, reached by route only (the `page` or `stack` extra of the sample's
- * activity): 設定's rows lead to them once the owner has picked 關於's layout and the rows are wired, so 設定 itself
- * does not change here. 回報問題 is the preview's `report` page ([RvReportSample]); 設定's update check is
- * [rvUpdateSample].
+ * The 設定 sub-page samples in the preview, reached by route (the `page` or `stack` extra of the sample's activity) or
+ * from 設定's rows once they are wired. 語言 is one: 設定's row pushes it, and the preview app draws it over 設定's
+ * state, so this file only names its route. 回報問題 is the preview's `report` page ([RvReportSample]); 設定's update
+ * check is [rvUpdateSample].
  */
 internal object RvSettingsPreviewRoutes {
     const val ABOUT = "about"
@@ -32,11 +32,6 @@ internal object RvSettingsPreviewRoutes {
 internal fun RvSettingsPreview(route: String, push: (String) -> Unit, pop: () -> Unit) {
     when (route.substringBefore(':')) {
         RvSettingsPreviewRoutes.ABOUT -> RvAboutScreen(rvSampleVersions, onBack = pop, routes = RvAboutRoutes(report = { push(REPORT) }, licenses = { push(LICENSES) }))
-
-        RvSettingsPreviewRoutes.LANGUAGE -> {
-            var selected by rememberSaveable { mutableStateOf(RvLanguage.TraditionalChinese) }
-            RvLanguageScreen(selected, RvLanguage.TraditionalChinese, { selected = it }, onBack = pop)
-        }
 
         RvSettingsPreviewRoutes.INTERVAL -> {
             var hours by rememberSaveable { mutableIntStateOf(RvData.UPDATE_HOURS) }

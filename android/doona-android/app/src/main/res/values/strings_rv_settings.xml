@@ -21,7 +21,6 @@
     <string name="rv_settings_theme_light">Light</string>
     <string name="rv_settings_theme_dark">Dark</string>
     <string name="rv_settings_language">Language</string>
-    <string name="rv_settings_language_value" translatable="false">繁體中文</string>
 
     <string name="rv_settings_group_advanced">Advanced</string>
     <string name="rv_settings_dns" translatable="false">DNS</string>

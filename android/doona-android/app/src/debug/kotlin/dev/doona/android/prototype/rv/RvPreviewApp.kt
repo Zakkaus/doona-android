@@ -58,6 +58,7 @@ import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
+import dev.doona.android.prototype.rv.settings.RvLanguageScreen
 import dev.doona.android.prototype.rv.settings.RvLicenseText
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
@@ -75,6 +76,7 @@ import dev.doona.android.prototype.rv.settings.rvLicenseEntries
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
+import dev.doona.android.prototype.rv.settings.rvSystemLanguage
 import dev.doona.android.prototype.rv.settings.rvUpdateSample
 import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.states.RvActivityNotice
@@ -230,6 +232,8 @@ private fun RvSamplePage(
 
         PERAPP, LICENSES, LICENSE -> AboutAppsPage(route, settings, onSettings, pages)
 
+        RvSettingsPreviewRoutes.LANGUAGE -> RvLanguageScreen(settings.language, rvSystemLanguage(), { onSettings(settings.copy(language = it)) }, onBack = pages.pop)
+
         in RvSettingsPreviewRoutes.all -> RvSettingsPreview(route, pages.push, pages.pop)
 
         in RvPolicyPreviewRoutes.all -> RvPolicyPreview(route, policy, settings, pages.push, pages.pop, pages.tab)
@@ -263,7 +267,7 @@ private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions,
 
 /**
  * 設定: its always-on row opens the system's VPN settings, 加到快速設定 adds the app's real tile ([rvQuickTile]),
- * DNS and 檢視生效設定 push their pages, and 檢查更新 ends as `settings:<outcome>` says ([rvUpdateSample]).
+ * DNS, 語言 and 檢視生效設定 push their pages, and 檢查更新 ends as `settings:<outcome>` says ([rvUpdateSample]).
  */
 @Composable
 private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit, pages: RvSamplePages, outcome: String) {
@@ -279,6 +283,7 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         report = { pages.push(REPORT) },
         about = { pages.push(RvSettingsPreviewRoutes.ABOUT) },
         checkUpdate = update.check,
+        language = { pages.push(RvSettingsPreviewRoutes.LANGUAGE) },
     )
     RvSettingsScreen(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
 }
