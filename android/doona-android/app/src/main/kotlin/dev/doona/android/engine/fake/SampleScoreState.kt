@@ -10,11 +10,12 @@ import dev.doona.android.engine.ScoreNetwork
 import dev.doona.android.engine.ScoreState
 
 internal fun sampleScoreState(groups: List<Group>): ScoreState {
-    val scores = groups.filter { it.id == "g-Auto" || it.id == "g-HK" }.map { group ->
+    val scores = groups.filter { it.id == "g-Auto" || it.id == "g-HK" }.mapNotNull { group ->
         val nodes = group.members.filterNot { it.isGroup || it.failed }
-        val first = nodes.firstOrNull()
-        val second = nodes.getOrNull(1)
-        val tcp = if (group.id == "g-Auto" && first != null && second != null) {
+        if (nodes.size < 2) return@mapNotNull null
+        val first = nodes[0]
+        val second = nodes[1]
+        val tcp = if (group.id == "g-Auto") {
             ScoreNetwork(
                 selected = first.name,
                 selectedId = first.id,
@@ -27,16 +28,16 @@ internal fun sampleScoreState(groups: List<Group>): ScoreState {
         } else {
             waitingNetwork(first, nodes.size)
         }
-        ScoreGroup(group.id, group.members.filterNot { it.isGroup }.map { it.id }, tcp, waitingNetwork(second ?: first, nodes.size))
+        ScoreGroup(group.id, group.members.filterNot { it.isGroup }.map { it.id }, tcp, waitingNetwork(second, nodes.size))
     }
     return ScoreState(scores.sumOf { it.tcp.counters.businessStarts }, scores)
 }
 
-private fun waitingNetwork(selected: Member?, candidates: Int) = ScoreNetwork(
-    selected = selected?.name,
-    selectedId = selected?.id,
+private fun waitingNetwork(selected: Member, candidates: Int) = ScoreNetwork(
+    selected = selected.name,
+    selectedId = selected.id,
     state = "provisional",
-    waitReason = if (selected == null) "none" else "comparableTraffic",
+    waitReason = "comparableTraffic",
     coverage = ScoreCoverage(candidates, candidates, candidates),
     challengers = emptyList(),
     counters = ScoreCounters(0, 0, 0, 0),

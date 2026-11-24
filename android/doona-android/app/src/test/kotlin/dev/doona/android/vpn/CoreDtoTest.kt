@@ -336,11 +336,11 @@ class CoreDtoTest {
     }
 
     @Test
-    fun scoreStateKeepsSubgroupSelectionAndAllowsMissingIds() {
+    fun scoreStateKeepsSubgroupSelectionAndDecodesNullIds() {
         val reply = fixture("call-ok-score-state.json")
             .replace("\"selectedId\": \"n-7f3a19c2\"", "\"selectedId\": \"g-HK\", \"future\": true")
-            .replace("\"nodeId\": \"n-0c41be77\", ", "")
-            .replace("\"selected\": \"other\", \"selectedId\": \"n-0c41be77\",", "")
+            .replace("\"nodeId\": \"n-0c41be77\"", "\"nodeId\": null")
+            .replace("\"selected\": \"other\", \"selectedId\": \"n-0c41be77\"", "\"selected\": null, \"selectedId\": null")
         val score = CoreJson.result(reply, ScoreStateDto.serializer()).toScoreState()
         val auto = score.groups.single()
         assertEquals("g-HK", auto.tcp.selectedId)
