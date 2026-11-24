@@ -1,6 +1,6 @@
 import com.android.build.api.artifact.SingleArtifact
+import dev.doona.android.buildlogic.CheckNoFaultHook
 import java.security.MessageDigest
-import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.android.application)
@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.roborazzi)
     alias(libs.plugins.spotless)
+    id("dev.doona.android.geo-assets")
 }
 
 // libdoonacore.so (Rust, crates/doona-core) is built by cargo-ndk into a generated jniLibs directory of each
@@ -16,36 +17,6 @@ plugins {
 abstract class CargoNdk : Exec() {
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
-}
-
-// Fails when an APK's libdoonacore.so carries the fault hook of the debug core (`call("debugFault")`), whatever order or
-// overlap of builds produced it.
-abstract class CheckNoFaultHook : DefaultTask() {
-    @get:InputFiles
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val apks: DirectoryProperty
-
-    @get:OutputFile
-    abstract val report: RegularFileProperty
-
-    @TaskAction
-    fun check() {
-        val libraries = apks.get().asFile.walk().filter { it.extension == "apk" }.flatMap { apk ->
-            ZipFile(apk).use { zip ->
-                zip.entries().asSequence().filter { it.name.endsWith("/libdoonacore.so") }
-                    .map { "${apk.name}!${it.name}" to zip.getInputStream(it).readBytes() }
-                    .toList()
-            }
-        }.toList()
-        if (libraries.isEmpty()) throw GradleException("no libdoonacore.so in the APKs under ${apks.get().asFile}")
-        for ((name, bytes) in libraries) {
-            // The name the hook answers to; the release library has no string of it.
-            if ("debugFault" in String(bytes, Charsets.ISO_8859_1)) {
-                throw GradleException("$name is the debug core: it carries the fault hook")
-            }
-        }
-        report.get().asFile.writeText(libraries.joinToString("\n", postfix = "\n") { "${it.first}: no fault hook" })
-    }
 }
 
 val coreDir = rootProject.file("../../crates/doona-core")
