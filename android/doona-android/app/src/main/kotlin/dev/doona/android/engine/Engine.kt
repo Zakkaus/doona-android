@@ -98,6 +98,9 @@ interface Engine {
     /** All nodes in catalog order when [ids] is null; otherwise in request order, omitting unknown ids. */
     suspend fun nodes(ids: List<String>? = null): Result<List<NodeInfo>>
 
+    /** Live TCP and UDP Score evidence, independent of the catalog revision; reading starts no trial. */
+    suspend fun scoreState(): Result<ScoreState>
+
     /**
      * Stores [perApp] and applies it: a running tunnel is rebuilt, which drops open connections, and the call returns
      * once the rebuilt tunnel is up or failed. The policy is committed whatever the caller does meanwhile. Fails with
