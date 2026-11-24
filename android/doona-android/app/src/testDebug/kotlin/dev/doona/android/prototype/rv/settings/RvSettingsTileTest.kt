@@ -161,12 +161,12 @@ class RvSettingsTileTest {
 
     private companion object {
         /**
-         * 設定's whole page ([RvSettingsShotTest]'s frames) with the row, at each font size: 82, 84 and 154.5 dp taller.
-         * At fs200 the frame is rounded up to a whole dp, so the last card ends 28.5 dp above the nav, not 28.
+         * 設定's whole page with the row, at each font size, as tall as the page, a whole dp rounded up, so the last card
+         * ends 28 dp above the nav (28.5 where the page ends on a half dp).
          */
-        const val LONG_PAGE = "+h1680dp"
-        const val TILE_PAGE = "+h1762dp"
-        const val TILE_PAGE_FS115 = "+h1787dp"
-        const val TILE_PAGE_FS200 = "+h2285dp"
+        const val LONG_PAGE = "+h1764dp"
+        const val TILE_PAGE = "+h1846dp"
+        const val TILE_PAGE_FS115 = "+h1874dp"
+        const val TILE_PAGE_FS200 = "+h2442dp"
     }
 }

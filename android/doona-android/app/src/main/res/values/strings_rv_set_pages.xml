@@ -12,7 +12,6 @@
     <string name="rv_update_new_reason">Current version %1$s.</string>
     <string name="rv_update_view">View on GitHub</string>
     <string name="rv_update_failed">Could not check for updates</string>
-    <string name="rv_update_offline">No internet connection.</string>
 
     <string name="rv_settings_geodata">GeoIP/GeoSite</string>
     <string name="rv_geodata_updating">Updating…</string>

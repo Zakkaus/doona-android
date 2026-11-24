@@ -10,7 +10,6 @@
     <string name="rv_update_new_reason">当前版本 %1$s。</string>
     <string name="rv_update_view">在 GitHub 查看</string>
     <string name="rv_update_failed">无法检查更新</string>
-    <string name="rv_update_offline">没有网络连接。</string>
 
     <string name="rv_settings_geodata">GeoIP／GeoSite</string>
     <string name="rv_geodata_updating">正在更新…</string>

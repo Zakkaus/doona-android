@@ -11,11 +11,13 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -44,8 +46,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 設定's GeoIP／GeoSite row (owner-fix2 item 16), a sample behind the page's `geoData` flag: the whole 設定 page, as its
- * own goldens and `-config-entry-*` are, so a diff against `proto-rv-settings-*` shows only the row 進階 gains. Each
+ * 設定's GeoIP／GeoSite row (owner-fix2 item 16; in 更新 under 檢查更新 since owner-fix3 item 27): the whole 設定 page, as
+ * its own goldens and `-config-entry-*` are, so a diff against `proto-rv-settings-*` shows only the row's state. Each
  * light, dark, fs115 and fs200: the shipped data with 更新 (`proto-rv-settings-geodata-idle-*`), updating
  * (`-updating-*`, at animator scale 0, so the busy bar rests half full), updated to newer data (`-updated-*`), nothing
  * newer (`-latest-*`), failed (`-failed-*`), and waiting for the VPN (`-waiting-*`). Then each state's second line and
@@ -199,10 +201,10 @@ class RvGeoDataShotTest {
         var updates = 0
         var data by mutableStateOf(WAITING)
         compose.setContent { Themed { Page(data) { updates++ } } }
-        compose.onNodeWithText(rvText(R.string.rv_menu_update)).assertIsNotEnabled().performClick()
+        compose.onNode(UPDATE_BUTTON).assertIsNotEnabled().performClick()
         assertEquals(0, updates)
         compose.runOnIdle { data = IDLE }
-        compose.onNodeWithText(rvText(R.string.rv_menu_update)).assertIsEnabled().performClick()
+        compose.onNode(UPDATE_BUTTON).assertIsEnabled().performClick()
         assertEquals(1, updates)
     }
 
@@ -225,12 +227,20 @@ class RvGeoDataShotTest {
         }
     }
 
-    /** Without the sample flag 設定 is as the owner approved it: no GeoIP／GeoSite row. */
+    /** 設定 shows the row by default, in 更新 under 檢查更新, the group just before 關於 (owner-fix3 item 27). */
     @Test
     @Config(qualifiers = WHOLE)
-    fun theApprovedPageHasNoRow() {
+    fun theRowIsInUpdatesUnderTheCheckBeforeAbout() {
         compose.setContent { Themed { RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}) } }
-        compose.onNodeWithText(rvText(R.string.rv_settings_geodata)).assertDoesNotExist()
+        // 更新 is both the group's title and the row's button, 檢查更新 both the hero's action and a row: a title is read
+        // inside its section part, a row's title inside its row.
+        val section = listOf(R.string.rv_settings_group_advanced, R.string.rv_settings_group_updates, R.string.rv_settings_group_about)
+        val top = { id: Int ->
+            val inSection = if (id in section) hasAnyAncestor(hasTestTag(RvPart.SECTION)) else hasAnyAncestor(hasTestTag(RvPart.ROW))
+            compose.onNode(hasText(rvText(id)) and inSection, useUnmergedTree = true).getBoundsInRoot().top.value
+        }
+        val order = listOf(R.string.rv_settings_group_advanced, R.string.rv_settings_group_updates, R.string.rv_settings_check_update, R.string.rv_settings_geodata, R.string.rv_settings_group_about)
+        assertEquals(order.map(::rvText), order.sortedBy(top).map(::rvText))
     }
 
     private fun expect(second: String, action: Int?, enabled: Boolean = true) {
@@ -240,7 +250,7 @@ class RvGeoDataShotTest {
             actions.forEach { it.assertCountEquals(0) }
             return
         }
-        val button = compose.onNodeWithText(rvText(action))
+        val button = compose.onNode(hasText(rvText(action)) and !isHeading())
         if (enabled) button.assertIsEnabled() else button.assertIsNotEnabled()
     }
 
@@ -267,16 +277,19 @@ class RvGeoDataShotTest {
 
     private companion object {
         /**
-         * The approved page's window at each font size plus the row, so the page ends as its own golden does. At fs200
-         * the title wraps beside 更新, and the second line too where a state follows the date.
+         * 設定's whole page at each font size ([RvSettingsShotTest]'s frames, the row is on it by default), a whole dp,
+         * rounded up. At fs200 the title wraps beside 更新, and the second line too where a state follows the date.
          */
-        const val WHOLE = "+h1762dp"
-        const val WHOLE_FS115 = "+h1785dp"
-        const val FS200_IDLE = "+h2281dp"
-        const val FS200_UPDATING = "+h2278dp"
-        const val FS200_WRAPPED = "+h2322dp"
+        const val WHOLE = "+h1764dp"
+        const val WHOLE_FS115 = "+h1789dp"
+        const val FS200_IDLE = "+h2288dp"
+        const val FS200_UPDATING = "+h2285dp"
+        const val FS200_WRAPPED = "+h2329dp"
 
         const val HALF_DP = 0.5f
+
+        /** The row's 更新 button, enabled or not; the 更新 group's title is a heading. */
+        val UPDATE_BUTTON get() = hasText(rvText(R.string.rv_menu_update)) and !isHeading()
 
         const val WORD_JOINER = "⁠"
         const val ZERO_WIDTH_SPACE = "​"

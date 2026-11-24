@@ -24,6 +24,7 @@
     <string name="rv_settings_group_advanced">高级</string>
     <string name="rv_settings_log_level">日志级别</string>
 
+    <string name="rv_settings_group_updates">更新</string>
     <string name="rv_settings_group_about">关于</string>
     <string name="rv_settings_version">版本</string>
     <string name="rv_settings_licenses">开源许可证</string>
