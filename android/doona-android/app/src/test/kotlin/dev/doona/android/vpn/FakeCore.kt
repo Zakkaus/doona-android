@@ -26,6 +26,8 @@ internal class FakeCore : CoreBridge {
     /** Served first, in order, before the fixtures. */
     val snapshotReplies = ConcurrentLinkedQueue<() -> String>()
 
+    @Volatile var snapshotReply: ((sinceRevision: Long) -> String)? = null
+
     /** Whether the running fixture keeps its `local_network` warning. */
     @Volatile var warns = true
 
@@ -43,6 +45,7 @@ internal class FakeCore : CoreBridge {
         snapshots.incrementAndGet()
         snapshotError?.let { throw it }
         snapshotReplies.poll()?.let { return it() }
+        snapshotReply?.let { return it(sinceRevision) }
         val fixture = ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
         return if (warns) fixture else fixture.replace("\"warning\": \"local_network\"", "\"warning\": null")
     }
