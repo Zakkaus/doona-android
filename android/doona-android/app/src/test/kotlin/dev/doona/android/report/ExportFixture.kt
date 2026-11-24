@@ -22,6 +22,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.net.InetAddress
 import java.util.zip.ZipFile
 
 /** What the export's tests share: the directories, a catalog full of secrets, an export over them, and its zip. */
@@ -76,10 +77,11 @@ abstract class ExportFixture {
         now: Long = 1_795_300_200_000,
         scope: CoroutineScope = this,
         logLevels: LogLevelController = LogLevelController(engine::setLogLevel, scope) { testScheduler.currentTime },
+        ownAddresses: () -> List<InetAddress> = { emptyList() },
     ): ReportExport {
         val files = CrashFiles(crashDir)
         val dispatcher = StandardTestDispatcher(testScheduler)
-        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher, logLevels) { now }
+        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher, logLevels, ownAddresses) { now }
     }
 
     /** Every entry of the zip, by name. */

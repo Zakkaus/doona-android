@@ -1,5 +1,6 @@
 package dev.doona.android.vpn
 
+import android.app.Application
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.ErrorCode
@@ -25,6 +26,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
@@ -33,6 +35,8 @@ import java.util.concurrent.TimeUnit
 
 /** Real threads, as on the phone: the core blocks the controller's thread while the test acts from another. */
 @RunWith(AndroidJUnit4::class)
+// Keep native-core startup in DoonaApplication from adding unrelated entries to AppEvents.
+@Config(application = Application::class)
 class TunnelControllerTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val core = FakeCore()

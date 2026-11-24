@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.SystemClock
 import androidx.work.WorkManager
 import dev.doona.android.data.network.networkState
+import dev.doona.android.data.network.ownAddresses
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.Engine
@@ -103,7 +104,18 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
      */
     val reports: ReportExport by lazy {
         val tokens = ExportTokens { File(application.noBackupFilesDir, "report-exports.json") }
-        ReportExport(engine, crashFiles, crashOffer, { reportDir(application) }, tokens, { AppInfo.of(application) }, uiScope, Dispatchers.IO, logLevels)
+        ReportExport(
+            engine,
+            crashFiles,
+            crashOffer,
+            { reportDir(application) },
+            tokens,
+            { AppInfo.of(application) },
+            uiScope,
+            Dispatchers.IO,
+            logLevels,
+            ownAddresses = { ownAddresses(application) },
+        )
     }
 
     /** The diagnostic report for a page to export and share, and the crash offer; no UI of its own. */
