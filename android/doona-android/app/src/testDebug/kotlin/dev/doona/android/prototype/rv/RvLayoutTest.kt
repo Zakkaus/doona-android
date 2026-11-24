@@ -41,6 +41,8 @@ import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.policy.RvRuleDraft
 import dev.doona.android.prototype.rv.policy.RvRuleEditPage
+import dev.doona.android.prototype.rv.policy.RvServiceLayout
+import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.policy.RvTemplateImpactPage
 import dev.doona.android.prototype.rv.policy.RvTemplatePage
@@ -136,6 +138,12 @@ class RvLayoutTest {
 
     @Test
     fun effectiveConfig() = measure("effective-config", Top.Title) { RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}) }
+
+    @Test
+    fun serviceRulesFlat() = measure("rules-service-a", Top.Title) { RvServiceRulesPage(RvServiceLayout.Flat, onBack = {}) }
+
+    @Test
+    fun serviceRulesSections() = measure("rules-service-b", Top.Title) { RvServiceRulesPage(RvServiceLayout.Sections, onBack = {}) }
 
     /** The pull-down node picker (S3): its caption in the header's slot, 4 dp under the title and 24 dp over the first card. */
     @Test

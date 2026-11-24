@@ -133,4 +133,12 @@
     <string name="rv_rule_menu_off">停用</string>
     <string name="rv_rule_menu_on">啟用</string>
     <string name="rv_rule_menu_delete">刪除</string>
+    <string name="rv_service_add">新增服務規則</string>
+    <string name="rv_service_outbound">出站</string>
+    <string name="rv_service_has_rule">已有規則：%1$s</string>
+    <string name="rv_service_games">遊戲</string>
+    <string name="rv_service_media">影音</string>
+    <string name="rv_service_social">社群與通訊</string>
+    <string name="rv_service_developer">開發與平台</string>
+    <string name="rv_service_all_games">全部遊戲</string>
 </resources>

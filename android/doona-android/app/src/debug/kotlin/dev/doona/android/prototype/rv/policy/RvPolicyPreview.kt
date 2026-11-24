@@ -23,6 +23,9 @@ internal class RvPolicyPreviewState(pending: List<RvPolicyRule> = emptyList()) {
     var rules by mutableStateOf(RvPolicyData.allRules)
     var draft: RvRuleDraft? by mutableStateOf(null)
 
+    // The services ticked on the 新增服務規則 sample.
+    var services by mutableStateOf(RvServiceData.sample)
+
     // The main node's picker keeps its own order, apart from 全域's (in the policy state), as each screen remembers its last.
     var pickerSort by mutableStateOf(RvNodeSort.Latency)
 
@@ -40,6 +43,10 @@ internal class RvPolicyPreviewState(pending: List<RvPolicyRule> = emptyList()) {
     fun delete(i: Int) {
         rules = rules.filterIndexed { j, _ -> j != i }
     }
+
+    fun tick(service: String) {
+        services = if (service in services) services - service else services + service
+    }
 }
 
 /** The preview routes the 策略 tab owns; a group's route carries its id after a colon. */
@@ -53,7 +60,10 @@ internal object RvPolicyPreviewRoutes {
     const val EFFECTIVE = "effective"
     const val EDIT = "edit"
     const val PICKER = "picker"
-    val all = setOf(POLICY, GROUP, RULE, RULES, TEMPLATE, IMPACT, EFFECTIVE, EDIT, PICKER)
+
+    /** The 新增服務規則 sample (owner-fix2 item 14), reached by its route only: `services:a` flat, `services:b` in sections. */
+    const val SERVICES = "services"
+    val all = setOf(POLICY, GROUP, RULE, RULES, TEMPLATE, IMPACT, EFFECTIVE, EDIT, PICKER, SERVICES)
 }
 
 /**
@@ -132,6 +142,8 @@ internal fun RvPolicyPreview(
 
         r.IMPACT -> RvTemplateImpactPage(RvTemplateData.impact, onBack = pop, onApply = { onTab(RV_NAV_POLICY) })
 
+        r.SERVICES -> RvServiceRulesPage(serviceLayout(route), onBack = pop, selected = state.services, onToggle = state::tick)
+
         else -> {
             val routes = RvPolicyRoutes(
                 group = { push("${r.GROUP}:$it") },
@@ -146,3 +158,6 @@ internal fun RvPolicyPreview(
         }
     }
 }
+
+/** `services:b` lists the services in web's sections; `services` and `services:a` in one card. */
+private fun serviceLayout(route: String) = if (route.substringAfter(':', "") == "b") RvServiceLayout.Sections else RvServiceLayout.Flat
