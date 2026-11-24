@@ -195,8 +195,7 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
 
 /**
  * A node in its part of the world: the flag (badged in use), the name, `協定 · 地區`, and its latency over its change. With
- * [score] the line begins with the node's Score mark where a Score group chose it, each `·` held to the word after it so a
- * wrapped line never ends on one.
+ * [score] the line begins with the node's Score mark where a Score group chose it.
  */
 @Composable
 private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (String) -> Unit, score: RvScoreMarks?) {
@@ -207,7 +206,7 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
         RvRow(
             { RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
             node.name,
-            listOfNotNull(mark, node.protocol, stringResource(node.place.label)).joinToString(if (mark != null) HELD_SEPARATOR else SEPARATOR),
+            listOfNotNull(mark, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
             onClick = { onOpen(node.id) },
             onLongClick = menu,
@@ -217,8 +216,6 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
 
 internal const val SEPARATOR = " · "
 
-/** [SEPARATOR] with a no-break space after the dot: a line may break before the dot, never after it. */
-private const val HELD_SEPARATOR = " ·\u00A0"
 private const val TOP_COLUMNS = 4
 private const val REGION_ROWS = 5
 
