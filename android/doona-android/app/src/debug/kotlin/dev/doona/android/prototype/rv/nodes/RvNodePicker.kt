@@ -118,7 +118,8 @@ internal const val RV_PICKER = "rv-picker"
  * the n-th section (0 the bar, 1 the title, then each group) its modifier, for P3's staggered drop; [stretch] moves the
  * list down by that many pixels while a pull at its top would close the picker. As the [searchPage] (brief rv-gestures
  * G7) its field is the search pill's, and the keyboard comes up once the page has arrived. The large title is [title],
- * 節點 unless the caller opened the picker from a card that names it (規則's 主節點).
+ * 節點 unless the caller opened the picker from a card that names it (規則's 主節點). A [notice] (a banner for a failed
+ * action) stands under the title and the hint, over the first card.
  */
 @Composable
 internal fun RvNodePicker(
@@ -132,6 +133,7 @@ internal fun RvNodePicker(
     stretch: () -> Float = { 0f },
     searchPage: Boolean = false,
     title: String = stringResource(R.string.rv_nodes_title),
+    notice: (@Composable () -> Unit)? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val focus = remember { FocusRequester() }
@@ -162,6 +164,12 @@ internal fun RvNodePicker(
                 Column(section(1)) {
                     RvLargeTitle(title, Modifier, insets)
                     RvText(stringResource(R.string.rv_main_node_hint), Rv.type.rowSub, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.subGap * 2), color = Rv.colors.textSecondary)
+                }
+                notice?.let {
+                    Column(Modifier.padding(horizontal = RvSpace.gutter)) {
+                        it()
+                        Spacer(Modifier.height(RvSpace.cardGap))
+                    }
                 }
                 var first = 0
                 subscriptions.forEachIndexed { i, sub ->

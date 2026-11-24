@@ -17,10 +17,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
@@ -42,7 +44,8 @@ import dev.doona.android.prototype.rv.settings.rvSampleSettings
  * the large title, then one card a section, each under its section title: 模式 with the main node; 策略組, each group
  * with how it picks, its first members and the node it uses; 規則, counted as D34 counts them, with the way to the list;
  * DNS; 依 App; and 來源, the template and the subscriptions the nodes come from. It ends with 複製 and 匯出 (the text
- * carries no credentials, D21).
+ * carries no credentials, D21). When the core cut the text at 1 MiB ([truncated]) a line under the title says so; a
+ * [notice] (a banner: the config could not be read) heads the cards, and with [noticeOnly] it stands in their place.
  */
 @Composable
 internal fun RvEffectiveConfigPage(
@@ -52,32 +55,44 @@ internal fun RvEffectiveConfigPage(
     onRules: () -> Unit = {},
     onCopy: () -> Unit = {},
     onExport: () -> Unit = {},
+    truncated: Boolean = false,
+    notice: (@Composable () -> Unit)? = null,
+    noticeOnly: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_effective_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
-        RvLargeTitle(title, titleBlock, insets)
-        RvGutter { ModeCard(policy) }
-        Section(R.string.rv_policy_groups) { GroupsCard(policy) }
-        Section(R.string.rv_policy_rules) { RulesCard(onRules) }
-        Section(R.string.rv_settings_dns) {
-            RvCard {
-                RvStatRow(stringResource(R.string.rv_settings_dns_server), stringResource(settings.dns.label) + SEPARATOR + settings.dns.address)
-                RvStatRow(stringResource(R.string.rv_effective_dns_via), stringResource(R.string.rv_main_node))
-                RvStatRow(stringResource(R.string.rv_policy_lan), stringResource(R.string.rv_effective_lan_value))
-            }
+        if (truncated) {
+            RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_effective_truncated), R.drawable.rv_nodes_ic_warning) })
+        } else {
+            RvLargeTitle(title, titleBlock, insets)
         }
-        Section(R.string.rv_effective_per_app) {
-            RvCard {
-                RvStatRow(stringResource(R.string.rv_effective_apps_in), pluralStringResource(R.plurals.rv_effective_apps, settings.proxiedApps, settings.proxiedApps))
-                RvStatRow(stringResource(R.string.rv_effective_apps_rest), stringResource(R.string.rv_effective_apps_rest_value))
-            }
+        RvGutter {
+            notice?.invoke()
+            if (!noticeOnly) ModeCard(policy)
         }
-        Section(R.string.rv_effective_source) {
-            SourceCard()
-            RvCard {
-                RvRow({ RvIconDisc(R.drawable.rv_sym_content_copy) }, stringResource(R.string.rv_effective_copy), null, onClick = onCopy)
-                RvRow({ RvIconDisc(R.drawable.rv_sym_ios_share) }, stringResource(R.string.rv_effective_export), null, onClick = onExport)
+        if (!noticeOnly) {
+            Section(R.string.rv_policy_groups) { GroupsCard(policy) }
+            Section(R.string.rv_policy_rules) { RulesCard(onRules) }
+            Section(R.string.rv_settings_dns) {
+                RvCard {
+                    RvStatRow(stringResource(R.string.rv_settings_dns_server), stringResource(settings.dns.label) + SEPARATOR + settings.dns.address)
+                    RvStatRow(stringResource(R.string.rv_effective_dns_via), stringResource(R.string.rv_main_node))
+                    RvStatRow(stringResource(R.string.rv_policy_lan), stringResource(R.string.rv_effective_lan_value))
+                }
+            }
+            Section(R.string.rv_effective_per_app) {
+                RvCard {
+                    RvStatRow(stringResource(R.string.rv_effective_apps_in), pluralStringResource(R.plurals.rv_effective_apps, settings.proxiedApps, settings.proxiedApps))
+                    RvStatRow(stringResource(R.string.rv_effective_apps_rest), stringResource(R.string.rv_effective_apps_rest_value))
+                }
+            }
+            Section(R.string.rv_effective_source) {
+                SourceCard()
+                RvCard {
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_content_copy) }, stringResource(R.string.rv_effective_copy), null, onClick = onCopy)
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_ios_share) }, stringResource(R.string.rv_effective_export), null, onClick = onExport)
+                }
             }
         }
         Spacer(Modifier.height(RvSpace.gutter))

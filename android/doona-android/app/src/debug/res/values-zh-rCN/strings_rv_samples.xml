@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_vpn_denied">未获得 VPN 许可</string>
+    <string name="rv_vpn_denied_reason">doona 需要你允许建立 VPN。</string>
+    <string name="rv_notify_denied">通知已关闭</string>
+    <string name="rv_notify_denied_reason">doona 无法显示连接状态，也不会通知你连接中断。</string>
+    <string name="rv_failed_switch_mode">无法切换模式</string>
+    <string name="rv_failed_switch_node">无法切换节点</string>
+    <string name="rv_rules_parse_failed">无法解析规则来源</string>
+    <string name="rv_rules_parse_failed_reason">来源的内容格式有误。</string>
+    <string name="rv_rules_read_failed">无法读取规则</string>
+    <string name="rv_effective_failed">无法读取生效设置</string>
+    <string name="rv_effective_truncated">导出的文本已截断</string>
+</resources>

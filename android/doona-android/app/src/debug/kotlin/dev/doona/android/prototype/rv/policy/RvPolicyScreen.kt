@@ -91,6 +91,8 @@ internal class RvPolicyRoutes(
  * With no subscription there is nothing to route: [noSubscription], when set, puts the empty state with 新增訂閱 (which
  * runs it) in place of the cards, as 活動 does; the bar and the nav stay. [configRev] is a preview flag (PV-f): set, 設定檔
  * joins the card under 範本 with the applied revision and opens the configuration's overview ([RvPolicyRoutes.config]).
+ * A [notice] (a banner, or the page's body while it loads) heads the cards, or the empty state, as on 活動; with
+ * [noticeOnly] it stands in their place, and the bar and the nav stay.
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -99,6 +101,8 @@ internal fun RvPolicyScreen(
     routes: RvPolicyRoutes = RvPolicyRoutes(),
     noSubscription: (() -> Unit)? = null,
     configRev: Int? = null,
+    notice: (@Composable () -> Unit)? = null,
+    noticeOnly: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -121,14 +125,15 @@ internal fun RvPolicyScreen(
         RvTabHeader(insets)
         // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
         RvGutter {
-            if (noSubscription != null) {
+            notice?.invoke()
+            if (noSubscription != null && !noticeOnly) {
                 RvEmptyState(
                     stringResource(R.string.rv_empty_subscription),
                     stringResource(R.string.rv_empty_subscription_line),
                     stringResource(R.string.rv_add_subscription),
                     noSubscription,
                 )
-            } else {
+            } else if (!noticeOnly) {
                 ModeCard(state.mode) { onChange(state.copy(mode = it)) }
                 if (state.mode == RvRouteMode.Rule) {
                     MainCard(state.group(RvPolicyData.main), routes.mainNode)
@@ -138,7 +143,7 @@ internal fun RvPolicyScreen(
                 }
             }
         }
-        if (noSubscription == null && state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
+        if (!noticeOnly && noSubscription == null && state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
         // The last card clears the floating nav, as on 設定.
         Spacer(Modifier.height(rvNavClearance(insets)))
     }

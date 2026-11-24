@@ -67,10 +67,12 @@ internal class RvSubsActions(
  * Each subscription is a card: its row (name, node count and last update, chevron to its page), then what it has used
  * of its quota and when it ends over the progress bar. A long press on a card opens 更新, 編輯 and 刪除; 刪除 asks in
  * the confirm sheet. 新增訂閱 floats at the bottom. With no subscription there is nothing to update or to float over: the
- * bar's 更新所有訂閱 and the floating 新增訂閱 give way to the empty state, which carries the one 新增訂閱.
+ * bar's 更新所有訂閱 and the floating 新增訂閱 give way to the empty state, which carries the one 新增訂閱. A [notice] (the
+ * page's body while it loads) heads the cards, or the empty state; with [noticeOnly] it stands in their place, and the
+ * title and the bar stay.
  */
 @Composable
-internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions) {
+internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, notice: (@Composable () -> Unit)? = null, noticeOnly: Boolean = false) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_subscriptions)
     val empty = state.subscriptions.isEmpty()
@@ -80,16 +82,19 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions) {
     RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter {
-            if (empty) {
-                RvEmptyState(
-                    stringResource(R.string.rv_empty_subscription),
-                    stringResource(R.string.rv_empty_subscription_line),
-                    stringResource(R.string.rv_add_subscription),
-                    actions.add,
-                )
+            notice?.invoke()
+            if (!noticeOnly) {
+                if (empty) {
+                    RvEmptyState(
+                        stringResource(R.string.rv_empty_subscription),
+                        stringResource(R.string.rv_empty_subscription_line),
+                        stringResource(R.string.rv_add_subscription),
+                        actions.add,
+                    )
+                }
+                state.subscriptions.firstOrNull { it.id == state.failedId }?.let { FailedBanner(it) { actions.update(it.id) } }
+                state.subscriptions.forEach { SubscriptionCard(it, actions) }
             }
-            state.subscriptions.firstOrNull { it.id == state.failedId }?.let { FailedBanner(it) { actions.update(it.id) } }
-            state.subscriptions.forEach { SubscriptionCard(it, actions) }
         }
     }
     val deleting = state.subscriptions.firstOrNull { it.id == state.deletingId }
