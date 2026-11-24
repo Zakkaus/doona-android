@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv
 import android.icu.text.BreakIterator
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
@@ -19,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
@@ -58,17 +58,21 @@ internal fun RvText(
     overflow: TextOverflow = TextOverflow.Ellipsis,
     autoSize: TextAutoSize? = null,
 ) {
+    val density = LocalDensity.current
     var cut by remember(text) { mutableStateOf<RvCut?>(null) }
-    var wrap by remember(text) { mutableStateOf(RvWrap()) }
+    // The steps hold for the text, its style and font scale, and the width they were taken in ([RvWrap.width]).
+    var wrap by remember(text, style, density) { mutableStateOf(RvWrap()) }
+    // The width the text is given before a narrower step takes its share, in px, as its last measure saw it.
+    val given = remember { IntArray(1) }
     BasicText(
         scripted(cut?.text ?: wrap.text(text)),
-        if (wrap.narrower <= 0) modifier else modifier.padding(end = with(LocalDensity.current) { wrap.narrower.toDp() }),
+        if (maxLines == 1) modifier else modifier.rvNarrower({ wrap.narrower }, given),
         style.copy(color = color, textAlign = align),
         onTextLayout = { layout ->
             // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
             val kept = cut
             when {
-                maxLines != 1 -> wrap.next(text, layout)?.let { wrap = it }
+                maxLines != 1 -> wrap.after(text, layout, given[0])?.let { wrap = it }
                 overflow != TextOverflow.Ellipsis || autoSize != null -> Unit
                 kept == null -> cut = rvCut(text, layout)
                 layout.layoutInput.constraints.maxWidth > kept.width -> cut = null
@@ -82,6 +86,18 @@ internal fun RvText(
 
 /** A line cut at a word for [width] px. */
 private class RvCut(val width: Int, val text: String)
+
+/**
+ * The text laid out [narrower] px narrower than it is given, the room kept at its end, as `padding(end)` would keep it
+ * but in whole px, so the layout is [RvWrap]'s to the pixel; the width given is written to [given] first.
+ */
+private fun Modifier.rvNarrower(narrower: () -> Int, given: IntArray) = layout { measurable, constraints ->
+    given[0] = constraints.maxWidth
+    val cut = narrower().coerceAtLeast(0).takeIf { constraints.hasBoundedWidth } ?: 0
+    val inner = constraints.copy(minWidth = (constraints.minWidth - cut).coerceAtLeast(0), maxWidth = (constraints.maxWidth - cut).coerceAtLeast(0))
+    val placeable = measurable.measure(inner)
+    layout((placeable.width + cut).coerceIn(constraints.minWidth, constraints.maxWidth), placeable.height) { placeable.placeRelative(0, 0) }
+}
 
 /** [text] up to the last word that fits and an ellipsis, when the platform's cut of [layout] left a space before its own. */
 private fun rvCut(text: String, layout: TextLayoutResult): RvCut? {
@@ -117,12 +133,24 @@ private data class RvWrap(
     val word: Int = -1,
     val narrower: Int = 0,
     val lines: Int = 0,
+    val width: Int = NOT_LAID_OUT,
 ) {
     fun text(text: String): String {
         var shown = if (bound) rvBind(text) else text
         if (soft) shown = rvSoftBreaks(shown)
         if (joined) shown = rvJoinLast(shown)
         return if (word >= 0) rvJoinWord(shown, word) else shown
+    }
+
+    /**
+     * The steps after [layout], laid out in a room [given] px wide: the next step, or null when none is left. Steps taken
+     * in another width do not hold in this one: they start again from none, at once when [layout] is of the text as it
+     * is, else on the layout that follows.
+     */
+    fun after(text: String, layout: TextLayoutResult, given: Int): RvWrap? {
+        if (given == width) return next(text, layout)
+        val fresh = RvWrap(width = given)
+        return if (narrower <= 0 && text(text) == text) fresh.next(text, layout) ?: fresh else fresh
     }
 
     /** The next step for [layout], the layout of [text] after the steps so far, or null when none is left to take. */
@@ -189,6 +217,9 @@ internal fun rvReadsWell(layout: TextLayoutResult): Boolean =
 
 /** More steps than [RvWrap] can take, which ends each step after one try. */
 private const val WRAP_STEPS = 6
+
+/** [RvWrap.width] before any layout. */
+private const val NOT_LAID_OUT = -1
 
 /** A wrapped line ends on fewer letters than this only where nothing better fits. */
 private const val LAST_LINE_LETTERS = 3
