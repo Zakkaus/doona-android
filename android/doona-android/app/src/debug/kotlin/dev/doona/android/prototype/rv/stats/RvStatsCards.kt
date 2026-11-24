@@ -167,14 +167,14 @@ internal fun RvQuotaCard(subscriptions: List<RvSubscription>, nowEpochMs: Long) 
     }
 }
 
-/** `■ Harbor Cloud · 61.7 / 200 GB` with the date it runs out at the end, over `■ 剩餘 138 GB` in the lighter step. */
+/** `■ Harbor Cloud · 61.7/200 GB` with the date it runs out at the end, over `■ 剩餘 138 GB` in the lighter step. */
 @Composable
 private fun QuotaLegend(sub: RvSubscription, nowEpochMs: Long, segment: RvRingSegment) {
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
-    val used = format.bytesIn(sub.usedBytes, total)
+    val used = format.usedOf(sub.usedBytes, total)
     val expires = sub.expiresAtEpochMs?.let { stringResource(R.string.rv_expires, format.expiry(it, nowEpochMs)) }
-    val name = "${sub.name}$SEPARATOR$used / $total"
+    val name = "${sub.name}$SEPARATOR$used/$total"
     RvLegendItem(segment.color, name, Modifier.fillMaxWidth(), Rv.colors.text, expires ?: stringResource(R.string.rv_stats_no_expiry))
     RvLegendItem(segment.rest, stringResource(R.string.rv_stats_quota_left, format.bytes(sub.leftBytes).toString()), Modifier.padding(top = RvSpace.tight))
 }

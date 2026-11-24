@@ -173,7 +173,7 @@ private fun Usage(sub: RvSubscription) {
     val ends = sub.expiresAtEpochMs?.let { stringResource(R.string.rv_expires, format.expiry(it, RvData.nowEpochMs)) } ?: stringResource(R.string.rv_subs_no_expiry)
     Column(Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding)) {
         Row {
-            RvText(stringResource(R.string.rv_subs_used, format.bytesIn(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Modifier.weight(1f), color = Rv.colors.textSecondary)
+            RvText(stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Modifier.weight(1f), color = Rv.colors.textSecondary)
             Spacer(Modifier.width(RvSpace.trailingGap))
             RvText(ends, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)
         }

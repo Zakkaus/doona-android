@@ -288,14 +288,13 @@ class RvSkeletonBoundsTest {
 
         /**
          * The first row whose words wrap where its skeleton keeps one line, by page and font size; none elsewhere. At 2.0
-         * 活動's main node (`Hong Kong 02 IPLC`), 策略's main node, 全域's subscription over its quota (at 1.15 too),
+         * 活動's main node (`Hong Kong 02 IPLC`), 策略's main node, 全域's subscription over its quota,
          * 訂閱's first subscription over its nodes and update, and 依 App's first app over its package (its three
          * policies are real in both).
          */
         val WRAPS = mapOf(
             (RvSkeletonPages.ACTIVITY to RV_FS200) to 1,
             (RvSkeletonPages.POLICY to RV_FS200) to 0,
-            (RvSkeletonPages.POLICY_GLOBAL to RV_FS115) to 0,
             (RvSkeletonPages.POLICY_GLOBAL to RV_FS200) to 0,
             (RvSkeletonPages.SUBS to RV_FS200) to 0,
             (RvSkeletonPages.PER_APP to RV_FS200) to 3,

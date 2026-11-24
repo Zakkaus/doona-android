@@ -268,7 +268,7 @@ private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_rss_feed) },
             sub.name,
-            stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
+            stringResource(R.string.rv_subscription_usage, format.usedOf(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
             toggle.then(actions),
             onClick = onToggle.takeIf { enabled },
             onLongClick = menu,

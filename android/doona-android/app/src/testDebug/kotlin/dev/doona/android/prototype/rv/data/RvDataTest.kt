@@ -174,7 +174,8 @@ class RvDataTest {
         assertEquals("1.00 GB", format.bytes(999_600_000).toString())
         assertEquals("512 B", format.bytes(512).toString())
         assertEquals("301 kB/s", format.rate(300_653.6).toString())
-        assertEquals("61.7", format.bytesIn(61_700_000_000, format.bytes(200_000_000_000)))
+        assertEquals("61.7", format.usedOf(61_700_000_000, format.bytes(200_000_000_000)))
+        assertEquals("461 GB", format.usedOf(461_000_000_000, format.bytes(1_100_000_000_000)))
         assertEquals("3/15", format.expiry(1_805_112_000_000, RvData.nowEpochMs))
         assertEquals("3/15", RvFormat(Locale.US).expiry(1_805_112_000_000, RvData.nowEpochMs))
     }
