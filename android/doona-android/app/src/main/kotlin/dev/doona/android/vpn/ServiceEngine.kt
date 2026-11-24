@@ -220,8 +220,9 @@ class ServiceEngine internal constructor(
     override suspend fun trafficSeries(seconds: Long): Result<TrafficSeries> =
         read("trafficSeries", SeriesArgs.serializer(), SeriesArgs(seconds), TrafficSeriesDto.serializer()).map(TrafficSeriesDto::toTrafficSeries)
 
+    // The report already checks capture expiry; a pending level reset must not block its endpoint lookup.
     override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
-        read("nodes", NodesArgs.serializer(), NodesArgs(ids), NodesDto.serializer()).map(NodesDto::toNodes)
+        readCore("nodes", NodesArgs.serializer(), NodesArgs(ids), NodesDto.serializer()).map(NodesDto::toNodes)
 
     override suspend fun scoreState(): Result<ScoreState> =
         read("scoreState", Unit.serializer(), Unit, ScoreStateDto.serializer()).map(ScoreStateDto::toScoreState)

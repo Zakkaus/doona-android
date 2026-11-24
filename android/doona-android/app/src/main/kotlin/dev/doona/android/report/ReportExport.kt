@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.net.InetAddress
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -55,6 +56,7 @@ class ReportExport(
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
     private val logLevels: LogLevelController,
+    private val ownAddresses: () -> List<InetAddress> = { emptyList() },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     /** Held while a zip is written and published, and while [sweep] removes parts: it never takes one being written. */
@@ -70,15 +72,20 @@ class ReportExport(
      * Writes the report and keeps its token, before any sheet can open for it: null when the zip or the token could not
      * be written. Takes the crash offer down. The expiry check and the post-write reset never hold up the export.
      */
-    suspend fun build(): ReportZip? {
+    suspend fun build(options: RedactionOptions = RedactionOptions()): ReportZip? {
         offer.dismiss()
         logLevels.expireIfDue()
         val core = engine.diagnostics()
-        val engineView = EngineView(engine.status.value, engine.settings.value, engine.catalog.value)
+        val events = AppEvents.snapshot()
+        val catalog = engine.catalog.value
+        val members = catalog?.nodeMembers().orEmpty()
+        val ids = members.take(MAX_LISTED_NODES).map { it.id }
+        val endpoints = if (ids.isEmpty()) emptyMap() else engine.nodes(ids).getOrNull().orEmpty().associateBy { it.id }
+        val engineView = EngineView(engine.status.value, engine.settings.value, catalog, members, endpoints)
         val code = (core.exceptionOrNull() as? EngineException)?.code?.name
         return try {
             withContext(io) {
-                write(core, engineView).also {
+                write(core, engineView, events, ReportScrubber(options)).also {
                     logLevels.endCapture()
                     AppEvents.action("export", "write", if (core.isSuccess) "ok" else "partial", code ?: "ok")
                 }
@@ -160,18 +167,18 @@ class ReportExport(
     }
 
     /** The zip, and the export's token saved before any sheet can open for it: a token that cannot be saved fails the export. */
-    private fun write(core: Result<CoreDiagnostics>, engineView: EngineView): ReportZip {
+    private fun write(core: Result<CoreDiagnostics>, engineView: EngineView, events: List<AppEvent>, scrubber: ReportScrubber): ReportZip {
         val listing = core.getOrNull()
         val names = listing?.crashes?.map { it.name } ?: crashes.list().map { it.name }
         // Left out, with their names: a file gone since the listing, an empty one, which is no crash file, and an app file
         // of an earlier format.
-        val known = KnownNames()
-        val files = names.mapNotNull { name -> crashes.read(name)?.let { exportedCrash(it, known) }?.let { name to it } }
+        val files = names.mapNotNull { name -> crashes.read(name)?.let(scrubber::crash)?.let { name to it } }
         val at = clock()
-        val json = reportJson(at, app(), engineView, core, AppEvents.snapshot(), files.map { it.first })
+        val held = files.map { it.first }
+        val json = reportJson(at, app(), engineView, core, events, held, ownAddresses(), scrubber)
         val zip = publishZip(STAMP.format(Instant.ofEpochMilli(at)), json, files)
         val token = UUID.randomUUID().toString()
-        val cleared = listing?.let { l -> files.map { it.first }.takeIf { it.isNotEmpty() }?.let { ExportedCrashes(it, l.crashMark) } }
+        val cleared = listing?.let { l -> held.takeIf { it.isNotEmpty() }?.let { ExportedCrashes(it, l.crashMark) } }
         try {
             cleared?.let { tokens.add(token, it) }
         } catch (e: IOException) {

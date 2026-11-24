@@ -13,7 +13,7 @@ data class TrafficSeries(
     val downPeak: Long,
 )
 
-/** Endpoint details and the last eight latency tests, oldest first. Do not log or export the server address. */
+/** Endpoint details and the last eight latency tests, oldest first. Keep server addresses out of logs. */
 data class NodeInfo(
     val id: String,
     val protocol: String,

@@ -14,7 +14,7 @@ class ExportedCrashTest {
 
     private fun file(lines: List<String>) = lines.joinToString("\n", postfix = "\n")
 
-    private fun exported(lines: List<String>) = exportedCrash(file(lines).toByteArray(), KnownNames())!!.decodeToString()
+    private fun exported(lines: List<String>) = ReportScrubber(RedactionOptions()).crash(file(lines).toByteArray())!!.decodeToString()
 
     @Test
     fun `the version line as the app writes it goes out`() {
@@ -66,7 +66,7 @@ class ExportedCrashTest {
         assertEquals("unknown release unknown-android", app.copy(version = "", buildType = "release", abis = emptyList()).crashVersion)
         for (info in listOf(app, odd)) {
             val text = crashText("java.lang.IllegalStateException", null, true, info.crashVersion, 1_795_300_150_000)
-            assertEquals(text, exportedCrash(text.toByteArray(), KnownNames())!!.decodeToString())
+            assertEquals(text, ReportScrubber(RedactionOptions()).crash(text.toByteArray())!!.decodeToString())
         }
     }
 }

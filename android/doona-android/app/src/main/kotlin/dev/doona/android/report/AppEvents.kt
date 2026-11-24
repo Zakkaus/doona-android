@@ -3,19 +3,26 @@ package dev.doona.android.report
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 
-private const val COMMANDS = "start|stop|select|testLatency|addSubscription|updateSubscription|removeSubscription|setSubscriptionUserAgent|setMode|setRuleSource|setLogLevel|clearCrashes|export"
-private val codes = (ErrorCode.entries.map { it.name } + FailureReason.entries.map { it.name } + listOf("ok", "IOException")).joinToString("|")
+internal const val ACTION_COMMANDS = "start|stop|select|testLatency|addSubscription|updateSubscription|removeSubscription|setSubscriptionUserAgent|setMode|setRuleSource|setLogLevel|clearCrashes|export"
+internal val ACTION_CODES = ErrorCode.entries.map { it.name } + FailureReason.entries.map { it.name } + listOf("ok", "IOException")
+private val codes = ACTION_CODES.joinToString("|")
 
 // Allow values, not just characters: even a single-label host or token can be an ASCII identifier.
-internal val ACTION_TEXT = "command=(?:$COMMANDS) phase=(?:dispatch|complete|deadline|write|reset) " +
+internal val ACTION_TEXT = "command=(?:$ACTION_COMMANDS) phase=(?:dispatch|complete|deadline|write|reset) " +
     "outcome=(?:ok|failed|superseded|partial) code=(?:$codes)(?: elapsedMs=\\d{1,19})?"
-private val actionText = Regex(ACTION_TEXT)
+internal val actionText = Regex(ACTION_TEXT)
 
 /** How severe an app event is. */
 enum class AppEventLevel { Info, Warn }
 
-/** One event of the app: when, how severe, and what happened, in command names, codes, counts and durations only. */
-data class AppEvent(val atEpochMs: Long, val level: AppEventLevel, val text: String)
+/** Event text holds actions only; optional identifiers come from structured records, never from log text. */
+data class AppEvent(
+    val atEpochMs: Long,
+    val level: AppEventLevel,
+    val text: String,
+    val visitedDomain: String? = null,
+    val appPackage: String? = null,
+)
 
 /**
  * The app's last [CAPACITY] events, oldest first, for the diagnostic report. Process-wide, written from any thread. Its
@@ -30,8 +37,14 @@ object AppEvents {
     private val lock = Any()
     private val ring = ArrayDeque<AppEvent>(CAPACITY)
 
-    fun record(level: AppEventLevel, text: String, atEpochMs: Long = System.currentTimeMillis()): AppEvent {
-        val event = AppEvent(atEpochMs, level, text.take(MAX_TEXT))
+    fun record(
+        level: AppEventLevel,
+        text: String,
+        atEpochMs: Long = System.currentTimeMillis(),
+        visitedDomain: String? = null,
+        appPackage: String? = null,
+    ): AppEvent {
+        val event = AppEvent(atEpochMs, level, text.take(MAX_TEXT), visitedDomain, appPackage)
         synchronized(lock) {
             if (ring.size == CAPACITY) ring.removeFirst()
             ring.addLast(event)

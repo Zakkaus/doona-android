@@ -49,7 +49,10 @@ class ReportExportTest : ExportFixture() {
 
         val report = Json.parseToJsonElement(zip.getValue(ReportExport.REPORT_ENTRY)).jsonObject
         val catalog = report["settings"]!!.jsonObject["catalog"]!!.jsonObject
-        assertEquals(listOf("n-1a2b3c4d", "n-9f8e7d6c", "n-00112233"), catalog["nodeList"]!!.jsonArray.map { it.jsonObject["code"]!!.jsonPrimitive.content })
+        val nodes = catalog["nodeList"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(listOf("n-1a2b3c4d", "n-9f8e7d6c", "n-00112233"), nodes.map { it["code"]!!.jsonPrimitive.content })
+        assertEquals(listOf("host-1", "host-2", "host-3"), nodes.map { it["endpoint"]!!.jsonPrimitive.content })
+        assertFalse("node-1.example.net" in all)
         assertEquals("s1", catalog["subscriptions"]!!.jsonArray.single().jsonObject["id"]!!.jsonPrimitive.content)
         assertEquals("group:1", catalog["groups"]!!.jsonArray[0].jsonObject["selected"]!!.jsonPrimitive.content)
         assertEquals(2, report["events"]!!.jsonArray.size)
@@ -435,7 +438,7 @@ class ReportExportTest : ExportFixture() {
     fun `an app crash file of an earlier format is left out of the zip and the report, and is not cleared`() = runTest {
         crashDir.mkdirs()
         val core = "1795300140000.txt"
-        val coreText = "source: core\natEpochMs: 1795300140000\nmessage: panic in doonacore::api\n\nbacktrace:\n0 libdoonacore.so+0x1f2e\n"
+        val coreText = "source: core\natEpochMs: 1795300140000\nmessage: panic in unknown\n\nbacktrace:\n0 libdoonacore.so 0x1f2e\n"
         crashDir.resolve(core).writeText(coreText)
         val placeholder = "1795300145000.txt"
         crashDir.resolve(placeholder).writeText("")
