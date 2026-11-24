@@ -228,7 +228,7 @@ class RvDataTest {
 
     /** A zh-TW string (or a plural's `other`) as the resources hold it; unit tests run in the app module's directory. */
     private fun zhString(file: String, name: String): String {
-        val xml = File("src/debug/res/values-zh-rTW/$file").readText()
+        val xml = File("src/main/res/values-zh-rTW/$file").readText()
         val string = Regex("<string name=\"$name\">([^<]*)</string>").find(xml)
         val plural = Regex("<plurals name=\"$name\">.*?<item quantity=\"other\">([^<]*)</item>", RegexOption.DOT_MATCHES_ALL).find(xml)
         return (string ?: plural)!!.groupValues[1]

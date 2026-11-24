@@ -60,7 +60,7 @@ class RvPolicyDataTest {
 
     @Test
     fun theAutoGroupHasTheDatasetsName() {
-        val xml = File("src/debug/res/values-zh-rTW/strings_rv_policy.xml").readText()
+        val xml = File("src/main/res/values-zh-rTW/strings_rv_policy.xml").readText()
         assertEquals(RvData.AUTO_GROUP, Regex("<string name=\"rv_policy_group_auto\">([^<]*)</string>").find(xml)!!.groupValues[1])
     }
 
