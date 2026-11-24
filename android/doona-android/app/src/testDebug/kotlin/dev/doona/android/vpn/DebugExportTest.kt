@@ -18,6 +18,7 @@ import dev.doona.android.report.ExportTokens
 import dev.doona.android.report.REPORT_MIME
 import dev.doona.android.report.ReportExport
 import dev.doona.android.report.reportDir
+import dev.doona.android.report.testFlowEvents
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -73,7 +74,7 @@ class DebugExportTest {
         val tokens = ExportTokens { File(data, "report-exports.json") }
         val engine = FakeEngine()
         val logLevels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
-        val reports = ReportExport(engine, files, offer, { reportDir(app) }, tokens, { AppInfo.of(app) }, this, io, logLevels)
+        val reports = ReportExport(engine, files, offer, { reportDir(app) }, tokens, { AppInfo.of(app) }, this, io, logLevels, testFlowEvents(io))
         val started = mutableListOf<Intent>()
         shareReport(AppReportExporter(app, reports, io)) { started += it }
         assertEquals(1, started.size)

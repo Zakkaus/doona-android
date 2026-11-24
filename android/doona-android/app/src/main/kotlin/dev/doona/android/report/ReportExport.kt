@@ -58,8 +58,8 @@ class ReportExport(
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
     private val logLevels: LogLevelController,
+    private val flowEvents: FlowEvents,
     private val ownAddresses: () -> List<InetAddress> = { emptyList() },
-    private val flowEvents: FlowEvents? = null,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     /** Held while a zip is written and published, and while [sweep] removes parts: it never takes one being written. */
@@ -79,8 +79,14 @@ class ReportExport(
         offer.dismiss()
         logLevels.expireIfDue()
         val core = engine.diagnostics()
-        flowEvents?.recordRecent()
-        val events = AppEvents.snapshot()
+        val flows = if (options.showVisitedDomains || options.showAppNames) {
+            flowEvents.recordRecent()
+            flowEvents.snapshot()
+        } else {
+            emptyList()
+        }
+        val appEvents = AppEvents.snapshot()
+        val events = if (flows.isEmpty()) appEvents else (appEvents + flows).sortedBy(AppEvent::atEpochMs)
         val catalog = engine.catalog.value
         val members = catalog?.nodeMembers().orEmpty()
         val endpoints = if (options.showNodeEndpoints && members.isNotEmpty()) {

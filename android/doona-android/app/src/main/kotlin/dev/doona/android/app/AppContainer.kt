@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteException
 import android.net.ConnectivityManager
 import android.os.Build
-import android.os.Process
 import android.os.SystemClock
 import androidx.work.WorkManager
 import dev.doona.android.data.network.networkState
@@ -131,13 +130,13 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     val crashOffer: CrashOffer by lazy { CrashOffer(crashFiles) { File(application.noBackupFilesDir, "crash-offered") } }
 
     private val flowEvents by lazy {
-        val connectivity by lazy { application.getSystemService(ConnectivityManager::class.java) }
-        val packages by lazy { application.packageManager }
+        val connectivity = checkNotNull(application.getSystemService(ConnectivityManager::class.java))
+        val lookup = connectivity::getConnectionOwnerUid
         FlowEvents(
             engine,
             Dispatchers.IO,
-            { protocol, local, remote -> connectivity?.connectionOwnerUid(protocol, local, remote) ?: Process.INVALID_UID },
-            { uid -> packages.getPackagesForUid(uid) },
+            { protocol, local, remote -> connectionOwnerUid(protocol, local, remote, lookup) },
+            application.packageManager::getPackagesForUid,
         )
     }
 

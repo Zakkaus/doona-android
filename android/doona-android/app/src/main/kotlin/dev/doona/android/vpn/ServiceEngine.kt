@@ -36,8 +36,6 @@ import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
 import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
-import dev.doona.android.report.AppEventLevel
-import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineDispatcher
@@ -159,8 +157,8 @@ class ServiceEngine internal constructor(
     }
 
     /** The library lacks a function `init` did not need: the core is shown as if `init` had failed, and takes no more calls. */
-    private fun unlinked(name: String, e: LinkageError, warn: (String) -> Unit = VpnLog::warn) {
-        warn("$name threw ${e.javaClass.simpleName}")
+    private fun unlinked(name: String, e: LinkageError) {
+        VpnLog.warn("$name threw ${e.javaClass.simpleName}")
         opener.disable()
         unusable(FailureReason.StartFailed)
     }
@@ -300,8 +298,8 @@ class ServiceEngine internal constructor(
             .map { it.dto.toCoreDiagnostics(it.json) }
 
     override suspend fun recentFlows(): Result<List<RecentFlow>> {
-        if (status.value !is Status.Running) return Result.success(emptyList())
-        return call("recentFlows", "{}", RecentFlowsDto.serializer()) { AppEvents.record(AppEventLevel.Warn, it) }
+        if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
+        return call("recentFlows", "{}", RecentFlowsDto.serializer())
             .map(RecentFlowsDto::toRecentFlows)
     }
 
@@ -410,12 +408,7 @@ class ServiceEngine internal constructor(
         }
     }
 
-    private suspend fun <R> call(
-        name: String,
-        argsJson: String,
-        result: DeserializationStrategy<R>,
-        warn: (String) -> Unit = VpnLog::warn,
-    ): Result<R> {
+    private suspend fun <R> call(name: String, argsJson: String, result: DeserializationStrategy<R>): Result<R> {
         val outcome = try {
             Result.success(withContext(io) { CoreJson.result(core.call(name, argsJson), result) })
         } catch (e: CancellationException) {
@@ -423,10 +416,10 @@ class ServiceEngine internal constructor(
         } catch (e: EngineException) {
             Result.failure(e)
         } catch (e: Exception) {
-            warn("$name reply unreadable: ${e.javaClass.simpleName}")
+            VpnLog.warn("$name reply unreadable: ${e.javaClass.simpleName}")
             Result.failure(EngineException(ErrorCode.Internal))
         } catch (e: LinkageError) {
-            unlinked(name, e, warn)
+            unlinked(name, e)
             Result.failure(EngineException(ErrorCode.Internal))
         }
         return outcome

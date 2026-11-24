@@ -1,5 +1,6 @@
 package dev.doona.android.report
 
+import android.os.Process
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.Engine
@@ -13,6 +14,7 @@ import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -78,11 +80,11 @@ abstract class ExportFixture {
         scope: CoroutineScope = this,
         logLevels: LogLevelController = LogLevelController(engine::setLogLevel, scope) { testScheduler.currentTime },
         ownAddresses: () -> List<InetAddress> = { emptyList() },
-        flowEvents: FlowEvents? = null,
+        flowEvents: FlowEvents = testFlowEvents(StandardTestDispatcher(testScheduler)),
     ): ReportExport {
         val files = CrashFiles(crashDir)
         val dispatcher = StandardTestDispatcher(testScheduler)
-        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher, logLevels, ownAddresses, flowEvents) { now }
+        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher, logLevels, flowEvents, ownAddresses) { now }
     }
 
     /** Every entry of the zip, by name. */
@@ -97,6 +99,8 @@ abstract class ExportFixture {
         return CrashFiles(crashDir).list().last().name
     }
 }
+
+internal fun testFlowEvents(io: CoroutineDispatcher): FlowEvents = FlowEvents(FakeEngine(), io, { _, _, _ -> Process.INVALID_UID }, { null })
 
 /** Records the clears it is sent; the first [failures] fail, and with [hangs] none returns, as in a process that ends. */
 internal class Recording(

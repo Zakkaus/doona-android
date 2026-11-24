@@ -65,10 +65,11 @@ class EngineTelemetryTest {
     }
 
     @Test
-    fun readsRecentConnectionsOnlyWhileRunning() = runTest {
+    fun readsRecentConnectionsFromTheCore() = runTest {
         val engine = engine()
+        core.reply = """{"ok":{"flows":[]}}"""
         assertEquals(emptyList<RecentFlow>(), engine.recentFlows().getOrThrow())
-        assertTrue(core.calls.isEmpty())
+        assertEquals("recentFlows" to "{}", core.calls.single())
 
         start(engine)
         core.reply = ContractFixtures.read("call-ok-recent-flows.json")
@@ -79,7 +80,7 @@ class EngineTelemetryTest {
             ),
             engine.recentFlows().getOrThrow(),
         )
-        assertEquals("recentFlows" to "{}", core.calls.single())
+        assertEquals(listOf("recentFlows" to "{}", "recentFlows" to "{}"), core.calls)
     }
 
     @Test

@@ -26,7 +26,7 @@ class FlowEventsTest : ExportFixture() {
     fun clearEvents() = AppEvents.clear()
 
     @Test
-    fun `overlapping reads record each socket and start time once per tunnel`() = runTest {
+    fun `repeated reads record each socket and start time once per tunnel`() = runTest {
         val rows = listOf(
             FLOW.copy(name = "other-protocol.example", protocol = "udp"),
             FLOW.copy(name = "other-local.example", local = "172.19.0.2:41002"),
@@ -40,13 +40,13 @@ class FlowEventsTest : ExportFixture() {
         engine.recentFlowRows = rows.map { it.copy(open = false) }
         producer.recordRecent()
         val names = rows.asReversed().map { it.name }
-        assertEquals(names, AppEvents.snapshot().map { it.visitedDomain })
+        assertEquals(names, producer.snapshot().map { it.visitedDomain })
 
         engine.disconnect()
         engine.connect()
         engine.recentFlowRows = listOf(FLOW)
         producer.recordRecent()
-        assertEquals(names + FLOW.name, AppEvents.snapshot().map { it.visitedDomain })
+        assertEquals(names + FLOW.name, producer.snapshot().map { it.visitedDomain })
     }
 
     @Test
@@ -60,21 +60,23 @@ class FlowEventsTest : ExportFixture() {
         }, { arrayOf("com.zulu.app", PACKAGE) })
         producer.recordRecent()
         assertEquals(listOf(FLOW.local to FLOW.remote), lookups)
-        assertEquals(listOf(closed.name to null, FLOW.name to PACKAGE), AppEvents.snapshot().map { it.visitedDomain to it.appPackage })
+        assertEquals(listOf(closed.name to null, FLOW.name to PACKAGE), producer.snapshot().map { it.visitedDomain to it.appPackage })
     }
 
     @Test
     fun `a denied lookup still records the flow without a package`() = runTest {
         val engine = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
-        producer(engine, { _, _, _ -> throw SecurityException("VPN lost") }, { arrayOf(PACKAGE) }).recordRecent()
-        assertEquals(FLOW.name to null, AppEvents.snapshot().single().let { it.visitedDomain to it.appPackage })
+        val producer = producer(engine, { _, _, _ -> throw SecurityException("VPN lost") }, { arrayOf(PACKAGE) })
+        producer.recordRecent()
+        assertEquals(FLOW.name to null, producer.snapshot().single().let { it.visitedDomain to it.appPackage })
     }
 
     @Test
     fun `an invalid UID has no package`() = runTest {
         val engine = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
-        producer(engine, packages = { arrayOf(PACKAGE) }).recordRecent()
-        assertEquals(FLOW.name to null, AppEvents.snapshot().single().let { it.visitedDomain to it.appPackage })
+        val producer = producer(engine, packages = { arrayOf(PACKAGE) })
+        producer.recordRecent()
+        assertEquals(FLOW.name to null, producer.snapshot().single().let { it.visitedDomain to it.appPackage })
     }
 
     @Test
@@ -133,13 +135,60 @@ class FlowEventsTest : ExportFixture() {
             for (showApp in listOf(false, true)) {
                 val zip = report.build(RedactionOptions(showVisitedDomains = showDomain, showAppNames = showApp))!!
                 val text = entries(zip.file).values.joinToString("\n")
-                assertTrue("flow event missing", "flow tcp" in text)
+                assertEquals("flow event presence", showDomain || showApp, "flow tcp" in text)
                 assertEquals("visited domain", showDomain, FLOW.name!! in text)
                 assertEquals("app package", showApp, PACKAGE in text)
                 for (secret in listOf(FLOW.local, FLOW.remote, FLOW.outbound)) assertFalse(secret, secret in text)
             }
         }
     }
+
+    @Test
+    fun `exporting 128 flows preserves an earlier app warning`() = runTest {
+        val engine = fixtureEngine().apply { recentFlowRows = newerFlows() }
+        val warning = AppEvents.record(AppEventLevel.Warn, "health check: data path down")
+        repeat(198) { AppEvents.record(AppEventLevel.Info, "diagnostics: ok after 1 ms") }
+        val report = export(engine, flowEvents = producer(engine))
+        val zip = report.build(RedactionOptions(showVisitedDomains = true))!!
+        val text = entries(zip.file).getValue(ReportExport.REPORT_ENTRY)
+        assertTrue(warning.text in text)
+        assertTrue(warning in AppEvents.snapshot())
+        assertEquals(128, Regex("flow tcp").findAll(text).count())
+    }
+
+    @Test
+    fun `both switches off skip sampling and omit previously captured flows`() = runTest {
+        val fake = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
+        var reads = 0
+        val engine = object : Engine by fake {
+            override suspend fun recentFlows() = fake.recentFlows().also { reads++ }
+        }
+        val producer = producer(engine, { _, _, _ -> 10123 }, { arrayOf(PACKAGE) })
+        producer.recordRecent()
+        val zip = export(engine, flowEvents = producer).build(RedactionOptions(showVisitedDomains = false, showAppNames = false))!!
+        val text = entries(zip.file).getValue(ReportExport.REPORT_ENTRY)
+        assertEquals("core reads", 1, reads)
+        assertFalse("flow tcp" in text)
+        assertFalse(FLOW.name!! in text)
+        assertFalse(PACKAGE in text)
+    }
+
+    @Test
+    fun `a key evicted from the core ring no longer suppresses a new row`() = runTest {
+        val engine = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
+        val producer = producer(engine)
+        producer.recordRecent()
+        engine.recentFlowRows = newerFlows()
+        producer.recordRecent()
+        assertEquals(engine.recentFlowRows.asReversed().map { it.name }, producer.snapshot().map { it.visitedDomain })
+
+        val reused = FLOW.copy(name = "reused.example")
+        engine.recentFlowRows = listOf(reused) + engine.recentFlowRows.dropLast(1)
+        producer.recordRecent()
+        assertEquals(engine.recentFlowRows.asReversed().map { it.name }, producer.snapshot().map { it.visitedDomain })
+    }
+
+    private fun newerFlows() = List(128) { FLOW.copy(name = "flow-$it.example", remote = "192.0.2.2:${500 + it}") }
 
     private fun TestScope.producer(
         engine: Engine,

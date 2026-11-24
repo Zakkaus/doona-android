@@ -178,6 +178,7 @@ class ReportExportTest : ExportFixture() {
             this,
             StandardTestDispatcher(testScheduler),
             levels,
+            testFlowEvents(StandardTestDispatcher(testScheduler)),
         )
         async(building) { report.build() }.join()
         runCurrent()
@@ -251,7 +252,8 @@ class ReportExportTest : ExportFixture() {
         assertTrue(offer.offered.value)
         val engine = fixtureEngine()
         val logLevels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
-        ReportExport(engine, files, offer, { outDir }, tokens, { app }, this, StandardTestDispatcher(testScheduler), logLevels).build()
+        val io = StandardTestDispatcher(testScheduler)
+        ReportExport(engine, files, offer, { outDir }, tokens, { app }, this, io, logLevels, testFlowEvents(io)).build()
         assertFalse(offer.offered.value)
     }
 
