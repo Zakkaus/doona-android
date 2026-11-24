@@ -60,7 +60,9 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val format = rememberRvFormat()
     val times = testedAtEpochMs.map(format::time)
-    var picked by rememberSaveable(node.id) { mutableIntStateOf(node.history.lastIndex) }
+    // Only a test the user picked is kept; with none picked, or one the history no longer has, the latest is shown.
+    var choice by rememberSaveable(node.id) { mutableIntStateOf(NONE_PICKED) }
+    val picked = choice.takeIf { it in node.history.indices } ?: node.history.lastIndex
     RvScrollPage(
         node.name,
         insets,
@@ -69,7 +71,7 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
     ) { titleBlock ->
         Header(node, current, titleBlock, insets)
         RvGutter {
-            HistoryCard(node, times, picked) { picked = it }
+            HistoryCard(node, times, picked) { choice = it }
         }
         RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { StatsCard(node, times.lastOrNull() ?: RV_NO_VALUE) }
@@ -168,6 +170,9 @@ private fun Actions(current: Boolean, onUse: () -> Unit, onTest: () -> Unit, ins
 }
 
 private const val TLS = "TLS"
+
+/** No test picked by the user: the chart marks the latest. */
+private const val NONE_PICKED = -1
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
