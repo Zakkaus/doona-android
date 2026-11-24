@@ -136,13 +136,8 @@
  },
  {
   "page": "統計",
-  "state": "空（a）",
+  "state": "空",
   "screen": "stats-empty-a"
- },
- {
-  "page": "統計",
-  "state": "空（b）",
-  "screen": "stats-empty-b"
  },
  {
   "page": "統計",
