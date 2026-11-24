@@ -20,11 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.RvLargeTitle
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /** The app's languages, each named in itself, as a language list names them; [System] follows the phone's. */
 internal enum class RvLanguage(@StringRes val label: Int) {

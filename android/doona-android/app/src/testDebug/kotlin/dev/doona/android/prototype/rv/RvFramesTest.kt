@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import dev.doona.android.designsystem.rv.RvFrames
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

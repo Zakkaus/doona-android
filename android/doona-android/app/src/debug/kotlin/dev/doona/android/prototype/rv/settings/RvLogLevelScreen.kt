@@ -20,13 +20,13 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvFootnote
+import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.RvFootnote
-import dev.doona.android.prototype.rv.RvLargeTitle
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /** How long 除錯 stays before the core logs at 資訊 again; the owner sets the time (brief: say 1 hour). */
 internal const val RV_DEBUG_HOURS = 1

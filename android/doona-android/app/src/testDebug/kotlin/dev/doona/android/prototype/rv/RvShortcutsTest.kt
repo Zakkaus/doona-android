@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.prototype.rv.nodes.RV_PICKER
 import org.junit.Assert.assertEquals
 import org.junit.Rule

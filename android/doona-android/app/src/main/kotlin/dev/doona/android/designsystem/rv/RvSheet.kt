@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.designsystem.rv
 
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animate

@@ -2,8 +2,8 @@ package dev.doona.android.prototype.rv.nodes
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import dev.doona.android.prototype.rv.LocalRvTesting
-import dev.doona.android.prototype.rv.LocalRvTestingNodes
+import dev.doona.android.designsystem.rv.LocalRvTesting
+import dev.doona.android.designsystem.rv.LocalRvTestingNodes
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc

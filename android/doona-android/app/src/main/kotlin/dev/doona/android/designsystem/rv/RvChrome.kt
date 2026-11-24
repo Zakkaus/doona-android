@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.designsystem.rv
 
 import android.os.Trace
 import androidx.annotation.DrawableRes

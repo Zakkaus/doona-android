@@ -8,6 +8,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.TextUnit
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NAV
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.RvTypeScale
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import org.junit.Assert.assertEquals

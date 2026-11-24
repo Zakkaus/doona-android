@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv.data
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvPlace
 
 /**
  * How a node list orders its rows (the picker under 全域, the main node's picker). 延遲, 穩定 and 名稱 order the nodes inside

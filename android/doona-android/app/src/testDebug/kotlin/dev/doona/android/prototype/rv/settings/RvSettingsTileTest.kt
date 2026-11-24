@@ -19,10 +19,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvInfoContent
+import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
-import dev.doona.android.prototype.rv.RvInfoContent
-import dev.doona.android.prototype.rv.RvSheetLayout
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot

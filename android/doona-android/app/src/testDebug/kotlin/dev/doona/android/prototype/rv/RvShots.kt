@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.PhoneFrame
 import dev.doona.android.testing.drawFully

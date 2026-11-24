@@ -8,24 +8,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvCaption
+import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvChevron
+import dev.doona.android.designsystem.rv.RvConfirmSheet
+import dev.doona.android.designsystem.rv.RvFootnote
+import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvPageHeader
+import dev.doona.android.designsystem.rv.RvPrimaryButton
+import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvTextField
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.RvCaption
-import dev.doona.android.prototype.rv.RvCard
-import dev.doona.android.prototype.rv.RvChevron
-import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvDiffFile
-import dev.doona.android.prototype.rv.RvFootnote
-import dev.doona.android.prototype.rv.RvGutter
-import dev.doona.android.prototype.rv.RvIconDisc
-import dev.doona.android.prototype.rv.RvPageHeader
-import dev.doona.android.prototype.rv.RvPrimaryButton
-import dev.doona.android.prototype.rv.RvRow
-import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSourceDiff
-import dev.doona.android.prototype.rv.RvTextField
-import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * One revision, opened from its 版本紀錄 row (config plan, history; `configDraft from: revision`): its number as the

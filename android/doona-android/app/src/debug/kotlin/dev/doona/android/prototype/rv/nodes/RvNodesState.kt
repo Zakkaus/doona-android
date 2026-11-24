@@ -1,10 +1,10 @@
 package dev.doona.android.prototype.rv.nodes
 
 import androidx.compose.runtime.Immutable
+import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.designsystem.rv.RvRegion
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvPlace
-import dev.doona.android.prototype.rv.data.RvRegion
 import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.data.steadiest
 

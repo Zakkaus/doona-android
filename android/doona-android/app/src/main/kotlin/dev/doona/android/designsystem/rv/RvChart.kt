@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.designsystem.rv
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.Crossfade
@@ -67,8 +67,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.em
-import dev.doona.android.prototype.rv.data.RvAmount
-import dev.doona.android.prototype.rv.data.RvFormat
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.roundToInt

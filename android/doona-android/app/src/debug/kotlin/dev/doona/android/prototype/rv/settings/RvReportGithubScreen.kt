@@ -21,22 +21,22 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvBannerSlot
+import dev.doona.android.designsystem.rv.RvBusy
+import dev.doona.android.designsystem.rv.RvFootnote
+import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvNoticeKind
+import dev.doona.android.designsystem.rv.RvPrimaryButton
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSecondaryButton
+import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBannerSlot
-import dev.doona.android.prototype.rv.RvBusy
-import dev.doona.android.prototype.rv.RvFootnote
-import dev.doona.android.prototype.rv.RvLargeTitle
-import dev.doona.android.prototype.rv.RvNotice
-import dev.doona.android.prototype.rv.RvNoticeKind
-import dev.doona.android.prototype.rv.RvPrimaryButton
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvSecondaryButton
-import dev.doona.android.prototype.rv.RvSize
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /** Where the report stands: being written, written with the [RvRedaction] it hides and ready to share, or not written. */
 @Immutable

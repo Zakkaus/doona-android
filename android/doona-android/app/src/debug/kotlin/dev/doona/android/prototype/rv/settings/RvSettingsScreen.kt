@@ -31,24 +31,24 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NAV_SETTINGS
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvAction
+import dev.doona.android.designsystem.rv.RvBarSpacer
+import dev.doona.android.designsystem.rv.RvFloatingNav
+import dev.doona.android.designsystem.rv.RvFootnote
+import dev.doona.android.designsystem.rv.RvInfoSheet
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvActionRowFit
+import dev.doona.android.designsystem.rv.rvBarHeight
+import dev.doona.android.designsystem.rv.rvDotMap
+import dev.doona.android.designsystem.rv.rvNavClearance
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
-import dev.doona.android.prototype.rv.RV_NAV_SETTINGS
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvAction
-import dev.doona.android.prototype.rv.RvBarSpacer
-import dev.doona.android.prototype.rv.RvFloatingNav
-import dev.doona.android.prototype.rv.RvFootnote
-import dev.doona.android.prototype.rv.RvInfoSheet
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvActionRowFit
-import dev.doona.android.prototype.rv.rvBarHeight
-import dev.doona.android.prototype.rv.rvDotMap
 import dev.doona.android.prototype.rv.rvHeroArt
-import dev.doona.android.prototype.rv.rvNavClearance
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * The 設定 tab in Revolut's settings language (§13, with the Security page's hero), the owner's S1 (rv-fix-4e): the

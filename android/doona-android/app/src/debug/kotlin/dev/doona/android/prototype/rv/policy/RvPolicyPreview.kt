@@ -5,7 +5,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import dev.doona.android.prototype.rv.RV_NAV_POLICY
+import dev.doona.android.designsystem.rv.RV_NAV_POLICY
 import dev.doona.android.prototype.rv.SEARCH
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort

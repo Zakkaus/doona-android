@@ -17,11 +17,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvConfirmContent
+import dev.doona.android.designsystem.rv.RvMenuPanel
+import dev.doona.android.designsystem.rv.RvSheetLayout
+import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RvActivityScreen
-import dev.doona.android.prototype.rv.RvConfirmContent
-import dev.doona.android.prototype.rv.RvMenuPanel
-import dev.doona.android.prototype.rv.RvSheetLayout
-import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole

@@ -3,6 +3,9 @@ package dev.doona.android.prototype.rv
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
+import dev.doona.android.designsystem.rv.RvColors
+import dev.doona.android.designsystem.rv.RvContrast
+import dev.doona.android.designsystem.rv.rvContrast
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

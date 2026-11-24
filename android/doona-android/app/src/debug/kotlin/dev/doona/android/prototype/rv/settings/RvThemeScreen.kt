@@ -41,18 +41,18 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvChrome
+import dev.doona.android.designsystem.rv.RvColors
+import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvPressSelect
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvChrome
-import dev.doona.android.prototype.rv.RvColors
-import dev.doona.android.prototype.rv.RvLargeTitle
-import dev.doona.android.prototype.rv.RvRadio
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvSize
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvPressSelect
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * The page 主題 opens, after Revolut's Appearance page (Addendum A): a large title that collapses into the bar, then three

@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.designsystem.rv
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.util.fastForEach
-import dev.doona.android.prototype.rv.data.RvPlace
 import kotlin.math.floor
 
 /** [RvLandMask] decoded once: true where a cell holds land, less every piece of land too small to read as one (N-09). */

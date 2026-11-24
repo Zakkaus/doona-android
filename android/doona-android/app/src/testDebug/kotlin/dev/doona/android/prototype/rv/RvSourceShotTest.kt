@@ -16,6 +16,13 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvSourceField
+import dev.doona.android.designsystem.rv.RvSourceMark
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvBlankColumns
+import dev.doona.android.designsystem.rv.rvUtf16Index
 import dev.doona.android.prototype.rv.gallery.RV_GALLERY_SOURCE
 import dev.doona.android.prototype.rv.gallery.RvGalleryCode
 import dev.doona.android.prototype.rv.gallery.RvGalleryDiff

@@ -21,15 +21,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvChevron
+import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvRowPress
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
-import dev.doona.android.prototype.rv.RvChevron
-import dev.doona.android.prototype.rv.RvLargeTitle
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.rvRowPress
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * The intervals doona web offers for a subscription (`features/nodes/subscription.ts`: 1, 6, 12 and 24 hours), in

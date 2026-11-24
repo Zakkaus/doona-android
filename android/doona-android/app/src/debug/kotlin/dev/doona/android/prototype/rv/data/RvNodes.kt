@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.data
 
 import androidx.compose.runtime.Immutable
+import dev.doona.android.designsystem.rv.RvPlace
 import java.net.URLEncoder
 import java.util.Random
 import kotlin.math.roundToInt

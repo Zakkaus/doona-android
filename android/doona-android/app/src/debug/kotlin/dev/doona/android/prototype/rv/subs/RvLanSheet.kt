@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
-import dev.doona.android.prototype.rv.RvConfirmSheet
+import dev.doona.android.designsystem.rv.RvConfirmSheet
 
 /**
  * The local network prompts of main's flow (`feature/localnetwork`), in the sample's sheet: [Ask] says why before

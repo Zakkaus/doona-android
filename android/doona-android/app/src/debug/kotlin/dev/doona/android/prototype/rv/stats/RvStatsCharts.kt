@@ -29,17 +29,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import dev.doona.android.designsystem.components.latencyTone
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvChartSize
-import dev.doona.android.prototype.rv.RvPillInk
-import dev.doona.android.prototype.rv.RvText
-import dev.doona.android.prototype.rv.RvUsageSize
-import dev.doona.android.prototype.rv.rvChartMarker
-import dev.doona.android.prototype.rv.rvLatencyAxisTop
-import dev.doona.android.prototype.rv.rvMarkerChip
-import dev.doona.android.prototype.rv.rvPillSize
-import dev.doona.android.prototype.rv.rvValuePill
-import dev.doona.android.prototype.rv.scripted
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvChartSize
+import dev.doona.android.designsystem.rv.RvPillInk
+import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.RvUsageSize
+import dev.doona.android.designsystem.rv.rvChartMarker
+import dev.doona.android.designsystem.rv.rvLatencyAxisTop
+import dev.doona.android.designsystem.rv.rvMarkerChip
+import dev.doona.android.designsystem.rv.rvPillSize
+import dev.doona.android.designsystem.rv.rvValuePill
+import dev.doona.android.designsystem.rv.scripted
 import kotlin.math.abs
 
 /** An empty chart (Addendum A): the grid alone with a short [line] on it; never bars that were not measured. */

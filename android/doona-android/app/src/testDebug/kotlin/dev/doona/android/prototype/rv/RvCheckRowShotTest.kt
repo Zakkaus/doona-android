@@ -16,6 +16,10 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.gallery.RvGalleryChecks
 import org.junit.Rule
 import org.junit.Test

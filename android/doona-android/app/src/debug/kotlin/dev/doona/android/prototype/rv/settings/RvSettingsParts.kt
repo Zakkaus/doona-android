@@ -26,26 +26,26 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import dev.doona.android.prototype.rv.RV_ROW_SUBTITLE_LINES
-import dev.doona.android.prototype.rv.RV_ROW_TITLE_LINES
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvCard
-import dev.doona.android.prototype.rv.RvChevron
-import dev.doona.android.prototype.rv.RvCodeText
-import dev.doona.android.prototype.rv.RvGlyph
-import dev.doona.android.prototype.rv.RvPart
-import dev.doona.android.prototype.rv.RvRadio
-import dev.doona.android.prototype.rv.RvSectionTitle
-import dev.doona.android.prototype.rv.RvSize
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvSpanText
-import dev.doona.android.prototype.rv.RvSwitch
-import dev.doona.android.prototype.rv.RvText
-import dev.doona.android.prototype.rv.rvOneLine
-import dev.doona.android.prototype.rv.rvRowPress
-import dev.doona.android.prototype.rv.rvRowSelect
-import dev.doona.android.prototype.rv.rvRowToggle
-import dev.doona.android.prototype.rv.scripted
+import dev.doona.android.designsystem.rv.RV_ROW_SUBTITLE_LINES
+import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvChevron
+import dev.doona.android.designsystem.rv.RvCodeText
+import dev.doona.android.designsystem.rv.RvGlyph
+import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvSectionTitle
+import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvSpanText
+import dev.doona.android.designsystem.rv.RvSwitch
+import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.rvOneLine
+import dev.doona.android.designsystem.rv.rvRowPress
+import dev.doona.android.designsystem.rv.rvRowSelect
+import dev.doona.android.designsystem.rv.rvRowToggle
+import dev.doona.android.designsystem.rv.scripted
 
 /** Text in a role; CJK runs in Noto, the rest in Inter. [maxLines] defaults to one, ending in an ellipsis. */
 @Composable

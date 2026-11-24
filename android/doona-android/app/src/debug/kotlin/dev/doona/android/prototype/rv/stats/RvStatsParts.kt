@@ -25,13 +25,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvFigure
-import dev.doona.android.prototype.rv.RvSize
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvSpanText
-import dev.doona.android.prototype.rv.rvTabSelect
-import dev.doona.android.prototype.rv.scripted
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvFigure
+import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvSpanText
+import dev.doona.android.designsystem.rv.rvTabSelect
+import dev.doona.android.designsystem.rv.scripted
 
 /** A card's figure: the number in [style], its unit in [unitStyle] on the same baseline. */
 @Composable

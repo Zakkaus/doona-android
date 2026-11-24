@@ -19,6 +19,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.height
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rememberRvReorderState
+import dev.doona.android.designsystem.rv.rvReorder
+import dev.doona.android.designsystem.rv.rvReorderViewport
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

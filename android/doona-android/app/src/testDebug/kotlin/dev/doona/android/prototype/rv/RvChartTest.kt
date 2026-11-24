@@ -13,6 +13,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_CHART
+import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RvData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

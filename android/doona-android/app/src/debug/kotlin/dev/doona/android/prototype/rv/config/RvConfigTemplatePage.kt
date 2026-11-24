@@ -16,28 +16,28 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvCaption
+import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvFlag
+import dev.doona.android.designsystem.rv.RvFootnote
+import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvPageHeader
+import dev.doona.android.designsystem.rv.RvPrimaryButton
+import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSectionTitle
+import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvStatRow
+import dev.doona.android.designsystem.rv.RvSwitchRow
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.RvCaption
-import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvDiffAt
-import dev.doona.android.prototype.rv.RvFlag
-import dev.doona.android.prototype.rv.RvFootnote
-import dev.doona.android.prototype.rv.RvGutter
-import dev.doona.android.prototype.rv.RvIconDisc
-import dev.doona.android.prototype.rv.RvLargeTitle
-import dev.doona.android.prototype.rv.RvPageHeader
-import dev.doona.android.prototype.rv.RvPrimaryButton
-import dev.doona.android.prototype.rv.RvRow
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvSectionTitle
-import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSourceDiff
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvStatRow
-import dev.doona.android.prototype.rv.RvSwitchRow
-import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.policy.RvTemplateRow
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * 範本 on the configuration side (doona's routing templates; `configDraft from: template`): doona's three templates that

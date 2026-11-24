@@ -4,12 +4,12 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityUiState
-import dev.doona.android.prototype.rv.RvNotice
-import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.rvIdleActivity
 
 /**

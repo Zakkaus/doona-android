@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import dev.doona.android.designsystem.rv.LocalRvTesting
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test

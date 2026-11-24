@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv.data
 
+import dev.doona.android.designsystem.rv.RvPlace
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -6,7 +6,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.doona.android.prototype.rv.RvInter
+import dev.doona.android.designsystem.rv.RvInter
 
 // Raw values of the settings sample, from revolut-android-measured.md §13 (Pixel, 1 dp = 2.55 px, so they hold at any
 // screen width). Only the components of this folder read them.

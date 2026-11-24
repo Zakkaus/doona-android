@@ -19,19 +19,19 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvDots
+import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvHeader
+import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvPrimaryButton
+import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvCard
-import dev.doona.android.prototype.rv.RvDots
-import dev.doona.android.prototype.rv.RvGutter
-import dev.doona.android.prototype.rv.RvHeader
-import dev.doona.android.prototype.rv.RvIconDisc
-import dev.doona.android.prototype.rv.RvPrimaryButton
-import dev.doona.android.prototype.rv.RvRow
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvSize
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvText
 
 /**
  * The first run: one page saying what doona does, and 新增訂閱. 活動's header, idle (the grey dot map, no place marked),

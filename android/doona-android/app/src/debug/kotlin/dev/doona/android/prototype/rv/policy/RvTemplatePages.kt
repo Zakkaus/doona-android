@@ -16,26 +16,26 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvAlpha
+import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvFootnote
+import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvPrimaryButton
+import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSectionTitle
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvStatRow
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvRowSelect
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvAlpha
-import dev.doona.android.prototype.rv.RvCard
-import dev.doona.android.prototype.rv.RvFootnote
-import dev.doona.android.prototype.rv.RvGutter
-import dev.doona.android.prototype.rv.RvIconDisc
-import dev.doona.android.prototype.rv.RvLargeTitle
-import dev.doona.android.prototype.rv.RvPrimaryButton
-import dev.doona.android.prototype.rv.RvRadio
-import dev.doona.android.prototype.rv.RvRow
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvSectionTitle
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvStatRow
-import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.config.rvConfigPhrase
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
-import dev.doona.android.prototype.rv.rvRowSelect
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
  * 範本 (the 策略 options row), doona web's routing modes on a phone: one card of templates, each its glyph, its name over

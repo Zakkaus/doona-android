@@ -2,6 +2,21 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import dev.doona.android.designsystem.rv.RvAlpha
+import dev.doona.android.designsystem.rv.RvCodeHue
+import dev.doona.android.designsystem.rv.RvCodeKind
+import dev.doona.android.designsystem.rv.RvCodeShown
+import dev.doona.android.designsystem.rv.RvCodeSpan
+import dev.doona.android.designsystem.rv.RvCodeToken
+import dev.doona.android.designsystem.rv.RvColors
+import dev.doona.android.designsystem.rv.RvContrast
+import dev.doona.android.designsystem.rv.RvHue
+import dev.doona.android.designsystem.rv.rvCodeBreaks
+import dev.doona.android.designsystem.rv.rvCodeColors
+import dev.doona.android.designsystem.rv.rvCodeSpans
+import dev.doona.android.designsystem.rv.rvCodeText
+import dev.doona.android.designsystem.rv.rvCodeTokens
+import dev.doona.android.designsystem.rv.rvContrast
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

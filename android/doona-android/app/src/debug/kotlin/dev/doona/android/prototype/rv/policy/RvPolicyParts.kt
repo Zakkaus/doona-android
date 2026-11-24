@@ -11,20 +11,20 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
-import dev.doona.android.prototype.rv.RV_NO_VALUE
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvCard
-import dev.doona.android.prototype.rv.RvFlag
-import dev.doona.android.prototype.rv.RvIconDisc
-import dev.doona.android.prototype.rv.RvRadio
-import dev.doona.android.prototype.rv.RvRow
-import dev.doona.android.prototype.rv.RvSeeAll
-import dev.doona.android.prototype.rv.RvSize
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvText
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvFlag
+import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvSeeAll
+import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
-import dev.doona.android.prototype.rv.rememberRvFormat
-import dev.doona.android.prototype.rv.rvRowSelect
 
 /**
  * Where a rule or a picked target sends traffic, as 活動's rule rows draw it: the flag of the node the group uses, or

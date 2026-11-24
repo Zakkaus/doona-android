@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.data
+package dev.doona.android.designsystem.rv
 
 import androidx.annotation.StringRes
 import dev.doona.android.R

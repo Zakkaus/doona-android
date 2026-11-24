@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.designsystem.rv
 
 import android.icu.text.BreakIterator
 import androidx.compose.foundation.layout.height

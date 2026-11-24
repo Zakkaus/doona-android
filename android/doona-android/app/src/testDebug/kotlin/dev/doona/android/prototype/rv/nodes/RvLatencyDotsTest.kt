@@ -17,7 +17,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.latencyTone
-import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvText
 import org.junit.Assert.assertEquals

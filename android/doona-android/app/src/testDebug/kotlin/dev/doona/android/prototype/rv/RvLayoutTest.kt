@@ -11,6 +11,13 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.toSize
+import dev.doona.android.designsystem.rv.RvChartSize
+import dev.doona.android.designsystem.rv.RvChrome
+import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail

@@ -16,6 +16,9 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.rvLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule

@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.designsystem.rv
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
@@ -77,8 +77,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.core.graphics.drawable.toBitmap
 import dev.doona.android.R
-import dev.doona.android.prototype.rv.data.RvAmount
-import dev.doona.android.prototype.rv.data.RvPlace
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.max

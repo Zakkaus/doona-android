@@ -27,19 +27,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_ROW_SUBTITLE_LINES
+import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvAction
+import dev.doona.android.designsystem.rv.RvBannerSlot
+import dev.doona.android.designsystem.rv.RvBarSpacer
+import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvActionRowFit
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
-import dev.doona.android.prototype.rv.RV_ROW_SUBTITLE_LINES
-import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvAction
-import dev.doona.android.prototype.rv.RvBannerSlot
-import dev.doona.android.prototype.rv.RvBarSpacer
-import dev.doona.android.prototype.rv.RvScrollPage
-import dev.doona.android.prototype.rv.RvSpace
-import dev.doona.android.prototype.rv.RvText
-import dev.doona.android.prototype.rv.RvTheme
-import dev.doona.android.prototype.rv.rvActionRowFit
-import dev.doona.android.prototype.rv.rvSystemScheme
 
 /** The versions 關於 names: the app's, the core's, and the honk revision the core is built on, short. */
 @Immutable
