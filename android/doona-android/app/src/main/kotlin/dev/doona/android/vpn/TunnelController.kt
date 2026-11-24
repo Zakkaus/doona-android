@@ -1,5 +1,6 @@
 package dev.doona.android.vpn
 
+import android.os.SystemClock
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
@@ -10,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +50,7 @@ internal class TunnelController(
     private val expireDebugCapture: () -> Job?,
     private val startBoundMs: Long = START_BOUND_MS,
     private val stopDeadlineMs: Long = STOP_DEADLINE_MS,
-    private val clock: () -> Long = System::currentTimeMillis,
+    private val clock: () -> Long = SystemClock::elapsedRealtime,
 ) {
     private val _status = MutableStateFlow<Status>(Status.Stopped)
     val status: StateFlow<Status> = _status.asStateFlow()
@@ -63,19 +65,30 @@ internal class TunnelController(
     private var cancelSystemRestart: (() -> Unit)? = null // Guarded by lock; null for app starts.
     private var recovery: Job? = null // Guarded by lock; set only while waiting to retry.
     private var recoveryDelayMs = FIRST_RECOVERY_DELAY_MS // Guarded by lock.
+    private var runningSinceMs = 0L // Guarded by lock; elapsed time at the last Running publication.
     private val commands = Channel<Command>(Channel.UNLIMITED)
 
     private var coreRunning = false // Touched only by run().
     private var bootstrapDns = emptyList<String>() // Touched only by run(), like coreRunning.
+    private var pendingBootstrapDns: List<String>? = null // Touched only by run().
 
     private var handled = 0L // Guarded by lock; written only by run(): the generation of the last command it finished.
 
     /** Executes commands in order until cancelled. The owner launches it once, off the main thread. */
-    suspend fun run() {
+    suspend fun run(): Unit = coroutineScope {
+        launch {
+            if (opener.awaitSchema() == CORE_SCHEMA) commands.send(Command.CoreOpened)
+        }
         for (command in commands) {
             val commandGeneration = when (command) {
                 is Command.RefreshDns -> {
-                    if (command.servers != bootstrapDns && opener.schema() == CORE_SCHEMA) applyBootstrapDns(command.servers)
+                    pendingBootstrapDns = command.servers
+                    applyPendingBootstrapDns()
+                    continue
+                }
+
+                Command.CoreOpened -> {
+                    applyPendingBootstrapDns()
                     continue
                 }
 
@@ -167,30 +180,23 @@ internal class TunnelController(
 
     /** Only the observed generation may fail; two generations may have the same running timestamp. */
     fun coreStopped(observed: Session) = close(
-        accept = { _session.value == observed },
+        accept = { it is Status.Running && _session.value == observed },
         terminal = Status.Failed(FailureReason.CoreStopped),
         recover = true,
     )
 
-    /** Poll while running as Settings can enable lockdown without sending a new start. */
-    fun checkLockdown(observed: Session): Boolean {
-        val currentHost = synchronized(lock) { host.takeIf { _session.value == observed } } ?: return false
-        if (!currentHost.lockdownEnabled) return false
-        close(accept = { _session.value == observed }, Status.Failed(FailureReason.StartFailed), startBlock = VpnStartBlock.Lockdown)
-        return true
-    }
-
-    private fun close(accept: (Status) -> Boolean, terminal: Status, recover: Boolean = false, startBlock: VpnStartBlock? = null) {
+    private fun close(accept: (Status) -> Boolean, terminal: Status, recover: Boolean = false) {
         var cancelRestart: (() -> Unit)? = null
         val g = submit(Status.Stopping, accept) { g ->
             if (!recover) {
-                // The service posts a policy refusal before it stops itself.
-                if (startBlock == null) cancelRestart = cancelSystemRestart
+                cancelRestart = cancelSystemRestart
                 cancelSystemRestart = null
                 recovery?.cancel()
                 recovery = null
+            } else if (cancelSystemRestart != null && clock() - runningSinceMs >= STABLE_SESSION_MS) {
+                recoveryDelayMs = FIRST_RECOVERY_DELAY_MS
             }
-            Command.Close(g, terminal, startBlock, recover && cancelSystemRestart != null)
+            Command.Close(g, terminal, recover && cancelSystemRestart != null)
         } ?: return
         cancelRestart?.invoke()
         // A start that never returns holds the runner, so the stop's own watchdog may never be armed. The runner gets
@@ -212,7 +218,7 @@ internal class TunnelController(
             scheduleRecovery(command.generation, command.terminal)
         } else {
             host = null
-            show(command.generation, command.terminal, command.startBlock)
+            show(command.generation, command.terminal)
         }
     }
 
@@ -252,13 +258,16 @@ internal class TunnelController(
     private fun publish(g: Long, status: Status, startBlock: VpnStartBlock? = null): Boolean = synchronized(lock) {
         (g == generation).also { current ->
             if (current) {
-                if (status is Status.Failed && startBlock == null && cancelSystemRestart != null) {
+                if (status is Status.Failed && startBlock == null && cancelSystemRestart != null &&
+                    status.reason != FailureReason.IncompatibleCore && status.reason != FailureReason.NoAllowedApps
+                ) {
                     scheduleRecovery(g, status)
                 } else {
                     if (status.ended) {
                         host = null
                         cancelSystemRestart = null
                     }
+                    if (status is Status.Running) runningSinceMs = clock()
                     show(g, status, startBlock)
                 }
             }
@@ -277,7 +286,7 @@ internal class TunnelController(
         val (g, host) = command
         val begun = System.nanoTime()
         val failure = try {
-            val block = if (host.lockdownEnabled) VpnStartBlock.Lockdown else command.startBlock
+            val block = command.startBlock
             if (block != null) {
                 VpnLog.action("start", "complete", "failed", block.name)
                 publish(g, Status.Failed(FailureReason.StartFailed), block)
@@ -298,7 +307,7 @@ internal class TunnelController(
                 publish(g, failure)
             }
 
-            publish(g, Status.Running(clock())) -> VpnLog.action("start", "complete", "ok", "ok", ms)
+            publish(g, Status.Running(System.currentTimeMillis())) -> VpnLog.action("start", "complete", "ok", "ok", ms)
 
             else -> {
                 VpnLog.action("start", "complete", "superseded", "ok", ms)
@@ -315,7 +324,7 @@ internal class TunnelController(
         val mtu = host.mtu
         expireDebugCapture()?.join()
         if (!isCurrent(g)) return null
-        val servers = host.bootstrapDns()
+        val servers = host.bootstrapDns().ifEmpty { pendingBootstrapDns ?: bootstrapDns }
         val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(servers, mtu))
         val tun = host.establish(routing, mtu) ?: return Status.Failed(FailureReason.StartFailed)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
@@ -331,7 +340,15 @@ internal class TunnelController(
         }
         coreRunning = true
         bootstrapDns = servers
+        pendingBootstrapDns = null
         return null
+    }
+
+    private fun applyPendingBootstrapDns() {
+        val servers = pendingBootstrapDns ?: return
+        if (opener.openedSchema != CORE_SCHEMA) return
+        pendingBootstrapDns = null
+        if (servers != bootstrapDns) applyBootstrapDns(servers)
     }
 
     private fun applyBootstrapDns(servers: List<String>) {
@@ -341,8 +358,7 @@ internal class TunnelController(
             CoreJson.result(core.call(name, args), Unit.serializer())
             bootstrapDns = servers
         } catch (e: EngineException) {
-            val code = if (e.code == ErrorCode.InvalidArgument) "invalid_argument" else e.code.name
-            VpnLog.action(name, "complete", "failed", code)
+            VpnLog.action(name, "complete", "failed", e.code.name)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -384,9 +400,11 @@ internal class TunnelController(
     private sealed interface Command {
         data class Open(val generation: Long, val host: TunHost, val startBlock: VpnStartBlock? = null) : Command
 
-        data class Close(val generation: Long, val terminal: Status, val startBlock: VpnStartBlock?, val recover: Boolean) : Command
+        data class Close(val generation: Long, val terminal: Status, val recover: Boolean) : Command
 
         data class RefreshDns(val servers: List<String>) : Command
+
+        data object CoreOpened : Command
     }
 
     companion object {
@@ -395,5 +413,6 @@ internal class TunnelController(
         const val STOP_DEADLINE_MS = 5_000L
         private const val FIRST_RECOVERY_DELAY_MS = 1_000L
         private const val MAX_RECOVERY_DELAY_MS = 60_000L
+        private const val STABLE_SESSION_MS = 60_000L
     }
 }

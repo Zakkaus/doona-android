@@ -25,9 +25,9 @@ pub enum ErrorCode {
     NoNodes,
     Busy,
     Internal,
-    /// A dial or a fetch failed and its target was an address on the local network, which
-    /// Android 17 lets doona reach only with `ACCESS_LOCAL_NETWORK` (ARCH D26).
+    /// A local-network dial or fetch failed (Android 17 `ACCESS_LOCAL_NETWORK`, ARCH D26).
     LocalNetwork,
+    DnsFailed,
 }
 
 impl ErrorCode {
@@ -42,6 +42,7 @@ impl ErrorCode {
             ErrorCode::Busy => "busy",
             ErrorCode::Internal => "internal",
             ErrorCode::LocalNetwork => "local_network",
+            ErrorCode::DnsFailed => "dns_failed",
         }
     }
 }
@@ -340,8 +341,7 @@ pub struct Member {
     pub name: String,
     pub latency_ms: Option<u32>,
     pub failed: bool,
-    /// Why the last probe failed, when the core knows: `local_network` when it was refused on its
-    /// way to the node at an address on the local network. Null otherwise, and for groups.
+    /// Why the last probe failed, if known: `dns_failed` or `local_network`.
     pub error: Option<ErrorCode>,
     pub is_group: bool,
     pub subscription_id: Option<String>,

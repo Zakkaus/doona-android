@@ -11,7 +11,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import dev.doona.android.R
 import dev.doona.android.app.DoonaApplication
-import dev.doona.android.data.network.bootstrapServers
+import dev.doona.android.data.network.activeBootstrapDns
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Traffic
@@ -140,8 +140,6 @@ internal class DoonaVpnService :
 
     override val mtu: Int get() = tunMtu()
 
-    override val lockdownEnabled: Boolean get() = isLockdownEnabled
-
     override fun installed(packages: Set<String>): Set<String> = packages.filterTo(mutableSetOf()) { name ->
         try {
             @Suppress("DEPRECATION") // The flags overload needs API 33.
@@ -152,7 +150,7 @@ internal class DoonaVpnService :
         }
     }
 
-    override fun bootstrapDns(): List<String> = connectivity.getLinkProperties(connectivity.activeNetwork)?.bootstrapServers().orEmpty()
+    override fun bootstrapDns(): List<String> = connectivity.activeBootstrapDns()
 
     override fun establish(routing: AppRouting, mtu: Int): Tun? {
         if (!foreground) return null

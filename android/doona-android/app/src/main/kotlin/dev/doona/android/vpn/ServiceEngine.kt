@@ -2,11 +2,9 @@ package dev.doona.android.vpn
 
 import android.content.Context
 import android.net.ConnectivityManager
-import android.net.LinkProperties
-import android.net.Network
 import android.os.Process
 import android.os.SystemClock
-import dev.doona.android.data.network.bootstrapServers
+import dev.doona.android.data.network.followBootstrapDns
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.CoreDiagnostics
@@ -43,7 +41,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -94,9 +91,6 @@ class ServiceEngine internal constructor(
     override val ready: StateFlow<Boolean> = _ready.asStateFlow()
     override val status: StateFlow<Status> get() = controller.status
 
-    /** Platform start refusal; null for other session outcomes. */
-    val startBlock = controller.session.map { it.startBlock }.distinctUntilChanged()
-
     private val _traffic = MutableStateFlow(Traffic())
     override val traffic: StateFlow<Traffic> = _traffic.asStateFlow()
     private val _today = MutableStateFlow(TodayTraffic())
@@ -132,26 +126,15 @@ class ServiceEngine internal constructor(
     internal fun launch(lane: CoroutineDispatcher, connectivity: ConnectivityManager? = null) {
         scope.launch(lane) { controller.run() }
         scope.launch { open() }
-        if (connectivity != null) scope.launch(start = CoroutineStart.UNDISPATCHED) { followBootstrapDns(connectivity) }
+        if (connectivity != null) {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                connectivity.followBootstrapDns(controller::refreshBootstrapDns)
+            }
+        }
         scope.launch { followPerApp() }
         scope.launch { checkHealth() }
         scope.launch { sampleTraffic() }
         scope.launch { followProbes() }
-    }
-
-    private suspend fun followBootstrapDns(connectivity: ConnectivityManager) {
-        // AppRouting excludes doona; its default network is outside the VPN even while connected.
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
-                controller.refreshBootstrapDns(linkProperties.bootstrapServers())
-            }
-        }
-        connectivity.registerDefaultNetworkCallback(callback)
-        try {
-            awaitCancellation()
-        } finally {
-            connectivity.unregisterNetworkCallback(callback)
-        }
     }
 
     /** Loads the catalog once the core is open. A core that cannot open is shown failed instead of loading forever. */
@@ -456,7 +439,6 @@ class ServiceEngine internal constructor(
             while (true) {
                 delay(HEALTH_INTERVAL_MS)
                 val alive = poll()?.alive == true
-                if (controller.checkLockdown(session)) return@collectLatest
                 if (!alive) {
                     VpnLog.warn("health check: data path down")
                     controller.coreStopped(session)
