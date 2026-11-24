@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple Icons 16.38.1 "Netflix" (icons/netflix.svg, CC0 1.0; see app/src/main/SIMPLE_ICONS.md). The 24-unit glyph sits in a
+     28.8-unit box, so it draws 20 dp in the 24 dp glyph, as the Material Symbols glyphs beside it do; tinted as they are. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="28.8"
+    android:viewportHeight="28.8">
+  <group
+      android:translateX="2.4"
+      android:translateY="2.4">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="m5.398 0 8.348 23.602 c2.346 .059 4.856 .398 4.856 .398 L10.113 0 H5.398 zm8.489 0 v9.172 l4.715 13.33 V0 h-4.715 zM5.398 1.5 V24 c1.873 -.225 2.81 -.312 4.715 -.398 V14.83 L5.398 1.5 z" />
+  </group>
+</vector>

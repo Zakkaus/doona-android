@@ -79,6 +79,16 @@ class RvServiceRulesShotTest {
         compose.onNode(isToggleable() and hasText("Google") and hasText(has)).assertIsNotEnabled()
     }
 
+    @Test
+    fun aServiceWithoutASimpleIconsMarkKeepsTheGenericGlyph() {
+        val generic = RvServiceData.all.filter { it.glyph == R.drawable.rv_sym_apps }.map { it.code }
+        // Not in Simple Icons 16.38.1 (Blizzard has only Battle.net), plus 全部遊戲, which is no brand.
+        val none = listOf("xbox", "nintendo", "blizzard", "category-games", "disney", "primevideo", "bahamut", "openai", "microsoft")
+        assertEquals(none, generic)
+        val marks = RvServiceData.all.map { it.glyph }.filter { it != R.drawable.rv_sym_apps }
+        assertEquals("one mark per service", marks.distinct(), marks)
+    }
+
     /** The titles of the rows to tick, top to bottom. */
     private fun services(): List<String> = compose.onAllNodes(isToggleable()).fetchSemanticsNodes().map { it.config[SemanticsProperties.Text].first().text }
 

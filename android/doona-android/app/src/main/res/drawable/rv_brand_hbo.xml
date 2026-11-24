@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple Icons 16.38.1 "HBO" (icons/hbo.svg, CC0 1.0; see app/src/main/SIMPLE_ICONS.md). The 24-unit glyph sits in a
+     28.8-unit box, so it draws 20 dp in the 24 dp glyph, as the Material Symbols glyphs beside it do; tinted as they are. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="28.8"
+    android:viewportHeight="28.8">
+  <group
+      android:translateX="2.4"
+      android:translateY="2.4">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M7.042 16.896 H4.414 v-3.754 H2.708 v3.754 H.01 L0 7.22 h2.708 v3.6 h1.706 v-3.6 h2.628 zm12.043 .046 C21.795 16.94 24 14.689 24 11.978 a4.89 4.89 0 0 0 -4.915 -4.92 c-2.707 -.002 -4.09 1.991 -4.432 2.795 .003 -1.207 -1.187 -2.632 -2.58 -2.634 H7.59 v9.674 l4.181 .001 c1.686 0 2.886 -1.46 2.888 -2.713 .385 .788 1.72 2.762 4.427 2.76 zm-7.665 -3.936 c.387 0 .692 .382 .692 .817 0 .435 -.305 .817 -.692 .817 h-1.33 v-1.634 zm.005 -3.633 c.387 0 .692 .382 .692 .817 0 .436 -.305 .818 -.692 .818 h-1.33 V9.373 zm1.77 2.607 c.305 -.039 .813 -.387 .992 -.61 -.063 .276 -.068 1.074 .006 1.35 -.204 -.314 -.688 -.701 -.998 -.74 zm3.43 0 a2.462 2.462 0 1 1 4.924 0 2.462 2.462 0 0 1 -4.925 0 zm2.462 1.936 a1.936 1.936 0 1 0 0 -3.872 1.936 1.936 0 0 0 0 3.872 Z" />
+  </group>
+</vector>

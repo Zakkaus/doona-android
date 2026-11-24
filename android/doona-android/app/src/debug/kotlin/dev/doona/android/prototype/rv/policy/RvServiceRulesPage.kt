@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.policy
 
 import android.content.res.Configuration
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
@@ -45,49 +46,57 @@ internal enum class RvServiceSection(@StringRes val title: Int) {
 
 /**
  * A service doona web can write a rule for: its GeoSite [code], its [name] (a brand, the same in every language) or a
- * [label] where web translates it (全部遊戲, 巴哈姆特), and its [section].
+ * [label] where web translates it (全部遊戲, 巴哈姆特), its [section], and its row's [glyph]: the brand's Simple Icons
+ * mark (`rv_brand_*`, owner-fix4 item 32; GitHub's `rv_sym_github`), or the generic apps glyph for a service Simple
+ * Icons has no mark for.
  */
 @Immutable
-internal class RvService(val code: String, val name: String, val section: RvServiceSection, @StringRes val label: Int? = null)
+internal class RvService(
+    val code: String,
+    val name: String,
+    val section: RvServiceSection,
+    @StringRes val label: Int? = null,
+    @DrawableRes val glyph: Int = R.drawable.rv_sym_apps,
+)
 
 /** doona web's service catalogue, section by section, and the sample's choice. */
 internal object RvServiceData {
     val all: List<RvService> = listOf(
-        games("steam", "Steam"),
-        games("epicgames", "Epic Games"),
-        games("playstation", "PlayStation"),
+        games("steam", "Steam", R.drawable.rv_brand_steam),
+        games("epicgames", "Epic Games", R.drawable.rv_brand_epicgames),
+        games("playstation", "PlayStation", R.drawable.rv_brand_playstation),
         games("xbox", "Xbox"),
         games("nintendo", "Nintendo"),
         games("blizzard", "Blizzard"),
-        games("ea", "EA"),
-        games("ubisoft", "Ubisoft"),
-        games("riot", "Riot Games"),
+        games("ea", "EA", R.drawable.rv_brand_ea),
+        games("ubisoft", "Ubisoft", R.drawable.rv_brand_ubisoft),
+        games("riot", "Riot Games", R.drawable.rv_brand_riotgames),
         RvService("category-games", "All games", RvServiceSection.Games, R.string.rv_service_all_games),
-        media("youtube", "YouTube"),
-        media("netflix", "Netflix"),
+        media("youtube", "YouTube", R.drawable.rv_brand_youtube),
+        media("netflix", "Netflix", R.drawable.rv_brand_netflix),
         media("disney", "Disney+"),
-        media("hbo", "HBO"),
+        media("hbo", "HBO", R.drawable.rv_brand_hbo),
         media("primevideo", "Prime Video"),
-        media("twitch", "Twitch"),
-        media("spotify", "Spotify"),
-        media("tiktok", "TikTok"),
+        media("twitch", "Twitch", R.drawable.rv_brand_twitch),
+        media("spotify", "Spotify", R.drawable.rv_brand_spotify),
+        media("tiktok", "TikTok", R.drawable.rv_brand_tiktok),
         RvService("bahamut", "Bahamut", RvServiceSection.Media, R.string.rv_template_group_bahamut),
-        media("bilibili", "Bilibili"),
-        social("telegram", "Telegram"),
-        social("discord", "Discord"),
-        social("twitter", "X/Twitter"),
-        social("facebook", "Facebook"),
-        social("instagram", "Instagram"),
-        social("whatsapp", "WhatsApp"),
-        social("line", "LINE"),
+        media("bilibili", "Bilibili", R.drawable.rv_brand_bilibili),
+        social("telegram", "Telegram", R.drawable.rv_brand_telegram),
+        social("discord", "Discord", R.drawable.rv_brand_discord),
+        social("twitter", "X/Twitter", R.drawable.rv_brand_x),
+        social("facebook", "Facebook", R.drawable.rv_brand_facebook),
+        social("instagram", "Instagram", R.drawable.rv_brand_instagram),
+        social("whatsapp", "WhatsApp", R.drawable.rv_brand_whatsapp),
+        social("line", "LINE", R.drawable.rv_brand_line),
         RvService("openai", "OpenAI", RvServiceSection.Ai),
-        RvService("anthropic", "Anthropic", RvServiceSection.Ai),
-        RvService("google-gemini", "Google Gemini", RvServiceSection.Ai),
-        developer("github", "GitHub"),
-        developer("docker", "Docker"),
-        developer("google", "Google"),
+        RvService("anthropic", "Anthropic", RvServiceSection.Ai, glyph = R.drawable.rv_brand_anthropic),
+        RvService("google-gemini", "Google Gemini", RvServiceSection.Ai, glyph = R.drawable.rv_brand_googlegemini),
+        developer("github", "GitHub", R.drawable.rv_sym_github),
+        developer("docker", "Docker", R.drawable.rv_brand_docker),
+        developer("google", "Google", R.drawable.rv_brand_google),
         developer("microsoft", "Microsoft"),
-        developer("apple", "Apple"),
+        developer("apple", "Apple", R.drawable.rv_brand_apple),
     )
 
     /** The services ticked in the sample. */
@@ -96,20 +105,20 @@ internal object RvServiceData {
     /** The rule already written for [service], as web finds it: a GeoSite rule on the service's code. */
     fun rule(service: RvService, rules: List<RvPolicyRule> = RvPolicyData.allRules): RvPolicyRule? = rules.firstOrNull { (it.match as? RvRuleMatch.GeoSite)?.category == service.code }
 
-    private fun games(code: String, name: String) = RvService(code, name, RvServiceSection.Games)
+    private fun games(code: String, name: String, @DrawableRes glyph: Int = R.drawable.rv_sym_apps) = RvService(code, name, RvServiceSection.Games, glyph = glyph)
 
-    private fun media(code: String, name: String) = RvService(code, name, RvServiceSection.Media)
+    private fun media(code: String, name: String, @DrawableRes glyph: Int = R.drawable.rv_sym_apps) = RvService(code, name, RvServiceSection.Media, glyph = glyph)
 
-    private fun social(code: String, name: String) = RvService(code, name, RvServiceSection.Social)
+    private fun social(code: String, name: String, @DrawableRes glyph: Int = R.drawable.rv_sym_apps) = RvService(code, name, RvServiceSection.Social, glyph = glyph)
 
-    private fun developer(code: String, name: String) = RvService(code, name, RvServiceSection.Developer)
+    private fun developer(code: String, name: String, @DrawableRes glyph: Int = R.drawable.rv_sym_apps) = RvService(code, name, RvServiceSection.Developer, glyph = glyph)
 }
 
 /**
  * 新增服務規則 (owner-fix2 item 14, the owner's B; doona web's ServiceRulesDialog on a phone, without its help line): the
  * large title, where the new rules go out (出站, the owner's word; owner-fix4 item 30), then web's five sections, each a
- * title over a card of services to tick, every row with the same generic glyph (no brand marks). A service with a rule
- * already says where that rule sends and cannot be ticked, as on web.
+ * title over a card of services to tick, each row with its brand's mark in the row glyph's disc and tint (the generic
+ * glyph where there is none). A service with a rule already says where that rule sends and cannot be ticked, as on web.
  */
 @Composable
 internal fun RvServiceRulesPage(
@@ -147,7 +156,7 @@ private fun ServiceRow(service: RvService, checked: Boolean, onToggle: (String) 
     val title = service.label?.let { stringResource(it) } ?: service.name
     val has = rule?.let { stringResource(R.string.rv_service_has_rule, it.targetName()) }
     val dim = if (rule == null) Modifier else Modifier.graphicsLayer { alpha = RvAlpha.DISABLED }.semantics { disabled() }
-    RvCheckRow({ RvIconDisc(R.drawable.rv_sym_apps) }, title, has, checked && rule == null, { if (rule == null) onToggle(service.code) }, dim)
+    RvCheckRow({ RvIconDisc(service.glyph) }, title, has, checked && rule == null, { if (rule == null) onToggle(service.code) }, dim)
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
