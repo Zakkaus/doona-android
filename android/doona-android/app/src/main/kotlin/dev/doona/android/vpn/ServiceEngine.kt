@@ -18,6 +18,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
@@ -201,8 +202,8 @@ class ServiceEngine internal constructor(
 
     override fun disconnect() = controller.stop()
 
-    override suspend fun select(groupId: String, memberId: String?): Result<Unit> =
-        command("select", SelectArgs.serializer(), SelectArgs(groupId, memberId), Unit.serializer(), ordered = true)
+    override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> =
+        command("select", SelectArgs.serializer(), SelectArgs(groupId, memberId, SelectionNetwork.of(network)), Unit.serializer(), ordered = true)
 
     override suspend fun testLatency(groupId: String?): Result<Unit> =
         command("testLatency", GroupArgs.serializer(), GroupArgs(groupId), Unit.serializer(), ordered = true)

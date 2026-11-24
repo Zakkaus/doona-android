@@ -42,11 +42,10 @@ interface Engine {
     fun disconnect()
 
     /**
-     * Pins the member [memberId] in the group [groupId]; null hands an automatic group back to its own choice. This and
-     * [testLatency] reach the core in the order they are called, from any caller, and a caller that stops waiting does not
-     * cancel its call.
+     * Pins [memberId] in [groupId] on [network], or on both networks when [network] is null. A null [memberId] clears
+     * the affected pins. This and [testLatency] reach the core in call order, even if the caller stops waiting.
      */
-    suspend fun select(groupId: String, memberId: String?): Result<Unit>
+    suspend fun select(groupId: String, memberId: String?, network: Network? = null): Result<Unit>
 
     /**
      * Starts probing the members of the group [groupId], or of every group when null, and returns once started.
@@ -211,6 +210,8 @@ data class Traffic(
  */
 enum class Mode { Global, Direct, Rule }
 
+enum class Network { Tcp, Udp }
+
 enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Score(false), Fallback(false) }
 
 /**
@@ -229,17 +230,40 @@ data class Member(
     val error: ErrorCode? = null,
 )
 
-/** [selectedId] is the member carrying traffic now; [pinned] says the user chose it rather than the group's own test. */
+/** Like the core catalog, [selectedId] and [pinned] report the TCP selection even when the networks differ. */
 data class Group(
     /** `g-` plus the group's name; stable. */
     val id: String,
     val name: String,
     val kind: GroupKind,
     val members: List<Member>,
-    val selectedId: String?,
-    val pinned: Boolean = false,
+    val tcp: Selection,
+    val udp: Selection = tcp,
     val testing: Boolean = false,
-)
+) {
+    constructor(
+        id: String,
+        name: String,
+        kind: GroupKind,
+        members: List<Member>,
+        selectedId: String?,
+        pinned: Boolean = false,
+        testing: Boolean = false,
+    ) : this(id, name, kind, members, Selection(selectedId, pinned), testing = testing)
+
+    data class Selection(val selectedId: String?, val pinned: Boolean)
+
+    val selectedId: String? get() = tcp.selectedId
+    val pinned: Boolean get() = tcp.pinned
+
+    /** Whether the selected members differ, regardless of which network is pinned. */
+    val networksDiffer: Boolean get() = tcp.selectedId != udp.selectedId
+
+    fun withSharedSelection(selectedId: String?, pinned: Boolean): Group {
+        val selection = Selection(selectedId, pinned)
+        return copy(tcp = selection, udp = selection)
+    }
+}
 
 /**
  * One revision of the core's catalog. [mainGroupId] is the group [Mode.Global] sends every flow through, and [Mode.Rule]

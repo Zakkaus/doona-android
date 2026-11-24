@@ -64,7 +64,7 @@ class ToggleTileServiceTest {
     fun runningWithoutASelectedNodeShowsTheRunningStatus() {
         engine.status.value = Status.Running(0)
         engine.groups.value = engine.groups.value.map {
-            if (it.id == "g-Proxy") it.copy(members = emptyList(), selectedId = null) else it
+            if (it.id == "g-Proxy") it.copy(members = emptyList()).withSharedSelection(selectedId = null, pinned = false) else it
         }
 
         withListening { assertSubtitle(service.getString(R.string.vpn_status_running)) }

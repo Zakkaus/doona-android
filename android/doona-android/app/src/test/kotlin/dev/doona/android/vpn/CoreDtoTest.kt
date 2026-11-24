@@ -3,6 +3,7 @@ package dev.doona.android.vpn
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
@@ -18,6 +19,9 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -129,14 +133,14 @@ class CoreDtoTest {
     fun catalogMapsToEngineTypes() {
         val catalog = checkNotNull(CoreJson.snapshot(fixture("snapshot-stopped-catalog.json")).catalog)
         assertEquals(Mode.Global, catalog.mode)
-        val proxy = catalog.groups.first { it.id == "g-Proxy" }
-        assertEquals("g-Auto", proxy.tcpSelectedId)
-        assertEquals("n-0c41be77", proxy.udpSelectedId)
-        assertTrue(proxy.networksDiffer)
-        assertFalse(proxy.tcpPinned)
-        assertTrue(proxy.udpPinned)
         val groups = catalog.groups.map(GroupDto::toGroup)
         assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), groups.map { it.id })
+        val proxy = groups.first()
+        assertEquals(Group.Selection("g-Auto", false), proxy.tcp)
+        assertEquals(Group.Selection("n-0c41be77", true), proxy.udp)
+        assertTrue(proxy.networksDiffer)
+        assertEquals("g-Auto", proxy.selectedId)
+        assertFalse(proxy.pinned)
         val auto = groups[1]
         assertEquals(GroupKind.Score, auto.kind)
         assertTrue(auto.testing)
@@ -155,6 +159,25 @@ class CoreDtoTest {
         assertEquals(107374182400L, subscription.totalBytes)
         assertNull(subscription.error)
         assertNull(subscription.userAgent)
+    }
+
+    @Test
+    fun legacyCatalogSharesTheSelectionAcrossNetworks() {
+        val snapshot = Json.parseToJsonElement(fixture("snapshot-stopped-catalog.json")).jsonObject
+        val catalog = snapshot.getValue("catalog").jsonObject
+        val networkFields = setOf("tcpSelectedId", "udpSelectedId", "networksDiffer", "tcpPinned", "udpPinned")
+        val groups = catalog.getValue("groups").jsonArray.mapIndexed { index, element ->
+            val shared = element.jsonObject - networkFields
+            JsonObject(if (index == 0) shared + ("pinned" to JsonPrimitive(true)) else shared)
+        }
+        val legacyCatalog = JsonObject(catalog + ("groups" to JsonArray(groups)))
+        val legacySnapshot = JsonObject(snapshot + ("catalog" to legacyCatalog))
+
+        val group = checkNotNull(CoreJson.snapshot(legacySnapshot.toString()).catalog).toCatalog().groups.first()
+        val shared = Group.Selection("g-Auto", true)
+        assertEquals(shared, group.tcp)
+        assertEquals(shared, group.udp)
+        assertFalse(group.networksDiffer)
     }
 
     @Test
