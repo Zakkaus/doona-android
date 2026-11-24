@@ -1,6 +1,10 @@
 # Rust
 target/
 
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Editors and OS
 .idea/
 .vscode/
