@@ -199,8 +199,8 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
  * label ([rvActionRowFit]), and still shrinking to fit its column alone when it has no row; the line keeps its full
  * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]), and none while not [enabled]. [busy]
  * swaps the glyph for [RvBusy]; that swap and a new [label] fade through ([RvFadeThrough]). A screen reader finds one
- * button: the current [label] names it (the word fading out is drawn, not read), it clicks as the disc does, and it
- * reads as disabled with the disc.
+ * button: the label names it, it clicks as the disc does, and it reads as disabled with the disc. It hears only the
+ * current [label], the one the click acts on: the word fading out is drawn, not read.
  */
 @Composable
 internal fun RvAction(

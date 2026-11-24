@@ -1,6 +1,9 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -11,6 +14,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -130,6 +134,23 @@ class RvUpdateShotTest {
         compose.onNodeWithText(rvText(R.string.rv_update_latest)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertDoesNotExist()
         compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
+    }
+
+    /** When the check ends, the action is named by its new word from the first frame; the old one fades out unread. */
+    @Test
+    fun theWordFadingOutIsNotRead() {
+        var update by mutableStateOf<RvUpdate>(RvUpdate.Idle)
+        compose.mainClock.autoAdvance = false
+        compose.setContent { Themed { Page(update) } }
+        compose.mainClock.advanceTimeByFrame()
+        // The write reaches the composition once the main thread is idle.
+        compose.runOnIdle { update = RvUpdate.Latest }
+        compose.waitForIdle()
+        // Two frames into the fade through, the old word still drawn.
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeByFrame()
+        compose.onAllNodes(hasText(rvText(R.string.rv_settings_check_update))).assertCountEquals(0)
+        compose.onNodeWithText(rvText(R.string.rv_update_latest)).assert(IS_BUTTON)
     }
 
     private fun shot(name: String, update: RvUpdate, dark: Boolean = false, fontScale: Float = 1f) {
