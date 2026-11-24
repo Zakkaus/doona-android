@@ -4,7 +4,6 @@ import android.content.res.Configuration
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -81,7 +80,6 @@ import dev.doona.android.designsystem.rv.RvNavFade
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvPageEndRoom
-import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSeeAll
@@ -123,7 +121,6 @@ import dev.doona.android.prototype.rv.data.RvRuleOutbound
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.stats.RvStatsDots
-import kotlinx.coroutines.launch
 
 /**
  * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
@@ -244,7 +241,7 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
     val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
     var heroBounds by remember { mutableStateOf<Rect?>(null) }
     val pan = rvMapPan(place)
-    val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null, motion.resting), pan?.first, pan?.second)
+    val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null, motion.resting), pan.first, pan.second)
     // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected and in the fair
     // tone while it connects or disconnects (PV-c v3, the hero tinted by the connection state).
     val dots = when {
@@ -380,33 +377,6 @@ private fun ConnectionTicks(status: Status) {
     }
 }
 
-/** Where the map is centred while it pans to [place] after a node switch, over [RvMotion.MOVE_MS] the short way round. */
-@Composable
-private fun rvMapPan(place: RvPlace?): Pair<() -> Float, () -> Float>? {
-    val motion = Rv.motion
-    val lat = remember { Animatable(place?.lat ?: 0f) }
-    val lon = remember { Animatable(place?.lon ?: 0f) }
-    LaunchedEffect(place) {
-        place ?: return@LaunchedEffect
-        var to = place.lon
-        while (to - lon.value > HALF_TURN) to -= FULL_TURN
-        while (to - lon.value < -HALF_TURN) to += FULL_TURN
-        launch { lat.animateTo(place.lat, motion.tween(RvMotion.MOVE_MS)) }
-        lon.animateTo(to, motion.tween(RvMotion.MOVE_MS))
-    }
-    if (place == null) return null
-    return { lat.value } to {
-        val at = lon.value
-        if (at < -HALF_TURN) {
-            at + FULL_TURN
-        } else if (at >= HALF_TURN) {
-            at - FULL_TURN
-        } else {
-            at
-        }
-    }
-}
-
 /**
  * The marker's pulse while [on] (connected, with a place to mark): 0 to 1 each [RvMotion.PULSE_MS]; 0 off, without
  * motion, or while [resting] (read where it is drawn, so resting redraws nothing but the ring, once).
@@ -520,8 +490,6 @@ private fun minutePeak(history: List<Float>): Float = history.filterNot { it.isN
 
 /** The 最快節點 card lists the first three of the 節點 page's fastest; the outbound card, two rule groups after the main node. */
 private const val FASTEST = 3
-private const val HALF_TURN = 180f
-private const val FULL_TURN = 360f
 private const val RULE_ROWS = 2
 
 /** H1's hero: 全部流量, then 主節點. */

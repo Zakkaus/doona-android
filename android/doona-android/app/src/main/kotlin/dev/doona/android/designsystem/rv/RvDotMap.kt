@@ -67,7 +67,7 @@ private class DotRow(val y: Float, val dots: List<Offset>)
 internal fun Modifier.rvDotMap(focus: RvPlace?, color: Color, focusTop: Dp, clear: Rect? = null, fadeTop: Dp? = null, live: RvDotMotion = RV_STILL): Modifier = drawWithCache {
     val pitch = RvDots.pitch.toPx()
     val centre = Offset(size.width / 2f, focusTop.toPx())
-    val rows = dotRows(live.lat?.invoke() ?: focus?.lat ?: DEFAULT_LAT, live.lon?.invoke() ?: focus?.lon ?: DEFAULT_LON, centre, pitch, size.height)
+    val rows = dotRows(live.lat?.invoke() ?: focus?.lat ?: RV_MAP_REST_LAT, live.lon?.invoke() ?: focus?.lon ?: RV_MAP_REST_LON, centre, pitch, size.height)
     val zone = clear?.inflate(RvDots.clearPad.toPx())
     val topFade = RvDots.topFade.toPx()
     val fadeFrom = fadeTop?.toPx()
@@ -115,8 +115,8 @@ private class DotBand(val y: Float, val full: List<Offset>, val faint: List<Offs
 
 /** The land dots of every band between the top and [height], placed so the cell at [lat], [lon] sits on [centre]. */
 private fun dotRows(lat: Float, lon: Float, centre: Offset, pitch: Float, height: Float): List<DotRow> {
-    val focusCol = floor((lon + DEGREES_WEST) / RvLandMask.CELL).toInt()
-    val focusRow = floor((RvLandMask.NORTH - lat) / RvLandMask.CELL).toInt()
+    val focusCol = column(lon)
+    val focusRow = row(lat)
     val reach = (centre.x / pitch).toInt() + 1
     return (0 until RvLandMask.ROWS).mapNotNull { row ->
         val y = centre.y + (row - focusRow) * pitch
@@ -127,11 +127,30 @@ private fun dotRows(lat: Float, lon: Float, centre: Offset, pitch: Float, height
     }
 }
 
+/** The map's column of [lon], counted from 180 degrees west; any whole turn off it gives a column as many turns off. */
+private fun column(lon: Float): Int = floor((lon + DEGREES_WEST) / RvLandMask.CELL).toInt()
+
+/** The map's row of [lat], counted from [RvLandMask.NORTH] down. */
+private fun row(lat: Float): Int = floor((RvLandMask.NORTH - lat) / RvLandMask.CELL).toInt()
+
+/**
+ * Where [rvDotMap] draws the dot of the cell at [lat], [lon] when the map is centred on [centreLat], [centreLon] at
+ * [centre], its dots [pitch] apart: the columns wrap at the antimeridian, so the cell is taken the short way round.
+ */
+internal fun rvMapSpot(centreLat: Float, centreLon: Float, lat: Float, lon: Float, centre: Offset, pitch: Float): Offset {
+    val half = RvLandMask.COLUMNS / 2
+    val columns = Math.floorMod(column(lon) - column(centreLon) + half, RvLandMask.COLUMNS) - half
+    return Offset(centre.x + columns * pitch, centre.y + (row(lat) - row(centreLat)) * pitch)
+}
+
+/** Whether [rvDotMap] draws a land dot in the cell at [lat], [lon]. */
+internal fun rvMapLand(lat: Float, lon: Float): Boolean = land.getOrNull(row(lat))?.get(Math.floorMod(column(lon), RvLandMask.COLUMNS)) == true
+
 /**
  * What moves on the dot map: [art] scales its alpha (a tab's hero fade), [stretch] pulls it that many pixels longer from
  * its top (P2), [pulse] (0 to 1, 0 none) runs a copy of the marker's ring out to the glow's edge while connected,
- * [lat] and [lon] centre the map where a node switch has panned it so far (null: on the focus), and [tint] is its colour
- * so far while it turns to a new one (null: the map's own).
+ * [lat] and [lon] centre the map where a node switch has panned it so far (null: on the focus, or at rest without one),
+ * and [tint] is its colour so far while it turns to a new one (null: the map's own).
  */
 internal class RvDotMotion(
     val art: () -> Float = { 1f },
@@ -170,6 +189,6 @@ private const val BITS = 4
 private const val HEX = 16
 private const val DEGREES_WEST = 180f
 
-/** Where the map centres with no node: East Asia, where the sample's nodes are. */
-private const val DEFAULT_LAT = 30f
-private const val DEFAULT_LON = 115f
+/** Where the map centres with no node, at rest: East Asia, where the sample's nodes are. */
+internal const val RV_MAP_REST_LAT = 30f
+internal const val RV_MAP_REST_LON = 115f
