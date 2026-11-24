@@ -3,7 +3,7 @@
     <string name="rv_about_title">關於 doona</string>
     <string name="rv_about_github">GitHub 專案</string>
     <string name="rv_about_privacy">隱私</string>
-    <string name="rv_about_core">核心</string>
+    <string name="rv_about_honk_sub">代理引擎 · %1$s</string>
 
     <string name="rv_update_latest">已是最新</string>
     <string name="rv_update_new">有新版本 %1$s</string>
@@ -30,7 +30,6 @@
     <string name="rv_report_device">裝置</string>
     <string name="rv_report_settings">設定摘要</string>
     <string name="rv_report_log">日誌</string>
-    <string name="rv_report_core_version">%1$s · 核心 %2$s</string>
     <plurals name="rv_report_rules">
         <item quantity="other">%1$d 條規則</item>
     </plurals>

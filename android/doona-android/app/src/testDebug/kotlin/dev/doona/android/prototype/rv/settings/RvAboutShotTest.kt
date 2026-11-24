@@ -15,11 +15,11 @@ import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -42,19 +42,17 @@ class RvAboutShotTest {
 
     @Test fun pageFs200() = compose.rvShot("settings-about", dark = false, fontScale = RV_FS200) { Page() }
 
+    /** Two versions, doona's and honk's, the second saying what honk is; no 核心 row, since the core is the app's version. */
     @Test
     fun theTitleIsThePagesHeadingAndEachVersionIsARow() {
         compose.setContent { Themed { Page() } }
         compose.onNode(hasText(rvText(R.string.rv_about_title)) and isHeading()).assertExists()
-        for ((label, value) in listOf(
-            rvText(R.string.rv_settings_version) to rvSampleVersions.app,
-            rvText(R.string.rv_about_core) to rvSampleVersions.core,
-            rvText(R.string.rv_about_honk) to rvSampleVersions.honk,
-        )) {
-            compose.onNodeWithText(label).assertExists()
-            // The app and the core share 0.1.0 in the sample.
-            assertTrue(compose.onAllNodes(hasText(value)).fetchSemanticsNodes().isNotEmpty())
-        }
+        compose.onNodeWithText(rvText(R.string.app_name)).assertExists()
+        compose.onNodeWithText(rvSampleVersions.app).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_about_honk)).assertExists()
+        val honk = RuntimeEnvironment.getApplication().getString(R.string.rv_about_honk_sub, rvSampleVersions.honk)
+        compose.onNodeWithText(honk).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_settings_version)).assertDoesNotExist()
     }
 
     @Test

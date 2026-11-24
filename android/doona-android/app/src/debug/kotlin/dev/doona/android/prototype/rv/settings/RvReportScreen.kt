@@ -55,11 +55,10 @@ internal sealed interface RvReportBuild {
 @Immutable
 internal data class RvRedaction(val nodes: Boolean = true, val ip: Boolean = true, val domains: Boolean = true, val apps: Boolean = false)
 
-/** What the report holds, as its preview lists it: the versions, the phone, the settings in counts, and the log. */
+/** What the report holds, as its preview lists it: the app's version, the phone, the settings in counts, and the log. */
 @Immutable
 internal data class RvReportPreview(
     val app: String,
-    val core: String,
     val device: String,
     val nodes: Int,
     val subscriptions: Int,
@@ -68,8 +67,8 @@ internal data class RvReportPreview(
     val crashes: Int,
 )
 
-/** The sample's report: the app and core of [rvSampleVersions], the sample data's counts, the last 200 events, 2 crashes. */
-internal val rvSampleReport = RvReportPreview("0.1.0", "0.1.0", "Pixel 8 · Android 15", nodes = 12, subscriptions = 2, rules = 14, events = 200, crashes = 2)
+/** The sample's report: the app of [rvSampleVersions], the sample data's counts, the last 200 events, 2 crashes. */
+internal val rvSampleReport = RvReportPreview("0.1.0", "Pixel 8 · Android 15", nodes = 12, subscriptions = 2, rules = 14, events = 200, crashes = 2)
 
 /** What the report page's actions do: open the prefilled issue, hand the file to the share sheet, write it again. */
 internal class RvReportActions(
@@ -137,7 +136,8 @@ private fun Contents(preview: RvReportPreview) {
         pluralStringResource(R.plurals.rv_report_crashes, preview.crashes, preview.crashes),
     )
     RvSettingsCard {
-        RvSettingsRow(stringResource(R.string.rv_settings_version), subtitle = stringResource(R.string.rv_report_core_version, preview.app, preview.core))
+        // The app's version alone: the core ships in the same APK, so its version is the app's.
+        RvSettingsRow(stringResource(R.string.rv_settings_version), subtitle = preview.app)
         RvSettingsRow(stringResource(R.string.rv_report_device), subtitle = preview.device)
         RvSettingsRow(stringResource(R.string.rv_report_settings), subtitle = settings.joinToString(SEPARATOR))
         RvSettingsRow(stringResource(R.string.rv_report_log), subtitle = log.joinToString(SEPARATOR))

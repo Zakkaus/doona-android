@@ -26,12 +26,15 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
 
-/** The versions 關於 names: the app's, the core's, and the honk revision the core is built on, short. */
+/**
+ * The versions 關於 names: the app's, and the honk revision its proxy engine is built on, short. The core is not named:
+ * it ships in the same APK, so its version is always the app's (owner-fix2 item 17).
+ */
 @Immutable
-internal data class RvAboutVersions(val app: String, val core: String, val honk: String)
+internal data class RvAboutVersions(val app: String, val honk: String)
 
-/** The sample's versions: the app and the core at the build files' 0.1.0, honk at the core's pinned daeuniverse/honk revision. */
-internal val rvSampleVersions = RvAboutVersions(app = "0.1.0", core = "0.1.0", honk = "8919784")
+/** The sample's versions: the app at the build files' 0.1.0, honk at the core's pinned daeuniverse/honk revision. */
+internal val rvSampleVersions = RvAboutVersions(app = "0.1.0", honk = "8919784")
 
 /**
  * Where 關於 leads: the repository in the browser, 回報問題, the update check and a newer release's GitHub page, the
@@ -55,7 +58,8 @@ internal fun RvAboutEntry(version: String, onOpen: () -> Unit) {
 
 /**
  * 關於 doona, a page of 設定 in the other pages' form: the large title, then three cards [RvSettingsSpace.cardGap] apart
- * with no section title, as Revolut's About us (§13.3): the [versions] as a list of values; GitHub 專案, 回報問題 and
+ * with no section title, as Revolut's About us (§13.3): the [versions], doona over the app's and honk over what it is
+ * and its revision, each with its glyph as the other rows; GitHub 專案, 回報問題 and
  * 檢查更新; the licences and the privacy page. Where the [update] check stands shows on its row and, when it needs the
  * user, in the page's banner under the title ([rvUpdateNotice]).
  */
@@ -67,11 +71,9 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
         RvLargeTitle(title, titleBlock, insets)
         RvBannerSlot(rvUpdateNotice(update, versions.app, routes.release, routes.checkUpdate))
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin), verticalArrangement = Arrangement.spacedBy(RvSettingsSpace.cardGap)) {
-            // No glyph: a list of values, as the licences and 回報問題's 分享的內容.
             RvSettingsCard {
-                RvSettingsRow(stringResource(R.string.rv_settings_version), subtitle = versions.app)
-                RvSettingsRow(stringResource(R.string.rv_about_core), subtitle = versions.core)
-                RvSettingsRow(stringResource(R.string.rv_about_honk), subtitle = versions.honk)
+                RvSettingsRow(stringResource(R.string.app_name), icon = R.drawable.rv_settings_ic_info, subtitle = versions.app)
+                RvSettingsRow(stringResource(R.string.rv_about_honk), icon = R.drawable.rv_sym_bolt, subtitle = stringResource(R.string.rv_about_honk_sub, versions.honk))
             }
             RvSettingsCard {
                 RvSettingsNavRow(stringResource(R.string.rv_about_github), R.drawable.rv_sym_github, routes.github)
