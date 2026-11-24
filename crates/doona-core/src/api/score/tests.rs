@@ -125,3 +125,31 @@ fn only_score_groups_list_their_direct_node_ids() {
     assert_eq!(groups[0]["nodeIds"], json!(ids));
     assert_eq!(groups[1]["nodeIds"], json!([ids[0]]));
 }
+
+#[test]
+fn nested_score_members_keep_their_group_identity() {
+    let (_dir, core) = setup(&["HK01", "JP01"]);
+    {
+        let mut c = lock(&core.shared.catalog);
+        let model = &mut c.model;
+        model.groups[1].members = vec!["g-HK".into(), "g-JP".into()];
+        let index = model
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.id.clone(), i))
+            .collect();
+        let score = Score::new(&model.groups, &model.nodes, &index, Some(&model.score));
+        score.publish(Some(&model.score));
+        model.score = Arc::new(score);
+    }
+    probes(&core, &[10, 500]);
+    let auto = &groups(&core)[0];
+    assert_eq!(auto["nodeIds"], json!([]));
+    let tcp = &auto["tcp"];
+    assert_eq!(tcp["selected"], "g-HK");
+    assert_eq!(tcp["selectedId"], "g-HK");
+    let challenger = &tcp["challengers"][0];
+    assert_eq!(challenger["name"], "g-JP");
+    assert_eq!(challenger.get("nodeId"), Some(&Value::Null));
+}
