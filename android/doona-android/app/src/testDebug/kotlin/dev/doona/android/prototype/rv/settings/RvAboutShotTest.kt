@@ -6,16 +6,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.rvShot
@@ -34,7 +37,7 @@ import org.robolectric.annotation.GraphicsMode
  * 關於, the two layouts for the owner, each light, dark, fs115 and fs200: A, 設定's 關於 group with GitHub 專案 added
  * (`proto-rv-settings-about-a-*`), and B, 設定's one 關於 doona row (`-settings-about-b-*`) and the page it opens
  * (`-settings-about-*`); the groups are drawn as 設定 draws its last group, on the page under the status bar. Then what
- * their rows and actions open.
+ * their rows and actions open, and how the page's round actions share a narrow screen.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -105,6 +108,28 @@ class RvAboutShotTest {
             compose.onNodeWithText(rvText(id)).performClick()
         }
         assertEquals(listOf("github", "report", "update", "licenses", "privacy"), opened)
+    }
+
+    @Test
+    fun theActionsKeepSettingsColumnsWhereTheyFit() {
+        compose.setContent { Themed { Page() } }
+        actions().forEach { assertEquals(RvSettingsSpace.actionColumn.value, it.width.value, 0.5f) }
+    }
+
+    /** At 320 dp three 96 dp columns would need 336 with the gutters: they share the 288 between them alike instead. */
+    @Test
+    @Config(qualifiers = "+w320dp")
+    fun onANarrowScreenTheActionsShareTheWidth() {
+        compose.setContent { Themed { Page() } }
+        val bounds = actions()
+        val share = (320f - RvSpace.gutter.value * 2 - RvSettingsSpace.actionGap.value * 2) / 3
+        bounds.forEach { assertEquals(share, it.width.value, 0.5f) }
+        assertEquals(RvSpace.gutter.value, bounds.first().left.value, 0.5f)
+        assertEquals(320f - RvSpace.gutter.value, bounds.last().right.value, 0.5f)
+    }
+
+    private fun actions() = listOf(R.string.rv_about_github_action, R.string.rv_about_report_action, R.string.rv_settings_check_update).map {
+        compose.onNodeWithText(rvText(it)).getUnclippedBoundsInRoot()
     }
 
     @Test

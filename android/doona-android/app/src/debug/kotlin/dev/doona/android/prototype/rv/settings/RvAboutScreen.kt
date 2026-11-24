@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -109,8 +110,9 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
 
 /**
  * 設定's hero without its dot map: the mark beside the centred name ([titleBlock]), the version line under it as a
- * page header's caption, and the round actions as far under that block as 設定's are under its title, their labels one
- * size ([rvActionRowFit]). While the [update] check runs, its disc holds the busy bar and takes no tap.
+ * page header's caption, and the round actions as far under that block as 設定's are under its title, in 設定's columns
+ * or, where three of those do not fit, in equal shares of the width, their labels one size ([rvActionRowFit]). While the
+ * [update] check runs, its disc holds the busy bar and takes no tap.
  */
 @Composable
 private fun Hero(titleBlock: Modifier, insets: WindowInsets, versions: RvAboutVersions, routes: RvAboutRoutes, update: RvUpdate) {
@@ -135,14 +137,19 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, versions: RvAboutVe
             stringResource(R.string.rv_about_report_action),
             rvUpdateLabel(update),
         )
-        val style = rvActionRowFit(labels, RvSettingsSpace.actionColumn)
-        val column = Modifier.width(RvSettingsSpace.actionColumn)
-        Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
-            RvAction(R.drawable.rv_sym_link, labels[0], routes.github, column, labelStyle = style)
-            RvAction(R.drawable.rv_sym_ios_share, labels[1], routes.report, column, labelStyle = style)
-            // A check under way takes no second one.
-            val checking = update == RvUpdate.Checking
-            RvAction(R.drawable.rv_settings_ic_update, labels[2], routes.checkUpdate, column, busy = checking, labelStyle = style, enabled = !checking)
+        BoxWithConstraints(contentAlignment = Alignment.Center) {
+            // 設定's columns where they fit; on a narrower screen (320 dp leaves 288 between the gutters) the three share
+            // the width alike, and their labels take the size of the column they really get.
+            val width = minOf(RvSettingsSpace.actionColumn, (maxWidth - RvSettingsSpace.actionGap * (labels.size - 1)) / labels.size)
+            val style = rvActionRowFit(labels, width)
+            val column = Modifier.width(width)
+            Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
+                RvAction(R.drawable.rv_sym_link, labels[0], routes.github, column, labelStyle = style)
+                RvAction(R.drawable.rv_sym_ios_share, labels[1], routes.report, column, labelStyle = style)
+                // A check under way takes no second one.
+                val checking = update == RvUpdate.Checking
+                RvAction(R.drawable.rv_settings_ic_update, labels[2], routes.checkUpdate, column, busy = checking, labelStyle = style, enabled = !checking)
+            }
         }
     }
 }
