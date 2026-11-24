@@ -10,7 +10,6 @@ import dev.doona.android.designsystem.rv.RvCodeSpan
 import dev.doona.android.designsystem.rv.RvCodeToken
 import dev.doona.android.designsystem.rv.RvColors
 import dev.doona.android.designsystem.rv.RvContrast
-import dev.doona.android.designsystem.rv.RvHue
 import dev.doona.android.designsystem.rv.rvCodeBreaks
 import dev.doona.android.designsystem.rv.rvCodeColors
 import dev.doona.android.designsystem.rv.rvCodeSpans
@@ -21,9 +20,6 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
 
 /**
  * The code highlighter: doona web's `daeTokens.test.ts` cases as they are (the port must read honk text as doona does),
@@ -132,7 +128,7 @@ class RvCodeTest {
                     "number" to code.number,
                     "function" to code.function,
                     "key" to code.key,
-                    "subtle" to code.subtle,
+                    "punctuation" to code.punctuation,
                 )
                 for ((role, ink) in roles) {
                     for ((where, ground) in grounds) {
@@ -144,30 +140,23 @@ class RvCodeTest {
         }
     }
 
-    /** The two hues the scheme does not give stay 30° of hue or more from the diff's green and red. */
+    /**
+     * One colour per role, as an editor gives it: seven hues in each theme, none from the scheme, and on every seed seven
+     * distinct inks once each reads on its grounds (a dark page is tinted by the seed, so how far an ink lightens may differ).
+     */
     @Test
-    fun theCodeHuesStayAwayFromTheDiffsGreenAndRed() {
-        val pairs = listOf(RvCodeHue.light to listOf(RvHue.goodLight, RvHue.slowLight), RvCodeHue.dark to listOf(RvHue.goodDark, RvHue.slowDark))
-        for ((hues, diff) in pairs) {
-            for (hue in listOf(hues.number, hues.function)) {
-                for (mark in diff) assertTrue("${hue.hue()} vs ${mark.hue()}", hueDistance(hue.hue(), mark.hue()) >= MIN_HUE_DISTANCE)
+    fun eachRoleHasItsOwnColour() {
+        for (hues in listOf(RvCodeHue.light, RvCodeHue.dark)) {
+            assertEquals(7, setOf(hues.comment, hues.keyword, hues.string, hues.number, hues.function, hues.key, hues.punctuation).size)
+        }
+        for (seed in SEEDS) {
+            for (dark in listOf(false, true)) {
+                val code = rvCodeColors(RvColors(seedColorScheme(seed, dark), dark))
+                val inks = listOf(code.comment, code.keyword, code.quoted, code.number, code.function, code.key, code.punctuation)
+                assertEquals("%x %s: two roles share a colour".format(seed, if (dark) "dark" else "light"), inks.size, inks.distinct().size)
             }
         }
     }
-
-    private fun Color.hue(): Float {
-        val hi = max(red, max(green, blue))
-        val lo = min(red, min(green, blue))
-        val span = hi - lo
-        val sector = when (hi) {
-            red -> ((green - blue) / span).mod(SECTORS)
-            green -> (blue - red) / span + 2
-            else -> (red - green) / span + 4
-        }
-        return sector * DEGREES_PER_SECTOR
-    }
-
-    private fun hueDistance(a: Float, b: Float) = abs(a - b).let { min(it, FULL_TURN - it) }
 
     private companion object {
         /** Lines in the long file: as many rules as a large routing block holds. */
@@ -175,9 +164,5 @@ class RvCodeTest {
 
         /** The owner's wallpaper, then a purple and a red seed, so the accent of another phone is covered too. */
         val SEEDS = listOf(Seed.Cyan.argb, 0xFF6750A4.toInt(), 0xFFB3261E.toInt())
-        const val MIN_HUE_DISTANCE = 30f
-        const val SECTORS = 6f
-        const val DEGREES_PER_SECTOR = 60f
-        const val FULL_TURN = 360f
     }
 }

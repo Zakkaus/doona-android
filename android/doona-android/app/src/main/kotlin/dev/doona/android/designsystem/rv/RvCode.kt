@@ -16,7 +16,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
@@ -237,8 +236,8 @@ private fun CodeLine(line: String, style: TextStyle, space: TextUnit, colors: Rv
 }
 
 /**
- * The ink of each code role in one theme ([rvCodeColors]), as doona's roles go: a comment muted, a keyword the accent
- * and bold, a string, a number, a call (function), a key in the text colour, an operator and punctuation subtle.
+ * The ink of each code role in one theme ([rvCodeColors]), one colour per role as an editor gives it ([RvCodeHue]): a
+ * comment, a keyword, a string, a number, a call (function), a key, and punctuation with the operators; no role is bold.
  */
 @Immutable
 internal data class RvCodeColors(
@@ -248,24 +247,22 @@ internal data class RvCodeColors(
     val number: Color,
     val function: Color,
     val key: Color,
-    val subtle: Color,
+    val punctuation: Color,
 ) {
     fun style(kind: RvCodeKind): SpanStyle = when (kind) {
         RvCodeKind.Comment -> SpanStyle(color = comment)
-        RvCodeKind.Keyword -> SpanStyle(color = keyword, fontWeight = FontWeight.Bold)
+        RvCodeKind.Keyword -> SpanStyle(color = keyword)
         RvCodeKind.Quoted -> SpanStyle(color = quoted)
         RvCodeKind.Number -> SpanStyle(color = number)
         RvCodeKind.PropertyName -> SpanStyle(color = function)
         RvCodeKind.VariableName -> SpanStyle(color = key)
-        RvCodeKind.Punctuation, RvCodeKind.Operator -> SpanStyle(color = subtle)
+        RvCodeKind.Punctuation, RvCodeKind.Operator -> SpanStyle(color = punctuation)
     }
 }
 
 /**
- * Each code role's ink in [colors]' theme: a comment the secondary ink (doona's muted), a keyword the accent, a string
- * the notice amber ([RvColors.fair]), a number and a call their [RvCodeHue], a key the text, an operator and punctuation
- * the secondary ink [RvCodeShade.SUBTLE] of the way to the text; each, or the first step from it toward black (light) or
- * white (dark), that reads at 4.5:1 on the page, the card, and a diff's added and removed lines (their hue at
+ * Each code role's ink in [colors]' theme: its [RvCodeHue], or the first step from it toward black (light) or white
+ * (dark) that reads at 4.5:1 on the page, the card, and a diff's added and removed lines (their hue at
  * [RvAlpha.STATUS_CHIP] over the card), as [RvColors] makes the latency hues readable.
  */
 internal fun rvCodeColors(colors: RvColors): RvCodeColors {
@@ -276,13 +273,13 @@ internal fun rvCodeColors(colors: RvColors): RvCodeColors {
         .firstOrNull { c -> grounds.all { rvContrast(c, it) >= RvContrast.TEXT_MIN } } ?: toward
     val hues = if (colors.dark) RvCodeHue.dark else RvCodeHue.light
     return RvCodeColors(
-        comment = ink(colors.textSecondary),
-        keyword = ink(colors.positive),
-        quoted = ink(colors.fair),
+        comment = ink(hues.comment),
+        keyword = ink(hues.keyword),
+        quoted = ink(hues.string),
         number = ink(hues.number),
         function = ink(hues.function),
-        key = ink(colors.text),
-        subtle = ink(lerp(colors.textSecondary, colors.text, RvCodeShade.SUBTLE)),
+        key = ink(hues.key),
+        punctuation = ink(hues.punctuation),
     )
 }
 
