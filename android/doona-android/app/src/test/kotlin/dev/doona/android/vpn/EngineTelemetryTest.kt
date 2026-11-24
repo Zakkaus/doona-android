@@ -1,8 +1,11 @@
 package dev.doona.android.vpn
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.PerAppSettings
+import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.LatencyTest
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
@@ -10,7 +13,9 @@ import dev.doona.android.engine.Status
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
 import dev.doona.android.engine.TrafficSeries
+import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -101,6 +106,102 @@ class EngineTelemetryTest {
         assertEquals(today, engine.today.value)
     }
 
+    @Test
+    fun stoppingARunningTunnelEndsDebugCapture() = runTest {
+        lateinit var logLevels: LogLevelController
+        val engine = engine { logLevels.endCapture() }
+        logLevels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        start(engine)
+        logLevels.set(LogLevel.Debug).getOrThrow()
+
+        engine.disconnect()
+        runCurrent()
+
+        assertEquals(Status.Stopped, engine.status.value)
+        assertEquals(LogLevel.Info, logLevels.level.value)
+        assertEquals("setLogLevel" to """{"level":"info"}""", core.calls.last())
+    }
+
+    @Test
+    fun revokingTheTunnelEndsDebugCapture() = runTest {
+        lateinit var levels: LogLevelController
+        val engine = engine { levels.endCapture() }
+        levels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        start(engine)
+        levels.set(LogLevel.Debug).getOrThrow()
+
+        engine.controller.revoke(Host)
+        runCurrent()
+
+        assertEquals(Status.Failed(FailureReason.Revoked), engine.status.value)
+        assertEquals(LogLevel.Info, levels.level.value)
+        assertEquals("setLogLevel" to """{"level":"info"}""", core.calls.last())
+    }
+
+    @Test
+    fun aFailedStartEndsDebugCapture() = runTest {
+        lateinit var levels: LogLevelController
+        val engine = engine { levels.endCapture() }
+        levels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        levels.set(LogLevel.Debug).getOrThrow()
+        core.onStart = { throw IllegalStateException("no_nodes") }
+
+        engine.connect()
+        assertTrue(engine.controller.start(Host, engine.controller.session.value.generation))
+        runCurrent()
+
+        assertTrue(engine.status.value is Status.Failed)
+        assertEquals(LogLevel.Info, levels.level.value)
+        assertEquals("setLogLevel" to """{"level":"info"}""", core.calls.last())
+    }
+
+    @Test
+    fun commandsAndReadsCheckTheElapsedDeadlineBeforeReachingCore() = runTest {
+        var elapsed = 0L
+        lateinit var levels: LogLevelController
+        val engine = engine(expireDebugCapture = { levels.expireIfDue() })
+        levels = LogLevelController(engine::setLogLevel, backgroundScope) { elapsed }
+        levels.set(LogLevel.Debug).getOrThrow()
+        runCurrent()
+        elapsed += 3_600_000
+
+        engine.setMode(Mode.Rule).getOrThrow()
+        assertEquals(listOf("setLogLevel", "setLogLevel", "setMode"), core.calls.map { it.first })
+
+        levels.set(LogLevel.Debug).getOrThrow()
+        runCurrent()
+        elapsed += 3_600_000
+        core.reply = ContractFixtures.read("call-ok-traffic-series.json")
+        assertTrue(engine.trafficSeries(300).isSuccess)
+        assertEquals(listOf("setLogLevel" to """{"level":"info"}""", "trafficSeries" to """{"seconds":300}"""), core.calls.takeLast(2))
+    }
+
+    @Test
+    fun commandBreadcrumbsCarryOutcomesWithoutArguments() = runTest {
+        val engine = engine()
+        AppEvents.clear()
+        start(engine)
+        engine.select("private-group", "private-node").getOrThrow()
+        engine.testLatency("private-group").getOrThrow()
+        core.reply = """{"error":{"code":"not_found"}}"""
+        assertTrue(engine.updateSubscription("private-subscription").isFailure)
+        engine.disconnect()
+        runCurrent()
+
+        val events = AppEvents.snapshot().map { it.text }.filter { it.startsWith("command=") }
+        assertEquals(
+            listOf(
+                "command=start phase=complete outcome=ok code=ok",
+                "command=select phase=complete outcome=ok code=ok",
+                "command=testLatency phase=complete outcome=ok code=ok",
+                "command=updateSubscription phase=complete outcome=failed code=NotFound",
+                "command=stop phase=complete outcome=ok code=ok",
+            ),
+            events.map { it.substringBefore(" elapsedMs=") },
+        )
+        assertTrue(events.none { "private-" in it })
+    }
+
     private fun TestScope.start(engine: ServiceEngine) {
         engine.connect()
         assertTrue(engine.controller.start(Host, engine.controller.session.value.generation))
@@ -108,12 +209,20 @@ class EngineTelemetryTest {
         assertTrue(engine.status.value is Status.Running)
     }
 
-    private fun TestScope.engine(): ServiceEngine {
+    private fun TestScope.engine(expireDebugCapture: () -> Job? = { null }, endDebugCapture: () -> Unit = {}): ServiceEngine {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val opener = CoreOpener(core, { "/data" }, dispatcher)
         val settings = PerAppSettings(PerAppSettings.store(backgroundScope) { folder.root.resolve("per_app.preferences_pb") })
-        val controller = TunnelController(core, opener, { PerApp() }, backgroundScope, killProcess = { error("Unexpected timeout") })
-        return ServiceEngine(core, opener, controller, settings, { true }, dispatcher, backgroundScope).also { it.launch(dispatcher) }
+        val controller = TunnelController(
+            core,
+            opener,
+            { PerApp() },
+            backgroundScope,
+            killProcess = { error("Unexpected timeout") },
+            endDebugCapture = endDebugCapture,
+            expireDebugCapture = expireDebugCapture,
+        )
+        return ServiceEngine(core, opener, controller, settings, { true }, dispatcher, backgroundScope, expireDebugCapture).also { it.launch(dispatcher) }
     }
 
     private object Host : TunHost {

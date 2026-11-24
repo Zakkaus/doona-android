@@ -45,6 +45,19 @@ class ExportedCrashTest {
     }
 
     @Test
+    fun `only allowlisted actions cross the crash export boundary`() {
+        val prefix = "${BREADCRUMB}1795300150000 Warn "
+        val valid = prefix + "command=select phase=complete outcome=failed code=NotFound elapsedMs=3"
+        val forged = listOf(
+            prefix + "command=select phase=complete outcome=failed code=privatehost",
+            prefix + "command=select phase=complete outcome=failed code=NotFound https://example.net/token",
+            prefix + "command=select phase=complete outcome=failed code=NotFound elapsedMs=192.0.2.1",
+        )
+        val before = head + version + rest + BREADCRUMBS
+        assertEquals(file(before + valid), exported(before + forged + valid))
+    }
+
+    @Test
     fun `the app writes only a version line the export keeps`() {
         val app = AppInfo("0.1", 1, "debug", listOf("arm64-v8a"), "16", 36, "Google", "Pixel 9")
         assertEquals("0.1 debug arm64-v8a-android", app.crashVersion)

@@ -73,6 +73,7 @@ class ServiceEngine internal constructor(
     private val io: CoroutineDispatcher,
     /** Owns the engine's own work: polling, and commands the core has begun. */
     private val scope: CoroutineScope,
+    private val expireDebugCapture: () -> Job?,
     /** The pause before the settings read a per-app policy again after a read failed. */
     private val perAppRetryMs: Long = PER_APP_RETRY_MS,
 ) : Engine {
@@ -170,7 +171,10 @@ class ServiceEngine internal constructor(
             sent = startService(generation)
         } finally {
             // The system refused the foreground service or found none, so nothing will take this start.
-            if (!sent) controller.abandon(generation)
+            if (!sent) {
+                controller.abandon(generation)
+                VpnLog.action("start", "dispatch", "failed", FailureReason.StartFailed.name)
+            }
         }
     }
 
@@ -227,11 +231,19 @@ class ServiceEngine internal constructor(
         scope.async { savePerApp(perApp) }.await()
 
     override suspend fun diagnostics(level: LogLevel?): Result<CoreDiagnostics> =
-        read("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
+        readCore("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
             .map { it.dto.toCoreDiagnostics(it.json) }
 
-    override suspend fun setLogLevel(level: LogLevel): Result<Unit> =
-        command("setLogLevel", LevelArgs.serializer(), LevelArgs(CoreLevel.of(level)), Unit.serializer())
+    override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
+        val outcome = if (opener.schema() == CORE_SCHEMA) {
+            call("setLogLevel", CoreJson.encode(LevelArgs.serializer(), LevelArgs(CoreLevel.of(level))), Unit.serializer())
+        } else {
+            Result.failure(EngineException(ErrorCode.Internal))
+        }
+        val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
+        VpnLog.action("setLogLevel", "complete", if (outcome.isSuccess) "ok" else "failed", code)
+        return outcome
+    }
 
     override suspend fun clearCrashes(names: List<String>, mark: Long): Result<Unit> =
         command("clearCrashes", ClearCrashesArgs.serializer(), ClearCrashesArgs(names, mark), Unit.serializer())
@@ -285,14 +297,20 @@ class ServiceEngine internal constructor(
         val turn = if (ordered) takeTurn() else null
         // The core commits a command it has begun, so the refresh after it must run even if the caller is cancelled.
         return scope.async {
+            val begun = System.nanoTime()
             val outcome = try {
                 turn?.before?.join()
+                expireDebugCapture()?.join()
                 // A core whose init failed or speaks another schema takes no call and no snapshot.
                 if (opener.schema() != CORE_SCHEMA) null else call(name, CoreJson.encode(argsSerializer, args), result)
             } finally {
                 turn?.done?.complete()
             }
-            if (outcome == null) Result.failure<R>(EngineException(ErrorCode.Internal)) else outcome.also { poll() }
+            val reply = outcome ?: Result.failure(EngineException(ErrorCode.Internal))
+            val code = (reply.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
+            VpnLog.action(name, if (outcome == null) "dispatch" else "complete", if (reply.isSuccess) "ok" else "failed", code, (System.nanoTime() - begun) / 1_000_000)
+            if (outcome != null) poll()
+            reply
         }.await()
     }
 
@@ -300,15 +318,26 @@ class ServiceEngine internal constructor(
      * Runs a read in the caller's job: a caller that leaves before the core is reached never reaches it. A read changes
      * nothing, so it waits for no ordered command and reads no catalog after.
      */
-    private suspend fun <A, R> read(name: String, argsSerializer: SerializationStrategy<A>, args: A, result: DeserializationStrategy<R>): Result<R> =
-        if (opener.schema() != CORE_SCHEMA) {
-            Result.failure(EngineException(ErrorCode.Internal))
-        } else {
-            call(name, CoreJson.encode(argsSerializer, args), result)
+    private suspend fun <A, R> read(
+        name: String,
+        argsSerializer: SerializationStrategy<A>,
+        args: A,
+        result: DeserializationStrategy<R>,
+    ): Result<R> {
+        expireDebugCapture()?.join()
+        return readCore(name, argsSerializer, args, result)
+    }
+
+    private suspend fun <A, R> readCore(name: String, argsSerializer: SerializationStrategy<A>, args: A, result: DeserializationStrategy<R>): Result<R> {
+        if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
+        val begun = System.nanoTime()
+        return call(name, CoreJson.encode(argsSerializer, args), result).also { outcome ->
+            val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
+            VpnLog.info("$name: $code after ${(System.nanoTime() - begun) / 1_000_000} ms")
         }
+    }
 
     private suspend fun <R> call(name: String, argsJson: String, result: DeserializationStrategy<R>): Result<R> {
-        val begun = System.nanoTime()
         val outcome = try {
             Result.success(withContext(io) { CoreJson.result(core.call(name, argsJson), result) })
         } catch (e: CancellationException) {
@@ -322,8 +351,6 @@ class ServiceEngine internal constructor(
             unlinked(name, e)
             Result.failure(EngineException(ErrorCode.Internal))
         }
-        val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
-        VpnLog.info("$name: $code after ${(System.nanoTime() - begun) / 1_000_000} ms")
         return outcome
     }
 
@@ -422,7 +449,7 @@ class ServiceEngine internal constructor(
         private const val PER_APP_RETRY_MS = 5_000L
 
         /** The process-wide engine. The app container calls this once; the core library loads later, on IO. */
-        fun create(context: Context): ServiceEngine {
+        fun create(context: Context, endDebugCapture: () -> Unit, expireDebugCapture: () -> Job?): ServiceEngine {
             val app = context.applicationContext
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val core = DeferredCore { NativeCore }
@@ -436,8 +463,10 @@ class ServiceEngine internal constructor(
                 perApp = { perApp.perApp.first() },
                 scope = scope,
                 killProcess = { Process.killProcess(Process.myPid()) },
+                endDebugCapture = endDebugCapture,
+                expireDebugCapture = expireDebugCapture,
             )
-            val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO, scope)
+            val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO, scope, expireDebugCapture)
             engine.launch(Dispatchers.IO.limitedParallelism(1))
             return engine
         }

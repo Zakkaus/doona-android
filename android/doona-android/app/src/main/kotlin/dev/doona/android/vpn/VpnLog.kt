@@ -21,4 +21,12 @@ internal object VpnLog {
         Log.w(TAG, message)
         AppEvents.record(AppEventLevel.Warn, message)
     }
+
+    fun action(command: String, phase: String, outcome: String, code: String, elapsedMs: Long? = null) {
+        val event = AppEvents.action(command, phase, outcome, code, elapsedMs)
+        when (event.level) {
+            AppEventLevel.Info -> Log.i(TAG, event.text)
+            AppEventLevel.Warn -> Log.w(TAG, event.text)
+        }
+    }
 }

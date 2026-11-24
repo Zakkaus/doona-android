@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        container.logLevels.expireIfDue()
         // Back from the app's settings, where a fetch waiting on the local network refusal may have been allowed.
         container.localNetwork.resumed()
     }

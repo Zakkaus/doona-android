@@ -16,6 +16,7 @@ import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Status
+import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -101,8 +102,8 @@ class ServiceEngineTest {
             }
         }
         val perAppSettings = PerAppSettings(store)
-        val controller = TunnelController(core, opener, { perAppSettings.perApp.first() }, scope, killProcess = {})
-        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, io, scope, perAppRetryMs = 50)
+        val controller = TunnelController(core, opener, { perAppSettings.perApp.first() }, scope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
+        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, io, scope, expireDebugCapture = { null }, perAppRetryMs = 50)
     }
 
     @After
@@ -115,6 +116,23 @@ class ServiceEngineTest {
         assertEquals("diagnostics" to """{"level":"warn"}""", core.calls.single())
         assertEquals(LogLevel.Info, diagnostics.level)
         assertEquals(listOf("1795300150000.txt"), diagnostics.crashes.map { it.name })
+    }
+
+    @Test
+    fun settingTheLogLevelRecordsOneActionPerReply() = runBlocking {
+        AppEvents.clear()
+        engine.setLogLevel(LogLevel.Debug).getOrThrow()
+        core.reply = """{"error":{"code":"busy"}}"""
+        assertEquals(ErrorCode.Busy, (engine.setLogLevel(LogLevel.Info).exceptionOrNull() as EngineException).code)
+
+        val events = AppEvents.snapshot().map { it.text.substringBefore(" elapsedMs=") }
+        assertEquals(
+            listOf(
+                "command=setLogLevel phase=complete outcome=ok code=ok",
+                "command=setLogLevel phase=complete outcome=failed code=Busy",
+            ),
+            events,
+        )
     }
 
     @Test
@@ -162,7 +180,7 @@ class ServiceEngineTest {
     @Test
     fun aMissingLibraryFailsTheEngineInsteadOfCrashingIt() = runBlocking {
         // The JVM has no libdoonacore.so, as when packaging dropped it.
-        val engine = ServiceEngine.create(ApplicationProvider.getApplicationContext())
+        val engine = ServiceEngine.create(ApplicationProvider.getApplicationContext(), endDebugCapture = {}, expireDebugCapture = { null })
         withTimeout(5_000) { engine.ready.first { it } }
         assertEquals(Status.Failed(FailureReason.StartFailed), engine.status.value)
     }

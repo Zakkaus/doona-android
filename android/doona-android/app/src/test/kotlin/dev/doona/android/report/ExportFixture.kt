@@ -1,5 +1,6 @@
 package dev.doona.android.report
 
+import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
@@ -70,10 +71,15 @@ abstract class ExportFixture {
 
     protected val app = AppInfo("0.1", 1, "debug", listOf("arm64-v8a"), "16", 36, "Google", "Pixel 9")
 
-    protected fun TestScope.export(engine: Engine, now: Long = 1_795_300_200_000, scope: CoroutineScope = this): ReportExport {
+    protected fun TestScope.export(
+        engine: Engine,
+        now: Long = 1_795_300_200_000,
+        scope: CoroutineScope = this,
+        logLevels: LogLevelController = LogLevelController(engine::setLogLevel, scope) { testScheduler.currentTime },
+    ): ReportExport {
         val files = CrashFiles(crashDir)
         val dispatcher = StandardTestDispatcher(testScheduler)
-        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher) { now }
+        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher, logLevels) { now }
     }
 
     /** Every entry of the zip, by name. */
