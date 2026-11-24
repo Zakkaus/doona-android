@@ -2,15 +2,19 @@ package dev.doona.android.report
 
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import java.io.File
 
 internal const val ACTION_COMMANDS = "start|stop|select|testLatency|addSubscription|updateSubscription|removeSubscription|setSubscriptionUserAgent|setMode|setRuleSource|setLogLevel|clearCrashes|export"
 internal val ACTION_CODES = ErrorCode.entries.map { it.name } + FailureReason.entries.map { it.name } + listOf("ok", "IOException")
 private val codes = ACTION_CODES.joinToString("|")
 
 // Allow values, not just characters: even a single-label host or token can be an ASCII identifier.
-internal val ACTION_TEXT = "command=(?:$ACTION_COMMANDS) phase=(?:dispatch|complete|deadline|write|reset) " +
+internal val ACTION_TEXT = "command=(?:$ACTION_COMMANDS) phase=(?:dispatch|complete|deadline|write|reset|retry) " +
     "outcome=(?:ok|failed|superseded|partial) code=(?:$codes)(?: elapsedMs=\\d{1,19})?"
 internal val actionText = Regex(ACTION_TEXT)
+internal const val SUBSCRIPTION_READY_TIMEOUT = "subscription-refresh: core readiness timed out"
 
 /** How severe an app event is. */
 enum class AppEventLevel { Info, Warn }
@@ -34,8 +38,16 @@ object AppEvents {
     /** The longest text kept: an event is a line, not a document. */
     private const val MAX_TEXT = 200
 
-    private val lock = Any()
-    private val ring = ArrayDeque<AppEvent>(CAPACITY)
+    private val installLock = Any()
+
+    @Volatile
+    private var ring = AppEventRing()
+
+    internal fun install(io: CoroutineDispatcher = Dispatchers.IO, file: () -> File) = synchronized(installLock) {
+        val previous = ring
+        ring = AppEventRing(file, io, previous.startupEvents())
+        previous.close()
+    }
 
     fun record(
         level: AppEventLevel,
@@ -45,10 +57,7 @@ object AppEvents {
         appPackage: String? = null,
     ): AppEvent {
         val event = AppEvent(atEpochMs, level, text.take(MAX_TEXT), visitedDomain, appPackage)
-        synchronized(lock) {
-            if (ring.size == CAPACITY) ring.removeFirst()
-            ring.addLast(event)
-        }
+        synchronized(installLock) { ring.add(event) }
         return event
     }
 
@@ -58,22 +67,18 @@ object AppEvents {
         return record(level, "command=$command phase=$phase outcome=$outcome code=$code$elapsed")
     }
 
-    /** The events kept now, oldest first. */
-    fun snapshot(): List<AppEvent> = synchronized(lock) { ring.toList() }
+    /** The events kept in memory now, oldest first. Never waits for disk. */
+    fun snapshot(): List<AppEvent> = ring.snapshot()
 
-    /** Only actions may cross a process boundary in crash files. */
-    internal fun breadcrumbs(limit: Int): List<AppEvent> = synchronized(lock) {
-        val events = ArrayList<AppEvent>(limit)
-        for (index in ring.lastIndex downTo 0) {
-            val event = ring[index]
-            if (!actionText.matches(event.text)) continue
-            events.add(event)
-            if (events.size == limit) break
-        }
-        events.reverse()
-        events
-    }
+    internal suspend fun reportSnapshot(): List<AppEvent> = ring.loadedSnapshot()
+
+    /** Only allowlisted actions from this process go into a new crash file. */
+    internal fun breadcrumbs(limit: Int): List<AppEvent> = ring.breadcrumbs(limit)
 
     /** Drops every event; for tests, which share the process. */
-    internal fun clear() = synchronized(lock) { ring.clear() }
+    internal fun clear() = synchronized(installLock) {
+        val previous = ring
+        ring = AppEventRing()
+        previous.close()
+    }
 }
