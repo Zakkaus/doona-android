@@ -38,10 +38,12 @@ internal fun rvCodeSpans(text: String): List<RvCodeSpan> {
 }
 
 /**
- * Where [text] may break inside a token: the offsets, ascending, right after a `(` or `,`, or the `:` that ends a key
- * (`geosite:`), when a character other than a blank, a line feed or `)` follows, outside comments and literals.
- * The platform breaks a line only at a blank or a hyphen, so `domain(geosite:category-games@cn)` would otherwise move
- * whole to the next line, or break mid-name; a number's colons (`00:11:22:33:44:55`) stay together.
+ * Where [text] may break inside a token: the offsets, ascending, right after a `(` or `,`, the `:` that ends a key
+ * (`geosite:`), or a path's `/` (one not of a `//`: `test/dns-query`, never `https://`), when a character other than a
+ * blank, a line feed or `)` follows, outside comments and literals. The platform breaks a line only at a blank or a
+ * hyphen, so `domain(geosite:category-games@cn)` would otherwise move whole to the next line, or break mid-name; a
+ * number's colons (`00:11:22:33:44:55`) stay together. In a bare address the platform's own rule would break before a
+ * hyphen (`…/dns` over `-query`); the path's `/` comes first.
  */
 internal fun rvCodeBreaks(text: String, spans: List<RvCodeSpan>): IntArray {
     val whole = spans.filter { it.kind == RvCodeKind.Comment || it.kind == RvCodeKind.Literal }
@@ -52,11 +54,15 @@ internal fun rvCodeBreaks(text: String, spans: List<RvCodeSpan>): IntArray {
         // [whole] is in text order, so the first span not yet ended is the only one that can hold i.
         while (next < whole.size && whole[next].end <= i) next++
         val inside = next < whole.size && whole[next].start <= i
-        val after = text[i] in BREAK_AFTER || (text[i] == ':' && i in keys)
+        val after = text[i] in BREAK_AFTER || (text[i] == ':' && i in keys) || pathSlash(text, i)
         if (after && text[i + 1] !in NO_BREAK_BEFORE && !inside) breaks += i + 1
     }
     return breaks.toIntArray()
 }
+
+/** Whether [i] is a `/` of a path: not after a blank or the start, and neither half of a `//`. */
+private fun pathSlash(text: String, i: Int): Boolean =
+    text[i] == '/' && i > 0 && !text[i - 1].isWhitespace() && text[i - 1] != '/' && text[i + 1] != '/'
 
 private const val BREAK_AFTER = "(,"
 private const val NO_BREAK_BEFORE = " \t\n)"

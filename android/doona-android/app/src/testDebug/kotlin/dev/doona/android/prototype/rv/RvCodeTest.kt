@@ -49,6 +49,11 @@ class RvCodeTest {
         val quoted = "  dip(224.0.0.0/3, 'ff00::/8') -> direct # a:b"
         assertArrayEquals(intArrayOf(6), rvCodeBreaks(quoted, rvCodeSpans(quoted)))
         assertArrayEquals(intArrayOf(), rvCodeBreaks("  policy: min()", rvCodeSpans("  policy: min()")))
+        // A bare address breaks after its path's `/`, not inside `https://`, and not before the hyphen of `dns-query`.
+        val url = "remote: https://dns.example.test/dns-query"
+        assertArrayEquals(intArrayOf(url.indexOf("/dns-") + 1), rvCodeBreaks(url, rvCodeSpans(url)))
+        val cidr = "  dip(10.8.0.0/16) -> direct"
+        assertArrayEquals(intArrayOf(6), rvCodeBreaks(cidr, rvCodeSpans(cidr)))
         val mac = "  mac(00:11:22:33:44:55) -> block"
         assertArrayEquals(intArrayOf(6), rvCodeBreaks(mac, rvCodeSpans(mac)))
     }
