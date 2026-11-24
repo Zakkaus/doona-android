@@ -82,8 +82,9 @@ class RvServiceRulesShotTest {
     @Test
     fun aServiceWithoutALicensedMarkKeepsTheGenericGlyph() {
         val generic = RvServiceData.all.filter { it.glyph == R.drawable.rv_sym_apps }.map { it.code }
-        // 全部遊戲 is no brand; 巴哈姆特's mark is under no licence any source offers (BRAND_ICONS.md).
-        val none = listOf("category-games", "bahamut")
+        // 全部遊戲 is no brand; Nintendo, Disney+, Prime Video and 巴哈姆特 have no square mark of their own under a
+        // licence any source offers (BRAND_ICONS.md).
+        val none = listOf("nintendo", "category-games", "disney", "primevideo", "bahamut")
         assertEquals(none, generic)
         val marks = RvServiceData.all.map { it.glyph }.filter { it != R.drawable.rv_sym_apps }
         assertEquals("one mark per service", marks.distinct(), marks)

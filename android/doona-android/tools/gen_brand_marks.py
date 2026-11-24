@@ -1,17 +1,15 @@
-"""Brand marks from Bootstrap Icons and Wikimedia Commons -> Android vector drawables for 新增服務規則 (owner-fix5).
+"""Brand marks from Bootstrap Icons -> Android vector drawables for 新增服務規則 (owner-fix5).
 
 usage: python3 -I tools/gen_brand_marks.py <source dir> app/src/main/res/drawable
 
 The source dir holds the files exactly as downloaded (app/src/main/BRAND_ICONS.md gives each URL and checksum):
   bootstrap/xbox.svg, bootstrap/microsoft.svg, bootstrap/openai.svg   (twbs/icons v1.13.2, icons/<name>.svg)
-  commons/Nintendo.svg, commons/Blizzard_Entertainment_Logo_2015.svg, commons/Disney+_2024.svg,
-  commons/Prime_Video_logo_(2024).svg
 
 Each mark keeps its paths; numbers are re-emitted with separators as tools/gen_brand_icons.py does. A group scales the
 mark so its longer side is 20 units of the 24-unit viewport and centres it, so it draws 20 dp of the 24 dp box like the
-Simple Icons marks (a wide wordmark is 20 dp wide and shorter). The ink's bounds come from rendering the source with
-rsvg-convert. Nintendo's red plate with its white wordmark becomes one white plate with the wordmark cut out (even-odd).
-Fill white; the row tints it.
+Simple Icons marks. The ink's bounds come from rendering the source with rsvg-convert. Fill white; the row tints it.
+The wide Wikimedia Commons wordmarks (Nintendo, Blizzard, Disney+, Prime Video) were dropped on 2026-11-25: a row's
+glyph is square (the owner), and those services keep the generic glyph until a square mark is found.
 """
 
 import importlib.util
@@ -38,10 +36,6 @@ MARKS = {
     "rv_brand_xbox": ("bootstrap/xbox.svg", "Bootstrap Icons 1.13.2 \"xbox\" (MIT"),
     "rv_brand_microsoft": ("bootstrap/microsoft.svg", "Bootstrap Icons 1.13.2 \"microsoft\" (MIT"),
     "rv_brand_openai": ("bootstrap/openai.svg", "Bootstrap Icons 1.13.2 \"openai\" (MIT"),
-    "rv_brand_nintendo": ("commons/Nintendo.svg", "Wikimedia Commons \"File:Nintendo.svg\" (PD-textlogo"),
-    "rv_brand_blizzard": ("commons/Blizzard_Entertainment_Logo_2015.svg", "Wikimedia Commons \"File:Blizzard Entertainment Logo 2015.svg\" (PD-textlogo"),
-    "rv_brand_disneyplus": ("commons/Disney+_2024.svg", "Wikimedia Commons \"File:Disney+ 2024.svg\" (PD-textlogo"),
-    "rv_brand_primevideo": ("commons/Prime_Video_logo_(2024).svg", "Wikimedia Commons \"File:Prime Video logo (2024).svg\" (PD-textlogo"),
 }
 
 
@@ -72,18 +66,8 @@ def compact(d: str) -> str:
 
 
 def paths(name: str, text: str) -> tuple[list[tuple[str, str]], float]:
-    """The mark's (pathData, fillType) list and the source's own translateY (Nintendo's layer)."""
+    """The mark's (pathData, fillType) list and the source's own translateY (none of the current marks has one)."""
     ds = re.findall(r'<path\b[^>]*?\sd="([^"]+)"', text, re.S)
-    if name == "rv_brand_nintendo":
-        rect = re.search(r'<rect\b[^>]*?y="([^"]+)"[^>]*?x="([^"]+)"[^>]*?height="([^"]+)"[^>]*?width="([^"]+)"', text, re.S)
-        y, x, h, w = (float(v) for v in rect.groups())
-        shift = float(re.search(r'transform="translate\(0,([^)]+)\)"', text).group(1))
-        plate = f"M{x} {y} h{w} v{h} h{-w} z "
-        assert len(ds) == 1, name
-        return [(compact(plate + normalise(ds[0])), "evenOdd")], shift
-    if name == "rv_brand_disneyplus":
-        layer = text.split('<g id="Layer_1">')[1].split('<g id="Layer_2"')[0]
-        ds = re.findall(r'<path\b[^>]*?\sd="([^"]+)"', layer, re.S)
     return [(compact(normalise(d)), "nonZero") for d in ds], 0.0
 
 
