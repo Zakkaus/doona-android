@@ -207,8 +207,9 @@ jobs:
           apk=app/build/outputs/apk/release/app-release.apk
           # Owner decision (2026-11-24): ship both full DATs. Baselines include them.
           # Allow 256 KiB above each measured APK, including signer and alignment variation.
-          baseline_apk_bytes=22294329
-          if [[ "$CORE_PROFILE" == ci-release ]]; then baseline_apk_bytes=26545585; fi
+          # Measured by CI at 821738f6 (geo DATs and the geo core): release 23,439,017, ci-release 27,945,273.
+          baseline_apk_bytes=23439017
+          if [[ "$CORE_PROFILE" == ci-release ]]; then baseline_apk_bytes=27945273; fi
           max_apk_bytes=$((baseline_apk_bytes + 256 * 1024))
           apk_bytes=$(stat -c %s "$apk")
           echo "Release APK: $apk_bytes bytes (limit: $max_apk_bytes)"
