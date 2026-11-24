@@ -14,19 +14,24 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvControlSize
+import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvAnimatorScale
+import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
@@ -135,8 +140,8 @@ class RvReportShotTest {
 
     /**
      * Four switches, each on where it hides its part: node addresses, my IPs and the visited domains start hidden, the app
-     * names shown (the owner, owner-fix2 item 11). Under them the line that hiding more leaves the problem less likely
-     * answered, then the line of what always goes.
+     * names shown (the owner, owner-fix2 item 11). Under them one paragraph: that hiding more makes the problem harder to
+     * find, then what a report never holds.
      */
     @Test
     @Config(qualifiers = READY)
@@ -148,10 +153,30 @@ class RvReportShotTest {
         }
         compose.onNodeWithText(rvText(R.string.rv_redact_apps)).assertIsOff()
         val apps = compose.onNodeWithText(rvText(R.string.rv_redact_apps)).getUnclippedBoundsInRoot()
-        val hint = compose.onNodeWithText(rvText(R.string.rv_redact_hint)).getUnclippedBoundsInRoot()
-        val always = compose.onNodeWithText(rvText(R.string.rv_redact_always)).getUnclippedBoundsInRoot()
-        assertTrue("the hint stands under the switches", hint.top > apps.bottom)
-        assertTrue("the hint comes before what always goes", always.top >= hint.bottom)
+        val footer = compose.onNodeWithText(rvText(R.string.rv_redact_footer)).getUnclippedBoundsInRoot()
+        assertTrue("the footnote stands under the switches", footer.top > apps.bottom)
+    }
+
+    /** The footnote spans the cards' column and is laid out that wide, so its first line runs to their right edge (owner-fix3 item 29). */
+    @Test
+    @Config(qualifiers = READY)
+    fun theFootnoteRunsToTheCardsRightEdge() = footnoteSpansTheCards(1f)
+
+    @Test
+    @Config(qualifiers = READY_FS200)
+    fun theFootnoteRunsToTheCardsRightEdgeAtFs200() = footnoteSpansTheCards(RV_FS200)
+
+    private fun footnoteSpansTheCards(fontScale: Float) {
+        compose.rvContent(dark = false, fontScale = fontScale) { Page(READY_BUILD) }
+        val card = compose.onAllNodesWithTag(RvPart.CARD).fetchSemanticsNodes().last().boundsInRoot
+        val node = compose.onNodeWithTag(RvPart.FOOTER).fetchSemanticsNode()
+        val box = node.boundsInRoot
+        assertEquals("starts on the cards' left edge", card.left, box.left, EDGE_PX)
+        assertEquals("ends on the cards' right edge", card.right, box.right, EDGE_PX)
+        val layouts = mutableListOf<TextLayoutResult>().also { node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }
+        val layout = layouts.single()
+        assertEquals("laid out as wide as its box", box.width, layout.layoutInput.constraints.maxWidth.toFloat(), EDGE_PX)
+        assertTrue("one paragraph that wraps", layout.lineCount >= 2)
     }
 
     /** A report written before a switch turned hides other things: it is not shared until it is written again. */
@@ -216,6 +241,9 @@ class RvReportShotTest {
 
     private companion object {
         val READY_BUILD = RvReportBuild.Ready(RvRedaction())
+
+        /** Half a dp at xhdpi: bounds rounded to the pixel. */
+        const val EDGE_PX = 1f
         val IS_BUTTON = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
 
         /** As tall as the page in each state and font size (to the next whole dp), so its end sits above the actions as on the phone. */

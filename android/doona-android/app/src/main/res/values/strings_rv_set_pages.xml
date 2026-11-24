@@ -58,8 +58,7 @@
     <string name="rv_redact_domains_sub">Domains in connections and DNS queries</string>
     <string name="rv_redact_apps">App names</string>
     <string name="rv_redact_apps_sub">The app behind each connection</string>
-    <string name="rv_redact_hint">The more you redact, the harder the problem is to find.</string>
-    <string name="rv_redact_always">Reports never include subscription URLs or tokens.</string>
+    <string name="rv_redact_footer">The more you redact, the harder the problem is to find. Reports never include subscription URLs or tokens.</string>
     <string name="rv_report_github">Report on GitHub</string>
     <string name="rv_report_share">Share file</string>
     <string name="rv_report_building">Building the report…</string>
