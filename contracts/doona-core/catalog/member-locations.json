@@ -1,0 +1,8 @@
+[
+  {"name":"Auto", "region":null, "regionCentroid":null, "city":null},
+  {"name":"JP", "region":null, "regionCentroid":null, "city":null},
+  {"name":"JP-NRT", "region":"JP", "regionCentroid":{"lat":36.2,"lon":138.25}, "city":{"id":"tokyo","lat":35.68,"lon":139.69}},
+  {"name":"anonymous", "region":null, "regionCentroid":null, "city":null},
+  {"name":"DE", "region":"DE", "regionCentroid":{"lat":51.17,"lon":10.45}, "city":null},
+  {"name":"Dallas", "region":"US", "regionCentroid":{"lat":37.09,"lon":-95.71}, "city":{"id":"dallas","lat":32.78,"lon":-96.8}}
+]
