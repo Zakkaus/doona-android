@@ -9,7 +9,7 @@ use super::{Core, Options};
 use crate::dto::Mode;
 use crate::testutil::{TempDir, closed, one_dial_ceiling, tuic, tun};
 use crate::tunnel::route::{Inbound, Route};
-use crate::tunnel::{Gen, Launch, Session, Settings, StartSignal, TunHandle};
+use crate::tunnel::{Gen, Launch, STOP_WAIT, Session, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
 use serde_json::json;
 use std::net::SocketAddr;
@@ -112,7 +112,7 @@ fn stop_closes_an_established_quic_connection_while_the_workers_are_held() {
     let still_open = open(&socket);
     let took = begun.elapsed();
     assert!(!still_open, "the QUIC socket was open when stop returned");
-    assert!(took < Duration::from_secs(1), "{took:?}");
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
     assert!(closed(&probe));
 }
 

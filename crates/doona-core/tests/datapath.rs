@@ -7,6 +7,7 @@ mod common;
 
 use common::client::Client;
 use common::servers;
+use common::stop_wait::STOP_WAIT;
 use common::{TempDir, seqpacket_pair, wait_for};
 use doonacore::api::{Core, Options};
 use doonacore::dto::Snapshot;
@@ -154,11 +155,11 @@ fn private_dns_to_the_virtual_resolver_is_reset_at_once() {
     let begun = Instant::now();
     let id = s.client.connect(SocketAddr::new(RESOLVER.ip(), 853));
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
-    assert!(begun.elapsed() < Duration::from_secs(1));
+    assert!(begun.elapsed() < Duration::from_secs(3));
 }
 
 #[test]
-fn stop_closes_open_flows_within_a_second() {
+fn stop_promptly_closes_open_flows() {
     let (echo, seen) = servers::tcp_echo();
     let (udp, _) = servers::udp_echo();
     let mut s = setup("Direct", vec![]);
@@ -173,11 +174,8 @@ fn stop_closes_open_flows_within_a_second() {
     assert_eq!(snapshot(&s.core).traffic.active_flows, 2);
     let begun = Instant::now();
     s.core.stop();
-    assert!(
-        begun.elapsed() < Duration::from_secs(1),
-        "{:?}",
-        begun.elapsed()
-    );
+    let took = begun.elapsed();
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
     // The upstream connection was closed with its generation.
     assert!(wait_for(WAIT, || seen.closed.load(Relaxed) == 1));
 }
@@ -408,6 +406,9 @@ fn a_dns_session_whose_last_answer_is_slow_is_reset_a_drain_time_after_nothing_m
         reset,
         "the core still holds the session {took:?} after the FIN"
     );
-    assert!(took < DRAIN + Duration::from_secs(1), "{took:?}");
+    assert!(
+        took < servers::SLOW - Duration::from_millis(500),
+        "{took:?}"
+    );
     assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
 }

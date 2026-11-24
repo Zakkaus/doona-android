@@ -74,4 +74,5 @@ pub mod global;
 pub mod servers;
 pub mod socks;
 pub mod ss;
+pub mod stop_wait;
 pub mod tuic;
