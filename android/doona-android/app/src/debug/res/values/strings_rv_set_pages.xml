@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The samples of 設定's sub-pages (prototype/rv/settings, lane set-pages), debug builds only. -->
+<resources>
+    <string name="rv_about_title">About doona</string>
+    <string name="rv_about_github">GitHub project</string>
+    <string name="rv_about_github_action" translatable="false">GitHub</string>
+    <string name="rv_about_report_action">Report</string>
+    <string name="rv_about_privacy">Privacy</string>
+    <string name="rv_about_versions">Version %1$s · core %2$s · honk %3$s</string>
+</resources>

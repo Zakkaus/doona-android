@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_about_title">关于 doona</string>
+    <string name="rv_about_github">GitHub 项目</string>
+    <string name="rv_about_report_action">报告问题</string>
+    <string name="rv_about_privacy">隐私</string>
+    <string name="rv_about_versions">版本 %1$s · 核心 %2$s · honk %3$s</string>
+</resources>
