@@ -110,7 +110,7 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
 /**
  * 設定's hero without its dot map: the mark beside the centred name ([titleBlock]), the version line under it as a
  * page header's caption, and the round actions as far under that block as 設定's are under its title, their labels one
- * size ([rvActionRowFit]). While the [update] check runs, its disc holds the busy bar.
+ * size ([rvActionRowFit]). While the [update] check runs, its disc holds the busy bar and takes no tap.
  */
 @Composable
 private fun Hero(titleBlock: Modifier, insets: WindowInsets, versions: RvAboutVersions, routes: RvAboutRoutes, update: RvUpdate) {
@@ -140,7 +140,9 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, versions: RvAboutVe
         Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
             RvAction(R.drawable.rv_sym_link, labels[0], routes.github, column, labelStyle = style)
             RvAction(R.drawable.rv_sym_ios_share, labels[1], routes.report, column, labelStyle = style)
-            RvAction(R.drawable.rv_settings_ic_update, labels[2], routes.checkUpdate, column, busy = update == RvUpdate.Checking, labelStyle = style)
+            // A check under way takes no second one.
+            val checking = update == RvUpdate.Checking
+            RvAction(R.drawable.rv_settings_ic_update, labels[2], routes.checkUpdate, column, busy = checking, labelStyle = style, enabled = !checking)
         }
     }
 }

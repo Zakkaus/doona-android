@@ -59,8 +59,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -107,7 +111,7 @@ private fun Modifier.rvClick(indication: Indication, role: Role, onClick: () -> 
  * so a frame lays nothing out and allocates nothing. Rows and pills keep [rvPressIndication].
  */
 @Composable
-internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit): Modifier {
+internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit, enabled: Boolean = true): Modifier {
     val motion = Rv.motion
     val lit = Rv.colors.discLit
     val source = remember { MutableInteractionSource() }
@@ -120,7 +124,7 @@ internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit): Modifier
     }.then(fill)
         .drawBehind { if (press.value > 0f) drawCircle(lit, alpha = press.value) }
         .clip(CircleShape)
-        .clickable(source, indication = null, role = Role.Button, onClick = onClick)
+        .clickable(source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
 }
 
 @Composable
@@ -187,8 +191,9 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
 /**
  * A round action: a disc with a glyph and its label under it on one line, in [labelStyle], the size its row gives every
  * label ([rvActionRowFit]), and still shrinking to fit its column alone when it has no row; the line keeps its full
- * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy];
- * that swap and a new [label] fade through ([RvFadeThrough]).
+ * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]), and none while not [enabled]. [busy]
+ * swaps the glyph for [RvBusy]; that swap and a new [label] fade through ([RvFadeThrough]). A screen reader finds one
+ * button: the label names it, it clicks as the disc does, and it reads as disabled with the disc.
  */
 @Composable
 internal fun RvAction(
@@ -198,9 +203,22 @@ internal fun RvAction(
     modifier: Modifier = Modifier,
     busy: Boolean = false,
     labelStyle: TextStyle = Rv.type.action,
+    enabled: Boolean = true,
 ) {
-    Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
+    val button = modifier.semantics(mergeDescendants = true) {
+        role = Role.Button
+        onClick {
+            if (enabled) onClick()
+            enabled
+        }
+        if (!enabled) disabled()
+    }
+    Column(button, horizontalAlignment = Alignment.CenterHorizontally) {
+        // The disc's own click node would be a second, nameless button: a screen reader does not see it, and finds the
+        // column above, which carries its action.
+        val disc = Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick, enabled)
+            .semantics { hideFromAccessibility() }
+        Box(disc, contentAlignment = Alignment.Center) {
             // While [busy] (connecting) the disc shows a busy bar instead of its glyph, the one fading through the other.
             RvFadeThrough(busy, "busy") { working ->
                 if (working) RvBusy(Modifier.width(RvSize.busy)) else RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)

@@ -1,9 +1,20 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -26,7 +37,8 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * 檢查更新 on the 關於 page, each light, dark, fs115 and fs200: while it asks GitHub (`proto-rv-settings-update-checking-*`,
  * at animator scale 0, so the busy bar rests half full), with nothing newer (`-update-latest-*`), with a newer release
- * (`-update-new-*`) and with no answer (`-update-failed-*`). Then what the banners' actions do.
+ * (`-update-new-*`) and with no answer (`-update-failed-*`). Then what the banners' actions do, and that each round
+ * action is one named button and 檢查更新 takes no second check while one runs.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -89,6 +101,30 @@ class RvUpdateShotTest {
     }
 
     @Test
+    fun eachRoundActionIsOneNamedButton() {
+        var checks = 0
+        compose.setContent { Themed { Page(RvUpdate.Idle, RvAboutRoutes(checkUpdate = { checks++ })) } }
+        val labels = listOf(R.string.rv_about_github_action, R.string.rv_about_report_action, R.string.rv_settings_check_update)
+        labels.forEach { compose.onNodeWithText(rvText(it)).assertHasClickAction().assert(IS_BUTTON).assertIsEnabled() }
+        // No click node a screen reader finds is left without a name, as each disc alone was.
+        val nameless = hasClickAction() and SemanticsMatcher.keyNotDefined(SemanticsProperties.Text) and
+            SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription) and SemanticsMatcher.keyNotDefined(SemanticsProperties.HideFromAccessibility)
+        compose.onAllNodes(nameless).assertCountEquals(0)
+        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals(1, checks)
+    }
+
+    @Test
+    fun aCheckUnderWayTakesNoSecond() {
+        var checks = 0
+        compose.setContent { Themed { Page(RvUpdate.Checking, RvAboutRoutes(checkUpdate = { checks++ })) } }
+        val action = compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).assertIsNotEnabled()
+        action.performClick()
+        action.performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals(0, checks)
+    }
+
+    @Test
     fun nothingNewerRenamesTheActionAndShowsNoBanner() {
         compose.setContent { Themed { Page(RvUpdate.Latest) } }
         compose.onNodeWithText(rvText(R.string.rv_update_latest)).assertExists()
@@ -111,5 +147,6 @@ class RvUpdateShotTest {
 
     private companion object {
         val NEW = RvUpdate.Available(RV_SAMPLE_RELEASE)
+        val IS_BUTTON = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
     }
 }
