@@ -142,26 +142,28 @@ class RvCodeTest {
     }
 
     /**
-     * On the owner's wallpaper a call, in the theme's tertiary, stays at least [MIN_HUE_DISTANCE] round the colour wheel
-     * from the diff's added green and removed red, light and dark. A keyword keeps the accent, as the owner asked, and a
-     * string a softer accent, though a cyan accent sits near the added green; the diff marks its lines with + and − and
-     * their tint as well.
+     * On the owner's wallpaper a key, in the theme's tertiary, stays at least [MIN_HUE_DISTANCE] round the colour wheel
+     * from the diff's added green and removed red, light and dark. A keyword and a call keep the accent's hue, as the
+     * owner asked of keywords, and a literal too, though a cyan accent sits near the added green; the diff marks its lines
+     * with + and − and their tint as well.
      */
     @Test
-    fun aCallStaysAwayFromTheDiffsGreenAndRed() {
+    fun aKeyStaysAwayFromTheDiffsGreenAndRed() {
         for (dark in listOf(false, true)) {
             val c = RvColors(seedColorScheme(Seed.Cyan.argb, dark), dark)
-            val call = rvCodeColors(c).call
+            val key = rvCodeColors(c).key
             for (mark in listOf(c.good, c.error)) {
-                assertTrue("${if (dark) "dark" else "light"} ${call.hue()} vs ${mark.hue()}", hueDistance(call.hue(), mark.hue()) >= MIN_HUE_DISTANCE)
+                assertTrue("${if (dark) "dark" else "light"} ${key.hue()} vs ${mark.hue()}", hueDistance(key.hue(), mark.hue()) >= MIN_HUE_DISTANCE)
             }
         }
     }
 
     /**
      * Every kind reads apart from plain text and from each kind it meets on a line, at least [MIN_DELTA_E] apart in CIELAB
-     * (ΔE*ab, 1976) on every seed, light and dark. A block and a symbol share the accent, and a symbol and a literal (a
-     * step lighter) never meet either: an operator or a key stands between (`-> 'remote'`, `direct(mark: 0x10)`).
+     * (ΔE*ab, 1976) on every seed, light and dark, and at least [MIN_APART_FROM_TEXT] from plain text. A block, a symbol
+     * and a call share the accent's hue (a call drawn far from the text's tone, so on a light theme it is the keyword's
+     * ink); a symbol and a literal (a step toward the text) never meet either: an operator or a key stands between
+     * (`-> 'remote'`, `direct(mark: 0x10)`).
      */
     @Test
     fun eachKindReadsApartFromPlainTextAndItsNeighbours() {
@@ -175,12 +177,13 @@ class RvCodeTest {
                 val pairs = RvCodeKind.entries.map { it to null } + NEIGHBOURS
                 for ((a, b) in pairs) {
                     val d = deltaE(ink(a), ink(b))
-                    least = min(least, d)
+                    // How far a pair falls short of its floor: plain text's is higher, as a kind must read apart at a glance.
+                    least = min(least, d - if (b == null) MIN_APART_FROM_TEXT else MIN_DELTA_E)
                     found += "%x %s %s/%s %.1f".format(seed, if (dark) "dark" else "light", a, b ?: "plain", d)
                 }
             }
         }
-        assertTrue("least ΔE %.1f:\n%s".format(least, found.joinToString("\n")), least >= MIN_DELTA_E)
+        assertTrue("short by %.1f:\n%s".format(-least, found.joinToString("\n")), least >= 0f)
     }
 
     private fun deltaE(a: Color, b: Color): Float {
@@ -212,8 +215,14 @@ class RvCodeTest {
 
         const val MIN_HUE_DISTANCE = 30f
 
-        /** The least CIELAB distance between a kind and plain text or a kind it meets. */
-        const val MIN_DELTA_E = 10f
+        /** The least CIELAB distance between two kinds that meet on a line. */
+        const val MIN_DELTA_E = 12f
+
+        /**
+         * The least CIELAB distance between a kind and plain text (hl-fix1): the comment's secondary ink, 23.7 on the dark
+         * purple seed, is the closest; every other kind is 25 or more.
+         */
+        const val MIN_APART_FROM_TEXT = 23f
 
         /** The kinds that meet on a line: `key: 'x'`, `policy: fixed`, `domain(geosite:`, `!geosite`, `{ log_file:`, … */
         val NEIGHBOURS = listOf(

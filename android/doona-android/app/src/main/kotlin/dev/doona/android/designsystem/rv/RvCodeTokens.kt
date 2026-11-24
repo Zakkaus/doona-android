@@ -4,11 +4,14 @@ import androidx.compose.ui.unit.dp
 
 /** How the code kinds' inks derive from the theme's accent and tertiary ([rvCodeColors]). */
 internal object RvCodeShade {
-    /** A literal's step from the accent toward the page, and an operator's from a key's colour away from it (Oklab L). */
+    /** A literal's step from the accent's farthest readable lightness back toward the text (Oklab L). */
     const val STEP = 0.12f
 
-    /** A key's colour: halfway from the accent to the tertiary, in Oklab, as Compose blends. */
+    /** An operator's hue: halfway from the accent to the tertiary, in Oklab, as Compose blends. */
     const val MID = 0.5f
+
+    /** The lightness levels searched for the farthest readable one (Oklab L from 0 to 1). */
+    const val LEVELS = 400
 }
 
 /**

@@ -190,10 +190,10 @@ private fun CodeLine(line: RvCodeLine, style: TextStyle, space: TextUnit, colors
 
 /**
  * The ink of each code kind in one theme ([rvCodeColors]), all from the theme's colours (owner 2026-11-24: 「要麼就跟隨主題
- * 配色」), in the code's own weight (never bold: owner 2026-11-25). honk's own words, a block and a symbol, keep the accent
- * ([keyword], owner 2026-11-25; the two never meet on a line); a literal is the accent a step lighter on the page; a call
- * the tertiary; a key the colour halfway between; an operator that colour a step darker on the page; a comment the
- * secondary ink. Plain text, its punctuation included, is the text.
+ * 配色」), in the code's own weight (never bold: owner 2026-11-25). A block and a symbol keep the accent ([keyword], owner
+ * 2026-11-25); a call is honk's own word too, in the accent's hue; a literal is that hue a step toward the text; a key the
+ * tertiary; an operator the colour halfway between; a comment the secondary ink. Plain text, its punctuation included, is
+ * the text.
  */
 @Immutable
 internal data class RvCodeColors(
@@ -217,36 +217,39 @@ internal data class RvCodeColors(
 }
 
 /**
- * Each code kind's ink in [colors]' theme: the accent ([RvColors.positive]) for a block and a symbol and, its Oklab
- * lightness [RvCodeShade.STEP] toward the page, for a literal; the tertiary ([RvColors.up]'s line) for a call; the two
- * [RvCodeShade.MID] apart (in Oklab) for a key and, a step away from the page, for an operator; the secondary ink for a
- * comment. A step keeps the hue and chroma, so the kinds stay apart (`RvCodeTest` measures ΔE*ab). Each, or the first
- * step from it toward black (light) or white (dark), reads at 4.5:1 on the page, the card, and a diff's added and removed
- * lines (their hue at [RvAlpha.STATUS_CHIP] over the card), as [RvColors] makes the latency hues readable.
+ * Each code kind's ink in [colors]' theme. A block and a symbol take the accent ([RvColors.positive]) and a comment the
+ * secondary ink, each or the first step from it toward black (light) or white (dark) that reads at 4.5:1 on the page,
+ * the card, and a diff's added and removed lines (their hue at [RvAlpha.STATUS_CHIP] over the card), as [RvColors] makes
+ * the latency hues readable. The other kinds tell themselves from the text by tone: each keeps its hue's Oklab hue and
+ * chroma at the lightness farthest from the text's that still reads at 4.5:1 on those grounds ([far]): a call the accent,
+ * a literal the accent [RvCodeShade.STEP] back toward the text, a key the tertiary ([RvColors.up]'s line), an operator
+ * the two [RvCodeShade.MID] apart (in Oklab). Stepping toward black or white, as the old inks did, moved them onto the
+ * text's own tone (hl-fix1); `RvCodeTest` measures ΔE*ab against the text and between kinds that meet.
  */
 internal fun rvCodeColors(colors: RvColors): RvCodeColors {
     val tints = listOf(colors.good, colors.error).map { it.copy(alpha = RvAlpha.STATUS_CHIP).compositeOver(colors.card) }
     val grounds = listOf(colors.page, colors.card) + tints
+    fun reads(c: Color) = grounds.all { rvContrast(c, it) >= RvContrast.TEXT_MIN }
     val toward = if (colors.dark) Color.White else Color.Black
-    fun ink(from: Color) = (0..RvContrast.STEPS).map { lerp(from, toward, it.toFloat() / RvContrast.STEPS) }
-        .firstOrNull { c -> grounds.all { rvContrast(c, it) >= RvContrast.TEXT_MIN } } ?: toward
-    val page = if (colors.dark) -RvCodeShade.STEP else RvCodeShade.STEP
+    fun ink(from: Color) = (0..RvContrast.STEPS).map { lerp(from, toward, it.toFloat() / RvContrast.STEPS) }.firstOrNull(::reads) ?: toward
+
+    // The text is dark on a light theme and light on a dark one, so its far side is light, or dark.
+    fun far(from: Color, step: Float = 0f): Color {
+        val lab = from.convert(ColorSpaces.Oklab)
+        fun at(l: Float) = Color(l.coerceIn(0f, 1f), lab.green, lab.blue, 1f, ColorSpaces.Oklab).convert(ColorSpaces.Srgb)
+        val levels = (0..RvCodeShade.LEVELS).map { it.toFloat() / RvCodeShade.LEVELS }
+        val l = (if (colors.dark) levels else levels.asReversed()).firstOrNull { reads(at(it)) } ?: return ink(from)
+        return at(if (colors.dark) l + step else l - step)
+    }
     val tertiary = colors.up.line
-    val between = lerp(colors.positive, tertiary, RvCodeShade.MID)
     return RvCodeColors(
         comment = ink(colors.textSecondary),
         keyword = ink(colors.positive),
-        literal = ink(colors.positive.lighter(page)),
-        call = ink(tertiary),
-        key = ink(between),
-        operator = ink(between.lighter(-page)),
+        literal = far(colors.positive, RvCodeShade.STEP),
+        call = far(colors.positive),
+        key = far(tertiary),
+        operator = far(lerp(colors.positive, tertiary, RvCodeShade.MID)),
     )
-}
-
-/** This colour with its Oklab lightness moved [by] (lighter when positive), its hue and chroma kept. */
-private fun Color.lighter(by: Float): Color {
-    val lab = convert(ColorSpaces.Oklab)
-    return Color((lab.red + by).coerceIn(0f, 1f), lab.green, lab.blue, alpha, ColorSpaces.Oklab).convert(ColorSpaces.Srgb)
 }
 
 /** [rvCodeColors] for the theme in use. */
