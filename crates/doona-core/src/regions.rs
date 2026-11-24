@@ -1,17 +1,21 @@
 //! Display locations and the versioned template's subset of the same alias table.
 
-use crate::dto::location::{City, Coordinates, Location};
+use crate::dto::location::{City, CityNames, Coordinates, Location};
 use aho_corasick::AhoCorasick;
 use std::borrow::Cow;
 use std::cmp::Reverse;
 use std::sync::LazyLock;
 
+mod cities;
 mod data;
 mod flags;
+mod relay;
 mod unicode;
 use data::REGIONS;
 
 struct Site {
+    iso: &'static str,
+    names: [&'static str; 3],
     id: &'static str,
     point: Coordinates,
     aliases: &'static str,
@@ -21,48 +25,48 @@ struct Region {
     iso: &'static str,
     center: Coordinates,
     aliases: &'static str,
-    cities: &'static [Site],
 }
 
-const fn city(id: &'static str, lat: f64, lon: f64, aliases: &'static str) -> Site {
-    Site {
-        id,
-        point: Coordinates { lat, lon },
-        aliases,
-    }
-}
-
-const fn region(
-    iso: &'static str,
-    lat: f64,
-    lon: f64,
-    aliases: &'static str,
-    cities: &'static [Site],
-) -> Region {
+const fn region(iso: &'static str, lat: f64, lon: f64, aliases: &'static str) -> Region {
     Region {
         iso,
         center: Coordinates { lat, lon },
         aliases,
-        cities,
     }
 }
 
-impl Region {
-    fn aliases(&self) -> impl Iterator<Item = (&'static str, Option<&'static Site>)> {
-        self.aliases.split('|').map(|key| (key, None)).chain(
-            self.cities
-                .iter()
-                .flat_map(|city| city.aliases.split('|').map(move |key| (key, Some(city)))),
-        )
+impl Site {
+    fn keys(&self) -> impl Iterator<Item = &'static str> {
+        self.names
+            .into_iter()
+            .chain([self.id])
+            .chain(self.aliases.split('|').filter(|s| !s.is_empty()))
+    }
+
+    fn dto(&self) -> City {
+        let [en, tw, cn] = self.names;
+        City {
+            id: self.id.into(),
+            coordinates: self.point,
+            names: Some(CityNames {
+                en: en.into(),
+                zh_tw: tw.into(),
+                zh_cn: cn.into(),
+            }),
+        }
     }
 }
 
 struct Alias {
     key: &'static str,
-    region: &'static Region,
+    iso: &'static str,
+    center: Coordinates,
     city: Option<&'static Site>,
     exact: bool,
     bounded: bool,
+    risky: bool,
+    short_code: bool,
+    numbered_code: bool,
 }
 
 struct Matcher {
@@ -75,17 +79,48 @@ const CAPITAL_ONLY: &str = "IN IT MY NO ID KZ AT BE LU CZ RO IS CL CO SA PK NG E
 static MATCHER: LazyLock<Matcher> = LazyLock::new(|| {
     let mut aliases = Vec::new();
     for r in REGIONS {
-        for (key, city) in std::iter::once((r.iso, None)).chain(r.aliases()) {
+        for key in std::iter::once(r.iso).chain(r.aliases.split('|')) {
             if key.starts_with('!') {
                 continue;
             }
             let key = key.trim_start_matches(['~', '#']);
             aliases.push(Alias {
                 key,
-                region: r,
-                city,
+                iso: r.iso,
+                center: r.center,
+                city: None,
+                risky: false,
+                short_code: false,
+                numbered_code: false,
                 exact: key == r.iso && CAPITAL_ONLY.split_ascii_whitespace().any(|iso| iso == key),
                 bounded: key.as_bytes()[0].is_ascii(), // All Han aliases start with Han.
+            });
+        }
+    }
+    for city in cities::SITES {
+        let (_, center) = country(city.iso.as_bytes()).expect("city ISO code");
+        let start = aliases.len();
+        for raw in city.keys() {
+            let key = raw.trim_start_matches(['?', '^']);
+            if aliases[start..]
+                .iter()
+                .any(|a| a.key.eq_ignore_ascii_case(key))
+            {
+                continue;
+            }
+            aliases.push(Alias {
+                key,
+                iso: city.iso,
+                center,
+                city: Some(city),
+                exact: false,
+                bounded: true,
+                risky: raw.starts_with('?'),
+                short_code: code_needs_context(key),
+                numbered_code: raw.starts_with('^')
+                    || (key.is_ascii()
+                        && key.len() <= 4
+                        && !key.eq_ignore_ascii_case(city.names[0])),
             });
         }
     }
@@ -103,8 +138,7 @@ fn folded(name: &str) -> Cow<'_, str> {
         match c {
             'ſ' => 's',
             'K' => 'k',
-            'Ü' => 'ü',
-            'Ã' => 'ã',
+            c if !c.is_ascii() && c != 'İ' && c.is_uppercase() => c.to_lowercase().next().unwrap(),
             _ => c,
         }
     }
@@ -120,6 +154,76 @@ fn folded(name: &str) -> Cow<'_, str> {
 
 type Rank = (usize, Reverse<usize>, usize);
 
+// Keep doona's unambiguous existing airport aliases usable in phrases. New short codes are
+// labels (SFO, sfo-2), not words to search for in arbitrary prose.
+fn code_needs_context(key: &str) -> bool {
+    key.len() <= 3
+        && key.is_ascii()
+        && !matches!(
+            key,
+            "hkg"
+                | "tpe"
+                | "nrt"
+                | "hnd"
+                | "kix"
+                | "sjc"
+                | "nyc"
+                | "icn"
+                | "yyz"
+                | "lhr"
+                | "fra"
+                | "cdg"
+                | "ams"
+                | "syd"
+                | "bom"
+                | "gru"
+                | "kul"
+                | "bkk"
+                | "dxb"
+        )
+}
+
+fn numbered(tail: &str) -> bool {
+    let tail = tail.trim_start_matches(['-', '_', ' ']);
+    let digits = tail.trim_start_matches(|c: char| c.is_ascii_digit());
+    digits.len() < tail.len() && !digits.chars().next().is_some_and(unicode::letter_or_mark)
+}
+
+fn code_token(a: &Alias, name: &str, text: &str) -> bool {
+    let alone = name.trim() == text;
+    let upper = text.bytes().all(|b| b.is_ascii_uppercase());
+    if a.risky {
+        alone && upper
+    } else {
+        alone || upper
+    }
+}
+
+fn accepts(a: &Alias, name: &str, start: usize, end: usize) -> bool {
+    let text = &name[start..end];
+    let tail = &name[end..];
+    if a.exact && text != a.key {
+        return false;
+    }
+    if (a.risky || a.short_code) && !numbered(tail) && !code_token(a, name, text) {
+        return false;
+    }
+    if !a.bounded {
+        return true;
+    }
+    if name[..start]
+        .chars()
+        .next_back()
+        .is_some_and(unicode::letter_or_mark)
+    {
+        return false;
+    }
+    if a.numbered_code && tail.starts_with(|c: char| c.is_ascii_digit()) {
+        return numbered(tail);
+    }
+    !tail.chars().next().is_some_and(unicode::letter_or_mark)
+}
+
 fn matches(name: &str) -> impl Iterator<Item = (Rank, &'static Alias)> {
     MATCHER
         .patterns
@@ -128,23 +232,22 @@ fn matches(name: &str) -> impl Iterator<Item = (Rank, &'static Alias)> {
             let id = m.pattern().as_usize();
             let a = &MATCHER.aliases[id];
             let (start, end) = (m.start(), m.end());
-            if a.exact && &name[start..end] != a.key {
-                return None;
-            }
-            if a.bounded
-                && (name[..start]
-                    .chars()
-                    .next_back()
-                    .is_some_and(unicode::letter_or_mark)
-                    || name[end..]
-                        .chars()
-                        .next()
-                        .is_some_and(unicode::letter_or_mark))
-            {
+            if !accepts(a, name, start, end) {
                 return None;
             }
             Some(((start, Reverse(end), id), a))
         })
+}
+
+fn country(code: &[u8]) -> Option<(&'static str, Coordinates)> {
+    if let Some(r) = REGIONS.iter().find(|r| r.iso.as_bytes() == code) {
+        return Some((r.iso, r.center));
+    }
+    let i = flags::FLAG_ONLY
+        .binary_search_by_key(&code, |r| r.0.as_bytes())
+        .ok()?;
+    let (iso, lat, lon) = flags::FLAG_ONLY[i];
+    Some((iso, Coordinates { lat, lon }))
 }
 
 fn flag(name: &str) -> Option<(usize, &'static str, Coordinates)> {
@@ -161,12 +264,8 @@ fn flag(name: &str) -> Option<(usize, &'static str, Coordinates)> {
         };
         chars.next(); // Even an unknown pair consumes both regional indicators.
         let code = [first, second];
-        if let Some(r) = REGIONS.iter().find(|r| r.iso.as_bytes() == code) {
-            return Some((start, r.iso, r.center));
-        }
-        if let Ok(i) = flags::FLAG_ONLY.binary_search_by_key(&code.as_slice(), |r| r.0.as_bytes()) {
-            let (iso, lat, lon) = flags::FLAG_ONLY[i];
-            return Some((start, iso, Coordinates { lat, lon }));
+        if let Some((iso, center)) = country(&code) {
+            return Some((start, iso, center));
         }
     }
     None
@@ -174,29 +273,29 @@ fn flag(name: &str) -> Option<(usize, &'static str, Coordinates)> {
 
 pub(crate) fn locate(name: &str) -> Location {
     let name = folded(name);
+    if let Some(exit) = relay::exit(&name) {
+        return exit;
+    }
     let first = matches(&name).min_by_key(|&(rank, _)| rank);
     let flag = flag(&name).filter(|(i, _, _)| first.is_none_or(|(rank, _)| *i < rank.0));
     let (iso, center, mut city) = if let Some((_, iso, center)) = flag {
         (iso, center, None)
     } else if let Some((_, a)) = first {
-        (a.region.iso, a.region.center, a.city)
+        (a.iso, a.center, a.city)
     } else {
         return Location::default();
     };
     // A country code or flag may precede its city; never borrow a city from another region.
     if city.is_none() {
         city = matches(&name)
-            .filter(|(_, a)| a.region.iso == iso && a.city.is_some())
+            .filter(|(_, a)| a.iso == iso && a.city.is_some())
             .min_by_key(|&(rank, _)| rank)
             .and_then(|(_, a)| a.city);
     }
     Location {
         region: Some(iso.into()),
         region_centroid: Some(center),
-        city: city.map(|s| City {
-            id: s.id.into(),
-            coordinates: s.point,
-        }),
+        city: city.map(Site::dto),
     }
 }
 
@@ -222,7 +321,7 @@ static GROUPS: LazyLock<[GroupAliases; 6]> = LazyLock::new(|| {
             words: Vec::new(),
             codes: vec![iso],
         };
-        for (key, _) in r.aliases() {
+        for key in r.aliases.split('|') {
             let key = key.trim_start_matches('!');
             if let Some(word) = key.strip_prefix('~') {
                 group.words.push(word);
@@ -254,3 +353,5 @@ pub(crate) fn template_region(name: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_cities;

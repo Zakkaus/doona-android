@@ -116,20 +116,57 @@ fn web_flags_and_alias_alphabets() {
         assert!((-90.0..=90.0).contains(&p.lat) && (-180.0..=180.0).contains(&p.lon));
         assert!(found.city.is_none());
     }
-    for a in &MATCHER.aliases {
+    for a in MATCHER.aliases.iter().filter(|a| a.city.is_none()) {
         let han = |c: char| ('\u{3400}'..='\u{9fff}').contains(&c);
         assert!(a.key.chars().all(|c| c == ' ' || c.is_alphabetic()));
         assert_eq!(a.key.chars().any(han), a.key.chars().all(han));
         assert_eq!(a.bounded, !a.key.chars().any(han));
-        if let Some(city) = a.city {
-            assert_eq!(locate(a.key).city.unwrap().id, city.id, "{}", a.key);
-        }
     }
 }
 
 // Independent per-alias oracle for the web's case, boundary and pairwise corpus. Bucket by
 // initial to keep the debug suite cheap. All case forms in this corpus preserve byte offsets.
-struct Oracle(HashMap<char, Vec<(String, &'static str, bool)>>);
+struct RefKey {
+    text: String,
+    iso: &'static str,
+    exact: bool,
+    bounded: bool,
+    risky: bool,
+    short: bool,
+}
+
+impl RefKey {
+    fn accepts(&self, original: &str, lower: &str, offset: usize) -> bool {
+        let Some(tail) = lower[offset..].strip_prefix(&self.text) else {
+            return false;
+        };
+        let text = &original[offset..offset + self.text.len()];
+        if self.exact && text != self.iso {
+            return false;
+        }
+        let word = |c: char| c.is_alphabetic() || c == '\u{301}';
+        if self.bounded
+            && (lower[..offset].chars().next_back().is_some_and(word)
+                || tail.chars().next().is_some_and(word))
+        {
+            return false;
+        }
+        if !self.risky && !self.short {
+            return true;
+        }
+        let upper = text == text.to_ascii_uppercase();
+        let alone = original.trim() == text;
+        (if self.risky {
+            upper && alone
+        } else {
+            upper || alone
+        }) || tail
+            .trim_start_matches(['-', '_', ' '])
+            .starts_with(|c: char| c.is_ascii_digit())
+    }
+}
+
+struct Oracle(HashMap<char, Vec<RefKey>>);
 impl Oracle {
     fn new() -> Self {
         let mut keys = HashMap::<_, Vec<_>>::new();
@@ -140,9 +177,35 @@ impl Oracle {
                     && " IN IT MY NO ID KZ AT BE LU CZ RO IS CL CO SA PK NG EG KH "
                         .contains(&format!(" {iso} "));
                 let key = key.to_lowercase();
-                keys.entry(key.chars().next().unwrap())
-                    .or_default()
-                    .push((key, iso, exact));
+                let initial = key.chars().next().unwrap();
+                let risky = matches!(key.as_str(), "sin" | "lax" | "sea");
+                keys.entry(initial).or_default().push(RefKey {
+                    text: key,
+                    iso,
+                    exact,
+                    bounded: initial.is_ascii(),
+                    risky,
+                    short: false,
+                });
+            }
+        }
+        // The corpus can itself spell a new city code (PH + x = Phoenix). Compare against
+        // the union, retaining the independently pinned web entries and their tie priority.
+        for city in cities::SITES {
+            for raw in city.keys() {
+                let key = raw.trim_start_matches(['?', '^']).to_lowercase();
+                let bucket = keys.entry(key.chars().next().unwrap()).or_default();
+                if bucket.iter().any(|r| r.text == key) {
+                    continue;
+                }
+                bucket.push(RefKey {
+                    iso: city.iso,
+                    exact: false,
+                    bounded: true,
+                    risky: raw.starts_with('?'),
+                    short: key.is_ascii() && key.len() <= 3,
+                    text: key,
+                });
             }
         }
         Self(keys)
@@ -157,21 +220,12 @@ impl Oracle {
                 break;
             }
             let Some(keys) = self.0.get(&c) else { continue };
-            let bounded = c.is_ascii();
-            let word = |c: char| c.is_alphabetic() || c == '\u{301}';
-            if bounded && lower[..i].chars().next_back().is_some_and(word) {
-                continue;
-            }
             let best = keys
                 .iter()
-                .filter(|(key, iso, exact)| {
-                    lower[i..].starts_with(key)
-                        && (!exact || name[i..].starts_with(iso))
-                        && !(bounded && lower[i + key.len()..].chars().next().is_some_and(word))
-                })
-                .max_by_key(|(key, _, _)| key.len());
-            if let Some((_, iso, _)) = best {
-                expected = Some(*iso);
+                .filter(|k| k.accepts(name, &lower, i))
+                .min_by_key(|k| Reverse(k.text.len()));
+            if let Some(k) = best {
+                expected = Some(k.iso);
                 break;
             }
         }
