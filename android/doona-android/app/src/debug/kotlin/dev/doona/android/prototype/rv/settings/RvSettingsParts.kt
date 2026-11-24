@@ -79,7 +79,8 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
  * glyph and the trailing control centre on its first line, which is where Revolut's rows keep them when the subtitle
  * wraps. That line is the one a one-line row keeps for its title (58 dp less its insets), or the title's own line where
  * it is taller ([rvOneLine]), so at a large font size they stay beside the title's first line. The row's touch
- * behaviour comes in [modifier], outside the padding, so the whole row is the target.
+ * behaviour comes in [modifier], outside the padding, so the whole row is the target. A subtitle that says an action
+ * failed is in the [error] hue, as a field's error message ([dev.doona.android.designsystem.rv.RvFieldMessage]).
  */
 @Composable
 internal fun RvSettingsRow(
@@ -89,6 +90,7 @@ internal fun RvSettingsRow(
     subtitle: String? = null,
     code: Boolean = false,
     titleLines: Int = RV_ROW_TITLE_LINES,
+    error: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Box(
@@ -107,7 +109,7 @@ internal fun RvSettingsRow(
             }
             Column(Modifier.weight(1f)) {
                 if (code) RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines) else RvText(title, Rv.type.rowTitle, maxLines = titleLines)
-                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
+                subtitle?.let { RvText(it, Rv.type.rowSub, color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
             }
             trailing?.let {
                 Spacer(Modifier.width(RvSettingsSpace.trailingGap))

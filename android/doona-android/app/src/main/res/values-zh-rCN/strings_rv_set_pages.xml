@@ -12,6 +12,11 @@
     <string name="rv_update_failed">无法检查更新</string>
     <string name="rv_update_offline">没有网络连接。</string>
 
+    <string name="rv_settings_geodata">GeoIP／GeoSite</string>
+    <string name="rv_geodata_updating">正在更新…</string>
+    <string name="rv_geodata_updated">已更新</string>
+    <string name="rv_geodata_failed">无法更新</string>
+
     <plurals name="rv_interval_hours">
         <item quantity="other">每 %1$d 小时</item>
     </plurals>

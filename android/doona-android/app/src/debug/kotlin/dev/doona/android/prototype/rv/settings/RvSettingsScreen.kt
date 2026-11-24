@@ -57,8 +57,9 @@ import dev.doona.android.prototype.rv.rvHeroArt
  * There is no search capsule; the title collapses into the bar as the page scrolls. The state is the caller's, so the
  * switches turn; the rows that open something are not wired, 主題 opens [onOpenTheme] and the nav's tabs [onTab].
  * [configRev] is a preview flag (PV-f): set, 進階 gains 設定檔 with the applied revision, which opens the configuration's
- * overview ([RvSettingsRoutes.config]). Over the page, the sheet that tells how to add the quick settings tile by hand
- * while the state holds it open.
+ * overview ([RvSettingsRoutes.config]). [geoData] is a sample flag too (owner-fix2 item 16): set, 進階 ends with the
+ * GeoIP／GeoSite row ([RvGeoDataRow]), whose 更新 runs [RvSettingsRoutes.geoUpdate]. Over the page, the sheet that tells
+ * how to add the quick settings tile by hand while the state holds it open.
  */
 @Composable
 internal fun RvSettingsScreen(
@@ -68,6 +69,7 @@ internal fun RvSettingsScreen(
     onTab: (Int) -> Unit = {},
     routes: RvSettingsRoutes = RvSettingsRoutes(),
     configRev: Int? = null,
+    geoData: RvGeoData? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -83,7 +85,7 @@ internal fun RvSettingsScreen(
             ConnectionGroup(state, onChange, routes)
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme)
-            AdvancedGroup(state, routes, configRev)
+            AdvancedGroup(state, routes, configRev, geoData)
             RvAboutEntry(stringResource(R.string.rv_settings_version_value), routes.about)
         }
     }
@@ -126,7 +128,7 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
 /**
  * Where 設定 leads beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row
  * and the hero's 匯出診斷, 關於 doona (which holds the licences), and the configuration's overview (with the preview flag); and 加到快速設定
- * ([addTile]), the system's dialog or the sheet that tells how.
+ * ([addTile]), the system's dialog or the sheet that tells how; and the GeoIP／GeoSite update ([geoUpdate], with its sample flag).
  */
 internal class RvSettingsRoutes(
     val alwaysOn: () -> Unit = NOT_WIRED,
@@ -137,6 +139,7 @@ internal class RvSettingsRoutes(
     val report: () -> Unit = NOT_WIRED,
     val about: () -> Unit = NOT_WIRED,
     val config: () -> Unit = NOT_WIRED,
+    val geoUpdate: () -> Unit = NOT_WIRED,
 )
 
 /**
@@ -195,10 +198,11 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit) {
 
 /**
  * 進階: the DNS server (the picker); 回報問題, the report page, with the hero's 匯出診斷
- * glyph; and the effective config, read-only.
+ * glyph; the effective config, read-only; and, with the sample flag, the data the rules read places and sites from,
+ * last, beside the config it serves.
  */
 @Composable
-private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?) {
+private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?, geoData: RvGeoData?) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_advanced))
     RvSettingsCard {
         RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, stringResource(state.dns.label))
@@ -207,6 +211,7 @@ private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, conf
             RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, stringResource(R.string.rv_config_revision, configRev))
         }
         RvSettingsNavRow(stringResource(R.string.rv_effective_open), R.drawable.rv_sym_rule, routes.effectiveConfig)
+        geoData?.let { RvGeoDataRow(it, routes.geoUpdate) }
     }
 }
 
