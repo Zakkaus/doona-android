@@ -68,11 +68,10 @@ internal class VpnNotifications(private val context: Context) {
 
     suspend fun showDrop(session: Session, settings: DropNoticeSettings, isCurrent: () -> Boolean) {
         val reason = (session.status as? Status.Failed)?.reason ?: return
-        if (session.startBlock != VpnStartBlock.Lockdown && !dropEnabled(settings)) return
+        if (session.startBlock == null && !dropEnabled(settings)) return
         if (!isCurrent()) return
         val body = context.getString(
             when (session.startBlock) {
-                VpnStartBlock.Lockdown -> R.string.vpn_failure_lockdown
                 VpnStartBlock.ForegroundStartNotAllowed -> R.string.vpn_failure_foreground_refused
                 null -> reasonText(reason)
             },

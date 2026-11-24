@@ -351,7 +351,7 @@ internal data class MemberDto(
     val name: String,
     val latencyMs: Int? = null,
     val failed: Boolean,
-    /** Why the last probe failed, when the core knows: `local_network`. */
+    /** Why the last probe failed, when the core knows: `dns_failed` or `local_network`. */
     val error: String? = null,
     val isGroup: Boolean,
     val subscriptionId: String? = null,
@@ -456,6 +456,7 @@ private val ERROR_CODES = mapOf(
     "busy" to ErrorCode.Busy,
     "internal" to ErrorCode.Internal,
     "local_network" to ErrorCode.LocalNetwork,
+    "dns_failed" to ErrorCode.DnsFailed,
 )
 
 /** An unknown code from a newer core is [ErrorCode.Internal]. */

@@ -557,7 +557,6 @@ class ServiceEngineTest {
     /** A host that builds a tun for any routing; [installed] are the packages the device has. */
     private class StartHost(private val installed: Set<String>) : TunHost {
         override val selfPackage = "dev.doona.android"
-        override val lockdownEnabled = false
 
         override fun installed(packages: Set<String>) = packages intersect installed
 
@@ -572,7 +571,6 @@ class ServiceEngineTest {
 
     private object NoHost : TunHost {
         override val selfPackage = "dev.doona.android"
-        override val lockdownEnabled get() = error("unused")
 
         override fun installed(packages: Set<String>) = error("unused")
 

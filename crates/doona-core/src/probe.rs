@@ -3,14 +3,12 @@
 //! [`PROBE_TIMEOUT`]. A probe waits on the network with no lock held and commits in a short
 //! section that checks the node still has the incarnation and probe generation it began with
 //! (core-api.md, Commit rule); a test that ends, cancelled or not, clears its groups' `testing`.
-//! A probe that failed after it went on to dial its node at an address on the local network
-//! records `local_network` (ARCH D26); one that failed before, at the lookup of its own target or
-//! of the node's name, records no code (see `localnet::Lookups`).
+//! A probe that fails to resolve its target or node records `dns_failed`. A probe that fails
+//! after resolving and dialing a node on the local network records `local_network` (ARCH D26).
 
 use crate::api::lock;
 use crate::catalog::{Plan, Round, Shared, Target};
 use crate::diag::{Count, Event};
-use crate::dto::ErrorCode;
 use crate::localnet::{Lookups, Trace, literal};
 use crate::outbounds::{Carriers, Registries};
 use futures_util::FutureExt;
@@ -152,7 +150,11 @@ impl Probes {
                 .ok()
                 .flatten()
                 .map(|d| u32::try_from(d.as_millis()).unwrap_or(u32::MAX).max(1));
-            let error = failure(ms, &lookups, &target);
+            let error = if ms.is_none() {
+                lookups.failure(target.entry.node.host())
+            } else {
+                None
+            };
             tally.count(ms.is_some());
             let mut c = lock(&shared.catalog);
             // `cancel` is cancelled under the catalog lock, so a stop that returned is never undone.
@@ -169,13 +171,6 @@ impl Probes {
             }
         }
     }
-}
-
-/// Why a probe measured nothing, when the core can tell: it stopped at an address of its node on
-/// the local network. Read also when the probe ran out of time, as a dial Android 17 blocks does.
-fn failure(ms: Option<u32>, lookups: &Lookups, target: &Target) -> Option<ErrorCode> {
-    let local = ms.is_none() && lookups.refused_locally(target.entry.node.host());
-    local.then_some(ErrorCode::LocalNetwork)
 }
 
 /// The probes of a test that measured, and those that failed, for its event in the ring.

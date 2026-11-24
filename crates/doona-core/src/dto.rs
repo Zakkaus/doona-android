@@ -24,9 +24,9 @@ pub enum ErrorCode {
     NoNodes,
     Busy,
     Internal,
-    /// A dial or a fetch failed and its target was an address on the local network, which
-    /// Android 17 lets doona reach only with `ACCESS_LOCAL_NETWORK` (ARCH D26).
+    /// A local-network dial or fetch failed (Android 17 `ACCESS_LOCAL_NETWORK`, ARCH D26).
     LocalNetwork,
+    DnsFailed,
 }
 
 impl ErrorCode {
@@ -41,6 +41,7 @@ impl ErrorCode {
             ErrorCode::Busy => "busy",
             ErrorCode::Internal => "internal",
             ErrorCode::LocalNetwork => "local_network",
+            ErrorCode::DnsFailed => "dns_failed",
         }
     }
 }

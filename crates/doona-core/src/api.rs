@@ -336,9 +336,9 @@ impl Core {
     }
 
     /// What a generation runs with, and the resolvers that serve host lookups once it is up (also
-    /// after `stop`). A resolver that is not an address is `invalid_argument`; Global with no node
-    /// in the main group is `no_nodes`, as it would refuse every flow. Rule starts without one: its
-    /// rules may still send flows direct, and refuse those bound for a group with no node.
+    /// after `stop`). A malformed address or a nonempty list with no surviving scope is
+    /// `invalid_argument`. Global with no node in the main group is `no_nodes`, as it would refuse
+    /// every flow. Rule may still send flows direct and refuse those bound for a group with no node.
     fn settings(&self, config: &str) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
         let config: StartConfig = parse(config)?;
         if config.mtu < MIN_MTU {
