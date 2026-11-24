@@ -1,7 +1,10 @@
 package dev.doona.android.data.settings
 
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -33,16 +36,28 @@ class LogLevelControllerTest {
     }
 
     @Test
-    fun `a new process starts at Info even if the last capture never ended`() = runTest {
-        val firstEngine = FakeEngine()
-        levels(firstEngine).set(LogLevel.Debug).getOrThrow()
-        assertEquals(LogLevel.Debug, firstEngine.diagnostics().getOrThrow().level)
+    fun `a failed reset records its code and retries once`() = runTest {
+        for (refusals in 1..2) {
+            AppEvents.clear()
+            var resets = 0
+            val engine = FakeEngine()
+            val levels = LogLevelController({ level ->
+                if (level == LogLevel.Info && ++resets <= refusals) Result.failure(EngineException(ErrorCode.Busy)) else engine.setLogLevel(level)
+            }, backgroundScope) { testScheduler.currentTime }
+            levels.set(LogLevel.Debug).getOrThrow()
+            advanceTimeBy(3_600_000)
+            runCurrent()
+            assertEquals(LogLevel.Debug, engine.diagnostics().getOrThrow().level)
+            advanceTimeBy(1_000)
+            runCurrent()
+            levels.expireIfDue()?.join()
+            advanceTimeBy(10_000)
+            runCurrent()
 
-        val restartedEngine = FakeEngine()
-        val restarted = levels(restartedEngine)
-        assertEquals(LogLevel.Info, restarted.level.value)
-        assertEquals(LogLevel.Info, restartedEngine.diagnostics().getOrThrow().level)
-        assertEquals(0L, restarted.remainingMs())
+            assertEquals(2, resets)
+            assertEquals(if (refusals == 1) LogLevel.Info else LogLevel.Debug, engine.diagnostics().getOrThrow().level)
+            assertEquals("command=setLogLevel phase=reset outcome=failed code=Busy", AppEvents.snapshot().single().text)
+        }
     }
 
     private fun TestScope.levels(engine: FakeEngine) = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }

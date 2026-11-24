@@ -1,5 +1,16 @@
 package dev.doona.android.report
 
+import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.FailureReason
+
+private const val COMMANDS = "start|stop|select|testLatency|addSubscription|updateSubscription|removeSubscription|setSubscriptionUserAgent|setMode|setRuleSource|setLogLevel|clearCrashes|export"
+private val codes = (ErrorCode.entries.map { it.name } + FailureReason.entries.map { it.name } + listOf("ok", "IOException")).joinToString("|")
+
+// Allow values, not just characters: even a single-label host or token can be an ASCII identifier.
+internal val ACTION_TEXT = "command=(?:$COMMANDS) phase=(?:dispatch|complete|deadline|write|reset) " +
+    "outcome=(?:ok|failed|superseded|partial) code=(?:$codes)(?: elapsedMs=\\d{1,19})?"
+private val actionText = Regex(ACTION_TEXT)
+
 /** How severe an app event is. */
 enum class AppEventLevel { Info, Warn }
 
@@ -14,7 +25,7 @@ object AppEvents {
     const val CAPACITY = 200
 
     /** The longest text kept: an event is a line, not a document. */
-    internal const val MAX_TEXT = 200
+    private const val MAX_TEXT = 200
 
     private val lock = Any()
     private val ring = ArrayDeque<AppEvent>(CAPACITY)
@@ -34,8 +45,21 @@ object AppEvents {
         return record(level, "command=$command phase=$phase outcome=$outcome code=$code$elapsed")
     }
 
-    /** The newest [limit] events kept now, oldest first. */
-    fun snapshot(limit: Int = CAPACITY): List<AppEvent> = synchronized(lock) { ring.takeLast(limit) }
+    /** The events kept now, oldest first. */
+    fun snapshot(): List<AppEvent> = synchronized(lock) { ring.toList() }
+
+    /** Only actions may cross a process boundary in crash files. */
+    internal fun breadcrumbs(limit: Int): List<AppEvent> = synchronized(lock) {
+        val events = ArrayList<AppEvent>(limit)
+        for (index in ring.lastIndex downTo 0) {
+            val event = ring[index]
+            if (!actionText.matches(event.text)) continue
+            events.add(event)
+            if (events.size == limit) break
+        }
+        events.reverse()
+        events
+    }
 
     /** Drops every event; for tests, which share the process. */
     internal fun clear() = synchronized(lock) { ring.clear() }

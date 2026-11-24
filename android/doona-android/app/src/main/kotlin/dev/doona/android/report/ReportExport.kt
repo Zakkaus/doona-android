@@ -4,7 +4,6 @@ import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -69,27 +68,25 @@ class ReportExport(
 
     /**
      * Writes the report and keeps its token, before any sheet can open for it: null when the zip or the token could not
-     * be written. Takes the crash offer down. A caller that leaves meanwhile gets nothing, and its zip goes.
+     * be written. Takes the crash offer down. The expiry check and the post-write reset never hold up the export.
      */
     suspend fun build(): ReportZip? {
         offer.dismiss()
+        logLevels.expireIfDue()
         val core = engine.diagnostics()
         val engineView = EngineView(engine.status.value, engine.settings.value, engine.catalog.value)
-        var written: ReportZip? = null
-        try {
-            withContext(io) { written = write(core, engineView) }
-            logLevels.endCapture().join()
-        } catch (e: CancellationException) {
-            written?.let(::notOpened)
-            AppEvents.action("export", "write", "cancelled", "Cancelled")
-            throw e
+        val code = (core.exceptionOrNull() as? EngineException)?.code?.name
+        return try {
+            withContext(io) {
+                write(core, engineView).also {
+                    logLevels.endCapture()
+                    AppEvents.action("export", "write", if (core.isSuccess) "ok" else "partial", code ?: "ok")
+                }
+            }
         } catch (_: IOException) {
             AppEvents.action("export", "write", "failed", "IOException")
-            return null
+            null
         }
-        val code = (core.exceptionOrNull() as? EngineException)?.code?.name
-        AppEvents.action("export", "write", if (core.isSuccess) "ok" else "partial", code ?: "ok")
-        return written
     }
 
     /** The share sheet for [zip] returned, whatever the user did there. The zip goes after [SHARE_GRACE_MS]. */

@@ -44,11 +44,14 @@ characters. A rebuild keeps the bounding box of the files it replaces; `FontMetr
 ## Diagnostic capture
 
 `AppContainer.logLevels` owns the core log level for the process. A new process starts at Info.
-Selecting Debug starts a one-hour capture. The countdown is available through `remainingMs()`;
-stopping the tunnel or writing a report ends the capture early. The app never saves the level.
+Selecting Debug starts a one-hour capture measured in elapsed time, including deep sleep.
+`remainingMs()` gives the countdown. The capture ends when the tunnel stops or fails, or
+when the app writes a report. If the core refuses the reset, the app retries once. The app
+never saves the level.
 
 The app keeps 200 recent events, including command, phase, outcome and code for core actions
-and report exports. A JVM crash file preserves the newest 50 events within the 64 KiB file limit.
+and report exports. A JVM crash file preserves up to 50 recent allowlisted action entries within
+the 64 KiB file limit.
 
 ## Icons and flags
 

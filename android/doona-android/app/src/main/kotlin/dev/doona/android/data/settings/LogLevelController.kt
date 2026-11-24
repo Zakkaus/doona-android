@@ -1,6 +1,8 @@
 package dev.doona.android.data.settings
 
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.LogLevel
+import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -20,6 +22,7 @@ class LogLevelController(
 ) {
     private val edits = Mutex()
     private var expiry: Job? = null
+    private var resetStarted = false // Guarded by edits; one reset and one retry per capture.
     private val current = MutableStateFlow(LogLevel.Info)
     val level: StateFlow<LogLevel> = current.asStateFlow()
 
@@ -35,38 +38,58 @@ class LogLevelController(
         edits.withLock {
             applyLevel(level).onSuccess {
                 expiry?.cancel()
+                resetStarted = false
                 deadline.value = if (level == LogLevel.Debug) clock() + DEBUG_CAPTURE_MS else null
                 current.value = level
-                expiry = if (level == LogLevel.Debug) scope.launch { expire() } else null
+                expiry = if (level == LogLevel.Debug) {
+                    scope.launch {
+                        delay(remainingMs())
+                        expireIfDue()
+                    }
+                } else {
+                    null
+                }
             }
         }
     }.await()
 
     /** Ends Debug without changing a manually selected Error, Warn or Info level. */
     internal fun endCapture(): Job = scope.launch {
-        edits.withLock {
-            if (current.value == LogLevel.Debug) reset()
-        }
+        edits.withLock { reset() }
     }
 
-    private suspend fun expire() {
-        delay(remainingMs())
-        edits.withLock {
-            expiry = null
-            reset()
-        }
+    /** Handler delays use uptime, so an interaction also checks the elapsed clock after deep sleep. */
+    internal fun expireIfDue(): Job? {
+        if (!due()) return null
+        return scope.launch { edits.withLock { if (due()) reset() } }
     }
+
+    private fun due(): Boolean = deadline.value?.let { clock() >= it } == true
 
     private suspend fun reset() {
-        if (applyLevel(LogLevel.Info).isSuccess) {
-            deadline.value = null
-            current.value = LogLevel.Info
-            expiry?.cancel()
-            expiry = null
+        if (current.value != LogLevel.Debug || resetStarted) return
+        resetStarted = true
+        expiry?.cancel()
+        expiry = null
+        applyReset().onFailure { failure ->
+            AppEvents.action("setLogLevel", "reset", "failed", (failure as EngineException).code.name)
+            expiry = scope.launch {
+                delay(RESET_RETRY_MS)
+                edits.withLock {
+                    expiry = null
+                    applyReset()
+                }
+            }
         }
+    }
+
+    private suspend fun applyReset(): Result<Unit> = applyLevel(LogLevel.Info).onSuccess {
+        deadline.value = null
+        current.value = LogLevel.Info
     }
 
     companion object {
         private const val DEBUG_CAPTURE_MS = 60 * 60 * 1_000L
+        private const val RESET_RETRY_MS = 1_000L
     }
 }

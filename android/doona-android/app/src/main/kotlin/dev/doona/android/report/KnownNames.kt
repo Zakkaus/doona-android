@@ -205,4 +205,4 @@ private val STATED = APP_HEADER.count { it == '\n' }.let { header ->
     mapOf(header to Regex("""atEpochMs: \d{1,19}"""), header + 1 to CRASH_VERSION)
 }
 
-private val BREADCRUMB_TEXT = Regex("$BREADCRUMB-?\\d{1,19} (?:Info|Warn) .{0,${AppEvents.MAX_TEXT}}", RegexOption.DOT_MATCHES_ALL)
+private val BREADCRUMB_TEXT = Regex("$BREADCRUMB-?\\d{1,19} (?:Info|Warn) $ACTION_TEXT")

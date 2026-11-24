@@ -24,8 +24,8 @@ interface ReportExporter {
 
     /**
      * Writes the report and gives its share sheet; null when the zip, its token or the sheet could not be made. Takes the
-     * crash offer down. Reads the disk on its own dispatcher. A caller that leaves meanwhile gets nothing, and the zip
-     * goes.
+     * crash offer down. Reads the disk on its own dispatcher. If the caller leaves while the zip is being written,
+     * a completed zip remains for the next sweep.
      */
     suspend fun export(): ReportShare?
 }

@@ -50,7 +50,7 @@ internal class CrashHandler(
         try {
             threads.writer.call(deadline) {
                 val frames = threads.reader.call(System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(FRAMES_WAIT_MS)) { ownFrames(error) }
-                val events = AppEvents.snapshot(CRASH_EVENT_LIMIT)
+                val events = AppEvents.breadcrumbs(CRASH_EVENT_LIMIT)
                 files.write(crashText(error.javaClass.name, frames, isMain(thread), version, System.currentTimeMillis(), events = events))
             }
         } catch (_: Throwable) {
@@ -160,9 +160,7 @@ internal fun crashText(
     if (events.isNotEmpty()) {
         appendLine(BREADCRUMBS)
         for (event in events) {
-            append(BREADCRUMB).append(event.atEpochMs).append(' ').append(event.level).append(' ')
-            for (char in event.text) append(if (char == '\n' || char == '\r') ' ' else char)
-            appendLine()
+            appendLine("$BREADCRUMB${event.atEpochMs} ${event.level} ${event.text}")
         }
     }
 }

@@ -101,8 +101,8 @@ class ServiceEngineTest {
             }
         }
         val perAppSettings = PerAppSettings(store)
-        val controller = TunnelController(core, opener, { perAppSettings.perApp.first() }, scope, killProcess = {})
-        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, io, scope, endDebugCapture = {}, perAppRetryMs = 50)
+        val controller = TunnelController(core, opener, { perAppSettings.perApp.first() }, scope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
+        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, io, scope, expireDebugCapture = { null }, perAppRetryMs = 50)
     }
 
     @After
@@ -162,7 +162,7 @@ class ServiceEngineTest {
     @Test
     fun aMissingLibraryFailsTheEngineInsteadOfCrashingIt() = runBlocking {
         // The JVM has no libdoonacore.so, as when packaging dropped it.
-        val engine = ServiceEngine.create(ApplicationProvider.getApplicationContext(), endDebugCapture = {})
+        val engine = ServiceEngine.create(ApplicationProvider.getApplicationContext(), endDebugCapture = {}, expireDebugCapture = { null })
         withTimeout(5_000) { engine.ready.first { it } }
         assertEquals(Status.Failed(FailureReason.StartFailed), engine.status.value)
     }
