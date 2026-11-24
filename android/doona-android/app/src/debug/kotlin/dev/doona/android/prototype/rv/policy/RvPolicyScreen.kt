@@ -223,7 +223,7 @@ private fun PolicySkeleton(state: RvPolicyState) {
         }
     }
     if (mode == RvRouteMode.Global) {
-        RvControlRow({ RvSkeletonChips(RvNodeSort.entries.map { stringResource(it.label) }, Modifier.padding(bottom = rvRaisedReach)) }, RvSpace.tabBlockGap)
+        RvControlRow({ RvSkeletonChips(RvNodeSort.entries.map { stringResource(it.label) }, Modifier.padding(bottom = rvRaisedReach)) })
         RvGutter {
             RvSkeletonCard {
                 // The first card is the first subscription's, but under 地區 the country of the fastest node's.
@@ -263,7 +263,7 @@ private fun mainLine(main: RvPolicyGroup): String =
 private fun GlobalPicker(state: RvPolicyState, onChange: (RvPolicyState) -> Unit) {
     val main = state.group(RvPolicyData.main)
     val groups = remember(state.nodeSort) { rvNodeGroups(RvData.nodes, RvData.subscriptions, state.nodeSort) }
-    RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, search = false) }, RvSpace.tabBlockGap)
+    RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, search = false) })
     RvNodeGroups(groups, main.selectedId, state.nodeSort) { onChange(state.choose(main.id, it)) }
 }
 

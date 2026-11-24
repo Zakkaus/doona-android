@@ -240,15 +240,16 @@ internal fun RvPageHeader(
 }
 
 /**
- * A control row on the page (filter chips, a status chip, a list's search and order), on the gutter with [gap] above and
- * below it: [RvSpace.controlGap] on a pushed page, as Revolut's Analytics sets its chips between its title and its first
- * card; [RvSpace.tabBlockGap] on a tab home, where every block sits that far from the next.
+ * A control row on the page (filter chips, a status chip, a list's search and order), on the gutter with
+ * [RvSpace.controlGap] above and below it wherever it stands, under a page's title or between two cards (策略 全域's
+ * order between its mode card and its node list), as Revolut's Analytics sets its chips between its title and its
+ * first card: one value (the owner, 2026-11-25).
  */
 @Composable
-internal fun RvControlRow(control: @Composable () -> Unit, gap: Dp = RvSpace.controlGap) {
-    Spacer(Modifier.height(gap))
+internal fun RvControlRow(control: @Composable () -> Unit) {
+    Spacer(Modifier.height(RvSpace.controlGap))
     Box(Modifier.padding(horizontal = RvSpace.gutter).testTag(RvPart.CONTROL)) { control() }
-    Spacer(Modifier.height(gap))
+    Spacer(Modifier.height(RvSpace.controlGap))
 }
 
 /**

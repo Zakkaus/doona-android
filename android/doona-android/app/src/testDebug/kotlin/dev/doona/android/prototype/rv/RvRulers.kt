@@ -141,9 +141,12 @@ internal class RvMeasure(private val parts: Map<String, List<Rect>>, private val
                 }
             }
         }
+        // A control row between two cards takes the control gap on both sides, on a tab home too (the owner, 2026-11-25).
+        val betweenCards = pairs(blocks).filter { (upper, lower) -> upper.first.asCard() == RvPart.CARD && lower.first == RvPart.CONTROL }.map { it.second }.toSet()
         for ((upper, lower) in pairs(blocks)) {
             val kinds = upper.first.asCard() to lower.first.asCard()
-            val gap = if (upper == header) RvSpace.headerGap else (TAB_GAPS[kinds]?.takeIf { top == Top.Tab } ?: GAPS[kinds])
+            val tab = TAB_GAPS[kinds]?.takeIf { top == Top.Tab && upper !in betweenCards }
+            val gap = if (upper == header) RvSpace.headerGap else (tab ?: GAPS[kinds])
             val (a, b) = upper.second to lower.second
             val strip = Rect(max(a.left, b.left), a.bottom, min(a.right, b.right), b.top)
             expect(RvRuleKind.Gap, "gap ${upper.first} to ${lower.first} at ${b.top} dp", b.top - a.bottom, gap?.value, strip)
@@ -236,12 +239,14 @@ internal class RvMeasure(private val parts: Map<String, List<Rect>>, private val
             (RvPart.SEARCH to RvPart.CARD) to RvSpace.searchGap,
         )
 
-        /** On a tab home every block sits one gap from the next, a control row too (rv-fix-4e). */
+        /**
+         * On a tab home every block of its head sits one gap from the next, its control row too (rv-fix-4e); a control row
+         * between two cards keeps [GAPS]' control gap.
+         */
         val TAB_GAPS: Map<Pair<String, String>, Dp> = mapOf(
             (RvPart.CAPTION to RvPart.CONTROL) to RvSpace.tabBlockGap,
             (RvPart.CAPTION to RvPart.CARD) to RvSpace.tabBlockGap,
             (RvPart.CONTROL to RvPart.CARD) to RvSpace.tabBlockGap,
-            (RvPart.CARD to RvPart.CONTROL) to RvSpace.tabBlockGap,
         )
     }
 }

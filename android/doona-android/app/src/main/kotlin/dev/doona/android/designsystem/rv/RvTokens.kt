@@ -92,8 +92,8 @@ internal object RvSpace {
     val headerGap = 24.dp
 
     /**
-     * Round a control row on the page (a page's filter chips, a status chip): from the title block to it, and from it to
-     * the first card (measured Analytics, 03-analytics-a: the chips at 202-242 dp, the first tile at 266, 87 dp under the
+     * Round a control row on the page (a page's filter chips, a status chip, a list's order): from the title block or the
+     * card above to it, and from it to the next card (measured Analytics, 03-analytics-a: the chips at 202-242 dp, the first tile at 266, 87 dp under the
      * bar's controls).
      */
     val controlGap = 24.dp
