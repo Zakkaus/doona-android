@@ -34,18 +34,40 @@ data class LatencyTest(val atEpochMs: Long, val ms: Int?)
 sealed interface StaticNodeDraft {
     class Link(val link: String, val name: String? = null) : StaticNodeDraft
 
-    class Manual(
+    class Manual private constructor(
         val protocol: String,
         val server: String,
         val port: Int,
-        val name: String? = null,
-        val username: String? = null,
-        val password: String? = null,
-        val uuid: String? = null,
-        val cipher: String? = null,
-        val options: Map<String, String> = emptyMap(),
-    ) : StaticNodeDraft
+        val name: String?,
+        val username: String?,
+        val password: String?,
+        val uuid: String?,
+        val cipher: String?,
+        val options: Map<String, String>,
+    ) : StaticNodeDraft {
+        companion object {
+            /** Rejects invalid ports before the draft can be passed to the engine. */
+            fun create(
+                protocol: String,
+                server: String,
+                port: Int,
+                name: String? = null,
+                username: String? = null,
+                password: String? = null,
+                uuid: String? = null,
+                cipher: String? = null,
+                options: Map<String, String> = emptyMap(),
+            ): Result<Manual> = if (port in 1..65535) {
+                Result.success(Manual(protocol, server, port, name, username, password, uuid, cipher, options))
+            } else {
+                Result.failure(StaticNodeDraftException(StaticNodeReason.Port))
+            }
+        }
+    }
 }
+
+/** A field error detected before submission to the engine. */
+class StaticNodeDraftException(val reason: StaticNodeReason) : Exception(reason.name)
 
 /** The core's private editor record. Keep the original unchanged for the next update or removal. */
 data class StaticNode(val id: String, val name: String, val link: String) {

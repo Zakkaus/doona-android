@@ -133,6 +133,8 @@ variant.
   Navigation and steps that need the activity (`onOpenGroup`, `onConnect`) are separate screen parameters.
 - **Errors:** engine actions return `Result`. On failure, store `it.errorCode()` in the state, show it with
   `DoonaErrorBanner(stringResource(code.messageRes()), …)` (`feature/ErrorText.kt`), and clear it on dismiss.
+- **Manual static nodes:** build drafts with `StaticNodeDraft.Manual.create`. Ports outside `1..65535` fail with
+  `StaticNodeDraftException` and reason `Port`. Use the reason to mark the field without calling the engine.
 - **UI:** components come from `designsystem/components` only; no `androidx.compose.material3`, `clickable` or
   literal sizes in `feature/`. Gaps are spacing roles (`DoonaGap(DoonaTheme.spacing.section)`), never numbers. A component that is always interactive takes a required callback; one that can be static (`DoonaCard`, `DoonaTagChip`, `DoonaPageTabs`) takes a nullable one; an action with no screen behind it yet is passed `NOT_WIRED`, so it can be found. Strings go in `values/strings.xml` and `values-zh-rTW/strings.xml`.
 - **Previews:** in `<Screen>Previews.kt`, light and dark, built from `FakeEngine` fixtures through the same pure
