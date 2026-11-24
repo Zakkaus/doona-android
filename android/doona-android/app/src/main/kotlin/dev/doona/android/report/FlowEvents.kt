@@ -94,9 +94,15 @@ internal fun connectionOwnerUid(
     local: String,
     remote: String,
     lookup: (Int, InetSocketAddress, InetSocketAddress) -> Int,
-): Int = lookup(protocol, numericSocketAddress(local), numericSocketAddress(remote))
+): Int {
+    // The core sends numeric "address:port"; an endpoint that does not parse has no owner to look up.
+    val localAddress = numericSocketAddress(local) ?: return Process.INVALID_UID
+    val remoteAddress = numericSocketAddress(remote) ?: return Process.INVALID_UID
+    return lookup(protocol, localAddress, remoteAddress)
+}
 
-private fun numericSocketAddress(address: String): InetSocketAddress = InetSocketAddress(
-    InetAddresses.parseNumericAddress(address.substringBeforeLast(':')),
-    address.substringAfterLast(':').toInt(),
-)
+private fun numericSocketAddress(address: String): InetSocketAddress? = try {
+    InetSocketAddress(InetAddresses.parseNumericAddress(address.substringBeforeLast(':')), address.substringAfterLast(':').toInt())
+} catch (_: IllegalArgumentException) {
+    null
+}

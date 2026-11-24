@@ -26,4 +26,12 @@ class FlowOwnerTest {
             assertEquals(expectedUid, uid)
         }
     }
+
+    @Test
+    fun anEndpointThatDoesNotParseHasNoOwner() {
+        for ((local, remote) in listOf("172.19.0.1" to "192.0.2.1:443", "172.19.0.1:41001" to "192.0.2.1:", "172.19.0.1:70000" to "192.0.2.1:443")) {
+            val uid = connectionOwnerUid(OsConstants.IPPROTO_TCP, local, remote) { _, _, _ -> error("looked up $local -> $remote") }
+            assertEquals(Process.INVALID_UID, uid)
+        }
+    }
 }
