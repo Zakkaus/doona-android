@@ -193,6 +193,7 @@ fn score_catalog_reports_each_networks_choice_after_restart() {
     drop(core);
     let core = Core::new(path(&dir)).unwrap();
     let group = &catalog(&core).groups[1];
+    assert!(!group.tcp_pinned && group.udp_pinned);
     assert!(group.networks_differ);
     assert_eq!(group.tcp_selected_id.as_ref(), Some(a));
     assert_eq!(group.udp_selected_id.as_ref(), Some(b));
