@@ -17,7 +17,7 @@ fn varint(reader: &mut impl Read) -> io::Result<u64> {
     let mut n = 0;
     for shift in (0..64).step_by(7) {
         let mut b = [0];
-        reader.read_exact(&mut b).map_err(|_| bad())?;
+        reader.read_exact(&mut b)?;
         if shift == 63 && b[0] > 1 {
             return Err(bad());
         }

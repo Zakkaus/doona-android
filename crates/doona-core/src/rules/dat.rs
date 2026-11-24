@@ -16,7 +16,7 @@ use std::{
 struct Site {
     names: domain::Index,
     regex: Vec<Regex>,
-    skipped: u32,
+    incomplete: bool,
 }
 impl Site {
     fn load(list: &mut wire::List, selector: &str) -> io::Result<Option<Self>> {
@@ -37,7 +37,7 @@ impl Site {
                 1 => {
                     match Regex::new(value) {
                         Ok(re) => site.regex.push(re),
-                        Err(_) => site.skipped += 1,
+                        Err(_) => site.incomplete = true,
                     }
                     Ok(())
                 }
@@ -133,7 +133,7 @@ pub(super) fn unsupported_filter(value: &str) -> bool {
 }
 
 impl Matches {
-    pub fn add(&mut self, data: &Data, kind: &Kind, value: &str, row: u32) -> Option<u32> {
+    pub fn add(&mut self, data: &Data, kind: &Kind, value: &str, row: u32) -> bool {
         let code = value
             .strip_prefix('!')
             .unwrap_or(value)
@@ -141,11 +141,13 @@ impl Matches {
         let invert = value.starts_with('!');
         match kind {
             Kind::GeoSite => {
-                let site = data.sites.get(&code)?;
+                let Some(site) = data.sites.get(&code) else {
+                    return false;
+                };
                 bind(&mut self.sites, Some(site), row, invert);
-                Some(site.skipped)
+                !site.incomplete
             }
-            Kind::GeoIp => bind(&mut self.ips, data.ips.get(&code), row, invert).then_some(0),
+            Kind::GeoIp => bind(&mut self.ips, data.ips.get(&code), row, invert),
             _ => unreachable!(),
         }
     }

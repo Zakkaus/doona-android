@@ -116,6 +116,33 @@ impl Disk {
         Ok(data)
     }
     pub fn activate(&mut self, bundle: Option<&Path>, pins: &Release) -> (Option<Data>, bool) {
+        let (data, failed) = self.select(bundle, pins);
+        // The committed journal is authoritative, including after a crash before deletion. A slot
+        // that cannot be deleted now is retried at the next start; it does not fail the data.
+        let _ = self.prune_slots();
+        (data, failed)
+    }
+    fn prune_slots(&self) -> io::Result<()> {
+        for slot in [false, true] {
+            if self
+                .journal
+                .active
+                .iter()
+                .chain(&self.journal.pending)
+                .any(|g| g.slot == slot)
+            {
+                continue;
+            }
+            let path = self.slot(slot);
+            if path.try_exists()? {
+                sync_dir(&self.root)?;
+                remove(&path)?;
+                sync_dir(&self.root)?;
+            }
+        }
+        Ok(())
+    }
+    fn select(&mut self, bundle: Option<&Path>, pins: &Release) -> (Option<Data>, bool) {
         let mut failed = false;
         if let Some(next) = self.journal.pending.clone() {
             let candidate = self.load(&next);

@@ -68,11 +68,9 @@ impl RuleSet {
         for (column, value) in values.iter().enumerate() {
             let added = match rule.kind {
                 Kind::GeoIp | Kind::GeoSite => self.add_geo(&rule.kind, value, row, data),
-                _ => self.add_value(&rule.kind, value, row)?.then_some(0),
+                _ => self.add_value(&rule.kind, value, row)?,
             };
-            if let Some(partial) = added {
-                skipped += partial;
-            } else {
+            if !added {
                 self.missing.insert((row, column as u32));
                 skipped += 1;
             }
@@ -102,27 +100,29 @@ impl RuleSet {
         added.map(|()| true)
     }
 
-    /// A bound selector returns the number of unusable entries, a missing one `None`.
+    /// Bind usable records even when some were skipped; return true only for a complete value.
     fn add_geo(
         &mut self,
         kind: &Kind,
         value: &str,
         row: u32,
         data: Option<&super::dat::Data>,
-    ) -> Option<u32> {
+    ) -> bool {
         let invert = value.starts_with('!');
         let builtin = geoip::Code::parse(value.strip_prefix('!').unwrap_or(value));
         let use_builtin = *kind == Kind::GeoIp
             && (data.is_none() || matches!(builtin, Some(geoip::Code::Private | geoip::Code::Lan)));
         if !use_builtin {
-            return data.and_then(|d| self.loaded.add(d, kind, value, row));
+            return data.is_some_and(|d| self.loaded.add(d, kind, value, row));
         }
-        let code = builtin?;
+        let Some(code) = builtin else {
+            return false;
+        };
         // Rows come in order: the first of a code is the one that can match.
         if !self.geo.iter().any(|g| g.1 == code && g.2 == invert) {
             self.geo.push((row, code, invert));
         }
-        Some(0)
+        true
     }
 
     fn add_ports(&mut self, value: &str, row: u32) -> Result<(), ErrorCode> {
