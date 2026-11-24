@@ -122,9 +122,7 @@ class RvConfigTemplateShotTest {
     fun aDiffLineOpensTheFileThere() {
         var opened: Pair<String, RvDiffAt>? = null
         compose.setContent { Themed { RvConfigTemplateApplyPage(RvConfigTemplateData.apply, onBack = {}, onOpen = { file, at -> opened = file to at }) } }
-        // Scrolled to the end, so the line stands above 套用 rather than at the viewport's edge under it.
-        compose.rvScrollBy(TO_THE_END_DP)
-        compose.onNodeWithContentDescription("新增，第 54 行：  domain(geosite:gfw) -> proxy").performClick()
+        compose.onNodeWithContentDescription("新增，第 54 行：  domain(geosite:gfw) -> proxy").performScrollTo().performClick()
         assertEquals(RvConfigData.ENTRY to RvDiffAt(54, base = false), opened)
     }
 
@@ -146,7 +144,7 @@ class RvConfigTemplateShotTest {
 
     private companion object {
         const val WHOLE_NEW = "+h2454dp"
-        const val WHOLE_DIFF = "+h3510dp"
+        const val WHOLE_DIFF = "+h2454dp"
 
         /** Farther than the page at fs200 scrolls; the scroll stops at the end. */
         const val TO_THE_END_DP = 10_000f

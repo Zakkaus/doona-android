@@ -27,7 +27,6 @@ import dev.doona.android.designsystem.rv.RvAlpha
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvCodeText
-import dev.doona.android.designsystem.rv.RvDiffSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.rvLineNumberStyle
@@ -63,13 +62,12 @@ internal class RvDiffFile(val source: String, val hunks: List<List<RvDiffLine>>)
 /**
  * The source diff (config plan, history and diff; also the editor's check and a template's preview): one card per file,
  * headed by [RvCardHeader] with the file, wrapping when the path is wider than the card, and a tag of its added and
- * removed lines, which opens the file at its first change. Each line is a row: its number (the gutter of
- * [RvSourceField]), a sign, and the text in the row subtitle's 17 sp, highlighted ([RvCodeText]), wrapping (inside a long
- * token too) and hanging under the line's own indent; the row is [RvDiffSize.row] tall at least, [RvDiffSize.inset] above
- * and below the text, so a line that wraps grows it. An added line is tinted in [RvColors.good] and a removed one in the
- * error hue, as [RvStatusChip] tints, the number and sign in that hue, so the sign and not the hue alone says which. A
- * screen reader hears each line as 新增 or 移除, its number and its text. A tap opens the file at that line ([onOpen]
- * gets [RvDiffLine.at]: a removed line in the base, as its number counts there; the others in the candidate).
+ * removed lines, which opens the file at its first change. Each line is a row: its number (the gutter of [RvSourceField]), a sign, and the text in the row subtitle's
+ * 17 sp, highlighted ([RvCodeText]), wrapping (inside a long token too) and hanging under the line's own
+ * indent; an added line is tinted in [RvColors.good] and a removed one in the error hue, as [RvStatusChip]
+ * tints, the number and sign in that hue, so the sign and not the hue alone says which. A screen reader hears each line
+ * as 新增 or 移除, its number and its text. A tap opens the file at that line ([onOpen] gets [RvDiffLine.at]: a removed
+ * line in the base, as its number counts there; the others in the candidate).
  * Runs are apart by [RvSpace.subGap]; their numbers show what lies between.
  */
 @Composable
@@ -123,15 +121,14 @@ private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: (RvDiffAt) 
         val sign = parts[1].measure(loose)
         val textStart = number.width + gap + sign.width + gap
         val text = parts[2].measure(loose.copy(maxWidth = (constraints.maxWidth - textStart).coerceAtLeast(0)))
-        // The text is a whole number of line boxes (the number's one line is one box), so a line with CJK, whose Noto
-        // runs a pixel or two past the box, is as tall as one without; the row adds its inset above and below, at
-        // least its 48 dp, the text centres in it, and the number and sign sit on the text's first baseline.
+        // The row is a whole number of line boxes (the number's one line is one box), so a line with CJK, whose Noto
+        // runs a pixel or two past the box, is as tall as one without; the text centres in it, and the number and
+        // sign sit on the text's first baseline.
         val box = number.height.coerceAtLeast(1)
-        val lines = ((text.height + box / 2) / box * box).coerceAtLeast(box)
-        val height = (lines + 2 * RvDiffSize.inset.roundToPx()).coerceAtLeast(RvDiffSize.row.roundToPx())
+        val height = (text.height + box / 2) / box * box
         val textY = (height - text.height) / 2
         val numberY = textY + text[FirstBaseline] - number[FirstBaseline]
-        layout(constraints.maxWidth, height) {
+        layout(constraints.maxWidth, height.coerceAtLeast(box)) {
             number.place(0, numberY)
             sign.place(number.width + gap, numberY)
             text.place(textStart, textY)

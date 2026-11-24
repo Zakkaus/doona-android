@@ -57,13 +57,3 @@ internal object RvSourceSize {
     val stroke = 1.dp
     val drop = 2.dp
 }
-
-/**
- * A diff line's row (the sample's `RvSourceDiff`): at least [row] tall, the touch height (owner 2026-11-24, 「加高」),
- * its text [inset] under the row's top and over its bottom, so one 24 dp line is 12 + 24 + 12 = 48 dp and a line that
- * wraps grows the row by its lines, as a list row grows (RvSpace.rowTextInset).
- */
-internal object RvDiffSize {
-    val row = RvSize.touch
-    val inset = 12.dp
-}

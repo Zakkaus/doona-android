@@ -10,9 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -33,7 +31,6 @@ import dev.doona.android.prototype.rv.gallery.RvGalleryDiff
 import dev.doona.android.prototype.rv.gallery.RvGallerySource
 import dev.doona.android.prototype.rv.gallery.rvByteOf
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -71,19 +68,19 @@ class RvSourceShotTest {
     fun fieldFs200() = compose.rvShot("source-field", dark = false, fontScale = RV_FS200) { Page { RvGallerySource() } }
 
     @Test
-    @Config(qualifiers = "+h648dp")
+    @Config(qualifiers = "+h480dp")
     fun diffLight() = compose.rvShot("source-diff", dark = false) { Page { RvGalleryDiff() } }
 
     @Test
-    @Config(qualifiers = "+h648dp")
+    @Config(qualifiers = "+h480dp")
     fun diffDark() = compose.rvShot("source-diff", dark = true) { Page { RvGalleryDiff() } }
 
     @Test
-    @Config(qualifiers = "+h728dp")
+    @Config(qualifiers = "+h560dp")
     fun diffFs115() = compose.rvShot("source-diff", dark = false, fontScale = RV_FS115) { Page { RvGalleryDiff() } }
 
     @Test
-    @Config(qualifiers = "+h1083dp")
+    @Config(qualifiers = "+h915dp")
     fun diffFs200() = compose.rvShot("source-diff", dark = false, fontScale = RV_FS200) { Page { RvGalleryDiff() } }
 
     @Test
@@ -155,23 +152,6 @@ class RvSourceShotTest {
         assertEquals(RvDiffAt(3, base = true), opened)
     }
 
-    /** Each diff line is a row of 48 dp: exactly 48 when its text holds one line, one line box taller per line it wraps. */
-    @Test
-    fun aDiffRowIsFortyEightTallAndAWrappedLineGrowsIt() {
-        compose.rvContent(dark = false) { Page { RvGalleryDiff() } }
-        rvAssertDiffRows(compose.rvDiffRows(), oneLine = setOf(2, 3, 13), wrapped = setOf(4, 11, 12))
-    }
-
-    /** At the largest font size every diff row is still 48 dp at least, and grows with its text. */
-    @Test
-    @Config(qualifiers = "+h1083dp")
-    fun aDiffRowHoldsFortyEightAtTheLargestFont() {
-        compose.rvContent(dark = false, fontScale = RV_FS200) { Page { RvGalleryDiff() } }
-        val rows = compose.rvDiffRows()
-        assertEquals(DIFF_LINES, rows.size)
-        rows.forEach { (line, height) -> assertTrue("line $line is $height dp", height >= RV_DIFF_ROW - RV_DIFF_SLACK) }
-    }
-
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
 
@@ -183,37 +163,8 @@ class RvSourceShotTest {
 
     private companion object {
         val TOP = 72.dp
-        const val DIFF_LINES = 7
         const val WORD = "stream"
         const val FILE = "rules/media.dae"
         const val MESSAGE = "找不到策略組 stream"
-    }
-}
-
-/** A diff row's height at 1.0 (RvDiffSize.row), the one line box it adds per wrapped line (rowSub's 24), and the slack. */
-internal const val RV_DIFF_ROW = 48f
-internal const val RV_DIFF_LINE = 24f
-internal const val RV_DIFF_SLACK = 0.5f
-
-private val DIFF_LINE = Regex("""第 (\d+) 行：""")
-
-/** Each diff row on screen, by the line number its label reads, with its height in dp. */
-internal fun ComposeContentTestRule.rvDiffRows(): List<Pair<Int, Float>> {
-    val row = SemanticsMatcher("a diff line") { node ->
-        node.config.getOrNull(SemanticsProperties.ContentDescription)?.any { DIFF_LINE.containsMatchIn(it) } == true
-    }
-    return onAllNodes(row).fetchSemanticsNodes().map { node ->
-        val label = node.config[SemanticsProperties.ContentDescription].first { DIFF_LINE.containsMatchIn(it) }
-        DIFF_LINE.find(label)!!.groupValues[1].toInt() to node.size.height / density.density
-    }
-}
-
-/** Every row of [rows] is 48 dp at least; the lines in [oneLine] exactly 48, those in [wrapped] one line box taller (two lines). */
-internal fun rvAssertDiffRows(rows: List<Pair<Int, Float>>, oneLine: Set<Int>, wrapped: Set<Int>) {
-    assertEquals(oneLine + wrapped, rows.map { it.first }.toSet())
-    rows.forEach { (line, height) ->
-        assertTrue("line $line is $height dp", height >= RV_DIFF_ROW - RV_DIFF_SLACK)
-        val expected = if (line in oneLine) RV_DIFF_ROW else RV_DIFF_ROW + RV_DIFF_LINE
-        assertEquals("line $line", expected, height, RV_DIFF_SLACK)
     }
 }
