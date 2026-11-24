@@ -18,16 +18,25 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.data.RvRouteMode
+import dev.doona.android.prototype.rv.nodes.RvNodesPage
+import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.testing.GestureBar
 import dev.doona.android.testing.StatusBar
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,10 +46,12 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The existing pages in windows other than the 412 dp phone, recorded as they are, light and dark, first screen only:
- * 活動, 策略 and 設定 at 840 dp wide (`proto-rv-wide-activity-*`, `-wide-policy-*`, `-wide-settings-*`), 活動 under a
- * display cutout (`-cutout-activity-*`) and with three-button navigation (`-threebutton-activity-*`). The bars are the
+ * 活動, 策略, 設定 and 節點 at 840 dp wide (`proto-rv-wide-activity-*`, `-wide-policy-*`, `-wide-settings-*`,
+ * `-wide-nodes-*`), each of them under a display cutout (`-cutout-<page>-*`) and with three-button navigation
+ * (`-threebutton-<page>-*`). The bars are the
  * test's stand-ins: a notch phone's 48 dp status bar with a notch drawn in it, and a 48 dp navigation bar with its
- * three buttons; the pages read them as insets, as they read the frame's everywhere else.
+ * three buttons; the pages read them as insets, as they read the frame's everywhere else. Under three-button navigation
+ * each of 策略, 設定 and 節點, scrolled to its end, is also checked to leave no text under the bar or the tab bar.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -84,6 +95,67 @@ class RvWindowShotTest {
 
     @Test fun threeButtonActivityDark() = compose.rvShot("threebutton-activity", dark = true, gesture = false) { ThreeButton { Activity() } }
 
+    @Test
+    @Config(qualifiers = WIDE)
+    fun wideNodesLight() = compose.rvShot("wide-nodes", dark = false) { Nodes() }
+
+    @Test
+    @Config(qualifiers = WIDE)
+    fun wideNodesDark() = compose.rvShot("wide-nodes", dark = true) { Nodes() }
+
+    @Test fun cutoutPolicyLight() = compose.rvShot("cutout-policy", dark = false) { Cutout { Policy() } }
+
+    @Test fun cutoutPolicyDark() = compose.rvShot("cutout-policy", dark = true) { Cutout { Policy() } }
+
+    @Test fun cutoutSettingsLight() = compose.rvShot("cutout-settings", dark = false) { Cutout { Settings() } }
+
+    @Test fun cutoutSettingsDark() = compose.rvShot("cutout-settings", dark = true) { Cutout { Settings() } }
+
+    @Test fun cutoutNodesLight() = compose.rvShot("cutout-nodes", dark = false) { Cutout { Nodes() } }
+
+    @Test fun cutoutNodesDark() = compose.rvShot("cutout-nodes", dark = true) { Cutout { Nodes() } }
+
+    @Test fun threeButtonPolicyLight() = compose.rvShot("threebutton-policy", dark = false, gesture = false) { ThreeButton { Policy() } }
+
+    @Test fun threeButtonPolicyDark() = compose.rvShot("threebutton-policy", dark = true, gesture = false) { ThreeButton { Policy() } }
+
+    @Test fun threeButtonSettingsLight() = compose.rvShot("threebutton-settings", dark = false, gesture = false) { ThreeButton { Settings() } }
+
+    @Test fun threeButtonSettingsDark() = compose.rvShot("threebutton-settings", dark = true, gesture = false) { ThreeButton { Settings() } }
+
+    @Test fun threeButtonNodesLight() = compose.rvShot("threebutton-nodes", dark = false, gesture = false) { ThreeButton { Nodes() } }
+
+    @Test fun threeButtonNodesDark() = compose.rvShot("threebutton-nodes", dark = true, gesture = false) { ThreeButton { Nodes() } }
+
+    @Test fun policysEndClearsTheThreeButtonBar() = endClearsTheBar { Policy() }
+
+    @Test fun settingsEndClearsTheThreeButtonBar() = endClearsTheBar { Settings() }
+
+    @Test fun nodesEndClearsTheThreeButtonBar() = endClearsTheBar { Nodes() }
+
+    /**
+     * Under three-button navigation, scrolled to its end, the [page] leaves no text under the bar, nor under the floating
+     * tab bar that stands over it on a tab: the lowest line ends above both.
+     */
+    private fun endClearsTheBar(page: @Composable () -> Unit) {
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { ThreeButton(page) } }
+        compose.rvScrollBy(TO_THE_END)
+        val density = compose.density.density
+        // The floating tab bar's tabs, which have folded their labels away by the end: the tabs in the window's lower half,
+        // a segmented control's (tabs too) having scrolled away above.
+        val window = compose.onRoot().fetchSemanticsNode().boundsInRoot.bottom / density
+        val tab = SemanticsMatcher("a tab of the tab bar") { node ->
+            node.config.getOrNull(SemanticsProperties.Role) == Role.Tab && node.boundsInRoot.top / density > window / 2
+        }
+        val bar = window - NAV_BAR.value
+        val nav = compose.onAllNodes(tab).fetchSemanticsNodes().minOfOrNull { it.boundsInRoot.top / density } ?: bar
+        val text = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text) and !hasAnyAncestor(tab), useUnmergedTree = true)
+        val lowest = text.fetchSemanticsNodes().maxBy { it.boundsInRoot.bottom }
+        val end = lowest.boundsInRoot.bottom / density
+        val line = lowest.config[SemanticsProperties.Text].joinToString()
+        assertTrue("the last line ($line) ends at $end dp; the tab bar starts at $nav dp, the navigation bar at $bar dp", end <= minOf(nav, bar))
+    }
+
     @Composable
     private fun Activity() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {})
 
@@ -92,6 +164,9 @@ class RvWindowShotTest {
 
     @Composable
     private fun Settings() = RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {})
+
+    @Composable
+    private fun Nodes() = RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {})
 
     /** A notch phone: the status bar is as tall as the notch, which the page reads as its top inset. */
     @Composable
@@ -146,5 +221,8 @@ class RvWindowShotTest {
         const val BACK = 0.25f
         const val HOME = 0.5f
         const val RECENTS = 0.75f
+
+        /** Farther than any of these pages runs: the scroll stops at its end. */
+        const val TO_THE_END = 10_000f
     }
 }
