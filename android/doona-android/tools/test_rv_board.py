@@ -11,7 +11,10 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import pytest
 import rv_board
+
+DEFAULT = {"default": {"rev": "3a2940ea", "why": "every page"}, "revs": []}
 
 
 def rule(kind, what, actual, expected, at, token=True):
@@ -84,7 +87,7 @@ def test_build_draws_four_columns_against_the_approved_and_two_for_a_new_page(tm
         write(now, f"fresh-{theme}-1", layout([]))
         write(now, f"fresh-{theme}-2", layout([], scrolled=723.0))
     pages = [{"page": "關於", "state": "正常", "screen": "about"}, {"page": "新頁", "state": "正常", "screen": "fresh"}]
-    entries = rv_board.build(pages, now, approved, "3a2940ea", out)
+    entries = rv_board.build(pages, now, {"3a2940ea": approved}, DEFAULT, out)
     assert [(e["screen"], e["theme"], e["window"]) for e in entries] == [
         ("about", "light", 1),
         ("about", "dark", 1),
@@ -95,18 +98,19 @@ def test_build_draws_four_columns_against_the_approved_and_two_for_a_new_page(tm
     ]
     about, fresh = entries[0], entries[2]
     assert about["red"] == 1 and about["approved"] == "3a2940ea" and about["diff_px"] == 824 * 1830
-    assert fresh["red"] == 0 and fresh["approved"] is None and fresh["diff_px"] is None
+    assert fresh["red"] == 0 and fresh["approved"] is None and fresh["diff_px"] is None and fresh["baseline"] == "3a2940ea"
     wide = Image.open(out / "about-light-1.webp")
     narrow = Image.open(out / "fresh-light-1.webp")
     assert wide.width == 2 * rv_board.MARGIN + 4 * 824 + 3 * rv_board.GAP
     assert narrow.width == 2 * rv_board.MARGIN + 2 * 824 + rv_board.GAP
     assert (out / "index.webp").is_file()
     manifest = json.loads((out / "manifest.json").read_text())
-    assert manifest["approved"] == "3a2940ea" and len(manifest["sheets"]) == 6 and manifest["missing"] == []
+    assert manifest["baselines"] == DEFAULT and len(manifest["sheets"]) == 6 and manifest["missing"] == []
 
 
 def test_a_page_with_no_capture_is_listed_as_missing(tmp_path):
-    entries = rv_board.build([{"page": "無", "state": "正常", "screen": "none"}], tmp_path / "now", None, "3a2940ea", tmp_path / "out")
+    pages = [{"page": "無", "state": "正常", "screen": "none"}]
+    entries = rv_board.build(pages, tmp_path / "now", {"3a2940ea": tmp_path / "approved"}, DEFAULT, tmp_path / "out")
     assert entries == []
     assert json.loads((tmp_path / "out" / "manifest.json").read_text())["missing"] == ["none-light", "none-dark"]
 
@@ -138,3 +142,56 @@ def test_the_index_has_a_line_per_page_state_in_columns():
     image = rv_board.index_sheet(entries)
     assert image.width == 2 * rv_board.MARGIN + 2 * rv_board.INDEX_COLUMN
     assert image.height < 16383
+
+
+def test_a_long_page_gets_a_sheet_for_every_window(tmp_path):
+    now, out = tmp_path / "now", tmp_path / "out"
+    for theme in rv_board.THEMES:
+        for n in (1, 2, 3, 4):
+            write(now, f"long-{theme}-{n}", layout([], scrolled=723.0 * (n - 1)))
+    entries = rv_board.build([{"page": "長", "state": "正常", "screen": "long"}], now, {"3a2940ea": tmp_path / "a"}, DEFAULT, out)
+    assert [e["window"] for e in entries if e["theme"] == "light"] == [1, 2, 3, 4]
+    assert (out / "long-dark-4.webp").is_file()
+
+
+def test_each_page_compares_with_its_own_baseline_under_its_name_there(tmp_path):
+    now, old, later, out = tmp_path / "now", tmp_path / "old", tmp_path / "later", tmp_path / "out"
+    for theme in rv_board.THEMES:
+        for directory, screen in ((now, "plain"), (old, "plain"), (now, "fixed"), (later, "fixed"), (now, "renamed"), (later, "renamed-b")):
+            write(directory, f"{screen}-{theme}-1", layout([]))
+    baselines = {
+        "default": {"rev": "old", "why": "the rest"},
+        "revs": [{"rev": "later", "why": "reviewed later", "screens": ["fixed", {"screen": "renamed", "was": "renamed-b"}, "gone"]}],
+    }
+    pages = [{"page": p, "state": "正常", "screen": p} for p in ("plain", "fixed", "renamed")]
+    entries = rv_board.build(pages, now, {"old": old, "later": later}, baselines, out)
+    light = {e["screen"]: e for e in entries if e["theme"] == "light"}
+    assert {s: (e["baseline"], e["approved"]) for s, e in light.items()} == {
+        "plain": ("old", "old"),
+        "fixed": ("later", "later"),
+        "renamed": ("later", "later"),
+    }
+    manifest = json.loads((out / "manifest.json").read_text())
+    assert manifest["baselines"] == baselines and manifest["baseline_unused"] == ["gone"]
+
+
+def test_a_baseline_with_no_captures_or_a_screen_named_twice_is_an_error(tmp_path):
+    pages = [{"page": "p", "state": "正常", "screen": "p"}]
+    later = {"default": {"rev": "old", "why": ""}, "revs": [{"rev": "later", "why": "", "screens": ["p"]}]}
+    with pytest.raises(rv_board.BaselineError, match="no approved captures for later"):
+        rv_board.build(pages, tmp_path, {"old": tmp_path}, later, tmp_path / "out")
+    twice = {**later, "revs": [*later["revs"], {"rev": "old", "why": "", "screens": [{"screen": "p", "was": "q"}]}]}
+    with pytest.raises(rv_board.BaselineError, match="p is under later and old"):
+        rv_board.baseline_of(twice)
+    with pytest.raises(rv_board.BaselineError):
+        rv_board.approved_dirs(["later"])
+    assert rv_board.approved_dirs(["a=x", "b=y"]) == {"a": Path("x"), "b": Path("y")}
+
+
+def test_the_map_in_the_tree_names_each_screen_once_and_every_screen_is_on_the_board():
+    tools = Path(__file__).parent
+    baselines = json.loads((tools / "rv_board_baselines.json").read_text())
+    screens = {p["screen"] for p in json.loads((tools / "rv_board_pages.json").read_text())}
+    named = rv_board.baseline_of(baselines)
+    # 服務規則 is named as it is after owner-fix3 renames it (rules-service-b at 4dcd0f57).
+    assert named.keys() - screens <= {"rules-service"}

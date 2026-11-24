@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """The design board: one sheet per RV page, state, theme and screen, with redlines drawn from the page's real bounds.
 
-    uv run --no-project --with pillow python -I tools/rv_board.py PAGES NOW [--approved DIR] [--out DIR]
+    uv run --no-project --with pillow python -I tools/rv_board.py PAGES NOW [--baselines MAP] [--approved REV=DIR ...] [--out DIR]
 
-NOW (and the approved DIR) hold what a board run of the shot tests writes (`./gradlew -Ddoona.board=<dir>
-:app:testDebugUnitTest`, see RvBoard.kt): `<screen>-<theme>-<n>.png` and `.json` per window, at 2 px per dp. PAGES is a
-JSON list of {"page", "state", "screen"} (tools/rv_board_pages.json). For every page, theme (light, dark) and window, OUT
-(default build/design-board) gets `<screen>-<theme>-<n>.webp`: the screen; the same screen with redlines (the 4 dp grid,
-the side keylines, every outlined node and library part, text baselines, each gap between blocks in dp); then, where the
-approved DIR has the same window, the approved version and the changed pixels in red over a faded screen, or "new" in
-the header. An edge off its keyline by more than 0.5 dp, a gap that is not a spacing token or not the one the rulers
+NOW (and each approved DIR) hold what a board run of the shot tests writes (`./gradlew -Ddoona.board=<dir>
+:app:testDebugUnitTest`, see RvBoard.kt): `<screen>-<theme>-<n>.png` and `.json` per window, at 2 px per dp, every
+window of a long page. PAGES is a JSON list of {"page", "state", "screen"} (tools/rv_board_pages.json). MAP
+(tools/rv_board_baselines.json) names the revision each page compares with: the version the owner last reviewed, a
+default and the revisions of later reviews with their screens; each revision a page uses needs its captures as
+`--approved REV=DIR`. For every page, theme (light, dark) and window, OUT (default build/design-board) gets
+`<screen>-<theme>-<n>.webp`: the screen; the same screen with redlines (the 4 dp grid, the side keylines, every outlined
+node and library part, text baselines, each gap between blocks in dp); then, where the page's approved DIR has the same
+window, the approved version and the changed pixels in red over a faded screen, or "new" in the header. An edge off its keyline by more than 0.5 dp, a gap that is not a spacing token or not the one the rulers
 expect, a row or control off its height and a header off its top are drawn in red and listed under the sheet. OUT also
-gets index.webp (every page state with its red marks in light and dark, in columns) and manifest.json.
+gets index.webp (every page state with its red marks in light and dark and its baseline, in columns) and manifest.json,
+which also holds the baseline map.
 """
 
 from __future__ import annotations
@@ -65,6 +68,38 @@ class Window:
     image: Image.Image
     layout: dict
     marks: list[Mark] = field(default_factory=list)
+
+
+class BaselineError(ValueError):
+    """A baseline map that names a screen twice, or a page whose revision has no captures."""
+
+
+@dataclass(frozen=True)
+class Baseline:
+    """The revision a page compares with, and the page's screen name in that revision's captures."""
+
+    rev: str
+    screen: str
+
+
+def baseline_of(baselines: dict) -> dict[str, Baseline]:
+    """
+    Each screen the map names, with its baseline. A screen is its name, or {"screen", "was"} where it had another name at
+    that revision. A screen named twice is an error.
+    """
+    found: dict[str, Baseline] = {}
+    for entry in baselines["revs"]:
+        for item in entry["screens"]:
+            screen, was = (item, item) if isinstance(item, str) else (item["screen"], item["was"])
+            if screen in found:
+                raise BaselineError(f"{screen} is under {found[screen].rev} and {entry['rev']}")
+            found[screen] = Baseline(entry["rev"], was)
+    return found
+
+
+def baseline_for(baselines: dict, screen: str) -> Baseline:
+    """The baseline [screen] compares with: its own in the map, else the map's default under the same name."""
+    return baseline_of(baselines).get(screen, Baseline(baselines["default"]["rev"], screen))
 
 
 @cache
@@ -197,7 +232,7 @@ class Sheet:
 
 
 def sheet(page: dict, theme: str, index: int, now: Window, approved: Window | None, rev: str) -> Sheet:
-    """Screen, redlines and, where there is one, the approved window and the red diff, over the list of red marks."""
+    """Screen, redlines and, where there is one, the approved window at [rev] and the red diff, over the list of red marks."""
     head, label, small = font(30), font(22), font(24)
     panels = [("畫面", now.image), ("標線", redlines(now, label))]
     diff_px = None
@@ -233,6 +268,7 @@ def sheet(page: dict, theme: str, index: int, now: Window, approved: Window | No
         "file": f"{now.name}.webp",
         "red": len(now.marks),
         "marks": [m.text for m in now.marks],
+        "baseline": rev,
         "approved": rev if approved is not None else None,
         "diff_px": diff_px,
         "top": now.layout["top"],
@@ -241,12 +277,15 @@ def sheet(page: dict, theme: str, index: int, now: Window, approved: Window | No
     return Sheet(image, entry)
 
 
-def index_sheet(entries: list[dict]) -> Image.Image:
-    """Every page state, a line each, with its red marks in light and in dark (all its windows), in columns."""
+def index_sheet(entries: list[dict], default: str | None = None) -> Image.Image:
+    """
+    Every page state, a line each, with its red marks in light and in dark (all its windows), in columns; "new" where a
+    window has no approved one, and the baseline where it is not the [default].
+    """
     head, row = font(30), font(24)
     pages: dict[tuple[str, str], dict] = {}
     for e in entries:
-        line = pages.setdefault((e["page"], e["state"]), {"light": 0, "dark": 0, "new": False})
+        line = pages.setdefault((e["page"], e["state"]), {"light": 0, "dark": 0, "new": False, "rev": e.get("baseline")})
         line[e["theme"]] += e["red"]
         line["new"] |= e["approved"] is None
     total = sum(e["red"] for e in entries)
@@ -263,47 +302,79 @@ def index_sheet(entries: list[dict]) -> Image.Image:
         y = MARGIN + HEADER + 40 + INDEX_LINE * (i % rows)
         red = line["light"] + line["dark"]
         draw.text((x, y), f"{page} · {state}", fill=RED if red else INK, font=row)
+        rev = f"  {line['rev']}" if line["rev"] and line["rev"] != default else ""
         draw.text(
             (x + INDEX_COUNTS, y),
-            f"{line['light']:>5}  {line['dark']:>5}{'  new' if line['new'] else ''}",
+            f"{line['light']:>5}  {line['dark']:>5}{'  new' if line['new'] else ''}{rev}",
             fill=RED if red else INK,
             font=row,
         )
     return image
 
 
-def build(pages: list[dict], now_dir: Path, approved_dir: Path | None, rev: str, out: Path) -> list[dict]:
-    """Draws every sheet into [out] with the index and the manifest; returns the manifest's entries."""
+def windows(directory: Path, screen: str, theme: str) -> list[Window]:
+    """Every window of one page and theme, `-1` on until the first one missing."""
+    found = []
+    while window := load(directory, f"{screen}-{theme}-{len(found) + 1}"):
+        found.append(window)
+    return found
+
+
+def build(pages: list[dict], now_dir: Path, approved: dict[str, Path], baselines: dict, out: Path) -> list[dict]:
+    """
+    Draws every sheet into [out] with the index and the manifest; returns the manifest's entries. Each page compares with
+    the captures in [approved] of its revision in [baselines].
+    """
+    bases = {page["screen"]: baseline_for(baselines, page["screen"]) for page in pages}
+    if unknown := sorted({b.rev for b in bases.values()} - approved.keys()):
+        raise BaselineError(f"no approved captures for {', '.join(unknown)}")
     out.mkdir(parents=True, exist_ok=True)
     entries = []
     missing = []
     for page in pages:
+        base = bases[page["screen"]]
         for theme in THEMES:
-            screens = [w for n in (1, 2) if (w := load(now_dir, f"{page['screen']}-{theme}-{n}"))]
+            screens = windows(now_dir, page["screen"], theme)
             if not screens:
                 missing.append(f"{page['screen']}-{theme}")
                 continue
             for n, window in enumerate(screens, start=1):
-                approved = load(approved_dir, window.name) if approved_dir else None
-                drawn = sheet({**page, "screens": len(screens)}, theme, n, window, approved, rev)
+                before = load(approved[base.rev], f"{base.screen}-{theme}-{n}")
+                drawn = sheet({**page, "screens": len(screens)}, theme, n, window, before, base.rev)
                 drawn.image.save(out / drawn.entry["file"], "WEBP", quality=90, method=6)
                 entries.append(drawn.entry)
-    (out / "manifest.json").write_text(
-        json.dumps({"approved": rev, "sheets": entries, "missing": missing}, ensure_ascii=False, indent=1) + "\n"
-    )
-    index_sheet(entries).save(out / "index.webp", "WEBP", quality=90, method=6)
+    # Screens the map names that these pages do not have: a renamed or removed page, or a run over some pages only.
+    unused = sorted(baseline_of(baselines).keys() - bases.keys())
+    manifest = {"baselines": baselines, "sheets": entries, "missing": missing, "baseline_unused": unused}
+    (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1) + "\n")
+    index_sheet(entries, baselines["default"]["rev"]).save(out / "index.webp", "WEBP", quality=90, method=6)
     return entries
+
+
+def approved_dirs(values: list[str]) -> dict[str, Path]:
+    """`REV=DIR` pairs, each revision once."""
+    found: dict[str, Path] = {}
+    for value in values:
+        rev, sep, path = value.partition("=")
+        if not sep or not rev or not path or rev in found:
+            raise BaselineError(f"--approved wants REV=DIR, each revision once: {value}")
+        found[rev] = Path(path)
+    return found
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("pages", type=Path)
     parser.add_argument("now", type=Path)
-    parser.add_argument("--approved", type=Path)
-    parser.add_argument("--rev", default="3a2940ea", help="the approved revision, for the headers and the manifest")
+    parser.add_argument("--baselines", type=Path, default=Path(__file__).with_name("rv_board_baselines.json"))
+    parser.add_argument("--approved", action="append", default=[], metavar="REV=DIR", help="the captures at one baseline revision")
     parser.add_argument("--out", type=Path, default=Path("build/design-board"))
     args = parser.parse_args()
-    entries = build(json.loads(args.pages.read_text()), args.now, args.approved, args.rev, args.out)
+    try:
+        baselines = json.loads(args.baselines.read_text())
+        entries = build(json.loads(args.pages.read_text()), args.now, approved_dirs(args.approved), baselines, args.out)
+    except BaselineError as error:
+        parser.error(str(error))
     print(f"{len(entries)} sheets, {sum(e['red'] for e in entries)} red marks, in {args.out}")
 
 
