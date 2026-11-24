@@ -59,7 +59,6 @@ import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
 import dev.doona.android.prototype.rv.settings.RvLicenseText
-import dev.doona.android.prototype.rv.settings.RvLicenses
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
@@ -72,6 +71,7 @@ import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.previewDark
+import dev.doona.android.prototype.rv.settings.rvLicenseEntries
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -289,7 +289,7 @@ private fun AboutAppsPage(route: String, settings: RvSettingsState, onSettings: 
     when (route.substringBefore(':')) {
         PERAPP -> PerAppPage(route, settings, onSettings, pages)
         LICENSES -> RvLicensesScreen(onOpen = { pages.push("$LICENSE:$it") }, onBack = pages.pop)
-        else -> RvLicenseText(RvLicenses.all[route.substringAfter(':').toInt()], onBack = pages.pop)
+        else -> RvLicenseText(rvLicenseEntries()[route.substringAfter(':').toInt()], onBack = pages.pop)
     }
 }
 

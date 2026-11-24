@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.settings
 
 import android.content.res.Configuration
+import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,9 +27,17 @@ import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 
-/** A component doona ships: its [name], its licence's SPDX expression, and the asset holding the licence's text. */
+/**
+ * An entry of the licences page: its [name], its licence (a component's SPDX expression), and its text, the asset
+ * [file] of a component doona ships or, for an entry doona words itself in each language ([rvBrandMarks]), the string
+ * [notice].
+ */
 @Immutable
-internal data class RvLicense(val name: String, val license: String, val file: String)
+internal data class RvLicense(val name: String, val license: String, val file: String? = null, @StringRes val notice: Int? = null) {
+    init {
+        require((file == null) != (notice == null)) { "$name: a file or a notice" }
+    }
+}
 
 /**
  * The sample's components, by name: the app's and the core's dependencies from the build files and the fonts and
@@ -58,8 +67,24 @@ internal object RvLicenses {
 }
 
 /**
+ * The last entry: the brand marks of 新增服務規則, which are no component but marks used under their sources' terms
+ * (Simple Icons CC0, Wikimedia Commons public domain, Bootstrap Icons MIT), with the trademark notice of
+ * `app/src/main/BRAND_ICONS.md`.
+ */
+@Composable
+internal fun rvBrandMarks(): RvLicense = RvLicense(
+    stringResource(R.string.rv_license_brand_marks),
+    stringResource(R.string.rv_license_brand_marks_licenses),
+    notice = R.string.rv_license_brand_marks_text,
+)
+
+/** The page's entries in its order: the components, then the brand marks. [RvLicensesScreen]'s `onOpen` indexes it. */
+@Composable
+internal fun rvLicenseEntries(): List<RvLicense> = RvLicenses.all + rvBrandMarks()
+
+/**
  * 開放原始碼授權, a page of 設定's 關於, in DNS's language: one card of the components, each its name over its licence with no
- * glyph, as DNS's 自訂 row; a row opens the licence's text ([onOpen]).
+ * glyph, as DNS's 自訂 row, and the brand marks last; a row opens its text ([onOpen], an index of [rvLicenseEntries]).
  */
 @Composable
 internal fun RvLicensesScreen(onOpen: (Int) -> Unit, onBack: () -> Unit) {
@@ -68,17 +93,19 @@ internal fun RvLicensesScreen(onOpen: (Int) -> Unit, onBack: () -> Unit) {
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            RvSettingsCard { RvLicenses.all.forEachIndexed { i, it -> RvSettingsNavRow(it.name, null, { onOpen(i) }, it.license) } }
+            val entries = rvLicenseEntries()
+            RvSettingsCard { entries.forEachIndexed { i, it -> RvSettingsNavRow(it.name, null, { onOpen(i) }, it.license) } }
         }
     }
 }
 
-/** A licence's text under the component's name as the large title, a paragraph at a time in the body's 17 sp, in ink. */
+/** An entry's text under its name as the large title, a paragraph at a time in the body's 17 sp, in ink. */
 @Composable
 internal fun RvLicenseText(license: RvLicense, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val assets = LocalContext.current.assets
-    val paragraphs = remember(license.file) { rvParagraphs(assets.open(license.file).bufferedReader().use { it.readText() }) }
+    val notice = license.notice?.let { stringResource(it) }
+    val paragraphs = remember(license.file, notice) { rvParagraphs(notice ?: assets.open(requireNotNull(license.file)).bufferedReader().use { it.readText() }) }
     RvScrollPage(license.name, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(license.name, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.controlStack)) {

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -24,7 +25,8 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * 授權條款 (`proto-rv-licenses-*`, the whole page at each font size) and tokio's licence as its text page opens it
  * (`proto-rv-license-text-*`, the phone's first screen), light, dark, fs115 and fs200; that a row opens its component's
- * text; that every component's text is in the assets; and how a licence file becomes paragraphs.
+ * text; that every component's text is in the assets; and how a licence file becomes paragraphs. The brand marks'
+ * entry, last on the page, and its notice (`proto-rv-license-brand-marks-*`), also in English and Simplified Chinese.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -57,6 +59,22 @@ class RvLicensesShotTest {
 
     @Test fun textFs200() = compose.rvShot("license-text", dark = false, fontScale = RV_FS200) { Tokio() }
 
+    @Test fun brandMarksLight() = compose.rvShot("license-brand-marks", dark = false) { BrandMarks() }
+
+    @Test fun brandMarksDark() = compose.rvShot("license-brand-marks", dark = true) { BrandMarks() }
+
+    @Test fun brandMarksFs115() = compose.rvShot("license-brand-marks", dark = false, fontScale = RV_FS115) { BrandMarks() }
+
+    @Test fun brandMarksFs200() = compose.rvShot("license-brand-marks", dark = false, fontScale = RV_FS200) { BrandMarks() }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun brandMarksEnglish() = compose.rvShot("license-brand-marks-en", dark = false) { BrandMarks() }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun brandMarksSimplified() = compose.rvShot("license-brand-marks-zh-cn", dark = false) { BrandMarks() }
+
     @Test
     @Config(qualifiers = LONG_PAGE)
     fun aRowOpensItsComponentsText() {
@@ -70,9 +88,27 @@ class RvLicensesShotTest {
     fun everyComponentHasItsText() {
         val assets = RuntimeEnvironment.getApplication().assets
         for (license in RvLicenses.all) {
-            val text = assets.open(license.file).bufferedReader().use { it.readText() }
+            val text = assets.open(requireNotNull(license.file)).bufferedReader().use { it.readText() }
             assertTrue("${license.name}'s text is empty", text.isNotBlank())
         }
+    }
+
+    /** The brand marks are the page's last entry; their text is the trademark notice, then each source with its licence. */
+    @Test
+    @Config(qualifiers = LONG_PAGE)
+    fun theBrandMarksComeLastWithTheirNotice() {
+        var opened: Int? = null
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvLicensesScreen(onOpen = { opened = it }, onBack = {}) } }
+        compose.onNodeWithText("品牌標誌").performClick()
+        assertEquals(RvLicenses.all.size, opened)
+        val text = RuntimeEnvironment.getApplication().getString(R.string.rv_license_brand_marks_text)
+        assertEquals(
+            listOf(
+                "新增服務規則頁上各服務的品牌標誌是其所有者的商標，只用來標示規則所指的服務。使用這些標誌不代表與所有者有任何關聯或獲其認可，doona 的授權也不涵蓋這些標誌。",
+                "來源：\n- Simple Icons：CC0 1.0\n- Wikimedia Commons 標誌（Nintendo、Disney+、Prime Video）：公有領域\n- Bootstrap Icons（Xbox、Microsoft、OpenAI）：MIT",
+            ),
+            rvParagraphs(text),
+        )
     }
 
     @Test
@@ -89,10 +125,13 @@ class RvLicensesShotTest {
     @Composable
     private fun Tokio() = RvLicenseText(RvLicenses.all.first { it.name == "tokio" }, onBack = {})
 
+    @Composable
+    private fun BrandMarks() = RvLicenseText(rvBrandMarks(), onBack = {})
+
     private companion object {
         /** As tall as the whole 授權條款 page at each font size, so its last row shows as the phone shows it. */
-        const val LONG_PAGE = "+h1363dp"
-        const val LONG_PAGE_FS115 = "+h1363dp"
-        const val LONG_PAGE_FS200 = "+h1701dp"
+        const val LONG_PAGE = "+h1448dp"
+        const val LONG_PAGE_FS115 = "+h1453dp"
+        const val LONG_PAGE_FS200 = "+h1864dp"
     }
 }

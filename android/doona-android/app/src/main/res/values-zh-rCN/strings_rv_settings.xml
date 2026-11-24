@@ -28,6 +28,9 @@
     <string name="rv_settings_group_about">关于</string>
     <string name="rv_settings_version">版本</string>
     <string name="rv_settings_licenses">开源许可证</string>
+    <string name="rv_license_brand_marks">品牌标志</string>
+    <string name="rv_license_brand_marks_licenses">CC0-1.0、公有领域、MIT</string>
+    <string name="rv_license_brand_marks_text">添加服务规则页上各服务的品牌标志是其所有者的商标，仅用于标示规则所针对的服务。使用这些标志不表示与所有者存在任何关联或获得其认可，doona 的许可证也不涵盖这些标志。\n\n来源：\n- Simple Icons：CC0 1.0\n- Wikimedia Commons 标志（Nintendo、Disney+、Prime Video）：公有领域\n- Bootstrap Icons（Xbox、Microsoft、OpenAI）：MIT</string>
 
     <string name="rv_settings_accent">强调色</string>
     <string name="rv_settings_follow_wallpaper">跟随壁纸</string>

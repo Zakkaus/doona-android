@@ -1,7 +1,11 @@
 # Brand marks in `res/drawable/rv_brand_*.xml`
 
-Brand glyphs for the service rows of 新增服務規則 (`RvServiceRulesPage`). Every mark remains its owner's trademark and
-is used only to name that owner's service.
+Brand glyphs for the service rows of 新增服務規則 (`RvServiceRulesPage`).
+
+**Notice.** The brand marks are trademarks of their owners, shown only to name the service a rule is for. Their use
+implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Sources and
+licences: Simple Icons (CC0 1.0), Wikimedia Commons logos (public domain), Bootstrap Icons (MIT); each mark's file and
+checksum are listed below. The app's 開放原始碼授權 page carries the same notice as its last entry.
 
 ## Simple Icons
 
@@ -63,29 +67,41 @@ MIT License, copyright (c) 2019-2024 The Bootstrap Authors; the licence text is
 | rv_brand_microsoft | icons/microsoft.svg | 939485b98d138059954a0add3efd7c0ac24a35a7 |
 | rv_brand_openai | icons/openai.svg | 07e4d0080042d1e791622bd6add9822590987fb8 |
 
+## Wikimedia Commons
+
+The logos the services' Wikipedia articles show (the owner, 2026-11-25). Each Commons page states "Public domain" with
+`{{PD-textlogo}}` (a logo below the threshold of originality) and a trademark notice; no licence asks for a notice, so
+this table keeps the provenance. The SHA-1 is the downloaded file's, equal to the one Commons lists.
+
+| drawable | file page | licence on Commons | uploaded | SHA-1 |
+|---|---|---|---|---|
+| rv_brand_nintendo | https://commons.wikimedia.org/wiki/File:Nintendo.svg | Public domain, `{{Licensed-TOO\|{{TOO-Japan}}\|{{PD-textlogo}}}}` | 2017-07-20 | 05b3fc7b69c4af07b916bcfbf4d2ea1d5b525360 |
+| rv_brand_disneyplus | https://commons.wikimedia.org/wiki/File:Disney%2B_2024.svg | Public domain, `{{PD-textlogo\|simple}}` | 2024-12-15 | e750c4323edf1a8524039aab63930bc2c82c16d9 |
+| rv_brand_primevideo | https://commons.wikimedia.org/wiki/File:Amazon_Prime_logo_(2024).svg | Public domain, `{{PD-textlogo\|simple}}` | 2024-07-31 | 195b4c7c5a4d2ecb86f079c4155ae288502e0b39 |
+
+- Disney+: `File:Disney+ 2024.svg`, which Commons describes as "the 2024 version of the 2019 logo" (dated 2024-03-19)
+  and which the English Wikipedia article on Disney+ shows, so it is the mark the service uses now;
+  `File:Disney+ logo.svg` is the 2019 original. It takes the nine paths of its `Layer_1` (`Layer_2` is a hidden colour
+  swatch). It is 1.83:1, so it draws 20 dp wide and 10.9 dp tall, centred.
+- Prime Video: `File:Amazon Prime logo (2024).svg`, which Commons describes as the 2024 Prime Video logo ("prime" over
+  the smile) and the English Wikipedia article on Amazon Prime shows (the owner's choice, 2026-11-25), rather than the
+  512×512 tile `File:Amazon Prime Video logo (2024).svg` or the wide `File:Prime_Video_logo_(2024).svg` wordmark drawn
+  until 2026-11-25. It is 1.69:1, so it draws 20 dp wide and 11.8 dp tall, centred.
+- Nintendo: the red plate with the white wordmark (3:1), 20 dp wide and 6.7 dp tall.
+- Blizzard keeps Battle.net's square mark (Simple Icons, above) rather than Blizzard Entertainment's wide wordmark.
+
 ## How they are drawn
 
-`tools/gen_brand_marks.py` keeps each Bootstrap file's paths (numbers re-emitted with separators) and scales the mark
-so its longer side is 20 of the 24 units, centred: 20 dp of the 24 dp box, as the Simple Icons marks. Each drawable was
-rendered against its source at 192 px with rsvg-convert: no pixel differs by more than 8/255.
+`tools/gen_brand_marks.py` keeps each Bootstrap and Commons file's paths (numbers re-emitted with separators) and
+scales the mark so its longer side is 20 of the 24 units, centred: 20 dp of the 24 dp box, as the Simple Icons marks; a
+wide mark is 20 dp wide and shorter. Nintendo's red plate with its white wordmark is drawn as one white plate with the
+wordmark cut out (even-odd), so the row tints it in one ink. Each drawable was rendered against its source at 192 px
+with rsvg-convert: no pixel differs by more than 8/255 (Prime Video: none differs).
 
 ## No mark
 
-A row's glyph is square (the owner, 2026-11-25), so a wide wordmark is not used; these keep the generic `rv_sym_apps`
-until a square mark is found under MIT, Apache-2.0, CC0 or CC BY, from a set that never removed it at the brand's
-request. Searched 2026-11-25: Simple Icons 16.38.1, Tabler Icons, Remix Icon (now its own licence, excluded), Boxicons,
-Ionicons, Material Design Icons (Pictogrammers), Iconoir, Phosphor, Font Awesome Free, Bootstrap Icons, Lucide,
-Feather, Streamline, Hugeicons, MingCute, IconPark, Wikimedia Commons.
-
-- Nintendo: no set has Nintendo's own mark. Tabler (`device-nintendo`) and Bootstrap (`nintendo-switch`) draw the
-  Switch console, a product's mark; Font Awesome removed its `nintendo-switch` in 5.9.0 at Nintendo's request
-  (FortAwesome/Font-Awesome#15291), and Material Design Icons deprecated its own. Not used.
-- Disney+: only Disney's script "D" (Tabler `brand-disney`, the group's mark, not Disney+'s) and a CC BY tile with
-  "D+" (Streamline Logos) exist. Not used.
-- Prime Video: no set has it; the nearest is Amazon's "a" (Phosphor `amazon-logo`), the parent's mark. Not used.
-- 巴哈姆特 (Bahamut): in no set; gamer.com.tw has no press kit page.
+- 巴哈姆特 (Bahamut): no logo under a licence in any source: not in Simple Icons 16.38.1, Tabler Icons, Boxicons,
+  Ionicons, Material Design Icons, Iconoir, Phosphor, Font Awesome Free, Bootstrap Icons, Lucide, Feather, Streamline,
+  Hugeicons, MingCute or IconPark; Wikimedia Commons has photographs of its events only (searched again 2026-11-25);
+  gamer.com.tw has no press kit page. The row keeps the generic `rv_sym_apps`.
 - 全部遊戲 is no brand and keeps `rv_sym_apps`.
-
-The wide Wikimedia Commons wordmarks drawn until 2026-11-25 (Nintendo `File:Nintendo.svg`, Blizzard
-`File:Blizzard_Entertainment_Logo_2015.svg`, Disney+ `File:Disney+_2024.svg`, Prime Video
-`File:Prime_Video_logo_(2024).svg`, all `{{PD-textlogo}}`) are gone with their drawables.

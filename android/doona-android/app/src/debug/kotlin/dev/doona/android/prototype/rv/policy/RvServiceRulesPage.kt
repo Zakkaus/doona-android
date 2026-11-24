@@ -45,7 +45,7 @@ internal enum class RvServiceSection(@StringRes val title: Int) {
 /**
  * A service doona web can write a rule for: its GeoSite [code], its [name] (a brand, the same in every language) or a
  * [label] where web translates it (全部遊戲, 巴哈姆特), its [section], and its row's [glyph]: the brand's mark
- * (`rv_brand_*` from Simple Icons or Bootstrap Icons, see `app/src/main/BRAND_ICONS.md`; GitHub's
+ * (`rv_brand_*` from Simple Icons, Bootstrap Icons or Wikimedia Commons, see `app/src/main/BRAND_ICONS.md`; GitHub's
  * `rv_sym_github`), or the generic apps glyph for a service no source has a mark for.
  */
 @Immutable
@@ -64,7 +64,7 @@ internal object RvServiceData {
         games("epicgames", "Epic Games", R.drawable.rv_brand_epicgames),
         games("playstation", "PlayStation", R.drawable.rv_brand_playstation),
         games("xbox", "Xbox", R.drawable.rv_brand_xbox),
-        games("nintendo", "Nintendo"),
+        games("nintendo", "Nintendo", R.drawable.rv_brand_nintendo),
         games("blizzard", "Blizzard", R.drawable.rv_brand_battledotnet),
         games("ea", "EA", R.drawable.rv_brand_ea),
         games("ubisoft", "Ubisoft", R.drawable.rv_brand_ubisoft),
@@ -72,9 +72,9 @@ internal object RvServiceData {
         RvService("category-games", "All games", RvServiceSection.Games, R.string.rv_service_all_games),
         media("youtube", "YouTube", R.drawable.rv_brand_youtube),
         media("netflix", "Netflix", R.drawable.rv_brand_netflix),
-        media("disney", "Disney+"),
+        media("disney", "Disney+", R.drawable.rv_brand_disneyplus),
         media("hbo", "HBO", R.drawable.rv_brand_hbo),
-        media("primevideo", "Prime Video"),
+        media("primevideo", "Prime Video", R.drawable.rv_brand_primevideo),
         media("twitch", "Twitch", R.drawable.rv_brand_twitch),
         media("spotify", "Spotify", R.drawable.rv_brand_spotify),
         media("tiktok", "TikTok", R.drawable.rv_brand_tiktok),

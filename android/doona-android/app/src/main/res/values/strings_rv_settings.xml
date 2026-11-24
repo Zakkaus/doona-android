@@ -32,6 +32,9 @@
     <string name="rv_settings_version">Version</string>
     <string name="rv_settings_version_value" translatable="false">0.1.0</string>
     <string name="rv_settings_licenses">Open-source licenses</string>
+    <string name="rv_license_brand_marks">Brand marks</string>
+    <string name="rv_license_brand_marks_licenses">CC0-1.0, public domain, MIT</string>
+    <string name="rv_license_brand_marks_text">The services\' brand marks on Add service rules are trademarks of their owners, shown only to name the service a rule is for. Their use implies no affiliation with or endorsement by those owners, and doona\'s license does not cover them.\n\nSources:\n- Simple Icons: CC0 1.0\n- Wikimedia Commons logos (Nintendo, Disney+, Prime Video): public domain\n- Bootstrap Icons (Xbox, Microsoft, OpenAI): MIT</string>
 
     <string name="rv_settings_accent">Accent color</string>
     <string name="rv_settings_follow_wallpaper">Follow wallpaper</string>
