@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvFilterChip
 import dev.doona.android.designsystem.rv.RvFootnote
@@ -27,7 +28,6 @@ import dev.doona.android.designsystem.rv.RvSourceField
 import dev.doona.android.designsystem.rv.RvSourceMark
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvSourceDiff
 import dev.doona.android.prototype.rv.rvKeepRuns

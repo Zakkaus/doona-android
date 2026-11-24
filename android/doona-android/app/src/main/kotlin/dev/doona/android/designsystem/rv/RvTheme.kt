@@ -2,7 +2,10 @@ package dev.doona.android.designsystem.rv
 
 import android.os.Build
 import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -11,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -323,6 +327,24 @@ internal fun rvSystemScheme(dark: Boolean): ColorScheme {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         dark -> darkColorScheme()
         else -> lightColorScheme()
+    }
+}
+
+/**
+ * Insets of the status bar and the gesture bar. The app reads the window's; a screenshot frame that draws its own
+ * bars provides fixed ones.
+ */
+val LocalFrameInsets = compositionLocalOf<WindowInsets?> { null }
+
+/**
+ * Material's theme as plumbing under RV content where a Material part draws (a screenshot frame's clock): [scheme] for
+ * Material's roles, and [ColorScheme.onSurface], RV's text colour, as the content colour. RV parts read [Rv], not this;
+ * the app's own RV screens run without it.
+ */
+@Composable
+internal fun RvMaterialPlumbing(scheme: ColorScheme, content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = scheme) {
+        CompositionLocalProvider(LocalContentColor provides scheme.onSurface, content = content)
     }
 }
 

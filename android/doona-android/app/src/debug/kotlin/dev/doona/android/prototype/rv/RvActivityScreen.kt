@@ -51,6 +51,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvCovered
 import dev.doona.android.designsystem.rv.RV_GHOST_DOWN
 import dev.doona.android.designsystem.rv.RV_GHOST_UP
@@ -105,7 +106,6 @@ import dev.doona.android.designsystem.rv.rvNavClearance
 import dev.doona.android.designsystem.rv.rvPullBlur
 import dev.doona.android.designsystem.rv.rvShade
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status

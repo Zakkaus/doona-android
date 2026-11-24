@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvShown
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
@@ -99,7 +100,6 @@ import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvShade
 import dev.doona.android.designsystem.rv.rvSharedSearch
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.LocalRvRowActions
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNode

@@ -6,7 +6,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.components.LayoutRole
-import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.testing.FrameInsets
 import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.layoutTree

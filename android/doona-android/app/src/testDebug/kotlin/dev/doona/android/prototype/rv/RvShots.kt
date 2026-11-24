@@ -14,8 +14,9 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.doona.android.designsystem.rv.RvMaterialPlumbing
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.testing.PhoneFrame
 import dev.doona.android.testing.drawFully
 import org.junit.Assert.assertEquals
@@ -59,7 +60,7 @@ internal fun ComposeContentTestRule.rvShot(
 internal fun ComposeContentTestRule.rvContent(dark: Boolean, fontScale: Float = 1f, gesture: Boolean = true, content: @Composable () -> Unit) {
     RuntimeEnvironment.setQualifiers(if (dark) "+night" else "+notnight")
     setContent {
-        DoonaTheme(dark) {
+        RvMaterialPlumbing(rvSystemScheme(dark)) {
             PhoneFrame(gesture) {
                 val density = LocalDensity.current.density
                 CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {

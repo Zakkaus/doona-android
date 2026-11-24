@@ -12,22 +12,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import dev.doona.android.designsystem.rv.LocalFrameInsets
 
 @Immutable
 class DoonaTokens(val colors: DoonaColors, val type: DoonaType)
 
 private val LocalDoona = staticCompositionLocalOf<DoonaTokens> { error("DoonaTheme is not set") }
-
-/**
- * Insets of the status bar and the gesture bar. The app reads the window's; a screenshot frame that draws its own
- * bars provides fixed ones.
- */
-val LocalFrameInsets = compositionLocalOf<WindowInsets?> { null }
 
 /** The roles every component and screen reads: colours and type follow the theme, the rest is the same in both. */
 object DoonaTheme {

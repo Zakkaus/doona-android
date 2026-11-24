@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -26,17 +27,16 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.designsystem.rv.LocalFrameInsets
 
-/** A phone's status bar (time, Wi-Fi, battery) and gesture handle, drawn over the app in the theme's text colour. */
+/** A phone's status bar (time, Wi-Fi, battery) and gesture handle, drawn over the app in the content colour (the theme's text). */
 @Composable
 fun PhoneFrame(content: @Composable () -> Unit) = PhoneFrame(gesture = true, content)
 
 /** The same frame; with three-button navigation ([gesture] false) it draws no handle, and the content draws its own bar. */
 @Composable
 fun PhoneFrame(gesture: Boolean, content: @Composable () -> Unit) {
-    val ink = DoonaTheme.colors.text
+    val ink = LocalContentColor.current
     CompositionLocalProvider(LocalFrameInsets provides FrameInsets) {
         Box(Modifier.fillMaxSize()) {
             content()

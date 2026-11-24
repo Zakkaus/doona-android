@@ -11,15 +11,16 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.toSize
+import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvChrome
+import dev.doona.android.designsystem.rv.RvMaterialPlumbing
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvBarHeight
-import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
@@ -181,7 +182,7 @@ class RvLayoutTest {
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {
         var barBottom = 0f
         compose.setContent {
-            DoonaTheme(false) {
+            RvMaterialPlumbing(rvSystemScheme(false)) {
                 PhoneFrame {
                     val insets = LocalFrameInsets.current ?: WindowInsets(0)
                     // A tab home's bar sits higher than a pushed page's.

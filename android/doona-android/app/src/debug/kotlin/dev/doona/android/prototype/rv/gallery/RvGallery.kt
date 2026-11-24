@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvAppDisc
 import dev.doona.android.designsystem.rv.RvBanner
 import dev.doona.android.designsystem.rv.RvCard
@@ -38,7 +39,6 @@ import dev.doona.android.designsystem.rv.RvSkeletonSeeAll
 import dev.doona.android.designsystem.rv.RvSkeletonTiles
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTextField
-import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.settings.RvPerAppData
