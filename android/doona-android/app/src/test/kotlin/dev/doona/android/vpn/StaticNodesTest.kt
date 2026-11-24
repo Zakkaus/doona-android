@@ -7,6 +7,7 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.StaticNode
 import dev.doona.android.engine.StaticNodeDraft
+import dev.doona.android.engine.StaticNodeDraftException
 import dev.doona.android.engine.StaticNodeReason
 import dev.doona.android.engine.StaticNodeResult
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -40,7 +41,7 @@ class StaticNodesTest {
     fun editorSessionPreservesRowOrderAndPublishesEachCommit() = runTest {
         val engine = engine()
         val session = Json.decodeFromString<List<StaticNodeCallFixture>>(ContractFixtures.read("static-nodes.json")).iterator()
-        fun serve() = session.next().also { core.reply = it.reply.toString() }
+        fun serve(fixture: StaticNodeCallFixture = session.next()) = fixture.also { core.reply = it.reply.toString() }
         val preview = serve()
         val link = StaticNodeDraft.Link(hk.link)
         assertEquals(listOf(StaticNodeResult.Ready(hk.id, hk.name, "socks5")), engine.previewStaticNodes(listOf(link)).getOrThrow())
@@ -51,13 +52,10 @@ class StaticNodesTest {
         assertEquals(0, core.snapshots.get())
         assertNull(engine.catalog.value)
 
-        val add = serve()
+        val add = serve(session.next().withoutRow(6))
         serveCatalog(8, hk, tokyo)
         assertEquals(batchResults(), engine.addStaticNodes(batchDrafts(link)).getOrThrow())
-        // Kotlin cannot send a string in Manual.port. A negative integer is also outside the core's u16 wire type.
-        val rows = add.args.getValue("rows").jsonArray.toMutableList()
-        rows[6] = JsonObject(rows[6].jsonObject + ("port" to JsonPrimitive(-1)))
-        add.copy(args = JsonObject(mapOf("rows" to JsonArray(rows)))).checkCall()
+        add.checkCall()
         engine.checkCatalog(hk, tokyo)
 
         val read = serve()
@@ -113,7 +111,7 @@ class StaticNodesTest {
         removedEdit.checkCall()
         engine.checkCatalog(tokyo)
 
-        val fieldErrors = serve()
+        val fieldErrors = serve(session.next().withoutRow(2))
         val beforePreview = core.snapshots.get()
         assertEquals(fieldPreviewResults(), engine.previewStaticNodes(fieldPreviewDrafts()).getOrThrow())
         fieldErrors.checkCall()
@@ -150,7 +148,7 @@ class StaticNodesTest {
         engine.checkCatalog(hk)
 
         val uuid = "00000000-0000-4000-8000-000000000001"
-        val draft = StaticNodeDraft.Manual("vless", "192.0.2.2", 443, uuid = uuid, options = mapOf("type" to "ws", "path" to "/test"))
+        val draft = StaticNodeDraft.Manual.create("vless", "192.0.2.2", 443, uuid = uuid, options = mapOf("type" to "ws", "path" to "/test")).getOrThrow()
         core.reply = ContractFixtures.read("call-error-state-write.json")
         assertEquals(ErrorCode.Internal, engine.addStaticNodes(listOf(draft)).errorCode())
         val (command, args) = core.calls.last()
@@ -162,6 +160,24 @@ class StaticNodesTest {
             Json.parseToJsonElement(args),
         )
         engine.checkCatalog(hk)
+    }
+
+    @Test
+    fun manualPortBoundsAreSentAndOutOfRangePortsAreFieldErrors() = runTest {
+        val engine = engine()
+        for (port in listOf(0, 65536)) {
+            val preview = StaticNodeDraft.Manual.create("socks5", "192.0.2.1", port)
+                .map { engine.previewStaticNodes(listOf(it)).getOrThrow() }
+            assertEquals(StaticNodeReason.Port, (preview.exceptionOrNull() as? StaticNodeDraftException)?.reason)
+        }
+        assertEquals(0, core.calls.size)
+
+        val drafts = listOf(1, 65535).map { port -> StaticNodeDraft.Manual.create("socks5", "192.0.2.1", port).getOrThrow() }
+        core.reply = """{"ok":{"rows":[{"status":"ready","id":"n-low","name":"Low","protocol":"socks5"},{"status":"ready","id":"n-high","name":"High","protocol":"socks5"}]}}"""
+        engine.previewStaticNodes(drafts).getOrThrow()
+        val (_, args) = core.calls.single()
+        val rows = Json.parseToJsonElement(args).jsonObject.getValue("rows").jsonArray
+        assertEquals(listOf(JsonPrimitive(1), JsonPrimitive(65535)), rows.map { it.jsonObject.getValue("port") })
     }
 
     private fun TestScope.engine(): ServiceEngine {
@@ -196,9 +212,8 @@ class StaticNodesTest {
         StaticNodeDraft.Link("socks5://192.0.2.1:1080#same"),
         StaticNodeDraft.Link("not a link"),
         StaticNodeDraft.Link("socks5://192.0.2.3:1080 -> socks5://192.0.2.1:1080"),
-        StaticNodeDraft.Manual("trojan", "192.0.2.2", 443, name = tokyo.name, password = "demo"),
-        StaticNodeDraft.Manual("vless", "192.0.2.2", 443, uuid = "bad"),
-        StaticNodeDraft.Manual("socks5", "192.0.2.3", -1),
+        StaticNodeDraft.Manual.create("trojan", "192.0.2.2", 443, name = tokyo.name, password = "demo").getOrThrow(),
+        StaticNodeDraft.Manual.create("vless", "192.0.2.2", 443, uuid = "bad").getOrThrow(),
         StaticNodeDraft.Link("trojan://demo@192.0.2.2:443?unknown=1"),
         StaticNodeDraft.Link("other://192.0.2.1"),
     )
@@ -210,21 +225,19 @@ class StaticNodesTest {
         StaticNodeResult.Unsupported(StaticNodeReason.Chain),
         StaticNodeResult.Added(tokyo.id, tokyo.name, "trojan"),
         StaticNodeResult.Invalid(StaticNodeReason.Uuid),
-        StaticNodeResult.Invalid(StaticNodeReason.Fields),
         StaticNodeResult.Unsupported(StaticNodeReason.Option),
         StaticNodeResult.Unsupported(StaticNodeReason.Protocol),
     )
 
     private fun fieldPreviewDrafts() = listOf(
         StaticNodeDraft.Link("socks5://192.0.2.1:1080#HK-%3EJP"),
-        StaticNodeDraft.Manual("trojan", "", 443),
-        StaticNodeDraft.Manual("trojan", "192.0.2.1", 0),
-        StaticNodeDraft.Manual("trojan", "192.0.2.1", 443),
-        StaticNodeDraft.Manual("trojan", "192.0.2.1", 443, username = "u"),
-        StaticNodeDraft.Manual("vless", "192.0.2.1", 443, password = "p"),
-        StaticNodeDraft.Manual("socks5", "192.0.2.1", 1080, uuid = "u"),
-        StaticNodeDraft.Manual("ss", "192.0.2.1", 443, password = "p"),
-        StaticNodeDraft.Manual("ss", "192.0.2.1", 443, password = "p", cipher = "obsolete"),
+        StaticNodeDraft.Manual.create("trojan", "", 443).getOrThrow(),
+        StaticNodeDraft.Manual.create("trojan", "192.0.2.1", 443).getOrThrow(),
+        StaticNodeDraft.Manual.create("trojan", "192.0.2.1", 443, username = "u").getOrThrow(),
+        StaticNodeDraft.Manual.create("vless", "192.0.2.1", 443, password = "p").getOrThrow(),
+        StaticNodeDraft.Manual.create("socks5", "192.0.2.1", 1080, uuid = "u").getOrThrow(),
+        StaticNodeDraft.Manual.create("ss", "192.0.2.1", 443, password = "p").getOrThrow(),
+        StaticNodeDraft.Manual.create("ss", "192.0.2.1", 443, password = "p", cipher = "obsolete").getOrThrow(),
         StaticNodeDraft.Link("socks5://user@192.0.2.1:1080"),
         StaticNodeDraft.Link("trojan://demo@192.0.2.1:443?sni=a&sni=b"),
     )
@@ -232,7 +245,6 @@ class StaticNodesTest {
     private fun fieldPreviewResults() = listOf(
         StaticNodeResult.Ready(hk.id, "HK->JP", "socks5"),
         StaticNodeResult.Invalid(StaticNodeReason.Server),
-        StaticNodeResult.Invalid(StaticNodeReason.Port),
         StaticNodeResult.Invalid(StaticNodeReason.Password),
         StaticNodeResult.Unsupported(StaticNodeReason.Username),
         StaticNodeResult.Unsupported(StaticNodeReason.Password),
@@ -242,6 +254,12 @@ class StaticNodesTest {
         StaticNodeResult.Invalid(StaticNodeReason.Credentials),
         StaticNodeResult.Invalid(StaticNodeReason.DuplicateOption),
     )
+
+    // The core fixtures also exercise invalid ports that Kotlin drafts cannot represent.
+    private fun StaticNodeCallFixture.withoutRow(index: Int): StaticNodeCallFixture {
+        fun JsonObject.trimRows() = JsonObject(this + ("rows" to JsonArray(getValue("rows").jsonArray.filterIndexed { i, _ -> i != index })))
+        return copy(args = args.trimRows(), reply = JsonObject(mapOf("ok" to reply.getValue("ok").jsonObject.trimRows())))
+    }
 
     private fun StaticNodeCallFixture.checkCall() {
         val (actualCommand, actualArgs) = core.calls.last()

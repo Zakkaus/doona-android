@@ -53,7 +53,7 @@ class SubscriptionRefreshTest {
         pending.complete(Unit)
         assertEquals(SubscriptionRefresh.Outcome.Failed, batch.await())
         assertEquals(listOf("boundary", "never"), engine.calls)
-        val warning = AppEvents.snapshot().single { it.level == AppEventLevel.Warn }
+        val warning = AppEvents.snapshot().single { it.level == AppEventLevel.Warn && it.text.startsWith("subscription-refresh:") }
         assertEquals("subscription-refresh: update failed (FetchFailed)", warning.text)
     }
 
