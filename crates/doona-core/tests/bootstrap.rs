@@ -12,7 +12,7 @@ use common::{TempDir, seqpacket_pair, socks};
 use doonacore::api::{Core, Options};
 use doonacore::dto::ErrorCode;
 use doonacore::sys;
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::os::fd::AsRawFd;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Mutex, MutexGuard};
@@ -152,7 +152,78 @@ fn subscription_hosts_use_the_fallback_then_the_last_list() {
     assert!(queries(&seen) > before);
 }
 
-/// Only an accepted `start` changes the resolvers: one refused with `no_nodes` leaves the running
+#[test]
+fn stopped_handoff_resolves_subscription_without_a_start() {
+    let _s = serial();
+    let (new, seen) = servers::udp_resolver();
+    let dir = TempDir::new("boot-stopped");
+    let core = new_core(&dir, new.port(), vec![dead_resolver()]);
+    assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
+    let _client = start(&core, "[]");
+    core.stop();
+    let feed = servers::feed("socks5://127.0.0.1:1#s5".to_owned());
+    let url = format!("http://feed.doona.test:{}/sub", feed.port());
+    assert_eq!(subscribe(&core, &url), Err(ErrorCode::FetchFailed));
+    set_loopback_dns(&core);
+    assert_eq!(subscribe(&core, &url), Ok(()));
+    assert!(queries(&seen) > 0);
+}
+
+fn set_loopback_dns(core: &Core) {
+    let reply = core.call("setBootstrapDns", r#"{"servers":["127.0.0.1"]}"#);
+    assert_eq!(reply, r#"{"ok":{}}"#);
+}
+
+#[test]
+fn handoff_keeps_pending_lookup_and_live_flow_but_routes_new_lookups_to_new_dns() {
+    let _s = serial();
+    let old = UdpSocket::bind("127.0.0.2:0").unwrap();
+    old.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    let (new, new_seen) = servers::udp_resolver();
+    let dir = TempDir::new("boot-handoff");
+    let core = new_core(&dir, new.port(), vec![old.local_addr().unwrap()]);
+    assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
+    let mut client = start(&core, "[]");
+    let (echo, echo_seen) = servers::tcp_echo();
+    let flow = client.connect(echo);
+    assert!(client.until(
+        Duration::from_secs(2),
+        |_| echo_seen.connections.load(Relaxed) == 1
+    ));
+
+    let feed = servers::feed("socks5://127.0.0.1:1#s5".to_owned());
+    let url = format!("http://feed.doona.test:{}/sub", feed.port());
+    let old_seen = std::thread::scope(|scope| {
+        let pending = scope.spawn(|| subscribe(&core, &url));
+        old.peek_from(&mut [0]).unwrap(); // The query is queued but has no answer yet.
+        set_loopback_dns(&core);
+        for invalid in [
+            r#"{"servers":[]}"#,
+            r#"{"servers":["127.0.0.2","dns.example"]}"#,
+            "{}",
+            r#"{"servers":"127.0.0.1"}"#,
+        ] {
+            let reply = core.call("setBootstrapDns", invalid);
+            let error = include_str!("../../../contracts/doona-core/call-error-bootstrap-dns.json");
+            assert_eq!(reply, error.trim());
+        }
+        let (_, seen) = servers::udp_resolver_from(old, Ipv4Addr::LOCALHOST);
+        pending.join().unwrap().unwrap();
+        seen
+    });
+    let before = queries(&old_seen);
+    assert!(before > 0);
+    assert_eq!(queries(&new_seen), 0);
+    subscribe(&core, &url).unwrap();
+    assert!(
+        queries(&new_seen) > 0,
+        "new lookup missed the replacement DNS"
+    );
+    assert_eq!(queries(&old_seen), before);
+    assert_eq!(client.exchange(flow, b"after").unwrap(), b"after");
+}
+
+/// A refused `start` does not change the resolvers: `no_nodes` leaves the running
 /// generation's list in use, and a list with an entry that is not an address is
 /// `invalid_argument`, never the fallback.
 #[test]

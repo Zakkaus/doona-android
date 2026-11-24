@@ -146,7 +146,7 @@ class FakeEngine internal constructor(
 
     override suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit> = staticEditorRequiresCore()
 
-    private fun staticEditorRequiresCore(): Nothing = error("Test static node editing through ServiceEngine and FakeCore")
+    private fun <T> staticEditorRequiresCore(): Result<T> = Result.failure(EngineException(ErrorCode.Internal))
 
     override suspend fun setMode(mode: Mode): Result<Unit> {
         settingsFlow.update { it.copy(mode = mode) }
