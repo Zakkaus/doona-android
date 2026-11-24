@@ -1,5 +1,7 @@
 # Troubleshoot the doona VPN on Android
 
+English | [繁體中文](../zh-TW/troubleshooting.md)
+
 The Settings paths below are for Pixel. Names and locations can vary by Android version and phone maker. If a path differs, search Settings for the option name.
 
 ## VPN stops in the background
