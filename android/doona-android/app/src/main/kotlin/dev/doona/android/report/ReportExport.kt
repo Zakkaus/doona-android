@@ -85,7 +85,7 @@ class ReportExport(
         } else {
             emptyList()
         }
-        val appEvents = AppEvents.snapshot()
+        val appEvents = AppEvents.reportSnapshot()
         val events = if (flows.isEmpty()) appEvents else (appEvents + flows).sortedBy(AppEvent::atEpochMs)
         val catalog = engine.catalog.value
         val members = catalog?.nodeMembers().orEmpty()

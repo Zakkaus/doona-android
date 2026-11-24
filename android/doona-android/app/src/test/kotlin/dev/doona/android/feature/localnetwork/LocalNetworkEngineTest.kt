@@ -8,6 +8,8 @@ import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.report.AppEventLevel
+import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -36,6 +38,7 @@ class LocalNetworkEngineTest {
         var adds = 0
         var updates = 0
         val tested = mutableListOf<String?>()
+        var startProbe: (String?) -> Result<Unit> = { Result.success(Unit) }
         val tests get() = tested.size
         var gate = CompletableDeferred(Unit)
 
@@ -52,7 +55,7 @@ class LocalNetworkEngineTest {
 
         override suspend fun testLatency(groupId: String?): Result<Unit> {
             tested += groupId
-            return Result.success(Unit)
+            return startProbe(groupId)
         }
     }
 
@@ -80,12 +83,16 @@ class LocalNetworkEngineTest {
 
     @Test
     fun theRetryRunsOnceEvenIfItFailsAgain() = runTest(UnconfinedTestDispatcher()) {
+        AppEvents.clear()
         val scripted = Scripted().apply { failures += listOf(ErrorCode.LocalNetwork, ErrorCode.LocalNetwork) }
         val updated = async { engine(scripted).updateSubscription("s1") }
         answer(allowed = true)
         assertEquals(ErrorCode.LocalNetwork, updated.await().code())
         assertEquals(2, scripted.updates)
         assertNull("allowed now: nothing more to ask", access.prompt.value)
+        val warning = AppEvents.snapshot().single()
+        assertEquals(AppEventLevel.Warn, warning.level)
+        assertEquals("command=updateSubscription phase=retry outcome=failed code=LocalNetwork", warning.text)
     }
 
     @Test
@@ -109,6 +116,7 @@ class LocalNetworkEngineTest {
 
     @Test
     fun aReturnFromTheSettingsWithAccessRunsTheWaitingActionOnceMore() = runTest(UnconfinedTestDispatcher()) {
+        AppEvents.clear()
         val scripted = Scripted().apply { failures += ErrorCode.LocalNetwork }
         val updated = async { engine(scripted).updateSubscription("s1") }
         answer(allowed = false)
@@ -119,6 +127,7 @@ class LocalNetworkEngineTest {
         access.resumed()
         assertTrue(updated.await().isSuccess)
         assertEquals(2, scripted.updates)
+        assertTrue(AppEvents.snapshot().isEmpty())
     }
 
     @Test
@@ -146,6 +155,66 @@ class LocalNetworkEngineTest {
         fake.groups.update { groups -> groups.map { g -> g.copy(testing = false, members = g.members.map(failed)) } }
         answer(allowed = true)
         assertEquals(2, scripted.tests)
+    }
+
+    @Test
+    fun aLatencyRetryWarnsWhenTheFinishedProbeIsStillBlocked() = runTest(UnconfinedTestDispatcher()) {
+        AppEvents.clear()
+        val fake = FakeEngine(groups = listOf(group("g-HK", testing = false)))
+        val scripted = Scripted(fake).apply {
+            startProbe = {
+                fake.groups.update { groups -> groups.map { group -> group.copy(testing = true) } }
+                Result.success(Unit)
+            }
+        }
+        assertTrue(engine(scripted).testLatency("g-HK").isSuccess)
+        val blocked = listOf(group("g-HK", testing = false, ErrorCode.LocalNetwork))
+        fake.groups.value = blocked
+        answer(allowed = true)
+        assertEquals(listOf("g-HK", "g-HK"), scripted.tested)
+        assertTrue("the retry has not finished", AppEvents.snapshot().isEmpty())
+
+        fake.groups.value = blocked
+        val warning = AppEvents.snapshot().single()
+        assertEquals(AppEventLevel.Warn, warning.level)
+        assertEquals("command=testLatency phase=retry outcome=failed code=LocalNetwork", warning.text)
+    }
+
+    @Test
+    fun aSuccessfulLatencyRetryStaysSilentEvenWhenItsStartSnapshotIsMissing() = runTest(UnconfinedTestDispatcher()) {
+        for (publishStart in listOf(true, false)) {
+            AppEvents.clear()
+            granted = false
+            val fake = FakeEngine(groups = listOf(group("g-HK", testing = true)))
+            val scripted = Scripted(fake).apply {
+                startProbe = {
+                    if (tests == 2 && publishStart) fake.groups.value = listOf(group("g-HK", testing = true))
+                    Result.success(Unit)
+                }
+            }
+            assertTrue(engine(scripted).testLatency("g-HK").isSuccess)
+            fake.groups.value = listOf(group("g-HK", testing = false, ErrorCode.LocalNetwork))
+            answer(allowed = true)
+            assertEquals(listOf("g-HK", "g-HK"), scripted.tested)
+            fake.groups.value = listOf(group("g-HK", testing = false))
+            assertTrue("published start: $publishStart", AppEvents.snapshot().isEmpty())
+        }
+    }
+
+    @Test
+    fun aLatencyRetryThatCannotStartWarnsWithTheCommandCode() = runTest(UnconfinedTestDispatcher()) {
+        AppEvents.clear()
+        val fake = FakeEngine(groups = listOf(group("g-HK", testing = true)))
+        val scripted = Scripted(fake).apply {
+            startProbe = { if (tests == 1) Result.success(Unit) else Result.failure(EngineException(ErrorCode.Busy)) }
+        }
+        assertTrue(engine(scripted).testLatency("g-HK").isSuccess)
+        fake.groups.value = listOf(group("g-HK", testing = false, ErrorCode.LocalNetwork))
+        answer(allowed = true)
+
+        val warning = AppEvents.snapshot().single()
+        assertEquals(AppEventLevel.Warn, warning.level)
+        assertEquals("command=testLatency phase=retry outcome=failed code=Busy", warning.text)
     }
 
     @Test

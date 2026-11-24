@@ -45,9 +45,7 @@ internal class ReportScrubber(private val options: RedactionOptions) {
 
     fun action(event: AppEvent): String? = event.text.takeIf(actionText::matches)
 
-    fun eventText(event: AppEvent): String = action(event)
-        ?: event.text.takeIf { it in APP_MESSAGES || READ_EVENT.matches(it) || FAILURE_EVENT.matches(it) }
-        ?: REDACTED
+    fun eventText(event: AppEvent): String = safeAppEventText(event.text)
 
     fun command(text: String): String = text.takeIf { it in REPORT_COMMANDS } ?: UNKNOWN
 
@@ -55,6 +53,10 @@ internal class ReportScrubber(private val options: RedactionOptions) {
 
     fun metadata(text: String): String = text.takeIf(METADATA::matches) ?: UNKNOWN
 }
+
+internal fun safeAppEventText(text: String): String = text.takeIf {
+    it in APP_MESSAGES || actionText.matches(it) || READ_EVENT.matches(it) || FAILURE_EVENT.matches(it)
+} ?: REDACTED
 
 private fun isIpv6(text: String): Boolean {
     if (!IPV6_TEXT.matches(text)) return false
@@ -84,6 +86,7 @@ private val FAILURE_EVENT = Regex(
 )
 private val APP_MESSAGES = setOf(
     "health check: data path down",
+    SUBSCRIPTION_READY_TIMEOUT,
     TCP_FLOW_EVENT,
     UDP_FLOW_EVENT,
     ExportTokens.PICK_UNSAVED,
