@@ -22,6 +22,9 @@ class AppSettingsTest {
         val writer = SupervisorJob()
         try {
             val settings = AppSettings(AppSettings.store(CoroutineScope(writer + Dispatchers.IO)) { file })
+            assertEquals(GeoUpdateInterval.Weekly, settings.geoUpdateInterval.first())
+            settings.setGeoUpdateInterval(GeoUpdateInterval.Daily)
+            settings.recordGeoUpdateSuccess(1234L)
             settings.setNotifyOnDrop(false)
             settings.setUpdateInterval(UpdateInterval.FortyEight)
             settings.setAutoUpdate(false)
@@ -38,6 +41,7 @@ class AppSettingsTest {
             val settings = AppSettings(AppSettings.store(CoroutineScope(reader + Dispatchers.IO)) { file })
             assertFalse(settings.notifyOnDrop.first())
             assertEquals(SubscriptionUpdate(false, UpdateInterval.FortyEight), settings.subscriptionUpdate.first())
+            assertEquals(GeoUpdateSchedule(GeoUpdateInterval.Daily, 1234L), settings.geoUpdateSchedule.first())
             assertEquals(ThemeAppearance(ThemeMode.Light, true, ThemeAccent.Purple), settings.appearance.first())
         } finally {
             reader.cancelAndJoin()

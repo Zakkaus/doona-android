@@ -1,6 +1,7 @@
 package dev.doona.android.data.settings
 
 import android.app.Activity
+import android.app.Application
 import android.app.LocaleManager
 import android.content.Intent
 import android.os.LocaleList
@@ -17,6 +18,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(AndroidJUnit4::class)
+@Config(application = Application::class)
 class SettingsActionsTest {
     @Test
     fun releaseCheckHandsOffToTheBrowserWithoutSendingAppData() {
