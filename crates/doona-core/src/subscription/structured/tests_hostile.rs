@@ -5,7 +5,7 @@ use super::super::parse::parse;
 use super::guard::SCAN_CALLS;
 use super::tests::{assert_same, nested};
 use crate::dto::ErrorCode;
-use crate::testutil::alloc::allocated;
+use crate::testutil::alloc::{allocated, peak};
 use crate::testutil::fixture;
 
 // A bounded flow scan allocates about 305 KiB, including libyaml's buffers.
@@ -158,12 +158,13 @@ fn a_body_libyaml_cannot_scan_is_read_only_as_json() {
 enum Limit {
     DeepScan,
     Bytes(usize),
+    Peak(usize),
 }
 
 /// Budgets allow for libyaml's token buffers and, for block nesting, bare keys and aliases,
 /// serde_yaml's event list. They do not allow expanding aliases or scanning deep flow stacks.
 fn hostile() -> Vec<(&'static str, String, Limit)> {
-    use Limit::{Bytes, DeepScan};
+    use Limit::{Bytes, DeepScan, Peak};
     let mut laughs = String::from("a0: &a0 [x,x,x,x,x,x,x,x,x,x]\n");
     for i in 1..12 {
         let uses = vec![format!("*a{}", i - 1); 10].join(",");
@@ -206,12 +207,14 @@ fn hostile() -> Vec<(&'static str, String, Limit)> {
         (
             "block nesting",
             format!("proxies:\n{}x", "- ".repeat(10_000)),
-            Bytes(8 << 20),
+            // Peak across all prefixes: 5,047,831 bytes.
+            Peak(10_100_000),
         ),
         (
             "bare keys",
             format!("proxies: {{{}}}", "a,".repeat(10_000)),
-            Bytes(8 << 20),
+            // Peak across all prefixes: 3,225,152 bytes.
+            Peak(6_500_000),
         ),
     ]
 }
@@ -242,6 +245,12 @@ fn no_prefix_lets_a_hostile_body_through() {
             match budget {
                 Limit::DeepScan => refused_before_deep_scan(&prefixed, &case),
                 Limit::Bytes(bytes) => refused_allocating_at_most(&prefixed, bytes, &case),
+                Limit::Peak(limit) => {
+                    // Keep the cumulative cap as well: peak alone misses allocation churn.
+                    let ((), bytes, _) =
+                        peak(|| refused_allocating_at_most(&prefixed, 8 << 20, &case));
+                    assert!(bytes < limit, "{case}: peak {bytes} bytes (limit {limit})");
+                }
             }
         }
     }

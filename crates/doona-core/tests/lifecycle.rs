@@ -5,6 +5,7 @@
 
 mod common;
 
+use common::stop_wait::STOP_WAIT;
 use common::{TempDir, seqpacket_pair, wait_for};
 use doonacore::api::Core;
 use doonacore::dto::{ErrorCode, Snapshot};
@@ -83,11 +84,8 @@ fn start_serves_the_duplicate_and_stop_closes_it_promptly() {
 
     let begun = Instant::now();
     core.stop();
-    assert!(
-        begun.elapsed() < Duration::from_secs(3),
-        "{:?}",
-        begun.elapsed()
-    );
+    let took = begun.elapsed();
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
     let s = snapshot(&core);
     assert!(!s.running && s.error.is_none() && s.since_epoch_ms.is_none());
     assert_eq!(s.generation, 1);

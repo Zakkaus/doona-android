@@ -9,13 +9,14 @@ mod common;
 use common::client::Client;
 use common::global::{Global, WAIT, pattern, ping, socks_link};
 use common::servers::{self, Seen};
+use common::stop_wait::STOP_WAIT;
 use common::{anytls, socks, tuic, wait_for};
 use doonacore::dto::Traffic;
 use std::collections::{BTreeSet, HashMap};
 use std::net::SocketAddr;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Mutex, MutexGuard};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 fn serial() -> MutexGuard<'static, ()> {
     static SERIAL: Mutex<()> = Mutex::new(());
@@ -208,7 +209,7 @@ fn stops_promptly(g: &Global) {
     let begun = Instant::now();
     g.core.stop();
     let took = begun.elapsed();
-    assert!(took < Duration::from_secs(3), "{took:?}");
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
 }
 
 /// No descriptor is open that was not open at `before`. Other tests of this binary may close

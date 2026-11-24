@@ -7,6 +7,7 @@ mod common;
 
 use common::client::Client;
 use common::servers;
+use common::stop_wait::STOP_WAIT;
 use common::{TempDir, seqpacket_pair, wait_for};
 use doonacore::api::{Core, Options};
 use doonacore::dto::Snapshot;
@@ -173,11 +174,8 @@ fn stop_promptly_closes_open_flows() {
     assert_eq!(snapshot(&s.core).traffic.active_flows, 2);
     let begun = Instant::now();
     s.core.stop();
-    assert!(
-        begun.elapsed() < Duration::from_secs(3),
-        "{:?}",
-        begun.elapsed()
-    );
+    let took = begun.elapsed();
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
     // The upstream connection was closed with its generation.
     assert!(wait_for(WAIT, || seen.closed.load(Relaxed) == 1));
 }
