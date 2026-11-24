@@ -59,6 +59,7 @@ import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
@@ -195,7 +196,8 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
  * label ([rvActionRowFit]), and still shrinking to fit its column alone when it has no row; the line keeps its full
  * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]), and none while not [enabled]. [busy]
  * swaps the glyph for [RvBusy]; that swap and a new [label] fade through ([RvFadeThrough]). A screen reader finds one
- * button: the label names it, it clicks as the disc does, and it reads as disabled with the disc.
+ * button: the label names it, it clicks as the disc does, and it reads as disabled with the disc. It hears only the
+ * current [label], the one the click acts on: the word fading out is drawn, not read.
  */
 @Composable
 internal fun RvAction(
@@ -230,6 +232,7 @@ internal fun RvAction(
         // A new word fades through the old one, with the glyph when both change at once.
         RvFadeThrough(label, "label", alignment = Alignment.TopCenter) { word ->
             val line = Modifier.padding(horizontal = RvSpace.actionLabelInset).rvFullLine(word, Rv.type.action)
+                .then(if (word == label) Modifier else Modifier.clearAndSetSemantics {})
             RvText(word, labelStyle, line, align = TextAlign.Center, autoSize = rvShrinkToFit(labelStyle))
         }
     }
