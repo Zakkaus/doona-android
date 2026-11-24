@@ -21,92 +21,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 
-/**
- * A token class of honk's `.dae` text, as doona web's highlighter names them (`daeTokens.ts`): [Quoted] is its
- * `string`, [PropertyName] a call such as `domain(…)`, [VariableName] a key before its colon. Plain text has none.
- */
-internal enum class RvCodeKind { Comment, Quoted, Keyword, Number, PropertyName, VariableName, Punctuation, Operator }
-
-/** One token: its [text] and its [kind] (null for plain text, blanks included). The tokens of a text spell it whole. */
-@Immutable
-internal data class RvCodeToken(val text: String, val kind: RvCodeKind?)
-
-/**
- * honk text split as doona web highlights it (`daeTokens.ts`, ported rule for rule and in its order), line by line: a
- * comment from `#` to the line's end; a quoted string; `->` an operator, and the next word a keyword (where the rule
- * sends); at a line's start, after blanks, a section's name (`global`, `dns`, `upstream`, `routing`, `request`,
- * `response`, `subscription`, `node`, `group`, `include`, `fallback`) a keyword, unless a `(` follows (then it is a
- * call, as `upstream(cloudflare)`); a number with its dots, prefix length and unit (`10.0.0.0/24`, `10ms`); a word
- * before `(` a property name, before `:` a variable name; any other word plain, so the digits of `sg-01` are not a
- * number; and each of `{ } ( ) & | ! , :` punctuation. Every other character, and each line feed, is plain.
- */
-internal fun rvCodeTokens(text: String): List<RvCodeToken> {
-    val tokens = ArrayList<RvCodeToken>()
-    val lines = text.split('\n')
-    val state = CodeState()
-    lines.forEachIndexed { index, line ->
-        var pos = 0
-        while (pos < line.length) {
-            val (end, kind) = codeToken(line, pos, state)
-            tokens += RvCodeToken(line.substring(pos, end), kind)
-            pos = end
-        }
-        if (index < lines.size - 1) tokens += RvCodeToken("\n", null)
-    }
-    return tokens
-}
-
-/** doona's `DaeState`: whether the line has just had `->`, so its next word is where the rule sends. */
-private class CodeState {
-    var afterArrow = false
-}
-
-/** doona's `daeToken`, first half: the end of the token at [pos] of [line] and its kind. */
-private fun codeToken(line: String, pos: Int, state: CodeState): Pair<Int, RvCodeKind?> {
-    if (pos == 0) state.afterArrow = false
-    SPACE.end(line, pos)?.let { return it to null }
-    if (line[pos] == '#') return line.length to RvCodeKind.Comment
-    QUOTED.end(line, pos)?.let { return it to RvCodeKind.Quoted }
-    if (line.startsWith(ARROW, pos)) {
-        state.afterArrow = true
-        return pos + ARROW.length to RvCodeKind.Operator
-    }
-    if (state.afterArrow) {
-        TARGET.end(line, pos)?.let {
-            state.afterArrow = false
-            return it to RvCodeKind.Keyword
-        }
-    }
-    return wordToken(line, pos)
-}
-
-/** doona's `daeToken`, second half: a section, a number, a call, a key, a plain word, punctuation, or one character. */
-private fun wordToken(line: String, pos: Int): Pair<Int, RvCodeKind?> {
-    if (line.substring(0, pos).isBlank()) SECTION.end(line, pos)?.let { return it to RvCodeKind.Keyword }
-    NUMBER.end(line, pos)?.let { return it to RvCodeKind.Number }
-    CALL.end(line, pos)?.let { return it to RvCodeKind.PropertyName }
-    KEY.end(line, pos)?.let { return it to RvCodeKind.VariableName }
-    WORD.end(line, pos)?.let { return it to null }
-    return pos + 1 to RvCodeKind.Punctuation.takeIf { line[pos] in PUNCTUATION }
-}
-
-/** Where this pattern's match at [pos] of [line] ends, or null when it does not match there. */
-private fun Regex.end(line: String, pos: Int): Int? = matchAt(line, pos)?.let { pos + it.value.length }
-
-// doona's patterns in Java's syntax with JavaScript's classes spelled out (`\w`, `\d`, `\s`, `\b`), so the device's ICU
-// regex, whose `\w` takes every script, reads them as the tests do.
-private const val WS = """[\t\x0B\f\r \u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]"""
-private const val ARROW = "->"
-private const val PUNCTUATION = "{}()&|!,:"
-private val SPACE = Regex("$WS+")
-private val QUOTED = Regex("""'[^']*'|"[^"]*"""")
-private val TARGET = Regex("""[A-Za-z0-9_.-]+""")
-private val SECTION = Regex("""(?:global|dns|upstream|routing|request|response|subscription|node|group|include|fallback)(?![A-Za-z0-9_])(?!$WS*\()""")
-private val NUMBER = Regex("""[0-9]+(?:\.[0-9]+)*(?:/[0-9]+)?[a-z]*""")
-private val CALL = Regex("""[A-Za-z0-9_.-]+(?=$WS*\()""")
-private val KEY = Regex("""[A-Za-z0-9_.-]+(?=$WS*:)""")
-private val WORD = Regex("""[A-Za-z_][A-Za-z0-9_.-]*""")
-
 /** A coloured token: its [kind] from [start] until [end] (UTF-16, end-exclusive) of the text. */
 @Immutable
 internal data class RvCodeSpan(val kind: RvCodeKind, val start: Int, val end: Int)
@@ -123,13 +37,13 @@ internal fun rvCodeSpans(text: String): List<RvCodeSpan> {
 
 /**
  * Where [text] may break inside a token: the offsets, ascending, right after a `(` or `,`, or the `:` that ends a key
- * (`geosite:`), when a character other than a blank, a line feed or `)` follows, outside comments and quoted strings.
+ * (`geosite:`), when a character other than a blank, a line feed or `)` follows, outside comments and literals.
  * The platform breaks a line only at a blank or a hyphen, so `domain(geosite:category-games@cn)` would otherwise move
  * whole to the next line, or break mid-name; a number's colons (`00:11:22:33:44:55`) stay together.
  */
 internal fun rvCodeBreaks(text: String, spans: List<RvCodeSpan>): IntArray {
-    val whole = spans.filter { it.kind == RvCodeKind.Comment || it.kind == RvCodeKind.Quoted }
-    val keys = spans.filter { it.kind == RvCodeKind.VariableName }.map { it.end }.toSet()
+    val whole = spans.filter { it.kind == RvCodeKind.Comment || it.kind == RvCodeKind.Literal }
+    val keys = spans.filter { it.kind == RvCodeKind.Key }.map { it.end }.toSet()
     val breaks = ArrayList<Int>()
     var next = 0
     for (i in 0 until text.length - 1) {
@@ -172,8 +86,7 @@ internal class RvCodeOffsets(private val breaks: IntArray, private val length: I
 
 /** [source] as code text shows it: its coloured [spans], its [breaks], the [text] with a break at each, and the [offsets]. */
 @Immutable
-internal class RvCodeShown(val source: String) {
-    val spans = rvCodeSpans(source)
+internal class RvCodeShown(val source: String, val spans: List<RvCodeSpan> = rvCodeSpans(source)) {
     val breaks = rvCodeBreaks(source, spans)
     val offsets = RvCodeOffsets(breaks, source.length)
     val text: String = buildString(source.length + breaks.size) {
@@ -199,9 +112,12 @@ internal fun AnnotatedString.Builder.addCode(shown: RvCodeShown, colors: RvCodeC
     shown.spans.forEach { addStyle(colors.style(it.kind), at(it.start), at(it.end)) }
 }
 
-/** [source] as code text: CJK in Noto ([scripted]), each token in its role's ink, breakable inside a long token. */
-internal fun rvCodeText(source: String, colors: RvCodeColors): AnnotatedString {
-    val shown = RvCodeShown(source)
+/**
+ * [source] as code text: CJK in Noto ([scripted]), each token in its role's ink, breakable inside a long token; [spans]
+ * are its own unless it is a line of a longer text, read whole ([rvCodeLines]).
+ */
+internal fun rvCodeText(source: String, colors: RvCodeColors, spans: List<RvCodeSpan> = rvCodeSpans(source)): AnnotatedString {
+    val shown = RvCodeShown(source, spans)
     return buildAnnotatedString {
         append(scripted(shown.text))
         addCode(shown, colors)
@@ -209,7 +125,7 @@ internal fun rvCodeText(source: String, colors: RvCodeColors): AnnotatedString {
 }
 
 /**
- * honk text in [style], highlighted as doona web highlights it ([rvCodeTokens], [rvCodeColors]) with Inter's ligatures
+ * honk text in [style], highlighted as honk-config reads it ([rvCodeTokens], [rvCodeColors]) with Inter's ligatures
  * off ([rvVerbatim]), plain text in ink: every place that shows honk's configuration text uses it, or [RvSourceField].
  * Each line wraps, inside a long token too, and hangs under its own indent ([rvHang]); [maxLines] is per line.
  */
@@ -218,20 +134,43 @@ internal fun RvCodeText(code: String, style: TextStyle, modifier: Modifier = Mod
     val colors = rememberRvCodeColors()
     val shown = style.rvVerbatim().copy(color = Rv.colors.text)
     val space = rvSpaceWidth(shown, rememberTextMeasurer())
-    val lines = remember(code) { code.split('\n') }
+    val lines = remember(code) { rvCodeLines(code) }
     if (lines.size == 1) {
-        CodeLine(code, shown, space, colors, modifier, maxLines)
+        CodeLine(lines.single(), shown, space, colors, modifier, maxLines)
     } else {
         Column(modifier) { lines.forEach { CodeLine(it, shown, space, colors, Modifier, maxLines) } }
     }
 }
 
+/** One line of a code text and its coloured tokens, at offsets within the line. */
+@Immutable
+internal class RvCodeLine(val text: String, val spans: List<RvCodeSpan>)
+
+/**
+ * [code]'s lines, each with its spans from [code] read whole: a group's entry (`hk {`) is known only from the file, and
+ * no token spans a line feed.
+ */
+internal fun rvCodeLines(code: String): List<RvCodeLine> {
+    val spans = rvCodeSpans(code)
+    var next = 0
+    var start = 0
+    return code.split('\n').map { line ->
+        val end = start + line.length
+        val own = ArrayList<RvCodeSpan>()
+        while (next < spans.size && spans[next].start < end) {
+            spans[next].let { own += it.copy(start = it.start - start, end = it.end - start) }
+            next++
+        }
+        RvCodeLine(line, own).also { start = end + 1 }
+    }
+}
+
 /** One line of code text; a screen reader (and a search by text) gets the line as written, without the inserted breaks. */
 @Composable
-private fun CodeLine(line: String, style: TextStyle, space: TextUnit, colors: RvCodeColors, modifier: Modifier, maxLines: Int) {
-    val hang = style.copy(textIndent = rvHang(rvBlankColumns(line), space))
-    Box(modifier.clearAndSetSemantics { text = AnnotatedString(line) }) {
-        BasicText(remember(line, colors) { rvCodeText(line, colors) }, style = hang, overflow = TextOverflow.Ellipsis, maxLines = maxLines)
+private fun CodeLine(line: RvCodeLine, style: TextStyle, space: TextUnit, colors: RvCodeColors, modifier: Modifier, maxLines: Int) {
+    val hang = style.copy(textIndent = rvHang(rvBlankColumns(line.text), space))
+    Box(modifier.clearAndSetSemantics { text = AnnotatedString(line.text) }) {
+        BasicText(remember(line, colors) { rvCodeText(line.text, colors, line.spans) }, style = hang, overflow = TextOverflow.Ellipsis, maxLines = maxLines)
     }
 }
 
@@ -252,12 +191,11 @@ internal data class RvCodeColors(
 ) {
     fun style(kind: RvCodeKind): SpanStyle = when (kind) {
         RvCodeKind.Comment -> SpanStyle(color = comment)
-        RvCodeKind.Keyword -> SpanStyle(color = keyword)
-        RvCodeKind.Quoted -> SpanStyle(color = quoted)
-        RvCodeKind.Number -> SpanStyle(color = number)
-        RvCodeKind.PropertyName -> SpanStyle(color = function)
-        RvCodeKind.VariableName -> SpanStyle(color = key)
-        RvCodeKind.Punctuation, RvCodeKind.Operator -> SpanStyle(color = punctuation)
+        RvCodeKind.Block, RvCodeKind.Symbol -> SpanStyle(color = keyword)
+        RvCodeKind.Literal -> SpanStyle(color = quoted)
+        RvCodeKind.Call -> SpanStyle(color = function)
+        RvCodeKind.Key -> SpanStyle(color = key)
+        RvCodeKind.Operator -> SpanStyle(color = punctuation)
     }
 }
 

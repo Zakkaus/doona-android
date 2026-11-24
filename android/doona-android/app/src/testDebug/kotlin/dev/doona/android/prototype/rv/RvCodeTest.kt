@@ -6,14 +6,12 @@ import dev.doona.android.designsystem.rv.RvAlpha
 import dev.doona.android.designsystem.rv.RvCodeKind
 import dev.doona.android.designsystem.rv.RvCodeShown
 import dev.doona.android.designsystem.rv.RvCodeSpan
-import dev.doona.android.designsystem.rv.RvCodeToken
 import dev.doona.android.designsystem.rv.RvColors
 import dev.doona.android.designsystem.rv.RvContrast
 import dev.doona.android.designsystem.rv.rvCodeBreaks
 import dev.doona.android.designsystem.rv.rvCodeColors
 import dev.doona.android.designsystem.rv.rvCodeSpans
 import dev.doona.android.designsystem.rv.rvCodeText
-import dev.doona.android.designsystem.rv.rvCodeTokens
 import dev.doona.android.designsystem.rv.rvContrast
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -24,53 +22,15 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The code highlighter: doona web's `daeTokens.test.ts` cases as they are (the port must read honk text as doona does),
- * then the break points, the cursor's offsets past them, and every role's contrast in light and dark.
+ * The code text around the tokenizer ([RvCodeLexerTest]): the spans, the break points, the cursor's offsets past them,
+ * and every role's contrast in light and dark.
  */
 class RvCodeTest {
-    @Test
-    fun classifiesDaeSyntaxAndPreservesEveryCharacter() {
-        val source = "routing {\n  filter: name('hk', \"sg\", 10ms) # note\n  l4proto(tcp) -> proxy\n}\n"
-        val tokens = rvCodeTokens(source)
-        assertEquals(source, tokens.joinToString("") { it.text })
-        listOf(
-            "routing" to RvCodeKind.Keyword,
-            "filter" to RvCodeKind.VariableName,
-            "name" to RvCodeKind.PropertyName,
-            "'hk'" to RvCodeKind.Quoted,
-            "\"sg\"" to RvCodeKind.Quoted,
-            "10ms" to RvCodeKind.Number,
-            "# note" to RvCodeKind.Comment,
-            "->" to RvCodeKind.Operator,
-            "proxy" to RvCodeKind.Keyword,
-            "{" to RvCodeKind.Punctuation,
-        ).forEach { (text, kind) -> assertTrue("$text is $kind in $tokens", RvCodeToken(text, kind) in tokens) }
-        assertTrue(RvCodeToken("request", RvCodeKind.Keyword) in rvCodeTokens("  dns {\n  # note\n  request {\n"))
-        assertTrue(RvCodeToken("upstream", RvCodeKind.PropertyName) in rvCodeTokens("      upstream(cloudflare) -> accept"))
-    }
-
-    @Test
-    fun keepsDigitsInsideNamesOutOfTheNumberClass() {
-        val tokens = rvCodeTokens("  filter: name(sg-01, hk-02)\n  policy: min_avg10\n  dport(443) && dip(10.0.0.0/24)\n")
-        assertEquals(listOf("443", "10.0.0.0/24"), tokens.filter { it.kind == RvCodeKind.Number }.map { it.text })
-        assertTrue(RvCodeToken("sg-01", null) in tokens)
-        assertTrue(RvCodeToken("min_avg10", null) in tokens)
-    }
-
-    @Test
-    fun aSkippedRuleReadsAsDoonaReadsIt() {
-        val tokens = rvCodeTokens("!pname(helper) && mac(00:11:22:33:44:55) -> block")
-        assertEquals(RvCodeToken("!", RvCodeKind.Punctuation), tokens.first())
-        assertTrue(RvCodeToken("pname", RvCodeKind.PropertyName) in tokens)
-        assertTrue(RvCodeToken("&", RvCodeKind.Punctuation) in tokens)
-        assertTrue(RvCodeToken("block", RvCodeKind.Keyword) in tokens)
-    }
-
     @Test
     fun spansSitAtTheirOffsets() {
         val source = "  domain(geosite:cn) -> direct"
         val spans = rvCodeSpans(source)
-        assertEquals(RvCodeSpan(RvCodeKind.PropertyName, 2, 8), spans.first())
+        assertEquals(RvCodeSpan(RvCodeKind.Call, 2, 8), spans.first())
         spans.forEach { assertTrue(it.end <= source.length && it.start < it.end) }
         assertEquals("direct", spans.last().let { source.substring(it.start, it.end) })
     }
@@ -88,13 +48,13 @@ class RvCodeTest {
 
     @Test
     fun theCursorMapsPastTheInsertedBreaks() {
-        val shown = RvCodeShown("ab(cd:ef")
-        assertEquals("ab(​cd:​ef", shown.text)
+        val shown = RvCodeShown("ab(full:ef")
+        assertEquals("ab(​full:​ef", shown.text)
         val offsets = shown.offsets
-        assertEquals(listOf(0, 1, 2, 4, 5, 6, 8, 9, 10), (0..8).map { offsets.originalToTransformed(it) })
-        for (o in 0..8) assertEquals(o, offsets.transformedToOriginal(offsets.originalToTransformed(o)))
+        assertEquals(listOf(0, 1, 2, 4, 5, 6, 7, 8, 10, 11, 12), (0..10).map { offsets.originalToTransformed(it) })
+        for (o in 0..10) assertEquals(o, offsets.transformedToOriginal(offsets.originalToTransformed(o)))
         assertEquals(3, offsets.transformedToOriginal(3))
-        assertEquals(8, offsets.transformedToOriginal(11))
+        assertEquals(10, offsets.transformedToOriginal(13))
     }
 
     /** A long file: the searched mapping and the one-pass colouring agree with counting the breaks one by one. */
@@ -119,7 +79,7 @@ class RvCodeTest {
         // Colour only: every role keeps the weight the code is set in, so a keyword is as wide as plain text (owner, 2026-11-25).
         val code = rvCodeColors(RvColors(seedColorScheme(Seed.Cyan.argb, false), false))
         RvCodeKind.entries.forEach { kind -> assertEquals("$kind", null, code.style(kind).fontWeight) }
-        assertEquals("a keyword keeps the accent", code.keyword, code.style(RvCodeKind.Keyword).color)
+        assertEquals("a keyword keeps the accent", code.keyword, code.style(RvCodeKind.Block).color)
     }
 
     /** Every role reads at 4.5:1 on the page, the card and a diff's added and removed lines, in both themes. */
@@ -135,7 +95,6 @@ class RvCodeTest {
                     "comment" to code.comment,
                     "keyword" to code.keyword,
                     "string" to code.quoted,
-                    "number" to code.number,
                     "function" to code.function,
                     "key" to code.key,
                     "punctuation" to code.punctuation,
@@ -156,7 +115,7 @@ class RvCodeTest {
         for (seed in SEEDS) {
             for (dark in listOf(false, true)) {
                 val code = rvCodeColors(RvColors(seedColorScheme(seed, dark), dark))
-                val inks = listOf(code.comment, code.keyword, code.quoted, code.number, code.function, code.key, code.punctuation)
+                val inks = listOf(code.comment, code.keyword, code.quoted, code.function, code.key, code.punctuation)
                 assertEquals("%x %s: two roles share a colour".format(seed, if (dark) "dark" else "light"), inks.size, inks.distinct().size)
             }
         }

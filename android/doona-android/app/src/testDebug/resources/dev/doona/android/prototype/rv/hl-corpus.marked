@@ -1,0 +1,43 @@
+«## Highlighting fixture; do not start the daemon or fetch external assets.»
+«Binclude» { hl-fixture-*.dae «L'hl-first*.dae'»«L'hl-quoted # second*.dae'» }
+«Bglobal» { «Klog_file»: «L"/tmp/honk\"#literal.log"» «## Only this hash starts a comment.»
+    «Kdata_dir»: /var/share/honk#fixture
+    «Kcheck_tolerance»: «L1.5s»
+    «Kso_mark_from_dae»: «L0x10»
+    «Knfqueue_enable»: false }
+«Bassets» { «Kroute»: routing
+    «Bgeodata» { «Kcron»: «L'0 3 * * *'» } «Bui» { «Kroute»: «Sdirect» } «Bsubscription» { «Kinterval»: «L2h» } }
+«Bexperimental» { «Bclash_api» {} «Bnative_api» { «Kenabled»: false } «Bcache_file» {} «Budp_nfqueue» {} }
+«Bnode» { «Kfront»: socks5://192.0.2.10:1080#fragment
+    «Kland»: «L'socks5://192.0.2.11:1080'»
+    «L'hk east'»: «L'socks5://192.0.2.12:1080'»
+    «Kvia»: front«O->»«Sland» «O->» «L'hk east'» }
+«Bsubscription» { «Kpaid»: «L'https://sub.example.test/list'»(Fixture/1.0)
+    «Ktuned»: «L'https://sub.example.test/tuned'» { «Kinterval»: «L500ms» }
+    «Klegacy»: { «Kurl»: https://sub.example.test/legacy } }
+«Bgroup» {
+    «K123» { «Kpolicy»: «Sfixed» } «K香港» { «Kpolicy»: «Smin_avg10»() } «KTwo» «KWords» { «Kpolicy»: «Sround_robin» }
+    «Kbackup» { «Kpolicy»: «Sfallback» }
+    «Kedge» { «Kpolicy»: «Sscore»
+        «Kfilter»: «Cname»(via, «Kkeyword»:front) «O&&» «O!»«Csubtag»(«Kregex»:«L'^legacy$'»)
+        «Kfilter»: «Cgroup»(123«O|»香港, Two Words)
+        «Kfinal»: «Sblock» } }
+«Brouting» {
+    «Cdomain»(«Kgeosite»:category-games@cn, «Ksuffix»:example.test, «Kkeyword»:ads, «Kfull»:«L'*.example.test'», «Kregex»:«L'(^|\.)example\.test$'») «O->» «Sedge»(«Smust»)
+    «O!»«Kgeosite»:cn «O&&» «O!»«Kgeoip»:private «O&&» «Kdomain»:example.test «O&&» «Ksuffix»:test «O&&» «Kkeyword»:lab «O&&» «Kfull»:lab.test «O&&» «Kregex»:«L'lab\.test$'» «O->» «Sblock»
+    «Cdip»(«L192.0.2.1», «L198.51.100.0/24», «L2001:db8::/32», «Kgeoip»:private) «O&&» «Csip»(«L::1») «O&&» «Cpname»(curl) «O&&» «Cmac»(«L00:11:22:33:44:55») «O&&» «Cdscp»(«L0x2e») «O->» «Sdirect»(«Kmark»: «L0x10», «Smust»)
+    «Cl4proto»(tcp, udp) «O&&» «Cipversion»(ipv4, «L6») «O&&» «Csport»(«L1024-65535») «O&&» «Cdport»(
+        «L53», «L443», «L8080-8090») «O->» «Sedge»
+    «Kfallback»: «Sdirect»(«Kmark»: «L16») }
+«Bdns» { «Kbind»: tcp+udp://[::1]:5353
+    «Kclient_subnet»: auto(«L192.0.2.1»)
+    «Bfixed_domain_ttl» { «Kexample.test»: «L60» }
+    «Bupstream» { «Klocal»: «L'udp://192.0.2.53:53'» «O->» «Sdirect»
+        «Kremote»: https://dns.example.test/dns-query «Koutbound»: «Sedge» }
+    «Brouting» { «Brequest» {
+        «Csubtag»(paid, «Kkeyword»:tune, «Kregex»:«L'^legacy$'») «O&&» «Cqname»(«Ksuffix»:example.test) «O->» «Slocal»
+        «Cqname»(a#b, «Kgeosite»:cn, «Kkeyword»:ads, «Kfull»:ads.example.test, «Kregex»:«L'^ads\.'») «O->» «Sreject» «## Comment.»
+        «Cqtype»(A, AAAA, CNAME, MX, TXT, NS, PTR, SOA, SRV, HTTPS, SVCB, ANY, *, «L65») «O&&» «O!»«Csip»(«L192.0.2.0/24», «L2001:db8::/32») «O->» «L'remote'»
+        «Kdefault»: «Sasis» } «Bresponse» {
+        «Cupstream»(remote) «O&&» «Cip»(«Kgeoip»:private, «L2001:db8::/32») «O->» «Slocal»
+        «Kfallback»: «Saccept» } } }
