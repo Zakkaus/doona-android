@@ -206,6 +206,7 @@ private fun JsonObjectBuilder.nodes(nodes: List<Member>, endpoints: Map<String, 
         put("tested", nodes.count { it.latencyMs != null })
         put("failed", nodes.count { it.failed })
         put("localNetwork", nodes.count { it.error == ErrorCode.LocalNetwork })
+        put("dnsFailed", nodes.count { it.error == ErrorCode.DnsFailed })
     }
     putJsonArray("nodeList") {
         nodes.take(MAX_LISTED_NODES).forEach { n ->

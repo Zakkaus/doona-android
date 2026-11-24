@@ -22,6 +22,7 @@ import dev.doona.android.engine.Settings
 import dev.doona.android.engine.StaticNode
 import dev.doona.android.engine.StaticNodeDraft
 import dev.doona.android.engine.StaticNodeResult
+import dev.doona.android.engine.StaticNodeUpdateResult
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.TodayTraffic
@@ -142,7 +143,7 @@ class FakeEngine internal constructor(
 
     override suspend fun readStaticNode(id: String): Result<StaticNode> = staticEditorRequiresCore()
 
-    override suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeResult> = staticEditorRequiresCore()
+    override suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeUpdateResult> = staticEditorRequiresCore()
 
     override suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit> = staticEditorRequiresCore()
 

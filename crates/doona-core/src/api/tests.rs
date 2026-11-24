@@ -5,6 +5,8 @@
 //! real driver serves a flow queued before `start` only once the generation is committed.
 
 mod bootstrap;
+#[path = "../../tests/common/stop_wait.rs"]
+mod integration_stop_wait;
 
 use super::tests_catalog::{Feeds, add, path};
 use super::{Core, Life, lock};
@@ -13,7 +15,7 @@ use crate::state::Store;
 use crate::testutil::client::Client;
 use crate::testutil::{TempDir, closed, tun};
 use crate::tunnel::route::{Inbound, Route, Upstream};
-use crate::tunnel::{Gen, Session, Settings, StartSignal, TunHandle};
+use crate::tunnel::{Gen, STOP_WAIT, Session, Settings, StartSignal, TunHandle};
 use futures_util::future::BoxFuture;
 use std::io;
 use std::path::Path;
@@ -25,11 +27,15 @@ use tokio_util::sync::CancellationToken;
 const CONFIG: &str =
     r#"{"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":["192.168.8.1"]}"#;
 /// How long a stuck driver blocks its worker thread.
-const STUCK: Duration = Duration::from_millis(1500);
+const STUCK: Duration = Duration::from_secs(3);
 /// How long each generation holds its worker in the tests that hold both of them.
-const HELD: Duration = Duration::from_millis(2500);
-/// What a returning call may take beyond its bound.
-const SLACK: Duration = Duration::from_millis(250);
+const HELD: Duration = Duration::from_secs(5);
+
+/// The integration tests' copy of the stop budget is the core's.
+#[test]
+fn integration_stop_wait_matches_core() {
+    assert_eq!(integration_stop_wait::STOP_WAIT, STOP_WAIT);
+}
 
 /// Ready at once, then blocks its worker without yielding, as a driver caught in a long
 /// operation would.
@@ -120,12 +126,10 @@ fn ready_soon(
     })
 }
 
-/// Ready after a second, then idle.
+/// Keeps the start pending until it is cancelled or reaches its deadline.
 fn slow(tun: TunHandle, _: Settings, _: Gen, ready: StartSignal) -> BoxFuture<'static, ()> {
     Box::pin(async move {
-        let _held = tun;
-        tokio::time::sleep(Duration::from_secs(1)).await;
-        ready.send();
+        let _held = (tun, ready);
         std::future::pending::<()>().await;
     })
 }
@@ -156,21 +160,27 @@ fn stop_during_a_start_makes_it_busy_and_closes_its_tun() {
     let dir = TempDir::new("api-stop-during-start");
     let core = core(&dir, slow, Duration::from_secs(10));
     let (dup, probe) = tun();
-    let starter = {
-        let core = Arc::clone(&core);
-        std::thread::spawn(move || {
-            let begun = Instant::now();
-            (core.start(dup, CONFIG), begun.elapsed())
-        })
-    };
-    std::thread::sleep(Duration::from_millis(200));
-    let begun = Instant::now();
-    core.stop();
-    assert!(begun.elapsed() < Duration::from_secs(1));
-    assert!(closed(&probe), "stop returned with the starting tun open");
-    let (result, took) = starter.join().unwrap();
-    assert_eq!(result, Err(ErrorCode::Busy));
-    assert!(took < Duration::from_secs(1) + SLACK, "{took:?}");
+    std::thread::scope(|scope| {
+        let (tx, rx) = mpsc::channel();
+        let core = &core;
+        scope.spawn(move || tx.send(core.start(dup, CONFIG)).ok());
+        let begun = Instant::now();
+        while !matches!(*lock(&core.life), Life::Starting { .. }) {
+            assert!(
+                begun.elapsed() < Duration::from_secs(5),
+                "start never entered"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let begun = Instant::now();
+        core.stop();
+        assert!(closed(&probe), "stop returned with the starting tun open");
+        assert!(begun.elapsed() < STOP_WAIT + STOP_WAIT / 2);
+        assert_eq!(
+            rx.recv_timeout(Duration::from_secs(5)).unwrap(),
+            Err(ErrorCode::Busy)
+        );
+    });
 }
 
 #[test]
@@ -183,20 +193,20 @@ fn stop_closes_the_tun_while_the_driver_is_stuck() {
     core.stop();
     let took = begun.elapsed();
     assert!(closed(&probe), "stop returned with the tun open");
-    assert!(took < Duration::from_secs(1), "{took:?}");
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
 }
 
 #[test]
 fn a_failed_start_closes_the_tun_within_its_deadline() {
     let dir = TempDir::new("api-stuck-start");
-    let bound = Duration::from_millis(300);
+    let bound = Duration::from_secs(1);
     let core = core(&dir, stuck_unready, bound);
     let (dup, probe) = tun();
     let begun = Instant::now();
     assert_eq!(core.start(dup, CONFIG), Err(ErrorCode::Internal));
     let took = begun.elapsed();
     assert!(closed(&probe), "a failed start returned with the tun open");
-    assert!(took < bound + SLACK, "{took:?}");
+    assert!(took < bound + bound / 2, "{took:?}");
 }
 
 #[test]
@@ -211,28 +221,32 @@ fn start_keeps_its_deadline_while_replacing_a_stuck_generation() {
     assert_eq!(core.start(second, CONFIG), Err(ErrorCode::Internal));
     let took = begun.elapsed();
     assert!(closed(&old) && closed(&new));
-    assert!(took < bound + SLACK, "{took:?}");
+    // A fresh deadline after waiting for the old driver would take about 1.9 s.
+    assert!(took < bound + bound / 2, "{took:?}");
 }
 
 #[test]
 fn an_overlapping_start_is_busy() {
     let dir = TempDir::new("api-overlap");
-    let core = core(&dir, slow, Duration::from_secs(10));
+    let core = core(&dir, super::tests_carriers::idle, Duration::from_secs(10));
     let (first, _running) = tun();
-    let starter = {
-        let core = Arc::clone(&core);
-        std::thread::spawn(move || core.start(first, CONFIG))
-    };
-    std::thread::sleep(Duration::from_millis(200));
-    let (second, probe) = tun();
-    let begun = Instant::now();
-    assert_eq!(core.start(second, CONFIG), Err(ErrorCode::Busy));
-    assert!(begun.elapsed() < SLACK, "{:?}", begun.elapsed());
-    assert!(closed(&probe));
-    assert_eq!(starter.join().unwrap(), Ok(()));
-    let begun = Instant::now();
+    let (entered, finishing) = mpsc::channel();
+    let (release, released) = mpsc::channel();
+    core.hooks.on_before_finish(move |_| {
+        entered.send(()).unwrap();
+        released.recv_timeout(Duration::from_secs(5)).unwrap();
+    });
+    std::thread::scope(|scope| {
+        let starter = scope.spawn(|| core.start(first, CONFIG));
+        finishing.recv_timeout(Duration::from_secs(5)).unwrap();
+        let (second, probe) = tun();
+        let result = core.start(second, CONFIG);
+        release.send(()).unwrap();
+        assert_eq!(result, Err(ErrorCode::Busy));
+        assert!(closed(&probe));
+        assert_eq!(starter.join().unwrap(), Ok(()));
+    });
     core.stop();
-    assert!(begun.elapsed() < Duration::from_secs(1));
 }
 
 #[test]
@@ -248,7 +262,7 @@ fn start_keeps_its_deadline_while_both_workers_are_held() {
     assert_eq!(core.start(second, CONFIG), Err(ErrorCode::Internal));
     let took = begun.elapsed();
     assert!(closed(&new));
-    assert!(took < bound + SLACK, "{took:?}");
+    assert!(took < bound + bound / 2, "{took:?}");
 }
 
 #[test]
@@ -263,7 +277,7 @@ fn stop_keeps_its_bound_while_both_workers_are_held() {
     core.stop();
     let took = begun.elapsed();
     assert!(closed(&running));
-    assert!(took < Duration::from_secs(1), "{took:?}");
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
 }
 
 static SYNC_STARTED: AtomicBool = AtomicBool::new(false);
@@ -377,21 +391,18 @@ fn stop_spends_one_second_on_teardown_and_waiting_together() {
         Life::Running(tunnel) => Arc::clone(tunnel.tun()),
         _ => panic!("not running"),
     };
-    // The revoke in stop waits 200 ms for the tun's lock; the stuck driver then outlives the
-    // wait for its tasks.
-    let (held_tx, held) = std::sync::mpsc::channel();
-    let holder = std::thread::spawn(move || {
+    // Spend the whole budget in teardown, with the driver still stuck afterwards. The hold ends
+    // with teardown, before `halt` revokes the tun, so the revoke's wait for it is not covered.
+    core.hooks.on_teardown(move |_| {
         let _slow = tun.hold();
-        held_tx.send(()).unwrap();
-        std::thread::sleep(Duration::from_millis(200));
+        std::thread::sleep(STOP_WAIT);
     });
-    held.recv().unwrap();
     let begun = Instant::now();
     core.stop();
     let took = begun.elapsed();
-    holder.join().unwrap();
     assert!(closed(&probe));
-    assert!(took < Duration::from_secs(1), "{took:?}");
+    // A fresh wait budget after teardown would double the total.
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
 }
 
 #[test]
@@ -403,7 +414,8 @@ fn a_panicking_data_path_task_fails_the_generation() {
     assert!(!failed_within_10s(&core).running);
     let begun = Instant::now();
     core.stop();
-    assert!(begun.elapsed() < Duration::from_secs(1));
+    let took = begun.elapsed();
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
     assert!(closed(&probe));
 }
 

@@ -10,7 +10,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.LinkProperties
-import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkInfo
 import android.net.RouteInfo
@@ -36,6 +35,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,6 +52,7 @@ import org.robolectric.shadows.ShadowNetworkInfo
 import org.robolectric.shadows.ShadowVpnService
 import java.net.Inet6Address
 import java.net.InetAddress
+import java.time.Duration
 
 @RunWith(AndroidJUnit4::class)
 @Config(application = DoonaVpnServiceTest.LifecycleApplication::class, shadows = [DoonaVpnServiceTest.VpnPolicy::class, DoonaVpnServiceTest.VpnBuilder::class])
@@ -97,12 +98,27 @@ class DoonaVpnServiceTest {
     }
 
     @Test
-    fun aSystemStartWithLockdownEnabledReachesRunning() = withService { service, _, engine ->
-        Shadow.extract<VpnPolicy>(service).lockdown = true
+    fun lockdownSettingFollowsAndroidWhileTheServiceRuns() {
+        lateinit var engine: ServiceEngine
+        withService { service, _, runningEngine ->
+            engine = runningEngine
+            val policy = Shadow.extract<VpnPolicy>(service)
+            assertFalse(engine.settings.value.lockdownEnabled)
+            policy.lockdown = true
+            service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
+            engine.awaitSession { it.status is Status.Running }
+            val main = shadowOf(Looper.getMainLooper())
+            main.idle()
+            assertTrue(engine.settings.value.lockdownEnabled)
 
-        service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
-        val session = engine.awaitSession { it.status is Status.Running || it.status.ended }
-        assertTrue("Expected Running, got ${session.status}", session.status is Status.Running)
+            policy.lockdown = false
+            main.idleFor(Duration.ofSeconds(5))
+            assertFalse(engine.settings.value.lockdownEnabled)
+            policy.lockdown = true
+            main.idleFor(Duration.ofSeconds(5))
+            assertTrue(engine.settings.value.lockdownEnabled)
+        }
+        assertFalse(engine.settings.value.lockdownEnabled)
     }
 
     @Test
@@ -126,7 +142,6 @@ class DoonaVpnServiceTest {
         val connectivity = app.getSystemService(ConnectivityManager::class.java)
         val manager = shadowOf(connectivity)
         val wifi = ShadowNetwork.newInstance(100)
-        val underlying = internet(NetworkCapabilities.TRANSPORT_WIFI)
 
         @Suppress("DEPRECATION") // Robolectric selects the active network by legacy type.
         val vpnInfo = ShadowNetworkInfo.newInstance(NetworkInfo.DetailedState.CONNECTED, ConnectivityManager.TYPE_VPN, 0, true, true)
@@ -136,7 +151,7 @@ class DoonaVpnServiceTest {
         manager.setNetworkCapabilities(vpn, virtual)
         manager.setLinkProperties(vpn, dns("172.19.0.2"))
 
-        manager.networkCallbacks.forEach { it.publishDns(wifi, underlying, dns("192.0.2.53")) }
+        manager.networkCallbacks.forEach { it.onLinkPropertiesChanged(wifi, dns("192.0.2.53")) }
         service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
         engine.awaitSession { it.status is Status.Running }
         assertTrue(app.core.configs.single().contains("\"bootstrapDns\":[\"192.0.2.53\"]"))
@@ -158,10 +173,9 @@ class DoonaVpnServiceTest {
             app.core.onStart = { starts++ }
             service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
             val session = engine.awaitSession { it.status is Status.Running }
-            manager.networkCallbacks.forEach { it.publishDns(cellular, cellCaps, initial) }
+            manager.networkCallbacks.forEach { it.onLinkPropertiesChanged(cellular, initial) }
 
             val wifi = ShadowNetwork.newInstance(100)
-            val wifiCaps = internet(NetworkCapabilities.TRANSPORT_WIFI)
             val ipv6 = InetAddress.getByName("fe80::1")
             val next = LinkProperties().apply {
                 interfaceName = "wlan0"
@@ -169,11 +183,10 @@ class DoonaVpnServiceTest {
             }
             val nextWifi = ShadowNetwork.newInstance(101)
             manager.networkCallbacks.forEach {
-                it.publishDns(wifi, wifiCaps, next)
+                it.onLinkPropertiesChanged(wifi, next)
                 it.onLinkPropertiesChanged(wifi, next)
                 it.onLinkPropertiesChanged(wifi, LinkProperties())
-                it.publishDns(nextWifi, wifiCaps, next)
-                it.publishDns(ShadowNetwork.newInstance(102), internet(NetworkCapabilities.TRANSPORT_VPN), dns("172.19.0.2"))
+                it.onLinkPropertiesChanged(nextWifi, next)
             }
 
             runBlocking {
@@ -187,7 +200,7 @@ class DoonaVpnServiceTest {
             engine.disconnect()
             engine.awaitSession { it.status == Status.Stopped }
         }
-        manager.networkCallbacks.forEach { it.publishDns(cellular, cellCaps, initial) }
+        manager.networkCallbacks.forEach { it.onLinkPropertiesChanged(cellular, initial) }
         runBlocking {
             withContext(app.lane) {
                 assertEquals(2, app.core.calls.size)
@@ -202,12 +215,6 @@ class DoonaVpnServiceTest {
     }
 
     private fun dns(address: String) = LinkProperties().apply { setDnsServers(listOf(InetAddress.getByName(address))) }
-
-    private fun ConnectivityManager.NetworkCallback.publishDns(network: Network, caps: NetworkCapabilities, properties: LinkProperties) {
-        onAvailable(network)
-        onCapabilitiesChanged(network, caps)
-        onLinkPropertiesChanged(network, properties)
-    }
 
     private fun withService(test: (DoonaVpnService, LifecycleApplication, ServiceEngine) -> Unit) {
         val lifecycle = Robolectric.buildService(DoonaVpnService::class.java).create()

@@ -2,14 +2,14 @@
 //! leading whitespace or control character; a body libyaml cannot scan.
 
 use super::super::parse::parse;
+use super::guard::SCAN_CALLS;
 use super::tests::{assert_same, nested};
 use crate::dto::ErrorCode;
-use crate::testutil::alloc::allocated;
+use crate::testutil::alloc::{allocated, peak};
 use crate::testutil::fixture;
-use std::time::{Duration, Instant};
 
-/// How long a hostile body may take to be refused, in a debug build.
-const SOON: Duration = Duration::from_millis(50);
+// A bounded flow scan allocates about 305 KiB, including libyaml's buffers.
+const FLOW_SCAN_BYTES: usize = 512 << 10;
 
 /// A `%TAG` directive whose prefix, `prefix` bytes long, libyaml copies into each of the `uses`
 /// nodes that name its handle; its lines end with `eol`.
@@ -36,24 +36,21 @@ fn head(body: &str) -> String {
 /// allocates a few times the body at most, libyaml's buffers and the text of the token it stops
 /// at, where serde_yaml's events of these bodies take hundreds of times it.
 fn refused_unbuilt(body: &str) {
-    let (result, bytes) = allocated(|| parse(body.as_bytes()));
-    assert_eq!(result.err(), Some(ErrorCode::ParseFailed), "{}", head(body));
-    let limit = 4 * body.len();
-    assert!(bytes < limit, "{bytes} bytes for a body of {}", body.len());
+    refused_allocating_at_most(body, 4 * body.len(), &head(body));
 }
 
-/// The quickest of three parses of `body`, each of which must be `parse_failed`.
-fn refused_in(body: &str) -> Duration {
-    (0..3)
-        .map(|_| {
-            let start = Instant::now();
-            let result = parse(body.as_bytes());
-            let took = start.elapsed();
-            assert_eq!(result.err(), Some(ErrorCode::ParseFailed), "{}", head(body));
-            took
-        })
-        .min()
-        .unwrap()
+fn refused_allocating_at_most(body: &str, limit: usize, case: &str) {
+    let (result, bytes) = allocated(|| parse(body.as_bytes()));
+    assert_eq!(result.err(), Some(ErrorCode::ParseFailed), "{case}");
+    assert!(bytes < limit, "{case}: {bytes} bytes (limit {limit})");
+}
+
+fn refused_before_deep_scan(body: &str, case: &str) {
+    let before = SCAN_CALLS.get();
+    refused_allocating_at_most(body, FLOW_SCAN_BYTES, case);
+    let calls = SCAN_CALLS.get() - before;
+    // The 129th opening is refused; stream and mapping tokens also count.
+    assert!((1..=140).contains(&calls), "{case}: {calls} scanner calls");
 }
 
 #[test]
@@ -99,8 +96,7 @@ fn deep_flow_nesting_is_refused_before_libyaml_slows_down() {
         format!("proxies: {}", nested(20_000)),
         format!("{{\"outbounds\": {}}}", nested(20_000)),
     ] {
-        let took = refused_in(&body);
-        assert!(took < SOON, "{took:?}");
+        refused_before_deep_scan(&body, &head(&body));
     }
     // serde_yaml reads 128 levels; the scan takes as many and refuses one more.
     assert_eq!(
@@ -133,8 +129,7 @@ fn a_leading_space_or_control_character_hides_nothing_from_the_guard() {
         format!("\u{a0}{}", nested(20_000)),
         format!(" \u{feff}{}", nested(20_000)),
     ] {
-        let took = refused_in(&body);
-        assert!(took < SOON, "{}: {took:?}", head(&body));
+        refused_before_deep_scan(&body, &head(&body));
     }
 }
 
@@ -150,8 +145,7 @@ fn a_body_libyaml_cannot_scan_is_read_only_as_json() {
         "{{\"name\": \"{flag}\", \"outbounds\": {}}}",
         nested(20_000)
     );
-    let took = refused_in(&deep);
-    assert!(took < SOON, "{took:?}");
+    refused_before_deep_scan(&deep, "JSON-only nesting");
     let plain = String::from_utf8(fixture("singbox.json")).unwrap();
     let flagged = plain.replacen(r#""tag": "ss-01""#, &format!(r#""tag": "{flag} ss-01""#), 1);
     assert_ne!(flagged, plain);
@@ -161,11 +155,16 @@ fn a_body_libyaml_cannot_scan_is_read_only_as_json() {
     assert_same(&again.nodes, &parsed.nodes, "flagged");
 }
 
-/// The bodies of both reviews of the guard. Those it cuts short are at the reviews' sizes; those
-/// refused only once serde_yaml has read them (block nesting, bare keys, string aliases) cost in
-/// proportion to their size, at 798 KB 0.2–0.5 s in a debug build with or without a prefix, and
-/// are smaller here.
-fn hostile() -> Vec<(&'static str, String)> {
+enum Limit {
+    DeepScan,
+    Bytes(usize),
+    Peak(usize),
+}
+
+/// Budgets allow for libyaml's token buffers and, for block nesting, bare keys and aliases,
+/// serde_yaml's event list. They do not allow expanding aliases or scanning deep flow stacks.
+fn hostile() -> Vec<(&'static str, String, Limit)> {
+    use Limit::{Bytes, DeepScan, Peak};
     let mut laughs = String::from("a0: &a0 [x,x,x,x,x,x,x,x,x,x]\n");
     for i in 1..12 {
         let uses = vec![format!("*a{}", i - 1); 10].join(",");
@@ -173,16 +172,29 @@ fn hostile() -> Vec<(&'static str, String)> {
     }
     laughs += "proxies: [*a11]\n";
     vec![
-        ("%TAG", tag_directive(256 << 10, 1000, "\n")),
-        ("%TAG, \\r", tag_directive(256 << 10, 1000, "\r")),
-        ("second document", second_document(256 << 10, 1000)),
-        ("flow nesting", format!("proxies: {}", nested(399_000))),
-        ("bare flow nesting", nested(399_000)),
+        ("%TAG", tag_directive(256 << 10, 1000, "\n"), Bytes(1 << 20)),
+        (
+            "%TAG, \\r",
+            tag_directive(256 << 10, 1000, "\r"),
+            Bytes(1 << 20),
+        ),
+        (
+            "second document",
+            second_document(256 << 10, 1000),
+            Bytes(1 << 20),
+        ),
+        (
+            "flow nesting",
+            format!("proxies: {}", nested(399_000)),
+            DeepScan,
+        ),
+        ("bare flow nesting", nested(399_000), DeepScan),
         (
             "JSON nesting",
             format!("{{\"outbounds\": {}}}", nested(399_000)),
+            DeepScan,
         ),
-        ("billion laughs", laughs),
+        ("billion laughs", laughs, Bytes(512 << 10)),
         (
             "string aliases",
             format!(
@@ -190,12 +202,20 @@ fn hostile() -> Vec<(&'static str, String)> {
                 "y".repeat(64 << 10),
                 "*s,".repeat(1000)
             ),
+            Bytes(1 << 20),
         ),
         (
             "block nesting",
             format!("proxies:\n{}x", "- ".repeat(10_000)),
+            // Peak across all prefixes: 5,047,831 bytes.
+            Peak(10_100_000),
         ),
-        ("bare keys", format!("proxies: {{{}}}", "a,".repeat(10_000))),
+        (
+            "bare keys",
+            format!("proxies: {{{}}}", "a,".repeat(10_000)),
+            // Peak across all prefixes: 3,225,152 bytes.
+            Peak(6_500_000),
+        ),
     ]
 }
 
@@ -218,10 +238,20 @@ const PREFIXES: [&str; 12] = [
 
 #[test]
 fn no_prefix_lets_a_hostile_body_through() {
-    for (what, body) in hostile() {
+    for (what, body, budget) in hostile() {
         for prefix in PREFIXES {
-            let took = refused_in(&format!("{prefix}{body}"));
-            assert!(took < SOON, "{what} after {prefix:?}: {took:?}");
+            let prefixed = format!("{prefix}{body}");
+            let case = format!("{what} after {prefix:?}");
+            match budget {
+                Limit::DeepScan => refused_before_deep_scan(&prefixed, &case),
+                Limit::Bytes(bytes) => refused_allocating_at_most(&prefixed, bytes, &case),
+                Limit::Peak(limit) => {
+                    // Keep the cumulative cap as well: peak alone misses allocation churn.
+                    let ((), bytes, _) =
+                        peak(|| refused_allocating_at_most(&prefixed, 8 << 20, &case));
+                    assert!(bytes < limit, "{case}: peak {bytes} bytes (limit {limit})");
+                }
+            }
         }
     }
 }

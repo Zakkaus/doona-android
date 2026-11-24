@@ -3,6 +3,7 @@ package dev.doona.android.report
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.LogLevel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +18,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -58,6 +60,23 @@ class ReportExportTest : ExportFixture() {
         assertEquals(2, report["events"]!!.jsonArray.size)
         assertEquals("Pixel 9", report["device"]!!.jsonObject["model"]!!.jsonPrimitive.content)
         assertTrue(report["diagnostics"] is JsonObject)
+    }
+
+    @Test
+    fun countsDnsProbeFailuresSeparatelyAndOncePerNode() = runTest {
+        val engine = fixtureEngine()
+        engine.groups.value = engine.groups.value.map { group ->
+            val members = group.members.map { node ->
+                if (node.id == "n-0011223344556677") node.copy(failed = true, error = ErrorCode.DnsFailed) else node
+            }
+            group.copy(members = members)
+        }
+        val json = entries(export(engine).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
+        val catalog = Json.parseToJsonElement(json).jsonObject.getValue("settings").jsonObject.getValue("catalog").jsonObject
+        val counts = catalog.getValue("nodes").jsonObject
+        assertEquals(2, counts.getValue("failed").jsonPrimitive.int)
+        assertEquals(1, counts.getValue("localNetwork").jsonPrimitive.int)
+        assertEquals(1, counts.getValue("dnsFailed").jsonPrimitive.int)
     }
 
     @Test

@@ -26,6 +26,7 @@ import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.StaticNodeReason
 import dev.doona.android.engine.StaticNodeResult
+import dev.doona.android.engine.StaticNodeUpdateResult
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.TodayTraffic
@@ -169,6 +170,11 @@ internal sealed interface StaticNodeRowDto {
     fun toRow(): StaticNodeResult
 
     @Serializable
+    sealed interface Update : StaticNodeRowDto {
+        override fun toRow(): StaticNodeUpdateResult
+    }
+
+    @Serializable
     @SerialName("ready")
     class Ready(val id: String, val name: String, val protocol: String) : StaticNodeRowDto {
         override fun toRow() = StaticNodeResult.Ready(id, name, protocol)
@@ -182,25 +188,25 @@ internal sealed interface StaticNodeRowDto {
 
     @Serializable
     @SerialName("updated")
-    class Updated(val id: String, val name: String, val protocol: String) : StaticNodeRowDto {
+    class Updated(val id: String, val name: String, val protocol: String) : Update {
         override fun toRow() = StaticNodeResult.Updated(id, name, protocol)
     }
 
     @Serializable
     @SerialName("duplicate")
-    class Duplicate(val id: String) : StaticNodeRowDto {
+    class Duplicate(val id: String) : Update {
         override fun toRow() = StaticNodeResult.Duplicate(id)
     }
 
     @Serializable
     @SerialName("invalid")
-    class Invalid(val reason: StaticNodeReason) : StaticNodeRowDto {
+    class Invalid(val reason: StaticNodeReason) : Update {
         override fun toRow() = StaticNodeResult.Invalid(reason)
     }
 
     @Serializable
     @SerialName("unsupported")
-    class Unsupported(val reason: StaticNodeReason) : StaticNodeRowDto {
+    class Unsupported(val reason: StaticNodeReason) : Update {
         override fun toRow() = StaticNodeResult.Unsupported(reason)
     }
 }

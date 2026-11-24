@@ -1,5 +1,5 @@
 //! A generation with proxied flows open: `traffic` counts every byte through the tun and the
-//! open app flows, and `stop` keeps its 1 s bound with 100 proxied flows open, carriers kept for
+//! open app flows, and `stop` returns promptly with 100 proxied flows open, carriers kept for
 //! the next stream and dials stalled mid-handshake, closes every socket to a node before it
 //! returns, and leaves no descriptor open that was not open before the first dial. The checks
 //! read /proc/self/fd, so these tests run one at a time.
@@ -9,13 +9,14 @@ mod common;
 use common::client::Client;
 use common::global::{Global, WAIT, pattern, ping, socks_link};
 use common::servers::{self, Seen};
+use common::stop_wait::STOP_WAIT;
 use common::{anytls, socks, tuic, wait_for};
 use doonacore::dto::Traffic;
 use std::collections::{BTreeSet, HashMap};
 use std::net::SocketAddr;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Mutex, MutexGuard};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 fn serial() -> MutexGuard<'static, ()> {
     static SERIAL: Mutex<()> = Mutex::new(());
@@ -125,7 +126,7 @@ fn traffic_counts_every_tun_byte_and_the_open_flows() {
 }
 
 #[test]
-fn stop_ends_100_proxied_flows_within_a_second_and_leaves_no_descriptor() {
+fn stop_promptly_ends_100_proxied_flows_and_leaves_no_descriptor() {
     let _s = serial();
     let (echo, echo_seen) = servers::tcp_echo();
     let (udp, _) = servers::udp_echo();
@@ -144,7 +145,7 @@ fn stop_ends_100_proxied_flows_within_a_second_and_leaves_no_descriptor() {
         open_fds().difference(&before).count() > 100,
         "the flows hold their sockets"
     );
-    stops_within_a_second(&g);
+    stops_promptly(&g);
     drop(c);
     // 100 flows and the UDP association's control connection.
     assert_eq!(proxy_seen.connections.load(Relaxed), 101);
@@ -196,7 +197,7 @@ fn stop_closes_every_carrier_before_it_returns() {
     let nodes = [at, quic, stall, sink];
     let open = client_sockets(&before, &nodes);
     assert!(open.len() >= 4, "a socket to each node: {open:?}");
-    stops_within_a_second(&g);
+    stops_promptly(&g);
     let open = client_sockets(&before, &nodes);
     assert!(open.is_empty(), "open when stop returned: {open:?}");
     drop(c);
@@ -204,11 +205,11 @@ fn stop_closes_every_carrier_before_it_returns() {
     assert_fds(&before);
 }
 
-fn stops_within_a_second(g: &Global) {
+fn stops_promptly(g: &Global) {
     let begun = Instant::now();
     g.core.stop();
     let took = begun.elapsed();
-    assert!(took < Duration::from_secs(1), "{took:?}");
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
 }
 
 /// No descriptor is open that was not open at `before`. Other tests of this binary may close

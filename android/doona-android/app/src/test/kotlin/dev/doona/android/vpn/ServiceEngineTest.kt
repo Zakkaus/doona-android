@@ -125,7 +125,10 @@ class ServiceEngineTest {
         core.reply = """{"error":{"code":"busy"}}"""
         assertEquals(ErrorCode.Busy, (engine.setLogLevel(LogLevel.Info).exceptionOrNull() as EngineException).code)
 
-        val events = AppEvents.snapshot().map { it.text.substringBefore(" elapsedMs=") }
+        // AppEvents is process-wide; another test's background work can record into it.
+        val events = AppEvents.snapshot()
+            .map { it.text.substringBefore(" elapsedMs=") }
+            .filter { it.startsWith("command=setLogLevel ") }
         assertEquals(
             listOf(
                 "command=setLogLevel phase=complete outcome=ok code=ok",

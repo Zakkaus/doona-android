@@ -2,8 +2,11 @@ package dev.doona.android.data.network
 
 import android.app.Application
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
@@ -12,6 +15,7 @@ import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.NetworkTransport
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -22,8 +26,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.Implementation
+import org.robolectric.annotation.Implements
+import org.robolectric.shadow.api.Shadow
+import org.robolectric.shadows.ShadowConnectivityManager
 import org.robolectric.shadows.ShadowNetwork
 import org.robolectric.shadows.ShadowNetworkCapabilities
+import java.net.InetAddress
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
@@ -33,6 +43,46 @@ class NetworkStateSourceTest {
     private val manager = shadowOf(connectivity)
     private val existing = manager.networkCallbacks.toSet()
     private val wifi = ShadowNetwork.newInstance(100)
+
+    @Test
+    @Config(shadows = [BestMatchingConnectivity::class])
+    fun bootstrapDnsRequestOnlyMatchesNonVpnInternetNetworks() = runTest {
+        val seen = mutableListOf<List<String>>()
+        val follow = launch { connectivity.followBootstrapDns { seen += it } }
+        testScheduler.runCurrent()
+
+        val request = Shadow.extract<BestMatchingConnectivity>(connectivity).request
+        val defaults = NetworkRequest.Builder().build().capabilities
+        val wifiInternet = capabilities(NetworkCapabilities.TRANSPORT_WIFI, *defaults)
+        val wifiLan = capabilities(NetworkCapabilities.TRANSPORT_WIFI, *defaults).also {
+            shadowOf(it).removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        }
+        val vpnInternet = capabilities(NetworkCapabilities.TRANSPORT_VPN, *defaults).also {
+            shadowOf(it).removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+        }
+        assertTrue(request.canBeSatisfiedBy(wifiInternet))
+        assertFalse(request.canBeSatisfiedBy(wifiLan))
+        assertFalse(request.canBeSatisfiedBy(vpnInternet))
+
+        val callback = (manager.networkCallbacks - existing).single()
+        callback.onAvailable(wifi)
+        callback.onCapabilitiesChanged(wifi, wifiInternet)
+        callback.onLinkPropertiesChanged(wifi, LinkProperties().apply { setDnsServers(listOf(InetAddress.getByName("192.0.2.53"))) })
+        assertEquals(listOf(listOf("192.0.2.53")), seen)
+        follow.cancelAndJoin()
+    }
+
+    @Implements(ConnectivityManager::class)
+    class BestMatchingConnectivity : ShadowConnectivityManager() {
+        lateinit var request: NetworkRequest
+            private set
+
+        @Implementation
+        override fun registerBestMatchingNetworkCallback(request: NetworkRequest, callback: ConnectivityManager.NetworkCallback, handler: Handler) {
+            this.request = request
+            super.registerBestMatchingNetworkCallback(request, callback, handler)
+        }
+    }
 
     @Test
     fun losingWifiGoesOfflineUntilCellularTakesOver() = runTest {
