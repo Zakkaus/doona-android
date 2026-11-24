@@ -153,7 +153,7 @@ fn subscription_hosts_use_the_fallback_then_the_last_list() {
 }
 
 #[test]
-fn stopped_handoff_resolves_subscription_without_a_start() {
+fn stopped_handoff_resolves_subscription_without_restarting() {
     let _s = serial();
     let (new, seen) = servers::udp_resolver();
     let dir = TempDir::new("boot-stopped");
@@ -331,8 +331,7 @@ fn probed(core: &Core) -> Vec<(String, serde_json::Value)> {
 
 /// A probe is classified by the address its dial to the node chose, never by what the node's name
 /// resolved to before (ARCH D26): refused at the local address its name resolves to, it carries
-/// `local_network`; once the name no longer resolves, it fails before it dials the node and
-/// carries no code.
+/// `local_network`; once the name no longer resolves, it carries `dns_failed` instead.
 #[test]
 fn a_probe_counts_the_address_it_dialed_not_an_earlier_lookup() {
     let _s = serial();
@@ -353,13 +352,12 @@ fn a_probe_counts_the_address_it_dialed_not_an_earlier_lookup() {
     // The resolvers `start` names stay in use after `stop`; nothing answers on 127.0.0.2.
     drop(start(&core, r#"["127.0.0.2"]"#));
     core.stop();
-    assert_eq!(probed(&core), nas(serde_json::Value::Null));
+    assert_eq!(probed(&core), nas("dns_failed".into()));
 }
 
-/// A probe whose own target does not resolve never dialed its node: it carries no code, although
-/// the node is on the local network.
+/// A failed target lookup is `dns_failed`, not `local_network`, even for a local node.
 #[test]
-fn a_probe_whose_target_does_not_resolve_carries_no_code() {
+fn a_probe_whose_target_does_not_resolve_reports_dns_failure() {
     let _s = serial();
     let dead = dead_resolver();
     let feed = servers::feed("socks5://224.0.0.1:1080#lan".to_owned());
@@ -372,10 +370,7 @@ fn a_probe_whose_target_does_not_resolve_carries_no_code() {
     };
     let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
     subscribe(&core, &format!("http://{feed}/sub")).unwrap();
-    assert_eq!(
-        probed(&core),
-        vec![("lan".to_owned(), serde_json::Value::Null)]
-    );
+    assert_eq!(probed(&core), vec![("lan".to_owned(), "dns_failed".into())]);
 }
 
 /// A `.local` name that only mDNS publishes is not resolved in v0.1 (ARCH D26): unicast DNS does

@@ -6,7 +6,11 @@ Example payloads for `plans/v1/core-api.md` (schema 3). `static-nodes.json` is a
 
 `call-set-bootstrap-dns-args.json` includes an IPv6 resolver scoped to `wlan0`. In any tunnel state the reply is `call-ok-empty.json` on success or `call-error-bootstrap-dns.json` for invalid arguments. A rejected request leaves the previous resolvers in use.
 
+Android supplies DNS from the system-selected non-VPN network and keeps the last list when that network supplies none. A probe that cannot resolve its target or proxy server reports `dns_failed` in the member's `error` field.
+
 The two `hk-01` nodes are distinct endpoints with the same display name, and the second one's probe failed with `local_network`; the running snapshot carries the `local_network` warning, and the stopped one kept no yesterday (`yesterdayByNow` null); the subscription URL's token is a placeholder. The subscription was added with its own User-Agent, which the `addSubscription` reply carries; `setSubscriptionUserAgent` then set it back to null, the default, as the stopped catalog shows. The stats replies use one invented day, 2026-11-22: a five-second rate window, today and yesterday by the hour with each outbound's payload, the daily totals (2026-11-20 had no bytes, so it is absent), and two nodes' details with their latency tests, one of them failed.
+
+`catalog/member-locations.json` shows the location fields for a group, feed nodes and a static node. The stopped snapshot above remains a schema 3 example from before these optional fields.
 
 The rule mode payloads are what the core produces for its template `cn-direct` version 2: the catalog's `mainGroupId` and `ruleSource`, the five rows of `rules` with their real ids and `rulesRevision`, `setRuleSource` and `setMode` arguments, and `effectiveConfig` over one subscription with two nodes (`hk-01`, `jp-01`), whose text names each node only by its code, `n-` and the first 8 hex digits of its id. Today's `byRule` in the usage reply uses the real ids of the `GEOIP,CN` and `MATCH` rows, so its bytes add up to the `direct` and `g-Proxy` outbounds. Regenerate the ids from the core's tests when the template changes; never write them by hand.
 

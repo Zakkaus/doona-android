@@ -16,6 +16,7 @@ mod localnet;
 pub mod outbounds;
 mod panics;
 mod probe;
+mod regions;
 mod rules;
 mod score;
 pub mod state;

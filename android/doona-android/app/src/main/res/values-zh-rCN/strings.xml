@@ -1,6 +1,7 @@
 <resources>
     <string name="policy_kind_score">综合评分</string>
     <string name="error_too_large">订阅内容太大</string>
+    <string name="error_dns_failed">DNS 查询失败</string>
     <string name="vpn_drop_revoked">其他 VPN 应用或系统设置关闭了 VPN。</string>
     <string name="report_redaction_hint">隐藏的信息越多，问题就越可能无法解答。</string>
 </resources>

@@ -33,6 +33,39 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
+#[test]
+fn catalog_member_locations() {
+    let dir = common::TempDir::new("contract-locations");
+    let state = serde_json::json!({
+        "stateVersion": 1, "mode": "Global",
+        "subscriptions": [{"id":"s1", "name":"sample", "url":"https://example.invalid",
+            "links":["socks5://192.0.2.1:1080#JP-NRT", "socks5://192.0.2.2:1080#anonymous",
+                     "socks5://192.0.2.3:1080#DE"]}],
+        "staticNodes": [{"id":"n-static", "name":"Dallas", "link":"socks5://192.0.2.4:1080"}]
+    });
+    std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    let snapshot: Value = serde_json::from_str(&core.snapshot(-1)).unwrap();
+    let proxy = &snapshot["catalog"]["groups"][0];
+    assert_eq!(proxy["id"], "g-Proxy");
+    let locations: Vec<_> = proxy["members"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| {
+            let fields: serde_json::Map<_, _> = ["name", "region", "regionCentroid", "city"]
+                .map(|key| (key.to_owned(), m.get(key).unwrap().clone()))
+                .into_iter()
+                .collect();
+            Value::Object(fields)
+        })
+        .collect();
+    assert_eq!(
+        Value::Array(locations),
+        read("catalog/member-locations.json")
+    );
+}
+
 const COVERED: [&str; 32] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
@@ -197,7 +230,21 @@ fn snapshots() {
     let died = round_trip::<Snapshot>("snapshot-died.json");
     assert!(!died.running && died.error.is_some() && died.warning.is_none());
     assert_eq!(running.today.yesterday_by_now, Some(1_610_612_736));
-    let stopped = round_trip::<Snapshot>("snapshot-stopped-catalog.json");
+    // Before location hints, schema 3 omitted the three keys. The rest still round-trips.
+    let legacy = read("snapshot-stopped-catalog.json");
+    let stopped: Snapshot = serde_json::from_value(legacy.clone()).unwrap();
+    let mut encoded = serde_json::to_value(&stopped).unwrap();
+    for group in encoded["catalog"]["groups"].as_array_mut().unwrap() {
+        for member in group["members"].as_array_mut().unwrap() {
+            for key in ["region", "regionCentroid", "city"] {
+                assert_eq!(
+                    member.as_object_mut().unwrap().remove(key),
+                    Some(Value::Null)
+                );
+            }
+        }
+    }
+    assert_eq!(encoded, legacy);
     // No yesterday was kept.
     assert_eq!(stopped.today.yesterday_by_now, None);
     let catalog = stopped.catalog.unwrap();

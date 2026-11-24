@@ -42,6 +42,7 @@ pub(crate) struct NodeEntry {
     pub id: String,
     pub uuid: uuid::Uuid,
     pub name: String,
+    pub location: dto::location::Location,
     pub subscription: Option<String>,
     pub node: Arc<Node>,
 }
@@ -60,6 +61,7 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
             Arc::new(NodeEntry {
                 id: ids::short_id(uuid),
                 uuid,
+                location: crate::regions::locate(&name),
                 name,
                 subscription: Some(subscription.to_owned()),
                 node: Arc::new(node),
@@ -442,6 +444,7 @@ impl Model {
             error: None,
             is_group: is_group(id),
             subscription_id: None,
+            location: Default::default(),
         };
         if member.is_group {
             member.name = self.group(id).map(|g| g.name.clone()).unwrap_or_default();
@@ -449,6 +452,7 @@ impl Model {
             let entry = &self.nodes[i];
             let latency = self.latency.get(id).copied().unwrap_or_default();
             member.name = entry.name.clone();
+            member.location = entry.location.clone();
             member.latency_ms = latency.ms;
             member.failed = latency.failed;
             member.error = latency.error;

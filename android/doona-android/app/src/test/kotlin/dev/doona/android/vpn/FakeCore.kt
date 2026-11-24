@@ -11,6 +11,8 @@ internal class FakeCore : CoreBridge {
 
     @Volatile var schema = CORE_SCHEMA
 
+    @Volatile var initError: Exception? = null
+
     @Volatile var callGate: CountDownLatch? = null
 
     @Volatile var callError: Throwable? = null
@@ -21,6 +23,7 @@ internal class FakeCore : CoreBridge {
     /** Every call that reached the core, logged before [callGate] holds it. */
     val entered = CopyOnWriteArrayList<String>()
     val calls = CopyOnWriteArrayList<Pair<String, String>>()
+    val configs = CopyOnWriteArrayList<String>()
     val snapshots = AtomicInteger()
 
     /** Served first, in order, before the fixtures. */
@@ -36,9 +39,15 @@ internal class FakeCore : CoreBridge {
     /** Runs as the core starts a generation. */
     @Volatile var onStart: () -> Unit = {}
 
-    override fun init(dataDir: String) = """{"schema":$schema}"""
+    override fun init(dataDir: String): String {
+        initError?.let { throw it }
+        return """{"schema":$schema}"""
+    }
 
-    override fun start(tunFd: Int, configJson: String) = onStart()
+    override fun start(tunFd: Int, configJson: String) {
+        configs += configJson
+        onStart()
+    }
 
     override fun stop() = Unit
 
