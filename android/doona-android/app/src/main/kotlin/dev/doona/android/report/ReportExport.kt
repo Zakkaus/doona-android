@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -30,7 +32,7 @@ data class ExportedCrashes(val names: List<String>, val mark: Long)
  * A report written and ready to share: the zip at [file], the export's [token], which its share sheet's callback
  * carries, and the crash files a pick in that sheet clears ([crashes]; none without the core's listing).
  */
-data class ReportZip(val file: File, val token: String, val crashes: ExportedCrashes?)
+data class ReportZip(val file: File, val token: String, val crashes: ExportedCrashes?, val issueLink: String?)
 
 /**
  * The diagnostic report export: a zip in [outDir] of `report.json` ([reportJson]) and the crash files, which a share
@@ -40,7 +42,7 @@ data class ReportZip(val file: File, val token: String, val crashes: ExportedCra
  * written meanwhile stays, and a late pick in an earlier sheet clears only its own export's. A clear that does not
  * succeed is sent again at the next start ([sweep]). A sheet closed without a pick keeps them. Without the core's
  * listing (the core is unavailable) the zip takes the app's own, and nothing is cleared. An app crash file goes into the
- * zip only in the current format, its lines checked again ([exportedCrash]); `report.json` names only the files the zip
+ * zip only in the current format, its lines checked again; `report.json` names only the files the zip
  * holds, and a pick clears only those. Each zip is written under a part name and then takes a name of its own; one a
  * sheet took is deleted [SHARE_GRACE_MS] after the sheet returns ([returned]), which leaves the app picked time to read
  * it, and one no sheet took at once ([notOpened]); [sweep] removes what an earlier run left. Android-free; the share
@@ -72,20 +74,24 @@ class ReportExport(
      * Writes the report and keeps its token, before any sheet can open for it: null when the zip or the token could not
      * be written. Takes the crash offer down. The expiry check and the post-write reset never hold up the export.
      */
-    suspend fun build(options: RedactionOptions = RedactionOptions()): ReportZip? {
+    suspend fun build(options: RedactionOptions = RedactionOptions(), failure: ReportFailure? = null): ReportZip? {
         offer.dismiss()
         logLevels.expireIfDue()
         val core = engine.diagnostics()
         val events = AppEvents.snapshot()
         val catalog = engine.catalog.value
         val members = catalog?.nodeMembers().orEmpty()
-        val ids = members.take(MAX_LISTED_NODES).map { it.id }
-        val endpoints = if (ids.isEmpty()) emptyMap() else engine.nodes(ids).getOrNull().orEmpty().associateBy { it.id }
+        val endpoints = if (options.showNodeEndpoints && members.isNotEmpty()) {
+            engine.nodes(members.take(MAX_LISTED_NODES).map { it.id }).getOrNull().orEmpty().associateBy { it.id }
+        } else {
+            emptyMap()
+        }
         val engineView = EngineView(engine.status.value, engine.settings.value, catalog, members, endpoints)
         val code = (core.exceptionOrNull() as? EngineException)?.code?.name
         return try {
             withContext(io) {
-                write(core, engineView, events, ReportScrubber(options)).also {
+                val addresses = if (options.showOwnAddresses) ownAddresses() else emptyList()
+                write(core, engineView, events, addresses, failure).also {
                     logLevels.endCapture()
                     AppEvents.action("export", "write", if (core.isSuccess) "ok" else "partial", code ?: "ok")
                 }
@@ -167,15 +173,29 @@ class ReportExport(
     }
 
     /** The zip, and the export's token saved before any sheet can open for it: a token that cannot be saved fails the export. */
-    private fun write(core: Result<CoreDiagnostics>, engineView: EngineView, events: List<AppEvent>, scrubber: ReportScrubber): ReportZip {
+    private fun write(
+        core: Result<CoreDiagnostics>,
+        engineView: EngineView,
+        events: List<AppEvent>,
+        addresses: List<InetAddress>,
+        failure: ReportFailure?,
+    ): ReportZip {
+        val scrubber = ReportScrubber()
         val listing = core.getOrNull()
         val names = listing?.crashes?.map { it.name } ?: crashes.list().map { it.name }
         // Left out, with their names: a file gone since the listing, an empty one, which is no crash file, and an app file
         // of an earlier format.
-        val files = names.mapNotNull { name -> crashes.read(name)?.let(scrubber::crash)?.let { name to it } }
+        val known = KnownNames()
+        val files = names.mapNotNull { name -> crashes.read(name)?.let { scrubber.crash(it, known) }?.let { name to it } }
         val at = clock()
         val held = files.map { it.first }
-        val json = reportJson(at, app(), engineView, core, events, held, ownAddresses(), scrubber)
+        val appInfo = app()
+        val diagnostics = scrubber.diagnostics(core, held)
+        val json = reportJson(at, appInfo, engineView, diagnostics, events, held, addresses, scrubber)
+        val issueLink = failure?.let {
+            val coreVersion = ((diagnostics["core"] as? JsonObject)?.get("version") as? JsonPrimitive)?.content
+            GitHubIssueLink.build(it, appInfo, coreVersion, events, scrubber)
+        }
         val zip = publishZip(STAMP.format(Instant.ofEpochMilli(at)), json, files)
         val token = UUID.randomUUID().toString()
         val cleared = listing?.let { l -> held.takeIf { it.isNotEmpty() }?.let { ExportedCrashes(it, l.crashMark) } }
@@ -185,7 +205,7 @@ class ReportExport(
             zip.delete()
             throw e
         }
-        return ReportZip(zip, token, cleared)
+        return ReportZip(zip, token, cleared, issueLink)
     }
 
     /**

@@ -15,14 +15,8 @@ internal val actionText = Regex(ACTION_TEXT)
 /** How severe an app event is. */
 enum class AppEventLevel { Info, Warn }
 
-/** Event text holds actions only; optional identifiers come from structured records, never from log text. */
-data class AppEvent(
-    val atEpochMs: Long,
-    val level: AppEventLevel,
-    val text: String,
-    val visitedDomain: String? = null,
-    val appPackage: String? = null,
-)
+/** One event of the app: time, level, and a fixed-format diagnostic message. */
+data class AppEvent(val atEpochMs: Long, val level: AppEventLevel, val text: String)
 
 /**
  * The app's last [CAPACITY] events, oldest first, for the diagnostic report. Process-wide, written from any thread. Its
@@ -37,14 +31,8 @@ object AppEvents {
     private val lock = Any()
     private val ring = ArrayDeque<AppEvent>(CAPACITY)
 
-    fun record(
-        level: AppEventLevel,
-        text: String,
-        atEpochMs: Long = System.currentTimeMillis(),
-        visitedDomain: String? = null,
-        appPackage: String? = null,
-    ): AppEvent {
-        val event = AppEvent(atEpochMs, level, text.take(MAX_TEXT), visitedDomain, appPackage)
+    fun record(level: AppEventLevel, text: String, atEpochMs: Long = System.currentTimeMillis()): AppEvent {
+        val event = AppEvent(atEpochMs, level, text.take(MAX_TEXT))
         synchronized(lock) {
             if (ring.size == CAPACITY) ring.removeFirst()
             ring.addLast(event)

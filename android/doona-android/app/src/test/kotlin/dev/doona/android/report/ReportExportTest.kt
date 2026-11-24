@@ -38,7 +38,7 @@ class ReportExportTest : ExportFixture() {
         val crash = appCrash(1_795_300_150_000)
         engine.crashes = listOf(CrashFile(crash, crashDir.resolve(crash).length()))
         AppEvents.record(AppEventLevel.Info, "updateSubscription: ok after 1840 ms", 1_795_300_190_000)
-        AppEvents.record(AppEventLevel.Warn, "start 3 failed: StartFailed after 412 ms", 1_795_300_191_000)
+        AppEvents.record(AppEventLevel.Warn, "command=start phase=complete outcome=failed code=StartFailed elapsedMs=412", 1_795_300_191_000)
 
         val zip = entries(export(engine).build()!!.file)
         assertEquals(setOf(ReportExport.REPORT_ENTRY, "crash/$crash"), zip.keys)
@@ -51,8 +51,8 @@ class ReportExportTest : ExportFixture() {
         val catalog = report["settings"]!!.jsonObject["catalog"]!!.jsonObject
         val nodes = catalog["nodeList"]!!.jsonArray.map { it.jsonObject }
         assertEquals(listOf("n-1a2b3c4d", "n-9f8e7d6c", "n-00112233"), nodes.map { it["code"]!!.jsonPrimitive.content })
-        assertEquals(listOf("host-1", "host-2", "host-3"), nodes.map { it["endpoint"]!!.jsonPrimitive.content })
-        assertFalse("node-1.example.net" in all)
+        assertTrue(nodes.none { "endpoint" in it })
+        assertFalse("ownAddresses" in report.getValue("device").jsonObject)
         assertEquals("s1", catalog["subscriptions"]!!.jsonArray.single().jsonObject["id"]!!.jsonPrimitive.content)
         assertEquals("group:1", catalog["groups"]!!.jsonArray[0].jsonObject["selected"]!!.jsonPrimitive.content)
         assertEquals(2, report["events"]!!.jsonArray.size)
@@ -438,7 +438,7 @@ class ReportExportTest : ExportFixture() {
     fun `an app crash file of an earlier format is left out of the zip and the report, and is not cleared`() = runTest {
         crashDir.mkdirs()
         val core = "1795300140000.txt"
-        val coreText = "source: core\natEpochMs: 1795300140000\nmessage: panic in unknown\n\nbacktrace:\n0 libdoonacore.so 0x1f2e\n"
+        val coreText = "source: core\natEpochMs: 1795300140000\nlocation: src/api.rs:42:7\nmessage: panic in doonacore::api\n\nbacktrace:\n0 libdoonacore.so 0x1f2e\n"
         crashDir.resolve(core).writeText(coreText)
         val placeholder = "1795300145000.txt"
         crashDir.resolve(placeholder).writeText("")

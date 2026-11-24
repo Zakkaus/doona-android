@@ -82,11 +82,11 @@ internal class KnownNames(private val loader: ClassLoader? = APP_LOADER) {
 }
 
 /** Only recognised crash files cross the export boundary; neither source header vouches for the rest of the file. */
-internal fun ReportScrubber.crash(bytes: ByteArray): ByteArray? {
+internal fun ReportScrubber.crash(bytes: ByteArray, names: KnownNames): ByteArray? {
     val text = bytes.decodeToString()
     val lines = when {
         text.startsWith(CORE_SOURCE) -> exportedCore(text.lineSequence().iterator())
-        text.startsWith(APP_HEADER) -> exportedApp(text.split('\n'), KnownNames())
+        text.startsWith(APP_HEADER) -> exportedApp(text.split('\n'), names)
         else -> return null
     }
     return lines.joinToString("\n").toByteArray()
@@ -102,7 +102,7 @@ private fun exportedCore(lines: Iterator<String>): List<String> = buildList {
         } else if (line == BACKTRACE) {
             inBacktrace = true
             add(line)
-        } else if (line in CORE_LINES || CORE_TIME.matches(line) || CORE_VERSION.matches(line)) {
+        } else if (line in CORE_LINES || CORE_TIME.matches(line) || CORE_VERSION.matches(line) || CORE_LOCATION.matches(line) || CORE_PANIC.matches(line)) {
             add(line)
         } else if (line.startsWith("message: ")) {
             add("message: $REDACTED")
@@ -112,14 +112,16 @@ private fun exportedCore(lines: Iterator<String>): List<String> = buildList {
 }
 
 private val CORE_TIME = Regex("""atEpochMs: -?\d{1,19}""")
+private const val CORE_SOURCE_PATH = "src/(?:[a-zA-Z0-9_]+/)*[a-zA-Z0-9_]+\\.rs:[0-9]+:[0-9]+"
+private const val CORE_DEPENDENCY = "[a-zA-Z0-9_+-]+(?: [0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][a-zA-Z0-9.+-]+)?)?"
+private val CORE_LOCATION = Regex("location: (?:$CORE_SOURCE_PATH|$CORE_DEPENDENCY)")
+private val CORE_PANIC = Regex("message: panic in [a-zA-Z0-9_]+(?:::[a-zA-Z0-9_]+)*")
 private val CORE_FRAME = Regex("""\d{1,2} (?:libdoonacore\.so|libc\.so(?:\.6)?|libart\.so|app_process64|libc\+\+_shared\.so|\?) 0x[0-9a-f]{1,16}""")
 private val CORE_LINES = setOf(
     "",
     "thread: doona-core",
     "thread: doona-carrier",
     "thread: other",
-    "location: unknown",
-    "message: panic in unknown",
     "message: internal error: entered unreachable code",
     "message: internal error: entered unreachable code: stream_transport returned an unknown transport",
     "message: debugFault",

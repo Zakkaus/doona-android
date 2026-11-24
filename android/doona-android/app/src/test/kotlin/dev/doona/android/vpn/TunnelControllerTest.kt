@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit
 
 /** Real threads, as on the phone: the core blocks the controller's thread while the test acts from another. */
 @RunWith(AndroidJUnit4::class)
+// Keep native-core startup in DoonaApplication from adding unrelated entries to AppEvents.
 @Config(application = Application::class)
 class TunnelControllerTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

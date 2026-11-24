@@ -14,7 +14,7 @@ class ExportedCrashTest {
 
     private fun file(lines: List<String>) = lines.joinToString("\n", postfix = "\n")
 
-    private fun exported(lines: List<String>) = ReportScrubber(RedactionOptions()).crash(file(lines).toByteArray())!!.decodeToString()
+    private fun exported(lines: List<String>) = ReportScrubber().crash(file(lines).toByteArray(), KnownNames())!!.decodeToString()
 
     @Test
     fun `the version line as the app writes it goes out`() {
@@ -58,6 +58,14 @@ class ExportedCrashTest {
     }
 
     @Test
+    fun `native crash preserves crate locations and modules`() {
+        for (location in listOf("src/api/diagnostics.rs:24:6", "tokio 1.47.1", "honk-outbound", "unknown")) {
+            val text = "source: core\natEpochMs: 1795300140000\nlocation: $location\nmessage: panic in tokio::runtime::park\n\nbacktrace:\n0 libdoonacore.so 0x42\n"
+            assertEquals(text, ReportScrubber().crash(text.toByteArray(), KnownNames())!!.decodeToString())
+        }
+    }
+
+    @Test
     fun `the app writes only a version line the export keeps`() {
         val app = AppInfo("0.1", 1, "debug", listOf("arm64-v8a"), "16", 36, "Google", "Pixel 9")
         assertEquals("0.1 debug arm64-v8a-android", app.crashVersion)
@@ -66,7 +74,7 @@ class ExportedCrashTest {
         assertEquals("unknown release unknown-android", app.copy(version = "", buildType = "release", abis = emptyList()).crashVersion)
         for (info in listOf(app, odd)) {
             val text = crashText("java.lang.IllegalStateException", null, true, info.crashVersion, 1_795_300_150_000)
-            assertEquals(text, ReportScrubber(RedactionOptions()).crash(text.toByteArray())!!.decodeToString())
+            assertEquals(text, ReportScrubber().crash(text.toByteArray(), KnownNames())!!.decodeToString())
         }
     }
 }

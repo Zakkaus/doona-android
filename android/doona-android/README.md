@@ -53,15 +53,15 @@ The app keeps 200 recent events, including command, phase, outcome and code for 
 and report exports. A JVM crash file preserves up to 50 recent allowlisted action entries within
 the 64 KiB file limit.
 
-The ZIP and `GitHubIssueLink.build` use the same redaction rules. Address and port, local IP
-addresses, visited domains and app identifiers use report-local aliases by default. The exporter
-reads endpoints only for listed nodes and local IPs from Android's active link. It does not infer
-visited domains or app identifiers from log text or collect a connection history.
+The ZIP omits node endpoints and local IP addresses by default. With either option enabled, it
+reads endpoints only for listed nodes or IPs from Android's active link. It does not collect
+visited domains or app names.
 Subscription links, tokens, credentials and raw payloads are not export options.
 
-The GitHub link contains failure and device details and at most 50 recent actions. It drops the
-oldest actions first to keep the encoded URL below 8,000 characters. Building the link makes no
-network request; the user attaches the ZIP separately.
+A report can also include a prefilled GitHub link. The ZIP and link use the same scrubber and
+event snapshot. The link contains failure and device details and at most 50 recent actions.
+It drops the oldest actions first to keep the encoded URL below 8,000 characters. No network
+request is made; the user attaches the ZIP separately.
 
 ## Icons and flags
 

@@ -2,17 +2,23 @@ package dev.doona.android.report
 
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.LogLevel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.net.Inet6Address
 import java.net.InetAddress
+import java.net.URI
+import java.net.URLDecoder
+import java.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReportRedactionTest : ExportFixture() {
@@ -26,13 +32,11 @@ class ReportRedactionTest : ExportFixture() {
             defaults,
             defaults.copy(showNodeEndpoints = true),
             defaults.copy(showOwnAddresses = true),
-            defaults.copy(showVisitedDomains = true),
-            defaults.copy(showAppNames = true),
         )
-        val sensitive = listOf("node-1.example.net:443", "192.0.2.84", VISITED, PACKAGE)
+        val sensitive = listOf("node-1.example.net:443", "192.0.2.84")
         for ((index, option) in options.withIndex()) {
             AppEvents.clear()
-            AppEvents.record(AppEventLevel.Warn, ACTION, visitedDomain = VISITED, appPackage = PACKAGE)
+            AppEvents.record(AppEventLevel.Warn, ACTION)
             val report = entries(reports.build(option)!!.file).getValue(ReportExport.REPORT_ENTRY)
             assertEquals(listOfNotNull(sensitive.getOrNull(index - 1)), sensitive.filter { it in report })
             for (secret in secrets) assertFalse(secret, secret in report)
@@ -40,39 +44,57 @@ class ReportRedactionTest : ExportFixture() {
     }
 
     @Test
-    fun `repeated domains and packages have stable distinct aliases`() = runTest {
-        val engine = fixtureEngine()
-        AppEvents.record(AppEventLevel.Warn, ACTION, visitedDomain = VISITED, appPackage = PACKAGE)
-        AppEvents.record(AppEventLevel.Warn, ACTION, visitedDomain = "other.example", appPackage = "org.example.other")
-        AppEvents.record(AppEventLevel.Warn, ACTION, visitedDomain = VISITED, appPackage = PACKAGE)
-        val report = entries(export(engine).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
-        val events = Json.parseToJsonElement(report).jsonObject.getValue("events").jsonArray.map { it.jsonObject }
-        val first = events.first()
-        val other = events[1]
-        val last = events.last()
-        for ((key, prefix) in listOf("domain" to "host-", "appName" to "app-")) {
-            assertTrue(first.getValue(key).toString().startsWith("\"$prefix"))
-            assertEquals(first[key], last[key])
-            assertFalse(first[key] == other[key])
-        }
+    fun `fixed failure warnings remain readable without admitting exception messages`() = runTest {
+        val safe = listOf(
+            "init failed: NoClassDefFoundError",
+            "startForeground threw SecurityException",
+            "updateSubscription reply unreadable: SerializationException",
+            "per-app policy unreadable: IOException",
+            "snapshot unreadable: IllegalStateException",
+            "subscription-refresh: settings read failed (IOException)",
+            "subscription-refresh: schedule write failed (SQLiteException)",
+            "subscription-refresh: update failed (FetchFailed)",
+        )
+        val unsafe = listOf("init failed: https://example.test/key", "nodes reply unreadable: IOException: password=secret")
+        (safe + unsafe).forEach { AppEvents.record(AppEventLevel.Warn, it) }
+        val report = entries(export(fixtureEngine()).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
+        val texts = Json.parseToJsonElement(report).jsonObject.getValue("events").jsonArray.map { it.jsonObject.getValue("text").jsonPrimitive.content }
+        assertEquals(safe + listOf(REDACTED, REDACTED), texts)
     }
 
     @Test
     fun `all switches leave untrusted ZIP text and unknown fields private`() = runTest {
         val fake = fixtureEngine()
         val crashName = "1795300140000.txt"
+        val appCrash = "1795300150000.txt"
         val sub = fake.catalog.value!!.subscriptions.single().url
         val credential = "test-user:test-pass"
         val token = "fixture-token-8842"
         val raw = "$sub $credential $token"
+        val nodeCredential = "u:p@h"
+        val nodeUrl = "https://node.example/sub?token=node-token"
+        val addressHost = "fixture-address-token"
+        val addressBytes = ByteArray(16).apply {
+            this[0] = 0x20
+            this[1] = 1
+            this[15] = 3
+        }
+        val address = Inet6Address.getByAddress(addressHost, addressBytes, 42)
         crashDir.mkdirs()
         crashDir.resolve(crashName).writeText(
             "source: core\natEpochMs: 1795300140000\nmessage: $raw\n\nbacktrace:\n0 libdoonacore.so 0x1f2e\n1 $credential 0x1f3e\n",
         )
-        fake.crashes = listOf(CrashFile(crashName, crashDir.resolve(crashName).length()))
+        val appText = crashText("java.lang.IllegalStateException", null, true, app.crashVersion, 1_795_300_150_000)
+        crashDir.resolve(appCrash).writeText(appText + "message: app-crash-token $raw\n  at $credential\n")
+        fake.crashes = listOf(crashName, appCrash).map { CrashFile(it, crashDir.resolve(it).length()) }
         AppEvents.record(AppEventLevel.Warn, "token=$token")
-        AppEvents.record(AppEventLevel.Warn, "GET $sub", visitedDomain = sub, appPackage = credential)
+        AppEvents.record(AppEventLevel.Warn, "GET $sub")
+        AppEvents.record(AppEventLevel.Warn, ACTION)
         val engine = object : Engine by fake {
+            override suspend fun nodes(ids: List<String>?) = fake.nodes(ids).map { nodes ->
+                listOf(nodes[0].copy(server = nodeCredential), nodes[1].copy(server = nodeUrl), nodes[2].copy(server = "2001:db8::21"))
+            }
+
             override suspend fun diagnostics(level: LogLevel?) = fake.diagnostics(level).map {
                 it.copy(
                     json = """
@@ -83,20 +105,26 @@ class ReportRedactionTest : ExportFixture() {
                 )
             }
         }
-        val files = entries(export(engine).build(SHOW_ALL)!!.file)
+        val result = export(engine, ownAddresses = { listOf(address) }).build(SHOW_ALL, ReportFailure(ErrorCode.Internal, "start", Instant.EPOCH))!!
+        val files = entries(result.file)
         val report = files.getValue(ReportExport.REPORT_ENTRY)
         val crash = files.getValue("crash/$crashName")
         assertTrue("\"code\": \"internal\"" in report)
         assertTrue("\"upTotal\": 12" in report)
         assertTrue("0 libdoonacore.so 0x1f2e" in crash)
+        assertTrue("[2001:db8::21]:443" in report)
+        assertTrue(address.hostAddress!!.substringBefore('%') in report)
+        assertTrue(appText.trimEnd() in files.getValue("crash/$appCrash"))
+        val draft = URLDecoder.decode(URI(result.issueLink!!).rawQuery, Charsets.UTF_8.name())
+        assertTrue(ACTION in draft)
+        assertFalse("[2001:db8::21]:443" in draft)
         val zipText = files.values.joinToString("\n")
-        for (secret in secrets + listOf(sub, credential, token)) assertFalse(secret, secret in zipText)
+        val planted = secrets + listOf(sub, credential, token, nodeCredential, nodeUrl, addressHost, "%42", "app-crash-token")
+        assertEquals("exported planted secrets", emptyList<String>(), planted.filter { it in zipText || it in draft })
     }
 
     companion object {
         private const val ACTION = "command=start phase=complete outcome=failed code=Internal"
-        private const val VISITED = "visited.example"
-        private const val PACKAGE = "org.example.browser"
-        private val SHOW_ALL = RedactionOptions(true, true, true, true)
+        private val SHOW_ALL = RedactionOptions(showNodeEndpoints = true, showOwnAddresses = true)
     }
 }

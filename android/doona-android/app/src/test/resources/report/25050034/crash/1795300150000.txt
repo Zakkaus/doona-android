@@ -1,0 +1,10 @@
+source: app
+format: 1
+atEpochMs: 1795300150000
+version: 0.1 debug arm64-v8a-android
+thread: main
+location: unknown
+message: uncaught exception
+
+backtrace:
+exception: java.lang.IllegalStateException

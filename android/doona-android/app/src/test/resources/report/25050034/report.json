@@ -1,0 +1,178 @@
+{
+    "format": 1,
+    "atEpochMs": 1795300200000,
+    "app": {
+        "version": "0.1",
+        "versionCode": 1,
+        "build": "debug",
+        "abis": [
+            "arm64-v8a"
+        ]
+    },
+    "core": {
+        "version": "0.1.0",
+        "schema": 2,
+        "profile": "debug",
+        "target": "aarch64-android",
+        "features": []
+    },
+    "device": {
+        "android": "16",
+        "sdk": 36,
+        "manufacturer": "Google",
+        "model": "Pixel 9"
+    },
+    "settings": {
+        "status": {
+            "state": "Running"
+        },
+        "mode": "Global",
+        "perApp": {
+            "policy": "OnlyListed",
+            "apps": 1
+        },
+        "catalog": {
+            "mode": "Global",
+            "mainGroup": null,
+            "ruleSource": {
+                "template": "cn-direct",
+                "version": 2,
+                "subscription": null,
+                "blockQuic": false,
+                "rules": 5,
+                "lines": 23,
+                "skipped": 0,
+                "error": null
+            },
+            "subscriptions": [
+                {
+                    "id": "s1",
+                    "nodes": 3,
+                    "updatedAtEpochMs": 1795300000000,
+                    "failed": true,
+                    "quota": true
+                }
+            ],
+            "groups": [
+                {
+                    "index": 0,
+                    "kind": "Selector",
+                    "members": 4,
+                    "nodes": 3,
+                    "pinned": false,
+                    "testing": false,
+                    "selected": "group:1"
+                },
+                {
+                    "index": 1,
+                    "kind": "UrlTest",
+                    "members": 3,
+                    "nodes": 3,
+                    "pinned": false,
+                    "testing": false,
+                    "selected": "n-1a2b3c4d"
+                }
+            ],
+            "nodes": {
+                "total": 3,
+                "tested": 1,
+                "failed": 1,
+                "localNetwork": 1
+            },
+            "nodeList": [
+                {
+                    "code": "n-1a2b3c4d",
+                    "subscription": "s1",
+                    "latencyMs": 42,
+                    "failed": false,
+                    "error": null
+                },
+                {
+                    "code": "n-9f8e7d6c",
+                    "subscription": "s1",
+                    "latencyMs": null,
+                    "failed": true,
+                    "error": "LocalNetwork"
+                },
+                {
+                    "code": "n-00112233",
+                    "subscription": "s1",
+                    "latencyMs": null,
+                    "failed": false,
+                    "error": null
+                }
+            ]
+        }
+    },
+    "diagnostics": {
+        "core": {
+            "version": "0.1.0",
+            "schema": 2,
+            "profile": "debug",
+            "target": "aarch64-android",
+            "features": []
+        },
+        "level": "info",
+        "events": [
+            {
+                "atEpochMs": 1795300140000,
+                "level": "warn",
+                "name": "start",
+                "code": "internal",
+                "detail": null,
+                "counts": {},
+                "ms": 4
+            }
+        ],
+        "overwritten": 0,
+        "snapshot": {
+            "atEpochMs": 1795300140000,
+            "revision": 1,
+            "running": true,
+            "generation": 1,
+            "error": null,
+            "warning": null
+        },
+        "stats": {
+            "traffic": {
+                "upTotal": 1,
+                "downTotal": 2,
+                "activeFlows": 3,
+                "upPeak": 4,
+                "downPeak": 5
+            },
+            "today": {
+                "upTotal": 6,
+                "downTotal": 7,
+                "yesterdayByNow": null
+            }
+        },
+        "crashes": [
+            {
+                "name": "1795300140000.txt",
+                "bytes": 190
+            },
+            {
+                "name": "1795300150000.txt",
+                "bytes": 198
+            }
+        ],
+        "crashMark": 1795300150000
+    },
+    "events": [
+        {
+            "atEpochMs": 1795300190000,
+            "level": "info",
+            "text": "updateSubscription: ok after 1840 ms"
+        },
+        {
+            "atEpochMs": 1795300191000,
+            "level": "warn",
+            "text": "init failed: IOException"
+        }
+    ],
+    "crashes": [
+        "1795300140000.txt",
+        "1795300150000.txt"
+    ]
+}

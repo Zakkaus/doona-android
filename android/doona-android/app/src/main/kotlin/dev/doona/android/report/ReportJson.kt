@@ -4,8 +4,6 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Build
 import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.CoreDiagnostics
-import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.Member
@@ -85,21 +83,20 @@ internal fun reportJson(
     atEpochMs: Long,
     app: AppInfo,
     engine: EngineView,
-    core: Result<CoreDiagnostics>,
+    diagnostics: JsonObject,
     events: List<AppEvent>,
     crashes: List<String>,
     addresses: List<InetAddress>,
     scrubber: ReportScrubber,
 ): String {
-    val diagnostics = scrubber.diagnostics(core, crashes)
     val report = buildJsonObject {
         put("format", REPORT_FORMAT)
         put("atEpochMs", atEpochMs)
         putJsonObject("app") {
-            put("version", scrubber.version(app.version))
+            put("version", app.version)
             put("versionCode", app.versionCode)
-            put("build", app.buildType.takeIf { it in BUILD_TYPES } ?: UNKNOWN)
-            putJsonArray("abis") { app.abis.forEach { if (it in ABIS) add(it) } }
+            put("build", app.buildType)
+            putJsonArray("abis") { app.abis.forEach { add(it) } }
         }
         put("core", diagnostics["core"] ?: JsonNull)
         putJsonObject("device") {
@@ -121,8 +118,6 @@ internal fun reportJson(
                     put("atEpochMs", e.atEpochMs)
                     put("level", e.level.name.lowercase())
                     put("text", scrubber.eventText(e))
-                    scrubber.domain(e)?.let { put("domain", it) }
-                    scrubber.appName(e)?.let { put("appName", it) }
                 }
             }
         }

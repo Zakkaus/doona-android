@@ -30,7 +30,7 @@ internal fun ReportScrubber.diagnostics(core: Result<CoreDiagnostics>, crashes: 
         reply.obj("core")?.let { put("core", scrubBuild(it)) }
         copyChoice(reply, "level", CORE_LEVELS)
         reply.array("events")?.let { put("events", JsonArray(it.mapNotNull { e -> (e as? JsonObject)?.let(::coreEvent) })) }
-        copyNumbers(reply, DIAGNOSTIC_NUMBERS)
+        copyNumber(reply, "overwritten")
         when (val snapshot = reply["snapshot"]) {
             is JsonObject -> put("snapshot", coreSnapshot(snapshot))
             JsonNull -> put("snapshot", JsonNull)
@@ -47,12 +47,13 @@ internal fun ReportScrubber.diagnostics(core: Result<CoreDiagnostics>, crashes: 
                 }
             }
         }
+        copyNumber(reply, "crashMark")
     }
 }
 
 private fun ReportScrubber.scrubBuild(source: JsonObject) = buildJsonObject {
     put("version", version(source.string("version")))
-    copyNumbers(source, SCHEMA)
+    copyNumber(source, "schema")
     copyChoice(source, "profile", BUILD_TYPES)
     source.string("target")?.takeIf(CORE_TARGET::matches)?.let { put("target", it) }
     source.array("features")?.let { put("features", JsonArray(it.filter { feature -> feature == FAULT_FEATURE })) }
@@ -61,18 +62,21 @@ private fun ReportScrubber.scrubBuild(source: JsonObject) = buildJsonObject {
 private fun coreEvent(source: JsonObject): JsonObject? {
     val name = source.string("name")?.takeIf { it in CORE_EVENTS } ?: return null
     return buildJsonObject {
-        put("name", name)
+        copyNumber(source, "atEpochMs")
         copyChoice(source, "level", CORE_LEVELS)
+        put("name", name)
         copyChoice(source, "code", EVENT_CODES)
         copyChoice(source, "detail", CORE_DETAILS)
-        copyNumbers(source, EVENT_NUMBERS)
         source.obj("counts")?.let { put("counts", buildJsonObject { copyNumbers(it, COUNTS) }) }
+        copyNumber(source, "ms")
     }
 }
 
 private fun coreSnapshot(source: JsonObject) = buildJsonObject {
-    copyNumbers(source, SNAPSHOT_NUMBERS)
+    copyNumber(source, "atEpochMs")
+    copyNumber(source, "revision")
     (source["running"] as? JsonPrimitive)?.takeIf { !it.isString && it.booleanOrNull != null }?.let { put("running", it) }
+    copyNumber(source, "generation")
     copyChoice(source, "error", CORE_ERROR_CODES)
     copyChoice(source, "warning", CORE_ERROR_CODES)
 }
@@ -94,13 +98,15 @@ private fun JsonObjectBuilder.copyChoice(source: JsonObject, key: String, choice
 }
 
 private fun JsonObjectBuilder.copyNumbers(source: JsonObject, keys: List<String>) {
-    for (key in keys) {
-        val value = source[key] as? JsonPrimitive ?: continue
-        if (value == JsonNull || (!value.isString && value.longOrNull != null)) put(key, value)
-    }
+    for (key in keys) copyNumber(source, key)
 }
 
-internal val CORE_ERROR_CODES = setOf("invalid_argument", "not_found", "fetch_failed", "too_large", "parse_failed", "no_nodes", "busy", "internal", "local_network")
+private fun JsonObjectBuilder.copyNumber(source: JsonObject, key: String) {
+    val value = source[key] as? JsonPrimitive ?: return
+    if (value == JsonNull || (!value.isString && value.longOrNull != null)) put(key, value)
+}
+
+private val CORE_ERROR_CODES = setOf("invalid_argument", "not_found", "fetch_failed", "too_large", "parse_failed", "no_nodes", "busy", "internal", "local_network")
 private val IO_CODES = setOf("not_found", "permission_denied", "storage_full", "read_only", "invalid_data", "timed_out", "io")
 private val EVENT_CODES = CORE_ERROR_CODES + IO_CODES
 private val CORE_LEVELS = setOf("error", "warn", "info", "debug")
@@ -113,10 +119,6 @@ private val CORE_EVENTS = REPORT_COMMANDS + setOf(
 private val CORE_DETAILS = REPORT_COMMANDS + CORE_LEVELS + IO_CODES + setOf(
     "Global", "Direct", "Rule", "cancelled", "stateSetAside", "repeated", "cleared", "detached", "carriersOpen", "stats.json", "latency.json",
 )
-private val SCHEMA = listOf("schema")
-private val DIAGNOSTIC_NUMBERS = listOf("overwritten", "crashMark")
-private val SNAPSHOT_NUMBERS = listOf("atEpochMs", "revision", "generation")
-private val EVENT_NUMBERS = listOf("atEpochMs", "ms")
 private val COUNTS = listOf("generation", "nodes", "subscriptions", "probes", "failed", "tasks", "files")
 private val TRAFFIC_NUMBERS = listOf("upTotal", "downTotal", "activeFlows", "upPeak", "downPeak")
 private val TODAY_NUMBERS = listOf("upTotal", "downTotal", "yesterdayByNow")

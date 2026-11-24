@@ -27,7 +27,7 @@ interface ReportExporter {
      * crash offer down. Reads the disk on its own dispatcher. If the caller leaves while the zip is being written,
      * a completed zip remains for the next sweep.
      */
-    suspend fun export(options: RedactionOptions = RedactionOptions()): ReportShare?
+    suspend fun export(options: RedactionOptions = RedactionOptions(), failure: ReportFailure? = null): ReportShare?
 }
 
 /**
@@ -35,6 +35,8 @@ interface ReportExporter {
  * did there, or [notOpened] when it could not open, so the zip goes; a zip neither is called for goes at the next start.
  */
 class ReportShare internal constructor(val intent: Intent, private val zip: ReportZip, private val reports: ReportExport) {
+    val issueLink: String? get() = zip.issueLink
+
     fun returned() = reports.returned(zip)
 
     fun notOpened() = reports.notOpened(zip)
@@ -52,8 +54,8 @@ class AppReportExporter(
 
     override fun dismissCrash() = reports.dismissCrash()
 
-    override suspend fun export(options: RedactionOptions): ReportShare? {
-        val zip = reports.build(options) ?: return null
+    override suspend fun export(options: RedactionOptions, failure: ReportFailure?): ReportShare? {
+        val zip = reports.build(options, failure) ?: return null
         val title = context.getString(R.string.report_share_title)
         val intent = try {
             withContext(io) { reportShareIntent(context, zip.file, title, zip.token) }
