@@ -1,5 +1,8 @@
 package dev.doona.android.data.geo
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -8,8 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.File
-import java.io.IOException
+import java.io.InputStream
 
 class GeoAssetsTest {
     @get:Rule
@@ -26,16 +28,14 @@ class GeoAssetsTest {
         val assets = GeoAssets({ folder.root }) { bundled.getValue(it).byteInputStream() }
         val decisions = mapOf(null to true, "2026-11-22" to true, "2026-11-23" to false, "2026-11-24" to false)
         for ((active, offer) in decisions) {
-            val path = assets.withBundle({ active }) { path ->
-                assertEquals("active=$active", offer, path != null)
-                if (path != null) {
-                    val stage = File(path)
-                    assertEquals(folder.root, stage.parentFile)
-                    assertEquals(bundled.mapKeys { it.key.substringAfter('/') }, stage.listFiles()!!.associate { it.name to it.readText() })
-                }
-                path
+            val stage = assets.prepare { active }
+            assertEquals("active=$active", offer, stage != null)
+            if (stage != null) {
+                assertEquals(folder.root, stage.parentFile)
+                assertEquals(bundled.mapKeys { it.key.substringAfter('/') }, stage.listFiles()!!.associate { it.name to it.readText() })
+                assets.discard(stage)
+                assertFalse(stage.exists())
             }
-            if (path != null) assertFalse(File(path).exists())
         }
     }
 
@@ -44,23 +44,41 @@ class GeoAssetsTest {
         val stale = folder.newFolder("geo-apk-stage")
         stale.resolve("geoip.dat").writeText("partial copy")
         val assets = GeoAssets({ folder.root }) { bundled.getValue(it).byteInputStream() }
-        assets.withBundle({ "2026-11-23" }) { path ->
-            assertNull(path)
-            assertFalse(stale.exists())
-        }
+        assertNull(assets.prepare { "2026-11-23" })
+        assertFalse(stale.exists())
     }
 
     @Test
-    fun aCopyFailureRemovesThePartialStageWithoutCallingStart() = runBlocking {
-        val failure = IOException("asset read failed")
+    fun cancellationDuringAChunkDoesNotReadAnotherChunkOrLeaveAStage() = runBlocking {
+        lateinit var copy: Job
+        var reads = 0
+        var cancelled = false
         val assets = GeoAssets({ folder.root }) { path ->
-            if (path == "geo/geosite.dat") throw failure
-            bundled.getValue(path).byteInputStream()
+            if (path == "geo/pins.json") {
+                bundled.getValue(path).byteInputStream()
+            } else {
+                object : InputStream() {
+                    override fun read(): Int = error("expected bulk reads")
+
+                    override fun read(bytes: ByteArray): Int {
+                        reads++
+                        copy.cancel()
+                        return if (reads == 1) 1 else -1
+                    }
+                }
+            }
         }
-        val result = runCatching { assets.withBundle<Unit>({ null }) { error("start called with an incomplete bundle") } }
-        val thrown = result.exceptionOrNull()
-        assertTrue(thrown is IOException)
-        assertEquals(failure.message, thrown?.message)
+        copy = launch {
+            try {
+                assets.prepare { null }
+            } catch (e: CancellationException) {
+                cancelled = true
+                throw e
+            }
+        }
+        copy.join()
+        assertTrue(cancelled)
+        assertEquals(1, reads)
         assertTrue(folder.root.listFiles()!!.isEmpty())
     }
 }

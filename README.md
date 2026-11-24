@@ -71,8 +71,10 @@ cannot move to newer bytes, but GitHub may garbage-collect old `release` commits
 mirror is an open owner decision.
 
 On VPN start, the app offers the bundled pair when no geo generation is active or the APK's
-release date is newer. It deletes the extracted files when the core returns. Automatic updates
-run weekly by default and only while the VPN runs. Downloads take effect at the next VPN start.
+release date is newer. It deletes the temporary files after a successful start and clears any
+leftovers on the next start. The app checks for updates on connection when the last success is
+older than the configured interval. A periodic job also checks while the VPN runs. The default
+interval is one week. Downloads take effect at the next VPN start.
 
 ## Run a bench
 

@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -28,6 +30,7 @@ internal suspend fun scheduleGeoRefresh(workManager: WorkManager, setting: GeoUp
     val interval = setting.duration
     if (interval == null) {
         workManager.cancelUniqueWork(GEO_REFRESH_WORK).await()
+        workManager.cancelUniqueWork(GEO_ON_CONNECT_WORK).await()
         return
     }
     val request = PeriodicWorkRequestBuilder<GeoRefreshWorker>(
@@ -35,13 +38,19 @@ internal suspend fun scheduleGeoRefresh(workManager: WorkManager, setting: GeoUp
         TimeUnit.MILLISECONDS,
         1.hours.inWholeMilliseconds,
         TimeUnit.MILLISECONDS,
-    ).setConstraints(
-        Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .setRequiresBatteryNotLow(true)
-            .build(),
-    ).build()
+    ).setConstraints(geoRefreshConstraints()).build()
     workManager.enqueueUniquePeriodicWork(GEO_REFRESH_WORK, ExistingPeriodicWorkPolicy.UPDATE, request).await()
 }
 
+internal suspend fun scheduleGeoRefreshOnConnect(workManager: WorkManager) {
+    val request = OneTimeWorkRequestBuilder<GeoRefreshWorker>().setConstraints(geoRefreshConstraints()).build()
+    workManager.enqueueUniqueWork(GEO_ON_CONNECT_WORK, ExistingWorkPolicy.KEEP, request).await()
+}
+
+private fun geoRefreshConstraints() = Constraints.Builder()
+    .setRequiredNetworkType(NetworkType.CONNECTED)
+    .setRequiresBatteryNotLow(true)
+    .build()
+
+internal const val GEO_ON_CONNECT_WORK = "geo-refresh-on-connect"
 internal const val GEO_REFRESH_WORK = "geo-refresh"

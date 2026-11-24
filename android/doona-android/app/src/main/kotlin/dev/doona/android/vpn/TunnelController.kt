@@ -10,15 +10,20 @@ import dev.doona.android.engine.Status
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.serializer
+import java.io.File
 
 /** Starting or running: a session the user has not ended. */
 internal val Status.active: Boolean get() = this is Status.Starting || this is Status.Running
@@ -77,7 +82,14 @@ internal class TunnelController(
     private var handled = 0L // Guarded by lock; written only by run(): the generation of the last command it finished.
 
     /** Executes commands in order until cancelled. The owner launches it once, off the main thread. */
-    suspend fun run(): Unit = coroutineScope {
+    suspend fun run() = try {
+        runCommands()
+    } finally {
+        // If cancellation arrived in JNI, the lane still owns the core it just started.
+        withContext(NonCancellable) { stopCore() }
+    }
+
+    private suspend fun runCommands(): Unit = coroutineScope {
         launch {
             if (opener.awaitSchema() == CORE_SCHEMA) commands.send(Command.CoreOpened)
         }
@@ -295,6 +307,7 @@ internal class TunnelController(
                 return
             }
             startCore(g, host)
+                .also { currentCoroutineContext().ensureActive() }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -327,21 +340,25 @@ internal class TunnelController(
         expireDebugCapture()?.join()
         if (!isCurrent(g)) return null
         val servers = host.bootstrapDns().ifEmpty { pendingBootstrapDns ?: bootstrapDns }
-        val assets = geoAssets ?: return startWithTun(g, host, routing, mtu, servers, null)
-        return assets.withBundle(::activeGeoRelease) { dir -> startWithTun(g, host, routing, mtu, servers, dir) }
+        val stage = geoAssets?.prepare(::activeGeoRelease)
+        currentCoroutineContext().ensureActive()
+        return startWithTun(g, host, routing, mtu, servers, stage)
     }
 
-    private fun activeGeoRelease(): String? =
-        CoreJson.result(core.call("configAssets", "{}"), ConfigAssetsDto.serializer()).release
+    private fun activeGeoRelease(): String? {
+        val args = CoreJson.encode(ConfigAssetsArgs.serializer(), ConfigAssetsArgs("status"))
+        return CoreJson.result(core.call("configAssets", args), ConfigAssetsDto.serializer()).release
+    }
 
-    private fun startWithTun(g: Long, host: TunHost, routing: AppRouting, mtu: Int, servers: List<String>, geoAssetDir: String?): Status.Failed? {
+    private fun startWithTun(g: Long, host: TunHost, routing: AppRouting, mtu: Int, servers: List<String>, stage: File?): Status.Failed? {
         if (!isCurrent(g)) return null
-        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(servers, mtu, geoAssetDir))
+        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(servers, mtu, stage?.path))
         val tun = host.establish(routing, mtu) ?: return Status.Failed(FailureReason.StartFailed)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
         tun.use {
             try {
                 core.start(it.fd, config)
+                coreRunning = true
             } catch (e: IllegalStateException) {
                 // Only the core speaks in codes: it reports its own as the message of this exception. The log takes the
                 // code it maps to, never the message itself, which the diagnostic report carries (ARCH D21).
@@ -349,7 +366,8 @@ internal class TunnelController(
                 return Status.Failed(FailureReason.StartFailed, code)
             }
         }
-        coreRunning = true
+        // A timed-out start may still be reading the files. The next start reaps its stage.
+        if (stage != null) geoAssets?.discard(stage)
         bootstrapDns = servers
         pendingBootstrapDns = null
         return null

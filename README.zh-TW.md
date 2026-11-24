@@ -51,7 +51,7 @@ uv run crates/doona-core/tools/update_geo.py --check "$bundle"
 
 MetaCubeX 會替換 `latest` 的附件，並強制推送 `release` 分支。版本鎖定檔使用含 commit SHA 的快照 URL，大小與 SHA-256 取自 release API。URL 不會指向新版內容，但 GitHub 可能回收舊的 `release` commit；是否設置第一方鏡像仍由維護者決定。
 
-啟動 VPN 時，若核心未使用任何一組 Geo 資料，或 APK 內的發行日期較新，應用程式會解壓縮資料並交給核心。核心回傳後，應用程式會刪除暫存檔。自動更新預設每週執行，僅在 VPN 已連線時下載。下載的資料下次啟動 VPN 時才會生效。
+啟動 VPN 時，若核心未使用任何一組 Geo 資料，或 APK 內的發行日期較新，應用程式會解壓縮資料並交給核心。啟動成功後會刪除暫存檔，殘留的暫存檔則在下次啟動時清除。若距上次成功更新已超過設定間隔，VPN 連線時會檢查更新；定期排程也會在已連線時檢查。預設間隔為一週，下載的資料下次啟動 VPN 時才會生效。
 
 ## 執行測試
 
