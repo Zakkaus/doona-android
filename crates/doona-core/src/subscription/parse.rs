@@ -80,11 +80,10 @@ pub(crate) fn admit<'a>(lines: impl Iterator<Item = &'a str>) -> Result<Parsed, 
     let mut links = Vec::new();
     for line in lines {
         let link = line.trim();
-        if skipped(link) || oversized_vmess(link) {
+        if skipped(link) {
             continue;
         }
-        let Ok(node) = Node::from_share_link_with_detailed_diagnostics_emit(link, &mut |_| {})
-        else {
+        let Ok(node) = parse_link(link) else {
             continue;
         };
         if admission.admit(node)? {
@@ -134,16 +133,33 @@ fn skipped(link: &str) -> bool {
         || ["REMARKS=", "STATUS="].iter().any(|p| link.starts_with(p))
 }
 
-/// A `vmess://` link whose payload is over [`MAX_VMESS_PAYLOAD`]. honk-config reads a link up to its
-/// first `->` only.
-fn oversized_vmess(link: &str) -> bool {
-    let first = link
-        .split_once("->")
-        .map_or(link, |(first, _)| first)
-        .trim();
-    first.split_once("://").is_some_and(|(scheme, payload)| {
-        scheme.eq_ignore_ascii_case("vmess") && payload.len() > MAX_VMESS_PAYLOAD
+/// A dae hop separator can follow any part of a link, including a hop's name.
+pub(crate) fn is_chained_link(link: &str) -> bool {
+    link.split("->").skip(1).any(|hop| {
+        let hop = hop.trim_start();
+        hop.starts_with(|c: char| c.is_ascii_alphabetic()) && is_link(hop)
     })
+}
+
+fn parse_link(link: &str) -> Result<Node, &'static str> {
+    if is_chained_link(link) {
+        return Err("chaining is unsupported");
+    }
+    if link.split_once("://").is_some_and(|(scheme, payload)| {
+        scheme.eq_ignore_ascii_case("vmess") && payload.len() > MAX_VMESS_PAYLOAD
+    }) {
+        return Err("VMess payload is too long");
+    }
+    // honk-config splits at the first raw arrow, even inside a fragment, before URL decoding.
+    let escaped;
+    let link = if link.contains("->") {
+        escaped = link.replace("->", "-%3E");
+        &escaped
+    } else {
+        link
+    };
+    Node::from_share_link_with_detailed_diagnostics_emit(link, &mut |_| {})
+        .map_err(|_| "invalid share link")
 }
 
 /// honk drops Shadowsocks nodes that need a plugin. doona also drops a node honk's outbound
@@ -287,6 +303,49 @@ mod tests {
         // Nine entries: a comment, a profile line, a plugin node and a repeated endpoint go.
         assert_eq!(plain.nodes.len(), 9, "{:?}", names(&plain));
         assert_eq!(plain.links.len(), plain.nodes.len());
+    }
+
+    #[test]
+    fn chained_share_link_is_skipped() {
+        let chains = [
+            format!("trojan://p@front.test:443 -> {}#US", vmess(128)),
+            "trojan://p@front.test:443#front -> trojan://q@exit.test:443#US".into(),
+            "trojan://p@hk.test:443#HK->vmess://JP".into(),
+        ];
+        let direct = "trojan://p@direct.test:443#direct";
+        let body = format!("{}\n{direct}", chains.join("\n"));
+        let parsed = parse(body.as_bytes()).unwrap();
+        assert_eq!(names(&parsed), ["direct"]);
+        assert_eq!(parsed.links, [direct]);
+        for chain in chains {
+            assert_eq!(parse_link(&chain).unwrap_err(), "chaining is unsupported");
+        }
+    }
+
+    #[test]
+    fn arrows_in_share_link_names_survive_import() {
+        for fragment in ["HK->JP", "HK%2D%3EJP"] {
+            let link = format!("trojan://p@hk.test:443#{fragment}");
+            let parsed = parse(link.as_bytes()).unwrap();
+            assert_eq!(names(&parsed), ["HK->JP"]);
+            assert_eq!(parsed.nodes[0].host, "hk.test");
+            assert_eq!(parsed.nodes[0].port, 443);
+        }
+    }
+
+    #[test]
+    fn literal_arrows_round_trip_in_credentials_and_query_values() {
+        let link = "trojan://left->right@hk.test:443?remark=HK->JP";
+        let parsed = parse(link.as_bytes()).unwrap();
+        let restored = admit(parsed.links.iter().map(String::as_str)).unwrap();
+        for result in [parsed, restored] {
+            assert_eq!(names(&result), ["HK->JP"]);
+            let honk_config::node::OutboundConfig::Trojan(config) = &result.nodes[0].outbound
+            else {
+                panic!("expected Trojan");
+            };
+            assert_eq!(config.password.as_deref(), Some("left->right"));
+        }
     }
 
     #[test]

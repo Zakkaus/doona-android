@@ -16,7 +16,8 @@ object GitHubIssueLink {
         app: AppInfo,
         coreVersion: String?,
         events: List<AppEvent> = AppEvents.snapshot(),
-    ): String = build(ReportFailure(errorCode, command, at), app, coreVersion, events, ReportScrubber())
+        options: RedactionOptions = RedactionOptions(),
+    ): String = build(ReportFailure(errorCode, command, at), app, coreVersion, events, ReportScrubber(options))
 
     internal fun build(
         failure: ReportFailure,
@@ -50,7 +51,7 @@ object GitHubIssueLink {
         var length = prefix.length
         for (event in events.asReversed()) {
             val action = scrubber.action(event) ?: continue
-            val line = encode("    ${Instant.ofEpochMilli(event.atEpochMs)} ${event.level.name} $action\n")
+            val line = encode(eventLine(event, action, scrubber))
             if (length + line.length >= URL_LIMIT) break
             recent.addFirst(line)
             length += line.length
@@ -60,6 +61,13 @@ object GitHubIssueLink {
             append(prefix)
             recent.forEach { append(it) }
         }
+    }
+
+    private fun eventLine(event: AppEvent, action: String, scrubber: ReportScrubber) = buildString {
+        append("    ").append(Instant.ofEpochMilli(event.atEpochMs)).append(' ').append(event.level.name).append(' ').append(action)
+        scrubber.domain(event)?.let { append(" domain=").append(it) }
+        scrubber.appName(event)?.let { append(" app=").append(it) }
+        append('\n')
     }
 
     private fun encode(value: String) = URLEncoder.encode(value, Charsets.UTF_8.name())

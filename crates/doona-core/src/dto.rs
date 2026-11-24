@@ -539,6 +539,28 @@ pub struct StaticRemove {
     pub confirmed: bool,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StaticReason {
+    CatalogFull,
+    Chain,
+    Cipher,
+    Credentials,
+    DuplicateOption,
+    Fields,
+    Link,
+    LinkLength,
+    Name,
+    Option,
+    Password,
+    Path,
+    Port,
+    Protocol,
+    Server,
+    Username,
+    Uuid,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "lowercase")]
 pub enum StaticResult {
@@ -561,10 +583,10 @@ pub enum StaticResult {
         id: String,
     },
     Invalid {
-        reason: String,
+        reason: StaticReason,
     },
     Unsupported {
-        reason: String,
+        reason: StaticReason,
     },
 }
 

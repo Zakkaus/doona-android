@@ -6,14 +6,16 @@ import java.net.InetAddress
 import java.net.URI
 import java.net.URISyntaxException
 
-/** Opt-in disclosure for values already available to the report. */
+/** Disclosure choices for values already available to the report. */
 data class RedactionOptions(
     val showNodeEndpoints: Boolean = false,
     val showOwnAddresses: Boolean = false,
+    val showVisitedDomains: Boolean = false,
+    val showAppNames: Boolean = true,
 )
 
 /** One disclosure boundary for a report's ZIP and issue link. */
-internal class ReportScrubber {
+internal class ReportScrubber(private val options: RedactionOptions) {
     fun endpoint(node: NodeInfo): String? {
         val server = node.server.removeSurrounding("[", "]")
         val host = if (':' in server) {
@@ -27,6 +29,19 @@ internal class ReportScrubber {
     }
 
     fun ownAddress(address: InetAddress): String = address.hostAddress!!.substringBefore('%')
+
+    // Require a qualified name: a single label could be an opaque token.
+    fun domain(event: AppEvent): String? = if (options.showVisitedDomains) {
+        event.visitedDomain?.takeIf { it.indexOf('.') in 1 until it.lastIndex }?.let(::dnsName)
+    } else {
+        null
+    }
+
+    fun appName(event: AppEvent): String? = if (options.showAppNames) {
+        event.appPackage?.takeIf { it.length <= 255 && APP_PACKAGE.matches(it) }
+    } else {
+        null
+    }
 
     fun action(event: AppEvent): String? = event.text.takeIf(actionText::matches)
 
@@ -55,6 +70,7 @@ private fun dnsName(text: String): String? = text.takeIf { it.length <= 254 && D
 private const val LABEL = "[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
 private val DNS_NAME = Regex("$LABEL(?:\\.$LABEL)*\\.?")
 private val IPV6_TEXT = Regex("[0-9a-fA-F:.]{2,45}")
+private val APP_PACKAGE = Regex("[a-zA-Z][a-zA-Z0-9_]*(?:\\.[a-zA-Z][a-zA-Z0-9_]*)+")
 private val METADATA = Regex("""[\p{L}\p{N} ._()+-]{1,64}""")
 private const val READ_COMMANDS = "trafficSeries|usage|nodes|scoreState|rules|effectiveConfig|diagnostics"
 internal val REPORT_COMMANDS = (ACTION_COMMANDS + "|" + READ_COMMANDS).split('|').toSet()
