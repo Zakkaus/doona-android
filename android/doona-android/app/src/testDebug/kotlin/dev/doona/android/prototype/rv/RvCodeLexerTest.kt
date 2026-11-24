@@ -61,6 +61,9 @@ class RvCodeLexerTest {
         assertEquals(listOf(key("default"), sym("block")), kinds("default: block"))
         assertEquals(listOf(call("dport"), lit("443"), op("->"), sym("edge"), sym("must")), kinds("dport(443) -> edge(must)"))
         assertEquals(listOf(key("fallback"), sym("direct"), key("mark"), lit("16")), kinds("fallback: direct(mark: 16)"))
+        // A group's policy is a symbol by its place, as honk reads it: an unknown one (`min`) is inked as a known one.
+        assertEquals(listOf(key("policy"), sym("min")), kinds("policy: min"))
+        assertEquals(listOf(key("policy"), sym("min_moving_avg")), kinds("policy: min_moving_avg"))
     }
 
     @Test

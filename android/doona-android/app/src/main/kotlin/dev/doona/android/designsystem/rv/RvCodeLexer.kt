@@ -16,7 +16,10 @@ internal enum class RvCodeKind {
     /** A matcher before its `(`: `domain`, `dip`, `qname`, `name`, `group`, … */
     Call,
 
-    /** A built-in (`direct`, `block`, `must`, `asis`, `reject`, `accept`, a group policy), or where a rule sends. */
+    /**
+     * A built-in (`direct`, `block`, `must`, `asis`, `reject`, `accept`, a group policy), or any word in a symbol's place:
+     * where a rule sends, or a group's `policy:`.
+     */
     Symbol,
 
     /** A quoted string, a number, a duration, a port range, a hex mark, an IPv4 or IPv6 address with its prefix. */
@@ -58,7 +61,7 @@ private class RvCodeLexer(private val text: String) {
     /** The open parentheses: the call each belongs to, or "". */
     private val calls = ArrayList<String>()
 
-    /** The next value is where a rule sends: after `->`, `default:`, `fallback:`, `final:` or `outbound:`. */
+    /** The next value is a symbol: where a rule sends (after `->` or a [TARGET_KEYS] key), or a group's policy. */
     private var target = false
 
     fun tokens(): List<RvCodeToken> {
@@ -233,8 +236,11 @@ private val SYMBOLS = setOf(
     "roundrobin", "round_robin", "loadbalance", "balance", "fallback", "score",
 )
 
-/** The keys whose value is where a rule sends. */
-private val TARGET_KEYS = setOf("default", "fallback", "final", "outbound")
+/**
+ * The keys whose value is a symbol: where a rule sends, or a group's policy, which honk reads as one whatever the word
+ * (`parser/groups.rs` warns of an unknown one and selects), so `policy: min` reads as `policy: min_moving_avg` does.
+ */
+private val TARGET_KEYS = setOf("default", "fallback", "final", "outbound", "policy")
 
 /** A whole atom that is a hex mark, a port range, an IPv4 or IPv6 address with its prefix, or a number with its unit. */
 private val LITERAL = Regex(
