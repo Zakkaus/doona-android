@@ -58,7 +58,7 @@ class RvStatsScoreShotTest {
         assertEquals(1, count("152"))
         // The paged tile's label and the card's.
         assertEquals(2, count("連線次數"))
-        assertEquals(1, count("驗證 14 次"))
+        assertEquals(1, count("測試 14 次"))
         assertEquals(1, count("12 成功"))
         assertEquals(1, count("2 失敗"))
         assertEquals(1, count("TCP · 已選定"))
