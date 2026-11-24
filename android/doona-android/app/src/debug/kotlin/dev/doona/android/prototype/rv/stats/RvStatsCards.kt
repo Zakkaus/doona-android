@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -248,10 +249,13 @@ internal fun RvSplitCard(split: RvSplit?) {
     }
 }
 
-/** One of 分流比例's bars, its [fraction] filled, with `[percent] [label]` after it (the label alone when not [known]). */
+/**
+ * One of 分流比例's bars, its [fraction] filled, with `[percent] [label]` after it (the label alone when not [known]); the
+ * row grows past its height when large text needs it, so the label is never cut.
+ */
 @Composable
 internal fun RvRatingRow(fraction: Float, percent: String, label: String, color: Color, known: Boolean) {
-    Row(Modifier.height(RvStatsSize.ratingRow), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.heightIn(min = RvStatsSize.ratingRow), verticalAlignment = Alignment.CenterVertically) {
         RvRatingBar(if (known) fraction else 0f, color, Modifier.weight(1f))
         Spacer(Modifier.width(RvSpace.trailingGap))
         RvText(if (known) "$percent $label" else label, Rv.type.rowSub, Modifier.widthIn(min = RvStatsSize.ratingLabel), align = TextAlign.End)
