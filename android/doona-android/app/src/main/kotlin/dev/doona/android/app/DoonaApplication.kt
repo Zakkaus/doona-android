@@ -21,6 +21,7 @@ open class DoonaApplication : Application(), Configuration.Provider {
         container = AppContainer(this, ::createEngine, ::createInstalledApps)
         // First, so a crash anywhere later in the process leaves its file for the report.
         CrashCapture.install(container.crashFiles, AppInfo.of(this).crashVersion)
+        container.startFlowCapture()
         container.startSubscriptionRefresh()
         container.startGeoRefresh()
     }

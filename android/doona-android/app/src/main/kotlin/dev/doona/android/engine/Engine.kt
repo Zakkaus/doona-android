@@ -136,6 +136,9 @@ interface Engine {
      */
     suspend fun diagnostics(level: LogLevel? = null): Result<CoreDiagnostics>
 
+    /** The running tunnel's recent connections, newest first. Empty when the core has no running tunnel. */
+    suspend fun recentFlows(): Result<List<RecentFlow>>
+
     /** Sets the level the core's ring keeps from now on. The core does not save it; works while stopped. */
     suspend fun setLogLevel(level: LogLevel): Result<Unit>
 
