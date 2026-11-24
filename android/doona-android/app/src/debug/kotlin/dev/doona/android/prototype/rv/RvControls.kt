@@ -62,7 +62,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -365,16 +367,26 @@ internal fun RvPrimaryButton(
  * [RvControlSize.secondary] tall on the filter chip's neutral fill (the segment track, which reads on a card, a sheet
  * and the page), its 17 sp semibold [label] in ink, centred; pressed, the state layer. It never takes a hue, so it never
  * pairs a green or teal action with a red glyph. Its target reaches 48 dp through Compose's touch target expansion.
+ * Disabled, as [RvPrimaryButton], the whole pill is at [RvAlpha.DISABLED] and takes no press.
  */
 @Composable
-internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RvSecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    val press = if (enabled) {
+        Modifier.rvPress(CircleShape, Role.Button, onClick)
+    } else {
+        Modifier.semantics(mergeDescendants = true) {
+            role = Role.Button
+            disabled()
+        }
+    }
     Box(
         modifier
             .fillMaxWidth()
             .heightIn(min = RvControlSize.secondary)
+            .then(if (enabled) Modifier else Modifier.graphicsLayer { alpha = RvAlpha.DISABLED })
             .clip(CircleShape)
             .background(Rv.colors.segmentTrack)
-            .rvPress(CircleShape, Role.Button, onClick)
+            .then(press)
             .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
         contentAlignment = Alignment.Center,
     ) { RvText(label, Rv.type.action, color = Rv.colors.text, align = TextAlign.Center) }

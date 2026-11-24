@@ -24,4 +24,32 @@
     <plurals name="rv_log_debug_footer">
         <item quantity="other">调试会在 %1$d 小时后自动改回信息，用于重现单个问题。</item>
     </plurals>
+
+    <string name="rv_report_shared">分享的内容</string>
+    <string name="rv_report_device">设备</string>
+    <string name="rv_report_settings">设置摘要</string>
+    <string name="rv_report_log">日志</string>
+    <string name="rv_report_core_version">%1$s · 核心 %2$s</string>
+    <plurals name="rv_report_rules">
+        <item quantity="other">%1$d 条规则</item>
+    </plurals>
+    <plurals name="rv_report_events">
+        <item quantity="other">最近 %1$d 条事件</item>
+    </plurals>
+    <plurals name="rv_report_crashes">
+        <item quantity="other">%1$d 份崩溃记录</item>
+    </plurals>
+    <string name="rv_report_redact">脱敏</string>
+    <string name="rv_redact_nodes">节点地址与端口</string>
+    <string name="rv_redact_nodes_sub">服务器的域名、IP 与端口</string>
+    <string name="rv_redact_ip">我的 IP 地址</string>
+    <string name="rv_redact_ip_sub">本机的公网与局域网 IP</string>
+    <string name="rv_redact_domains">访问的域名</string>
+    <string name="rv_redact_domains_sub">连接与 DNS 查询中的域名</string>
+    <string name="rv_redact_apps">App 名称</string>
+    <string name="rv_redact_apps_sub">每个连接所属的 App</string>
+    <string name="rv_redact_always">订阅链接与 Token 一律移除。</string>
+    <string name="rv_report_github">在 GitHub 报告</string>
+    <string name="rv_report_share">分享文件</string>
+    <string name="rv_report_building">正在生成诊断报告…</string>
 </resources>

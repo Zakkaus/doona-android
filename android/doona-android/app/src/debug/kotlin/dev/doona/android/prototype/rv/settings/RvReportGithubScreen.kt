@@ -1,0 +1,182 @@
+package dev.doona.android.prototype.rv.settings
+
+import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import dev.doona.android.R
+import dev.doona.android.designsystem.theme.LocalFrameInsets
+import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.prototype.rv.RvBannerSlot
+import dev.doona.android.prototype.rv.RvBusy
+import dev.doona.android.prototype.rv.RvFootnote
+import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
+import dev.doona.android.prototype.rv.RvPrimaryButton
+import dev.doona.android.prototype.rv.RvScrollPage
+import dev.doona.android.prototype.rv.RvSecondaryButton
+import dev.doona.android.prototype.rv.RvSize
+import dev.doona.android.prototype.rv.RvSpace
+import dev.doona.android.prototype.rv.RvTheme
+import dev.doona.android.prototype.rv.rvSystemScheme
+
+/** Where the report stands: being written, ready to share, or it could not be written. */
+internal enum class RvReportBuild { Building, Ready, Failed }
+
+/**
+ * What the report hides on top of what it always removes: node addresses and ports, the phone's own IPs, the domains
+ * it visited, and which app opened each connection. The first three start on, the app names off.
+ */
+@Immutable
+internal data class RvRedaction(val nodes: Boolean = true, val ip: Boolean = true, val domains: Boolean = true, val apps: Boolean = false)
+
+/** What the report holds, as its preview lists it: the versions, the phone, the settings in counts, and the log. */
+@Immutable
+internal data class RvReportPreview(
+    val app: String,
+    val core: String,
+    val device: String,
+    val nodes: Int,
+    val subscriptions: Int,
+    val rules: Int,
+    val events: Int,
+    val crashes: Int,
+)
+
+/** The sample's report: the app and core of [rvSampleVersions], the sample data's counts, the last 200 events, 2 crashes. */
+internal val rvSampleReport = RvReportPreview("0.1.0", "0.1.0", "Pixel 8 · Android 15", nodes = 12, subscriptions = 2, rules = 14, events = 200, crashes = 2)
+
+/** What the report page's actions do: open the prefilled issue, hand the file to the share sheet, write it again. */
+internal class RvReportActions(
+    val github: () -> Unit = NOT_WIRED,
+    val share: () -> Unit = NOT_WIRED,
+    val retry: () -> Unit = NOT_WIRED,
+)
+
+/**
+ * 回報問題 for GitHub, sampled beside the current [RvReportScreen], in its language: the large title; after a failed
+ * build the library's banner with 重試; while the report is written, a busy row on top, as 依 App shows 正在儲存;
+ * then 分享的內容, the preview, a plain list of values as the licences are; then 遮蔽, a switch for each thing it can
+ * hide with one line of what that is, and the footer that subscription links and tokens always go. The two actions
+ * stand at the foot as a sheet's pair ([RvConfirmContent]): 在 GitHub 回報 opens a prefilled issue the user attaches
+ * the file to, 分享檔案 hands it to the share sheet; both wait for the report.
+ */
+@Composable
+internal fun RvReportGithubScreen(
+    build: RvReportBuild,
+    preview: RvReportPreview,
+    redaction: RvRedaction,
+    onRedaction: (RvRedaction) -> Unit,
+    onBack: () -> Unit,
+    actions: RvReportActions = RvReportActions(),
+) {
+    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val title = stringResource(R.string.rv_report_title)
+    RvScrollPage(title, insets, onBack = onBack, bottomAction = { Actions(build == RvReportBuild.Ready, actions) }) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
+        RvBannerSlot(failure(build, actions.retry))
+        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+            if (build == RvReportBuild.Building) {
+                RvSettingsCard {
+                    RvSettingsRow(stringResource(R.string.rv_report_building), icon = R.drawable.rv_stats_ic_sync) { RvBusy(Modifier.width(RvSize.busy)) }
+                }
+                Spacer(Modifier.height(RvSpace.cardGap))
+            }
+            RvSettingsSection(stringResource(R.string.rv_report_shared), first = true)
+            Contents(preview)
+            RvSettingsSection(stringResource(R.string.rv_report_redact))
+            Redaction(redaction, onRedaction)
+            RvFootnote(stringResource(R.string.rv_redact_always), inset = RvSpace.gutter - RvSettingsSpace.margin)
+        }
+        Spacer(Modifier.height(RvSettingsSpace.bottom))
+    }
+}
+
+/** The preview: each part of the report over what it holds, with no glyph, as a list of values. */
+@Composable
+private fun Contents(preview: RvReportPreview) {
+    val settings = listOf(
+        pluralStringResource(R.plurals.rv_nodes_nodes, preview.nodes, preview.nodes),
+        pluralStringResource(R.plurals.rv_stats_subscriptions, preview.subscriptions, preview.subscriptions),
+        pluralStringResource(R.plurals.rv_report_rules, preview.rules, preview.rules),
+    )
+    val log = listOf(
+        pluralStringResource(R.plurals.rv_report_events, preview.events, preview.events),
+        pluralStringResource(R.plurals.rv_report_crashes, preview.crashes, preview.crashes),
+    )
+    RvSettingsCard {
+        RvSettingsRow(stringResource(R.string.rv_settings_version), subtitle = stringResource(R.string.rv_report_core_version, preview.app, preview.core))
+        RvSettingsRow(stringResource(R.string.rv_report_device), subtitle = preview.device)
+        RvSettingsRow(stringResource(R.string.rv_report_settings), subtitle = settings.joinToString(SEPARATOR))
+        RvSettingsRow(stringResource(R.string.rv_report_log), subtitle = log.joinToString(SEPARATOR))
+    }
+}
+
+@Composable
+private fun Redaction(redaction: RvRedaction, onChange: (RvRedaction) -> Unit) {
+    RvSettingsCard {
+        RvSettingsSwitchRow(
+            stringResource(R.string.rv_redact_nodes),
+            R.drawable.rv_sym_dns,
+            redaction.nodes,
+            { onChange(redaction.copy(nodes = it)) },
+            stringResource(R.string.rv_redact_nodes_sub),
+        )
+        RvSettingsSwitchRow(stringResource(R.string.rv_redact_ip), R.drawable.rv_sym_vpn_lock, redaction.ip, { onChange(redaction.copy(ip = it)) }, stringResource(R.string.rv_redact_ip_sub))
+        RvSettingsSwitchRow(
+            stringResource(R.string.rv_redact_domains),
+            R.drawable.rv_settings_ic_language,
+            redaction.domains,
+            { onChange(redaction.copy(domains = it)) },
+            stringResource(R.string.rv_redact_domains_sub),
+        )
+        RvSettingsSwitchRow(stringResource(R.string.rv_redact_apps), R.drawable.rv_sym_apps, redaction.apps, { onChange(redaction.copy(apps = it)) }, stringResource(R.string.rv_redact_apps_sub))
+    }
+}
+
+/** The two actions, the main one over the other, a sheet's gap apart; neither takes a tap until the report is [ready]. */
+@Composable
+private fun Actions(ready: Boolean, actions: RvReportActions) {
+    Column {
+        RvPrimaryButton(stringResource(R.string.rv_report_github), actions.github, enabled = ready)
+        Spacer(Modifier.height(RvSpace.controlStack))
+        RvSecondaryButton(stringResource(R.string.rv_report_share), actions.share, enabled = ready)
+    }
+}
+
+/** The banner of a build that failed: the export's own words, and 重試. */
+@Composable
+private fun failure(build: RvReportBuild, onRetry: () -> Unit): RvNotice? = if (build == RvReportBuild.Failed) {
+    RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_report_failed), stringResource(R.string.rv_report_failed_reason), stringResource(R.string.rv_retry), onRetry)
+} else {
+    null
+}
+
+/** The parts of one value line; the library keeps each part whole when the line wraps. */
+private const val SEPARATOR = " · "
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun RvReportGithubScreenPreview() {
+    val dark = isSystemInDarkTheme()
+    var redaction by remember { mutableStateOf(RvRedaction()) }
+    RvTheme(rvSystemScheme(dark), dark) { RvReportGithubScreen(RvReportBuild.Ready, rvSampleReport, redaction, { redaction = it }, onBack = {}) }
+}
