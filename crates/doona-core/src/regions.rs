@@ -64,8 +64,7 @@ struct Alias {
     city: Option<&'static Site>,
     exact: bool,
     bounded: bool,
-    risky: bool,
-    short_code: bool,
+    code: CodeContext,
     numbered_code: bool,
 }
 
@@ -89,8 +88,7 @@ static MATCHER: LazyLock<Matcher> = LazyLock::new(|| {
                 iso: r.iso,
                 center: r.center,
                 city: None,
-                risky: false,
-                short_code: false,
+                code: CodeContext::Free,
                 numbered_code: false,
                 exact: key == r.iso && CAPITAL_ONLY.split_ascii_whitespace().any(|iso| iso == key),
                 bounded: key.as_bytes()[0].is_ascii(), // All Han aliases start with Han.
@@ -101,7 +99,7 @@ static MATCHER: LazyLock<Matcher> = LazyLock::new(|| {
         let (_, center) = country(city.iso.as_bytes()).expect("city ISO code");
         let start = aliases.len();
         for raw in city.keys() {
-            let key = raw.trim_start_matches(['?', '^']);
+            let key = raw.trim_start_matches(['?', '^', '+']);
             if aliases[start..]
                 .iter()
                 .any(|a| a.key.eq_ignore_ascii_case(key))
@@ -115,8 +113,7 @@ static MATCHER: LazyLock<Matcher> = LazyLock::new(|| {
                 city: Some(city),
                 exact: false,
                 bounded: true,
-                risky: raw.starts_with('?'),
-                short_code: code_needs_context(key),
+                code: CodeContext::for_key(raw, key),
                 numbered_code: raw.starts_with('^')
                     || (key.is_ascii()
                         && key.len() <= 4
@@ -184,19 +181,66 @@ fn code_needs_context(key: &str) -> bool {
 }
 
 fn numbered(tail: &str) -> bool {
-    let tail = tail.trim_start_matches(['-', '_', ' ']);
     let digits = tail.trim_start_matches(|c: char| c.is_ascii_digit());
     digits.len() < tail.len() && !digits.chars().next().is_some_and(unicode::letter_or_mark)
 }
 
-fn code_token(a: &Alias, name: &str, text: &str) -> bool {
-    let alone = name.trim() == text;
-    let upper = text.bytes().all(|b| b.is_ascii_uppercase());
-    if a.risky {
-        alone && upper
-    } else {
-        alone || upper
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CodeContext {
+    Free,
+    Short,
+    Risky,
+    Numbered,
+}
+
+impl CodeContext {
+    fn for_key(raw: &str, key: &str) -> Self {
+        match raw.as_bytes()[0] {
+            b'+' => Self::Numbered,
+            b'?' => Self::Risky,
+            _ if code_needs_context(key) => Self::Short,
+            _ => Self::Free,
+        }
     }
+
+    fn accepts(self, name: &str, text: &str, tail: &str) -> bool {
+        match self {
+            Self::Free => true,
+            Self::Numbered => numbered(tail.trim_start_matches(['-', '_'])),
+            Self::Risky | Self::Short => {
+                let alone = name.trim() == text;
+                let upper = text.bytes().all(|b| b.is_ascii_uppercase());
+                (if self == Self::Risky {
+                    alone && upper
+                } else {
+                    alone || upper
+                }) || numbered(tail.trim_start_matches(['-', '_', ' ']))
+            }
+        }
+    }
+}
+
+fn word_before(prefix: &str) -> bool {
+    prefix
+        .chars()
+        .next_back()
+        .is_some_and(unicode::letter_or_mark)
+}
+
+fn follows_region(prefix: &str, iso: &str) -> bool {
+    let end = prefix.len();
+    let start = end.saturating_sub(MATCHER.patterns.max_pattern_len());
+    MATCHER
+        .patterns
+        .find_overlapping_iter(aho_corasick::Input::new(prefix).span(start..end))
+        .any(|m| {
+            let a = &MATCHER.aliases[m.pattern().as_usize()];
+            m.end() == end
+                && a.city.is_none()
+                && a.iso == iso
+                && (!a.exact || &prefix[m.start()..] == a.key)
+                && (!a.bounded || !word_before(&prefix[..m.start()]))
+        })
 }
 
 fn accepts(a: &Alias, name: &str, start: usize, end: usize) -> bool {
@@ -205,29 +249,34 @@ fn accepts(a: &Alias, name: &str, start: usize, end: usize) -> bool {
     if a.exact && text != a.key {
         return false;
     }
-    if (a.risky || a.short_code) && !numbered(tail) && !code_token(a, name, text) {
+    if !a.code.accepts(name, text, tail) {
         return false;
     }
     if !a.bounded {
         return true;
     }
-    if name[..start]
-        .chars()
-        .next_back()
-        .is_some_and(unicode::letter_or_mark)
-    {
+    let han_city =
+        a.city.is_some() && matches!(a.key.chars().next(), Some('\u{3400}'..='\u{9fff}'));
+    if word_before(&name[..start]) && !(han_city && follows_region(&name[..start], a.iso)) {
         return false;
     }
     if a.numbered_code && tail.starts_with(|c: char| c.is_ascii_digit()) {
         return numbered(tail);
     }
+    if han_city && (relay::tag_start(tail) || (a.iso == "CN" && tail.starts_with('港'))) {
+        return true;
+    }
     !tail.chars().next().is_some_and(unicode::letter_or_mark)
 }
 
 fn matches(name: &str) -> impl Iterator<Item = (Rank, &'static Alias)> {
+    matches_in(name, name.len())
+}
+
+fn matches_in(name: &str, end: usize) -> impl Iterator<Item = (Rank, &'static Alias)> {
     MATCHER
         .patterns
-        .find_overlapping_iter(name)
+        .find_overlapping_iter(aho_corasick::Input::new(name).span(0..end))
         .filter_map(move |m| {
             let id = m.pattern().as_usize();
             let a = &MATCHER.aliases[id];
@@ -273,25 +322,28 @@ fn flag(name: &str) -> Option<(usize, &'static str, Coordinates)> {
 
 pub(crate) fn locate(name: &str) -> Location {
     let name = folded(name);
-    if let Some(exit) = relay::exit(&name) {
-        return exit;
-    }
-    let first = matches(&name).min_by_key(|&(rank, _)| rank);
-    let flag = flag(&name).filter(|(i, _, _)| first.is_none_or(|(rank, _)| *i < rank.0));
-    let (iso, center, mut city) = if let Some((_, iso, center)) = flag {
-        (iso, center, None)
+    relay::exit(&name).unwrap_or_else(|| plain_location(&name))
+}
+
+fn plain_location(name: &str) -> Location {
+    let first = matches(name).min_by_key(|&(rank, _)| rank);
+    let flag = flag(name).filter(|(i, _, _)| first.is_none_or(|(rank, _)| *i < rank.0));
+    if let Some((_, iso, center)) = flag {
+        refine(name, iso, center, None)
     } else if let Some((_, a)) = first {
-        (a.iso, a.center, a.city)
+        refine(name, a.iso, a.center, a.city)
     } else {
-        return Location::default();
-    };
-    // A country code or flag may precede its city; never borrow a city from another region.
-    if city.is_none() {
-        city = matches(&name)
+        Location::default()
+    }
+}
+
+fn refine(name: &str, iso: &'static str, center: Coordinates, city: Option<&Site>) -> Location {
+    let city = city.or_else(|| {
+        matches(name)
             .filter(|(_, a)| a.iso == iso && a.city.is_some())
             .min_by_key(|&(rank, _)| rank)
-            .and_then(|(_, a)| a.city);
-    }
+            .and_then(|(_, a)| a.city)
+    });
     Location {
         region: Some(iso.into()),
         region_centroid: Some(center),
