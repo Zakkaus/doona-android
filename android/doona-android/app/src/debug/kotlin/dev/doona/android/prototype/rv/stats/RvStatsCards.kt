@@ -240,16 +240,17 @@ internal fun RvSplitCard(split: RvSplit?) {
                     RvText(stringResource(if (split != null) R.string.rv_stats_via_proxy else R.string.rv_stats_no_data), Rv.type.rowSub, color = Rv.colors.textSecondary)
                 }
                 Column(Modifier.weight(1f)) {
-                    RatingRow(proxy, format.percent(proxy.toDouble()), stringResource(R.string.rv_stats_proxy), Rv.colors.down.line, split != null)
-                    RatingRow(1f - proxy, format.percent(1.0 - proxy), stringResource(R.string.rv_stats_direct), Rv.colors.textSecondary, split != null)
+                    RvRatingRow(proxy, format.percent(proxy.toDouble()), stringResource(R.string.rv_stats_proxy), Rv.colors.down.line, split != null)
+                    RvRatingRow(1f - proxy, format.percent(1.0 - proxy), stringResource(R.string.rv_stats_direct), Rv.colors.textSecondary, split != null)
                 }
             }
         }
     }
 }
 
+/** One of 分流比例's bars, its [fraction] filled, with `[percent] [label]` after it (the label alone when not [known]). */
 @Composable
-private fun RatingRow(fraction: Float, percent: String, label: String, color: Color, known: Boolean) {
+internal fun RvRatingRow(fraction: Float, percent: String, label: String, color: Color, known: Boolean) {
     Row(Modifier.height(RvStatsSize.ratingRow), verticalAlignment = Alignment.CenterVertically) {
         RvRatingBar(if (known) fraction else 0f, color, Modifier.weight(1f))
         Spacer(Modifier.width(RvSpace.trailingGap))
@@ -275,7 +276,7 @@ internal fun RvToolsCard(tools: List<RvStatsTool>, onTool: (Int) -> Unit) {
 }
 
 /** A card's body under its header: the card's padding at the sides and the bottom. */
-private val cardBody = Modifier.padding(start = RvStatsSpace.pad, end = RvStatsSpace.pad, bottom = RvStatsSpace.pad)
+internal val cardBody = Modifier.padding(start = RvStatsSpace.pad, end = RvStatsSpace.pad, bottom = RvStatsSpace.pad)
 
 private const val SEPARATOR = " · "
 private const val MS_PER_HOUR = 3_600_000L

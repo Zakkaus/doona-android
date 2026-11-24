@@ -41,4 +41,11 @@
         <item quantity="one">%1$d node</item>
         <item quantity="other">%1$d nodes</item>
     </plurals>
+    <!-- Score card: trials honk ran to compare nodes, and how they ended. -->
+    <plurals name="rv_score_trials">
+        <item quantity="one">%1$d trial</item>
+        <item quantity="other">%1$d trials</item>
+    </plurals>
+    <string name="rv_score_trial_ok">succeeded</string>
+    <string name="rv_score_trial_failed">failed</string>
 </resources>

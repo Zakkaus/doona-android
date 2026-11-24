@@ -31,28 +31,36 @@ internal fun RvScoreCard(label: String, network: ScoreNetwork, members: List<RvN
     val coverage = network.coverage
     RvCard {
         RvCardHeader(label, tag = stringResource(R.string.rv_score_coverage, coverage.evaluated - coverage.pending, coverage.candidates))
-        val chosen = members.firstOrNull { it.id == network.selectedId }
-        val state = network.stateText()
-        when {
-            chosen != null -> RvRow(
-                { RvFlag(chosen.place.flag, RvSize.rowDisc, current = true) },
-                chosen.name,
-                state,
-                titleEnd = { RvLatencyText(chosen.latencyMs, chosen.timedOut) },
-            )
-
-            // A subgroup, or a tag honk cannot tie to one node: its name only.
-            network.selected != null -> RvRow({ RvIconDisc(R.drawable.rv_sym_account_tree) }, network.selected.orEmpty(), state)
-
-            else -> RvRow({ RvIconDisc(R.drawable.rv_sym_block) }, stringResource(R.string.rv_no_node), state)
-        }
+        RvScoreChoiceRow(network, members, network.stateText(), latency = true)
         for (challenger in network.challengers) Challenger(challenger, members)
+    }
+}
+
+/**
+ * The node a Score group chose on one network, badged, over [line]; with [latency], its last test at the end. A subgroup
+ * or a tag honk cannot tie to one node shows its name only; with no eligible candidate the row says 沒有可用的節點.
+ */
+@Composable
+internal fun RvScoreChoiceRow(network: ScoreNetwork, members: List<RvNode>, line: String, latency: Boolean = false) {
+    val chosen = members.firstOrNull { it.id == network.selectedId }
+    when {
+        chosen != null -> RvRow(
+            { RvFlag(chosen.place.flag, RvSize.rowDisc, current = true) },
+            chosen.name,
+            line,
+            titleEnd = if (latency) ({ RvLatencyText(chosen.latencyMs, chosen.timedOut) }) else null,
+        )
+
+        // A subgroup, or a tag honk cannot tie to one node: its name only.
+        network.selected != null -> RvRow({ RvIconDisc(R.drawable.rv_sym_account_tree) }, network.selected.orEmpty(), line)
+
+        else -> RvRow({ RvIconDisc(R.drawable.rv_sym_block) }, stringResource(R.string.rv_no_node), line)
     }
 }
 
 /** The state in words, then what it waits for when it waits. */
 @Composable
-private fun ScoreNetwork.stateText(): String {
+internal fun ScoreNetwork.stateText(): String {
     val word = stringResource(if (state == OBSERVED_USABLE) R.string.rv_score_selected else R.string.rv_score_evaluating)
     val wait = when (waitReason) {
         "comparableTraffic" -> R.string.rv_score_wait_traffic

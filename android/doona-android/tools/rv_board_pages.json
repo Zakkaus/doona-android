@@ -136,6 +136,11 @@
  },
  {
   "page": "統計",
+  "state": "綜合評分",
+  "screen": "stats-score"
+ },
+ {
+  "page": "統計",
   "state": "空",
   "screen": "stats-empty-a"
  },

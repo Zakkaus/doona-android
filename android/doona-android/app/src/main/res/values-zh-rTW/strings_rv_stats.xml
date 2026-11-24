@@ -37,4 +37,9 @@
     <plurals name="rv_stats_node_count">
         <item quantity="other">%1$d 個節點</item>
     </plurals>
+    <plurals name="rv_score_trials">
+        <item quantity="other">驗證 %1$d 次</item>
+    </plurals>
+    <string name="rv_score_trial_ok">成功</string>
+    <string name="rv_score_trial_failed">失敗</string>
 </resources>
