@@ -51,19 +51,6 @@ internal const val CORE_SCHEMA = 3
 @Serializable
 internal data class InitDto(val schema: Int)
 
-/** The tun the service builds uses the same values. */
-@Serializable
-internal data class StartConfigDto(val mtu: Int, val ipv4: String, val dns: String, val bootstrapDns: List<String>) {
-    companion object {
-        const val MTU = 65535
-        const val IPV4 = "172.19.0.1"
-        const val IPV4_PREFIX = 30
-        const val DNS = "172.19.0.2"
-
-        fun of(bootstrapDns: List<String>, mtu: Int = MTU) = StartConfigDto(mtu, IPV4, DNS, bootstrapDns)
-    }
-}
-
 @Serializable
 internal data class SnapshotDto(
     val revision: Long,
@@ -429,6 +416,13 @@ internal data class IdArgs(val id: String)
 
 @Serializable
 internal data class ModeArgs(val mode: Mode)
+
+@Serializable
+internal data class BootstrapDnsArgs(val servers: List<String>) {
+    companion object {
+        const val COMMAND = "setBootstrapDns"
+    }
+}
 
 /** `rules`' page: [limit] is 1 to 500. */
 @Serializable

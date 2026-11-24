@@ -75,9 +75,13 @@ pub struct StartConfig {
     pub ipv4: std::net::Ipv4Addr,
     /// The virtual resolver the tun advertises; DNS sent to it is answered by the core.
     pub dns: std::net::Ipv4Addr,
-    /// The underlying network's resolvers, as Android reports them; they may carry a scope
-    /// (`fe80::1%wlan0`), so they stay text until a dialer needs them.
+    /// Android resolver addresses, including scoped IPv6 (e.g. `fe80::1%wlan0`).
     pub bootstrap_dns: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BootstrapDnsArgs {
+    pub servers: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

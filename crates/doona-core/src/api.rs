@@ -89,6 +89,8 @@ pub struct Core {
     /// across a wait, so `stop` and `snapshot` never wait for a `start`. Taken before the catalog
     /// lock when both are held.
     life: Mutex<Life>,
+    /// Counts accepted DNS handoffs. Publication by `finish` and by a handoff takes `life`.
+    bootstrap_revision: AtomicU64,
     /// The last generation `start` began; it stays in snapshots after `stop`.
     generation: AtomicI64,
     /// What serves a generation, and how long `start` may take: the driver and [`START_BOUND`]
@@ -190,6 +192,7 @@ impl Core {
             mode,
             writer: Mutex::new(()),
             life: Mutex::new(Life::Stopped),
+            bootstrap_revision: AtomicU64::new(0),
             generation: AtomicI64::new(0),
             launch,
             probes,
@@ -214,11 +217,12 @@ impl Core {
     /// `start` already under way makes this one `busy`. Returns by one deadline, cleanup
     /// included.
     pub fn start(&self, tun: OwnedFd, config: &str) -> Result<(), ErrorCode> {
+        let dns_revision = self.bootstrap_revision.load(Relaxed);
         let begun = Instant::now();
         let deadline = begun + self.launch.1;
         let result = self
             .settings(config)
-            .and_then(|settings| self.start_generation(tun, settings, deadline));
+            .and_then(|settings| self.start_generation(tun, settings, deadline, dns_revision));
         self.diag.record(
             match result {
                 Ok(g) => Event::info("start").count(Count::Generation, g),
@@ -234,6 +238,7 @@ impl Core {
         tun: OwnedFd,
         (settings, resolvers): (Settings, Vec<SocketAddr>),
         deadline: Instant,
+        dns_revision: u64,
     ) -> Result<i64, ErrorCode> {
         let rt = self.runtime.handle();
         let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
@@ -252,7 +257,7 @@ impl Core {
             deadline,
             &gate,
         );
-        self.finish(started, &gate, deadline, resolvers)?;
+        self.finish(started, &gate, deadline, resolvers, dns_revision)?;
         Ok(generation)
     }
 
@@ -292,17 +297,15 @@ impl Core {
         Ok((generation, old))
     }
 
-    /// Publishes the started generation with its config's `resolvers`, unless it failed, a
-    /// `stop` aborted the start meanwhile (that `stop` closed the tun already and left the core
-    /// stopped, which a newer `start` may have changed since) or the deadline passed as the
-    /// driver became ready; then it halts and waits for the generation by the deadline. Its
-    /// driver serves the tun only once the resolvers are in use; a refused one never does.
+    /// Releases the driver only after its resolvers are ready. A handoff since `start` began
+    /// already installed a newer list. A failed, expired or aborted start installs nothing.
     fn finish(
         &self,
         (mut tunnel, ready): (Tunnel, Result<(), ErrorCode>),
         gate: &Gate,
         deadline: Instant,
         resolvers: Vec<SocketAddr>,
+        dns_revision: u64,
     ) -> Result<(), ErrorCode> {
         #[cfg(test)]
         self.hooks.before_finish(self);
@@ -312,7 +315,9 @@ impl Core {
         let code = match ready {
             _ if aborted => ErrorCode::Busy,
             Ok(()) if Instant::now() < deadline => {
-                bootstrap::use_servers(resolvers);
+                if self.bootstrap_revision.load(Relaxed) == dns_revision {
+                    bootstrap::use_servers(resolvers);
+                }
                 tunnel.release();
                 *life = Life::Running(tunnel);
                 return Ok(());
@@ -343,7 +348,7 @@ impl Core {
             self.options.bootstrap_port,
             &self.options.bootstrap_fallback,
         );
-        let resolvers = bootstrap::servers(&config.bootstrap_dns, port, fallback)
+        let resolvers = bootstrap::servers(&config.bootstrap_dns, port, Some(fallback))
             .ok_or(ErrorCode::InvalidArgument)?;
         let view = self.shared.outbounds.view();
         if self.mode.get() == Mode::Global && view.dialer(view.policy().main()).is_none() {
@@ -407,6 +412,7 @@ impl Core {
     /// `api/diagnostics.rs`).
     pub fn call(&self, command: &str, args: &str) -> String {
         self.traced(command, |event| match command {
+            "setBootstrapDns" => parse(args).and_then(|a| self.set_bootstrap_dns(a).map(empty)),
             "setMode" => parse(args).and_then(|a: ModeArgs| {
                 *event = event.detail(diagnostics::mode_name(a.mode));
                 self.set_mode(a.mode).map(empty)
@@ -432,6 +438,15 @@ impl Core {
             "debugFault" => self.fault().map(empty),
             _ => self.static_or_query(command, args, event),
         })
+    }
+
+    fn set_bootstrap_dns(&self, args: dto::BootstrapDnsArgs) -> Result<(), ErrorCode> {
+        let resolvers = bootstrap::servers(&args.servers, self.options.bootstrap_port, None)
+            .ok_or(ErrorCode::InvalidArgument)?;
+        let _life = lock(&self.life);
+        bootstrap::use_servers(resolvers);
+        self.bootstrap_revision.fetch_add(1, Relaxed);
+        Ok(())
     }
 
     /// Commits the mode to `state.json` first; new flows read it from then on.
