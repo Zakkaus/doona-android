@@ -79,7 +79,7 @@ impl Score {
             let old = previous.and_then(|p| p.entries.get(&id));
             if !old.is_some_and(|e| e.node.name == node.name && e.node.address == node.address) {
                 self.alive
-                    .register_node(id, node.name.clone(), node.address.clone());
+                    .register_node(id, node.name.clone(), Some(node.address.clone()));
             }
         }
         if let Some(previous) = previous {

@@ -107,7 +107,7 @@ fn cipher_availability_and_source_location() {
         outbound["source"]
             .as_str()
             .unwrap()
-            .ends_with("?rev=8919784a6fe11fd8c6b9516b79f5553b93810ab2"),
+            .ends_with("?rev=63de98ba32f871ac6a779e7462a0a79f8a595153"),
         "review CipherConf::for_method and is_2022_method before accepting this pin"
     );
     let dir = TempDir::new("honk-ciphers");
