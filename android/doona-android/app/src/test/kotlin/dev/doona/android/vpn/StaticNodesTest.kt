@@ -63,6 +63,17 @@ class StaticNodesTest {
         val read = serve()
         assertEquals(tokyo, engine.readStaticNode(tokyo.id).getOrThrow())
         read.checkCall()
+
+        val invalidName = serve()
+        val nameResult = engine.updateStaticNode(hk, StaticNodeDraft.Link("socks5://192.0.2.1:1080", name = " ")).getOrThrow()
+        assertEquals(StaticNodeResult.Invalid(StaticNodeReason.Name), nameResult)
+        invalidName.checkCall()
+
+        val unsupportedPath = serve()
+        val pathResult = engine.updateStaticNode(hk, StaticNodeDraft.Link("socks5://192.0.2.1:1080/path")).getOrThrow()
+        assertEquals(StaticNodeResult.Unsupported(StaticNodeReason.Path), pathResult)
+        unsupportedPath.checkCall()
+
         val duplicate = serve()
         assertEquals(StaticNodeResult.Duplicate(tokyo.id), engine.updateStaticNode(hk, StaticNodeDraft.Link(tokyo.link)).getOrThrow())
         duplicate.checkCall()
@@ -78,6 +89,11 @@ class StaticNodesTest {
         val stale = serve()
         assertEquals(ErrorCode.Busy, engine.updateStaticNode(hk, StaticNodeDraft.Link("socks5://192.0.2.3:1080")).errorCode())
         stale.checkCall()
+
+        val staleRemoval = serve()
+        assertEquals(ErrorCode.Busy, engine.removeStaticNode(hk, confirmed = true).errorCode())
+        staleRemoval.checkCall()
+
         val notConfirmed = serve()
         assertEquals(ErrorCode.InvalidArgument, engine.removeStaticNode(renamed, confirmed = false).errorCode())
         notConfirmed.checkCall()
@@ -88,10 +104,41 @@ class StaticNodesTest {
         engine.removeStaticNode(renamed, confirmed = true).getOrThrow()
         remove.checkCall()
         engine.checkCatalog(tokyo)
+
+        val repeatedRemoval = serve()
+        assertEquals(ErrorCode.NotFound, engine.removeStaticNode(renamed, confirmed = true).errorCode())
+        repeatedRemoval.checkCall()
+        val removedEdit = serve()
+        assertEquals(ErrorCode.NotFound, engine.updateStaticNode(renamed, StaticNodeDraft.Link("socks5://192.0.2.1:1080")).errorCode())
+        removedEdit.checkCall()
+        engine.checkCatalog(tokyo)
+
+        val fieldErrors = serve()
+        val beforePreview = core.snapshots.get()
+        assertEquals(fieldPreviewResults(), engine.previewStaticNodes(fieldPreviewDrafts()).getOrThrow())
+        fieldErrors.checkCall()
+        assertEquals(beforePreview, core.snapshots.get())
+
         val removed = serve()
         assertEquals(ErrorCode.NotFound, engine.readStaticNode(hk.id).errorCode())
         removed.checkCall()
+
+        checkFragmentAdd(engine, serve())
+
         assertFalse(session.hasNext())
+    }
+
+    @Test
+    fun previewAndAddSurfaceInvalidBatchCounts() = runTest {
+        val engine = engine()
+        val row = StaticNodeDraft.Link(hk.link)
+        core.reply = ContractFixtures.read("call-error-static-row-count.json")
+        for (count in listOf(0, 201)) {
+            val drafts = List(count) { row }
+            assertEquals(ErrorCode.InvalidArgument, engine.previewStaticNodes(drafts).errorCode())
+            assertEquals(ErrorCode.InvalidArgument, engine.addStaticNodes(drafts).errorCode())
+        }
+        assertEquals(listOf(0, 0, 201, 201), core.calls.map { (_, args) -> Json.parseToJsonElement(args).jsonObject.getValue("rows").jsonArray.size })
     }
 
     @Test
@@ -131,6 +178,19 @@ class StaticNodesTest {
         core.snapshotReply = { since -> if (since < revision) changed else unchanged(revision) }
     }
 
+    private suspend fun checkFragmentAdd(engine: ServiceEngine, fixture: StaticNodeCallFixture) {
+        val rawFragment = StaticNodeDraft.Link("socks5://192.0.2.1:1080#HK->JP")
+        val encodedFragment = StaticNodeDraft.Link("socks5://192.0.2.1:1080#HK-%3EJP")
+        val restored = hk.copy(name = "HK->JP", link = rawFragment.link)
+        serveCatalog(11, tokyo, restored)
+        assertEquals(
+            listOf(StaticNodeResult.Added(hk.id, restored.name, "socks5"), StaticNodeResult.Duplicate(hk.id)),
+            engine.addStaticNodes(listOf(rawFragment, encodedFragment)).getOrThrow(),
+        )
+        fixture.checkCall()
+        engine.checkCatalog(tokyo, restored)
+    }
+
     private fun batchDrafts(link: StaticNodeDraft.Link) = listOf(
         link,
         StaticNodeDraft.Link("socks5://192.0.2.1:1080#same"),
@@ -153,6 +213,34 @@ class StaticNodesTest {
         StaticNodeResult.Invalid(StaticNodeReason.Fields),
         StaticNodeResult.Unsupported(StaticNodeReason.Option),
         StaticNodeResult.Unsupported(StaticNodeReason.Protocol),
+    )
+
+    private fun fieldPreviewDrafts() = listOf(
+        StaticNodeDraft.Link("socks5://192.0.2.1:1080#HK-%3EJP"),
+        StaticNodeDraft.Manual("trojan", "", 443),
+        StaticNodeDraft.Manual("trojan", "192.0.2.1", 0),
+        StaticNodeDraft.Manual("trojan", "192.0.2.1", 443),
+        StaticNodeDraft.Manual("trojan", "192.0.2.1", 443, username = "u"),
+        StaticNodeDraft.Manual("vless", "192.0.2.1", 443, password = "p"),
+        StaticNodeDraft.Manual("socks5", "192.0.2.1", 1080, uuid = "u"),
+        StaticNodeDraft.Manual("ss", "192.0.2.1", 443, password = "p"),
+        StaticNodeDraft.Manual("ss", "192.0.2.1", 443, password = "p", cipher = "obsolete"),
+        StaticNodeDraft.Link("socks5://user@192.0.2.1:1080"),
+        StaticNodeDraft.Link("trojan://demo@192.0.2.1:443?sni=a&sni=b"),
+    )
+
+    private fun fieldPreviewResults() = listOf(
+        StaticNodeResult.Ready(hk.id, "HK->JP", "socks5"),
+        StaticNodeResult.Invalid(StaticNodeReason.Server),
+        StaticNodeResult.Invalid(StaticNodeReason.Port),
+        StaticNodeResult.Invalid(StaticNodeReason.Password),
+        StaticNodeResult.Unsupported(StaticNodeReason.Username),
+        StaticNodeResult.Unsupported(StaticNodeReason.Password),
+        StaticNodeResult.Unsupported(StaticNodeReason.Uuid),
+        StaticNodeResult.Invalid(StaticNodeReason.Cipher),
+        StaticNodeResult.Unsupported(StaticNodeReason.Cipher),
+        StaticNodeResult.Invalid(StaticNodeReason.Credentials),
+        StaticNodeResult.Invalid(StaticNodeReason.DuplicateOption),
     )
 
     private fun StaticNodeCallFixture.checkCall() {

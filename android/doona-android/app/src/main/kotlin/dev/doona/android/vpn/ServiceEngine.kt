@@ -507,7 +507,7 @@ class ServiceEngine internal constructor(
 internal data class NodesArgs(val ids: List<String>?)
 
 @Serializable
-private class StaticNodeRowsDto(val rows: List<StaticNodeRowDto>) {
+internal class StaticNodeRowsDto(val rows: List<StaticNodeRowDto>) {
     fun toRows() = rows.map(StaticNodeRowDto::toRow)
 }
 

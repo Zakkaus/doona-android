@@ -44,10 +44,12 @@ class CoreDtoTest {
         "call-set-subscription-user-agent-args.json" to SubscriptionUserAgentArgs.serializer(),
         "call-error.json" to CallErrorReplyDto.serializer(),
         "call-error-state-write.json" to CallErrorReplyDto.serializer(),
+        "call-error-static-row-count.json" to CallErrorReplyDto.serializer(),
         "call-select-args.json" to SelectArgs.serializer(),
         "call-ok-traffic-series.json" to TrafficSeriesDto.serializer(),
         "call-ok-usage.json" to UsageDto.serializer(),
         "call-ok-nodes.json" to NodesDto.serializer(),
+        "call-ok-static-limits.json" to StaticNodeRowsDto.serializer(),
         "call-nodes-args.json" to NodesArgs.serializer(),
         "call-ok-score-state.json" to ScoreStateDto.serializer(),
         "call-score-state-args.json" to Unit.serializer(),
@@ -305,38 +307,22 @@ class CoreDtoTest {
     }
 
     @Test
-    fun staticEditorMapsEveryFieldAndRowReason() {
-        val invalid = mapOf(
-            "catalog_full" to StaticNodeReason.CatalogFull,
-            "cipher" to StaticNodeReason.Cipher,
-            "credentials" to StaticNodeReason.Credentials,
-            "duplicate_option" to StaticNodeReason.DuplicateOption,
-            "fields" to StaticNodeReason.Fields,
-            "link" to StaticNodeReason.Link,
-            "link_length" to StaticNodeReason.LinkLength,
-            "name" to StaticNodeReason.Name,
-            "password" to StaticNodeReason.Password,
-            "port" to StaticNodeReason.Port,
-            "server" to StaticNodeReason.Server,
-            "uuid" to StaticNodeReason.Uuid,
+    fun staticBatchLimitsAreRowErrors() {
+        val reply = CoreJson.result(fixture("call-ok-static-limits.json"), StaticNodeRowsDto.serializer())
+        assertEquals(
+            listOf(StaticNodeResult.Invalid(StaticNodeReason.LinkLength), StaticNodeResult.Invalid(StaticNodeReason.CatalogFull)),
+            reply.toRows(),
         )
-        val unsupported = mapOf(
-            "chain" to StaticNodeReason.Chain,
-            "cipher" to StaticNodeReason.Cipher,
-            "option" to StaticNodeReason.Option,
-            "password" to StaticNodeReason.Password,
-            "path" to StaticNodeReason.Path,
-            "protocol" to StaticNodeReason.Protocol,
-            "username" to StaticNodeReason.Username,
-            "uuid" to StaticNodeReason.Uuid,
-        )
-        fun row(status: String, reason: String) = CoreJson.result(
-            """{"ok":{"status":"$status","reason":"$reason"}}""",
-            StaticNodeRowDto.serializer(),
-        ).toRow()
+    }
 
-        for ((key, reason) in invalid) assertEquals(StaticNodeResult.Invalid(reason), row("invalid", key))
-        for ((key, reason) in unsupported) assertEquals(StaticNodeResult.Unsupported(reason), row("unsupported", key))
+    @Test
+    fun unknownStaticNodeReasonsFailDecoding() {
+        for (status in listOf("invalid", "unsupported")) {
+            val reply = """{"ok":{"rows":[{"status":"$status","reason":"unknown"}]}}"""
+            assertThrows(SerializationException::class.java) {
+                CoreJson.result(reply, StaticNodeRowsDto.serializer())
+            }
+        }
     }
 
     @Test
