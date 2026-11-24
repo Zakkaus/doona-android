@@ -77,7 +77,10 @@ import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvInline
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.RvNavFade
 import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvPageEnd
+import dev.doona.android.designsystem.rv.RvPageEndRoom
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.designsystem.rv.RvRow
@@ -103,7 +106,7 @@ import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rememberRvGlass
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvGlassSource
-import dev.doona.android.designsystem.rv.rvNavClearance
+import dev.doona.android.designsystem.rv.rvNavMiddle
 import dev.doona.android.designsystem.rv.rvPullBlur
 import dev.doona.android.designsystem.rv.rvShade
 import dev.doona.android.designsystem.rv.rvSystemScheme
@@ -133,7 +136,8 @@ import kotlinx.coroutines.launch
  * ([RvGutter]'s slot); with no subscription, [noSubscription] puts the empty state with 新增訂閱 (which runs it) in their
  * place, as on 策略. While [loading] (before the engine is ready)
  * the hero's three lines and the cards are skeletons of themselves ([RvSkeletonHero], [ActivitySkeleton]), and the
- * content fades in over them in place; the map, the actions, the bar and the nav are there from the start.
+ * content fades in over them in place; the map, the actions, the bar and the nav are there from the start. [navFade] (a
+ * sample for the owner, off by default) lays [RvNavFade] under the nav.
  */
 @Composable
 internal fun RvActivityScreen(
@@ -149,6 +153,7 @@ internal fun RvActivityScreen(
     banner: RvNotice? = null,
     noSubscription: (() -> Unit)? = null,
     loading: Boolean = false,
+    navFade: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -190,9 +195,10 @@ internal fun RvActivityScreen(
                         }
                     }
                 }
-                Spacer(Modifier.height(rvNavClearance(insets)))
+                RvPageEndRoom(RvPageEnd.Nav, insets)
             }
             RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.search, onStats = routes.stats, Modifier.align(Alignment.TopCenter), pull, routes.subscriptions)
+            if (navFade) RvNavFade(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(rvNavMiddle(insets)))
             RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
         }
     }

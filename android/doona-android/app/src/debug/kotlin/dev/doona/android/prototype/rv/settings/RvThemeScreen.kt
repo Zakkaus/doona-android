@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
@@ -46,6 +45,7 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvColors
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRadio
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSize
@@ -74,7 +74,7 @@ internal fun RvThemeScreen(
     val title = stringResource(R.string.rv_settings_theme)
     val pageDark = Rv.colors.dark
     RvTheme(appearance.scheme(if (pageDark) dark else light, pageDark), pageDark) {
-        RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+        RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
             RvLargeTitle(title, titleBlock, insets)
             // Each card has its outside title, as 強調色 has (N-07); the first one sits on the header's gap.
             Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
@@ -85,8 +85,6 @@ internal fun RvThemeScreen(
                 RvSettingsSection(stringResource(R.string.rv_settings_accent))
                 AccentCard(appearance, if (pageDark) dark.primary else light.primary, onChange)
             }
-            Spacer(Modifier.height(RvSettingsSpace.bottom))
-            Spacer(Modifier.windowInsetsBottomHeight(insets))
         }
     }
 }

@@ -39,13 +39,13 @@ import dev.doona.android.designsystem.rv.RvBarSpacer
 import dev.doona.android.designsystem.rv.RvFloatingNav
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvInfoSheet
+import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
-import dev.doona.android.designsystem.rv.rvNavClearance
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.rvHeroArt
@@ -76,6 +76,7 @@ internal fun RvSettingsScreen(
         insets,
         scroll = scroll,
         overlay = { glass -> RvFloatingNav(RV_NAV_SETTINGS, onTab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter)) },
+        end = RvPageEnd.Nav,
     ) { titleBlock ->
         Hero(titleBlock, insets, routes.report)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
@@ -85,8 +86,6 @@ internal fun RvSettingsScreen(
             AdvancedGroup(state, routes, configRev)
             RvAboutEntry(stringResource(R.string.rv_settings_version_value), routes.about)
         }
-        // The last card clears the floating nav over the page.
-        Spacer(Modifier.height(rvNavClearance(insets)))
     }
     val manual = stringResource(R.string.rv_settings_quick_tile_manual)
     RvInfoSheet(state.tileSheet, stringResource(R.string.rv_settings_quick_tile), manual, stringResource(R.string.rv_done)) { onChange(state.copy(tileSheet = false)) }

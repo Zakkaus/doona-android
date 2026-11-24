@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
@@ -73,8 +71,6 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, empty: RvSta
             RvSplitCard(state.split)
             RvToolsCard(tools(state), onTool = { NOT_WIRED() })
         }
-        Spacer(Modifier.height(RvSpace.cardGap))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

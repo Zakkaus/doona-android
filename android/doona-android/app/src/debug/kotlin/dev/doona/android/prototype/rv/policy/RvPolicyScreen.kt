@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
@@ -43,6 +42,7 @@ import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSearchPill
@@ -62,7 +62,6 @@ import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTabHeader
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.rvNavClearance
 import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
@@ -135,6 +134,7 @@ internal fun RvPolicyScreen(
         overlay = { glass ->
             RvFloatingNav(RV_NAV_POLICY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
         },
+        end = RvPageEnd.Nav,
     ) {
         RvTabHeader(insets)
         if (noSubscription != null) {
@@ -150,8 +150,6 @@ internal fun RvPolicyScreen(
             RvBannerSlot(banner)
             RvSkeletonFade(loading, { Column { PolicySkeleton(state.mode) } }) { Column { PolicyContent(state, onChange, routes, configRev) } }
         }
-        // The last card clears the floating nav, as on 設定.
-        Spacer(Modifier.height(rvNavClearance(insets)))
     }
 }
 

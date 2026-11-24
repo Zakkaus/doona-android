@@ -4,14 +4,11 @@ import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
@@ -22,6 +19,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTheme
@@ -65,7 +63,7 @@ internal fun RvAboutEntry(version: String, onOpen: () -> Unit) {
 internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes: RvAboutRoutes = RvAboutRoutes(), update: RvUpdate = RvUpdate.Idle) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_about_title)
-    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+    RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvBannerSlot(rvUpdateNotice(update, versions.app, routes.release, routes.checkUpdate))
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin), verticalArrangement = Arrangement.spacedBy(RvSettingsSpace.cardGap)) {
@@ -85,8 +83,6 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
                 RvSettingsNavRow(stringResource(R.string.rv_about_privacy), R.drawable.rv_sym_vpn_lock, routes.privacy)
             }
         }
-        Spacer(Modifier.height(RvSettingsSpace.bottom))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

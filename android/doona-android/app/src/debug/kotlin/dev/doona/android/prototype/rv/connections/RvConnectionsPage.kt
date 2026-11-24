@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
@@ -35,6 +34,7 @@ import dev.doona.android.designsystem.rv.RvFloatingNav
 import dev.doona.android.designsystem.rv.RvGlass
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLongPressTiming
+import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSearchField
@@ -43,7 +43,6 @@ import dev.doona.android.designsystem.rv.RvTabHeader
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvFormat
-import dev.doona.android.designsystem.rv.rvNavClearance
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
@@ -93,6 +92,7 @@ internal fun RvConnectionsPage(
         overlay = { glass ->
             RvFloatingNav(RV_NAV_CONNECTIONS, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
         },
+        end = RvPageEnd.Nav,
     ) {
         when {
             !connected -> RvTabHeader(insets)
@@ -100,7 +100,6 @@ internal fun RvConnectionsPage(
             else -> RvTabHeader(insets, caption = { RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size)) })
         }
         if (connected) Connections(shown, connections, routes, nowEpochMs) else Disconnected()
-        Spacer(Modifier.height(rvNavClearance(insets)))
     }
 }
 

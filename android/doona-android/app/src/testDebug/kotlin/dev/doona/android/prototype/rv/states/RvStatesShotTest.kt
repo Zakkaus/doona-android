@@ -37,7 +37,8 @@ import org.robolectric.annotation.GraphicsMode
  * (`-activity-vpn-taken-*`), offline (`-activity-offline-*`) and after the core stopped (`-activity-core-stopped-*`), each
  * its first screen, and once after a crash (`-activity-crash-*`, also fs115 and fs200); and the local network prompts
  * over 新增訂閱 with a link on the local network (`-sub-add-lan-{ask,denied}-*`), drawn as their sheet's window draws them
- * once in.
+ * once in. Offline and with the VPN taken also as the owner's sample B of item 8 (`-activity-{offline,vpn-taken}-fade-*`,
+ * light, dark, fs115, fs200): the page's colour under the nav ([dev.doona.android.designsystem.rv.RvNavFade]).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -68,6 +69,22 @@ class RvStatesShotTest {
     @Test fun offlineLight() = notice(RvActivityNotice.Offline, false)
 
     @Test fun offlineDark() = notice(RvActivityNotice.Offline, true)
+
+    @Test fun offlineFadeLight() = fade(RvActivityNotice.Offline, false)
+
+    @Test fun offlineFadeDark() = fade(RvActivityNotice.Offline, true)
+
+    @Test fun offlineFadeFs115() = fade(RvActivityNotice.Offline, false, RV_FS115)
+
+    @Test fun offlineFadeFs200() = fade(RvActivityNotice.Offline, false, RV_FS200)
+
+    @Test fun vpnTakenFadeLight() = fade(RvActivityNotice.VpnTaken, false)
+
+    @Test fun vpnTakenFadeDark() = fade(RvActivityNotice.VpnTaken, true)
+
+    @Test fun vpnTakenFadeFs115() = fade(RvActivityNotice.VpnTaken, false, RV_FS115)
+
+    @Test fun vpnTakenFadeFs200() = fade(RvActivityNotice.VpnTaken, false, RV_FS200)
 
     @Test fun coreStoppedLight() = notice(RvActivityNotice.CoreStopped, false)
 
@@ -126,6 +143,9 @@ class RvStatesShotTest {
 
     private fun notice(notice: RvActivityNotice, dark: Boolean, fontScale: Float = 1f) = shot("activity-${notice.route}", dark, fontScale = fontScale) { Notice(notice) {} }
 
+    private fun fade(notice: RvActivityNotice, dark: Boolean, fontScale: Float = 1f) =
+        shot("activity-${notice.route}-fade", dark, fontScale = fontScale) { Notice(notice, navFade = true) {} }
+
     private fun shot(name: String, dark: Boolean, whole: Boolean = false, fontScale: Float = 1f, content: @Composable () -> Unit) =
         compose.rvShot(name, dark, before = { if (whole) assertWhole() }, fontScale = fontScale, content = content)
 
@@ -133,12 +153,13 @@ class RvStatesShotTest {
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
 
     @Composable
-    private fun Notice(notice: RvActivityNotice, onAction: () -> Unit) = RvActivityScreen(
+    private fun Notice(notice: RvActivityNotice, navFade: Boolean = false, onAction: () -> Unit) = RvActivityScreen(
         rvNoticeActivity(notice),
         onAction = {},
         onConnect = {},
         banner = rvActivityBanner(notice, onAction),
         noSubscription = onAction.takeIf { notice == RvActivityNotice.NoSubscription },
+        navFade = navFade,
     )
 
     /** 新增訂閱 with a link on the local network, under the prompt its 匯入 raised. */

@@ -3,13 +3,10 @@ package dev.doona.android.prototype.rv.settings
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -24,6 +21,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowPress
@@ -46,7 +44,7 @@ internal val RV_INTERVAL_HOURS = listOf(1, 6, 12, 24)
 internal fun RvIntervalScreen(selected: Int, onSelect: (Int) -> Unit, onBack: () -> Unit, onCustom: () -> Unit = NOT_WIRED) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_update_interval)
-    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+    RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             RvSettingsRadioCard {
@@ -57,8 +55,6 @@ internal fun RvIntervalScreen(selected: Int, onSelect: (Int) -> Unit, onBack: ()
                 RvSettingsRow(stringResource(R.string.rv_settings_dns_custom), Modifier.rvRowPress(Role.Button, onCustom)) { RvChevron() }
             }
         }
-        Spacer(Modifier.height(RvSettingsSpace.bottom))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

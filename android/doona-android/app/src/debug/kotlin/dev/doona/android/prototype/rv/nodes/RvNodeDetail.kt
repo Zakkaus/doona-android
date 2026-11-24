@@ -35,6 +35,7 @@ import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
@@ -77,6 +78,8 @@ internal fun RvNodeDetail(
         insets,
         onBack = onBack,
         overlay = { Actions(current, onUse, onTest, insets, Modifier.align(Alignment.BottomCenter)) },
+        // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
+        end = RvPageEnd.Inset(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter),
     ) { titleBlock ->
         Header(node, current, titleBlock, insets)
         RvGutter(banner = banner) {
@@ -84,9 +87,6 @@ internal fun RvNodeDetail(
         }
         RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { StatsCard(node, times.lastOrNull() ?: RV_NO_VALUE) }
-        // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
-        Spacer(Modifier.height(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

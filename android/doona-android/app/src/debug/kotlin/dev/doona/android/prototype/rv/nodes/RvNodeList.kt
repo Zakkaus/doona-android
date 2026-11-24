@@ -3,14 +3,12 @@ package dev.doona.android.prototype.rv.nodes
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -188,8 +186,6 @@ internal fun RvNodePickerPage(
         } else {
             RvNodeGroups(groups, currentId, sort, onPick)
         }
-        Spacer(Modifier.height(RvSpace.cardGap))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

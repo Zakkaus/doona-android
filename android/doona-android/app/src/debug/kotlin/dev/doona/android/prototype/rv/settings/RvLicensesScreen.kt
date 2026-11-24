@@ -4,13 +4,10 @@ import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
@@ -22,6 +19,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
@@ -66,13 +64,11 @@ internal object RvLicenses {
 internal fun RvLicensesScreen(onOpen: (Int) -> Unit, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_licenses)
-    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+    RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             RvSettingsCard { RvLicenses.all.forEachIndexed { i, it -> RvSettingsNavRow(it.name, null, { onOpen(i) }, it.license) } }
         }
-        Spacer(Modifier.height(RvSettingsSpace.bottom))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 
@@ -87,8 +83,6 @@ internal fun RvLicenseText(license: RvLicense, onBack: () -> Unit) {
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.controlStack)) {
             paragraphs.forEach { RvText(it, Rv.type.rowSub, maxLines = Int.MAX_VALUE) }
         }
-        Spacer(Modifier.height(RvSettingsSpace.bottom))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

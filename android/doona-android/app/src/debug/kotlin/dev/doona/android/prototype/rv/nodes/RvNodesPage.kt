@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -105,8 +104,6 @@ internal fun RvNodesPage(
                 for ((region, nodes) in state.byRegion()) RegionCard(region, nodes, state.currentId, onOpen)
             }
         }
-        Spacer(Modifier.height(RvSpace.cardGap))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

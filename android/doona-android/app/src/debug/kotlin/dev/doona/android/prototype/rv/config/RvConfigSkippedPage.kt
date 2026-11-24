@@ -2,12 +2,9 @@ package dev.doona.android.prototype.rv.config
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -43,8 +40,6 @@ internal fun RvConfigSkippedPage(state: RvConfigState, onBack: () -> Unit, onOpe
             RvSectionTitle(path, Modifier.padding(horizontal = RvSpace.gutter), first = i == 0)
             RvGutter { RvCard { records.forEach { SkippedRow(it, onOpen) } } }
         }
-        Spacer(Modifier.height(RvSpace.gutter))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

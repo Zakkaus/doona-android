@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -103,8 +102,6 @@ internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack:
             RvSectionTitle(stringResource(R.string.rv_this_connection))
             ConnectionCard(session, upload, format)
         }
-        Spacer(Modifier.height(RvSpace.cardGap))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

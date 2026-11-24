@@ -3,13 +3,10 @@ package dev.doona.android.prototype.rv.settings
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +20,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
@@ -40,7 +38,7 @@ internal const val RV_DEBUG_HOURS = 1
 internal fun RvLogLevelScreen(level: RvLogLevel, onSelect: (RvLogLevel) -> Unit, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_log_level)
-    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+    RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             RvSettingsRadioCard {
@@ -50,8 +48,6 @@ internal fun RvLogLevelScreen(level: RvLogLevel, onSelect: (RvLogLevel) -> Unit,
             }
             RvFootnote(pluralStringResource(R.plurals.rv_log_debug_footer, RV_DEBUG_HOURS, RV_DEBUG_HOURS), inset = RvSpace.gutter - RvSettingsSpace.margin)
         }
-        Spacer(Modifier.height(RvSettingsSpace.bottom))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 

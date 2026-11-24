@@ -104,6 +104,17 @@ internal fun RvActionStrip(glass: RvGlass, modifier: Modifier = Modifier) {
     Box(modifier.fadeInTop(RvChrome.stripFade).rvGlass(glass, RectangleShape, Rv.colors.barGlass))
 }
 
+/**
+ * The page's colour from the floating nav's middle down to the screen's edge, fading in over [RvChrome.stripFade] at its
+ * top, as [RvActionStrip] does, so no line of what scrolls under the nav shows beside its lower half or under it, where the
+ * gesture handle lies. A sample for the owner (owner-fix2 item 8, B), which no page shows unless it asks; it fills
+ * [modifier]'s box ([rvNavMiddle] tall), and the nav stands on it.
+ */
+@Composable
+internal fun RvNavFade(modifier: Modifier = Modifier) {
+    Box(modifier.fadeInTop(RvChrome.stripFade).background(Rv.colors.page))
+}
+
 /** Draws this element with its first [fade] fading in from nothing, so what it covers is not cut off at a line. */
 private fun Modifier.fadeInTop(fade: Dp): Modifier = graphicsLayer {
     compositingStrategy = CompositingStrategy.Offscreen

@@ -61,7 +61,8 @@ import kotlin.math.roundToInt
  * [RvPrimaryButton]) on the gutter, 16 dp above the inset, with no scrim; the page keeps its room under the content, so
  * the last card scrolls clear of it. A page of dense text (a file's code) sets [actionScrim] to put [RvActionStrip]
  * behind the action, so the text under it is blurred rather than showing through at its edge. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's
- * floating actions).
+ * floating actions). Without a [bottomAction] the content ends with [end]'s room ([RvPageEndRoom]): the navigation bar's
+ * inset under a gap, or the floating nav's clearance on a tab home.
  */
 @Composable
 internal fun RvScrollPage(
@@ -75,6 +76,7 @@ internal fun RvScrollPage(
     actionScrim: Boolean = false,
     overlay: @Composable BoxScope.(RvGlass) -> Unit = {},
     field: (@Composable (RvGlass, Modifier) -> Unit)? = null,
+    end: RvPageEnd = RvPageEnd.Inset(),
     content: @Composable ColumnScope.(titleBlock: Modifier) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -97,7 +99,7 @@ internal fun RvScrollPage(
                 content(Modifier.onGloballyPositioned { titleBottom = it.boundsInWindow().bottom.roundToInt() })
             }
             // The bottom action's room: the gap above it, then the action with its 16 dp over the inset.
-            if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() }))
+            if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() })) else RvPageEndRoom(end, insets)
         }
         RvBar(glass, insets, rvShade(scroll), Modifier.align(Alignment.TopStart), barTop) {
             when {
@@ -132,6 +134,32 @@ internal fun RvScrollPage(
             }
         }
         overlay(glass)
+    }
+}
+
+/**
+ * What a page keeps free under its last content, the one end rule of every page, so that scrolled to its end the last
+ * line ends above whatever stands at the window's foot: [Inset] on a pushed page, [Nav] on a tab home. A page with a
+ * bottom action keeps the action's room instead ([RvScrollPage]).
+ */
+internal sealed interface RvPageEnd {
+    /** [gap] under the last card, then the navigation bar's inset (the gesture handle's strip or three-button bar). */
+    class Inset(val gap: Dp = RvSpace.cardGap) : RvPageEnd
+
+    /** The floating nav's clearance ([rvNavClearance]): over the inset, the capsule, then [RvChrome.navGap]. */
+    data object Nav : RvPageEnd
+}
+
+/** [end]'s room at the foot of a page's content, read from [insets]. */
+@Composable
+internal fun RvPageEndRoom(end: RvPageEnd, insets: WindowInsets) {
+    when (end) {
+        is RvPageEnd.Inset -> {
+            Spacer(Modifier.height(end.gap))
+            Spacer(Modifier.windowInsetsBottomHeight(insets))
+        }
+
+        RvPageEnd.Nav -> Spacer(Modifier.height(rvNavClearance(insets)))
     }
 }
 

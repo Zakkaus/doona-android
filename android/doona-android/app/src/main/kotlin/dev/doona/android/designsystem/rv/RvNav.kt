@@ -172,6 +172,10 @@ internal fun rvNavBottom(insets: WindowInsets): Dp {
 @Composable
 internal fun rvNavClearance(insets: WindowInsets): Dp = rvNavBottom(insets) + RvChrome.navHeight + rvNavLabelGrowth() + RvChrome.navGap
 
+/** From the screen's edge to the open capsule's middle, as tall as the font size makes it: [RvNavFade]'s height. */
+@Composable
+internal fun rvNavMiddle(insets: WindowInsets): Dp = rvNavBottom(insets) + (RvChrome.navHeight + rvNavLabelGrowth()) / 2
+
 /**
  * A label's line: the 15 sp label's line height at the phone's font size, never less than [RvChrome.navLabel], so a
  * larger font does not cut the glyphs' bottoms (ruler audit finding 1).

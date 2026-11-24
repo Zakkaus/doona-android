@@ -2,13 +2,9 @@ package dev.doona.android.prototype.rv.config
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,7 +25,6 @@ import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
@@ -69,8 +64,6 @@ internal fun RvConfigHistoryPage(
             RvCard { revisions.forEach { RevisionRow(it, it.rev == headRev, onRevision) { onRename(RvRevisionRename(it.rev, it.name.orEmpty())) } } }
             RvCard { RvSettingsNavRow(stringResource(R.string.rv_config_export), R.drawable.rv_sym_ios_share, onExport) }
         }
-        Spacer(Modifier.height(RvSpace.gutter))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
     RvRevisionRenameSheet(rename, onRename, onSaveName)
 }

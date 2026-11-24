@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,8 +76,6 @@ internal fun RvConnectionDetail(
             RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.rv_policy_new_rule), null, onClick = onNewRule) { RvChevron() } }
             RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_close, Rv.colors.error) }, stringResource(R.string.rv_conn_close), null, onClick = onClose) }
         }
-        Spacer(Modifier.height(RvSpace.cardGap))
-        Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
 
