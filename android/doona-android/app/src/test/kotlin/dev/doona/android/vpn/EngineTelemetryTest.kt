@@ -3,6 +3,7 @@ package dev.doona.android.vpn
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.PerAppSettings
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
@@ -24,6 +25,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -108,23 +110,44 @@ class EngineTelemetryTest {
     }
 
     @Test
-    fun theHealthCheckReportsCoreDeathThenRestartsASystemSession() = runTest {
+    fun recoveryGrowsAcrossFailedStartsAndRepeatedDeathsAndCapsTheDelay() = runTest {
         val engine = engine()
         var starts = 0
-        core.onStart = { starts++ }
+        core.onStart = {
+            if (++starts == 2) throw IllegalStateException("internal")
+        }
         val service = ServiceSession(engine.controller)
-        backgroundScope.launch { service.follow { engine.controller.release(Host) } }
-        assertTrue(service.startSystem(Host) { error("Unexpected cancellation") })
+        backgroundScope.launch { service.follow { engine.controller.release(host) } }
+        assertTrue(service.startSystem(host) { error("Unexpected cancellation") })
         runCurrent()
         assertTrue(engine.status.value is Status.Running)
 
         reportDeadCore()
         assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
 
-        advanceTimeBy(2_000)
-        runCurrent()
-        assertTrue(engine.status.value is Status.Running)
+        awaitRetry(engine, 1_000)
         assertEquals(2, starts)
+        assertEquals(Status.Failed(FailureReason.StartFailed, ErrorCode.Internal), engine.status.value)
+        awaitRetry(engine, 2_000)
+        assertEquals(3, starts)
+        assertTrue(engine.status.value is Status.Running)
+
+        listOf(4_000L, 8_000L, 16_000L, 32_000L, 60_000L, 60_000L).forEachIndexed { index, wait ->
+            reportDeadCore()
+            assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
+            awaitRetry(engine, wait)
+            assertEquals(4 + index, starts)
+            assertTrue(engine.status.value is Status.Running)
+        }
+    }
+
+    private fun TestScope.awaitRetry(engine: ServiceEngine, wait: Long) {
+        val failure = engine.controller.session.value
+        advanceTimeBy(wait - 1)
+        runCurrent()
+        assertEquals(failure, engine.controller.session.value)
+        advanceTimeBy(1)
+        runCurrent()
     }
 
     @Test
@@ -133,7 +156,7 @@ class EngineTelemetryTest {
         var starts = 0
         var redeliveryCancelled = false
         core.onStart = { starts++ }
-        assertTrue(engine.controller.startSystem(Host) { redeliveryCancelled = true } != null)
+        assertTrue(engine.controller.startSystem(host) { redeliveryCancelled = true } != null)
         runCurrent()
         reportDeadCore()
         assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
@@ -144,6 +167,60 @@ class EngineTelemetryTest {
         assertEquals(Status.Stopped, engine.status.value)
         assertEquals(1, starts)
         assertTrue(redeliveryCancelled)
+    }
+
+    @Test
+    fun revocationDuringBackoffPreventsAnotherStart() = runTest {
+        val engine = engine()
+        var starts = 0
+        var cancelled = false
+        core.onStart = { starts++ }
+        assertTrue(engine.controller.startSystem(host) { cancelled = true } != null)
+        runCurrent()
+        reportDeadCore()
+
+        engine.controller.revoke(host)
+        advanceTimeBy(60_001)
+        runCurrent()
+        assertEquals(Status.Failed(FailureReason.Revoked), engine.status.value)
+        assertEquals(1, starts)
+        assertTrue(cancelled)
+    }
+
+    @Test
+    fun connectDuringBackoffQueuesOneStartOnTheExistingSystemService() = runTest {
+        val engine = engine()
+        var starts = 0
+        core.onStart = { starts++ }
+        assertTrue(engine.controller.startSystem(host) { error("Unexpected cancellation") } != null)
+        runCurrent()
+        reportDeadCore()
+
+        engine.connect()
+        runCurrent()
+        assertEquals(2, starts)
+        assertTrue(engine.status.value is Status.Running)
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertEquals(2, starts)
+    }
+
+    @Test
+    fun lockdownEnabledWhileRunningIsReportedInsteadOfCoreDeath() = runTest {
+        val engine = engine()
+        var starts = 0
+        core.onStart = { starts++ }
+        assertTrue(engine.controller.startSystem(host) { error("Stop must follow notification") } != null)
+        runCurrent()
+        assertNull(engine.controller.session.value.startBlock)
+
+        host.lockdownEnabled = true
+        reportDeadCore()
+        assertEquals(VpnStartBlock.Lockdown, engine.controller.session.value.startBlock)
+        assertEquals(Status.Failed(FailureReason.StartFailed), engine.status.value)
+        advanceTimeBy(60_001)
+        runCurrent()
+        assertEquals(1, starts)
     }
 
     @Test
@@ -190,7 +267,7 @@ class EngineTelemetryTest {
         start(engine)
         levels.set(LogLevel.Debug).getOrThrow()
 
-        engine.controller.revoke(Host)
+        engine.controller.revoke(host)
         runCurrent()
 
         assertEquals(Status.Failed(FailureReason.Revoked), engine.status.value)
@@ -207,7 +284,7 @@ class EngineTelemetryTest {
         core.onStart = { throw IllegalStateException("no_nodes") }
 
         engine.connect()
-        assertTrue(engine.controller.start(Host, engine.controller.session.value.generation))
+        assertTrue(engine.controller.start(host, engine.controller.session.value.generation))
         runCurrent()
 
         assertTrue(engine.status.value is Status.Failed)
@@ -264,7 +341,7 @@ class EngineTelemetryTest {
 
     private fun TestScope.start(engine: ServiceEngine) {
         engine.connect()
-        assertTrue(engine.controller.start(Host, engine.controller.session.value.generation))
+        assertTrue(engine.controller.start(host, engine.controller.session.value.generation))
         runCurrent()
         assertTrue(engine.status.value is Status.Running)
     }
@@ -285,9 +362,11 @@ class EngineTelemetryTest {
         return ServiceEngine(core, opener, controller, settings, { true }, dispatcher, backgroundScope, expireDebugCapture).also { it.launch(dispatcher) }
     }
 
-    private object Host : TunHost {
+    private val host = TestHost()
+
+    private class TestHost : TunHost {
         override val selfPackage = "dev.doona.android"
-        override val lockdownEnabled = false
+        override var lockdownEnabled = false
 
         override fun installed(packages: Set<String>) = packages
 

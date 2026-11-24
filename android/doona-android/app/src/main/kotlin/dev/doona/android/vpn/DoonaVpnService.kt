@@ -1,5 +1,6 @@
 package dev.doona.android.vpn
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -58,14 +59,14 @@ internal class DoonaVpnService :
         var restart = START_NOT_STICKY
         when (intent?.action) {
             ACTION_START -> {
-                goForeground()
-                session.start(this, intent.getLongExtra(EXTRA_GENERATION, 0))
+                val block = goForeground()
+                session.start(this, intent.getLongExtra(EXTRA_GENERATION, 0), block)
                 if (session.open) notifications.cancelDrop()
             }
 
             SERVICE_INTERFACE -> {
-                if (!session.open) goForeground()
-                if (session.startSystem(this, ::stopSelf)) {
+                val block = if (session.open) null else goForeground()
+                if (session.startSystem(this, block) { stopSelf(startId) }) {
                     notifications.cancelDrop()
                     // Android redelivers the system start after process death; an explicit stop cancels it.
                     restart = START_REDELIVER_INTENT
@@ -80,7 +81,7 @@ internal class DoonaVpnService :
     }
 
     /** Must run before onStartCommand returns, even for a repeated start: it came from startForegroundService. */
-    private fun goForeground() {
+    private fun goForeground(): VpnStartBlock? {
         val notification = notifications.ongoing(engine.status.value.takeIf { it.active } ?: Status.Starting)
         foreground = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -89,6 +90,9 @@ internal class DoonaVpnService :
                 startForeground(VpnNotifications.ID, notification)
             }
             true
+        } catch (e: ForegroundServiceStartNotAllowedException) {
+            foreground = false
+            return VpnStartBlock.ForegroundStartNotAllowed
         } catch (e: IllegalStateException) {
             // Without VPN consent the systemExempted type is refused; establish then fails the start.
             VpnLog.warn("startForeground threw ${e.javaClass.simpleName}")
@@ -97,6 +101,7 @@ internal class DoonaVpnService :
             VpnLog.warn("startForeground threw ${e.javaClass.simpleName}")
             false
         }
+        return null
     }
 
     private fun end(ended: Session) {

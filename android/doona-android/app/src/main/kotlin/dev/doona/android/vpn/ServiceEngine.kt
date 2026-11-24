@@ -404,7 +404,9 @@ class ServiceEngine internal constructor(
             if (session.status !is Status.Running) return@collectLatest
             while (true) {
                 delay(HEALTH_INTERVAL_MS)
-                if (poll()?.alive != true) {
+                val alive = poll()?.alive == true
+                if (controller.checkLockdown(session)) return@collectLatest
+                if (!alive) {
                     VpnLog.warn("health check: data path down")
                     controller.coreStopped(session)
                     return@collectLatest

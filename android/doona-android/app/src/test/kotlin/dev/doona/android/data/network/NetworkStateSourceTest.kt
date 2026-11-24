@@ -2,13 +2,17 @@ package dev.doona.android.data.network
 
 import android.app.Application
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
+import android.os.Looper
 import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.NetworkTransport
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -21,6 +25,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowNetwork
 import org.robolectric.shadows.ShadowNetworkCapabilities
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
 class NetworkStateSourceTest {
     private val app = ApplicationProvider.getApplicationContext<Application>()
@@ -57,41 +62,38 @@ class NetworkStateSourceTest {
     }
 
     @Test
-    fun captivePortalAndFailedProbeStayOnlineButUnvalidated() = runTest {
-        val state = observeNetwork()
-        val signIn = mutableListOf<Boolean>()
-        backgroundScope.launch { state.captivePortal.collect { signIn += it } }
+    fun nonDefaultNetworksCanNeedSignInWhileCellularIsValidated() = runTest {
+        val source = networkState(app, backgroundScope)
+        backgroundScope.launch { source.state.collect {} }
         testScheduler.runCurrent()
-        val callback = (manager.networkCallbacks - existing).single()
-        val caps = capabilities(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)
-        callback.onCapabilitiesChanged(wifi, caps)
+        val defaultCallback = (manager.networkCallbacks - existing).single()
+        defaultCallback.onCapabilitiesChanged(
+            checkNotNull(connectivity.activeNetwork),
+            capabilities(NetworkCapabilities.TRANSPORT_CELLULAR, NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+        )
+        backgroundScope.launch { source.captivePortal.collect {} }
         testScheduler.runCurrent()
-        assertTrue(state.value.online)
-        assertFalse(state.value.validated)
-        assertEquals(listOf(false, true), signIn)
 
-        shadowOf(caps).removeCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)
-        callback.onCapabilitiesChanged(wifi, caps)
-        testScheduler.runCurrent()
-        assertFalse(state.value.validated)
-        assertEquals(listOf(false, true, false), signIn)
+        val portal = capabilities(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)
+        val unvalidated = capabilities(NetworkCapabilities.TRANSPORT_WIFI)
+        val anotherWifi = ShadowNetwork.newInstance(102)
+        publishCapabilities(wifi, unvalidated)
+        assertFalse(source.captivePortal.value)
+        publishCapabilities(wifi, portal)
+        assertEquals(NetworkState(NetworkTransport.Cellular, metered = true, validated = true), source.state.value)
+        assertTrue(source.captivePortal.value)
 
-        shadowOf(caps).addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-        callback.onCapabilitiesChanged(wifi, caps)
-        testScheduler.runCurrent()
-        assertTrue(state.value.validated)
+        publishCapabilities(anotherWifi, portal)
+        publishCapabilities(wifi, unvalidated)
+        assertTrue(source.captivePortal.value)
+        publishCapabilities(anotherWifi, unvalidated)
+        assertFalse(source.captivePortal.value)
+    }
 
-        shadowOf(caps).removeCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-        callback.onCapabilitiesChanged(wifi, caps)
+    private fun TestScope.publishCapabilities(network: Network, capabilities: NetworkCapabilities) {
+        manager.setNetworkCapabilities(network, capabilities)
+        shadowOf(Looper.getMainLooper()).idle()
         testScheduler.runCurrent()
-        assertTrue(state.value.online)
-        assertFalse(state.value.validated)
-        assertFalse(signIn.last())
-
-        shadowOf(caps).removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        callback.onCapabilitiesChanged(wifi, caps)
-        testScheduler.runCurrent()
-        assertFalse(state.value.online)
     }
 
     @Test
@@ -99,8 +101,8 @@ class NetworkStateSourceTest {
         val state = networkState(app, backgroundScope)
         testScheduler.runCurrent()
         assertEquals(existing, manager.networkCallbacks)
-        val first = backgroundScope.launch { state.collect {} }
-        val second = backgroundScope.launch { state.captivePortal.collect {} }
+        val first = backgroundScope.launch { state.state.collect {} }
+        val second = backgroundScope.launch { state.state.collect {} }
         testScheduler.runCurrent()
         val callback = (manager.networkCallbacks - existing).single()
         first.cancel()
@@ -112,7 +114,7 @@ class NetworkStateSourceTest {
         testScheduler.advanceTimeBy(2)
         assertEquals(existing, manager.networkCallbacks)
 
-        backgroundScope.launch { state.collect {} }
+        backgroundScope.launch { state.captivePortal.collect {} }
         testScheduler.runCurrent()
         assertEquals(1, (manager.networkCallbacks - existing).size)
         backgroundScope.cancel()
@@ -120,8 +122,8 @@ class NetworkStateSourceTest {
         assertEquals(existing, manager.networkCallbacks)
     }
 
-    private fun TestScope.observeNetwork(): NetworkStateSource {
-        val state = networkState(app, backgroundScope)
+    private fun TestScope.observeNetwork(): StateFlow<NetworkState> {
+        val state = networkState(app, backgroundScope).state
         backgroundScope.launch { state.collect {} }
         testScheduler.runCurrent()
         return state
