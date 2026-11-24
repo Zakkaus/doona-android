@@ -5,4 +5,11 @@
     <string name="rv_about_report_action">报告问题</string>
     <string name="rv_about_privacy">隐私</string>
     <string name="rv_about_versions">版本 %1$s · 核心 %2$s · honk %3$s</string>
+
+    <string name="rv_update_latest">已是最新</string>
+    <string name="rv_update_new">有新版本 %1$s</string>
+    <string name="rv_update_new_reason">当前版本 %1$s。</string>
+    <string name="rv_update_view">在 GitHub 查看</string>
+    <string name="rv_update_failed">无法检查更新</string>
+    <string name="rv_update_offline">没有网络连接。</string>
 </resources>

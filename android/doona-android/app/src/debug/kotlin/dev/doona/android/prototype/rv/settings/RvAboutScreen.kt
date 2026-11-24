@@ -31,6 +31,7 @@ import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.RV_ROW_SUBTITLE_LINES
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvAction
+import dev.doona.android.prototype.rv.RvBannerSlot
 import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
@@ -47,13 +48,14 @@ internal data class RvAboutVersions(val app: String, val core: String, val honk:
 internal val rvSampleVersions = RvAboutVersions(app = "0.1.0", core = "0.1.0", honk = "8919784")
 
 /**
- * Where 關於 leads: the repository in the browser, 回報問題, the update check, the licences and the privacy page. None
- * downloads anything; the repository and the issue open in the browser.
+ * Where 關於 leads: the repository in the browser, 回報問題, the update check and a newer release's GitHub page, the
+ * licences and the privacy page. None downloads anything; the repository and the release open in the browser.
  */
 internal class RvAboutRoutes(
     val github: () -> Unit = NOT_WIRED,
     val report: () -> Unit = NOT_WIRED,
     val checkUpdate: () -> Unit = NOT_WIRED,
+    val release: () -> Unit = NOT_WIRED,
     val licenses: () -> Unit = NOT_WIRED,
     val privacy: () -> Unit = NOT_WIRED,
 )
@@ -83,16 +85,18 @@ internal fun RvAboutEntry(version: String, onOpen: () -> Unit) {
  * 關於 doona, the page layout B's row opens: 設定's hero form on a pushed page (the mark beside the centred name, its
  * title collapsing into the bar beside the back disc), with the [versions] under the name, then three round actions,
  * GitHub, 回報問題 and 檢查更新, and one card of the licences and the privacy page, as Revolut's Security page sets its
- * mark, title, round actions and cards (§13.3).
+ * mark, title, round actions and cards (§13.3). Where the [update] check stands shows on its action and, when it needs
+ * the user, in the page's banner over the card ([rvUpdateNotice]).
  */
 @Composable
-internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes: RvAboutRoutes = RvAboutRoutes()) {
+internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes: RvAboutRoutes = RvAboutRoutes(), update: RvUpdate = RvUpdate.Idle) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     RvScrollPage(stringResource(R.string.rv_about_title), insets, onBack = onBack) { titleBlock ->
-        Hero(titleBlock, insets, versions, routes)
+        Hero(titleBlock, insets, versions, routes, update)
+        // No title over the card: it follows the round actions as Revolut's first card follows its hero's (§5).
+        Spacer(Modifier.height(RvSpace.actionsToCard))
+        RvBannerSlot(rvUpdateNotice(update, versions.app, routes.release, routes.checkUpdate))
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            // No title over the card: it follows the round actions as Revolut's first card follows its hero's (§5).
-            Spacer(Modifier.height(RvSpace.actionsToCard))
             RvSettingsCard {
                 RvSettingsNavRow(stringResource(R.string.rv_settings_licenses), R.drawable.rv_sym_license, routes.licenses)
                 RvSettingsNavRow(stringResource(R.string.rv_about_privacy), R.drawable.rv_sym_vpn_lock, routes.privacy)
@@ -106,10 +110,10 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
 /**
  * 設定's hero without its dot map: the mark beside the centred name ([titleBlock]), the version line under it as a
  * page header's caption, and the round actions as far under that block as 設定's are under its title, their labels one
- * size ([rvActionRowFit]).
+ * size ([rvActionRowFit]). While the [update] check runs, its disc holds the busy bar.
  */
 @Composable
-private fun Hero(titleBlock: Modifier, insets: WindowInsets, versions: RvAboutVersions, routes: RvAboutRoutes) {
+private fun Hero(titleBlock: Modifier, insets: WindowInsets, versions: RvAboutVersions, routes: RvAboutRoutes, update: RvUpdate) {
     Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), horizontalAlignment = Alignment.CenterHorizontally) {
         RvBarSpacer(insets)
         Spacer(Modifier.height(RvSettingsSpace.heroTop))
@@ -129,14 +133,14 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, versions: RvAboutVe
         val labels = listOf(
             stringResource(R.string.rv_about_github_action),
             stringResource(R.string.rv_about_report_action),
-            stringResource(R.string.rv_settings_check_update),
+            rvUpdateLabel(update),
         )
         val style = rvActionRowFit(labels, RvSettingsSpace.actionColumn)
         val column = Modifier.width(RvSettingsSpace.actionColumn)
         Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
             RvAction(R.drawable.rv_sym_link, labels[0], routes.github, column, labelStyle = style)
             RvAction(R.drawable.rv_sym_ios_share, labels[1], routes.report, column, labelStyle = style)
-            RvAction(R.drawable.rv_settings_ic_update, labels[2], routes.checkUpdate, column, labelStyle = style)
+            RvAction(R.drawable.rv_settings_ic_update, labels[2], routes.checkUpdate, column, busy = update == RvUpdate.Checking, labelStyle = style)
         }
     }
 }
