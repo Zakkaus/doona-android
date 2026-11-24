@@ -61,7 +61,7 @@ internal object RvPolicyPreviewRoutes {
     const val EDIT = "edit"
     const val PICKER = "picker"
 
-    /** The 新增服務規則 sample (owner-fix2 item 14), reached by its route only: `services:a` flat, `services:b` in sections. */
+    /** The 新增服務規則 sample (owner-fix2 item 14), reached by its route only. */
     const val SERVICES = "services"
     val all = setOf(POLICY, GROUP, RULE, RULES, TEMPLATE, IMPACT, EFFECTIVE, EDIT, PICKER, SERVICES)
 }
@@ -142,7 +142,7 @@ internal fun RvPolicyPreview(
 
         r.IMPACT -> RvTemplateImpactPage(RvTemplateData.impact, onBack = pop, onApply = { onTab(RV_NAV_POLICY) })
 
-        r.SERVICES -> RvServiceRulesPage(serviceLayout(route), onBack = pop, selected = state.services, onToggle = state::tick)
+        r.SERVICES -> RvServiceRulesPage(onBack = pop, selected = state.services, onToggle = state::tick)
 
         else -> {
             val routes = RvPolicyRoutes(
@@ -158,6 +158,3 @@ internal fun RvPolicyPreview(
         }
     }
 }
-
-/** `services:b` lists the services in web's sections; `services` and `services:a` in one card. */
-private fun serviceLayout(route: String) = if (route.substringAfter(':', "") == "b") RvServiceLayout.Sections else RvServiceLayout.Flat

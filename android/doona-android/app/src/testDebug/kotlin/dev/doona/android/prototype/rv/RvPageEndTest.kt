@@ -32,7 +32,6 @@ import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvRulesPage
-import dev.doona.android.prototype.rv.policy.RvServiceLayout
 import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.RvLanguage
@@ -126,8 +125,7 @@ class RvPageEndTest {
             Page("關於") { RvAboutScreen(rvSampleVersions, onBack = {}) },
             Page("日誌等級") { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) },
             Page("語言") { RvLanguageScreen(RvLanguage.TraditionalChinese, RvLanguage.TraditionalChinese, onSelect = {}, onBack = {}) },
-            Page("新增服務規則 A") { RvServiceRulesPage(RvServiceLayout.Flat, onBack = {}) },
-            Page("新增服務規則 B") { RvServiceRulesPage(RvServiceLayout.Sections, onBack = {}) },
+            Page("新增服務規則") { RvServiceRulesPage(onBack = {}) },
         ),
     )
 
