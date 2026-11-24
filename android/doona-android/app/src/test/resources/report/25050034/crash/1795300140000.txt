@@ -1,0 +1,9 @@
+source: core
+atEpochMs: 1795300140000
+version: 0.1.0 debug aarch64-android
+thread: doona-core
+location: src/api.rs:42:7
+message: panic in doonacore::api
+
+backtrace:
+0 libdoonacore.so 0x1f2e

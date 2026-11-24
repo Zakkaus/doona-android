@@ -28,9 +28,9 @@ fn checkout() -> PathBuf {
         .into_iter()
         .flatten()
         .flatten()
-        .map(|repo| repo.path().join("8919784"))
+        .map(|repo| repo.path().join("63de98b"))
         .find(|dir| dir.join("crates/honk-config/Cargo.toml").is_file())
-        .unwrap_or_else(|| panic!("missing honk 8919784: {FETCH}"))
+        .unwrap_or_else(|| panic!("missing honk 63de98b: {FETCH}"))
 }
 
 #[test]
@@ -270,7 +270,7 @@ fn corpus_files(dir: &Path, test: &impl Fn(&Path)) -> usize {
 fn upstream_syntax_and_conformance_admission() {
     let root = checkout();
     let tmp = TempDir::new("honk-corpus");
-    for (dir, expected) in [("tests/fixtures", 81), ("conformance/cases", 104)] {
+    for (dir, expected) in [("tests/fixtures", 81), ("conformance/cases", 105)] {
         let cases = corpus_files(&root.join("crates/honk-config").join(dir), &|fixture| {
             let entry = tmp.path().join("case.dae");
             fs::copy(fixture, &entry).unwrap();
@@ -341,7 +341,7 @@ fn upstream_syntax_and_conformance_admission() {
                 fixture.display()
             );
         });
-        assert_eq!(cases, expected, "incomplete {dir} at 8919784: {FETCH}");
+        assert_eq!(cases, expected, "incomplete {dir} at 63de98b: {FETCH}");
     }
 }
 

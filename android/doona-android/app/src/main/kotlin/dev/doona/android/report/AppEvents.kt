@@ -3,18 +3,19 @@ package dev.doona.android.report
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 
-private const val COMMANDS = "start|stop|select|testLatency|addSubscription|updateSubscription|removeSubscription|setSubscriptionUserAgent|setMode|setRuleSource|setLogLevel|clearCrashes|export"
-private val codes = (ErrorCode.entries.map { it.name } + FailureReason.entries.map { it.name } + listOf("ok", "IOException")).joinToString("|")
+internal const val ACTION_COMMANDS = "start|stop|select|testLatency|addSubscription|updateSubscription|removeSubscription|setSubscriptionUserAgent|setMode|setRuleSource|setLogLevel|clearCrashes|export"
+internal val ACTION_CODES = ErrorCode.entries.map { it.name } + FailureReason.entries.map { it.name } + listOf("ok", "IOException")
+private val codes = ACTION_CODES.joinToString("|")
 
 // Allow values, not just characters: even a single-label host or token can be an ASCII identifier.
-internal val ACTION_TEXT = "command=(?:$COMMANDS) phase=(?:dispatch|complete|deadline|write|reset) " +
+internal val ACTION_TEXT = "command=(?:$ACTION_COMMANDS) phase=(?:dispatch|complete|deadline|write|reset) " +
     "outcome=(?:ok|failed|superseded|partial) code=(?:$codes)(?: elapsedMs=\\d{1,19})?"
-private val actionText = Regex(ACTION_TEXT)
+internal val actionText = Regex(ACTION_TEXT)
 
 /** How severe an app event is. */
 enum class AppEventLevel { Info, Warn }
 
-/** One event of the app: when, how severe, and what happened, in command names, codes, counts and durations only. */
+/** One event of the app: time, level, and a fixed-format diagnostic message. */
 data class AppEvent(val atEpochMs: Long, val level: AppEventLevel, val text: String)
 
 /**
