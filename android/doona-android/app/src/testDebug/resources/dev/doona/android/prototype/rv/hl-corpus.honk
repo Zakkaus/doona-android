@@ -1,0 +1,43 @@
+# Highlighting fixture; do not start the daemon or fetch external assets.
+include { hl-fixture-*.dae 'hl-first*.dae''hl-quoted # second*.dae' }
+global { log_file: "/tmp/honk\"#literal.log" # Only this hash starts a comment.
+    data_dir: /var/share/honk#fixture
+    check_tolerance: 1.5s
+    so_mark_from_dae: 0x10
+    nfqueue_enable: false }
+assets { route: routing
+    geodata { cron: '0 3 * * *' } ui { route: direct } subscription { interval: 2h } }
+experimental { clash_api {} native_api { enabled: false } cache_file {} udp_nfqueue {} }
+node { front: socks5://192.0.2.10:1080#fragment
+    land: 'socks5://192.0.2.11:1080'
+    'hk east': 'socks5://192.0.2.12:1080'
+    via: front->land -> 'hk east' }
+subscription { paid: 'https://sub.example.test/list'(Fixture/1.0)
+    tuned: 'https://sub.example.test/tuned' { interval: 500ms }
+    legacy: { url: https://sub.example.test/legacy } }
+group {
+    123 { policy: fixed } 香港 { policy: min_avg10() } Two Words { policy: round_robin }
+    backup { policy: fallback }
+    edge { policy: score
+        filter: name(via, keyword:front) && !subtag(regex:'^legacy$')
+        filter: group(123|香港, Two Words)
+        final: block } }
+routing {
+    domain(geosite:category-games@cn, suffix:example.test, keyword:ads, full:'*.example.test', regex:'(^|\.)example\.test$') -> edge(must)
+    !geosite:cn && !geoip:private && domain:example.test && suffix:test && keyword:lab && full:lab.test && regex:'lab\.test$' -> block
+    dip(192.0.2.1, 198.51.100.0/24, 2001:db8::/32, geoip:private) && sip(::1) && pname(curl) && mac(00:11:22:33:44:55) && dscp(0x2e) -> direct(mark: 0x10, must)
+    l4proto(tcp, udp) && ipversion(ipv4, 6) && sport(1024-65535) && dport(
+        53, 443, 8080-8090) -> edge
+    fallback: direct(mark: 16) }
+dns { bind: tcp+udp://[::1]:5353
+    client_subnet: auto(192.0.2.1)
+    fixed_domain_ttl { example.test: 60 }
+    upstream { local: 'udp://192.0.2.53:53' -> direct
+        remote: https://dns.example.test/dns-query outbound: edge }
+    routing { request {
+        subtag(paid, keyword:tune, regex:'^legacy$') && qname(suffix:example.test) -> local
+        qname(a#b, geosite:cn, keyword:ads, full:ads.example.test, regex:'^ads\.') -> reject # Comment.
+        qtype(A, AAAA, CNAME, MX, TXT, NS, PTR, SOA, SRV, HTTPS, SVCB, ANY, *, 65) && !sip(192.0.2.0/24, 2001:db8::/32) -> 'remote'
+        default: asis } response {
+        upstream(remote) && ip(geoip:private, 2001:db8::/32) -> local
+        fallback: accept } } }
