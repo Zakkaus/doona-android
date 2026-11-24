@@ -22,6 +22,10 @@ import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.rvAssertDiffRows
+import dev.doona.android.prototype.rv.rvContent
+import dev.doona.android.prototype.rv.rvDiffRows
+import dev.doona.android.prototype.rv.rvScrollBy
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.Assert.assertEquals
@@ -149,8 +153,18 @@ class RvConfigSourceShotTest {
     fun aDiffLineOpensItsFileThere() {
         var opened: Pair<String, RvDiffAt>? = null
         compose.setContent { Themed { RvConfigDiffPage(RvConfigSourceData.diff, onBack = {}, onOpen = { file, at -> opened = file to at }) } }
-        compose.onNodeWithContentDescription("新增，第 13 行：  domain(suffix: wiki.corp.example) -> direct").performScrollTo().performClick()
+        // Scrolled to the end, so the line stands above 套用 rather than at the viewport's edge under it.
+        compose.rvScrollBy(TO_THE_END_DP)
+        compose.onNodeWithContentDescription("新增，第 13 行：  domain(suffix: wiki.corp.example) -> direct").performClick()
         assertEquals(RvConfigSourceData.CN to RvDiffAt(13, base = false), opened)
+    }
+
+    /** Every line of the check's diff is a row of 48 dp; the three that wrap (8, 12, 13) are one line box taller. */
+    @Test
+    @Config(qualifiers = WHOLE_DIFF)
+    fun everyDiffRowIsFortyEightTall() {
+        compose.rvContent(dark = false) { Diff(RvConfigSourceData.diff) }
+        rvAssertDiffRows(compose.rvDiffRows(), oneLine = setOf(24, 25, 26, 27, 6, 7, 14), wrapped = setOf(8, 12, 13))
     }
 
     /** Line 7 was removed from the base and added to the draft: each opens its own side. */
@@ -180,8 +194,9 @@ class RvConfigSourceShotTest {
     private companion object {
         const val WHOLE_SOURCE = "+h1122dp"
         const val WHOLE_ERROR = "+h1122dp"
-        const val WHOLE_DIFF = "+h915dp"
-        const val WHOLE_STALE = "+h1030dp"
+        const val WHOLE_DIFF = "+h1140dp"
+        const val WHOLE_STALE = "+h1318dp"
+        const val TO_THE_END_DP = 10_000f
         const val REVIEW = "檢視變更"
         const val APPLY = "套用"
     }
