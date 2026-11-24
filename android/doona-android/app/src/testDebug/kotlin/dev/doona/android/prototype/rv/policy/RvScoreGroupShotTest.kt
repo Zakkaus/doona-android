@@ -103,7 +103,7 @@ class RvScoreGroupShotTest {
     fun evaluatingSaysWhatEachNetworkWaitsFor() {
         compose.rvContent(dark = false) { Evaluating() }
         compose.onNodeWithText("評估中 · 測試中").assertExists()
-        compose.onNodeWithText("評估中 · 暫緩測試，避免多用流量").assertExists()
+        compose.onNodeWithText("評估中 · 測試次數已達上限").assertExists()
         compose.onNodeWithText("已比較 1/6").assertExists()
         compose.onNodeWithText("已比較 0/6").assertExists()
         // One node chosen on both networks.

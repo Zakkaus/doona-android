@@ -13,8 +13,8 @@ import dev.doona.android.prototype.rv.data.RvNode
  * - [chosen]: both networks verified; TCP keeps the fastest node against three challengers (one of each relation), UDP
  *   chose the second against one;
  * - [agreed]: both networks verified on the same node, the fastest;
- * - [evaluating]: both networks provisional, TCP with a trial in flight, UDP with its tests paused until ordinary traffic
- *   has earned their budget;
+ * - [evaluating]: both networks provisional, TCP with a trial in flight, UDP with every test its ordinary connections
+ *   have earned spent (honk's `budget` wait: one test per 16 ordinary connections);
  * - [empty]: every node failed its last test, so no candidate is eligible and nothing is chosen.
  */
 internal object RvScoreSample {
