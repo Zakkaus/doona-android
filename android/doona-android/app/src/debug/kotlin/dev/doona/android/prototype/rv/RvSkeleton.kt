@@ -81,6 +81,9 @@ internal object RvSkeletonSize {
     const val SEE_ALL = 0.4f
     const val CAPTION = 0.72f
 
+    /** A range chip's label: an order's name is two letters in Han (延遲, 名稱). */
+    const val CHIP_LETTERS = 2
+
     /** A goal's used amount at the start and its end date at the end of the line over its bar. */
     const val GOAL_USED = 0.42f
     const val GOAL_ENDS = 0.26f
@@ -228,6 +231,21 @@ internal fun RvSkeletonControlCard() {
             Spacer(Modifier.height(RvSpace.controlToCaption))
             RvSkeletonLine(Rv.type.rowSub, RvSkeletonSize.CAPTION)
         }
+    }
+}
+
+/**
+ * [RvRangeRow]'s skeleton, [count] chips [RvChartSize.rangeGap] apart under one shimmer: each a pill of the chip's height
+ * at this font size, as wide as a label of [RvSkeletonSize.CHIP_LETTERS] letters and its pads.
+ */
+@Composable
+internal fun RvSkeletonChips(count: Int, modifier: Modifier = Modifier) {
+    val style = Rv.type.action
+    val (letter, line) = with(LocalDensity.current) { style.fontSize.toDp() to style.lineHeight.toDp() }
+    val width = letter * RvSkeletonSize.CHIP_LETTERS + RvChartSize.rangePad * 2
+    val height = maxOf(RvChartSize.range, line + RvChartSize.rangeInset * 2)
+    Row(modifier.rvShimmer(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
+        repeat(count) { RvSkeletonBlock(height, Modifier.width(width), CircleShape) }
     }
 }
 

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
+import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.gallery.RvGallerySkeleton
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
@@ -31,6 +32,7 @@ import dev.doona.android.prototype.rv.subs.RvSubsPage
 import dev.doona.android.prototype.rv.subs.RvSubsState
 import dev.doona.android.testing.drawFully
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -43,8 +45,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * 活動, 策略 and 訂閱 before the engine is ready: a skeleton of each page's cards ([RvSkeletonCards]; on 活動 also of the
- * hero's lines), under the real header, bar and nav. Goldens `proto-rv-<page>-loading-light|dark|fs115|fs200` at
+ * 活動, 策略 (in each of its modes) and 訂閱 before the engine is ready: a skeleton of each page's cards ([RvSkeletonCards];
+ * on 活動 also of the hero's lines), under the real header, bar and nav. Goldens `proto-rv-<page>-loading-light|dark|fs115|fs200` at
  * animator scale 0 (the shimmer stands still), the library's parts as the gallery shows them (`proto-rv-skeleton-*`),
  * and per page a frame strip of the content replacing its skeleton (`proto-rv-<page>-loading-frames-light`: the
  * skeleton, then [AFTER_LOAD] ms after the data came, each time under its frame) and one of the shimmer's band.
@@ -83,6 +85,22 @@ class RvSkeletonTest {
 
     @Test fun policyFs200() = shot(POLICY, fontScale = RV_FS200)
 
+    @Test fun policyGlobalLight() = shot(POLICY_GLOBAL, dark = false)
+
+    @Test fun policyGlobalDark() = shot(POLICY_GLOBAL, dark = true)
+
+    @Test fun policyGlobalFs115() = shot(POLICY_GLOBAL, fontScale = RV_FS115)
+
+    @Test fun policyGlobalFs200() = shot(POLICY_GLOBAL, fontScale = RV_FS200)
+
+    @Test fun policyDirectLight() = shot(POLICY_DIRECT, dark = false)
+
+    @Test fun policyDirectDark() = shot(POLICY_DIRECT, dark = true)
+
+    @Test fun policyDirectFs115() = shot(POLICY_DIRECT, fontScale = RV_FS115)
+
+    @Test fun policyDirectFs200() = shot(POLICY_DIRECT, fontScale = RV_FS200)
+
     @Test fun subsLight() = shot(SUBS, dark = false)
 
     @Test fun subsDark() = shot(SUBS, dark = true)
@@ -116,6 +134,14 @@ class RvSkeletonTest {
     @Test fun policyKeepsItsPlaces() = places(POLICY, 1f)
 
     @Test fun policyKeepsItsPlacesFs200() = places(POLICY, RV_FS200)
+
+    @Test fun policyGlobalKeepsItsPlaces() = places(POLICY_GLOBAL, 1f)
+
+    @Test fun policyGlobalKeepsItsPlacesFs200() = places(POLICY_GLOBAL, RV_FS200)
+
+    @Test fun policyDirectKeepsItsPlaces() = places(POLICY_DIRECT, 1f)
+
+    @Test fun policyDirectKeepsItsPlacesFs200() = places(POLICY_DIRECT, RV_FS200)
 
     @Test fun subsKeepsItsPlaces() = places(SUBS, 1f)
 
@@ -183,6 +209,8 @@ class RvSkeletonTest {
         val loaded = compose.parts()
         val drift = mutableListOf<String>()
         val cards = skeleton.getValue(RvPart.CARD)
+        // The skeleton stands for the page's own cards, every one of them, before any is compared with what replaces it.
+        assertEquals("$page's cards while it loads", SKELETON_CARDS.getValue(page), cards.size)
         // At 2.0 only the first card replaced keeps its place: under it the content's text wraps as long as it is.
         val kept = if (fontScale == 1f) cards.size else (if (page == PER_APP) PER_APP_CARDS_ABOVE else 0) + 1
         assertTrue("$page has fewer cards loaded than its skeleton", loaded.getValue(RvPart.CARD).size >= cards.size)
@@ -249,6 +277,8 @@ class RvSkeletonTest {
         when (page) {
             ACTIVITY -> RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}, loading = loading)
             POLICY -> RvPolicyScreen(RvPolicyState(), onChange = {}, loading = loading)
+            POLICY_GLOBAL -> RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Global), onChange = {}, loading = loading)
+            POLICY_DIRECT -> RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}, loading = loading)
             SUBS -> RvSubsPage(RvSubsState(), RvSubsActions(), loading = loading)
             else -> RvPerAppScreen(rvPerAppSample(if (loading) "loading" else ""), RvPerAppActions(), onBack = {})
         }
@@ -260,6 +290,15 @@ class RvSkeletonTest {
         const val POLICY = "policy"
         const val SUBS = "subs"
         const val PER_APP = "perapp"
+        const val POLICY_GLOBAL = "policy-global"
+        const val POLICY_DIRECT = "policy-direct"
+
+        /**
+         * The cards each page shows while it loads, the cards of the content they stand for: 活動's rules card and its two
+         * tiles; 策略's mode card, then under 規則 the main node's and the groups', under 全域 a subscription's nodes, under
+         * 直連 none; 訂閱's two subscriptions; 依 App's policies card (real) over its list's.
+         */
+        val SKELETON_CARDS = mapOf(ACTIVITY to 3, POLICY to 3, POLICY_GLOBAL to 2, POLICY_DIRECT to 1, SUBS to 2, PER_APP to 2)
 
         /** The per-app page's policies card stands over its list, loaded or not. */
         const val PER_APP_CARDS_ABOVE = 1
