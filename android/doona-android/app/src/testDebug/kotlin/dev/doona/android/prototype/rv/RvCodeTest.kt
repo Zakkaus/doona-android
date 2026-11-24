@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.compositeOver
 import dev.doona.android.designsystem.rv.RvAlpha
 import dev.doona.android.designsystem.rv.RvCodeKind
@@ -20,6 +21,8 @@ import org.junit.Test
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * The code text around the tokenizer ([RvCodeLexerTest]): the spans, the break points, the cursor's offsets past them,
@@ -94,10 +97,10 @@ class RvCodeTest {
                 val roles = mapOf(
                     "comment" to code.comment,
                     "keyword" to code.keyword,
-                    "string" to code.quoted,
-                    "function" to code.function,
+                    "literal" to code.literal,
+                    "call" to code.call,
                     "key" to code.key,
-                    "punctuation" to code.punctuation,
+                    "operator" to code.operator,
                 )
                 for ((role, ink) in roles) {
                     for ((where, ground) in grounds) {
@@ -115,7 +118,7 @@ class RvCodeTest {
         for (seed in SEEDS) {
             for (dark in listOf(false, true)) {
                 val code = rvCodeColors(RvColors(seedColorScheme(seed, dark), dark))
-                val inks = listOf(code.comment, code.keyword, code.quoted, code.function, code.key, code.punctuation)
+                val inks = listOf(code.comment, code.keyword, code.literal, code.call, code.key, code.operator)
                 assertEquals("%x %s: two roles share a colour".format(seed, if (dark) "dark" else "light"), inks.size, inks.distinct().size)
             }
         }
@@ -131,11 +134,42 @@ class RvCodeTest {
     fun aCallStaysAwayFromTheDiffsGreenAndRed() {
         for (dark in listOf(false, true)) {
             val c = RvColors(seedColorScheme(Seed.Cyan.argb, dark), dark)
-            val call = rvCodeColors(c).function
+            val call = rvCodeColors(c).call
             for (mark in listOf(c.good, c.error)) {
                 assertTrue("${if (dark) "dark" else "light"} ${call.hue()} vs ${mark.hue()}", hueDistance(call.hue(), mark.hue()) >= MIN_HUE_DISTANCE)
             }
         }
+    }
+
+    /**
+     * Every kind reads apart from plain text and from each kind it meets on a line, at least [MIN_DELTA_E] apart in CIELAB
+     * (ΔE*ab, 1976) on every seed, light and dark. A block and a symbol share the accent, and a symbol and a literal (a
+     * step lighter) never meet either: an operator or a key stands between (`-> 'remote'`, `direct(mark: 0x10)`).
+     */
+    @Test
+    fun eachKindReadsApartFromPlainTextAndItsNeighbours() {
+        val found = ArrayList<String>()
+        var least = Float.MAX_VALUE
+        for (seed in SEEDS) {
+            for (dark in listOf(false, true)) {
+                val c = RvColors(seedColorScheme(seed, dark), dark)
+                val code = rvCodeColors(c)
+                fun ink(kind: RvCodeKind?) = kind?.let { code.style(it).color } ?: c.text
+                val pairs = RvCodeKind.entries.map { it to null } + NEIGHBOURS
+                for ((a, b) in pairs) {
+                    val d = deltaE(ink(a), ink(b))
+                    least = min(least, d)
+                    found += "%x %s %s/%s %.1f".format(seed, if (dark) "dark" else "light", a, b ?: "plain", d)
+                }
+            }
+        }
+        assertTrue("least ΔE %.1f:\n%s".format(least, found.joinToString("\n")), least >= MIN_DELTA_E)
+    }
+
+    private fun deltaE(a: Color, b: Color): Float {
+        val x = a.convert(ColorSpaces.CieLab)
+        val y = b.convert(ColorSpaces.CieLab)
+        return sqrt((x.red - y.red).pow(2) + (x.green - y.green).pow(2) + (x.blue - y.blue).pow(2))
     }
 
     private fun Color.hue(): Float {
@@ -160,6 +194,18 @@ class RvCodeTest {
         val SEEDS = listOf(Seed.Cyan.argb, 0xFF6750A4.toInt(), 0xFFB3261E.toInt())
 
         const val MIN_HUE_DISTANCE = 30f
+
+        /** The least CIELAB distance between a kind and plain text or a kind it meets. */
+        const val MIN_DELTA_E = 10f
+
+        /** The kinds that meet on a line: `key: 'x'`, `policy: fixed`, `domain(geosite:`, `!geosite`, `{ log_file:`, … */
+        val NEIGHBOURS = listOf(
+            RvCodeKind.Key to RvCodeKind.Literal, RvCodeKind.Key to RvCodeKind.Symbol, RvCodeKind.Key to RvCodeKind.Call,
+            RvCodeKind.Key to RvCodeKind.Operator, RvCodeKind.Key to RvCodeKind.Block, RvCodeKind.Call to RvCodeKind.Literal,
+            RvCodeKind.Call to RvCodeKind.Operator, RvCodeKind.Operator to RvCodeKind.Symbol, RvCodeKind.Operator to RvCodeKind.Literal,
+            RvCodeKind.Comment to RvCodeKind.Literal, RvCodeKind.Comment to RvCodeKind.Symbol,
+            RvCodeKind.Comment to RvCodeKind.Key,
+        )
         const val SECTORS = 6f
         const val DEGREES_PER_SECTOR = 60f
         const val FULL_TURN = 360f

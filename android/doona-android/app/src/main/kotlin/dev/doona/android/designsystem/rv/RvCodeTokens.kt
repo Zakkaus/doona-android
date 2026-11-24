@@ -2,13 +2,13 @@ package dev.doona.android.designsystem.rv
 
 import androidx.compose.ui.unit.dp
 
-/** How far a softer code role sits from its theme colour toward the text. */
+/** How the code kinds' inks derive from the theme's accent and tertiary ([rvCodeColors]). */
 internal object RvCodeShade {
-    /**
-     * Halfway: a string is the accent this far toward the card and a number the tertiary, before each darkens (light) or
-     * lightens (dark) back until it reads; punctuation is the secondary ink this far toward the text.
-     */
-    const val SOFT = 0.5f
+    /** A literal's step from the accent toward the page, and an operator's from a key's colour away from it (Oklab L). */
+    const val STEP = 0.12f
+
+    /** A key's colour: halfway from the accent to the tertiary, in Oklab, as Compose blends. */
+    const val MID = 0.5f
 }
 
 /**

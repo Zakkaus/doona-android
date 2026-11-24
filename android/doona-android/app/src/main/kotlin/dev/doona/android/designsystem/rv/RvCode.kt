@@ -8,6 +8,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -175,35 +176,38 @@ private fun CodeLine(line: RvCodeLine, style: TextStyle, space: TextUnit, colors
 }
 
 /**
- * The ink of each code role in one theme ([rvCodeColors]), all from the theme's colours (owner 2026-11-24: 「要麼就跟隨主題
- * 配色」): a keyword in the accent (in the code's own weight, never bold: owner 2026-11-25), a call in the tertiary, a string a softer accent, a number a softer tertiary,
- * a key the text, a comment the secondary ink, and punctuation with the operators between the secondary ink and the text.
+ * The ink of each code kind in one theme ([rvCodeColors]), all from the theme's colours (owner 2026-11-24: 「要麼就跟隨主題
+ * 配色」), in the code's own weight (never bold: owner 2026-11-25). honk's own words, a block and a symbol, keep the accent
+ * ([keyword], owner 2026-11-25; the two never meet on a line); a literal is the accent a step lighter on the page; a call
+ * the tertiary; a key the colour halfway between; an operator that colour a step darker on the page; a comment the
+ * secondary ink. Plain text, its punctuation included, is the text.
  */
 @Immutable
 internal data class RvCodeColors(
     val comment: Color,
     val keyword: Color,
-    val quoted: Color,
-    val number: Color,
-    val function: Color,
+    val literal: Color,
+    val call: Color,
     val key: Color,
-    val punctuation: Color,
+    val operator: Color,
 ) {
-    fun style(kind: RvCodeKind): SpanStyle = when (kind) {
-        RvCodeKind.Comment -> SpanStyle(color = comment)
-        RvCodeKind.Block, RvCodeKind.Symbol -> SpanStyle(color = keyword)
-        RvCodeKind.Literal -> SpanStyle(color = quoted)
-        RvCodeKind.Call -> SpanStyle(color = function)
-        RvCodeKind.Key -> SpanStyle(color = key)
-        RvCodeKind.Operator -> SpanStyle(color = punctuation)
-    }
+    fun style(kind: RvCodeKind): SpanStyle = SpanStyle(
+        color = when (kind) {
+            RvCodeKind.Comment -> comment
+            RvCodeKind.Block, RvCodeKind.Symbol -> keyword
+            RvCodeKind.Literal -> literal
+            RvCodeKind.Call -> call
+            RvCodeKind.Key -> key
+            RvCodeKind.Operator -> operator
+        },
+    )
 }
 
 /**
- * Each code role's ink in [colors]' theme: the accent ([RvColors.positive]) for a keyword and, [RvCodeShade.SOFT] of the
- * way to the card, for a string; the tertiary ([RvColors.up]'s line) for a call and, as far toward the card, for a
- * number; the text for a key; the secondary ink for a comment and, [RvCodeShade.SOFT] of the way to the text, for
- * punctuation. Each, or the first
+ * Each code kind's ink in [colors]' theme: the accent ([RvColors.positive]) for a block and a symbol and, its Oklab
+ * lightness [RvCodeShade.STEP] toward the page, for a literal; the tertiary ([RvColors.up]'s line) for a call; the two
+ * [RvCodeShade.MID] apart (in Oklab) for a key and, a step away from the page, for an operator; the secondary ink for a
+ * comment. A step keeps the hue and chroma, so the kinds stay apart (`RvCodeTest` measures ΔE*ab). Each, or the first
  * step from it toward black (light) or white (dark), reads at 4.5:1 on the page, the card, and a diff's added and removed
  * lines (their hue at [RvAlpha.STATUS_CHIP] over the card), as [RvColors] makes the latency hues readable.
  */
@@ -213,17 +217,23 @@ internal fun rvCodeColors(colors: RvColors): RvCodeColors {
     val toward = if (colors.dark) Color.White else Color.Black
     fun ink(from: Color) = (0..RvContrast.STEPS).map { lerp(from, toward, it.toFloat() / RvContrast.STEPS) }
         .firstOrNull { c -> grounds.all { rvContrast(c, it) >= RvContrast.TEXT_MIN } } ?: toward
-    fun soft(from: Color) = lerp(from, colors.card, RvCodeShade.SOFT)
+    val page = if (colors.dark) -RvCodeShade.STEP else RvCodeShade.STEP
     val tertiary = colors.up.line
+    val between = lerp(colors.positive, tertiary, RvCodeShade.MID)
     return RvCodeColors(
         comment = ink(colors.textSecondary),
         keyword = ink(colors.positive),
-        quoted = ink(soft(colors.positive)),
-        number = ink(soft(tertiary)),
-        function = ink(tertiary),
-        key = ink(colors.text),
-        punctuation = ink(lerp(colors.textSecondary, colors.text, RvCodeShade.SOFT)),
+        literal = ink(colors.positive.lighter(page)),
+        call = ink(tertiary),
+        key = ink(between),
+        operator = ink(between.lighter(-page)),
     )
+}
+
+/** This colour with its Oklab lightness moved [by] (lighter when positive), its hue and chroma kept. */
+private fun Color.lighter(by: Float): Color {
+    val lab = convert(ColorSpaces.Oklab)
+    return Color((lab.red + by).coerceIn(0f, 1f), lab.green, lab.blue, alpha, ColorSpaces.Oklab).convert(ColorSpaces.Srgb)
 }
 
 /** [rvCodeColors] for the theme in use. */
