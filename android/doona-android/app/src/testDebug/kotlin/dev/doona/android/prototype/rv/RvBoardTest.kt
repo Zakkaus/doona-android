@@ -1,13 +1,19 @@
 package dev.doona.android.prototype.rv
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
@@ -16,6 +22,11 @@ import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.rvSampleVersions
+import dev.doona.android.prototype.rv.subs.RvSubAdd
+import dev.doona.android.prototype.rv.subs.RvSubDetail
+import dev.doona.android.prototype.rv.subs.RvSubDetailState
+import dev.doona.android.prototype.rv.subs.RvUserAgentField
+import dev.doona.android.prototype.rv.subs.rvAddSample
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -32,7 +43,7 @@ import kotlin.math.abs
 
 /**
  * The design board's capture ([rvBoard]): the window and its layout in dp, the rulers' measurements on it, and a long
- * page's every screen; how a page's start is told from its parts.
+ * page's every screen; how a page's start is told from its parts; a field as a block of the page.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -120,6 +131,34 @@ class RvBoardTest {
         assertEquals(listOf(16f, 16f), split.map { it.actual })
         assertTrue(split.all { it.expected == null && it.token && !it.off })
         assertEquals(listOf(gap), rvSplitGaps(listOf(gap), listOf(Rect(16f, 300f, 396f, 400f))))
+    }
+
+    /** 新增訂閱's fields, label and message with each, are blocks of its column: the gaps run to them, none is split at a label. */
+    @Test
+    fun aFieldIsABlockOfThePage() {
+        val add = json(capture("sub-add") { RvSubAdd(rvAddSample("importing"), {}, onPaste = {}, onImport = {}, onBack = {}) }, "sub-add-light-1")
+        val blocks = (0 until add.getJSONArray("blocks").length()).map { add.getJSONArray("blocks").getJSONObject(it).getString("tag") }
+        assertTrue("新增訂閱's fields are blocks: $blocks", blocks.count { it == RvPart.FIELD } >= 2)
+        val gaps = rules(add, "Gap").map { it.getString("what") }
+        assertTrue("a gap runs from the title to the first field: $gaps", gaps.any { it.startsWith("gap ${RvPart.TITLE} to ${RvPart.FIELD}") })
+        assertTrue("no gap is split at a field's label: $gaps", gaps.none { it.startsWith("gap down to the content") })
+    }
+
+    /** A field in a sheet over a page (the User-Agent sheet) is the sheet's: no block of the page under it. */
+    @Test
+    fun aFieldInASheetIsNoPartOfThePage() {
+        val sheet = json(
+            capture("sheet") {
+                Box(Modifier.fillMaxSize()) {
+                    RvSubDetail(RvData.subscriptions.first(), RvSubDetailState(), {}, onBack = {}, onUpdate = {})
+                    RvSheetLayout({ 1f }, {}, "User-Agent") { RvUserAgentField("", {}) }
+                }
+            },
+            "sheet-light-1",
+        )
+        assertEquals("the sheet has its field", 1, compose.onAllNodesWithTag(RvPart.FIELD).fetchSemanticsNodes().size)
+        val tags = (0 until sheet.getJSONArray("parts").length()).map { sheet.getJSONArray("parts").getJSONObject(it).getString("tag") }
+        assertFalse("the sheet's field is no part of the page: $tags", RvPart.FIELD in tags)
     }
 
     private fun capture(screen: String, content: @Composable () -> Unit): File {

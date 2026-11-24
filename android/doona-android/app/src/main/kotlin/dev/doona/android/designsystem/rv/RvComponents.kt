@@ -302,6 +302,9 @@ internal object RvPart {
 
     /** An in-page search field ([RvSearchSlot]). */
     const val SEARCH = "rv-search"
+
+    /** A text field with its label and message ([RvTextField]). */
+    const val FIELD = "rv-field"
     const val CARD = "rv-card"
     const val SECTION = "rv-section"
     const val FOOTER = "rv-footer"

@@ -1,6 +1,8 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.unit.Dp
@@ -54,21 +56,26 @@ internal val rvSpacingTokens: List<Float> by lazy {
 /** The tags of the library's layout parts, the ones the rulers measure. */
 internal val RV_PART_TAGS = listOf(
     RvPart.MARK, RvPart.TITLE, RvPart.CAPTION, RvPart.CONTROL, RvPart.SEARCH, RvPart.CARD, RvPart.SECTION, RvPart.FOOTER, RvPart.BLOCK, RvPart.ROW,
-    RvPart.SEGMENTED,
+    RvPart.SEGMENTED, RvPart.FIELD,
 )
 
 /** The bottom of the bar in the phone's frame, in dp: a tab home's bar sits higher than a pushed page's. */
 internal fun rvBarBottom(top: Top): Float = StatusBar.value + rvBarHeight(if (top == Top.Tab) RvChrome.tabBarTop else RvChrome.barTop).value
 
-/** The library's parts on the page by tag, in dp, unclipped (the scroll's viewport would clip boundsInRoot to the window). */
+/**
+ * The library's parts on the page by tag, in dp, unclipped (the scroll's viewport would clip boundsInRoot to the window).
+ * A field in a sheet (a pane over the page) is the sheet's, not a block of the page's column.
+ */
 internal fun ComposeContentTestRule.rvParts(): Map<String, List<Rect>> =
     // The merged tree: a picture of a page (主題's preview) clears its semantics, so its cards are not the page's.
     RV_PART_TAGS.associateWith { tag ->
-        onAllNodesWithTag(tag).fetchSemanticsNodes().map { node ->
+        onAllNodesWithTag(tag).fetchSemanticsNodes().filterNot { tag == RvPart.FIELD && it.inPane() }.map { node ->
             val d = node.layoutInfo.density.density
             Rect(node.positionInRoot / d, node.size.toSize() / d)
         }
     }
+
+private fun SemanticsNode.inPane() = generateSequence(parent) { it.parent }.any { it.config.contains(SemanticsProperties.PaneTitle) }
 
 /**
  * One page's parts in dp, measured against the tokens (plans/reviews/spacing-audit.md): [run] returns the drifts, and
@@ -151,7 +158,9 @@ internal class RvMeasure(private val parts: Map<String, List<Rect>>, private val
         val outer = cards.filter { card -> (holders + cards).none { it != card && it.contains(card) } }.map { RvPart.CARD to it }
         val composite = parts.getValue(RvPart.BLOCK).map { RvPart.BLOCK to it }
         val segmented = parts.getValue(RvPart.SEGMENTED).filter { s -> (holders + cards).none { it.contains(s) } }.map { RvPart.SEGMENTED to it }
-        return (loose + outer + composite + segmented).sortedBy { it.second.top }
+        // A field with its label is a block of the column; one in a card is the card's.
+        val fields = parts.getValue(RvPart.FIELD).filter { f -> (holders + cards).none { it.contains(f) } }.map { RvPart.FIELD to it }
+        return (loose + outer + composite + segmented + fields).sortedBy { it.second.top }
     }
 
     /** Each block with the block straight under it in the same column (they overlap across). */

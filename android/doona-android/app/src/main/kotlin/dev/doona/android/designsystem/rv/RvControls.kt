@@ -418,6 +418,7 @@ internal fun RvSecondaryButton(
  * it. Focused, the field is ringed in the accent and
  * the cursor is the accent. Label, field and message are one target, as Material's field is; [trailing] (a clear or
  * paste button) sits inside the field's end. Disabled, the whole field is at [RvAlpha.DISABLED] and takes no input.
+ * Label, field and message are measured as one part of the page ([RvPart.FIELD]).
  */
 @Composable
 internal fun RvTextField(
@@ -444,6 +445,7 @@ internal fun RvTextField(
         onValueChange,
         modifier
             .fillMaxWidth()
+            .testTag(RvPart.FIELD)
             .graphicsLayer { alpha = if (enabled) 1f else RvAlpha.DISABLED }
             .semantics {
                 if (label == null && name != null) contentDescription = name
