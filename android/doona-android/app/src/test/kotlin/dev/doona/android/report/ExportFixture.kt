@@ -78,10 +78,11 @@ abstract class ExportFixture {
         scope: CoroutineScope = this,
         logLevels: LogLevelController = LogLevelController(engine::setLogLevel, scope) { testScheduler.currentTime },
         ownAddresses: () -> List<InetAddress> = { emptyList() },
+        flowEvents: FlowEvents? = null,
     ): ReportExport {
         val files = CrashFiles(crashDir)
         val dispatcher = StandardTestDispatcher(testScheduler)
-        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher, logLevels, ownAddresses) { now }
+        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher, logLevels, ownAddresses, flowEvents) { now }
     }
 
     /** Every entry of the zip, by name. */

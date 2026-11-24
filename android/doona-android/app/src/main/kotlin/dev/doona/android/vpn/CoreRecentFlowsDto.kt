@@ -1,5 +1,6 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.engine.RecentFlow
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -11,11 +12,11 @@ internal data class RecentFlowDto(
     val outbound: String,
     val startedMs: Long,
     val open: Boolean,
-)
+) {
+    fun toRecentFlow() = RecentFlow(protocol, local, remote, name, outbound, startedMs, open)
+}
 
 @Serializable
 internal data class RecentFlowsDto(val flows: List<RecentFlowDto>) {
-    companion object {
-        fun parse(reply: String): RecentFlowsDto = CoreJson.result(reply, serializer())
-    }
+    fun toRecentFlows() = flows.map(RecentFlowDto::toRecentFlow)
 }

@@ -16,6 +16,7 @@ import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.RecentFlow
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
@@ -61,6 +62,24 @@ class EngineTelemetryTest {
             TrafficSeries(1, 1_795_343_040_000, listOf(3120, 2988, 141203, 46512, 9310), listOf(41208, 38250, 4200310, 1546977, 568120), 141203, 4200310),
             series,
         )
+    }
+
+    @Test
+    fun readsRecentConnectionsOnlyWhileRunning() = runTest {
+        val engine = engine()
+        assertEquals(emptyList<RecentFlow>(), engine.recentFlows().getOrThrow())
+        assertTrue(core.calls.isEmpty())
+
+        start(engine)
+        core.reply = ContractFixtures.read("call-ok-recent-flows.json")
+        assertEquals(
+            listOf(
+                RecentFlow("udp", "[2001:db8::1]:41002", "[2001:db8::2]:443", null, "g-Proxy", 371, true),
+                RecentFlow("tcp", "172.19.0.1:41001", "192.0.2.1:443", "example.test", "direct", 12, false),
+            ),
+            engine.recentFlows().getOrThrow(),
+        )
+        assertEquals("recentFlows" to "{}", core.calls.single())
     }
 
     @Test

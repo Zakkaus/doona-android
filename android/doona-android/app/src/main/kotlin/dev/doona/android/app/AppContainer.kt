@@ -4,7 +4,9 @@ import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteException
+import android.net.ConnectivityManager
 import android.os.Build
+import android.os.Process
 import android.os.SystemClock
 import androidx.work.WorkManager
 import dev.doona.android.data.network.networkState
@@ -21,8 +23,10 @@ import dev.doona.android.report.AppReportExporter
 import dev.doona.android.report.CrashFiles
 import dev.doona.android.report.CrashOffer
 import dev.doona.android.report.ExportTokens
+import dev.doona.android.report.FlowEvents
 import dev.doona.android.report.ReportExport
 import dev.doona.android.report.ReportExporter
+import dev.doona.android.report.connectionOwnerUid
 import dev.doona.android.report.reportDir
 import dev.doona.android.vpn.VpnLog
 import dev.doona.android.work.ForegroundRefresh
@@ -126,6 +130,21 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     /** The report offered after a crash, once per crash; the number it last offered is kept beside the crash files. */
     val crashOffer: CrashOffer by lazy { CrashOffer(crashFiles) { File(application.noBackupFilesDir, "crash-offered") } }
 
+    private val flowEvents by lazy {
+        val connectivity by lazy { application.getSystemService(ConnectivityManager::class.java) }
+        val packages by lazy { application.packageManager }
+        FlowEvents(
+            engine,
+            Dispatchers.IO,
+            { protocol, local, remote -> connectivity?.connectionOwnerUid(protocol, local, remote) ?: Process.INVALID_UID },
+            { uid -> packages.getPackagesForUid(uid) },
+        )
+    }
+
+    internal fun startFlowCapture() {
+        uiScope.launch { flowEvents.followCapture(logLevels) }
+    }
+
     /**
      * The diagnostic report export, process-wide. The exports a share sheet may still call back for are kept beside the
      * crash files, so a pick reaches them after a restart.
@@ -143,6 +162,7 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
             Dispatchers.IO,
             logLevels,
             ownAddresses = { ownAddresses(application) },
+            flowEvents = flowEvents,
         )
     }
 

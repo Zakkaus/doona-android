@@ -21,6 +21,7 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
+import dev.doona.android.engine.RecentFlow
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.ScoreState
@@ -35,6 +36,8 @@ import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
 import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
+import dev.doona.android.report.AppEventLevel
+import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineDispatcher
@@ -156,8 +159,8 @@ class ServiceEngine internal constructor(
     }
 
     /** The library lacks a function `init` did not need: the core is shown as if `init` had failed, and takes no more calls. */
-    private fun unlinked(name: String, e: LinkageError) {
-        VpnLog.warn("$name threw ${e.javaClass.simpleName}")
+    private fun unlinked(name: String, e: LinkageError, warn: (String) -> Unit = VpnLog::warn) {
+        warn("$name threw ${e.javaClass.simpleName}")
         opener.disable()
         unusable(FailureReason.StartFailed)
     }
@@ -296,6 +299,12 @@ class ServiceEngine internal constructor(
         callCore("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
             .map { it.dto.toCoreDiagnostics(it.json) }
 
+    override suspend fun recentFlows(): Result<List<RecentFlow>> {
+        if (status.value !is Status.Running) return Result.success(emptyList())
+        return call("recentFlows", "{}", RecentFlowsDto.serializer()) { AppEvents.record(AppEventLevel.Warn, it) }
+            .map(RecentFlowsDto::toRecentFlows)
+    }
+
     override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
         val outcome = if (opener.schema() == CORE_SCHEMA) {
             call("setLogLevel", CoreJson.encode(LevelArgs.serializer(), LevelArgs(CoreLevel.of(level))), Unit.serializer())
@@ -401,7 +410,12 @@ class ServiceEngine internal constructor(
         }
     }
 
-    private suspend fun <R> call(name: String, argsJson: String, result: DeserializationStrategy<R>): Result<R> {
+    private suspend fun <R> call(
+        name: String,
+        argsJson: String,
+        result: DeserializationStrategy<R>,
+        warn: (String) -> Unit = VpnLog::warn,
+    ): Result<R> {
         val outcome = try {
             Result.success(withContext(io) { CoreJson.result(core.call(name, argsJson), result) })
         } catch (e: CancellationException) {
@@ -409,10 +423,10 @@ class ServiceEngine internal constructor(
         } catch (e: EngineException) {
             Result.failure(e)
         } catch (e: Exception) {
-            VpnLog.warn("$name reply unreadable: ${e.javaClass.simpleName}")
+            warn("$name reply unreadable: ${e.javaClass.simpleName}")
             Result.failure(EngineException(ErrorCode.Internal))
         } catch (e: LinkageError) {
-            unlinked(name, e)
+            unlinked(name, e, warn)
             Result.failure(EngineException(ErrorCode.Internal))
         }
         return outcome

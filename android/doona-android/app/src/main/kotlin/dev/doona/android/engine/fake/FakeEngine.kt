@@ -16,6 +16,7 @@ import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.RecentFlow
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.ScoreState
@@ -231,6 +232,11 @@ class FakeEngine internal constructor(
         return Result.success(CoreDiagnostics(logLevel, crashes, crashMark, json))
     }
 
+    var recentFlowRows = RECENT_FLOWS
+
+    override suspend fun recentFlows(): Result<List<RecentFlow>> =
+        Result.success(if (status.value is Status.Running) recentFlowRows else emptyList())
+
     override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
         logLevel = level
         return Result.success(Unit)
@@ -244,6 +250,10 @@ class FakeEngine internal constructor(
     companion object {
         private const val MAX_RULES_PAGE = 500
         private const val GEO_RELEASE = "2026-11-23"
+        private val RECENT_FLOWS = listOf(
+            RecentFlow("tcp", "172.19.0.1:41002", "192.0.2.2:443", "example.test", "g-Proxy", 371, true),
+            RecentFlow("udp", "172.19.0.1:41001", "192.0.2.1:443", null, "direct", 12, false),
+        )
 
         private fun node(id: String, name: String, latencyMs: Int?) =
             Member(id = id, name = name, latencyMs = latencyMs, subscriptionId = "s1")
