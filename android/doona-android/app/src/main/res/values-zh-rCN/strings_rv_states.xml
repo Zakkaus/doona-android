@@ -28,5 +28,5 @@
     <string name="rv_perm_vpn_title">允许建立 VPN</string>
     <string name="rv_perm_vpn_body">应用的流量要先进入 doona 的 VPN，才能按规则经过节点或直连。</string>
     <string name="rv_perm_notify_title">允许通知</string>
-    <string name="rv_perm_notify_body">通知会显示连接状态，并提供断开连接按钮；连接中断时也会提醒你。</string>
+    <string name="rv_perm_notify_body">通知会显示连接状态和断开连接按钮。连接中断时也会提醒你。</string>
 </resources>
