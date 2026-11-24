@@ -98,7 +98,7 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
                     actions.add,
                 )
             } else {
-                RvSkeletonCards(loading, { SubsSkeleton() }) {
+                RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {
                     state.subscriptions.forEach { SubscriptionCard(it, actions) }
                 }
             }
@@ -151,12 +151,16 @@ private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions) {
     }
 }
 
-/** 訂閱's cards while it loads: subscription cards, each its row (the name over its nodes and update, the chevron's room) and its quota's goal. */
+/**
+ * 訂閱's cards while it loads: subscription cards, each its row (the name over its nodes and update, the chevron's room)
+ * and its quota's goal. The names of the [subscriptions] are known before the engine is ready and take their lines, so a
+ * name that wraps keeps its row's height; the figures are bars.
+ */
 @Composable
-private fun SubsSkeleton() {
+private fun SubsSkeleton(subscriptions: List<RvSubscription>) {
     repeat(SKELETON_CARDS) {
         RvSkeletonCard {
-            RvSkeletonRow(it, RvSkeletonText.Mixed, chevron = true)
+            RvSkeletonRow(it, RvSkeletonText.Mixed, chevron = true, title = subscriptions.getOrNull(it)?.name)
             RvSkeletonGoal()
         }
     }

@@ -17,16 +17,15 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -52,8 +51,14 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.IntrinsicMeasurable
+import androidx.compose.ui.layout.IntrinsicMeasureScope
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasurePolicy
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.layout.findRootCoordinates
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInRoot
@@ -61,13 +66,16 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.preferredFrameRate
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 
 // The skeleton: grey bars, discs and blocks in the places of the parts they stand for, while a page waits for its data.
@@ -86,11 +94,13 @@ internal object RvSkeletonSize {
     val titles = listOf(0.62f, 0.46f, 0.7f, 0.54f)
     val subtitles = listOf(0.4f, 0.58f, 0.32f, 0.48f)
 
-    /** A row's end (a latency, a day's bytes) at the row value's size: `120 ms` is about as wide. */
-    val end = 56.dp
-
-    /** The smaller line under a row's end value (a latency's change, `▼ 3 ms`). */
-    val endSub = 44.dp
+    /**
+     * The figures a row's end stands for, whose room its bars take at this font size (so the row's words wrap, or its end
+     * goes under them, where they will beside the figures): a latency of two digits (`88 毫秒`), as most are, also the
+     * room of a value (a day's bytes, `1.2 GB`), and its change of one digit after its triangle (`▼ 8 毫秒`).
+     */
+    const val FIGURE = 88
+    const val CHANGE = 8
 
     /** A card header's, a see-all line's and a control's caption bar, as shares of their line. */
     const val HEADER = 0.3f
@@ -128,23 +138,6 @@ internal enum class RvSkeletonText(val sample: String) {
 
     /** Han and Latin on one line: a state and its mode, an amount and its date. */
     Mixed("節 · 0"),
-}
-
-/**
- * What a skeleton row has at its end, each on the lines its row's end takes: the [first] line's kind of text, at the row
- * value's size, and the [second]'s under it, at the subtitle's, on the title's and the subtitle's lines.
- */
-internal enum class RvSkeletonEnd(val first: RvSkeletonText?, val second: RvSkeletonText?) {
-    None(null, null),
-
-    /** One value centred on the row: a rule's bytes. */
-    Value(RvSkeletonText.Figures, null),
-
-    /** A latency over its change since the test before (`32 毫秒` over `▼ 3 毫秒`). */
-    Latency(RvSkeletonText.Mixed, RvSkeletonText.Mixed),
-
-    /** A group's node over its latency (`Taipei 04` over `26 毫秒`). */
-    Node(RvSkeletonText.Figures, RvSkeletonText.Mixed),
 }
 
 /**
@@ -213,79 +206,6 @@ private fun CardRun(content: @Composable ColumnScope.() -> Unit) {
 internal fun RvSkeletonCard(modifier: Modifier = Modifier, description: String? = null, content: @Composable ColumnScope.() -> Unit) {
     val named = description?.let { Modifier.semantics { contentDescription = it } } ?: Modifier
     RvCard(modifier.then(named)) { Column(Modifier.rvShimmer(), content = content) }
-}
-
-/**
- * [RvRow]'s skeleton, row [index] of its card: the disc, the title's bar over the subtitle's of [subtitle]'s kind (or the
- * title's alone), then the [end]'s bars and the room of the row's chevron when it has one ([chevron]), in the row's own
- * heights, insets and gaps. Each bar sits on its text's line ([RvSkeletonLine]), so at any font size the row is as tall
- * as a row whose text keeps one line. A row whose words the page knows before its data ([title], [subtitleText]: 出站模式
- * over the mode) takes their lines ([RvSkeletonLabel]). Beside an end of two lines the title's bar keeps to the room a title
- * keeps beside its end ([besideEnd]), so it does not reach under a long end (a group's `Hong Kong 02 IPLC`) as the
- * content fades in. Past [LocalRvContentFloor] the row keeps its place undrawn.
- */
-@Composable
-internal fun RvSkeletonRow(
-    index: Int,
-    subtitle: RvSkeletonText? = RvSkeletonText.Words,
-    end: RvSkeletonEnd = RvSkeletonEnd.None,
-    chevron: Boolean = false,
-    title: String? = null,
-    subtitleText: String? = null,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .testTag(RvPart.ROW)
-            .rvAboveFloor()
-            .heightIn(min = if (subtitle != null) RvSize.rowTwoLine else RvSize.rowOneLine)
-            .padding(horizontal = RvSpace.rowPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RvSkeletonDisc()
-        Spacer(Modifier.width(RvSpace.rowGap))
-        Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
-            if (title != null) {
-                RvSkeletonLabel(title, Rv.type.rowTitle, maxLines = RV_ROW_TITLE_LINES)
-            } else {
-                val room = if (end.second != null) Modifier.besideEnd(RvSkeletonSize.end) else Modifier
-                RvSkeletonLine(Rv.type.rowTitle, RvSkeletonSize.titles[index % RvSkeletonSize.titles.size], room)
-            }
-            when {
-                subtitle == null -> Unit
-                subtitleText != null -> RvSkeletonLabel(subtitleText, Rv.type.rowSub, maxLines = RV_ROW_SUBTITLE_LINES)
-                else -> RvSkeletonLine(Rv.type.rowSub, RvSkeletonSize.subtitles[index % RvSkeletonSize.subtitles.size], kind = subtitle)
-            }
-        }
-        SkeletonEnd(end)
-        if (chevron) {
-            Spacer(Modifier.width(RvSpace.trailingGap))
-            Spacer(Modifier.size(RvChevronSize.box))
-        }
-    }
-}
-
-/** A skeleton row's [end]: a value's bar centred on the row, or a value's over a smaller line's, at the row's end. */
-@Composable
-private fun SkeletonEnd(end: RvSkeletonEnd) {
-    val first = end.first ?: return
-    Spacer(Modifier.width(RvSpace.trailingGap))
-    val second = end.second ?: return RvSkeletonLine(Rv.type.rowValue, 1f, Modifier.width(RvSkeletonSize.end), first)
-    Column(horizontalAlignment = Alignment.End) {
-        RvSkeletonLine(Rv.type.rowValue, 1f, Modifier.width(RvSkeletonSize.end), first)
-        RvSkeletonLine(Rv.type.rowSub, 1f, Modifier.width(RvSkeletonSize.endSub), second)
-    }
-}
-
-/**
- * The room a row's title keeps beside its line-wise end, as [RvRow] gives it: [RV_ROW_TITLE_SHARE] of the line (this
- * column, the gap and the end's [end] wide room) less the gap, or the column where that is narrower.
- */
-private fun Modifier.besideEnd(end: Dp): Modifier = layout { measurable, constraints ->
-    val gap = RvSpace.trailingGap.roundToPx()
-    val room = ((constraints.maxWidth + gap + end.roundToPx()) * RV_ROW_TITLE_SHARE).toInt() - gap
-    val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = room.coerceIn(0, constraints.maxWidth)))
-    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
 }
 
 /** [RvCardHeader]'s skeleton: its [title]'s bar (when the page knows it) on the header's line, in the header's height and inset. */
@@ -402,29 +322,57 @@ internal fun RvSkeletonLine(style: TextStyle, width: Float, modifier: Modifier =
 }
 
 /**
- * A line of words the page knows before its data (a card's header, a control's caption, 出站模式) as bars: set as [RvText]
- * sets [text] in [style], up to [maxLines], each line's bar ([RvSkeletonSize.BAR] of the text's size) as wide as that
- * line's words and centred on it, so the skeleton takes the text's own box at any font size. Silent to a screen reader.
+ * A line of words the page knows before its data (a card's header, a control's caption, 出站模式, a node's name) as bars:
+ * laid out as [RvText] lays out [text] in [style], up to [maxLines] ([rvLayout]: its wrap steps too), each line's bar
+ * ([RvSkeletonSize.BAR] of the text's size) as wide as that line's words and centred on it, so the skeleton takes the
+ * text's own box at any font size. Silent to a screen reader.
  */
 @Composable
 internal fun RvSkeletonLabel(text: String, style: TextStyle, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE) {
-    var lines by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val measurer = rememberTextMeasurer()
+    val lines = remember { mutableStateOf<TextLayoutResult?>(null) }
+    val policy = remember(text, style, maxLines, measurer) { LabelLayout(text, style, maxLines, measurer, lines) }
     val track = Rv.colors.track
     val tall = with(LocalDensity.current) { style.fontSize.toPx() } * RvSkeletonSize.BAR
-    BasicText(
-        scripted(text),
-        modifier.testTag(RvPart.SKELETON_LINE).clearAndSetSemantics {}.drawBehind {
-            val laid = lines ?: return@drawBehind
+    Layout(
+        modifier.testTag(RvPart.SKELETON_LINE).drawBehind {
+            val laid = lines.value ?: return@drawBehind
             for (line in 0 until laid.lineCount) {
                 val left = laid.getLineLeft(line)
                 val middle = (laid.getLineTop(line) + laid.getLineBottom(line)) / 2
                 drawRoundRect(track, Offset(left, middle - tall / 2), Size(laid.getLineRight(line) - left, tall), CornerRadius(tall / 2))
             }
         },
-        style.copy(color = Color.Transparent),
-        onTextLayout = { lines = it },
-        maxLines = maxLines,
+        policy,
     )
+}
+
+/**
+ * [RvSkeletonLabel]'s measure: [text] laid out by [rvLayout] in the width given, the layout kept in [laid] for the bars;
+ * its intrinsic width that of its one line, as a text's.
+ */
+private class LabelLayout(
+    private val text: String,
+    private val style: TextStyle,
+    private val maxLines: Int,
+    private val measurer: TextMeasurer,
+    private val laid: MutableState<TextLayoutResult?>,
+) : MeasurePolicy {
+    override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
+        val layout = measurer.rvLayout(text, style, maxLines, constraints.maxWidth)
+        laid.value = layout
+        return layout(constraints.constrainWidth(layout.size.width), constraints.constrainHeight(layout.size.height)) {}
+    }
+
+    override fun IntrinsicMeasureScope.maxIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int) = oneLine()
+
+    override fun IntrinsicMeasureScope.minIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int) = oneLine()
+
+    override fun IntrinsicMeasureScope.maxIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = measurer.rvLayout(text, style, maxLines, width).size.height
+
+    override fun IntrinsicMeasureScope.minIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = measurer.rvLayout(text, style, maxLines, width).size.height
+
+    private fun oneLine() = measurer.measure(scripted(text), style, maxLines = 1).size.width
 }
 
 /**
@@ -440,7 +388,7 @@ internal fun rvSkeletonRowsToFill(row: Dp = RvSize.rowTwoLine): Int {
 
 /** Draws this skeleton part only while it ends above [LocalRvContentFloor]; laid out as ever, so nothing under it moves. */
 @Composable
-private fun Modifier.rvAboveFloor(): Modifier {
+internal fun Modifier.rvAboveFloor(): Modifier {
     val floor = LocalRvContentFloor.current ?: return this
     val bottom = remember { mutableFloatStateOf(0f) }
     return onGloballyPositioned { bottom.floatValue = it.positionInRoot().y + it.size.height }

@@ -79,10 +79,12 @@ internal fun RvSkeletonPage(page: String, loading: Boolean) {
  * each row its top and height, each line of text its top, its height and its start, middle or end (a bar's length is
  * the skeleton's where its words are data, not there yet), and no bar reaches into another text; each block (a
  * control's track, a chip, a chart's frame, a quota's bar) its four edges. A row's disc stands where its row puts it, so
- * the row stands for it.
+ * the row stands for it. Words the page knows before its data (a node's, a group's, a subscription's name) are laid out
+ * in the skeleton as in the row, so a row whose name wraps at a large font size is as tall as its skeleton.
  *
- * Where a row's words (data) wrap at a large font size, the row is taller than its skeleton, which cannot know them:
- * there the first such row (named in [WRAPS], so it is no surprise) keeps its top, and every part above it its bounds.
+ * A row whose words are data (an app's package, a quota) is taller than its skeleton where they wrap, as the skeleton
+ * cannot know them: such rows are named in [WRAPS], so none is a surprise; every row keeps its height but those, and
+ * every part above the first of them its bounds.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -185,12 +187,12 @@ class RvSkeletonBoundsTest {
         val content = compose.texts(window).filter { text -> chrome.none { abs(it.top - text.top) <= TOLERANCE && abs(it.left - text.left) <= TOLERANCE } }
         val loaded = compose.parts(window, LOADED_TAGS) + (TEXT to content)
         val rows = skeleton.of(RvPart.ROW).zip(loaded.of(RvPart.ROW))
-        val wrapped = rows.indexOfFirst { (row, real) -> abs(row.height - real.height) > TOLERANCE }.takeIf { it >= 0 }
-        val expected = WRAPS[page to fontScale]
-        assertEquals("$page at $fontScale: the first row whose words wrap past its skeleton", expected, wrapped)
-        val cut = wrapped?.let { rows[it].second.top } ?: Float.MAX_VALUE
+        val wraps = rows.indices.filter { abs(rows[it].first.height - rows[it].second.height) > TOLERANCE }.toSet()
+        assertEquals("$page at $fontScale: the rows whose data, not there yet, wraps past their skeleton", WRAPS[page to fontScale].orEmpty(), wraps)
+        // Under the first such row the content stands lower than its skeleton: there only the rows' heights are compared.
+        val cut = wraps.minOrNull()?.let { rows[it].second.top } ?: Float.MAX_VALUE
         val drift = mutableListOf<String>()
-        if (wrapped == null) {
+        if (wraps.isEmpty()) {
             same(drift, "cards in the window", skeleton.of(RvPart.CARD).size.toFloat(), loaded.of(RvPart.CARD).size.toFloat())
             same(drift, "rows in the window", skeleton.of(RvPart.ROW).size.toFloat(), loaded.of(RvPart.ROW).size.toFloat())
         }
@@ -200,7 +202,7 @@ class RvSkeletonBoundsTest {
         }
         rows.forEachIndexed { i, (row, real) ->
             if (row.top <= cut) same(drift, "row $i's top", row.top, real.top)
-            if (row.bottom <= cut) same(drift, "row $i's height", row.height, real.height)
+            if (i !in wraps) same(drift, "row $i's height", row.height, real.height)
         }
         skeleton.of(RvPart.SKELETON_LINE).filter { it.bottom <= cut }.forEach { line(drift, it, loaded.of(TEXT)) }
         skeleton.of(RvPart.SKELETON_BLOCK).filter { it.bottom <= cut }.forEach { block(drift, it, loaded.of(RvPart.FRAME) + loaded.of(RvPart.SEGMENTED)) }
@@ -287,19 +289,18 @@ class RvSkeletonBoundsTest {
         val LOADED_TAGS = listOf(RvPart.CARD, RvPart.ROW, RvPart.FRAME, RvPart.SEGMENTED)
 
         /**
-         * The first row whose words wrap where its skeleton keeps one line, by page and font size; none elsewhere. At 2.0
-         * 活動's main node (`Hong Kong 02 IPLC`), 策略's main node, 全域's subscription over its quota (at 1.15 too),
-         * 訂閱's first subscription over its nodes and update, and 依 App's first app over its package (its three
-         * policies are real in both).
+         * The rows whose words are data the page has not yet, and wrap at a large font size, by page and font size; none
+         * elsewhere. Where the page knows a row's words (a node's, a group's, a subscription's name), its skeleton takes
+         * their lines and none of these is theirs. At 1.15 and 2.0 全域's subscription over its quota, and at 2.0 two of
+         * its nodes, which their latency orders; at 2.0 訂閱's subscriptions over their nodes and last update, and 依 App's
+         * apps over their packages, which the phone's list gives.
          */
         val WRAPS = mapOf(
-            (RvSkeletonPages.ACTIVITY to RV_FS200) to 1,
-            (RvSkeletonPages.POLICY to RV_FS200) to 0,
-            (RvSkeletonPages.POLICY_GLOBAL to RV_FS115) to 0,
-            (RvSkeletonPages.POLICY_GLOBAL to RV_FS200) to 0,
-            (RvSkeletonPages.SUBS to RV_FS200) to 0,
-            (RvSkeletonPages.PER_APP to RV_FS200) to 3,
-            (RvSkeletonPages.PER_APP_V1 to RV_FS200) to 3,
+            (RvSkeletonPages.POLICY_GLOBAL to RV_FS115) to setOf(0),
+            (RvSkeletonPages.POLICY_GLOBAL to RV_FS200) to setOf(0, 3, 4),
+            (RvSkeletonPages.SUBS to RV_FS200) to setOf(0, 1),
+            (RvSkeletonPages.PER_APP to RV_FS200) to setOf(3, 4, 5, 6),
+            (RvSkeletonPages.PER_APP_V1 to RV_FS200) to setOf(3, 4, 5),
         )
         const val TOLERANCE = 0.5f
     }

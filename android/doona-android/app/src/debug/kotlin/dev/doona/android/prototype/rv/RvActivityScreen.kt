@@ -183,7 +183,7 @@ internal fun RvActivityScreen(
                             noSubscription,
                         )
                     } else {
-                        RvSkeletonCards(loading, { ActivitySkeleton(mode) }) {
+                        RvSkeletonCards(loading, { ActivitySkeleton(mode, steady.node?.name ?: RV_NO_VALUE) }) {
                             OutboundCard(steady, mode, routes, nodes)
                             TrafficTiles(state, routes.traffic)
                             RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
@@ -437,14 +437,16 @@ private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
 
 /**
  * 活動's cards while it loads, each part on the lines of what replaces it: the outbound card's rows (出站模式 over the
- * [mode], whose words the page knows, and its chevron's room; the main node over its latency and change; the rule
- * groups over their bytes) and its see-all line, then the two traffic tiles under their captions.
+ * [mode] and its chevron's room; the main [node] over its role and its latency and change; the rule groups, which today's
+ * traffic picks, over their bytes) and its see-all line, then the two traffic tiles under their captions. The words the
+ * page knows before its data (the mode, the node in use) take their lines, so a name that wraps keeps its row's height.
  */
 @Composable
-private fun ActivitySkeleton(mode: RvRouteMode) {
+private fun ActivitySkeleton(mode: RvRouteMode, node: String) {
     RvSkeletonCard {
         RvSkeletonRow(0, chevron = true, title = stringResource(R.string.act_mode), subtitleText = stringResource(mode.label))
-        RvSkeletonRow(1, end = RvSkeletonEnd.Latency)
+        val role = stringResource(if (mode == RvRouteMode.Rule) R.string.rv_main_node else R.string.nav_nodes)
+        RvSkeletonRow(1, end = RvSkeletonEnd.Latency, title = node, subtitleText = role)
         repeat(RULE_ROWS) { RvSkeletonRow(it + 2, end = RvSkeletonEnd.Value) }
         RvSkeletonSeeAll()
     }

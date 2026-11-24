@@ -148,7 +148,7 @@ internal fun RvPolicyScreen(
             }
         } else {
             RvBannerSlot(banner)
-            RvSkeletonFade(loading, { Column { PolicySkeleton(state.mode) } }) { Column { PolicyContent(state, onChange, routes, configRev) } }
+            RvSkeletonFade(loading, { Column { PolicySkeleton(state) } }) { Column { PolicyContent(state, onChange, routes, configRev) } }
         }
     }
 }
@@ -183,25 +183,42 @@ private fun PolicyContent(state: RvPolicyState, onChange: (RvPolicyState) -> Uni
 }
 
 /**
- * [PolicyContent]'s skeleton in [mode]'s layout, each part on the lines of what replaces it: the mode card with its
- * caption; under 規則 the main node's card (its header, the node over its latency and change) and the groups' card (its
- * header, each group over its node and latency before the chevron); under 全域 the order chips and a subscription's
- * card of nodes; under 直連 nothing more. The groups' and the nodes' cards run past the window's foot
+ * [PolicyContent]'s skeleton in [state]'s mode's layout, each part on the lines of what replaces it: the mode card with
+ * its caption; under 規則 the main node's card (its header, the node over its group, protocol and place, and its latency
+ * and change) and the groups' card (its header, each group over how it picks and its nodes, its node, and its latency
+ * before the chevron); under 全域 the order chips and a subscription's card (its name over its quota, the data left;
+ * then its nodes, each with its latency and change at the ends of its lines); under 直連 nothing more. The profile's
+ * words (the groups, their nodes, the subscription) are known before the engine is ready and take their lines, so a name
+ * that wraps keeps its row's height; the figures are bars, and so are 全域's nodes, which their latency orders. The
+ * groups' and the nodes' cards run past the window's foot
  * ([rvSkeletonRowsToFill]), as their lists do, so the content keeps the edges in view where they stood.
  */
 @Composable
-private fun PolicySkeleton(mode: RvRouteMode) {
+private fun PolicySkeleton(state: RvPolicyState) {
     val rows = rvSkeletonRowsToFill()
+    val mode = state.mode
     RvGutter {
         RvSkeletonControlCard(stringResource(mode.line))
         if (mode == RvRouteMode.Rule) {
+            val main = state.group(RvPolicyData.main)
             RvSkeletonCard {
                 RvSkeletonHeader(stringResource(R.string.rv_main_node))
-                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency)
+                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency, title = main.selected.name, subtitleText = mainLine(main))
             }
             RvSkeletonCard {
                 RvSkeletonHeader(stringResource(R.string.rv_policy_groups))
-                repeat(rows) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.Node, chevron = true) }
+                repeat(rows) {
+                    val group = RvPolicyData.groups.getOrNull(it)?.let(state::group)
+                    RvSkeletonRow(
+                        it + 1,
+                        RvSkeletonText.Mixed,
+                        RvSkeletonEnd.Node,
+                        chevron = true,
+                        title = group?.let { stringResource(it.name) },
+                        subtitleText = group?.let { groupLine(it) },
+                        endText = group?.selected?.name,
+                    )
+                }
             }
         }
     }
@@ -209,8 +226,10 @@ private fun PolicySkeleton(mode: RvRouteMode) {
         RvControlRow({ RvSkeletonChips(RvNodeSort.entries.map { stringResource(it.label) }, Modifier.padding(bottom = rvRaisedReach)) }, RvSpace.tabBlockGap)
         RvGutter {
             RvSkeletonCard {
-                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value)
-                repeat(rows) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.Latency) }
+                // The first card is the first subscription's, but under 地區 the country of the fastest node's.
+                val sub = RvData.subscriptions.firstOrNull()?.name?.takeIf { state.nodeSort != RvNodeSort.Region }
+                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value, title = sub)
+                repeat(rows) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.LatencyLines) }
             }
         }
     }
@@ -225,11 +244,16 @@ private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
         RvRow(
             { RvFlag(node.place.flag, RvSize.rowDisc, current = true) },
             node.name,
-            listOf(stringResource(main.kind.label), node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
+            mainLine(main),
             onClick = onOpen,
         ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
     }
 }
+
+/** The main node's line under its name: the group's kind, the node's protocol and its place. */
+@Composable
+private fun mainLine(main: RvPolicyGroup): String =
+    listOf(stringResource(main.kind.label), main.selected.protocol, stringResource(main.selected.place.label)).joinToString(SEPARATOR)
 
 /**
  * 全域's node picker: the node list's order (the search is the tab bar's), then every subscription's nodes (or every
@@ -255,17 +279,21 @@ private fun GroupsCard(state: RvPolicyState, onOpen: (String) -> Unit) {
 @Composable
 private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit) {
     val node = group.selected
-    val count = pluralStringResource(R.plurals.rv_policy_node_count, group.members.size, group.members.size)
     RvRow(
         { RvIconDisc(group.kind.glyph) },
         stringResource(group.name),
-        stringResource(group.kind.label) + SEPARATOR + count,
+        groupLine(group),
         Modifier.rvRowPress(Role.Button, { onOpen(group.id) }),
         titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES) },
         subtitleEnd = { RvText(latencyText(node.latencyMs), Rv.type.rowSub, color = latencyColor(node.latencyMs), align = TextAlign.End) },
         trailing = { RvChevron() },
     )
 }
+
+/** A group's line under its name: how it picks and how many nodes it has. */
+@Composable
+private fun groupLine(group: RvPolicyGroup): String =
+    stringResource(group.kind.label) + SEPARATOR + pluralStringResource(R.plurals.rv_policy_node_count, group.members.size, group.members.size)
 
 /**
  * The rules (規則 only): how they are tried, then each one as what it matches over its kind, where the traffic ends
