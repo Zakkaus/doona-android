@@ -51,19 +51,6 @@ internal const val CORE_SCHEMA = 3
 @Serializable
 internal data class InitDto(val schema: Int)
 
-/** The tun the service builds uses the same values. */
-@Serializable
-internal data class StartConfigDto(val mtu: Int, val ipv4: String, val dns: String, val bootstrapDns: List<String>) {
-    companion object {
-        const val MTU = 65535
-        const val IPV4 = "172.19.0.1"
-        const val IPV4_PREFIX = 30
-        const val DNS = "172.19.0.2"
-
-        fun of(bootstrapDns: List<String>, mtu: Int = MTU) = StartConfigDto(mtu, IPV4, DNS, bootstrapDns)
-    }
-}
-
 @Serializable
 internal data class SnapshotDto(
     val revision: Long,
@@ -364,7 +351,7 @@ internal data class MemberDto(
     val name: String,
     val latencyMs: Int? = null,
     val failed: Boolean,
-    /** Why the last probe failed, when the core knows: `local_network`. */
+    /** Why the last probe failed, when the core knows: `dns_failed` or `local_network`. */
     val error: String? = null,
     val isGroup: Boolean,
     val subscriptionId: String? = null,
@@ -430,6 +417,13 @@ internal data class IdArgs(val id: String)
 @Serializable
 internal data class ModeArgs(val mode: Mode)
 
+@Serializable
+internal data class BootstrapDnsArgs(val servers: List<String>) {
+    companion object {
+        const val COMMAND = "setBootstrapDns"
+    }
+}
+
 /** `rules`' page: [limit] is 1 to 500. */
 @Serializable
 internal data class RulesArgs(val offset: Int, val limit: Int)
@@ -462,6 +456,7 @@ private val ERROR_CODES = mapOf(
     "busy" to ErrorCode.Busy,
     "internal" to ErrorCode.Internal,
     "local_network" to ErrorCode.LocalNetwork,
+    "dns_failed" to ErrorCode.DnsFailed,
 )
 
 /** An unknown code from a newer core is [ErrorCode.Internal]. */

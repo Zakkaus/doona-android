@@ -1,8 +1,15 @@
 package dev.doona.android.vpn
 
+import android.app.Application
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.NetworkCapabilities
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.PerAppSettings
+import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
@@ -19,15 +26,22 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowNetwork
+import org.robolectric.shadows.ShadowNetworkCapabilities
+import java.io.IOException
+import java.net.InetAddress
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
@@ -107,6 +121,163 @@ class EngineTelemetryTest {
     }
 
     @Test
+    fun recoveryGrowsAcrossFailedStartsAndRepeatedDeathsAndCapsTheDelay() = runTest {
+        val engine = engine()
+        var starts = 0
+        core.onStart = {
+            if (++starts == 2) throw IllegalStateException("internal")
+        }
+        val service = ServiceSession(engine.controller)
+        backgroundScope.launch { service.follow { engine.controller.release(host) } }
+        assertTrue(service.startSystem(host) { error("Unexpected cancellation") })
+        runCurrent()
+        assertTrue(engine.status.value is Status.Running)
+
+        reportDeadCore()
+        assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
+
+        awaitRetry(engine, 1_000)
+        assertEquals(2, starts)
+        assertEquals(Status.Failed(FailureReason.StartFailed, ErrorCode.Internal), engine.status.value)
+        awaitRetry(engine, 2_000)
+        assertEquals(3, starts)
+        assertTrue(engine.status.value is Status.Running)
+
+        listOf(4_000L, 8_000L, 16_000L, 32_000L, 60_000L, 60_000L).forEachIndexed { index, wait ->
+            reportDeadCore()
+            assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
+            awaitRetry(engine, wait)
+            assertEquals(4 + index, starts)
+            assertTrue(engine.status.value is Status.Running)
+        }
+    }
+
+    @Test
+    fun sixtySecondsRunningResetsTheNextRecoveryDelay() = runTest {
+        val engine = engine()
+        assertTrue(engine.controller.startSystem(host) { error("Unexpected cancellation") } != null)
+        runCurrent()
+        reportDeadCore()
+        awaitRetry(engine, 1_000)
+        assertTrue(engine.status.value is Status.Running)
+
+        advanceTimeBy(55_000)
+        runCurrent()
+        reportDeadCore()
+        assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
+        awaitRetry(engine, 1_000)
+        assertTrue(engine.status.value is Status.Running)
+    }
+
+    @Test
+    fun anIncompatibleCoreDoesNotRecover() = runTest {
+        core.schema = CORE_SCHEMA + 1
+        val engine = engine()
+        assertPermanentSystemFailure(engine, FailureReason.IncompatibleCore)
+    }
+
+    @Test
+    fun anEmptyAllowListDoesNotRecover() = runTest {
+        val engine = engine(perApp = PerApp(AppPolicy.OnlyListed))
+        assertPermanentSystemFailure(engine, FailureReason.NoAllowedApps)
+    }
+
+    private fun TestScope.assertPermanentSystemFailure(engine: ServiceEngine, reason: FailureReason) {
+        assertTrue(engine.controller.startSystem(host) { error("The service stops after reporting the failure") } != null)
+        runCurrent()
+        val failed = engine.controller.session.value
+        assertEquals(Status.Failed(reason), failed.status)
+        assertFalse(failed.recovering)
+        advanceTimeBy(60_001)
+        runCurrent()
+        assertEquals(failed, engine.controller.session.value)
+    }
+
+    private fun TestScope.awaitRetry(engine: ServiceEngine, wait: Long) {
+        val failure = engine.controller.session.value
+        advanceTimeBy(wait - 1)
+        runCurrent()
+        assertEquals(failure, engine.controller.session.value)
+        advanceTimeBy(1)
+        runCurrent()
+    }
+
+    @Test
+    fun manualStopCancelsPendingSystemRecoveryAndRedelivery() = runTest {
+        val engine = engine()
+        var starts = 0
+        var redeliveryCancelled = false
+        core.onStart = { starts++ }
+        assertTrue(engine.controller.startSystem(host) { redeliveryCancelled = true } != null)
+        runCurrent()
+        reportDeadCore()
+        assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
+
+        engine.disconnect()
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertEquals(Status.Stopped, engine.status.value)
+        assertEquals(1, starts)
+        assertTrue(redeliveryCancelled)
+    }
+
+    @Test
+    fun revocationDuringBackoffPreventsAnotherStart() = runTest {
+        val engine = engine()
+        var starts = 0
+        var cancelled = false
+        core.onStart = { starts++ }
+        assertTrue(engine.controller.startSystem(host) { cancelled = true } != null)
+        runCurrent()
+        reportDeadCore()
+
+        engine.controller.revoke(host)
+        advanceTimeBy(60_001)
+        runCurrent()
+        assertEquals(Status.Failed(FailureReason.Revoked), engine.status.value)
+        assertEquals(1, starts)
+        assertTrue(cancelled)
+    }
+
+    @Test
+    fun connectDuringBackoffQueuesOneStartOnTheExistingSystemService() = runTest {
+        val engine = engine()
+        var starts = 0
+        core.onStart = { starts++ }
+        assertTrue(engine.controller.startSystem(host) { error("Unexpected cancellation") } != null)
+        runCurrent()
+        reportDeadCore()
+
+        engine.connect()
+        runCurrent()
+        assertEquals(2, starts)
+        assertTrue(engine.status.value is Status.Running)
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertEquals(2, starts)
+    }
+
+    @Test
+    fun aFailedManualSessionDoesNotRestart() = runTest {
+        val engine = engine()
+        var starts = 0
+        core.onStart = { starts++ }
+        start(engine)
+        reportDeadCore()
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
+        assertEquals(1, starts)
+    }
+
+    private fun TestScope.reportDeadCore() {
+        core.dataPathAlive = false
+        advanceTimeBy(5_000)
+        runCurrent()
+        core.dataPathAlive = true
+    }
+
+    @Test
     fun stoppingARunningTunnelEndsDebugCapture() = runTest {
         lateinit var logLevels: LogLevelController
         val engine = engine { logLevels.endCapture() }
@@ -130,7 +301,7 @@ class EngineTelemetryTest {
         start(engine)
         levels.set(LogLevel.Debug).getOrThrow()
 
-        engine.controller.revoke(Host)
+        engine.controller.revoke(host)
         runCurrent()
 
         assertEquals(Status.Failed(FailureReason.Revoked), engine.status.value)
@@ -147,7 +318,7 @@ class EngineTelemetryTest {
         core.onStart = { throw IllegalStateException("no_nodes") }
 
         engine.connect()
-        assertTrue(engine.controller.start(Host, engine.controller.session.value.generation))
+        assertTrue(engine.controller.start(host, engine.controller.session.value.generation))
         runCurrent()
 
         assertTrue(engine.status.value is Status.Failed)
@@ -202,30 +373,88 @@ class EngineTelemetryTest {
         assertTrue(events.none { "private-" in it })
     }
 
+    @Test
+    fun resolverUpdatesLogARejectedListByCode() = runTest {
+        val engine = engine()
+        start(engine)
+        AppEvents.clear()
+        val session = engine.controller.session.value
+        core.reply = ContractFixtures.read("call-error-bootstrap-dns.json")
+        engine.controller.refreshBootstrapDns(listOf("192.0.2.54"))
+        runCurrent()
+        assertEquals(listOf("command=setBootstrapDns phase=complete outcome=failed code=InvalidArgument"), AppEvents.snapshot().map { it.text })
+        assertEquals(session, engine.controller.session.value)
+    }
+
+    @Test
+    fun aResolverUpdateDuringOpenAppliesAfterStart() = runTest {
+        val engine = engine()
+        core.onStart = {
+            engine.controller.refreshBootstrapDns(listOf("192.0.2.54"))
+            assertTrue(core.calls.isEmpty())
+        }
+        start(engine)
+        assertEquals(listOf("setBootstrapDns" to """{"servers":["192.0.2.54"]}"""), core.calls)
+    }
+
+    @Test
+    fun aCallbackBeforeFailedInitIsAppliedOnSuccessfulInitWhileStopped() = runTest {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val connectivity = app.getSystemService(ConnectivityManager::class.java)
+        val manager = shadowOf(connectivity)
+        val existing = manager.networkCallbacks.toSet()
+        core.initError = IOException("init failed")
+        val engine = engine(connectivity = connectivity)
+        val link = LinkProperties().apply { setDnsServers(listOf(InetAddress.getByName("192.0.2.54"))) }
+        val wifi = ShadowNetwork.newInstance(100)
+        val caps = ShadowNetworkCapabilities.newInstance()
+        shadowOf(caps).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        val callback = (manager.networkCallbacks - existing).single()
+        callback.onCapabilitiesChanged(wifi, caps)
+        callback.onLinkPropertiesChanged(wifi, link)
+        runCurrent()
+        assertEquals(Status.Failed(FailureReason.StartFailed), engine.status.value)
+        assertTrue(core.calls.isEmpty())
+
+        core.initError = null
+        engine.setMode(Mode.Direct).getOrThrow()
+        runCurrent()
+        assertEquals(listOf("setBootstrapDns" to """{"servers":["192.0.2.54"]}"""), core.calls.filter { it.first == "setBootstrapDns" })
+    }
+
     private fun TestScope.start(engine: ServiceEngine) {
         engine.connect()
-        assertTrue(engine.controller.start(Host, engine.controller.session.value.generation))
+        assertTrue(engine.controller.start(host, engine.controller.session.value.generation))
         runCurrent()
         assertTrue(engine.status.value is Status.Running)
     }
 
-    private fun TestScope.engine(expireDebugCapture: () -> Job? = { null }, endDebugCapture: () -> Unit = {}): ServiceEngine {
+    private fun TestScope.engine(
+        connectivity: ConnectivityManager? = null,
+        perApp: PerApp = PerApp(),
+        expireDebugCapture: () -> Job? = { null },
+        endDebugCapture: () -> Unit = {},
+    ): ServiceEngine {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val opener = CoreOpener(core, { "/data" }, dispatcher)
         val settings = PerAppSettings(PerAppSettings.store(backgroundScope) { folder.root.resolve("per_app.preferences_pb") })
         val controller = TunnelController(
             core,
             opener,
-            { PerApp() },
+            { perApp },
             backgroundScope,
             killProcess = { error("Unexpected timeout") },
             endDebugCapture = endDebugCapture,
             expireDebugCapture = expireDebugCapture,
+            clock = { testScheduler.currentTime },
         )
-        return ServiceEngine(core, opener, controller, settings, { true }, dispatcher, backgroundScope, expireDebugCapture).also { it.launch(dispatcher) }
+        return ServiceEngine(core, opener, controller, settings, { true }, dispatcher, backgroundScope, expireDebugCapture)
+            .also { it.launch(dispatcher, connectivity) }
     }
 
-    private object Host : TunHost {
+    private val host = TestHost()
+
+    private class TestHost : TunHost {
         override val selfPackage = "dev.doona.android"
 
         override fun installed(packages: Set<String>) = packages

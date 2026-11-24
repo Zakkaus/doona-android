@@ -299,10 +299,11 @@ class TunnelControllerTest {
     @Test
     fun aDeadDataPathFailsTheSessionItWasSeenIn() {
         val running = startRunning()
-        controller.coreStopped(Status.Running(running.sinceEpochMs - 1))
+        val session = runBlocking { withTimeout(5_000) { controller.session.first { it.status == running } } }
+        controller.coreStopped(session.copy(generation = session.generation - 1))
         assertEquals(running, controller.status.value)
 
-        controller.coreStopped(running)
+        controller.coreStopped(session)
         assertEquals(Status.Failed(FailureReason.CoreStopped), awaitStatus { it is Status.Failed })
         assertEquals(listOf("start", "stop"), core.events)
     }

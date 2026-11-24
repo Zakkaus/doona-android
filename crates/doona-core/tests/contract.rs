@@ -66,10 +66,11 @@ fn catalog_member_locations() {
     );
 }
 
-const COVERED: [&str; 30] = [
+const COVERED: [&str; 32] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-diagnostics-args.json",
+    "call-error-bootstrap-dns.json",
     "call-error-state-write.json",
     "call-error-static-row-count.json",
     "call-error.json",
@@ -87,6 +88,7 @@ const COVERED: [&str; 30] = [
     "call-rules-args.json",
     "call-score-state-args.json",
     "call-select-args.json",
+    "call-set-bootstrap-dns-args.json",
     "call-set-log-level-args.json",
     "call-set-mode-args.json",
     "call-set-rule-source-args.json",
@@ -194,6 +196,7 @@ fn failed_static_write_publishes_none_of_the_batch() {
 
 #[test]
 fn call_replies_and_args() {
+    round_trip::<doonacore::dto::BootstrapDnsArgs>("call-set-bootstrap-dns-args.json");
     let error = round_trip::<Reply<Empty>>("call-error.json");
     assert!(matches!(error, Reply::Error(e) if e.code == ErrorCode::TooLarge));
     assert_eq!(

@@ -14,14 +14,19 @@ internal class ServiceSession(private val controller: TunnelController) {
     val open: Boolean get() = generation != NONE
 
     /** Takes the start the engine requested as [requested]; ignored when a stop or a newer command replaced it. */
-    fun start(host: TunHost, requested: Long) {
-        if (controller.start(host, requested)) generation = requested
+    fun start(host: TunHost, requested: Long, startBlock: VpnStartBlock? = null) {
+        if (controller.start(host, requested, startBlock)) generation = requested
+    }
+
+    fun startSystem(host: TunHost, startBlock: VpnStartBlock? = null, cancelRestart: () -> Unit): Boolean {
+        generation = controller.startSystem(host, startBlock, cancelRestart) ?: return false
+        return true
     }
 
     /** Calls [end] once for each session this instance started, with its terminal status. */
     suspend fun follow(end: (Session) -> Unit) {
         controller.session.collect { session ->
-            if (open && session.generation >= generation && session.status.ended) {
+            if (open && session.generation >= generation && session.status.ended && !session.recovering) {
                 generation = NONE
                 end(session)
             }

@@ -11,6 +11,8 @@ internal class FakeCore : CoreBridge {
 
     @Volatile var schema = CORE_SCHEMA
 
+    @Volatile var initError: Exception? = null
+
     @Volatile var callGate: CountDownLatch? = null
 
     @Volatile var callError: Throwable? = null
@@ -21,6 +23,7 @@ internal class FakeCore : CoreBridge {
     /** Every call that reached the core, logged before [callGate] holds it. */
     val entered = CopyOnWriteArrayList<String>()
     val calls = CopyOnWriteArrayList<Pair<String, String>>()
+    val configs = CopyOnWriteArrayList<String>()
     val snapshots = AtomicInteger()
 
     /** Served first, in order, before the fixtures. */
@@ -31,12 +34,20 @@ internal class FakeCore : CoreBridge {
     /** Whether the running fixture keeps its `local_network` warning. */
     @Volatile var warns = true
 
+    @Volatile var dataPathAlive = true
+
     /** Runs as the core starts a generation. */
     @Volatile var onStart: () -> Unit = {}
 
-    override fun init(dataDir: String) = """{"schema":$schema}"""
+    override fun init(dataDir: String): String {
+        initError?.let { throw it }
+        return """{"schema":$schema}"""
+    }
 
-    override fun start(tunFd: Int, configJson: String) = onStart()
+    override fun start(tunFd: Int, configJson: String) {
+        configs += configJson
+        onStart()
+    }
 
     override fun stop() = Unit
 
@@ -46,7 +57,7 @@ internal class FakeCore : CoreBridge {
         snapshotError?.let { throw it }
         snapshotReplies.poll()?.let { return it() }
         snapshotReply?.let { return it(sinceRevision) }
-        val fixture = ContractFixtures.read(if (sinceRevision < 7) "snapshot-stopped-catalog.json" else "snapshot-running.json")
+        val fixture = ContractFixtures.read(if (sinceRevision < 7 || !dataPathAlive) "snapshot-stopped-catalog.json" else "snapshot-running.json")
         return if (warns) fixture else fixture.replace("\"warning\": \"local_network\"", "\"warning\": null")
     }
 

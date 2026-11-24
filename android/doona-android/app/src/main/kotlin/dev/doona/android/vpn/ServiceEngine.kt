@@ -1,8 +1,10 @@
 package dev.doona.android.vpn
 
 import android.content.Context
+import android.net.ConnectivityManager
 import android.os.Process
 import android.os.SystemClock
+import dev.doona.android.data.network.followBootstrapDns
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.CoreDiagnostics
@@ -34,6 +36,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -87,6 +90,7 @@ class ServiceEngine internal constructor(
     private val _ready = MutableStateFlow(false)
     override val ready: StateFlow<Boolean> = _ready.asStateFlow()
     override val status: StateFlow<Status> get() = controller.status
+
     private val _traffic = MutableStateFlow(Traffic())
     override val traffic: StateFlow<Traffic> = _traffic.asStateFlow()
     private val _today = MutableStateFlow(TodayTraffic())
@@ -119,9 +123,14 @@ class ServiceEngine internal constructor(
     private var revision = -1L // Written under publishing: the revision of the catalog the flows show.
 
     /** [lane] is the controller's single thread. */
-    internal fun launch(lane: CoroutineDispatcher) {
+    internal fun launch(lane: CoroutineDispatcher, connectivity: ConnectivityManager? = null) {
         scope.launch(lane) { controller.run() }
         scope.launch { open() }
+        if (connectivity != null) {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                connectivity.followBootstrapDns(controller::refreshBootstrapDns)
+            }
+        }
         scope.launch { followPerApp() }
         scope.launch { checkHealth() }
         scope.launch { sampleTraffic() }
@@ -425,13 +434,14 @@ class ServiceEngine internal constructor(
 
     /** Runs whatever the screen does, so a core that dies with the screen off is noticed (ARCH D10). */
     private suspend fun checkHealth() {
-        controller.status.collectLatest { status ->
-            if (status !is Status.Running) return@collectLatest
+        controller.session.collectLatest { session ->
+            if (session.status !is Status.Running) return@collectLatest
             while (true) {
                 delay(HEALTH_INTERVAL_MS)
-                if (poll()?.alive != true) {
+                val alive = poll()?.alive == true
+                if (!alive) {
                     VpnLog.warn("health check: data path down")
-                    controller.coreStopped(status)
+                    controller.coreStopped(session)
                     return@collectLatest
                 }
             }
@@ -496,7 +506,7 @@ class ServiceEngine internal constructor(
                 expireDebugCapture = expireDebugCapture,
             )
             val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO, scope, expireDebugCapture)
-            engine.launch(Dispatchers.IO.limitedParallelism(1))
+            engine.launch(Dispatchers.IO.limitedParallelism(1), app.getSystemService(ConnectivityManager::class.java))
             return engine
         }
     }

@@ -1,5 +1,7 @@
 package dev.doona.android.vpn
 
+import android.os.SystemClock
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.PerApp
@@ -9,11 +11,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.serializer
 
 /** Starting or running: a session the user has not ended. */
 internal val Status.active: Boolean get() = this is Status.Starting || this is Status.Running
@@ -22,7 +26,12 @@ internal val Status.active: Boolean get() = this is Status.Starting || this is S
 internal val Status.ended: Boolean get() = this is Status.Stopped || this is Status.Failed
 
 /** A status and the generation that set it: a later session that repeats a status is still a new value. */
-internal data class Session(val generation: Long, val status: Status)
+internal data class Session(
+    val generation: Long,
+    val status: Status,
+    val startBlock: VpnStartBlock? = null,
+    val recovering: Boolean = false,
+)
 
 /**
  * Runs start, stop, rebuild and revoke one at a time (ARCH D15). Every accepted command takes a new generation at
@@ -41,7 +50,7 @@ internal class TunnelController(
     private val expireDebugCapture: () -> Job?,
     private val startBoundMs: Long = START_BOUND_MS,
     private val stopDeadlineMs: Long = STOP_DEADLINE_MS,
-    private val clock: () -> Long = System::currentTimeMillis,
+    private val clock: () -> Long = SystemClock::elapsedRealtime,
 ) {
     private val _status = MutableStateFlow<Status>(Status.Stopped)
     val status: StateFlow<Status> = _status.asStateFlow()
@@ -53,21 +62,46 @@ internal class TunnelController(
     private val lock = Any()
     private var generation = 0L // Guarded by lock.
     private var host: TunHost? = null // Guarded by lock; set while a session is in progress.
+    private var cancelSystemRestart: (() -> Unit)? = null // Guarded by lock; null for app starts.
+    private var recovery: Job? = null // Guarded by lock; set only while waiting to retry.
+    private var recoveryDelayMs = FIRST_RECOVERY_DELAY_MS // Guarded by lock.
+    private var runningSinceMs = 0L // Guarded by lock; elapsed time at the last Running publication.
     private val commands = Channel<Command>(Channel.UNLIMITED)
 
     private var coreRunning = false // Touched only by run().
+    private var bootstrapDns = emptyList<String>() // Touched only by run(), like coreRunning.
+    private var pendingBootstrapDns: List<String>? = null // Touched only by run().
 
     private var handled = 0L // Guarded by lock; written only by run(): the generation of the last command it finished.
 
     /** Executes commands in order until cancelled. The owner launches it once, off the main thread. */
-    suspend fun run() {
+    suspend fun run(): Unit = coroutineScope {
+        launch {
+            if (opener.awaitSchema() == CORE_SCHEMA) commands.send(Command.CoreOpened)
+        }
         for (command in commands) {
+            val commandGeneration = when (command) {
+                is Command.RefreshDns -> {
+                    pendingBootstrapDns = command.servers
+                    applyPendingBootstrapDns()
+                    continue
+                }
+
+                Command.CoreOpened -> {
+                    applyPendingBootstrapDns()
+                    continue
+                }
+
+                is Command.Open -> command.generation
+
+                is Command.Close -> command.generation
+            }
             stopCore()
-            if (command is Command.Open && isCurrent(command.generation)) open(command.generation, command.host)
-            // A close's status and its completion are recorded together, so its watchdog never sees one without the other.
+            if (command is Command.Open && isCurrent(command.generation)) open(command)
+            // The terminal status and completion are recorded together for the stop watchdog.
             synchronized(lock) {
-                if (command is Command.Close) publish(command.generation, command.terminal)
-                handled = command.generation
+                if (command is Command.Close && command.generation == generation) finishClose(command)
+                handled = commandGeneration
             }
         }
     }
@@ -75,8 +109,13 @@ internal class TunnelController(
     /**
      * Shows [Status.Starting] at once, before the service exists, so a second tap or a stop sees the start; null while a
      * session is starting or running. The service's [start] must carry the returned generation.
+     * During a recovery wait, Connect queues the retry immediately on the existing service instead.
      */
     fun requestStart(): Long? = synchronized(lock) {
+        if (_session.value.recovering) {
+            retryNow()
+            return null
+        }
         if (_status.value.active) return null
         generation++
         host = null
@@ -84,24 +123,46 @@ internal class TunnelController(
         generation
     }
 
+    /** Takes a system start without an app request. Only the system-owned session can recover after core death. */
+    fun startSystem(host: TunHost, startBlock: VpnStartBlock? = null, cancelRestart: () -> Unit): Long? = synchronized(lock) {
+        if (!_status.value.ended || _session.value.recovering) return null
+        cancelSystemRestart = cancelRestart
+        recoveryDelayMs = FIRST_RECOVERY_DELAY_MS
+        enqueueStart(++generation, host, startBlock)
+        generation
+    }
+
     /** Builds the tunnel [requested]; false when a stop or another command replaced the request before it arrived. */
-    fun start(host: TunHost, requested: Long): Boolean = synchronized(lock) {
+    fun start(host: TunHost, requested: Long, startBlock: VpnStartBlock? = null): Boolean = synchronized(lock) {
         if (requested != generation || _status.value != Status.Starting || this.host != null) return false
-        this.host = host
-        commands.trySend(Command.Open(requested, host))
+        enqueueStart(requested, host, startBlock)
         true
     }
 
-    fun stop() = close(accept = { it.active }, Status.Stopped)
+    private fun enqueueStart(g: Long, host: TunHost, startBlock: VpnStartBlock? = null) {
+        this.host = host
+        show(g, Status.Starting)
+        commands.trySend(Command.Open(g, host, startBlock))
+    }
+
+    fun refreshBootstrapDns(servers: List<String>) {
+        // An empty list cannot replace the last working resolvers.
+        if (servers.isNotEmpty()) commands.trySend(Command.RefreshDns(servers))
+    }
+
+    fun stop() = close(accept = { it.active || cancelSystemRestart != null }, Status.Stopped)
 
     /** Revocation stops only the tunnel owned by this service, and cannot turn a user's stop into a drop. */
-    fun revoke(host: TunHost) = close(accept = { it.active && this.host === host }, Status.Failed(FailureReason.Revoked))
+    fun revoke(host: TunHost) = close(
+        accept = { this.host === host && (it.active || cancelSystemRestart != null) },
+        terminal = Status.Failed(FailureReason.Revoked),
+    )
 
     /**
      * The service [host] is going away: stops the session only if [host] took it. A service that took none, such as one
      * a disconnect sent away, leaves alone a start requested since.
      */
-    fun release(host: TunHost) = close(accept = { it.active && this.host === host }, Status.Stopped)
+    fun release(host: TunHost) = close(accept = { this.host === host && (it.active || cancelSystemRestart != null) }, Status.Stopped)
 
     /** The start [requested] never reached the service: ends it, unless the service took it or a newer command replaced it. */
     fun abandon(requested: Long) = close(accept = { requested == generation && host == null }, Status.Stopped)
@@ -117,11 +178,27 @@ internal class TunnelController(
     /** Builds the session's tunnel again with the current per-app policy; a start not yet taken reads it anyway. */
     fun rebuild() = submit(Status.Starting, accept = { it.active && host != null }) { g -> Command.Open(g, checkNotNull(host)) }
 
-    /** The health check found [observed]'s data path dead; ignored once the status has moved on. */
-    fun coreStopped(observed: Status.Running) = close(accept = { it == observed }, Status.Failed(FailureReason.CoreStopped))
+    /** Only the observed generation may fail; two generations may have the same running timestamp. */
+    fun coreStopped(observed: Session) = close(
+        accept = { it is Status.Running && _session.value == observed },
+        terminal = Status.Failed(FailureReason.CoreStopped),
+        recover = true,
+    )
 
-    private fun close(accept: (Status) -> Boolean, terminal: Status) {
-        val g = submit(Status.Stopping, accept) { g -> Command.Close(g, terminal) } ?: return
+    private fun close(accept: (Status) -> Boolean, terminal: Status, recover: Boolean = false) {
+        var cancelRestart: (() -> Unit)? = null
+        val g = submit(Status.Stopping, accept) { g ->
+            if (!recover) {
+                cancelRestart = cancelSystemRestart
+                cancelSystemRestart = null
+                recovery?.cancel()
+                recovery = null
+            } else if (cancelSystemRestart != null && clock() - runningSinceMs >= STABLE_SESSION_MS) {
+                recoveryDelayMs = FIRST_RECOVERY_DELAY_MS
+            }
+            Command.Close(g, terminal, recover && cancelSystemRestart != null)
+        } ?: return
+        cancelRestart?.invoke()
         // A start that never returns holds the runner, so the stop's own watchdog may never be armed. The runner gets
         // the start's bound plus the stop deadline to reach this command; past that only ending the process frees the tun.
         scope.launch {
@@ -134,6 +211,35 @@ internal class TunnelController(
                 }
             }
         }
+    }
+
+    private fun finishClose(command: Command.Close) {
+        if (command.recover) {
+            scheduleRecovery(command.generation, command.terminal)
+        } else {
+            host = null
+            show(command.generation, command.terminal)
+        }
+    }
+
+    /** A failed retry and a new core death both consume the next delay for this system session. */
+    private fun scheduleRecovery(g: Long, failure: Status) {
+        val wait = recoveryDelayMs
+        recoveryDelayMs = (wait * 2).coerceAtMost(MAX_RECOVERY_DELAY_MS)
+        recovery = scope.launch {
+            delay(wait)
+            synchronized(lock) {
+                if (generation == g) retryNow()
+            }
+        }
+        show(g, failure, recovering = true)
+    }
+
+    /** Called under lock, either by the timer or a Connect tap during its wait. */
+    private fun retryNow() {
+        recovery?.cancel()
+        recovery = null
+        enqueueStart(++generation, checkNotNull(host))
     }
 
     /** The new generation, or null when [accept] refused the current status. */
@@ -149,26 +255,43 @@ internal class TunnelController(
     private fun isCurrent(g: Long) = synchronized(lock) { g == generation }
 
     /** Publishes [status] only if [g] is still the latest generation. */
-    private fun publish(g: Long, status: Status): Boolean = synchronized(lock) {
+    private fun publish(g: Long, status: Status, startBlock: VpnStartBlock? = null): Boolean = synchronized(lock) {
         (g == generation).also { current ->
             if (current) {
-                show(g, status)
-                if (!status.active) host = null
+                if (status is Status.Failed && startBlock == null && cancelSystemRestart != null &&
+                    status.reason != FailureReason.IncompatibleCore && status.reason != FailureReason.NoAllowedApps
+                ) {
+                    scheduleRecovery(g, status)
+                } else {
+                    if (status.ended) {
+                        host = null
+                        cancelSystemRestart = null
+                    }
+                    if (status is Status.Running) runningSinceMs = clock()
+                    show(g, status, startBlock)
+                }
             }
         }
     }
 
     /** The caller holds [lock]. */
-    private fun show(g: Long, status: Status) {
+    private fun show(g: Long, status: Status, startBlock: VpnStartBlock? = null, recovering: Boolean = false) {
         // A flow collector may miss a short-lived session or its terminal status before the next start.
         if (status.ended && !_status.value.ended) endDebugCapture()
         _status.value = status
-        _session.value = Session(g, status)
+        _session.value = Session(g, status, startBlock, recovering)
     }
 
-    private suspend fun open(g: Long, host: TunHost) {
+    private suspend fun open(command: Command.Open) {
+        val (g, host) = command
         val begun = System.nanoTime()
         val failure = try {
+            val block = command.startBlock
+            if (block != null) {
+                VpnLog.action("start", "complete", "failed", block.name)
+                publish(g, Status.Failed(FailureReason.StartFailed), block)
+                return
+            }
             startCore(g, host)
         } catch (e: CancellationException) {
             throw e
@@ -184,7 +307,7 @@ internal class TunnelController(
                 publish(g, failure)
             }
 
-            publish(g, Status.Running(clock())) -> VpnLog.action("start", "complete", "ok", "ok", ms)
+            publish(g, Status.Running(System.currentTimeMillis())) -> VpnLog.action("start", "complete", "ok", "ok", ms)
 
             else -> {
                 VpnLog.action("start", "complete", "superseded", "ok", ms)
@@ -199,9 +322,10 @@ internal class TunnelController(
         if (schema != CORE_SCHEMA) return Status.Failed(FailureReason.IncompatibleCore)
         val routing = AppRouting.resolve(perApp(), host.selfPackage, host::installed) ?: return Status.Failed(FailureReason.NoAllowedApps)
         val mtu = host.mtu
-        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(host.bootstrapDns(), mtu))
         expireDebugCapture()?.join()
         if (!isCurrent(g)) return null
+        val servers = host.bootstrapDns().ifEmpty { pendingBootstrapDns ?: bootstrapDns }
+        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(servers, mtu))
         val tun = host.establish(routing, mtu) ?: return Status.Failed(FailureReason.StartFailed)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
         tun.use {
@@ -215,7 +339,33 @@ internal class TunnelController(
             }
         }
         coreRunning = true
+        bootstrapDns = servers
+        pendingBootstrapDns = null
         return null
+    }
+
+    private fun applyPendingBootstrapDns() {
+        val servers = pendingBootstrapDns ?: return
+        if (opener.openedSchema != CORE_SCHEMA) return
+        pendingBootstrapDns = null
+        if (servers != bootstrapDns) applyBootstrapDns(servers)
+    }
+
+    private fun applyBootstrapDns(servers: List<String>) {
+        val name = BootstrapDnsArgs.COMMAND
+        try {
+            val args = CoreJson.encode(BootstrapDnsArgs.serializer(), BootstrapDnsArgs(servers))
+            CoreJson.result(core.call(name, args), Unit.serializer())
+            bootstrapDns = servers
+        } catch (e: EngineException) {
+            VpnLog.action(name, "complete", "failed", e.code.name)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            VpnLog.warn("$name failed: ${e.javaClass.simpleName}")
+        } catch (e: LinkageError) {
+            VpnLog.warn("$name failed: ${e.javaClass.simpleName}")
+        }
     }
 
     private suspend fun stopCore() {
@@ -248,16 +398,21 @@ internal class TunnelController(
     }
 
     private sealed interface Command {
-        val generation: Long
+        data class Open(val generation: Long, val host: TunHost, val startBlock: VpnStartBlock? = null) : Command
 
-        data class Open(override val generation: Long, val host: TunHost) : Command
+        data class Close(val generation: Long, val terminal: Status, val recover: Boolean) : Command
 
-        data class Close(override val generation: Long, val terminal: Status) : Command
+        data class RefreshDns(val servers: List<String>) : Command
+
+        data object CoreOpened : Command
     }
 
     companion object {
         /** `start` returns within this, per the core contract. */
         const val START_BOUND_MS = 10_000L
         const val STOP_DEADLINE_MS = 5_000L
+        private const val FIRST_RECOVERY_DELAY_MS = 1_000L
+        private const val MAX_RECOVERY_DELAY_MS = 60_000L
+        private const val STABLE_SESSION_MS = 60_000L
     }
 }

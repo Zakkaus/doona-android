@@ -2,19 +2,33 @@ package dev.doona.android.data.network
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.os.Handler
+import android.os.Looper
 import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.NetworkTransport
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.stateIn
+import java.net.Inet6Address
 import java.net.InetAddress
 
+class NetworkStateSource internal constructor(
+    val state: StateFlow<NetworkState>,
+    /** Android detected a sign-in page on a network, which need not be the default. */
+    val captivePortal: StateFlow<Boolean>,
+)
+
 private val offline = NetworkState()
+private val whileObserved = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000, replayExpirationMillis = 0)
 
 internal fun ownAddresses(context: Context): List<InetAddress> {
     val connectivity = context.getSystemService(ConnectivityManager::class.java)
@@ -22,8 +36,62 @@ internal fun ownAddresses(context: Context): List<InetAddress> {
     return connectivity.getLinkProperties(active)?.linkAddresses.orEmpty().map { it.address }
 }
 
-internal fun networkState(context: Context, scope: CoroutineScope) = callbackFlow {
+internal fun ConnectivityManager.activeBootstrapDns(): List<String> {
+    val active = activeNetwork ?: return emptyList()
+    if (getNetworkCapabilities(active)?.isBootstrapNetwork() != true) return emptyList()
+    return getLinkProperties(active)?.bootstrapServers().orEmpty()
+}
+
+internal suspend fun ConnectivityManager.followBootstrapDns(refresh: (List<String>) -> Unit) {
+    val callback = object : ConnectivityManager.NetworkCallback() {
+        private var selected: Network? = null
+
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            selected = network.takeIf { capabilities.isBootstrapNetwork() }
+        }
+
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+            if (network == selected) refresh(linkProperties.bootstrapServers())
+        }
+
+        override fun onLost(network: Network) {
+            if (network == selected) selected = null
+        }
+    }
+    // Use Android's network ranking without asking it to bring up a different connection.
+    val request = NetworkRequest.Builder()
+        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+        .build()
+    registerBestMatchingNetworkCallback(request, callback, Handler(Looper.getMainLooper()))
+    try {
+        awaitCancellation()
+    } finally {
+        unregisterNetworkCallback(callback)
+    }
+}
+
+private fun NetworkCapabilities.isBootstrapNetwork() =
+    hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && !hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+
+/** Keeps link-local interface names for the core to resolve when it consumes the snapshot. */
+private fun LinkProperties.bootstrapServers(): List<String> {
+    val iface = interfaceName
+    return dnsServers.mapNotNull { server ->
+        val address = server.hostAddress ?: return@mapNotNull null
+        if (server is Inet6Address && server.isLinkLocalAddress && iface != null) "${address.substringBefore('%')}%$iface" else address
+    }
+}
+
+internal fun networkState(context: Context, scope: CoroutineScope): NetworkStateSource {
     val connectivity = context.getSystemService(ConnectivityManager::class.java)
+    return NetworkStateSource(
+        defaultNetwork(connectivity).stateIn(scope, whileObserved, offline),
+        captivePortals(connectivity).stateIn(scope, whileObserved, false),
+    )
+}
+
+private fun defaultNetwork(connectivity: ConnectivityManager) = callbackFlow {
     val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             trySend(networkCapabilities.toState())
@@ -35,7 +103,24 @@ internal fun networkState(context: Context, scope: CoroutineScope) = callbackFlo
     }
     connectivity.registerDefaultNetworkCallback(callback)
     awaitClose { connectivity.unregisterNetworkCallback(callback) }
-}.conflate().stateIn(scope, SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000, replayExpirationMillis = 0), offline)
+}.conflate()
+
+private fun captivePortals(connectivity: ConnectivityManager) = callbackFlow {
+    val networks = mutableSetOf<Network>()
+    val callback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            if (networks.add(network) && networks.size == 1) trySend(true)
+        }
+
+        // Matching stops when the network goes away or Android clears its captive-portal capability.
+        override fun onLost(network: Network) {
+            if (networks.remove(network) && networks.isEmpty()) trySend(false)
+        }
+    }
+    val request = NetworkRequest.Builder().clearCapabilities().addCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL).build()
+    connectivity.registerNetworkCallback(request, callback)
+    awaitClose { connectivity.unregisterNetworkCallback(callback) }
+}.conflate()
 
 private fun NetworkCapabilities.toState(): NetworkState {
     if (!hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return offline

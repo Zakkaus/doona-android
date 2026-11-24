@@ -12,7 +12,7 @@ use common::{TempDir, seqpacket_pair, socks};
 use doonacore::api::{Core, Options};
 use doonacore::dto::ErrorCode;
 use doonacore::sys;
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::os::fd::AsRawFd;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Mutex, MutexGuard};
@@ -152,7 +152,78 @@ fn subscription_hosts_use_the_fallback_then_the_last_list() {
     assert!(queries(&seen) > before);
 }
 
-/// Only an accepted `start` changes the resolvers: one refused with `no_nodes` leaves the running
+#[test]
+fn stopped_handoff_resolves_subscription_without_restarting() {
+    let _s = serial();
+    let (new, seen) = servers::udp_resolver();
+    let dir = TempDir::new("boot-stopped");
+    let core = new_core(&dir, new.port(), vec![dead_resolver()]);
+    assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
+    let _client = start(&core, "[]");
+    core.stop();
+    let feed = servers::feed("socks5://127.0.0.1:1#s5".to_owned());
+    let url = format!("http://feed.doona.test:{}/sub", feed.port());
+    assert_eq!(subscribe(&core, &url), Err(ErrorCode::FetchFailed));
+    set_loopback_dns(&core);
+    assert_eq!(subscribe(&core, &url), Ok(()));
+    assert!(queries(&seen) > 0);
+}
+
+fn set_loopback_dns(core: &Core) {
+    let reply = core.call("setBootstrapDns", r#"{"servers":["127.0.0.1"]}"#);
+    assert_eq!(reply, r#"{"ok":{}}"#);
+}
+
+#[test]
+fn handoff_keeps_pending_lookup_and_live_flow_but_routes_new_lookups_to_new_dns() {
+    let _s = serial();
+    let old = UdpSocket::bind("127.0.0.2:0").unwrap();
+    old.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    let (new, new_seen) = servers::udp_resolver();
+    let dir = TempDir::new("boot-handoff");
+    let core = new_core(&dir, new.port(), vec![old.local_addr().unwrap()]);
+    assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
+    let mut client = start(&core, "[]");
+    let (echo, echo_seen) = servers::tcp_echo();
+    let flow = client.connect(echo);
+    assert!(client.until(
+        Duration::from_secs(2),
+        |_| echo_seen.connections.load(Relaxed) == 1
+    ));
+
+    let feed = servers::feed("socks5://127.0.0.1:1#s5".to_owned());
+    let url = format!("http://feed.doona.test:{}/sub", feed.port());
+    let old_seen = std::thread::scope(|scope| {
+        let pending = scope.spawn(|| subscribe(&core, &url));
+        old.peek_from(&mut [0]).unwrap(); // The query is queued but has no answer yet.
+        set_loopback_dns(&core);
+        for invalid in [
+            r#"{"servers":[]}"#,
+            r#"{"servers":["127.0.0.2","dns.example"]}"#,
+            "{}",
+            r#"{"servers":"127.0.0.1"}"#,
+        ] {
+            let reply = core.call("setBootstrapDns", invalid);
+            let error = include_str!("../../../contracts/doona-core/call-error-bootstrap-dns.json");
+            assert_eq!(reply, error.trim());
+        }
+        let (_, seen) = servers::udp_resolver_from(old, Ipv4Addr::LOCALHOST);
+        pending.join().unwrap().unwrap();
+        seen
+    });
+    let before = queries(&old_seen);
+    assert!(before > 0);
+    assert_eq!(queries(&new_seen), 0);
+    subscribe(&core, &url).unwrap();
+    assert!(
+        queries(&new_seen) > 0,
+        "new lookup missed the replacement DNS"
+    );
+    assert_eq!(queries(&old_seen), before);
+    assert_eq!(client.exchange(flow, b"after").unwrap(), b"after");
+}
+
+/// A refused `start` does not change the resolvers: `no_nodes` leaves the running
 /// generation's list in use, and a list with an entry that is not an address is
 /// `invalid_argument`, never the fallback.
 #[test]
@@ -260,8 +331,7 @@ fn probed(core: &Core) -> Vec<(String, serde_json::Value)> {
 
 /// A probe is classified by the address its dial to the node chose, never by what the node's name
 /// resolved to before (ARCH D26): refused at the local address its name resolves to, it carries
-/// `local_network`; once the name no longer resolves, it fails before it dials the node and
-/// carries no code.
+/// `local_network`; once the name no longer resolves, it carries `dns_failed` instead.
 #[test]
 fn a_probe_counts_the_address_it_dialed_not_an_earlier_lookup() {
     let _s = serial();
@@ -282,13 +352,12 @@ fn a_probe_counts_the_address_it_dialed_not_an_earlier_lookup() {
     // The resolvers `start` names stay in use after `stop`; nothing answers on 127.0.0.2.
     drop(start(&core, r#"["127.0.0.2"]"#));
     core.stop();
-    assert_eq!(probed(&core), nas(serde_json::Value::Null));
+    assert_eq!(probed(&core), nas("dns_failed".into()));
 }
 
-/// A probe whose own target does not resolve never dialed its node: it carries no code, although
-/// the node is on the local network.
+/// A failed target lookup is `dns_failed`, not `local_network`, even for a local node.
 #[test]
-fn a_probe_whose_target_does_not_resolve_carries_no_code() {
+fn a_probe_whose_target_does_not_resolve_reports_dns_failure() {
     let _s = serial();
     let dead = dead_resolver();
     let feed = servers::feed("socks5://224.0.0.1:1080#lan".to_owned());
@@ -301,10 +370,7 @@ fn a_probe_whose_target_does_not_resolve_carries_no_code() {
     };
     let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
     subscribe(&core, &format!("http://{feed}/sub")).unwrap();
-    assert_eq!(
-        probed(&core),
-        vec![("lan".to_owned(), serde_json::Value::Null)]
-    );
+    assert_eq!(probed(&core), vec![("lan".to_owned(), "dns_failed".into())]);
 }
 
 /// A `.local` name that only mDNS publishes is not resolved in v0.1 (ARCH D26): unicast DNS does

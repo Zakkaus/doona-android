@@ -1,5 +1,6 @@
 package dev.doona.android.vpn
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -10,6 +11,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import dev.doona.android.R
 import dev.doona.android.app.DoonaApplication
+import dev.doona.android.data.network.activeBootstrapDns
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Traffic
@@ -20,7 +22,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import java.net.Inet4Address
 
 /**
  * The foreground VPN service. It holds no tunnel logic: start, stop and revoke go to the [TunnelController], and the
@@ -34,6 +35,7 @@ internal class DoonaVpnService :
     private val scope = MainScope()
     private lateinit var notifications: VpnNotifications
     private lateinit var session: ServiceSession
+    private lateinit var connectivity: ConnectivityManager
 
     @Volatile
     private var foreground = false
@@ -44,6 +46,7 @@ internal class DoonaVpnService :
         notifications = VpnNotifications(this)
         notifications.createChannel()
         session = ServiceSession(engine.controller)
+        connectivity = getSystemService(ConnectivityManager::class.java)
         scope.launch { session.follow(::end) }
         scope.launch { notifications.keepCurrent(engine.status, ratesWhileSeen()) }
     }
@@ -55,22 +58,32 @@ internal class DoonaVpnService :
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         lastStartId = startId
+        var restart = START_NOT_STICKY
         when (intent?.action) {
             ACTION_START -> {
-                goForeground()
-                session.start(this, intent.getLongExtra(EXTRA_GENERATION, 0))
+                val block = goForeground()
+                session.start(this, intent.getLongExtra(EXTRA_GENERATION, 0), block)
                 if (session.open) notifications.cancelDrop()
+            }
+
+            SERVICE_INTERFACE -> {
+                val block = if (session.open) null else goForeground()
+                if (session.startSystem(this, block) { stopSelf(startId) }) {
+                    notifications.cancelDrop()
+                    // Android redelivers the system start after process death; an explicit stop cancels it.
+                    restart = START_REDELIVER_INTENT
+                }
             }
 
             ACTION_STOP -> engine.disconnect()
         }
         // Nothing of ours to follow: a stop with no session, or a start that a disconnect replaced on its way here.
         if (!session.open) stopSelfResult(startId)
-        return START_NOT_STICKY
+        return restart
     }
 
     /** Must run before onStartCommand returns, even for a repeated start: it came from startForegroundService. */
-    private fun goForeground() {
+    private fun goForeground(): VpnStartBlock? {
         val notification = notifications.ongoing(engine.status.value.takeIf { it.active } ?: Status.Starting)
         foreground = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -79,6 +92,9 @@ internal class DoonaVpnService :
                 startForeground(VpnNotifications.ID, notification)
             }
             true
+        } catch (e: ForegroundServiceStartNotAllowedException) {
+            foreground = false
+            return VpnStartBlock.ForegroundStartNotAllowed
         } catch (e: IllegalStateException) {
             // Without VPN consent the systemExempted type is refused; establish then fails the start.
             VpnLog.warn("startForeground threw ${e.javaClass.simpleName}")
@@ -87,6 +103,7 @@ internal class DoonaVpnService :
             VpnLog.warn("startForeground threw ${e.javaClass.simpleName}")
             false
         }
+        return null
     }
 
     private fun end(ended: Session) {
@@ -133,12 +150,7 @@ internal class DoonaVpnService :
         }
     }
 
-    override fun bootstrapDns(): List<String> {
-        val connectivity = getSystemService(ConnectivityManager::class.java)
-        val servers = connectivity.getLinkProperties(connectivity.activeNetwork)?.dnsServers.orEmpty()
-        // IPv6 is off in v0.1, and a link-local resolver would need its scope.
-        return servers.filterIsInstance<Inet4Address>().mapNotNull { it.hostAddress }
-    }
+    override fun bootstrapDns(): List<String> = connectivity.activeBootstrapDns()
 
     override fun establish(routing: AppRouting, mtu: Int): Tun? {
         if (!foreground) return null

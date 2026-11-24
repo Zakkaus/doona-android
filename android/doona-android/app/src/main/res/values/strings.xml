@@ -117,6 +117,7 @@
     <string name="error_busy">Another change is in progress. Try again.</string>
     <string name="error_internal">Something went wrong</string>
     <string name="error_local_network">Could not reach an address on the local network</string>
+    <string name="error_dns_failed">DNS lookup failed</string>
     <string name="local_network_ask_title">Allow local network access</string>
     <string name="local_network_ask_body">doona needs this permission to reach subscriptions and nodes on your local network.</string>
     <string name="local_network_ask_continue">Continue</string>

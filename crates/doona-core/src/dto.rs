@@ -1,6 +1,5 @@
-//! The JSON payloads of the JNI contract (`plans/v1/core-api.md`, schema 3). Kotlin's twin is
-//! `vpn/CoreDto.kt`; `contracts/doona-core/*.json` holds the examples both sides test against.
-//! Unknown fields are ignored; a missing required field fails to parse (`invalid_argument`).
+//! JNI schema 3 (`plans/v1/core-api.md`); Kotlin's `vpn/CoreDto.kt` shares `contracts/doona-core/*.json`.
+//! Unknown fields are ignored; missing required fields yield `invalid_argument`.
 
 pub use crate::diag::report::{
     ClearCrashesArgs, CoreBuild, CrashFile, DiagEvent, Diagnostics, DiagnosticsArgs, LastSnapshot,
@@ -14,7 +13,6 @@ pub mod score;
 /// Schema 3 admits catalog leaves without a subscription and adds the static editor commands.
 pub const SCHEMA: u32 = 3;
 
-/// The closed set of error codes, as `ErrorCode` in Kotlin's `Engine.kt`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorCode {
@@ -26,9 +24,9 @@ pub enum ErrorCode {
     NoNodes,
     Busy,
     Internal,
-    /// A dial or a fetch failed and its target was an address on the local network, which
-    /// Android 17 lets doona reach only with `ACCESS_LOCAL_NETWORK` (ARCH D26).
+    /// A local-network dial or fetch failed (Android 17 `ACCESS_LOCAL_NETWORK`, ARCH D26).
     LocalNetwork,
+    DnsFailed,
 }
 
 impl ErrorCode {
@@ -43,6 +41,7 @@ impl ErrorCode {
             ErrorCode::Busy => "busy",
             ErrorCode::Internal => "internal",
             ErrorCode::LocalNetwork => "local_network",
+            ErrorCode::DnsFailed => "dns_failed",
         }
     }
 }
@@ -76,9 +75,13 @@ pub struct StartConfig {
     pub ipv4: std::net::Ipv4Addr,
     /// The virtual resolver the tun advertises; DNS sent to it is answered by the core.
     pub dns: std::net::Ipv4Addr,
-    /// The underlying network's resolvers, as Android reports them; they may carry a scope
-    /// (`fe80::1%wlan0`), so they stay text until a dialer needs them.
+    /// Android resolver addresses, including scoped IPv6 (e.g. `fe80::1%wlan0`).
     pub bootstrap_dns: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BootstrapDnsArgs {
+    pub servers: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -337,8 +340,7 @@ pub struct Member {
     pub name: String,
     pub latency_ms: Option<u32>,
     pub failed: bool,
-    /// Why the last probe failed, when the core knows: `local_network` when it was refused on its
-    /// way to the node at an address on the local network. Null otherwise, and for groups.
+    /// Known cause of the last probe failure, e.g. `local_network` or `dns_failed`; null for groups.
     pub error: Option<ErrorCode>,
     pub is_group: bool,
     pub subscription_id: Option<String>,

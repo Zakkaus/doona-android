@@ -4,6 +4,8 @@
 //! A task of the real driver's generation that panics shows as `internal` in the snapshot, and the
 //! real driver serves a flow queued before `start` only once the generation is committed.
 
+mod bootstrap;
+
 use super::tests_catalog::{Feeds, add, path};
 use super::{Core, Life, lock};
 use crate::dto::{ErrorCode, Mode, Snapshot};

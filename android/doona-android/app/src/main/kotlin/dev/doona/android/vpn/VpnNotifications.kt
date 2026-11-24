@@ -67,21 +67,31 @@ internal class VpnNotifications(private val context: Context) {
     }
 
     suspend fun showDrop(session: Session, settings: DropNoticeSettings, isCurrent: () -> Boolean) {
-        val body = reasonText((session.status as? Status.Failed)?.reason ?: return)
-        val enabled = try {
-            settings.notifyOnDrop.first()
-        } catch (e: IOException) {
-            VpnLog.warn("drop notification: settings read failed (${e.javaClass.simpleName})")
-            return
-        }
-        if (!enabled || !isCurrent()) return
+        val reason = (session.status as? Status.Failed)?.reason ?: return
+        if (session.startBlock == null && !dropEnabled(settings)) return
+        if (!isCurrent()) return
+        val body = context.getString(
+            when (session.startBlock) {
+                VpnStartBlock.ForegroundStartNotAllowed -> R.string.vpn_failure_foreground_refused
+                null -> reasonText(reason)
+            },
+        )
+        val title = if (session.startBlock == null) R.string.vpn_failed_title else R.string.vpn_start_blocked_title
         val notification = builder(DROP_CHANNEL)
-            .setContentTitle(context.getString(R.string.vpn_failed_title))
-            .setContentText(context.getString(body))
+            .setContentTitle(context.getString(title))
+            .setContentText(body)
+            .setStyle(Notification.BigTextStyle().bigText(body))
             .setOnlyAlertOnce(false)
             .setAutoCancel(true)
             .build()
         manager.notify(DROP_ID, notification)
+    }
+
+    private suspend fun dropEnabled(settings: DropNoticeSettings): Boolean = try {
+        settings.notifyOnDrop.first()
+    } catch (e: IOException) {
+        VpnLog.warn("drop notification: settings read failed (${e.javaClass.simpleName})")
+        false
     }
 
     fun cancelDrop() = manager.cancel(DROP_ID)
