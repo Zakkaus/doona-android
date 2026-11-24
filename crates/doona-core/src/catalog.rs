@@ -192,6 +192,7 @@ pub(crate) struct Model {
     /// What chooses a new flow's group: the main group, and the rules of `state.json`'s source
     /// over `groups`.
     pub policy: Arc<Policy>,
+    pub(crate) geo: Option<Arc<crate::rules::dat::Data>>,
     latency: HashMap<String, Latency>,
     /// The automatic choice of each UrlTest group that has had a successful probe.
     auto: HashMap<String, String>,
@@ -247,7 +248,7 @@ impl Model {
         nodes: Vec<Arc<NodeEntry>>,
         incarnations: HashMap<String, u64>,
         source: &RuleSourceSpec,
-        previous: Option<&Score>,
+        previous: Option<&Model>,
     ) -> Model {
         let index: HashMap<String, usize> = nodes
             .iter()
@@ -259,14 +260,17 @@ impl Model {
             .map(|n| (n.id.as_str(), n.name.as_str()))
             .collect();
         let groups = groups::template(&named);
-        let policy = compile(&groups, &index, source);
-        let score = Arc::new(Score::new(&groups, &nodes, &index, previous));
+        let geo = previous.and_then(|model| model.geo.clone());
+        let policy = compile(&groups, &index, source, geo.as_deref());
+        let prior_score = previous.map(|m| &*m.score);
+        let score = Arc::new(Score::new(&groups, &nodes, &index, prior_score));
         Model {
             nodes,
             index,
             incarnations,
             groups,
             policy: Arc::new(policy),
+            geo,
             score,
             latency: HashMap::new(),
             auto: HashMap::new(),
@@ -303,7 +307,7 @@ impl Model {
                 .filter(|n| n.subscription.is_none())
                 .cloned(),
         );
-        Model::sourced(nodes, incarnations, &state.rule_source, Some(&self.score))
+        Model::sourced(nodes, incarnations, &state.rule_source, Some(self))
     }
 
     pub fn with_static(&self, fresh: Vec<Arc<NodeEntry>>, state: &State) -> Model {
@@ -318,13 +322,18 @@ impl Model {
             nodes,
             self.incarnations.clone(),
             &state.rule_source,
-            Some(&self.score),
+            Some(self),
         )
     }
 
     /// Compiles `source` over the groups and nodes as they are, for new flows.
     pub fn set_source(&mut self, source: &RuleSourceSpec) {
-        self.policy = Arc::new(compile(&self.groups, &self.index, source));
+        self.policy = Arc::new(compile(
+            &self.groups,
+            &self.index,
+            source,
+            self.geo.as_deref(),
+        ));
     }
 
     /// Whether node `id` is in the catalog.
@@ -574,10 +583,15 @@ impl Model {
 }
 
 /// The policy of `source` over `groups`, whose nodes `index` holds.
-fn compile(groups: &[GroupDef], index: &HashMap<String, usize>, source: &RuleSourceSpec) -> Policy {
+fn compile(
+    groups: &[GroupDef],
+    index: &HashMap<String, usize>,
+    source: &RuleSourceSpec,
+    data: Option<&crate::rules::dat::Data>,
+) -> Policy {
     let RuleSourceSpec::Template { options, .. } = source;
     let is_node = |id: &str| index.contains_key(id);
-    Policy::template(groups, &is_node, template::Options::from(*options))
+    Policy::template_with_data(groups, &is_node, template::Options::from(*options), data)
 }
 
 #[cfg(test)]

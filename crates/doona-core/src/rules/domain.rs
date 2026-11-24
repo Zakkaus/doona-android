@@ -125,7 +125,7 @@ fn rule_name(value: &str) -> Result<String, ErrorCode> {
 }
 
 /// A flow's name, from a DNS question: ASCII; compared in lower case without a final dot.
-fn flow_name(name: &str) -> Cow<'_, str> {
+pub(super) fn flow_name(name: &str) -> Cow<'_, str> {
     let name = name.strip_suffix('.').unwrap_or(name);
     if name.bytes().any(|b| b.is_ascii_uppercase()) {
         Cow::Owned(name.to_ascii_lowercase())

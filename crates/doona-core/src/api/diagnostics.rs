@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// The commands, by the names the log may hold; never caller text.
-const COMMANDS: [&str; 23] = [
+const COMMANDS: [&str; 24] = [
     "previewStaticNodes",
     "addStaticNodes",
     "readStaticNode",
@@ -41,9 +41,10 @@ const COMMANDS: [&str; 23] = [
     "rules",
     "effectiveConfig",
     "diagnostics",
+    "configAssets",
 ];
 /// The reads among them that screens repeat.
-const READS: [&str; 7] = [
+const READS: [&str; 8] = [
     "trafficSeries",
     "usage",
     "nodes",
@@ -51,6 +52,7 @@ const READS: [&str; 7] = [
     "rules",
     "effectiveConfig",
     "diagnostics",
+    "configAssets",
 ];
 
 impl Core {
@@ -107,6 +109,7 @@ impl Core {
             "scoreState" => self.score_state(args),
             "rules" => self.rules(args),
             "effectiveConfig" => self.effective_config(args),
+            "configAssets" => self.config_assets(args),
             "diagnostics" => self.diagnostics(args, event),
             "setLogLevel" => self.set_log_level(args, event),
             "clearCrashes" => self.clear_crashes(args, event),
