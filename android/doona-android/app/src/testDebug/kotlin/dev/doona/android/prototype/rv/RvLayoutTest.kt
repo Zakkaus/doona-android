@@ -1,25 +1,12 @@
 package dev.doona.android.prototype.rv
 
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.toSize
-import dev.doona.android.designsystem.rv.LocalFrameInsets
-import dev.doona.android.designsystem.rv.RvChartSize
-import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvMaterialPlumbing
 import dev.doona.android.designsystem.rv.RvPart
-import dev.doona.android.designsystem.rv.RvSize
-import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
@@ -76,7 +63,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import kotlin.math.abs
 
 /**
  * Measures the library's layout parts on every RV page against the tokens (plans/reviews/spacing-audit.md), so no page
@@ -222,20 +208,13 @@ class RvLayoutTest {
     }
 
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {
-        var barBottom = 0f
         compose.setContent {
             RvMaterialPlumbing(rvSystemScheme(false)) {
-                PhoneFrame {
-                    val insets = LocalFrameInsets.current ?: WindowInsets(0)
-                    // A tab home's bar sits higher than a pushed page's.
-                    val barTop = if (top == Top.Tab) RvChrome.tabBarTop else RvChrome.barTop
-                    barBottom = insets.getTop(LocalDensity.current) / LocalDensity.current.density + rvBarHeight(barTop).value
-                    RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
-                }
+                PhoneFrame { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content) }
             }
         }
         compose.waitForIdle()
-        val drift = Measure(compose.parts(), barBottom).run(top)
+        val drift = RvMeasure(compose.rvParts(), rvBarBottom(top)).run(top)
         printHeight(page)
         assertTrue("$page drifts from the tokens:\n" + drift.joinToString("\n"), drift.isEmpty())
     }
@@ -247,178 +226,11 @@ class RvLayoutTest {
         println("RvLayoutTest $page: ${(scroll.size.height / dp + scroll.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() / dp)} dp")
     }
 
-    private fun ComposeContentTestRule.parts(): Map<String, List<Rect>> {
-        val tags = listOf(RvPart.MARK, RvPart.TITLE, RvPart.CAPTION, RvPart.CONTROL, RvPart.SEARCH, RvPart.CARD, RvPart.SECTION, RvPart.FOOTER, RvPart.BLOCK, RvPart.ROW, RvPart.SEGMENTED)
-        // The merged tree: a picture of a page (主題's preview) clears its semantics, so its cards are not the page's.
-        return tags.associateWith { tag ->
-            onAllNodesWithTag(tag).fetchSemanticsNodes().map { node ->
-                val d = node.layoutInfo.density.density
-                // Unclipped: the scroll's viewport clips boundsInRoot to the window.
-                Rect(node.positionInRoot / d, node.size.toSize() / d)
-            }
-        }
-    }
-
     private companion object {
         /** YouTube's connection, whose host wraps. */
         const val YOUTUBE = 3
 
         /** github.com, the second of the user's rules, as `rule-edit` shows it. */
         const val GITHUB = 5
-    }
-}
-
-/**
- * How a page starts under the bar: a large title, a centred header (a detail page's, as a block) where a large title
- * would start, its own hero (not measured), or a tab home's first content, [RvSpace.searchGap] under its bar's search
- * ([RvChrome.tabBarTop]).
- */
-private enum class Top { Title, Header, Hero, Tab }
-
-/** One page's parts in dp, and the drifts found in them. */
-private class Measure(private val parts: Map<String, List<Rect>>, private val barBottom: Float) {
-    private val width = SCREEN
-    private val drift = mutableListOf<String>()
-    private val cards = parts.getValue(RvPart.CARD).filter { it.left >= 0f && it.right <= width }
-    private val controls = parts.getValue(RvPart.CONTROL)
-    private val holders = controls + parts.getValue(RvPart.BLOCK)
-
-    fun run(top: Top): List<String> {
-        top(top)
-        column(top)
-        rows()
-        segmented()
-        return drift
-    }
-
-    private fun top(top: Top) {
-        // The title, or the mark above it, is the header's first part.
-        val head = (parts.getValue(RvPart.MARK) + parts.getValue(RvPart.TITLE)).minByOrNull { it.top }
-        when (top) {
-            Top.Title -> head?.let { expect("header's top", it.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no large title")
-            Top.Header -> blocks().firstOrNull()?.let { expect("header's top", it.second.top, barBottom + RvChrome.largeTitleTop.value) } ?: drift.add("no header")
-            Top.Hero -> Unit
-            Top.Tab -> blocks().firstOrNull()?.let { expect("tab's first content under the search", it.second.top, barBottom + RvSpace.searchGap.value) } ?: drift.add("no content")
-        }
-    }
-
-    /**
-     * The page's column: each block on the gutter, and the gap to the block under it by what the two are. A centred
-     * header (a detail page's, measured as a block) is a header: what follows it keeps the header's gap.
-     */
-    private fun column(top: Top) {
-        val blocks = blocks()
-        val header = blocks.firstOrNull()?.takeIf { top == Top.Header }
-        val end = width - GUTTER.value
-        for ((kind, rect) in blocks) {
-            when {
-                // A pager runs edge to edge; its tiles keep to the gutter by its content padding.
-                kind == RvPart.BLOCK -> Unit
-
-                kind != RvPart.CARD -> expect("$kind's start at ${rect.top} dp", rect.left, GUTTER)
-
-                // A tile beside another keeps one edge on the gutter.
-                rect.width < width / 2 -> if (abs(rect.left - GUTTER.value) > TOLERANCE && abs(rect.right - end) > TOLERANCE) drift.add("tile at ${rect.top} dp is off the gutter")
-
-                else -> {
-                    expect("card's start at ${rect.top} dp", rect.left, GUTTER)
-                    expect("card's end at ${rect.top} dp", rect.right, end)
-                }
-            }
-        }
-        for ((upper, lower) in pairs(blocks)) {
-            val kinds = upper.first.asCard() to lower.first.asCard()
-            val gap = (if (upper == header) RvSpace.headerGap else (TAB_GAPS[kinds]?.takeIf { top == Top.Tab } ?: GAPS[kinds])) ?: continue
-            expect("gap ${upper.first} to ${lower.first} at ${lower.second.top} dp", lower.second.top - upper.second.bottom, gap)
-        }
-    }
-
-    /** The column's top-level blocks, top first: a card inside a control or another card is part of it. */
-    private fun blocks(): List<Pair<String, Rect>> {
-        val kinds = listOf(RvPart.MARK, RvPart.TITLE, RvPart.CAPTION, RvPart.CONTROL, RvPart.SEARCH, RvPart.SECTION, RvPart.FOOTER)
-        val loose = kinds.flatMap { kind -> parts.getValue(kind).map { kind to it } }
-        // A block is measured as a card; the cards in a block or a control are part of it.
-        val outer = cards.filter { card -> (holders + cards).none { it != card && it.contains(card) } }.map { RvPart.CARD to it }
-        val composite = parts.getValue(RvPart.BLOCK).map { RvPart.BLOCK to it }
-        val segmented = parts.getValue(RvPart.SEGMENTED).filter { s -> (holders + cards).none { it.contains(s) } }.map { RvPart.SEGMENTED to it }
-        return (loose + outer + composite + segmented).sortedBy { it.second.top }
-    }
-
-    /** Each block with the block straight under it in the same column (they overlap across). */
-    private fun pairs(blocks: List<Pair<String, Rect>>): List<Pair<Pair<String, Rect>, Pair<String, Rect>>> = blocks.mapNotNull { lower ->
-        blocks.filter { it.second.bottom <= lower.second.top + TOLERANCE && it.second.overlapsAcross(lower.second) }.maxByOrNull { it.second.bottom }?.let { it to lower }
-    }
-
-    /** Rows run edge to edge in their card at 58 or 82 dp, or taller where their text wraps (the one row rule). */
-    private fun rows() {
-        for (row in parts.getValue(RvPart.ROW)) {
-            val card = cards.firstOrNull { it.contains(row) } ?: continue
-            val grown = row.height > RvSize.rowTwoLine.value + TOLERANCE
-            if (!grown && ROW_HEIGHTS.none { abs(row.height - it.value) <= TOLERANCE }) drift.add("row at ${row.top} dp is ${row.height} dp, not 58 or 82")
-            expect("row's start at ${row.top} dp", row.left, card.left)
-            expect("row's end at ${row.top} dp", row.right, card.right)
-        }
-    }
-
-    /** A segmented control is 40 dp tall (look E), on the gutter or 16 dp inside its card. */
-    private fun segmented() {
-        for (s in parts.getValue(RvPart.SEGMENTED)) {
-            expect("segmented control's height", s.height, RvChartSize.segment)
-            val card = cards.firstOrNull { it.contains(s) }
-            expect("segmented control's start", s.left, card?.let { it.left + RvSpace.rowPadding.value } ?: GUTTER.value)
-            expect("segmented control's end", s.right, card?.let { it.right - RvSpace.rowPadding.value } ?: (width - GUTTER.value))
-        }
-    }
-
-    private fun String.asCard() = if (this == RvPart.BLOCK) RvPart.CARD else this
-
-    private fun expect(what: String, actual: Float, expected: Dp) = expect(what, actual, expected.value)
-
-    private fun expect(what: String, actual: Float, expected: Float) {
-        if (abs(actual - expected) > TOLERANCE) drift.add("$what: $actual dp, the tokens say $expected dp")
-    }
-
-    private fun Rect.contains(other: Rect) = other.left >= left - TOLERANCE && other.right <= right + TOLERANCE && other.top >= top - TOLERANCE && other.bottom <= bottom + TOLERANCE
-
-    private fun Rect.overlapsAcross(other: Rect) = left < other.right && other.left < right
-
-    private companion object {
-        const val SCREEN = 412f
-        const val TOLERANCE = 0.5f
-        val GUTTER = RvSpace.gutter
-        val ROW_HEIGHTS = listOf(RvSize.rowOneLine, RvSize.rowTwoLine)
-
-        /** The gap the tokens set between two kinds of block, upper to lower; pairs not listed have other content between. */
-        val GAPS = mapOf(
-            (RvPart.MARK to RvPart.TITLE) to RvSpace.markToTitle,
-            (RvPart.TITLE to RvPart.CAPTION) to RvSpace.captionGap,
-            (RvPart.TITLE to RvPart.CONTROL) to RvSpace.controlGap,
-            (RvPart.CAPTION to RvPart.CONTROL) to RvSpace.controlGap,
-            (RvPart.TITLE to RvPart.CARD) to RvSpace.headerGap,
-            (RvPart.CAPTION to RvPart.CARD) to RvSpace.headerGap,
-            (RvPart.CONTROL to RvPart.CARD) to RvSpace.controlGap,
-            (RvPart.TITLE to RvPart.SECTION) to RvSpace.headerGap,
-            (RvPart.CAPTION to RvPart.SECTION) to RvSpace.headerGap,
-            (RvPart.CONTROL to RvPart.SECTION) to RvSpace.controlGap,
-            (RvPart.CARD to RvPart.CARD) to RvSpace.cardGap,
-            (RvPart.CARD to RvPart.SECTION) to RvSpace.sectionAbove,
-            (RvPart.CARD to RvPart.CONTROL) to RvSpace.controlGap,
-            (RvPart.CARD to RvPart.FOOTER) to RvSpace.footnoteAbove,
-            (RvPart.FOOTER to RvPart.SECTION) to RvSpace.sectionAbove,
-            // A footer ends its group; a card with no section title over it starts the next as a section title would.
-            (RvPart.FOOTER to RvPart.CARD) to RvSpace.sectionAbove,
-            (RvPart.SECTION to RvPart.CARD) to RvSpace.sectionBelow,
-            // An in-page search is a control of the page over the list it searches, which sits as a tab's under its bar.
-            (RvPart.CARD to RvPart.SEARCH) to RvSpace.controlGap,
-            (RvPart.SEARCH to RvPart.CARD) to RvSpace.searchGap,
-        )
-
-        /** On a tab home every block sits one gap from the next, a control row too (rv-fix-4e). */
-        val TAB_GAPS = mapOf(
-            (RvPart.CAPTION to RvPart.CONTROL) to RvSpace.tabBlockGap,
-            (RvPart.CAPTION to RvPart.CARD) to RvSpace.tabBlockGap,
-            (RvPart.CONTROL to RvPart.CARD) to RvSpace.tabBlockGap,
-            (RvPart.CARD to RvPart.CONTROL) to RvSpace.tabBlockGap,
-        )
     }
 }
