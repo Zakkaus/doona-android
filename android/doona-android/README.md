@@ -55,6 +55,9 @@ events after a restart. Visited domains and app package names stay in memory; a 
 before a write finishes can lose the newest events. A JVM crash file preserves up to 50
 allowlisted actions from its own process within the 64 KiB file limit.
 
+`AppEventRingTest` uses a fresh event log per test and a plain Android `Application`. App startup
+and background workers cannot write into the ring under test.
+
 The ZIP records each group's TCP and UDP choices and pins using scrubbed node and group identifiers.
 
 The ZIP omits node endpoints and local IP addresses by default. With either option enabled, it

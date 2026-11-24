@@ -16,6 +16,9 @@ internal val ACTION_TEXT = "command=(?:$ACTION_COMMANDS) phase=(?:dispatch|compl
 internal val actionText = Regex(ACTION_TEXT)
 internal const val SUBSCRIPTION_READY_TIMEOUT = "subscription-refresh: core readiness timed out"
 
+// An event is a line, not a document.
+private const val MAX_TEXT = 200
+
 /** How severe an app event is. */
 enum class AppEventLevel { Info, Warn }
 
@@ -28,16 +31,16 @@ data class AppEvent(
     val appPackage: String? = null,
 )
 
+/** The app and VPN share this log for the lifetime of the process. */
+internal object AppEvents : AppEventLog() {
+    const val CAPACITY = 200
+}
+
 /**
- * The app's last [CAPACITY] events, oldest first, for the diagnostic report. Process-wide, written from any thread.
+ * The last [AppEvents.CAPACITY] events, oldest first, for the diagnostic report. Writable from any thread.
  * Event text follows ARCH D21 (`VpnLog`): no URL, node address, credential, DNS name or exception message.
  */
-object AppEvents {
-    const val CAPACITY = 200
-
-    /** The longest text kept: an event is a line, not a document. */
-    private const val MAX_TEXT = 200
-
+internal open class AppEventLog {
     private val installLock = Any()
 
     @Volatile
