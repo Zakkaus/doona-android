@@ -1,4 +1,4 @@
-use super::{Opened, Session, Tally, UdpUpstream, millis};
+use super::{Opened, Queues, Session, Tally, UdpUpstream, millis};
 use honk_outbound::group::{ScoreOutcome, ScoreReporter};
 use honk_outbound::proxy::{PacketErrorClass, packet_error_class};
 use std::io;
@@ -15,13 +15,34 @@ fn packet_outcome(error: &io::Error) -> ScoreOutcome {
 }
 
 impl UdpUpstream {
-    fn send_outcome(&self, outcome: ScoreOutcome) -> ScoreOutcome {
-        if outcome == ScoreOutcome::Timeout
-            && matches!(self, Self::Proxy(t, ..) if t.send_timeout_is_congestion())
-        {
-            ScoreOutcome::Cancelled
-        } else {
-            outcome
+    fn send_timeout(&self, idle: Duration) -> Duration {
+        match self {
+            Self::Proxy(t, ..) => t.send_timeout(),
+            Self::Socket(_) => idle,
+        }
+    }
+
+    fn send_timeout_outcome(&self) -> ScoreOutcome {
+        match self {
+            Self::Proxy(t, ..) if t.send_timeout_is_congestion() => {
+                self.terminal_outcome(ScoreOutcome::Cancelled)
+            }
+            _ => ScoreOutcome::Timeout,
+        }
+    }
+
+    fn idle_outcome(
+        &self,
+        error: Option<ScoreOutcome>,
+        replied: bool,
+        queues: &Queues,
+    ) -> ScoreOutcome {
+        match error {
+            Some(ScoreOutcome::Timeout) => self.send_timeout_outcome(),
+            Some(e) => e,
+            None if replied => ScoreOutcome::Success,
+            None if queues.local_drop.load(Relaxed) => ScoreOutcome::Cancelled,
+            None => ScoreOutcome::Timeout,
         }
     }
 
@@ -42,11 +63,11 @@ pub(super) async fn exchange(
     upstream: &UdpUpstream,
     tally: Tally,
     reporter: Option<&ScoreReporter>,
-) {
+) -> ScoreOutcome {
     let Opened {
         mut up,
         down,
-        waker,
+        queues,
         budget,
         idle,
         ..
@@ -55,16 +76,20 @@ pub(super) async fn exchange(
     let last = AtomicU64::new(0);
     let moved = || last.store(millis(begun.elapsed()), Relaxed);
     let mut send_error = None;
-    let mut reply_idle_outcome = ScoreOutcome::Timeout;
+    let mut replied = false;
     let sending = async {
         let mut first = upstream.first_send_to();
         while let Some(d) = up.recv().await {
             let began = first.map(Session::begin_dial);
             let timed = reporter.map(|r| (r, std::time::Instant::now()));
-            // The association idle deadline can expire before this send's own deadline.
-            send_error = Some(ScoreOutcome::Timeout);
-            let Ok(sent) = tokio::time::timeout(idle, upstream.send(&d.bytes)).await else {
-                return upstream.send_outcome(ScoreOutcome::Timeout);
+            let timeout = upstream.send_timeout(idle);
+            let Ok(sent) = tokio::time::timeout(timeout, upstream.send(&d.bytes)).await else {
+                let outcome = upstream.send_timeout_outcome();
+                if outcome != ScoreOutcome::Cancelled {
+                    return outcome;
+                }
+                queues.local_drop.store(true, Relaxed);
+                continue;
             };
             if let (Some(session), Some(began)) = (first.take(), began) {
                 session.first_sent(began, &sent);
@@ -90,30 +115,28 @@ pub(super) async fn exchange(
             let n = d.as_ref().map_or(0, |d| d.bytes.len());
             if d.is_some_and(|d| down.try_send(d).is_ok()) {
                 if let Some(r) = reporter {
-                    if reply_idle_outcome != ScoreOutcome::Success {
+                    if !replied {
                         r.first_response();
                     }
                     r.rx(n as u64);
                 }
-                reply_idle_outcome = ScoreOutcome::Success;
+                replied = true;
                 tally.down(n);
-                waker.wake();
-            } else if reply_idle_outcome != ScoreOutcome::Success {
-                reply_idle_outcome = ScoreOutcome::Cancelled;
+                queues.waker.wake();
+            } else {
+                queues.local_drop.store(true, Relaxed);
             }
             moved();
         }
     };
     let outcome = tokio::select! {
+        // If both deadlines expire together, the send has exhausted its own deadline.
+        biased;
         outcome = sending => outcome,
         outcome = receiving => outcome,
-        () = reply_idle(begun, &last, idle) => {
-            send_error.map_or(reply_idle_outcome, |e| upstream.send_outcome(e))
-        },
+        () = reply_idle(begun, &last, idle) => upstream.idle_outcome(send_error, replied, &queues),
     };
-    if let Some(r) = reporter {
-        r.finish(upstream.terminal_outcome(outcome));
-    }
+    upstream.terminal_outcome(outcome)
 }
 
 async fn reply_idle(begun: Instant, last: &AtomicU64, idle: Duration) {

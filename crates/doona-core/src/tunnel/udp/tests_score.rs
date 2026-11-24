@@ -3,7 +3,10 @@ use crate::dto::Mode;
 use crate::outbounds::Outbounds;
 use crate::testutil::socks;
 use crate::tunnel::route::{Inbound, tests::published_links};
-use honk_outbound::group::{ScoreBudgetCounters, SelectionNetwork};
+use futures_util::{FutureExt, poll};
+use honk_outbound::group::{ScoreBudgetCounters, ScoreOutcome, SelectionNetwork};
+use std::net::{Ipv4Addr, SocketAddrV4};
+use tokio::time::advance;
 
 #[derive(Clone, Copy)]
 enum Reply {
@@ -11,14 +14,13 @@ enum Reply {
     Foreign,
     Silent,
     OverBudget,
-    Stalled,
 }
 
 async fn association(outbounds: &Outbounds, peer: &UdpSocket, reply: Reply, packets: u8) -> usize {
     let remote = peer.local_addr().unwrap();
     let pair = (([127, 0, 0, 1], 1234).into(), remote);
     let mut nat = Nat::new(Budget::new(64), Duration::from_millis(500));
-    let (events, wakes) = mpsc::unbounded_channel();
+    let (events, _wakes) = mpsc::unbounded_channel();
     let session = Arc::new(Session::new(0, Default::default()));
     let open = || {
         Some(Route::of(
@@ -31,20 +33,6 @@ async fn association(outbounds: &Outbounds, peer: &UdpSocket, reply: Reply, pack
     };
     let (opened, route) = nat.send(pair, &[0], &events, open).unwrap();
     let id = opened.id;
-    if matches!(reply, Reply::Stalled) {
-        let (upstream, reporter) = route.bind_udp(remote).await.unwrap();
-        let UdpUpstream::Proxy(t, ..) = upstream else {
-            panic!("expected proxy transport")
-        };
-        let blocked = UdpUpstream::Proxy(Arc::new(Stalled(t)), remote, None);
-        let fill = fill_after_reply(peer, wakes, &mut nat, pair, &events);
-        let (_, filled) = tokio::join!(
-            exchange(opened, &blocked, Tally::new(None), reporter.as_ref()),
-            tokio::time::timeout(Duration::from_secs(5), fill)
-        );
-        filled.expect("first reply did not reach the driver");
-        return nat.flows[&id].down.len();
-    }
     for i in 1..packets {
         nat.send(pair, &[i], &events, open);
     }
@@ -63,7 +51,6 @@ async fn association(outbounds: &Outbounds, peer: &UdpSocket, reply: Reply, pack
                     .unwrap(),
                 Reply::OverBudget => peer.send_to(&[1; 65], from).await.unwrap(),
                 Reply::Silent => 0,
-                Reply::Stalled => unreachable!(),
             };
         }
     };
@@ -126,37 +113,50 @@ fn local_reply_loss_does_not_charge_the_node() {
     assert_eq!((b.trial_cancelled, b.trial_failure, queued), (1, 0, 0));
 }
 
-#[test]
-fn a_stalled_send_times_out_even_after_a_reply_and_queue_overflow() {
-    let (b, queued) = trial(Reply::Stalled, 1);
-    assert_eq!((b.trial_failure, b.trial_success, queued), (1, 0, 1));
+const REMOTE: SocketAddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 443));
+const SEND_TIMEOUT: Duration = Duration::from_secs(3);
+
+fn pair(port: u16) -> (SocketAddr, SocketAddr) {
+    (([127, 0, 0, 1], port).into(), REMOTE)
 }
 
-async fn fill_after_reply(
-    peer: &UdpSocket,
-    mut wakes: mpsc::UnboundedReceiver<Event>,
-    nat: &mut Nat,
-    pair: (SocketAddr, SocketAddr),
-    events: &Events,
-) {
-    let mut buf = [0];
-    let (_, from) = peer.recv_from(&mut buf).await.unwrap();
-    peer.send_to(&buf, from).await.unwrap();
-    assert!(matches!(wakes.recv().await, Some(Event::Wake(Key::Udp(_)))));
-    tokio::time::pause();
-    tokio::time::advance(nat.idle / 2).await;
-    for _ in 0..=DEPTH * 8 {
-        nat.send(pair, &[1], events, || unreachable!());
-    }
+fn open(nat: &mut Nat, port: u16, byte: u8, events: &Events) -> Opened {
+    nat.send(pair(port), &[byte], events, || Some(Route::Direct))
+        .unwrap()
+        .0
 }
 
-/// The first datagram is forwarded; the next send blocks on the carrier.
+#[derive(Debug, PartialEq)]
+enum Carrier {
+    Stream,
+    Datagram,
+    StalledQuic,
+}
+
+/// Accepts [0], blocks [1], and optionally delivers one peer reply.
 #[derive(Debug)]
-struct Stalled(Arc<dyn PacketTransport>);
+struct Stalled(Carrier, AtomicBool);
+
+fn upstream(carrier: Carrier, reply: bool) -> UdpUpstream {
+    let node = Stalled(carrier, AtomicBool::new(reply));
+    UdpUpstream::Proxy(Arc::new(node), REMOTE, None)
+}
 
 impl PacketTransport for Stalled {
     fn relay_addr(&self) -> SocketAddr {
-        self.0.relay_addr()
+        REMOTE
+    }
+
+    fn send_timeout(&self) -> Duration {
+        SEND_TIMEOUT
+    }
+
+    fn send_timeout_is_congestion(&self) -> bool {
+        self.0 != Carrier::Stream
+    }
+
+    fn quic_path_stalled(&self) -> bool {
+        self.0 == Carrier::StalledQuic
     }
 
     fn send_packet<'a, 'b, 't>(
@@ -169,7 +169,7 @@ impl PacketTransport for Stalled {
         Self: 't,
     {
         if data == [0] {
-            self.0.send_packet(data)
+            Box::pin(std::future::ready(Ok(())))
         } else {
             Box::pin(std::future::pending())
         }
@@ -184,6 +184,111 @@ impl PacketTransport for Stalled {
         'b: 't,
         Self: 't,
     {
-        self.0.recv_packet(buf)
+        Box::pin(async move {
+            if !self.1.swap(false, Relaxed) {
+                return std::future::pending().await;
+            }
+            buf[0] = 7;
+            Ok((1, REMOTE))
+        })
     }
+}
+
+async fn after_reply(carrier: Carrier, delay: Duration) -> ScoreOutcome {
+    let upstream = upstream(carrier, true);
+    let mut nat = Nat::new(Budget::new(64), IDLE);
+    let (events, _) = mpsc::unbounded_channel();
+    let opened = open(&mut nat, 1, 0, &events);
+    let id = opened.id;
+    let mut run = std::pin::pin!(exchange(opened, &upstream, Tally::new(None), None));
+    assert!(poll!(&mut run).is_pending());
+    assert_eq!(nat.flows[&id].down.len(), 1);
+    advance(delay).await;
+    for _ in 0..=DEPTH * 8 {
+        nat.send(pair(1), &[1], &events, || unreachable!());
+    }
+    assert!(poll!(&mut run).is_pending());
+    let wait = SEND_TIMEOUT.min(IDLE - delay);
+    let tick = Duration::from_millis(1);
+    advance(wait - tick).await;
+    assert!(poll!(&mut run).is_pending(), "ended before the deadline");
+    advance(tick).await;
+    run.now_or_never().expect("missed the first deadline")
+}
+
+#[tokio::test(start_paused = true)]
+async fn reply_idle_before_the_send_deadline_keeps_success() {
+    let outcome = after_reply(Carrier::Stream, IDLE - Duration::from_secs(1)).await;
+    assert_eq!(outcome, ScoreOutcome::Success);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_stalled_send_times_out_even_after_a_reply_and_queue_overflow() {
+    let outcome = after_reply(Carrier::Stream, Duration::from_secs(1)).await;
+    assert_eq!(outcome, ScoreOutcome::Timeout);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_congested_packet_does_not_end_the_association() {
+    let upstream = upstream(Carrier::Datagram, true);
+    let mut nat = Nat::new(Budget::new(64), IDLE);
+    let (events, _) = mpsc::unbounded_channel();
+    let opened = open(&mut nat, 1, 0, &events);
+    let mut run = std::pin::pin!(exchange(opened, &upstream, Tally::new(None), None));
+    nat.send(pair(1), &[1], &events, || unreachable!());
+    assert!(poll!(&mut run).is_pending());
+    advance(SEND_TIMEOUT).await;
+    assert!(
+        poll!(&mut run).is_pending(),
+        "one congested send ended the flow"
+    );
+
+    advance(Duration::from_secs(1)).await;
+    nat.send(pair(1), &[0], &events, || unreachable!());
+    assert!(poll!(&mut run).is_pending());
+    let tick = Duration::from_millis(1);
+    advance(IDLE - tick).await;
+    assert!(
+        poll!(&mut run).is_pending(),
+        "next uplink did not reset idle"
+    );
+    advance(tick).await;
+    assert_eq!(run.now_or_never(), Some(ScoreOutcome::Success));
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_stalled_quic_path_overrides_packet_congestion() {
+    let outcome = after_reply(Carrier::StalledQuic, Duration::from_secs(1)).await;
+    assert_eq!(outcome, ScoreOutcome::NodeFailure);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_stalled_quic_path_fails_even_on_the_first_send() {
+    let upstream = upstream(Carrier::StalledQuic, false);
+    let mut nat = Nat::new(Budget::new(64), IDLE);
+    let (events, _) = mpsc::unbounded_channel();
+    let opened = open(&mut nat, 1, 1, &events);
+    let mut run = std::pin::pin!(exchange(opened, &upstream, Tally::new(None), None));
+    assert!(poll!(&mut run).is_pending());
+    advance(SEND_TIMEOUT).await;
+    assert_eq!(run.now_or_never(), Some(ScoreOutcome::NodeFailure));
+}
+
+#[tokio::test(start_paused = true)]
+async fn shared_budget_loss_does_not_charge_an_unanswered_node() {
+    let healthy_node = upstream(Carrier::Stream, false);
+    let stalled_node = upstream(Carrier::Stream, false);
+    let mut nat = Nat::new(Budget::new(2), IDLE);
+    let (events, _) = mpsc::unbounded_channel();
+    let healthy = open(&mut nat, 1, 0, &events);
+    let mut run = std::pin::pin!(exchange(healthy, &healthy_node, Tally::new(None), None));
+    assert!(poll!(&mut run).is_pending());
+    let [a, b] = [2, 3].map(|port| {
+        let opened = open(&mut nat, port, 1, &events);
+        exchange(opened, &stalled_node, Tally::new(None), None)
+    });
+    let mut stalled = std::pin::pin!(futures_util::future::join(a, b));
+    assert!(poll!(&mut stalled).is_pending());
+    nat.send(pair(1), &[0], &events, || unreachable!());
+    assert_eq!(run.await, ScoreOutcome::Cancelled);
 }
