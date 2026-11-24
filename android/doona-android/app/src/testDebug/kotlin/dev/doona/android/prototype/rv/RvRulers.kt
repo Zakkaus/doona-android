@@ -84,8 +84,9 @@ internal class RvMeasure(private val parts: Map<String, List<Rect>>, private val
 
     val rules: List<RvRule> get() = measured
 
-    fun run(top: Top): List<String> {
-        top(top)
+    /** Measures the page; with [start] false (a scrolled window, its header gone) the header's top is not measured. */
+    fun run(top: Top, start: Boolean = true): List<String> {
+        if (start) top(top)
         column(top)
         rows()
         segmented()

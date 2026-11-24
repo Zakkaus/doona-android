@@ -32,7 +32,8 @@ private val SHOTS = System.getProperty("doona.shots") ?: "src/test/screenshots"
  * records the golden `proto-rv-<screen>-light` or `-dark`. At a [fontScale] other than 1 the page's text scales as the
  * phone's font size setting scales it (the frame's status bar does not), and the golden is
  * `proto-rv-<screen>-fs<percent>`, as the app's `fs115` and `fs200`. A frame with [gesture] false draws no gesture handle
- * (the content draws its own bar, as three-button navigation does).
+ * (the content draws its own bar, as three-button navigation does). With `doona.board` set the page is captured for the
+ * design board ([rvBoard]) instead of the golden.
  */
 internal fun ComposeContentTestRule.rvShot(
     screen: String,
@@ -50,6 +51,8 @@ internal fun ComposeContentTestRule.rvShot(
         dark -> "dark"
         else -> "light"
     }
+    // The board's run draws the board, not the goldens: its windows are held to the phone's height.
+    if (rvBoarding) return rvBoard(screen, variant)
     onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/proto-rv-$screen-$variant.png")
 }
 
@@ -61,10 +64,12 @@ internal fun ComposeContentTestRule.rvContent(dark: Boolean, fontScale: Float = 
     RuntimeEnvironment.setQualifiers(if (dark) "+night" else "+notnight")
     setContent {
         RvMaterialPlumbing(rvSystemScheme(dark)) {
-            PhoneFrame(gesture) {
-                val density = LocalDensity.current.density
-                CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
-                    RvTheme(seedColorScheme(Seed.Cyan.argb, dark), dark, content)
+            RvBoardWindow {
+                PhoneFrame(gesture) {
+                    val density = LocalDensity.current.density
+                    CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
+                        RvTheme(seedColorScheme(Seed.Cyan.argb, dark), dark, content)
+                    }
                 }
             }
         }
@@ -88,6 +93,8 @@ internal fun ComposeContentTestRule.rvScrollBy(dp: Float) {
 
 /** A full capture holds the whole page: its window is as tall as the page, so nothing is left to scroll. */
 internal fun ComposeContentTestRule.assertWhole() {
+    // The board holds every window to the phone's height, so a whole page scrolls there.
+    if (rvBoarding) return
     val page = onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)).fetchSemanticsNode()
     val left = page.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() / density.density
     assertEquals("the page outgrew its window by $left dp", 0f, left)
