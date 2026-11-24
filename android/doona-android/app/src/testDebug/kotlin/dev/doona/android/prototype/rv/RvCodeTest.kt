@@ -14,6 +14,7 @@ import dev.doona.android.designsystem.rv.RvColors
 import dev.doona.android.designsystem.rv.RvContrast
 import dev.doona.android.designsystem.rv.rvCodeBreaks
 import dev.doona.android.designsystem.rv.rvCodeColors
+import dev.doona.android.designsystem.rv.rvCodeJoins
 import dev.doona.android.designsystem.rv.rvCodeSpans
 import dev.doona.android.designsystem.rv.rvCodeStyle
 import dev.doona.android.designsystem.rv.rvCodeText
@@ -52,6 +53,21 @@ class RvCodeTest {
         // A bare address breaks after its path's `/`, not inside `https://`, and not before the hyphen of `dns-query`.
         val url = "remote: https://dns.example.test/dns-query"
         assertArrayEquals(intArrayOf(url.indexOf("/dns-") + 1), rvCodeBreaks(url, rvCodeSpans(url)))
+        val host = "  remote: dns.example.test/dns-query"
+        assertArrayEquals(intArrayOf(host.indexOf("/dns-") + 1), rvCodeBreaks(host, rvCodeSpans(host)))
+        val file = "  data_dir: /var/share/honk"
+        val dirs = intArrayOf(file.indexOf("/share") + 1, file.indexOf("/honk") + 1)
+        assertArrayEquals(dirs, rvCodeBreaks(file, rvCodeSpans(file)))
+        // A product token's `/` is not an address's: no break after it, and a joiner keeps the platform from breaking
+        // there, so `Fixture/1.0)` moves whole to the next line (it broke as `(Fixture/` over `1.0)`).
+        val product = "  paid: 'https://sub.example.test/list'(Fixture/1.0)"
+        assertArrayEquals(intArrayOf(product.indexOf("(F") + 1), rvCodeBreaks(product, rvCodeSpans(product)))
+        assertArrayEquals(intArrayOf(product.indexOf("/1.0") + 1), rvCodeJoins(product, rvCodeSpans(product)))
+        assertEquals("  paid: 'https://sub.example.test/list'(\u200BFixture/\u20601.0)", RvCodeShown(product).text)
+        // An address's `/`, and one in a literal or a comment, takes no joiner.
+        assertArrayEquals(intArrayOf(), rvCodeJoins(file, rvCodeSpans(file)))
+        assertArrayEquals(intArrayOf(), rvCodeJoins(url, rvCodeSpans(url)))
+        assertArrayEquals(intArrayOf(), rvCodeJoins("  a: 'x/y' # p/q", rvCodeSpans("  a: 'x/y' # p/q")))
         val cidr = "  dip(10.8.0.0/16) -> direct"
         assertArrayEquals(intArrayOf(6), rvCodeBreaks(cidr, rvCodeSpans(cidr)))
         val mac = "  mac(00:11:22:33:44:55) -> block"
@@ -74,7 +90,7 @@ class RvCodeTest {
     fun aLongFileMapsAsCountingEachBreakWould() {
         val source = List(LONG_FILE) { "  domain(geosite:cn) -> direct # 中國" }.joinToString("\n")
         val shown = RvCodeShown(source)
-        val breaks = shown.breaks
+        val breaks = shown.marks
         assertEquals(2 * LONG_FILE, breaks.size)
         for (o in 0..source.length) {
             val t = o + breaks.count { it <= o }

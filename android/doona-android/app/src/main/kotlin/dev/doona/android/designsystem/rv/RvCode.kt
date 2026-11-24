@@ -39,30 +39,54 @@ internal fun rvCodeSpans(text: String): List<RvCodeSpan> {
 
 /**
  * Where [text] may break inside a token: the offsets, ascending, right after a `(` or `,`, the `:` that ends a key
- * (`geosite:`), or a path's `/` (one not of a `//`: `test/dns-query`, never `https://`), when a character other than a
- * blank, a line feed or `)` follows, outside comments and literals. The platform breaks a line only at a blank or a
- * hyphen, so `domain(geosite:category-games@cn)` would otherwise move whole to the next line, or break mid-name; a
+ * (`geosite:`), or a bare address's `/` ([addressSlash]: `test/dns-query`, never `https://`), when a character other
+ * than a blank, a line feed or `)` follows, outside comments and literals. The platform breaks a line only at a blank
+ * or a hyphen, so `domain(geosite:category-games@cn)` would otherwise move whole to the next line, or break mid-name; a
  * number's colons (`00:11:22:33:44:55`) stay together. In a bare address the platform's own rule would break before a
  * hyphen (`…/dns` over `-query`); the path's `/` comes first.
  */
 internal fun rvCodeBreaks(text: String, spans: List<RvCodeSpan>): IntArray {
-    val whole = spans.filter { it.kind == RvCodeKind.Comment || it.kind == RvCodeKind.Literal }
     val keys = spans.filter { it.kind == RvCodeKind.Key }.map { it.end }.toSet()
-    val breaks = ArrayList<Int>()
+    return marks(text, spans) { i -> text[i] in BREAK_AFTER || (text[i] == ':' && i in keys) || addressSlash(text, i) == true }
+}
+
+/**
+ * Where [text] must not break although the platform would: right after a `/` inside a word that is not an address's
+ * ([addressSlash] false: `Fixture/1.0`), outside comments and literals. The platform breaks after any `/`, which put a
+ * product token's version alone on a line.
+ */
+internal fun rvCodeJoins(text: String, spans: List<RvCodeSpan>): IntArray = marks(text, spans) { i -> addressSlash(text, i) == false }
+
+/** The offsets right after each [i] for which [after] holds, when a character other than a blank, a line feed or `)` follows, outside comments and literals. */
+private inline fun marks(text: String, spans: List<RvCodeSpan>, after: (Int) -> Boolean): IntArray {
+    val whole = spans.filter { it.kind == RvCodeKind.Comment || it.kind == RvCodeKind.Literal }
+    val found = ArrayList<Int>()
     var next = 0
     for (i in 0 until text.length - 1) {
         // [whole] is in text order, so the first span not yet ended is the only one that can hold i.
         while (next < whole.size && whole[next].end <= i) next++
         val inside = next < whole.size && whole[next].start <= i
-        val after = text[i] in BREAK_AFTER || (text[i] == ':' && i in keys) || pathSlash(text, i)
-        if (after && text[i + 1] !in NO_BREAK_BEFORE && !inside) breaks += i + 1
+        if (!inside && text[i + 1] !in NO_BREAK_BEFORE && after(i)) found += i + 1
     }
-    return breaks.toIntArray()
+    return found.toIntArray()
 }
 
-/** Whether [i] is a `/` of a path: not after a blank or the start, and neither half of a `//`. */
-private fun pathSlash(text: String, i: Int): Boolean =
-    text[i] == '/' && i > 0 && !text[i - 1].isWhitespace() && text[i - 1] != '/' && text[i + 1] != '/'
+/**
+ * For a `/` at [i] inside a word (not its first character, neither half of a `//`): whether it is a bare address's,
+ * in a word that opens with a scheme (`https://`), a host (`dns.example.test/`) or a `/` (`/var/share`). A product
+ * token's `/` (`Fixture/1.0`) is not. Null for any other character.
+ */
+private fun addressSlash(text: String, i: Int): Boolean? {
+    if (text[i] != '/' || i == 0 || text[i - 1] in WORD_END || text[i - 1] == '/' || text[i + 1] == '/') return null
+    var start = i
+    while (start > 0 && text[start - 1] !in WORD_END) start--
+    val head = text.substring(start, i).substringBefore('/')
+    val scheme = head.endsWith(':') && text.startsWith("//", start + head.length)
+    return scheme || head.isEmpty() || ('.' in head && head.any { it.isLetter() })
+}
+
+/** The characters around a word of code: blanks, the line feed, the breaking punctuation and quotes. */
+private const val WORD_END = " \t\n(,'\""
 
 private const val BREAK_AFTER = "(,"
 private const val NO_BREAK_BEFORE = " \t\n)"
@@ -70,9 +94,13 @@ private const val NO_BREAK_BEFORE = " \t\n)"
 /** The break opportunity code text inserts: a zero-width space, which the platform may break at and never draws. */
 internal const val RV_CODE_BREAK = '​'
 
+/** What code text inserts where it must not break ([rvCodeJoins]): a word joiner, which has no width either. */
+internal const val RV_CODE_JOIN = '\u2060'
+
 /**
- * The offsets of a text of [length] shown with a [RV_CODE_BREAK] before each of [breaks] (and any characters after its
- * end, as the source field's last joiner): an original offset at a break lands after it.
+ * The offsets of a text of [length] shown with one inserted character ([RV_CODE_BREAK] or [RV_CODE_JOIN]) before each
+ * of [breaks] (and any characters after its end, as the source field's last joiner): an original offset at one lands
+ * after it.
  */
 internal class RvCodeOffsets(private val breaks: IntArray, private val length: Int) : OffsetMapping {
     override fun originalToTransformed(offset: Int): Int = offset + count { breaks[it] <= offset }
@@ -92,16 +120,24 @@ internal class RvCodeOffsets(private val breaks: IntArray, private val length: I
     }
 }
 
-/** [source] as code text shows it: its coloured [spans], its [breaks], the [text] with a break at each, and the [offsets]. */
+/**
+ * [source] as code text shows it: its coloured [spans], its [breaks] and [joins], the [marks] they make (ascending), the
+ * [text] with a [RV_CODE_BREAK] or [RV_CODE_JOIN] at each, and the [offsets].
+ */
 @Immutable
 internal class RvCodeShown(val source: String, val spans: List<RvCodeSpan> = rvCodeSpans(source)) {
     val breaks = rvCodeBreaks(source, spans)
-    val offsets = RvCodeOffsets(breaks, source.length)
-    val text: String = buildString(source.length + breaks.size) {
+    val joins = rvCodeJoins(source, spans)
+    val marks: IntArray = (breaks + joins).also { it.sort() }
+    val offsets = RvCodeOffsets(marks, source.length)
+    val text: String = buildString(source.length + marks.size) {
         var from = 0
-        breaks.forEach { at ->
+        var join = 0
+        marks.forEach { at ->
             append(source, from, at)
-            append(RV_CODE_BREAK)
+            val joined = join < joins.size && joins[join] == at
+            if (joined) join++
+            append(if (joined) RV_CODE_JOIN else RV_CODE_BREAK)
             from = at
         }
         append(source, from, source.length)
@@ -110,8 +146,8 @@ internal class RvCodeShown(val source: String, val spans: List<RvCodeSpan> = rvC
 
 /** Colours each of [shown]'s spans by its role in [colors], at its place in the shown text. */
 internal fun AnnotatedString.Builder.addCode(shown: RvCodeShown, colors: RvCodeColors) {
-    // The spans are in text order, so one pass over the breaks places them all.
-    val breaks = shown.breaks
+    // The spans are in text order, so one pass over the marks places them all.
+    val breaks = shown.marks
     var before = 0
     fun at(offset: Int): Int {
         while (before < breaks.size && breaks[before] <= offset) before++
