@@ -1141,7 +1141,7 @@ dependencies = [
 [[package]]
 name = "honk-config"
 version = "0.1.0"
-source = "git+https://github.com/daeuniverse/honk?rev=8919784a6fe11fd8c6b9516b79f5553b93810ab2#8919784a6fe11fd8c6b9516b79f5553b93810ab2"
+source = "git+https://github.com/daeuniverse/honk?rev=63de98ba32f871ac6a779e7462a0a79f8a595153#63de98ba32f871ac6a779e7462a0a79f8a595153"
 dependencies = [
  "base64",
  "chrono",
@@ -1165,7 +1165,7 @@ dependencies = [
 [[package]]
 name = "honk-core"
 version = "0.1.0"
-source = "git+https://github.com/daeuniverse/honk?rev=8919784a6fe11fd8c6b9516b79f5553b93810ab2#8919784a6fe11fd8c6b9516b79f5553b93810ab2"
+source = "git+https://github.com/daeuniverse/honk?rev=63de98ba32f871ac6a779e7462a0a79f8a595153#63de98ba32f871ac6a779e7462a0a79f8a595153"
 dependencies = [
  "aes-gcm",
  "aho-corasick",
@@ -1218,7 +1218,7 @@ dependencies = [
 [[package]]
 name = "honk-ebpf-common"
 version = "0.1.0"
-source = "git+https://github.com/daeuniverse/honk?rev=8919784a6fe11fd8c6b9516b79f5553b93810ab2#8919784a6fe11fd8c6b9516b79f5553b93810ab2"
+source = "git+https://github.com/daeuniverse/honk?rev=63de98ba32f871ac6a779e7462a0a79f8a595153#63de98ba32f871ac6a779e7462a0a79f8a595153"
 dependencies = [
  "aya",
  "aya-ebpf-bindings",
@@ -1228,7 +1228,7 @@ dependencies = [
 [[package]]
 name = "honk-outbound"
 version = "0.1.0"
-source = "git+https://github.com/daeuniverse/honk?rev=8919784a6fe11fd8c6b9516b79f5553b93810ab2#8919784a6fe11fd8c6b9516b79f5553b93810ab2"
+source = "git+https://github.com/daeuniverse/honk?rev=63de98ba32f871ac6a779e7462a0a79f8a595153#63de98ba32f871ac6a779e7462a0a79f8a595153"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -2042,7 +2042,7 @@ dependencies = [
 [[package]]
 name = "quinn"
 version = "0.11.12"
-source = "git+https://github.com/Glassyiris/quinn?rev=11f1de84c28305a3c98ace6d681c35219a8d1e6c#11f1de84c28305a3c98ace6d681c35219a8d1e6c"
+source = "git+https://github.com/Glassyiris/quinn?rev=d98acc02b8c26417a84180a366e1eb5b22af2b24#d98acc02b8c26417a84180a366e1eb5b22af2b24"
 dependencies = [
  "bytes",
  "cfg_aliases",
@@ -2062,7 +2062,7 @@ dependencies = [
 [[package]]
 name = "quinn-proto"
 version = "0.11.19"
-source = "git+https://github.com/Glassyiris/quinn?rev=11f1de84c28305a3c98ace6d681c35219a8d1e6c#11f1de84c28305a3c98ace6d681c35219a8d1e6c"
+source = "git+https://github.com/Glassyiris/quinn?rev=d98acc02b8c26417a84180a366e1eb5b22af2b24#d98acc02b8c26417a84180a366e1eb5b22af2b24"
 dependencies = [
  "aws-lc-rs",
  "bytes",
@@ -2086,7 +2086,7 @@ dependencies = [
 [[package]]
 name = "quinn-udp"
 version = "0.5.16"
-source = "git+https://github.com/Glassyiris/quinn?rev=11f1de84c28305a3c98ace6d681c35219a8d1e6c#11f1de84c28305a3c98ace6d681c35219a8d1e6c"
+source = "git+https://github.com/Glassyiris/quinn?rev=d98acc02b8c26417a84180a366e1eb5b22af2b24#d98acc02b8c26417a84180a366e1eb5b22af2b24"
 dependencies = [
  "cfg_aliases",
  "libc",
