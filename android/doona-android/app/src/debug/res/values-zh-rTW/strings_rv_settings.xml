@@ -39,6 +39,9 @@
     <string name="rv_settings_preview">預覽</string>
     <string name="rv_settings_always_on">永久連線的 VPN</string>
     <string name="rv_settings_always_on_sub">系統 VPN 設定</string>
+    <string name="rv_settings_quick_tile">加到快速設定</string>
+    <string name="rv_settings_quick_tile_sub">不開啟 App 也能連線或中斷連線</string>
+    <string name="rv_settings_quick_tile_manual">從螢幕頂端向下滑動兩次，輕觸鉛筆圖示，再將 doona 圖塊拖曳到上方。</string>
     <string name="rv_settings_dns_alidns">阿里 DNS</string>
     <string name="rv_settings_dns_server">伺服器</string>
     <string name="rv_settings_dns_custom">自訂</string>

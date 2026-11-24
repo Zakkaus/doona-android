@@ -189,14 +189,7 @@ internal fun ColumnScope.RvConfirmContent(
     confirmEnabled: Boolean = true,
     extra: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    Spacer(Modifier.height(RvSheetSize.titleTop))
-    // The words on the card-content line, as a card's rows set theirs.
-    val text = Modifier.padding(horizontal = RvSpace.rowPadding)
-    RvText(title, Rv.type.section, text, maxLines = TITLE_LINES)
-    body?.let {
-        Spacer(Modifier.height(RvSheetSize.titleToBody))
-        RvText(it, Rv.type.rowSub, text, color = Rv.colors.textSecondary, maxLines = BODY_LINES)
-    }
+    SheetWords(title, body)
     extra?.let {
         Spacer(Modifier.height(RvSpace.gutter))
         it()
@@ -205,6 +198,36 @@ internal fun ColumnScope.RvConfirmContent(
     RvPrimaryButton(confirm, onConfirm, enabled = confirmEnabled)
     Spacer(Modifier.height(RvSheetSize.actionGap))
     RvSecondaryButton(dismiss, onDismiss)
+}
+
+/**
+ * Something to read with one way out: [title], [body], then [done] as the primary button, which closes it as back or
+ * the scrim does ([onDismiss]).
+ */
+@Composable
+internal fun RvInfoSheet(visible: Boolean, title: String, body: String, done: String, onDismiss: () -> Unit) {
+    RvSheet(visible, onDismiss, title) { RvInfoContent(title, body, done, onDismiss) }
+}
+
+/** What [RvInfoSheet] shows in its card: [RvConfirmContent]'s words and its primary button alone. */
+@Composable
+internal fun ColumnScope.RvInfoContent(title: String, body: String, done: String, onDone: () -> Unit) {
+    SheetWords(title, body)
+    Spacer(Modifier.height(RvSheetSize.bodyToActions))
+    RvPrimaryButton(done, onDone)
+}
+
+/** The title [RvSheetSize.titleTop] under the handle and the optional [body] under it, on the card-content line. */
+@Composable
+private fun SheetWords(title: String, body: String?) {
+    Spacer(Modifier.height(RvSheetSize.titleTop))
+    // The words on the card-content line, as a card's rows set theirs.
+    val text = Modifier.padding(horizontal = RvSpace.rowPadding)
+    RvText(title, Rv.type.section, text, maxLines = TITLE_LINES)
+    body?.let {
+        Spacer(Modifier.height(RvSheetSize.titleToBody))
+        RvText(it, Rv.type.rowSub, text, color = Rv.colors.textSecondary, maxLines = BODY_LINES)
+    }
 }
 
 private const val TITLE_LINES = 2

@@ -9,6 +9,7 @@ import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.subscriptions.SubscriptionImports
+import dev.doona.android.vpn.QuickTile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +24,9 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
 
     /** The apps per-app routing can name; read on demand, so nothing queries the device until that page opens. */
     val installedApps: InstalledApps by lazy(createInstalledApps)
+
+    /** Whether the quick settings tile is added; the tile reports it, and the settings page offers the tile until it is. */
+    val quickTile: QuickTile by lazy { QuickTile.create(application) }
 
     /** Outlives every screen: imports and local network prompts that a page started go on when it is left. */
     private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }

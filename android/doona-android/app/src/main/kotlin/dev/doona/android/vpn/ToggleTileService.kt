@@ -20,8 +20,18 @@ import kotlinx.coroutines.launch
 /** The quick settings tile: shows the status; a tap connects or disconnects. */
 class ToggleTileService : TileService() {
     private val engine: Engine get() = (application as DoonaApplication).container.engine
+    private val quickTile: QuickTile get() = (application as DoonaApplication).container.quickTile
     private val scope = MainScope()
     private var listening: Job? = null
+
+    // Called for a tile added through the system dialog or by hand: the settings page offers the tile until it is added.
+    override fun onTileAdded() {
+        quickTile.record(true)
+    }
+
+    override fun onTileRemoved() {
+        quickTile.record(false)
+    }
 
     override fun onStartListening() {
         listening = scope.launch { engine.status.collect(::render) }

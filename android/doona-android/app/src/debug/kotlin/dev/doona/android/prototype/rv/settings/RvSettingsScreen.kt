@@ -39,6 +39,7 @@ import dev.doona.android.prototype.rv.RvAction
 import dev.doona.android.prototype.rv.RvBarSpacer
 import dev.doona.android.prototype.rv.RvFloatingNav
 import dev.doona.android.prototype.rv.RvFootnote
+import dev.doona.android.prototype.rv.RvInfoSheet
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
@@ -55,6 +56,7 @@ import dev.doona.android.prototype.rv.rvSystemScheme
  * settings with a section title over it and, where it helps, a footer under it, all scrolling under the floating nav.
  * There is no search capsule; the title collapses into the bar as the page scrolls. The state is the caller's, so the
  * switches turn; the rows that open something are not wired, 主題 opens [onOpenTheme] and the nav's tabs [onTab].
+ * Over the page, the sheet that tells how to add the quick settings tile by hand while the state holds it open.
  */
 @Composable
 internal fun RvSettingsScreen(
@@ -74,7 +76,7 @@ internal fun RvSettingsScreen(
     ) { titleBlock ->
         Hero(titleBlock, insets, routes.report)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            ConnectionGroup(state, onChange, routes.alwaysOn, routes.perApp)
+            ConnectionGroup(state, onChange, routes)
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme)
             AdvancedGroup(state, routes)
@@ -83,6 +85,8 @@ internal fun RvSettingsScreen(
         // The last card clears the floating nav over the page.
         Spacer(Modifier.height(rvNavClearance(insets)))
     }
+    val manual = stringResource(R.string.rv_settings_quick_tile_manual)
+    RvInfoSheet(state.tileSheet, stringResource(R.string.rv_settings_quick_tile), manual, stringResource(R.string.rv_done)) { onChange(state.copy(tileSheet = false)) }
 }
 
 /**
@@ -119,10 +123,11 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, onReport: () -> Uni
 
 /**
  * Where 設定 leads beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row
- * and the hero's 匯出診斷, and the licences.
+ * and the hero's 匯出診斷, and the licences; and 加到快速設定 ([addTile]), the system's dialog or the sheet that tells how.
  */
 internal class RvSettingsRoutes(
     val alwaysOn: () -> Unit = NOT_WIRED,
+    val addTile: () -> Unit = NOT_WIRED,
     val perApp: () -> Unit = NOT_WIRED,
     val dns: () -> Unit = NOT_WIRED,
     val effectiveConfig: () -> Unit = NOT_WIRED,
@@ -131,22 +136,32 @@ internal class RvSettingsRoutes(
 )
 
 /**
- * 連線: always-on as a row that opens the system's VPN settings, since Android, not the app, turns it on; the drop
- * notice; and the apps that use the tunnel, which opens 依 App. The LAN always stays outside the tunnel (D25), so there is
- * no switch for it.
+ * 連線: always-on as a row that opens the system's VPN settings, since Android, not the app, turns it on; until the
+ * quick settings tile is added, 加到快速設定 under it, the other row that hands over to the system, with 活動's power
+ * glyph since the tile connects and disconnects as that action does; the drop notice; and the apps that use the tunnel,
+ * which opens 依 App, kept last over the footnote that explains it. The LAN always stays outside the tunnel (D25), so
+ * there is no switch for it.
  */
 @Composable
-private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, onAlwaysOn: () -> Unit, onPerApp: () -> Unit) {
+private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, routes: RvSettingsRoutes) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_connection))
     RvSettingsCard {
         RvSettingsNavRow(
             stringResource(R.string.rv_settings_always_on),
             R.drawable.rv_sym_vpn_lock,
-            onAlwaysOn,
+            routes.alwaysOn,
             subtitle = stringResource(R.string.rv_settings_always_on_sub),
         )
+        if (!state.tileAdded) {
+            RvSettingsNavRow(
+                stringResource(R.string.rv_settings_quick_tile),
+                R.drawable.rv_sym_power,
+                routes.addTile,
+                subtitle = stringResource(R.string.rv_settings_quick_tile_sub),
+            )
+        }
         RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
-        RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, onPerApp, perAppValue(state.perApp))
+        RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, routes.perApp, perAppValue(state.perApp))
     }
     RvFootnote(stringResource(R.string.rv_settings_connection_footer), inset = RvSpace.gutter - RvSettingsSpace.margin)
 }
