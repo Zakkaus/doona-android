@@ -1,9 +1,11 @@
 package dev.doona.android.prototype.rv.nodes
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.text.TextLayoutResult
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -76,13 +78,38 @@ class RvNodeScoreShotTest {
         val marked = compose.onAllNodesWithText("Score", substring = true, useUnmergedTree = true).fetchSemanticsNodes()
             .flatMap { it.config[SemanticsProperties.Text] }
             .map { it.text.replace(WORD_JOINER, "") }
-            .filter { MARK in it }
+            .filter { it.startsWith(MARK) }
         // Each dot is held to the word after it (a no-break space), so a wrapped line never ends on a dot.
-        assertEquals(listOf("Score 選用 TCP ·\u00A0VLESS ·\u00A0香港", "Score 選用 UDP ·\u00A0Trojan ·\u00A0香港"), marked)
+        assertEquals(listOf("Score TCP ·\u00A0VLESS ·\u00A0香港", "Score UDP ·\u00A0Trojan ·\u00A0香港"), marked)
         val points = compose.onAllNodesWithText("分", substring = true, useUnmergedTree = true).fetchSemanticsNodes()
             .flatMap { it.config[SemanticsProperties.Text] }
             .filter { it.text.replace(WORD_JOINER, "").matches(POINTS) }
         assertEquals(emptyList<Any>(), points)
+    }
+
+    /** A marked row's line fits one line at the default size, as an unmarked row's does. */
+    @Test
+    @Config(qualifiers = PAGE_A)
+    fun aMarkKeepsTheLineOnOneLine() = assertEquals(listOf(listOf("Score TCP ·\u00A0VLESS ·\u00A0香港"), listOf("Score UDP ·\u00A0Trojan ·\u00A0香港")), markedLines(1f))
+
+    /** At fs115 the line is too long for one line and breaks after the mark, before its dot. */
+    @Test
+    @Config(qualifiers = PAGE_A_FS115)
+    fun aMarkBreaksBeforeTheDotAtFs115() =
+        assertEquals(listOf(listOf("Score TCP", "·\u00A0VLESS ·\u00A0香港"), listOf("Score UDP", "·\u00A0Trojan ·\u00A0香港")), markedLines(RV_FS115))
+
+    /** The lines each marked row's line is laid out in, without word joiners. */
+    private fun markedLines(fontScale: Float): List<List<String>> {
+        compose.rvContent(dark = false, fontScale = fontScale) { Page(marks) }
+        return compose.onAllNodesWithText(MARK, substring = true, useUnmergedTree = true).fetchSemanticsNodes()
+            .filter { SemanticsActions.GetTextLayoutResult in it.config }
+            .map { node ->
+                val layouts = mutableListOf<TextLayoutResult>()
+                node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+                val layout = layouts.single()
+                val text = layout.layoutInput.text.text
+                (0 until layout.lineCount).map { text.substring(layout.getLineStart(it), layout.getLineEnd(it)).replace(WORD_JOINER, "").trim() }
+            }
     }
 
     private fun shot(name: String, dark: Boolean = false, fontScale: Float = 1f, content: @Composable () -> Unit) =
@@ -100,16 +127,16 @@ class RvNodeScoreShotTest {
         val page = sampleNodesPage()
         val chosen: RvNode = page.nodes.first { it.id == RvScoreSample.chosen.tcp.selectedId }
 
-        const val MARK = "Score 選用"
+        const val MARK = "Score "
         const val WORD_JOINER = "\u2060"
         val POINTS = Regex("\\d+ 分")
 
         /** Windows as tall as each page whole, rounded up to a whole dp. */
-        const val PAGE_A = "+h2917dp"
-        const val PAGE_A_FS115 = "+h2950dp"
-        const val PAGE_A_FS200 = "+h4927dp"
+        const val PAGE_A = "+h2881dp"
+        const val PAGE_A_FS115 = "+h2949dp"
+        const val PAGE_A_FS200 = "+h4925dp"
         const val DETAIL_A = "+h1208dp"
         const val DETAIL_A_FS115 = "+h1216dp"
-        const val DETAIL_A_FS200 = "+h1390dp"
+        const val DETAIL_A_FS200 = "+h1389dp"
     }
 }
