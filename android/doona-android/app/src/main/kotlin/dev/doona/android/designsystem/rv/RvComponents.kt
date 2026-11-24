@@ -552,14 +552,15 @@ internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style:
 
 /**
  * The one footnote: what a group of cards means, under its last card in secondary text at the row subtitle's step,
- * [RvSpace.footnoteAbove] under it and on the gutter as the section titles, three lines at most: [inset] in from its
- * parent, less whatever a column it sits in already insets. Its box spans that column as the cards above it do, so a
- * paragraph runs to their right edge. 13/18 is for chart captions and legends only.
+ * [RvSpace.footnoteAbove] under it and on the gutter as the section titles, three lines at most unless [whole]: [inset]
+ * in from its parent, less whatever a column it sits in already insets. Its box spans that column as the cards above it
+ * do, so a paragraph runs to their right edge. A footnote that must never be cut (a privacy statement) is [whole] and
+ * grows to every line it needs. 13/18 is for chart captions and legends only.
  */
 @Composable
-internal fun RvFootnote(text: String, modifier: Modifier = Modifier, inset: Dp = RvSpace.gutter) {
+internal fun RvFootnote(text: String, modifier: Modifier = Modifier, inset: Dp = RvSpace.gutter, whole: Boolean = false) {
     val pad = Modifier.padding(start = inset, top = RvSpace.footnoteAbove, end = inset).fillMaxWidth().testTag(RvPart.FOOTER)
-    RvText(text, Rv.type.rowSub, modifier.then(pad), color = Rv.colors.textSecondary, maxLines = FOOTNOTE_LINES)
+    RvText(text, Rv.type.rowSub, modifier.then(pad), color = Rv.colors.textSecondary, maxLines = if (whole) Int.MAX_VALUE else FOOTNOTE_LINES)
 }
 
 /** A page's body: its cards on the gutter, [RvSpace.cardGap] apart, under the page's [banner] in [RvBannerSlot]. */

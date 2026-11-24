@@ -37,6 +37,7 @@ import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -177,6 +178,17 @@ class RvReportShotTest {
         val layout = layouts.single()
         assertEquals("laid out as wide as its box", box.width, layout.layoutInput.constraints.maxWidth.toFloat(), EDGE_PX)
         assertTrue("one paragraph that wraps", layout.lineCount >= 2)
+    }
+
+    /** What a report never holds is never cut: on a narrow English screen at 2.0 the paragraph grows past three lines. */
+    @Test
+    @Config(qualifiers = "en-w320dp-h2600dp-notnight-xhdpi")
+    fun thePrivacyFootnoteGrowsRatherThanBeingCut() {
+        compose.rvContent(dark = false, fontScale = RV_FS200) { Page(READY_BUILD) }
+        val node = compose.onNodeWithTag(RvPart.FOOTER).fetchSemanticsNode()
+        val layout = mutableListOf<TextLayoutResult>().also { node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }.single()
+        assertTrue("wraps past three lines: ${layout.lineCount}", layout.lineCount > 3)
+        assertFalse("cut", layout.hasVisualOverflow)
     }
 
     /** A report written before a switch turned hides other things: it is not shared until it is written again. */
