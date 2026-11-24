@@ -35,7 +35,7 @@ import kotlin.math.abs
  * 節點詳情's latency chart with no test and with one (owner, item 7: 「沒有資料的字不居中…只有一筆也沒居中」): the plot is
  * read from the drawn hairlines (from the left edge to where the zero line ends, the top line to the zero line), not
  * from the code's own numbers. 尚無資料's box is centred on it both ways, the middle hairline stops short of it, and
- * one test's dot is at its horizontal centre and, by its axis, within a tenth of the plot's height of its middle.
+ * one test's dot is at its centre, across and, by its axis, down, whatever its latency.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -60,23 +60,26 @@ class RvLatencyDotsTest {
         assertEquals("the middle hairline stops short of the line", background, image.getPixel((box.left - GAP_PX / 2).toInt(), middle))
     }
 
-    @Test
-    fun oneTestSitsAtThePlotsCentre() {
+    @Test fun oneTestSitsAtThePlotsCentre() = oneTest(ONE)
+
+    /** A fast node's one test too: 20 ms on a 0–100 ms axis sat a fifth of the way up. */
+    @Test fun oneFastTestSitsAtThePlotsCentre() = oneTest(FAST)
+
+    private fun oneTest(ms: Int) {
         var dot = 0
         compose.rvContent(dark = false) {
-            dot = Rv.colors.quality(latencyTone(ONE)).toArgb()
+            dot = Rv.colors.quality(latencyTone(ms)).toArgb()
             // No test picked, so no marker covers the hairlines the plot is read from.
-            Clear { RvLatencyDots(listOf(ONE), null, listOf(TIME), -1, {}, Modifier.testTag(CHART)) }
+            Clear { RvLatencyDots(listOf(ms), null, listOf(TIME), -1, {}, Modifier.testTag(CHART)) }
         }
         val image = image()
         val plot = plot(image)
         val xs = (0 until image.width).filter { x -> (0 until image.height).any { image.getPixel(x, it) == dot } }
         assertTrue("the dot is drawn", xs.isNotEmpty())
         assertEquals("the dot's centre across", plot.center.x, (xs.first() + xs.last() + 1) / 2f, PX)
-        // Down, its axis puts it on the middle line or near it, not alone under the top one (92 ms on 0–100 sat 8 % under the top).
+        // Down, its axis puts it on the middle line, not alone under the top one (92 ms on 0–100 sat 8 % under the top).
         val ys = (0 until image.height).filter { y -> (0 until image.width).any { image.getPixel(it, y) == dot } }
-        val band = plot.height * MIDDLE_BAND
-        assertEquals("the dot's centre down", plot.center.y, (ys.first() + ys.last() + 1) / 2f, band)
+        assertEquals("$ms ms: the dot's centre down", plot.center.y, (ys.first() + ys.last() + 1) / 2f, DOT_PX)
     }
 
     /** Below the frame's status bar, which draws over the top of the content. */
@@ -110,6 +113,7 @@ class RvLatencyDotsTest {
     private companion object {
         const val CHART = "latency-dots"
         const val ONE = 92
+        const val FAST = 20
         const val TIME = "06:30"
         const val HAIRLINES = 3
         val CLEAR = 80.dp
@@ -118,7 +122,7 @@ class RvLatencyDotsTest {
         const val PX = 1f
         const val GAP_PX = 16f
 
-        /** How far from the plot's middle one test may sit, as a share of the plot's height. */
-        const val MIDDLE_BAND = 0.1f
+        /** Two pixels either way: the dot's drawn edge is matched by its exact colour. */
+        const val DOT_PX = 2f
     }
 }
