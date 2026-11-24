@@ -1,5 +1,8 @@
 package dev.doona.android.engine
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
 /** Bytes since local midnight, and yesterday's combined bytes by the same time (null when not kept). */
 data class TodayTraffic(val upTotal: Long = 0, val downTotal: Long = 0, val yesterdayByNow: Long? = null)
 
@@ -26,3 +29,89 @@ data class NodeInfo(
 
 /** Probe round start and measured latency in milliseconds, or null for a failed probe. */
 data class LatencyTest(val atEpochMs: Long, val ms: Int?)
+
+/** An editor input. Only the core interprets links, credentials and protocol options. Keep drafts out of logs and exports. */
+sealed interface StaticNodeDraft {
+    class Link(val link: String, val name: String? = null) : StaticNodeDraft
+
+    class Manual(
+        val protocol: String,
+        val server: String,
+        val port: Int,
+        val name: String? = null,
+        val username: String? = null,
+        val password: String? = null,
+        val uuid: String? = null,
+        val cipher: String? = null,
+        val options: Map<String, String> = emptyMap(),
+    ) : StaticNodeDraft
+}
+
+/** The core's private editor record. Keep the original unchanged for the next update or removal. */
+data class StaticNode(val id: String, val name: String, val link: String) {
+    override fun toString() = "StaticNode(id=$id)"
+}
+
+/** One row in a batch or the result of an edit. Whole-call failures are [EngineException]s instead. */
+sealed interface StaticNodeResult {
+    data class Ready(val id: String, val name: String, val protocol: String) : StaticNodeResult
+    data class Added(val id: String, val name: String, val protocol: String) : StaticNodeResult
+    data class Updated(val id: String, val name: String, val protocol: String) : StaticNodeResult
+    data class Duplicate(val id: String) : StaticNodeResult
+    data class Invalid(val reason: StaticNodeReason) : StaticNodeResult
+    data class Unsupported(val reason: StaticNodeReason) : StaticNodeResult
+}
+
+@Serializable
+enum class StaticNodeReason {
+    @SerialName("catalog_full")
+    CatalogFull,
+
+    @SerialName("chain")
+    Chain,
+
+    @SerialName("cipher")
+    Cipher,
+
+    @SerialName("credentials")
+    Credentials,
+
+    @SerialName("duplicate_option")
+    DuplicateOption,
+
+    @SerialName("fields")
+    Fields,
+
+    @SerialName("link")
+    Link,
+
+    @SerialName("link_length")
+    LinkLength,
+
+    @SerialName("name")
+    Name,
+
+    @SerialName("option")
+    Option,
+
+    @SerialName("password")
+    Password,
+
+    @SerialName("path")
+    Path,
+
+    @SerialName("port")
+    Port,
+
+    @SerialName("protocol")
+    Protocol,
+
+    @SerialName("server")
+    Server,
+
+    @SerialName("username")
+    Username,
+
+    @SerialName("uuid")
+    Uuid,
+}

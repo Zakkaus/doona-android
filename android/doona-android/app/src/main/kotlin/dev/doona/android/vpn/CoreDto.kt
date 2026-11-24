@@ -24,12 +24,15 @@ import dev.doona.android.engine.RuleRow
 import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.StaticNodeReason
+import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -37,6 +40,7 @@ import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
@@ -170,6 +174,49 @@ internal data class NodeInfoDto(
 /** A test: when its round began, and the time it measured; null when the probe failed. */
 @Serializable
 internal data class LatencyTestDto(val atEpochMs: Long, val ms: Int? = null)
+
+@OptIn(ExperimentalSerializationApi::class)
+@JsonClassDiscriminator("status")
+@Serializable
+internal sealed interface StaticNodeRowDto {
+    fun toRow(): StaticNodeResult
+
+    @Serializable
+    @SerialName("ready")
+    class Ready(val id: String, val name: String, val protocol: String) : StaticNodeRowDto {
+        override fun toRow() = StaticNodeResult.Ready(id, name, protocol)
+    }
+
+    @Serializable
+    @SerialName("added")
+    class Added(val id: String, val name: String, val protocol: String) : StaticNodeRowDto {
+        override fun toRow() = StaticNodeResult.Added(id, name, protocol)
+    }
+
+    @Serializable
+    @SerialName("updated")
+    class Updated(val id: String, val name: String, val protocol: String) : StaticNodeRowDto {
+        override fun toRow() = StaticNodeResult.Updated(id, name, protocol)
+    }
+
+    @Serializable
+    @SerialName("duplicate")
+    class Duplicate(val id: String) : StaticNodeRowDto {
+        override fun toRow() = StaticNodeResult.Duplicate(id)
+    }
+
+    @Serializable
+    @SerialName("invalid")
+    class Invalid(val reason: StaticNodeReason) : StaticNodeRowDto {
+        override fun toRow() = StaticNodeResult.Invalid(reason)
+    }
+
+    @Serializable
+    @SerialName("unsupported")
+    class Unsupported(val reason: StaticNodeReason) : StaticNodeRowDto {
+        override fun toRow() = StaticNodeResult.Unsupported(reason)
+    }
+}
 
 /** [mainGroupId] is the group Global sends every flow through, and Rule the flows no rule matched. */
 @Serializable
@@ -398,10 +445,6 @@ internal data class RuleSourceArgs(val kind: String, val template: String, val o
 /** `trafficSeries`' window, 1 to 3600 seconds. */
 @Serializable
 internal data class SeriesArgs(val seconds: Long)
-
-/** `nodes`: every node when [ids] is null. */
-@Serializable
-internal data class NodesArgs(val ids: List<String>?)
 
 @Serializable
 internal data class CallErrorDto(val code: String)

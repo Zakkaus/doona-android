@@ -19,6 +19,9 @@ import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
+import dev.doona.android.engine.StaticNode
+import dev.doona.android.engine.StaticNodeDraft
+import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.TodayTraffic
@@ -132,6 +135,18 @@ class FakeEngine internal constructor(
         subscriptions.update { all -> all.map { if (it.id == id) changed else it } }
         return Result.success(changed)
     }
+
+    override suspend fun previewStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> = staticEditorRequiresCore()
+
+    override suspend fun addStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> = staticEditorRequiresCore()
+
+    override suspend fun readStaticNode(id: String): Result<StaticNode> = staticEditorRequiresCore()
+
+    override suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeResult> = staticEditorRequiresCore()
+
+    override suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit> = staticEditorRequiresCore()
+
+    private fun staticEditorRequiresCore(): Nothing = error("Test static node editing through ServiceEngine and FakeCore")
 
     override suspend fun setMode(mode: Mode): Result<Unit> {
         settingsFlow.update { it.copy(mode = mode) }

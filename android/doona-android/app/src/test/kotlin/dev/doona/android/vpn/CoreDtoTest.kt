@@ -10,9 +10,12 @@ import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.StaticNodeReason
+import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.SubscriptionFormat
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -40,6 +43,7 @@ class CoreDtoTest {
         "call-add-subscription-args.json" to AddSubscriptionArgs.serializer(),
         "call-set-subscription-user-agent-args.json" to SubscriptionUserAgentArgs.serializer(),
         "call-error.json" to CallErrorReplyDto.serializer(),
+        "call-error-state-write.json" to CallErrorReplyDto.serializer(),
         "call-select-args.json" to SelectArgs.serializer(),
         "call-ok-traffic-series.json" to TrafficSeriesDto.serializer(),
         "call-ok-usage.json" to UsageDto.serializer(),
@@ -56,6 +60,7 @@ class CoreDtoTest {
         "call-diagnostics-args.json" to DiagnosticsArgs.serializer(),
         "call-set-log-level-args.json" to LevelArgs.serializer(),
         "call-clear-crashes-args.json" to ClearCrashesArgs.serializer(),
+        "static-nodes.json" to ListSerializer(StaticNodeCallFixture.serializer()),
     )
 
     @Test
@@ -289,6 +294,49 @@ class CoreDtoTest {
         } catch (e: EngineException) {
             assertEquals(ErrorCode.TooLarge, e.code)
         }
+    }
+
+    @Test
+    fun aFailedStateWriteMapsToInternal() {
+        val failure = assertThrows(EngineException::class.java) {
+            CoreJson.result(fixture("call-error-state-write.json"), Unit.serializer())
+        }
+        assertEquals(ErrorCode.Internal, failure.code)
+    }
+
+    @Test
+    fun staticEditorMapsEveryFieldAndRowReason() {
+        val invalid = mapOf(
+            "catalog_full" to StaticNodeReason.CatalogFull,
+            "cipher" to StaticNodeReason.Cipher,
+            "credentials" to StaticNodeReason.Credentials,
+            "duplicate_option" to StaticNodeReason.DuplicateOption,
+            "fields" to StaticNodeReason.Fields,
+            "link" to StaticNodeReason.Link,
+            "link_length" to StaticNodeReason.LinkLength,
+            "name" to StaticNodeReason.Name,
+            "password" to StaticNodeReason.Password,
+            "port" to StaticNodeReason.Port,
+            "server" to StaticNodeReason.Server,
+            "uuid" to StaticNodeReason.Uuid,
+        )
+        val unsupported = mapOf(
+            "chain" to StaticNodeReason.Chain,
+            "cipher" to StaticNodeReason.Cipher,
+            "option" to StaticNodeReason.Option,
+            "password" to StaticNodeReason.Password,
+            "path" to StaticNodeReason.Path,
+            "protocol" to StaticNodeReason.Protocol,
+            "username" to StaticNodeReason.Username,
+            "uuid" to StaticNodeReason.Uuid,
+        )
+        fun row(status: String, reason: String) = CoreJson.result(
+            """{"ok":{"status":"$status","reason":"$reason"}}""",
+            StaticNodeRowDto.serializer(),
+        ).toRow()
+
+        for ((key, reason) in invalid) assertEquals(StaticNodeResult.Invalid(reason), row("invalid", key))
+        for ((key, reason) in unsupported) assertEquals(StaticNodeResult.Unsupported(reason), row("unsupported", key))
     }
 
     @Test
