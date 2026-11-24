@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv
 import android.content.ClipData
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.ClipEntry
@@ -29,9 +28,6 @@ internal class RvRowActions(
 )
 
 internal val LocalRvRowActions = staticCompositionLocalOf { RvRowActions() }
-
-/** The subscriptions being updated: their rows show [RvBusy] where what is left would be. */
-internal val LocalRvUpdating = compositionLocalOf { emptySet<String>() }
 
 /**
  * A node row's menu: 設為主節點 (left out for the main node, or where [use] is null), 測試延遲, 詳情 (its page, through

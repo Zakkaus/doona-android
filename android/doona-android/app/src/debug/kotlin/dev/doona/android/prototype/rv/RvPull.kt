@@ -15,6 +15,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -307,6 +308,16 @@ private fun PickerBox(state: RvPullState, modifier: Modifier, content: @Composab
  * while hidden, and a shared element there takes part only while shown.
  */
 internal val LocalRvShown = staticCompositionLocalOf<() -> Boolean> { { true } }
+
+/** The subscriptions being updated: their rows show [RvBusy] where what is left would be. */
+internal val LocalRvUpdating = compositionLocalOf { emptySet<String>() }
+
+/**
+ * How 活動's pull-down opens the node picker: P1 the picker slides down as one sheet over 活動, which dims (the default);
+ * P2 the hero stretches with the finger, then the picker cross-fades in; P3 活動 slides down out of view and the picker's
+ * sections drop in one after another.
+ */
+internal enum class RvPullMotion(val code: String) { Sheet("P1"), Stretch("P2"), Drop("P3") }
 
 /** Composes the picker ahead, hidden, as soon as 活動 is pulled: by the time the pull commits its rows are in. */
 @Composable

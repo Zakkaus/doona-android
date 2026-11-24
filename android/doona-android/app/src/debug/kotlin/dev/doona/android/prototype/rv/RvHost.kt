@@ -4,7 +4,6 @@ import android.os.Trace
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
@@ -30,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,13 +46,6 @@ internal enum class RvTabMotion(val code: String) { Cut("T1"), Fade("T2") }
 
 /** How a page is pushed and popped: S1 a cross-fade with a slight zoom (the default), S2 Material's shared axis X. */
 internal enum class RvPushMotion(val code: String) { Zoom("S1"), Axis("S2") }
-
-/**
- * How 活動's pull-down opens the node picker: P1 the picker slides down as one sheet over 活動, which dims (the default);
- * P2 the hero stretches with the finger, then the picker cross-fades in; P3 活動 slides down out of view and the picker's
- * sections drop in one after another.
- */
-internal enum class RvPullMotion(val code: String) { Sheet("P1"), Stretch("P2"), Drop("P3") }
 
 /**
  * Whether 活動's hero swipes (brief rv-gestures H1): H0 it shows the traffic only (the default); H1 a horizontal swipe,
@@ -154,37 +145,6 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
                 }
             }
         }
-    }
-}
-
-/**
- * The host's shared-element scopes: the [layout] over every page and the [page]'s own coming and going; a push or pop
- * takes [pushMs].
- */
-internal class RvShared(val layout: SharedTransitionScope, val page: AnimatedVisibilityScope, val pushMs: Int)
-
-internal val LocalRvShared = compositionLocalOf<RvShared?> { null }
-
-/**
- * Makes the search pill and the search page's field one element (brief rv-gestures G7): with the push it moves and
- * reshapes from one into the other in [RvMotion.SEARCH_MS], its content laid out afresh at each size, clipped to the
- * pill's shape. Outside the host (goldens, previews) it does nothing.
- */
-@Composable
-internal fun Modifier.rvSharedSearch(): Modifier {
-    val shared = LocalRvShared.current ?: return this
-    val motion = Rv.motion
-    return with(shared.layout) {
-        this@rvSharedSearch.sharedBounds(
-            rememberSharedContentState(SEARCH),
-            shared.page,
-            // The pill's and the field's own content cross-fade as the bounds move, in the same time.
-            enter = fadeIn(motion.tween(RvMotion.SEARCH_MS)),
-            exit = fadeOut(motion.tween(RvMotion.SEARCH_MS)),
-            boundsTransform = { _, _ -> motion.tween(RvMotion.SEARCH_MS) },
-            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
-            clipInOverlayDuringTransition = OverlayClip(CircleShape),
-        )
     }
 }
 
