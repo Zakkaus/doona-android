@@ -188,7 +188,15 @@ fn protocol_from_name(proxy_type: &str) -> Result<NodeProtocol, &'static str> {
 }
 
 fn validate_source(mapping: &Mapping) -> Result<ProxySource, &'static str> {
-    if mapping.contains_key("dialer-proxy") || mapping.contains_key("underlying-proxy") {
+    if has_active(
+        mapping,
+        &[
+            "dialer-proxy",
+            "underlying-proxy",
+            "dialer_proxy",
+            "underlying_proxy",
+        ],
+    ) {
         return Err("chaining is unsupported");
     }
     let proxy_type = yaml_text_alias(mapping, &["type"])?.ok_or("proxy type is missing")?;

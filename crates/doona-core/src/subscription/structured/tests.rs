@@ -93,7 +93,12 @@ fn a_clash_document_gives_the_nodes_of_its_share_links() {
 
 #[test]
 fn chained_clash_proxies_are_skipped() {
-    for key in ["dialer-proxy", "underlying-proxy"] {
+    for key in [
+        "dialer-proxy",
+        "underlying-proxy",
+        "dialer_proxy",
+        "underlying_proxy",
+    ] {
         let entry = format!(
             "{{type: trojan, server: exit.test, port: 443, password: p, name: exit, {key}: front}}"
         );
@@ -107,6 +112,10 @@ fn chained_clash_proxies_are_skipped() {
             (None, "chaining is unsupported"),
             "{key}"
         );
+        for inactive in ["''", "null"] {
+            let body = body.replace(&format!("{key}: front"), &format!("{key}: {inactive}"));
+            assert_eq!(names(&parse(body.as_bytes()).unwrap()), ["exit", "front"]);
+        }
     }
 }
 

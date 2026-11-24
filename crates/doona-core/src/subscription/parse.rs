@@ -133,13 +133,16 @@ fn skipped(link: &str) -> bool {
         || ["REMARKS=", "STATUS="].iter().any(|p| link.starts_with(p))
 }
 
-/// Reject a chain before honk-config can interpret its first hop as a standalone node.
-fn parse_link(link: &str) -> Result<Node, &'static str> {
-    let address = link.split_once('#').map_or(link, |(address, _)| address);
-    if address.split("->").skip(1).any(|hop| {
+/// A dae hop separator can follow any part of a link, including a hop's name.
+pub(crate) fn is_chained_link(link: &str) -> bool {
+    link.split("->").skip(1).any(|hop| {
         let hop = hop.trim_start();
         hop.starts_with(|c: char| c.is_ascii_alphabetic()) && is_link(hop)
-    }) {
+    })
+}
+
+fn parse_link(link: &str) -> Result<Node, &'static str> {
+    if is_chained_link(link) {
         return Err("chaining is unsupported");
     }
     if link.split_once("://").is_some_and(|(scheme, payload)| {
@@ -304,27 +307,44 @@ mod tests {
 
     #[test]
     fn chained_share_link_is_skipped() {
-        let chain = format!("trojan://p@front.test:443 -> {}#US", vmess(128));
+        let chains = [
+            format!("trojan://p@front.test:443 -> {}#US", vmess(128)),
+            "trojan://p@front.test:443#front -> trojan://q@exit.test:443#US".into(),
+            "trojan://p@hk.test:443#HK->vmess://JP".into(),
+        ];
         let direct = "trojan://p@direct.test:443#direct";
-        let body = format!("{chain}\n{direct}");
+        let body = format!("{}\n{direct}", chains.join("\n"));
         let parsed = parse(body.as_bytes()).unwrap();
         assert_eq!(names(&parsed), ["direct"]);
         assert_eq!(parsed.links, [direct]);
-        assert_eq!(parse_link(&chain).unwrap_err(), "chaining is unsupported");
+        for chain in chains {
+            assert_eq!(parse_link(&chain).unwrap_err(), "chaining is unsupported");
+        }
     }
 
     #[test]
     fn arrows_in_share_link_names_survive_import() {
-        for (fragment, name) in [
-            ("HK->JP", "HK->JP"),
-            ("HK%2D%3EJP", "HK->JP"),
-            ("HK->vmess://JP", "HK->vmess://JP"),
-        ] {
+        for fragment in ["HK->JP", "HK%2D%3EJP"] {
             let link = format!("trojan://p@hk.test:443#{fragment}");
             let parsed = parse(link.as_bytes()).unwrap();
-            assert_eq!(names(&parsed), [name]);
+            assert_eq!(names(&parsed), ["HK->JP"]);
             assert_eq!(parsed.nodes[0].host, "hk.test");
             assert_eq!(parsed.nodes[0].port, 443);
+        }
+    }
+
+    #[test]
+    fn literal_arrows_round_trip_in_credentials_and_query_values() {
+        let link = "trojan://left->right@hk.test:443?remark=HK->JP";
+        let parsed = parse(link.as_bytes()).unwrap();
+        let restored = admit(parsed.links.iter().map(String::as_str)).unwrap();
+        for result in [parsed, restored] {
+            assert_eq!(names(&result), ["HK->JP"]);
+            let honk_config::node::OutboundConfig::Trojan(config) = &result.nodes[0].outbound
+            else {
+                panic!("expected Trojan");
+            };
+            assert_eq!(config.password.as_deref(), Some("left->right"));
         }
     }
 
