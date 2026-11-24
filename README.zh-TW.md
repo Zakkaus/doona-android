@@ -47,9 +47,11 @@ uv run crates/doona-core/tools/update_geo.py --check "$bundle"
 (cd crates/doona-core/tools/geo-check && DAE_LOCATION_ASSET="$bundle" cargo run --locked -- tests/fixtures/required-labels.dae)
 ```
 
-[每週排程](.github/workflows/geo-bundle.yml) 驗證最新版本後，只向 `v1/base` 提出更新版本鎖定檔的 PR。排程必須放在預設分支。啟用 **Allow GitHub Actions to create and approve pull requests**，預設 token 才能建立 PR。[`GITHUB_TOKEN` 建立的 PR 不會自動執行 CI](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)；有寫入權限的維護者須選擇 **Approve workflows to run**。DAT 檔不進倉庫，也不打包進 APK。
+[每週排程](.github/workflows/geo-bundle.yml) 驗證最新版本後，只向 `v1/base` 提出更新版本鎖定檔的 PR。排程必須放在預設分支。啟用 **Allow GitHub Actions to create and approve pull requests**，預設 token 才能建立 PR。[`GITHUB_TOKEN` 建立的 PR 不會自動執行 CI](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)；有寫入權限的維護者須選擇 **Approve workflows to run**。DAT 檔不納入版本控制；doona 的 APK 內含鎖定版本的兩個 DAT 檔。
 
 MetaCubeX 會替換 `latest` 的附件，並強制推送 `release` 分支。版本鎖定檔使用含 commit SHA 的快照 URL，大小與 SHA-256 取自 release API。URL 不會指向新版內容，但 GitHub 可能回收舊的 `release` commit；是否設置第一方鏡像仍由維護者決定。
+
+啟動 VPN 時，若核心未使用任何一組 Geo 資料，或 APK 內的發行日期較新，應用程式會解壓縮資料並交給核心。啟動成功後會刪除暫存檔，殘留的暫存檔則在下次啟動時清除。若距上次成功更新已超過設定間隔，VPN 連線時會檢查更新；定期排程也會在已連線時檢查。預設間隔為一週，下載的資料下次啟動 VPN 時才會生效。
 
 ## 執行測試
 

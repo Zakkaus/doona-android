@@ -13,7 +13,9 @@ mod flow;
 mod gate;
 #[cfg(test)]
 pub(crate) mod pause;
+mod recent;
 pub mod route;
+mod sniff;
 mod splice;
 mod tcp;
 mod tun;
@@ -227,6 +229,7 @@ pub struct Session {
     catalog: Weak<Shared>,
     /// The names the generation's DNS answers gave addresses (ARCH D33).
     names: Names,
+    pub(crate) recent: Arc<recent::Recent>,
 }
 
 /// Whether a dial through a node was refused at an address on the local network, with none that
@@ -264,6 +267,7 @@ impl Session {
             local_network: Mutex::default(),
             catalog,
             names: Names::new(),
+            recent: recent::Recent::new(),
         }
     }
 
@@ -537,6 +541,7 @@ impl Tunnel {
     pub fn halt(&self) {
         self.gen_.cancel.cancel();
         self.tun.revoke();
+        self.session().recent.stop();
         if let Some(ended) = self.outbounds.end(self.gen_.session.generation) {
             *lock(&self.ended) = Some(ended);
         }

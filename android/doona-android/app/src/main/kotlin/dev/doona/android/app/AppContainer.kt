@@ -26,7 +26,10 @@ import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.reportDir
 import dev.doona.android.vpn.VpnLog
 import dev.doona.android.work.ForegroundRefresh
+import dev.doona.android.work.GeoRefresh
 import dev.doona.android.work.SubscriptionRefresh
+import dev.doona.android.work.scheduleGeoRefresh
+import dev.doona.android.work.scheduleGeoRefreshOnConnect
 import dev.doona.android.work.scheduleSubscriptionRefresh
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -74,6 +77,31 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
                         VpnLog.warn("subscription-refresh: schedule write failed (${e.javaClass.simpleName})")
                     }
                 }
+        }
+    }
+
+    internal val geoRefresh by lazy { GeoRefresh(AppSettings.get(application)) { engine } }
+
+    internal fun startGeoRefresh() {
+        uiScope.launch {
+            geoRefresh.watchConnections { scheduleGeo { scheduleGeoRefreshOnConnect(it) } }
+        }
+        uiScope.launch {
+            AppSettings.get(application).geoUpdateInterval
+                .catch {
+                    if (it !is IOException) throw it
+                    VpnLog.warn("geo-refresh: settings read failed (${it.javaClass.simpleName})")
+                }.collect { setting ->
+                    scheduleGeo { scheduleGeoRefresh(it, setting) }
+                }
+        }
+    }
+
+    private suspend fun scheduleGeo(schedule: suspend (WorkManager) -> Unit) {
+        try {
+            schedule(WorkManager.getInstance(application))
+        } catch (e: SQLiteException) {
+            VpnLog.warn("geo-refresh: schedule write failed (${e.javaClass.simpleName})")
         }
     }
 

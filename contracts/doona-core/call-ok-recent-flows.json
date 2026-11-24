@@ -1,0 +1,8 @@
+{
+  "ok": {
+    "flows": [
+      {"protocol":"udp","local":"[2001:db8::1]:41002","remote":"[2001:db8::2]:443","name":null,"outbound":"g-Proxy","startedMs":371,"open":true},
+      {"protocol":"tcp","local":"172.19.0.1:41001","remote":"192.0.2.1:443","name":"example.test","outbound":"direct","startedMs":12,"open":false}
+    ]
+  }
+}

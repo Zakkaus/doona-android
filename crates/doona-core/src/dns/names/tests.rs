@@ -86,6 +86,22 @@ fn an_answer_maps_its_addresses_to_the_question_name() {
 }
 
 #[test]
+fn a_valid_aaaa_answer_takes_no_space_in_the_routing_cache() {
+    let ip = "2001:db8::1234".parse::<std::net::Ipv6Addr>().unwrap();
+    let octets = ip.octets();
+    let rr = Rr {
+        owner: AT_QUESTION.to_vec(),
+        kind: 28,
+        ttl: 300,
+        data: &octets,
+    };
+    let reply = answer_with("IPv6.Example", (28, CLASS_IN), &[rr]);
+    let names = Names::new();
+    names.learn(&reply, &reply);
+    assert_eq!(names.len(), 0);
+}
+
+#[test]
 fn a_cname_chain_maps_to_the_question_name() {
     let names = Names::new();
     let edge = wire("ipv4-c001.1.oca.nflxvideo.net");

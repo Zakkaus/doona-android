@@ -122,6 +122,20 @@ class DoonaVpnServiceTest {
     }
 
     @Test
+    fun destroyingARunningServiceClearsLockdown() {
+        lateinit var engine: ServiceEngine
+        withService { service, _, runningEngine ->
+            engine = runningEngine
+            Shadow.extract<VpnPolicy>(service).lockdown = true
+            service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
+            engine.awaitSession { it.status is Status.Running }
+            shadowOf(Looper.getMainLooper()).idle()
+            assertTrue(engine.settings.value.lockdownEnabled)
+        }
+        assertFalse("Destroy must clear lockdown without a prior disconnect", engine.settings.value.lockdownEnabled)
+    }
+
+    @Test
     fun aBackgroundRestartDeniedForegroundPostsAnExplanationWithDropAlertsOff() = withService { service, app, engine ->
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         runBlocking { AppSettings.get(app).setNotifyOnDrop(false) }

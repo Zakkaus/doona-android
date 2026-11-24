@@ -116,6 +116,12 @@ interface Engine {
     /** Live TCP and UDP Score evidence, independent of the catalog revision; reading starts no trial. */
     suspend fun scoreState(): Result<ScoreState>
 
+    /** Reads the active geo generation and the last update result, even while disconnected. */
+    suspend fun configAssets(): Result<ConfigAssets>
+
+    /** Starts a geo update through the running VPN. A downloaded generation takes effect at the next start. */
+    suspend fun updateConfigAssets(): Result<ConfigAssets>
+
     /**
      * Stores [perApp] and applies it: a running tunnel is rebuilt, which drops open connections, and the call returns
      * once the rebuilt tunnel is up or failed. The policy is committed whatever the caller does meanwhile. Fails with

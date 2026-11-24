@@ -142,6 +142,18 @@ impl Names {
         lock(&self.0.lru).len()
     }
 
+    /// Diagnostics must not promote an address in the routing LRU.
+    pub(crate) fn peek(&self, ip: IpAddr) -> Option<Arc<str>> {
+        let IpAddr::V4(addr) = ip.to_canonical() else {
+            return None;
+        };
+        let now = sys::boot_ms();
+        lock(&self.0.lru)
+            .peek(&addr)
+            .filter(|e| e.until_ms > now)
+            .map(|e| Arc::clone(&e.name))
+    }
+
     /// Maps `ip` to `name` for an hour, as an answer would.
     #[cfg(test)]
     pub fn map(&self, ip: Ipv4Addr, name: &str) {
