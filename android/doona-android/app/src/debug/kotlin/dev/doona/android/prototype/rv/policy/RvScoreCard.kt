@@ -30,6 +30,8 @@ import dev.doona.android.prototype.rv.nodes.SEPARATOR
 internal fun RvScoreCard(label: String, network: ScoreNetwork, members: List<RvNode>) {
     val coverage = network.coverage
     RvCard {
+        // honk's `evaluated` are the members in its bounded comparison set and `pending` those of them still with an open
+        // question, so the difference is the comparisons finished: 已比較 n／m.
         RvCardHeader(label, tag = stringResource(R.string.rv_score_coverage, coverage.evaluated - coverage.pending, coverage.candidates))
         RvScoreChoiceRow(network, members, network.stateText(), latency = true)
         for (challenger in network.challengers) Challenger(challenger, members)
@@ -38,10 +40,11 @@ internal fun RvScoreCard(label: String, network: ScoreNetwork, members: List<RvN
 
 /**
  * The node a Score group chose on one network, badged, over [line]; with [latency], its last test at the end. A subgroup
- * or a tag honk cannot tie to one node shows its name only; with no eligible candidate the row says 沒有可用的節點.
+ * or a tag honk cannot tie to one node shows its name only; with no eligible candidate the row says 沒有可用的節點, over
+ * [line] only when it has one.
  */
 @Composable
-internal fun RvScoreChoiceRow(network: ScoreNetwork, members: List<RvNode>, line: String, latency: Boolean = false) {
+internal fun RvScoreChoiceRow(network: ScoreNetwork, members: List<RvNode>, line: String?, latency: Boolean = false) {
     val chosen = members.firstOrNull { it.id == network.selectedId }
     when {
         chosen != null -> RvRow(
@@ -52,15 +55,19 @@ internal fun RvScoreChoiceRow(network: ScoreNetwork, members: List<RvNode>, line
         )
 
         // A subgroup, or a tag honk cannot tie to one node: its name only.
-        network.selected != null -> RvRow({ RvIconDisc(R.drawable.rv_sym_account_tree) }, network.selected.orEmpty(), line)
+        network.selected != null -> RvRow({ RvIconDisc(R.drawable.rv_sym_account_tree) }, network.selected, line)
 
         else -> RvRow({ RvIconDisc(R.drawable.rv_sym_block) }, stringResource(R.string.rv_no_node), line)
     }
 }
 
-/** The state in words, then what it waits for when it waits. */
+/**
+ * The state in words, then what it waits for when it waits. Null with no eligible candidate: nothing is chosen and
+ * nothing is under way, so 評估中 would say what is not happening.
+ */
 @Composable
-internal fun ScoreNetwork.stateText(): String {
+internal fun ScoreNetwork.stateText(): String? {
+    if (selected == null && coverage.candidates == 0) return null
     val word = stringResource(if (state == OBSERVED_USABLE) R.string.rv_score_selected else R.string.rv_score_evaluating)
     val wait = when (waitReason) {
         "comparableTraffic" -> R.string.rv_score_wait_traffic

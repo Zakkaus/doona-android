@@ -88,8 +88,8 @@ class RvScoreGroupShotTest {
     fun chosenCardsSayStateCoverageAndRelations() {
         compose.rvContent(dark = false) { Chosen() }
         assertEquals(2, compose.onAllNodesWithText(SELECTED).fetchSemanticsNodes().size)
-        compose.onNodeWithText("已評估 4／6").assertExists()
-        compose.onNodeWithText("已評估 2／6").assertExists()
+        compose.onNodeWithText("已比較 4／6").assertExists()
+        compose.onNodeWithText("已比較 2／6").assertExists()
         compose.onNodeWithText(FASTER).assertExists()
         compose.onNodeWithText(SLOWER).assertExists()
         assertEquals(2, compose.onAllNodesWithText(SIMILAR).fetchSemanticsNodes().size)
@@ -104,8 +104,8 @@ class RvScoreGroupShotTest {
         compose.rvContent(dark = false) { Evaluating() }
         compose.onNodeWithText("評估中 · 測試中").assertExists()
         compose.onNodeWithText("評估中 · 等待可比較的流量").assertExists()
-        compose.onNodeWithText("已評估 1／6").assertExists()
-        compose.onNodeWithText("已評估 0／6").assertExists()
+        compose.onNodeWithText("已比較 1／6").assertExists()
+        compose.onNodeWithText("已比較 0／6").assertExists()
         // One node chosen on both networks.
         compose.onNodeWithText("TCP/UDP · ", substring = true).assertExists()
     }
@@ -115,7 +115,9 @@ class RvScoreGroupShotTest {
     fun emptyChoosesNothing() {
         compose.rvContent(dark = false) { Empty() }
         assertEquals(2, compose.onAllNodesWithText(NO_NODE).fetchSemanticsNodes().size)
-        assertEquals(2, compose.onAllNodesWithText("已評估 0／0").fetchSemanticsNodes().size)
+        // Nothing is chosen and nothing is under way: no state under it.
+        assertEquals(0, compose.onAllNodesWithText("評估中", substring = true).fetchSemanticsNodes().size)
+        assertEquals(2, compose.onAllNodesWithText("已比較 0／0").fetchSemanticsNodes().size)
         assertEquals(0, compose.onAllNodesWithText("TCP · ", substring = true).fetchSemanticsNodes().size)
     }
 
@@ -139,16 +141,16 @@ class RvScoreGroupShotTest {
         const val EVALUATING_NAME = "policy-group-score-evaluating"
         const val EMPTY_NAME = "policy-group-score-empty"
 
-        /** Windows as tall as each page whole, rounded up to a whole dp (measured: 1475.5, 1486, 2522; 1229.5, 1239, 2136.5; 1147.5, 1155, 1588.5). */
+        /** Windows as tall as each page whole, rounded up to a whole dp (measured: 1475.5, 1486, 2522; 1229.5, 1239, 2136.5; 1099.5, 1102, 1502.5). */
         const val CHOSEN = "+h1476dp"
         const val CHOSEN_FS115 = "+h1486dp"
         const val CHOSEN_FS200 = "+h2522dp"
         const val EVALUATING = "+h1230dp"
         const val EVALUATING_FS115 = "+h1239dp"
         const val EVALUATING_FS200 = "+h2137dp"
-        const val EMPTY = "+h1148dp"
-        const val EMPTY_FS115 = "+h1155dp"
-        const val EMPTY_FS200 = "+h1589dp"
+        const val EMPTY = "+h1100dp"
+        const val EMPTY_FS115 = "+h1102dp"
+        const val EMPTY_FS200 = "+h1503dp"
 
         const val SELECTED = "已選定"
         const val FASTER = "較快"

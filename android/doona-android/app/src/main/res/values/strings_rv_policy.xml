@@ -161,7 +161,7 @@
     <string name="rv_score_wait_budget">Waiting for test budget</string>
     <string name="rv_score_wait_testing">Testing</string>
     <string name="rv_score_wait_backoff">Retrying later</string>
-    <string name="rv_score_coverage">Evaluated %1$d/%2$d</string>
+    <string name="rv_score_coverage">Compared %1$d/%2$d</string>
     <string name="rv_score_faster">Faster</string>
     <string name="rv_score_similar">Similar</string>
     <string name="rv_score_slower">Slower</string>

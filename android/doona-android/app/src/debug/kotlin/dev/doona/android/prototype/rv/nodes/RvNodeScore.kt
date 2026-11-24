@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.prototype.rv.data.rvMedian
 import kotlin.math.roundToInt
 
 /**
@@ -48,8 +49,8 @@ internal fun compositeText(node: RvNode): String =
  * Null for a node none of whose tests answered: it has no score, not a score of 0.
  */
 internal fun RvNode.composite(): Int? {
-    val answeredMs = history.filterNotNull().sorted().takeIf { it.isNotEmpty() } ?: return null
-    val median = answeredMs[answeredMs.size / 2]
+    val answeredMs = history.filterNotNull()
+    val median = rvMedian(answeredMs) ?: return null
     val speed = ((SLOW_MS - median) / (SLOW_MS - FAST_MS) * FULL).coerceIn(0.0, FULL)
     val share = answeredMs.size.toDouble() / history.size
     val steady = share * (1 - (spreadMs ?: 0.0) / SPREAD_MS).coerceAtLeast(0.0) * FULL
