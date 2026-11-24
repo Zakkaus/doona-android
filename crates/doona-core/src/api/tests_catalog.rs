@@ -273,7 +273,7 @@ fn a_refresh_built_before_an_end_shares_no_runtime_with_it() {
     let ended = outbounds.registry().unwrap();
     let (built, routing) = {
         let c = lock(&core.shared.catalog);
-        let routing = c.model.routing(&c.state.selections, c.state.mode);
+        let routing = c.model.routing(&c.state);
         (outbounds.build(&c.model.nodes), routing)
     };
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);

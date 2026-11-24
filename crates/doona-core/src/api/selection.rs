@@ -1,7 +1,7 @@
 //! `select` and `testLatency`.
 
 use super::{Core, lock};
-use crate::dto::{ErrorCode, SelectArgs};
+use crate::dto::{ErrorCode, Network, SelectArgs};
 
 impl Core {
     /// Pins `memberId` in a group, or with `null` hands the group back to its own choice (an
@@ -16,14 +16,37 @@ impl Core {
             {
                 return Err(ErrorCode::NotFound);
             }
-            if c.state.selections.get(&args.group) == args.member_id.as_ref() {
+            let unchanged = match args.network {
+                Some(net) => c.state.pin(&args.group, net) == args.member_id.as_ref(),
+                None => {
+                    c.state.selections.get(&args.group) == args.member_id.as_ref()
+                        && !c.state.tcp_selections.contains_key(&args.group)
+                        && !c.state.udp_selections.contains_key(&args.group)
+                }
+            };
+            if unchanged {
                 return Ok(());
             }
             c.state.clone()
         };
+        let pins = if let Some(net) = args.network {
+            let (pins, other) = match net {
+                Network::Tcp => (&mut next.tcp_selections, &mut next.udp_selections),
+                Network::Udp => (&mut next.udp_selections, &mut next.tcp_selections),
+            };
+            // Split a shared pin so clearing one network never resurrects it.
+            if let Some(shared) = next.selections.remove(&args.group) {
+                other.entry(args.group.clone()).or_insert(shared);
+            }
+            pins
+        } else {
+            next.tcp_selections.remove(&args.group);
+            next.udp_selections.remove(&args.group);
+            &mut next.selections
+        };
         match args.member_id {
-            Some(member) => next.selections.insert(args.group, member),
-            None => next.selections.remove(&args.group),
+            Some(member) => pins.insert(args.group, member),
+            None => pins.remove(&args.group),
         };
         self.commit_state(next, "select", None)
     }

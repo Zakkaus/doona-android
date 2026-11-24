@@ -129,6 +129,12 @@ class CoreDtoTest {
     fun catalogMapsToEngineTypes() {
         val catalog = checkNotNull(CoreJson.snapshot(fixture("snapshot-stopped-catalog.json")).catalog)
         assertEquals(Mode.Global, catalog.mode)
+        val proxy = catalog.groups.first { it.id == "g-Proxy" }
+        assertEquals("g-Auto", proxy.tcpSelectedId)
+        assertEquals("n-0c41be77", proxy.udpSelectedId)
+        assertTrue(proxy.networksDiffer)
+        assertFalse(proxy.tcpPinned)
+        assertTrue(proxy.udpPinned)
         val groups = catalog.groups.map(GroupDto::toGroup)
         assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), groups.map { it.id })
         val auto = groups[1]
@@ -425,7 +431,7 @@ class CoreDtoTest {
 
     @Test
     fun selectArgsEncodeAsTheFixture() {
-        val encoded = CoreJson.encode(SelectArgs.serializer(), SelectArgs("g-Proxy", "n-0c41be77"))
+        val encoded = CoreJson.encode(SelectArgs.serializer(), SelectArgs("g-Proxy", "n-0c41be77", SelectionNetwork.Tcp))
         assertEquals(Json.parseToJsonElement(fixture("call-select-args.json")), Json.parseToJsonElement(encoded))
         val auto = CoreJson.encode(SelectArgs.serializer(), SelectArgs("g-Proxy", null))
         assertEquals("""{"group":"g-Proxy","memberId":null}""", auto)

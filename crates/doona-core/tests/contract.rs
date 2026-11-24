@@ -221,6 +221,8 @@ fn call_replies_and_args() {
     assert_eq!(mode.mode, Mode::Rule);
     let select = round_trip::<SelectArgs>("call-select-args.json");
     assert_eq!(select.member_id.as_deref(), Some("n-0c41be77"));
+    let udp = round_trip::<SelectArgs>("catalog/select-udp-args.json");
+    assert_eq!(udp.network, Some(doonacore::dto::Network::Udp));
 }
 
 #[test]

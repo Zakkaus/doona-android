@@ -474,7 +474,7 @@ impl Core {
         self.write(&next, command, deadline)?;
         {
             let mut c = lock(&self.shared.catalog);
-            c.model.update_pins(&c.state.selections, &next.selections);
+            c.model.update_pins(Some(&c.state), &next);
             c.state = next;
             c.revision += 1;
             self.mode.set(c.state.mode);

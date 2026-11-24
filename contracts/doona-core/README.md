@@ -14,6 +14,10 @@ The two `hk-01` nodes are distinct endpoints with the same display name, and the
 
 `catalog/member-locations.json` shows the location fields for a group, feed nodes and a static node. The stopped snapshot above remains a schema 3 example from before these optional fields.
 
+`select` without `network` sets or clears both pins and removes any separate choices for that group. Pass `"network":"tcp"` or `"network":"udp"` to change only that network. A null `memberId` restores the group's own choice on the affected networks. A node without UDP support does not gain a fallback.
+
+Each catalog group reports `tcpSelectedId` and `udpSelectedId`, its effective direct member IDs (null when no member is selected). `networksDiffer` compares those IDs, not the leaves of nested groups. It can be true when Score chooses different members automatically. `tcpPinned` and `udpPinned` tell whether the user pinned each network. The legacy `selectedId` and `pinned` describe TCP.
+
 `catalog/static-member.json` is the complete `g-Proxy` member from `snapshot(-1)` after adding `socks5://192.0.2.1:1080#example` to an empty core. Decode it as one member: `isGroup` is false and `subscriptionId` is explicitly null.
 
 The rule mode payloads are what the core produces for its template `cn-direct` version 2: the catalog's `mainGroupId` and `ruleSource`, the five rows of `rules` with their real ids and `rulesRevision`, `setRuleSource` and `setMode` arguments, and `effectiveConfig` over one subscription with two nodes (`hk-01`, `jp-01`), whose text names each node only by its code, `n-` and the first 8 hex digits of its id. Today's `byRule` in the usage reply uses the real ids of the `GEOIP,CN` and `MATCH` rows, so its bytes add up to the `direct` and `g-Proxy` outbounds. Regenerate the ids from the core's tests when the template changes; never write them by hand.
