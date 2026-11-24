@@ -1,12 +1,20 @@
 package dev.doona.android.prototype.rv.nodes
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import dev.doona.android.R
+import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvNodeSort
+import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvScrollBy
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.rvText
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -78,6 +86,16 @@ class RvNodeListShotTest {
     @Test
     fun edgesNameDark() = compose.rvShot("policy-picker-edges-name", dark = true) { Edges(RvNodeSort.Name) }
 
+    /** The order's chips sit one search gap under the page's search, as every list sits under its search (item 4). */
+    @Test
+    fun theOrderSitsASearchGapUnderTheSearch() {
+        compose.rvContent(dark = false) { Picker(RvNodeSort.Latency) }
+        val search = compose.onNodeWithText(rvText(R.string.rv_search_nodes)).fetchSemanticsNode()
+        val chip = compose.onNode(hasText(rvText(R.string.rv_nodes_sort_latency)) and isSelectable()).fetchSemanticsNode()
+        val gap = (chip.boundsInRoot.top - search.boundsInRoot.bottom) / search.layoutInfo.density.density
+        assertEquals("search → order chips, dp", RvSpace.searchGap.value, gap, DP)
+    }
+
     /** One subscription of six sample nodes: four answered, one timed out, one never tested, and a long name. */
     @Composable
     private fun Edges(sort: RvNodeSort) {
@@ -104,5 +122,6 @@ class RvNodeListShotTest {
         val EDGE_NODES = listOf("us-05", "nl-01", "tw-04", RvData.CURRENT_ID, "hk-01", "jp-01")
         const val UNTESTED = "nl-01"
         const val LONG_NAME = "Hong Kong 02 IPLC Premium Dedicated Business Line"
+        const val DP = 0.5f
     }
 }

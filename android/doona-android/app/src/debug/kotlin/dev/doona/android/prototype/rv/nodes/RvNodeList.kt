@@ -2,7 +2,6 @@ package dev.doona.android.prototype.rv.nodes
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -65,16 +64,20 @@ import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
- * The node list's control row: the search pill (the sample does not type into it) when [search], then the order as a row
- * of Revolut's range chips, every key in view and the active one raised. Chips rather than a filter chip and its menu: a
+ * The node list's control row: the search pill (the sample does not type into it) when [search], [RvSpace.searchGap]
+ * over the order as a row of Revolut's range chips, every key in view and the active one raised. Chips rather than a filter chip and its menu: a
  * filter chip's chevron promises a menu, which this library does not have, and four short keys fit on one row, so the
  * choice and the active key are one tap and one glance. A page whose bar already searches the nodes (策略's 全域) leaves
  * the pill out: one search per page (rule 9); the main node's pushed page has none in its bar, so its list keeps it.
  */
 @Composable
 internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, search: Boolean = true) {
-    Column(verticalArrangement = Arrangement.spacedBy(RvSpace.controlStack)) {
-        if (search) RvSearchPill(NOT_WIRED, Modifier.fillMaxWidth())
+    Column {
+        if (search) {
+            RvSearchPill(NOT_WIRED, Modifier.fillMaxWidth())
+            // What it searches starts one search gap under it, as under every search (RvSearchSlot); here, the order.
+            Spacer(Modifier.height(RvSpace.searchGap))
+        }
         // The control row's gap below measures from the selected chip's shadow, the edge the eye sees.
         val sorts = RvNodeSort.entries
         RvRangeRow(sorts.map { stringResource(it.label) }, sorts.indexOf(sort), { onSort(sorts[it]) }, Modifier.padding(bottom = rvRaisedReach))

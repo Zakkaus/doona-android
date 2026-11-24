@@ -111,7 +111,7 @@ private fun Modifier.rvClick(indication: Indication, role: Role, onClick: () -> 
  * so a frame lays nothing out and allocates nothing. Rows and pills keep [rvPressIndication].
  */
 @Composable
-internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit): Modifier {
+internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit, enabled: Boolean = true): Modifier {
     val motion = Rv.motion
     val lit = Rv.colors.discLit
     val source = remember { MutableInteractionSource() }
@@ -124,7 +124,7 @@ internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit): Modifier
     }.then(fill)
         .drawBehind { if (press.value > 0f) drawCircle(lit, alpha = press.value) }
         .clip(CircleShape)
-        .clickable(source, indication = null, role = Role.Button, onClick = onClick)
+        .clickable(source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
 }
 
 @Composable
@@ -191,8 +191,9 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
 /**
  * A round action: a disc with a glyph and its label under it on one line, in [labelStyle], the size its row gives every
  * label ([rvActionRowFit]), and still shrinking to fit its column alone when it has no row; the line keeps its full
- * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy];
- * that swap and a new [label] fade through ([RvFadeThrough]).
+ * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]), and none while not [enabled]. [busy]
+ * swaps the glyph for [RvBusy]; that swap and a new [label] fade through ([RvFadeThrough]). A screen reader hears only
+ * the current [label], the one the click acts on: the word fading out is drawn, not read.
  */
 @Composable
 internal fun RvAction(
@@ -202,9 +203,10 @@ internal fun RvAction(
     modifier: Modifier = Modifier,
     busy: Boolean = false,
     labelStyle: TextStyle = Rv.type.action,
+    enabled: Boolean = true,
 ) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
+        Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick, enabled), contentAlignment = Alignment.Center) {
             // While [busy] (connecting) the disc shows a busy bar instead of its glyph, the one fading through the other.
             RvFadeThrough(busy, "busy") { working ->
                 if (working) RvBusy(Modifier.width(RvSize.busy)) else RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)
@@ -214,6 +216,7 @@ internal fun RvAction(
         // A new word fades through the old one, with the glyph when both change at once.
         RvFadeThrough(label, "label", alignment = Alignment.TopCenter) { word ->
             val line = Modifier.padding(horizontal = RvSpace.actionLabelInset).rvFullLine(word, Rv.type.action)
+                .then(if (word == label) Modifier else Modifier.clearAndSetSemantics {})
             RvText(word, labelStyle, line, align = TextAlign.Center, autoSize = rvShrinkToFit(labelStyle))
         }
     }
@@ -273,6 +276,9 @@ internal object RvPart {
     /** A composite block of the page's column (a pager of tiles, a card and the message under it), measured as one card. */
     const val BLOCK = "rv-block"
     const val ROW = "rv-row"
+
+    /** A busy bar standing in for a row's end while a test runs. */
+    const val BUSY = "rv-busy"
     const val SEGMENTED = "rv-segmented"
 }
 

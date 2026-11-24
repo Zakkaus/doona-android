@@ -3,11 +3,7 @@ package dev.doona.android.prototype.rv
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -28,8 +24,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,12 +37,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onPlaced
@@ -80,6 +81,9 @@ internal object RvSkeletonSize {
     const val HEADER = 0.3f
     const val SEE_ALL = 0.4f
     const val CAPTION = 0.72f
+
+    /** A range chip's label: an order's name is two letters in Han (延遲, 名稱). */
+    const val CHIP_LETTERS = 2
 
     /** A goal's used amount at the start and its end date at the end of the line over its bar. */
     const val GOAL_USED = 0.42f
@@ -123,8 +127,9 @@ internal val LocalRvShimmerAt = staticCompositionLocalOf<Float?> { null }
 /**
  * Shows [skeleton] while [loading], then [content] in its place: the content fades in as the skeleton fades out, over
  * [RvMotion.HERO_FADE_MS] (Revolut's grey placeholder turning into the hero art, revolut-UX §11), both at [alignment] in
- * the room the larger takes, so nothing under them moves while they cross. At animator scale 0 at once. A place that
- * has not waited yet draws its content alone, with no fade's layer round it, so a page that never loads draws as before.
+ * the room the larger takes, so nothing under them moves while they cross; the skeleton's parts share one shimmer pass
+ * ([RvShimmerPass]). At animator scale 0 at once. A place that has not waited yet draws its content alone, with no
+ * fade's layer round it, so a page that never loads draws as before.
  */
 @Composable
 internal fun RvSkeletonFade(
@@ -138,7 +143,7 @@ internal fun RvSkeletonFade(
     var waited by remember { mutableStateOf(loading) }
     if (loading && !waited) SideEffect { waited = true }
     if (!waited) {
-        Box(modifier, contentAlignment = alignment) { if (loading) skeleton() else content() }
+        Box(modifier, contentAlignment = alignment) { if (loading) RvShimmerPass(skeleton) else content() }
         return
     }
     AnimatedContent(
@@ -150,7 +155,7 @@ internal fun RvSkeletonFade(
         },
         contentAlignment = alignment,
         label = "skeleton",
-    ) { if (it) skeleton() else content() }
+    ) { if (it) RvShimmerPass(skeleton) else content() }
 }
 
 /** [RvSkeletonFade] for a run of cards, [RvSpace.cardGap] apart, as in a [RvGutter]. */
@@ -228,6 +233,21 @@ internal fun RvSkeletonControlCard() {
             Spacer(Modifier.height(RvSpace.controlToCaption))
             RvSkeletonLine(Rv.type.rowSub, RvSkeletonSize.CAPTION)
         }
+    }
+}
+
+/**
+ * [RvRangeRow]'s skeleton, [count] chips [RvChartSize.rangeGap] apart under one shimmer: each a pill of the chip's height
+ * at this font size, as wide as a label of [RvSkeletonSize.CHIP_LETTERS] letters and its pads.
+ */
+@Composable
+internal fun RvSkeletonChips(count: Int, modifier: Modifier = Modifier) {
+    val style = Rv.type.action
+    val (letter, line) = with(LocalDensity.current) { style.fontSize.toDp() to style.lineHeight.toDp() }
+    val width = letter * RvSkeletonSize.CHIP_LETTERS + RvChartSize.rangePad * 2
+    val height = maxOf(RvChartSize.range, line + RvChartSize.rangeInset * 2)
+    Row(modifier.rvShimmer(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
+        repeat(count) { RvSkeletonBlock(height, Modifier.width(width), CircleShape) }
     }
 }
 
@@ -316,15 +336,17 @@ private fun Bar(style: TextStyle, modifier: Modifier) {
 /**
  * Revolut's light shimmer over a skeleton's parts: a soft band crosses the page from start to end once each
  * [RvMotion.BUSY_MS], fading what it passes toward the surface under it by [RvAlpha.SHIMMER] at its middle. The band is
- * placed on the page, not on each part, so the hero's and every card's parts shimmer as one light. At animator scale 0
- * the skeleton stands still; [LocalRvShimmerAt] holds the band where it says. Draw-phase only: a frame of it redraws
- * this layer alone.
+ * placed on the page, not on each part, and every part reads one pass ([LocalRvSweep], else the frame clock's own), so the
+ * hero's and every card's parts shimmer as one light. At animator scale 0 the skeleton stands still; [LocalRvShimmerAt]
+ * holds the band where it says. Draw-phase only: the band's gradient is made once for the page's width, and a frame
+ * moves it and redraws this layer alone, allocating nothing.
  */
 @Composable
 internal fun Modifier.rvShimmer(): Modifier {
     val still = LocalRvShimmerAt.current
     if (still == null && Rv.motion.instant) return this
-    val sweep = still?.let { at -> { at } } ?: rvSweep()
+    val shared = LocalRvSweep.current
+    val sweep = still?.let { at -> { at } } ?: shared ?: rvSweep()
     // Where this layer starts on the page, and the page's width, in px.
     val page = remember { FloatArray(2) }
     return onPlaced {
@@ -333,26 +355,46 @@ internal fun Modifier.rvShimmer(): Modifier {
     }
         .preferredFrameRate(FrameRateCategory.Normal)
         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithContent {
-            drawContent()
+        .drawWithCache {
             val band = page[1] * RvSkeletonSize.BAND
-            val start = -band + sweep() * (page[1] + band) - page[0]
             // Only the mask's alpha counts: it takes that much of the parts away where the band is.
-            val mask = listOf(Color.Transparent, Color.Black.copy(alpha = RvAlpha.SHIMMER), Color.Transparent)
-            drawRect(Brush.horizontalGradient(mask, startX = start, endX = start + band), blendMode = BlendMode.DstOut)
+            val mask = Brush.horizontalGradient(SHIMMER_MASK, startX = 0f, endX = band)
+            onDrawWithContent {
+                drawContent()
+                val start = -band + sweep() * (page[1] + band) - page[0]
+                translate(left = start) { drawRect(mask, Offset(-start, 0f), size, blendMode = BlendMode.DstOut) }
+            }
         }
 }
 
-/** The shimmer's pass, 0 to 1 across the page, once each [RvMotion.BUSY_MS], read where it is drawn. */
+/**
+ * The pass every shimmer under it reads, so a page's parts share one ([RvShimmerPass]); null where none is set, and each
+ * part then reads the frame clock itself, which still keeps them in step.
+ */
+private val LocalRvSweep = staticCompositionLocalOf<(() -> Float)?> { null }
+
+/** One shimmer pass for [content]'s skeleton parts, unless it stands still or a pass is already set above it. */
+@Composable
+private fun RvShimmerPass(content: @Composable () -> Unit) {
+    if (LocalRvShimmerAt.current != null || Rv.motion.instant || LocalRvSweep.current != null) {
+        content()
+    } else {
+        CompositionLocalProvider(LocalRvSweep provides rvSweep(), content = content)
+    }
+}
+
+/**
+ * The shimmer's pass, 0 to 1 across the page, once each [RvMotion.BUSY_MS], read where it is drawn. It is the frame
+ * clock's time in the pass, so every pass on the screen, wherever it started, is at the same point.
+ */
 @Composable
 private fun rvSweep(): () -> Float {
-    val sweep = rememberInfiniteTransition(label = "shimmer").animateFloat(
-        0f,
-        1f,
-        infiniteRepeatable(tween(RvMotion.BUSY_MS, easing = RvMotion.Standard), RepeatMode.Restart),
-        label = "sweep",
-    )
-    return { sweep.value }
+    val now = remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) { while (true) withInfiniteAnimationFrameMillis { now.longValue = it } }
+    return remember { { RvMotion.Standard.transform((now.longValue % RvMotion.BUSY_MS).toFloat() / RvMotion.BUSY_MS) } }
 }
+
+/** The band's mask: clear at its edges, [RvAlpha.SHIMMER] at its middle. */
+private val SHIMMER_MASK = listOf(Color.Transparent, Color.Black.copy(alpha = RvAlpha.SHIMMER), Color.Transparent)
 
 private const val TILES = 2

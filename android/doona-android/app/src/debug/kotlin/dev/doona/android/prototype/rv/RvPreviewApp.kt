@@ -57,6 +57,7 @@ import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.previewDark
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
+import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.states.RvActivityNotice
@@ -235,19 +236,24 @@ private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions,
     }
 }
 
-/** 設定: its always-on row opens the system's VPN settings, and DNS and 檢視生效設定 push their pages. */
+/**
+ * 設定: its always-on row opens the system's VPN settings, 加到快速設定 adds the app's real tile ([rvQuickTile]), and
+ * DNS and 檢視生效設定 push their pages.
+ */
 @Composable
 private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit, pages: RvSamplePages) {
     val context = LocalContext.current
+    val tile = rvQuickTile(settings, onSettings)
     val routes = RvSettingsRoutes(
         alwaysOn = { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
+        addTile = tile.add,
         perApp = { pages.push(PERAPP) },
         dns = { pages.push(DNS) },
         effectiveConfig = { pages.push(RvPolicyPreviewRoutes.EFFECTIVE) },
         report = { pages.push(REPORT) },
         licenses = { pages.push(LICENSES) },
     )
-    RvSettingsScreen(settings, onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes)
+    RvSettingsScreen(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes)
 }
 
 /** 設定's 依 App, and 授權條款 with each licence's text (`license:<n>`). */

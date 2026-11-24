@@ -7,10 +7,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -54,6 +57,7 @@ class RvActivityDisconnectTest {
     private var state by mutableStateOf(rvSampleActivity())
     private var fair = Color.Unspecified
     private var dots = Color.Unspecified
+    private var disconnects = 0
 
     @After
     fun restoreScale() = rvAnimatorScale(1f)
@@ -100,6 +104,38 @@ class RvActivityDisconnectTest {
         compose.onNode(connect()).assertExists()
     }
 
+    /** While a disconnect is under way 中斷連線 takes no tap: a second one would only start it again. */
+    @Test
+    fun aDisconnectUnderWayTakesNoTap() {
+        rvAnimatorScale(0f)
+        state = state.copy(status = Status.Stopping)
+        show()
+        val action = compose.onNodeWithText(rvText(R.string.rv_disconnect))
+        // The disc is the action's button, a node of its own under the label's.
+        action.onChild().assertIsNotEnabled()
+        action.performTouchInput { click(Offset(centerX, RvSize.actionDisc.toPx() / 2)) }
+        compose.waitForIdle()
+        assertEquals("disconnects sent while one is under way", 0, disconnects)
+    }
+
+    /**
+     * When the disconnect ends, the action's name is the word its tap now acts on from the first frame, while the old word
+     * is still fading out: a screen reader hears 連線, not both words.
+     */
+    @Test
+    fun theNameTurnsWithTheAction() {
+        show()
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { state = state.copy(status = Status.Stopping) }
+        compose.mainClock.advanceTimeBy(STOP_AT)
+        compose.runOnIdle { state = state.copy(status = Status.Stopped) }
+        // Two frames into the fade through, the old word still drawn.
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeByFrame()
+        compose.onAllNodes(hasText(rvText(R.string.rv_disconnect))).assertCountIs(0, "中斷連線 is not read once the tap connects")
+        compose.onNode(connect()).assertExists()
+    }
+
     private fun busyMapIsFair(status: Status) {
         rvAnimatorScale(0f)
         state = state.copy(status = status)
@@ -112,7 +148,12 @@ class RvActivityDisconnectTest {
         compose.rvContent(dark) {
             fair = Rv.colors.fair
             dots = Rv.colors.dots
-            val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) state = state.copy(status = Status.Stopping) }
+            val onAction: (ActivityAction) -> Unit = {
+                if (it == ActivityAction.Disconnect) {
+                    disconnects++
+                    state = state.copy(status = Status.Stopping)
+                }
+            }
             RvActivityScreen(state, onAction, onConnect = {})
         }
         compose.waitForIdle()

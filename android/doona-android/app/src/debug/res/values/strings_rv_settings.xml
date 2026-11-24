@@ -43,6 +43,9 @@
     <string name="rv_settings_preview">Preview</string>
     <string name="rv_settings_always_on">Always-on VPN</string>
     <string name="rv_settings_always_on_sub">System VPN settings</string>
+    <string name="rv_settings_quick_tile">Add to Quick Settings</string>
+    <string name="rv_settings_quick_tile_sub">Connect or disconnect without opening the app</string>
+    <string name="rv_settings_quick_tile_manual">Swipe down twice from the top of the screen, tap the pencil, then drag the doona tile up.</string>
     <string name="rv_settings_dns_cloudflare" translatable="false">Cloudflare</string>
     <string name="rv_settings_dns_google" translatable="false">Google</string>
     <string name="rv_settings_dns_quad9" translatable="false">Quad9</string>

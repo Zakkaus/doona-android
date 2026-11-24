@@ -18,7 +18,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
@@ -87,7 +89,7 @@ internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean 
     }
     Crossfade(if (waiting) null else Triple(latencyMs, changeMs, timedOut), animationSpec = motion.tween(RvMotion.FADE_MS), label = "latency") { shown ->
         if (shown == null) {
-            InRoomOf({ LatencyOverChange(latencyMs, changeMs, timedOut) }) { RvBusy(Modifier.width(RvSize.busy)) }
+            InRoomOf({ LatencyOverChange(latencyMs, changeMs, timedOut) }) { RvBusy(Modifier.width(RvSize.busy).testTag(RvPart.BUSY)) }
         } else {
             LatencyOverChange(shown.first, shown.second, shown.third)
         }
@@ -96,11 +98,14 @@ internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean 
 
 /**
  * [busy] at the end of the room [room] would take, [room] itself neither drawn nor read out: a row's text keeps its
- * width and its lines while the bar stands in. The room is an even number of pixels tall, so the bar centred in it lands
- * on the pixel row it held when it was centred on the row alone (both halves round alike).
+ * width and its lines while the bar stands in. The bar is centred in the room; where the row's end went under its text
+ * ([LocalRvEndSide]) it is centred on the room's first line ([RvEndFirstLine]), where the figure stands at rest. The room
+ * is an even number of pixels tall, so the bar centred in it lands on the pixel row it held when it was centred on the
+ * row alone (both halves round alike). Where the bar starts is [RvEndInk].
  */
 @Composable
 private fun InRoomOf(room: @Composable () -> Unit, busy: @Composable () -> Unit) {
+    val side = LocalRvEndSide.current
     Layout({
         Box(Modifier.clearAndSetSemantics {}) { room() }
         busy()
@@ -109,15 +114,19 @@ private fun InRoomOf(room: @Composable () -> Unit, busy: @Composable () -> Unit)
         val bar = busyPart.measure(constraints)
         val width = max(held.width, bar.width)
         val height = max(held.height, bar.height).let { it + it % 2 }
-        layout(width, height) { bar.place(width - bar.width, (height - bar.height) / 2) }
+        val line = held[RvEndFirstLine].takeUnless { it == AlignmentLine.Unspecified } ?: height
+        layout(width, height, mapOf(RvEndFirstLine to line, RvEndInk to width - bar.width)) {
+            val middle = if (side?.under == true) line else height
+            bar.place(width - bar.width, (middle - bar.height) / 2)
+        }
     }
 }
 
-/** [RvLatencyText] over the change ([RvDelta]) when there is one, both at the end. */
+/** [RvLatencyText] over the change ([RvDelta]) when there is one, both at the end; the figure is the first line. */
 @Composable
 private fun LatencyOverChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean) {
     Column(horizontalAlignment = Alignment.End) {
-        RvLatencyText(latencyMs, timedOut)
+        Box(Modifier.rvEndFirstLine()) { RvLatencyText(latencyMs, timedOut) }
         changeMs?.let { RvDelta(it) }
     }
 }

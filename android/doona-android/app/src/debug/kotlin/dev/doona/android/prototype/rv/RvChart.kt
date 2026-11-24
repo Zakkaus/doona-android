@@ -531,10 +531,10 @@ private const val DOT_LENGTH = 0.01f
 internal fun rvLatencyAxisTop(slowest: Int): Int = ceil(maxOf(slowest, 1) * LATENCY_HEADROOM / LATENCY_STEP).toInt() * LATENCY_STEP
 
 /**
- * The axis for a chart of one test, which then sits on its middle line, or as near it as whole 100 ms allow: the whole
- * 100 ms nearest twice [value], never under [rvLatencyAxisTop] (92 → 200 ms, the dot just under 100; 50 → 100 ms).
+ * The axis for a chart of one test, which then sits on its middle line: twice [value], so the middle label is the test's
+ * own figure (92 → 184 ms; 20 → 40 ms). A test that timed out ([value] 0) keeps [rvLatencyAxisTop]'s.
  */
-internal fun rvLatencyAxisMiddle(value: Int): Int = maxOf(rvLatencyAxisTop(value), (2f * value / LATENCY_STEP).roundToInt() * LATENCY_STEP)
+internal fun rvLatencyAxisMiddle(value: Int): Int = if (value > 0) 2 * value else rvLatencyAxisTop(value)
 
 private const val LATENCY_HEADROOM = 1.05f
 private const val LATENCY_STEP = 100

@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv.policy
 import android.content.res.Configuration
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -28,6 +29,7 @@ import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RV_NAV_POLICY
 import dev.doona.android.prototype.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.prototype.rv.Rv
+import dev.doona.android.prototype.rv.RvBannerSlot
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvChevron
@@ -48,8 +50,9 @@ import dev.doona.android.prototype.rv.RvSeeAll
 import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSkeletonCard
-import dev.doona.android.prototype.rv.RvSkeletonCards
+import dev.doona.android.prototype.rv.RvSkeletonChips
 import dev.doona.android.prototype.rv.RvSkeletonControlCard
+import dev.doona.android.prototype.rv.RvSkeletonFade
 import dev.doona.android.prototype.rv.RvSkeletonHeader
 import dev.doona.android.prototype.rv.RvSkeletonRow
 import dev.doona.android.prototype.rv.RvSpace
@@ -58,6 +61,7 @@ import dev.doona.android.prototype.rv.RvTabHeader
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.data.rvNodeGroups
 import dev.doona.android.prototype.rv.nodes.RvNodeGroups
@@ -66,6 +70,7 @@ import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.nodes.latencyColor
 import dev.doona.android.prototype.rv.nodes.latencyText
 import dev.doona.android.prototype.rv.rvNavClearance
+import dev.doona.android.prototype.rv.rvRaisedReach
 import dev.doona.android.prototype.rv.rvRowPress
 import dev.doona.android.prototype.rv.rvSystemScheme
 
@@ -96,9 +101,9 @@ internal class RvPolicyRoutes(
  * With no subscription there is nothing to route: [noSubscription], when set, puts the empty state with 新增訂閱 (which
  * runs it) in place of the cards, as 活動 does; the bar and the nav stay. [configRev] is a preview flag (PV-f): set, 設定檔
  * joins the card under 範本 with the applied revision and opens the configuration's overview ([RvPolicyRoutes.config]).
- * While [loading] (before the engine is ready) the cards are skeletons of the mode card, the main node's and the groups'
- * ([PolicySkeleton]), and the cards fade in over them in place. A [banner] (a failed action: a mode switch) heads the
- * cards in [RvGutter]'s slot.
+ * While [loading] (before the engine is ready) the page is a skeleton of what its mode lays out ([PolicySkeleton]), and
+ * the content fades in over it in place. A [banner] (a failed action: a mode switch) heads the cards in [RvBannerSlot],
+ * outside the fade.
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -129,28 +134,19 @@ internal fun RvPolicyScreen(
         },
     ) {
         RvTabHeader(insets)
-        // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
-        RvGutter(banner = banner) {
-            if (noSubscription != null) {
+        if (noSubscription != null) {
+            RvGutter(banner = banner) {
                 RvEmptyState(
                     stringResource(R.string.rv_empty_subscription),
                     stringResource(R.string.rv_empty_subscription_line),
                     stringResource(R.string.rv_add_subscription),
                     noSubscription,
                 )
-            } else {
-                RvSkeletonCards(loading, { PolicySkeleton() }) {
-                    ModeCard(state.mode) { onChange(state.copy(mode = it)) }
-                    if (state.mode == RvRouteMode.Rule) {
-                        MainCard(state.group(RvPolicyData.main), routes.mainNode)
-                        GroupsCard(state, routes.group)
-                        RulesCard(routes.rules)
-                        OptionsCard(state, onChange, routes, configRev)
-                    }
-                }
             }
+        } else {
+            RvBannerSlot(banner)
+            RvSkeletonFade(loading, { Column { PolicySkeleton(state.mode) } }) { Column { PolicyContent(state, onChange, routes, configRev) } }
         }
-        if (noSubscription == null && !loading && state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
         // The last card clears the floating nav, as on 設定.
         Spacer(Modifier.height(rvNavClearance(insets)))
     }
@@ -167,17 +163,49 @@ private fun ModeCard(mode: RvRouteMode, onMode: (RvRouteMode) -> Unit) {
     }
 }
 
-/** 策略's cards while it loads: the mode card, the main node's card and the groups' first rows. */
+/**
+ * The page under the bar as [RvPolicyState.mode] lays it out. 全域 sends everything through the main node: no group or rule
+ * applies, so the node picker follows the mode card. 直連 uses no node: the mode card alone.
+ */
 @Composable
-private fun PolicySkeleton() {
-    RvSkeletonControlCard()
-    RvSkeletonCard {
-        RvSkeletonHeader()
-        RvSkeletonRow(0, end = true)
+private fun PolicyContent(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Int?) {
+    RvGutter {
+        ModeCard(state.mode) { onChange(state.copy(mode = it)) }
+        if (state.mode == RvRouteMode.Rule) {
+            MainCard(state.group(RvPolicyData.main), routes.mainNode)
+            GroupsCard(state, routes.group)
+            RulesCard(routes.rules)
+            OptionsCard(state, onChange, routes, configRev)
+        }
     }
-    RvSkeletonCard {
-        RvSkeletonHeader()
-        repeat(SKELETON_GROUPS) { RvSkeletonRow(it + 1, end = true) }
+    if (state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
+}
+
+/**
+ * [PolicyContent]'s skeleton in [mode]'s layout, each part where its content lands: the mode card; under 規則 the main
+ * node's card and the groups' first rows; under 全域 the order chips and a subscription's card of nodes; under 直連 nothing
+ * more.
+ */
+@Composable
+private fun PolicySkeleton(mode: RvRouteMode) {
+    RvGutter {
+        RvSkeletonControlCard()
+        if (mode == RvRouteMode.Rule) {
+            RvSkeletonCard {
+                RvSkeletonHeader()
+                RvSkeletonRow(0, end = true)
+            }
+            RvSkeletonCard {
+                RvSkeletonHeader()
+                repeat(SKELETON_GROUPS) { RvSkeletonRow(it + 1, end = true) }
+            }
+        }
+    }
+    if (mode == RvRouteMode.Global) {
+        RvControlRow({ RvSkeletonChips(RvNodeSort.entries.size, Modifier.padding(bottom = rvRaisedReach)) }, RvSpace.tabBlockGap)
+        RvGutter {
+            RvSkeletonCard { repeat(SKELETON_GROUPS + 1) { RvSkeletonRow(it, end = true) } }
+        }
     }
 }
 
