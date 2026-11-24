@@ -10,22 +10,36 @@ import android.service.quicksettings.TileService
 import dev.doona.android.R
 import dev.doona.android.app.DoonaApplication
 import dev.doona.android.app.MainActivity
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
+import dev.doona.android.feature.leafOf
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-/** The quick settings tile: shows the status; a tap connects or disconnects. */
+/** Shows the current node or VPN status in Quick Settings; a tap connects or disconnects. */
 class ToggleTileService : TileService() {
     private val engine: Engine get() = (application as DoonaApplication).container.engine
     private val scope = MainScope()
     private var listening: Job? = null
 
     override fun onStartListening() {
-        listening = scope.launch { engine.status.collect(::render) }
+        listening = scope.launch {
+            val engine = engine
+            engine.status.collectLatest { status ->
+                if (status is Status.Running) {
+                    engine.catalog.map { it?.selectedNodeName() }.distinctUntilChanged().collect { render(status, it) }
+                } else {
+                    render(status, null)
+                }
+            }
+        }
     }
 
     override fun onStopListening() {
@@ -72,10 +86,16 @@ class ToggleTileService : TileService() {
         }
     }
 
-    private fun render(status: Status) {
+    private fun Catalog.selectedNodeName(): String? {
+        val group = groups.firstOrNull { it.id == mainGroupId } ?: return null
+        val selected = group.members.firstOrNull { it.id == group.selectedId } ?: return null
+        return if (selected.isGroup) leafOf(selected, groups.associateBy { it.id })?.name else selected.name
+    }
+
+    private fun render(status: Status, nodeName: String?) {
         val tile = qsTile ?: return
         tile.state = if (status.active) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-        tile.subtitle = getString(
+        tile.subtitle = nodeName ?: getString(
             when (status) {
                 Status.Starting -> R.string.vpn_status_starting
                 is Status.Running -> R.string.vpn_status_running
