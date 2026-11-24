@@ -196,8 +196,17 @@ private fun JsonObjectBuilder.group(at: Int, group: Group, index: Map<String, In
     put("nodes", group.members.count { !it.isGroup })
     put("pinned", group.pinned)
     put("testing", group.testing)
-    val selected = group.members.firstOrNull { it.id == group.selectedId }
-    put("selected", selected?.let { if (it.isGroup) index[it.id]?.let { i -> "group:$i" } else nodeCode(it.id) })
+    val tcpSelected = group.selectedCode(group.tcp.selectedId, index)
+    put("selected", tcpSelected)
+    put("tcpSelected", tcpSelected)
+    put("tcpPinned", group.tcp.pinned)
+    put("udpSelected", group.selectedCode(group.udp.selectedId, index))
+    put("udpPinned", group.udp.pinned)
+}
+
+private fun Group.selectedCode(selectedId: String?, index: Map<String, Int>): String? {
+    val selected = members.firstOrNull { it.id == selectedId } ?: return null
+    return if (selected.isGroup) index[selected.id]?.let { "group:$it" } else nodeCode(selected.id)
 }
 
 private fun JsonObjectBuilder.nodes(nodes: List<Member>, endpoints: Map<String, NodeInfo>, scrubber: ReportScrubber) {

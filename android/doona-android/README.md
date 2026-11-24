@@ -53,6 +53,8 @@ The app keeps 200 recent events, including command, phase, outcome and code for 
 and report exports. A JVM crash file preserves up to 50 recent allowlisted action entries within
 the 64 KiB file limit.
 
+The ZIP records each group's TCP and UDP choices and pins using scrubbed node and group identifiers.
+
 The ZIP omits node endpoints and local IP addresses by default. With either option enabled, it
 reads endpoints only for listed nodes or IPs from Android's active link. For structured event
 records, the ZIP and GitHub draft omit visited domains by default and include app package names

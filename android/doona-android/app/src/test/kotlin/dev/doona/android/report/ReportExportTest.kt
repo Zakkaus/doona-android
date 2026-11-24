@@ -5,6 +5,7 @@ import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.LogLevel
+import dev.doona.android.engine.Network
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,6 +19,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -60,6 +62,26 @@ class ReportExportTest : ExportFixture() {
         assertEquals(2, report["events"]!!.jsonArray.size)
         assertEquals("Pixel 9", report["device"]!!.jsonObject["model"]!!.jsonPrimitive.content)
         assertTrue(report["diagnostics"] is JsonObject)
+    }
+
+    @Test
+    fun exportsSplitGroupSelectionsWithoutRawIds() = runTest {
+        val engine = fixtureEngine()
+        val proxy = engine.groups.value.first()
+        val udpId = "n-9f8e7d6c5b4a3921"
+        engine.select(proxy.id, udpId, Network.Udp).getOrThrow()
+
+        val json = entries(export(engine).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
+        val catalog = Json.parseToJsonElement(json).jsonObject.getValue("settings").jsonObject.getValue("catalog").jsonObject
+        val group = catalog.getValue("groups").jsonArray.first().jsonObject
+        assertEquals("group:1", group.getValue("selected").jsonPrimitive.content)
+        assertFalse(group.getValue("pinned").jsonPrimitive.boolean)
+        assertEquals("group:1", group.getValue("tcpSelected").jsonPrimitive.content)
+        assertFalse(group.getValue("tcpPinned").jsonPrimitive.boolean)
+        assertEquals("n-9f8e7d6c", group.getValue("udpSelected").jsonPrimitive.content)
+        assertTrue(group.getValue("udpPinned").jsonPrimitive.boolean)
+        assertFalse("g-Auto" in json)
+        assertFalse(udpId in json)
     }
 
     @Test
