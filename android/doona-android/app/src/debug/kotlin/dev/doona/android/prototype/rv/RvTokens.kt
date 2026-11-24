@@ -143,13 +143,11 @@ internal object RvSize {
 
     /**
      * The corner scale (revolut-ux3 §2), the only radii of the sample: every card, popup, tile and banner takes
-     * [cardRadius]; a highlight inside a card [highlightRadius]; buttons, pills, chips, discs and the capsule are fully
-     * round; a sheet takes [RvSheetSize.radius]. A small mark (a legend's square) has none.
+     * [cardRadius]; a highlight or a picture inside a card [Rv.highlightRadius], the card's corner less Revolut's 4 dp
+     * inset; buttons, pills, chips, discs and the capsule are fully round; a sheet takes [RvSheetSize.radius]. A small
+     * mark (a legend's square) has none.
      */
     val cardRadius = 20.dp
-
-    /** A highlight or a picture inside a card: the card's 20 dp less Revolut's 4 dp inset (revolut-ux3 §2). */
-    val highlightRadius = 16.dp
 
     /** A list card's 'See all' row (S7-12, Revolut's 56 dp). */
     val seeAll = 56.dp
