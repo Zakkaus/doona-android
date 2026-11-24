@@ -1,6 +1,8 @@
 //! Every example payload in `contracts/doona-core/` parses into its DTO and serializes back to the
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
+mod common;
+
 use doonacore::dto::score::ScoreState;
 use doonacore::dto::{
     AddSubscriptionArgs, ClearCrashesArgs, Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty,
@@ -31,10 +33,12 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 26] = [
+const COVERED: [&str; 30] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-diagnostics-args.json",
+    "call-error-state-write.json",
+    "call-error-static-row-count.json",
     "call-error.json",
     "call-nodes-args.json",
     "call-ok-diagnostics.json",
@@ -43,6 +47,7 @@ const COVERED: [&str; 26] = [
     "call-ok-nodes.json",
     "call-ok-rules.json",
     "call-ok-score-state.json",
+    "call-ok-static-limits.json",
     "call-ok-subscription.json",
     "call-ok-traffic-series.json",
     "call-ok-usage.json",
@@ -58,6 +63,7 @@ const COVERED: [&str; 26] = [
     "snapshot-running.json",
     "snapshot-stopped-catalog.json",
     "start-config.json",
+    "static-nodes.json",
 ];
 
 #[test]
@@ -80,6 +86,77 @@ fn init_and_start_config() {
     let config = round_trip::<StartConfig>("start-config.json");
     assert_eq!(config.mtu, 65535);
     assert_eq!(config.dns.to_string(), "172.19.0.2");
+}
+
+#[test]
+fn static_editor_fixture_is_an_executable_session() {
+    let dir = common::TempDir::new("contract-static");
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    for step in read("static-nodes.json").as_array().unwrap() {
+        let command = step["command"].as_str().unwrap();
+        let reply = core.call(command, &step["args"].to_string());
+        assert_eq!(
+            serde_json::from_str::<Value>(&reply).unwrap(),
+            step["reply"],
+            "{command}"
+        );
+    }
+}
+
+#[test]
+fn static_batch_limit_replies() {
+    use serde_json::json;
+    let dir = common::TempDir::new("contract-static-limits");
+    let nodes: Vec<_> = (1..=5000)
+        .map(|port| {
+            json!({
+                "id":format!("n-{port:016x}"), "name":port.to_string(),
+                "link":format!("socks5://192.0.2.1:{port}")
+            })
+        })
+        .collect();
+    let state = json!({"stateVersion":1,"mode":"Global","staticNodes":nodes});
+    std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    let link = "socks5://192.0.2.2:1080#";
+    let long = format!("{link}{}", "x".repeat(8193 - link.len()));
+    let rows =
+        json!({"rows":[{"kind":"link","link":long},{"kind":"link","link":link}]}).to_string();
+    for command in ["previewStaticNodes", "addStaticNodes"] {
+        for count in [0, 201] {
+            let args = json!({"rows":vec![Value::Null; count]}).to_string();
+            let reply: Value = serde_json::from_str(&core.call(command, &args)).unwrap();
+            assert_eq!(reply, read("call-error-static-row-count.json"));
+        }
+        let reply: Value = serde_json::from_str(&core.call(command, &rows)).unwrap();
+        assert_eq!(reply, read("call-ok-static-limits.json"));
+    }
+}
+
+#[test]
+fn unknown_static_reasons_do_not_decode() {
+    for status in ["invalid", "unsupported"] {
+        let reply = serde_json::json!({"status":status,"reason":"unknown"});
+        assert!(serde_json::from_value::<doonacore::dto::StaticResult>(reply).is_err());
+    }
+}
+
+#[test]
+fn failed_static_write_publishes_none_of_the_batch() {
+    let dir = common::TempDir::new("contract-static-write");
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    std::fs::create_dir(dir.path().join("state.json.tmp")).unwrap();
+    let steps = read("static-nodes.json");
+    let reply = core.call("addStaticNodes", &steps[2]["args"].to_string());
+    assert_eq!(
+        serde_json::from_str::<Value>(&reply).unwrap(),
+        read("call-error-state-write.json")
+    );
+    assert_eq!(
+        core.call("nodes", r#"{"ids":null}"#),
+        r#"{"ok":{"nodes":[]}}"#
+    );
+    assert!(!dir.path().join("state.json").exists());
 }
 
 #[test]

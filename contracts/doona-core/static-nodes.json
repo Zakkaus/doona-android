@@ -1,0 +1,63 @@
+[
+  {"command":"previewStaticNodes","args":{"rows":[{"kind":"link","link":"socks5://192.0.2.1:1080#HK"}]},"reply":{"ok":{"rows":[{"status":"ready","id":"n-b91256dabac65282","name":"HK","protocol":"socks5"}]}}},
+  {"command":"readStaticNode","args":{"id":"n-b91256dabac65282"},"reply":{"error":{"code":"not_found"}}},
+  {"command":"addStaticNodes","args":{"rows":[
+    {"kind":"link","link":"socks5://192.0.2.1:1080#HK"},
+    {"kind":"link","link":"socks5://192.0.2.1:1080#same"},
+    {"kind":"link","link":"not a link"},
+    {"kind":"link","link":"socks5://192.0.2.3:1080 -> socks5://192.0.2.1:1080"},
+    {"kind":"manual","name":"Tokyo","protocol":"trojan","server":"192.0.2.2","port":443,"password":"demo"},
+    {"kind":"manual","protocol":"vless","server":"192.0.2.2","port":443,"uuid":"bad"},
+    {"kind":"manual","protocol":"socks5","server":"192.0.2.3","port":"bad"},
+    {"kind":"link","link":"trojan://demo@192.0.2.2:443?unknown=1"},
+    {"kind":"link","link":"other://192.0.2.1"}
+  ]},"reply":{"ok":{"rows":[
+    {"status":"added","id":"n-b91256dabac65282","name":"HK","protocol":"socks5"},
+    {"status":"duplicate","id":"n-b91256dabac65282"},
+    {"status":"invalid","reason":"link"},
+    {"status":"unsupported","reason":"chain"},
+    {"status":"added","id":"n-fd10541db250550c","name":"Tokyo","protocol":"trojan"},
+    {"status":"invalid","reason":"uuid"},
+    {"status":"invalid","reason":"fields"},
+    {"status":"unsupported","reason":"option"},
+    {"status":"unsupported","reason":"protocol"}
+  ]}}},
+  {"command":"readStaticNode","args":{"id":"n-fd10541db250550c"},"reply":{"ok":{"id":"n-fd10541db250550c","name":"Tokyo","link":"trojan://demo@192.0.2.2:443"}}},
+  {"command":"updateStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"HK","link":"socks5://192.0.2.1:1080#HK"},"node":{"kind":"link","name":" ","link":"socks5://192.0.2.1:1080"}},"reply":{"ok":{"status":"invalid","reason":"name"}}},
+  {"command":"updateStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"HK","link":"socks5://192.0.2.1:1080#HK"},"node":{"kind":"link","link":"socks5://192.0.2.1:1080/path"}},"reply":{"ok":{"status":"unsupported","reason":"path"}}},
+  {"command":"updateStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"HK","link":"socks5://192.0.2.1:1080#HK"},"node":{"kind":"link","link":"trojan://demo@192.0.2.2:443"}},"reply":{"ok":{"status":"duplicate","id":"n-fd10541db250550c"}}},
+  {"command":"updateStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"HK","link":"socks5://192.0.2.1:1080#HK"},"node":{"kind":"link","name":"Renamed","link":"socks5://192.0.2.1:1080#HK"}},"reply":{"ok":{"status":"updated","id":"n-b91256dabac65282","name":"Renamed","protocol":"socks5"}}},
+  {"command":"updateStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"HK","link":"socks5://192.0.2.1:1080#HK"},"node":{"kind":"link","link":"socks5://192.0.2.3:1080"}},"reply":{"error":{"code":"busy"}}},
+  {"command":"removeStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"HK","link":"socks5://192.0.2.1:1080#HK"},"confirmed":true},"reply":{"error":{"code":"busy"}}},
+  {"command":"removeStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"Renamed","link":"socks5://192.0.2.1:1080#HK"},"confirmed":false},"reply":{"error":{"code":"invalid_argument"}}},
+  {"command":"removeStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"Renamed","link":"socks5://192.0.2.1:1080#HK"},"confirmed":true},"reply":{"ok":{}}},
+  {"command":"removeStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"Renamed","link":"socks5://192.0.2.1:1080#HK"},"confirmed":true},"reply":{"error":{"code":"not_found"}}},
+  {"command":"updateStaticNode","args":{"expected":{"id":"n-b91256dabac65282","name":"Renamed","link":"socks5://192.0.2.1:1080#HK"},"node":{"kind":"link","link":"socks5://192.0.2.1:1080"}},"reply":{"error":{"code":"not_found"}}},
+  {"command":"previewStaticNodes","args":{"rows":[
+    {"kind":"link","link":"socks5://192.0.2.1:1080#HK-%3EJP"},
+    {"kind":"manual","protocol":"trojan","port":443,"server":""},
+    {"kind":"manual","protocol":"trojan","port":0,"server":"192.0.2.1"},
+    {"kind":"manual","protocol":"trojan","port":443,"server":"192.0.2.1"},
+    {"kind":"manual","protocol":"trojan","port":443,"server":"192.0.2.1","username":"u"},
+    {"kind":"manual","protocol":"vless","port":443,"server":"192.0.2.1","password":"p"},
+    {"kind":"manual","protocol":"socks5","port":1080,"server":"192.0.2.1","uuid":"u"},
+    {"kind":"manual","protocol":"ss","port":443,"server":"192.0.2.1","password":"p"},
+    {"kind":"manual","protocol":"ss","port":443,"server":"192.0.2.1","password":"p","cipher":"obsolete"},
+    {"kind":"link","link":"socks5://user@192.0.2.1:1080"},
+    {"kind":"link","link":"trojan://demo@192.0.2.1:443?sni=a&sni=b"}
+  ]},"reply":{"ok":{"rows":[
+    {"status":"ready","id":"n-b91256dabac65282","name":"HK->JP","protocol":"socks5"},
+    {"status":"invalid","reason":"server"},
+    {"status":"invalid","reason":"port"},
+    {"status":"invalid","reason":"password"},
+    {"status":"unsupported","reason":"username"},
+    {"status":"unsupported","reason":"password"},
+    {"status":"unsupported","reason":"uuid"},
+    {"status":"invalid","reason":"cipher"},
+    {"status":"unsupported","reason":"cipher"},
+    {"status":"invalid","reason":"credentials"},
+    {"status":"invalid","reason":"duplicate_option"}
+  ]}}},
+  {"command":"readStaticNode","args":{"id":"n-b91256dabac65282"},"reply":{"error":{"code":"not_found"}}},
+  {"command":"addStaticNodes","args":{"rows":[{"kind":"link","link":"socks5://192.0.2.1:1080#HK->JP"},{"kind":"link","link":"socks5://192.0.2.1:1080#HK-%3EJP"}]},"reply":{"ok":{"rows":[{"status":"added","id":"n-b91256dabac65282","name":"HK->JP","protocol":"socks5"},{"status":"duplicate","id":"n-b91256dabac65282"}]}}}
+]

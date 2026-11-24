@@ -71,6 +71,21 @@ interface Engine {
      */
     suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription>
 
+    /** Validates drafts without saving or reserving their IDs. Results are in input order. */
+    suspend fun previewStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>>
+
+    /** Commits accepted drafts together and returns a result for each input row, in order. */
+    suspend fun addStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>>
+
+    /** Reads the private editor record, not a catalog or telemetry entry. */
+    suspend fun readStaticNode(id: String): Result<StaticNode>
+
+    /** An edit based on a changed record fails with [ErrorCode.Busy]; a missing record fails with [ErrorCode.NotFound]. */
+    suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeResult>
+
+    /** Uses the same stale-record check as [updateStaticNode]; [confirmed] must be true to remove the node. */
+    suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit>
+
     suspend fun setMode(mode: Mode): Result<Unit>
 
     /**
@@ -200,7 +215,7 @@ data class Member(
     val latencyMs: Int? = null,
     val failed: Boolean = false,
     val isGroup: Boolean = false,
-    /** The subscription a node came from; null for groups. */
+    /** The source subscription; null for static nodes and groups. */
     val subscriptionId: String? = null,
     val error: ErrorCode? = null,
 )

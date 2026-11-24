@@ -29,6 +29,7 @@ mod rules;
 mod score;
 mod selection;
 mod snapshot;
+pub(crate) mod static_nodes;
 mod subscriptions;
 
 pub use snapshot::snapshot_before_init;
@@ -429,7 +430,7 @@ impl Core {
             "setRuleSource" => parse(args).and_then(|a| self.set_rule_source(a).map(empty)),
             #[cfg(feature = "fault-hook")]
             "debugFault" => self.fault().map(empty),
-            _ => self.query_or_diagnostic(command, args, event),
+            _ => self.static_or_query(command, args, event),
         })
     }
 
@@ -576,5 +577,7 @@ mod tests_rule_source;
 mod tests_rules;
 #[cfg(test)]
 mod tests_score;
+#[cfg(test)]
+mod tests_static;
 #[cfg(test)]
 mod tests_user_agent;

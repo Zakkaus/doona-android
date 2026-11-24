@@ -1,11 +1,11 @@
 package dev.doona.android.vpn
 
 /**
- * The Rust core's five JNI functions (`plans/v1/core-api.md`, schema 2), as an interface so JVM tests can fake the
+ * The Rust core's five JNI functions (`plans/v1/core-api.md`, schema 3), as an interface so JVM tests can fake the
  * core. Payloads are JSON; `vpn/CoreDto.kt` types them.
  */
 interface CoreBridge {
-    /** Once per process before anything else; idempotent. Returns `{"schema":2}`. */
+    /** Once per process before anything else; idempotent. Returns `{"schema":3}`. */
     fun init(dataDir: String): String
 
     /**

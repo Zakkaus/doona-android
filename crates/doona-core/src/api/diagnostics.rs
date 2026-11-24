@@ -17,7 +17,12 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// The commands, by the names the log may hold; never caller text.
-const COMMANDS: [&str; 17] = [
+const COMMANDS: [&str; 22] = [
+    "previewStaticNodes",
+    "addStaticNodes",
+    "readStaticNode",
+    "updateStaticNode",
+    "removeStaticNode",
     "select",
     "testLatency",
     "addSubscription",

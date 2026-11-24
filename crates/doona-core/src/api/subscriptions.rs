@@ -61,7 +61,8 @@ impl Core {
         };
         let fresh = refreshed(&mut stored, parsed, userinfo);
         next.subscriptions.push(stored);
-        self.commit_nodes(next, &id, fresh, "addSubscription", Some(deadline))
+        self.replace_feed(next, &id, fresh, "addSubscription", Some(deadline))?;
+        Ok(self.shown_subscription(&id))
     }
 
     pub(super) fn update_subscription(&self, id: &str) -> Result<dto::Subscription, ErrorCode> {
@@ -110,7 +111,8 @@ impl Core {
             }
         };
         let fresh = refreshed(stored, parsed, userinfo);
-        self.commit_nodes(next, id, fresh, "updateSubscription", Some(deadline))
+        self.replace_feed(next, id, fresh, "updateSubscription", Some(deadline))?;
+        Ok(self.shown_subscription(id))
     }
 
     pub(super) fn remove_subscription(&self, id: &str) -> Result<(), ErrorCode> {
@@ -121,8 +123,7 @@ impl Core {
         if next.subscriptions.len() == before {
             return Err(ErrorCode::NotFound);
         }
-        self.commit_nodes(next, id, Vec::new(), "removeSubscription", None)
-            .map(drop)
+        self.replace_feed(next, id, Vec::new(), "removeSubscription", None)
     }
 
     /// Sets the User-Agent the subscription's next fetches send, null for the default, and fetches
@@ -141,10 +142,14 @@ impl Core {
             stored.user_agent = agent;
             self.commit_state(next, "setSubscriptionUserAgent", None)?;
         }
+        Ok(self.shown_subscription(&args.id))
+    }
+
+    fn shown_subscription(&self, id: &str) -> dto::Subscription {
+        // These callers hold the writer and have just committed or found this subscription.
         let c = lock(&self.shared.catalog);
-        let s = c.state.subscriptions.iter().find(|s| s.id == args.id);
-        s.map(|s| c.model.subscription(s))
-            .ok_or(ErrorCode::NotFound)
+        c.model
+            .subscription(c.state.subscriptions.iter().find(|s| s.id == id).unwrap())
     }
 
     /// Fetches `url` with `agent` (the default when none) on the runtime, leaving a share of the
@@ -190,31 +195,37 @@ impl Core {
         }
     }
 
-    /// Commits `next`, in which `changed` has `fresh` nodes or is gone: choices whose member
-    /// went are dropped, the data path gets a registry for the new node set, and runtime state
-    /// (latencies, automatic choices) carries over for the nodes that stay. Returns `changed`
-    /// as the catalog shows it, or an empty one when it was removed. Past `deadline`, which the
-    /// registry rebuild and the serialization may use up, nothing is written and the command is
-    /// `busy` ([`Core::write`] checks it right before the first write). A fresh node may be one
-    /// whose tests an earlier commit forgot: that reaches the disk first, or nothing is
-    /// committed, so a crash after this commit never reads the old tests back.
-    fn commit_nodes(
+    fn replace_feed(
         &self,
-        mut next: State,
+        next: State,
         changed: &str,
         fresh: Vec<Arc<NodeEntry>>,
         command: &'static str,
         deadline: Option<Instant>,
-    ) -> Result<dto::Subscription, ErrorCode> {
-        if !fresh.is_empty() && !self.shared.stats.forgetting_written() {
+    ) -> Result<(), ErrorCode> {
+        let admitting = !fresh.is_empty();
+        let model = lock(&self.shared.catalog).model.with(&next, changed, fresh);
+        self.commit_nodes(next, model, admitting, command, deadline)
+    }
+
+    /// Flush pruned history before admitting an ID again. Publish the new registry only after
+    /// the state rename succeeds. Callers hold the writer throughout.
+    pub(super) fn commit_nodes(
+        &self,
+        mut next: State,
+        mut model: catalog::Model,
+        admitting: bool,
+        command: &'static str,
+        deadline: Option<Instant>,
+    ) -> Result<(), ErrorCode> {
+        if admitting && !self.shared.stats.forgetting_written() {
             log::error!("{command}: forgotten latency tests not written");
             return Err(ErrorCode::Internal);
         }
-        let mut model = lock(&self.shared.catalog).model.with(&next, changed, fresh);
         groups::prune(&mut next.selections, &model.groups);
         let built = self.shared.outbounds.build(&model.nodes);
         self.write(&next, command, deadline)?;
-        let shown = {
+        {
             let mut c = lock(&self.shared.catalog);
             model.carry(&c.model);
             c.model = model;
@@ -223,11 +234,9 @@ impl Core {
             self.shared.publish_nodes(&c, built);
             // The tests of the nodes that left go with them, so a node that comes back has none.
             self.shared.stats.keep_nodes(|id| c.model.has(id));
-            let s = c.state.subscriptions.iter().find(|s| s.id == changed);
-            s.map(|s| c.model.subscription(s))
-        };
+        }
         self.store.sync();
-        Ok(shown.unwrap_or_else(|| removed(changed)))
+        Ok(())
     }
 }
 
@@ -246,22 +255,6 @@ fn refreshed(
     stored.links = parsed.links;
     stored.document = parsed.document;
     catalog::entries(&stored.id, parsed.nodes)
-}
-
-fn removed(id: &str) -> dto::Subscription {
-    dto::Subscription {
-        id: id.to_owned(),
-        name: String::new(),
-        url: String::new(),
-        nodes: 0,
-        format: None,
-        updated_at_epoch_ms: None,
-        error: None,
-        used_bytes: None,
-        total_bytes: None,
-        expires_at_epoch_ms: None,
-        user_agent: None,
-    }
 }
 
 fn now_ms() -> i64 {
