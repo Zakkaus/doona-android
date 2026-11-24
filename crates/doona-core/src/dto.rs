@@ -8,6 +8,8 @@ pub use crate::diag::report::{
 };
 use serde::{Deserialize, Serialize};
 
+pub mod score;
+
 /// The contract schema this core speaks; `init` returns it. Schema 2 added `Rule` to the modes,
 /// which a schema-1 app cannot read; later additions within it stay additive.
 pub const SCHEMA: u32 = 2;
