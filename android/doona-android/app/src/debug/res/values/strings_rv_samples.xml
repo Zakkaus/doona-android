@@ -6,6 +6,7 @@
     <string name="rv_notify_denied_reason">doona cannot show the connection status, and will not tell you when it disconnects.</string>
     <string name="rv_failed_switch_mode">Could not switch the mode</string>
     <string name="rv_failed_switch_node">Could not switch the node</string>
+    <string name="rv_failed_test_latency">Could not test latency</string>
     <string name="rv_rules_parse_failed">Could not parse the rule source</string>
     <string name="rv_rules_parse_failed_reason">The source\'s content is malformed.</string>
     <string name="rv_rules_read_failed">Could not read the rules</string>
