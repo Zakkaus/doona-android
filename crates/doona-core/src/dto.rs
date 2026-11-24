@@ -466,8 +466,7 @@ pub struct NodeInfo {
     pub tests: Vec<LatencyTest>,
 }
 
-/// One latency test: when its round began, and the time it measured; none when the probe
-/// failed.
+/// One latency test: when its round began, and the time it measured; none when the probe failed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LatencyTest {
