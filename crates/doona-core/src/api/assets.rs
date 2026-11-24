@@ -7,7 +7,7 @@ use crate::{
     rules::{dat::Data, template},
     tunnel::route::Route,
 };
-use network::Remote;
+use network::{Remote, RequestKind};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -109,11 +109,11 @@ impl Assets {
     }
     fn update<R: Read>(
         &self,
-        mut open: impl FnMut(&str) -> io::Result<R>,
+        mut open: impl FnMut(&str, RequestKind) -> io::Result<R>,
         cancel: &CancellationToken,
     ) -> io::Result<()> {
-        let release = metadata(open(LATEST)?)?;
-        let branch = metadata(open(BRANCH)?)?;
+        let release = metadata(open(LATEST, RequestKind::Metadata)?)?;
+        let branch = metadata(open(BRANCH, RequestKind::Metadata)?)?;
         let pins = Release::from_github(&release, &branch)?;
         if lock(&self.disk)
             .active()
@@ -128,7 +128,7 @@ impl Assets {
         fs::create_dir_all(&self.root)?;
         let stage = self.root.join("download.stage");
         storage::remove(&stage)?;
-        pins.stage_update(&stage, open)?;
+        pins.stage_update(&stage, |url| open(url, RequestKind::Dat))?;
         lock(&self.status).set(ResultState::Verifying, None);
         let result = self.publish_update(&stage, &pins, cancel);
         if result.is_err() {
@@ -280,7 +280,7 @@ impl Core {
         status.updating = true;
         let assets = Arc::clone(&self.assets);
         self.runtime.spawn_blocking(move || {
-            if let Err(e) = assets.update(|url| remote.open(url), &remote.cancel) {
+            if let Err(e) = assets.update(|url, kind| remote.open(url, kind), &remote.cancel) {
                 let reason = match e.kind() {
                     io::ErrorKind::Interrupted => "disconnected",
                     io::ErrorKind::InvalidData => "verification_failed",

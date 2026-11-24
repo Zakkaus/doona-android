@@ -106,10 +106,14 @@ fn apk_first_start_then_verified_update_changes_routes_only_after_restart() {
     assert!(direct(&core, "8.8.8.8"));
     assert!(!direct(&core, "9.9.9.9"));
     assert_eq!(status(&core)["source"], "apk");
+    let active = dir.path().join("geo/a");
+    let old = dir.path().join("geo/b");
+    assert!(!active.exists() && old.is_dir());
     core.assets
-        .update(|url| next.open(url), &CancellationToken::new())
+        .update(|url, _| next.open(url), &CancellationToken::new())
         .unwrap();
     assert_eq!(status(&core)["lastResult"], "ready_on_next_start");
+    assert!(active.is_dir() && old.is_dir());
     assert_eq!(status(&core)["release"], "2026-11-01");
     assert!(direct(&core, "8.8.8.8"));
     assert_eq!(
@@ -122,9 +126,14 @@ fn apk_first_start_then_verified_update_changes_routes_only_after_restart() {
     assert!(!direct(&core, "8.8.8.8"));
     assert_eq!(status(&core)["source"], "download");
     assert_eq!(status(&core)["updateWaitingForNextStart"], false);
+    assert!(
+        active.is_dir() && !old.exists(),
+        "obsolete APK slot survived activation"
+    );
     core.assets
         .update(
-            |url| {
+            |url, kind| {
+                assert!(matches!(kind, RequestKind::Metadata));
                 assert!(url == LATEST || url == BRANCH);
                 next.open(url)
             },
@@ -132,6 +141,18 @@ fn apk_first_start_then_verified_update_changes_routes_only_after_restart() {
         )
         .unwrap();
     assert_eq!(status(&core)["lastResult"], "up_to_date");
+    drop(core);
+    // Recreate the disk state after the journal rename but before deletion of the old slot.
+    fs::create_dir(&old).unwrap();
+    apk.copy(&old);
+    let reopened = self::core(&dir, &apk);
+    let _peer = start(&reopened, bundle.path());
+    assert!(direct(&reopened, "9.9.9.9") && !old.exists());
+    reopened.stop();
+    fs::write(active.join("geoip.dat"), b"corrupt").unwrap();
+    let _peer = start(&reopened, bundle.path());
+    assert_eq!(status(&reopened)["source"], "apk");
+    assert!(direct(&reopened, "8.8.8.8") && old.is_dir() && !active.exists());
 }
 #[test]
 fn same_size_corruption_after_staging_keeps_active_pair_across_process_restart() {
@@ -144,7 +165,7 @@ fn same_size_corruption_after_staging_keeps_active_pair_across_process_restart()
         let core = core(&dir, &apk);
         let _peer = start(&core, bundle.path());
         core.assets
-            .update(|u| next.open(u), &CancellationToken::new())
+            .update(|u, _| next.open(u), &CancellationToken::new())
             .unwrap();
     }
     let path = dir.path().join("geo/a/geoip.dat");

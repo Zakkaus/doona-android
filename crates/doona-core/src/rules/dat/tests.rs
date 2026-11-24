@@ -94,7 +94,11 @@ fn invalid_regexp_skips_one_entry_not_the_generation() {
         dir.path().join("geosite.dat"),
         entry(
             "media",
-            &[domain(1, "(?=foo)", &[]), domain(3, "good.test", &[])],
+            &[
+                domain(1, "(?=foo)", &[]),
+                domain(1, "(?<=bar)", &[]),
+                domain(3, "good.test", &[]),
+            ],
         ),
     )
     .unwrap();
@@ -102,14 +106,22 @@ fn invalid_regexp_skips_one_entry_not_the_generation() {
         rule("GEOSITE", &["media"], "DIRECT"),
         rule("GEOIP", &["US"], "DIRECT"),
         rule("GEOSITE", &["media@!ads"], "REJECT"),
+        rule("GEOSITE", &["media", "media@!ads", "absent"], "DIRECT"),
     ];
     let set = compiled(dir.path(), &rows);
     assert_eq!(named(&set, "good.test"), Some(0));
     assert_eq!(at(&set, "8.8.8.8"), Some(1));
-    let listing = crate::rules::listing::Listing::new("fixture", &rows, Some(&set)).page(0, 3);
+    let compiled = crate::rules::listing::Listing::new("fixture", &rows, Some(&set));
+    let listing = compiled.page(0, 4);
+    assert_eq!(listing.rows[0].count, 1);
     assert_eq!(listing.rows[0].skipped_lines, 1);
     assert_eq!(listing.rows[0].skipped.as_deref(), Some("geodata_missing"));
     assert_eq!(listing.rows[2].skipped.as_deref(), Some("unsupported_kind"));
+    assert_eq!(listing.rows[3].skipped_lines, 3);
+    assert_eq!(listing.rows[3].skipped.as_deref(), Some("geodata_missing"));
+    let mut out = crate::rules::export::Capped::new(2048);
+    compiled.export(&str::to_owned, &mut out);
+    assert!(out.finish().0.ends_with("# GEOSITE,media,DIRECT (skipped: geodata_missing)\n# GEOSITE,media@!ads,DIRECT (skipped: unsupported_kind)\n# GEOSITE,absent,DIRECT (skipped: geodata_missing)\n"));
 }
 #[test]
 fn geoip_uses_dat_only_except_private_and_lan() {

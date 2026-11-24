@@ -19,14 +19,24 @@ const META: Duration = Duration::from_secs(20);
 const IDLE: Duration = Duration::from_secs(30);
 const FILE: Duration = Duration::from_secs(900);
 
+#[derive(Clone, Copy)]
+pub(super) enum RequestKind {
+    Metadata,
+    Dat,
+}
+
 struct Budget {
     end: Instant,
     idle: Duration,
 }
 impl Budget {
-    fn new(file: bool) -> Self {
+    fn new(kind: RequestKind) -> Self {
         Self {
-            end: Instant::now() + if file { FILE } else { META },
+            end: Instant::now()
+                + match kind {
+                    RequestKind::Dat => FILE,
+                    RequestKind::Metadata => META,
+                },
             idle: IDLE,
         }
     }
@@ -51,9 +61,9 @@ impl Remote {
     pub fn new(route: Route, rt: Handle, cancel: CancellationToken) -> Self {
         Self { route, rt, cancel }
     }
-    pub fn open(self: &Arc<Self>, address: &str) -> io::Result<Body> {
+    pub fn open(self: &Arc<Self>, address: &str, kind: RequestKind) -> io::Result<Body> {
         let url = Url::parse(address).map_err(io::Error::other)?;
-        let budget = Budget::new(url.path().ends_with(".dat"));
+        let budget = Budget::new(kind);
         let reader = self
             .rt
             .block_on(budget.wait(&self.cancel, self.request(&url)))?;
@@ -108,7 +118,7 @@ mod tests {
                 .await
                 .unwrap();
         let cancel = CancellationToken::new();
-        let budget = Budget::new(true);
+        let budget = Budget::new(RequestKind::Dat);
         let sender = tokio::spawn(async move {
             for byte in b"abc" {
                 tokio::time::sleep(IDLE / 2).await;
@@ -132,6 +142,6 @@ mod tests {
             io::ErrorKind::TimedOut
         );
         assert_eq!(stalled.elapsed(), IDLE);
-        assert!(Budget::new(true).end > budget.end);
+        assert!(Budget::new(RequestKind::Dat).end > budget.end);
     }
 }

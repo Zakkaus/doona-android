@@ -28,7 +28,7 @@ pub(crate) struct Listed {
     /// Why lines of the row were not compiled, and how many were not.
     pub skip: Option<Skip>,
     pub skipped: u32,
-    pub missing: Vec<u32>,
+    pub value_skips: Vec<(u32, Skip)>,
 }
 
 impl Listing {
@@ -45,28 +45,35 @@ impl Listing {
                 let base = key.listing_digest(&ns, source, spec);
                 let id = occurrence_id(base, seen.entry(base).or_default());
                 let skipped = compiled.map_or(0, |set| set.rows()[i].skipped);
+                let value_skips: Vec<_> = spec
+                    .values
+                    .iter()
+                    .enumerate()
+                    .filter(|(col, _)| {
+                        compiled.is_some_and(|s| s.missing.contains(&(i as u32, *col as u32)))
+                    })
+                    .map(|(col, value)| {
+                        let reason = if spec.kind == Kind::GeoSite
+                            && super::dat::unsupported_filter(value)
+                        {
+                            Skip::UnsupportedKind
+                        } else {
+                            Skip::GeodataMissing
+                        };
+                        (col as u32, reason)
+                    })
+                    .collect();
                 Listed {
                     id: id.into(),
                     kind: spec.kind.clone(),
                     values: spec.values.clone(),
                     target: spec.target.clone(),
-                    skip: if spec.kind == Kind::GeoSite
-                        && skipped > 0
-                        && spec
-                            .values
-                            .iter()
-                            .any(|v| super::dat::unsupported_filter(v))
-                    {
-                        Some(Skip::UnsupportedKind)
-                    } else {
-                        skip(&spec.kind, skipped)
+                    skip: match spec.kind {
+                        Kind::Skipped { reason, .. } => Some(reason),
+                        _ => value_skips.first().map(|&(_, reason)| reason),
                     },
                     skipped,
-                    missing: (0..spec.values.len() as u32)
-                        .filter(|col| {
-                            compiled.is_some_and(|set| set.missing.contains(&(i as u32, *col)))
-                        })
-                        .collect(),
+                    value_skips,
                 }
             })
             .collect();
@@ -110,15 +117,6 @@ impl Listed {
             skipped: self.skip.map(|s| s.as_str().to_owned()),
             skipped_lines: self.skipped,
         }
-    }
-}
-
-/// Why a row's lines were not compiled: its kind's reason, or a GeoIP code without data.
-fn skip(kind: &Kind, skipped: u32) -> Option<Skip> {
-    match kind {
-        Kind::Skipped { reason, .. } => Some(*reason),
-        Kind::GeoIp | Kind::GeoSite if skipped > 0 => Some(Skip::GeodataMissing),
-        _ => None,
     }
 }
 
