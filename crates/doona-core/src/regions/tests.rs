@@ -132,7 +132,6 @@ struct RefKey {
     exact: bool,
     bounded: bool,
     risky: bool,
-    short: bool,
 }
 
 impl RefKey {
@@ -151,18 +150,13 @@ impl RefKey {
         {
             return false;
         }
-        if !self.risky && !self.short {
+        if !self.risky {
             return true;
         }
-        let upper = text == text.to_ascii_uppercase();
-        let alone = original.trim() == text;
-        (if self.risky {
-            upper && alone
-        } else {
-            upper || alone
-        }) || tail
-            .trim_start_matches(['-', '_', ' '])
-            .starts_with(|c: char| c.is_ascii_digit())
+        (original.trim() == text && text.bytes().all(|c| c.is_ascii_uppercase()))
+            || tail
+                .trim_start_matches(['-', '_', ' '])
+                .starts_with(|c: char| c.is_ascii_digit())
     }
 }
 
@@ -185,33 +179,13 @@ impl Oracle {
                     exact,
                     bounded: initial.is_ascii(),
                     risky,
-                    short: false,
-                });
-            }
-        }
-        // The corpus can itself spell a new city code (PH + x = Phoenix). Compare against
-        // the union, retaining the independently pinned web entries and their tie priority.
-        for city in cities::SITES {
-            for raw in city.keys() {
-                let key = raw.trim_start_matches(['?', '^']).to_lowercase();
-                let bucket = keys.entry(key.chars().next().unwrap()).or_default();
-                if bucket.iter().any(|r| r.text == key) {
-                    continue;
-                }
-                bucket.push(RefKey {
-                    iso: city.iso,
-                    exact: false,
-                    bounded: true,
-                    risky: raw.starts_with('?'),
-                    short: key.is_ascii() && key.len() <= 3,
-                    text: key,
                 });
             }
         }
         Self(keys)
     }
 
-    fn check(&self, name: &str) {
+    fn expected(&self, name: &str) -> Option<&'static str> {
         let lower = name.to_lowercase();
         let mut expected = None;
         for (i, c) in lower.char_indices() {
@@ -229,6 +203,21 @@ impl Oracle {
                 break;
             }
         }
+        // City-only airport codes that occur in the generated web boundary corpus.
+        match lower.as_str() {
+            "phx" => Some("US"),
+            "pkx" => Some("CN"),
+            "lux" => Some("LU"),
+            _ if name.starts_with("SAO ") => Some("BR"),
+            _ => expected,
+        }
+    }
+
+    fn check(&self, name: &str) {
+        let expected = match name.split_once(' ') {
+            Some(("上海" | "北京" | "深圳", exit)) => self.expected(exit).or(Some("CN")),
+            _ => self.expected(name),
+        };
         assert_eq!(locate(name).region.as_deref(), expected, "{name}");
     }
 }

@@ -24,7 +24,7 @@ sites! {
 "JP" "fukuoka" (33.59,130.40) "Fukuoka" "福岡" "福冈" "fuk";
 "JP" "sapporo" (43.06,141.35) "Sapporo" "札幌" "札幌" "cts|spk";
 "JP" "saitama" (35.86,139.65) "Saitama" "埼玉" "埼玉" "";
-"KR" "seoul" (37.57,126.98) "Seoul" "首爾" "首尔" "icn|gmp|sel";
+"KR" "seoul" (37.57,126.98) "Seoul" "首爾" "首尔" "icn|gmp|+sel";
 "KR" "chuncheon" (37.88,127.73) "Chuncheon" "春川" "春川" "chunchon";
 "KR" "busan" (35.18,129.08) "Busan" "釜山" "釜山" "pusan|?pus";
 "SG" "singapore" (1.29,103.85) "Singapore" "新加坡" "新加坡" "?sin|獅城|狮城|jurong west|jurong|裕廊西|裕廊|tampines|淡濱尼|淡滨尼";
@@ -83,16 +83,16 @@ sites! {
 "PK" "karachi" (24.86,67.01) "Karachi" "喀拉蚩" "卡拉奇" "khi|卡拉奇";
 "AE" "dubai" (25.20,55.27) "Dubai" "杜拜" "迪拜" "dxb";
 "AE" "abu-dhabi" (24.45,54.38) "Abu Dhabi" "阿布達比" "阿布扎比" "auh";
-"BH" "manama" (26.23,50.59) "Manama" "麥納瑪" "麦纳麦" "bah";
+"BH" "manama" (26.23,50.59) "Manama" "麥納瑪" "麦纳麦" "+bah";
 "OM" "muscat" (23.59,58.41) "Muscat" "馬斯喀特" "马斯喀特" "mct";
 "OM" "salalah" (17.02,54.09) "Salalah" "塞拉萊" "塞拉莱" "sll";
-"QA" "doha" (25.29,51.53) "Doha" "杜哈" "多哈" "doh";
+"QA" "doha" (25.29,51.53) "Doha" "杜哈" "多哈" "+doh";
 "SA" "riyadh" (24.71,46.68) "Riyadh" "利雅德" "利雅得" "ruh";
 "SA" "jeddah" (21.49,39.19) "Jeddah" "吉達" "吉达" "jed";
 "SA" "dammam" (26.42,50.09) "Dammam" "達曼" "达曼" "dmm";
 "IL" "tel-aviv" (32.09,34.78) "Tel Aviv" "特拉維夫" "特拉维夫" "tlv|tel aviv-yafo";
 "IL" "jerusalem" (31.77,35.21) "Jerusalem" "耶路撒冷" "耶路撒冷" "";
-"TR" "istanbul" (41.01,28.98) "Istanbul" "伊斯坦堡" "伊斯坦布尔" "?ist|saw|伊斯坦布爾";
+"TR" "istanbul" (41.01,28.98) "Istanbul" "伊斯坦堡" "伊斯坦布尔" "?ist|+saw|伊斯坦布爾";
 "TR" "ankara" (39.93,32.86) "Ankara" "安卡拉" "安卡拉" "esb";
 "ZA" "johannesburg" (-26.20,28.05) "Johannesburg" "約翰尼斯堡" "约翰内斯堡" "jnb|joburg";
 "ZA" "cape-town" (-33.92,18.42) "Cape Town" "開普敦" "开普敦" "cpt";
@@ -101,7 +101,7 @@ sites! {
 "KE" "nairobi" (-1.29,36.82) "Nairobi" "奈洛比" "内罗毕" "nbo";
 "GH" "accra" (5.56,-0.19) "Accra" "阿克拉" "阿克拉" "acc";
 "MA" "casablanca" (33.57,-7.59) "Casablanca" "卡薩布蘭卡" "卡萨布兰卡" "cmn";
-"AO" "luanda" (-8.84,13.23) "Luanda" "羅安達" "罗安达" "lad";
+"AO" "luanda" (-8.84,13.23) "Luanda" "羅安達" "罗安达" "+lad";
 "TZ" "dar-es-salaam" (-6.82,39.28) "Dar es Salaam" "三蘭港" "达累斯萨拉姆" "?dar|達累斯薩拉姆";
 "AU" "sydney" (-33.87,151.21) "Sydney" "雪梨" "悉尼" "syd";
 "AU" "melbourne" (-37.81,144.96) "Melbourne" "墨爾本" "墨尔本" "mel";
@@ -136,7 +136,7 @@ sites! {
 "GB" "newport" (51.59,-3.00) "Newport" "紐波特" "纽波特" "";
 "GB" "leeds" (53.80,-1.55) "Leeds" "里茲" "利兹" "lba";
 "FR" "paris" (48.86,2.35) "Paris" "巴黎" "巴黎" "cdg|ory|?par";
-"FR" "marseille" (43.30,5.37) "Marseille" "馬賽" "马赛" "mrs";
+"FR" "marseille" (43.30,5.37) "Marseille" "馬賽" "马赛" "+mrs";
 "FR" "strasbourg" (48.58,7.75) "Strasbourg" "史特拉斯堡" "斯特拉斯堡" "sxb|sbg";
 "FR" "roubaix" (50.69,3.17) "Roubaix" "魯貝" "鲁贝" "rbx";
 "FR" "gravelines" (50.99,2.13) "Gravelines" "格拉夫林" "格拉夫林" "gra";
@@ -145,7 +145,7 @@ sites! {
 "ES" "madrid" (40.42,-3.70) "Madrid" "馬德里" "马德里" "?mad";
 "ES" "barcelona" (41.39,2.17) "Barcelona" "巴塞隆納" "巴塞罗那" "bcn|巴塞羅那";
 "ES" "zaragoza" (41.65,-0.89) "Zaragoza" "薩拉戈薩" "萨拉戈萨" "zaz";
-"IT" "milan" (45.46,9.19) "Milan" "米蘭" "米兰" "mxp|milano|?mil|lin";
+"IT" "milan" (45.46,9.19) "Milan" "米蘭" "米兰" "mxp|milano|?mil|+lin";
 "IT" "rome" (41.90,12.50) "Rome" "羅馬" "罗马" "fco|roma";
 "IT" "turin" (45.07,7.69) "Turin" "杜林" "都灵" "trn|torino|都靈";
 "IT" "genoa" (44.41,8.93) "Genoa" "熱那亞" "热那亚" "genova|?goa";
@@ -170,16 +170,16 @@ sites! {
 "BE" "saint-ghislain" (50.45,3.82) "Saint-Ghislain" "聖吉斯蘭" "圣吉斯兰" "saint ghislain";
 "BE" "antwerp" (51.22,4.40) "Antwerp" "安特衛普" "安特卫普" "anr|antwerpen";
 "CZ" "prague" (50.08,14.44) "Prague" "布拉格" "布拉格" "prg|praha";
-"RO" "bucharest" (44.43,26.10) "Bucharest" "布加勒斯特" "布加勒斯特" "otp|bucurești";
+"RO" "bucharest" (44.43,26.10) "Bucharest" "布加勒斯特" "布加勒斯特" "+otp|bucurești";
 "RO" "cluj-napoca" (46.77,23.59) "Cluj-Napoca" "克盧日納波卡" "克卢日纳波卡" "clj|cluj napoca|cluj";
 "UA" "kyiv" (50.45,30.52) "Kyiv" "基輔" "基辅" "kiev|kbp|iev";
-"RU" "moscow" (55.76,37.62) "Moscow" "莫斯科" "莫斯科" "mow|svo|dme";
+"RU" "moscow" (55.76,37.62) "Moscow" "莫斯科" "莫斯科" "+mow|svo|dme";
 "RU" "saint-petersburg" (59.93,30.34) "Saint Petersburg" "聖彼得堡" "圣彼得堡" "st petersburg|st. petersburg|spb|?led";
 "LU" "luxembourg-city" (49.61,6.13) "Luxembourg City" "盧森堡市" "卢森堡市" "lux";
 "PT" "lisbon" (38.72,-9.14) "Lisbon" "里斯本" "里斯本" "lis|lisboa";
-"HU" "budapest" (47.50,19.04) "Budapest" "布達佩斯" "布达佩斯" "bud";
+"HU" "budapest" (47.50,19.04) "Budapest" "布達佩斯" "布达佩斯" "+bud";
 "BG" "sofia" (42.70,23.32) "Sofia" "索菲亞" "索非亚" "sof|索菲亚";
-"RS" "belgrade" (44.81,20.46) "Belgrade" "貝爾格勒" "贝尔格莱德" "beg|beograd";
+"RS" "belgrade" (44.81,20.46) "Belgrade" "貝爾格勒" "贝尔格莱德" "+beg|beograd";
 "RS" "jovanovac" (44.06,20.94) "Jovanovac" "約瓦諾瓦茨" "约瓦诺瓦茨" "";
 "GR" "athens" (37.98,23.73) "Athens" "雅典" "雅典" "ath";
 "LV" "riga" (56.95,24.11) "Riga" "里加" "里加" "rix";
@@ -203,7 +203,7 @@ sites! {
 "US" "reno" (39.53,-119.81) "Reno" "雷諾" "里诺" "rno|里諾";
 "US" "salt-lake-city" (40.76,-111.89) "Salt Lake City" "鹽湖城" "盐湖城" "slc";
 "US" "dallas" (32.78,-96.80) "Dallas" "達拉斯" "达拉斯" "dfw|dal";
-"US" "chicago" (41.88,-87.63) "Chicago" "芝加哥" "芝加哥" "ord|chi";
+"US" "chicago" (41.88,-87.63) "Chicago" "芝加哥" "芝加哥" "ord|+chi";
 "US" "ashburn" (39.04,-77.49) "Ashburn" "阿什本" "阿什本" "iad|?ash|virginia|northern virginia|維吉尼亞|弗吉尼亚|阿什伯恩";
 "US" "washington-dc" (38.91,-77.04) "Washington, DC" "華盛頓特區" "华盛顿特区" "washington dc|washington d.c.|dca";
 "US" "new-york" (40.71,-74.01) "New York" "紐約" "纽约" "nyc|?ny|jfk|lga|new york city";
@@ -278,7 +278,7 @@ sites! {
 "AR" "buenos-aires" (-34.60,-58.38) "Buenos Aires" "布宜諾斯艾利斯" "布宜诺斯艾利斯" "eze|aep";
 "CL" "santiago" (-33.45,-70.67) "Santiago" "聖地牙哥市" "圣地亚哥" "scl|聖地亞哥";
 "CL" "valparaiso" (-33.05,-71.62) "Valparaíso" "瓦爾帕萊索" "瓦尔帕莱索" "vap";
-"CO" "bogota" (4.71,-74.07) "Bogotá" "波哥大" "波哥大" "bog";
+"CO" "bogota" (4.71,-74.07) "Bogotá" "波哥大" "波哥大" "+bog";
 "PE" "lima" (-12.05,-77.04) "Lima" "利馬" "利马" "lim";
 "EC" "quito" (-0.18,-78.47) "Quito" "基多" "基多" "uio";
 "PR" "san-juan" (18.47,-66.11) "San Juan" "聖胡安" "圣胡安" "sju";
@@ -296,5 +296,5 @@ sites! {
 "US" "omaha" (41.26,-95.93) "Omaha" "奧馬哈" "奥马哈" "oma";
 "CN" "wuxi" (31.49,120.31) "Wuxi" "無錫" "无锡" "wux";
 "CN" "lanzhou" (36.06,103.83) "Lanzhou" "蘭州" "兰州" "lhw";
-"CN" "yinchuan" (38.47,106.23) "Yinchuan" "銀川" "银川" "inc";
+"CN" "yinchuan" (38.47,106.23) "Yinchuan" "銀川" "银川" "+inc";
 }

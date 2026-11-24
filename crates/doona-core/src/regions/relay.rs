@@ -5,7 +5,7 @@ const TAGS: &[&str] = &[
     "IPLC", "IEPL", "BGP", "专线", "專線", "节点", "節點", "中转", "中轉",
 ];
 
-fn tag_start(text: &str) -> bool {
+pub(super) fn tag_start(text: &str) -> bool {
     TAGS.iter().any(|s| {
         text.get(..s.len())
             .is_some_and(|p| p.eq_ignore_ascii_case(s))
@@ -39,6 +39,33 @@ fn destination(c: char) -> Option<(&'static str, &'static str)> {
         '加' => ("CA", "拿大"),
         _ => return None,
     })
+}
+
+fn route_after(entry: &str, tail: &str) -> Option<Location> {
+    let dest = tail.trim_start_matches(|c: char| c.is_whitespace() || "-→>~/".contains(c));
+    if let Some(rest) = dest.strip_prefix('港') {
+        // After a full, adjoining city name this character means port, unless the label
+        // supplies explicit route evidence. The compact pair 深港 is unambiguous.
+        if dest.len() == tail.len()
+            && entry.chars().nth(1).is_some()
+            && !tag_start(rest.trim_start())
+            && !super::numbered(rest)
+        {
+            return None;
+        }
+        let suffix = rest.trim_start_matches(['-', '_', ' ']);
+        if !(rest.is_empty() || tag_start(suffix) || super::numbered(suffix)) {
+            return None;
+        }
+    } else if (dest.len() != tail.len() || dest.starts_with("香港"))
+        && let Some((_, a)) =
+            super::matches_in(dest, dest.len().min(MATCHER.patterns.max_pattern_len()))
+                .filter(|(rank, a)| rank.0 == 0 && a.iso != "CN")
+                .min_by_key(|(rank, _)| *rank)
+    {
+        return Some(super::refine(dest, a.iso, a.center, a.city));
+    }
+    exit_after(dest)
 }
 
 fn exit_after(tail: &str) -> Option<Location> {
@@ -86,7 +113,7 @@ pub(super) fn exit(name: &str) -> Option<Location> {
             && a.city.is_some()
             && !a.key.is_ascii()
             && left_boundary(&name[..m.start()])
-            && let Some(exit) = exit_after(&name[m.end()..])
+            && let Some(exit) = route_after(a.key, &name[m.end()..])
         {
             return Some(exit);
         }
