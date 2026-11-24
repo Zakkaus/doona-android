@@ -82,7 +82,7 @@ internal fun RvNodeDetail(
         // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
         end = RvPageEnd.Inset(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter),
     ) { titleBlock ->
-        Header(node, current, titleBlock, insets, score?.mark(node.id))
+        Header(node, current, titleBlock, insets, score?.detailMark(node.id))
         RvGutter(banner = banner) {
             HistoryCard(node, times, picked) { choice = it }
         }

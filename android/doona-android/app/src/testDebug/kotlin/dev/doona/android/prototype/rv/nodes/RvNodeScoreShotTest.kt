@@ -5,7 +5,6 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextLayoutResult
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -27,7 +26,8 @@ import org.robolectric.annotation.GraphicsMode
  * Score on 節點 and a node's page (samples, not approved), each whole in light, dark, fs115 and fs200: the nodes the 香港
  * Score group chose carry its mark. Where TCP and UDP chose different nodes, each mark names its network
  * (`proto-rv-nodes-page-score-a-*`, `-node-detail-score-a-*`, the node in use, chosen on TCP); where both chose the node
- * in use, its mark is 「Score」 alone (`-nodes-page-score-both-*`, `-node-detail-score-both-*`).
+ * in use, its mark on 節點 is 「Score」 alone (`-nodes-page-score-both-*`) and on its page 「Score TCP/UDP」
+ * (`-node-detail-score-both-*`).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -100,10 +100,10 @@ class RvNodeScoreShotTest {
     fun detailBothFs115() = shot("node-detail-score-both", fontScale = RV_FS115) { Detail(chosen, both) }
 
     @Test
-    @Config(qualifiers = DETAIL_BOTH_FS200)
+    @Config(qualifiers = DETAIL_A_FS200)
     fun detailBothFs200() = shot("node-detail-score-both", fontScale = RV_FS200) { Detail(chosen, both) }
 
-    /** A node both networks chose reads 「Score」 with no network, on 節點 and on its page; no other node is marked. */
+    /** A node both networks chose reads 「Score」 with no network on 節點; no other node is marked. */
     @Test
     @Config(qualifiers = PAGE_BOTH)
     fun bothNetworksMarkScoreAlone() {
@@ -113,10 +113,12 @@ class RvNodeScoreShotTest {
 
     @Test
     @Config(qualifiers = DETAIL_A)
-    fun bothNetworksMarkTheDetailScoreAlone() {
+    fun bothNetworksMarkTheDetailWithBoth() {
         compose.rvContent(dark = false) { Detail(chosen, both) }
-        compose.onNodeWithText("Score", useUnmergedTree = true).assertExists()
-        assertEquals(0, compose.onAllNodesWithText("Score ", substring = true, useUnmergedTree = true).fetchSemanticsNodes().size)
+        val marks = compose.onAllNodesWithText(MARK, substring = true, useUnmergedTree = true).fetchSemanticsNodes()
+            .flatMap { it.config[SemanticsProperties.Text] }
+            .map { it.text.replace(WORD_JOINER, "") }
+        assertEquals(listOf("Score TCP/UDP"), marks)
     }
 
     /** A marks the TCP choice (the node in use) and the UDP choice, each with its network, and shows no number. */
@@ -201,6 +203,5 @@ class RvNodeScoreShotTest {
         const val PAGE_BOTH = "+h2881dp"
         const val PAGE_BOTH_FS115 = "+h2899dp"
         const val PAGE_BOTH_FS200 = "+h4845dp"
-        const val DETAIL_BOTH_FS200 = "+h1338dp"
     }
 }
