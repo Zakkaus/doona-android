@@ -3,7 +3,7 @@ package dev.doona.android.prototype.rv
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.prototype.rv.states.RvActivityNotice
-import dev.doona.android.prototype.rv.states.RvActivityNoticeCard
+import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import org.junit.Rule
 import org.junit.Test
@@ -67,5 +67,5 @@ class RvRefusalShotTest {
 
     @Composable
     private fun Banner(notice: RvActivityNotice) =
-        RvActivityScreen(rvNoticeActivity(notice), onAction = {}, onConnect = {}, notice = { RvActivityNoticeCard(notice) {} })
+        RvActivityScreen(rvNoticeActivity(notice), onAction = {}, onConnect = {}, banner = rvActivityBanner(notice) {})
 }

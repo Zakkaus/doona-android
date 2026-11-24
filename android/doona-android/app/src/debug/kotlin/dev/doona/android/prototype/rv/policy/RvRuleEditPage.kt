@@ -24,6 +24,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
+import dev.doona.android.prototype.rv.RvChoiceLine
 import dev.doona.android.prototype.rv.RvConfirmSheet
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
@@ -35,7 +36,6 @@ import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
-import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvInkStart
@@ -161,7 +161,7 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
             )
         } else {
             val line = draft.covers()
-            RvText(line, Rv.type.rowSub, Modifier.rvInkStart(line, Rv.type.rowSub), color = Rv.colors.textSecondary)
+            RvChoiceLine(line, Modifier.rvInkStart(line, Rv.type.rowSub))
         }
     }
 }

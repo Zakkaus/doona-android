@@ -14,13 +14,14 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
-import dev.doona.android.prototype.rv.RvBanner
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvFilterChip
 import dev.doona.android.prototype.rv.RvFootnote
 import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -97,16 +98,18 @@ internal fun RvConfigDiffPage(
         actionScrim = true,
     ) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_based_on, diff.baseRev)) })
-        RvGutter {
-            if (diff.stale) {
-                RvBanner(
-                    stringResource(R.string.rv_config_stale_title),
-                    rvKeepTail(rvKeepRuns(stringResource(R.string.rv_config_stale_reason, diff.baseRev, diff.headRev))),
-                    stringResource(R.string.rv_config_reload),
-                    onReload,
-                    icon = R.drawable.rv_sym_sync_alt,
-                )
-            }
+        val stale = if (diff.stale) {
+            RvNotice(
+                RvNoticeKind.Error,
+                stringResource(R.string.rv_config_stale_title),
+                rvKeepTail(rvKeepRuns(stringResource(R.string.rv_config_stale_reason, diff.baseRev, diff.headRev))),
+                stringResource(R.string.rv_config_reload),
+                onReload,
+            )
+        } else {
+            null
+        }
+        RvGutter(banner = stale) {
             diff.files.forEach { file -> RvSourceDiff(file, onOpen = { onOpen(file.source, it) }) }
         }
         RvFootnote(stringResource(R.string.rv_template_new_flows))

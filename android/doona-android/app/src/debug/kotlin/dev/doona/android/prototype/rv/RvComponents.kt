@@ -1,7 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
@@ -29,8 +29,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
@@ -131,7 +135,8 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
 /**
  * The screen's one tinted area: the dot map of the world in [dots] on the neutral page behind the header content,
  * centred on [focus] at [focusTop] from the header's top, none above [statusBar], and faint behind the hero's text at
- * [clear]. [live] moves it (a tab's fade, P2's stretch, the connected pulse, a pan to a new node).
+ * [clear]. [live] moves it (a tab's fade, P2's stretch, the connected pulse, a pan to a new node). A new [dots] colour
+ * turns in over [RvMotion.HERO_FADE_MS], as a theme change cross-fades, and not at once; at animator scale 0 at once.
  */
 @Composable
 internal fun RvHeader(
@@ -144,11 +149,13 @@ internal fun RvHeader(
     live: RvDotMotion = RvDotMotion(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar, live)) {
+    val ink = animateColorAsState(dots, Rv.motion.tween(RvMotion.HERO_FADE_MS, LinearEasing), label = "dots")
+    val moving = live.tinted { ink.value }
+    Box(modifier.fillMaxWidth().background(Rv.colors.page).rvDotMap(focus, dots, focusTop, clear, statusBar, moving)) {
         // The marker's pulse, an ambient loop: its own layer, voting the normal rate, so a frame of it redraws the ring
         // alone and not the page it lies on.
         if (focus != null) {
-            Spacer(Modifier.matchParentSize().preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {}.rvDotPulse(focus, dots, focusTop, live))
+            Spacer(Modifier.matchParentSize().preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {}.rvDotPulse(focus, dots, focusTop, moving))
         }
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = content)
     }
@@ -184,7 +191,8 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
 /**
  * A round action: a disc with a glyph and its label under it on one line, in [labelStyle], the size its row gives every
  * label ([rvActionRowFit]), and still shrinking to fit its column alone when it has no row; the line keeps its full
- * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy].
+ * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]). [busy] swaps the glyph for [RvBusy];
+ * that swap and a new [label] fade through ([RvFadeThrough]).
  */
 @Composable
 internal fun RvAction(
@@ -197,14 +205,17 @@ internal fun RvAction(
 ) {
     Column(modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.rvDiscPress(Modifier.size(RvSize.actionDisc).clip(CircleShape).background(Rv.colors.discOnHeader), onClick), contentAlignment = Alignment.Center) {
-            // While [busy] (connecting) the disc shows a busy bar instead of its glyph.
-            Crossfade(busy, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "busy") { working ->
+            // While [busy] (connecting) the disc shows a busy bar instead of its glyph, the one fading through the other.
+            RvFadeThrough(busy, "busy") { working ->
                 if (working) RvBusy(Modifier.width(RvSize.busy)) else RvGlyph(icon, RvSize.actionGlyph, Rv.colors.text)
             }
         }
         Spacer(Modifier.height(RvSpace.discToLabel))
-        val line = Modifier.padding(horizontal = RvSpace.actionLabelInset).rvFullLine(label, Rv.type.action)
-        RvText(label, labelStyle, line, align = TextAlign.Center, autoSize = rvShrinkToFit(labelStyle))
+        // A new word fades through the old one, with the glyph when both change at once.
+        RvFadeThrough(label, "label", alignment = Alignment.TopCenter) { word ->
+            val line = Modifier.padding(horizontal = RvSpace.actionLabelInset).rvFullLine(word, Rv.type.action)
+            RvText(word, labelStyle, line, align = TextAlign.Center, autoSize = rvShrinkToFit(labelStyle))
+        }
     }
 }
 
@@ -215,7 +226,7 @@ internal fun rvActionRowFit(labels: List<String>, column: Dp): TextStyle = rvRow
 /** A grouped card: rows run edge to edge inside its rounded fill; no border, no shadow. */
 @Composable
 internal fun RvCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().testTag(RvPart.CARD).clip(RoundedCornerShape(RvSize.cardRadius)).background(Rv.colors.card), content = content)
+    Column(modifier.fillMaxWidth().testTag(RvPart.CARD).clip(RoundedCornerShape(Rv.cardRadius)).background(Rv.colors.card), content = content)
 }
 
 /**
@@ -233,10 +244,17 @@ internal fun RvControlCard(caption: String?, modifier: Modifier = Modifier, cont
     }
 }
 
-/** The line under a control in a card saying what the choice does: secondary text, [RvSpace.controlToCaption] under it. */
+/** The line under a control in a card saying what the choice does ([RvChoiceLine]), [RvSpace.controlToCaption] under it. */
 @Composable
-internal fun RvControlLine(text: String, modifier: Modifier = Modifier) {
-    RvText(text, Rv.type.rowSub, modifier.padding(top = RvSpace.controlToCaption), color = Rv.colors.textSecondary)
+internal fun RvControlLine(text: String, modifier: Modifier = Modifier) = RvChoiceLine(text, modifier.padding(top = RvSpace.controlToCaption))
+
+/**
+ * A line saying what a choice does (a mode, what a rule's match covers), in secondary text. It wraps as long as it needs
+ * rather than cut the reason or the domain it names (`依規則分流，其餘流量經主節點`, `只比對 gemini.google.com`).
+ */
+@Composable
+internal fun RvChoiceLine(text: String, modifier: Modifier = Modifier) {
+    RvText(text, Rv.type.rowSub, modifier, color = Rv.colors.textSecondary, maxLines = Int.MAX_VALUE)
 }
 
 /** Test tags of the library's layout parts, which `RvLayoutTest` measures on every page against these tokens. */
@@ -245,6 +263,9 @@ internal object RvPart {
     const val TITLE = "rv-title"
     const val CAPTION = "rv-caption"
     const val CONTROL = "rv-control"
+
+    /** An in-page search field ([RvSearchSlot]). */
+    const val SEARCH = "rv-search"
     const val CARD = "rv-card"
     const val SECTION = "rv-section"
     const val FOOTER = "rv-footer"
@@ -253,98 +274,6 @@ internal object RvPart {
     const val BLOCK = "rv-block"
     const val ROW = "rv-row"
     const val SEGMENTED = "rv-segmented"
-}
-
-/**
- * A row of a grouped card: a disc at the start, a title over an optional subtitle, and trailing content at the end.
- *
- * [titleEnd] and [subtitleEnd] put a value at the end of the title's line and of the subtitle's line instead of one
- * trailing column beside both: each line then shares its width only with its own end. The start keeps its width up to
- * [TITLE_SHARE] of the line, the end takes what it needs of the rest, and the start gets what is left, so a long name
- * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
- * text column to its widest end. [trailing] (a chevron) still follows after both lines.
- *
- * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], no gap between the lines);
- * [titleLines] and [titleOverflow] can keep a title to one line cut in the middle, which keeps both ends of a host:port
- * in view.
- */
-@Composable
-internal fun RvRow(
-    leading: @Composable () -> Unit,
-    title: String,
-    subtitle: String?,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    onLongClick: (() -> Unit)? = null,
-    titleEnd: (@Composable () -> Unit)? = null,
-    subtitleEnd: (@Composable () -> Unit)? = null,
-    titleLines: Int = RV_ROW_TITLE_LINES,
-    titleOverflow: TextOverflow = TextOverflow.Ellipsis,
-    trailing: (@Composable () -> Unit)? = null,
-) {
-    // The card clips the layer of its first and last row to its corners.
-    val press = onClick?.let { Modifier.rvRowPress(Role.Button, it, onLongClick) } ?: Modifier
-    val lineWise = titleEnd != null || subtitleEnd != null
-    Row(
-        modifier
-            .fillMaxWidth()
-            .testTag(RvPart.ROW)
-            .heightIn(min = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine)
-            .then(press)
-            .padding(horizontal = RvSpace.rowPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        leading()
-        Spacer(Modifier.width(RvSpace.rowGap))
-        Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
-            if (lineWise) {
-                RowLine(titleEnd) { RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow) }
-                subtitle?.let { RowLine(subtitleEnd) { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) } }
-            } else {
-                RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow)
-                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
-            }
-        }
-        trailing?.let {
-            Spacer(Modifier.width(RvSpace.trailingGap))
-            it()
-        }
-    }
-}
-
-/**
- * The one row rule, every list row's ([RvRow] and the settings rows), as Revolut's measured rows (`07-set-interface.xml`,
- * `07-privacy.xml`): the title wraps to two lines and the subtitle to three, the last ending in an ellipsis; the
- * subtitle's line box starts where the title's ends.
- */
-internal const val RV_ROW_TITLE_LINES = 2
-internal const val RV_ROW_SUBTITLE_LINES = 3
-
-/** The share of a line a row's title keeps, if it needs it, before the end of the line takes the rest. */
-private const val TITLE_SHARE = 0.4f
-
-/**
- * One line of a line-wise [RvRow]: [start] keeps its own width up to [TITLE_SHARE] of the line, [end] takes what it
- * needs of the rest, and [start] then gets what the end leaves; either ends in an ellipsis only when both are long.
- */
-@Composable
-private fun RowLine(end: (@Composable () -> Unit)?, start: @Composable () -> Unit) {
-    Layout({
-        start()
-        end?.invoke()
-    }) { parts, constraints ->
-        val width = constraints.maxWidth
-        val gap = if (parts.size > 1) RvSpace.trailingGap.roundToPx() else 0
-        val keep = min(parts[0].maxIntrinsicWidth(constraints.maxHeight), (width * TITLE_SHARE).toInt())
-        val endPart = parts.getOrNull(1)?.measure(Constraints(maxWidth = max(0, width - keep - gap)))
-        val endWidth = endPart?.width ?: 0
-        val startPart = parts[0].measure(Constraints(maxWidth = max(0, width - endWidth - gap)))
-        val height = max(startPart.height, endPart?.height ?: 0)
-        layout(width, height) {
-            startPart.place(0, (height - startPart.height) / 2)
-            endPart?.let { it.place(width - it.width, (height - it.height) / 2) }
-        }
-    }
 }
 
 /**
@@ -415,7 +344,8 @@ private const val CHECK_DISC = 816f / 960f
  */
 @Composable
 internal fun RvSeeAll(text: String, onClick: () -> Unit) {
-    val shape = remember { RoundedCornerShape(bottomStart = RvSize.cardRadius, bottomEnd = RvSize.cardRadius) }
+    val radius = Rv.cardRadius
+    val shape = remember(radius) { RoundedCornerShape(bottomStart = radius, bottomEnd = radius) }
     Box(
         Modifier.fillMaxWidth().height(RvSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
         contentAlignment = Alignment.Center,
@@ -432,12 +362,44 @@ internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** A row of Revolut's Key stats card (measured §11): [label] 19 sp medium in secondary ink, [value] 19 sp at the end. */
+/**
+ * A row of Revolut's Key stats card (measured §11): [label] 19 sp medium in secondary ink, [value] 19 sp at the end, in a
+ * 58 dp row. A fact is read whole: when the two do not fit one line with [RvSpace.trailingGap] between them (a host:port,
+ * a group and its node at a large font size), the value goes under the label on its edge and wraps, and the row grows as
+ * a two-line row does. Nothing of either is cut.
+ */
 @Composable
 internal fun RvStatRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().height(RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.CenterVertically) {
-        RvText(label, Rv.type.statLabel, Modifier.weight(1f), color = Rv.colors.textSecondary)
-        RvText(value, Rv.type.stat, align = TextAlign.End)
+    // Laid out once more when the value moves under the label, as RvText's cut is: its lines then start on the edge.
+    var stacked by remember(label, value) { mutableStateOf(false) }
+    Layout(
+        {
+            RvText(label, Rv.type.statLabel, color = Rv.colors.textSecondary, maxLines = RV_ROW_TITLE_LINES)
+            RvText(value, Rv.type.stat, align = if (stacked) TextAlign.Start else TextAlign.End, maxLines = Int.MAX_VALUE)
+        },
+        Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
+    ) { (labelPart, valuePart), constraints ->
+        val width = constraints.maxWidth
+        val oneLine = labelPart.maxIntrinsicWidth(Constraints.Infinity) + RvSpace.trailingGap.roundToPx() + valuePart.maxIntrinsicWidth(Constraints.Infinity) <= width
+        if (stacked == oneLine) stacked = !oneLine
+        val free = Constraints(maxWidth = width)
+        val labelLine = labelPart.measure(free)
+        val valueLine = valuePart.measure(free)
+        if (oneLine) {
+            val height = max(RvSize.rowOneLine.roundToPx(), max(labelLine.height, valueLine.height))
+            layout(width, height) {
+                labelLine.place(0, Alignment.CenterVertically.align(labelLine.height, height))
+                valueLine.place(width - valueLine.width, Alignment.CenterVertically.align(valueLine.height, height))
+            }
+        } else {
+            val text = labelLine.height + valueLine.height
+            val height = max(RvSize.rowTwoLine.roundToPx(), text + RvSpace.rowTextInset.roundToPx() * 2)
+            val top = Alignment.CenterVertically.align(text, height)
+            layout(width, height) {
+                labelLine.place(0, top)
+                valueLine.place(0, top + labelLine.height)
+            }
+        }
     }
 }
 
@@ -469,7 +431,7 @@ internal fun RvChevron(modifier: Modifier = Modifier, color: Color = Rv.colors.c
  */
 @Composable
 internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: String? = null, titleLines: Int = 1) {
-    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSize.highlightRadius), Role.Button, it) } ?: Modifier
+    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(Rv.highlightRadius), Role.Button, it) } ?: Modifier
     Row(
         Modifier
             .padding(top = RvSpace.headerInset)
@@ -492,7 +454,7 @@ internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: Str
  */
 @Composable
 internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, first: Boolean = false) {
-    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(RvSize.highlightRadius), Role.Button, it) } ?: Modifier
+    val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(Rv.highlightRadius), Role.Button, it) } ?: Modifier
     val above = if (first) Modifier else Modifier.padding(top = RvSpace.sectionAbove)
     Row(modifier.then(above).padding(bottom = RvSpace.sectionBelow).testTag(RvPart.SECTION).then(press), verticalAlignment = Alignment.CenterVertically) {
         RvText(title, Rv.type.section, Modifier.semantics { heading() })
@@ -510,34 +472,54 @@ internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style:
 }
 
 /**
- * A notice card, as Revolut's notice card with a button (revolut-ux3 §3): 16 dp padding on every side; a row's 40 dp
- * disc with the notice's glyph in ink, its top on the title's line; the [title] over its [reason] (wrapping, in
- * secondary ink) 16 dp after the disc; then, [RvSpace.noticeToAction] under the text, the one [action] as the
- * full-width secondary pill. No hue anywhere: Revolut's notice is neutral, and the owner ruled out a red glyph over a
- * teal action (2026-11-23). A screen reader announces it when it appears.
+ * What a banner says, by kind; the kind alone picks the glyph, so every banner of a kind looks the same. [Error]: an
+ * action failed or a part stopped (a failed switch, save, export, import or update; the core stopped; every node failed).
+ * [Warning]: something outside doona stops traffic (no network, another app's VPN). [Info]: nothing is broken now, the
+ * banner offers something (the log of an earlier crash). The glyphs are the log levels' on 回報問題.
+ */
+internal enum class RvNoticeKind(@DrawableRes val glyph: Int) {
+    Error(R.drawable.rv_sym_error),
+    Warning(R.drawable.rv_nodes_ic_warning),
+    Info(R.drawable.rv_sym_info),
+}
+
+/** One banner: its [kind], the [title] over its [reason], and the one [action] that [onAction] runs. */
+@Immutable
+internal class RvNotice(val kind: RvNoticeKind, val title: String, val reason: String, val action: String, val onAction: () -> Unit)
+
+/**
+ * The one banner of the RV pages, as Revolut's notice card with a button (revolut-ux3 §3): 16 dp padding on every side;
+ * a row's 40 dp disc with its kind's glyph in ink, its top on the title's line; the title over its reason (wrapping, in
+ * secondary ink) 16 dp after the disc; then, [RvSpace.noticeToAction] under the text, the one action as the full-width
+ * secondary pill. No hue anywhere: Revolut's notice is neutral, and the owner ruled out a red glyph over a teal action
+ * (2026-11-23). A screen reader announces it when it appears. A page places it with [RvBannerSlot] (or [RvGutter]'s
+ * `banner`), never by itself.
  */
 @Composable
-internal fun RvBanner(
-    title: String,
-    reason: String,
-    action: String,
-    onAction: () -> Unit,
-    modifier: Modifier = Modifier,
-    @DrawableRes icon: Int = R.drawable.rv_sym_error,
-) {
+internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
     RvCard(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Column(Modifier.fillMaxWidth().padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.noticeToAction)) {
             Row(Modifier.fillMaxWidth()) {
-                RvIconDisc(icon, glyph = RvSize.noticeGlyph)
+                RvIconDisc(notice.kind.glyph, glyph = RvSize.noticeGlyph)
                 Spacer(Modifier.width(RvSpace.rowGap))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-                    RvText(title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
-                    RvText(reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
+                    RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
+                    RvText(notice.reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
                 }
             }
-            RvSecondaryButton(action, onAction)
+            RvSecondaryButton(notice.action, notice.onAction)
         }
     }
+}
+
+/**
+ * Where a page's banner sits, the same on every page: first in the page's body, right under its header (活動's hero
+ * and actions, a large title, the tab's header, the picker's title and caption), so it takes the place of the first
+ * card, on the gutter, [RvSpace.cardGap] over what follows. Nothing without a [banner].
+ */
+@Composable
+internal fun RvBannerSlot(banner: RvNotice?) {
+    if (banner != null) RvBanner(banner, Modifier.padding(start = RvSpace.gutter, end = RvSpace.gutter, bottom = RvSpace.cardGap))
 }
 
 /**
@@ -583,9 +565,13 @@ internal fun RvFootnote(text: String, modifier: Modifier = Modifier, inset: Dp =
     RvText(text, Rv.type.rowSub, modifier.then(pad), color = Rv.colors.textSecondary, maxLines = FOOTNOTE_LINES)
 }
 
+/** A page's body: its cards on the gutter, [RvSpace.cardGap] apart, under the page's [banner] in [RvBannerSlot]. */
 @Composable
-internal fun RvGutter(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap), content = content)
+internal fun RvGutter(modifier: Modifier = Modifier, banner: RvNotice? = null, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxWidth()) {
+        RvBannerSlot(banner)
+        Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap), content = content)
+    }
 }
 
 internal const val RV_NO_VALUE = "—"

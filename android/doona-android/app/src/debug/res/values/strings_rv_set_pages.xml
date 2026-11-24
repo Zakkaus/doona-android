@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The samples of 設定's sub-pages (prototype/rv/settings, lane set-pages), debug builds only. -->
+<resources>
+    <string name="rv_about_title">About doona</string>
+    <string name="rv_about_github">GitHub project</string>
+    <string name="rv_about_github_action" translatable="false">GitHub</string>
+    <string name="rv_about_report_action">Report</string>
+    <string name="rv_about_privacy">Privacy</string>
+    <string name="rv_about_versions">Version %1$s · core %2$s · honk %3$s</string>
+
+    <string name="rv_update_latest">Up to date</string>
+    <string name="rv_update_new">Version %1$s is out</string>
+    <string name="rv_update_new_reason">Current version %1$s.</string>
+    <string name="rv_update_view">View on GitHub</string>
+    <string name="rv_update_failed">Could not check for updates</string>
+    <string name="rv_update_offline">No internet connection.</string>
+
+    <string name="rv_language_english" translatable="false">English</string>
+    <string name="rv_language_zh_hant" translatable="false">繁體中文</string>
+    <string name="rv_language_zh_hans" translatable="false">简体中文</string>
+
+    <plurals name="rv_interval_hours">
+        <item quantity="one">Every %1$d hour</item>
+        <item quantity="other">Every %1$d hours</item>
+    </plurals>
+
+    <string name="rv_log_default">Default</string>
+    <plurals name="rv_log_debug_left">
+        <item quantity="one">Back to Info in %1$d minute</item>
+        <item quantity="other">Back to Info in %1$d minutes</item>
+    </plurals>
+    <plurals name="rv_log_debug_footer">
+        <item quantity="one">Debug returns to Info after %1$d hour. Use it to reproduce a single problem.</item>
+        <item quantity="other">Debug returns to Info after %1$d hours. Use it to reproduce a single problem.</item>
+    </plurals>
+
+    <string name="rv_report_shared">What is shared</string>
+    <string name="rv_report_device">Device</string>
+    <string name="rv_report_settings">Settings summary</string>
+    <string name="rv_report_log">Log</string>
+    <string name="rv_report_core_version">%1$s · core %2$s</string>
+    <plurals name="rv_report_rules">
+        <item quantity="one">%1$d rule</item>
+        <item quantity="other">%1$d rules</item>
+    </plurals>
+    <plurals name="rv_report_events">
+        <item quantity="one">Last %1$d event</item>
+        <item quantity="other">Last %1$d events</item>
+    </plurals>
+    <plurals name="rv_report_crashes">
+        <item quantity="one">%1$d crash log</item>
+        <item quantity="other">%1$d crash logs</item>
+    </plurals>
+    <string name="rv_report_redact">Redact</string>
+    <string name="rv_redact_nodes">Node addresses and ports</string>
+    <string name="rv_redact_nodes_sub">Server domains, IPs and ports</string>
+    <string name="rv_redact_ip">My IP addresses</string>
+    <string name="rv_redact_ip_sub">This device\'s public and local IPs</string>
+    <string name="rv_redact_domains">Visited domains</string>
+    <string name="rv_redact_domains_sub">Domains in connections and DNS queries</string>
+    <string name="rv_redact_apps">App names</string>
+    <string name="rv_redact_apps_sub">The app behind each connection</string>
+    <string name="rv_redact_always">Subscription links and tokens are always removed.</string>
+    <string name="rv_report_github">Report on GitHub</string>
+    <string name="rv_report_share">Share file</string>
+    <string name="rv_report_building">Building the report…</string>
+</resources>

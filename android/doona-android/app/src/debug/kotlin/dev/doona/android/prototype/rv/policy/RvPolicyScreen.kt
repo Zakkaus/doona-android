@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RV_NAV_POLICY
+import dev.doona.android.prototype.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
@@ -39,12 +40,18 @@ import dev.doona.android.prototype.rv.RvGlassButton
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLatencyChange
+import dev.doona.android.prototype.rv.RvNotice
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSearchPill
 import dev.doona.android.prototype.rv.RvSeeAll
 import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSize
+import dev.doona.android.prototype.rv.RvSkeletonCard
+import dev.doona.android.prototype.rv.RvSkeletonCards
+import dev.doona.android.prototype.rv.RvSkeletonControlCard
+import dev.doona.android.prototype.rv.RvSkeletonHeader
+import dev.doona.android.prototype.rv.RvSkeletonRow
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitchRow
 import dev.doona.android.prototype.rv.RvTabHeader
@@ -89,8 +96,9 @@ internal class RvPolicyRoutes(
  * With no subscription there is nothing to route: [noSubscription], when set, puts the empty state with 新增訂閱 (which
  * runs it) in place of the cards, as 活動 does; the bar and the nav stay. [configRev] is a preview flag (PV-f): set, 設定檔
  * joins the card under 範本 with the applied revision and opens the configuration's overview ([RvPolicyRoutes.config]).
- * A [notice] (a banner, or the page's body while it loads) heads the cards, or the empty state, as on 活動; with
- * [noticeOnly] it stands in their place, and the bar and the nav stay.
+ * While [loading] (before the engine is ready) the cards are skeletons of the mode card, the main node's and the groups'
+ * ([PolicySkeleton]), and the cards fade in over them in place. A [banner] (a failed action: a mode switch) heads the
+ * cards in [RvGutter]'s slot.
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -99,8 +107,8 @@ internal fun RvPolicyScreen(
     routes: RvPolicyRoutes = RvPolicyRoutes(),
     noSubscription: (() -> Unit)? = null,
     configRev: Int? = null,
-    notice: (@Composable () -> Unit)? = null,
-    noticeOnly: Boolean = false,
+    loading: Boolean = false,
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -122,26 +130,27 @@ internal fun RvPolicyScreen(
     ) {
         RvTabHeader(insets)
         // 全域 sends everything through the main node: no group or rule applies, so only that card stays. 直連 uses no node.
-        RvGutter {
-            notice?.invoke()
-            if (noSubscription != null && !noticeOnly) {
+        RvGutter(banner = banner) {
+            if (noSubscription != null) {
                 RvEmptyState(
                     stringResource(R.string.rv_empty_subscription),
                     stringResource(R.string.rv_empty_subscription_line),
                     stringResource(R.string.rv_add_subscription),
                     noSubscription,
                 )
-            } else if (!noticeOnly) {
-                ModeCard(state.mode) { onChange(state.copy(mode = it)) }
-                if (state.mode == RvRouteMode.Rule) {
-                    MainCard(state.group(RvPolicyData.main), routes.mainNode)
-                    GroupsCard(state, routes.group)
-                    RulesCard(routes.rules)
-                    OptionsCard(state, onChange, routes, configRev)
+            } else {
+                RvSkeletonCards(loading, { PolicySkeleton() }) {
+                    ModeCard(state.mode) { onChange(state.copy(mode = it)) }
+                    if (state.mode == RvRouteMode.Rule) {
+                        MainCard(state.group(RvPolicyData.main), routes.mainNode)
+                        GroupsCard(state, routes.group)
+                        RulesCard(routes.rules)
+                        OptionsCard(state, onChange, routes, configRev)
+                    }
                 }
             }
         }
-        if (!noticeOnly && noSubscription == null && state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
+        if (noSubscription == null && !loading && state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
         // The last card clears the floating nav, as on 設定.
         Spacer(Modifier.height(rvNavClearance(insets)))
     }
@@ -155,6 +164,20 @@ internal fun RvPolicyScreen(
 private fun ModeCard(mode: RvRouteMode, onMode: (RvRouteMode) -> Unit) {
     RvControlCard(stringResource(mode.line)) {
         RvSegmented(MODES.map { stringResource(it.label) }, MODES.indexOf(mode), { onMode(MODES[it]) }, glyphs = MODES.map { it.glyph })
+    }
+}
+
+/** 策略's cards while it loads: the mode card, the main node's card and the groups' first rows. */
+@Composable
+private fun PolicySkeleton() {
+    RvSkeletonControlCard()
+    RvSkeletonCard {
+        RvSkeletonHeader()
+        RvSkeletonRow(0, end = true)
+    }
+    RvSkeletonCard {
+        RvSkeletonHeader()
+        repeat(SKELETON_GROUPS) { RvSkeletonRow(it + 1, end = true) }
     }
 }
 
@@ -174,14 +197,14 @@ private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
 }
 
 /**
- * 全域's node picker: the node list's search and order, then every subscription's nodes (or every country's, under 地區);
- * a tap makes the node the main node.
+ * 全域's node picker: the node list's order (the search is the tab bar's), then every subscription's nodes (or every
+ * country's, under 地區); a tap makes the node the main node.
  */
 @Composable
 private fun GlobalPicker(state: RvPolicyState, onChange: (RvPolicyState) -> Unit) {
     val main = state.group(RvPolicyData.main)
     val groups = remember(state.nodeSort) { rvNodeGroups(RvData.nodes, RvData.subscriptions, state.nodeSort) }
-    RvControlRow({ RvNodeListControls(state.nodeSort) { onChange(state.copy(nodeSort = it)) } }, RvSpace.tabBlockGap)
+    RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, search = false) }, RvSpace.tabBlockGap)
     RvNodeGroups(groups, main.selectedId, state.nodeSort) { onChange(state.choose(main.id, it)) }
 }
 
@@ -203,7 +226,7 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit) {
         stringResource(group.name),
         stringResource(group.kind.label) + SEPARATOR + count,
         Modifier.rvRowPress(Role.Button, { onOpen(group.id) }),
-        titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End) },
+        titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES) },
         subtitleEnd = { RvText(latencyText(node.latencyMs), Rv.type.rowSub, color = latencyColor(node.latencyMs), align = TextAlign.End) },
         trailing = { RvChevron() },
     )
@@ -251,6 +274,9 @@ private fun ValueRow(@DrawableRes icon: Int, title: String, value: String, onCli
         }
     }
 }
+
+/** The groups' rows the skeleton shows: what the first screen holds under the main node's card. */
+private const val SKELETON_GROUPS = 3
 
 private val MODES = listOf(RvRouteMode.Rule, RvRouteMode.Global, RvRouteMode.Direct)
 

@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalDensity
@@ -180,7 +181,7 @@ internal fun RvTabBarRow(glass: RvGlass, search: @Composable (Modifier) -> Unit,
 /**
  * The search pill (measured §4: 44 dp, full round, the 24 dp magnifier 8 dp in, the 17 sp placeholder, [hint], 搜尋節點
  * unless the tab searches another list): on a tab's bar in the controls' [glass] and a 48 dp target; without glass, on
- * the page in the filter chips' fill, its 44 dp the layout box, as a node list's first row. On the bar it is also the
+ * the page with the capsule's look at rest, its 44 dp the layout box, as a node list's first row. On the bar it is also the
  * pull-down's anchor ([barPill]).
  */
 @Composable
@@ -191,11 +192,12 @@ internal fun RvSearchPill(
     pull: RvPullLook = RvPullLook.None,
     hint: String = stringResource(R.string.rv_search_nodes),
 ) {
-    val fill = glass?.let { Modifier.barPill(pull).minimumInteractiveComponentSize().height(RvChrome.control).rvControl(it, CircleShape) }
-        ?: Modifier.height(RvChrome.control).clip(CircleShape).background(Rv.colors.segmentTrack)
+    val target = if (glass != null) Modifier.barPill(pull).minimumInteractiveComponentSize() else Modifier
     Row(
         modifier
-            .then(fill)
+            .then(target)
+            .height(RvChrome.control)
+            .rvControl(glass, CircleShape)
             .rvPress(CircleShape, Role.Button, onClick)
             .padding(start = RvChrome.searchInset),
         verticalAlignment = Alignment.CenterVertically,
@@ -236,7 +238,7 @@ private fun Modifier.barPill(pull: RvPullLook): Modifier {
  * The search pill as a field (the node picker's bar, a list page's bar): the same glass, glyph and type, with [query]
  * typed in it and [hint], the pill's 搜尋節點 unless the list is another, as the placeholder; CJK runs set in Noto as
  * everywhere else. [focus], when given, can put the cursor (and the keyboard) in it. Without [glass], on a page over the
- * list it searches rather than on a bar, it fills with the control grey as the pill does there.
+ * list it searches rather than on a bar ([RvSearchSlot]), it keeps the bar capsule's look at rest: one field everywhere.
  */
 @Composable
 internal fun RvSearchField(
@@ -250,11 +252,11 @@ internal fun RvSearchField(
     // Its composition, the text field's first one included, is a section of its own in a Perfetto trace.
     Trace.beginSection(TRACE_FIELD)
     val colors = Rv.colors
-    val fill = glass?.let { Modifier.minimumInteractiveComponentSize().height(RvChrome.control).rvControl(it, CircleShape) }
-        ?: Modifier.height(RvChrome.control).clip(CircleShape).background(colors.segmentTrack)
     Row(
         modifier
-            .then(fill)
+            .then(if (glass != null) Modifier.minimumInteractiveComponentSize() else Modifier)
+            .height(RvChrome.control)
+            .rvControl(glass, CircleShape)
             .padding(horizontal = RvChrome.searchInset),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(RvChrome.searchInset),
@@ -294,11 +296,17 @@ internal fun RvGlassButton(glass: RvGlass, @DrawableRes icon: Int, label: String
     ) { RvGlyph(icon, RvChrome.controlGlyph, Rv.colors.text) }
 }
 
-/** A top bar control's fill: a very soft shadow in light, then the controls' glass, and its rim in dark. */
+/**
+ * A top bar control's fill: a very soft shadow in light, then the controls' glass, and its rim in dark. Without [glass]
+ * (a search field on the page) the glass's tint lies on the page, so the field looks as the bar's capsule does at rest.
+ */
 @Composable
-private fun Modifier.rvControl(glass: RvGlass, shape: Shape): Modifier {
-    val rim = Rv.colors.controlRim?.let { Modifier.border(RvChrome.navRim, it, shape) } ?: Modifier
-    return rvSoftShadow(shape, RvChrome.controlShadow, RvChrome.controlShadowDrop, RvChrome.CONTROL_SHADOW_ALPHA).rvGlass(glass, shape, Rv.colors.controlGlass).then(rim)
+private fun Modifier.rvControl(glass: RvGlass?, shape: Shape): Modifier {
+    val colors = Rv.colors
+    val rim = colors.controlRim?.let { Modifier.border(RvChrome.navRim, it, shape) } ?: Modifier
+    val shadow = rvSoftShadow(shape, RvChrome.controlShadow, RvChrome.controlShadowDrop, RvChrome.CONTROL_SHADOW_ALPHA)
+    val fill = glass?.let { shadow.rvGlass(it, shape, colors.controlGlass) } ?: shadow.background(colors.controlGlass.over.compositeOver(colors.page), shape)
+    return fill.then(rim)
 }
 
 @Composable

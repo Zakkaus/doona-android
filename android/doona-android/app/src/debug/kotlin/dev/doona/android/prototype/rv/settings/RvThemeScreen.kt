@@ -105,7 +105,7 @@ private fun ModeCard(appearance: RvAppearance, light: ColorScheme, dark: ColorSc
                 Column(
                     Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(RvSize.highlightRadius))
+                        .clip(RoundedCornerShape(Rv.highlightRadius))
                         .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.RadioButton) {
                             onChange(appearance.copy(mode = mode))
                         }
@@ -126,7 +126,7 @@ private fun ModeCard(appearance: RvAppearance, light: ColorScheme, dark: ColorSc
 /** A small picture of the page in [mode]: the page's colour, a dot for the hero, two cards; 跟隨系統 is half of each. */
 @Composable
 private fun ModeThumb(mode: RvThemeMode, light: RvColors, dark: RvColors) {
-    val shape = RoundedCornerShape(RvSize.highlightRadius)
+    val shape = RoundedCornerShape(Rv.highlightRadius)
     Canvas(Modifier.size(RvSettingsSize.modeThumb).clip(shape).border(RvChrome.ring, Rv.colors.flagRing, shape)) {
         when (mode) {
             RvThemeMode.Light -> page(light)

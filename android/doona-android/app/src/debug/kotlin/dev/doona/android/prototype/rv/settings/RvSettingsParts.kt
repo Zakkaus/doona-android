@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import dev.doona.android.prototype.rv.RV_ROW_SUBTITLE_LINES
 import dev.doona.android.prototype.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.prototype.rv.Rv
@@ -41,6 +42,7 @@ import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvText
+import dev.doona.android.prototype.rv.rvOneLine
 import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvRowPress
 import dev.doona.android.prototype.rv.scripted
@@ -75,7 +77,9 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
  * A row of a card: a 24 dp glyph, a title over an optional subtitle, and trailing content, 58 dp tall with one line and
  * 82 with a subtitle, as [RvRow]; a subtitle that wraps makes it taller. The text block centres in that height, and the
  * glyph and the trailing control centre on its first line, which is where Revolut's rows keep them when the subtitle
- * wraps. The row's touch behaviour comes in [modifier], outside the padding, so the whole row is the target.
+ * wraps. That line is the one a one-line row keeps for its title (58 dp less its insets), or the title's own line where
+ * it is taller ([rvOneLine]), so at a large font size they stay beside the title's first line. The row's touch
+ * behaviour comes in [modifier], outside the padding, so the whole row is the target.
  */
 @Composable
 internal fun RvSettingsRow(
@@ -95,9 +99,10 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
+        val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle))
         Row(Modifier.fillMaxWidth().padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top) {
             icon?.let {
-                FirstLine { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
+                FirstLine(line) { RvGlyph(it, RvSettingsSize.glyph, Rv.colors.text) }
                 Spacer(Modifier.width(RvSettingsSpace.glyphGap))
             }
             Column(Modifier.weight(1f)) {
@@ -106,15 +111,16 @@ internal fun RvSettingsRow(
             }
             trailing?.let {
                 Spacer(Modifier.width(RvSettingsSpace.trailingGap))
-                FirstLine(it)
+                FirstLine(line, it)
             }
         }
     }
 }
 
+/** [content] centred on the title's first [line]. */
 @Composable
-private fun FirstLine(content: @Composable () -> Unit) {
-    Box(Modifier.height(RvSettingsSize.titleLine), contentAlignment = Alignment.Center) { content() }
+private fun FirstLine(line: Dp, content: @Composable () -> Unit) {
+    Box(Modifier.height(line), contentAlignment = Alignment.Center) { content() }
 }
 
 /**

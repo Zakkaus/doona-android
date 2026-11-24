@@ -52,7 +52,7 @@ import org.robolectric.annotation.GraphicsMode
  * The 連線 tab (`proto-rv-connections-*`), YouTube's connection page
  * (`proto-rv-connection-*`, also fs115 and fs200) and Telegram's, which has no domain (`proto-rv-connection-ip-*`); the
  * tab searching for `google` (`proto-rv-connections-search-*`) and with the tunnel off (`proto-rv-connections-off-*`),
- * light and dark, each in one capture of the whole page; that a tap or a long press on a row opens its page, and that
+ * light and dark, each in one capture of the whole page, and the tab's three states at fs115 and fs200; that a tap or a long press on a row opens its page, and that
  * the page's 新增規則 and 關閉連線 rows act; and the library's app disc (`proto-rv-app-disc-*`): an installed app's icon
  * (the test's own package, given the duck as its icon) over an app the phone does not have. The sample apps are not
  * installed under Robolectric, so the pages show the fallback glyph; on a phone each row shows the app's own icon.
@@ -119,6 +119,25 @@ class RvConnectionsShotTest {
 
     @Test
     fun offDark() = compose.rvShot("connections-off", dark = true, before = { assertWhole() }) { RvConnectionsPage(RvPolicyData.connections, connected = false) }
+
+    /** The tab's top at the larger font sizes: the search capsule and the content one search gap under it. */
+    @Test
+    fun listFs115() = compose.rvShot("connections", dark = false, fontScale = RV_FS115) { List() }
+
+    @Test
+    fun listFs200() = compose.rvShot("connections", dark = false, fontScale = RV_FS200) { List() }
+
+    @Test
+    fun searchFs115() = compose.rvShot("connections-search", dark = false, fontScale = RV_FS115) { RvConnectionsPage(RvPolicyData.connections, query = "google") }
+
+    @Test
+    fun searchFs200() = compose.rvShot("connections-search", dark = false, fontScale = RV_FS200) { RvConnectionsPage(RvPolicyData.connections, query = "google") }
+
+    @Test
+    fun offFs115() = compose.rvShot("connections-off", dark = false, fontScale = RV_FS115) { RvConnectionsPage(RvPolicyData.connections, connected = false) }
+
+    @Test
+    fun offFs200() = compose.rvShot("connections-off", dark = false, fontScale = RV_FS200) { RvConnectionsPage(RvPolicyData.connections, connected = false) }
 
     @Test
     fun appDiscLight() {

@@ -105,8 +105,9 @@ private fun NodesCard(group: RvPolicyGroup, onSelect: (String) -> Unit) {
 
 /**
  * A node as 節點 lists it; a selector's row picks it, and the chosen row carries the check badge (and 自動 in url-test).
- * While a latency test of every node, or of this node, runs ([LocalRvTesting], [LocalRvTestingNodes]) its end is the node
- * picker's: a busy bar in place of the latency and its change ([RvLatencyChange]).
+ * While a latency test of every node, or of this node, runs ([LocalRvTesting], [LocalRvTestingNodes]) a busy bar stands at
+ * its end in the room of the latency and its change, as in the node picker ([RvLatencyChange]): the name keeps its width
+ * and lines.
  */
 @Composable
 private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Unit) {
@@ -124,9 +125,9 @@ private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Un
         node.name,
         listOfNotNull(stringResource(R.string.rv_policy_auto).takeIf { chosen && auto }, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
         pick,
-        titleEnd = if (testing) null else ({ RvLatencyText(node.latencyMs, node.timedOut) }),
-        subtitleEnd = if (testing) null else node.changeMs?.let { { RvDelta(it) } },
-        trailing = if (testing) ({ RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, node = node.id) }) else null,
+        titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
+        subtitleEnd = node.changeMs?.let { { RvDelta(it) } },
+        endBusy = testing,
     )
 }
 

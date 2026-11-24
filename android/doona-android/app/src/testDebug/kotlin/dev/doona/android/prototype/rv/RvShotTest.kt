@@ -16,7 +16,7 @@ import org.robolectric.annotation.GraphicsMode
  * The Revolut-style samples, light and dark, in the scheme of the owner's wallpaper, for the owner to judge next to
  * Revolut's screens: the 活動 screen (goldens `proto-rv-activity-light` and `-dark`, routing by rules; in 全域 in
  * `proto-rv-activity-global-*`; disconnected in `proto-rv-activity-idle-*`, scrolled with the bottom bar collapsed in
- * `proto-rv-activity-scrolled-*`, and the whole page in one tall capture in `proto-rv-activity-full-*`) and the traffic page a tile opens (`proto-rv-traffic-*`, and
+ * `proto-rv-activity-scrolled-*`, and the whole page in one tall capture in `proto-rv-activity-full-*`, at 1.15× and 2.0× too) and the traffic page a tile opens (`proto-rv-traffic-*`, and
  * held at one second in `proto-rv-traffic-scrub-*`).
  */
 @RunWith(RobolectricTestRunner::class)
@@ -62,10 +62,24 @@ class RvShotTest {
     fun activityFullDark() = activity("activity-full", dark = true) { assertWhole() }
 
     @Test
+    @Config(qualifiers = FULL_PAGE_FS115)
+    fun activityFullFs115() = activity("activity-full", dark = false, fontScale = RV_FS115) { assertWhole() }
+
+    @Test
+    @Config(qualifiers = FULL_PAGE_FS200)
+    fun activityFullFs200() = activity("activity-full", dark = false, fontScale = RV_FS200) { assertWhole() }
+
+    @Test
     fun trafficLight() = traffic("traffic", dark = false)
 
     @Test
     fun trafficDark() = traffic("traffic", dark = true)
+
+    @Test
+    fun trafficFs115() = traffic("traffic", dark = false, fontScale = RV_FS115)
+
+    @Test
+    fun trafficFs200() = traffic("traffic", dark = false, fontScale = RV_FS200)
 
     @Test
     fun trafficScrubLight() = traffic("traffic-scrub", dark = false, scrub = SCRUB)
@@ -77,14 +91,14 @@ class RvShotTest {
     @Config(qualifiers = RV_EN)
     fun activityEn() = activity("activity-en", dark = false)
 
-    private fun activity(screen: String, dark: Boolean, before: ComposeContentTestRule.() -> Unit = {}) =
-        compose.rvShot(screen, dark, before) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+    private fun activity(screen: String, dark: Boolean, fontScale: Float = 1f, before: ComposeContentTestRule.() -> Unit = {}) =
+        compose.rvShot(screen, dark, before, fontScale) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
     @Composable
     private fun Global() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global)
 
-    private fun traffic(screen: String, dark: Boolean, scrub: Int? = null) =
-        compose.rvShot(screen, dark) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }
+    private fun traffic(screen: String, dark: Boolean, scrub: Int? = null, fontScale: Float = 1f) =
+        compose.rvShot(screen, dark, fontScale = fontScale) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }
 
     private companion object {
         /** The scrolled golden moves the content this far, past the header, so the bottom bar collapses. */
@@ -92,6 +106,10 @@ class RvShotTest {
 
         /** A screen as tall as the whole 活動 page, for the full captures. */
         const val FULL_PAGE = "+h1951dp"
+
+        /** The same at 1.15× and 2.0×, where the page is taller. */
+        const val FULL_PAGE_FS115 = "+h2011dp"
+        const val FULL_PAGE_FS200 = "+h3118dp"
 
         /** The second the scrubbed golden holds a finger on: inside the sustained download. */
         const val SCRUB = 30

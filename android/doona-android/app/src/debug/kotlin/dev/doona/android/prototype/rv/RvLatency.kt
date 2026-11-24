@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -17,11 +18,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.max
 
 // A node's latency as a row shows it: the figure, 逾時 or a dash, over its change since the test before.
 
@@ -64,9 +68,10 @@ internal val LocalRvTestingNodes = compositionLocalOf { emptySet<String>() }
 
 /**
  * A node's latency as a trailing value (19 sp semibold, as [RvLatencyText] writes it) over its change since the test
- * before ([RvDelta], 17 sp). While a test runs ([LocalRvTesting], or one of
- * [node]'s own in [LocalRvTestingNodes]) a busy bar stands in for both; when it ends the result fades in [order] ×
- * [RvMotion.STAGGER_MS] after the list's first, so the results run down the list, and any later change cross-fades.
+ * before ([RvDelta], 17 sp). While a test runs ([LocalRvTesting], or one of [node]'s own in [LocalRvTestingNodes]) a busy
+ * bar stands in for both, at the end of the room they take: the row's text keeps its width and its lines through the
+ * test. When the test ends the result fades in [order] × [RvMotion.STAGGER_MS] after the list's first, so the results run
+ * down the list, and any later change cross-fades.
  */
 @Composable
 internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean = false, order: Int = 0, node: String? = null) {
@@ -82,13 +87,38 @@ internal fun RvLatencyChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean 
     }
     Crossfade(if (waiting) null else Triple(latencyMs, changeMs, timedOut), animationSpec = motion.tween(RvMotion.FADE_MS), label = "latency") { shown ->
         if (shown == null) {
-            RvBusy(Modifier.width(RvSize.busy))
+            InRoomOf({ LatencyOverChange(latencyMs, changeMs, timedOut) }) { RvBusy(Modifier.width(RvSize.busy)) }
         } else {
-            Column(horizontalAlignment = Alignment.End) {
-                RvLatencyText(shown.first, shown.third)
-                shown.second?.let { RvDelta(it) }
-            }
+            LatencyOverChange(shown.first, shown.second, shown.third)
         }
+    }
+}
+
+/**
+ * [busy] at the end of the room [room] would take, [room] itself neither drawn nor read out: a row's text keeps its
+ * width and its lines while the bar stands in. The room is an even number of pixels tall, so the bar centred in it lands
+ * on the pixel row it held when it was centred on the row alone (both halves round alike).
+ */
+@Composable
+private fun InRoomOf(room: @Composable () -> Unit, busy: @Composable () -> Unit) {
+    Layout({
+        Box(Modifier.clearAndSetSemantics {}) { room() }
+        busy()
+    }) { (roomPart, busyPart), constraints ->
+        val held = roomPart.measure(constraints)
+        val bar = busyPart.measure(constraints)
+        val width = max(held.width, bar.width)
+        val height = max(held.height, bar.height).let { it + it % 2 }
+        layout(width, height) { bar.place(width - bar.width, (height - bar.height) / 2) }
+    }
+}
+
+/** [RvLatencyText] over the change ([RvDelta]) when there is one, both at the end. */
+@Composable
+private fun LatencyOverChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean) {
+    Column(horizontalAlignment = Alignment.End) {
+        RvLatencyText(latencyMs, timedOut)
+        changeMs?.let { RvDelta(it) }
     }
 }
 

@@ -342,7 +342,8 @@ internal fun Modifier.rvReorderViewport(state: RvReorderState): Modifier = onPla
 internal fun Modifier.rvReorder(state: RvReorderState, index: Int, actions: Boolean = true, onHold: (() -> Unit)? = null): Modifier {
     val items = if (actions) rvReorderMenu(state, index) else emptyList()
     val hold by rememberUpdatedState(onHold)
-    val shape = remember { RoundedCornerShape(RvSize.cardRadius) }
+    val radius = Rv.cardRadius
+    val shape = remember(radius) { RoundedCornerShape(radius) }
     val lifted = if (state.lifted(index)) {
         Modifier.rvSoftShadow(shape, RvChrome.navShadow, RvChrome.navShadowDrop, RvChrome.NAV_SHADOW_ALPHA).clip(shape).background(Rv.colors.raised)
     } else {

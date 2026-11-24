@@ -137,8 +137,8 @@ class RvStatesShotTest {
         rvNoticeActivity(notice),
         onAction = {},
         onConnect = {},
-        notice = { RvActivityNoticeCard(notice, onAction) },
-        noticeOnly = notice == RvActivityNotice.NoSubscription,
+        banner = rvActivityBanner(notice, onAction),
+        noSubscription = onAction.takeIf { notice == RvActivityNotice.NoSubscription },
     )
 
     /** 新增訂閱 with a link on the local network, under the prompt its 匯入 raised. */

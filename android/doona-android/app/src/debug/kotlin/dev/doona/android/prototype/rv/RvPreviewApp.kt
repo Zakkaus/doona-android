@@ -60,7 +60,7 @@ import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.states.RvActivityNotice
-import dev.doona.android.prototype.rv.states.RvActivityNoticeCard
+import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
 import dev.doona.android.prototype.rv.stats.rvStatsSample
@@ -360,13 +360,10 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
  */
 @Composable
 private fun NoticeActivity(notice: RvActivityNotice, routes: RvActivityRoutes, pages: RvSamplePages) {
+    val add = { pages.push(RvSubsRoutes.ADD) }
+    val onNotice = if (notice == RvActivityNotice.Crash) ({ pages.push("$REPORT:${RvExport.Exporting.name}") }) else pages.pop
     val empty = notice == RvActivityNotice.NoSubscription
-    val onNotice = when (notice) {
-        RvActivityNotice.NoSubscription -> ({ pages.push(RvSubsRoutes.ADD) })
-        RvActivityNotice.Crash -> ({ pages.push("$REPORT:${RvExport.Exporting.name}") })
-        else -> pages.pop
-    }
-    RvActivityScreen(rvNoticeActivity(notice), onAction = {}, onConnect = {}, routes, notice = { RvActivityNoticeCard(notice, onNotice) }, noticeOnly = empty)
+    RvActivityScreen(rvNoticeActivity(notice), onAction = {}, onConnect = {}, routes, banner = rvActivityBanner(notice, onNotice), noSubscription = if (empty) add else null)
 }
 
 /** A deep link's question over 活動 (`sub-import`): 加入 opens the add page, which imports it. */

@@ -48,7 +48,6 @@ import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
 import dev.doona.android.prototype.rv.RvSeeAll
 import dev.doona.android.prototype.rv.RvSegmented
-import dev.doona.android.prototype.rv.RvSize
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvText
 import dev.doona.android.prototype.rv.RvTheme
@@ -148,7 +147,7 @@ private fun TopCard(top: List<RvNode>, currentId: String, steadiest: Boolean, on
 private fun TopNode(node: RvNode, current: Boolean, onOpen: (String) -> Unit, modifier: Modifier) {
     Column(
         modifier
-            .rvPress(RoundedCornerShape(RvSize.highlightRadius), Role.Button, { onOpen(node.id) })
+            .rvPress(RoundedCornerShape(Rv.highlightRadius), Role.Button, { onOpen(node.id) })
             .semantics(mergeDescendants = true) {}
             .padding(vertical = RvSpace.tight),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -16,7 +16,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.prototype.rv.Rv
-import dev.doona.android.prototype.rv.RvBanner
+import dev.doona.android.prototype.rv.RvBannerSlot
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvFootnote
@@ -24,6 +24,8 @@ import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLargeTitle
 import dev.doona.android.prototype.rv.RvLongPressMenu
 import dev.doona.android.prototype.rv.RvMenuItem
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -114,27 +116,28 @@ internal fun RvConfigImportPage(
     RvScrollPage(title, insets, onBack = onBack, bottomAction = review) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, caption = { RvCaption(state.name) })
         if (state.refusedAtLimit) {
-            RvGutter {
-                RvBanner(
+            RvBannerSlot(
+                RvNotice(
+                    RvNoticeKind.Error,
                     stringResource(R.string.rv_config_import_refused),
                     rvKeepTail(
                         rvKeepRuns(pluralStringResource(R.plurals.rv_config_import_limit, RvConfigHistoryData.LIMIT_FILES, RvConfigHistoryData.LIMIT_FILES, RvConfigHistoryData.LIMIT_SIZE)),
                     ),
                     stringResource(R.string.rv_config_pick_again),
                     onPickAgain,
-                )
-            }
+                ),
+            )
             RvFootnote(stringResource(R.string.rv_config_still_in_use, state.headRev))
         } else {
-            RvGutter {
-                RvBanner(
+            RvBannerSlot(
+                RvNotice(
+                    RvNoticeKind.Error,
                     rvKeepTail(stringResource(R.string.rv_config_escape_title)),
                     stringResource(R.string.rv_source_line, state.escapeLine, state.escapePath),
                     stringResource(R.string.rv_config_edit_source),
                     onEditSource,
-                    icon = R.drawable.rv_sym_link,
-                )
-            }
+                ),
+            )
             RvConfigSection(R.string.rv_config_files) {
                 RvCard {
                     state.files.forEach { file ->

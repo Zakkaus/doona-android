@@ -4,7 +4,6 @@ import android.content.res.Configuration
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -108,9 +107,7 @@ private fun Hero(rate: RvAmount, at: String?) {
 @Composable
 private fun Ranges(selected: Int, onSelect: (Int) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = RvSpace.gutter, end = RvSpace.gutter - rvToolOverhang), verticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-            RANGES.forEachIndexed { i, label -> RvRangePill(stringResource(label), selected = i == selected, onClick = { onSelect(i) }) }
-        }
+        RvRangeRow(RANGES.map { stringResource(it) }, selected, onSelect, Modifier.weight(1f))
         RvChartTools(R.drawable.rv_sym_candlestick_chart to stringResource(R.string.rv_chart_type), R.drawable.rv_sym_open_in_full to stringResource(R.string.rv_full_screen))
     }
 }

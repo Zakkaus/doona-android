@@ -28,13 +28,26 @@ internal object RvSettingsSpace {
     val actionGap = 8.dp
 
     /**
-     * The hero (S1, as at 9bb3f79e): the title row this far under the bar, then the two round actions (spacing audit
-     * row 7: 24 dp under the title block); the dot map is centred [mapDrop] under the bar, so East Asia's land falls
-     * behind the title.
+     * The hero (S1, as at 9bb3f79e): the title row this far under the bar, then the two round actions; the dot map is
+     * centred [mapDrop] under the bar, so East Asia's land falls behind the title.
      */
     val heroTop = 8.dp
     val markGap = 8.dp
-    val titleToActions = 24.dp
+
+    /**
+     * From the title's line box to the round actions' discs. Revolut's Security hero (a mark beside a centred 32 sp
+     * title over three 48 dp round actions; revolut-08, 1.46 px/dp from its 70 px discs) puts the discs 69 px = 47 dp
+     * under the title's baseline, and its home hero puts them 41 dp under the pill that ends its hero block (measured
+     * §5); 40 dp under our 38 dp line box sets them 46.5 dp under the baseline (zh-TW; 48 in English). S1 had 24 (30.5
+     * and 32).
+     */
+    val titleToActions = 40.dp
+
+    /**
+     * The dot map keeps S1's extent and fade: it is laid out as though the actions sat this far under the title, so the
+     * actions moving down to [titleToActions] adds no dots behind them.
+     */
+    val mapTitleToActions = 24.dp
     val mapDrop = 16.dp
 
     /** The theme page's colour row (48 dp targets 10 dp in, so a 36 dp disc's edge sits 16 dp in), its preview and its mode columns. */
@@ -46,8 +59,6 @@ internal object RvSettingsSpace {
 }
 
 internal object RvSettingsSize {
-    /** The text line of a title; glyphs and trailing controls centre on it, so a wrapped row keeps them on its first line. */
-    val titleLine = 26.dp
     val glyph = 24.dp
 
     /** The duck mark beside the hero's title. */

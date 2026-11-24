@@ -24,9 +24,11 @@ import org.robolectric.annotation.GraphicsMode
  * What a real engine gives that the sample's dataset never did, on the pages that read it; each light, dark and fs200:
  * 新增訂閱 while the download has no known end (`proto-rv-sub-adding-unknown-*`: the busy bar in the row's trailing slot,
  * as 訂閱's row has it while it updates, and a dash for the byte count); a node with no probe record
- * (`-node-detail-probes0-*`: the plot's axis and an empty line on it) and with one (`-node-detail-probes1-*`); a subscription whose
- * provider sent no quota (`-sub-detail-noquota-*`) and one in the SIP008 format (`-sub-sip008-*`). The busy bar runs at
- * animator scale 0, so it rests half full (recorded twice, byte-identical).
+ * (`-node-detail-probes0-*`: a dash for the figure and 上次測試, the plot's grid and labels with 尚無資料 at its centre)
+ * and with one (`-node-detail-probes1-*`: its figure and time, no median, the one dot at the plot's centre with its
+ * marker and time), these two also at fs115; a subscription whose provider sent no quota (`-sub-detail-noquota-*`) and
+ * one in the SIP008 format (`-sub-sip008-*`). Light and dark hold the whole page, the larger sizes its first 915 dp. The
+ * busy bar runs at animator scale 0, so it rests half full (recorded twice, byte-identical).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -55,6 +57,8 @@ class RvDataRealismShotTest {
     @Config(qualifiers = WHOLE_NODE)
     fun probes0Dark() = shot("node-detail-probes0", dark = true) { Probes(0) }
 
+    @Test fun probes0Fs115() = shot("node-detail-probes0", fontScale = RV_FS115) { Probes(0) }
+
     @Test fun probes0Fs200() = shot("node-detail-probes0", fontScale = RV_FS200) { Probes(0) }
 
     @Test
@@ -64,6 +68,8 @@ class RvDataRealismShotTest {
     @Test
     @Config(qualifiers = WHOLE_NODE)
     fun probes1Dark() = shot("node-detail-probes1", dark = true) { Probes(1) }
+
+    @Test fun probes1Fs115() = shot("node-detail-probes1", fontScale = RV_FS115) { Probes(1) }
 
     @Test fun probes1Fs200() = shot("node-detail-probes1", fontScale = RV_FS200) { Probes(1) }
 
@@ -89,7 +95,7 @@ class RvDataRealismShotTest {
 
     private fun shot(name: String, dark: Boolean = false, fontScale: Float = 1f, busy: Boolean = false, content: @Composable () -> Unit) {
         if (busy) rvAnimatorScale(0f)
-        // The text sizes of fs200 outgrow the window, so only the default size is held to fit it.
+        // The larger text outgrows the window, so only the default size is held to fit it.
         compose.rvShot(name, dark, before = { if (fontScale == 1f) assertWhole() }, fontScale = fontScale, content = content)
     }
 

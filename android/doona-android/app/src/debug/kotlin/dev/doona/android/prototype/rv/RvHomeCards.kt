@@ -5,10 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -26,9 +25,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import dev.doona.android.R
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.prototype.rv.data.RvData
@@ -36,12 +37,15 @@ import dev.doona.android.prototype.rv.data.RvDay
 import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.data.RvSubscription
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * 今日用量 in the style of Revolut's 'Spent this month' (measured §10.2, study §5): the title, today's total and a
  * comparison with yesterday at the start; download and upload as stepped cumulative areas stacked in the right half, so
  * the top edge is the total; and the legend at the bottom start. The comparison has no colour: traffic has no good or
- * bad direction.
+ * bad direction. Where the text does not fit beside the chart (a large font size), the card grows: the text takes the
+ * whole width and wraps, the chart follows [RvSpace.chartGap] under it at the whole width and its height, and the legend
+ * wraps under the chart.
  */
 @Composable
 internal fun RvUsageCard(day: RvDay, nowHour: Float, yesterdayByNow: Long) {
@@ -50,27 +54,57 @@ internal fun RvUsageCard(day: RvDay, nowHour: Float, yesterdayByNow: Long) {
     val type = Rv.type
     val change = day.total - yesterdayByNow
     val compare = if (change < 0) R.string.rv_less_than_yesterday else R.string.rv_more_than_yesterday
-    RvCard(Modifier.height(RvUsageSize.card)) {
-        Box(Modifier.fillMaxSize().padding(RvUsageSize.pad)) {
-            val legend = with(LocalDensity.current) { type.tileCaption.lineHeight.toDp() }
-            RvUsageChart(day, nowHour, Modifier.align(Alignment.TopEnd).fillMaxWidth(CHART_SHARE).fillMaxHeight().padding(bottom = RvUsageSize.chartAboveLegend + legend))
-            Column {
-                RvText(stringResource(R.string.rv_today_usage), type.cardTitle, color = colors.textSecondary)
-                Spacer(Modifier.height(RvSpace.tight))
-                RvFigureText(format.bytes(day.total).figure(), type.cardValue, type.cardUnit)
-                RvText(stringResource(compare, format.bytes(abs(change)).toString()), type.tileCaption, color = colors.textSecondary)
+    val legendLine = with(LocalDensity.current) { type.tileCaption.lineHeight.toDp() }
+    RvCard {
+        Layout(
+            {
+                Column {
+                    RvText(stringResource(R.string.rv_today_usage), type.cardTitle, color = colors.textSecondary)
+                    Spacer(Modifier.height(RvSpace.tight))
+                    RvFigureText(format.bytes(day.total).figure(), type.cardValue, type.cardUnit)
+                    RvText(stringResource(compare, format.bytes(abs(change)).toString()), type.tileCaption, color = colors.textSecondary, maxLines = Int.MAX_VALUE)
+                }
+                RvUsageChart(day, nowHour, Modifier.padding(bottom = RvUsageSize.chartAboveLegend + legendLine))
+                RvUsageLegend(day)
+            },
+            Modifier.fillMaxWidth().padding(RvUsageSize.pad),
+        ) { (text, chart, legend), constraints ->
+            val width = constraints.maxWidth
+            // The chart's room as the card's fixed height leaves it, the legend's line under the chart included.
+            val height = (RvUsageSize.card - RvUsageSize.pad * 2).roundToPx()
+            val chartWidth = (width * CHART_SHARE).roundToInt()
+            val beside = text.maxIntrinsicWidth(height) <= width - chartWidth - RvSpace.trailingGap.roundToPx() && legend.maxIntrinsicWidth(height) <= width
+            val textPart = text.measure(Constraints(maxWidth = width, maxHeight = if (beside) height else Constraints.Infinity))
+            val chartPart = chart.measure(Constraints.fixed(if (beside) chartWidth else width, height))
+            val legendPart = legend.measure(Constraints(maxWidth = width))
+            if (beside) {
+                layout(width, height) {
+                    chartPart.place(width - chartWidth, 0)
+                    textPart.place(0, 0)
+                    legendPart.place(0, height - legendPart.height)
+                }
+            } else {
+                val chartTop = textPart.height + RvSpace.chartGap.roundToPx()
+                val legendTop = chartTop + height - (RvUsageSize.chartAboveLegend + legendLine).roundToPx() + RvUsageSize.chartAboveLegend.roundToPx()
+                layout(width, legendTop + legendPart.height) {
+                    textPart.place(0, 0)
+                    chartPart.place(0, chartTop)
+                    legendPart.place(0, legendTop)
+                }
             }
-            RvUsageLegend(day, Modifier.align(Alignment.BottomStart))
         }
     }
 }
 
-/** The usage chart's legend: download and upload, each with its line's colour and the day's bytes. */
+/**
+ * The usage chart's legend: download and upload, each with its line's colour and the day's bytes, side by side, the
+ * second under the first where they do not fit on one line.
+ */
 @Composable
 internal fun RvUsageLegend(day: RvDay, modifier: Modifier = Modifier) {
     val format = rememberRvFormat()
     val colors = Rv.colors
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(RvUsageSize.legendItemGap)) {
+    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(RvUsageSize.legendItemGap)) {
         RvLegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${format.bytes(day.downTotal)}")
         RvLegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${format.bytes(day.upTotal)}")
     }

@@ -11,10 +11,18 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 import java.time.format.FormatStyle
 import java.util.Locale
+import kotlin.math.pow
 
 /** A figure split so its unit can be set small: `1.84` and ` GB`. */
 internal class RvAmount(val number: String, val unit: String) {
     override fun toString() = number + unit
+
+    /** The amount where text wraps: a no-break space before its unit, so it breaks before `5.63 MB/s`, not inside it. */
+    fun unbroken(): String = number + unit.replace(' ', NO_BREAK_SPACE)
+
+    private companion object {
+        const val NO_BREAK_SPACE = '\u00A0'
+    }
 }
 
 /** A duration in whole hours and the minutes after them, as `1 小時 42 分` writes it. */
@@ -35,6 +43,12 @@ internal class RvFormat(val locale: Locale) {
 
     /** A rate; one that is not a number or infinite (no time has passed) is written as none. */
     fun rate(bytesPerSecond: Double): RvAmount = scaled(BigDecimal.valueOf(if (bytesPerSecond.isFinite()) bytesPerSecond else 0.0), PER_SECOND)
+
+    /**
+     * The widest a rate is written in each unit, three digits and the decimal point (`999 B/s`, `9.99 kB/s` … `9.99 TB/s`):
+     * a place showing a rate that changes every second fits all of them, so its size holds as the rate moves.
+     */
+    fun widestRates(): List<RvAmount> = UNITS.indices.map { unit -> rate(if (unit == 0) WIDEST_BYTES else WIDEST_SCALED * THOUSAND.toDouble().pow(unit)) }
 
     /** [bytes] written in the unit [like] has, without the unit: the `61.7` of `61.7 / 200 GB`. */
     fun bytesIn(bytes: Long, like: RvAmount): String {
@@ -100,6 +114,8 @@ internal class RvFormat(val locale: Locale) {
         val HUNDRED: BigDecimal = BigDecimal.valueOf(100)
         val TEN: BigDecimal = BigDecimal.TEN
         const val PER_SECOND = "/s"
+        const val WIDEST_BYTES = 999.0
+        const val WIDEST_SCALED = 9.99
         const val STEP = 3
         const val DIGITS = 3
         const val SECONDS_PER_HOUR = 3_600L

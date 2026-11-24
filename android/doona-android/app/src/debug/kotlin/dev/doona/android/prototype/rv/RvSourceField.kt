@@ -91,7 +91,8 @@ internal fun RvSourceField(
     val tint = SpanStyle(color = colors.error, background = colors.error.copy(alpha = RvAlpha.STATUS_CHIP), textDecoration = TextDecoration.Underline)
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val focus = remember { FocusRequester() }
-    val messageShape = remember { RoundedCornerShape(RvSize.highlightRadius) }
+    val radius = Rv.highlightRadius
+    val messageShape = remember(radius) { RoundedCornerShape(radius) }
     Column(modifier.fillMaxWidth()) {
         RvCard {
             BasicTextField(

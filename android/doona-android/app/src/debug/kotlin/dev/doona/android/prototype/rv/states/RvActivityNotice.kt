@@ -8,8 +8,8 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityUiState
-import dev.doona.android.prototype.rv.RvBanner
-import dev.doona.android.prototype.rv.RvEmptyState
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.rvIdleActivity
 
 /**
@@ -55,77 +55,45 @@ internal fun rvNoticeActivity(notice: RvActivityNotice): ActivityUiState {
 }
 
 /**
- * The notice's card: the empty state with 新增訂閱, or a banner with its reason and one action ([onAction]): 重新測試,
- * 重新連線, 網路設定 or 匯出報告. A failed start is titled 連線失敗, the reason the notification's (`vpn_failure_*`), and its
- * action what can mend it: 重試, 依 App, 檢查更新 or 新增訂閱. Each banner keeps the error glyph but VPN (its power glyph)
- * and the network (Wi-Fi off). A refusal's action is the way back: 重新連線 asks the system for the VPN consent again, 開啟設定
- * opens the app's notification settings; the notification glyph marks the second.
+ * The notice's banner, with one action ([onAction]): 重新測試, 重新連線, 網路設定 or 匯出報告; none with no subscription,
+ * where 活動 shows the empty state instead. A failed start is titled 連線失敗, the reason the notification's
+ * (`vpn_failure_*`), and its action what can mend it: 重試, 依 App, 檢查更新 or 新增訂閱. A refusal's action is the way
+ * back: 重新連線 asks the system for the VPN consent again, 開啟設定 opens the app's notification settings. Its kind picks
+ * its glyph: the core stopping, every node failing and a failed start are errors; another app's VPN, no network and a
+ * refused VPN consent, outside doona, warnings; the crash's log and a refused notification permission, nothing broken
+ * now, info.
  */
 @Composable
-internal fun RvActivityNoticeCard(notice: RvActivityNotice, onAction: () -> Unit) {
-    when (notice) {
-        RvActivityNotice.NoSubscription -> RvEmptyState(
-            stringResource(R.string.rv_empty_subscription),
-            stringResource(R.string.rv_empty_subscription_line),
-            stringResource(R.string.rv_add_subscription),
-            onAction,
-        )
-
-        RvActivityNotice.NoNode -> RvBanner(stringResource(R.string.rv_no_node), stringResource(R.string.rv_no_node_reason), stringResource(R.string.rv_retest), onAction)
-
-        RvActivityNotice.VpnTaken -> RvBanner(
-            stringResource(R.string.rv_vpn_taken),
-            stringResource(R.string.rv_vpn_taken_reason),
-            stringResource(R.string.rv_reconnect),
-            onAction,
-            icon = R.drawable.rv_sym_power,
-        )
-
-        RvActivityNotice.Offline -> RvBanner(
-            stringResource(R.string.rv_offline),
-            stringResource(R.string.rv_offline_reason),
-            stringResource(R.string.rv_network_settings),
-            onAction,
-            icon = R.drawable.rv_sym_wifi_off,
-        )
-
-        RvActivityNotice.CoreStopped -> RvBanner(
-            stringResource(R.string.rv_core_stopped),
-            stringResource(R.string.rv_core_stopped_reason),
-            stringResource(R.string.rv_reconnect),
-            onAction,
-        )
-
-        RvActivityNotice.Crash -> RvBanner(stringResource(R.string.rv_crash), stringResource(R.string.rv_crash_reason), stringResource(R.string.rv_crash_export), onAction)
-
-        RvActivityNotice.StartFailed -> StartBanner(R.string.vpn_failure_start_failed, R.string.rv_retry, onAction)
-
-        RvActivityNotice.StartNoApps -> StartBanner(R.string.vpn_failure_no_allowed_apps, R.string.perapp_title, onAction)
-
-        RvActivityNotice.StartIncompatible -> StartBanner(R.string.vpn_failure_incompatible_core, R.string.rv_settings_check_update, onAction)
-
-        RvActivityNotice.StartNoNodes -> StartBanner(R.string.first_no_nodes, R.string.rv_add_subscription, onAction)
-
-        RvActivityNotice.ConsentDenied -> RvBanner(
-            stringResource(R.string.rv_vpn_denied),
-            stringResource(R.string.rv_vpn_denied_reason),
-            stringResource(R.string.rv_reconnect),
-            onAction,
-            icon = R.drawable.rv_sym_power,
-        )
-
-        RvActivityNotice.NotifyDenied -> RvBanner(
-            stringResource(R.string.rv_notify_denied),
-            stringResource(R.string.rv_notify_denied_reason),
-            stringResource(R.string.rv_lan_open_settings),
-            onAction,
-            icon = R.drawable.rv_settings_ic_notifications,
-        )
+internal fun rvActivityBanner(notice: RvActivityNotice, onAction: () -> Unit): RvNotice? {
+    val (kind, title, reason, action) = when (notice) {
+        RvActivityNotice.NoSubscription -> return null
+        RvActivityNotice.NoNode -> Words(RvNoticeKind.Error, R.string.rv_no_node, R.string.rv_no_node_reason, R.string.rv_retest)
+        RvActivityNotice.VpnTaken -> Words(RvNoticeKind.Warning, R.string.rv_vpn_taken, R.string.rv_vpn_taken_reason, R.string.rv_reconnect)
+        RvActivityNotice.Offline -> Words(RvNoticeKind.Warning, R.string.rv_offline, R.string.rv_offline_reason, R.string.rv_network_settings)
+        RvActivityNotice.CoreStopped -> Words(RvNoticeKind.Error, R.string.rv_core_stopped, R.string.rv_core_stopped_reason, R.string.rv_reconnect)
+        RvActivityNotice.Crash -> Words(RvNoticeKind.Info, R.string.rv_crash, R.string.rv_crash_reason, R.string.rv_crash_export)
+        RvActivityNotice.StartFailed -> started(R.string.vpn_failure_start_failed, R.string.rv_retry)
+        RvActivityNotice.StartNoApps -> started(R.string.vpn_failure_no_allowed_apps, R.string.perapp_title)
+        RvActivityNotice.StartIncompatible -> started(R.string.vpn_failure_incompatible_core, R.string.rv_settings_check_update)
+        RvActivityNotice.StartNoNodes -> started(R.string.first_no_nodes, R.string.rv_add_subscription)
+        RvActivityNotice.ConsentDenied -> Words(RvNoticeKind.Warning, R.string.rv_vpn_denied, R.string.rv_vpn_denied_reason, R.string.rv_reconnect)
+        RvActivityNotice.NotifyDenied -> Words(RvNoticeKind.Info, R.string.rv_notify_denied, R.string.rv_notify_denied_reason, R.string.rv_lan_open_settings)
     }
+    return RvNotice(kind, stringResource(title), stringResource(reason), stringResource(action), onAction)
 }
 
 /** A failed start: 連線失敗 over the [reason] and the one [action] that can mend it. */
-@Composable
-private fun StartBanner(@StringRes reason: Int, @StringRes action: Int, onAction: () -> Unit) {
-    RvBanner(stringResource(R.string.vpn_status_failed), stringResource(reason), stringResource(action), onAction)
+private fun started(@StringRes reason: Int, @StringRes action: Int) = Words(RvNoticeKind.Error, R.string.vpn_status_failed, reason, action)
+
+/** A failed action's title (pv-d M8): 策略's mode switch, a node switch in a picker. */
+internal enum class RvActionFailed(@StringRes val title: Int) {
+    SwitchMode(R.string.rv_failed_switch_mode),
+    SwitchNode(R.string.rv_failed_switch_node),
 }
+
+/** The banner a failed [action] leaves where it happened: what failed over the engine's own [reason], and 重試 ([onRetry]). */
+@Composable
+internal fun rvActionFailedBanner(action: RvActionFailed, @StringRes reason: Int, onRetry: () -> Unit) =
+    RvNotice(RvNoticeKind.Error, stringResource(action.title), stringResource(reason), stringResource(R.string.rv_retry), onRetry)
+
+private data class Words(val kind: RvNoticeKind, @StringRes val title: Int, @StringRes val reason: Int, @StringRes val action: Int)

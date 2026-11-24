@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -37,7 +36,6 @@ import dev.doona.android.prototype.rv.LocalRvTestingNodes
 import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvCaption
 import dev.doona.android.prototype.rv.RvCard
-import dev.doona.android.prototype.rv.RvChartSize
 import dev.doona.android.prototype.rv.RvDelta
 import dev.doona.android.prototype.rv.RvEmptyState
 import dev.doona.android.prototype.rv.RvFlag
@@ -46,7 +44,7 @@ import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvLatencyChange
 import dev.doona.android.prototype.rv.RvLatencyText
 import dev.doona.android.prototype.rv.RvPageHeader
-import dev.doona.android.prototype.rv.RvRangePill
+import dev.doona.android.prototype.rv.RvRangeRow
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSearchPill
@@ -67,19 +65,19 @@ import dev.doona.android.prototype.rv.rvRowIndication
 import dev.doona.android.prototype.rv.rvSystemScheme
 
 /**
- * The node list's control row: the search pill (the sample does not type into it), then the order as a row of Revolut's
- * range chips, every key in view and the active one raised. Chips rather than a filter chip and its menu: a filter chip's
- * chevron promises a menu, which this library does not have, and four short keys fit on one row, so the choice and the
- * active key are one tap and one glance.
+ * The node list's control row: the search pill (the sample does not type into it) when [search], then the order as a row
+ * of Revolut's range chips, every key in view and the active one raised. Chips rather than a filter chip and its menu: a
+ * filter chip's chevron promises a menu, which this library does not have, and four short keys fit on one row, so the
+ * choice and the active key are one tap and one glance. A page whose bar already searches the nodes (策略's 全域) leaves
+ * the pill out: one search per page (rule 9); the main node's pushed page has none in its bar, so its list keeps it.
  */
 @Composable
-internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit) {
+internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, search: Boolean = true) {
     Column(verticalArrangement = Arrangement.spacedBy(RvSpace.controlStack)) {
-        RvSearchPill(NOT_WIRED, Modifier.fillMaxWidth())
+        if (search) RvSearchPill(NOT_WIRED, Modifier.fillMaxWidth())
         // The control row's gap below measures from the selected chip's shadow, the edge the eye sees.
-        Row(Modifier.padding(bottom = rvRaisedReach).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-            RvNodeSort.entries.forEach { RvRangePill(stringResource(it.label), selected = it == sort) { onSort(it) } }
-        }
+        val sorts = RvNodeSort.entries
+        RvRangeRow(sorts.map { stringResource(it.label) }, sorts.indexOf(sort), { onSort(sorts[it]) }, Modifier.padding(bottom = rvRaisedReach))
     }
 }
 
@@ -90,8 +88,9 @@ internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit) 
  * with the country's flag, its name and how many nodes it has. Each card shows its first [ROWS] and the current node
  * wherever it falls, then 查看全部 opens the rest in place. A tap on a node picks it ([onPick]), and the check moves.
  * Under 穩定 a row's second trailing line is how many of its kept tests answered, where its change is otherwise. While a
- * latency test of every node, or of one node, runs ([LocalRvTesting], [LocalRvTestingNodes]) the row's end is the pull-down
- * picker's: a busy bar in place of the latency and what is under it ([RvLatencyChange]).
+ * latency test of every node, or of one node, runs ([LocalRvTesting], [LocalRvTestingNodes]) a busy bar stands at the
+ * row's end in the room of the latency and what is under it, as in the pull-down picker ([RvLatencyChange]): the name
+ * keeps its width and lines.
  */
 @Composable
 internal fun RvNodeGroups(groups: List<RvNodeGroup>, currentId: String, sort: RvNodeSort, onPick: (String) -> Unit) {
@@ -141,9 +140,9 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
         node.name,
         node.protocol + SEPARATOR + stringResource(node.place.label),
         if (current) pick.semantics { stateDescription = inUse } else pick,
-        titleEnd = if (testing) null else ({ RvLatencyText(node.latencyMs, node.timedOut) }),
-        subtitleEnd = if (testing) null else second,
-        trailing = if (testing) ({ RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, node = node.id) }) else null,
+        titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
+        subtitleEnd = second,
+        endBusy = testing,
     )
 }
 

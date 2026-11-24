@@ -8,12 +8,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -49,10 +51,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -61,6 +66,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.em
 import dev.doona.android.prototype.rv.data.RvAmount
 import dev.doona.android.prototype.rv.data.RvFormat
 import kotlinx.coroutines.launch
@@ -86,11 +92,24 @@ internal fun rememberRvFormat(): RvFormat {
 }
 
 /**
+ * Tiles side by side ([RvSparkTile]), [RvSpace.tileGap] apart, each as tall as the tallest: square, or taller, all of
+ * them, when one's text needs more room at a large font size.
+ */
+@Composable
+internal fun RvTileRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+    Row(modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(RvSpace.tileGap), content = content)
+}
+
+/**
  * One of Revolut's crypto home tiles, square as they are: [caption] at the top start, [icon] in the series' tinted 20 dp
  * disc at the top end, the [figure] in bold, a secondary [note] under it, and the sparkline of [values] at the bottom
  * (measured §10.2: 148 x 60 dp). With [quiet] (no
  * connection, or no traffic) the tile takes Revolut's empty chart card instead: a larger figure over ghost bars, and
  * [note] says why there is no line. The whole tile is one button.
+ *
+ * At a large font size the figure keeps one line, smaller where it must ([RvFigureText], fitting [widest] too), the note
+ * wraps, and the tile grows past square to hold them over the whole sparkline; in a [RvTileRow] its neighbour grows
+ * with it.
  */
 @Composable
 internal fun RvSparkTile(
@@ -104,10 +123,11 @@ internal fun RvSparkTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     ghost: FloatArray = RV_GHOST_DOWN,
+    widest: List<RvFigure> = emptyList(),
 ) {
     val type = Rv.type
-    RvCard(modifier.aspectRatio(1f).rvPress(RoundedCornerShape(RvSize.cardRadius), Role.Button, onClick)) {
-        Column(Modifier.fillMaxSize().padding(RvChartSize.tilePad)) {
+    RvCard(modifier.fillMaxHeight().rvPress(RoundedCornerShape(Rv.cardRadius), Role.Button, onClick)) {
+        Column(Modifier.fillMaxWidth().rvSquareAtLeast().padding(RvChartSize.tilePad)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // One tile layout in every state and on every page: the in-card header's 19 sp, the value at the tile's size (L-03).
                 RvText(caption, type.cardTitle, Modifier.weight(1f), color = Rv.colors.textSecondary)
@@ -117,22 +137,50 @@ internal fun RvSparkTile(
             }
             Spacer(Modifier.height(RvSpace.tight))
             // Each second's rate cross-fades in instead of jumping.
-            Crossfade(figure.whole to figure.unit, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "tile") { (whole, unit) -> RvFigureText(RvFigure(whole, unit), type.tileValue, type.tileUnit) }
-            RvText(note, type.tileCaption, color = Rv.colors.textSecondary)
+            Crossfade(figure.whole to figure.unit, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "tile") { (whole, unit) ->
+                RvFigureText(RvFigure(whole, unit), type.tileValue, type.tileUnit, widest = widest)
+            }
+            RvText(note, type.tileCaption, color = Rv.colors.textSecondary, maxLines = Int.MAX_VALUE)
             Spacer(Modifier.weight(1f))
             if (quiet) RvGhostBars(ghost) else RvSparkline(values, series.line)
         }
     }
 }
 
-/** A figure in [style], its unit in [unitStyle] on the same baseline; Latin only, as figures and units are. */
+/**
+ * At least as tall as it is wide: a tile's square, taller only when its content needs it. The height the place gives
+ * (a [RvTileRow]'s) is filled; where it gives none, the square is.
+ */
+private fun Modifier.rvSquareAtLeast() = layout { measurable, constraints ->
+    val side = minOf(constraints.maxWidth, constraints.maxHeight)
+    val placeable = measurable.measure(constraints.copy(minHeight = maxOf(constraints.minHeight, side)))
+    // Asked for its intrinsic height, the content answers with its own, which the square may exceed.
+    layout(placeable.width, maxOf(placeable.height, side)) { placeable.place(0, 0) }
+}
+
+/**
+ * A figure in [style], its unit in [unitStyle] on the same baseline; Latin only, as figures and units are. It keeps one
+ * line: where it, or one of the [widest] figures the place may show, does not fit the width, number and unit shrink
+ * together to the largest size at which all of them fit ([rvFigureFit]), never cut.
+ */
 @Composable
-internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextStyle, modifier: Modifier = Modifier) {
-    val text = buildAnnotatedString {
-        append(figure.whole)
-        withStyle(unitStyle.toSpanStyle()) { append(figure.unit) }
+internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextStyle, modifier: Modifier = Modifier, widest: List<RvFigure> = emptyList()) {
+    // The unit as a share of the figure's size, so the two shrink together. The share is taken at this font scale, whose
+    // sizes do not grow in proportion, and of the unit's size in whole px, as a span in sp is set: unshrunk, the unit
+    // is the size it was.
+    val density = LocalDensity.current
+    val unit = remember(style, unitStyle, density) {
+        val share = with(density) { unitStyle.fontSize.toPx().roundToInt() / style.fontSize.toPx() }
+        unitStyle.toSpanStyle().copy(fontSize = share.em)
     }
-    BasicText(text, modifier, style = style.copy(color = Rv.colors.text), maxLines = 1)
+    val all = remember(widest, unit) { widest.map { it.text(unit) } }
+    BasicText(figure.text(unit), modifier, style = style.copy(color = Rv.colors.text), maxLines = 1, autoSize = rvFigureFit(style, all))
+}
+
+/** The figure as one text, its unit in [unit]. */
+private fun RvFigure.text(unit: SpanStyle) = buildAnnotatedString {
+    append(whole)
+    withStyle(unit) { append(this@text.unit) }
 }
 
 /**
@@ -481,6 +529,12 @@ private const val DOT_LENGTH = 0.01f
 
 /** A latency chart's axis (node detail and 統計): up to the first whole 100 ms that leaves the slowest 5 % below the top. */
 internal fun rvLatencyAxisTop(slowest: Int): Int = ceil(maxOf(slowest, 1) * LATENCY_HEADROOM / LATENCY_STEP).toInt() * LATENCY_STEP
+
+/**
+ * The axis for a chart of one test, which then sits on its middle line, or as near it as whole 100 ms allow: the whole
+ * 100 ms nearest twice [value], never under [rvLatencyAxisTop] (92 → 200 ms, the dot just under 100; 50 → 100 ms).
+ */
+internal fun rvLatencyAxisMiddle(value: Int): Int = maxOf(rvLatencyAxisTop(value), (2f * value / LATENCY_STEP).roundToInt() * LATENCY_STEP)
 
 private const val LATENCY_HEADROOM = 1.05f
 private const val LATENCY_STEP = 100

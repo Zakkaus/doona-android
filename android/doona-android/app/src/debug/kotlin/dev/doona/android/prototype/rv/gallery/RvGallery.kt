@@ -30,17 +30,28 @@ import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
+import dev.doona.android.prototype.rv.RvSkeletonCard
+import dev.doona.android.prototype.rv.RvSkeletonControlCard
+import dev.doona.android.prototype.rv.RvSkeletonGoal
+import dev.doona.android.prototype.rv.RvSkeletonHeader
+import dev.doona.android.prototype.rv.RvSkeletonRow
+import dev.doona.android.prototype.rv.RvSkeletonSeeAll
+import dev.doona.android.prototype.rv.RvSkeletonTiles
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTextField
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.settings.RvPerAppData
+import dev.doona.android.prototype.rv.states.RvActivityNotice
+import dev.doona.android.prototype.rv.states.rvActivityBanner
+import dev.doona.android.prototype.rv.subs.rvFailedBanner
 import dev.doona.android.prototype.rv.subs.rvSubscriptionMenu
 
 /**
  * The library's new parts in one page, for the owner to try on a phone (route `gallery`): the text field in its states,
- * subscription rows whose long press opens the menu, app rows to check, the error banner, the empty state, the source
- * field and its diff, and the confirm sheet behind a button. The goldens draw the same parts.
+ * subscription rows whose long press opens the menu, app rows to check, the banner in its three kinds, the empty state,
+ * the loading skeleton, the source field and its diff, and the confirm sheet behind a button. The goldens draw the same
+ * parts.
  */
 @Composable
 internal fun RvGalleryScreen(onBack: () -> Unit) {
@@ -54,6 +65,7 @@ internal fun RvGalleryScreen(onBack: () -> Unit) {
         Section(R.string.rv_gallery_check) { RvGalleryChecks() }
         Section(R.string.rv_gallery_banner) { RvGalleryBanners() }
         Section(R.string.rv_gallery_empty) { RvGalleryEmpty() }
+        Section(R.string.rv_gallery_skeleton) { RvGallerySkeleton() }
         Section(R.string.rv_gallery_code) { RvGalleryCode() }
         Section(R.string.rv_gallery_source) { RvGallerySource() }
         Section(R.string.rv_gallery_diff) { RvGalleryDiff() }
@@ -114,19 +126,13 @@ internal fun RvGalleryChecks() {
     }
 }
 
-/** The banner for a subscription that did not update, for no network, and for a VPN another app took. */
+/** The banner in each of its kinds: a subscription that did not update (error), no network (warning), a crash's log (info). */
 @Composable
 internal fun RvGalleryBanners() {
     val sub = RvData.subscriptions.first()
     Column(verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap)) {
-        RvBanner(
-            stringResource(R.string.rv_sub_failed_title, sub.name),
-            pluralStringResource(R.plurals.rv_sub_failed_reason, sub.nodes, sub.nodes),
-            stringResource(R.string.rv_retry),
-            {},
-        )
-        RvBanner(stringResource(R.string.rv_offline), stringResource(R.string.rv_offline_reason), stringResource(R.string.rv_network_settings), {}, icon = R.drawable.rv_sym_wifi_off)
-        RvBanner(stringResource(R.string.rv_vpn_taken), stringResource(R.string.rv_vpn_taken_reason), stringResource(R.string.rv_reconnect), {}, icon = R.drawable.rv_sym_power)
+        RvBanner(rvFailedBanner(sub) {})
+        listOf(RvActivityNotice.Offline, RvActivityNotice.Crash).forEach { notice -> rvActivityBanner(notice) {}?.let { RvBanner(it) } }
     }
 }
 
@@ -141,6 +147,29 @@ internal fun RvGalleryEmpty(onAdd: () -> Unit = {}) {
             onAdd,
         )
         RvEmptyCaption(stringResource(R.string.rv_conn_off_title), stringResource(R.string.rv_conn_off_line))
+    }
+}
+
+/**
+ * The skeleton's parts as a page shows them while it loads: a control card, a card with its header, a row without an
+ * end, two rows with one and its see-all line, the tiles, and a card with a goal under its row.
+ */
+@Composable
+internal fun RvGallerySkeleton() {
+    Column(verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap)) {
+        RvSkeletonControlCard()
+        RvSkeletonCard {
+            RvSkeletonHeader()
+            RvSkeletonRow(0)
+            RvSkeletonRow(1, end = true)
+            RvSkeletonRow(2, end = true)
+            RvSkeletonSeeAll()
+        }
+        RvSkeletonTiles()
+        RvSkeletonCard {
+            RvSkeletonRow(3)
+            RvSkeletonGoal()
+        }
     }
 }
 

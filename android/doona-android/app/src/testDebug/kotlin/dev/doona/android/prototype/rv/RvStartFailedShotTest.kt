@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.states.RvActivityNotice
-import dev.doona.android.prototype.rv.states.RvActivityNoticeCard
+import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import org.junit.Rule
 import org.junit.Test
@@ -71,6 +71,6 @@ class RvStartFailedShotTest {
         onAction = {},
         onConnect = {},
         mode = if (notice == RvActivityNotice.StartNoNodes) RvRouteMode.Global else RvRouteMode.Rule,
-        notice = { RvActivityNoticeCard(notice) {} },
+        banner = rvActivityBanner(notice) {},
     )
 }

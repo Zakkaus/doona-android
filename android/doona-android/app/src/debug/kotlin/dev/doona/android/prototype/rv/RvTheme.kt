@@ -23,6 +23,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import dev.doona.android.designsystem.components.Tone
 import kotlin.math.max
@@ -287,7 +288,20 @@ internal object Rv {
     val motion: RvMotionScale
         @Composable @ReadOnlyComposable
         get() = LocalRv.current.motion
+
+    /** Every card's corner: [RvSize.cardRadius] unless a preview sets [LocalRvCardRadius]. */
+    val cardRadius: Dp
+        @Composable @ReadOnlyComposable
+        get() = LocalRvCardRadius.current
+
+    /** A highlight inside a card: the card's corner less [RvSpace.tight], as Revolut's row press follows its card. */
+    val highlightRadius: Dp
+        @Composable @ReadOnlyComposable
+        get() = LocalRvCardRadius.current - RvSpace.tight
 }
+
+/** Preview only: the card corner a sample is drawn at. No page sets it, so the token [RvSize.cardRadius] rules. */
+internal val LocalRvCardRadius = staticCompositionLocalOf { RvSize.cardRadius }
 
 /**
  * The sample's tokens for [content], and its overscroll: the platform's stretch on Android 12 and later (Compose's
@@ -316,15 +330,15 @@ internal fun rvSystemScheme(dark: Boolean): ColorScheme {
 internal fun scripted(text: String): AnnotatedString = buildAnnotatedString {
     var start = 0
     while (start < text.length) {
-        val cjk = text[start].isCjk()
+        val cjk = text[start].rvCjk()
         var end = start + 1
-        while (end < text.length && (text[end].isCjk() == cjk || text[end] == ' ')) end++
+        while (end < text.length && (text[end].rvCjk() == cjk || text[end] == ' ')) end++
         if (cjk) withStyle(SpanStyle(fontFamily = RvNoto)) { append(text, start, end) } else append(text, start, end)
         start = end
     }
 }
 
-private fun Char.isCjk() = code >= CJK_START
+internal fun Char.rvCjk() = code >= CJK_START
 
 /** CJK Radicals Supplement: everything from here up is set in Noto. */
 private const val CJK_START = 0x2E80

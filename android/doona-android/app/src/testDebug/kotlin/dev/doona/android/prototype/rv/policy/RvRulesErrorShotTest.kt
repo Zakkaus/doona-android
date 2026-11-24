@@ -6,7 +6,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.R
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
-import dev.doona.android.prototype.rv.RvBanner
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -70,15 +71,14 @@ class RvRulesErrorShotTest {
 
     /** The source did not compile, so no row came from it: the banner stands where the list would be, and 範本 is the way out. */
     @Composable
-    private fun Parse() = Rules { Banner(R.string.rv_rules_parse_failed, R.string.rv_rules_parse_failed_reason, R.string.rv_policy_template) }
+    private fun Parse() = Rules(Banner(R.string.rv_rules_parse_failed, R.string.rv_rules_parse_failed_reason, R.string.rv_policy_template))
 
     /** The read failed with the engine's `internal`: the banner stands where the list would be, and 重試 reads again. */
     @Composable
-    private fun Read() = Rules { Banner(R.string.rv_rules_read_failed, R.string.error_internal, R.string.rv_retry) }
+    private fun Read() = Rules(Banner(R.string.rv_rules_read_failed, R.string.error_internal, R.string.rv_retry))
 
     @Composable
-    private fun Rules(banner: @Composable () -> Unit) =
-        RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}, notice = banner, noticeOnly = true)
+    private fun Rules(banner: RvNotice) = RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}, banner = banner)
 
     @Composable
     private fun Truncated() = RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}, truncated = true)
@@ -88,10 +88,9 @@ class RvRulesErrorShotTest {
         RvPolicyState(),
         rvSampleSettings(),
         onBack = {},
-        notice = { Banner(R.string.rv_effective_failed, R.string.error_internal, R.string.rv_retry) },
-        noticeOnly = true,
+        banner = Banner(R.string.rv_effective_failed, R.string.error_internal, R.string.rv_retry),
     )
 
     @Composable
-    private fun Banner(title: Int, reason: Int, action: Int) = RvBanner(stringResource(title), stringResource(reason), stringResource(action), {})
+    private fun Banner(title: Int, reason: Int, action: Int) = RvNotice(RvNoticeKind.Error, stringResource(title), stringResource(reason), stringResource(action), {})
 }

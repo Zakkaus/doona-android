@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -80,6 +81,13 @@ class RvPolicyShotTest {
         compose.onNodeWithText(OTHER_NODE).performScrollTo().assertIsNotSelected().performClick()
         compose.onNodeWithText(OTHER_NODE).assertIsSelected()
         compose.onNodeWithText(MAIN_NODE).assertIsNotSelected()
+    }
+
+    /** The tab bar's pill is 全域's only search: the node list under the mode has none of its own (rule 9). */
+    @Test
+    fun globalHasOneSearch() {
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Global), onChange = {}) } }
+        assertEquals(1, compose.onAllNodesWithText(SEARCH, useUnmergedTree = true).fetchSemanticsNodes().size)
     }
 
     @Test
@@ -157,12 +165,15 @@ class RvPolicyShotTest {
         const val WHOLE_AUTO = "+h1149dp"
         const val WHOLE_FLOW = "+h1296dp"
 
-        /** 全域 scrolled this far shows the second subscription's card under the bar. */
-        const val GLOBAL_SCROLL = 1048f
+        /** 全域 scrolled this far shows the second subscription's card under the bar (1048 with the in-list search pill, 56 taller). */
+        const val GLOBAL_SCROLL = 992f
 
         /** The main node in the sample, and another node of the first subscription that a tap makes the main node. */
         const val MAIN_NODE = "Hong Kong 02 IPLC"
         const val OTHER_NODE = "Taipei 04"
+
+        /** The search pill's placeholder. */
+        const val SEARCH = "搜尋節點"
 
         /** Two of the node list's order chips. */
         const val LATENCY = "延遲"

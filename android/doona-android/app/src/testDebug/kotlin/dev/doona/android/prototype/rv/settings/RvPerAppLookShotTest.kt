@@ -51,15 +51,15 @@ class RvPerAppLookShotTest {
     fun v1Fs200() = shot(RvPerAppLook.Checks, "v1", fontScale = RV_FS200)
 
     @Test
-    @Config(qualifiers = "+h1380dp")
+    @Config(qualifiers = "+h1384dp")
     fun v2Light() = shot(RvPerAppLook.Segmented, "v2", dark = false)
 
     @Test
-    @Config(qualifiers = "+h1380dp")
+    @Config(qualifiers = "+h1384dp")
     fun v2Dark() = shot(RvPerAppLook.Segmented, "v2", dark = true)
 
     @Test
-    @Config(qualifiers = "+h2041dp")
+    @Config(qualifiers = "+h2045dp")
     fun v2Fs200() = shot(RvPerAppLook.Segmented, "v2", fontScale = RV_FS200)
 
     @Test

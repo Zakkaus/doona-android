@@ -139,7 +139,7 @@ internal fun RvMenu(expanded: Boolean, onDismiss: () -> Unit, items: List<RvMenu
 @Composable
 internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, modifier: Modifier = Modifier) {
     val colors = Rv.colors
-    val shape = RoundedCornerShape(RvSize.cardRadius)
+    val shape = RoundedCornerShape(Rv.cardRadius)
     val rim = colors.raisedRim?.let { Modifier.border(RvChrome.ring, it, shape) } ?: Modifier
     Column(
         modifier

@@ -24,7 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.prototype.rv.RvAppDisc
-import dev.doona.android.prototype.rv.RvBanner
+import dev.doona.android.prototype.rv.RvBannerSlot
 import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCheckRow
@@ -32,13 +32,19 @@ import dev.doona.android.prototype.rv.RvEmptyCaption
 import dev.doona.android.prototype.rv.RvFieldMessage
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvNotice
+import dev.doona.android.prototype.rv.RvNoticeKind
 import dev.doona.android.prototype.rv.RvPart
 import dev.doona.android.prototype.rv.RvPrimaryButton
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSearchField
+import dev.doona.android.prototype.rv.RvSearchSlot
 import dev.doona.android.prototype.rv.RvSegmented
 import dev.doona.android.prototype.rv.RvSize
+import dev.doona.android.prototype.rv.RvSkeletonCard
+import dev.doona.android.prototype.rv.RvSkeletonFade
+import dev.doona.android.prototype.rv.RvSkeletonRow
 import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvSwitch
 import dev.doona.android.prototype.rv.RvTheme
@@ -64,11 +70,12 @@ internal enum class RvPerAppLook { Today, Checks, Segmented }
 /**
  * 依 App, a page of 設定, in DNS's language: the large title under the back bar, then one card of the three policies as
  * radio rows. Under 只有勾選的 and 勾選的以外 a card lists the phone's apps, each its icon, name and package with a switch,
- * and the search field ([RvSearchField], the node picker's) stands over that card, a control row of the page; a search
+ * and the search field ([RvSearchField], the node picker's, in [RvSearchSlot]) stands over that card; a search
  * that matches nothing says so in the library's empty caption. 只有勾選的 with nothing checked says what it needs under the policies, as a field says
  * its error ([RvFieldMessage]), and cannot be saved. 儲存 floats at the foot, enabled only when the edits can be saved, since a save rebuilds
  * the tunnel. A save under way, a failed one and a tunnel that would not come back after one show at the top: a busy
- * row, or the library's notice card with 重試.
+ * row, or the library's notice card with 重試. While the apps are read, their card is a skeleton of app rows, and the
+ * apps fade in over it in place.
  */
 @Composable
 internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBack: () -> Unit, look: RvPerAppLook = RvPerAppLook.Today) {
@@ -83,18 +90,19 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
         bottomAction = { RvPrimaryButton(stringResource(R.string.perapp_save), actions.save, enabled = state.canSave) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
+        RvBannerSlot(failure(state, actions))
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
-            Status(state, actions)
+            if (state.save == RvSave.Saving) {
+                RvCard { BusyRow(stringResource(R.string.rv_perapp_saving)) }
+                Spacer(Modifier.height(RvSpace.cardGap))
+            }
             // The policies and the error under them are one block of the column, as a field and its message are.
             Column(Modifier.testTag(RvPart.BLOCK)) {
                 Policies(state, actions, look)
                 if (state.needsApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
             }
             if (listed) {
-                // The segmented control and the search are two control rows stacked in one, as a node list's search and order.
-                Spacer(Modifier.height(if (look == RvPerAppLook.Segmented) RvSpace.controlStack else RvSpace.controlGap))
-                RvSearchField(null, state.query, actions.query, Modifier.fillMaxWidth().testTag(RvPart.CONTROL), hint = hint)
-                Spacer(Modifier.height(RvSpace.controlGap))
+                RvSearchSlot { RvSearchField(null, state.query, actions.query, it, hint = hint) }
                 Apps(state, actions, look)
             }
         }
@@ -114,33 +122,37 @@ private fun Policies(state: RvPerAppState, actions: RvPerAppActions, look: RvPer
     }
 }
 
-/** The save's state over the policies, followed by a card's gap: under way, failed, or stored without a tunnel. */
+/** A failed save, or one stored whose tunnel would not come back: errors, with 重試 saving or reconnecting again. */
 @Composable
-private fun Status(state: RvPerAppState, actions: RvPerAppActions) {
-    when {
-        state.save == RvSave.Saving -> RvCard { BusyRow(stringResource(R.string.rv_perapp_saving)) }
-
-        state.save == RvSave.Failed ->
-            RvBanner(stringResource(R.string.rv_perapp_save_failed), stringResource(R.string.rv_report_failed_reason), stringResource(R.string.rv_retry), actions.save)
-
-        state.rebuildFailed ->
-            RvBanner(stringResource(R.string.rv_perapp_rebuild_failed), stringResource(R.string.vpn_failure_start_failed), stringResource(R.string.rv_retry), actions.reconnect)
-
-        else -> return
+private fun failure(state: RvPerAppState, actions: RvPerAppActions): RvNotice? {
+    val (title, reason, retry) = when {
+        state.save == RvSave.Saving -> return null
+        state.save == RvSave.Failed -> Triple(R.string.rv_perapp_save_failed, R.string.rv_report_failed_reason, actions.save)
+        state.rebuildFailed -> Triple(R.string.rv_perapp_rebuild_failed, R.string.vpn_failure_start_failed, actions.reconnect)
+        else -> return null
     }
-    Spacer(Modifier.height(RvSpace.cardGap))
+    return RvNotice(RvNoticeKind.Error, stringResource(title), stringResource(reason), stringResource(R.string.rv_retry), retry)
 }
 
-/** The apps, a row saying they are being read, or the empty caption when the search matches none. */
+/**
+ * The apps, or the empty caption when the search matches none; while they are read, a skeleton of their rows, which a
+ * screen reader reads as the apps loading.
+ */
 @Composable
 private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppLook) {
-    val shown = state.shown
-    when {
-        state.installed == null -> RvCard { BusyRow(stringResource(R.string.rv_perapp_loading)) }
-        shown.isEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
-        else -> RvCard { shown.forEach { AppRow(it, it.packageName in state.edited.packages, look) { on -> actions.toggle(it.packageName, on) } } }
+    val loading = stringResource(R.string.rv_perapp_loading)
+    RvSkeletonFade(state.installed == null, { RvSkeletonCard(description = loading) { repeat(SKELETON_APPS) { RvSkeletonRow(it) } } }) {
+        val shown = state.shown
+        if (shown.isEmpty()) {
+            RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
+        } else {
+            RvCard { shown.forEach { AppRow(it, it.packageName in state.edited.packages, look) { on -> actions.toggle(it.packageName, on) } } }
+        }
     }
 }
+
+/** The app rows the skeleton shows: what the first screen holds under the search field. */
+private const val SKELETON_APPS = 6
 
 /**
  * One app: its own icon (the fallback glyph when the phone does not have it), its name over its package, and a switch

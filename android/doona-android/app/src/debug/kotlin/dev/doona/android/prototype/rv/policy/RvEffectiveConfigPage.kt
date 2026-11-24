@@ -22,6 +22,7 @@ import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvGutter
 import dev.doona.android.prototype.rv.RvIconDisc
 import dev.doona.android.prototype.rv.RvLargeTitle
+import dev.doona.android.prototype.rv.RvNotice
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvRow
 import dev.doona.android.prototype.rv.RvScrollPage
@@ -45,7 +46,7 @@ import dev.doona.android.prototype.rv.settings.rvSampleSettings
  * with how it picks, its first members and the node it uses; 規則, counted as D34 counts them, with the way to the list;
  * DNS; 依 App; and 來源, the template and the subscriptions the nodes come from. It ends with 複製 and 匯出 (the text
  * carries no credentials, D21). When the core cut the text at 1 MiB ([truncated]) a line under the title says so; a
- * [notice] (a banner: the config could not be read) heads the cards, and with [noticeOnly] it stands in their place.
+ * [banner] (the config could not be read) stands in place of the cards, in [RvGutter]'s slot.
  */
 @Composable
 internal fun RvEffectiveConfigPage(
@@ -56,8 +57,7 @@ internal fun RvEffectiveConfigPage(
     onCopy: () -> Unit = {},
     onExport: () -> Unit = {},
     truncated: Boolean = false,
-    notice: (@Composable () -> Unit)? = null,
-    noticeOnly: Boolean = false,
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_effective_title)
@@ -67,11 +67,10 @@ internal fun RvEffectiveConfigPage(
         } else {
             RvLargeTitle(title, titleBlock, insets)
         }
-        RvGutter {
-            notice?.invoke()
-            if (!noticeOnly) ModeCard(policy)
+        RvGutter(banner = banner) {
+            if (banner == null) ModeCard(policy)
         }
-        if (!noticeOnly) {
+        if (banner == null) {
             Section(R.string.rv_policy_groups) { GroupsCard(policy) }
             Section(R.string.rv_policy_rules) { RulesCard(onRules) }
             Section(R.string.rv_settings_dns) {

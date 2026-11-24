@@ -76,8 +76,11 @@ import kotlinx.coroutines.launch
  * download and upload as two of Revolut's square home tiles (either opens the traffic page), and three more cards as
  * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
  * floating glass bottom bar (§9), which shrinks while the content scrolls up. It renders [ActivityUiState]; the engine
- * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. A [notice] (a banner) heads
- * the cards; with [noticeOnly] (the empty state) it stands in their place.
+ * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. A [banner] heads the cards
+ * ([RvGutter]'s slot); with no subscription, [noSubscription] puts the empty state with 新增訂閱 (which runs it) in their
+ * place, as on 策略. While [loading] (before the engine is ready)
+ * the hero's three lines and the cards are skeletons of themselves ([RvSkeletonHero], [ActivitySkeleton]), and the
+ * content fades in over them in place; the map, the actions, the bar and the nav are there from the start.
  */
 @Composable
 internal fun RvActivityScreen(
@@ -90,9 +93,9 @@ internal fun RvActivityScreen(
     subscriptions: List<RvSubscription> = RvData.subscriptions,
     pull: RvPullLook = RvPullLook.None,
     hero: RvHeroSwipe = RvHeroSwipe.Off,
-    notice: (@Composable () -> Unit)? = null,
-    noticeOnly: Boolean = false,
-    busy: RvBusyLook = RvBusyLook.Caption,
+    banner: RvNotice? = null,
+    noSubscription: (() -> Unit)? = null,
+    loading: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -109,21 +112,29 @@ internal fun RvActivityScreen(
     // The map stretches with the pull, and what lies under it moves down as far.
     val pushed = remember(pull) { pull.stretch?.let { stretch -> Modifier.graphicsLayer { translationY = stretch() } } }
     val motion = remember(pull, pushed, resting) { HeaderMotion(pull.stretch, pushed, resting) }
-    val look = remember(hero, nodes, busy) { HeroLook(hero, nodes, busy) }
+    val look = remember(hero, nodes, loading) { HeroLook(hero, nodes, loading) }
     val fastest = remember(nodes) { nodes.fastest(FASTEST) }
     CompositionLocalProvider(LocalRvCovered provides resting) {
         Box(Modifier.fillMaxSize()) {
             // The pull blurs and fades the page; the bars stay sharp, so the search pill, the picker's anchor, can grow.
             Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
                 Header(steady, ticking, mode, motion, insets, look) { HeroActions(steady, onAction, onConnect, routes.test) }
-                RvGutter(pushed ?: Modifier) {
-                    notice?.invoke()
-                    if (!noticeOnly) {
-                        OutboundCard(steady, mode, routes, nodes)
-                        TrafficTiles(state, routes.traffic)
-                        RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
-                        RvSubscriptionsCard(subscriptions, routes.subscriptions)
-                        RvFastestCard(fastest, steady.node?.id ?: RvData.CURRENT_ID, routes.nodes)
+                RvGutter(pushed ?: Modifier, banner) {
+                    if (noSubscription != null) {
+                        RvEmptyState(
+                            stringResource(R.string.rv_empty_subscription),
+                            stringResource(R.string.rv_empty_subscription_line),
+                            stringResource(R.string.rv_add_subscription),
+                            noSubscription,
+                        )
+                    } else {
+                        RvSkeletonCards(loading, { ActivitySkeleton() }) {
+                            OutboundCard(steady, mode, routes, nodes)
+                            TrafficTiles(state, routes.traffic)
+                            RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
+                            RvSubscriptionsCard(subscriptions, routes.subscriptions)
+                            RvFastestCard(fastest, steady.node?.id ?: RvData.CURRENT_ID, routes.nodes)
+                        }
                     }
                 }
                 Spacer(Modifier.height(rvNavClearance(insets)))
@@ -162,8 +173,8 @@ internal class RvActivityRoutes(
  */
 private class HeaderMotion(val stretch: (() -> Float)?, val pushed: Modifier?, val resting: () -> Boolean)
 
-/** Whether the hero [swipe]s to the main node, one of [nodes] (H1), and how it shows a connect or disconnect under way. */
-private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>, val busy: RvBusyLook)
+/** Whether the hero [swipe]s to the main node, one of [nodes] (H1), and whether it waits for its figures ([loading]). */
+private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>, val loading: Boolean)
 
 /** [state] without the second's rates, which only the hero's figures read, from [ticking]. */
 @Composable
@@ -175,10 +186,10 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
     var heroBounds by remember { mutableStateOf<Rect?>(null) }
     val pan = rvMapPan(place)
     val live = RvDotMotion(rvHeroArt(), motion.stretch ?: { 0f }, rvPulse(state.status is Status.Running && place != null, motion.resting), pan?.first, pan?.second)
-    // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected; the tint look
-    // gives them the fair tone while a connect or disconnect is under way.
+    // The dots run up behind the status bar, as Revolut's texture does, in the accent only while connected and in the fair
+    // tone while it connects or disconnects (PV-c v3, the hero tinted by the connection state).
     val dots = when {
-        hero.busy.of(state.status) == RvBusyLook.Tint -> Rv.colors.fair
+        state.status.busy -> Rv.colors.fair
         running -> Rv.colors.dots
         else -> Rv.colors.dotsIdle
     }
@@ -201,39 +212,41 @@ private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode
 private fun HeroBlock(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, hero: HeroLook, placed: Modifier, pushed: Modifier?) {
     val moved = pushed ?: Modifier
     if (hero.swipe == RvHeroSwipe.Off) {
-        HeroFigure(ticking, mode, placed.then(moved), hero.busy)
+        HeroFigure(ticking, mode, placed.then(moved), hero.loading)
         Spacer(Modifier.height(RvSpace.heroToActions))
         return
     }
     val pager = rememberRvHeroPager(HERO_VIEWS)
     val names = listOf(stringResource(R.string.rv_hero_all_traffic), stringResource(R.string.rv_main_node))
-    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(ticking, mode, Modifier, hero.busy) else MainNodeFigure(state, mode, hero.nodes) }
+    RvHeroPages(pager, names, placed.then(moved)) { if (it == 0) HeroFigure(ticking, mode, Modifier, hero.loading) else MainNodeFigure(state, mode, hero.nodes) }
     RvStatsDots(names.size, pager.view, moved, names, pager::show)
     Spacer(Modifier.height(RvSpace.heroToActions - RvSize.touch))
 }
 
 /**
- * The state and the mode over the download rate, the upload rate under it; a new state or each second's rates cross-fade
- * in. Read from [ticking] here, so that a tick recomposes the figures and not the header around them. While a connect
- * or disconnect is under way, [busy]'s chip takes the caption's place, or its bar the rates'.
+ * The state and the mode over the download rate, the upload rate under it; a new state fades through the old (the two
+ * captions differ in length, so a cross-fade would lay them over each other), each second's rates cross-fade in. Read
+ * from [ticking] here, so that a tick recomposes the figures and not the header around them. While [loading], their
+ * skeleton.
  */
 @Composable
-private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modifier: Modifier, busy: RvBusyLook) {
+private fun HeroFigure(ticking: State<ActivityUiState>, mode: RvRouteMode, modifier: Modifier, loading: Boolean) {
+    RvSkeletonFade(loading, { RvSkeletonHero() }, modifier) { HeroLines(ticking, mode) }
+}
+
+@Composable
+private fun HeroLines(ticking: State<ActivityUiState>, mode: RvRouteMode) {
     val state = ticking.value
     val format = rememberRvFormat()
     val fade = Rv.motion.tween<Float>(RvMotion.FADE_MS)
-    val look = busy.of(state.status)
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        val caption = "${stringResource(state.status.label)} · ${stringResource(mode.label)}"
-        if (look == RvBusyLook.Chip) RvBusyChip(caption) else Crossfade(caption, animationSpec = fade, label = "caption") { RvText(it, Rv.type.caption) }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = format.rate(state.downRate.toDouble())
-        val figure = @Composable { Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvHero(RvAmount(number, unit)) } }
-        if (look == RvBusyLook.Bar) RvBusyFigure(figure) else figure()
+        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvHero(RvAmount(number, unit)) }
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        val up = if (look == RvBusyLook.Bar) Modifier.rvHeld() else Modifier
-        Crossfade(format.rate(state.upRate.toDouble()).toString(), up, animationSpec = fade, label = "up") { RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub) }
+        Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") { RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub) }
     }
 }
 
@@ -264,13 +277,14 @@ private fun MainNodeFigure(state: ActivityUiState, mode: RvRouteMode, nodes: Lis
 
 /**
  * Connect or disconnect (busy while either is under way), the outbound mode, a latency test ([onTest]) and more, their
- * labels one size ([rvActionRowFit]).
+ * labels one size ([rvActionRowFit]). 中斷連線 holds from the connect's start to the disconnect's end, so a disconnect
+ * under way keeps its word beside its busy bar and turns to 連線 with the glyph when it has ended.
  */
 @Composable
 private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Unit, onConnect: () -> Unit, onTest: () -> Unit) {
-    val running = state.status is Status.Running || state.status is Status.Starting
+    val on = state.status is Status.Running || state.status.busy
     val labels = listOf(
-        stringResource(if (running) R.string.rv_disconnect else R.string.rv_connect),
+        stringResource(if (on) R.string.rv_disconnect else R.string.rv_connect),
         stringResource(R.string.act_mode),
         stringResource(R.string.rv_test_latency),
         stringResource(R.string.rv_more),
@@ -279,9 +293,8 @@ private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Un
         val style = rvActionRowFit(labels, maxWidth / labels.size)
         Row(Modifier.fillMaxWidth()) {
             val other = if (state.mode == Mode.Global) Mode.Direct else Mode.Global
-            val toggle = if (running) ({ onAction(ActivityAction.Disconnect) }) else onConnect
-            val busy = state.status == Status.Starting || state.status == Status.Stopping
-            RvAction(R.drawable.rv_sym_power, labels[0], toggle, Modifier.weight(1f), busy = busy, labelStyle = style)
+            val toggle = if (on) ({ onAction(ActivityAction.Disconnect) }) else onConnect
+            RvAction(R.drawable.rv_sym_power, labels[0], toggle, Modifier.weight(1f), busy = state.status.busy, labelStyle = style)
             RvAction(R.drawable.rv_sym_directions, labels[1], { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f), labelStyle = style)
             RvAction(R.drawable.rv_sym_speed, labels[2], onTest, Modifier.weight(1f), labelStyle = style)
             RvAction(R.drawable.rv_sym_more_horiz, labels[3], NOT_WIRED, Modifier.weight(1f), labelStyle = style)
@@ -289,6 +302,9 @@ private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Un
     }
     ConnectionTicks(state.status)
 }
+
+/** A connect or a disconnect is under way. */
+private val Status.busy: Boolean get() = this == Status.Starting || this == Status.Stopping
 
 /** One haptic tick when [status] becomes connected, one when a disconnect ends; none on the first look or a failure. */
 @Composable
@@ -351,7 +367,7 @@ private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvAc
     RvCard {
         RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = routes.mode) { RvChevron() }
         if (mode == RvRouteMode.Direct) {
-            RvText(stringResource(R.string.rv_direct_note), Rv.type.rowSub, Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding), color = Rv.colors.textSecondary)
+            RvChoiceLine(stringResource(R.string.rv_direct_note), Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding))
             return@RvCard
         }
         // A node switch cross-fades the row to the new flag and name.
@@ -388,6 +404,17 @@ private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
     ) { RvText(format.bytes(rule.bytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
 }
 
+/** 活動's cards while it loads: the outbound card's four rows and its see-all line, then the two traffic tiles. */
+@Composable
+private fun ActivitySkeleton() {
+    RvSkeletonCard {
+        RvSkeletonRow(0)
+        repeat(RULE_ROWS + 1) { RvSkeletonRow(it + 1, end = true) }
+        RvSkeletonSeeAll()
+    }
+    RvSkeletonTiles()
+}
+
 /**
  * Download and upload as two tiles side by side, each on its own scale: the rate, and the last minute's sparkline with
  * that minute's peak, so the label and the curve beside it cover the same window (S01; 流量詳情 marks the same peak on
@@ -397,7 +424,7 @@ private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
 @Composable
 private fun TrafficTiles(state: ActivityUiState, onOpenTraffic: () -> Unit) {
     val quiet = state.status !is Status.Running || (state.downHistory.all { it == 0f } && state.upHistory.all { it == 0f })
-    Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tileGap)) {
+    RvTileRow {
         TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.downRate, minutePeak(state.downHistory), state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
         TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, minutePeak(state.upHistory), state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
     }
@@ -417,8 +444,9 @@ private fun TrafficTile(
     ghost: FloatArray = RV_GHOST_DOWN,
 ) {
     val format = rememberRvFormat()
-    val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, format.rate(peak.toDouble()).toString())
-    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier, ghost)
+    val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, format.rate(peak.toDouble()).unbroken())
+    val widest = remember(format) { format.widestRates().map { it.figure() } }
+    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier, ghost, widest)
 }
 
 /** The fastest second of a minute's samples; a missing sample (NaN, a gap in the line) is not a rate. */

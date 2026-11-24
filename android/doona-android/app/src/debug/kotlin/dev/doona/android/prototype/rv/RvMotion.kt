@@ -1,6 +1,8 @@
 package dev.doona.android.prototype.rv
 
 import android.provider.Settings
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.CubicBezierEasing
@@ -17,6 +19,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -33,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -64,6 +69,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * Every duration and easing of the sample's motion, in one place (brief rv-motion). Revolut's measured values where there
@@ -224,21 +230,21 @@ internal fun rememberRvMotion(): RvMotionScale {
 
 /** The one press feedback: the content colour's state layer over the visible shape, up in [RvMotion.PRESS_MS]. */
 @Composable
-internal fun rvPressIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = null)
+internal fun rvPressIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = null, radius = Rv.highlightRadius)
 
 /**
  * A row's press, the same layer as Revolut highlights a row (revolut-ux3 §1, §2): inset [RvSpace.tight] in the row, its
- * corners [RvSize.highlightRadius], so inside a card it follows the card's corners.
+ * corners [Rv.highlightRadius], so inside a card it follows the card's corners.
  */
 @Composable
-internal fun rvRowIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = RvSpace.tight)
+internal fun rvRowIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = RvSpace.tight, radius = Rv.highlightRadius)
 
-private data class RvPressIndication(val color: Color, val instant: Boolean, val inset: Dp?) : IndicationNodeFactory {
-    override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, color, instant, inset)
+private data class RvPressIndication(val color: Color, val instant: Boolean, val inset: Dp?, val radius: Dp) : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, color, instant, inset, radius)
 }
 
 /** Shows the layer while any press lasts; a short tap still shows it fully before it goes. */
-private class PressNode(private val source: InteractionSource, private val color: Color, private val instant: Boolean, private val inset: Dp?) :
+private class PressNode(private val source: InteractionSource, private val color: Color, private val instant: Boolean, private val inset: Dp?, private val radius: Dp) :
     Modifier.Node(),
     DrawModifierNode {
     private val shown = Animatable(0f)
@@ -261,7 +267,7 @@ private class PressNode(private val source: InteractionSource, private val color
         } else {
             val i = inset.toPx()
             val box = Size((size.width - 2 * i).coerceAtLeast(0f), (size.height - 2 * i).coerceAtLeast(0f))
-            drawRoundRect(color, Offset(i, i), box, CornerRadius(RvSize.highlightRadius.toPx()), alpha = RvAlpha.PRESSED * a)
+            drawRoundRect(color, Offset(i, i), box, CornerRadius(radius.toPx()), alpha = RvAlpha.PRESSED * a)
         }
     }
 }
@@ -410,6 +416,29 @@ internal fun <T> RvLookFade(target: T, content: @Composable (T) -> Unit) {
             before?.let { drawImage(it, alpha = fade.value) }
         },
     ) { content(shown) }
+}
+
+/**
+ * Swaps [content] for [target]'s as Material's fade through does, so the old and the new are never seen at once: the old
+ * fades out in the first [RvMotion.AXIS_FADE] of [RvMotion.FADE_MS] (accelerating away), then the new fades in
+ * (decelerating), both at [alignment] in the room the larger takes; at animator scale 0 at once. For a state that turns
+ * one thing into another in place (a glyph into a busy bar, a word into its opposite), where [androidx.compose.animation.Crossfade]
+ * would lay the two over each other half seen.
+ */
+@Composable
+internal fun <T> RvFadeThrough(target: T, label: String, modifier: Modifier = Modifier, alignment: Alignment = Alignment.Center, content: @Composable (T) -> Unit) {
+    val motion = Rv.motion
+    val out = (RvMotion.FADE_MS * RvMotion.AXIS_FADE).roundToInt()
+    AnimatedContent(
+        target,
+        modifier,
+        transitionSpec = {
+            val enter = fadeIn(motion.tween(RvMotion.FADE_MS - out, RvMotion.Decelerate, delay = out))
+            ContentTransform(enter, fadeOut(motion.tween(out, RvMotion.Accelerate)), sizeTransform = null)
+        },
+        contentAlignment = alignment,
+        label = label,
+    ) { content(it) }
 }
 
 /** Long presses inside [content] open after [RvMotion.LONG_PRESS_MS], or the user's own longer delay. */
