@@ -73,16 +73,22 @@ internal class TunnelController(
     /** Executes commands in order until cancelled. The owner launches it once, off the main thread. */
     suspend fun run() {
         for (command in commands) {
-            if (command is Command.RefreshDns) {
-                if (coreRunning && isCurrent(command.generation)) applyBootstrapDns(command.servers)
-                continue
+            val commandGeneration = when (command) {
+                is Command.RefreshDns -> {
+                    if (command.servers != bootstrapDns && opener.schema() == CORE_SCHEMA) applyBootstrapDns(command.servers)
+                    continue
+                }
+
+                is Command.Open -> command.generation
+
+                is Command.Close -> command.generation
             }
             stopCore()
             if (command is Command.Open && isCurrent(command.generation)) open(command)
             // The terminal status and completion are recorded together for the stop watchdog.
             synchronized(lock) {
                 if (command is Command.Close && command.generation == generation) finishClose(command)
-                handled = command.generation
+                handled = commandGeneration
             }
         }
     }
@@ -126,12 +132,9 @@ internal class TunnelController(
         commands.trySend(Command.Open(g, host, startBlock))
     }
 
-    fun refreshBootstrapDns(host: TunHost, servers: List<String>) {
-        // An empty list cannot replace the last working resolvers. Queue changes during start behind its Open.
-        if (servers.isEmpty()) return
-        synchronized(lock) {
-            if (this.host === host && _status.value.active) commands.trySend(Command.RefreshDns(generation, servers))
-        }
+    fun refreshBootstrapDns(servers: List<String>) {
+        // An empty list cannot replace the last working resolvers.
+        if (servers.isNotEmpty()) commands.trySend(Command.RefreshDns(servers))
     }
 
     fun stop() = close(accept = { it.active || cancelSystemRestart != null }, Status.Stopped)
@@ -332,14 +335,12 @@ internal class TunnelController(
     }
 
     private fun applyBootstrapDns(servers: List<String>) {
-        if (servers == bootstrapDns) return
         val name = BootstrapDnsArgs.COMMAND
         try {
             val args = CoreJson.encode(BootstrapDnsArgs.serializer(), BootstrapDnsArgs(servers))
             CoreJson.result(core.call(name, args), Unit.serializer())
             bootstrapDns = servers
         } catch (e: EngineException) {
-            if (e.code == ErrorCode.Busy) return
             val code = if (e.code == ErrorCode.InvalidArgument) "invalid_argument" else e.code.name
             VpnLog.action(name, "complete", "failed", code)
         } catch (e: CancellationException) {
@@ -381,13 +382,11 @@ internal class TunnelController(
     }
 
     private sealed interface Command {
-        val generation: Long
+        data class Open(val generation: Long, val host: TunHost, val startBlock: VpnStartBlock? = null) : Command
 
-        data class Open(override val generation: Long, val host: TunHost, val startBlock: VpnStartBlock? = null) : Command
+        data class Close(val generation: Long, val terminal: Status, val startBlock: VpnStartBlock?, val recover: Boolean) : Command
 
-        data class Close(override val generation: Long, val terminal: Status, val startBlock: VpnStartBlock?, val recover: Boolean) : Command
-
-        data class RefreshDns(override val generation: Long, val servers: List<String>) : Command
+        data class RefreshDns(val servers: List<String>) : Command
     }
 
     companion object {

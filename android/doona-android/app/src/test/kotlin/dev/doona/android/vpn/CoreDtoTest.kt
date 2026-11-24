@@ -14,12 +14,10 @@ import dev.doona.android.engine.StaticNodeReason
 import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.SubscriptionFormat
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -47,6 +45,7 @@ class CoreDtoTest {
         "call-error.json" to CallErrorReplyDto.serializer(),
         "call-error-state-write.json" to CallErrorReplyDto.serializer(),
         "call-error-static-row-count.json" to CallErrorReplyDto.serializer(),
+        "call-error-bootstrap-dns.json" to CallErrorReplyDto.serializer(),
         "call-select-args.json" to SelectArgs.serializer(),
         "call-ok-traffic-series.json" to TrafficSeriesDto.serializer(),
         "call-ok-usage.json" to UsageDto.serializer(),
@@ -58,6 +57,7 @@ class CoreDtoTest {
         "call-ok-rules.json" to RulesDto.serializer(),
         "call-rules-args.json" to RulesArgs.serializer(),
         "call-set-rule-source-args.json" to RuleSourceArgs.serializer(),
+        "call-set-bootstrap-dns-args.json" to BootstrapDnsArgs.serializer(),
         "call-ok-effective-config.json" to EffectiveConfigDto.serializer(),
         "call-set-mode-args.json" to ModeArgs.serializer(),
         "call-ok-diagnostics.json" to DiagnosticsDto.serializer(),
@@ -65,7 +65,6 @@ class CoreDtoTest {
         "call-set-log-level-args.json" to LevelArgs.serializer(),
         "call-clear-crashes-args.json" to ClearCrashesArgs.serializer(),
         "static-nodes.json" to ListSerializer(StaticNodeCallFixture.serializer()),
-        "set-bootstrap-dns.json" to BootstrapDnsFixture.serializer(),
     )
 
     @Test
@@ -443,10 +442,4 @@ class CoreDtoTest {
         assertEquals(ErrorCode.LocalNetwork, errorCodeOf("local_network"))
         assertEquals(ErrorCode.Internal, errorCodeOf("from_a_newer_core"))
     }
-
-    @Serializable
-    private data class BootstrapDnsFixture(val command: String, val running: List<BootstrapDnsCase>, val stopped: List<BootstrapDnsCase>)
-
-    @Serializable
-    private data class BootstrapDnsCase(val args: JsonObject, val reply: JsonObject)
 }

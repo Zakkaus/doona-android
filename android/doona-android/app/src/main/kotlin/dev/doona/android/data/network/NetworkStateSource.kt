@@ -2,6 +2,7 @@ package dev.doona.android.data.network
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.stateIn
+import java.net.Inet6Address
 import java.net.InetAddress
 
 class NetworkStateSource internal constructor(
@@ -29,6 +31,14 @@ internal fun ownAddresses(context: Context): List<InetAddress> {
     val connectivity = context.getSystemService(ConnectivityManager::class.java)
     val active = connectivity.activeNetwork ?: return emptyList()
     return connectivity.getLinkProperties(active)?.linkAddresses.orEmpty().map { it.address }
+}
+
+internal fun LinkProperties.bootstrapServers(): List<String> {
+    val iface = interfaceName
+    return dnsServers.mapNotNull { server ->
+        val address = server.hostAddress ?: return@mapNotNull null
+        if (server is Inet6Address && server.isLinkLocalAddress && iface != null) "${address.substringBefore('%')}%$iface" else address
+    }
 }
 
 internal fun networkState(context: Context, scope: CoroutineScope): NetworkStateSource {

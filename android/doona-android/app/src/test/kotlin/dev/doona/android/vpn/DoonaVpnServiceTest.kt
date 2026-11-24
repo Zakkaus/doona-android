@@ -25,11 +25,13 @@ import dev.doona.android.engine.Status
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -49,6 +51,12 @@ import java.net.InetAddress
 @RunWith(AndroidJUnit4::class)
 @Config(application = DoonaVpnServiceTest.LifecycleApplication::class, shadows = [DoonaVpnServiceTest.VpnPolicy::class, DoonaVpnServiceTest.VpnBuilder::class])
 class DoonaVpnServiceTest {
+    @After
+    fun stopEngine() {
+        val app = ApplicationProvider.getApplicationContext<LifecycleApplication>()
+        runBlocking { app.scope.coroutineContext.job.cancelAndJoin() }
+    }
+
     @Test
     fun theTunRoutesThePublicSpaceOnly() {
         val service = Robolectric.buildService(DoonaVpnService::class.java).get()
@@ -111,7 +119,6 @@ class DoonaVpnServiceTest {
         val app = ApplicationProvider.getApplicationContext<LifecycleApplication>()
         val connectivity = app.getSystemService(ConnectivityManager::class.java)
         val manager = shadowOf(connectivity)
-        val callbacks = manager.networkCallbacks.toSet()
         val cellular = checkNotNull(connectivity.activeNetwork)
         val initial = LinkProperties().apply { setDnsServers(listOf(InetAddress.getByName("192.0.2.53"))) }
         manager.setLinkProperties(cellular, initial)
@@ -121,8 +128,7 @@ class DoonaVpnServiceTest {
             app.core.onStart = { starts++ }
             service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
             val session = engine.awaitSession { it.status is Status.Running }
-            val callback = (manager.networkCallbacks - callbacks).single()
-            callback.onLinkPropertiesChanged(cellular, initial)
+            manager.networkCallbacks.forEach { it.onLinkPropertiesChanged(cellular, initial) }
 
             val wifi = ShadowNetwork.newInstance(100)
             val ipv6 = InetAddress.getByName("fe80::1")
@@ -130,9 +136,12 @@ class DoonaVpnServiceTest {
                 interfaceName = "wlan0"
                 setDnsServers(listOf(Inet6Address.getByAddress(null, ipv6.address, 17), InetAddress.getByName("198.51.100.53")))
             }
-            callback.onLinkPropertiesChanged(wifi, next)
-            callback.onLinkPropertiesChanged(wifi, next)
-            callback.onLinkPropertiesChanged(ShadowNetwork.newInstance(101), next)
+            val nextWifi = ShadowNetwork.newInstance(101)
+            manager.networkCallbacks.forEach {
+                it.onLinkPropertiesChanged(wifi, next)
+                it.onLinkPropertiesChanged(wifi, next)
+                it.onLinkPropertiesChanged(nextWifi, next)
+            }
 
             runBlocking {
                 withContext(app.lane) {
@@ -142,8 +151,16 @@ class DoonaVpnServiceTest {
                     assertEquals(session, engine.controller.session.value)
                 }
             }
+            engine.disconnect()
+            engine.awaitSession { it.status == Status.Stopped }
         }
-        assertEquals(callbacks, manager.networkCallbacks)
+        manager.networkCallbacks.forEach { it.onLinkPropertiesChanged(cellular, initial) }
+        runBlocking {
+            withContext(app.lane) {
+                assertEquals(2, app.core.calls.size)
+                assertEquals("setBootstrapDns" to """{"servers":["192.0.2.53"]}""", app.core.calls.last())
+            }
+        }
     }
 
     private fun withService(test: (DoonaVpnService, LifecycleApplication, ServiceEngine) -> Unit) {
@@ -154,7 +171,6 @@ class DoonaVpnServiceTest {
             test(service, app, app.container.engine as ServiceEngine)
         } finally {
             lifecycle.destroy()
-            app.scope.cancel()
         }
     }
 
@@ -196,7 +212,7 @@ class DoonaVpnServiceTest {
             val opener = CoreOpener(core, { noBackupFilesDir.path }, io)
             val controller = TunnelController(core, opener, { PerApp() }, scope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
             return ServiceEngine(core, opener, controller, PerAppSettings.create(this), { DoonaVpnService.start(this, it) }, io, scope, { null })
-                .also { it.launch(lane) }
+                .also { it.launch(lane, getSystemService(ConnectivityManager::class.java)) }
         }
     }
 }

@@ -6,13 +6,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
-import android.net.LinkProperties
-import android.net.Network
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import dev.doona.android.R
 import dev.doona.android.app.DoonaApplication
+import dev.doona.android.data.network.bootstrapServers
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Traffic
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import java.net.Inet6Address
 
 /**
  * The foreground VPN service. It holds no tunnel logic: start, stop and revoke go to the [TunnelController], and the
@@ -39,13 +37,6 @@ internal class DoonaVpnService :
     private lateinit var session: ServiceSession
     private lateinit var connectivity: ConnectivityManager
 
-    // AppRouting excludes doona, so its default network is outside the VPN.
-    private val defaultNetwork = object : ConnectivityManager.NetworkCallback() {
-        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
-            engine.controller.refreshBootstrapDns(this@DoonaVpnService, linkProperties.bootstrapServers())
-        }
-    }
-
     @Volatile
     private var foreground = false
     private var lastStartId = 0
@@ -56,7 +47,6 @@ internal class DoonaVpnService :
         notifications.createChannel()
         session = ServiceSession(engine.controller)
         connectivity = getSystemService(ConnectivityManager::class.java)
-        connectivity.registerDefaultNetworkCallback(defaultNetwork)
         scope.launch { session.follow(::end) }
         scope.launch { notifications.keepCurrent(engine.status, ratesWhileSeen()) }
     }
@@ -140,7 +130,6 @@ internal class DoonaVpnService :
     }
 
     override fun onDestroy() {
-        connectivity.unregisterNetworkCallback(defaultNetwork)
         scope.cancel()
         // Only the session this instance took: a start requested after this instance stopped itself is not its own.
         engine.controller.release(this)
@@ -164,14 +153,6 @@ internal class DoonaVpnService :
     }
 
     override fun bootstrapDns(): List<String> = connectivity.getLinkProperties(connectivity.activeNetwork)?.bootstrapServers().orEmpty()
-
-    private fun LinkProperties.bootstrapServers(): List<String> {
-        val iface = interfaceName
-        return dnsServers.mapNotNull { server ->
-            val address = server.hostAddress ?: return@mapNotNull null
-            if (server is Inet6Address && server.isLinkLocalAddress && iface != null) "${address.substringBefore('%')}%$iface" else address
-        }
-    }
 
     override fun establish(routing: AppRouting, mtu: Int): Tun? {
         if (!foreground) return null
