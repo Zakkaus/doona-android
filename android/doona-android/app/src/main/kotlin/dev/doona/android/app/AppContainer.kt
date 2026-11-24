@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteException
 import android.os.Build
 import androidx.work.WorkManager
+import dev.doona.android.data.network.networkState
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
@@ -47,6 +48,8 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
 
     /** Outlives every screen: imports and local network prompts that a page started go on when it is left. */
     private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+
+    val networkState by lazy { networkState(application, uiScope) }
 
     internal val subscriptionRefresh by lazy { SubscriptionRefresh(AppSettings.get(application), { engine }) }
 

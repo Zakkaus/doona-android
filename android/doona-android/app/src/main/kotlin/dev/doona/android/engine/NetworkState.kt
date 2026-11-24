@@ -1,7 +1,7 @@
 package dev.doona.android.engine
 
-/** The app's validated default connection, or no transport when offline. */
-data class NetworkState(val transport: NetworkTransport? = null, val metered: Boolean = false) {
+/** The default network with internet capability, whether or not Android's connectivity probe succeeded. */
+data class NetworkState(val transport: NetworkTransport? = null, val metered: Boolean = false, val validated: Boolean = false) {
     val online: Boolean get() = transport != null
 }
 

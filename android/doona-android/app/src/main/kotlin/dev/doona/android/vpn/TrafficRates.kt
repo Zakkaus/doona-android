@@ -12,22 +12,22 @@ private const val HISTORY = 60
  * a rate over the pause would be an average, not the current speed.
  */
 internal fun Traffic.next(previous: TrafficSample?, sample: TrafficSample): Traffic {
-    val (upTotal, downTotal, activeFlows, upPeak, downPeak) = sample.traffic
+    val totals = sample.traffic
     if (previous == null || sample.atMs <= previous.atMs) {
-        return copy(upTotal = upTotal, downTotal = downTotal, activeFlows = activeFlows, upPeak = upPeak, downPeak = downPeak)
+        return copy(upTotal = totals.upTotal, downTotal = totals.downTotal, activeFlows = totals.activeFlows, upPeak = totals.upPeak, downPeak = totals.downPeak)
     }
     val seconds = (sample.atMs - previous.atMs) / 1000.0
-    val up = ((upTotal - previous.traffic.upTotal).coerceAtLeast(0) / seconds).toLong()
-    val down = ((downTotal - previous.traffic.downTotal).coerceAtLeast(0) / seconds).toLong()
+    val up = ((totals.upTotal - previous.traffic.upTotal).coerceAtLeast(0) / seconds).toLong()
+    val down = ((totals.downTotal - previous.traffic.downTotal).coerceAtLeast(0) / seconds).toLong()
     return Traffic(
         upRate = up,
         downRate = down,
-        upTotal = upTotal,
-        downTotal = downTotal,
+        upTotal = totals.upTotal,
+        downTotal = totals.downTotal,
         upHistory = (upHistory + up).takeLast(HISTORY),
         downHistory = (downHistory + down).takeLast(HISTORY),
-        activeFlows = activeFlows,
-        upPeak = upPeak,
-        downPeak = downPeak,
+        activeFlows = totals.activeFlows,
+        upPeak = totals.upPeak,
+        downPeak = totals.downPeak,
     )
 }

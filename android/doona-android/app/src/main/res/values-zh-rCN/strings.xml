@@ -1,4 +1,5 @@
 <resources>
     <string name="policy_kind_score">综合评分</string>
     <string name="error_too_large">订阅内容太大</string>
+    <string name="vpn_drop_revoked">其他 VPN 应用或系统设置关闭了 VPN。</string>
 </resources>

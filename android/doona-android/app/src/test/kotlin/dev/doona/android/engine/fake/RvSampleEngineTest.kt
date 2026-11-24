@@ -1,7 +1,6 @@
 package dev.doona.android.engine.fake
 
 import dev.doona.android.engine.AppPolicy
-import dev.doona.android.engine.Engine
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
@@ -18,7 +17,7 @@ import org.junit.Test
 class RvSampleEngineTest {
     @Test
     fun allReadsServeTheRvDatasetWithoutTheCore() = runTest {
-        val engine: Engine = RvSampleEngine()
+        val engine = rvSampleEngine()
         val catalog = checkNotNull(engine.catalog.value)
         val main = catalog.groups.first { it.id == catalog.mainGroupId }
         assertTrue(engine.ready.value && engine.perAppLoaded.value)
@@ -59,7 +58,7 @@ class RvSampleEngineTest {
 
     @Test
     fun commandsChangePreviewStateWithoutTheCore() = runTest {
-        val engine: Engine = RvSampleEngine()
+        val engine = rvSampleEngine()
         engine.disconnect()
         assertEquals(Status.Stopped, engine.status.value)
         engine.connect()
