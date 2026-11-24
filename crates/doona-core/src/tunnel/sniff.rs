@@ -13,6 +13,13 @@ fn target(bytes: &[u8]) -> usize {
     })
 }
 
+// Check each discriminator as soon as it arrives, even across a one-byte first read.
+fn possible_hello(bytes: &[u8]) -> bool {
+    bytes.starts_with(&[22])
+        && bytes.get(1).is_none_or(|v| *v == 3)
+        && bytes.get(5).is_none_or(|v| *v == 1)
+}
+
 impl Sniff {
     pub fn feed(&mut self, chunk: &[u8], found: impl FnOnce(&str)) {
         match self {
@@ -21,19 +28,20 @@ impl Sniff {
                 let prefix = &chunk[..chunk.len().min(LIMIT)];
                 if let Some(name) = host(prefix) {
                     found(name);
-                } else if prefix.starts_with(&[22])
-                    && prefix.get(1).is_none_or(|v| *v == 3)
-                    && prefix.len() < target(prefix)
-                {
-                    let mut buf = Vec::with_capacity(target(prefix));
+                } else if possible_hello(prefix) && prefix.len() < target(prefix) {
+                    let mut buf = Vec::with_capacity(prefix.len().next_power_of_two());
                     buf.extend_from_slice(prefix);
                     *self = Self::Partial(buf);
                     return;
                 }
             }
             Self::Partial(buf) => {
-                let header = chunk.len().min(5usize.saturating_sub(buf.len()));
+                let header = chunk.len().min(6usize.saturating_sub(buf.len()));
                 buf.extend_from_slice(&chunk[..header]);
+                if !possible_hello(buf) || target(buf) < buf.len() {
+                    *self = Self::Done;
+                    return;
+                }
                 let needed = target(buf) - buf.len();
                 let rest = &chunk[header..];
                 buf.extend_from_slice(&rest[..rest.len().min(needed)]);
@@ -201,6 +209,17 @@ mod tests {
                 assert_eq!(found.as_deref(), expected);
                 assert!(matches!(sniff, Sniff::Done));
             }
+        }
+    }
+
+    #[test]
+    fn split_non_hello_headers_release_the_buffer_before_the_body() {
+        for rest in [&[2][..], &[3, 3, 0x40, 0, 2][..]] {
+            let mut sniff = Sniff::First;
+            sniff.feed(&[22], |_| panic!("no name"));
+            assert!(matches!(&sniff, Sniff::Partial(buf) if buf.capacity() < LIMIT));
+            sniff.feed(rest, |_| panic!("not a ClientHello"));
+            assert!(matches!(sniff, Sniff::Done));
         }
     }
 }

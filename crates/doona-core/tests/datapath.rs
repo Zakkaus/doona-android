@@ -214,6 +214,30 @@ fn recent_app_connections_keep_the_tun_tuple_and_never_enter_reports() {
 }
 
 #[test]
+fn recent_tcp_name_survives_a_split_client_hello() {
+    let (tcp, _) = servers::tcp_echo();
+    let mut s = setup("Direct", vec![]);
+    let id = s.client.connect(tcp);
+    let mut prefix = vec![22, 3, 1, 0, 64, 1, 0, 0, 60, 3, 3];
+    prefix.extend([0; 32]);
+    prefix.extend([0, 0, 2, 19, 1, 1, 0, 0, 17]);
+    assert!(
+        s.client
+            .until(WAIT, |c| c.write_now(id, &prefix) == prefix.len())
+    );
+    // The echo proves the driver forwarded the first write before we send SNI.
+    let mut echoed = Vec::new();
+    assert!(s.client.until(WAIT, |c| {
+        echoed.extend(c.read_now(id).unwrap_or_default());
+        echoed == prefix
+    }));
+    let sni = b"\x00\x00\x00\x0d\x00\x0b\x00\x00\x08sni.test";
+    assert_eq!(s.client.exchange(id, sni).unwrap(), sni);
+    let reply: serde_json::Value = serde_json::from_str(&s.core.call("recentFlows", "{}")).unwrap();
+    assert_eq!(reply["ok"]["flows"][0]["name"], "sni.test");
+}
+
+#[test]
 fn private_dns_to_the_virtual_resolver_is_reset_at_once() {
     let mut s = setup("Direct", vec![]);
     let begun = Instant::now();

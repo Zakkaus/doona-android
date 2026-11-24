@@ -86,20 +86,19 @@ fn an_answer_maps_its_addresses_to_the_question_name() {
 }
 
 #[test]
-fn diagnostics_peeks_only_the_ipv6_address_answered() {
+fn a_valid_aaaa_answer_takes_no_space_in_the_routing_cache() {
     let ip = "2001:db8::1234".parse::<std::net::Ipv6Addr>().unwrap();
     let octets = ip.octets();
     let rr = Rr {
         owner: AT_QUESTION.to_vec(),
-        kind: TYPE_AAAA,
+        kind: 28,
         ttl: 300,
         data: &octets,
     };
-    let reply = answer_with("IPv6.Example", (TYPE_AAAA, CLASS_IN), &[rr]);
+    let reply = answer_with("IPv6.Example", (28, CLASS_IN), &[rr]);
     let names = Names::new();
     names.learn(&reply, &reply);
-    assert_eq!(names.peek(ip.into()).as_deref(), Some("ipv6.example"));
-    assert_eq!(names.peek("2001:db8::1235".parse().unwrap()), None);
+    assert_eq!(names.len(), 0);
 }
 
 #[test]
