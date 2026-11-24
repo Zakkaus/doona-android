@@ -1,0 +1,23 @@
+{
+  "ok": {
+    "rootBusinessStarts": 19,
+    "groups": [{
+      "id": "g-Auto",
+      "nodeIds": ["n-7f3a19c2", "n-0c41be77"],
+      "tcp": {
+        "selected": "fast", "selectedId": "n-7f3a19c2",
+        "state": "observedUsable", "waitReason": "none",
+        "coverage": {"candidates": 2, "evaluated": 2, "pending": 0},
+        "challengers": [{"name": "other", "nodeId": "n-0c41be77", "basis": "commonTargets", "relation": "selectedFaster", "reporters": 4, "validForMs": 30000}],
+        "counters": {"businessStarts": 19, "trialSuccess": 3, "trialFailure": 1, "trialCancelled": 2}
+      },
+      "udp": {
+        "selected": "other", "selectedId": "n-0c41be77",
+        "state": "provisional", "waitReason": "comparableTraffic",
+        "coverage": {"candidates": 2, "evaluated": 2, "pending": 2},
+        "challengers": [],
+        "counters": {"businessStarts": 0, "trialSuccess": 0, "trialFailure": 0, "trialCancelled": 0}
+      }
+    }]
+  }
+}

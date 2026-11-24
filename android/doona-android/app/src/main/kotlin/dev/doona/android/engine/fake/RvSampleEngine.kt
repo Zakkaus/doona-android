@@ -18,5 +18,6 @@ fun rvSampleEngine(): FakeEngine = FakeEngine(
         rows = RvSampleRules.rows,
         configLines = RvSampleRules.configLines,
         series = RvSampleTraffic.series,
+        scoreState = sampleScoreState(RvSampleNodes.groups),
     ),
 )

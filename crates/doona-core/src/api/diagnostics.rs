@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// The commands, by the names the log may hold; never caller text.
-const COMMANDS: [&str; 16] = [
+const COMMANDS: [&str; 17] = [
     "select",
     "testLatency",
     "addSubscription",
@@ -31,15 +31,17 @@ const COMMANDS: [&str; 16] = [
     "trafficSeries",
     "usage",
     "nodes",
+    "scoreState",
     "rules",
     "effectiveConfig",
     "diagnostics",
 ];
 /// The reads among them that screens repeat.
-const READS: [&str; 6] = [
+const READS: [&str; 7] = [
     "trafficSeries",
     "usage",
     "nodes",
+    "scoreState",
     "rules",
     "effectiveConfig",
     "diagnostics",
@@ -85,14 +87,20 @@ impl Core {
         &self.diag
     }
 
-    /// The commands of this file; any other is `invalid_argument`.
-    pub(super) fn diagnostic(
+    /// Live reads and diagnostics; unknown commands are `invalid_argument`.
+    pub(super) fn query_or_diagnostic(
         &self,
         command: &str,
         args: &str,
         event: &mut Event,
     ) -> Result<String, ErrorCode> {
         match command {
+            "trafficSeries" => self.traffic_series(args),
+            "usage" => self.usage(args),
+            "nodes" => self.nodes(args),
+            "scoreState" => self.score_state(args),
+            "rules" => self.rules(args),
+            "effectiveConfig" => self.effective_config(args),
             "diagnostics" => self.diagnostics(args, event),
             "setLogLevel" => self.set_log_level(args, event),
             "clearCrashes" => self.clear_crashes(args, event),

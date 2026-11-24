@@ -45,6 +45,8 @@ class CoreDtoTest {
         "call-ok-usage.json" to UsageDto.serializer(),
         "call-ok-nodes.json" to NodesDto.serializer(),
         "call-nodes-args.json" to NodesArgs.serializer(),
+        "call-ok-score-state.json" to ScoreStateDto.serializer(),
+        "call-score-state-args.json" to Unit.serializer(),
         "call-ok-rules.json" to RulesDto.serializer(),
         "call-rules-args.json" to RulesArgs.serializer(),
         "call-set-rule-source-args.json" to RuleSourceArgs.serializer(),
@@ -331,6 +333,21 @@ class CoreDtoTest {
         assertEquals(listOf(33, null, 31), nodes[0].tests.map { it.ms })
         assertEquals("quic", nodes[1].transport)
         assertTrue(nodes[1].tests.isEmpty())
+    }
+
+    @Test
+    fun scoreStateKeepsSubgroupSelectionAndDecodesNullIds() {
+        val reply = fixture("call-ok-score-state.json")
+            .replace("\"selectedId\": \"n-7f3a19c2\"", "\"selectedId\": \"g-HK\", \"future\": true")
+            .replace("\"nodeId\": \"n-0c41be77\"", "\"nodeId\": null")
+            .replace("\"selected\": \"other\", \"selectedId\": \"n-0c41be77\"", "\"selected\": null, \"selectedId\": null")
+        val score = CoreJson.result(reply, ScoreStateDto.serializer()).toScoreState()
+        val auto = score.groups.single()
+        assertEquals("g-HK", auto.tcp.selectedId)
+        assertEquals(listOf("n-7f3a19c2", "n-0c41be77"), auto.nodeIds)
+        assertNull(auto.tcp.challengers.single().nodeId)
+        assertNull(auto.udp.selected)
+        assertNull(auto.udp.selectedId)
     }
 
     @Test
