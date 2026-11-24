@@ -159,7 +159,7 @@ jobs:
       - name: Check Kotlin format, lint, run the JVM tests and the screenshots
         working-directory: android/doona-android
         # The release job builds the native library and bundles Geo data; JVM checks need neither.
-        run: ./gradlew -Pdoona.skipCore=true -Pdoona.skipGeo=true spotlessCheck :app:lintDebug :icons:lintDebug :flags:lintDebug :app:testDebugUnitTest :flags:testDebugUnitTest :app:verifyRoborazziDebug
+        run: ./gradlew -Pdoona.skipCore=true spotlessCheck :app:lintDebug :icons:lintDebug :flags:lintDebug :app:testDebugUnitTest :flags:testDebugUnitTest :app:verifyRoborazziDebug
 
   doona-release:
     name: doona-android release APK
@@ -199,13 +199,17 @@ jobs:
           cargo install --locked cargo-ndk@4.1.2
       - name: Build the release APK and check its size and 16 KiB page alignment
         working-directory: android/doona-android
+        env:
+          CORE_PROFILE: ${{ github.event_name == 'pull_request' && 'ci-release' || 'release' }}
         run: |
           set -euo pipefail
-          ./gradlew assembleRelease ${{ github.event_name == 'pull_request' && '-Pdoona.coreProfile=ci-release' || '' }}
+          ./gradlew assembleRelease -Pdoona.coreProfile="$CORE_PROFILE"
           apk=app/build/outputs/apk/release/app-release.apk
-          # The PR profile produces the larger APK; its no-Geo size rounds up to 21 MiB.
-          # Owner decision (2026-11-24): ship the full DATs, measured at an additional 5,011,968 bytes.
-          max_apk_bytes=$((21 * 1024 * 1024 + 5011968))
+          # Owner decision (2026-11-24): ship both full DATs. Baselines include them.
+          # Allow 256 KiB above each measured APK, including signer and alignment variation.
+          baseline_apk_bytes=22294329
+          if [[ "$CORE_PROFILE" == ci-release ]]; then baseline_apk_bytes=26545585; fi
+          max_apk_bytes=$((baseline_apk_bytes + 256 * 1024))
           apk_bytes=$(stat -c %s "$apk")
           echo "Release APK: $apk_bytes bytes (limit: $max_apk_bytes)"
           if (( apk_bytes > max_apk_bytes )); then

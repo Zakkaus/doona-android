@@ -2,6 +2,9 @@
 /app/build/
 /icons/build/
 /flags/build/
+/build-logic/build/
+/build-logic/.gradle/
+/build-logic/.kotlin/
 /.gradle/
 /.kotlin/
 /.idea/
