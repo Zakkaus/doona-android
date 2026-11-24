@@ -94,19 +94,14 @@ impl Score {
         self.manager.publish_score_membership();
     }
 
-    pub fn selected(&self, group: &str) -> Option<&str> {
-        match self
-            .manager
-            .peek_selection(group, SelectionNetwork::Tcp)?
-            .member
-        {
+    pub fn selected(&self, group: &str, network: SelectionNetwork) -> Option<&str> {
+        match self.manager.peek_selection(group, network)?.member {
             GroupMember::Node(n) => Some(&self.entries[&n.id].id),
             GroupMember::Group(g) => Some(&g.name),
         }
     }
 
-    pub fn pin(&self, group: &str, member: Option<SelectorMember>) {
-        let networks = SelectorNetworks::Both;
+    pub fn pin(&self, group: &str, member: Option<SelectorMember>, networks: SelectorNetworks) {
         match member {
             Some(m) => self.manager.publish_override(group, &m, networks),
             None => self.manager.clear_override(group, networks),

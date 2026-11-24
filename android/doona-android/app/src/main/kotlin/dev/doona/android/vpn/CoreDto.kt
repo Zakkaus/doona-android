@@ -344,6 +344,9 @@ internal data class GroupDto(
     val name: String,
     val kind: GroupKind,
     val selectedId: String? = null,
+    val tcpSelectedId: String? = selectedId,
+    val udpSelectedId: String? = selectedId,
+    val networksDiffer: Boolean = false,
     val pinned: Boolean,
     val testing: Boolean,
     val members: List<MemberDto>,
@@ -402,9 +405,6 @@ private val SUBSCRIPTION_FORMATS = mapOf(
     "clash" to SubscriptionFormat.Clash,
     "sing_box" to SubscriptionFormat.SingBox,
 )
-
-@Serializable
-internal data class SelectArgs(val group: String, val memberId: String?)
 
 @Serializable
 internal data class GroupArgs(val group: String?)

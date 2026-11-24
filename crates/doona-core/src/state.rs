@@ -34,12 +34,24 @@ pub struct State {
     /// Group id to the member id chosen by hand.
     #[serde(default)]
     pub selections: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub tcp_selections: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub udp_selections: BTreeMap<String, String>,
     /// The number in the next subscription's id; an id is never given twice.
     #[serde(default)]
     pub next_subscription: u64,
 }
 
 impl State {
+    pub(crate) fn pin(&self, group: &str, network: crate::dto::Network) -> Option<&String> {
+        let overrides = match network {
+            crate::dto::Network::Tcp => &self.tcp_selections,
+            crate::dto::Network::Udp => &self.udp_selections,
+        };
+        overrides.get(group).or_else(|| self.selections.get(group))
+    }
+
     /// A new subscription id: `s` and a number above every id given before.
     pub fn take_subscription_id(&mut self) -> String {
         let used = self
@@ -86,6 +98,8 @@ impl Default for State {
             subscriptions: Vec::new(),
             static_nodes: Vec::new(),
             selections: BTreeMap::new(),
+            tcp_selections: BTreeMap::new(),
+            udp_selections: BTreeMap::new(),
             next_subscription: 1,
         }
     }
@@ -426,6 +440,11 @@ mod tests {
         assert_eq!((a.used_bytes, a.total_bytes), (None, None));
         assert_eq!(a.expires_at_epoch_ms, Some(7));
         assert_eq!((b.used_bytes, b.total_bytes), (Some(i64::MAX), Some(0)));
-        assert_eq!(state.selections.len(), 1);
+        for network in [crate::dto::Network::Tcp, crate::dto::Network::Udp] {
+            assert_eq!(
+                state.pin("g-Proxy", network).map(String::as_str),
+                Some("g-Auto")
+            );
+        }
     }
 }

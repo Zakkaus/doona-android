@@ -25,6 +25,9 @@
         "name": "Proxy",
         "kind": "Selector",
         "selectedId": "g-Auto",
+        "tcpSelectedId": "g-Auto",
+        "udpSelectedId": "n-0c41be77",
+        "networksDiffer": true,
         "pinned": false,
         "testing": false,
         "members": [
@@ -71,6 +74,9 @@
         "name": "Auto",
         "kind": "Score",
         "selectedId": "n-7f3a19c2",
+        "tcpSelectedId": "n-7f3a19c2",
+        "udpSelectedId": "n-7f3a19c2",
+        "networksDiffer": false,
         "pinned": false,
         "testing": true,
         "members": [
@@ -99,6 +105,9 @@
         "name": "Streaming",
         "kind": "Selector",
         "selectedId": "g-Proxy",
+        "tcpSelectedId": "g-Proxy",
+        "udpSelectedId": "g-Proxy",
+        "networksDiffer": false,
         "pinned": false,
         "testing": false,
         "members": [
@@ -154,6 +163,9 @@
         "name": "AI",
         "kind": "Selector",
         "selectedId": "g-Proxy",
+        "tcpSelectedId": "g-Proxy",
+        "udpSelectedId": "g-Proxy",
+        "networksDiffer": false,
         "pinned": false,
         "testing": false,
         "members": [
@@ -209,6 +221,9 @@
         "name": "HK",
         "kind": "Score",
         "selectedId": "n-7f3a19c2",
+        "tcpSelectedId": "n-7f3a19c2",
+        "udpSelectedId": "n-7f3a19c2",
+        "networksDiffer": false,
         "pinned": false,
         "testing": false,
         "members": [

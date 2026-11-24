@@ -131,11 +131,7 @@ pub(crate) struct RuleSpec {
     pub target: Target,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Network {
-    Tcp,
-    Udp,
-}
+pub(crate) use crate::dto::Network;
 
 /// What a flow is matched on.
 #[derive(Clone, Copy, Debug)]

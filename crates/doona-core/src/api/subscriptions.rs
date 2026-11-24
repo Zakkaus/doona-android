@@ -223,6 +223,8 @@ impl Core {
             return Err(ErrorCode::Internal);
         }
         groups::prune(&mut next.selections, &model.groups);
+        groups::prune(&mut next.tcp_selections, &model.groups);
+        groups::prune(&mut next.udp_selections, &model.groups);
         let built = self.shared.outbounds.build(&model.nodes);
         self.write(&next, command, deadline)?;
         {

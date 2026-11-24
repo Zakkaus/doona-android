@@ -68,7 +68,12 @@ fn published() -> (Outbounds, Vec<Arc<NodeEntry>>) {
     let built = outbounds.build(&nodes);
     let selected = nodes
         .iter()
-        .map(|n| (n.id.clone(), super::Leaf::Node(Arc::clone(&n.node))))
+        .map(|n| {
+            (
+                Arc::from(n.id.as_str()),
+                std::array::from_fn(|_| Some(super::Leaf::Node(Arc::clone(&n.node)))),
+            )
+        })
         .collect();
     let (policy, mode) = (Arc::default(), Mode::Global);
     outbounds.replace(
