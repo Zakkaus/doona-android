@@ -42,7 +42,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 
 /** The contract schema this app speaks (`plans/v1/core-api.md`). */
-internal const val CORE_SCHEMA = 2
+internal const val CORE_SCHEMA = 3
 
 @Serializable
 internal data class InitDto(val schema: Int)

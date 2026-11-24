@@ -19,7 +19,7 @@ fn code(reply: &str) -> Option<ErrorCode> {
 
 #[test]
 fn init_replies_with_the_schema() {
-    assert_eq!(Core::schema(), r#"{"schema":2}"#);
+    assert_eq!(Core::schema(), r#"{"schema":3}"#);
 }
 
 #[test]

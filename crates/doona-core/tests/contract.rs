@@ -1,6 +1,8 @@
 //! Every example payload in `contracts/doona-core/` parses into its DTO and serializes back to the
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
+mod common;
+
 use doonacore::dto::score::ScoreState;
 use doonacore::dto::{
     AddSubscriptionArgs, ClearCrashesArgs, Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty,
@@ -31,10 +33,11 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 26] = [
+const COVERED: [&str; 28] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-diagnostics-args.json",
+    "call-error-state-write.json",
     "call-error.json",
     "call-nodes-args.json",
     "call-ok-diagnostics.json",
@@ -58,6 +61,7 @@ const COVERED: [&str; 26] = [
     "snapshot-running.json",
     "snapshot-stopped-catalog.json",
     "start-config.json",
+    "static-nodes.json",
 ];
 
 #[test]
@@ -80,6 +84,39 @@ fn init_and_start_config() {
     let config = round_trip::<StartConfig>("start-config.json");
     assert_eq!(config.mtu, 65535);
     assert_eq!(config.dns.to_string(), "172.19.0.2");
+}
+
+#[test]
+fn static_editor_fixture_is_an_executable_session() {
+    let dir = common::TempDir::new("contract-static");
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    for step in read("static-nodes.json").as_array().unwrap() {
+        let command = step["command"].as_str().unwrap();
+        let reply = core.call(command, &step["args"].to_string());
+        assert_eq!(
+            serde_json::from_str::<Value>(&reply).unwrap(),
+            step["reply"],
+            "{command}"
+        );
+    }
+}
+
+#[test]
+fn failed_static_write_publishes_none_of_the_batch() {
+    let dir = common::TempDir::new("contract-static-write");
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    std::fs::create_dir(dir.path().join("state.json.tmp")).unwrap();
+    let steps = read("static-nodes.json");
+    let reply = core.call("addStaticNodes", &steps[2]["args"].to_string());
+    assert_eq!(
+        serde_json::from_str::<Value>(&reply).unwrap(),
+        read("call-error-state-write.json")
+    );
+    assert_eq!(
+        core.call("nodes", r#"{"ids":null}"#),
+        r#"{"ok":{"nodes":[]}}"#
+    );
+    assert!(!dir.path().join("state.json").exists());
 }
 
 #[test]

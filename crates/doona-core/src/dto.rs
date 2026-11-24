@@ -1,4 +1,4 @@
-//! The JSON payloads of the JNI contract (`plans/v1/core-api.md`, schema 2). Kotlin's twin is
+//! The JSON payloads of the JNI contract (`plans/v1/core-api.md`, schema 3). Kotlin's twin is
 //! `vpn/CoreDto.kt`; `contracts/doona-core/*.json` holds the examples both sides test against.
 //! Unknown fields are ignored; a missing required field fails to parse (`invalid_argument`).
 
@@ -10,9 +10,8 @@ use serde::{Deserialize, Serialize};
 
 pub mod score;
 
-/// The contract schema this core speaks; `init` returns it. Schema 2 added `Rule` to the modes,
-/// which a schema-1 app cannot read; later additions within it stay additive.
-pub const SCHEMA: u32 = 2;
+/// Schema 3 admits catalog leaves without a subscription and adds the static editor commands.
+pub const SCHEMA: u32 = 3;
 
 /// The closed set of error codes, as `ErrorCode` in Kotlin's `Engine.kt`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -475,4 +474,101 @@ pub struct LatencyTest {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SeriesArgs {
     pub seconds: u64,
+}
+
+/// The private editor view; catalog members never include the credential-bearing link.
+#[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct StaticNode {
+    pub id: String,
+    pub name: String,
+    pub link: String,
+}
+
+impl std::fmt::Debug for StaticNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StaticNode")
+            .field("id", &self.id)
+            .finish_non_exhaustive()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
+pub enum StaticDraft {
+    Link { link: String, name: Option<String> },
+    Manual(ManualNode),
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ManualNode {
+    pub protocol: String,
+    pub server: String,
+    pub port: u16,
+    pub name: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub uuid: Option<String>,
+    pub cipher: Option<String>,
+    #[serde(default)]
+    pub options: std::collections::BTreeMap<String, String>,
+}
+
+/// Deserialize each draft independently: one malformed field must not discard valid siblings.
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum StaticInput {
+    Draft(StaticDraft),
+    Malformed(serde::de::IgnoredAny),
+}
+
+#[derive(Deserialize)]
+pub struct StaticBatch {
+    pub rows: Vec<StaticInput>,
+}
+
+#[derive(Deserialize)]
+pub struct StaticUpdate {
+    pub expected: StaticNode,
+    pub node: StaticInput,
+}
+
+#[derive(Deserialize)]
+pub struct StaticRemove {
+    pub expected: StaticNode,
+    pub confirmed: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "status", rename_all = "lowercase")]
+pub enum StaticResult {
+    Ready {
+        id: String,
+        name: String,
+        protocol: String,
+    },
+    Added {
+        id: String,
+        name: String,
+        protocol: String,
+    },
+    Updated {
+        id: String,
+        name: String,
+        protocol: String,
+    },
+    Duplicate {
+        id: String,
+    },
+    Invalid {
+        reason: String,
+    },
+    Unsupported {
+        reason: String,
+    },
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StaticResults {
+    pub rows: Vec<StaticResult>,
 }

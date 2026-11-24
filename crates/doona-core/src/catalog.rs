@@ -36,13 +36,13 @@ pub(crate) fn incarnation() -> u64 {
     NEXT_INCARNATION.fetch_add(1, Relaxed)
 }
 
-/// One node of one subscription.
+/// A catalog leaf, either authored locally or owned by one subscription.
 #[derive(Debug)]
 pub(crate) struct NodeEntry {
     pub id: String,
     pub uuid: uuid::Uuid,
     pub name: String,
-    pub subscription: String,
+    pub subscription: Option<String>,
     pub node: Arc<Node>,
 }
 
@@ -61,7 +61,7 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
                 id: ids::short_id(uuid),
                 uuid,
                 name,
-                subscription: subscription.to_owned(),
+                subscription: Some(subscription.to_owned()),
                 node: Arc::new(node),
             })
         })
@@ -81,6 +81,12 @@ pub(crate) fn load(state: &State, diag: &Diag) -> Model {
             Err(code) => diag.record(Event::warn("loadSubscription").code(code)),
         }
         incarnations.insert(s.id.clone(), incarnation());
+    }
+    for stored in &state.static_nodes {
+        match crate::api::static_nodes::stored_entry(stored) {
+            Ok(entry) if nodes.len() < MAX_NODES => nodes.push(entry),
+            _ => diag.record(Event::warn("loadStaticNode").code(ErrorCode::ParseFailed)),
+        }
     }
     Model::sourced(nodes, incarnations, &state.rule_source, None)
 }
@@ -222,7 +228,6 @@ pub(crate) struct Round {
 #[derive(Clone)]
 pub(crate) struct Target {
     pub entry: Arc<NodeEntry>,
-    pub incarnation: u64,
     pub generation: u64,
     /// When the test round began, epoch ms: its time in the node's latency history.
     pub began_ms: i64,
@@ -271,18 +276,18 @@ impl Model {
     /// The model after `subscription` gets `fresh` nodes (a new incarnation), or loses its nodes
     /// when it is no longer in `state`. The other subscriptions keep theirs.
     pub fn with(&self, state: &State, subscription: &str, fresh: Vec<Arc<NodeEntry>>) -> Model {
-        let mut fresh = Some(fresh);
+        let mut fresh = fresh.into_iter();
         let mut nodes = Vec::new();
         let mut incarnations = HashMap::new();
         for s in &state.subscriptions {
             if s.id == subscription {
-                nodes.extend(fresh.take().unwrap_or_default());
+                nodes.extend(fresh.by_ref());
                 incarnations.insert(s.id.clone(), incarnation());
             } else {
                 nodes.extend(
                     self.nodes
                         .iter()
-                        .filter(|n| n.subscription == s.id)
+                        .filter(|n| n.subscription.as_ref() == Some(&s.id))
                         .cloned(),
                 );
                 if let Some(&i) = self.incarnations.get(&s.id) {
@@ -290,7 +295,29 @@ impl Model {
                 }
             }
         }
+        nodes.extend(
+            self.nodes
+                .iter()
+                .filter(|n| n.subscription.is_none())
+                .cloned(),
+        );
         Model::sourced(nodes, incarnations, &state.rule_source, Some(&self.score))
+    }
+
+    pub fn with_static(&self, fresh: Vec<Arc<NodeEntry>>, state: &State) -> Model {
+        let nodes = self
+            .nodes
+            .iter()
+            .filter(|n| n.subscription.is_some())
+            .cloned()
+            .chain(fresh)
+            .collect();
+        Model::sourced(
+            nodes,
+            self.incarnations.clone(),
+            &state.rule_source,
+            Some(&self.score),
+        )
     }
 
     /// Compiles `source` over the groups and nodes as they are, for new flows.
@@ -346,7 +373,7 @@ impl Model {
     pub fn nodes_of(&self, subscription: &str) -> usize {
         self.nodes
             .iter()
-            .filter(|n| n.subscription == subscription)
+            .filter(|n| n.subscription.as_deref() == Some(subscription))
             .count()
     }
 
@@ -425,7 +452,7 @@ impl Model {
             member.latency_ms = latency.ms;
             member.failed = latency.failed;
             member.error = latency.error;
-            member.subscription_id = Some(entry.subscription.clone());
+            member.subscription_id.clone_from(&entry.subscription);
         }
         member
     }
@@ -452,11 +479,6 @@ impl Model {
             latency.probing = true;
             targets.push(Target {
                 entry: Arc::clone(entry),
-                incarnation: self
-                    .incarnations
-                    .get(&entry.subscription)
-                    .copied()
-                    .unwrap_or(0),
                 generation: self.next_probe,
                 began_ms,
             });
@@ -486,8 +508,10 @@ impl Model {
     /// arrive in.
     pub fn record(&mut self, target: &Target, ms: Option<u32>, error: Option<ErrorCode>) -> bool {
         let entry = &target.entry;
-        let current = self.index.contains_key(&entry.id)
-            && self.incarnations.get(&entry.subscription) == Some(&target.incarnation);
+        let current = self
+            .index
+            .get(&entry.id)
+            .is_some_and(|&i| Arc::ptr_eq(&self.nodes[i], entry));
         let Some(latency) = self
             .latency
             .get_mut(&entry.id)
