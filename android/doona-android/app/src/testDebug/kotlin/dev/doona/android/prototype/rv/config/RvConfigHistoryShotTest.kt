@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.DpOffset
 import dev.doona.android.R
@@ -224,6 +226,55 @@ class RvConfigHistoryShotTest {
         assertEquals(8 to "回家前", saved)
     }
 
+    /** The whole path from the list: the row's menu, the sheet's field typed into, 儲存, and the row titled by the name. */
+    @Test
+    fun aNameTypedInTheSheetTitlesTheRowInTheList() {
+        var revisions by mutableStateOf(RvConfigHistoryData.named)
+        var rename by mutableStateOf<RvRevisionRename?>(null)
+        compose.setContent {
+            Themed {
+                RvConfigHistoryPage(
+                    revisions,
+                    RvConfigData.REV,
+                    onBack = {},
+                    rename = rename,
+                    onRename = { rename = it },
+                    onSaveName = { rev, name -> revisions = revisions.map { if (it.rev == rev) it.named(name) else it } },
+                )
+            }
+        }
+        compose.onNodeWithText("第 8 版").performScrollTo().performTouchInput { longClick() }
+        compose.onNodeWithText(RENAME).performClick()
+        compose.onNode(hasSetTextAction()).performTextInput(TYPED)
+        compose.onNodeWithText(SAVE).performClick()
+        compose.onNodeWithText(TYPED).performScrollTo().assertExists()
+        compose.onNodeWithText("第 8 版").assertDoesNotExist()
+    }
+
+    /** The same from a revision's page: its 名稱 row opens the sheet, and once saved the row shows what was typed. */
+    @Test
+    fun aNameTypedFromTheNameRowShowsOnTheRevisionsPage() {
+        var shown by mutableStateOf(revision(UNNAMED))
+        var rename by mutableStateOf<RvRevisionRename?>(null)
+        compose.setContent {
+            Themed {
+                RvConfigRevisionPage(
+                    shown,
+                    listOf(RvConfigHistoryData.restoreDiff),
+                    onBack = {},
+                    rename = rename,
+                    onRename = { rename = it },
+                    onSaveName = { _, name -> shown = shown.named(name) },
+                )
+            }
+        }
+        compose.onNodeWithText(NAME).performClick()
+        compose.onNode(hasSetTextAction()).performTextInput(TYPED)
+        compose.onNodeWithText(SAVE).performClick()
+        compose.onNodeWithText(TYPED).assertExists()
+        compose.onNodeWithText("未命名").assertDoesNotExist()
+    }
+
     @Test
     fun anImportWithAnEscapingIncludeCannotGoOn() {
         compose.setContent { Themed { Import(RvConfigHistoryData.escape) } }
@@ -296,5 +347,6 @@ class RvConfigHistoryShotTest {
         const val UNNAMED = 8
         const val HOME = 7
         const val SAVE = "儲存"
+        const val TYPED = "回家前"
     }
 }
