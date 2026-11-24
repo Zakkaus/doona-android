@@ -23,23 +23,40 @@ import java.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReportRedactionTest : ExportFixture() {
     @Test
-    fun `only the requested category is disclosed in the ZIP`() = runTest {
+    fun `defaults and individual switches disclose only the selected values`() = runTest {
         val engine = fixtureEngine()
         val ip = InetAddress.getByAddress(byteArrayOf(192.toByte(), 0, 2, 84))
         val reports = export(engine, ownAddresses = { listOf(ip) })
         val defaults = RedactionOptions()
-        val options = listOf(
-            defaults,
-            defaults.copy(showNodeEndpoints = true),
-            defaults.copy(showOwnAddresses = true),
+        val cases = listOf(
+            defaults to listOf(PACKAGE),
+            defaults.copy(showNodeEndpoints = true) to listOf(ENDPOINT, PACKAGE),
+            defaults.copy(showOwnAddresses = true) to listOf(OWN_IP, PACKAGE),
+            defaults.copy(showVisitedDomains = true) to listOf(VISITED, PACKAGE),
+            defaults.copy(showAppNames = false) to emptyList(),
         )
-        val sensitive = listOf("node-1.example.net:443", "192.0.2.84")
-        for ((index, option) in options.withIndex()) {
+        val values = listOf(ENDPOINT, OWN_IP, VISITED, PACKAGE)
+        for ((option, expected) in cases) {
             AppEvents.clear()
-            AppEvents.record(AppEventLevel.Warn, ACTION)
-            val report = entries(reports.build(option)!!.file).getValue(ReportExport.REPORT_ENTRY)
-            assertEquals(listOfNotNull(sensitive.getOrNull(index - 1)), sensitive.filter { it in report })
-            for (secret in secrets) assertFalse(secret, secret in report)
+            AppEvents.record(AppEventLevel.Warn, ACTION, visitedDomain = VISITED, appPackage = PACKAGE)
+            val result = reports.build(option, FAILURE)!!
+            val report = entries(result.file).getValue(ReportExport.REPORT_ENTRY)
+            assertEquals("ZIP ($option)", expected, values.filter { it in report })
+            val event = Json.parseToJsonElement(report).jsonObject.getValue("events").jsonArray.single().jsonObject
+            val fields = buildSet {
+                addAll(listOf("atEpochMs", "level", "text"))
+                if (VISITED in expected) add("domain")
+                if (PACKAGE in expected) add("appName")
+            }
+            assertEquals("ZIP event keys ($option)", fields, event.keys)
+
+            val draft = draft(result)
+            val suffix = buildString {
+                if (VISITED in expected) append(" domain=$VISITED")
+                if (PACKAGE in expected) append(" app=$PACKAGE")
+            }
+            assertTrue("draft action ($option)", draft.lineSequence().any { it.endsWith("$ACTION$suffix") })
+            assertEquals("draft ($option)", expected.filter { it == VISITED || it == PACKAGE }, values.filter { it in draft })
         }
     }
 
@@ -89,7 +106,8 @@ class ReportRedactionTest : ExportFixture() {
         fake.crashes = listOf(crashName, appCrash).map { CrashFile(it, crashDir.resolve(it).length()) }
         AppEvents.record(AppEventLevel.Warn, "token=$token")
         AppEvents.record(AppEventLevel.Warn, "GET $sub")
-        AppEvents.record(AppEventLevel.Warn, ACTION)
+        AppEvents.record(AppEventLevel.Warn, ACTION, visitedDomain = sub, appPackage = credential)
+        AppEvents.record(AppEventLevel.Warn, ACTION, visitedDomain = token, appPackage = token)
         val engine = object : Engine by fake {
             override suspend fun nodes(ids: List<String>?) = fake.nodes(ids).map { nodes ->
                 listOf(nodes[0].copy(server = nodeCredential), nodes[1].copy(server = nodeUrl), nodes[2].copy(server = "2001:db8::21"))
@@ -105,7 +123,7 @@ class ReportRedactionTest : ExportFixture() {
                 )
             }
         }
-        val result = export(engine, ownAddresses = { listOf(address) }).build(SHOW_ALL, ReportFailure(ErrorCode.Internal, "start", Instant.EPOCH))!!
+        val result = export(engine, ownAddresses = { listOf(address) }).build(SHOW_ALL, FAILURE)!!
         val files = entries(result.file)
         val report = files.getValue(ReportExport.REPORT_ENTRY)
         val crash = files.getValue("crash/$crashName")
@@ -115,7 +133,7 @@ class ReportRedactionTest : ExportFixture() {
         assertTrue("[2001:db8::21]:443" in report)
         assertTrue(address.hostAddress!!.substringBefore('%') in report)
         assertTrue(appText.trimEnd() in files.getValue("crash/$appCrash"))
-        val draft = URLDecoder.decode(URI(result.issueLink!!).rawQuery, Charsets.UTF_8.name())
+        val draft = draft(result)
         assertTrue(ACTION in draft)
         assertFalse("[2001:db8::21]:443" in draft)
         val zipText = files.values.joinToString("\n")
@@ -123,8 +141,15 @@ class ReportRedactionTest : ExportFixture() {
         assertEquals("exported planted secrets", emptyList<String>(), planted.filter { it in zipText || it in draft })
     }
 
+    private fun draft(result: ReportZip): String = URLDecoder.decode(URI(result.issueLink!!).rawQuery, Charsets.UTF_8.name())
+
     companion object {
         private const val ACTION = "command=start phase=complete outcome=failed code=Internal"
-        private val SHOW_ALL = RedactionOptions(showNodeEndpoints = true, showOwnAddresses = true)
+        private const val ENDPOINT = "node-1.example.net:443"
+        private const val OWN_IP = "192.0.2.84"
+        private const val VISITED = "visited.example"
+        private const val PACKAGE = "org.example.browser"
+        private val FAILURE = ReportFailure(ErrorCode.Internal, "start", Instant.EPOCH)
+        private val SHOW_ALL = RedactionOptions(showNodeEndpoints = true, showOwnAddresses = true, showVisitedDomains = true, showAppNames = true)
     }
 }
