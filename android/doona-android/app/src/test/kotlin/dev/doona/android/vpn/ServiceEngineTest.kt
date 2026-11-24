@@ -16,6 +16,7 @@ import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Status
+import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -115,6 +116,23 @@ class ServiceEngineTest {
         assertEquals("diagnostics" to """{"level":"warn"}""", core.calls.single())
         assertEquals(LogLevel.Info, diagnostics.level)
         assertEquals(listOf("1795300150000.txt"), diagnostics.crashes.map { it.name })
+    }
+
+    @Test
+    fun settingTheLogLevelRecordsOneActionPerReply() = runBlocking {
+        AppEvents.clear()
+        engine.setLogLevel(LogLevel.Debug).getOrThrow()
+        core.reply = """{"error":{"code":"busy"}}"""
+        assertEquals(ErrorCode.Busy, (engine.setLogLevel(LogLevel.Info).exceptionOrNull() as EngineException).code)
+
+        val events = AppEvents.snapshot().map { it.text.substringBefore(" elapsedMs=") }
+        assertEquals(
+            listOf(
+                "command=setLogLevel phase=complete outcome=ok code=ok",
+                "command=setLogLevel phase=complete outcome=failed code=Busy",
+            ),
+            events,
+        )
     }
 
     @Test

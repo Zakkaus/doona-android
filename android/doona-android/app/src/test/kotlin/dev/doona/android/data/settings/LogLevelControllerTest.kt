@@ -50,13 +50,17 @@ class LogLevelControllerTest {
             assertEquals(LogLevel.Debug, engine.diagnostics().getOrThrow().level)
             advanceTimeBy(1_000)
             runCurrent()
-            levels.expireIfDue()?.join()
             advanceTimeBy(10_000)
             runCurrent()
 
             assertEquals(2, resets)
             assertEquals(if (refusals == 1) LogLevel.Info else LogLevel.Debug, engine.diagnostics().getOrThrow().level)
             assertEquals("command=setLogLevel phase=reset outcome=failed code=Busy", AppEvents.snapshot().single().text)
+            if (refusals == 2) {
+                levels.expireIfDue()?.join()
+                assertEquals(LogLevel.Info, engine.diagnostics().getOrThrow().level)
+                assertEquals(3, resets)
+            }
         }
     }
 

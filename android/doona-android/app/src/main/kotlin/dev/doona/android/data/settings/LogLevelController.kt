@@ -1,6 +1,7 @@
 package dev.doona.android.data.settings
 
 import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CoroutineScope
@@ -22,7 +23,7 @@ class LogLevelController(
 ) {
     private val edits = Mutex()
     private var expiry: Job? = null
-    private var resetStarted = false // Guarded by edits; one reset and one retry per capture.
+    private var resetStarted = false // Guarded by edits; prevents another reset while the retry is pending.
     private val current = MutableStateFlow(LogLevel.Info)
     val level: StateFlow<LogLevel> = current.asStateFlow()
 
@@ -72,12 +73,13 @@ class LogLevelController(
         expiry?.cancel()
         expiry = null
         applyReset().onFailure { failure ->
-            AppEvents.action("setLogLevel", "reset", "failed", (failure as EngineException).code.name)
+            val code = (failure as? EngineException)?.code ?: ErrorCode.Internal
+            AppEvents.action("setLogLevel", "reset", "failed", code.name)
             expiry = scope.launch {
                 delay(RESET_RETRY_MS)
                 edits.withLock {
                     expiry = null
-                    applyReset()
+                    applyReset().onFailure { resetStarted = false }
                 }
             }
         }

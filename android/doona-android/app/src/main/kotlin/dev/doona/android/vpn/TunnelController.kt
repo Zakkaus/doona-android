@@ -221,7 +221,6 @@ internal class TunnelController(
     private suspend fun stopCore() {
         if (!coreRunning) return
         coreRunning = false
-        expireDebugCapture()
         val begun = System.nanoTime()
         // A native call cannot be cancelled: if stop hangs, only ending the process frees the tun.
         val watchdog = scope.launch {

@@ -227,15 +227,19 @@ class ServiceEngine internal constructor(
         scope.async { savePerApp(perApp) }.await()
 
     override suspend fun diagnostics(level: LogLevel?): Result<CoreDiagnostics> =
-        read("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader, waitForExpiry = false)
+        readCore("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
             .map { it.dto.toCoreDiagnostics(it.json) }
 
-    override suspend fun setLogLevel(level: LogLevel): Result<Unit> =
-        if (opener.schema() == CORE_SCHEMA) {
+    override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
+        val outcome = if (opener.schema() == CORE_SCHEMA) {
             call("setLogLevel", CoreJson.encode(LevelArgs.serializer(), LevelArgs(CoreLevel.of(level))), Unit.serializer())
         } else {
             Result.failure(EngineException(ErrorCode.Internal))
         }
+        val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
+        VpnLog.action("setLogLevel", "complete", if (outcome.isSuccess) "ok" else "failed", code)
+        return outcome
+    }
 
     override suspend fun clearCrashes(names: List<String>, mark: Long): Result<Unit> =
         command("clearCrashes", ClearCrashesArgs.serializer(), ClearCrashesArgs(names, mark), Unit.serializer())
@@ -315,11 +319,12 @@ class ServiceEngine internal constructor(
         argsSerializer: SerializationStrategy<A>,
         args: A,
         result: DeserializationStrategy<R>,
-        waitForExpiry: Boolean = true,
     ): Result<R> {
-        // Export may read diagnostics without waiting for a reset.
-        val expiry = expireDebugCapture()
-        if (waitForExpiry) expiry?.join()
+        expireDebugCapture()?.join()
+        return readCore(name, argsSerializer, args, result)
+    }
+
+    private suspend fun <A, R> readCore(name: String, argsSerializer: SerializationStrategy<A>, args: A, result: DeserializationStrategy<R>): Result<R> {
         if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
         val begun = System.nanoTime()
         return call(name, CoreJson.encode(argsSerializer, args), result).also { outcome ->
