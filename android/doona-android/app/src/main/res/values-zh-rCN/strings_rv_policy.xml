@@ -147,7 +147,7 @@
     <string name="rv_score_wait_budget">暂缓测试，避免多用流量</string>
     <string name="rv_score_wait_testing">测试中</string>
     <string name="rv_score_wait_backoff">稍后重试</string>
-    <string name="rv_score_coverage">已比较 %1$d／%2$d</string>
+    <string name="rv_score_coverage">已比较 %1$d/%2$d</string>
     <string name="rv_score_faster">较快</string>
     <string name="rv_score_similar">相当</string>
     <string name="rv_score_slower">较慢</string>

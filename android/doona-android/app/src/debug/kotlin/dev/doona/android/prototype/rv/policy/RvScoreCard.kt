@@ -31,7 +31,7 @@ internal fun RvScoreCard(label: String, network: ScoreNetwork, members: List<RvN
     val coverage = network.coverage
     RvCard {
         // honk's `evaluated` are the members in its bounded comparison set and `pending` those of them still with an open
-        // question, so the difference is the comparisons finished: 已比較 n／m.
+        // question, so the difference is the comparisons finished: 已比較 n/m.
         RvCardHeader(label, tag = stringResource(R.string.rv_score_coverage, coverage.evaluated - coverage.pending, coverage.candidates))
         RvScoreChoiceRow(network, members, network.stateText(), latency = true)
         for (challenger in network.challengers) Challenger(challenger, members)

@@ -30,7 +30,7 @@ internal const val RV_SAMPLE_GEO_SHIPPED_MS = 1_795_132_800_000L
 internal const val RV_SAMPLE_GEO_NEWER_MS = 1_795_478_400_000L
 
 /**
- * 設定's GeoIP／GeoSite row in 進階: the data's date as its second line, with where an update stands after it, and 更新
+ * 設定's GeoIP/GeoSite row in 進階: the data's date as its second line, with where an update stands after it, and 更新
  * at its end, the library's in-card action sized to its label and centred on the row (as every in-row action,
  * [RvSettingsRow]). While it runs, the busy bar takes the action's place, as
  * 關於's 檢查更新 row while it checks. A failure stays on the row (M8: the page shows it in place, no dialog or toast):

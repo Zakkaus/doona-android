@@ -88,8 +88,8 @@ class RvScoreGroupShotTest {
     fun chosenCardsSayStateCoverageAndRelations() {
         compose.rvContent(dark = false) { Chosen() }
         assertEquals(2, compose.onAllNodesWithText(SELECTED).fetchSemanticsNodes().size)
-        compose.onNodeWithText("已比較 4／6").assertExists()
-        compose.onNodeWithText("已比較 2／6").assertExists()
+        compose.onNodeWithText("已比較 4/6").assertExists()
+        compose.onNodeWithText("已比較 2/6").assertExists()
         compose.onNodeWithText(FASTER).assertExists()
         compose.onNodeWithText(SLOWER).assertExists()
         assertEquals(2, compose.onAllNodesWithText(SIMILAR).fetchSemanticsNodes().size)
@@ -104,8 +104,8 @@ class RvScoreGroupShotTest {
         compose.rvContent(dark = false) { Evaluating() }
         compose.onNodeWithText("評估中 · 測試中").assertExists()
         compose.onNodeWithText("評估中 · 暫緩測試，避免多用流量").assertExists()
-        compose.onNodeWithText("已比較 1／6").assertExists()
-        compose.onNodeWithText("已比較 0／6").assertExists()
+        compose.onNodeWithText("已比較 1/6").assertExists()
+        compose.onNodeWithText("已比較 0/6").assertExists()
         // One node chosen on both networks.
         compose.onNodeWithText("TCP/UDP · ", substring = true).assertExists()
     }
@@ -117,7 +117,7 @@ class RvScoreGroupShotTest {
         assertEquals(2, compose.onAllNodesWithText(NO_NODE).fetchSemanticsNodes().size)
         // Nothing is chosen and nothing is under way: no state under it.
         assertEquals(0, compose.onAllNodesWithText("評估中", substring = true).fetchSemanticsNodes().size)
-        assertEquals(2, compose.onAllNodesWithText("已比較 0／0").fetchSemanticsNodes().size)
+        assertEquals(2, compose.onAllNodesWithText("已比較 0/0").fetchSemanticsNodes().size)
         assertEquals(0, compose.onAllNodesWithText("TCP · ", substring = true).fetchSemanticsNodes().size)
     }
 

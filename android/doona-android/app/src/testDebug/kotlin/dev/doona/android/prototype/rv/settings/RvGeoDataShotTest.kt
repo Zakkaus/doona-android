@@ -46,7 +46,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 設定's GeoIP／GeoSite row (owner-fix2 item 16; in 更新 under 檢查更新 since owner-fix3 item 27): the whole 設定 page, as
+ * 設定's GeoIP/GeoSite row (owner-fix2 item 16; in 更新 under 檢查更新 since owner-fix3 item 27): the whole 設定 page, as
  * its own goldens and `-config-entry-*` are, so a diff against `proto-rv-settings-*` shows only the row's state. Each
  * light, dark, fs115 and fs200: the shipped data with 更新 (`proto-rv-settings-geodata-idle-*`), updating
  * (`-updating-*`, at animator scale 0, so the busy bar rests half full), updated to newer data (`-updated-*`), nothing
