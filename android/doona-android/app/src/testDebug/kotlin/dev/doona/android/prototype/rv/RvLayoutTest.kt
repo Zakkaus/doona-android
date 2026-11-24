@@ -44,19 +44,29 @@ import dev.doona.android.prototype.rv.policy.RvRuleEditPage
 import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.policy.RvTemplateImpactPage
 import dev.doona.android.prototype.rv.policy.RvTemplatePage
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_DEBUG_LEFT
+import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
 import dev.doona.android.prototype.rv.settings.RvDnsUpstream
 import dev.doona.android.prototype.rv.settings.RvExport
+import dev.doona.android.prototype.rv.settings.RvIntervalScreen
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvLogLevel
+import dev.doona.android.prototype.rv.settings.RvLogLevelScreen
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
+import dev.doona.android.prototype.rv.settings.RvRedaction
+import dev.doona.android.prototype.rv.settings.RvReportBuild
+import dev.doona.android.prototype.rv.settings.RvReportGithubScreen
 import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
+import dev.doona.android.prototype.rv.settings.RvUpdate
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvSampleAppearance
+import dev.doona.android.prototype.rv.settings.rvSampleReport
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
+import dev.doona.android.prototype.rv.settings.rvSampleVersions
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
 import dev.doona.android.prototype.rv.stats.rvStatsSample
 import dev.doona.android.testing.PhoneFrame
@@ -178,6 +188,28 @@ class RvLayoutTest {
 
     @Test
     fun licenses() = measure("licenses", Top.Title) { RvLicensesScreen(onOpen = {}, onBack = {}) }
+
+    // Every page 設定 opens keeps the one pushed header: the title where DNS and the licences have it (owner-fix2 item 2).
+    // Not 語言: its 简体中文 row is 60 dp, since Noto Sans TC has no 简 and the row falls back to a taller face.
+    @Test
+    fun about() = measure("settings-about", Top.Title) { RvAboutScreen(rvSampleVersions, onBack = {}) }
+
+    @Test
+    fun aboutUpdateFailed() = measure("settings-update-failed", Top.Title) { RvAboutScreen(rvSampleVersions, onBack = {}, update = RvUpdate.Failed) }
+
+    @Test
+    fun interval() = measure("settings-interval", Top.Title) { RvIntervalScreen(RvData.UPDATE_HOURS, onSelect = {}, onBack = {}) }
+
+    @Test
+    fun logLevel() = measure("settings-log-level", Top.Title) { RvLogLevelScreen(RvLogLevel.Info, RV_SAMPLE_DEBUG_LEFT, onSelect = {}, onBack = {}) }
+
+    @Test
+    fun logLevelDebug() = measure("settings-log-level-debug", Top.Title) { RvLogLevelScreen(RvLogLevel.Debug, RV_SAMPLE_DEBUG_LEFT, onSelect = {}, onBack = {}) }
+
+    @Test
+    fun reportGithub() = measure("settings-report-github", Top.Title) {
+        RvReportGithubScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {})
+    }
 
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {
         var barBottom = 0f
