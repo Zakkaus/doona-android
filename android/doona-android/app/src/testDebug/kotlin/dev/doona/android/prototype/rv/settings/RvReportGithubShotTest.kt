@@ -32,7 +32,7 @@ import org.robolectric.annotation.GraphicsMode
  * 回報問題 for GitHub, each state light, dark, fs115 and fs200 in one frame as tall as the page: ready
  * (`proto-rv-settings-report-github-*`), while the report is written (`-report-github-building-*`, at animator scale 0,
  * so the busy bar rests half full) and after it failed (`-report-github-failed-*`). Then what the switches and the
- * actions do, and that the actions wait for the report.
+ * actions do, and that the actions wait for a report written with the switches as they stand.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -46,19 +46,19 @@ class RvReportGithubShotTest {
 
     @Test
     @Config(qualifiers = READY)
-    fun light() = shot("report-github", RvReportBuild.Ready, dark = false)
+    fun light() = shot("report-github", READY_BUILD, dark = false)
 
     @Test
     @Config(qualifiers = READY)
-    fun dark() = shot("report-github", RvReportBuild.Ready, dark = true)
+    fun dark() = shot("report-github", READY_BUILD, dark = true)
 
     @Test
     @Config(qualifiers = READY_FS115)
-    fun fs115() = shot("report-github", RvReportBuild.Ready, fontScale = RV_FS115)
+    fun fs115() = shot("report-github", READY_BUILD, fontScale = RV_FS115)
 
     @Test
     @Config(qualifiers = READY_FS200)
-    fun fs200() = shot("report-github", RvReportBuild.Ready, fontScale = RV_FS200)
+    fun fs200() = shot("report-github", READY_BUILD, fontScale = RV_FS200)
 
     @Test
     @Config(qualifiers = BUILDING)
@@ -98,10 +98,31 @@ class RvReportGithubShotTest {
         val redaction = mutableStateOf(RvRedaction())
         val ran = mutableListOf<String>()
         val actions = RvReportActions(github = { ran += "github" }, share = { ran += "share" })
-        compose.setContent { Themed { RvReportGithubScreen(RvReportBuild.Ready, rvSampleReport, redaction.value, { redaction.value = it }, onBack = {}, actions = actions) } }
+        compose.setContent { Themed { RvReportGithubScreen(RvReportBuild.Ready(redaction.value), rvSampleReport, redaction.value, { redaction.value = it }, onBack = {}, actions = actions) } }
         compose.onNodeWithText(rvText(R.string.rv_redact_apps)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_redact_nodes)).performClick()
         assertEquals(RvRedaction(nodes = false, apps = true), redaction.value)
+        compose.onNodeWithText(rvText(R.string.rv_report_github)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_report_share)).performClick()
+        assertEquals(listOf("github", "share"), ran)
+    }
+
+    /** A report written before a switch turned hides other things: it is not shared until it is written again. */
+    @Test
+    @Config(qualifiers = READY)
+    fun aSwitchHoldsTheActionsUntilTheReportIsWrittenAgain() {
+        val redaction = mutableStateOf(RvRedaction())
+        val build = mutableStateOf<RvReportBuild>(RvReportBuild.Ready(RvRedaction()))
+        val ran = mutableListOf<String>()
+        val actions = RvReportActions(github = { ran += "github" }, share = { ran += "share" })
+        compose.setContent { Themed { RvReportGithubScreen(build.value, rvSampleReport, redaction.value, { redaction.value = it }, onBack = {}, actions = actions) } }
+        compose.onNodeWithText(rvText(R.string.rv_redact_apps)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_report_building)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_report_github)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_report_share)).performClick()
+        assertEquals(emptyList<String>(), ran)
+        build.value = RvReportBuild.Ready(redaction.value)
+        compose.onNodeWithText(rvText(R.string.rv_report_building)).assertDoesNotExist()
         compose.onNodeWithText(rvText(R.string.rv_report_github)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_report_share)).performClick()
         assertEquals(listOf("github", "share"), ran)
@@ -139,6 +160,7 @@ class RvReportGithubShotTest {
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
 
     private companion object {
+        val READY_BUILD = RvReportBuild.Ready(RvRedaction())
         val HAS_CLICK = SemanticsMatcher.keyIsDefined(SemanticsProperties.Role)
 
         /** As tall as the page in each state and font size (to the next whole dp), so its end sits above the actions as on the phone. */
