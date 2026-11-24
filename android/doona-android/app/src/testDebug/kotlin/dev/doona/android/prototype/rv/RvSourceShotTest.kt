@@ -9,6 +9,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -39,7 +41,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The library parts the configuration pages need (PV-f item 1, round 2 item 3), each on the page under the status bar
  * in light, dark and the two larger font sizes: the source field with a mark after a multibyte word
- * (`proto-rv-source-field-*`), the diff of that file after the fix (`proto-rv-source-diff-*`), and code text with every
+ * (`proto-rv-source-field-*`, the cursor on the mark, so its message shows), the diff of that file after the fix (`proto-rv-source-diff-*`), and code text with every
  * role doona colours (`proto-rv-code-text-*`); then what each does.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -117,14 +119,20 @@ class RvSourceShotTest {
         assertEquals(0, rvBlankColumns(""))
     }
 
+    /** As an editor shows an error's message where the pointer rests: only while the cursor stands on the span. */
     @Test
-    fun tappingAMarksMessagePutsTheCursorOnItsSpan() {
+    fun aMarksMessageShowsWhileTheCursorIsOnItsSpan() {
         val start = rvByteOf(RV_GALLERY_SOURCE, WORD)
+        val at = RV_GALLERY_SOURCE.indexOf(WORD)
         var value by mutableStateOf(TextFieldValue(RV_GALLERY_SOURCE))
         compose.setContent { Themed { RvSourceField(value, { value = it }, FILE, marks = listOf(RvSourceMark(start, start + WORD.length, MESSAGE))) } }
-        compose.onNodeWithText("第 3 行：$MESSAGE").performClick()
-        val at = RV_GALLERY_SOURCE.indexOf(WORD)
-        assertEquals(TextRange(at, at + WORD.length), value.selection)
+        compose.onNodeWithText("第 3 行：$MESSAGE").assertDoesNotExist()
+        compose.runOnIdle { value = value.copy(selection = TextRange(at + 2)) }
+        compose.onNodeWithText("第 3 行：$MESSAGE").assertExists()
+        compose.runOnIdle { value = value.copy(selection = TextRange(0)) }
+        compose.onNodeWithText("第 3 行：$MESSAGE").assertDoesNotExist()
+        // A screen reader hears it as the field's error whatever the cursor.
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error)).assertExists()
     }
 
     @Test

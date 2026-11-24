@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvCard
@@ -33,10 +34,13 @@ internal fun RvGalleryCode() {
     RvCard { RvCodeText(RV_GALLERY_CODE, rvSourceStyle(), Modifier.padding(RvSpace.rowPadding)) }
 }
 
-/** The source field holding a small rules file, with one mark after a multibyte word: a group the file does not declare. */
+/**
+ * The source field holding a small rules file, with one mark after a multibyte word: a group the file does not declare.
+ * It opens with the cursor on the mark, as after a tap there, so its message shows under the card.
+ */
 @Composable
 internal fun RvGallerySource() {
-    var value by remember { mutableStateOf(TextFieldValue(RV_GALLERY_SOURCE)) }
+    var value by remember { mutableStateOf(TextFieldValue(RV_GALLERY_SOURCE, TextRange(RV_GALLERY_SOURCE.indexOf(MISSING)))) }
     val mark = RvSourceMark(rvByteOf(RV_GALLERY_SOURCE, MISSING), rvByteOf(RV_GALLERY_SOURCE, MISSING) + MISSING.length, stringResource(R.string.rv_config_unknown_group, MISSING))
     RvSourceField(value, { value = it }, RV_GALLERY_FILE, marks = listOf(mark))
 }

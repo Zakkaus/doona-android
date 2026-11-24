@@ -2,6 +2,7 @@ package dev.doona.android.designsystem.rv
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 /**
  * The hue of each code role in one theme, one colour per role as a code editor gives it (owner 2026-11-24: 「高亮的顏色是
@@ -44,4 +45,15 @@ internal object RvCodeHue {
         key = Color(0xFF9CDCFE),
         punctuation = Color(0xFFD4D4D4),
     )
+}
+
+/**
+ * An error's wavy underline in the source field, as an editor draws one: a zigzag [wave] long per period, [depth] from
+ * crest to trough, a [stroke] wide, its crests [drop] under the baseline, clear of the next line's caps.
+ */
+internal object RvSourceSize {
+    val wave = 4.dp
+    val depth = 2.dp
+    val stroke = 1.dp
+    val drop = 2.dp
 }

@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -119,9 +121,10 @@ class RvConfigSourceShotTest {
         val draft = RvConfigSourceData.error
         var value by mutableStateOf(TextFieldValue(draft.text))
         compose.setContent { Themed { RvConfigSourcePage(draft, value, { value = it }, onBack = {}) } }
-        compose.onNodeWithText(MARK).assertExists()
+        // The mark's message shows only on a tap; the field carries it as its error from the start.
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error)).assertExists()
         value = TextFieldValue("\n" + draft.text)
-        compose.onNodeWithText(MARK).assertDoesNotExist()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error)).assertDoesNotExist()
         compose.onNodeWithText(REVIEW).assertIsEnabled()
     }
 
@@ -132,7 +135,7 @@ class RvConfigSourceShotTest {
         compose.setContent { Themed { RvConfigSourcePage(draft, value, { value = it }, onBack = {}) } }
         compose.onNodeWithText(REVIEW).assertIsNotEnabled()
         value = TextFieldValue(draft.text.replace("-> stream", "-> media"))
-        compose.onNodeWithText(MARK).assertDoesNotExist()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error)).assertDoesNotExist()
         compose.onNodeWithText(REVIEW).assertIsEnabled()
     }
 
@@ -176,11 +179,10 @@ class RvConfigSourceShotTest {
 
     private companion object {
         const val WHOLE_SOURCE = "+h1122dp"
-        const val WHOLE_ERROR = "+h1149dp"
+        const val WHOLE_ERROR = "+h1122dp"
         const val WHOLE_DIFF = "+h915dp"
         const val WHOLE_STALE = "+h1030dp"
         const val REVIEW = "檢視變更"
         const val APPLY = "套用"
-        const val MARK = "第 7 行：找不到策略組 stream"
     }
 }

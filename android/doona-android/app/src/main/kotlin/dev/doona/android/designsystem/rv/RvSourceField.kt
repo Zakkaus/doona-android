@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -17,19 +16,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ParagraphStyle
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextRange
@@ -41,7 +38,6 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -58,11 +54,12 @@ internal class RvSourceMark(val start: Int, val end: Int, val message: String)
  * The multiline source field (config plan, source editor): a card holding the file's text in the row subtitle's 17 sp,
  * wrapping (also inside a long token, [rvCodeBreaks]), highlighted as all honk text is ([RvCodeText]'s roles), with
  * each line's number in a gutter at its start, in secondary ink and tabular figures, [RvSpace.trailingGap] before the
- * text. Each of [marks] is tinted in the error hue as [RvStatusChip] tints its label and underlined, so the
- * hue is not the only sign; its line's number turns the error hue. Under the card each mark's message
- * ([RvFieldMessage], led by its line) moves the cursor onto its span when tapped. The caller owns [value], so it can
- * also open the field at a span ([rvSourceSelection]). [name] (the file) names the field for a screen reader, which
- * hears the first mark's message as the field's error.
+ * text. Each of [marks] is shown as a code editor shows an error (owner 2026-11-24: 「看看編輯器怎麼寫？」): a wavy
+ * underline in the error hue under its span, which keeps its code colours, and a dot in the error hue in the gutter
+ * beside its line's number, so the hue is not the only sign. Its message ([RvFieldMessage], led by its line) shows under
+ * the card while the cursor stands on the span, that is once the span is tapped. The caller owns [value], so it can also
+ * open the field at a span ([rvSourceSelection]). [name] (the file) names the field for a screen reader, which hears the
+ * first mark's message as the field's error.
  */
 @Composable
 internal fun RvSourceField(
@@ -85,14 +82,10 @@ internal fun RvSourceField(
     val space = rvSpaceWidth(style, measurer)
     val gutter = rvLineNumberWidth(measurer, lines.size, numbers)
     // Each number is measured once per count of lines and marks, not on every frame; an edit within a line keeps them.
-    val labels = remember(lines.size, marked, numbers, colors, measurer) {
-        List(lines.size) { measurer.measure((it + 1).toString(), numbers.copy(color = if (it in marked) colors.error else colors.textSecondary)) }
+    val labels = remember(lines.size, numbers, colors, measurer) {
+        List(lines.size) { measurer.measure((it + 1).toString(), numbers.copy(color = colors.textSecondary)) }
     }
-    val tint = SpanStyle(color = colors.error, background = colors.error.copy(alpha = RvAlpha.STATUS_CHIP), textDecoration = TextDecoration.Underline)
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val focus = remember { FocusRequester() }
-    val radius = Rv.highlightRadius
-    val messageShape = remember(radius) { RoundedCornerShape(radius) }
     Column(modifier.fillMaxWidth()) {
         RvCard {
             BasicTextField(
@@ -100,7 +93,6 @@ internal fun RvSourceField(
                 onValueChange,
                 Modifier
                     .padding(RvSpace.rowPadding)
-                    .focusRequester(focus)
                     .semantics {
                         contentDescription = name
                         marks.firstOrNull()?.let { error(it.message) }
@@ -108,10 +100,20 @@ internal fun RvSourceField(
                     .drawWithCache {
                         // Placed once per layout of the text (the cache reads it), then only drawn on each frame.
                         val placed = layout?.let { placeLineNumbers(it, LineAnchors(lines, shown.offsets), labels, gutter.toPx()) }.orEmpty()
-                        onDrawBehind { placed.forEach { (number, at) -> drawText(number, topLeft = at) } }
+                        val dot = RvSize.dot.toPx() / 2
+                        val dots = marked.mapNotNull { placed.getOrNull(it) }.map { (number, at) -> Offset(at.x - RvSpace.tight.toPx() - dot, at.y + number.size.height / 2f) }
+                        val wave = SquiggleSize(RvSourceSize.wave.toPx(), RvSourceSize.depth.toPx(), RvSourceSize.drop.toPx())
+                        val origin = (gutter + RvSpace.trailingGap).toPx()
+                        val waves = layout?.let { text -> ranges.flatMap { squiggles(text, shown.offsets, it, origin, wave) } }.orEmpty()
+                        val stroke = Stroke(RvSourceSize.stroke.toPx())
+                        onDrawBehind {
+                            placed.forEach { (number, at) -> drawText(number, topLeft = at) }
+                            dots.forEach { drawCircle(colors.error, dot, it) }
+                            waves.forEach { drawPath(it, colors.error, style = stroke) }
+                        }
                     },
                 textStyle = style.copy(color = colors.text),
-                visualTransformation = SourceMarks(shown, ranges, tint, space, inks),
+                visualTransformation = SourceMarks(shown, space, inks),
                 onTextLayout = { layout = it },
                 cursorBrush = SolidColor(colors.positive),
                 decorationBox = { field ->
@@ -122,14 +124,43 @@ internal fun RvSourceField(
                 },
             )
         }
-        marks.forEachIndexed { i, mark ->
-            val line = lineOf(lines, ranges[i].start) + 1
-            val jump = Modifier.rvPress(messageShape, Role.Button, onClick = {
-                onValueChange(value.copy(selection = ranges[i]))
-                focus.requestFocus()
-            })
-            RvFieldMessage(stringResource(R.string.rv_source_line, line, mark.message), jump)
-        }
+        // The message of the mark the cursor stands on, as an editor shows it where the pointer rests.
+        val cursor = value.selection.takeIf { it.collapsed }?.start
+        val here = cursor?.let { c -> ranges.indexOfFirst { c in it.start..it.end } } ?: -1
+        if (here >= 0) RvFieldMessage(stringResource(R.string.rv_source_line, lineOf(lines, ranges[here].start) + 1, marks[here].message))
+    }
+}
+
+/** A wavy underline's [wave] length, peak-to-peak [depth] and [drop] under the baseline, in pixels. */
+private class SquiggleSize(val wave: Float, val depth: Float, val drop: Float)
+
+/**
+ * The wavy underline of [range] (source offsets; [offsets] maps them into the shown text of [layout]), one zigzag path
+ * per row it covers, [drop] under the row's baseline, shifted right by the gutter ([origin]).
+ */
+private fun squiggles(layout: TextLayoutResult, offsets: RvCodeOffsets, range: TextRange, origin: Float, size: SquiggleSize): List<Path> {
+    val length = layout.layoutInput.text.length
+    val start = offsets.originalToTransformed(range.start).coerceAtMost(length)
+    val end = offsets.originalToTransformed(range.end).coerceAtMost(length)
+    if (end <= start) return emptyList()
+    val first = layout.getLineForOffset(start)
+    val last = layout.getLineForOffset(end - 1)
+    return (first..last).map { row ->
+        val from = if (row == first) layout.getHorizontalPosition(start, true) else layout.getLineLeft(row)
+        val to = if (row == last) layout.getHorizontalPosition(end, true) else layout.getLineRight(row)
+        zigzag(origin + from, origin + to, layout.getLineBaseline(row) + size.drop, size)
+    }
+}
+
+/** A zigzag from [x0] to [x1], its top at [top], half a [SquiggleSize.wave] per stroke. */
+private fun zigzag(x0: Float, x1: Float, top: Float, size: SquiggleSize): Path = Path().apply {
+    moveTo(x0, top + size.depth)
+    var x = x0
+    var down = false
+    while (x < x1) {
+        x = minOf(x + size.wave / 2, x1)
+        lineTo(x, if (down) top + size.depth else top)
+        down = !down
     }
 }
 
@@ -175,12 +206,12 @@ internal fun rvLineNumberWidth(measurer: TextMeasurer, count: Int, style: TextSt
 
 /**
  * The source as the field draws it ([shown]): CJK runs in Noto, as [RvText] sets them, a break opportunity inside each
- * long token, each token in its role's ink ([addCode]), then each marked span tinted over it, and each line a paragraph of its own that
+ * long token, each token in its role's ink ([addCode]), and each line a paragraph of its own that
  * hangs by its indent ([rvHang]; [space] is one blank's width). A paragraph that ends in a line feed shows an empty line
  * after it, so the feed is drawn as a word joiner, which has no width and keeps its offset; a text that ends in a feed
  * gets one more joiner for its last, empty line. [RvCodeOffsets] maps the cursor past the inserted breaks.
  */
-private data class SourceMarks(val shown: RvCodeShown, val ranges: List<TextRange>, val tint: SpanStyle, val space: TextUnit, val inks: RvCodeColors) :
+private data class SourceMarks(val shown: RvCodeShown, val space: TextUnit, val inks: RvCodeColors) :
     VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val source = text.text
@@ -191,7 +222,6 @@ private data class SourceMarks(val shown: RvCodeShown, val ranges: List<TextRang
         val drawn = buildAnnotatedString {
             append(scripted(view.text.replace('\n', LINE_END) + if (closed) LINE_END.toString() else ""))
             addCode(view, inks)
-            ranges.forEach { addStyle(tint, at(it.start.coerceAtMost(source.length)), at(it.end.coerceAtMost(source.length))) }
             var from = 0
             while (from < total) {
                 val end = source.indexOf('\n', from).let { if (it < 0 || it + 1 >= total) total else it + 1 }
