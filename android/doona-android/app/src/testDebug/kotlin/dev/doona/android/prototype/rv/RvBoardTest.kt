@@ -2,16 +2,19 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.data.RvRouteMode
+import dev.doona.android.prototype.rv.nodes.RvNodesPage
+import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
-import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.rvSampleVersions
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -29,7 +32,7 @@ import kotlin.math.abs
 
 /**
  * The design board's capture ([rvBoard]): the window and its layout in dp, the rulers' measurements on it, and a long
- * page's next screen; how a page's start is told from its parts.
+ * page's every screen; how a page's start is told from its parts.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -63,19 +66,29 @@ class RvBoardTest {
         assertTrue(RvPart.TITLE in tags && RvPart.CARD in tags && RvPart.ROW in tags)
     }
 
-    /** 設定 is longer than its window: a second capture one screen down, measured without the header, then scrolled back. */
+    /**
+     * 節點 is longer than two windows: a capture each screen down to its end, each measured without the header, and the
+     * page scrolled back to its start afterwards.
+     */
     @Test
-    fun aLongPageGetsItsNextScreen() {
-        val dir = capture("settings") { RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}) }
-        val first = json(dir, "settings-light-1")
-        val next = json(dir, "settings-light-2")
-        assertEquals("Hero", first.getString("top"))
-        assertEquals(0.0, first.getDouble("scrolled"), 0.0)
-        assertTrue("the second screen is scrolled", next.getDouble("scrolled") > 100.0)
-        assertTrue(rules(next, "Top").isEmpty())
-        val firstCard = top(first, RvPart.CARD)
-        val nextCard = top(next, RvPart.CARD)
-        assertTrue("the content moved up", nextCard < firstCard || nextCard < 0.0)
+    fun aLongPageGetsEveryScreenToItsEnd() {
+        val dir = capture("nodes") { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) }
+        val windows = generateSequence(1) { it + 1 }.takeWhile { File(dir, "nodes-light-$it.json").isFile }.map { json(dir, "nodes-light-$it") }.toList()
+        assertTrue("節點 takes more than two windows, got ${windows.size}", windows.size > 2)
+        assertTrue(File(dir, "nodes-light-${windows.size}.png").isFile)
+        assertEquals("Title", windows.first().getString("top"))
+        assertEquals(0.0, windows.first().getDouble("scrolled"), 0.0)
+        val scrolled = windows.map { it.getDouble("scrolled") }
+        assertTrue("each window is further down: $scrolled", scrolled.zipWithNext().all { (a, b) -> b > a + 100.0 })
+        assertTrue(windows.drop(1).all { rules(it, "Top").isEmpty() })
+        val cards = windows.map { top(it, RvPart.CARD) }
+        assertTrue("the content moved up: $cards", cards.zipWithNext().all { (a, b) -> b < a })
+        val page = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)).fetchSemanticsNodes()
+            .first { it.config.contains(SemanticsActions.ScrollBy) }
+        val range = page.config[SemanticsProperties.VerticalScrollAxisRange]
+        val d = page.layoutInfo.density.density
+        assertEquals("the page is back at its start", 0f, range.value(), RV_TOLERANCE)
+        assertEquals("the last window reaches the page's end", range.maxValue() / d, scrolled.last().toFloat(), RV_TOLERANCE)
     }
 
     @Test

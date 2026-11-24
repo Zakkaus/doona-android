@@ -52,8 +52,8 @@ internal fun RvBoardWindow(content: @Composable () -> Unit) {
  * The design board's capture of a golden's page (plans/briefs/design-board.md): with `doona.board` set, writes the
  * window as `<screen>-<variant>-1.png` and its layout as `-1.json` (the library's parts, the rulers' measurements, the
  * outlined nodes and the text baselines, all in dp from the window's top left); a page that scrolls further is scrolled
- * one screen and written again as `-2`, then scrolled back. Only the light and dark goldens are captured. [into] is the
- * board's directory, `doona.board` unless a test gives its own.
+ * one screen at a time and written again as `-2`, `-3` and on to its end, then scrolled back. Only the light and dark
+ * goldens are captured. [into] is the board's directory, `doona.board` unless a test gives its own.
  */
 internal fun ComposeContentTestRule.rvBoard(screen: String, variant: String, into: File? = BOARD?.let(::File)) {
     val dir = into ?: return
@@ -61,18 +61,26 @@ internal fun ComposeContentTestRule.rvBoard(screen: String, variant: String, int
     dir.mkdirs()
     val top = boardTop(rvParts())
     write(dir, "$screen-$variant-1", top, start = true, scrolled = 0f)
-    val scroll = onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)).fetchSemanticsNodes()
-        .firstOrNull { it.config.contains(SemanticsActions.ScrollBy) } ?: return
-    val d = scroll.layoutInfo.density.density
-    val range = scroll.config[SemanticsProperties.VerticalScrollAxisRange]
-    val left = (range.maxValue() - range.value()) / d
-    if (left <= RV_TOLERANCE) return
-    val step = min(left, scroll.size.height / d - BOARD_COVERED)
-    scrollBy(scroll, step * d)
-    // The parts above the window are still laid out, so a scrolled page keeps its start's gaps; its header's top is not measured.
-    write(dir, "$screen-$variant-2", top, start = false, scrolled = step)
-    scrollBy(scroll, -step * d)
+    var scrolled = 0f
+    for (window in 2..BOARD_WINDOWS) {
+        val scroll = pageScroll() ?: break
+        val d = scroll.layoutInfo.density.density
+        val range = scroll.config[SemanticsProperties.VerticalScrollAxisRange]
+        val left = (range.maxValue() - range.value()) / d
+        if (left <= RV_TOLERANCE) break
+        val step = min(left, scroll.size.height / d - BOARD_COVERED)
+        scrollBy(scroll, step * d)
+        scrolled += step
+        // The parts above the window are still laid out, so a scrolled page keeps its start's gaps; its header's top is not measured.
+        write(dir, "$screen-$variant-$window", top, start = false, scrolled = scrolled)
+    }
+    pageScroll()?.let { scrollBy(it, -scrolled * it.layoutInfo.density.density) }
 }
+
+/** The page's own scroll: the first node that scrolls vertically and can be scrolled by a test. */
+private fun ComposeContentTestRule.pageScroll(): SemanticsNode? =
+    onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)).fetchSemanticsNodes()
+        .firstOrNull { it.config.contains(SemanticsActions.ScrollBy) }
 
 /**
  * How the page starts, from where its parts sit: a large title (or the mark over it) makes a pushed page; otherwise the
@@ -206,6 +214,9 @@ private const val PNG_QUALITY = 100
 
 /** The top bar over a scrolled page and the nav or gesture bar under it: the next screen starts under what they covered. */
 private const val BOARD_COVERED = 192f
+
+/** The most windows one page gets: a list whose length the scroll only estimates cannot run the board on for ever. */
+private const val BOARD_WINDOWS = 20
 
 /** A centred header sits where a large title would ([RvChrome.largeTitleTop]). */
 private val HEADER_TOP = RvChrome.largeTitleTop.value
