@@ -35,6 +35,7 @@ import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.policy.RvRuleDraft
 import dev.doona.android.prototype.rv.policy.RvRuleEditPage
+import dev.doona.android.prototype.rv.policy.RvRulesPage
 import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.policy.RvTemplateImpactPage
@@ -131,6 +132,9 @@ class RvLayoutTest {
 
     @Test
     fun effectiveConfig() = measure("effective-config", Top.Title) { RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}) }
+
+    @Test
+    fun rules() = measure("rules", Top.Title) { RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}) }
 
     @Test
     fun importLimit() = measure("config-import-limit", Top.Title) { RvConfigImportPage(RvConfigHistoryData.limit, onBack = {}) }

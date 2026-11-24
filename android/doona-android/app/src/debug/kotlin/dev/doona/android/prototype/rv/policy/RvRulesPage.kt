@@ -2,10 +2,8 @@ package dev.doona.android.prototype.rv.policy
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,7 +18,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
-import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvChevron
@@ -28,16 +26,14 @@ import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvGlassButton
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
-import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvLongPressMenu
 import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
-import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
@@ -86,12 +82,8 @@ internal fun RvRulesPage(
         actions = if (editing) null else ({ glass -> RvGlassButton(glass, R.drawable.rv_sym_edit, reorder) { routes.edit(true) } }),
         bottomAction = { BottomAction(pending.size, editing, routes) },
     ) { titleBlock ->
-        RvLargeTitle(title, titleBlock, insets)
-        if (!editing && banner == null) {
-            RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.gutter), color = Rv.colors.textSecondary)
-            // The order line keeps the page's first card a control's gap under it, as before RvPageHeader.
-            Spacer(Modifier.height(RvSpace.controlGap))
-        }
+        val order: (@Composable ColumnScope.() -> Unit)? = if (!editing && banner == null) ({ RvCaption(stringResource(R.string.rv_policy_rules_order)) }) else null
+        RvPageHeader(title, titleBlock, insets, caption = order)
         RvGutter(banner = banner) {
             if (banner != null) return@RvGutter
             if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
