@@ -180,6 +180,11 @@
   "screen": "nodes-page-score-a"
  },
  {
+  "page": "節點",
+  "state": "Score（兩網同一節點）",
+  "screen": "nodes-page-score-both"
+ },
+ {
   "page": "節點詳情",
   "state": "正常",
   "screen": "node-detail"
@@ -198,6 +203,11 @@
   "page": "節點詳情",
   "state": "Score 選用（a）",
   "screen": "node-detail-score-a"
+ },
+ {
+  "page": "節點詳情",
+  "state": "Score（兩網同一節點）",
+  "screen": "node-detail-score-both"
  },
  {
   "page": "訂閱",

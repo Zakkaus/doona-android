@@ -12,6 +12,7 @@ import dev.doona.android.prototype.rv.data.RvNode
  * honk's `scoreState` would report for it in three moments, built on the region's nodes fastest first ([nodes]):
  * - [chosen]: both networks verified; TCP keeps the fastest node against three challengers (one of each relation), UDP
  *   chose the second against one;
+ * - [agreed]: both networks verified on the same node, the fastest;
  * - [evaluating]: both networks provisional, TCP with a trial in flight, UDP with its tests paused until ordinary traffic
  *   has earned their budget;
  * - [empty]: every node failed its last test, so no candidate is eligible and nothing is chosen.
@@ -36,6 +37,13 @@ internal object RvScoreSample {
             listOf(challenger(nodes[1], "equivalent"), challenger(nodes[2], "selectedFaster"), challenger(nodes[3], "challengerFaster")),
         ),
         udp = network(nodes[1], OBSERVED, NONE, ScoreCoverage(nodes.size, 2, 0), listOf(challenger(nodes[0], "equivalent"))),
+    )
+
+    val agreed: ScoreGroup = ScoreGroup(
+        GROUP,
+        region.members.map { it.id },
+        tcp = chosen.tcp,
+        udp = network(nodes[0], OBSERVED, NONE, ScoreCoverage(nodes.size, 2, 0), listOf(challenger(nodes[1], "equivalent"))),
     )
 
     val evaluating: ScoreGroup = ScoreGroup(

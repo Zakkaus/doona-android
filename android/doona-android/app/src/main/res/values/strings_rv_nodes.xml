@@ -57,6 +57,7 @@
     <string name="rv_nodes_sort_region">Region</string>
     <string name="rv_nodes_stability">Steady %1$d/%2$d</string>
     <string name="rv_nodes_timed_out">Timed out</string>
-    <!-- Score on 節點 and a node's page: the mark of a node a Score group chose, after its networks (TCP, UDP, TCP/UDP). -->
+    <!-- Score on 節點 and a node's page: the mark of a node a Score group chose on both networks, and on one (TCP or UDP). -->
+    <string name="rv_score_mark" translatable="false">Score</string>
     <string name="rv_score_pick" translatable="false">Score %1$s</string>
 </resources>
