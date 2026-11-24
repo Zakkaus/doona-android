@@ -35,7 +35,8 @@ import kotlin.math.abs
  * 節點詳情's latency chart with no test and with one (owner, item 7: 「沒有資料的字不居中…只有一筆也沒居中」): the plot is
  * read from the drawn hairlines (from the left edge to where the zero line ends, the top line to the zero line), not
  * from the code's own numbers. 尚無資料's box is centred on it both ways, the middle hairline stops short of it, and
- * one test's dot is at its centre, across and, by its axis, down, whatever its latency.
+ * one test's dot is at its centre, across and, by its axis, down, whatever its latency. With `latest` (item 9, sample B)
+ * one test sits as far in from the plot's end as the latest of many, and carries its value in the axis pill.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -82,6 +83,48 @@ class RvLatencyDotsTest {
         assertEquals("$ms ms: the dot's centre down", plot.center.y, (ys.first() + ys.last() + 1) / 2f, DOT_PX)
     }
 
+    /** B: one test at the end is as far in from the plot's end as the latest of eight with the same time. */
+    @Test
+    fun oneLatestTestSitsWhereTheLatestOfManyDoes() {
+        var dot = 0
+        compose.rvContent(dark = false) {
+            dot = Rv.colors.quality(latencyTone(ONE)).toArgb()
+            Clear {
+                RvLatencyDots(List(MANY) { ONE }, null, List(MANY) { TIME }, -1, {}, Modifier.testTag(OTHER))
+                RvLatencyDots(listOf(ONE), null, listOf(TIME), -1, {}, Modifier.testTag(CHART), latest = true)
+            }
+        }
+        val fromEnd = { tag: String ->
+            val image = image(tag)
+            val xs = (0 until image.width).filter { x -> (0 until image.height).any { image.getPixel(x, it) == dot } }
+            // The last dot: the run of columns after the last gap.
+            val last = xs.drop(xs.indexOfLast { x -> x - 1 !in xs }.coerceAtLeast(0))
+            plot(image).right - (last.first() + last.last() + 1) / 2f
+        }
+        val many = fromEnd(OTHER)
+        assertTrue("the latest of many sits in the plot's last half chip", many > 0f)
+        assertEquals("one test sits where the latest of many does", many, fromEnd(CHART), PX)
+    }
+
+    /** B: on the dot's line a pill runs in from the chart's end; the centred chart has its middle label there, no pill. */
+    @Test
+    fun oneLatestTestCarriesItsValueInTheAxisPill() {
+        compose.rvContent(dark = false) {
+            Clear {
+                RvLatencyDots(listOf(ONE), null, listOf(TIME), -1, {}, Modifier.testTag(OTHER))
+                RvLatencyDots(listOf(ONE), null, listOf(TIME), -1, {}, Modifier.testTag(CHART), latest = true)
+            }
+        }
+        val run = { tag: String ->
+            val image = image(tag)
+            val background = image.getPixel(0, 0)
+            val y = plot(image).center.y.toInt()
+            (image.width - 1 downTo 0).takeWhile { image.getPixel(it, y) != background }.size
+        }
+        assertTrue("the pill runs in from the end", run(CHART) >= PILL_PX)
+        assertTrue("no pill on the centred chart", run(OTHER) < PILL_PX)
+    }
+
     /** Below the frame's status bar, which draws over the top of the content. */
     @Composable
     private fun Clear(content: @Composable () -> Unit) = Column {
@@ -89,7 +132,7 @@ class RvLatencyDotsTest {
         content()
     }
 
-    private fun image(): Bitmap = compose.onNodeWithTag(CHART).captureToImage().asAndroidBitmap()
+    private fun image(tag: String = CHART): Bitmap = compose.onNodeWithTag(tag).captureToImage().asAndroidBitmap()
 
     /** The plot as drawn: from the left edge to where the zero hairline ends, from the top hairline to the zero hairline. */
     private fun plot(image: Bitmap): Rect {
@@ -112,6 +155,8 @@ class RvLatencyDotsTest {
 
     private companion object {
         const val CHART = "latency-dots"
+        const val OTHER = "latency-dots-other"
+        const val MANY = 8
         const val ONE = 92
         const val FAST = 20
         const val TIME = "06:30"
@@ -124,5 +169,8 @@ class RvLatencyDotsTest {
 
         /** Two pixels either way: the dot's drawn edge is matched by its exact colour. */
         const val DOT_PX = 2f
+
+        /** A pill's least run on its centre line: 24 dp at xhdpi, more than a label's last glyph and less than `92 毫秒`'s pill. */
+        const val PILL_PX = 48
     }
 }

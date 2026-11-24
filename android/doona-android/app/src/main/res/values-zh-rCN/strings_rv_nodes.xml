@@ -39,6 +39,7 @@
     <string name="rv_nodes_latency_high">延迟偏高</string>
     <string name="rv_nodes_history">延迟记录</string>
     <string name="rv_nodes_median">中位数 %1$s</string>
+    <string name="rv_nodes_trend_next">再测试一次即显示趋势</string>
     <string name="rv_nodes_details">节点信息</string>
     <string name="rv_nodes_protocol">协议</string>
     <string name="rv_nodes_server">服务器</string>

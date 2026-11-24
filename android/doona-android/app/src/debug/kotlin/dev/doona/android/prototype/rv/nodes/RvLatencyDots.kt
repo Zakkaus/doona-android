@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -53,18 +54,30 @@ import kotlin.math.roundToInt
  * them and the pill, [RvLatencyDotsSize.plotGap] clear of the plot (S7-15). The [selected] test is marked with the library's
  * [rvChartMarker], as 統計's latency chart marks the current node (S7-14, N03). A time the chip would reach is left out.
  * The dots are spread so the widest time's chip fits inside the plot, and a tap picks the nearest test; a single test
- * sits at the plot's centre, its axis chosen to put it on the middle line ([rvLatencyAxisMiddle]). With no test the plot keeps its grid and labels, and 尚無資料 sits at its centre, at the
+ * sits at the plot's centre, its axis chosen to put it on the middle line ([rvLatencyAxisMiddle]); with [latest] it sits
+ * where the latest of many would, half its chip in from the plot's end, its value in the pill a median has, with no
+ * dotted line (item 9, sample B). With no test the plot keeps its grid and labels, and 尚無資料 sits at its centre, at the
  * size of an empty card's text, the middle hairline stopping [RvLatencyDotsSize.plotGap] short of it on either side.
  */
 @Composable
-internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+internal fun RvLatencyDots(
+    history: List<Int?>,
+    median: Int?,
+    times: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    latest: Boolean = false,
+) {
     val colors = Rv.colors
     val slowest = history.filterNotNull().maxOrNull() ?: 0
     // One test sits on the middle line, not alone under the top one (owner, item 7).
     val top = if (history.size == 1) rvLatencyAxisMiddle(slowest) else rvLatencyAxisTop(slowest)
     // The unit on the top label only, as 統計's latency chart labels its axis (L-11).
     val axis = listOf(stringResource(R.string.latency_ms, top), "${top / 2}", "0")
-    val medianText = median?.let { stringResource(R.string.latency_ms, it) }
+    // The pill at the strip's end: the median's, or with [latest] the one test's own value.
+    val pillMs = median ?: history.singleOrNull()?.takeIf { latest }
+    val pillText = pillMs?.let { stringResource(R.string.latency_ms, it) }
     val look = DotsLook(
         label = Rv.type.pill.copy(color = colors.textSecondary),
         picked = Rv.type.pill.copy(color = colors.positive, fontWeight = FontWeight.SemiBold),
@@ -80,7 +93,7 @@ internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String
     val pad = with(density) { RvChartSize.pillPadH.toPx() }
     val widest = times.maxOfOrNull { measurer.measure(it, look.picked).size.width } ?: 0
     val chipHeight = with(density) { rvMarkerChip(times.firstOrNull()?.let { measurer.measure(it, look.picked).size.height.toFloat() } ?: 0f) }
-    val pillWidth = medianText?.let { measurer.measure(scripted(it), look.label).size.width + with(density) { 2 * RvChartSize.pillPadH.toPx() } } ?: 0f
+    val pillWidth = pillText?.let { measurer.measure(scripted(it), look.label).size.width + with(density) { 2 * RvChartSize.pillPadH.toPx() } } ?: 0f
     val labelWidth = axis.maxOf { measurer.measure(scripted(it), look.label).size.width }.toFloat()
     val strip = maxOf(pillWidth, labelWidth) + with(density) { RvLatencyDotsSize.plotGap.toPx() }
     val empty = if (history.isEmpty()) stringResource(R.string.rv_stats_no_data) else null
@@ -88,18 +101,18 @@ internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String
     val pick by rememberUpdatedState(onSelect)
     Box(modifier.fillMaxWidth()) {
         Canvas(
-            Modifier.fillMaxWidth().height(RvLatencyDotsSize.head + RvLatencyDotsSize.plot + RvChartSize.markerGap + with(density) { chipHeight.toDp() }).pointerInput(history.size, widest, strip) {
+            Modifier.testTag(RV_LATENCY_DOTS).fillMaxWidth().height(RvLatencyDotsSize.head + RvLatencyDotsSize.plot + RvChartSize.markerGap + with(density) { chipHeight.toDp() }).pointerInput(history.size, widest, strip) {
                 detectTapGestures { tap -> if (history.isNotEmpty()) pick(Columns(size.width - strip, history.size, widest + 2 * pad).at(tap.x)) }
             },
         ) {
-            val plot = Plot(this, Columns(size.width - strip, history.size, widest + 2 * pad), strip, chipHeight)
-            val pill = medianText?.let { measurer.measure(scripted(it), look.label) }
-            val medianY = median?.let { plot.y(it, top) }
-            val avoid = if (pill != null && medianY != null) medianY to rvPillSize(pill).height else null
+            val plot = Plot(this, Columns(size.width - strip, history.size, widest + 2 * pad, latest), strip, chipHeight)
+            val pill = pillText?.let { measurer.measure(scripted(it), look.label) }
+            val pillY = pillMs?.let { plot.y(it, top) }
+            val avoid = if (pill != null && pillY != null) pillY to rvPillSize(pill).height else null
             plot.grid(axis, measurer, look, avoid, clear = emptySize?.let { plot.centred(it.width.toFloat(), it.height.toFloat()) })
             val picked = times.getOrNull(selected)?.let { measurer.measure(it, look.picked) }
             val chip = picked?.let { plot.marker(selected, it, look.chip) }
-            if (pill != null && medianY != null) plot.median(medianY, pill, look)
+            if (pill != null && pillY != null) plot.pill(pillY, pill, look, dotted = median != null)
             history.forEachIndexed { i, ms -> plot.dot(i, ms?.let { plot.y(it, top) }, look.dots[i], look.missed) }
             times.forEachIndexed { i, time ->
                 if (i != selected && i % 2 == times.lastIndex % 2) plot.time(i, measurer.measure(time, look.label), clearOf = chip)
@@ -116,17 +129,19 @@ internal fun RvLatencyDots(history: List<Int?>, median: Int?, times: List<String
 
 /**
  * Where [count] dots sit across a plot [right] wide: one column each, or, when the widest time's chip is wider than a
- * column, spread from half a [chip] in from either end, so no chip leaves the plot.
+ * column, spread from half a [chip] in from either end, so no chip leaves the plot. One dot at the [end] sits where the
+ * latest of many does, half a chip in from the plot's right.
  */
-private class Columns(private val right: Float, private val count: Int, chip: Float) {
+private class Columns(private val right: Float, private val count: Int, chip: Float, end: Boolean = false) {
     val column = right / count
     private val edge = maxOf(column, chip) / 2
     private val step = if (count > 1) (right - 2 * edge) / (count - 1) else 0f
+    private val first = if (end && count == 1) right - chip / 2 else edge
 
     /** From one dot to the next: the slot the marker's column fills. */
     val pitch = if (count > 1) step else column
 
-    fun x(i: Int) = edge + step * i
+    fun x(i: Int) = first + step * i
 
     /** The test nearest to [x]. */
     fun at(x: Float) = if (step > 0f) ((x - edge) / step).roundToInt().coerceIn(0, count - 1) else 0
@@ -186,10 +201,12 @@ private class Plot(private val scope: DrawScope, private val columns: Columns, s
         rvChartMarker(x(i), columns.pitch, RvLatencyDotsSize.dot.toPx(), bottom, time, color)
     }
 
-    /** The dotted median across the plot, its value in a pill at the strip's end. */
-    fun median(y: Float, text: TextLayoutResult, look: DotsLook) = with(scope) {
-        val dots = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH, RvChartSize.dottedPitch.toPx()))
-        drawLine(look.reference, Offset(0f, y), Offset(right, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots)
+    /** A value in a pill at the strip's end, centred on [y]; a median's ([dotted]) with its dotted line across the plot. */
+    fun pill(y: Float, text: TextLayoutResult, look: DotsLook, dotted: Boolean) = with(scope) {
+        if (dotted) {
+            val dots = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH, RvChartSize.dottedPitch.toPx()))
+            drawLine(look.reference, Offset(0f, y), Offset(right, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots)
+        }
         val pill = rvPillSize(text)
         val topLeft = Offset(size.width - pill.width, (y - pill.height / 2).coerceIn(0f, bottom - pill.height))
         rvValuePill(text, topLeft, look.pill)
@@ -213,6 +230,9 @@ private class Plot(private val scope: DrawScope, private val columns: Columns, s
         if (clearOf == null || end < clearOf.start || start > clearOf.endInclusive) drawText(text, topLeft = Offset(start, top))
     }
 }
+
+/** The chart's test tag. */
+internal const val RV_LATENCY_DOTS = "rv-latency-dots"
 
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f

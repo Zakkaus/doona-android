@@ -38,6 +38,7 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
@@ -55,7 +56,8 @@ import dev.doona.android.prototype.rv.rvSharedFlag
  * A node's page in the language of Revolut's stock page: the flag over its name as the large title, which collapses into
  * the bar beside the back disc on scroll, its protocol and country under it, and the status chips that apply; 延遲紀錄 as the EPS dot chart of its last tests, the picked one's figure over
  * it; its share link's details as a Key stats card; and 設為目前節點 floating at the bottom as 'Get started', with a
- * round 測試延遲 beside it. A [banner] (a test that failed) sits over 延遲紀錄 in [RvGutter]'s slot.
+ * round 測試延遲 beside it. A [banner] (a test that failed) sits over 延遲紀錄 in [RvGutter]'s slot. [oneTest] is how
+ * 延遲紀錄 shows a node tested once.
  */
 @Composable
 internal fun RvNodeDetail(
@@ -66,6 +68,7 @@ internal fun RvNodeDetail(
     onUse: () -> Unit,
     onTest: () -> Unit,
     banner: RvNotice? = null,
+    oneTest: RvOneTest = RvOneTest.Centred,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val format = rememberRvFormat()
@@ -83,7 +86,7 @@ internal fun RvNodeDetail(
     ) { titleBlock ->
         Header(node, current, titleBlock, insets)
         RvGutter(banner = banner) {
-            HistoryCard(node, times, picked) { choice = it }
+            HistoryCard(node, times, picked, oneTest, onTest) { choice = it }
         }
         RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { StatsCard(node, times.lastOrNull() ?: RV_NO_VALUE) }
@@ -115,9 +118,24 @@ private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets:
     )
 }
 
+/**
+ * How 延遲紀錄 shows a node with one test: one dot draws no trend (owner-fix2 item 9, 「這個感覺很奇怪」). A and B are the
+ * pair the owner picks from; until then the approved [Centred].
+ */
+internal enum class RvOneTest {
+    /** The one dot at the plot's centre, on its middle line (`proto-rv-node-detail-probes1-*`). */
+    Centred,
+
+    /** A: no chart; the figure and its time, a line that a second test draws the trend, and 測試延遲 as the card's action. */
+    Figure,
+
+    /** B: the chart's frame and axis, the dot where the latest of many sits, its value in the axis pill, its time in the chip. */
+    Latest,
+}
+
 /** 延遲紀錄: the header, the picked test's latency over its time and the median (a dash with no test), and the dot chart. */
 @Composable
-private fun HistoryCard(node: RvNode, times: List<String>, picked: Int, onPick: (Int) -> Unit) {
+private fun HistoryCard(node: RvNode, times: List<String>, picked: Int, oneTest: RvOneTest, onTest: () -> Unit, onPick: (Int) -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_history))
         Column(Modifier.padding(horizontal = RvSpace.rowPadding)) {
@@ -129,11 +147,28 @@ private fun HistoryCard(node: RvNode, times: List<String>, picked: Int, onPick: 
                 val median = node.medianMs?.let { SEPARATOR + stringResource(R.string.rv_nodes_median, latencyText(it)) }.orEmpty()
                 RvText(times[picked] + median, Rv.type.tileCaption, color = Rv.colors.textSecondary)
             }
-            Spacer(Modifier.height(RvSpace.barGap))
-            RvLatencyDots(node.history, node.medianMs, times, picked, onPick)
+            val one = node.history.size == 1
+            if (one && oneTest == RvOneTest.Figure) {
+                FirstTest(onTest)
+            } else {
+                Spacer(Modifier.height(RvSpace.barGap))
+                RvLatencyDots(node.history, node.medianMs, times, picked, onPick, latest = one && oneTest == RvOneTest.Latest)
+            }
         }
         Spacer(Modifier.height(RvSpace.rowPadding))
     }
+}
+
+/**
+ * A ([RvOneTest.Figure]): in the chart's place, at its gap under the time, the line that a second test draws the trend,
+ * then 測試延遲 as the full-width secondary pill, [RvSpace.noticeToAction] under it, as a notice in a card sets its action.
+ */
+@Composable
+private fun FirstTest(onTest: () -> Unit) {
+    Spacer(Modifier.height(RvSpace.barGap))
+    RvText(stringResource(R.string.rv_nodes_trend_next), Rv.type.rowSub, color = Rv.colors.textSecondary)
+    Spacer(Modifier.height(RvSpace.noticeToAction))
+    RvSecondaryButton(stringResource(R.string.rv_test_latency), onTest)
 }
 
 /** A latency as a card's figure: the number large, the unit after it small, on one baseline. */
