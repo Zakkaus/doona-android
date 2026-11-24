@@ -35,6 +35,7 @@ import dev.doona.android.prototype.rv.RvCard
 import dev.doona.android.prototype.rv.RvCardHeader
 import dev.doona.android.prototype.rv.RvFlag
 import dev.doona.android.prototype.rv.RvGutter
+import dev.doona.android.prototype.rv.RvNotice
 import dev.doona.android.prototype.rv.RvPageHeader
 import dev.doona.android.prototype.rv.RvScrollPage
 import dev.doona.android.prototype.rv.RvSectionTitle
@@ -53,10 +54,18 @@ import dev.doona.android.prototype.rv.scripted
  * A node's page in the language of Revolut's stock page: the flag over its name as the large title, which collapses into
  * the bar beside the back disc on scroll, its protocol and country under it, and the status chips that apply; 延遲紀錄 as the EPS dot chart of its last tests, the picked one's figure over
  * it; its share link's details as a Key stats card; and 設為目前節點 floating at the bottom as 'Get started', with a
- * round 測試延遲 beside it.
+ * round 測試延遲 beside it. A [banner] (a test that failed) sits over 延遲紀錄 in [RvGutter]'s slot.
  */
 @Composable
-internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<Long>, onBack: () -> Unit, onUse: () -> Unit, onTest: () -> Unit) {
+internal fun RvNodeDetail(
+    node: RvNode,
+    current: Boolean,
+    testedAtEpochMs: List<Long>,
+    onBack: () -> Unit,
+    onUse: () -> Unit,
+    onTest: () -> Unit,
+    banner: RvNotice? = null,
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val format = rememberRvFormat()
     val times = testedAtEpochMs.map(format::time)
@@ -70,7 +79,7 @@ internal fun RvNodeDetail(node: RvNode, current: Boolean, testedAtEpochMs: List<
         overlay = { Actions(current, onUse, onTest, insets, Modifier.align(Alignment.BottomCenter)) },
     ) { titleBlock ->
         Header(node, current, titleBlock, insets)
-        RvGutter {
+        RvGutter(banner = banner) {
             HistoryCard(node, times, picked) { choice = it }
         }
         RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))

@@ -17,6 +17,7 @@
     <string name="rv_crash_export">导出报告</string>
     <string name="rv_failed_switch_mode">无法切换模式</string>
     <string name="rv_failed_switch_node">无法切换节点</string>
+    <string name="rv_failed_test_latency">无法测试延迟</string>
     <string name="rv_lan_ask_title">允许访问局域网</string>
     <string name="rv_lan_ask_body">访问局域网中的订阅与节点需要此权限。</string>
     <string name="rv_lan_ask_continue">继续</string>
