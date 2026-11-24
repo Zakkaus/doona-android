@@ -46,7 +46,7 @@ internal fun RvLanguageScreen(selected: RvLanguage, system: RvLanguage, onSelect
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            RvSettingsCard {
+            RvSettingsRadioCard {
                 RvLanguage.entries.forEach {
                     val subtitle = if (it == RvLanguage.System) stringResource(system.label) else null
                     RvSettingsRadioRow(stringResource(it.label), it == selected, { onSelect(it) }, subtitle = subtitle)

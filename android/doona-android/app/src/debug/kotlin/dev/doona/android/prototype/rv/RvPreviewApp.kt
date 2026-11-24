@@ -51,6 +51,8 @@ import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSave
+import dev.doona.android.prototype.rv.settings.RvSettingsPreview
+import dev.doona.android.prototype.rv.settings.RvSettingsPreviewRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsState
@@ -206,6 +208,8 @@ private fun RvSamplePage(
         DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop)
 
         PERAPP, LICENSES, LICENSE -> AboutAppsPage(route, settings, onSettings, pages)
+
+        in RvSettingsPreviewRoutes.all -> RvSettingsPreview(route, pages.push, pages.pop)
 
         in RvPolicyPreviewRoutes.all -> RvPolicyPreview(route, policy, settings, pages.push, pages.pop, pages.tab)
 

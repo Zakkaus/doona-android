@@ -1,6 +1,8 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -25,7 +27,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * 日誌等級 at its default 資訊 (`proto-rv-settings-log-level-*`) and with 除錯 on, 52 minutes before it returns to 資訊
  * (`-log-level-debug-*`), each light, dark, fs115 and fs200; then that a row chooses its level and the countdown shows
- * only while 除錯 is on.
+ * only while 除錯 is on, following the minutes its caller gives.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -63,11 +65,24 @@ class RvLogLevelShotTest {
 
     @Test
     fun debugCountsDownToInfo() {
-        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Page(RvLogLevel.Debug) } }
+        val level = mutableStateOf(RvLogLevel.Debug)
+        val minutes = mutableIntStateOf(RV_SAMPLE_DEBUG_LEFT)
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvLogLevelScreen(level.value, minutes.intValue, onSelect = {}, onBack = {}) } }
         compose.onNodeWithText(left()).assertExists()
+        minutes.intValue = RV_SAMPLE_DEBUG_LEFT - 1
+        compose.onNodeWithText(left(RV_SAMPLE_DEBUG_LEFT - 1)).assertExists()
+        compose.onNodeWithText(left()).assertDoesNotExist()
+        level.value = RvLogLevel.Info
+        compose.onNodeWithText(left(RV_SAMPLE_DEBUG_LEFT - 1)).assertDoesNotExist()
     }
 
-    private fun left() = RuntimeEnvironment.getApplication().resources.getQuantityString(R.plurals.rv_log_debug_left, RV_SAMPLE_DEBUG_LEFT, RV_SAMPLE_DEBUG_LEFT)
+    private fun left(minutes: Int = RV_SAMPLE_DEBUG_LEFT) = RuntimeEnvironment.getApplication().resources.getQuantityString(R.plurals.rv_log_debug_left, minutes, minutes)
+
+    @Test
+    fun theRowsAreOneRadioGroup() {
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Page(RvLogLevel.Info) } }
+        compose.assertOneRadioGroup(RvLogLevel.entries.size)
+    }
 
     @Composable
     private fun Page(level: RvLogLevel) = RvLogLevelScreen(level, RV_SAMPLE_DEBUG_LEFT, onSelect = {}, onBack = {})

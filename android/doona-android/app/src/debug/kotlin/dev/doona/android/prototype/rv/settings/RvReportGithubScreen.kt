@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.LocalFrameInsets
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.prototype.rv.Rv
 import dev.doona.android.prototype.rv.RvBannerSlot
 import dev.doona.android.prototype.rv.RvBusy
 import dev.doona.android.prototype.rv.RvFootnote
@@ -37,8 +38,15 @@ import dev.doona.android.prototype.rv.RvSpace
 import dev.doona.android.prototype.rv.RvTheme
 import dev.doona.android.prototype.rv.rvSystemScheme
 
-/** Where the report stands: being written, ready to share, or it could not be written. */
-internal enum class RvReportBuild { Building, Ready, Failed }
+/** Where the report stands: being written, written with the [RvRedaction] it hides and ready to share, or not written. */
+@Immutable
+internal sealed interface RvReportBuild {
+    data object Building : RvReportBuild
+
+    data class Ready(val redaction: RvRedaction) : RvReportBuild
+
+    data object Failed : RvReportBuild
+}
 
 /**
  * What the report hides on top of what it always removes: node addresses and ports, the phone's own IPs, the domains
@@ -76,7 +84,9 @@ internal class RvReportActions(
  * then 分享的內容, the preview, a plain list of values as the licences are; then 遮蔽, a switch for each thing it can
  * hide with one line of what that is, and the footer that subscription links and tokens always go. The two actions
  * stand at the foot as a sheet's pair ([RvConfirmContent]): 在 GitHub 回報 opens a prefilled issue the user attaches
- * the file to, 分享檔案 hands it to the share sheet; both wait for the report.
+ * the file to, 分享檔案 hands it to the share sheet; both wait for the report. A report hides what the switches said
+ * when it was written ([RvReportBuild.Ready]): once they say otherwise it is not shared, and the page shows it being
+ * written again, as the caller does on each [onRedaction].
  */
 @Composable
 internal fun RvReportGithubScreen(
@@ -89,11 +99,13 @@ internal fun RvReportGithubScreen(
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_report_title)
-    RvScrollPage(title, insets, onBack = onBack, bottomAction = { Actions(build == RvReportBuild.Ready, actions) }) { titleBlock ->
+    val ready = build is RvReportBuild.Ready && build.redaction == redaction
+    val building = build == RvReportBuild.Building || (build is RvReportBuild.Ready && !ready)
+    RvScrollPage(title, insets, onBack = onBack, bottomAction = { Actions(ready, actions) }) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvBannerSlot(failure(build, actions.retry))
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            if (build == RvReportBuild.Building) {
+            if (building) {
                 RvSettingsCard {
                     RvSettingsRow(stringResource(R.string.rv_report_building), icon = R.drawable.rv_stats_ic_sync) { RvBusy(Modifier.width(RvSize.busy)) }
                 }
@@ -151,13 +163,17 @@ private fun Redaction(redaction: RvRedaction, onChange: (RvRedaction) -> Unit) {
     }
 }
 
-/** The two actions, the main one over the other, a sheet's gap apart; neither takes a tap until the report is [ready]. */
+/**
+ * The two actions, the main one over the other, a sheet's gap apart; neither takes a tap until the report is [ready], written
+ * with the redaction the switches show.
+ */
 @Composable
 private fun Actions(ready: Boolean, actions: RvReportActions) {
     Column {
         RvPrimaryButton(stringResource(R.string.rv_report_github), actions.github, enabled = ready)
         Spacer(Modifier.height(RvSpace.controlStack))
-        RvSecondaryButton(stringResource(R.string.rv_report_share), actions.share, enabled = ready)
+        // The pair floats over the page as it scrolls: the secondary is opaque on it, as the primary is.
+        RvSecondaryButton(stringResource(R.string.rv_report_share), actions.share, enabled = ready, over = Rv.colors.page)
     }
 }
 
@@ -178,5 +194,5 @@ private const val SEPARATOR = " · "
 private fun RvReportGithubScreenPreview() {
     val dark = isSystemInDarkTheme()
     var redaction by remember { mutableStateOf(RvRedaction()) }
-    RvTheme(rvSystemScheme(dark), dark) { RvReportGithubScreen(RvReportBuild.Ready, rvSampleReport, redaction, { redaction = it }, onBack = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvReportGithubScreen(RvReportBuild.Ready(redaction), rvSampleReport, redaction, { redaction = it }, onBack = {}) }
 }

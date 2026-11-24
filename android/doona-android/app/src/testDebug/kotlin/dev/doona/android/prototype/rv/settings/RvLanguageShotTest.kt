@@ -60,6 +60,12 @@ class RvLanguageShotTest {
         compose.onNodeWithText("English").assertIsSelected()
     }
 
+    @Test
+    fun theRowsAreOneRadioGroup() {
+        compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Page() } }
+        compose.assertOneRadioGroup(RvLanguage.entries.size)
+    }
+
     @Composable
     private fun Page() = RvLanguageScreen(RvLanguage.TraditionalChinese, RvLanguage.TraditionalChinese, onSelect = {}, onBack = {})
 }

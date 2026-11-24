@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -180,7 +181,14 @@ internal fun RvSettingsSwitchRow(title: String, @DrawableRes icon: Int, checked:
     RvSettingsRow(title, toggle, icon, subtitle) { RvSwitch(checked) }
 }
 
-/** A row of a radio list: the title over an optional [subtitle], and the radio at the end. */
+/**
+ * A settings card holding a radio list ([RvSettingsRadioRow]): one selectable group, so a screen reader tells each row's
+ * place among the choices.
+ */
+@Composable
+internal fun RvSettingsRadioCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) = RvSettingsCard(modifier.selectableGroup(), content)
+
+/** A row of a radio list (in an [RvSettingsRadioCard]): the title over an optional [subtitle], and the radio at the end. */
 @Composable
 internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit, subtitle: String? = null) {
     val choose = Modifier.selectable(
