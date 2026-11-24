@@ -23,4 +23,14 @@
         <item quantity="one">Every %1$d hour</item>
         <item quantity="other">Every %1$d hours</item>
     </plurals>
+
+    <string name="rv_log_default">Default</string>
+    <plurals name="rv_log_debug_left">
+        <item quantity="one">Back to Info in %1$d minute</item>
+        <item quantity="other">Back to Info in %1$d minutes</item>
+    </plurals>
+    <plurals name="rv_log_debug_footer">
+        <item quantity="one">Debug returns to Info after %1$d hour. Use it to reproduce a single problem.</item>
+        <item quantity="other">Debug returns to Info after %1$d hours. Use it to reproduce a single problem.</item>
+    </plurals>
 </resources>

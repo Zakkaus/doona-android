@@ -16,4 +16,12 @@
     <plurals name="rv_interval_hours">
         <item quantity="other">每 %1$d 小时</item>
     </plurals>
+
+    <string name="rv_log_default">默认</string>
+    <plurals name="rv_log_debug_left">
+        <item quantity="other">%1$d 分钟后改回信息</item>
+    </plurals>
+    <plurals name="rv_log_debug_footer">
+        <item quantity="other">调试会在 %1$d 小时后自动改回信息，用于重现单个问题。</item>
+    </plurals>
 </resources>
