@@ -16,12 +16,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -85,6 +84,10 @@ internal fun RvSourceField(
     val measurer = rememberTextMeasurer()
     val space = rvSpaceWidth(style, measurer)
     val gutter = rvLineNumberWidth(measurer, lines.size, numbers)
+    // Each number is measured once per count of lines and marks, not on every frame; an edit within a line keeps them.
+    val labels = remember(lines.size, marked, numbers, colors, measurer) {
+        List(lines.size) { measurer.measure((it + 1).toString(), numbers.copy(color = if (it in marked) colors.error else colors.textSecondary)) }
+    }
     val tint = SpanStyle(color = colors.error, background = colors.error.copy(alpha = RvAlpha.STATUS_CHIP), textDecoration = TextDecoration.Underline)
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val focus = remember { FocusRequester() }
@@ -101,9 +104,10 @@ internal fun RvSourceField(
                         contentDescription = name
                         marks.firstOrNull()?.let { error(it.message) }
                     }
-                    .drawBehind {
-                        val ink = SourceInk(numbers.copy(color = colors.textSecondary), numbers.copy(color = colors.error))
-                        drawLineNumbers(measurer, layout ?: return@drawBehind, LineAnchors(lines, shown.offsets), marked, ink, gutter.toPx())
+                    .drawWithCache {
+                        // Placed once per layout of the text (the cache reads it), then only drawn on each frame.
+                        val placed = layout?.let { placeLineNumbers(it, LineAnchors(lines, shown.offsets), labels, gutter.toPx()) }.orEmpty()
+                        onDrawBehind { placed.forEach { (number, at) -> drawText(number, topLeft = at) } }
                     },
                 textStyle = style.copy(color = colors.text),
                 visualTransformation = SourceMarks(shown, ranges, tint, space, inks),
@@ -128,30 +132,19 @@ internal fun RvSourceField(
     }
 }
 
-/** The two inks of the gutter: a line's number, and the number of a line that holds a mark. */
-private class SourceInk(val plain: TextStyle, val marked: TextStyle)
-
 /** Where each line starts in the source ([starts]) and where the shown text, with its breaks, has it ([offsets]). */
 private class LineAnchors(val starts: IntArray, val offsets: RvCodeOffsets)
 
 /**
- * Each line's number, ending at [right] and on the baseline of the line's first row in [layout] (a row with CJK in Noto
- * sits lower in its line box), so a wrapped line keeps one number; a line holding a mark in the marked ink.
+ * Where each line's measured number ([labels], a line holding a mark in the marked ink) is drawn: ending at [right] and
+ * on the baseline of the line's first row in [layout] (a row with CJK in Noto sits lower in its line box), so a
+ * wrapped line keeps one number.
  */
-private fun DrawScope.drawLineNumbers(
-    measurer: TextMeasurer,
-    layout: TextLayoutResult,
-    lines: LineAnchors,
-    marked: Set<Int>,
-    ink: SourceInk,
-    right: Float,
-) {
-    lines.starts.forEachIndexed { i, start ->
+private fun placeLineNumbers(layout: TextLayoutResult, lines: LineAnchors, labels: List<TextLayoutResult>, right: Float): List<Pair<TextLayoutResult, Offset>> =
+    lines.starts.zip(labels) { start, number ->
         val row = layout.getLineForOffset(lines.offsets.originalToTransformed(start).coerceAtMost(layout.layoutInput.text.length))
-        val number = measurer.measure((i + 1).toString(), if (i in marked) ink.marked else ink.plain)
-        drawText(number, topLeft = Offset(right - number.size.width, layout.getLineBaseline(row) - number.firstBaseline))
+        number to Offset(right - number.size.width, layout.getLineBaseline(row) - number.firstBaseline)
     }
-}
 
 /**
  * Source text: the row subtitle's 17 sp with Inter's contextual alternates and ligatures off, so `->` stays two
