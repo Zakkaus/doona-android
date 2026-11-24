@@ -78,7 +78,7 @@ internal fun RvUpdateGroup(version: String, update: RvUpdate, onCheck: () -> Uni
  * 檢查更新 as a row, the whole row the target: the app's [version] as its second line, then where the check stands,
  * after the dot: nothing yet, 已是最新 or the newer version, and the row checks again ([onCheck]). While it asks, the busy
  * bar at its end and no tap, as 回報問題's busy row while it writes. A check that got no answer says 無法檢查更新 in the
- * error hue and puts 重試 at the row's end, as the GeoIP／GeoSite row says its failure, with no banner. A newer release
+ * error hue and puts 重試 at the row's end, as the GeoIP/GeoSite row says its failure, with no banner. A newer release
  * is also 設定's banner.
  */
 @Composable
