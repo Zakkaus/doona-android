@@ -69,8 +69,8 @@ internal fun ComposeContentTestRule.rvBoard(screen: String, variant: String, int
     if (left <= RV_TOLERANCE) return
     val step = min(left, scroll.size.height / d - BOARD_COVERED)
     scrollBy(scroll, step * d)
-    // A scrolled page has no header in the window: its blocks keep their gaps, and a tab's keep the tab's.
-    write(dir, "$screen-$variant-2", if (top == Top.Tab) Top.Tab else Top.Hero, start = false, scrolled = step)
+    // The parts above the window are still laid out, so a scrolled page keeps its start's gaps; its header's top is not measured.
+    write(dir, "$screen-$variant-2", top, start = false, scrolled = step)
     scrollBy(scroll, -step * d)
 }
 
@@ -105,7 +105,12 @@ private fun ComposeContentTestRule.write(dir: File, name: String, top: Top, star
     File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, it) }
     val parts = rvParts()
     val measure = RvMeasure(parts, rvBarBottom(top))
-    val drift = measure.run(top, start)
+    val ran = measure.run(top, start)
+    val outlined = nodes()
+    val rules = rvSplitGaps(measure.rules, outlined.map { it.rect })
+    // A gap split at its content is measured by its two parts, so its own drift goes.
+    val split = measure.rules - rules.toSet()
+    val drift = ran.filterNot { line -> split.any { line.startsWith(it.what + ":") } }
     val json = JSONObject()
         .put("name", name)
         .put("top", top.name)
@@ -116,11 +121,31 @@ private fun ComposeContentTestRule.write(dir: File, name: String, top: Top, star
         .put("tokens", JSONArray(rvSpacingTokens.map { it.toDouble() }))
         .put("parts", JSONArray(parts.flatMap { (tag, rects) -> rects.map { JSONObject().put("tag", tag).put("rect", it.json()) } }))
         .put("blocks", JSONArray(measure.blocks().map { (tag, rect) -> JSONObject().put("tag", tag).put("rect", rect.json()) }))
-        .put("rules", JSONArray(measure.rules.map { it.json() }))
+        .put("rules", JSONArray(rules.map { it.json() }))
         .put("drift", JSONArray(drift))
-        .put("nodes", JSONArray(nodes().map { it.json() }))
+        .put("nodes", JSONArray(outlined.map { it.json() }))
         .put("baselines", JSONArray(baselines()))
     File(dir, "$name.json").writeText(json.toString(1))
+}
+
+/**
+ * The gaps the rulers measured, with any that has content in it which is no library part (a search field, a busy bar,
+ * a line of text) split at that content: the gap down to it and the gap under it, which no token pairs, so each only has
+ * to be a spacing token. [nodes] are the outlined nodes, in dp.
+ */
+internal fun rvSplitGaps(rules: List<RvRule>, nodes: List<Rect>): List<RvRule> = rules.flatMap { rule ->
+    val strip = rule.at
+    val inside = nodes.filter {
+        rule.kind == RvRuleKind.Gap && it.top >= strip.top - RV_TOLERANCE && it.bottom <= strip.bottom + RV_TOLERANCE &&
+            it.height > RV_TOLERANCE && it.left < strip.right && strip.left < it.right
+    }
+    if (inside.isEmpty()) return@flatMap listOf(rule)
+    val top = inside.minOf { it.top }
+    val bottom = inside.maxOf { it.bottom }
+    listOf(
+        RvRule(RvRuleKind.Gap, "gap down to the content at $top dp", top - strip.top, null, Rect(strip.left, strip.top, strip.right, top)),
+        RvRule(RvRuleKind.Gap, "gap under the content at $bottom dp", strip.bottom - bottom, null, Rect(strip.left, bottom, strip.right, strip.bottom)),
+    )
 }
 
 private fun RvRule.json() = JSONObject()

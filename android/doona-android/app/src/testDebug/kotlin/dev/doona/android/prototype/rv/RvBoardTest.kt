@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
@@ -95,6 +96,17 @@ class RvBoardTest {
         compose.rvContent(dark = false) { RvAboutScreen(rvSampleVersions, onBack = {}) }
         compose.rvBoard("about", "fs200", dir)
         assertTrue(dir.list().isNullOrEmpty())
+    }
+
+    /** A gap with a search field in it is measured to the field and from it, each only held to the spacing tokens. */
+    @Test
+    fun aGapWithContentInItIsMeasuredToTheContent() {
+        val gap = RvRule(RvRuleKind.Gap, "gap rv-title to rv-card at 211 dp", 68f, 24f, Rect(16f, 143f, 396f, 211f))
+        val field = Rect(16f, 159f, 396f, 195f)
+        val split = rvSplitGaps(listOf(gap), listOf(field, Rect(0f, 0f, 412f, 915f)))
+        assertEquals(listOf(16f, 16f), split.map { it.actual })
+        assertTrue(split.all { it.expected == null && it.token && !it.off })
+        assertEquals(listOf(gap), rvSplitGaps(listOf(gap), listOf(Rect(16f, 300f, 396f, 400f))))
     }
 
     private fun capture(screen: String, content: @Composable () -> Unit): File {

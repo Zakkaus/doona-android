@@ -127,3 +127,14 @@ def test_the_header_top_is_drawn_from_the_bar():
     drawn = rv_board.redlines(window, rv_board.font(22))
     x = (16 + 48) * 2
     assert drawn.getpixel((x, 99 * 2)) == rv_board.BLUE
+
+
+def test_the_index_has_a_line_per_page_state_in_columns():
+    entries = [
+        {"page": f"頁{i}", "state": "正常", "theme": theme, "window": 1, "red": i % 2, "approved": None}
+        for i in range(rv_board.INDEX_ROWS + 1)
+        for theme in rv_board.THEMES
+    ]
+    image = rv_board.index_sheet(entries)
+    assert image.width == 2 * rv_board.MARGIN + 2 * rv_board.INDEX_COLUMN
+    assert image.height < 16383

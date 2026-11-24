@@ -164,9 +164,9 @@ internal class RvMeasure(private val parts: Map<String, List<Rect>>, private val
         for (row in parts.getValue(RvPart.ROW)) {
             val card = cards.firstOrNull { it.contains(row) } ?: continue
             val grown = row.height > RvSize.rowTwoLine.value + RV_TOLERANCE
+            // A row off both heights is measured against the nearer one.
             val nearest = ROW_HEIGHTS.minBy { abs(row.height - it.value) }.value.takeUnless { grown }
-            measured += RvRule(RvRuleKind.Height, "row at ${row.top} dp", row.height, nearest, row)
-            if (!grown && ROW_HEIGHTS.none { abs(row.height - it.value) <= RV_TOLERANCE }) drift.add("row at ${row.top} dp is ${row.height} dp, not 58 or 82")
+            expect(RvRuleKind.Height, "row at ${row.top} dp", row.height, nearest, row)
             edge("row's start at ${row.top} dp", row.left, card.left, row)
             edge("row's end at ${row.top} dp", row.right, card.right, row)
         }

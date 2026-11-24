@@ -11,7 +11,7 @@ the side keylines, every outlined node and library part, text baselines, each ga
 approved DIR has the same window, the approved version and the changed pixels in red over a faded screen, or "new" in
 the header. An edge off its keyline by more than 0.5 dp, a gap that is not a spacing token or not the one the rulers
 expect, a row or control off its height and a header off its top are drawn in red and listed under the sheet. OUT also
-gets index.webp (every sheet with its count of red marks) and manifest.json.
+gets index.webp (every page state with its red marks in light and dark, in columns) and manifest.json.
 """
 
 from __future__ import annotations
@@ -42,6 +42,10 @@ GRID = (0, 160, 200, 28)
 GAP = 32  # px between columns
 MARGIN = 32  # px around the sheet
 HEADER = 64  # px for the sheet's header line
+INDEX_ROWS = 60  # page states per column of the index
+INDEX_COLUMN = 900  # px per column of the index
+INDEX_COUNTS = 560  # px from a column's start to its counts
+INDEX_LINE = 34  # px per line of the index
 
 
 @dataclass
@@ -238,15 +242,33 @@ def sheet(page: dict, theme: str, index: int, now: Window, approved: Window | No
 
 
 def index_sheet(entries: list[dict]) -> Image.Image:
-    """Every sheet with its count of red marks, a line each."""
+    """Every page state, a line each, with its red marks in light and in dark (all its windows), in columns."""
     head, row = font(30), font(24)
-    rows = [f"{e['page']} · {e['state']} · {e['theme']} · {e['window']}    {e['red']}{'' if e['approved'] else '    new'}" for e in entries]
+    pages: dict[tuple[str, str], dict] = {}
+    for e in entries:
+        line = pages.setdefault((e["page"], e["state"]), {"light": 0, "dark": 0, "new": False})
+        line[e["theme"]] += e["red"]
+        line["new"] |= e["approved"] is None
     total = sum(e["red"] for e in entries)
-    image = Image.new("RGB", (1400, MARGIN * 2 + HEADER + 34 * len(rows)), WHITE)
+    rows = INDEX_ROWS
+    columns = max(1, -(-len(pages) // rows))
+    shown = min(rows, len(pages))
+    image = Image.new("RGB", (MARGIN * 2 + INDEX_COLUMN * columns, MARGIN * 2 + HEADER + 40 + INDEX_LINE * shown), WHITE)
     draw = ImageDraw.Draw(image)
-    draw.text((MARGIN, MARGIN), f"設計板 · {len(entries)} 張 · 紅標 {total}", fill=INK, font=head)
-    for i, (line, e) in enumerate(zip(rows, entries)):
-        draw.text((MARGIN, MARGIN + HEADER + 34 * i), line, fill=RED if e["red"] else INK, font=row)
+    draw.text((MARGIN, MARGIN), f"設計板 · {len(pages)} 個頁面狀態 · {len(entries)} 張 · 紅標 {total}", fill=INK, font=head)
+    for c in range(columns):
+        draw.text((MARGIN + INDEX_COLUMN * c, MARGIN + HEADER), "頁面 · 狀態        light  dark", fill=MUTED, font=row)
+    for i, ((page, state), line) in enumerate(pages.items()):
+        x = MARGIN + INDEX_COLUMN * (i // rows)
+        y = MARGIN + HEADER + 40 + INDEX_LINE * (i % rows)
+        red = line["light"] + line["dark"]
+        draw.text((x, y), f"{page} · {state}", fill=RED if red else INK, font=row)
+        draw.text(
+            (x + INDEX_COUNTS, y),
+            f"{line['light']:>5}  {line['dark']:>5}{'  new' if line['new'] else ''}",
+            fill=RED if red else INK,
+            font=row,
+        )
     return image
 
 
@@ -266,10 +288,10 @@ def build(pages: list[dict], now_dir: Path, approved_dir: Path | None, rev: str,
                 drawn = sheet({**page, "screens": len(screens)}, theme, n, window, approved, rev)
                 drawn.image.save(out / drawn.entry["file"], "WEBP", quality=90, method=6)
                 entries.append(drawn.entry)
-    index_sheet(entries).save(out / "index.webp", "WEBP", quality=90, method=6)
     (out / "manifest.json").write_text(
         json.dumps({"approved": rev, "sheets": entries, "missing": missing}, ensure_ascii=False, indent=1) + "\n"
     )
+    index_sheet(entries).save(out / "index.webp", "WEBP", quality=90, method=6)
     return entries
 
 
