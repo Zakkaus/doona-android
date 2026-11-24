@@ -1,5 +1,6 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.PerApp
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.serializer
 
 /** Starting or running: a session the user has not ended. */
 internal val Status.active: Boolean get() = this is Status.Starting || this is Status.Running
@@ -64,12 +66,17 @@ internal class TunnelController(
     private val commands = Channel<Command>(Channel.UNLIMITED)
 
     private var coreRunning = false // Touched only by run().
+    private var bootstrapDns = emptyList<String>() // Touched only by run(), like coreRunning.
 
     private var handled = 0L // Guarded by lock; written only by run(): the generation of the last command it finished.
 
     /** Executes commands in order until cancelled. The owner launches it once, off the main thread. */
     suspend fun run() {
         for (command in commands) {
+            if (command is Command.RefreshDns) {
+                if (coreRunning && isCurrent(command.generation)) applyBootstrapDns(command.servers)
+                continue
+            }
             stopCore()
             if (command is Command.Open && isCurrent(command.generation)) open(command)
             // The terminal status and completion are recorded together for the stop watchdog.
@@ -117,6 +124,14 @@ internal class TunnelController(
         this.host = host
         show(g, Status.Starting)
         commands.trySend(Command.Open(g, host, startBlock))
+    }
+
+    fun refreshBootstrapDns(host: TunHost, servers: List<String>) {
+        // An empty list cannot replace the last working resolvers. Queue changes during start behind its Open.
+        if (servers.isEmpty()) return
+        synchronized(lock) {
+            if (this.host === host && _status.value.active) commands.trySend(Command.RefreshDns(generation, servers))
+        }
     }
 
     fun stop() = close(accept = { it.active || cancelSystemRestart != null }, Status.Stopped)
@@ -295,9 +310,10 @@ internal class TunnelController(
         if (schema != CORE_SCHEMA) return Status.Failed(FailureReason.IncompatibleCore)
         val routing = AppRouting.resolve(perApp(), host.selfPackage, host::installed) ?: return Status.Failed(FailureReason.NoAllowedApps)
         val mtu = host.mtu
-        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(host.bootstrapDns(), mtu))
         expireDebugCapture()?.join()
         if (!isCurrent(g)) return null
+        val servers = host.bootstrapDns()
+        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(servers, mtu))
         val tun = host.establish(routing, mtu) ?: return Status.Failed(FailureReason.StartFailed)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
         tun.use {
@@ -311,7 +327,28 @@ internal class TunnelController(
             }
         }
         coreRunning = true
+        bootstrapDns = servers
         return null
+    }
+
+    private fun applyBootstrapDns(servers: List<String>) {
+        if (servers == bootstrapDns) return
+        val name = BootstrapDnsArgs.COMMAND
+        try {
+            val args = CoreJson.encode(BootstrapDnsArgs.serializer(), BootstrapDnsArgs(servers))
+            CoreJson.result(core.call(name, args), Unit.serializer())
+            bootstrapDns = servers
+        } catch (e: EngineException) {
+            if (e.code == ErrorCode.Busy) return
+            val code = if (e.code == ErrorCode.InvalidArgument) "invalid_argument" else e.code.name
+            VpnLog.action(name, "complete", "failed", code)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            VpnLog.warn("$name failed: ${e.javaClass.simpleName}")
+        } catch (e: LinkageError) {
+            VpnLog.warn("$name failed: ${e.javaClass.simpleName}")
+        }
     }
 
     private suspend fun stopCore() {
@@ -349,6 +386,8 @@ internal class TunnelController(
         data class Open(override val generation: Long, val host: TunHost, val startBlock: VpnStartBlock? = null) : Command
 
         data class Close(override val generation: Long, val terminal: Status, val startBlock: VpnStartBlock?, val recover: Boolean) : Command
+
+        data class RefreshDns(override val generation: Long, val servers: List<String>) : Command
     }
 
     companion object {

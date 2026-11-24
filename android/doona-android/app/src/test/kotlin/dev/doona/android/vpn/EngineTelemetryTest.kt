@@ -339,6 +339,26 @@ class EngineTelemetryTest {
         assertTrue(events.none { "private-" in it })
     }
 
+    @Test
+    fun resolverUpdatesIgnoreBusyAndLogARejectedListByCode() = runTest {
+        val engine = engine()
+        start(engine)
+        AppEvents.clear()
+        val session = engine.controller.session.value
+
+        core.reply = """{"error":{"code":"busy"}}"""
+        engine.controller.refreshBootstrapDns(host, listOf("192.0.2.53"))
+        runCurrent()
+        assertEquals(listOf("setBootstrapDns" to """{"servers":["192.0.2.53"]}"""), core.calls)
+        assertTrue(AppEvents.snapshot().isEmpty())
+
+        core.reply = """{"error":{"code":"invalid_argument"}}"""
+        engine.controller.refreshBootstrapDns(host, listOf("192.0.2.54"))
+        runCurrent()
+        assertEquals(listOf("command=setBootstrapDns phase=complete outcome=failed code=invalid_argument"), AppEvents.snapshot().map { it.text })
+        assertEquals(session, engine.controller.session.value)
+    }
+
     private fun TestScope.start(engine: ServiceEngine) {
         engine.connect()
         assertTrue(engine.controller.start(host, engine.controller.session.value.generation))
