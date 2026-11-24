@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.io.File
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 
 interface DropNoticeSettings {
@@ -39,6 +40,8 @@ data class SubscriptionUpdate(val enabled: Boolean, val interval: UpdateInterval
 
 enum class UpdateInterval(val duration: Duration) { Six(6.hours), Twelve(12.hours), TwentyFour(24.hours), FortyEight(48.hours) }
 
+enum class GeoUpdateInterval(val duration: Duration?) { Off(null), Daily(1.days), Weekly(7.days) }
+
 enum class ThemeMode { System, Light, Dark }
 
 enum class ThemeAccent { Default, Blue, Purple, Orange, Pink }
@@ -52,6 +55,10 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         val duration = prefs[UPDATE_HOURS]?.hours
         val interval = UpdateInterval.entries.firstOrNull { it.duration == duration } ?: UpdateInterval.Twelve
         SubscriptionUpdate(prefs[AUTO_UPDATE] ?: true, interval)
+    }
+    val geoUpdateInterval = preference { prefs ->
+        val name = prefs[GEO_UPDATE_INTERVAL]
+        GeoUpdateInterval.entries.firstOrNull { it.name == name } ?: GeoUpdateInterval.Weekly
     }
     val themeMode = preference(::mode)
     val appearance = preference { prefs ->
@@ -72,6 +79,8 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
 
     override suspend fun setUpdateInterval(interval: UpdateInterval) = set(UPDATE_HOURS, interval.duration.inWholeHours.toInt())
 
+    suspend fun setGeoUpdateInterval(interval: GeoUpdateInterval) = set(GEO_UPDATE_INTERVAL, interval.name)
+
     suspend fun setThemeMode(mode: ThemeMode) = set(THEME_MODE, mode.name)
 
     suspend fun setFollowWallpaper(enabled: Boolean) = set(FOLLOW_WALLPAPER, enabled)
@@ -82,6 +91,7 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         private val NOTIFY_ON_DROP = booleanPreferencesKey("notify_on_drop")
         private val AUTO_UPDATE = booleanPreferencesKey("auto_update")
         private val UPDATE_HOURS = intPreferencesKey("update_hours")
+        private val GEO_UPDATE_INTERVAL = stringPreferencesKey("geo_update_interval")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val FOLLOW_WALLPAPER = booleanPreferencesKey("follow_wallpaper")
         private val ACCENT = stringPreferencesKey("accent")

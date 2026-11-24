@@ -4,9 +4,11 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.os.Process
 import android.os.SystemClock
+import dev.doona.android.data.geo.GeoAssets
 import dev.doona.android.data.network.followBootstrapDns
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Catalog
+import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
@@ -60,12 +62,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.json.JsonClassDiscriminator
 import java.io.IOException
 
 /**
@@ -281,12 +280,20 @@ class ServiceEngine internal constructor(
     override suspend fun scoreState(): Result<ScoreState> =
         read("scoreState", Unit.serializer(), Unit, ScoreStateDto.serializer()).map(ScoreStateDto::toScoreState)
 
+    override suspend fun configAssets(): Result<ConfigAssets> =
+        read("configAssets", ConfigAssetsArgs.serializer(), ConfigAssetsArgs("status"), ConfigAssetsDto.serializer()).map(::toConfigAssets)
+
+    override suspend fun updateConfigAssets(): Result<ConfigAssets> {
+        expireDebugCapture()?.join()
+        return callCore("configAssets", ConfigAssetsArgs.serializer(), ConfigAssetsArgs("update"), ConfigAssetsDto.serializer()).map(::toConfigAssets)
+    }
+
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
         scope.async { savePerApp(perApp) }.await()
 
     override suspend fun diagnostics(level: LogLevel?): Result<CoreDiagnostics> =
-        readCore("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
+        callCore("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
             .map { it.dto.toCoreDiagnostics(it.json) }
 
     override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
@@ -382,10 +389,10 @@ class ServiceEngine internal constructor(
         result: DeserializationStrategy<R>,
     ): Result<R> {
         expireDebugCapture()?.join()
-        return readCore(name, argsSerializer, args, result)
+        return callCore(name, argsSerializer, args, result)
     }
 
-    private suspend fun <A, R> readCore(name: String, argsSerializer: SerializationStrategy<A>, args: A, result: DeserializationStrategy<R>): Result<R> {
+    private suspend fun <A, R> callCore(name: String, argsSerializer: SerializationStrategy<A>, args: A, result: DeserializationStrategy<R>): Result<R> {
         if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
         val begun = System.nanoTime()
         return call(name, CoreJson.encode(argsSerializer, args), result).also { outcome ->
@@ -523,6 +530,7 @@ class ServiceEngine internal constructor(
                 killProcess = { Process.killProcess(Process.myPid()) },
                 endDebugCapture = endDebugCapture,
                 expireDebugCapture = expireDebugCapture,
+                geoAssets = GeoAssets(app),
             )
             val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO, scope, expireDebugCapture)
             engine.launch(Dispatchers.IO.limitedParallelism(1), app.getSystemService(ConnectivityManager::class.java))
@@ -531,62 +539,9 @@ class ServiceEngine internal constructor(
     }
 }
 
+private fun toConfigAssets(dto: ConfigAssetsDto) =
+    ConfigAssets(dto.source, dto.release, dto.lastResult, dto.reason, dto.updateWaitingForNextStart)
+
 /** `nodes`: every node when [ids] is null. */
 @Serializable
 internal data class NodesArgs(val ids: List<String>?)
-
-@Serializable
-internal class StaticNodeRowsDto(val rows: List<StaticNodeRowDto>) {
-    fun toRows() = rows.map(StaticNodeRowDto::toRow)
-}
-
-@Serializable
-private class StaticNodeDto(val id: String, val name: String, val link: String) {
-    fun toStaticNode() = StaticNode(id, name, link)
-
-    companion object {
-        fun of(node: StaticNode) = StaticNodeDto(node.id, node.name, node.link)
-    }
-}
-
-@Serializable
-private class StaticNodeBatchArgs(val rows: List<StaticNodeDraftDto>)
-
-@Serializable
-private class StaticNodeUpdateArgs(val expected: StaticNodeDto, val node: StaticNodeDraftDto)
-
-@Serializable
-private class StaticNodeRemoveArgs(val expected: StaticNodeDto, val confirmed: Boolean)
-
-@OptIn(ExperimentalSerializationApi::class)
-@JsonClassDiscriminator("kind")
-@Serializable
-private sealed interface StaticNodeDraftDto {
-    @Serializable
-    @SerialName("link")
-    class Link(val link: String, val name: String? = null) : StaticNodeDraftDto
-
-    @Serializable
-    @SerialName("manual")
-    class Manual(
-        val protocol: String,
-        val server: String,
-        val port: Int,
-        val name: String? = null,
-        val username: String? = null,
-        val password: String? = null,
-        val uuid: String? = null,
-        val cipher: String? = null,
-        val options: Map<String, String> = emptyMap(),
-    ) : StaticNodeDraftDto
-
-    companion object {
-        fun of(draft: StaticNodeDraft): StaticNodeDraftDto = when (draft) {
-            is StaticNodeDraft.Link -> Link(draft.link, draft.name)
-
-            is StaticNodeDraft.Manual -> Manual(
-                draft.protocol, draft.server, draft.port, draft.name, draft.username, draft.password, draft.uuid, draft.cipher, draft.options,
-            )
-        }
-    }
-}

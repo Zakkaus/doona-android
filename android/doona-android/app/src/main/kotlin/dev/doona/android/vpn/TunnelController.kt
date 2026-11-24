@@ -1,6 +1,7 @@
 package dev.doona.android.vpn
 
 import android.os.SystemClock
+import dev.doona.android.data.geo.GeoAssets
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
@@ -51,6 +52,7 @@ internal class TunnelController(
     private val startBoundMs: Long = START_BOUND_MS,
     private val stopDeadlineMs: Long = STOP_DEADLINE_MS,
     private val clock: () -> Long = SystemClock::elapsedRealtime,
+    private val geoAssets: GeoAssets? = null,
 ) {
     private val _status = MutableStateFlow<Status>(Status.Stopped)
     val status: StateFlow<Status> = _status.asStateFlow()
@@ -325,7 +327,16 @@ internal class TunnelController(
         expireDebugCapture()?.join()
         if (!isCurrent(g)) return null
         val servers = host.bootstrapDns().ifEmpty { pendingBootstrapDns ?: bootstrapDns }
-        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(servers, mtu))
+        val assets = geoAssets ?: return startWithTun(g, host, routing, mtu, servers, null)
+        return assets.withBundle(::activeGeoRelease) { dir -> startWithTun(g, host, routing, mtu, servers, dir) }
+    }
+
+    private fun activeGeoRelease(): String? =
+        CoreJson.result(core.call("configAssets", "{}"), ConfigAssetsDto.serializer()).release
+
+    private fun startWithTun(g: Long, host: TunHost, routing: AppRouting, mtu: Int, servers: List<String>, geoAssetDir: String?): Status.Failed? {
+        if (!isCurrent(g)) return null
+        val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(servers, mtu, geoAssetDir))
         val tun = host.establish(routing, mtu) ?: return Status.Failed(FailureReason.StartFailed)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
         tun.use {

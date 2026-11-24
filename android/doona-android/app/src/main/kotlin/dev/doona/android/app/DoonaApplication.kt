@@ -22,6 +22,7 @@ open class DoonaApplication : Application(), Configuration.Provider {
         // First, so a crash anywhere later in the process leaves its file for the report.
         CrashCapture.install(container.crashFiles, AppInfo.of(this).crashVersion)
         container.startSubscriptionRefresh()
+        container.startGeoRefresh()
     }
 
     /** The service-backed engine; JVM tests run the app with a fake one instead. */

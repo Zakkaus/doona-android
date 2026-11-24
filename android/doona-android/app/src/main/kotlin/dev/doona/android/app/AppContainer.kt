@@ -26,7 +26,9 @@ import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.reportDir
 import dev.doona.android.vpn.VpnLog
 import dev.doona.android.work.ForegroundRefresh
+import dev.doona.android.work.GeoRefresh
 import dev.doona.android.work.SubscriptionRefresh
+import dev.doona.android.work.scheduleGeoRefresh
 import dev.doona.android.work.scheduleSubscriptionRefresh
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -75,6 +77,22 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
                     }
                 }
         }
+    }
+
+    internal val geoRefresh by lazy { GeoRefresh(AppSettings.get(application).geoUpdateInterval) { engine } }
+
+    internal fun startGeoRefresh(): Job = uiScope.launch(Dispatchers.IO) {
+        AppSettings.get(application).geoUpdateInterval
+            .catch {
+                if (it !is IOException) throw it
+                VpnLog.warn("geo-refresh: settings read failed (${it.javaClass.simpleName})")
+            }.collect {
+                try {
+                    scheduleGeoRefresh(WorkManager.getInstance(application), it)
+                } catch (e: SQLiteException) {
+                    VpnLog.warn("geo-refresh: schedule write failed (${e.javaClass.simpleName})")
+                }
+            }
     }
 
     /** The local network permission, asked for only when something on the local network failed (ARCH D26). */

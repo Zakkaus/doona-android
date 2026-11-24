@@ -63,12 +63,16 @@ a pins-only pull request to `v1/base`. The schedule requires the workflow on the
 Enable **Allow GitHub Actions to create and approve pull requests** so the default token can open
 the PR. [`GITHUB_TOKEN` pull request checks](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)
 do not run automatically; a maintainer with write access must select **Approve workflows to run**.
-The DATs are not checked in or packaged into the APK.
+The build bundles the pinned DATs into the doona APK. The repository does not track them.
 
 MetaCubeX replaces its `latest` assets and force-pushes its `release` branch. The pins use
 commit-qualified snapshot URLs, with sizes and SHA-256 digests from the release API. The URLs
 cannot move to newer bytes, but GitHub may garbage-collect old `release` commits. A first-party
 mirror is an open owner decision.
+
+On VPN start, the app offers the bundled pair when no geo generation is active or the APK's
+release date is newer. It deletes the extracted files when the core returns. Automatic updates
+run weekly by default and only while the VPN runs. Downloads take effect at the next VPN start.
 
 ## Run a bench
 

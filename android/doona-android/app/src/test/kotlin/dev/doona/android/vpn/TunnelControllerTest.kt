@@ -2,6 +2,7 @@ package dev.doona.android.vpn
 
 import android.app.Application
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.data.geo.GeoAssets
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
@@ -24,9 +25,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
@@ -38,6 +42,16 @@ import java.util.concurrent.TimeUnit
 // Keep native-core startup in DoonaApplication from adding unrelated entries to AppEvents.
 @Config(application = Application::class)
 class TunnelControllerTest {
+    @get:Rule
+    val folder = TemporaryFolder()
+
+    private var apkBundlePresent = false
+    private val geoAssets = GeoAssets({ folder.root }) { path ->
+        if (!apkBundlePresent) throw FileNotFoundException(path)
+        val contents = if (path == "geo/pins.json") """{"release_date":"2026-11-23"}""" else path
+        contents.byteInputStream()
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val core = FakeCore()
     private val host = FakeHost()
@@ -58,6 +72,7 @@ class TunnelControllerTest {
         expireDebugCapture = { null },
         startBoundMs = 300,
         stopDeadlineMs = 200,
+        geoAssets = geoAssets,
     )
     private val seen = CopyOnWriteArrayList<Status>()
 
@@ -87,6 +102,25 @@ class TunnelControllerTest {
         assertEquals(listOf(AppRouting.Exclude(setOf(SELF))), host.routings)
         assertTrue(host.tuns.single().closed)
         assertTrue("bootstrap DNS read before establish", core.configs.single().contains("192.168.8.1"))
+        assertFalse("geoAssetDir" in core.configs.single())
+    }
+
+    @Test
+    fun startHandsAnExtractedBundleToTheCoreAndThenRemovesIt() {
+        apkBundlePresent = true
+        val stage = folder.root.resolve("geo-apk-stage")
+        val release = CountDownLatch(1)
+        core.startGate = release
+        start()
+        try {
+            assertTrue(core.startEntered.await(5, TimeUnit.SECONDS))
+            assertEquals("geo/geoip.dat", stage.resolve("geoip.dat").readText())
+        } finally {
+            release.countDown()
+        }
+        awaitStatus { it is Status.Running }
+        assertTrue(core.configs.single().contains("\"geoAssetDir\":\"${stage.path}\""))
+        assertFalse(stage.exists())
     }
 
     @Test
@@ -135,11 +169,13 @@ class TunnelControllerTest {
 
     @Test
     fun startFailureIsReportedOnceAndClosesTheTun() {
+        apkBundlePresent = true
         core.startError = IllegalStateException("internal")
         start()
         assertEquals(Status.Failed(FailureReason.StartFailed, ErrorCode.Internal), awaitStatus { it is Status.Failed })
         assertEquals(listOf("start"), core.events)
         assertTrue(host.tuns.single().closed)
+        assertFalse(folder.root.resolve("geo-apk-stage").exists())
         assertFalse(seen.any { it is Status.Running })
     }
 
@@ -427,7 +463,10 @@ class TunnelControllerTest {
 
         override fun snapshot(sinceRevision: Long) = error("unused")
 
-        override fun call(command: String, argsJson: String) = error("unused")
+        override fun call(command: String, argsJson: String): String {
+            check(command == "configAssets")
+            return ContractFixtures.read("call-ok-config-assets.json")
+        }
     }
 
     private class FakeTun(override val fd: Int) : Tun {
