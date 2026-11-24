@@ -4,8 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.dp
+import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvChevronSize
 import dev.doona.android.designsystem.rv.RvMaterialPlumbing
 import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
@@ -55,6 +60,7 @@ import dev.doona.android.prototype.rv.settings.rvSampleVersions
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
 import dev.doona.android.prototype.rv.stats.rvStatsSample
 import dev.doona.android.testing.PhoneFrame
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -123,6 +129,17 @@ class RvLayoutTest {
 
     @Test
     fun effectiveConfig() = measure("effective-config", Top.Title) { RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}) }
+
+    /** 策略's value rows (範本, 設定檔) end their value a trailing gap before the chevron, as the node picker's row does. */
+    @Test
+    fun policyValueEndsATrailingGapBeforeTheChevron() {
+        show { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+        // Not boundsInRoot: the card is below the window, where those bounds are clipped to nothing.
+        val value = compose.onNodeWithText(rvText(R.string.rv_policy_template_value), useUnmergedTree = true).fetchSemanticsNode()
+        val end = (value.positionInRoot.x + value.size.width) / value.layoutInfo.density.density
+        val rowEnd = PHONE_WIDTH - RvSpace.gutter - RvSpace.rowPadding
+        assertEquals((rowEnd - RvChevronSize.box - RvSpace.trailingGap).value, end, HALF_DP)
+    }
 
     @Test
     fun serviceRules() = measure("rules-service", Top.Title) { RvServiceRulesPage(onBack = {}) }
@@ -204,15 +221,19 @@ class RvLayoutTest {
     }
 
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {
+        show(content)
+        val drift = RvMeasure(compose.rvParts(), rvBarBottom(top)).run(top)
+        printHeight(page)
+        assertTrue("$page drifts from the tokens:\n" + drift.joinToString("\n"), drift.isEmpty())
+    }
+
+    private fun show(content: @Composable () -> Unit) {
         compose.setContent {
             RvMaterialPlumbing(rvSystemScheme(false)) {
                 PhoneFrame { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content) }
             }
         }
         compose.waitForIdle()
-        val drift = RvMeasure(compose.rvParts(), rvBarBottom(top)).run(top)
-        printHeight(page)
-        assertTrue("$page drifts from the tokens:\n" + drift.joinToString("\n"), drift.isEmpty())
     }
 
     /** The page's full height, for the whole-page goldens' windows (the page is taller than this window, so it scrolls). */
@@ -223,6 +244,11 @@ class RvLayoutTest {
     }
 
     private companion object {
+        /** The phone window's width, as the class's qualifiers set it. */
+        val PHONE_WIDTH = 412.dp
+
+        const val HALF_DP = 0.5f
+
         /** YouTube's connection, whose host wraps. */
         const val YOUTUBE = 3
 

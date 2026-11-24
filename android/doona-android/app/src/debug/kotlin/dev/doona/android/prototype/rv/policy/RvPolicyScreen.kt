@@ -332,7 +332,7 @@ private fun ValueRow(@DrawableRes icon: Int, title: String, value: String, onCli
     RvRow({ RvIconDisc(icon) }, title, null, onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary)
-            Spacer(Modifier.width(RvSpace.tight))
+            Spacer(Modifier.width(RvSpace.trailingGap))
             RvChevron()
         }
     }
