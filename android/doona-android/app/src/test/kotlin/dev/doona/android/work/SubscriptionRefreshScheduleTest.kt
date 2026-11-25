@@ -9,6 +9,8 @@ import androidx.work.Configuration
 import androidx.work.NetworkType
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.impl.WorkManagerImpl
+import androidx.work.impl.close
 import dev.doona.android.data.settings.SubscriptionUpdate
 import dev.doona.android.data.settings.UpdateInterval
 import kotlinx.coroutines.runBlocking
@@ -30,8 +32,9 @@ class SubscriptionRefreshScheduleTest {
     @Test
     fun changingTheIntervalUpdatesOneConstrainedJobAndDisablingCancelsIt() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Application>()
-        WorkManager.initialize(context, Configuration.Builder().build())
-        val manager = WorkManager.getInstance(context)
+        // A WorkManager of this test's own: the app-wide one is a static that an earlier test in this JVM may have made
+        // for its own application, and `initialize` would then refuse or keep that one.
+        val manager = WorkManagerImpl(context, Configuration.Builder().build())
         val jobs = context.getSystemService(JobScheduler::class.java)
         val alarms = shadowOf(context.getSystemService(AlarmManager::class.java))
 
@@ -54,6 +57,7 @@ class SubscriptionRefreshScheduleTest {
             assertEquals(WorkInfo.State.CANCELLED, manager.getWorkInfoById(initial.id).get(5, TimeUnit.SECONDS)?.state)
             assertTrue(jobs.allPendingJobs.none { it.service.className.endsWith(".SystemJobService") })
         }
+        manager.close()
     }
 
     private fun WorkManager.activeJob(): WorkInfo = getWorkInfosForUniqueWork(SUBSCRIPTION_REFRESH_WORK)
