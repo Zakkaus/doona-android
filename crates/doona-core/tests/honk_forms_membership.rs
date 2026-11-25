@@ -202,3 +202,29 @@ fn refused_nodes_and_unknown_groups_write_nothing() {
     }
     assert_eq!(draft.text(ENTRY), text);
 }
+
+#[test]
+fn a_group_chosen_twice_gains_one_filter() {
+    let text = format!("{NODES}group {{ Hk {{ filter: name(hk1) }} }}\n");
+    let mut draft = Draft::new(&[(ENTRY, &text)]);
+    assert_eq!(draft.add("tw1", &["Hk", "Hk"]).unwrap(), ["Hk"]);
+    assert_eq!(draft.text(ENTRY).matches("filter: name('tw1')").count(), 1);
+    assert_eq!(members(&draft.assembled(), "Hk"), set(&["hk1", "tw1"]));
+}
+
+#[test]
+fn a_node_can_join_no_group_with_or_without_groups_in_the_config() {
+    // DEC 2026-11-26: any hand-written config, including zero groups and a node in no group.
+    for (groups, holding) in [
+        ("", vec![]),
+        ("group { Hk { filter: name(hk1) } }\n", vec![]),
+        ("group { All { policy: select } }\n", vec!["All"]),
+    ] {
+        let text = format!("{NODES}{groups}");
+        let mut draft = Draft::new(&[(ENTRY, &text)]);
+        assert_eq!(draft.add("tw1", &[]).unwrap(), holding, "{groups}");
+        let config = draft.assembled();
+        assert!(config.nodes.iter().any(|n| n.name == "tw1"), "{groups}");
+        assert_eq!(config.groups.len(), usize::from(!groups.is_empty()));
+    }
+}

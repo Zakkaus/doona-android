@@ -14,6 +14,7 @@ use honk_config::parser::LoadedConfig;
 use honk_config::parser::cursor::{Document, Segment};
 use honk_config::parser::lexer::Source;
 use honk_config::parser::source_edit::{append_node_source, source_indices};
+use uuid::Uuid;
 
 use super::ads::loaded;
 use super::carry::Carry;
@@ -107,22 +108,20 @@ fn appended_entry(before: &LoadedConfig, name: &str, link: &str) -> Result<Strin
 
 /// Whether `group` holds exactly its old members plus `name`, through the same subgroups.
 fn read_back(before: &Config, after: &Config, group: &str, name: &str) -> bool {
-    let (old, new) = (
-        winning(before, group).unwrap(),
-        winning(after, group).unwrap(),
-    );
+    let (Some(old), Some(new)) = (winning(before, group), winning(after, group)) else {
+        return false;
+    };
     let mut expected = member_names(before, old);
     expected.insert(name.into());
     member_names(after, new) == expected && new.groups == old.groups
 }
 
-/// Every group whose winning declaration holds the node, in declaration order.
-fn holding(config: &Config, name: &str) -> Vec<String> {
-    let node = config.nodes.iter().find(|n| n.name == name).unwrap();
+/// Every group whose winning declaration holds node `id`, in declaration order.
+fn holding(config: &Config, id: Uuid) -> Vec<String> {
     let mut groups: Vec<String> = Vec::new();
     for group in &config.groups {
-        let won = winning(config, &group.name).unwrap();
-        if won.nodes.contains(&node.id) && !groups.contains(&group.name) {
+        let won = winning(config, &group.name).is_some_and(|w| w.nodes.contains(&id));
+        if won && !groups.contains(&group.name) {
             groups.push(group.name.clone());
         }
     }
@@ -151,8 +150,32 @@ impl Edited<'_> {
         &mut self.texts[at].1
     }
 
-    /// Appends `line` to the winning declaration of `group`, held by source `path`.
+    /// Adds the exact-name filter to each chosen group that does not already hold every node.
+    fn chosen(
+        &mut self,
+        before: &LoadedConfig,
+        groups: &[&str],
+        name: &str,
+        raw: &impl Fn() -> EditError,
+    ) -> Result<(), AddNodeError> {
+        let (owners, _) = source_indices(&before.sources).map_err(|_| raw())?;
+        let line = format!("filter: {}", exact(name));
+        for &group in groups {
+            let won =
+                winning(&before.config, group).ok_or_else(|| AddNodeError::Group(group.into()))?;
+            if !won.own.implicit_all_nodes {
+                let owner = owners.get(group).ok_or_else(raw)?;
+                self.filter(&before.sources[*owner].path, group, &line)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Appends `line` to the winning declaration of `group`, held by source `path`, once.
     fn filter(&mut self, path: &Path, group: &str, line: &str) -> Result<(), EditError> {
+        if self.groups.iter().any(|(g, ..)| g == group) {
+            return Ok(());
+        }
         let relative: PathBuf = path.strip_prefix(&self.root).unwrap().into();
         let original = document(&self.tree.files[path], path);
         let bytes = original
@@ -160,14 +183,14 @@ impl Edited<'_> {
             .and_then(|doc| declaration(doc, group))
             .map(|g| g.span().start..g.span().end);
         let text = self.text(path);
-        let Some(out) = append_line(text, path, group, line) else {
+        let (Some(out), Some(found)) = (append_line(text, path, group, line), bytes.clone()) else {
             return Err(EditError::OpenSource {
                 path: relative,
                 bytes,
             });
         };
         *text = out;
-        self.groups.push((group.into(), relative, bytes.unwrap()));
+        self.groups.push((group.into(), relative, found));
         Ok(())
     }
 }
@@ -192,20 +215,13 @@ impl HonkStore {
         let before = loaded(&tree, &raw)?;
         let config = &before.config;
         let appended = appended_entry(&before, name, link)?;
-        let (owners, _) = source_indices(&before.sources).map_err(|_| raw())?;
         let mut edited = Edited {
             tree: &tree,
             root: root.clone(),
             texts: vec![(tree.entry.clone(), appended)],
             groups: Vec::new(),
         };
-        let line = format!("filter: {}", exact(name));
-        for &group in groups {
-            let won = winning(config, group).ok_or_else(|| AddNodeError::Group(group.into()))?;
-            if !won.own.implicit_all_nodes {
-                edited.filter(&before.sources[owners[group]].path, group, &line)?;
-            }
-        }
+        edited.chosen(&before, groups, name, &raw)?;
         let (texts, filtered) = (edited.texts, edited.groups);
         for (path, text) in &texts {
             tree.files.insert(path.clone(), text.as_str().into());
@@ -218,8 +234,10 @@ impl HonkStore {
             let (path, bytes) = (path.clone(), Some(bytes.clone()));
             return Err(EditError::OpenSource { path, bytes }.into());
         }
+        let node = after.config.nodes.iter().find(|n| n.name == name);
+        let id = node.ok_or_else(raw)?.id;
         self.write_files(draft, &root, &tree, &texts)?;
-        Ok(holding(&after.config, name))
+        Ok(holding(&after.config, id))
     }
 
     fn write_files(
@@ -231,6 +249,8 @@ impl HonkStore {
     ) -> Result<(), EditError> {
         let original =
             Tree::read(&self.draft_entry(self.find(draft)?)).map_err(StoreError::from)?;
+        // Every file parses before the first one is written, so a refusal writes nothing.
+        let mut steps = Vec::new();
         for (path, text) in texts {
             let raw = || EditError::OpenSource {
                 path: path.strip_prefix(root).unwrap().into(),
@@ -239,6 +259,9 @@ impl HonkStore {
             let file = File::parse(&original, path, &raw)?;
             let candidate = File::parse(edited, path, &raw)?;
             let carry = Carry::diff(&file.source.content, text);
+            steps.push((path, file, candidate, carry));
+        }
+        for (path, file, candidate, carry) in steps {
             self.write_steps(draft, path, root, &file, &[(candidate, carry)])?;
         }
         Ok(())
