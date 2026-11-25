@@ -49,6 +49,18 @@ class StatsMappingTest {
     }
 
     @Test
+    fun `a subscription without quota has no total and no expiry`() {
+        val bare = sampleInput().let { input ->
+            val subscriptions = input.subscriptions.map { it.copy(usedBytes = null, totalBytes = null, expiresAtEpochMs = null) }
+            StatsInput(input.usage, input.today, subscriptions, input.catalog, null, SAMPLE_NOW, ZoneOffset.UTC)
+        }
+        val subscriptions = rvStatsState(bare).subscriptions
+        // The quota card keeps only a total above zero, so no `0/0 B` legend; no expiry, so no date at the epoch (1970).
+        assertTrue(subscriptions.all { it.totalBytes == 0L && it.usedBytes == 0L })
+        assertTrue(subscriptions.all { it.expiresAtEpochMs == null })
+    }
+
+    @Test
     fun `the split is direct against the rest of the route targets`() {
         val day = sampleInput().usage!!.today
         val direct = day.outbounds.single { it.id == "direct" }.let { it.up + it.down }

@@ -33,16 +33,23 @@ class RvStatsEmptyLookShotTest {
 
     @Test fun v1Dark() = shot(RvStatsEmptyLook.Activity, dark = true)
 
-    @Test fun v1Fs200() = shot(RvStatsEmptyLook.Activity, dark = false, fontScale = RV_FS200)
+    @Test
+    @Config(qualifiers = FS200_WINDOW)
+    fun v1Fs200() = shot(RvStatsEmptyLook.Activity, dark = false, fontScale = RV_FS200)
 
     @Test fun v2Light() = shot(RvStatsEmptyLook.First, dark = false)
 
     @Test fun v2Dark() = shot(RvStatsEmptyLook.First, dark = true)
 
-    @Test fun v2Fs200() = shot(RvStatsEmptyLook.First, dark = false, fontScale = RV_FS200)
+    @Test
+    @Config(qualifiers = FS200_WINDOW)
+    fun v2Fs200() = shot(RvStatsEmptyLook.First, dark = false, fontScale = RV_FS200)
 
     private fun shot(look: RvStatsEmptyLook, dark: Boolean, fontScale: Float = 1f) =
         compose.rvShot("stats-empty-v${look.ordinal}", dark, before = { assertWhole() }, fontScale = fontScale) {
             RvStatsScreenSample(rvStatsQuiet(), empty = look)
         }
 }
+
+/** At 2x text the page outgrows the class window: as tall as the page whole (measured 2100.5 dp with the page dots). */
+private const val FS200_WINDOW = "+h2101dp"

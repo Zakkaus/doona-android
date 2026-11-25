@@ -1,6 +1,8 @@
 package dev.doona.android.feature.stats
 
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.Usage
 import dev.doona.android.engine.fake.rvSampleEngine
@@ -17,6 +19,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -30,10 +33,15 @@ class StatsViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    /** The sample engine, counting its reads and calls, with `usage()` failing while [failUsage] is set. */
+    /**
+     * The sample engine, counting its reads and calls, with `usage()` failing while [failUsage] is set, the latency test
+     * failing with [testFails] and the update of each id in [updateFails] with its code.
+     */
     private class Counting(private val engine: Engine = rvSampleEngine()) : Engine by engine {
         var usageReads = 0
         var failUsage = false
+        var testFails: ErrorCode? = null
+        val updateFails = mutableMapOf<String, ErrorCode>()
         val tests = mutableListOf<String?>()
         val updates = mutableListOf<String>()
 
@@ -44,12 +52,12 @@ class StatsViewModelTest {
 
         override suspend fun testLatency(groupId: String?): Result<Unit> {
             tests += groupId
-            return Result.success(Unit)
+            return testFails?.let { Result.failure(EngineException(it)) } ?: Result.success(Unit)
         }
 
         override suspend fun updateSubscription(id: String): Result<Subscription> {
             updates += id
-            return engine.updateSubscription(id)
+            return updateFails[id]?.let { Result.failure(EngineException(it)) } ?: engine.updateSubscription(id)
         }
     }
 
@@ -93,6 +101,45 @@ class StatsViewModelTest {
         assertEquals(listOf<String?>(null), engine.tests)
         vm.updateAll()
         assertEquals(engine.subscriptions.value.map { it.id }, engine.updates)
+    }
+
+    @Test
+    fun `a failed test shows until the test next succeeds`() = runTest {
+        val engine = Counting().apply { testFails = ErrorCode.Busy }
+        val vm = viewModel(engine)
+        assertNull(vm.failure.value)
+        vm.testAll()
+        assertEquals(StatsFailure(StatsTool.TestAll, ErrorCode.Busy), vm.failure.value)
+        vm.retry()
+        assertEquals("重試 tests again", listOf<String?>(null, null), engine.tests)
+        assertNotNull("still failing", vm.failure.value)
+        engine.testFails = null
+        vm.retry()
+        assertNull("cleared by the next success", vm.failure.value)
+    }
+
+    @Test
+    fun `a failed update names the first subscription that failed, and the others still update`() = runTest {
+        val engine = Counting()
+        val subscriptions = engine.subscriptions.value
+        val failing = subscriptions.first()
+        engine.updateFails[failing.id] = ErrorCode.FetchFailed
+        val vm = viewModel(engine)
+        vm.updateAll()
+        assertEquals(subscriptions.map { it.id }, engine.updates)
+        assertEquals(StatsFailure(StatsTool.UpdateAll, ErrorCode.FetchFailed, failing.name), vm.failure.value)
+        engine.updateFails.clear()
+        vm.retry()
+        assertNull(vm.failure.value)
+    }
+
+    @Test
+    fun `a tool that succeeds leaves the other tool's failure`() = runTest {
+        val engine = Counting().apply { testFails = ErrorCode.Busy }
+        val vm = viewModel(engine)
+        vm.testAll()
+        vm.updateAll()
+        assertEquals(StatsTool.TestAll, vm.failure.value?.tool)
     }
 
     private companion object {

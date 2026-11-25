@@ -42,7 +42,9 @@ class RvStatsSpentEmptyShotTest {
 
     @Test fun aFs115() = shot(dark = false, fontScale = RV_FS115)
 
-    @Test fun aFs200() = shot(dark = false, fontScale = RV_FS200)
+    @Test
+    @Config(qualifiers = FS200_WINDOW)
+    fun aFs200() = shot(dark = false, fontScale = RV_FS200)
 
     @Test
     fun aDrawsTheChartWithItsLine() {
@@ -63,3 +65,6 @@ class RvStatsSpentEmptyShotTest {
         const val TILES_AND_CARD = 3
     }
 }
+
+/** At 2x text the page outgrows the class window: as tall as the page whole (measured 2100.5 dp with the page dots). */
+private const val FS200_WINDOW = "+h2101dp"

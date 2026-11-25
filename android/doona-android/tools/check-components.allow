@@ -2,7 +2,6 @@
 # Measured 2026-11-25 on v1/p0a 8d01f08a: 21 hits. Each line goes once its page uses the library; do not add one for new work.
 debug/kotlin/dev/doona/android/prototype/rv/nodes/RvLatencyDots.kt|dp|5|the latency dots' own plot metrics in RvLatencyDotsSize; to move into the library's tokens with the nodes pages
 debug/kotlin/dev/doona/android/prototype/rv/nodes/RvLatencyDots.kt|style|1|the picked dot's label is the pill style at semibold; a library pill variant is owed
-main/kotlin/dev/doona/android/feature/stats/RvStatsCharts.kt|style|1|a chart chip's label is the pill style at semibold; a library pill variant is owed
 debug/kotlin/dev/doona/android/prototype/rv/settings/RvThemePreview.kt|colour|3|the theme preview derives each accent's scheme from white and black, not from the live Rv.colors
 debug/kotlin/dev/doona/android/prototype/rv/settings/RvSettingsScreen.kt|widget|1|Image of the duck mark, a full-colour drawable that RvGlyph's tint would flatten
 debug/kotlin/dev/doona/android/prototype/rv/welcome/RvWelcome.kt|widget|1|Image of the duck mark, a full-colour drawable that RvGlyph's tint would flatten

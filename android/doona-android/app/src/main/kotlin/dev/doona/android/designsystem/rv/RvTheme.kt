@@ -250,6 +250,9 @@ internal class RvType {
     val cardValue = RvTypeScale.cardValue.style(tabular = true)
     val cardUnit = RvTypeScale.cardUnit.style()
     val pill = RvTypeScale.pill.style(tabular = true)
+
+    /** The value pill's step for a name in a chart's chip: no tabular figures, which would widen the hyphen of `hk-01`. */
+    val pillName = RvTypeScale.pill.style()
     val section = RvTypeScale.section.style()
     val statLabel = RvTypeScale.statLabel.style()
     val stat = RvTypeScale.stat.style(tabular = true)

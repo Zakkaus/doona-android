@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -148,8 +147,7 @@ internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, med
     val colors = Rv.colors
     val measurer = rememberTextMeasurer()
     val axisStyle = Rv.type.pill.copy(color = colors.textSecondary)
-    // A node's name keeps its own figures: Inter's tabular figures widen the hyphen of `hk-01`.
-    val chipStyle = Rv.type.pill.copy(color = colors.down.line, fontWeight = FontWeight.SemiBold, fontFeatureSettings = null)
+    val chipStyle = Rv.type.pillName.copy(color = colors.down.line)
     val top = rvLatencyAxisTop(values.maxOrNull() ?: 0)
     val ticks = listOf(top to "$top $unit", top / 2 to "${top / 2}", 0 to "0")
     val pillInk = RvPillInk(colors.pill, colors.raisedShadow)

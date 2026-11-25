@@ -13,6 +13,9 @@ internal object RvStatsSpace {
     val chartGap = 16.dp
     val legendGap = 10.dp
 
+    /** Under the paged tiles, to their dots. */
+    val dotsGap = 10.dp
+
     /**
      * How much of the third paged tile shows at the screen's edge, so the row reads as one that scrolls (measured §2,
      * 03-analytics-a: the neighbour tile peeks 4 dp).

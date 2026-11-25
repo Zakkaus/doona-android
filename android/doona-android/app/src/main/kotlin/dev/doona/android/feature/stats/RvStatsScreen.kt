@@ -1,6 +1,7 @@
 package dev.doona.android.feature.stats
 
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,11 +27,14 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvFilterChip
 import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvStatsDots
 import dev.doona.android.designsystem.rv.RvStatsSpace
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvDay
@@ -42,7 +46,7 @@ import java.text.NumberFormat
  * subscriptions' quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 and the tools. Where
  * each figure comes from is noted on [RvStatsState], not on the page (N-14). With a Score group ([RvStatsState.score]), a
  * 綜合評分 card follows 延遲分布. The chips open the subscription filter ([onSubscriptions]) and the range ([onRange]); the
- * tools test every node, update every subscription and open the export.
+ * tools test every node, update every subscription and open the export. A [banner] (a tool that failed) heads the cards.
  */
 @Composable
 internal fun RvStatsScreen(
@@ -54,6 +58,7 @@ internal fun RvStatsScreen(
     onUpdateAll: () -> Unit,
     onExport: () -> Unit,
     empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid,
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_stats_title)
@@ -65,7 +70,7 @@ internal fun RvStatsScreen(
                 RvFilterChip(stringResource(state.range.label), onRange)
             }
         })
-        RvGutter { RvSpentCard(state) }
+        RvGutter(banner = banner) { RvSpentCard(state) }
         Spacer(Modifier.height(RvSpace.cardGap))
         DayTiles(state.today, empty)
         Spacer(Modifier.height(RvSpace.cardGap))
@@ -82,7 +87,8 @@ internal fun RvStatsScreen(
 
 /**
  * 下載, 上傳 and 連線次數 as Revolut's paged half tiles: two side by side, as far apart as 活動's pair, and the third's edge
- * at the screen's edge, which says the row scrolls. All three come from the day's usage: bytes each way and flows opened.
+ * at the screen's edge, which says the row scrolls, and the pager's dots under them (owner, 2026-11-24 01:33). All
+ * three come from the day's usage: bytes each way and flows opened.
  */
 @Composable
 private fun DayTiles(day: RvDay, empty: RvStatsEmptyLook) {
@@ -103,14 +109,17 @@ private fun DayTiles(day: RvDay, empty: RvStatsEmptyLook) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // From the gutter, two tiles RvSpace.tileGap apart, then the third's first RvStatsSpace.tilePeek before the edge.
         val width = (maxWidth - RvSpace.gutter - RvSpace.tileGap * 2 - RvStatsSpace.tilePeek) / 2
-        HorizontalPager(
-            pager,
-            Modifier.testTag(RvPart.BLOCK),
-            contentPadding = PaddingValues(horizontal = RvSpace.gutter),
-            pageSize = PageSize.Fixed(width),
-            pageSpacing = RvSpace.tileGap,
-            verticalAlignment = Alignment.Top,
-        ) { page -> RvDayTileCard(tiles[page], empty = empty) }
+        Column(Modifier.testTag(RvPart.BLOCK)) {
+            HorizontalPager(
+                pager,
+                contentPadding = PaddingValues(horizontal = RvSpace.gutter),
+                pageSize = PageSize.Fixed(width),
+                pageSpacing = RvSpace.tileGap,
+                verticalAlignment = Alignment.Top,
+            ) { page -> RvDayTileCard(tiles[page], empty = empty) }
+            Spacer(Modifier.height(RvStatsSpace.dotsGap))
+            RvStatsDots(tiles.size, pager.currentPage)
+        }
     }
 }
 
@@ -125,7 +134,7 @@ private fun tools(state: RvStatsState, onTestAll: () -> Unit, onUpdateAll: () ->
     }
     return listOf(
         RvStatsTool(R.drawable.rv_sym_speed, stringResource(R.string.rv_stats_test_all), nodes, onTestAll),
-        RvStatsTool(R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), listOfNotNull(subscriptions, refreshed).joinToString(" · "), onUpdateAll),
+        RvStatsTool(R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), listOfNotNull(subscriptions, refreshed).joinToString(SEPARATOR), onUpdateAll),
         RvStatsTool(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_stats_export), stringResource(R.string.rv_stats_export_detail), onExport),
     )
 }

@@ -42,6 +42,7 @@ import dev.doona.android.designsystem.rv.RvUsageChart
 import dev.doona.android.designsystem.rv.RvUsageLegend
 import dev.doona.android.designsystem.rv.RvUsageSize
 import dev.doona.android.designsystem.rv.RvWorldMap
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvSplit
@@ -285,5 +286,4 @@ internal fun RvToolsCard(tools: List<RvStatsTool>) {
 /** A card's body under its header: the card's padding at the sides and the bottom. */
 internal val cardBody = Modifier.padding(start = RvStatsSpace.pad, end = RvStatsSpace.pad, bottom = RvStatsSpace.pad)
 
-private const val SEPARATOR = " · "
 private const val MS_PER_HOUR = 3_600_000L

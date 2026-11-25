@@ -40,6 +40,9 @@ class DoonaType {
     val cardValue = TypeScale.cardValue.style(tabular = true)
     val cardUnit = TypeScale.cardUnit.style()
     val pill = TypeScale.pill.style(tabular = true)
+
+    /** The value pill's step for a name in a chart's chip: no tabular figures, which would widen the hyphen of `hk-01`. */
+    val pillName = TypeScale.pill.style()
     val section = TypeScale.section.style()
     val statLabel = TypeScale.statLabel.style()
     val stat = TypeScale.stat.style(tabular = true)
