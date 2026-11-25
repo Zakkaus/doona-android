@@ -77,6 +77,6 @@
     <plurals name="rv_settings_per_app_except">
         <item quantity="other">不代理 %1$d 个应用</item>
     </plurals>
-    <string name="rv_lab_restart_hint">重开应用后生效</string>
-    <string name="rv_lab_restart">重开应用</string>
+    <string name="rv_lab_restart_hint">重启应用后生效</string>
+    <string name="rv_lab_restart">重启应用</string>
 </resources>
