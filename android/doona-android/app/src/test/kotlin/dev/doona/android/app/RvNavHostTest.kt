@@ -6,7 +6,10 @@ import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
+import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -78,6 +81,7 @@ class RvNavHostTest {
     @Composable
     private fun Page(name: String) {
         val id = rememberSaveable { ++serial }
+        rememberSaveable { "$SAVED$name;" }
         viewModel { Probe(name, cleared) }
         val entering = LocalRvTabEntry.current
         LaunchedEffect(Unit) { tabEntries += name to entering }
@@ -100,6 +104,18 @@ class RvNavHostTest {
     private fun onUi(block: () -> Unit) {
         compose.runOnIdle(block)
         compose.waitForIdle()
+    }
+
+    /**
+     * The app's saved state as the activity would save it now, through a registry this test owns: a page's saved state
+     * is in it while Navigation 3 keeps that state, and leaves it once the state is cleared.
+     */
+    private val registry = SaveableStateRegistry(null) { true }
+
+    private fun savesStateOf(name: String): Boolean {
+        var saved: Map<String, List<Any?>> = emptyMap()
+        compose.runOnIdle { saved = registry.performSave() }
+        return saved.holds("$SAVED$name;")
     }
 
     private fun shown(text: String) = compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().size
@@ -156,17 +172,22 @@ class RvNavHostTest {
 
     @Test
     fun aPagesStateAndViewModelsClearOnlyAfterItsExit() {
-        start(ActivityKey, PoliciesKey, GroupKey("g"))
+        compose.setContent { CompositionLocalProvider(LocalSaveableStateRegistry provides registry) { Host(listOf(ActivityKey, PoliciesKey, GroupKey("g"))) } }
+        compose.waitForIdle()
         val before = stateOf("group g")
+        assertTrue(savesStateOf("group g"))
         compose.mainClock.autoAdvance = false
         compose.runOnIdle { stack.pop(GroupKey("g")) }
-        frames(2)
+        // Well into the exit: past the frames before it starts, short of its end (PIPELINE_FRAMES + PUSH_FRAMES + 1).
+        frames(PUSH_FRAMES)
         assertEquals("the leaving page still shows", 1, shown("group g"))
         assertTrue("its ViewModel lives while it leaves", cleared.isEmpty())
+        assertTrue("and so does its saved state", savesStateOf("group g"))
 
         frames(SETTLE_FRAMES)
         assertEquals(0, shown("group g"))
         assertEquals("cleared once, after the exit", listOf("group g"), cleared)
+        assertFalse("its saved state went with it", savesStateOf("group g"))
 
         compose.mainClock.autoAdvance = true
         onUi { stack.push(GroupKey("g")) }
@@ -296,6 +317,15 @@ class RvNavHostTest {
     }
 }
 
+/** Whether [text] is anywhere in this saved state, which nests maps and lists. */
+private fun Any?.holds(text: String): Boolean = when (this) {
+    is String -> this == text
+    is Map<*, *> -> entries.any { (k, v) -> k.holds(text) || v.holds(text) }
+    is Iterable<*> -> any { it.holds(text) }
+    is Array<*> -> any { it.holds(text) }
+    else -> false
+}
+
 /** A ViewModel that records its page's [name] in [cleared] when Navigation 3 clears it. */
 private class Probe(val name: String, private val cleared: MutableList<String>) : ViewModel() {
     override fun onCleared() {
@@ -316,6 +346,7 @@ private const val SECOND_FRAMES = 60
 
 /** Long enough for any pop, or a cancelled one running back, to finish. */
 private const val SETTLE_FRAMES = 30
+private const val SAVED = "saved state of "
 private const val EDGE_X = 4f
 private const val EDGE_Y = 800f
 private const val HALF = 0.5f
