@@ -42,7 +42,6 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
-import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.feature.activity.RvActivityNotice
 import dev.doona.android.feature.activity.RvActivityRoutes
 import dev.doona.android.feature.activity.rvActivityBanner
@@ -530,7 +529,7 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
     }
 
     /** 活動 as the run has it at [second]: live while connected; otherwise its state with no rates and no history. */
-    fun activity(second: Int = this.second): ActivityUiState {
+    fun activity(second: Int = this.second): RvActivitySampleState {
         val live = rvSampleActivity(currentId, nodes, second)
         return if (status is Status.Running) live else live.copy(status = status, downRate = 0, upRate = 0, downHistory = emptyList(), upHistory = emptyList())
     }

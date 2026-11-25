@@ -9,15 +9,15 @@ import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
-import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.feature.activity.RvActivityNotice
+import dev.doona.android.prototype.rv.RvActivitySampleState
 import dev.doona.android.prototype.rv.rvIdleActivity
 
 /**
  * 活動 under a notice, disconnected in each: with no subscription there is no node or group; with every test failed the
  * node shows its failure; after the core stopped the status is [FailureReason.CoreStopped], which reads 未連線.
  */
-internal fun rvNoticeActivity(notice: RvActivityNotice): ActivityUiState {
+internal fun rvNoticeActivity(notice: RvActivityNotice): RvActivitySampleState {
     val idle = rvIdleActivity()
     return when (notice) {
         RvActivityNotice.NoSubscription -> idle.copy(outboundGroupId = null, outbound = null, node = null)

@@ -3,6 +3,7 @@ package dev.doona.android.prototype.rv
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.designsystem.rv.RvHeroSwipe
@@ -15,7 +16,6 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
-import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.feature.activity.RvActivityCards
 import dev.doona.android.feature.activity.RvActivityRoutes
 import dev.doona.android.feature.activity.RvActivityRule
@@ -30,16 +30,34 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 
 /**
- * 活動 connected, in main's [ActivityUiState] built from [RvData]: running since the session's start, Global through the
+ * 活動 as the sample keeps it, in engine terms (the old screen's state, which the page no longer takes): the status, the
+ * engine's mode, the group that carries Global traffic with the member it uses now, the node traffic ends on (null in
+ * Direct), and the second's rates with the minute's samples. [RvActivityScreenSample] turns it into the page's model.
+ */
+@Immutable
+internal data class RvActivitySampleState(
+    val status: Status = Status.Stopped,
+    val mode: Mode = Mode.Global,
+    val outboundGroupId: String? = null,
+    val outbound: String? = null,
+    val node: Member? = null,
+    val downRate: Long = 0,
+    val upRate: Long = 0,
+    val downHistory: List<Float> = emptyList(),
+    val upHistory: List<Float> = emptyList(),
+)
+
+/**
+ * 活動 connected, built from [RvData]: running since the session's start, Global through the
  * auto group to the [nodeId] node of [nodes], and the session's last minute, whose last second is the current rate; the
  * live sample moves that minute on by [second]s.
  */
-internal fun rvSampleActivity(nodeId: String = RvData.CURRENT_ID, nodes: List<RvNode> = RvData.nodes, second: Int = 0): ActivityUiState {
+internal fun rvSampleActivity(nodeId: String = RvData.CURRENT_ID, nodes: List<RvNode> = RvData.nodes, second: Int = 0): RvActivitySampleState {
     val session = RvData.session
     val node = nodes.first { it.id == nodeId }
     val down = session.minuteDown.movedOn(second)
     val up = session.minuteUp.movedOn(second)
-    return ActivityUiState(
+    return RvActivitySampleState(
         status = Status.Running(sinceEpochMs = session.startEpochMs),
         mode = Mode.Global,
         outboundGroupId = AUTO_GROUP_ID,
@@ -59,7 +77,7 @@ private fun List<Float>.movedOn(seconds: Int): List<Float> {
 }
 
 /** The same screen disconnected: no rates and no history. */
-internal fun rvIdleActivity(): ActivityUiState =
+internal fun rvIdleActivity(): RvActivitySampleState =
     rvSampleActivity().copy(status = Status.Stopped, downRate = 0, upRate = 0, downHistory = emptyList(), upHistory = emptyList())
 
 /** A group's id is `g-` plus its name. */
@@ -81,7 +99,7 @@ internal val rvSampleActivityCards = RvActivityCards(
 internal fun rvSampleRuleGroupId(name: Int): String = RvPolicyData.groups.firstOrNull { it.name == name }?.id ?: "rule-$name"
 
 /** [state] as the page reads it, in the [mode] the page shows. */
-private fun pageState(state: ActivityUiState, mode: RvRouteMode) = RvActivityState(
+private fun pageState(state: RvActivitySampleState, mode: RvRouteMode) = RvActivityState(
     status = state.status,
     mode = mode,
     node = state.node?.let { RvMainNode(it.id, it.name, it.latencyMs, it.failed) },
@@ -98,7 +116,7 @@ private fun pageState(state: ActivityUiState, mode: RvRouteMode) = RvActivitySta
  */
 @Composable
 internal fun RvActivityScreenSample(
-    state: ActivityUiState,
+    state: RvActivitySampleState,
     onAction: (ActivityAction) -> Unit,
     onConnect: () -> Unit,
     routes: RvActivityRoutes = rvSampleActivityRoutes(),

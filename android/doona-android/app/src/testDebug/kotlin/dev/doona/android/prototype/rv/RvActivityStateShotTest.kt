@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
-import dev.doona.android.feature.activity.ActivityUiState
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -60,7 +59,7 @@ class RvActivityStateShotTest {
 
     private fun direct() = rvSampleActivity().copy(mode = Mode.Direct)
 
-    private fun shot(name: String, state: ActivityUiState, dark: Boolean = false, fontScale: Float = 1f) {
+    private fun shot(name: String, state: RvActivitySampleState, dark: Boolean = false, fontScale: Float = 1f) {
         if (state.status == Status.Starting || state.status == Status.Stopping) rvAnimatorScale(0f)
         compose.rvShot(name, dark, fontScale = fontScale) { RvActivityScreenSample(state, onAction = {}, onConnect = {}) }
     }

@@ -49,18 +49,7 @@ class ActivityViewModel internal constructor(
     private val zone: () -> ZoneId,
     private val placeOf: (String) -> RvPlace,
 ) : ViewModel() {
-    constructor(engine: Engine) : this(engine, MutableStateFlow(false), Dispatchers.Default, System::currentTimeMillis, ZoneId::systemDefault, { RvPlace.Other })
-
-    private val error = MutableStateFlow<ErrorCode?>(null)
     private val failure = MutableStateFlow<RvActivityFailure?>(null)
-
-    private val catalogOld = combine(engine.groups, engine.subscriptions) { groups, subscriptions -> groups to subscriptions.isNotEmpty() }
-
-    /** The old 活動 screen's state; it goes with that screen when the RV page takes its route. */
-    val uiState: StateFlow<ActivityUiState> =
-        combine(engine.status, engine.traffic, engine.settings, catalogOld, error) { status, traffic, settings, (groups, subscribed), error ->
-            activityUiState(status, traffic, settings, groups, error, subscribed)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
 
     /** Today's usage, read now and every [USAGE_MS] for as long as it is collected; null until a read succeeds. */
     private val usage: Flow<Usage?> = flow {
@@ -101,17 +90,10 @@ class ActivityViewModel internal constructor(
     fun onAction(action: ActivityAction) {
         when (action) {
             ActivityAction.Disconnect -> engine.disconnect()
-
             is ActivityAction.SetMode -> attempt(RvActivityAttempt.SwitchMode, action) { engine.setMode(action.mode) }
-
             ActivityAction.TestLatency -> attempt(RvActivityAttempt.TestLatency, action) { engine.testLatency(null) }
-
             ActivityAction.Retry -> failure.value?.let { onAction(it.retry) }
-
-            ActivityAction.DismissError -> {
-                error.value = null
-                failure.value = null
-            }
+            ActivityAction.DismissError -> failure.value = null
         }
     }
 
@@ -119,20 +101,9 @@ class ActivityViewModel internal constructor(
     private fun attempt(kind: RvActivityAttempt, action: ActivityAction, call: suspend () -> Result<Unit>) {
         viewModelScope.launch {
             val code = call().exceptionOrNull()?.errorCode()
-            if (kind == RvActivityAttempt.SwitchMode) error.value = code
             failure.value = code?.let { RvActivityFailure(kind, it, action) }
         }
     }
-
-    /** The engine's flows are StateFlows, so the first frame already shows real values. */
-    private fun current() = activityUiState(
-        engine.status.value,
-        engine.traffic.value,
-        engine.settings.value,
-        engine.groups.value,
-        error.value,
-        engine.subscriptions.value.isNotEmpty(),
-    )
 
     /** Before the first mapping: the live status and mode over empty lists, shown as loading. */
     private fun initial(crashOffered: Boolean): RvActivityUi {
@@ -151,10 +122,6 @@ class ActivityViewModel internal constructor(
     companion object {
         /** How often 活動 reads today's usage while it is shown. */
         const val USAGE_MS = 5_000L
-
-        fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {
-            initializer { ActivityViewModel(engine) }
-        }
 
         /** 活動 with the crash offer it shows ([crashOffered]: `CrashOffer.offered`). */
         fun factory(engine: Engine, crashOffered: StateFlow<Boolean>): ViewModelProvider.Factory = viewModelFactory {

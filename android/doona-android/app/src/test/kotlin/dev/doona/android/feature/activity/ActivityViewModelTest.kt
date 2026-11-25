@@ -1,5 +1,6 @@
 package dev.doona.android.feature.activity
 
+import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -9,8 +10,10 @@ import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.feature.model.RvRouteMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -24,7 +27,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.ZoneOffset
 
+/** [ActivityViewModel]'s actions and its page state over [FakeEngine]. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActivityViewModelTest {
     @Before
@@ -33,20 +38,19 @@ class ActivityViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    /** `WhileSubscribed` only follows the engine while someone collects, as the screen does. */
-    private fun TestScope.collected(engine: Engine) = ActivityViewModel(engine).also { vm ->
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-    }
+    /** `WhileSubscribed` only follows the engine while someone collects, as the page does. */
+    private fun TestScope.collected(engine: Engine) =
+        ActivityViewModel(engine, MutableStateFlow(false), UnconfinedTestDispatcher(testScheduler), { 0L }, { ZoneOffset.UTC }, { RvPlace.Other }).also { vm ->
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.ui.collect {} }
+        }
 
     @Test
     fun `follows the engine and resolves the node through nested groups`() = runTest {
         val engine = FakeEngine()
         val vm = collected(engine)
         engine.connect()
-        val state = vm.uiState.value
+        val state = vm.ui.value.state
         assertEquals(Status.Running(sinceEpochMs = 0), state.status)
-        assertEquals("g-Proxy", state.outboundGroupId)
-        assertEquals("Auto", state.outbound)
         assertEquals("n-369a8a63c1d2e3f4", state.node?.id)
     }
 
@@ -55,28 +59,28 @@ class ActivityViewModelTest {
         val engine = FakeEngine(status = Status.Running(sinceEpochMs = 0))
         val vm = collected(engine)
         vm.onAction(ActivityAction.Disconnect)
-        assertEquals(Status.Stopped, vm.uiState.value.status)
+        assertEquals(Status.Stopped, vm.ui.value.state.status)
     }
 
     @Test
     fun `set mode changes the mode`() = runTest {
         val vm = collected(FakeEngine())
         vm.onAction(ActivityAction.SetMode(Mode.Direct))
-        assertEquals(Mode.Direct, vm.uiState.value.mode)
-        assertNull(vm.uiState.value.error)
+        assertEquals(RvRouteMode.Direct, vm.ui.value.state.mode)
+        assertNull(vm.ui.value.failure)
     }
 
     @Test
-    fun `a failed mode switch shows its code until dismissed`() = runTest {
+    fun `a failed mode switch shows its failure until dismissed`() = runTest {
         val engine = object : Engine by FakeEngine() {
             override suspend fun setMode(mode: Mode): Result<Unit> = Result.failure(EngineException(ErrorCode.Busy))
         }
         val vm = collected(engine)
         vm.onAction(ActivityAction.SetMode(Mode.Direct))
-        assertEquals(ErrorCode.Busy, vm.uiState.value.error)
-        assertEquals(Mode.Global, vm.uiState.value.mode)
+        assertEquals(ErrorCode.Busy, vm.ui.value.failure?.code)
+        assertEquals(RvRouteMode.Global, vm.ui.value.state.mode)
         vm.onAction(ActivityAction.DismissError)
-        assertNull(vm.uiState.value.error)
+        assertNull(vm.ui.value.failure)
     }
 
     @Test
@@ -89,25 +93,25 @@ class ActivityViewModelTest {
         }
         val vm = collected(engine)
         vm.onAction(ActivityAction.SetMode(Mode.Direct))
-        assertEquals(ErrorCode.Busy, vm.uiState.value.error)
+        assertEquals(ErrorCode.Busy, vm.ui.value.failure?.code)
         fail = false
         vm.onAction(ActivityAction.SetMode(Mode.Direct))
-        assertNull(vm.uiState.value.error)
-        assertEquals(Mode.Direct, vm.uiState.value.mode)
+        assertNull(vm.ui.value.failure)
+        assertEquals(RvRouteMode.Direct, vm.ui.value.state.mode)
     }
 
     @Test
     fun `direct mode shows no active node`() = runTest {
         val vm = collected(FakeEngine(status = Status.Running(sinceEpochMs = 0)))
         vm.onAction(ActivityAction.SetMode(Mode.Direct))
-        assertNull(vm.uiState.value.node)
+        assertNull(vm.ui.value.state.node)
     }
 
     @Test
     fun `rule mode keeps the node of the flows no rule matched until the policy page shows rules`() = runTest {
         val vm = collected(FakeEngine(status = Status.Running(sinceEpochMs = 0), mode = Mode.Rule))
-        assertEquals(Mode.Rule, vm.uiState.value.mode)
-        assertEquals("n-369a8a63c1d2e3f4", vm.uiState.value.node?.id)
+        assertEquals(RvRouteMode.Rule, vm.ui.value.state.mode)
+        assertEquals("n-369a8a63c1d2e3f4", vm.ui.value.state.node?.id)
     }
 
     @Test
@@ -115,16 +119,15 @@ class ActivityViewModelTest {
         val a = Group("g-A", "A", GroupKind.Selector, listOf(Member("g-B", "B", isGroup = true)), selectedId = "g-B")
         val b = Group("g-B", "B", GroupKind.Selector, listOf(Member("g-A", "A", isGroup = true)), selectedId = "g-A")
         val vm = collected(FakeEngine(groups = listOf(a, b), status = Status.Running(sinceEpochMs = 0)))
-        assertNull(vm.uiState.value.node)
-        assertEquals("B", vm.uiState.value.outbound)
+        assertNull(vm.ui.value.state.node)
     }
 
     @Test
-    fun `the screen knows whether a subscription exists to start from`() = runTest {
+    fun `the page knows whether a subscription exists to start from`() = runTest {
         val engine = FakeEngine()
         val vm = collected(engine)
-        assertTrue(vm.uiState.value.hasSubscriptions)
+        assertTrue(vm.ui.value.hasSubscriptions)
         engine.subscriptions.value = emptyList()
-        assertFalse(vm.uiState.value.hasSubscriptions)
+        assertFalse(vm.ui.value.hasSubscriptions)
     }
 }
