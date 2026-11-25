@@ -354,7 +354,7 @@ class ServiceEngine internal constructor(
     private suspend fun awaitRebuilt(generation: Long): Result<Unit> {
         val settled = controller.session.first { it.generation != generation || it.status != Status.Starting }
         val failed = settled.status as? Status.Failed
-        return if (settled.generation == generation && failed != null) Result.failure(RebuildFailedException(failed.reason)) else Result.success(Unit)
+        return if (settled.generation == generation && failed != null) Result.failure(RebuildFailedException(failed.reason, failed.code)) else Result.success(Unit)
     }
 
     /** A place in the queue of ordered commands: [before] is the call ahead, [done] is completed when this one's call has returned. */

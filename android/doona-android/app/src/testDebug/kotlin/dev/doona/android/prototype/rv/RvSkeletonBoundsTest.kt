@@ -24,11 +24,12 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
-import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppLook
-import dev.doona.android.prototype.rv.settings.RvPerAppScreen
+import dev.doona.android.prototype.rv.settings.RvPerAppLookScreen
+import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppLookSample
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.subs.RvSubsActions
@@ -70,8 +71,8 @@ internal fun RvSkeletonPage(page: String, loading: Boolean) {
         RvSkeletonPages.POLICY_GLOBAL -> RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Global), onChange = {}, loading = loading)
         RvSkeletonPages.POLICY_DIRECT -> RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}, loading = loading)
         RvSkeletonPages.SUBS -> RvSubsPage(rvSubsStateSample(), RvSubsActions(), loading = loading)
-        RvSkeletonPages.PER_APP_V1 -> RvPerAppScreen(rvPerAppLookSample(if (loading) "loading" else ""), RvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks)
-        else -> RvPerAppScreen(rvPerAppSample(if (loading) "loading" else ""), RvPerAppActions(), onBack = {})
+        RvSkeletonPages.PER_APP_V1 -> RvPerAppLookScreen(rvPerAppLookSample(if (loading) "loading" else ""), rvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks)
+        else -> RvPerAppScreen(rvPerAppSample(if (loading) "loading" else ""), rvPerAppActions(), onBack = {})
     }
 }
 

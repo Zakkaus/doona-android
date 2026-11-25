@@ -14,7 +14,6 @@ import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.PerApp
-import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Status
@@ -490,20 +489,6 @@ class ServiceEngineTest {
     }
 
     @Test
-    fun aSaveWhoseRebuildFailsIsStoredAndReportsWhy() = runBlocking {
-        engine.launch(Dispatchers.IO.limitedParallelism(1))
-        engine.connect()
-        assertTrue(engine.controller.start(StartHost(installed = emptySet()), requested.single()))
-        withTimeout(5_000) { engine.status.first { it is Status.Running } }
-
-        val saved = PerApp(AppPolicy.OnlyListed, setOf("gone"))
-        val failure = engine.setPerApp(saved).exceptionOrNull()
-        assertEquals(FailureReason.NoAllowedApps, (failure as RebuildFailedException).reason)
-        assertEquals("the policy was stored all the same", saved, engine.settings.value.perApp)
-        assertEquals(Status.Failed(FailureReason.NoAllowedApps), engine.status.value)
-    }
-
-    @Test
     fun aSaveWithNoTunnelToRebuildSucceedsAtOnce() = runBlocking {
         assertTrue(engine.setPerApp(PerApp(AppPolicy.ExceptListed, setOf("a"))).isSuccess)
     }
@@ -574,7 +559,7 @@ class ServiceEngineTest {
     }
 
     /** A host that builds a tun for any routing; [installed] are the packages the device has. */
-    private class StartHost(private val installed: Set<String>) : TunHost {
+    internal class StartHost(private val installed: Set<String>) : TunHost {
         override val selfPackage = "dev.doona.android"
 
         override fun installed(packages: Set<String>) = packages intersect installed

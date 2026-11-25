@@ -6,13 +6,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.InstalledApp
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
-import dev.doona.android.feature.errorCode
+import dev.doona.android.engine.Status
+import dev.doona.android.feature.model.RvAppPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,20 +22,56 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** What [PerAppViewModel] handles. */
+internal sealed interface PerAppAction {
+    data class SetPolicy(val policy: RvAppPolicy) : PerAppAction
+
+    data class Toggle(val packageName: String, val checked: Boolean) : PerAppAction
+
+    data class SetQuery(val query: String) : PerAppAction
+
+    data object Save : PerAppAction
+
+    /** 重試 on the rebuild notice: the notice goes, and the route asks to connect again. */
+    data object Reconnect : PerAppAction
+
+    /** 新增訂閱 on the rebuild notice of a start with no node to use: the notice goes, and the route opens 訂閱. */
+    data object AddSubscription : PerAppAction
+
+    /** 調整清單 on the rebuild notice when none of the listed apps is installed: the notice goes, and the list is there. */
+    data object EditList : PerAppAction
+
+    /** 檢查更新 on the rebuild notice of a core this doona does not match: the notice goes, and the route opens the releases. */
+    data object CheckUpdate : PerAppAction
+
+    /** 開啟 VPN 設定 on the rebuild notice of the system's lockdown: the notice goes, and the route opens the VPN settings. */
+    data object VpnSettings : PerAppAction
+
+    /** 重試 on the notice of apps the phone would not list: they are read again. */
+    data object Reload : PerAppAction
+
+    /** The page is shown again: the apps of the device may have changed while it was away. */
+    data object Resume : PerAppAction
+}
+
 /**
  * Edits stay here until [PerAppAction.Save] hands them to the engine in one `setPerApp`, so a half-made selection never
- * reaches a running tunnel, which a save rebuilds. The edits survive rotation with the ViewModel and are lost with
- * the page.
+ * reaches a running tunnel, which a save rebuilds. An edit made while a save runs stays for the next save. The edits
+ * survive rotation with the ViewModel and are lost with the page.
  */
-class PerAppViewModel(private val engine: Engine, private val installedApps: InstalledApps) : ViewModel() {
+internal class PerAppViewModel(private val engine: Engine, private val installedApps: InstalledApps) : ViewModel() {
     /** What the page holds beyond the engine's values and the device's apps. */
     private data class Local(
         /** The edits over the saved policy; null until the first edit, so the page follows the engine until then. */
         val draft: PerApp? = null,
         val query: String = "",
         val busy: Boolean = false,
-        val error: ErrorCode? = null,
-        val rebuildFailure: FailureReason? = null,
+        /** The last write failed: shown until a save succeeds or the edits come back to what is saved. */
+        val saveFailed: Boolean = false,
+        /** Why the tunnel did not come back after the last stored save, as the engine reported it. */
+        val rebuildFailure: Status.Failed? = null,
+        /** The first read of the apps failed; a later read that fails keeps the list it had instead. */
+        val readFailed: Boolean = false,
     )
 
     private val local = MutableStateFlow(Local())
@@ -46,26 +81,37 @@ class PerAppViewModel(private val engine: Engine, private val installedApps: Ins
     private var reading: Job? = null
     private var readAgain = false
 
-    val uiState: StateFlow<PerAppUiState> =
+    val uiState: StateFlow<RvPerAppState> =
         combine(engine.settings, engine.perAppLoaded, installed, local) { settings, loaded, apps, local ->
-            perAppUiState(settings.perApp, local.draft, apps, local.query, local.busy, local.error, loaded, local.rebuildFailure)
+            state(settings.perApp, loaded, apps, local)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
 
     fun onAction(action: PerAppAction) {
         when (action) {
-            is PerAppAction.SetPolicy -> edit { it.copy(policy = action.policy) }
+            is PerAppAction.SetPolicy -> edit { it.copy(policy = action.policy.toEngine()) }
+
             is PerAppAction.Toggle -> edit { it.copy(packages = if (action.checked) it.packages + action.packageName else it.packages - action.packageName) }
+
             is PerAppAction.SetQuery -> local.update { it.copy(query = action.query) }
+
             PerAppAction.Save -> save()
-            PerAppAction.DismissError -> local.update { it.copy(error = null, rebuildFailure = null) }
-            PerAppAction.Resume -> readApps()
+
+            PerAppAction.Reconnect, PerAppAction.AddSubscription, PerAppAction.EditList, PerAppAction.CheckUpdate, PerAppAction.VpnSettings ->
+                local.update { it.copy(rebuildFailure = null) }
+
+            PerAppAction.Reload, PerAppAction.Resume -> readApps()
         }
     }
 
     private fun edit(change: (PerApp) -> PerApp) {
         // Until the saved policy is read the engine shows the default, and a draft that starts from it would overwrite what was saved.
         if (!engine.perAppLoaded.value) return
-        local.update { it.copy(draft = change(it.draft ?: engine.settings.value.perApp)) }
+        val saved = engine.settings.value.perApp
+        local.update {
+            val draft = change(it.draft ?: saved)
+            // Back to what is saved, there is nothing left to write, so the failed write's notice goes with the draft.
+            if (draft == saved) it.copy(draft = null, saveFailed = false) else it.copy(draft = draft)
+        }
     }
 
     private fun save() {
@@ -78,8 +124,8 @@ class PerAppViewModel(private val engine: Engine, private val installedApps: Ins
             local.update {
                 it.copy(
                     busy = false,
-                    error = failure?.takeIf { rebuild == null }?.errorCode(),
-                    rebuildFailure = rebuild?.reason,
+                    saveFailed = failure != null && rebuild == null,
+                    rebuildFailure = rebuild?.let { Status.Failed(it.reason, it.code) },
                     // Stored, though the tunnel may not have come up with it. An edit made while the save ran stays; only
                     // an unchanged draft is dropped, so the page follows the engine again.
                     draft = if ((failure == null || rebuild != null) && it.draft == saving) null else it.draft,
@@ -107,22 +153,24 @@ class PerAppViewModel(private val engine: Engine, private val installedApps: Ins
     }
 
     /**
-     * A device that cannot list its apps keeps the list it had, so the page stays usable for the All policy. The error
-     * is shown only while nothing has loaded: after that a failed refresh would bring back a banner the user dismissed.
+     * A device that cannot list its apps keeps the list it had, so the page stays usable for every policy. The error is
+     * shown only while nothing has loaded, with 重試 to read again; after that a failed refresh says nothing new.
      */
     private suspend fun loadApps(): List<InstalledApp> = try {
-        installedApps.launchable()
+        installedApps.launchable().also { local.update { it.copy(readFailed = false) } }
     } catch (e: CancellationException) {
         throw e
-    } catch (e: Exception) {
-        if (installed.value == null) local.update { it.copy(error = e.errorCode()) }
+    } catch (_: Exception) {
+        // No read has succeeded yet: the page's empty list is only this failure's.
+        if (installed.value == null || local.value.readFailed) local.update { it.copy(readFailed = true) }
         installed.value.orEmpty()
     }
 
+    private fun state(saved: PerApp, loaded: Boolean, apps: List<InstalledApp>?, local: Local) =
+        rvPerAppState(saved, local.draft, apps, local.query, local.busy, local.saveFailed, loaded, local.rebuildFailure, local.readFailed)
+
     /** The engine's flows are StateFlows, so the first frame already shows real values. */
-    private fun current() = local.value.let {
-        perAppUiState(engine.settings.value.perApp, it.draft, installed.value, it.query, it.busy, it.error, engine.perAppLoaded.value, it.rebuildFailure)
-    }
+    private fun current() = state(engine.settings.value.perApp, engine.perAppLoaded.value, installed.value, local.value)
 
     companion object {
         fun factory(engine: Engine, installedApps: InstalledApps): ViewModelProvider.Factory = viewModelFactory {

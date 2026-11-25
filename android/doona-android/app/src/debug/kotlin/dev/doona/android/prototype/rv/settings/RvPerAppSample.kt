@@ -1,7 +1,24 @@
 package dev.doona.android.prototype.rv.settings
 
+import android.content.res.Configuration
+import androidx.annotation.StringRes
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.tooling.preview.Preview
+import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvPerApp
+import dev.doona.android.feature.perapp.RvApp
+import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.perapp.RvPerAppState
+import dev.doona.android.feature.perapp.RvSave
 
 /**
  * The sample's apps: generic names and packages, not a real phone's list, so the rows show the app disc's fallback
@@ -16,6 +33,13 @@ internal object RvPerAppData {
     private val checked = listOf("Browser", "Chat", "Drive", "Mail", "Maps", "News", "Photos", "Podcasts", "Reader", "Translate", "Video", "Weather")
 
     val saved = RvPerApp(RvAppPolicy.Only, checked.mapTo(mutableSetOf()) { PACKAGE + it.lowercase() })
+
+    /**
+     * Two apps the phone listed once and no longer has, and the list of only them that a save stored: the tunnel found
+     * none of it installed (`rebuild-no-apps`).
+     */
+    val removed = listOf("Bus", "Taxi").map { RvApp(it, PACKAGE + it.lowercase()) }
+    val gone = RvPerApp(RvAppPolicy.Only, removed.mapTo(mutableSetOf()) { it.packageName })
 
     /** The two apps the except sample keeps out of the tunnel. */
     val except = RvPerApp(RvAppPolicy.Except, setOf(PACKAGE + "camera", PACKAGE + "video"))
@@ -42,11 +66,14 @@ internal fun rvPerAppSample(name: String, saved: RvPerApp = RvPerAppData.saved):
         "except" -> rvPerAppStateSample(saved, draft = RvPerAppData.except)
         "search" -> rvPerAppStateSample(saved, query = RvPerAppData.QUERY)
         "no-result" -> rvPerAppStateSample(saved, query = RvPerAppData.QUERY_NONE)
-        "loading" -> RvPerAppState(saved, installed = null)
+        "loading" -> rvPerAppStateSample(saved, installed = null)
+        "no-apps" -> rvPerAppStateSample(saved, installed = emptyList())
         "none-selected" -> rvPerAppStateSample(saved, draft = RvPerApp(RvAppPolicy.Only, emptySet()))
         "saving" -> rvPerAppStateSample(saved, draft = RvPerAppData.except, save = RvSave.Saving)
         "save-failed" -> rvPerAppStateSample(saved, draft = RvPerAppData.except, save = RvSave.Failed)
         "rebuild-failed" -> rvPerAppStateSample(RvPerAppData.except, rebuildFailed = true)
+        "rebuild-no-apps" -> rvPerAppStateSample(RvPerAppData.gone, rebuildFailed = true, rebuildReason = R.string.vpn_failure_no_allowed_apps, rebuildFix = FailureFix.EditList)
+        "read-failed" -> rvPerAppStateSample(saved, installed = emptyList(), readFailed = true)
         else -> rvPerAppStateSample(saved)
     }
 }
@@ -61,7 +88,30 @@ internal fun rvPerAppLookSample(name: String): RvPerAppState {
 internal fun rvPerAppStateSample(
     saved: RvPerApp,
     draft: RvPerApp? = null,
+    installed: List<RvApp>? = RvPerAppData.apps,
     query: String = "",
     save: RvSave = RvSave.Idle,
     rebuildFailed: Boolean = false,
-) = RvPerAppState(saved, draft, RvPerAppData.apps, query, save, rebuildFailed)
+    @StringRes rebuildReason: Int = R.string.vpn_failure_start_failed,
+    rebuildFix: FailureFix = FailureFix.Retry,
+    readFailed: Boolean = false,
+) = RvPerAppState(saved, draft, installed, query, save, rebuildFailed, rebuildReason, rebuildFix, readFailed)
+
+/** The sample with [policy] chosen. */
+internal fun RvPerAppState.withPolicy(policy: RvAppPolicy) = editing { it.copy(policy = policy) }
+
+/** The sample with [packageName] checked or not. */
+internal fun RvPerAppState.withApp(packageName: String, checked: Boolean) = editing { it.copy(packages = if (checked) it.packages + packageName else it.packages - packageName) }
+
+/** An edit made while a save runs is kept for the next save, as the ViewModel keeps it. */
+private fun RvPerAppState.editing(change: (RvPerApp) -> RvPerApp): RvPerAppState = copy(draft = change(edited))
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun RvPerAppScreenPreview() {
+    val dark = isSystemInDarkTheme()
+    var state by remember { mutableStateOf(rvPerAppSample("")) }
+    val actions = rvPerAppActions(policy = { state = state.withPolicy(it) }, toggle = { pkg, on -> state = state.withApp(pkg, on) }, query = { state = state.copy(query = it) })
+    RvTheme(rvSystemScheme(dark), dark) { RvPerAppScreen(state, actions, onBack = {}) }
+}

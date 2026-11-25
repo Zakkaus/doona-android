@@ -49,6 +49,8 @@ import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
+import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.perapp.RvSave
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
@@ -67,10 +69,7 @@ import dev.doona.android.prototype.rv.settings.RvDnsScreen
 import dev.doona.android.prototype.rv.settings.RvLanguageScreen
 import dev.doona.android.prototype.rv.settings.RvLicenseText
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
-import dev.doona.android.prototype.rv.settings.RvPerAppActions
-import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvReportSample
-import dev.doona.android.prototype.rv.settings.RvSave
 import dev.doona.android.prototype.rv.settings.RvSettingsPreview
 import dev.doona.android.prototype.rv.settings.RvSettingsPreviewRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
@@ -79,12 +78,15 @@ import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.previewDark
 import dev.doona.android.prototype.rv.settings.rvLicenseEntries
+import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.rvSystemLanguage
 import dev.doona.android.prototype.rv.settings.rvUpdateSample
 import dev.doona.android.prototype.rv.settings.scheme
+import dev.doona.android.prototype.rv.settings.withApp
+import dev.doona.android.prototype.rv.settings.withPolicy
 import dev.doona.android.prototype.rv.states.RvActivityNotice
 import dev.doona.android.prototype.rv.states.RvPermission
 import dev.doona.android.prototype.rv.states.RvPermissionAsks
@@ -320,7 +322,7 @@ private fun PerAppPage(route: String, settings: RvSettingsState, onSettings: (Rv
         onSettings(settings.copy(perApp = state.edited))
         state = state.copy(saved = state.edited, draft = null, save = RvSave.Idle)
     }
-    val actions = RvPerAppActions(
+    val actions = rvPerAppActions(
         policy = { state = state.withPolicy(it) },
         toggle = { pkg, on -> state = state.withApp(pkg, on) },
         query = { state = state.copy(query = it) },

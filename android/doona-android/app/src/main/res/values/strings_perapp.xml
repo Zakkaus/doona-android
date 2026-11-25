@@ -4,18 +4,13 @@
     <string name="perapp_policy_all">All apps</string>
     <string name="perapp_policy_only">Only checked</string>
     <string name="perapp_policy_except">All but checked</string>
-    <string name="perapp_summary_all">Every app uses the VPN.</string>
-    <string name="perapp_summary_only">Only the checked apps use the VPN. The others connect directly.</string>
-    <string name="perapp_summary_except">The checked apps connect directly. The others use the VPN.</string>
-    <string name="perapp_needs_app">Check at least one app to save.</string>
     <string name="perapp_save">Save</string>
-    <string name="perapp_reconnect_note">When the VPN is connected, saving reconnects it and closes current connections.</string>
+    <string name="perapp_save_failed_reason">The setting was not saved. Try again.</string>
+    <string name="perapp_read_failed">Could not read the app list</string>
     <string name="perapp_search">Search apps</string>
     <string name="perapp_no_apps">No apps to check</string>
     <string name="perapp_no_apps_line">No app that opens from the home screen was found on this device.</string>
     <string name="perapp_no_match">No matching apps</string>
-    <string name="perapp_no_match_line">Try another keyword, or clear the search.</string>
-    <string name="perapp_rebuild_failed">Saved, but the VPN could not reconnect: %1$s</string>
     <string name="settings_subscriptions">Subscriptions</string>
     <string name="settings_version">Version</string>
 </resources>

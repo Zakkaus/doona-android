@@ -1,6 +1,9 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -13,7 +16,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
+import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.perapp.RvSave
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -35,11 +41,12 @@ import org.robolectric.annotation.GraphicsMode
  * 依 App (`proto-rv-perapp-*`), each state light, dark, fs115 and fs200, in the phone's first screen (the list runs on
  * under the floating 儲存): every app (`perapp`), only the checked ones as 設定 has it (`-only`), all but two, an edit
  * not yet saved (`-except`), a search two apps match (`-search`) and one none does (`-no-result`), the apps not yet
- * read (`-loading`), 只有勾選的 with nothing checked (`-none-selected`), a save under way (`-saving`), a failed one
- * (`-save-failed`), and one stored whose tunnel would not come back (`-rebuild-failed`). The busy states are recorded at
+ * read (`-loading`), a phone that lists no app (`-no-apps`), 只有勾選的 with nothing checked (`-none-selected`), a save under way (`-saving`), a failed one
+ * (`-save-failed`), one stored whose tunnel would not come back (`-rebuild-failed`) or found none of the listed apps
+ * installed (`-rebuild-no-apps`), and apps the phone would not list (`-read-failed`). The busy states are recorded at
  * animator scale 0, so the bar rests half full. Then what the page does: a policy row picks it, an app row toggles its
  * app, 儲存 takes only an edit that can be saved, the list and its search show only under a list policy, and the
- * notices' 重試 saves or reconnects again.
+ * notices' 重試 saves, reconnects or reads again, and 調整清單 only leaves the notice.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -99,6 +106,14 @@ class RvPerAppShotTest {
 
     @Test fun loadingFs200() = shot("loading", fontScale = RV_FS200)
 
+    @Test fun noAppsLight() = shot("no-apps", dark = false)
+
+    @Test fun noAppsDark() = shot("no-apps", dark = true)
+
+    @Test fun noAppsFs115() = shot("no-apps", fontScale = RV_FS115)
+
+    @Test fun noAppsFs200() = shot("no-apps", fontScale = RV_FS200)
+
     @Test fun noneSelectedLight() = shot("none-selected", dark = false)
 
     @Test fun noneSelectedDark() = shot("none-selected", dark = true)
@@ -131,10 +146,26 @@ class RvPerAppShotTest {
 
     @Test fun rebuildFailedFs200() = shot("rebuild-failed", fontScale = RV_FS200)
 
+    @Test fun rebuildNoAppsLight() = shot("rebuild-no-apps", dark = false)
+
+    @Test fun rebuildNoAppsDark() = shot("rebuild-no-apps", dark = true)
+
+    @Test fun rebuildNoAppsFs115() = shot("rebuild-no-apps", fontScale = RV_FS115)
+
+    @Test fun rebuildNoAppsFs200() = shot("rebuild-no-apps", fontScale = RV_FS200)
+
+    @Test fun readFailedLight() = shot("read-failed", dark = false)
+
+    @Test fun readFailedDark() = shot("read-failed", dark = true)
+
+    @Test fun readFailedFs115() = shot("read-failed", fontScale = RV_FS115)
+
+    @Test fun readFailedFs200() = shot("read-failed", fontScale = RV_FS200)
+
     @Test
     fun aPolicyRowPicksThePolicy() {
         var picked: RvAppPolicy? = null
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample(""), RvPerAppActions(policy = { picked = it }), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample(""), rvPerAppActions(policy = { picked = it }), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.perapp_policy_except)).performClick()
         assertEquals(RvAppPolicy.Except, picked)
     }
@@ -142,7 +173,7 @@ class RvPerAppShotTest {
     @Test
     fun anAppRowTogglesItsApp() {
         var toggled: Pair<String, Boolean>? = null
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample(""), RvPerAppActions(toggle = { pkg, on -> toggled = pkg to on }), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample(""), rvPerAppActions(toggle = { pkg, on -> toggled = pkg to on }), onBack = {}) } }
         // Chat is checked in 設定's sample, so a tap unchecks it.
         compose.onNodeWithText("Chat").performClick()
         assertEquals("com.example.chat" to false, toggled)
@@ -155,27 +186,27 @@ class RvPerAppShotTest {
             val state = rvPerAppSample(name)
             assertEquals("$name can be saved", enabled, state.canSave)
         }
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("except"), RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("except"), rvPerAppActions(), onBack = {}) } }
         compose.onNodeWithText(save).assertIsEnabled()
     }
 
     @Test
     fun nothingCheckedUnderOnlyCannotBeSaved() {
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("none-selected"), RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("none-selected"), rvPerAppActions(), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_perapp_needs_app)).assertExists()
         compose.onNodeWithText(rvText(R.string.perapp_save)).assertIsNotEnabled()
     }
 
     @Test
     fun theListAndItsSearchShowOnlyUnderAListPolicy() {
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("all"), RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("all"), rvPerAppActions(), onBack = {}) } }
         compose.onAllNodes(hasContentDescription(rvText(R.string.perapp_search))).assertCountEquals(0)
         compose.onAllNodesWithText("Browser").assertCountEquals(0)
     }
 
     @Test
     fun theSearchStandsOnThePageBetweenThePoliciesAndTheApps() {
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("only"), RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("only"), rvPerAppActions(), onBack = {}) } }
         val search = compose.onNode(hasContentDescription(rvText(R.string.perapp_search))).getUnclippedBoundsInRoot()
         val policies = compose.onNodeWithText(rvText(R.string.perapp_policy_except)).getUnclippedBoundsInRoot()
         val apps = compose.onNodeWithText("Browser").getUnclippedBoundsInRoot()
@@ -187,23 +218,16 @@ class RvPerAppShotTest {
     fun theSearchKeepsTheAppsItMatches() {
         val state = rvPerAppSample("search")
         assertEquals(listOf("Mail", "Maps"), state.shown.map { it.label })
-        compose.setContent { Themed { RvPerAppScreen(state, RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(state, rvPerAppActions(), onBack = {}) } }
         compose.onAllNodes(hasContentDescription(rvText(R.string.perapp_search))).assertCountEquals(1)
         compose.onAllNodes(hasText("Browser")).assertCountEquals(0)
-    }
-
-    @Test
-    fun aSaveUnderWayTakesNoEdit() {
-        val saving = rvPerAppSample("saving")
-        assertEquals(saving, saving.withPolicy(RvAppPolicy.All))
-        assertEquals(saving, saving.withApp("com.example.chat", true))
     }
 
     @Test
     fun theNoticesRetry() {
         var saves = 0
         var reconnects = 0
-        val actions = RvPerAppActions(save = { saves++ }, reconnect = { reconnects++ })
+        val actions = rvPerAppActions(save = { saves++ }, reconnect = { reconnects++ })
         compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("save-failed"), actions, onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_perapp_save_failed)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
@@ -214,14 +238,78 @@ class RvPerAppShotTest {
     @Test
     fun aRebuildFailureReconnects() {
         var reconnects = 0
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("rebuild-failed"), RvPerAppActions(reconnect = { reconnects++ }), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("rebuild-failed"), rvPerAppActions(reconnect = { reconnects++ }), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
         assertEquals(1, reconnects)
     }
 
+    @Test
+    fun onlyCheckedWithNothingCheckedAsksForAnAppOnlyWhenThePhoneListsSome() {
+        var state by mutableStateOf(rvPerAppSample("none-selected"))
+        compose.setContent { Themed { RvPerAppScreen(state, rvPerAppActions(), onBack = {}) } }
+        compose.onNodeWithText(rvText(R.string.rv_perapp_needs_app)).assertExists()
+
+        state = rvPerAppSample("no-apps")
+        compose.waitForIdle()
+        assertTrue("only checked, with nothing it could check", state.needsApp && !state.canSave)
+        compose.onNodeWithText(rvText(R.string.rv_perapp_needs_app)).assertDoesNotExist()
+        compose.onNodeWithText(rvText(R.string.perapp_no_apps)).assertExists()
+    }
+
+    @Test
+    fun aRebuildThatFoundNoListedAppAsksForTheListNotARetry() {
+        var reconnects = 0
+        var edits = 0
+        val actions = rvPerAppActions(reconnect = { reconnects++ }, editList = { edits++ })
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("rebuild-no-apps"), actions, onBack = {}) } }
+        compose.onNodeWithText(rvText(R.string.vpn_failure_no_allowed_apps)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
+        compose.onNodeWithText(rvText(R.string.rv_edit_app_list)).performClick()
+        assertEquals(1, edits)
+        assertEquals(0, reconnects)
+    }
+
+    @Test
+    fun aRebuildWithNoNodeToUseAsksForASubscriptionNotARetry() = rebuildFix(FailureFix.AddSubscription, R.string.first_no_nodes)
+
+    @Test
+    fun aRebuildTheCoreRefusedAsksForAnUpdateNotARetry() = rebuildFix(FailureFix.CheckUpdate, R.string.vpn_failure_incompatible_core)
+
+    @Test
+    fun aRebuildTheLockdownRefusedOpensTheVpnSettingsNotARetry() = rebuildFix(FailureFix.VpnSettings, R.string.vpn_failure_lockdown_enabled)
+
+    /** The rebuild notice for [fix]: [reason] over [fix]'s action, no 重試, and its action runs alone. */
+    private fun rebuildFix(fix: FailureFix, reason: Int) {
+        val ran = mutableListOf<String>()
+        val actions = rvPerAppActions(
+            reconnect = { ran += "reconnect" },
+            addSubscription = { ran += "addSubscription" },
+            editList = { ran += "editList" },
+            checkUpdate = { ran += "checkUpdate" },
+            vpnSettings = { ran += "vpnSettings" },
+        )
+        val state = rvPerAppSample("rebuild-failed").copy(rebuildReason = reason, rebuildFix = fix)
+        compose.setContent { Themed { RvPerAppScreen(state, actions, onBack = {}) } }
+        compose.onNodeWithText(rvText(reason)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
+        compose.onNodeWithText(rvText(fix.label)).performClick()
+        assertEquals(listOf(fix.name.replaceFirstChar(Char::lowercase)), ran)
+    }
+
+    @Test
+    fun appsThePhoneWouldNotListAreReadAgainAndNotCalledNone() {
+        var reloads = 0
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("read-failed"), rvPerAppActions(reload = { reloads++ }), onBack = {}) } }
+        compose.onNodeWithText(rvText(R.string.perapp_no_apps)).assertDoesNotExist()
+        compose.onNodeWithText(rvText(R.string.perapp_read_failed)).assertExists()
+        compose.onAllNodes(hasContentDescription(rvText(R.string.perapp_search))).assertCountEquals(0)
+        compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
+        assertEquals(1, reloads)
+    }
+
     private fun shot(state: String, name: String = "perapp-$state", dark: Boolean = false, fontScale: Float = 1f) {
         if (state == "saving" || state == "loading") rvAnimatorScale(0f)
-        compose.rvShot(name, dark, fontScale = fontScale) { RvPerAppScreen(rvPerAppSample(state), RvPerAppActions(), onBack = {}) }
+        compose.rvShot(name, dark, fontScale = fontScale) { RvPerAppScreen(rvPerAppSample(state), rvPerAppActions(), onBack = {}) }
     }
 
     @Composable

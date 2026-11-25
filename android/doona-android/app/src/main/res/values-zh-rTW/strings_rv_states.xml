@@ -28,6 +28,7 @@
     <string name="rv_lan_denied_title">未允許存取區域網路</string>
     <string name="rv_lan_denied_body">無法存取區域網路上的訂閱與節點。請在 App 設定中允許 doona 存取區域網路。</string>
     <string name="rv_lan_open_settings">開啟設定</string>
+    <string name="rv_open_vpn_settings">開啟 VPN 設定</string>
     <string name="rv_perm_vpn_title">允許建立 VPN</string>
     <string name="rv_perm_vpn_body">App 的流量要先交給 doona 的 VPN，才能依規則經由節點或直連。</string>
     <string name="rv_perm_notify_title">允許通知</string>

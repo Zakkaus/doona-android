@@ -59,7 +59,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
                 entry<SettingsKey> {
                     SettingsRoute(engine, "", onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
                 }
-                entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
+                entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onConnect = {}, onAddSubscription = {}, onCheckUpdate = {}, onBack = { backStack.pop(key) }) }
             },
         )
     }

@@ -54,6 +54,6 @@ class RvPerAppV1StateShotTest {
 
     private fun shot(state: String, dark: Boolean) {
         if (state == "loading") rvAnimatorScale(0f)
-        compose.rvShot("perapp-v1-$state", dark) { RvPerAppScreen(rvPerAppLookSample(state), RvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks) }
+        compose.rvShot("perapp-v1-$state", dark) { RvPerAppLookScreen(rvPerAppLookSample(state), rvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks) }
     }
 }
