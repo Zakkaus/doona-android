@@ -1,6 +1,8 @@
+mod budget;
+
 use std::collections::{HashMap, HashSet};
-use std::fs::{self, File};
-use std::io::{self, Read};
+use std::fs;
+use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
@@ -42,7 +44,10 @@ fn invalid(source: &SourceRef, code: &'static str, message: &'static str) -> Hon
 pub(super) struct Tree {
     pub entry: PathBuf,
     pub files: Files,
+    /// Every symlink under the root. Confinement refuses each one; none is followed.
     pub links: HashSet<PathBuf>,
+    /// Symlinks a staged copy recreates so the copy reports the same escapes.
+    pub kept: HashSet<PathBuf>,
 }
 
 pub(super) fn is_honk_source(path: &Path) -> bool {
@@ -64,7 +69,7 @@ impl Tree {
         let entry = root.join(path.file_name().unwrap());
         let mut files = Files::new();
         let mut links = HashSet::new();
-        let mut bytes = LIMITS.max_bytes;
+        let mut batch = budget::Batch::after(&files);
         let mut dirs = vec![root];
         while let Some(dir) = dirs.pop() {
             for item in fs::read_dir(dir).map_err(|e| io_error(e, &source))? {
@@ -84,10 +89,10 @@ impl Tree {
                 if !is_honk_source(&path) {
                     continue;
                 }
-                let text = read_source(&path, &mut bytes, files.len(), kind.is_file())?;
-                files.insert(path, text);
+                batch.file(path, kind.is_file())?;
             }
         }
+        batch.finish(&mut files)?;
         if !files.contains_key(&entry) {
             return Err(io_error(io::ErrorKind::NotFound.into(), &source));
         }
@@ -95,7 +100,15 @@ impl Tree {
             entry,
             files,
             links,
+            kept: HashSet::new(),
         })
+    }
+
+    /// Refuse YAML, TOML or JSON renamed to `.dae` at import. A draft edited into such
+    /// text stays editable; checking it returns the same refusal.
+    pub(super) fn foreign_entry(&self) -> bool {
+        let reference = DiagnosticSources::new(Some(self.entry.clone())).root();
+        foreign(&self.files[&self.entry], &reference)
     }
 
     pub(super) fn parse(&self) -> Result<Parsed<'_>, HonkConfigError> {
@@ -141,33 +154,42 @@ impl Tree {
         Ok((parsed.loaded, parsed.diagnostics))
     }
 
-    /// Without a parse, import keeps only `.dae` files. After repair, re-import to pick up hosts files.
+    /// A malformed honk draft keeps its sources and every symlink; only a successful parse
+    /// identifies companions and the symlinks its includes and hosts name.
     pub(super) fn capture_companions(
         &mut self,
         edit: Option<(&Path, &str)>,
     ) -> Result<(), StoreError> {
-        if let Ok(parsed) = self.parse() {
-            if !self.links.is_empty() {
-                let includes = parsed
-                    .loaded
-                    .sources
-                    .iter()
-                    .filter_map(|s| parsed.prepared.get(s.path.as_path()))
-                    .flat_map(|p| &p.escapes)
-                    .filter_map(|e| e.link.as_deref());
-                let hosts = parsed.loaded.config.dns.hosts.iter().filter_map(|p| {
-                    confined(self.entry.parent().unwrap(), Path::new(p), &self.links)
-                        .err()
-                        .flatten()
-                });
-                if let Some(link) = includes.chain(hosts).next() {
-                    return Err(StoreError::ImportSymlink(link.into()));
-                }
-            }
-            let companions = self.read_companions(&parsed.loaded.config, edit)?;
-            self.files.extend(companions);
-        }
+        let Ok(parsed) = self.parse() else {
+            self.kept = self.links.clone();
+            return Ok(());
+        };
+        let mut kept = self.hosts_links(&parsed.loaded.config);
+        kept.extend(
+            parsed
+                .loaded
+                .sources
+                .iter()
+                .filter_map(|s| parsed.prepared.get(s.path.as_path()))
+                .flat_map(|p| &p.escapes)
+                .filter_map(|e| e.link.clone()),
+        );
+        let companions = self.read_companions(&parsed.loaded.config, edit)?;
+        self.files.extend(companions);
+        self.kept = kept;
         Ok(())
+    }
+
+    /// Symlinks named by `use_host`; each is a located escape, never a companion.
+    pub(super) fn hosts_links(&self, config: &Config) -> HashSet<PathBuf> {
+        let root = self.entry.parent().unwrap();
+        config
+            .dns
+            .hosts
+            .iter()
+            .filter_map(|p| confined(root, Path::new(p), &self.links).err().flatten())
+            .map(Path::to_owned)
+            .collect()
     }
 
     pub(super) fn load(&self) -> Result<(HonkConfig, Files), HonkConfigError> {
@@ -184,8 +206,7 @@ impl Tree {
     ) -> Result<Files, HonkConfigError> {
         let root = self.entry.parent().unwrap();
         let mut companions = Files::new();
-        let mut remaining = LIMITS.max_bytes - self.files.values().map(|s| s.len()).sum::<usize>();
-        let mut count = self.files.len();
+        let mut batch = budget::Batch::after(&self.files);
         for name in &config.dns.hosts {
             let Ok(path) = confined(root, Path::new(name), &self.links) else {
                 continue;
@@ -194,23 +215,16 @@ impl Tree {
                 companions.insert(path, text.clone());
                 continue;
             }
-            if companions.contains_key(&path) {
+            if batch.contains(&path) {
                 continue;
             }
-            let replacement = edit.filter(|(p, _)| *p == path);
-            if replacement.is_none() && !path.is_file() {
-                continue;
+            if let Some((_, text)) = edit.filter(|(p, _)| *p == path) {
+                batch.edit(path, text)?;
+            } else if path.is_file() {
+                batch.file(path, true)?;
             }
-            let text = if let Some((_, text)) = replacement {
-                let value = bounded_text(text, remaining, count)?;
-                remaining -= text.len();
-                value
-            } else {
-                read_source(&path, &mut remaining, count, true)?
-            };
-            companions.insert(path, text);
-            count += 1;
         }
+        batch.finish(&mut companions)?;
         Ok(companions)
     }
 }
@@ -224,44 +238,6 @@ pub(super) fn bounded_text(
         return Err(HonkConfigError::SourceLimit);
     }
     Ok(Arc::from(text))
-}
-
-fn read_source(
-    path: &Path,
-    remaining: &mut usize,
-    count: usize,
-    regular: bool,
-) -> Result<Arc<str>, HonkConfigError> {
-    if count == LIMITS.max_sources {
-        return Err(HonkConfigError::SourceLimit);
-    }
-    let source = &DiagnosticSources::new(Some(path.into())).root();
-    if !regular {
-        return Err(invalid(
-            source,
-            "invalid-config-source",
-            "configuration source must be a regular file",
-        ));
-    }
-    let file = File::open(path).map_err(|e| io_error(e, source))?;
-    let size = file.metadata().map_err(|e| io_error(e, source))?.len();
-    if size > *remaining as u64 {
-        return Err(HonkConfigError::SourceLimit);
-    }
-    let mut bytes = Vec::with_capacity(size as usize);
-    file.take(*remaining as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|e| io_error(e, source))?;
-    *remaining = remaining
-        .checked_sub(bytes.len())
-        .ok_or(HonkConfigError::SourceLimit)?;
-    String::from_utf8(bytes).map(Arc::from).map_err(|_| {
-        invalid(
-            source,
-            "invalid-config-encoding",
-            "configuration source must be UTF-8",
-        )
-    })
 }
 
 /// Check components before normalization so `link/../name` cannot bypass link refusal.
@@ -409,15 +385,10 @@ fn prepare<'a>(
     let mut overlay = Files::new();
     let mut prepared = HashMap::new();
     for (label, text) in inputs {
-        let parsed = Document::parse(Source::new(text, reference.clone()), &mut Vec::new());
-        if label == entry
-            && structured(text)
-            && !parsed
-                .as_ref()
-                .is_ok_and(|doc| doc.sections().any(|s| Root::parse(s.header()).is_some()))
-        {
+        if label == entry && foreign(text, reference) {
             return Err(HonkConfigError::NonNativeSource);
         }
+        let parsed = Document::parse(Source::new(text, reference.clone()), &mut Vec::new());
         let mut input = text.clone();
         if let Ok(doc) = parsed {
             let escapes = escapes(&doc, root, links);
@@ -506,6 +477,12 @@ fn admit(
         diagnostics,
         unsupported,
     })
+}
+
+fn foreign(text: &str, reference: &SourceRef) -> bool {
+    structured(text)
+        && !Document::parse(Source::new(text, reference.clone()), &mut Vec::new())
+            .is_ok_and(|doc| doc.sections().any(|s| Root::parse(s.header()).is_some()))
 }
 
 fn structured(text: &str) -> bool {
