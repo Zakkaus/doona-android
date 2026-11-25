@@ -69,7 +69,15 @@ internal object RvSampleNodes {
     private fun buildGroups(): List<Group> {
         val members = samples.mapIndexed { index, sample ->
             val latency = sample.info.tests.last().ms
-            Member(sample.info.id, sample.name, latency, failed = latency == null, subscriptionId = if (index % 3 == 2) "s2" else "s1")
+            Member(
+                sample.info.id,
+                sample.name,
+                latency,
+                failed = latency == null,
+                subscriptionId = if (index % 3 == 2) "s2" else "s1",
+                // As the core reads it from the name: each sample host starts with its ISO code.
+                region = sample.host.take(2).uppercase(),
+            )
         }
         val byRegion = samples.indices.groupBy({ samples[it].host.take(2).uppercase() }, { members[it] })
         fun regions(vararg codes: String) = codes.flatMap(byRegion::getValue)

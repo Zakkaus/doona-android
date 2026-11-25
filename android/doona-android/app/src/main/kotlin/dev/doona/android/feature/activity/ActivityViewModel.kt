@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.NodeInfo
@@ -24,6 +23,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -46,7 +46,8 @@ class ActivityViewModel internal constructor(
     work: CoroutineDispatcher,
     private val clock: () -> Long,
     private val zone: () -> ZoneId,
-    private val placeOf: (String) -> RvPlace,
+    online: Flow<Boolean> = flowOf(true),
+    refusals: ConnectRefusals = ConnectRefusals(),
 ) : ViewModel() {
     private val failure = MutableStateFlow<RvActivityFailure?>(null)
 
@@ -74,7 +75,7 @@ class ActivityViewModel internal constructor(
             engine.catalog.mapLatest { catalog ->
                 val ids = catalog?.let(::leafIds).orEmpty()
                 if (ids.isNotEmpty()) engine.nodes(ids).getOrNull()?.let { read -> info = read.associateBy { it.id } }
-                CatalogNodes(catalog, activityNodes(catalog, info, placeOf))
+                CatalogNodes(catalog, activityNodes(catalog, info))
             },
         )
     }
@@ -93,11 +94,13 @@ class ActivityViewModel internal constructor(
             activityCatalog(ActivityData(catalog, inputs.settings, inputs.usage, resolved, inputs.yesterdayByNow ?: 0L, now, hourOf(now, zone())), inputs.mapped.nodes)
         }.flowOn(work)
 
-    private val flags = combine(engine.ready, crashOffered, failure) { ready, crash, failed -> Flags(ready, crash, failed) }
+    private val signals = combine(online, refusals.vpn, refusals.notifications, ::ActivitySignals)
+
+    private val flags = combine(engine.ready, crashOffered, failure, signals) { ready, crash, failed, signals -> Flags(ready, crash, failed, signals) }
 
     internal val ui: StateFlow<RvActivityUi> =
         combine(lists, engine.status, engine.traffic, flags) { lists, status, traffic, flags ->
-            activityModel(lists, status, traffic, flags.crash, flags.ready, flags.failure)
+            activityModel(lists, status, traffic, flags.crash, flags.ready, flags.failure, flags.signals)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial(crashOffered.value))
 
     fun onAction(action: ActivityAction) {
@@ -131,15 +134,18 @@ class ActivityViewModel internal constructor(
 
     private class ActivityInputs(val mapped: CatalogNodes, val settings: Settings, val yesterdayByNow: Long?, val usage: Usage?)
 
-    private class Flags(val ready: Boolean, val crash: Boolean, val failure: RvActivityFailure?)
+    private class Flags(val ready: Boolean, val crash: Boolean, val failure: RvActivityFailure?, val signals: ActivitySignals)
 
     companion object {
         /** How often 活動 reads today's usage while it is shown. */
         const val USAGE_MS = 5_000L
 
-        /** 活動 with the crash offer it shows ([crashOffered]: `CrashOffer.offered`). */
-        fun factory(engine: Engine, crashOffered: StateFlow<Boolean>): ViewModelProvider.Factory = viewModelFactory {
-            initializer { ActivityViewModel(engine, crashOffered, Dispatchers.Default, System::currentTimeMillis, ZoneId::systemDefault, { RvPlace.Other }) }
+        /**
+         * 活動 with the crash offer it shows ([crashOffered]: `CrashOffer.offered`), whether a network is up ([online],
+         * already steadied by [steadyOnline]) and what the user refused on the way to connecting ([refusals]).
+         */
+        fun factory(engine: Engine, crashOffered: StateFlow<Boolean>, online: Flow<Boolean>, refusals: ConnectRefusals): ViewModelProvider.Factory = viewModelFactory {
+            initializer { ActivityViewModel(engine, crashOffered, Dispatchers.Default, System::currentTimeMillis, ZoneId::systemDefault, online, refusals) }
         }
     }
 }

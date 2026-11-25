@@ -1,16 +1,17 @@
 package dev.doona.android.feature.activity
 
-import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.RuleBytes
 import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.RuleRow
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.Status
 import dev.doona.android.engine.Usage
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeRuleMode
@@ -18,8 +19,10 @@ import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvRouteMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -50,8 +53,17 @@ class ActivityRvViewModelTest {
         var connects = 0
         var usageReads = 0
         var ruleReads = 0
+        var nodeReads = 0
         var failMode: ErrorCode? = null
         var failTest: ErrorCode? = null
+
+        /** When true, every later node read fails. */
+        var failNodes = false
+
+        override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> {
+            nodeReads++
+            return if (failNodes) Result.failure(EngineException(ErrorCode.Internal)) else fake.nodes(ids)
+        }
 
         override fun connect() {
             connects++
@@ -75,14 +87,12 @@ class ActivityRvViewModelTest {
         override suspend fun testLatency(groupId: String?): Result<Unit> = failTest?.let { Result.failure(EngineException(it)) } ?: fake.testLatency(groupId)
     }
 
-    private fun TestScope.model(engine: Engine, crash: Boolean = false) = ActivityViewModel(
-        engine,
-        MutableStateFlow(crash),
-        UnconfinedTestDispatcher(testScheduler),
-        { NOW },
-        { ZoneOffset.UTC },
-        { RvPlace.Other },
-    )
+    private fun TestScope.model(
+        engine: Engine,
+        crash: Boolean = false,
+        online: Flow<Boolean> = flowOf(true),
+        refusals: ConnectRefusals = ConnectRefusals(),
+    ) = ActivityViewModel(engine, MutableStateFlow(crash), UnconfinedTestDispatcher(testScheduler), { NOW }, { ZoneOffset.UTC }, online, refusals)
 
     private fun TestScope.collected(vm: ActivityViewModel) = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.ui.collect {} }
 
@@ -152,17 +162,46 @@ class ActivityRvViewModelTest {
     @Test
     fun `nodes are mapped once per catalog, not on each usage read`() = runTest {
         val engine = Recording(rvSampleEngine())
-        var placed = 0
-        val vm = ActivityViewModel(engine, MutableStateFlow(false), UnconfinedTestDispatcher(testScheduler), { NOW }, { ZoneOffset.UTC }, {
-            placed++
-            RvPlace.Other
-        })
+        val vm = model(engine)
         collected(vm)
-        // One mapping places each node once.
-        assertEquals(vm.ui.value.nodes.size, placed)
+        // One catalog: its nodes are read and mapped once.
+        assertEquals(1, engine.nodeReads)
         advanceTimeBy(ActivityViewModel.USAGE_MS * 3 + 1)
         assertEquals(4, engine.usageReads)
-        assertEquals(vm.ui.value.nodes.size, placed)
+        assertEquals(1, engine.nodeReads)
+    }
+
+    @Test
+    fun `a failed node read keeps the last nodes`() = runTest {
+        val fake = rvSampleEngine()
+        val engine = Recording(fake)
+        val vm = model(engine)
+        collected(vm)
+        val read = vm.ui.value.nodes.associate { it.id to it.host }
+        assertTrue(read.values.all { it.isNotEmpty() })
+        engine.failNodes = true
+        // A new catalog revision: the same nodes under another order of groups.
+        fake.groups.value = fake.groups.value.reversed()
+        assertEquals(2, engine.nodeReads)
+        // Each node keeps the endpoint the last good read gave it.
+        assertEquals(read, vm.ui.value.nodes.associate { it.id to it.host })
+    }
+
+    @Test
+    fun `no network shows the offline notice, and a refused consent comes first while not connected`() = runTest {
+        val online = MutableStateFlow(false)
+        val refusals = ConnectRefusals()
+        val engine = rvSampleEngine().apply { status.value = Status.Stopped }
+        val vm = model(engine, online = online, refusals = refusals)
+        collected(vm)
+        assertEquals(RvActivityNotice.Offline, vm.ui.value.notice)
+        refusals.vpn.value = true
+        assertEquals(RvActivityNotice.ConsentDenied, vm.ui.value.notice)
+        refusals.vpn.value = false
+        online.value = true
+        assertNull(vm.ui.value.notice)
+        refusals.notifications.value = true
+        assertEquals(RvActivityNotice.NotifyDenied, vm.ui.value.notice)
     }
 
     @Test

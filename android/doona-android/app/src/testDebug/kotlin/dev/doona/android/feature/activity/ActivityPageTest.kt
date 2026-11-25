@@ -4,7 +4,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
-import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -39,7 +38,7 @@ class ActivityPageTest {
     private var connects = 0
 
     private fun show(engine: FakeEngine) {
-        val model = ActivityViewModel(engine, MutableStateFlow(false), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
+        val model = ActivityViewModel(engine, MutableStateFlow(false), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC })
         compose.rvContent(dark = false) { ActivityPage(model, crash = null, onConnect = { connects++ }, routes = activityTestRoutes(opened)) }
     }
 
@@ -76,7 +75,7 @@ class ActivityPageTest {
                 return Result.failure(EngineException(ErrorCode.Busy))
             }
         }
-        val model = ActivityViewModel(counted, MutableStateFlow(false), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
+        val model = ActivityViewModel(counted, MutableStateFlow(false), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC })
         compose.rvContent(dark = false) { ActivityPage(model, crash = null, onConnect = {}, routes = activityTestRoutes(opened)) }
         model.onAction(ActivityAction.TestLatency)
         compose.waitForIdle()
@@ -91,7 +90,7 @@ class ActivityPageTest {
         val engine = object : Engine by rvSampleEngine() {
             override suspend fun testLatency(groupId: String?): Result<Unit> = if (failing) Result.failure(EngineException(ErrorCode.Busy)) else Result.success(Unit)
         }
-        val model = ActivityViewModel(engine, MutableStateFlow(true), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
+        val model = ActivityViewModel(engine, MutableStateFlow(true), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC })
         val shown = AtomicInteger()
         val dismissed = AtomicInteger()
         // The failure stands before the page's first frame, so its banner holds the notice's place from the start.

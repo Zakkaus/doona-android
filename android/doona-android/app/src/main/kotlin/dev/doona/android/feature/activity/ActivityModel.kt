@@ -69,12 +69,12 @@ internal class ActivityNodes(val nodes: List<RvNode>, val allFailed: Boolean) {
 
 /**
  * [catalog]'s nodes, each with its endpoint and tests from [nodeInfo] or, before they are read, its member's last
- * result, and its place: the region the core reads from its name ([Member.region]), else [placeOf] by its name.
+ * result, and its place: the region the core reads from its name ([Member.region]), else [RvPlace.Other].
  */
-internal fun activityNodes(catalog: Catalog?, nodeInfo: Map<String, NodeInfo>, placeOf: (String) -> RvPlace = { RvPlace.Other }): ActivityNodes {
+internal fun activityNodes(catalog: Catalog?, nodeInfo: Map<String, NodeInfo>): ActivityNodes {
     val subscriptionNames = catalog?.subscriptions.orEmpty().associate { it.id to it.name }
     val members = catalog?.groups.orEmpty().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }
-    return ActivityNodes(members.map { rvNode(it, nodeInfo[it.id], subscriptionNames, placeOf) }, allFailed = members.isNotEmpty() && members.all { it.failed })
+    return ActivityNodes(members.map { rvNode(it, nodeInfo[it.id], subscriptionNames) }, allFailed = members.isNotEmpty() && members.all { it.failed })
 }
 
 /**
@@ -113,7 +113,7 @@ internal fun activityCatalog(data: ActivityData, catalogNodes: ActivityNodes = a
 
 /**
  * 活動 as the page draws it: [catalog]'s lists under the live [status] and [traffic], with the one notice that applies
- * ([activityNotice]) and a failed action's [failure].
+ * ([activityNotice], from the engine and the [signals] from outside it) and a failed action's [failure].
  */
 internal fun activityModel(
     catalog: ActivityCatalog,
@@ -122,6 +122,7 @@ internal fun activityModel(
     crashOffered: Boolean,
     ready: Boolean,
     failure: RvActivityFailure?,
+    signals: ActivitySignals = ActivitySignals(),
 ): RvActivityUi {
     val loading = !ready || !catalog.mapped
     val state = RvActivityState(
@@ -139,7 +140,7 @@ internal fun activityModel(
         subscriptions = catalog.subscriptions,
         rules = catalog.rules,
         cards = catalog.cards,
-        notice = if (loading) null else activityNotice(catalog.hasSubscriptions, status, crashOffered, catalog.allFailed),
+        notice = if (loading) null else activityNotice(catalog.hasSubscriptions, status, crashOffered, catalog.allFailed, signals),
         failure = failure,
         loading = loading,
         hasSubscriptions = catalog.hasSubscriptions,
@@ -147,15 +148,25 @@ internal fun activityModel(
 }
 
 /**
- * The one notice 活動 shows, the first that applies: no subscription (the page's empty state); a failed start or a
- * stopped tunnel by its reason (a start the system refused because another app keeps the VPN locked down is its own
- * notice: connecting again cannot help); a crash log to export; every node failed its test.
+ * The one notice 活動 shows, the first that applies: no subscription (the page's empty state); a refused VPN consent
+ * while not connected (the user's latest answer); a failed start or a stopped tunnel by its reason (a start the system
+ * refused because another app keeps the VPN locked down is its own notice: connecting again cannot help); no network;
+ * a crash log to export; every node failed its test; last, a refused notification permission, which stops nothing.
  */
-internal fun activityNotice(hasSubscriptions: Boolean, status: Status, crashOffered: Boolean, allFailed: Boolean): RvActivityNotice? = when {
+internal fun activityNotice(
+    hasSubscriptions: Boolean,
+    status: Status,
+    crashOffered: Boolean,
+    allFailed: Boolean,
+    signals: ActivitySignals = ActivitySignals(),
+): RvActivityNotice? = when {
     !hasSubscriptions -> RvActivityNotice.NoSubscription
+    signals.vpnRefused && (status == Status.Stopped || status is Status.Failed) -> RvActivityNotice.ConsentDenied
     status is Status.Failed -> failureNotice(status)
+    !signals.online -> RvActivityNotice.Offline
     crashOffered -> RvActivityNotice.Crash
     allFailed -> RvActivityNotice.NoNode
+    signals.notifyRefused -> RvActivityNotice.NotifyDenied
     else -> null
 }
 
@@ -229,14 +240,14 @@ private fun groupRule(group: Group, bytes: Long, groups: Map<String, Group>): Rv
 private fun selectedLeaf(group: Group, selected: String?, groups: Map<String, Group>): Member? =
     group.members.firstOrNull { it.id == selected }?.let { leafOf(it, groups) }
 
-private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, String>, placeOf: (String) -> RvPlace): RvNode {
+private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, String>): RvNode {
     val history = info?.tests?.map { it.ms }?.takeLast(RV_TESTS)?.takeIf { it.isNotEmpty() } ?: memberHistory(member)
     return RvNode(
         id = member.id,
         name = member.name,
-        // P3c's place mapper gives the country code and number; until then the narrow tiles show the name.
+        // The core gives no short name or city yet; the narrow tiles show the whole name.
         short = member.name,
-        place = member.region?.let(::placeOfRegion) ?: placeOf(member.name),
+        place = member.region?.let(::placeOfRegion) ?: RvPlace.Other,
         city = null,
         protocol = protocolLabel(info?.protocol.orEmpty()),
         host = info?.server.orEmpty(),

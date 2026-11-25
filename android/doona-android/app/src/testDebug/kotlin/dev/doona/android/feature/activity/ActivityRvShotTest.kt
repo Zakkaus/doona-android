@@ -5,7 +5,6 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
-import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -29,6 +28,7 @@ import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.testing.drawFully
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Rule
@@ -125,6 +125,12 @@ class ActivityRvShotTest {
 
     @Test fun crashLight() = shot("activity-crash", crash = true) { stop(Status.Stopped) }
 
+    @Test fun offlineLight() = shot("activity-offline", signals = ActivitySignals(online = false)) { stop(Status.Stopped) }
+
+    @Test fun consentDeniedLight() = shot("activity-consent-denied", signals = ActivitySignals(vpnRefused = true)) { stop(Status.Stopped) }
+
+    @Test fun notifyDeniedLight() = shot("activity-notify-denied", signals = ActivitySignals(notifyRefused = true)) { stop(Status.Stopped) }
+
     /** A latency test the engine refused: its banner (無法測試延遲, 重試) stands where the notice would. */
     @Test fun failedTestLight() = shot("activity-failed-test", failTest = true)
 
@@ -138,6 +144,8 @@ class ActivityRvShotTest {
     fun emptyLight() = shot("activity-empty") {
         stop(Status.Stopped)
         subscriptions.value = emptyList()
+        // As the core sends it: with no subscription the profile's groups have no nodes.
+        groups.value = groups.value.map { it.copy(members = emptyList()) }
     }
 
     /** The engine before it is ready, disconnected. */
@@ -159,13 +167,18 @@ class ActivityRvShotTest {
         crash: Boolean = false,
         whole: Boolean = false,
         failTest: Boolean = false,
+        signals: ActivitySignals = ActivitySignals(),
         change: FakeEngine.() -> Unit = {},
     ) {
         val engine = rvSampleEngine().apply(change)
         // The busy bar rests half full at animator scale 0, as in the prototype's starting and stopping goldens.
         if (engine.status.value == Status.Starting || engine.status.value == Status.Stopping) rvAnimatorScale(0f)
         val source = if (failTest) refusingTests(engine) else engine
-        val model = ActivityViewModel(source, MutableStateFlow(crash), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
+        val refusals = ConnectRefusals().apply {
+            vpn.value = signals.vpnRefused
+            notifications.value = signals.notifyRefused
+        }
+        val model = ActivityViewModel(source, MutableStateFlow(crash), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, flowOf(signals.online), refusals)
         if (failTest) model.onAction(ActivityAction.TestLatency)
         compose.rvContent(dark, fontScale) { ActivityPage(model, crash = null, onConnect = {}, routes = activityTestRoutes()) }
         compose.drawFully()

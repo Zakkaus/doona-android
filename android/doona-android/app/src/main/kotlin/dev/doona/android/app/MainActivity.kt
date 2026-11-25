@@ -1,6 +1,7 @@
 package dev.doona.android.app
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -32,13 +33,19 @@ class MainActivity : ComponentActivity() {
      */
     private var connecting = false
 
-    // A denied notification permission does not stop the connection; the service then runs without a visible notice.
+    // A denied notification permission does not stop the connection; the service then runs without a visible notice,
+    // and 活動 says so.
     private val notificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { requestVpnConsent() }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            container.connectRefusals.notifications.value = !granted
+            requestVpnConsent()
+        }
 
     private val vpnConsent = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         connecting = false
-        if (result.resultCode == RESULT_OK) engine.connect()
+        val consented = result.resultCode == RESULT_OK
+        container.connectRefusals.vpn.value = !consented
+        if (consented) engine.connect()
     }
 
     /** The local network permission's only launcher, a field like the two above, so the answer reaches a recreated activity. */
@@ -75,6 +82,9 @@ class MainActivity : ComponentActivity() {
         container.logLevels.expireIfDue()
         // Back from the app's settings, where a fetch waiting on the local network refusal may have been allowed.
         container.localNetwork.resumed()
+        // Or where the refused notifications were allowed; and a refused VPN consent stands only while doona has none.
+        if (notificationsAllowed()) container.connectRefusals.notifications.value = false
+        if (VpnService.prepare(this) == null) container.connectRefusals.vpn.value = false
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -114,6 +124,8 @@ class MainActivity : ComponentActivity() {
                 notificationPermission.launch(permission)
                 return
             }
+            // Declined before: Android shows its rationale instead of asking, so the request is skipped.
+            if (!granted) container.connectRefusals.notifications.value = true
         }
         requestVpnConsent()
     }
@@ -122,8 +134,11 @@ class MainActivity : ComponentActivity() {
         val consent = VpnService.prepare(this)
         if (consent != null) return vpnConsent.launch(consent)
         connecting = false
+        container.connectRefusals.vpn.value = false
         engine.connect()
     }
+
+    private fun notificationsAllowed(): Boolean = getSystemService(NotificationManager::class.java).areNotificationsEnabled()
 
     /** The system's question; below Android 17 there is no permission to ask for, so access counts as allowed. */
     private fun requestLocalNetwork() {

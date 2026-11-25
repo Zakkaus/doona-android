@@ -150,16 +150,16 @@ class ActivityModelTest {
     }
 
     @Test
-    fun `a node's place is the region the core reads from its name, else the name's`() {
+    fun `a node's place is the region the core reads from its name, else none`() {
         val tw = n1.copy(region = "TW")
         val kr = n3.copy(region = "kr")
         val unknown = n2.copy(region = "XX")
         val placed = catalog(groups = listOf(Group("g-Stream", "Streaming", GroupKind.Selector, listOf(tw, unknown, kr), Group.Selection("n-1", true), Group.Selection("n-3", true))))
-        val nodes = activityNodes(placed, emptyMap()) { if (it == "Tokyo 02") RvPlace.JP else RvPlace.Other }.byId
+        val nodes = activityNodes(placed, emptyMap()).byId
         assertEquals(RvPlace.TW, nodes.getValue("n-1").place)
         assertEquals(RvPlace.KR, nodes.getValue("n-3").place)
-        // A code the place table does not list falls back to the name.
-        assertEquals(RvPlace.JP, nodes.getValue("n-2").place)
+        // A code the place table does not list places nothing.
+        assertEquals(RvPlace.Other, nodes.getValue("n-2").place)
     }
 
     @Test
@@ -254,6 +254,27 @@ class ActivityModelTest {
         listOf(Status.Running(0), Status.Starting, Status.Stopping).forEach { status ->
             assertNull(status.toString(), activityNotice(true, status, crashOffered = false, allFailed = false))
         }
+    }
+
+    @Test
+    fun `the notices from outside the engine take their places in the order`() {
+        val all = ActivitySignals(online = false, vpnRefused = true, notifyRefused = true)
+        val failed = Status.Failed(FailureReason.CoreStopped)
+        // A refused consent is the user's latest answer: it comes before a failure, but only while not connected.
+        assertEquals(RvActivityNotice.ConsentDenied, activityNotice(true, failed, crashOffered = true, allFailed = true, all))
+        assertEquals(RvActivityNotice.ConsentDenied, activityNotice(true, Status.Stopped, crashOffered = true, allFailed = true, all))
+        assertEquals(RvActivityNotice.Offline, activityNotice(true, Status.Running(0), crashOffered = true, allFailed = true, all))
+        assertEquals(RvActivityNotice.NoSubscription, activityNotice(false, failed, crashOffered = true, allFailed = true, all))
+        // No network after a failure, before a crash log; a refused notification permission comes last.
+        val offline = ActivitySignals(online = false, notifyRefused = true)
+        assertEquals(RvActivityNotice.CoreStopped, activityNotice(true, failed, crashOffered = true, allFailed = true, offline))
+        assertEquals(RvActivityNotice.Offline, activityNotice(true, Status.Stopped, crashOffered = true, allFailed = true, offline))
+        val notify = ActivitySignals(notifyRefused = true)
+        assertEquals(RvActivityNotice.NoNode, activityNotice(true, Status.Stopped, crashOffered = false, allFailed = true, notify))
+        assertEquals(RvActivityNotice.NotifyDenied, activityNotice(true, Status.Running(0), crashOffered = false, allFailed = false, notify))
+        assertEquals(ActivityRemedy.Reconnect, RvActivityNotice.ConsentDenied.remedy)
+        assertEquals(ActivityRemedy.NetworkSettings, RvActivityNotice.Offline.remedy)
+        assertEquals(ActivityRemedy.NotifySettings, RvActivityNotice.NotifyDenied.remedy)
     }
 
     @Test

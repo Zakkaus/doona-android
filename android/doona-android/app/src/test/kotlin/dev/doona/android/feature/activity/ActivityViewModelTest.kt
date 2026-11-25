@@ -1,6 +1,5 @@
 package dev.doona.android.feature.activity
 
-import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -40,7 +39,7 @@ class ActivityViewModelTest {
 
     /** `WhileSubscribed` only follows the engine while someone collects, as the page does. */
     private fun TestScope.collected(engine: Engine) =
-        ActivityViewModel(engine, MutableStateFlow(false), UnconfinedTestDispatcher(testScheduler), { 0L }, { ZoneOffset.UTC }, { RvPlace.Other }).also { vm ->
+        ActivityViewModel(engine, MutableStateFlow(false), UnconfinedTestDispatcher(testScheduler), { 0L }, { ZoneOffset.UTC }).also { vm ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.ui.collect {} }
         }
 
