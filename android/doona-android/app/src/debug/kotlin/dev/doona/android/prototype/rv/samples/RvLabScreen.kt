@@ -43,9 +43,9 @@ internal fun RvLabScreen(performance: Boolean, onBack: () -> Unit = {}) {
                     on,
                     { on = it },
                     sampleText(
-                        "用較多 CPU 與電量，提升多連線速度；下次開啟 App 時生效",
-                        "用更多 CPU 和电量，提升多连接速度；下次打开 App 时生效",
-                        "Uses more CPU and battery for faster multi-connection speed. Takes effect the next time the app starts.",
+                        "用較多 CPU 與電量換取速度；下次開啟 App 生效",
+                        "用更多 CPU 和电量换取速度；下次打开 App 生效",
+                        "Uses more CPU and battery for speed. Takes effect next time the app opens.",
                     ),
                 )
             }
