@@ -130,8 +130,9 @@ internal fun RvSubDetail(
         confirm = stringResource(R.string.rv_save),
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = {
-            onRename(state.name.trim())
+            // Closes first: a refusal opens the sheet again, and closing on this state would shut it.
             close()
+            onRename(state.name.trim())
         },
         onDismiss = close,
         confirmEnabled = state.name.isNotBlank() && rvNameValid(state.name),
