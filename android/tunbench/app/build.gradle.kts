@@ -91,9 +91,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // No baseline file: a warning is fixed, or suppressed where it occurs with the reason.
+    // No baseline file: a warning is fixed, or suppressed where it occurs with the reason. Whether a newer version
+    // exists depends on the date, not the change, so those checks only inform: Dependabot opens the bumps.
     lint {
         warningsAsErrors = true
+        informational += setOf("AndroidGradlePluginVersion", "GradleDependency", "NewerVersionAvailable")
     }
 
     // The manifest test reads the merged manifest named in test_config.properties.

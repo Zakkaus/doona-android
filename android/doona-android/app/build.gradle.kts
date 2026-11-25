@@ -234,6 +234,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // Whether a newer version exists depends on the date, not the change: Dependabot opens those bumps.
+    lint {
+        informational += setOf("AndroidGradlePluginVersion", "GradleDependency", "NewerVersionAvailable")
+    }
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
