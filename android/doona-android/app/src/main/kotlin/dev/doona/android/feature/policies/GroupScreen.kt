@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
@@ -20,15 +21,22 @@ import dev.doona.android.designsystem.components.DoonaButtonStyle
 import dev.doona.android.designsystem.components.DoonaErrorBanner
 import dev.doona.android.designsystem.components.DoonaGap
 import dev.doona.android.designsystem.components.DoonaHGap
+import dev.doona.android.designsystem.components.DoonaLatency
+import dev.doona.android.designsystem.components.DoonaNodeName
 import dev.doona.android.designsystem.components.DoonaNodeTile
 import dev.doona.android.designsystem.components.DoonaPage
 import dev.doona.android.designsystem.components.DoonaPageTitle
 import dev.doona.android.designsystem.components.DoonaProgress
+import dev.doona.android.designsystem.components.DoonaSmallStatusLight
 import dev.doona.android.designsystem.components.DoonaTag
 import dev.doona.android.designsystem.components.DoonaText
+import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.Member
 import dev.doona.android.feature.messageRes
 import dev.doona.android.icons.R as IconsR
 
@@ -146,3 +154,54 @@ private fun Members(detail: GroupDetail, onAction: (OldGroupAction) -> Unit) {
         }
     }
 }
+
+/**
+ * Group heading facts: kind tag, then the available, untested and failed counts as small lights (§7, DoonaTag,
+ * Status light). A count of none is left out, so a group that was never tested says only that.
+ */
+@Composable
+internal fun GroupFacts(group: Group) {
+    val healthy = group.members.count { it.latencyMs != null && !it.failed }
+    val untested = group.members.count { it.latencyMs == null && !it.failed }
+    val failed = group.members.count { it.failed }
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block),
+        verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        DoonaTag(kindLabel(group.kind))
+        DoonaSmallStatusLight(Tone.Ok, stringResource(R.string.policy_healthy, healthy))
+        if (untested > 0) DoonaSmallStatusLight(Tone.Neutral, stringResource(R.string.policy_untested, untested))
+        if (failed > 0) DoonaSmallStatusLight(Tone.Err, stringResource(R.string.policy_failed_count, failed))
+    }
+}
+
+/** `目前` and the current member. */
+@Composable
+internal fun CurrentSummary(current: Member?, style: TextStyle, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        DoonaText(stringResource(R.string.policy_current), style = style, color = DoonaTheme.colors.text, maxLines = 1, softWrap = false)
+        DoonaHGap(DoonaTheme.spacing.block)
+        DoonaNodeName(current?.name ?: "—", style, modifier = Modifier.weight(1f, fill = false))
+    }
+}
+
+/** A node's latency; a node whose last probe failed says so, where the latency would show a dash that an untested one shows too. */
+@Composable
+internal fun NodeLatency(node: Member?, modifier: Modifier = Modifier) {
+    if (node?.failed == true) {
+        DoonaSmallStatusLight(Tone.Err, stringResource(R.string.policy_failed), modifier, style = DoonaTheme.type.latency)
+    } else {
+        DoonaLatency(node?.latencyMs, modifier)
+    }
+}
+
+@Composable
+private fun kindLabel(kind: GroupKind): String = stringResource(
+    when (kind) {
+        GroupKind.Selector -> R.string.policy_kind_selector
+        GroupKind.UrlTest -> R.string.policy_kind_urltest
+        GroupKind.Score -> R.string.policy_kind_score
+        GroupKind.Fallback -> R.string.policy_kind_fallback
+    },
+)

@@ -156,4 +156,6 @@
     <string name="rv_network_both">TCP/UDP</string>
     <string name="rv_score_udp_unsupported">%1$s 不支援 UDP</string>
     <string name="rv_score_udp_failed">UDP 測試未通過</string>
+    <string name="rv_policy_failed_quic">無法變更「封鎖 QUIC」</string>
+    <string name="rv_policy_failed_update">無法更新訂閱</string>
 </resources>

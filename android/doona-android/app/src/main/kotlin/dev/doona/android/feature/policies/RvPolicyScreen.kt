@@ -103,7 +103,8 @@ internal class RvPolicyRoutes(
  * joins the card under 範本 with the applied revision and opens the configuration's overview ([RvPolicyRoutes.config]).
  * While [loading] (before the engine is ready) the page is a skeleton of what its mode lays out ([PolicySkeleton]), and
  * the content fades in over it in place. A [banner] (a failed action: a mode switch) heads the cards in [RvBannerSlot],
- * outside the fade. What the profile holds (the main node, the groups, the rules, the nodes and subscriptions) is [profile].
+ * outside the fade. What the profile holds (the main node, the groups, the rules, the nodes and subscriptions) is [profile];
+ * before the first read there is none, and the skeleton stands with bars in place of the profile's words.
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -114,7 +115,7 @@ internal fun RvPolicyScreen(
     configRev: Int? = null,
     loading: Boolean = false,
     banner: RvNotice? = null,
-    profile: RvPolicyProfile,
+    profile: RvPolicyProfile?,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -147,7 +148,9 @@ internal fun RvPolicyScreen(
             }
         } else {
             RvBannerSlot(banner)
-            RvSkeletonFade(loading, { Column { PolicySkeleton(state, profile) } }) { Column { PolicyContent(state, onChange, routes, configRev, profile) } }
+            RvSkeletonFade(loading || profile == null, { Column { PolicySkeleton(state, profile) } }) {
+                Column { profile?.let { PolicyContent(state, onChange, routes, configRev, it) } }
+            }
         }
     }
 }
@@ -223,21 +226,21 @@ private fun PolicyContent(state: RvPolicyState, onChange: (RvPolicyState) -> Uni
  * ([rvSkeletonRowsToFill]), as their lists do, so the content keeps the edges in view where they stood.
  */
 @Composable
-private fun PolicySkeleton(state: RvPolicyState, profile: RvPolicyProfile) {
+private fun PolicySkeleton(state: RvPolicyState, profile: RvPolicyProfile?) {
     val rows = rvSkeletonRowsToFill()
     val mode = state.mode
     RvGutter {
         RvSkeletonControlCard(stringResource(mode.line))
         if (mode == RvRouteMode.Rule) {
-            val main = state.group(profile.main)
+            val main = profile?.main?.let(state::group)
             RvSkeletonCard {
                 RvSkeletonHeader(stringResource(R.string.rv_main_node))
-                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency, title = main.selected.name, subtitleText = mainLine(main), titleKeepWords = false)
+                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency, title = main?.selected?.name, subtitleText = main?.let { mainLine(it) }, titleKeepWords = false)
             }
             RvSkeletonCard {
                 RvSkeletonHeader(stringResource(R.string.rv_policy_groups))
                 repeat(rows) {
-                    val group = profile.groups.getOrNull(it)?.let(state::group)
+                    val group = profile?.groups?.getOrNull(it)?.let(state::group)
                     RvSkeletonRow(
                         it + 1,
                         RvSkeletonText.Mixed,
@@ -257,7 +260,7 @@ private fun PolicySkeleton(state: RvPolicyState, profile: RvPolicyProfile) {
         RvGutter {
             RvSkeletonCard {
                 // The first card is the first subscription's, but under 地區 the country of the fastest node's.
-                val sub = profile.subscriptions.firstOrNull()?.name?.takeIf { state.nodeSort != RvNodeSort.Region }
+                val sub = profile?.subscriptions?.firstOrNull()?.name?.takeIf { state.nodeSort != RvNodeSort.Region }
                 RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value, title = sub, titleKeepWords = false)
                 repeat(rows) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.LatencyLines) }
             }

@@ -172,7 +172,7 @@ class PolicyMappingTest {
     }
 
     @Test
-    fun `the profile joins bytes by rule id, leaves refusing rows out and counts them`() {
+    fun `the profile joins bytes by rule id and leaves refusing rows out`() {
         val catalog = rvSampleEngine().catalog.value!!
         val reject = RuleRow("r-ads", 0, RuleKind.DomainSuffix, "DomainSuffix", "ads.example", 1, RuleTarget.Reject)
         val rows = listOf(reject) + RvSampleRules.rows
@@ -181,7 +181,6 @@ class PolicyMappingTest {
         assertEquals(catalog.groups.map { it.id }.drop(1), profile.groups.map { it.id })
         assertEquals(RV_POLICY_CARD_RULES, profile.rules.size)
         assertEquals(listOf(7L, 0L, 3L, 0L, 0L), profile.rules.map { it.bytes })
-        assertEquals(1, profile.rejectedRules)
         assertEquals(15, profile.ruleCount)
         assertEquals("g-Streaming", profile.rules.first().group?.id)
         assertEquals(RvRuleMatch.Lan, profile.rules[3].match)

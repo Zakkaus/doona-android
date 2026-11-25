@@ -21,6 +21,6 @@ internal data class PoliciesUiState(
     val loading: Boolean = true,
     val noSubscription: Boolean = false,
     val state: RvPolicyState = RvPolicyState(),
-    val profile: PolicyProfileData? = null,
+    val profile: RvPolicyProfile? = null,
     val failure: PolicyFailure? = null,
 )

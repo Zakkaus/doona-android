@@ -41,8 +41,11 @@ internal class PoliciesViewModel(
     private val local = MutableStateFlow(RvPolicyState(blockAds = false))
     private val failure = MutableStateFlow<PolicyFailure?>(null)
 
+    /** The call that failed last, for the banner's 重試; null once an attempt succeeds. */
+    private var retry: (() -> Unit)? = null
+
     /** The last profile read, kept while the screen is away, so coming back shows it rather than the skeleton. */
-    private val profile = MutableStateFlow<PolicyProfileData?>(null)
+    private val profile = MutableStateFlow<RvPolicyProfile?>(null)
 
     /** The card's rules at their revision; only the reader touches it, one catalog at a time. */
     private var rulePage: RulePage? = null
@@ -92,6 +95,7 @@ internal class PoliciesViewModel(
     private fun setBlockQuic(catalog: Catalog, on: Boolean) {
         val template = catalog.ruleSource.template
         if (template == null) {
+            retry = { engine.catalog.value?.let { setBlockQuic(it, on) } }
             failure.value = PolicyFailure(PolicyAction.Quic, ErrorCode.NotFound)
             return
         }
@@ -104,12 +108,19 @@ internal class PoliciesViewModel(
      */
     private fun perform(action: PolicyAction, call: suspend () -> Result<*>) {
         viewModelScope.launch {
-            failure.value = call().exceptionOrNull()?.let { PolicyFailure(action, it.errorCode()) }
+            val error = call().exceptionOrNull()
+            retry = error?.let { { perform(action, call) } }
+            failure.value = error?.let { PolicyFailure(action, it.errorCode()) }
         }
     }
 
+    /** The banner's 重試: hands the failed call to the engine again, as it was first made. */
+    fun retry() {
+        retry?.invoke()
+    }
+
     /** The profile of [catalog], or null when a read failed or the main group cannot be drawn. */
-    private suspend fun read(catalog: Catalog): PolicyProfileData? {
+    private suspend fun read(catalog: Catalog): RvPolicyProfile? {
         val ids = catalog.groups.flatMap { it.members }.filterNot { it.isGroup }.map { it.id }.distinct()
         val infos = engine.nodes(ids).getOrElse { return null }.associateBy { it.id }
         val page = rules(catalog.ruleSource.rulesRevision) ?: return null
@@ -147,7 +158,7 @@ internal class PoliciesViewModel(
 private fun policiesUiState(
     ready: Boolean,
     catalog: Catalog?,
-    profile: PolicyProfileData?,
+    profile: RvPolicyProfile?,
     local: RvPolicyState,
     failure: PolicyFailure?,
 ): PoliciesUiState {

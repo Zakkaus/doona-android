@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -150,6 +151,35 @@ class PoliciesViewModelTest {
         vm.onChange(vm.uiState.value.state.copy(mode = RvRouteMode.Direct))
         assertNull(vm.uiState.value.failure)
         assertEquals(listOf("test null", "setMode Direct"), engine.calls)
+    }
+
+    @Test
+    fun `retry makes the failed call again, and nothing once an attempt succeeds`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        engine.result = Result.failure(EngineException(ErrorCode.Busy))
+        vm.onChange(vm.uiState.value.state.copy(mode = RvRouteMode.Global))
+        assertEquals(PolicyFailure(PolicyAction.Mode, ErrorCode.Busy), vm.uiState.value.failure)
+        engine.result = Result.success(Unit)
+        vm.retry()
+        assertNull(vm.uiState.value.failure)
+        assertEquals(RvRouteMode.Global, vm.uiState.value.state.mode)
+        vm.retry()
+        assertEquals(listOf("setMode Global", "setMode Global"), engine.calls)
+    }
+
+    @Test
+    fun `retry of 阻擋 QUIC with no template fails again without a call`() = runTest {
+        val base = rvSampleEngine()
+        val engine = object : Engine by base {
+            override val catalog: StateFlow<Catalog?> = base.catalog.map { it?.copy(ruleSource = it.ruleSource.copy(template = null)) }
+                .stateIn(CoroutineScope(Dispatchers.Unconfined), SharingStarted.Eagerly, null)
+        }
+        val vm = collected(engine)
+        vm.onChange(vm.uiState.value.state.copy(blockQuic = true))
+        assertEquals(PolicyFailure(PolicyAction.Quic, ErrorCode.NotFound), vm.uiState.value.failure)
+        vm.retry()
+        assertEquals(PolicyFailure(PolicyAction.Quic, ErrorCode.NotFound), vm.uiState.value.failure)
     }
 
     @Test

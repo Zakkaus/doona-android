@@ -173,4 +173,6 @@
     <string name="rv_network_both">TCP/UDP</string>
     <string name="rv_score_udp_unsupported">%1$s does not support UDP</string>
     <string name="rv_score_udp_failed">UDP test failed</string>
+    <string name="rv_policy_failed_quic">Could not change Block QUIC</string>
+    <string name="rv_policy_failed_update">Could not update the subscriptions</string>
 </resources>

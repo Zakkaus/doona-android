@@ -184,22 +184,6 @@ internal fun rvPolicyRule(row: RuleRow, groups: Map<String, RvPolicyGroup>, byte
 }
 
 /**
- * What 策略 shows of the profile, as `RvPolicyProfile` (debug, rv/policy) holds it; the page move replaces this holder with
- * RvPolicyProfile. [rejectedRules] counts the card's rows left out because they refuse their flows, which RvPolicyProfile
- * has no place for yet.
- */
-internal data class PolicyProfileData(
-    val main: RvPolicyGroup,
-    val groups: List<RvPolicyGroup>,
-    val rules: List<RvPolicyRule>,
-    val ruleCount: Int,
-    val nodes: List<RvNode>,
-    val subscriptions: List<RvSubscription>,
-    val nowEpochMs: Long,
-    val rejectedRules: Int = 0,
-)
-
-/**
  * Every node member of [catalog]'s groups once, in catalog order, mapped with its details from [infos] and its
  * subscription's name.
  */
@@ -222,13 +206,13 @@ internal fun rvPolicyProfile(
     byRule: Map<String, Long>,
     nowEpochMs: Long,
     places: RvNodePlaces,
-): PolicyProfileData? {
+): RvPolicyProfile? {
     val nodes = rvNodes(catalog, infos, places)
     val byId = catalog.groups.associateBy { it.id }
     val mapped = catalog.groups.mapNotNull { rvPolicyGroup(it, byId, nodes) }.associateBy { it.id }
     val main = mapped[catalog.mainGroupId] ?: return null
-    val (rejected, routed) = rules.partition { it.target == RuleTarget.Reject }
-    return PolicyProfileData(
+    val routed = rules.filterNot { it.target == RuleTarget.Reject }
+    return RvPolicyProfile(
         main = main,
         groups = mapped.values.filter { it.id != main.id },
         rules = routed.take(RV_POLICY_CARD_RULES).mapNotNull { rvPolicyRule(it, mapped, byRule[it.id] ?: 0L) },
@@ -236,7 +220,6 @@ internal fun rvPolicyProfile(
         nodes = nodes.values.toList(),
         subscriptions = catalog.subscriptions.map(::rvSubscription),
         nowEpochMs = nowEpochMs,
-        rejectedRules = rejected.size,
     )
 }
 
