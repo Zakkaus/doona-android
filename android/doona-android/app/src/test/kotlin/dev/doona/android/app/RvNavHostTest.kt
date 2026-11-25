@@ -3,33 +3,49 @@ package dev.doona.android.app
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.rv.LocalRvTabEntry
+import dev.doona.android.designsystem.rv.RvFloatingNav
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvPullDown
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.RvPullState
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rememberRvGlass
 import dev.doona.android.designsystem.rv.rememberRvPullState
+import dev.doona.android.designsystem.rv.rvGlassSource
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -94,6 +110,42 @@ class RvNavHostTest {
         val state = rememberRvPullState(open = true)
         pull = state
         RvPullDown(RvPullMotion.Sheet, state, activity = { BasicText(name) }, picker = { BasicText("picker") })
+    }
+
+    private var scroll: ScrollState? = null
+
+    /** The tab roots and a group page, each drawing the floating nav for the tab the stack is on; only 策略 scrolls. */
+    @Composable
+    private fun BarHost(start: List<NavKey>) {
+        RvTheme(rvSystemScheme(false), false) {
+            val backStack = rememberNavBackStack(*start.toTypedArray())
+            stack = backStack
+            RvNavHost(backStack, Modifier.fillMaxSize()) {
+                entry<ActivityKey> { BarPage("activity", null) }
+                entry<PoliciesKey> { BarPage("policies", rememberScrollState().also { scroll = it }) }
+                entry<SettingsKey> { BarPage("settings", null) }
+                entry<GroupKey> { key -> BarPage("group ${key.groupId}", null) }
+            }
+        }
+    }
+
+    @Composable
+    private fun BarPage(name: String, scroll: ScrollState?) {
+        val glass = rememberRvGlass()
+        Box(Modifier.fillMaxSize()) {
+            val scrolls = if (scroll != null) Modifier.verticalScroll(scroll) else Modifier
+            Column(Modifier.fillMaxSize().rvGlassSource(glass).then(scrolls)) {
+                BasicText(name)
+                Spacer(Modifier.height(TALL))
+            }
+            val nav = currentTab(stack).navId
+            RvFloatingNav(nav, { stack.selectTab(it) }, glass, scroll, WindowInsets(0), Modifier.align(Alignment.BottomCenter), onReselect = { stack.reselectTab() })
+        }
+    }
+
+    private fun tapSelectedTab() {
+        compose.onNode(isSelected()).performClick()
+        compose.waitForIdle()
     }
 
     private fun start(vararg keys: NavKey) {
@@ -331,6 +383,35 @@ class RvNavHostTest {
     }
 
     @Test
+    fun tappingTheSelectedTabAbovePagesPopsBackToItsRoot() {
+        compose.setContent { BarHost(listOf(ActivityKey, PoliciesKey, GroupKey("a"), GroupKey("b"))) }
+        compose.waitForIdle()
+        tapSelectedTab()
+        assertEquals(listOf(ActivityKey, PoliciesKey), stack.toList())
+        assertEquals(1, shown("policies"))
+    }
+
+    @Test
+    fun tappingTheSelectedTabOnItsRootScrollsThePageToItsTop() {
+        compose.setContent { BarHost(listOf(ActivityKey, PoliciesKey)) }
+        compose.waitForIdle()
+        compose.runOnIdle { runBlocking { scroll!!.scrollTo(SCROLLED) } }
+        assertEquals(SCROLLED, scroll!!.value)
+        tapSelectedTab()
+        assertEquals("the page is back at its top", 0, scroll!!.value)
+        assertEquals("and the stack is as it was", listOf(ActivityKey, PoliciesKey), stack.toList())
+    }
+
+    @Test
+    fun tappingTheSelectedTabOnARootWithoutAScrollDoesNothing() {
+        compose.setContent { BarHost(listOf(ActivityKey, SettingsKey)) }
+        compose.waitForIdle()
+        tapSelectedTab()
+        assertEquals(listOf(ActivityKey, SettingsKey), stack.toList())
+        assertEquals(1, shown("settings"))
+    }
+
+    @Test
     fun onlyATabSwitchFadesTheNewTabsHeroIn() {
         start(ActivityKey)
         onUi { stack.selectTab(Tab.Policies) }
@@ -384,6 +465,8 @@ private const val SECOND_FRAMES = 60
 /** Long enough for any pop, or a cancelled one running back, to finish. */
 private const val SETTLE_FRAMES = 30
 private const val SAVED = "saved state of "
+private val TALL = 3000.dp
+private const val SCROLLED = 600
 private const val EDGE_X = 4f
 private const val EDGE_Y = 800f
 private const val HALF = 0.5f

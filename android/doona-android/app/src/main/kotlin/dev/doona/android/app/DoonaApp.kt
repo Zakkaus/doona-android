@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,15 +69,16 @@ fun DoonaApp(
 ) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
     val onTab: (Int) -> Unit = { backStack.selectTab(it) }
+    val onReselect: () -> Boolean = { backStack.reselectTab() }
     RvOverDoona {
         RvNavHost(backStack, Modifier.fillMaxSize()) {
             entry<ActivityKey> {
-                OldTabFrame(Tab.Activity, onTab) {
+                OldTabFrame(Tab.Activity, onTab, onReselect) {
                     FirstRunGate(engine, imports) { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.push(GroupKey(it)) }) }
                 }
             }
             entry<PoliciesKey> {
-                OldTabFrame(Tab.Policies, onTab) {
+                OldTabFrame(Tab.Policies, onTab, onReselect) {
                     PoliciesRoute(engine, onOpenGroup = { backStack.push(GroupKey(it)) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
                 }
             }
@@ -87,7 +87,7 @@ fun DoonaApp(
             }
             entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
             entry<SettingsKey> {
-                OldTabFrame(Tab.Settings, onTab) {
+                OldTabFrame(Tab.Settings, onTab, onReselect) {
                     SettingsRoute(engine, version, onOpenPerApp = { backStack.push(PerAppKey) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
                 }
             }
@@ -110,10 +110,11 @@ private fun RvOverDoona(content: @Composable () -> Unit) {
 /**
  * A tab root the RV page lanes have not replaced yet (plan §2.5): the old page above RV's floating nav, which RV's own
  * tab pages draw themselves. The page ends where the nav's clearance begins, so nothing it shows lies under the nav;
- * the nav's glass blurs the page's colour. The nav does not fold away, as the old page's scroll is not the frame's.
+ * the nav's glass blurs the page's colour. The old page does not give the frame its scroll, so the nav does not fold
+ * away, and tapping the selected tab does nothing: [onReselect] finds no page above the root, and there is no scroll.
  */
 @Composable
-private fun OldTabFrame(tab: Tab, onTab: (Int) -> Unit, content: @Composable () -> Unit) {
+private fun OldTabFrame(tab: Tab, onTab: (Int) -> Unit, onReselect: () -> Boolean, content: @Composable () -> Unit) {
     val glass = rememberRvGlass()
     val insets = DoonaTheme.insets
     Box(Modifier.fillMaxSize()) {
@@ -125,6 +126,6 @@ private fun OldTabFrame(tab: Tab, onTab: (Int) -> Unit, content: @Composable () 
                 .padding(bottom = rvNavClearance(insets))
                 .consumeWindowInsets(insets.only(WindowInsetsSides.Bottom)),
         ) { content() }
-        RvFloatingNav(tab.navId, onTab, glass, rememberScrollState(), insets, Modifier.align(Alignment.BottomCenter))
+        RvFloatingNav(tab.navId, onTab, glass, null, insets, Modifier.align(Alignment.BottomCenter), onReselect)
     }
 }

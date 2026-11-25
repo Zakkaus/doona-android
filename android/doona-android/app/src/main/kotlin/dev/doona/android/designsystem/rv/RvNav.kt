@@ -71,18 +71,27 @@ internal val LocalRvNav = staticCompositionLocalOf { RV_NAV }
  * the screen's edge, a filled glyph over a label for each of [LocalRvNav]'s tabs, the one whose id is [selected] on a
  * flat opaque pill; a larger font makes the label's line, and so the capsule, taller ([rvNavLabelLine]), never cutting
  * a glyph. [onSelect] gets a tab's id. While [scroll], the page's, moves its content up, it shrinks to icons
- * only, 336 x 52 dp, centred and almost opaque, as Revolut's bar does. Tapping the [selected] tab again glides that page
- * back to its top in [RvMotion.TOP_MS] (G6).
+ * only, 336 x 52 dp, centred and almost opaque, as Revolut's bar does. Tapping the [selected] tab again first goes to
+ * [onReselect], which returns true when it has handled the tap (the app pops back to the tab's root); otherwise the
+ * bar glides [scroll] back to its top in [RvMotion.TOP_MS] (G6), and does nothing for a page without one (null).
  */
 @Composable
-internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlass, scroll: ScrollState, insets: WindowInsets, modifier: Modifier = Modifier) {
+internal fun RvFloatingNav(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    glass: RvGlass,
+    scroll: ScrollState?,
+    insets: WindowInsets,
+    modifier: Modifier = Modifier,
+    onReselect: () -> Boolean = { false },
+) {
     val motion = Rv.motion
     val scope = rememberCoroutineScope()
     val shrink by animateFloatAsState(if (rvCollapsedOnScroll(scroll)) 1f else 0f, motion.tween(RvMotion.NAV_MS), label = "nav")
     val pick: (Int) -> Unit = { i ->
         if (i != selected) {
             onSelect(i)
-        } else {
+        } else if (!onReselect() && scroll != null) {
             scope.launch {
                 RvFrames.begin(TO_TOP)
                 try {
@@ -189,12 +198,13 @@ private fun rvNavLabelGrowth(): Dp = rvNavLabelLine() - RvChrome.navLabel
 
 /**
  * Whether the capsule is collapsed: from the moment [scroll] moves the content up until it moves it back down or
- * reaches the top, as Revolut's bar follows the direction of the scroll.
+ * reaches the top, as Revolut's bar follows the direction of the scroll. Without a scroll it stays open.
  */
 @Composable
-private fun rvCollapsedOnScroll(scroll: ScrollState): Boolean {
+private fun rvCollapsedOnScroll(scroll: ScrollState?): Boolean {
     var collapsed by remember { mutableStateOf(false) }
     LaunchedEffect(scroll) {
+        if (scroll == null) return@LaunchedEffect
         var last = scroll.value
         snapshotFlow { scroll.value }.collect { now ->
             if (now <= 0 || now < last) {

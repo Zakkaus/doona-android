@@ -118,6 +118,17 @@ fun MutableList<NavKey>.selectTab(tab: Tab) {
     if (tab != Tab.Activity) add(tab.key)
 }
 
+/**
+ * Tapping the current tab again: pops every page above that tab's root and returns true, or returns false on the root
+ * itself, where the bar scrolls the page to its top instead.
+ */
+fun MutableList<NavKey>.reselectTab(): Boolean {
+    val root = if (currentTab(this) == Tab.Activity) 1 else 2
+    if (size <= root) return false
+    while (size > root) removeAt(lastIndex)
+    return true
+}
+
 /** [selectTab] by the RV bar's id ([RvNavItem.id]); an id the app does not ship changes nothing. */
 internal fun MutableList<NavKey>.selectTab(navId: Int) {
     Tab.entries.firstOrNull { it.navId == navId }?.let { selectTab(it) }
