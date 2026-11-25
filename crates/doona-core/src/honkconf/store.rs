@@ -33,8 +33,8 @@ pub enum StoreError {
         base: Option<u64>,
         head: Option<u64>,
     },
-    /// The draft was edited after the apply prepared it; reported as `conflict`, like
-    /// [`Self::Conflict`]. The draft keeps the edit.
+    /// The draft was edited after the apply staged it. Nothing is committed and the draft keeps
+    /// the edit.
     DraftChanged { prepared: u64, current: u64 },
     /// Another apply is preparing a staged revision.
     ApplyPending,
