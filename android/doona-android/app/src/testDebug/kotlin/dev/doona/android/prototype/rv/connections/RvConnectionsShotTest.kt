@@ -13,19 +13,23 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.AppIcons
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAppDisc
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_EN
@@ -142,13 +146,13 @@ class RvConnectionsShotTest {
     @Test
     fun appDiscLight() {
         installIcon()
-        compose.rvShot("app-disc", dark = false) { AppDiscs() }
+        compose.rvShot("app-disc", dark = false, before = { iconLoaded() }) { AppDiscs() }
     }
 
     @Test
     fun appDiscDark() {
         installIcon()
-        compose.rvShot("app-disc", dark = true) { AppDiscs() }
+        compose.rvShot("app-disc", dark = true, before = { iconLoaded() }) { AppDiscs() }
     }
 
     @Test
@@ -174,6 +178,13 @@ class RvConnectionsShotTest {
     }
 
     /** Gives the test's own package a launcher-style icon (the duck on white), as a phone's installed app has one. */
+    // The disc reads its icon off the main thread, so the shot waits for it: the golden is the loaded disc.
+    private fun ComposeContentTestRule.iconLoaded() {
+        val px = onAllNodesWithTag(RvRowPart.APP_DISC, useUnmergedTree = true).fetchSemanticsNodes().first().size.width
+        waitUntil(ICON_WAIT_MS) { AppIcons.cached(DOONA, px) != null }
+        waitForIdle()
+    }
+
     private fun installIcon() {
         val context = RuntimeEnvironment.getApplication()
         val duck = InsetDrawable(context.getDrawable(R.drawable.ic_duck), ICON_INSET)
@@ -203,6 +214,7 @@ class RvConnectionsShotTest {
 
     private companion object {
         const val YOUTUBE = 3
+        const val ICON_WAIT_MS = 5_000L
         const val TELEGRAM = 4
         const val DOONA = "dev.doona.android"
         const val ICON_INSET = 0.2f

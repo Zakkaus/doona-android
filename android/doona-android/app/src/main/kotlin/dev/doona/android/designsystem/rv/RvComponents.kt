@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,7 +49,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -78,8 +78,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import androidx.core.graphics.drawable.toBitmap
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.AppIcons
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.max
@@ -358,14 +358,13 @@ internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, s
  */
 @Composable
 internal fun RvAppDisc(packageName: String, label: String? = null, size: Dp = RvSize.rowDisc) {
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext
     val px = with(LocalDensity.current) { size.roundToPx() }
-    val icon = remember(packageName, px) {
-        runCatching { context.packageManager.getApplicationIcon(packageName).toBitmap(px, px).asImageBitmap() }.getOrNull()
-    }
+    // Read off the main thread and kept in AppIcons' cache; until it is there, and for a package that cannot be read, the placeholder.
+    val icon by produceState(AppIcons.cached(packageName, px), packageName, px) { value = AppIcons.load(context, packageName, px) }
     val named = label?.let { Modifier.semantics { contentDescription = it } } ?: Modifier
-    if (icon == null) return Box(named.testTag(RvRowPart.APP_DISC)) { RvIconDisc(R.drawable.rv_sym_apps, size = size) }
-    Image(icon, contentDescription = label, Modifier.size(size).testTag(RvRowPart.APP_DISC).clip(CircleShape).background(Rv.colors.discOnCard))
+    val loaded = icon ?: return Box(named.testTag(RvRowPart.APP_DISC)) { RvIconDisc(R.drawable.rv_sym_apps, size = size) }
+    Image(loaded, contentDescription = label, Modifier.size(size).testTag(RvRowPart.APP_DISC).clip(CircleShape).background(Rv.colors.discOnCard))
 }
 
 /**
