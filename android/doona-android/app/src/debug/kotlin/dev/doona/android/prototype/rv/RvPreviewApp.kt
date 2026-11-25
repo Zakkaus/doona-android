@@ -89,7 +89,7 @@ import dev.doona.android.prototype.rv.states.RvPermissionAsks
 import dev.doona.android.prototype.rv.states.RvPermissionSheet
 import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
-import dev.doona.android.prototype.rv.stats.RvStatsScreen
+import dev.doona.android.prototype.rv.stats.RvStatsScreenSample
 import dev.doona.android.prototype.rv.stats.rvStatsSample
 import dev.doona.android.prototype.rv.subs.RvImportSheet
 import dev.doona.android.prototype.rv.subs.RvSubsRoute
@@ -206,7 +206,7 @@ private fun RvSamplePage(
     when (route.substringBefore(':')) {
         TRAFFIC -> RvTrafficScreen(run.activity(), RvData.session, onBack = pages.pop)
 
-        STATS -> RvStatsScreen(rvStatsSample(), onBack = pages.pop)
+        STATS -> RvStatsScreenSample(rvStatsSample(), onBack = pages.pop)
 
         // The search page: the node picker, its field the search pill's; a picked node becomes the main one.
         SEARCH -> RvNodePickerSample(

@@ -2,8 +2,6 @@ package dev.doona.android.feature.stats
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
@@ -32,8 +30,6 @@ import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
-import dev.doona.android.prototype.rv.stats.RV_SPENT_CHART
-import dev.doona.android.prototype.rv.stats.RvStatsScreen
 import dev.doona.android.testing.drawFully
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
@@ -116,12 +112,11 @@ class AppRvStatsShotTest {
         compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$name.png")
     }
 
-    /** The page as the route will draw it, minus navigation. */
+    /** The route on a view model with the sample's clock and zone. */
     @Composable
     private fun Page(engine: () -> Engine) {
         val vm = remember { StatsViewModel(engine(), clock = { SAMPLE_NOW }, zone = { ZoneOffset.UTC }, work = Dispatchers.Unconfined) }
-        val state by vm.uiState.collectAsState()
-        RvStatsScreen(state, onBack = {}, score = state.score)
+        StatsRoute(vm, onBack = {}, onOpenReport = {})
     }
 
     /** The sample engine before the day's first byte: untested nodes, no quota, no Score yet. */

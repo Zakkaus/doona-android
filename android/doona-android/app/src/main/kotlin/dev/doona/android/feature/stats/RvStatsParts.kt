@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.stats
+package dev.doona.android.feature.stats
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
@@ -74,5 +74,5 @@ private fun Triangle(up: Boolean, color: Color, side: Dp) {
     }
 }
 
-/** A row of the tools card: its glyph, title and subtitle. */
-internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String)
+/** A row of the tools card: its glyph, title and subtitle, and what a tap does. */
+internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String, val onClick: () -> Unit)

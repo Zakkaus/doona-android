@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.stats
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import dev.doona.android.feature.stats.RvStatsEmptyLook
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -42,6 +43,6 @@ class RvStatsEmptyLookShotTest {
 
     private fun shot(look: RvStatsEmptyLook, dark: Boolean, fontScale: Float = 1f) =
         compose.rvShot("stats-empty-v${look.ordinal}", dark, before = { assertWhole() }, fontScale = fontScale) {
-            RvStatsScreen(rvStatsQuiet(), onBack = {}, empty = look)
+            RvStatsScreenSample(rvStatsQuiet(), empty = look)
         }
 }

@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.stats
+package dev.doona.android.feature.stats
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,7 +44,6 @@ import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvSplit
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvMedian
-import dev.doona.android.feature.stats.RvStatsState
 import kotlin.math.abs
 
 /**
@@ -265,15 +264,15 @@ internal fun RvRatingRow(fraction: Float, percent: String, label: String, color:
 
 /** 工具, Revolut's Tools card: a row per action with its disc, title, subtitle and chevron. */
 @Composable
-internal fun RvToolsCard(tools: List<RvStatsTool>, onTool: (Int) -> Unit) {
+internal fun RvToolsCard(tools: List<RvStatsTool>) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_stats_tools))
-        tools.forEachIndexed { i, tool ->
+        tools.forEach { tool ->
             RvRow(
                 leading = { RvIconDisc(tool.icon) },
                 title = tool.title,
                 subtitle = tool.subtitle,
-                onClick = { onTool(i) },
+                onClick = tool.onClick,
                 trailing = { RvChevron() },
             )
         }

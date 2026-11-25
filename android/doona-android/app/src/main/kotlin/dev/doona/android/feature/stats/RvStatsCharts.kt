@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.stats
+package dev.doona.android.feature.stats
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -28,12 +28,12 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
-import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvPillInk
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvUsageSize
+import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.rvChartMarker
 import dev.doona.android.designsystem.rv.rvLatencyAxisTop
 import dev.doona.android.designsystem.rv.rvMarkerChip
@@ -151,6 +151,7 @@ internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, med
     val top = rvLatencyAxisTop(values.maxOrNull() ?: 0)
     val ticks = listOf(top to "$top $unit", top / 2 to "${top / 2}", 0 to "0")
     val pillInk = RvPillInk(colors.pill, colors.raisedShadow)
+    val dotColors = values.map { latencyColor(it) }
     Canvas(modifier.fillMaxWidth().height(RvStatsSize.latency)) {
         val axis = ticks.map { (ms, text) -> ms to measurer.measure(scripted(text), axisStyle) }
         val pill = median?.let { measurer.measure(scripted("$it $unit"), axisStyle) }
@@ -175,9 +176,9 @@ internal fun RvLatencyDots(values: List<Int>, selected: Int?, label: String, med
         val x = { i: Int -> pitch * (i + 0.5f) }
         selected?.let { i -> rvChartMarker(x(i), pitch, RvStatsSize.latencyDotSelected.toPx(), plot.bottom, chip, colors.down.area) }
         values.forEachIndexed { i, ms ->
-            if (i != selected) drawCircle(colors.quality(latencyTone(ms)), RvStatsSize.latencyDot.toPx() / 2, Offset(x(i), plot.y(ms)))
+            if (i != selected) drawCircle(dotColors[i], RvStatsSize.latencyDot.toPx() / 2, Offset(x(i), plot.y(ms)))
         }
-        selected?.let { i -> drawCircle(colors.quality(latencyTone(values[i])), RvStatsSize.latencyDotSelected.toPx() / 2, Offset(x(i), plot.y(values[i]))) }
+        selected?.let { i -> drawCircle(dotColors[i], RvStatsSize.latencyDotSelected.toPx() / 2, Offset(x(i), plot.y(values[i]))) }
     }
 }
 

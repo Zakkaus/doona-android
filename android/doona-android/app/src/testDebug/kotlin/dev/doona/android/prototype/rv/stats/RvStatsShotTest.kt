@@ -27,8 +27,8 @@ class RvStatsShotTest {
     val utc = Utc()
 
     @Test
-    fun statsLight() = compose.rvShot("stats", dark = false, before = { assertWhole() }) { RvStatsScreen(rvStatsSample(), onBack = {}) }
+    fun statsLight() = compose.rvShot("stats", dark = false, before = { assertWhole() }) { RvStatsScreenSample(rvStatsSample()) }
 
     @Test
-    fun statsDark() = compose.rvShot("stats", dark = true, before = { assertWhole() }) { RvStatsScreen(rvStatsSample(), onBack = {}) }
+    fun statsDark() = compose.rvShot("stats", dark = true, before = { assertWhole() }) { RvStatsScreenSample(rvStatsSample()) }
 }

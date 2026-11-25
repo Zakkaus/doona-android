@@ -1,7 +1,5 @@
-package dev.doona.android.prototype.rv.stats
+package dev.doona.android.feature.stats
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,7 +18,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_GHOST_UP
@@ -33,33 +30,38 @@ import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
-import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvDay
-import dev.doona.android.feature.stats.RvStatsScore
-import dev.doona.android.feature.stats.RvStatsState
 import java.text.NumberFormat
 
 /**
  * The 統計 page in the language of Revolut's Analytics page: the back disc and the large title, the subscription
  * and range chips, then the cards: 已用流量 and the paged tiles (the app-side daily history), 訂閱流量 (the
  * subscriptions' quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 and the tools. Where
- * each figure comes from is noted on [RvStatsState], not on the page (N-14). The chips and the tools are not wired in the sample. With [score] (sample, for
- * the owner), a 綜合評分 card follows 延遲分布.
+ * each figure comes from is noted on [RvStatsState], not on the page (N-14). With a Score group ([RvStatsState.score]), a
+ * 綜合評分 card follows 延遲分布. The chips open the subscription filter ([onSubscriptions]) and the range ([onRange]); the
+ * tools test every node, update every subscription and open the export.
  */
 @Composable
-internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid, score: RvStatsScore? = null) {
+internal fun RvStatsScreen(
+    state: RvStatsState,
+    onBack: () -> Unit,
+    onSubscriptions: () -> Unit,
+    onRange: () -> Unit,
+    onTestAll: () -> Unit,
+    onUpdateAll: () -> Unit,
+    onExport: () -> Unit,
+    empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid,
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_stats_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, control = {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                RvFilterChip(stringResource(R.string.rv_stats_all_subscriptions), NOT_WIRED)
+                RvFilterChip(stringResource(R.string.rv_stats_all_subscriptions), onSubscriptions)
                 Spacer(Modifier.weight(1f))
-                RvFilterChip(stringResource(state.range.label), NOT_WIRED)
+                RvFilterChip(stringResource(state.range.label), onRange)
             }
         })
         RvGutter { RvSpentCard(state) }
@@ -70,9 +72,9 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, empty: RvSta
             RvQuotaCard(state.subscriptions, state.nowEpochMs)
             RvNodeMapCard(state)
             RvLatencyCard(state)
-            if (score != null) RvScoreStatsCard(score)
+            state.score?.let { RvScoreStatsCard(it) }
             RvSplitCard(state.split)
-            RvToolsCard(tools(state), onTool = { NOT_WIRED() })
+            RvToolsCard(tools(state, onTestAll, onUpdateAll, onExport))
         }
     }
 }
@@ -113,30 +115,16 @@ private fun DayTiles(day: RvDay, empty: RvStatsEmptyLook) {
 
 /** The tools card's rows: test every node, refresh every subscription, export what a bug report needs. */
 @Composable
-private fun tools(state: RvStatsState): List<RvStatsTool> {
+private fun tools(state: RvStatsState, onTestAll: () -> Unit, onUpdateAll: () -> Unit, onExport: () -> Unit): List<RvStatsTool> {
     val format = rememberRvFormat()
     val nodes = pluralStringResource(R.plurals.rv_stats_node_count, state.nodes.size, state.nodes.size)
     val subscriptions = pluralStringResource(R.plurals.rv_stats_subscriptions, state.subscriptions.size, state.subscriptions.size)
-    val refreshed = state.subscriptions.mapNotNull { it.updatedAtEpochMs }.maxOrNull()?.let {
+    val refreshed = state.subscriptions.map { it.updatedAtEpochMs }.filter { it > 0L }.maxOrNull()?.let {
         stringResource(R.string.rv_updated, format.time(it))
     }
     return listOf(
-        RvStatsTool(R.drawable.rv_sym_speed, stringResource(R.string.rv_stats_test_all), nodes),
-        RvStatsTool(R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), listOfNotNull(subscriptions, refreshed).joinToString(" · ")),
-        RvStatsTool(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_stats_export), stringResource(R.string.rv_stats_export_detail)),
+        RvStatsTool(R.drawable.rv_sym_speed, stringResource(R.string.rv_stats_test_all), nodes, onTestAll),
+        RvStatsTool(R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), listOfNotNull(subscriptions, refreshed).joinToString(" · "), onUpdateAll),
+        RvStatsTool(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_stats_export), stringResource(R.string.rv_stats_export_detail), onExport),
     )
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 2200)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 2200, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvStatsScreenPreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvStatsScreen(rvStatsSample(), onBack = {}) }
-}
-
-@Preview(name = "Quiet", locale = "zh-rTW", widthDp = 412, heightDp = 2200)
-@Composable
-private fun RvStatsQuietPreview() {
-    RvTheme(rvSystemScheme(false), false) { RvStatsScreen(rvStatsQuiet(), onBack = {}) }
 }

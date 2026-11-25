@@ -4,6 +4,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.R
+import dev.doona.android.feature.stats.RV_SPENT_CHART
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -45,7 +46,7 @@ class RvStatsSpentEmptyShotTest {
 
     @Test
     fun aDrawsTheChartWithItsLine() {
-        compose.rvContent(dark = false) { RvStatsScreen(rvStatsQuiet(), onBack = {}) }
+        compose.rvContent(dark = false) { RvStatsScreenSample(rvStatsQuiet()) }
         compose.onAllNodes(hasTestTag(RV_SPENT_CHART), useUnmergedTree = true).assertCountIs(1, "the chart")
         val lines = compose.onAllNodes(hasText(rvText(R.string.rv_stats_nothing_today)), useUnmergedTree = true).fetchSemanticsNodes().size
         assertEquals("已用流量's line, then the two tiles'", TILES_AND_CARD, lines)
@@ -53,7 +54,7 @@ class RvStatsSpentEmptyShotTest {
 
     private fun shot(dark: Boolean, fontScale: Float = 1f) {
         compose.rvShot("stats-empty-a", dark, before = { assertWhole() }, fontScale = fontScale) {
-            RvStatsScreen(rvStatsQuiet(), onBack = {})
+            RvStatsScreenSample(rvStatsQuiet())
         }
     }
 

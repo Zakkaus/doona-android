@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.stats
+package dev.doona.android.feature.stats
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,7 +19,6 @@ import dev.doona.android.engine.ScoreNetwork
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.nodes.ui.RvScoreChoiceRow
 import dev.doona.android.feature.nodes.ui.stateText
-import dev.doona.android.feature.stats.RvStatsScore
 import java.text.NumberFormat
 
 /**

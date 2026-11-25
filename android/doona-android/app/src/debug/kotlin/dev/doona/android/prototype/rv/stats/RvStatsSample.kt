@@ -1,16 +1,25 @@
 package dev.doona.android.prototype.rv.stats
 
+import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.engine.ScoreCounters
 import dev.doona.android.engine.ScoreState
+import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.stats.RvStatsEmptyLook
 import dev.doona.android.feature.stats.RvStatsRange
 import dev.doona.android.feature.stats.RvStatsScore
 import dev.doona.android.feature.stats.RvStatsScoreGroup
+import dev.doona.android.feature.stats.RvStatsScreen
 import dev.doona.android.feature.stats.RvStatsState
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.policy.RvScoreSample
 
 /** The 統計 page as [RvData] has it at 10:24: today so far, both subscriptions, every node, the current one selected. */
-internal fun rvStatsSample() = RvStatsState(
+internal fun rvStatsSample(score: RvStatsScore? = null) = RvStatsState(
     range = RvStatsRange.Today,
     today = RvData.today,
     yesterdaySoFar = RvData.YESTERDAY_BY_NOW,
@@ -19,6 +28,7 @@ internal fun rvStatsSample() = RvStatsState(
     selectedId = RvData.CURRENT_ID,
     split = RvData.split,
     nowEpochMs = RvData.nowEpochMs,
+    score = score,
 )
 
 /** The same page before the first byte of the day, with no subscription quota and no test run yet. */
@@ -56,3 +66,22 @@ private const val BUSINESS_ROOT = 152L
 private const val TRIALS_OK_TCP = 9L
 private const val TRIALS_FAILED_TCP = 2L
 private const val TRIALS_OK_UDP = 3L
+
+/** The page on a sample [state], its chips and tools not wired (the prototype's, the goldens' and the previews'). */
+@Composable
+internal fun RvStatsScreenSample(state: RvStatsState, onBack: () -> Unit = {}, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid) =
+    RvStatsScreen(state, onBack, NOT_WIRED, NOT_WIRED, NOT_WIRED, NOT_WIRED, NOT_WIRED, empty)
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 2200)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 2200, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun RvStatsScreenPreview() {
+    val dark = isSystemInDarkTheme()
+    RvTheme(rvSystemScheme(dark), dark) { RvStatsScreenSample(rvStatsSample()) }
+}
+
+@Preview(name = "Quiet", locale = "zh-rTW", widthDp = 412, heightDp = 2200)
+@Composable
+private fun RvStatsQuietPreview() {
+    RvTheme(rvSystemScheme(false), false) { RvStatsScreenSample(rvStatsQuiet()) }
+}

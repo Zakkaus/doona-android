@@ -76,7 +76,7 @@ class RvStatsScoreShotTest {
         compose.rvShot(NAME, dark, before = { assertWhole() }, fontScale = fontScale) { Page() }
 
     @Composable
-    private fun Page() = RvStatsScreen(rvStatsSample(), onBack = {}, score = rvStatsScore())
+    private fun Page() = RvStatsScreenSample(rvStatsSample(score = rvStatsScore()))
 
     private companion object {
         const val NAME = "stats-score"
