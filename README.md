@@ -95,4 +95,8 @@ Use the [support guide](.github/SUPPORT.md) for bug reports and [CONTRIBUTING.md
 
 ## License
 
-GPL-3.0-only; see [LICENSE](LICENSE). The hev-socks5-tunnel submodule keeps its own MIT license.
+doona-android is licensed under AGPL-3.0-only; see [LICENSE](LICENSE).
+If you distribute a modified version or run one that users interact with over a network, you must offer those users its corresponding source code.
+
+honk remains GPL-3.0-only and is combined with doona-android under [GPL-3.0 section 13](https://www.gnu.org/licenses/gpl-3.0.html#section13).
+The hev-socks5-tunnel submodule keeps its own MIT license.

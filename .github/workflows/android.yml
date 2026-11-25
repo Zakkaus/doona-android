@@ -206,6 +206,7 @@ jobs:
           set -euo pipefail
           ./gradlew assembleRelease -Pdoona.coreProfile="$CORE_PROFILE"
           apk=app/build/outputs/apk/release/app-release.apk
+          python3 -m unittest discover -s tools -p 'test_notices.py'
           python3 tools/notices.py --apk "$apk"
           # Owner decision (2026-11-24): ship both full DATs. Baselines include them.
           # Allow 256 KiB above each measured APK, including signer and alignment variation.

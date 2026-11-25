@@ -69,4 +69,8 @@ MetaCubeX 會替換 `latest` 的附件，並強制推送 `release` 分支。版�
 
 ## 授權
 
-GPL-3.0-only，見 [LICENSE](LICENSE)。hev-socks5-tunnel submodule 沿用它自己的 MIT 授權。
+doona-android 採用 AGPL-3.0-only 授權，見 [LICENSE](LICENSE)。
+如果你散布修改版，或執行修改版並讓使用者透過網路與它互動，就必須向這些使用者提供取得對應原始碼的方式。
+
+honk 維持 GPL-3.0-only 授權，依 [GPL-3.0 第 13 條](https://www.gnu.org/licenses/gpl-3.0.html#section13) 與 doona-android 結合。
+hev-socks5-tunnel 子模組維持原有的 MIT 授權。
