@@ -38,3 +38,6 @@ internal fun RvSettingsScreen(
     configRev: Int? = null,
     update: RvUpdate = RvUpdate.Idle,
 ) = RvSettingsScreen(state, onChange, onOpenTheme, onTab, routes, configRev, RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS), update)
+
+/** The sample's newer release. */
+internal const val RV_SAMPLE_RELEASE = "0.2.0"

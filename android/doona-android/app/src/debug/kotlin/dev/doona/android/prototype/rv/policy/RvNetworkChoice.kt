@@ -13,9 +13,7 @@ import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.feature.model.RvNode
-import dev.doona.android.feature.model.RvRuleOutbound
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
@@ -129,30 +127,3 @@ internal fun RvNetworkPicker(
         caption = network?.let { stringResource(it.label) + SEPARATOR + caption } ?: caption,
     )
 }
-
-/**
- * 串流 (a selector) for the samples of choosing TCP and UDP apart: [shared] with the switch off, Taipei 04 on both
- * networks; [apart] with the switch on, Taipei 04 on TCP and Hong Kong 01 on UDP; [asked], the node whose network the
- * samples ask for; [rules], 活動's rule groups with 串流 apart; [rulesOneRegion], the same with UDP on another node in
- * TCP's region.
- */
-internal object RvNetworkSample {
-    val group: RvPolicyGroup = RvPolicyData.streaming
-    val shared = RvNetworkChoice(group.selectedId, group.selectedId, apart = false)
-    val apart = RvNetworkChoice(group.selectedId, UDP_NODE, apart = true)
-
-    /** The switch on with both networks on one node, as after a tap that picked it for both. */
-    val apartSame = RvNetworkChoice(group.selectedId, group.selectedId, apart = true)
-
-    /** The fastest node neither network chose: the first such row on 節點's card. */
-    val asked: RvNode = group.byLatency.first { !apart.chosen(it.id) }
-
-    val rules: List<RvRuleOutbound> = rulesWithUdp(UDP_NODE)
-    val rulesOneRegion: List<RvRuleOutbound> = rulesWithUdp(group.members.first { it.place == group.selected.place && it.id != group.selectedId }.id)
-
-    private fun rulesWithUdp(udp: String) = RvData.ruleOutbounds.map {
-        if (it.group == group.name) RvRuleOutbound(it.group, it.nodeId, it.bytes, udp) else it
-    }
-}
-
-private const val UDP_NODE = "hk-01"

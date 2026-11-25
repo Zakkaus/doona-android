@@ -33,9 +33,6 @@ internal sealed interface RvUpdate {
     data object Failed : RvUpdate
 }
 
-/** The sample's newer release. */
-internal const val RV_SAMPLE_RELEASE = "0.2.0"
-
 /**
  * The label of 設定's 檢查更新 round action, once it is wired: 已是最新 once the check found nothing newer, as 活動's action names its state
  * ([dev.doona.android.designsystem.rv.RvAction] fades the new word through the old); 檢查更新 otherwise.
