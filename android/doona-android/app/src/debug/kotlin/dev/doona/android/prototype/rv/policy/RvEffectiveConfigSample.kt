@@ -7,7 +7,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvPolicyState
-import dev.doona.android.prototype.rv.settings.RvSettingsState
+import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.share.rememberEffectiveConfigActions
 
 /**

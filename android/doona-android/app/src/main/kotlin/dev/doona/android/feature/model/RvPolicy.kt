@@ -69,3 +69,6 @@ internal data class RvPolicyState(
 
     fun choose(groupId: String, nodeId: String) = copy(choices = choices + (groupId to nodeId))
 }
+
+/** The id a rule targets to send its traffic out directly, as a group's id names the group. */
+internal const val RV_DIRECT = "direct"

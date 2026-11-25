@@ -18,10 +18,10 @@ import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsSpace
+import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.prototype.rv.settings.RvSettingsCard
-import dev.doona.android.prototype.rv.settings.RvSettingsSpace
-import dev.doona.android.prototype.rv.settings.RvSettingsSwitchRow
 
 /**
  * 實驗室 (owner, 2026-11-25: experimental options go on a page of their own in 設定), a page of 設定 in 關於's form: the

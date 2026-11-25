@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import dev.doona.android.app.DoonaApplication
+import dev.doona.android.feature.model.RvSettingsState
 import kotlinx.coroutines.flow.emptyFlow
 
 /** Whether 設定 still offers the quick settings tile, and what its 加到快速設定 row does. */

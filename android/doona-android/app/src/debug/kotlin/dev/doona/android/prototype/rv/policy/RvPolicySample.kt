@@ -7,9 +7,9 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRuleOutbound
+import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvTemplate
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.settings.RvSettingsState
 
 /** 策略's profile as [RvPolicyData] and [RvData] have it at 10:24. */
 internal val rvSamplePolicyProfile = RvPolicyProfile(

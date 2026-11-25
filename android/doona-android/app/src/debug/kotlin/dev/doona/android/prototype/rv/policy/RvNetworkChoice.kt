@@ -12,12 +12,12 @@ import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSwitchRow
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /** One of a group's two networks, as the engine's `select(group, member, network)` takes it; null there is both. */
 internal enum class RvNetwork(val label: Int) {

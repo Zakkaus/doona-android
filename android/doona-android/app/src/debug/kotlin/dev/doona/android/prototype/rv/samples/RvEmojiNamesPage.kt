@@ -20,9 +20,9 @@ import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 
 /** The names the emoji1 sample shows, in node rows and in group rows, and the place a node of that name is in. */

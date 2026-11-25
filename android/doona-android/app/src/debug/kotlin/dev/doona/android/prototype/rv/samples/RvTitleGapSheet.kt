@@ -28,8 +28,8 @@ import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
+import dev.doona.android.feature.nodes.ui.RvNodePickRow
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.nodes.RvNodePickRow
 
 /**
  * The title-to-subtitle gap, side by side: one column for each of [gaps], each a card with the same three rows (a

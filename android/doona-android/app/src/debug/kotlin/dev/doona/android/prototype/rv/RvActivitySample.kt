@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
+import dev.doona.android.designsystem.rv.RvHeroSwipe
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.engine.Member

@@ -1,5 +1,7 @@
 package dev.doona.android.prototype.rv
 
+import dev.doona.android.designsystem.rv.rvKeepRuns
+import dev.doona.android.designsystem.rv.rvKeepTail
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

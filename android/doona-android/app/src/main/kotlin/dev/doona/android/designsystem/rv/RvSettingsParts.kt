@@ -1,7 +1,6 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.designsystem.rv
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,11 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.testTag
@@ -30,27 +27,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import dev.doona.android.designsystem.rv.RV_ROW_SUBTITLE_LINES
-import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
-import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvCard
-import dev.doona.android.designsystem.rv.RvChevron
-import dev.doona.android.designsystem.rv.RvCodeText
-import dev.doona.android.designsystem.rv.RvIconDisc
-import dev.doona.android.designsystem.rv.RvPart
-import dev.doona.android.designsystem.rv.RvRadio
-import dev.doona.android.designsystem.rv.RvRowPart
-import dev.doona.android.designsystem.rv.RvSectionTitle
-import dev.doona.android.designsystem.rv.RvSize
-import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvSpanText
-import dev.doona.android.designsystem.rv.RvSwitch
-import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.rvOneLine
-import dev.doona.android.designsystem.rv.rvRowPress
-import dev.doona.android.designsystem.rv.rvRowSelect
-import dev.doona.android.designsystem.rv.rvRowToggle
-import dev.doona.android.designsystem.rv.scripted
 
 /** Text in a role; CJK runs in Noto, the rest in Inter. [maxLines] defaults to one, ending in an ellipsis. */
 @Composable
@@ -118,23 +94,23 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
-        val text = rowText(RowWords(title, subtitle, titleKeepWords, subtitleKeepWords), code, titleLines, error, RowEnds(icon, action, trailing))
+        val text = rowText(SettingsRowWords(title, subtitle, titleKeepWords, subtitleKeepWords), code, titleLines, error, SettingsRowEnds(icon, action, trailing))
         Row(Modifier.fillMaxWidth().testTag(RvRowPart.SETTINGS_ROW).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
     }
 }
 
 /** A settings row's title and subtitle, and whether each holds its words ([RvSettingsRow]'s keepWords). */
-private class RowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean)
+private class SettingsRowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean)
 
 /** A settings row's leading disc, and its trailing [action] or [trailing] control ([RvSettingsRow]). */
-private class RowEnds(@DrawableRes val icon: Int?, val action: (@Composable () -> Unit)?, val trailing: (@Composable () -> Unit)?)
+private class SettingsRowEnds(@DrawableRes val icon: Int?, val action: (@Composable () -> Unit)?, val trailing: (@Composable () -> Unit)?)
 
 /**
  * [RvSettingsRow]'s disc, title over subtitle, and trailing control: the control on the title's first line; the disc
  * and an action on the title's top when there is a subtitle, on the first line (the row's centre) when there is none.
  */
 @Composable
-private fun rowText(words: RowWords, code: Boolean, titleLines: Int, error: Boolean, ends: RowEnds): @Composable RowScope.() -> Unit {
+private fun rowText(words: SettingsRowWords, code: Boolean, titleLines: Int, error: Boolean, ends: SettingsRowEnds): @Composable RowScope.() -> Unit {
     // A title of honk code keeps its own line boxes, as it is a code view; any other takes its role's Latin one.
     val title = words.title
     val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = !code))

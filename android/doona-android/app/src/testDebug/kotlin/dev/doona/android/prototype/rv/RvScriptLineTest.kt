@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvRow
-import dev.doona.android.prototype.rv.settings.RvSettingsRow
+import dev.doona.android.designsystem.rv.RvSettingsRow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule

@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvInfoContent
 import dev.doona.android.designsystem.rv.RvSheetLayout
+import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.assertWhole

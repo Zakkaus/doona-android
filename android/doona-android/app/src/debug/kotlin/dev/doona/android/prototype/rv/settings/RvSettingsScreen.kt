@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv.settings
 
 import android.content.res.Configuration
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -25,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -37,20 +34,32 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAction
 import dev.doona.android.designsystem.rv.RvBanner
 import dev.doona.android.designsystem.rv.RvBarSpacer
+import dev.doona.android.designsystem.rv.RvDuckMark
 import dev.doona.android.designsystem.rv.RvFloatingNav
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvInfoSheet
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSettingsAlpha
+import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsNavRow
+import dev.doona.android.designsystem.rv.RvSettingsSection
+import dev.doona.android.designsystem.rv.RvSettingsSize
+import dev.doona.android.designsystem.rv.RvSettingsSpace
+import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
+import dev.doona.android.designsystem.rv.RvSettingsText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
+import dev.doona.android.designsystem.rv.rvHeroArt
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvGeoData
-import dev.doona.android.prototype.rv.rvHeroArt
+import dev.doona.android.feature.model.RvPerApp
+import dev.doona.android.feature.model.RvSettingsState
 
 /**
  * The 設定 tab in Revolut's settings language (§13, with the Security page's hero), the owner's S1 (rv-fix-4e): the
@@ -124,7 +133,7 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsR
             RvBarSpacer(insets)
             Spacer(Modifier.height(RvSettingsSpace.heroTop))
             Row(titleBlock, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.markGap)) {
-                Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvSettingsSize.mark))
+                RvDuckMark(RvSettingsSize.mark)
                 RvSettingsText(stringResource(R.string.hub_settings), Rv.type.largeTitle, Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(RvSettingsSpace.titleToActions))
