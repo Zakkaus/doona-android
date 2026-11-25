@@ -99,7 +99,7 @@ internal fun rvNode(member: Member, info: NodeInfo?, subscription: String, place
         protocol = info?.protocol?.let(::protocolName).orEmpty(),
         host = info?.server.orEmpty(),
         port = info?.port ?: 0,
-        transport = info?.transport.orEmpty(),
+        transport = info?.transport?.let(::transportName).orEmpty(),
         tls = info?.tls ?: false,
         subscription = subscription,
         history = history,
@@ -142,6 +142,20 @@ private val PROTOCOLS = mapOf(
     "shadowsocks" to "Shadowsocks",
     "hysteria2" to "Hysteria2",
     "tuic" to "TUIC",
+)
+
+/** A transport as the pages name it (gRPC, WebSocket), from the core's lower-case id; an id not listed is shown as sent. */
+internal fun transportName(id: String): String = TRANSPORTS[id] ?: id
+
+private val TRANSPORTS = mapOf(
+    "tcp" to "TCP",
+    "ws" to "WebSocket",
+    "grpc" to "gRPC",
+    "h2" to "HTTP/2",
+    "http" to "HTTP",
+    "quic" to "QUIC",
+    "httpupgrade" to "HTTPUpgrade",
+    "xhttp" to "XHTTP",
 )
 
 /** Nested groups deeper than this are a cycle the core should never send; the selection then names no node. */

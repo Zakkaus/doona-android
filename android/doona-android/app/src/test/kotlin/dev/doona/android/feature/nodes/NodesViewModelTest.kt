@@ -83,7 +83,7 @@ class NodesViewModelTest {
     @Test
     fun mapsEveryNodeOnceWithItsPlaceItsProtocolAndTheMainGroupsNode() = runTest {
         val members = listOf(Member("n-hk", "🇭🇰 Hong Kong 02", subscriptionId = "s-1"), Member("n-static", "Tokyo NRT"), Member("n-hk", "🇭🇰 Hong Kong 02", subscriptionId = "s-1"))
-        val info = mapOf("n-hk" to NodeInfo("n-hk", "vless", "hk2.example.net", 443, "gRPC", true, emptyList()))
+        val info = mapOf("n-hk" to NodeInfo("n-hk", "vless", "hk2.example.net", 443, "grpc", true, emptyList()))
         val ui = collected(Probe(engine(members), info)).ui.value
         assertTrue(ui.loaded)
         assertEquals(listOf("n-hk", "n-static"), ui.state.nodes.map { it.id })
@@ -91,6 +91,7 @@ class NodesViewModelTest {
         assertEquals(RvPlace.HK, hk.place)
         assertEquals("HK 02", hk.short)
         assertEquals("VLESS", hk.protocol)
+        assertEquals("gRPC", hk.transport)
         assertEquals("🇭🇰 Hong Kong 02", hk.name)
         assertEquals("Harbor", hk.subscription)
         // A static node belongs to no subscription, so no 訂閱 section lists it.
