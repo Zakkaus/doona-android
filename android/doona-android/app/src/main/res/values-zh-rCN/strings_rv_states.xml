@@ -24,6 +24,7 @@
     <string name="rv_lan_ask_not_now">暂不</string>
     <string name="rv_lan_denied_title">未允许访问局域网</string>
     <string name="rv_lan_open_settings">打开设置</string>
+    <string name="rv_open_vpn_settings">打开 VPN 设置</string>
     <string name="rv_perm_vpn_title">允许创建 VPN</string>
     <string name="rv_perm_vpn_body">应用的流量要先交给 doona 的 VPN，才能按规则经由节点或直连。</string>
     <string name="rv_perm_notify_title">允许通知</string>
