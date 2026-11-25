@@ -112,7 +112,7 @@ private fun Caption(group: RvPolicyGroup) {
 private fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onApart: (RvApplyChoice) -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_in_use))
-        RvSwitchRow(R.drawable.rv_sym_account_tree, sampleText("分開選擇 TCP 與 UDP", "Choose TCP and UDP apart"), choice.apart, onChange = { onApart(choice) })
+        RvSwitchRow(R.drawable.rv_sym_account_tree, sampleText("分開選擇 TCP/UDP", "分开选择 TCP/UDP", "Choose TCP/UDP apart"), choice.apart, onChange = { onApart(choice) })
         if (choice.apart) {
             NetworkRow(group.members.first { it.id == choice.tcpId }, stringResource(R.string.ui_tcp))
             NetworkRow(group.members.first { it.id == choice.udpId }, stringResource(R.string.ui_udp))
@@ -139,9 +139,9 @@ private fun NetworkRow(node: RvNode, network: String?) {
 @Composable
 private fun ApplyCard(selected: RvApplyTo, onSelect: (RvApplyTo) -> Unit) {
     val options = RvApplyTo.entries
-    val labels = listOf(sampleText("TCP 與 UDP", "TCP and UDP"), stringResource(R.string.ui_tcp), stringResource(R.string.ui_udp))
+    val labels = listOf("TCP/UDP", stringResource(R.string.ui_tcp), stringResource(R.string.ui_udp))
     RvCard {
-        RvCardHeader(sampleText("套用到", "Apply to"))
+        RvCardHeader(sampleText("套用到", "应用到", "Apply to"))
         RvSegmented(labels, options.indexOf(selected), { onSelect(options[it]) }, Modifier.padding(horizontal = RvSpace.rowPadding))
         Spacer(Modifier.height(RvNodesSize.topRowGap))
     }
