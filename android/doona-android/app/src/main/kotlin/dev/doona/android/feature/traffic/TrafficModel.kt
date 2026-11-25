@@ -8,7 +8,7 @@ import dev.doona.android.engine.TrafficSeries
  * One `trafficSeries` read for [range]: its [chart], null when the read failed, and for the live minute how many seconds
  * the engine's own history held when it was read ([historyAtRead]), so the read's older seconds can lead that history.
  */
-internal class SeriesRead(val range: Int, val chart: RvTrafficChart?, val historyAtRead: Int = 0)
+internal class SeriesRead(val range: Int, val chart: RvTrafficChart?, val historyAtRead: Int)
 
 /**
  * [series] as [range]'s chart of [RV_TRAFFIC_POINTS] points: the core sends up to 300 points, so each chart point

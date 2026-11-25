@@ -105,9 +105,9 @@ class TrafficModelTest {
     @Test
     fun aFailedReadKeepsTheLastChart() {
         val last = trafficChart(RV_TRAFFIC_LIVE, series(60, 1))
-        assertSame("a window that failed", last, trafficState(SeriesRead(3, null), Status.Stopped, Traffic(), last, NOW).chart)
-        assertSame("the minute, with no history either", last, trafficState(SeriesRead(RV_TRAFFIC_LIVE, null), Status.Stopped, Traffic(), last, NOW).chart)
-        assertNull("before any read nothing is drawn", trafficState(SeriesRead(3, null), Status.Stopped, Traffic(), null, NOW).chart)
+        assertSame("a window that failed", last, trafficState(SeriesRead(3, null, 0), Status.Stopped, Traffic(), last, NOW).chart)
+        assertSame("the minute, with no history either", last, trafficState(SeriesRead(RV_TRAFFIC_LIVE, null, 0), Status.Stopped, Traffic(), last, NOW).chart)
+        assertNull("before any read nothing is drawn", trafficState(SeriesRead(3, null, 0), Status.Stopped, Traffic(), null, NOW).chart)
     }
 
     private companion object {
