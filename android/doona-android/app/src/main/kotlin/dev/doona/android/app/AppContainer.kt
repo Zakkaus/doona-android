@@ -8,7 +8,6 @@ import android.net.ConnectivityManager
 import android.os.Build
 import android.os.SystemClock
 import androidx.work.WorkManager
-import dev.doona.android.data.network.networkState
 import dev.doona.android.data.network.ownAddresses
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.LogLevelController
@@ -59,8 +58,6 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
 
     val logLevels: LogLevelController by lazy { LogLevelController({ engine.setLogLevel(it) }, uiScope, SystemClock::elapsedRealtime) }
-
-    val networkState by lazy { networkState(application, uiScope) }
 
     internal val subscriptionRefresh by lazy { SubscriptionRefresh(AppSettings.get(application), { engine }) }
 
