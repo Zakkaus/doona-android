@@ -38,10 +38,11 @@ import org.robolectric.annotation.GraphicsMode
  * under the floating 儲存): every app (`perapp`), only the checked ones as 設定 has it (`-only`), all but two, an edit
  * not yet saved (`-except`), a search two apps match (`-search`) and one none does (`-no-result`), the apps not yet
  * read (`-loading`), a phone that lists no app (`-no-apps`), 只有勾選的 with nothing checked (`-none-selected`), a save under way (`-saving`), a failed one
- * (`-save-failed`), and one stored whose tunnel would not come back (`-rebuild-failed`). The busy states are recorded at
+ * (`-save-failed`), one stored whose tunnel would not come back (`-rebuild-failed`) or found none of the listed apps
+ * installed (`-rebuild-no-apps`), and apps the phone would not list (`-read-failed`). The busy states are recorded at
  * animator scale 0, so the bar rests half full. Then what the page does: a policy row picks it, an app row toggles its
  * app, 儲存 takes only an edit that can be saved, the list and its search show only under a list policy, and the
- * notices' 重試 saves or reconnects again.
+ * notices' 重試 saves, reconnects or reads again, and 調整清單 only leaves the notice.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -141,6 +142,22 @@ class RvPerAppShotTest {
 
     @Test fun rebuildFailedFs200() = shot("rebuild-failed", fontScale = RV_FS200)
 
+    @Test fun rebuildNoAppsLight() = shot("rebuild-no-apps", dark = false)
+
+    @Test fun rebuildNoAppsDark() = shot("rebuild-no-apps", dark = true)
+
+    @Test fun rebuildNoAppsFs115() = shot("rebuild-no-apps", fontScale = RV_FS115)
+
+    @Test fun rebuildNoAppsFs200() = shot("rebuild-no-apps", fontScale = RV_FS200)
+
+    @Test fun readFailedLight() = shot("read-failed", dark = false)
+
+    @Test fun readFailedDark() = shot("read-failed", dark = true)
+
+    @Test fun readFailedFs115() = shot("read-failed", fontScale = RV_FS115)
+
+    @Test fun readFailedFs200() = shot("read-failed", fontScale = RV_FS200)
+
     @Test
     fun aPolicyRowPicksThePolicy() {
         var picked: RvAppPolicy? = null
@@ -227,6 +244,29 @@ class RvPerAppShotTest {
         compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("rebuild-failed"), RvPerAppActions(reconnect = { reconnects++ }), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
         assertEquals(1, reconnects)
+    }
+
+    @Test
+    fun aRebuildThatFoundNoListedAppAsksForTheListNotARetry() {
+        var reconnects = 0
+        var edits = 0
+        val actions = RvPerAppActions(reconnect = { reconnects++ }, editList = { edits++ })
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("rebuild-no-apps"), actions, onBack = {}) } }
+        compose.onNodeWithText(rvText(R.string.vpn_failure_no_allowed_apps)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
+        compose.onNodeWithText(rvText(R.string.rv_edit_app_list)).performClick()
+        assertEquals(1, edits)
+        assertEquals(0, reconnects)
+    }
+
+    @Test
+    fun appsThePhoneWouldNotListAreReadAgainAndNotCalledNone() {
+        var reloads = 0
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("read-failed"), RvPerAppActions(reload = { reloads++ }), onBack = {}) } }
+        compose.onNodeWithText(rvText(R.string.perapp_no_apps)).assertDoesNotExist()
+        compose.onNodeWithText(rvText(R.string.perapp_read_failed)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
+        assertEquals(1, reloads)
     }
 
     private fun shot(state: String, name: String = "perapp-$state", dark: Boolean = false, fontScale: Float = 1f) {

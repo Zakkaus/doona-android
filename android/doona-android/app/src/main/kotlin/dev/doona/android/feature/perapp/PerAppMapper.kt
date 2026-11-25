@@ -13,10 +13,11 @@ import dev.doona.android.feature.model.RvPerApp
 
 /**
  * The 依 App page from the engine's values: the [saved] policy, the edits over it ([draft], null before the first), the
- * phone's [installed] apps (null while they are read), the search [query], a save under way ([busy]), the code of a
- * failed write ([saveError]), and the reason the tunnel did not come back after a stored save ([rebuildFailure]).
- * Until the stored policy is read ([policyLoaded] false) the page shows the apps as loading, since the policy it holds
- * is the default and not what the user saved. Pure, so the ViewModel, the tests and the goldens build the same page.
+ * phone's [installed] apps (null while they are read), the search [query], a save under way ([busy]), whether the last
+ * write failed ([saveFailed]), the reason the tunnel did not come back after a stored save ([rebuildFailure]), and the
+ * code of a first read of the apps that failed ([readError]). Until the stored policy is read ([policyLoaded] false)
+ * the page shows the apps as loading, since the policy it holds is the default and not what the user saved. Pure, so
+ * the ViewModel, the tests and the goldens build the same page.
  */
 internal fun rvPerAppState(
     saved: PerApp,
@@ -24,9 +25,10 @@ internal fun rvPerAppState(
     installed: List<InstalledApp>?,
     query: String,
     busy: Boolean,
-    saveError: ErrorCode?,
+    saveFailed: Boolean,
     policyLoaded: Boolean,
     rebuildFailure: FailureReason?,
+    readError: ErrorCode?,
 ) = RvPerAppState(
     saved = saved.toRv(),
     draft = draft?.toRv(),
@@ -34,26 +36,26 @@ internal fun rvPerAppState(
     query = query,
     save = when {
         busy -> RvSave.Saving
-        saveError != null -> RvSave.Failed
+        saveFailed -> RvSave.Failed
         else -> RvSave.Idle
     },
     rebuildFailed = rebuildFailure != null,
-    saveReason = saveReason(saveError),
     rebuildReason = rebuildReason(rebuildFailure),
+    rebuildNeedsList = rebuildFailure == FailureReason.NoAllowedApps,
+    readFailed = readError != null,
+    readReason = readError?.messageRes() ?: R.string.error_internal,
 )
 
 /**
- * The second line of the failed-save notice. A write that failed inside doona ([ErrorCode.Internal], the one code
- * `setPerApp` gives today) says the setting was not written (owner, q-savereason, 2026-11-25); any other code says
- * what it is.
+ * The second line of the rebuild notice: the approved sentence for a tunnel that did not start, 活動's sentence for one
+ * that found none of the listed apps installed (one cause, one sentence), else the reason's own text.
  */
 @StringRes
-private fun saveReason(code: ErrorCode?): Int = if (code == null || code == ErrorCode.Internal) R.string.perapp_save_failed_reason else code.messageRes()
-
-/** The second line of the rebuild notice: the approved sentence for a tunnel that did not start, else the reason's own text. */
-@StringRes
-private fun rebuildReason(reason: FailureReason?): Int =
-    if (reason == null || reason == FailureReason.StartFailed) R.string.vpn_failure_start_failed else reason.messageRes()
+private fun rebuildReason(reason: FailureReason?): Int = when (reason) {
+    null, FailureReason.StartFailed -> R.string.vpn_failure_start_failed
+    FailureReason.NoAllowedApps -> R.string.vpn_failure_no_allowed_apps
+    else -> reason.messageRes()
+}
 
 internal fun PerApp.toRv() = RvPerApp(policy.toRv(), packages)
 

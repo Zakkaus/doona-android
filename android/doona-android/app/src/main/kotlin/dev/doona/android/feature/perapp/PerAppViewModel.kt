@@ -37,14 +37,20 @@ internal sealed interface PerAppAction {
     /** 重試 on the rebuild notice: the notice goes, and the route asks to connect again. */
     data object Reconnect : PerAppAction
 
+    /** 調整清單 on the rebuild notice when none of the listed apps is installed: the notice goes, and the list is there. */
+    data object EditList : PerAppAction
+
+    /** 重試 on the notice of apps the phone would not list: they are read again. */
+    data object Reload : PerAppAction
+
     /** The page is shown again: the apps of the device may have changed while it was away. */
     data object Resume : PerAppAction
 }
 
 /**
  * Edits stay here until [PerAppAction.Save] hands them to the engine in one `setPerApp`, so a half-made selection never
- * reaches a running tunnel, which a save rebuilds. While a save runs the page takes no edit. The edits survive rotation
- * with the ViewModel and are lost with the page.
+ * reaches a running tunnel, which a save rebuilds. An edit made while a save runs stays for the next save. The edits
+ * survive rotation with the ViewModel and are lost with the page.
  */
 internal class PerAppViewModel(private val engine: Engine, private val installedApps: InstalledApps) : ViewModel() {
     /** What the page holds beyond the engine's values and the device's apps. */
@@ -53,9 +59,11 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
         val draft: PerApp? = null,
         val query: String = "",
         val busy: Boolean = false,
-        /** The code of the last failed write, shown until the next save succeeds. */
-        val saveError: ErrorCode? = null,
+        /** The last write failed: shown until a save succeeds or the edits come back to what is saved. */
+        val saveFailed: Boolean = false,
         val rebuildFailure: FailureReason? = null,
+        /** The first read of the apps failed with this code; a later read that fails keeps the list it had instead. */
+        val readError: ErrorCode? = null,
     )
 
     private val local = MutableStateFlow(Local())
@@ -76,15 +84,20 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
             is PerAppAction.Toggle -> edit { it.copy(packages = if (action.checked) it.packages + action.packageName else it.packages - action.packageName) }
             is PerAppAction.SetQuery -> local.update { it.copy(query = action.query) }
             PerAppAction.Save -> save()
-            PerAppAction.Reconnect -> local.update { it.copy(rebuildFailure = null) }
-            PerAppAction.Resume -> readApps()
+            PerAppAction.Reconnect, PerAppAction.EditList -> local.update { it.copy(rebuildFailure = null) }
+            PerAppAction.Reload, PerAppAction.Resume -> readApps()
         }
     }
 
     private fun edit(change: (PerApp) -> PerApp) {
         // Until the saved policy is read the engine shows the default, and a draft that starts from it would overwrite what was saved.
-        if (!engine.perAppLoaded.value || local.value.busy) return
-        local.update { it.copy(draft = change(it.draft ?: engine.settings.value.perApp)) }
+        if (!engine.perAppLoaded.value) return
+        val saved = engine.settings.value.perApp
+        local.update {
+            val draft = change(it.draft ?: saved)
+            // Back to what is saved, there is nothing left to write, so the failed write's notice goes with the draft.
+            if (draft == saved) it.copy(draft = null, saveFailed = false) else it.copy(draft = draft)
+        }
     }
 
     private fun save() {
@@ -97,10 +110,11 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
             local.update {
                 it.copy(
                     busy = false,
-                    saveError = failure?.takeIf { rebuild == null }?.errorCode(),
+                    saveFailed = failure != null && rebuild == null,
                     rebuildFailure = rebuild?.reason,
-                    // Stored, though the tunnel may not have come up with it: the page follows the engine again.
-                    draft = if (failure == null || rebuild != null) null else it.draft,
+                    // Stored, though the tunnel may not have come up with it. An edit made while the save ran stays; only
+                    // an unchanged draft is dropped, so the page follows the engine again.
+                    draft = if ((failure == null || rebuild != null) && it.draft == saving) null else it.draft,
                 )
             }
         }
@@ -125,19 +139,21 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
     }
 
     /**
-     * A device that cannot list its apps keeps the list it had, so the page stays usable for every policy; with none
-     * read before, the page has no app to show and says so.
+     * A device that cannot list its apps keeps the list it had, so the page stays usable for every policy. The error is
+     * shown only while nothing has loaded, with 重試 to read again; after that a failed refresh says nothing new.
      */
     private suspend fun loadApps(): List<InstalledApp> = try {
-        installedApps.launchable()
+        installedApps.launchable().also { local.update { it.copy(readError = null) } }
     } catch (e: CancellationException) {
         throw e
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        // No read has succeeded yet: the page's empty list is only this failure's.
+        if (installed.value == null || local.value.readError != null) local.update { it.copy(readError = e.errorCode()) }
         installed.value.orEmpty()
     }
 
     private fun state(saved: PerApp, loaded: Boolean, apps: List<InstalledApp>?, local: Local) =
-        rvPerAppState(saved, local.draft, apps, local.query, local.busy, local.saveError, loaded, local.rebuildFailure)
+        rvPerAppState(saved, local.draft, apps, local.query, local.busy, local.saveFailed, loaded, local.rebuildFailure, local.readError)
 
     /** The engine's flows are StateFlows, so the first frame already shows real values. */
     private fun current() = state(engine.settings.value.perApp, engine.perAppLoaded.value, installed.value, local.value)

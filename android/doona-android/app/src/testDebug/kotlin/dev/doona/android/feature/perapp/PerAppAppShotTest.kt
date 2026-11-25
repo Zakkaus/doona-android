@@ -143,6 +143,22 @@ class PerAppAppShotTest {
 
     @Test fun rebuildFailedFs200() = shot("rebuild-failed", fontScale = RV_FS200)
 
+    @Test fun rebuildNoAppsLight() = shot("rebuild-no-apps", dark = false)
+
+    @Test fun rebuildNoAppsDark() = shot("rebuild-no-apps", dark = true)
+
+    @Test fun rebuildNoAppsFs115() = shot("rebuild-no-apps", fontScale = RV_FS115)
+
+    @Test fun rebuildNoAppsFs200() = shot("rebuild-no-apps", fontScale = RV_FS200)
+
+    @Test fun readFailedLight() = shot("read-failed", dark = false)
+
+    @Test fun readFailedDark() = shot("read-failed", dark = true)
+
+    @Test fun readFailedFs115() = shot("read-failed", fontScale = RV_FS115)
+
+    @Test fun readFailedFs200() = shot("read-failed", fontScale = RV_FS200)
+
     private fun shot(state: String, name: String = "perapp-$state", dark: Boolean = false, fontScale: Float = 1f) {
         val variant = when {
             fontScale == RV_FS115 -> "fs115"
@@ -209,6 +225,14 @@ class PerAppAppEnShotTest {
 
     @Test fun rebuildFailedSample() = sample("rebuild-failed")
 
+    @Test fun rebuildNoApps() = compose.appShot("rebuild-no-apps", "app-rv-perapp-rebuild-no-apps-en", dark = false, fontScale = 1f)
+
+    @Test fun rebuildNoAppsSample() = sample("rebuild-no-apps")
+
+    @Test fun readFailed() = compose.appShot("read-failed", "app-rv-perapp-read-failed-en", dark = false, fontScale = 1f)
+
+    @Test fun readFailedSample() = sample("read-failed")
+
     /** The sample page in English, as the panels' approved column: the page code is the approved code, moved. */
     private fun sample(state: String, name: String = "perapp-$state") {
         rvAnimatorScale(if (state in BUSY) 0f else 1f)
@@ -243,12 +267,14 @@ private fun ComposeContentTestRule.appShot(state: String, golden: String, dark: 
             "saving" -> awaitCancellation()
             "save-failed" -> Result.failure(EngineException(ErrorCode.Internal))
             "rebuild-failed" -> setPerApp(perApp).let { Result.failure(RebuildFailedException(FailureReason.StartFailed)) }
+            "rebuild-no-apps" -> setPerApp(perApp).let { Result.failure(RebuildFailedException(FailureReason.NoAllowedApps)) }
             else -> setPerApp(perApp)
         }
     }
     val apps = when (state) {
         "loading" -> NeverApps
         "no-apps" -> FakeInstalledApps(emptyList())
+        "read-failed" -> FailingApps
         else -> FakeInstalledApps(sampleApps)
     }
     val vm = PerAppViewModel(engine, apps)
@@ -282,11 +308,16 @@ private fun PerAppViewModel.reach(state: String) {
 
         "none-selected" -> checks(emptySet())
 
-        "saving", "save-failed", "rebuild-failed" -> {
+        "saving", "save-failed", "rebuild-failed", "rebuild-no-apps" -> {
             except()
             onAction(PerAppAction.Save)
         }
     }
+}
+
+/** A phone that will not list its apps. */
+private object FailingApps : InstalledApps {
+    override suspend fun launchable(): List<InstalledApp> = throw IllegalStateException("no package manager")
 }
 
 /** A phone whose apps never finish being read. */

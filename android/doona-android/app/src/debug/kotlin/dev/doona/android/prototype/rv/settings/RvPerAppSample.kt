@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
+import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvAppPolicy
@@ -54,15 +55,30 @@ internal fun rvPerAppSample(name: String, saved: RvPerApp = RvPerAppData.saved):
     val all = RvPerApp(RvAppPolicy.All, saved.packages)
     return when (name) {
         "all" -> rvPerAppStateSample(all)
+
         "except" -> rvPerAppStateSample(saved, draft = RvPerAppData.except)
+
         "search" -> rvPerAppStateSample(saved, query = RvPerAppData.QUERY)
+
         "no-result" -> rvPerAppStateSample(saved, query = RvPerAppData.QUERY_NONE)
+
         "loading" -> RvPerAppState(saved, installed = null)
+
         "no-apps" -> RvPerAppState(saved, installed = emptyList())
+
         "none-selected" -> rvPerAppStateSample(saved, draft = RvPerApp(RvAppPolicy.Only, emptySet()))
+
         "saving" -> rvPerAppStateSample(saved, draft = RvPerAppData.except, save = RvSave.Saving)
+
         "save-failed" -> rvPerAppStateSample(saved, draft = RvPerAppData.except, save = RvSave.Failed)
+
         "rebuild-failed" -> rvPerAppStateSample(RvPerAppData.except, rebuildFailed = true)
+
+        "rebuild-no-apps" -> rvPerAppStateSample(RvPerAppData.except, rebuildFailed = true)
+            .copy(rebuildNeedsList = true, rebuildReason = R.string.vpn_failure_no_allowed_apps)
+
+        "read-failed" -> RvPerAppState(saved, installed = emptyList(), readFailed = true)
+
         else -> rvPerAppStateSample(saved)
     }
 }

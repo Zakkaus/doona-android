@@ -28,6 +28,7 @@
     <string name="rv_empty_subscription">尚未添加订阅</string>
     <string name="rv_empty_subscription_line">添加订阅后，即可选择节点并连接。</string>
     <string name="rv_add_subscription">添加订阅</string>
+    <string name="rv_edit_app_list">调整列表</string>
     <string name="rv_offline">没有网络连接</string>
     <string name="rv_offline_reason">设备当前未连接网络。连接网络后，doona 即可连接并更新订阅。</string>
     <string name="rv_network_settings">打开网络设置</string>

@@ -15,9 +15,10 @@ internal enum class RvSave { Idle, Saving, Failed }
 
 /**
  * The 依 App page: the [saved] setting, the edits over it ([draft], null before the first), the phone's [installed]
- * apps (null while they are read), the search [query], the save, and whether the last save was stored but the tunnel
- * could not be rebuilt with it ([rebuildFailed]). [saveReason] and [rebuildReason] are the second lines of the two
- * failure notices.
+ * apps (null while they are read), the search [query], the save, whether the last save was stored but the tunnel
+ * could not be rebuilt with it ([rebuildFailed]; [rebuildNeedsList] when none of the listed apps is installed, which a
+ * second try would repeat), and whether the phone could not list its apps ([readFailed], an empty [installed] then
+ * being no claim that it has none). [saveReason], [rebuildReason] and [readReason] are the second lines of the notices.
  */
 @Immutable
 internal data class RvPerAppState(
@@ -29,6 +30,9 @@ internal data class RvPerAppState(
     val rebuildFailed: Boolean = false,
     @StringRes val saveReason: Int = R.string.perapp_save_failed_reason,
     @StringRes val rebuildReason: Int = R.string.vpn_failure_start_failed,
+    val rebuildNeedsList: Boolean = false,
+    val readFailed: Boolean = false,
+    @StringRes val readReason: Int = R.string.error_internal,
 ) {
     /** What the page shows: the edits, or the setting as saved. */
     val edited: RvPerApp get() = draft ?: saved

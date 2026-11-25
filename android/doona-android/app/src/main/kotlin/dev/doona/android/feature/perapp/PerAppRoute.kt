@@ -36,6 +36,8 @@ internal fun PerAppPage(viewModel: PerAppViewModel, onConnect: () -> Unit, onBac
                 viewModel.onAction(PerAppAction.Reconnect)
                 onConnect()
             },
+            editList = { viewModel.onAction(PerAppAction.EditList) },
+            reload = { viewModel.onAction(PerAppAction.Reload) },
         )
     }
     RvPerAppScreen(state, actions, onBack)

@@ -1,5 +1,6 @@
 package dev.doona.android.feature.perapp
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -52,6 +53,8 @@ internal class RvPerAppActions(
     val query: (String) -> Unit = {},
     val save: () -> Unit = {},
     val reconnect: () -> Unit = {},
+    val editList: () -> Unit = {},
+    val reload: () -> Unit = {},
 )
 
 /**
@@ -116,21 +119,28 @@ private fun Policies(state: RvPerAppState, actions: RvPerAppActions, look: RvPer
     }
 }
 
-/** A failed save, or one stored whose tunnel would not come back: errors, with 重試 saving or reconnecting again. */
+/**
+ * A failed save, one stored whose tunnel would not come back, or apps the phone would not list: errors, with 重試 saving,
+ * reconnecting or reading again. A tunnel that found none of the listed apps installed gets 調整清單 instead, which
+ * leaves the notice for the list, since connecting again would fail the same way (owner, q-startfail, 2026-11-24).
+ */
 @Composable
-private fun failure(state: RvPerAppState, actions: RvPerAppActions): RvNotice? {
-    val (title, reason, retry) = when {
-        state.save == RvSave.Saving -> return null
-        state.save == RvSave.Failed -> Triple(R.string.rv_perapp_save_failed, state.saveReason, actions.save)
-        state.rebuildFailed -> Triple(R.string.rv_perapp_rebuild_failed, state.rebuildReason, actions.reconnect)
-        else -> return null
-    }
-    return RvNotice(RvNoticeKind.Error, stringResource(title), stringResource(reason), stringResource(R.string.rv_retry), retry)
+private fun failure(state: RvPerAppState, actions: RvPerAppActions): RvNotice? = when {
+    state.save == RvSave.Saving -> null
+    state.save == RvSave.Failed -> notice(R.string.rv_perapp_save_failed, state.saveReason, R.string.rv_retry, actions.save)
+    state.rebuildFailed && state.rebuildNeedsList -> notice(R.string.rv_perapp_rebuild_failed, state.rebuildReason, R.string.rv_edit_app_list, actions.editList)
+    state.rebuildFailed -> notice(R.string.rv_perapp_rebuild_failed, state.rebuildReason, R.string.rv_retry, actions.reconnect)
+    state.readFailed -> notice(R.string.perapp_read_failed, state.readReason, R.string.rv_retry, actions.reload)
+    else -> null
 }
 
+@Composable
+private fun notice(@StringRes title: Int, @StringRes reason: Int, @StringRes action: Int, onAction: () -> Unit) =
+    RvNotice(RvNoticeKind.Error, stringResource(title), stringResource(reason), stringResource(action), onAction)
+
 /**
- * The apps, or the empty caption when the search matches none or the phone lists no app (its read failed, or it has
- * none to launch); while they are read, a skeleton of their rows, which a
+ * The apps, or the empty caption when the search matches none or the phone has no app to launch; nothing when the
+ * phone would not list its apps, which the notice above says. While they are read, a skeleton of their rows, which a
  * screen reader reads as the apps loading. The skeleton's card runs past the window's foot as the list does
  * ([rvSkeletonRowsToFill]); its rows stop above 儲存's room, as the list's last row clears it ([LocalRvContentFloor]).
  */
@@ -140,12 +150,11 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppL
     val rows = rvSkeletonRowsToFill()
     RvSkeletonFade(state.installed == null, { RvSkeletonCard(description = loading) { repeat(rows) { RvSkeletonRow(it) } } }) {
         val shown = state.shown
-        if (state.installed.isNullOrEmpty()) {
-            RvEmptyCaption(stringResource(R.string.perapp_no_apps), stringResource(R.string.perapp_no_apps_line))
-        } else if (shown.isEmpty()) {
-            RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
-        } else {
-            RvCard { shown.forEach { key(it.packageName) { AppRow(it, it.packageName in state.edited.packages, look) { on -> actions.toggle(it.packageName, on) } } } }
+        when {
+            state.installed.isNullOrEmpty() && state.readFailed -> Unit
+            state.installed.isNullOrEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_apps), stringResource(R.string.perapp_no_apps_line))
+            shown.isEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
+            else -> RvCard { shown.forEach { key(it.packageName) { AppRow(it, it.packageName in state.edited.packages, look) { on -> actions.toggle(it.packageName, on) } } } }
         }
     }
 }

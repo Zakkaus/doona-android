@@ -132,7 +132,7 @@ class PerAppViewModelTest {
     }
 
     @Test
-    fun `a device that cannot list its apps shows none and stays usable for every policy`() = runTest {
+    fun `a device that cannot list its apps shows the error, not a phone without apps, and stays usable for every policy`() = runTest {
         val engine = FakeEngine()
         val vm = collected(
             engine,
@@ -140,11 +140,30 @@ class PerAppViewModelTest {
                 override suspend fun launchable(): List<InstalledApp> = throw IllegalStateException("no package manager")
             },
         )
-        assertEquals("the list is read, and empty", emptyList<RvApp>(), vm.state.installed)
+        assertTrue(vm.state.readFailed)
+        assertEquals(R.string.error_internal, vm.state.readReason)
+        assertEquals(emptyList<RvApp>(), vm.state.installed)
         assertEquals(RvSave.Idle, vm.state.save)
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
         assertEquals(AppPolicy.ExceptListed, engine.settings.value.perApp.policy)
+    }
+
+    @Test
+    fun `retrying a failed read keeps the error while it fails and shows the apps once it works`() = runTest {
+        val apps = ChangingApps(FakeInstalledApps.SAMPLE_APPS).apply { failure = IllegalStateException("no package manager") }
+        val vm = collected(FakeEngine(), apps)
+        assertTrue(vm.state.readFailed)
+
+        vm.onAction(PerAppAction.Reload)
+        assertEquals(2, apps.reads)
+        assertTrue("nothing has been read yet, so the error stays", vm.state.readFailed)
+
+        apps.failure = null
+        vm.onAction(PerAppAction.Reload)
+        assertEquals(3, apps.reads)
+        assertFalse(vm.state.readFailed)
+        assertEquals(sample, vm.state.installed)
     }
 
     @Test
@@ -278,6 +297,29 @@ class PerAppViewModelTest {
     }
 
     @Test
+    fun `a rebuild that found none of the listed apps installed asks for the list, not a retry`() = runTest {
+        val vm = collected(RebuildFails(reason = FailureReason.NoAllowedApps))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        vm.onAction(PerAppAction.Save)
+
+        val state = vm.state
+        assertTrue(state.rebuildFailed)
+        assertTrue(state.rebuildNeedsList)
+        assertEquals("活動's sentence for the same cause", R.string.vpn_failure_no_allowed_apps, state.rebuildReason)
+        vm.onAction(PerAppAction.EditList)
+        assertFalse(vm.state.rebuildFailed)
+    }
+
+    @Test
+    fun `a rebuild that can be tried again is not sent to the list`() = runTest {
+        val vm = collected(RebuildFails(reason = FailureReason.StartFailed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        vm.onAction(PerAppAction.Save)
+        assertTrue(vm.state.rebuildFailed)
+        assertFalse(vm.state.rebuildNeedsList)
+    }
+
+    @Test
     fun `retrying after a failed rebuild clears the notice`() = runTest {
         val vm = collected(RebuildFails(reason = FailureReason.StartFailed))
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
@@ -300,19 +342,6 @@ class PerAppViewModelTest {
         vm.onAction(PerAppAction.Save)
         assertEquals(RvSave.Idle, vm.state.save)
         assertFalse(vm.state.rebuildFailed)
-    }
-
-    @Test
-    fun `a failed write inside doona says the setting was not written, another code says what it is`() = runTest {
-        val inside = collected(FlakyEngine(code = ErrorCode.Internal))
-        inside.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
-        inside.onAction(PerAppAction.Save)
-        assertEquals(R.string.perapp_save_failed_reason, inside.state.saveReason)
-
-        val busy = collected(FlakyEngine(code = ErrorCode.Busy))
-        busy.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
-        busy.onAction(PerAppAction.Save)
-        assertEquals(R.string.error_busy, busy.state.saveReason)
     }
 
     @Test
@@ -411,6 +440,7 @@ class PerAppViewModelTest {
 
         assertEquals(2, apps.reads)
         assertEquals(sample, vm.state.installed)
+        assertFalse("the page already has a list, so a failed refresh is not an error", vm.state.readFailed)
         assertTrue(vm.state.canSave)
     }
 
@@ -436,7 +466,22 @@ class PerAppViewModelTest {
     }
 
     @Test
-    fun `a save in progress takes no second save and no edit`() = runTest {
+    fun `a failed save goes once the edits come back to what is saved`() = runTest {
+        val engine = FlakyEngine()
+        val vm = collected(engine)
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        vm.onAction(PerAppAction.Save)
+        assertEquals(RvSave.Failed, vm.state.save)
+
+        vm.onAction(PerAppAction.SetPolicy(engine.settings.value.perApp.policy.toRv()))
+
+        assertEquals("nothing is left to write, so no notice offers 重試", RvSave.Idle, vm.state.save)
+        assertNull(vm.state.draft)
+        assertFalse(vm.state.canSave)
+    }
+
+    @Test
+    fun `a save in progress takes no second save and keeps an edit made meanwhile`() = runTest {
         val release = CompletableDeferred<Unit>()
         val fake = FakeEngine()
         var calls = 0
@@ -456,16 +501,14 @@ class PerAppViewModelTest {
 
         vm.onAction(PerAppAction.Save)
         vm.onAction(PerAppAction.Toggle(telegram, true))
-        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.All))
-        assertEquals("the page rests while the save runs", setOf(chrome), vm.state.checked)
         release.complete(Unit)
 
         assertEquals("the second save did not reach the engine", 1, calls)
         assertEquals(PerApp(AppPolicy.OnlyListed, setOf(chrome)), engine.settings.value.perApp)
         val state = vm.state
         assertEquals(RvSave.Idle, state.save)
-        assertEquals(setOf(chrome), state.checked)
-        assertFalse(state.canSave)
+        assertEquals("the edit made during the save stays", setOf(chrome, telegram), state.checked)
+        assertTrue(state.canSave)
     }
 
     @Test
