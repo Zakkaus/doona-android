@@ -7,15 +7,21 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import dev.doona.android.R
+import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -23,6 +29,10 @@ import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.localnetwork.LocalNetworkAccess
+import dev.doona.android.feature.localnetwork.LocalNetworkEngine
+import dev.doona.android.feature.localnetwork.LocalNetworkHost
+import dev.doona.android.feature.localnetwork.LocalNetworkPrompts
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS200
@@ -31,6 +41,7 @@ import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.subs.RV_LAN_LINK
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,7 +58,8 @@ import org.robolectric.annotation.GraphicsMode
  * 新增訂閱 is driven as the user drives it: the name typed and the keyboard put away, the link taken from the clipboard's
  * row, 新增 tapped. The engine answers each import at once,
  * with the fake standing for the core's fetch (Harbor Cloud as it is in the sample, or the failure under test), or
- * never, for the import in flight.
+ * never, for the import in flight. The sheets, the long-press menu and the local network prompt open as the user opens
+ * them, in their own windows, so those goldens capture every window (light and dark, as their approved goldens).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -173,6 +185,44 @@ class AppRvSubsShotTest {
     @Config(qualifiers = RV_EN)
     fun tooLargeEn() = add("sub-add-too-large", Answer.Fails(ErrorCode.TooLarge), english = true)
 
+    /** Harbor Cloud's last update failed: the banner over the cards, as the engine reports the failure. */
+    @Test fun failedLight() = shot("subs-failed") { Subs(failedEngine()) }
+
+    @Test fun failedDark() = shot("subs-failed", dark = true) { Subs(failedEngine()) }
+
+    /** Harbor Cloud's card held where the prototype's finger held it; the menu opens at the finger. */
+    @Test fun menuLight() = shot("subs-menu", whole = false, windows = true, before = { holdHarbor() }) { Subs() }
+
+    @Test fun menuDark() = shot("subs-menu", dark = true, whole = false, windows = true, before = { holdHarbor() }) { Subs() }
+
+    /** 刪除 picked from that menu: the question's sheet. */
+    @Test fun deleteLight() = shot("subs-delete", whole = false, windows = true, before = { pickDelete() }) { Subs() }
+
+    @Test fun deleteDark() = shot("subs-delete", dark = true, whole = false, windows = true, before = { pickDelete() }) { Subs() }
+
+    /** The name's row tapped on Harbor Cloud's page: the rename sheet, on the name. */
+    @Test fun renameLight() = shot("sub-detail-rename", whole = false, windows = true, before = { tap(R.string.rv_sub_name) }) { Detail() }
+
+    @Test fun renameDark() = shot("sub-detail-rename", dark = true, whole = false, windows = true, before = { tap(R.string.rv_sub_name) }) { Detail() }
+
+    /** The User-Agent row tapped: its sheet, the field empty for the default. */
+    @Test fun userAgentLight() = shot("sub-detail-user-agent", whole = false, windows = true, before = { tap(R.string.rv_sub_user_agent) }) { Detail() }
+
+    @Test fun userAgentDark() = shot("sub-detail-user-agent", dark = true, whole = false, windows = true, before = { tap(R.string.rv_sub_user_agent) }) { Detail() }
+
+    /**
+     * A link on the local network added: the core refuses it until the permission is granted, and the app's prompt asks
+     * over the page. Until P1b this is the old dialog ([LocalNetworkPrompts]), not the approved sheet.
+     */
+    @Test fun lanAskLight() = lan("sub-add-lan-ask", refused = false)
+
+    @Test fun lanAskDark() = lan("sub-add-lan-ask", refused = false, dark = true)
+
+    /** The system's question refused: the refusal, which leads to the app's settings. */
+    @Test fun lanDeniedLight() = lan("sub-add-lan-denied", refused = true)
+
+    @Test fun lanDeniedDark() = lan("sub-add-lan-denied", refused = true, dark = true)
+
     @Test fun welcomeLight() = shot("welcome") { Welcome() }
 
     @Test fun welcomeDark() = shot("welcome", dark = true) { Welcome() }
@@ -189,6 +239,7 @@ class AppRvSubsShotTest {
         fontScale: Float = 1f,
         english: Boolean = false,
         whole: Boolean = true,
+        windows: Boolean = false,
         before: ComposeContentTestRule.() -> Unit = {},
         content: @Composable () -> Unit,
     ) = compose.rvShot(
@@ -202,8 +253,55 @@ class AppRvSubsShotTest {
         fontScale = fontScale,
         prefix = APP,
         english = english,
+        windows = windows,
         content = content,
     )
+
+    private fun ComposeContentTestRule.tap(label: Int) = onNodeWithText(string(label)).performClick()
+
+    /** A long press where the prototype's finger held Harbor Cloud's card. */
+    private fun ComposeContentTestRule.holdHarbor() = onRoot().performTouchInput { longClick(Offset(MENU_X.toPx(), MENU_Y.toPx())) }
+
+    private fun ComposeContentTestRule.pickDelete() {
+        holdHarbor()
+        waitForIdle()
+        tap(R.string.rv_menu_delete)
+    }
+
+    /**
+     * 新增訂閱 with [RV_LAN_LINK] typed and 新增 tapped, over an engine that refuses it until the local network is allowed,
+     * as the core does; the prompt asks, and with [refused] the system's question is refused. The import waits on the
+     * prompt, so the busy bar runs under it: the clock stops at the tap and runs [LAN_FRAMES] frames for each step.
+     */
+    private fun lan(name: String, refused: Boolean, dark: Boolean = false) {
+        val access = LocalNetworkAccess { false }
+        shot(
+            name,
+            dark,
+            whole = false,
+            windows = true,
+            before = {
+                onAllNodes(hasSetTextAction())[0].performTextReplacement(RV_LAN_LINK)
+                runOnIdle { focus.clearFocus() }
+                mainClock.autoAdvance = false
+                onNodeWithText(string(R.string.rv_add_import)).performClick()
+                repeat(LAN_FRAMES) { mainClock.advanceTimeByFrame() }
+                if (refused) {
+                    runOnIdle {
+                        access.requesting()
+                        access.answered(false)
+                    }
+                    repeat(LAN_FRAMES) { mainClock.advanceTimeByFrame() }
+                }
+            },
+        ) {
+            val scope = rememberCoroutineScope()
+            val engine = remember { LocalNetworkEngine(Answering(Answer.Fails(ErrorCode.LocalNetwork)), access, scope) }
+            Add(engine)
+            // The old dialog reads the old pages' theme, as under MainActivity, until P1b's sheet replaces it.
+            DoonaTheme { LocalNetworkPrompts(remember { LocalNetworkHost(access, request = {}, openSettings = {}) }) }
+        }
+    }
 
     /**
      * 新增訂閱 over an engine that answers [answer]; with [typed] the sample's name is typed, the keyboard put away, the
@@ -260,6 +358,11 @@ class AppRvSubsShotTest {
         SubAddRoute(engine, rememberImports(engine), onBack = {})
     }
 
+    /** The sample with Harbor Cloud's last update failed. */
+    private fun failedEngine(): FakeEngine = harborEngine().apply {
+        subscriptions.value = subscriptions.value.mapIndexed { i, sub -> if (i == 0) sub.copy(error = "fetch failed") else sub }
+    }
+
     /** The page's focus, to put the keyboard away after typing; taken once the page has composed. */
     private lateinit var focus: FocusManager
 
@@ -313,6 +416,13 @@ class AppRvSubsShotTest {
          * matches `proto-rv-sub-adding-unknown-light` with no pixel apart; the bar starts at the tap here.
          */
         const val BUSY_FRAMES = 24
+
+        /** Frames from a step to its prompt shown in place: the dialog's window and its fade, a second at most. */
+        const val LAN_FRAMES = 60
+
+        /** Where the prototype's finger held Harbor Cloud's card (RvSubsShotTest): a third of the way in, on its row. */
+        val MENU_X = 136.dp
+        val MENU_Y = 210.dp
 
         /**
          * Fixture data: [sub] with the format the core would find behind the sample's link (Clash YAML on the approved
