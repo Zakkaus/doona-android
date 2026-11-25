@@ -217,6 +217,32 @@ class NetworkStateSourceTest {
         assertEquals(NetworkState(), state.value)
     }
 
+    @Test
+    fun theSeededNetworkLostBeforeAnyOtherCallbackGoesOffline() = runTest {
+        val seeded = checkNotNull(connectivity.activeNetwork)
+        manager.setNetworkCapabilities(seeded, capabilities(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.NET_CAPABILITY_VALIDATED))
+        val state = networkState(app, backgroundScope).state
+        testScheduler.runCurrent()
+        assertTrue(state.value.online)
+
+        (manager.networkCallbacks - existing).single().onLost(seeded)
+        testScheduler.runCurrent()
+        assertEquals(NetworkState(), state.value)
+    }
+
+    @Test
+    fun aDefaultNetworkGoneBeforeRegistrationReadsOffline() = runTest {
+        manager.setNetworkCapabilities(checkNotNull(connectivity.activeNetwork), capabilities(NetworkCapabilities.TRANSPORT_WIFI))
+        val state = networkState(app, backgroundScope).state
+        assertTrue(state.value.online)
+
+        // Gone after the seed was read and before the callback was registered: Android reports nothing for it.
+        manager.setDefaultNetworkActive(false)
+        testScheduler.runCurrent()
+        (manager.networkCallbacks - existing).single()
+        assertEquals(NetworkState(), state.value)
+    }
+
     private fun TestScope.observeNetwork(): StateFlow<NetworkState> {
         val state = networkState(app, backgroundScope).state
         backgroundScope.launch { state.collect {} }

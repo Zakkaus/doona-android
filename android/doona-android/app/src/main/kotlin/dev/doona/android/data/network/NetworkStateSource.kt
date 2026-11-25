@@ -89,10 +89,14 @@ private fun ConnectivityManager.defaultState(): NetworkState =
     activeNetwork?.let(::getNetworkCapabilities)?.toState() ?: offline
 
 private fun defaultNetwork(connectivity: ConnectivityManager) = callbackFlow {
+    // The default network can change between the seed in [networkState] and this registration. Read it again here and
+    // start from it, so a loss reported before any other callback still matches, and a network already gone reads offline.
+    val seed = connectivity.activeNetwork
+    trySend(seed?.let(connectivity::getNetworkCapabilities)?.toState() ?: offline)
     val callback = object : ConnectivityManager.NetworkCallback() {
         // Callbacks arrive on one handler thread. Android can report the loss of the old default network after the new
         // one is up, so only the loss of the current default network means offline.
-        private var current: Network? = null
+        private var current: Network? = seed
 
         override fun onAvailable(network: Network) {
             current = network
