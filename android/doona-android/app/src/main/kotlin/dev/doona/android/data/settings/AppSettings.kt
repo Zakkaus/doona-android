@@ -72,6 +72,9 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         ThemeAppearance(mode(prefs), prefs[FOLLOW_WALLPAPER] ?: false, accent)
     }
 
+    /** Whether doona has asked for the notification permission, explained or not: it asks once, after a connection. */
+    val notifyAsked = preference { it[NOTIFY_ASKED] ?: false }
+
     private fun <T> preference(read: (Preferences) -> T): Flow<T> = store.data.map(read).distinctUntilChanged()
 
     private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
@@ -94,6 +97,8 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
 
     suspend fun setAccent(accent: ThemeAccent) = set(ACCENT, accent.name)
 
+    suspend fun recordNotifyAsked() = set(NOTIFY_ASKED, true)
+
     companion object {
         private val NOTIFY_ON_DROP = booleanPreferencesKey("notify_on_drop")
         private val AUTO_UPDATE = booleanPreferencesKey("auto_update")
@@ -103,6 +108,7 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val FOLLOW_WALLPAPER = booleanPreferencesKey("follow_wallpaper")
         private val ACCENT = stringPreferencesKey("accent")
+        private val NOTIFY_ASKED = booleanPreferencesKey("notify_asked")
 
         private var instance: AppSettings? = null
 

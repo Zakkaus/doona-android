@@ -13,31 +13,41 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.annotation.VisibleForTesting
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.engine.Status
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
+import dev.doona.android.feature.permissions.NotifyState
+import dev.doona.android.feature.permissions.PermissionPrompts
+import dev.doona.android.feature.permissions.PermissionStep
+import dev.doona.android.feature.permissions.PermissionViewModel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
- * The only activity. It owns the steps that need an activity: before the engine may connect, the notification
- * permission and VPN consent; and the local network permission's system dialog and the app's settings page, which the
- * screens' engine asks for after a failure (ARCH D26). Every connect request, from the UI or from [connectIntent], goes
- * through [connect].
+ * The only activity. It owns the steps that need an activity: the VPN consent before the engine may connect, and the
+ * notification permission once it has, each explained first ([PermissionAsks]); and the local network permission's
+ * system dialog and the app's settings page, which the screens' engine asks for after a failure (ARCH D26). Every
+ * connect request, from the UI or from [connectIntent], goes through [connect]. No other intent connects or
+ * disconnects.
  */
 class MainActivity : ComponentActivity() {
     private val container get() = (application as DoonaApplication).container
     private val engine get() = container.engine
 
-    /**
-     * True from a connect request until it connects or consent is refused, so a repeated tap or a redelivered intent
-     * joins the pending request. Saved with the activity, because a pending result is delivered to the recreated one.
-     */
-    private var connecting = false
+    private val permissions by viewModels<PermissionViewModel> { PermissionViewModel.Factory }
+    private val asks get() = permissions.asks
 
     // A denied notification permission does not stop the connection; the service then runs without a visible notice.
     private val notificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { requestVpnConsent() }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { asks.notifyAnswered(it) }
 
     private val vpnConsent = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        connecting = false
-        if (result.resultCode == RESULT_OK) engine.connect()
+        onPermissionStep(asks.consentAnswered(result.resultCode == RESULT_OK))
     }
 
     /** The local network permission's only launcher, a field like the two above, so the answer reaches a recreated activity. */
@@ -47,7 +57,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        connecting = savedInstanceState?.getBoolean(KEY_CONNECTING) ?: false
         // Read here, once, so the settings page never asks the package manager while it composes.
         val version = versionName()
         val localNetwork = LocalNetworkHost(container.localNetwork, ::requestLocalNetwork, ::openAppSettings)
@@ -61,8 +70,10 @@ class MainActivity : ComponentActivity() {
                     version = version,
                     localNetwork = localNetwork,
                 )
+                PermissionPrompts(asks, ::onPermissionStep)
             }
         }
+        askNotifyOnceConnected()
         container.checkCrashes()
         // A recreated activity or one reopened from recents must not repeat the request that first launched it.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
@@ -74,11 +85,6 @@ class MainActivity : ComponentActivity() {
         container.logLevels.expireIfDue()
         // Back from the app's settings, where a fetch waiting on the local network refusal may have been allowed.
         container.localNetwork.resumed()
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putBoolean(KEY_CONNECTING, connecting)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -99,29 +105,47 @@ class MainActivity : ComponentActivity() {
         if (intent.action == ACTION_CONNECT && intent.component?.className == CONNECT_ENTRY) connect()
     }
 
-    /**
-     * Asks for the notification permission on the first connect only: once the user has declined it, Android
-     * reports a rationale and the request is skipped, and after a permanent denial the system answers at once.
-     */
-    private fun connect() {
-        if (connecting) return
-        connecting = true
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val permission = Manifest.permission.POST_NOTIFICATIONS
-            val granted = checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
-            if (!granted && !shouldShowRequestPermissionRationale(permission)) {
-                notificationPermission.launch(permission)
-                return
+    /** 連線: at once when the consent is given; otherwise the VPN is explained before the system's consent dialog. */
+    private fun connect() = onPermissionStep(asks.connect(consentNeeded = VpnService.prepare(this) != null))
+
+    /** Runs a step of [PermissionAsks]: the engine's connect, or one of the system's two dialogs. */
+    @VisibleForTesting
+    internal fun onPermissionStep(step: PermissionStep) {
+        when (step) {
+            PermissionStep.Wait -> Unit
+
+            PermissionStep.Connect -> engine.connect()
+
+            PermissionStep.AskConsent -> requestVpnConsent()
+
+            PermissionStep.AskNotify -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-        requestVpnConsent()
     }
 
+    // The consent may have been given meanwhile (another app's prompt, the tile), so the dialog is looked up again.
     private fun requestVpnConsent() {
-        val consent = VpnService.prepare(this)
-        if (consent != null) return vpnConsent.launch(consent)
-        connecting = false
-        engine.connect()
+        val consent = VpnService.prepare(this) ?: return onPermissionStep(asks.consentAnswered(given = true))
+        vpnConsent.launch(consent)
+    }
+
+    /**
+     * While the activity is started, a connection that is up explains the notification permission, once ever: Android
+     * below 13 has none to ask for, and a granted one needs no asking.
+     */
+    private fun askNotifyOnceConnected() {
+        val settings = AppSettings.get(application)
+        val notify = NotifyState {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+                !settings.notifyAsked.first()
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                engine.status.collect { asks.onStatus(it is Status.Running, notify, settings::recordNotifyAsked) }
+            }
+        }
     }
 
     /** The system's question; below Android 17 there is no permission to ask for, so access counts as allowed. */
@@ -143,7 +167,6 @@ class MainActivity : ComponentActivity() {
 
         /** The `<activity-alias>` in the manifest; not exported. */
         private const val CONNECT_ENTRY = "dev.doona.android.app.ConnectEntry"
-        private const val KEY_CONNECTING = "connecting"
 
         /**
          * Opens the app and runs the same path as the connect switch, asking for consent first where needed. For this

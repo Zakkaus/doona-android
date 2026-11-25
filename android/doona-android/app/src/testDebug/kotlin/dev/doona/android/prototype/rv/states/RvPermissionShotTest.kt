@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.designsystem.rv.RvConfirmContent
 import dev.doona.android.designsystem.rv.RvSheetLayout
+import dev.doona.android.feature.permissions.text
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200

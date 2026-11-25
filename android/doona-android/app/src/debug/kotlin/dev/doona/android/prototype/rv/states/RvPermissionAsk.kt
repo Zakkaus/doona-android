@@ -5,37 +5,13 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.stringResource
-import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.engine.Status
-import dev.doona.android.feature.localnetwork.RvPromptText
+import dev.doona.android.feature.permissions.Permission
+import dev.doona.android.feature.permissions.text
 
-/**
- * The two permissions doona asks for on the way to its first connection, each said first in the confirm sheet: [Vpn]
- * before the system's VPN consent, [Notify] before the notification permission. The notification shows only while
- * connected (the status, 中斷連線, and a drop when the connection ends: `VpnNotifications`), so it is asked once the
- * first connection is up.
- */
-internal enum class RvPermission { Vpn, Notify }
-
-/** The explanation's words: what the permission is for, 繼續, and 取消 (VPN: no connection) or 暫時不要. */
-@Composable
-internal fun RvPermission.text(): RvPromptText = when (this) {
-    RvPermission.Vpn -> RvPromptText(
-        stringResource(R.string.rv_perm_vpn_title),
-        stringResource(R.string.rv_perm_vpn_body),
-        stringResource(R.string.rv_lan_ask_continue),
-        stringResource(R.string.rv_cancel),
-    )
-
-    RvPermission.Notify -> RvPromptText(
-        stringResource(R.string.rv_perm_notify_title),
-        stringResource(R.string.rv_perm_notify_body),
-        stringResource(R.string.rv_lan_ask_continue),
-        stringResource(R.string.rv_lan_ask_not_now),
-    )
-}
+/** The app's two permissions ([Permission]), under the sample's name; their words are the app's ([text]). */
+internal typealias RvPermission = Permission
 
 /**
  * Which explanation shows ([showing]), and which were given. [connect] stands for 連線: until the VPN was [explained]
