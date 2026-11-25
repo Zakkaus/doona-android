@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_name_apple" translatable="false">Apple</string>
+    <string name="rv_name_youtube" translatable="false">YouTube</string>
+    <string name="rv_name_node_select">Node select</string>
+</resources>

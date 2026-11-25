@@ -6,21 +6,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
-import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLatencyText
+import dev.doona.android.designsystem.rv.RvNameDisc
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvShownName
 import dev.doona.android.designsystem.rv.SEPARATOR
+import dev.doona.android.designsystem.rv.rvMarkName
+import dev.doona.android.designsystem.rv.rvShownName
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.prototype.rv.policy.RvPolicyData
@@ -84,27 +85,6 @@ private fun GroupNameRow(name: String, kind: RvGroupKind, proposed: Boolean) {
         stringResource(kind.label) + SEPARATOR + count,
         titleKeepWords = false,
     )
-}
-
-/**
- * The row's leading disc: the name's recognised mark as our flag or glyph ([current] badges a flag as the chosen node's),
- * else what the row leads with today ([flag], the node's place).
- */
-@Composable
-internal fun RvNameDisc(mark: RvNameMark?, flag: String?, current: Boolean = false, size: Dp = RvSize.rowDisc) {
-    when (mark) {
-        is RvNameMark.Flag -> RvFlag(mark.code, size, current = current)
-        is RvNameMark.Icon -> RvIconDisc(mark.glyph, size = size, current = current)
-        null -> RvFlag(flag, size, current = current)
-    }
-}
-
-/** What a name with nothing left but its emoji reads: the flag's country ([place]), or the brand or group. */
-@Composable
-internal fun rvMarkName(mark: RvNameMark?, place: String): String = when (mark) {
-    is RvNameMark.Flag -> RvPlace.entries.firstOrNull { it.flag.equals(mark.code, ignoreCase = true) }?.let { stringResource(it.label) } ?: place
-    is RvNameMark.Icon -> sampleText(mark.zh, mark.en)
-    null -> place
 }
 
 private const val GROUP_NODES = 12
