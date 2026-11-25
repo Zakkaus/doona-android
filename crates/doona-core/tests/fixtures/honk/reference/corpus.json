@@ -682,6 +682,54 @@
           "protocol": "tcp"
         }
       ]
+    },
+    {
+      "name": "grouped-negation",
+      "config": "cases/grouped-negation.dae",
+      "probes": [
+        {
+          "name": "other-443",
+          "domain": "www.other.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "a-443",
+          "domain": "www.a.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "b-443",
+          "domain": "x.b.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "no-name-443",
+          "domain": null,
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "a-80",
+          "domain": "www.a.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 80,
+          "protocol": "tcp"
+        },
+        {
+          "name": "other-8080",
+          "domain": "www.other.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 8080,
+          "protocol": "tcp"
+        }
+      ]
     }
   ]
 }

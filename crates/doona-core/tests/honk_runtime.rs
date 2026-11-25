@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use common::TempDir;
+use doonacore::honkconf::meters::RevisionMeters;
 use doonacore::honkconf::runtime::{
     Decision, Flow, GlobalTarget, Mode, ModeResult, Network, Runtime, RuntimeError,
 };
@@ -44,7 +45,7 @@ fn summary(decision: &Decision) -> (String, ModeResult, Vec<String>) {
 }
 
 fn expect(runtime: &Runtime, flow: &Flow, outbound: &str, mode: ModeResult, chain: &[&str]) {
-    let got = summary(&runtime.decide(flow));
+    let got = summary(&runtime.decide(flow).decision);
     let chain = chain.iter().map(|s| (*s).to_owned()).collect();
     assert_eq!(got, (outbound.to_owned(), mode, chain), "{flow:?}");
 }
@@ -54,7 +55,7 @@ fn committed_groups_decide_in_every_mode() {
     let data = TempDir::new("honk-runtime");
     let geo = TempDir::new("honk-runtime-geo");
     let store = committed(&data, FIXTURE);
-    let mut runtime = Runtime::load(&store, geo.path()).unwrap();
+    let runtime = Runtime::load(&store, &Capabilities::linked(), geo.path()).unwrap();
     assert_eq!(runtime.revision(), store.head());
     assert_eq!(runtime.mode(), Mode::Rule);
     assert_eq!(runtime.global_target(), None);
@@ -66,7 +67,7 @@ fn committed_groups_decide_in_every_mode() {
     let rescue = flow("203.0.113.9:8443", None);
     let unchanged = ModeResult::Unchanged;
 
-    let decision = runtime.decide(&fallback);
+    let decision = runtime.decide(&fallback).decision;
     assert_eq!(decision.rule, None, "the routing fallback matched no rule");
     expect(
         &runtime,
@@ -75,7 +76,7 @@ fn committed_groups_decide_in_every_mode() {
         unchanged.clone(),
         &["japan", "tokyo"],
     );
-    let decision_ssh = runtime.decide(&ssh);
+    let decision_ssh = runtime.decide(&ssh).decision;
     assert!(decision_ssh.must);
     assert_eq!(decision_ssh.rule.as_ref().map(|r| r.index), Some(0));
     expect(&runtime, &ssh, "direct", unchanged.clone(), &["direct"]);
@@ -118,7 +119,7 @@ fn committed_groups_decide_in_every_mode() {
     );
     assert_eq!(
         runtime.global_target(),
-        Some(&GlobalTarget::Group("taiwan".into()))
+        Some(GlobalTarget::Group("taiwan".into()))
     );
     let doc = store.read_revision(store.head().unwrap()).unwrap();
     let osaka = doc
@@ -156,7 +157,9 @@ fn committed_groups_decide_in_every_mode() {
 fn a_configuration_that_fails_to_load_is_a_typed_error() {
     let data = TempDir::new("honk-runtime-empty");
     let store = HonkStore::open(data.path()).unwrap();
-    let error = Runtime::load(&store, data.path()).err().unwrap();
+    let error = Runtime::load(&store, &Capabilities::linked(), data.path())
+        .err()
+        .unwrap();
     assert!(matches!(error, RuntimeError::NoRevision), "{error}");
 
     let dir = TempDir::new("honk-runtime-geo-missing");
@@ -168,7 +171,14 @@ fn a_configuration_that_fails_to_load_is_a_typed_error() {
     .unwrap();
     let doc = load(&entry).unwrap();
     let geo = TempDir::new("honk-runtime-geo-empty");
-    let error = Runtime::new(&doc, geo.path()).err().unwrap();
+    let error = Runtime::new(
+        &doc,
+        &Capabilities::linked(),
+        &RevisionMeters::new(),
+        geo.path(),
+    )
+    .err()
+    .unwrap();
     assert!(
         matches!(&error, RuntimeError::Asset(e) if e.kind() == std::io::ErrorKind::NotFound),
         "{error}"
@@ -180,7 +190,14 @@ fn a_configuration_that_fails_to_load_is_a_typed_error() {
     )
     .unwrap();
     let doc = load(&entry).unwrap();
-    let error = Runtime::new(&doc, geo.path()).err().unwrap();
+    let error = Runtime::new(
+        &doc,
+        &Capabilities::linked(),
+        &RevisionMeters::new(),
+        geo.path(),
+    )
+    .err()
+    .unwrap();
     assert!(matches!(error, RuntimeError::Config(_)), "{error}");
 }
 

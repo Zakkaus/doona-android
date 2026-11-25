@@ -52,7 +52,8 @@ fn run(
     let geo = dir.join("geo");
     std::fs::create_dir_all(&geo).map_err(|e| e.to_string())?;
     let store = commit(&dir.join("config"))?;
-    let mut runtime = Runtime::load(&store, &geo).map_err(|e| e.to_string())?;
+    let runtime =
+        Runtime::load(&store, &Capabilities::linked(), &geo).map_err(|e| e.to_string())?;
     runtime.set_mode(match mode {
         "global" => Mode::Global,
         "direct" => Mode::Direct,
@@ -63,7 +64,9 @@ fn run(
     {
         return Ok("unknown-target".into());
     }
-    Ok(describe(&runtime.decide(&flow(destination, domain)?)))
+    Ok(describe(
+        &runtime.decide(&flow(destination, domain)?).decision,
+    ))
 }
 
 fn commit(dir: &Path) -> Result<HonkStore, String> {

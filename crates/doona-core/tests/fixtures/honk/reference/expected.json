@@ -1084,6 +1084,108 @@
           "rule_payload": null
         }
       ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "grouped-negation",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "left",
+              "n1"
+            ],
+            "kind": "node",
+            "name": "n1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "other-443",
+          "outbound": "left",
+          "rule": 0,
+          "rule_payload": "443"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "right",
+              "n2"
+            ],
+            "kind": "node",
+            "name": "n2"
+          },
+          "mark": null,
+          "must": false,
+          "name": "a-443",
+          "outbound": "right",
+          "rule": null,
+          "rule_payload": null
+        },
+        {
+          "leaf": {
+            "chain": [
+              "right",
+              "n2"
+            ],
+            "kind": "node",
+            "name": "n2"
+          },
+          "mark": null,
+          "must": false,
+          "name": "b-443",
+          "outbound": "right",
+          "rule": null,
+          "rule_payload": null
+        },
+        {
+          "leaf": {
+            "chain": [
+              "left",
+              "n1"
+            ],
+            "kind": "node",
+            "name": "n1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "no-name-443",
+          "outbound": "left",
+          "rule": 0,
+          "rule_payload": "443"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "right",
+              "n2"
+            ],
+            "kind": "node",
+            "name": "n2"
+          },
+          "mark": null,
+          "must": false,
+          "name": "a-80",
+          "outbound": "right",
+          "rule": null,
+          "rule_payload": null
+        },
+        {
+          "leaf": {
+            "chain": [
+              "block"
+            ],
+            "kind": "block",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "other-8080",
+          "outbound": "block",
+          "rule": 1,
+          "rule_payload": ""
+        }
+      ]
     }
   ],
   "geo": [
