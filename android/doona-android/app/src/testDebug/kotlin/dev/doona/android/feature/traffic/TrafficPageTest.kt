@@ -83,6 +83,18 @@ class TrafficPageTest {
     }
 
     @Test
+    fun withNoChartTheGridSaysThereIsNoDataYet() {
+        compose.rvContent(dark = false) { RvTrafficScreen(state.copy(chart = null), onRange = {}, onBack = {}) }
+        compose.onAllNodesWithText(rvText(R.string.rv_stats_no_data), useUnmergedTree = true).assertCountIs(1, "said on the grid")
+    }
+
+    @Test
+    fun aChartWithDataSaysNothingOnIt() {
+        compose.rvContent(dark = false) { RvTrafficScreen(state, onRange = {}, onBack = {}) }
+        compose.onAllNodesWithText(rvText(R.string.rv_stats_no_data), useUnmergedTree = true).assertCountIs(0, "a drawn chart")
+    }
+
+    @Test
     fun aChartArrivingAfterNoneOrAnEmptyOneIsDrawn() {
         var shown by mutableStateOf(state.copy(chart = null))
         compose.rvContent(dark = false) { RvTrafficScreen(shown, onRange = {}, onBack = {}) }
@@ -90,7 +102,7 @@ class TrafficPageTest {
         compose.waitForIdle()
         shown = state
         compose.waitForIdle()
-        // The chart's glide starts from the minute of missing samples, not from an empty list it cannot read.
+        // The chart's glide looked for the first sample of the empty list before it and threw.
         assertTrue("still drawn", shows(rvText(R.string.rv_now)))
     }
 

@@ -50,8 +50,8 @@ import dev.doona.android.designsystem.rv.rememberRvFormat
  * connection's figures in a Key stats card. A finger on the chart shows that point in the hero until it lifts. The
  * direction and the range are kept across a rotation; the page reports the range with [onRange] and draws [state]'s
  * chart, which keeps the last one until the range's read arrives, and a new range cross-fades the chart (G5). With no
- * chart read the chart shows its grid only; with no session the card shows no figures. [initialScrub] starts the page
- * scrubbed to that point, as the scrubbed golden shows it.
+ * chart read the chart's grid says 尚無資料, as 統計's empty charts do; with no session the card shows a dash for each
+ * figure. [initialScrub] starts the page scrubbed to that point, as the scrubbed golden shows it.
  */
 @Composable
 internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBack: () -> Unit, initialScrub: Int? = null) {
@@ -65,8 +65,7 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
     val report by rememberUpdatedState(onRange)
     LaunchedEffect(range) { report(range) }
     val chart = state.chart
-    // No chart, or one with no points: a minute of missing samples, which the chart draws as its grid alone.
-    val values = chart?.values(upload)?.ifEmpty { null } ?: NO_CHART
+    val values = chart?.values(upload).orEmpty()
     val live = if (upload) state.upRate else state.downRate
     val title = stringResource(R.string.rv_traffic_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
@@ -81,7 +80,15 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
                 Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), at)
             }
             Spacer(Modifier.height(RvSpace.chartGap))
-            RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate, scrub, onScrub = { scrub = it }, range = chart?.range ?: range)
+            RvDetailChart(
+                values,
+                if (upload) Rv.colors.up else Rv.colors.down,
+                rate,
+                scrub,
+                onScrub = { scrub = it },
+                range = chart?.range ?: range,
+                empty = stringResource(R.string.rv_stats_no_data),
+            )
             Spacer(Modifier.height(RvChartSize.pillClear))
             Ranges(range) { range = it }
         }
@@ -126,9 +133,6 @@ private fun ConnectionCard(session: RvTrafficSession?, upload: Boolean, format: 
         RvStatRow(stringResource(R.string.rv_connected_for), duration?.let { stringResource(R.string.rv_duration, it.hours, it.minutes) } ?: RV_NO_VALUE)
     }
 }
-
-/** A chart with no sample known: never an empty list, which the chart's glide cannot start from. */
-private val NO_CHART: List<Float> = List(RV_TRAFFIC_POINTS) { Float.NaN }
 
 /** The ranges under the chart, in the order of [RV_TRAFFIC_RANGE_SECONDS]. */
 private val RANGES: List<Int> = listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h)
