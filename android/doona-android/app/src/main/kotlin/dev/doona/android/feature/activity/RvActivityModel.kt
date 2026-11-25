@@ -70,8 +70,7 @@ internal class RvActivityCards(
 
 /**
  * What 活動 says when it cannot carry traffic, one at a time; the page's banner names each (see the sample's
- * `rvActivityBanner`). [route] is the sample's name for it. The debug sample keeps its own copy of this list until the
- * page moves to main.
+ * `rvActivityBanner`). [route] is the sample's name for it.
  */
 internal enum class RvActivityNotice(val route: String) {
     NoSubscription("empty"),

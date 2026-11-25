@@ -10,31 +10,8 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.activity.RvActivityNotice
 import dev.doona.android.prototype.rv.rvIdleActivity
-
-/**
- * What 活動 says when it cannot carry traffic: no subscription yet (the empty state, in place of the cards); every node
- * failed its latency test; another app took the VPN; no network; the core stopped after the tunnel came up. And, once
- * after doona crashed, that a crash log waits to be exported. A start that failed says why: the tunnel did not start,
- * the per-app list resolved to no installed app, the bundled core speaks another schema, or the core found no node in
- * Global. A tunnel revoked by the system is [VpnTaken]. A refusal is told where the user acted: the system's VPN consent
- * ([ConsentDenied]) and the notification permission ([NotifyDenied]). A failed subscription update keeps its nodes, so it is told on
- * 訂閱, not here.
- */
-internal enum class RvActivityNotice(val route: String) {
-    NoSubscription("empty"),
-    NoNode("no-node"),
-    VpnTaken("vpn-taken"),
-    Offline("offline"),
-    CoreStopped("core-stopped"),
-    Crash("crash"),
-    StartFailed("failed-start"),
-    StartNoApps("failed-no-apps"),
-    StartIncompatible("failed-incompatible"),
-    StartNoNodes("failed-no-nodes"),
-    ConsentDenied("consent-denied"),
-    NotifyDenied("notify-denied"),
-}
 
 /**
  * 活動 under a notice, disconnected in each: with no subscription there is no node or group; with every test failed the
@@ -50,6 +27,7 @@ internal fun rvNoticeActivity(notice: RvActivityNotice): ActivityUiState {
         RvActivityNotice.StartNoApps -> idle.copy(status = Status.Failed(FailureReason.NoAllowedApps))
         RvActivityNotice.StartIncompatible -> idle.copy(status = Status.Failed(FailureReason.IncompatibleCore))
         RvActivityNotice.StartNoNodes -> idle.copy(status = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes), node = null)
+        RvActivityNotice.Lockdown -> idle.copy(status = Status.Failed(FailureReason.LockdownEnabled))
         RvActivityNotice.VpnTaken, RvActivityNotice.Offline, RvActivityNotice.Crash, RvActivityNotice.ConsentDenied, RvActivityNotice.NotifyDenied -> idle
     }
 }
@@ -67,16 +45,30 @@ internal fun rvNoticeActivity(notice: RvActivityNotice): ActivityUiState {
 internal fun rvActivityBanner(notice: RvActivityNotice, onAction: () -> Unit): RvNotice? {
     val (kind, title, reason, action) = when (notice) {
         RvActivityNotice.NoSubscription -> return null
+
         RvActivityNotice.NoNode -> Words(RvNoticeKind.Error, R.string.rv_no_node, R.string.rv_no_node_reason, R.string.rv_retest)
+
         RvActivityNotice.VpnTaken -> Words(RvNoticeKind.Warning, R.string.rv_vpn_taken, R.string.rv_vpn_taken_reason, R.string.rv_reconnect)
+
         RvActivityNotice.Offline -> Words(RvNoticeKind.Warning, R.string.rv_offline, R.string.rv_offline_reason, R.string.rv_network_settings)
+
         RvActivityNotice.CoreStopped -> Words(RvNoticeKind.Error, R.string.rv_core_stopped, R.string.rv_core_stopped_reason, R.string.rv_reconnect)
+
         RvActivityNotice.Crash -> Words(RvNoticeKind.Info, R.string.rv_crash, R.string.rv_crash_reason, R.string.rv_crash_export)
+
         RvActivityNotice.StartFailed -> started(R.string.vpn_failure_start_failed, R.string.rv_retry)
+
         RvActivityNotice.StartNoApps -> started(R.string.vpn_failure_no_allowed_apps, R.string.perapp_title)
+
         RvActivityNotice.StartIncompatible -> started(R.string.vpn_failure_incompatible_core, R.string.rv_settings_check_update)
+
         RvActivityNotice.StartNoNodes -> started(R.string.first_no_nodes, R.string.rv_add_subscription)
+
+        // Until strings_rv_states.xml has 開啟 VPN 設定 (hand-off), the action reads 開啟設定.
+        RvActivityNotice.Lockdown -> started(R.string.vpn_failure_lockdown_enabled, R.string.rv_lan_open_settings)
+
         RvActivityNotice.ConsentDenied -> Words(RvNoticeKind.Warning, R.string.rv_vpn_denied, R.string.rv_vpn_denied_reason, R.string.rv_reconnect)
+
         RvActivityNotice.NotifyDenied -> Words(RvNoticeKind.Info, R.string.rv_notify_denied, R.string.rv_notify_denied_reason, R.string.rv_lan_open_settings)
     }
     return RvNotice(kind, stringResource(title), stringResource(reason), stringResource(action), onAction)

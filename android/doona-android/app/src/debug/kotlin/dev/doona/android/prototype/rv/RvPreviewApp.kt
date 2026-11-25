@@ -42,6 +42,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.activity.RvActivityNotice
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
@@ -83,7 +84,6 @@ import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.rvSystemLanguage
 import dev.doona.android.prototype.rv.settings.rvUpdateSample
 import dev.doona.android.prototype.rv.settings.scheme
-import dev.doona.android.prototype.rv.states.RvActivityNotice
 import dev.doona.android.prototype.rv.states.RvPermission
 import dev.doona.android.prototype.rv.states.RvPermissionAsks
 import dev.doona.android.prototype.rv.states.RvPermissionSheet
@@ -352,7 +352,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         node = { pages.push("$NODE:${run.currentId}") },
         tab = pages.tab,
         mode = toPolicy,
-        rule = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { pages.push("${RvPolicyPreviewRoutes.GROUP}:${it.id}") } ?: toPolicy() },
+        rule = { id -> RvPolicyData.groups.firstOrNull { it.id == id }?.let { pages.push("${RvPolicyPreviewRoutes.GROUP}:${it.id}") } ?: toPolicy() },
         rules = toPolicy,
         test = run::test,
         subscriptions = { pages.push(RvSubsRoutes.LIST) },

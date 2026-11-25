@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import dev.doona.android.designsystem.rv.RvHeroSwipe
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPullLook
@@ -9,6 +10,10 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.activity.RvActivityCards
+import dev.doona.android.feature.activity.RvActivityRule
+import dev.doona.android.feature.activity.RvActivityState
+import dev.doona.android.feature.activity.RvMainNode
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleOutbound
@@ -52,7 +57,7 @@ internal fun rvIdleActivity(): ActivityUiState =
 /** A group's id is `g-` plus its name. */
 private const val AUTO_GROUP_ID = "g-" + RvData.AUTO_GROUP
 
-/** 活動's cards as [RvData] has them at 10:24, the rule groups' glyphs as [RvPolicyData] draws them. */
+/** 活動's cards as [RvData] has them at 10:24, the rule groups' glyphs as [RvPolicyData] draws them, by group id. */
 internal val rvSampleActivityCards = RvActivityCards(
     today = RvData.today,
     nowHour = RvData.nowHour,
@@ -61,12 +66,27 @@ internal val rvSampleActivityCards = RvActivityCards(
     ruleCount = RvData.RULES,
     mainNodeId = RvData.CURRENT_ID,
     node = RvData::node,
-    groupKind = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.kind },
+    groupKind = { id -> RvPolicyData.groups.firstOrNull { it.id == id }?.kind },
+)
+
+/** The id of the sample's rule group named [name]: [RvPolicyData]'s group of that name, or one made from the name. */
+internal fun rvSampleRuleGroupId(name: Int): String = RvPolicyData.groups.firstOrNull { it.name == name }?.id ?: "rule-$name"
+
+/** [state] as the page reads it, in the [mode] the page shows. */
+private fun pageState(state: ActivityUiState, mode: RvRouteMode) = RvActivityState(
+    status = state.status,
+    mode = mode,
+    node = state.node?.let { RvMainNode(it.id, it.name, it.latencyMs, it.failed) },
+    downRate = state.downRate,
+    upRate = state.upRate,
+    downHistory = state.downHistory,
+    upHistory = state.upHistory,
 )
 
 /**
  * 活動 on the sample: the page with [RvData]'s nodes, subscriptions and rule groups and [rvSampleActivityCards] unless the
- * caller gives its own. The page itself takes them all as parameters; the sandbox, its previews and tests call this.
+ * caller gives its own. The page itself takes them all as parameters, in main's model: the sample's state and its rule
+ * groups (named by string resources) are turned into it here. The sandbox, its previews and tests call this.
  */
 @Composable
 internal fun RvActivityScreenSample(
@@ -84,4 +104,7 @@ internal fun RvActivityScreenSample(
     loading: Boolean = false,
     navFade: Boolean = false,
     rules: List<RvRuleOutbound> = RvData.ruleOutbounds,
-) = RvActivityScreen(state, onAction, onConnect, routes, mode, nodes, subscriptions, pull, hero, banner, noSubscription, loading, navFade, rules, rvSampleActivityCards)
+) {
+    val rows = rules.map { RvActivityRule(stringResource(it.group), rvSampleRuleGroupId(it.group), it.nodeId, it.bytes, it.udpNodeId) }
+    RvActivityScreen(pageState(state, mode), onAction, onConnect, routes, nodes, subscriptions, pull, hero, banner, noSubscription, loading, navFade, rows, rvSampleActivityCards)
+}
