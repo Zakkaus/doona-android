@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -122,7 +124,7 @@ internal fun RvRow(
         } else {
             Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
                 titleText.Shown(overflow = titleOverflow)
-                subtitleText?.Shown(Rv.colors.textSecondary)
+                subtitleText?.Shown(Rv.colors.textSecondary, subtitle = true)
             }
         }
         if (!beside) {
@@ -155,7 +157,7 @@ private fun LineWiseText(
             title.Shown(overflow = titleOverflow)
         }
         subtitle?.let {
-            RowLine(subtitleEnd?.let(::onLine), it) { it.Shown(Rv.colors.textSecondary) }
+            RowLine(subtitleEnd?.let(::onLine), it) { it.Shown(Rv.colors.textSecondary, subtitle = true) }
         }
     }
     if (top) RowTextColumn(minHeight, modifier, lines) else Column(modifier.padding(vertical = RvSpace.rowTextInset)) { lines() }
@@ -230,7 +232,7 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverf
     Layout(
         {
             titleText.Shown(overflow = titleOverflow)
-            subtitleText?.Shown(Rv.colors.textSecondary)
+            subtitleText?.Shown(Rv.colors.textSecondary, subtitle = true)
             Box(Modifier.testTag(RvRowPart.END)) { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
         },
         modifier,
@@ -406,16 +408,22 @@ private fun RowLine(end: (@Composable () -> Unit)?, text: RowText?, figure: Bool
 }
 
 /**
+ * The gap between a row's title and its subtitle: none, the line boxes touch (LAYOUT-RULES Table 0). Only a comparison
+ * sample provides another value, to show the owner what a gap would look like; no page does.
+ */
+internal val LocalRvTitleGap = compositionLocalOf { 0.dp } // literal: Table 0, title to subtitle is 0
+
+/**
  * A row's text as it is laid out: its words, its role, how many lines it may take and whether its words are held
  * ([RvText]'s `keepWords`); [words] is the text as its [RvText] takes it ([rvWords]), taken once for the text.
  */
 private class RowText(val text: String, val style: TextStyle, val lines: Int, val keepWords: Boolean) {
     val words = rvWords(text, lines, keepWords)
 
-    /** The text in its role's Latin line box, as the row shows it. */
+    /** The text in its role's Latin line box, as the row shows it; a [subtitle] stands [LocalRvTitleGap] under the title. */
     @Composable
-    fun Shown(color: Color = Rv.colors.text, overflow: TextOverflow = TextOverflow.Ellipsis) =
-        RvText(text, style, color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
+    fun Shown(color: Color = Rv.colors.text, overflow: TextOverflow = TextOverflow.Ellipsis, subtitle: Boolean = false) =
+        RvText(text, style, if (subtitle) Modifier.padding(top = LocalRvTitleGap.current) else Modifier, color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
 }
 
 @Composable

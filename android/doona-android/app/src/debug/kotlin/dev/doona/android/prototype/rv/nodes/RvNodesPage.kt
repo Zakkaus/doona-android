@@ -33,8 +33,9 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
+import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvEmptyState
-import dev.doona.android.designsystem.rv.RvFilterChip
+import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
@@ -111,11 +112,7 @@ internal fun RvNodesPage(
 /** Under the large title, Analytics' two chips: the subscription at the start, the order at the end. */
 @Composable
 private fun Chips(onFilter: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        RvFilterChip(stringResource(R.string.rv_nodes_all_subscriptions), onFilter)
-        Spacer(Modifier.weight(1f))
-        RvFilterChip(stringResource(R.string.rv_nodes_by_latency), onFilter)
-    }
+    RvFilterChipRow(RvChipPick(stringResource(R.string.rv_nodes_all_subscriptions), onFilter), RvChipPick(stringResource(R.string.rv_nodes_by_latency), onFilter))
 }
 
 /** 'Top movers': the card's header (it opens the list, as on 活動), 最快 | 最穩, then the eight nodes in two rows of four. */
