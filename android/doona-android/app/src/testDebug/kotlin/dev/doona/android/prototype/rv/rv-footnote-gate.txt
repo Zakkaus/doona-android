@@ -1,15 +1,18 @@
 # The footnote gate's list (RvFootnoteGateTest, LAYOUT-RULES.md R20): page text in the secondary colour at the footnote's
 # step that is not a footnote, one per line: path, the call's words (first 120 characters), why, tab-separated.
 # A footnote under a card is drawn only by RvFootnote; any other call found fails, and so does a line here that is gone.
+prototype/rv/connections/RvConnectionDetail.kt	RvText(host + PORT + connection.port, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VA	the centred header's host and port, above the first card
+prototype/rv/connections/RvConnectionDetail.kt	RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)	the centred header's no-domain line, above the first card
 prototype/rv/connections/RvConnectionsPage.kt	RvText(age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a connection row's age at the row's end, inside the card
 prototype/rv/nodes/RvLatencyDots.kt	RvText(empty, Rv.type.rowSub, color = colors.textSecondary, align = TextAlign.Center)	the latency card's empty line, centred inside the card
 prototype/rv/nodes/RvNodeList.kt	RvText(steady, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a node row's steadiness at the row's end, inside the card
 prototype/rv/policy/RvPolicyParts.kt	RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a rule row's bytes at the row's end, inside the card
 prototype/rv/policy/RvPolicyScreen.kt	RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding)	the rules card's line under its header, inside the card
 prototype/rv/policy/RvPolicyScreen.kt	RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary)	a policy row's value, inside the card
+prototype/rv/settings/RvSettingsParts.kt	RvText(it, Rv.type.rowSub, color = hue, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true, keepWords = words.subtitleKeep	a settings row's own subtitle (the library row), inside the card
+prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_median, values.size), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_no_quota), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_quota_total, total.toString(), count), Rv.type.rowSub, color = Rv.colors.textSec	a stat card's own line, inside the card
-prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_median, values.size), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(if (split != null) R.string.rv_stats_via_proxy else R.string.rv_stats_no_data), Rv.type.rowSub, co	a stat card's own line, inside the card
-prototype/rv/subs/RvSubsPage.kt	RvText(stringResource(R.string.rv_subs_used, format.bytesIn(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Mo	a subscription card's usage and end date, inside the card
 prototype/rv/subs/RvSubsPage.kt	RvText(ends, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a subscription card's usage and end date, inside the card
+prototype/rv/subs/RvSubsPage.kt	RvText(stringResource(R.string.rv_subs_used, format.bytesIn(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Mo	a subscription card's usage and end date, inside the card

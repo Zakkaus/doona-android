@@ -9,7 +9,8 @@ import java.io.File
  * in the footnote's role only through [dev.doona.android.designsystem.rv.RvFootnote]. Every text call of a page file
  * (`RvText`, `Text`, `BasicText`) in the secondary colour at the row subtitle's step, or a raw `Text`/`BasicText` in the
  * secondary colour, is listed in `rv-footnote-gate.txt` with why it is not a footnote (a value inside a card's row, a
- * centred header line); any other fails, and so does a listed one that is gone.
+ * centred header line); any other fails, and so does a listed one that is gone. The secondary colour is found by its
+ * name or through a local `val` of the file that holds it (`val secondary = Rv.colors.textSecondary`).
  */
 class RvFootnoteGateTest {
     @Test
@@ -28,6 +29,15 @@ class RvFootnoteGateTest {
         assertEquals(1, rvFootnoteLike(plant).size)
     }
 
+    @Test
+    fun aFootnoteInTheSecondaryColourByAnotherNameIsCaught() {
+        val plant = File.createTempFile("RvPlant", ".kt").apply {
+            writeText("@Composable\nfun Plant() {\n    val quiet = Rv.colors.textSecondary\n    RvCard { }\n    RvText(note, Rv.type.rowSub, color = quiet)\n}\n")
+            deleteOnExit()
+        }
+        assertEquals(1, rvFootnoteLike(plant).size)
+    }
+
     private companion object {
         val PAGES = listOf("src/debug/kotlin/dev/doona/android/prototype/rv", "src/main/kotlin/dev/doona/android/feature")
         const val ALLOWLIST = "src/testDebug/kotlin/dev/doona/android/prototype/rv/rv-footnote-gate.txt"
@@ -37,6 +47,8 @@ class RvFootnoteGateTest {
 /** The calls of [file] that draw secondary text in the footnote's role: `path<TAB>call`, the call's words on one line. */
 internal fun rvFootnoteLike(file: File): List<String> {
     val source = file.readText()
+    // The file's own names for the secondary colour: a `val` whose value holds it.
+    val names = Regex("""\bval\s+(\w+)\s*=[^\n]*\btextSecondary\b""").findAll(source).map { Regex("""\b${it.groupValues[1]}\b""") }.toList()
     val calls = Regex("""\b(RvText|Text|BasicText)\(""").findAll(source).mapNotNull { m ->
         var depth = 1
         var i = m.range.last + 1
@@ -48,7 +60,7 @@ internal fun rvFootnoteLike(file: File): List<String> {
             i++
         }
         val call = source.substring(m.range.first, i).split(Regex("\\s+")).joinToString(" ")
-        val secondary = "textSecondary" in call
+        val secondary = "textSecondary" in call || names.any { it.containsMatchIn(call) }
         val role = "type.rowSub" in call || m.groupValues[1] != "RvText"
         call.takeIf { secondary && role }
     }
