@@ -9,6 +9,7 @@ mod form;
 mod identity;
 mod literal;
 mod markers;
+pub mod membership;
 mod shadow;
 
 use std::collections::HashSet;
