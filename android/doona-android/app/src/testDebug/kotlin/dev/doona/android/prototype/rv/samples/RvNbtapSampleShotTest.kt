@@ -45,11 +45,11 @@ class RvNbtapSampleShotTest {
     fun tapSampleDark() = compose.rvShot("samples-nbtap-sample", dark = true, before = { assertWhole() }) { Tap(true) }
 
     @Test
-    @Config(qualifiers = "+h2249dp")
+    @Config(qualifiers = "+h2252dp")
     fun tapApprovedFs200() = compose.rvShot("samples-nbtap-approved", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Tap(false) }
 
     @Test
-    @Config(qualifiers = "+h2373dp")
+    @Config(qualifiers = "+h2377dp")
     fun tapSampleFs200() = compose.rvShot("samples-nbtap-sample", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Tap(true) }
 
     @androidx.compose.runtime.Composable

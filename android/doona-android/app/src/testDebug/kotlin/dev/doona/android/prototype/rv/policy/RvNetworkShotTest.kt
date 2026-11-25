@@ -330,14 +330,14 @@ class RvNetworkShotTest {
         const val APART_FS115 = "+h1356dp"
         const val APART_FS200 = "+h2298dp"
 
-        /** The picker whole (measured: 2842, 3083, 5808.5). */
+        /** The picker whole (measured: 2842, 3083, 5832.5). */
         const val PICKER = "+h2842dp"
         const val PICKER_FS115 = "+h3083dp"
-        const val PICKER_FS200 = "+h5809dp"
+        const val PICKER_FS200 = "+h5833dp"
 
-        /** 活動 whole (measured: 1969, 2011, 3197). */
-        const val ACTIVITY = "+h1969dp"
-        const val ACTIVITY_FS115 = "+h2011dp"
-        const val ACTIVITY_FS200 = "+h3197dp"
+        /** 活動 whole (measured: 1970.5, 2015, 3212). */
+        const val ACTIVITY = "+h1971dp"
+        const val ACTIVITY_FS115 = "+h2015dp"
+        const val ACTIVITY_FS200 = "+h3212dp"
     }
 }

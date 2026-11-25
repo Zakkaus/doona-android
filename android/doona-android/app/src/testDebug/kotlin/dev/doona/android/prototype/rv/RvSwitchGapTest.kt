@@ -15,10 +15,10 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvRowPart
+import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.testing.drawFully
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

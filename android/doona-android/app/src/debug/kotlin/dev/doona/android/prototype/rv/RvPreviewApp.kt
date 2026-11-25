@@ -43,6 +43,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.fastest
@@ -63,7 +64,6 @@ import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
-import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.prototype.rv.settings.RvLanguageScreen
 import dev.doona.android.prototype.rv.settings.RvLicenseText
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen

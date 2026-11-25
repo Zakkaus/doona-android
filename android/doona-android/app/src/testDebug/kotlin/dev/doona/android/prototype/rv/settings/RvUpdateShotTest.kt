@@ -272,7 +272,7 @@ class RvUpdateShotTest {
         const val WHOLE_FS200 = "+h2303dp"
         const val NEW_WHOLE = "+h1927dp"
         const val NEW_WHOLE_FS115 = "+h1957dp"
-        const val NEW_WHOLE_FS200 = "+h2537dp"
+        const val NEW_WHOLE_FS200 = "+h2542dp"
         const val FAILED_WHOLE = WHOLE
         const val FAILED_WHOLE_FS115 = WHOLE_FS115
         const val FAILED_WHOLE_FS200 = "+h2344dp"
