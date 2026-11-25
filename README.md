@@ -59,12 +59,16 @@ uv run crates/doona-core/tools/update_geo.py --check "$bundle"
 (cd crates/doona-core/tools/geo-check && DAE_LOCATION_ASSET="$bundle" cargo run --locked -- tests/fixtures/required-labels.dae)
 ```
 
-[The weekly workflow](.github/workflows/geo-bundle.yml) verifies the newest release before proposing
-a pins-only pull request to `v1/base`. The schedule requires the workflow on the default branch.
-Enable **Allow GitHub Actions to create and approve pull requests** so the default token can open
-the PR. [`GITHUB_TOKEN` pull request checks](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)
-do not run automatically; a maintainer with write access must select **Approve workflows to run**.
+[The weekly workflow](.github/workflows/geo-bundle.yml) verifies the newest release, commits the new
+`geo-pins.json` to `main` and dispatches the Android workflow, because a commit made with
+[`GITHUB_TOKEN` starts no push workflow](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs).
+A snapshot that [`notices.py`](android/doona-android/tools/notices.py) has not reviewed fails the run
+and leaves `main` unchanged. The schedule requires the workflow on the default branch.
 The build bundles the pinned DATs into the doona APK. The repository does not track them.
+
+CI fails a `v*` tag when a pinned DAT differs from the newest MetaCubeX release. To check before
+tagging, run `uv run crates/doona-core/tools/update_geo.py --current`. To update the pins, run
+`gh workflow run geo-bundle.yml`, then tag a commit that has them.
 
 MetaCubeX replaces its `latest` assets and force-pushes its `release` branch. The pins use
 commit-qualified snapshot URLs, with sizes and SHA-256 digests from the release API. The URLs
