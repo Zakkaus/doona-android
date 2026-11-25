@@ -1,6 +1,7 @@
 //! Form edits are local to one entry-relative source in a private draft. A form that cannot
 //! prove ownership of its bytes returns their raw-editor location. Check and Apply remain separate.
 
+pub mod ads;
 pub(super) mod carry;
 mod diff;
 mod fields;
