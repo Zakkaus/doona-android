@@ -5,7 +5,5 @@
 #
 # Why each remaining line stays (2026-11-25; each is read again when its page changes):
 # R11, config-history named revision at 115%: the chip stands 1.5 dp above the gate's first-line centre of a two-line title; cause not found (the 200% row is exact).
-# R17, node-picker-testing at 115%: the one row of the golden whose result is fading in: its title keeps the width it had beside the bar, 10 dp into the gap.
-#   Open: check at rest whether a result shown after a test leaves the 12 dp (layout-STATE.md, Q2).
 proto-rv-config-history-menu-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
 proto-rv-config-history-named-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
