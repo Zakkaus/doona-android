@@ -29,6 +29,7 @@ import dev.doona.android.feature.perapp.RvPerAppLook
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
+import dev.doona.android.prototype.rv.settings.Checks
 import dev.doona.android.prototype.rv.settings.rvPerAppLookSample
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.subs.RvSubsActions

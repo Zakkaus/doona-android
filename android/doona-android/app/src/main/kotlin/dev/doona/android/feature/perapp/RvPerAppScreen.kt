@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -20,7 +21,6 @@ import dev.doona.android.designsystem.rv.RvAppDisc
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCard
-import dev.doona.android.designsystem.rv.RvCheckRow
 import dev.doona.android.designsystem.rv.RvEmptyCaption
 import dev.doona.android.designsystem.rv.RvFieldMessage
 import dev.doona.android.designsystem.rv.RvIconDisc
@@ -33,7 +33,6 @@ import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSearchSlot
-import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSize
@@ -44,11 +43,13 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitch
 import dev.doona.android.designsystem.rv.rvRowToggle
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
+import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
 
 /**
  * What the 依 App page does: pick a policy, check an app, search, save, read the apps again, and mend a tunnel that did
- * not come back after a save: reconnect, leave the notice for the list, check for an update, or open the VPN settings.
+ * not come back after a save: reconnect, add a subscription, leave the notice for the list, check for an update, or
+ * open the VPN settings.
  */
 internal class RvPerAppActions(
     val policy: (RvAppPolicy) -> Unit = {},
@@ -56,6 +57,7 @@ internal class RvPerAppActions(
     val query: (String) -> Unit = {},
     val save: () -> Unit = {},
     val reconnect: () -> Unit = {},
+    val addSubscription: () -> Unit = {},
     val editList: () -> Unit = {},
     val reload: () -> Unit = {},
     val checkUpdate: () -> Unit = {},
@@ -63,11 +65,18 @@ internal class RvPerAppActions(
 )
 
 /**
- * The page's layouts for the owner to pick from: [Today] is PV-a's, the policies' card and a switch per app; [Checks]
- * (`perapp-v1`) keeps the card and checks each app with [RvCheckRow]; [Segmented] (`perapp-v2`) puts the policies in
- * 策略's segmented control under the title, and checks each app with [RvCheckRow].
+ * How the page draws its [policies] and each [app] (checked or not, and what toggles it). The app ships [Today], PV-a's:
+ * the policies' card and a switch per app. The samples' other looks are in debug.
  */
-internal enum class RvPerAppLook { Today, Checks, Segmented }
+@Immutable
+internal class RvPerAppLook(
+    val policies: @Composable (RvPerAppState, RvPerAppActions) -> Unit,
+    val app: @Composable (RvApp, Boolean, (Boolean) -> Unit) -> Unit,
+) {
+    companion object {
+        val Today = RvPerAppLook({ state, actions -> RvPerAppPolicyCard(state, actions) }, { app, checked, onToggle -> SwitchRow(app, checked, onToggle) })
+    }
+}
 
 /**
  * 依 App, a page of 設定, in DNS's language: the large title under the back bar, then one card of the three policies as
@@ -100,7 +109,7 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
             }
             // The policies and the error under them are one block of the column, as a field and its message are.
             Column(Modifier.testTag(RvPart.BLOCK)) {
-                Policies(state, actions, look)
+                look.policies(state, actions)
                 if (state.asksForApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
             }
             if (listed && !state.unread) {
@@ -111,48 +120,41 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
     }
 }
 
-/** The three policies: radio rows in a card, or, for [RvPerAppLook.Segmented], 策略's segmented control. */
+/** The three policies as radio rows in a card. */
 @Composable
-private fun Policies(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppLook) {
-    val policies = RvAppPolicy.entries
-    if (look == RvPerAppLook.Segmented) {
-        val labels = policies.map { stringResource(it.label) }
-        return RvSegmented(labels, policies.indexOf(state.edited.policy), { actions.policy(policies[it]) })
-    }
+internal fun RvPerAppPolicyCard(state: RvPerAppState, actions: RvPerAppActions) {
     RvSettingsCard {
-        policies.forEach { RvSettingsRadioRow(stringResource(it.label), it == state.edited.policy, { actions.policy(it) }) }
+        RvAppPolicy.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == state.edited.policy, { actions.policy(it) }) }
     }
 }
 
 /**
  * A failed save, one stored whose tunnel would not come back, or apps the phone would not list: errors, with 重試 saving
- * or reading again. The rebuild's action is what can mend its cause ([RvRebuildFix]; owner, q-startfail, 2026-11-24):
+ * or reading again. The rebuild's action is what can mend its cause ([FailureFix]; owner, q-startfail, 2026-11-24):
  * 重試 reconnects only where a second try may get past it. The read's notice has a title and 重試 and no reason line:
  * the title says all there is.
  */
 @Composable
 private fun failure(state: RvPerAppState, actions: RvPerAppActions): RvNotice? = when {
     state.save == RvSave.Saving -> null
-    state.save == RvSave.Failed -> notice(R.string.rv_perapp_save_failed, state.saveReason, R.string.rv_retry, actions.save)
+    state.save == RvSave.Failed -> notice(R.string.rv_perapp_save_failed, R.string.perapp_save_failed_reason, R.string.rv_retry, actions.save)
     state.rebuildFailed -> notice(R.string.rv_perapp_rebuild_failed, state.rebuildReason, state.rebuildFix.label, actions.fix(state.rebuildFix))
     state.readFailed -> notice(R.string.perapp_read_failed, null, R.string.rv_retry, actions.reload)
     else -> null
 }
 
-/**
- * The library's error notice. A null [reason] leaves the line empty, since [RvNotice] has no notice without one yet
- * (library request in the lane's STATE); its empty line box still stands under the title until then.
- */
+/** The library's error notice; one with no [reason] is its title alone. */
 @Composable
 private fun notice(@StringRes title: Int, @StringRes reason: Int?, @StringRes action: Int, onAction: () -> Unit) =
-    RvNotice(RvNoticeKind.Error, stringResource(title), reason?.let { stringResource(it) }.orEmpty(), stringResource(action), onAction)
+    RvNotice(RvNoticeKind.Error, stringResource(title), reason?.let { stringResource(it) }, stringResource(action), onAction)
 
 /** What [fix] runs. */
-private fun RvPerAppActions.fix(fix: RvRebuildFix): () -> Unit = when (fix) {
-    RvRebuildFix.Retry -> reconnect
-    RvRebuildFix.EditList -> editList
-    RvRebuildFix.CheckUpdate -> checkUpdate
-    RvRebuildFix.VpnSettings -> vpnSettings
+private fun RvPerAppActions.fix(fix: FailureFix): () -> Unit = when (fix) {
+    FailureFix.Retry -> reconnect
+    FailureFix.AddSubscription -> addSubscription
+    FailureFix.EditList -> editList
+    FailureFix.CheckUpdate -> checkUpdate
+    FailureFix.VpnSettings -> vpnSettings
 }
 
 /**
@@ -170,19 +172,17 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppL
         when {
             state.installed.isNullOrEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_apps), stringResource(R.string.perapp_no_apps_line))
             shown.isEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
-            else -> RvCard { shown.forEach { key(it.packageName) { AppRow(it, it.packageName in state.edited.packages, look) { on -> actions.toggle(it.packageName, on) } } } }
+            else -> RvCard { shown.forEach { key(it.packageName) { look.app(it, it.packageName in state.edited.packages) { on -> actions.toggle(it.packageName, on) } } } }
         }
     }
 }
 
 /**
  * One app: its own icon (the fallback glyph when the phone does not have it), its name over its package, and a switch
- * that is the checkbox of the list, or [RvCheckRow]'s check outside [RvPerAppLook.Today]; the whole row toggles it, as
- * a switch row of 設定.
+ * that is the checkbox of the list; the whole row toggles it, as a switch row of 設定.
  */
 @Composable
-private fun AppRow(app: RvApp, checked: Boolean, look: RvPerAppLook, onToggle: (Boolean) -> Unit) {
-    if (look != RvPerAppLook.Today) return RvCheckRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, checked, onToggle, titleKeepWords = false, subtitleKeepWords = false)
+private fun SwitchRow(app: RvApp, checked: Boolean, onToggle: (Boolean) -> Unit) {
     val toggle = Modifier.rvRowToggle(checked, onToggle)
     RvRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, toggle, titleKeepWords = false, subtitleKeepWords = false, endFirstLine = true) { RvSwitch(checked) }
 }

@@ -1,7 +1,5 @@
 package dev.doona.android.feature.perapp
 
-import android.app.Activity
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.LocalActivity
@@ -17,20 +15,32 @@ import dev.doona.android.engine.InstalledApps
 
 /**
  * The 依 App entry: builds the ViewModel and shows the page on its state. [onConnect] starts the tunnel through the
- * activity, which asks for consent when it is needed; 重試 on the rebuild notice calls it. 檢查更新 on that notice calls
- * [onCheckUpdate] (the app opens the releases page), and 開啟 VPN 設定 opens the system's VPN settings from the page's
- * activity.
+ * activity, which asks for consent when it is needed; 重試 on the rebuild notice calls it. 新增訂閱 on that notice calls
+ * [onAddSubscription] (the app opens 訂閱), 檢查更新 calls [onCheckUpdate] (the app opens the releases page), and 開啟 VPN
+ * 設定 opens the system's VPN settings from the page's activity.
  */
 @Composable
-fun PerAppRoute(engine: Engine, installedApps: InstalledApps, onConnect: () -> Unit, onCheckUpdate: () -> Unit, onBack: () -> Unit) {
+fun PerAppRoute(
+    engine: Engine,
+    installedApps: InstalledApps,
+    onConnect: () -> Unit,
+    onAddSubscription: () -> Unit,
+    onCheckUpdate: () -> Unit,
+    onBack: () -> Unit,
+) {
     val viewModel: PerAppViewModel = viewModel(factory = PerAppViewModel.factory(engine, installedApps))
     val activity = LocalActivity.current
-    val system = remember(activity, onCheckUpdate) { PerAppSystem(checkUpdate = onCheckUpdate, vpnSettings = { activity?.let(::openVpnSettings) }) }
+    val system = remember(activity, onAddSubscription, onCheckUpdate) {
+        PerAppSystem(addSubscription = onAddSubscription, checkUpdate = onCheckUpdate, vpnSettings = { activity?.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) })
+    }
     PerAppPage(viewModel, onConnect, system, onBack)
 }
 
-/** What the page hands to Android: the releases page ([checkUpdate]) and the system's VPN settings ([vpnSettings]). */
-internal class PerAppSystem(val checkUpdate: () -> Unit, val vpnSettings: () -> Unit)
+/**
+ * Where the page sends the user to mend a failed rebuild: 訂閱 ([addSubscription]), the releases page ([checkUpdate]) and
+ * the system's VPN settings ([vpnSettings]).
+ */
+internal class PerAppSystem(val addSubscription: () -> Unit, val checkUpdate: () -> Unit, val vpnSettings: () -> Unit)
 
 /** The page on [viewModel]'s state, collected while the page is started; the goldens drive their own ViewModel through it. */
 @Composable
@@ -48,6 +58,10 @@ internal fun PerAppPage(viewModel: PerAppViewModel, onConnect: () -> Unit, syste
                 viewModel.onAction(PerAppAction.Reconnect)
                 onConnect()
             },
+            addSubscription = {
+                viewModel.onAction(PerAppAction.AddSubscription)
+                system.addSubscription()
+            },
             editList = { viewModel.onAction(PerAppAction.EditList) },
             reload = { viewModel.onAction(PerAppAction.Reload) },
             checkUpdate = {
@@ -61,13 +75,4 @@ internal fun PerAppPage(viewModel: PerAppViewModel, onConnect: () -> Unit, syste
         )
     }
     RvPerAppScreen(state, actions, onBack)
-}
-
-/** The system's VPN settings, where its lockdown is turned off; nothing on a phone without the page. */
-private fun openVpnSettings(activity: Activity) {
-    try {
-        activity.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
-    } catch (_: ActivityNotFoundException) {
-        // A phone without the page: the notice has gone, and 活動 still says why the tunnel is down.
-    }
 }

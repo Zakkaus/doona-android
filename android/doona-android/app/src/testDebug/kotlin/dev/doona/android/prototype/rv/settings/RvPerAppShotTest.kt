@@ -16,10 +16,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.perapp.RvPerAppActions
 import dev.doona.android.feature.perapp.RvPerAppScreen
-import dev.doona.android.feature.perapp.RvRebuildFix
+import dev.doona.android.feature.perapp.RvSave
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -224,10 +225,13 @@ class RvPerAppShotTest {
     }
 
     @Test
-    fun aSaveUnderWayTakesNoEdit() {
+    fun aSaveUnderWayKeepsAnEditForTheNextSave() {
         val saving = rvPerAppSample("saving")
-        assertEquals(saving, saving.withPolicy(RvAppPolicy.All))
-        assertEquals(saving, saving.withApp("com.example.chat", true))
+        val policy = RvAppPolicy.entries.first { it != saving.edited.policy }
+        assertEquals(policy, saving.withPolicy(policy).edited.policy)
+        val checked = "com.example.chat" !in saving.edited.packages
+        assertEquals(checked, "com.example.chat" in saving.withApp("com.example.chat", checked).edited.packages)
+        assertEquals("the save still runs", RvSave.Saving, saving.withApp("com.example.chat", checked).save)
     }
 
     @Test
@@ -277,16 +281,20 @@ class RvPerAppShotTest {
     }
 
     @Test
-    fun aRebuildTheCoreRefusedAsksForAnUpdateNotARetry() = rebuildFix(RvRebuildFix.CheckUpdate, R.string.vpn_failure_incompatible_core)
+    fun aRebuildWithNoNodeToUseAsksForASubscriptionNotARetry() = rebuildFix(FailureFix.AddSubscription, R.string.first_no_nodes)
 
     @Test
-    fun aRebuildTheLockdownRefusedOpensTheVpnSettingsNotARetry() = rebuildFix(RvRebuildFix.VpnSettings, R.string.vpn_failure_lockdown_enabled)
+    fun aRebuildTheCoreRefusedAsksForAnUpdateNotARetry() = rebuildFix(FailureFix.CheckUpdate, R.string.vpn_failure_incompatible_core)
+
+    @Test
+    fun aRebuildTheLockdownRefusedOpensTheVpnSettingsNotARetry() = rebuildFix(FailureFix.VpnSettings, R.string.vpn_failure_lockdown_enabled)
 
     /** The rebuild notice for [fix]: [reason] over [fix]'s action, no 重試, and its action runs alone. */
-    private fun rebuildFix(fix: RvRebuildFix, reason: Int) {
+    private fun rebuildFix(fix: FailureFix, reason: Int) {
         val ran = mutableListOf<String>()
         val actions = RvPerAppActions(
             reconnect = { ran += "reconnect" },
+            addSubscription = { ran += "addSubscription" },
             editList = { ran += "editList" },
             checkUpdate = { ran += "checkUpdate" },
             vpnSettings = { ran += "vpnSettings" },
@@ -296,8 +304,7 @@ class RvPerAppShotTest {
         compose.onNodeWithText(rvText(reason)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
         compose.onNodeWithText(rvText(fix.label)).performClick()
-        val expected = if (fix == RvRebuildFix.CheckUpdate) "checkUpdate" else "vpnSettings"
-        assertEquals(listOf(expected), ran)
+        assertEquals(listOf(fix.name.replaceFirstChar(Char::lowercase)), ran)
     }
 
     @Test

@@ -3,6 +3,7 @@ package dev.doona.android.feature.perapp
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
+import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvPerApp
 
@@ -14,25 +15,11 @@ internal data class RvApp(val label: String, val packageName: String)
 internal enum class RvSave { Idle, Saving, Failed }
 
 /**
- * The rebuild notice's one action, by what kept the tunnel down (活動's mapping, owner q-startfail, 2026-11-24): connect
- * again, leave the notice for the list ([EditList], none of the listed apps installed), look for a doona that matches
- * its core ([CheckUpdate]), or open the system's VPN settings to turn its lockdown off ([VpnSettings]).
- */
-internal enum class RvRebuildFix(@StringRes val label: Int) {
-    Retry(R.string.rv_retry),
-    EditList(R.string.rv_edit_app_list),
-    CheckUpdate(R.string.rv_settings_check_update),
-
-    // 活動's label until 開啟 VPN 設定 has its own string (hand-off).
-    VpnSettings(R.string.rv_lan_open_settings),
-}
-
-/**
  * The 依 App page: the [saved] setting, the edits over it ([draft], null before the first), the phone's [installed]
  * apps (null while they are read), the search [query], the save, whether the last save was stored but the tunnel
- * could not be rebuilt with it ([rebuildFailed], its notice's [rebuildFix] what can mend the cause), and whether the
- * phone could not list its apps ([readFailed], an empty [installed] then being no claim that it has none). [saveReason]
- * and [rebuildReason] are the second lines of the notices.
+ * could not be rebuilt with it ([rebuildFailed]: [rebuildReason] is its notice's second line, [rebuildFix] what can
+ * mend the cause), and whether the phone could not list its apps ([readFailed], an empty [installed] then being no
+ * claim that it has none).
  */
 @Immutable
 internal data class RvPerAppState(
@@ -42,9 +29,8 @@ internal data class RvPerAppState(
     val query: String = "",
     val save: RvSave = RvSave.Idle,
     val rebuildFailed: Boolean = false,
-    @StringRes val saveReason: Int = R.string.perapp_save_failed_reason,
     @StringRes val rebuildReason: Int = R.string.vpn_failure_start_failed,
-    val rebuildFix: RvRebuildFix = RvRebuildFix.Retry,
+    val rebuildFix: FailureFix = FailureFix.Retry,
     val readFailed: Boolean = false,
 ) {
     /** What the page shows: the edits, or the setting as saved. */
@@ -81,6 +67,6 @@ internal data class RvPerAppState(
     /** The page with [packageName] checked or not. */
     fun withApp(packageName: String, checked: Boolean) = editing { it.copy(packages = if (checked) it.packages + packageName else it.packages - packageName) }
 
-    /** While a save runs the page rests: no edit is taken. */
-    private fun editing(change: (RvPerApp) -> RvPerApp): RvPerAppState = if (save == RvSave.Saving) this else copy(draft = change(edited))
+    /** An edit made while a save runs is kept, as the ViewModel keeps it, for the next save. */
+    private fun editing(change: (RvPerApp) -> RvPerApp): RvPerAppState = copy(draft = change(edited))
 }

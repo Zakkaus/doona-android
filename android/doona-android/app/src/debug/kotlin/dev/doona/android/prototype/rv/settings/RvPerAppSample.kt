@@ -11,13 +11,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvPerApp
 import dev.doona.android.feature.perapp.RvApp
 import dev.doona.android.feature.perapp.RvPerAppActions
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.perapp.RvPerAppState
-import dev.doona.android.feature.perapp.RvRebuildFix
 import dev.doona.android.feature.perapp.RvSave
 
 /**
@@ -83,7 +83,7 @@ internal fun rvPerAppSample(name: String, saved: RvPerApp = RvPerAppData.saved):
         "rebuild-failed" -> rvPerAppStateSample(RvPerAppData.except, rebuildFailed = true)
 
         "rebuild-no-apps" -> rvPerAppStateSample(RvPerAppData.gone, rebuildFailed = true)
-            .copy(rebuildReason = R.string.vpn_failure_no_allowed_apps, rebuildFix = RvRebuildFix.EditList)
+            .copy(rebuildReason = R.string.vpn_failure_no_allowed_apps, rebuildFix = FailureFix.EditList)
 
         "read-failed" -> RvPerAppState(saved, installed = emptyList(), readFailed = true)
 

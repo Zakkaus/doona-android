@@ -167,8 +167,11 @@ enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, TooLarge, ParseFa
 
 class EngineException(val code: ErrorCode) : Exception(code.name)
 
-/** A policy that was stored, but the tunnel rebuilt with it failed to start for [reason]; the tunnel is [Status.Failed]. */
-class RebuildFailedException(val reason: FailureReason) : Exception(reason.name)
+/**
+ * A policy that was stored, but the tunnel rebuilt with it failed to start for [reason], with the core's [code] when it
+ * gave one; the tunnel is [Status.Failed] with both.
+ */
+class RebuildFailedException(val reason: FailureReason, val code: ErrorCode? = null) : Exception(reason.name)
 
 sealed interface Status {
     data object Stopped : Status

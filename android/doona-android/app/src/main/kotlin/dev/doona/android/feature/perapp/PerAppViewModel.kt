@@ -6,11 +6,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.InstalledApp
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
+import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.RvAppPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -34,6 +34,9 @@ internal sealed interface PerAppAction {
 
     /** 重試 on the rebuild notice: the notice goes, and the route asks to connect again. */
     data object Reconnect : PerAppAction
+
+    /** 新增訂閱 on the rebuild notice of a start with no node to use: the notice goes, and the route opens 訂閱. */
+    data object AddSubscription : PerAppAction
 
     /** 調整清單 on the rebuild notice when none of the listed apps is installed: the notice goes, and the list is there. */
     data object EditList : PerAppAction
@@ -65,7 +68,8 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
         val busy: Boolean = false,
         /** The last write failed: shown until a save succeeds or the edits come back to what is saved. */
         val saveFailed: Boolean = false,
-        val rebuildFailure: FailureReason? = null,
+        /** Why the tunnel did not come back after the last stored save, as the engine reported it. */
+        val rebuildFailure: Status.Failed? = null,
         /** The first read of the apps failed; a later read that fails keeps the list it had instead. */
         val readFailed: Boolean = false,
     )
@@ -85,10 +89,16 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
     fun onAction(action: PerAppAction) {
         when (action) {
             is PerAppAction.SetPolicy -> edit { it.copy(policy = action.policy.toEngine()) }
+
             is PerAppAction.Toggle -> edit { it.copy(packages = if (action.checked) it.packages + action.packageName else it.packages - action.packageName) }
+
             is PerAppAction.SetQuery -> local.update { it.copy(query = action.query) }
+
             PerAppAction.Save -> save()
-            PerAppAction.Reconnect, PerAppAction.EditList, PerAppAction.CheckUpdate, PerAppAction.VpnSettings -> local.update { it.copy(rebuildFailure = null) }
+
+            PerAppAction.Reconnect, PerAppAction.AddSubscription, PerAppAction.EditList, PerAppAction.CheckUpdate, PerAppAction.VpnSettings ->
+                local.update { it.copy(rebuildFailure = null) }
+
             PerAppAction.Reload, PerAppAction.Resume -> readApps()
         }
     }
@@ -115,7 +125,7 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
                 it.copy(
                     busy = false,
                     saveFailed = failure != null && rebuild == null,
-                    rebuildFailure = rebuild?.reason,
+                    rebuildFailure = rebuild?.let { Status.Failed(it.reason, it.code) },
                     // Stored, though the tunnel may not have come up with it. An edit made while the save ran stays; only
                     // an unchanged draft is dropped, so the page follows the engine again.
                     draft = if ((failure == null || rebuild != null) && it.draft == saving) null else it.draft,

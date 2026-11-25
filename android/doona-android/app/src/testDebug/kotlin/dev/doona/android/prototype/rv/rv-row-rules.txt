@@ -9,20 +9,8 @@
 # R11, config-history named revision at 115%: the chip stands 1.5 dp above the gate's first-line centre of a two-line title; cause not found (the 200% row is exact).
 # R17, node-picker-testing at 115%: the one row of the golden whose result is fading in: its title keeps the width it had beside the bar, 10 dp into the gap.
 #   Open: check at rest whether a result shown after a test leaves the 12 dp (layout-STATE.md, Q2).
-# R8, perapp-read-failed (2026-11-26, lane p6c round 2): the notice has a title and no reason (orchestrator ruling), and RvNotice
-#   has no notice without one, so its empty reason line still stands under the title and the disc sits on the title's top,
-#   not the row's middle. Library request in p6c-STATE.md (reason nullable, skipped when null); these lines go with that change.
-app-rv-perapp-read-failed-dark	R8	無法讀取 App 清單	-1.8
-app-rv-perapp-read-failed-en	R8	Could not read the app l	-1.8
-app-rv-perapp-read-failed-fs115	R8	無法讀取 App 清單	-4.0
-app-rv-perapp-read-failed-fs200	R8	無法讀取 App 清單	-16.8
-app-rv-perapp-read-failed-light	R8	無法讀取 App 清單	-1.8
 proto-rv-config-history-menu-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
 proto-rv-config-history-menu-fs200	R14	東京出差：影音與 AI 走日本節點	title 3 lines
 proto-rv-config-history-named-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
 proto-rv-config-history-named-fs200	R14	東京出差：影音與 AI 走日本節點	title 3 lines
 proto-rv-node-picker-testing-fs115	R17	Hong Kong 05 IEPL	-10.0
-proto-rv-perapp-read-failed-dark	R8	無法讀取 App 清單	-1.8
-proto-rv-perapp-read-failed-fs115	R8	無法讀取 App 清單	-4.0
-proto-rv-perapp-read-failed-fs200	R8	無法讀取 App 清單	-16.8
-proto-rv-perapp-read-failed-light	R8	無法讀取 App 清單	-1.8

@@ -289,7 +289,7 @@ private fun ComposeContentTestRule.appShot(state: String, golden: String, dark: 
         else -> phone
     }
     val vm = PerAppViewModel(engine, apps)
-    rvContent(dark, fontScale) { PerAppPage(vm, onConnect = {}, PerAppSystem({}, {}), onBack = {}) }
+    rvContent(dark, fontScale) { PerAppPage(vm, onConnect = {}, PerAppSystem({}, {}, {}), onBack = {}) }
     waitForIdle()
     vm.reach(state)
     waitForIdle()

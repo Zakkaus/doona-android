@@ -4,20 +4,13 @@
     <string name="perapp_policy_all">所有应用</string>
     <string name="perapp_policy_only">仅勾选的应用</string>
     <string name="perapp_policy_except">勾选以外的应用</string>
-    <string name="perapp_summary_all">所有应用都经由 VPN。</string>
-    <string name="perapp_summary_only">仅勾选的应用经由 VPN，其他应用直接连接。</string>
-    <string name="perapp_summary_except">勾选的应用直接连接，其他应用经由 VPN。</string>
-    <string name="perapp_needs_app">至少勾选一个应用才能保存。</string>
     <string name="perapp_save">保存</string>
     <string name="perapp_save_failed_reason">设置没有写入，请再试一次。</string>
     <string name="perapp_read_failed">无法读取应用列表</string>
-    <string name="perapp_reconnect_note">VPN 已连接时，保存后会重新连接，当前连接会断开。</string>
     <string name="perapp_search">搜索应用</string>
     <string name="perapp_no_apps">没有可勾选的应用</string>
     <string name="perapp_no_apps_line">此设备上找不到可从主屏幕打开的应用。</string>
     <string name="perapp_no_match">没有匹配的应用</string>
-    <string name="perapp_no_match_line">改用其他关键词，或清除搜索。</string>
-    <string name="perapp_rebuild_failed">已保存，但 VPN 无法重新连接：%1$s</string>
     <string name="settings_subscriptions">订阅</string>
     <string name="settings_version">版本</string>
 </resources>

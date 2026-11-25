@@ -12,6 +12,7 @@ import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
+import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -77,11 +78,11 @@ class PerAppViewModelTest {
             if (failing) Result.failure(EngineException(code)) else fake.setPerApp(perApp)
     }
 
-    /** An engine that stores every save and then reports that the tunnel did not come back, for [reason]. */
-    private class RebuildFails(private val fake: FakeEngine = FakeEngine(), val reason: FailureReason) : Engine by fake {
+    /** An engine that stores every save and then reports that the tunnel did not come back, for [reason] and [code]. */
+    private class RebuildFails(private val fake: FakeEngine = FakeEngine(), val reason: FailureReason, val code: ErrorCode? = null) : Engine by fake {
         override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
             fake.setPerApp(perApp)
-            return Result.failure(RebuildFailedException(reason))
+            return Result.failure(RebuildFailedException(reason, code))
         }
     }
 
@@ -294,7 +295,7 @@ class PerAppViewModelTest {
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
         assertEquals(R.string.rv_vpn_taken_reason, vm.state.rebuildReason)
-        assertEquals(RvRebuildFix.Retry, vm.state.rebuildFix)
+        assertEquals(FailureFix.Retry, vm.state.rebuildFix)
     }
 
     @Test
@@ -303,7 +304,7 @@ class PerAppViewModelTest {
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
         assertEquals(R.string.vpn_failure_incompatible_core, vm.state.rebuildReason)
-        assertEquals(RvRebuildFix.CheckUpdate, vm.state.rebuildFix)
+        assertEquals(FailureFix.CheckUpdate, vm.state.rebuildFix)
         vm.onAction(PerAppAction.CheckUpdate)
         assertFalse(vm.state.rebuildFailed)
     }
@@ -314,7 +315,7 @@ class PerAppViewModelTest {
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
         assertEquals(R.string.vpn_failure_lockdown_enabled, vm.state.rebuildReason)
-        assertEquals(RvRebuildFix.VpnSettings, vm.state.rebuildFix)
+        assertEquals(FailureFix.VpnSettings, vm.state.rebuildFix)
         vm.onAction(PerAppAction.VpnSettings)
         assertFalse(vm.state.rebuildFailed)
     }
@@ -327,28 +328,30 @@ class PerAppViewModelTest {
 
         val state = vm.state
         assertTrue(state.rebuildFailed)
-        assertEquals(RvRebuildFix.EditList, state.rebuildFix)
+        assertEquals(FailureFix.EditList, state.rebuildFix)
         assertEquals("活動's sentence for the same cause", R.string.vpn_failure_no_allowed_apps, state.rebuildReason)
         vm.onAction(PerAppAction.EditList)
         assertFalse(vm.state.rebuildFailed)
     }
 
     @Test
-    fun `a rebuild that can be tried again is not sent to the list`() = runTest {
+    fun `a rebuild that can be tried again offers 重試, and retrying clears the notice`() = runTest {
         val vm = collected(RebuildFails(reason = FailureReason.StartFailed))
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
-        assertTrue(vm.state.rebuildFailed)
-        assertEquals(RvRebuildFix.Retry, vm.state.rebuildFix)
+        assertEquals(FailureFix.Retry, vm.state.rebuildFix)
+        vm.onAction(PerAppAction.Reconnect)
+        assertFalse(vm.state.rebuildFailed)
     }
 
     @Test
-    fun `retrying after a failed rebuild clears the notice`() = runTest {
-        val vm = collected(RebuildFails(reason = FailureReason.StartFailed))
+    fun `a rebuild the core refused for want of nodes is sent to 新增訂閱, not a retry, and the notice goes`() = runTest {
+        val vm = collected(RebuildFails(reason = FailureReason.StartFailed, code = ErrorCode.NoNodes))
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
-        assertTrue(vm.state.rebuildFailed)
-        vm.onAction(PerAppAction.Reconnect)
+        assertEquals("活動's 沒有節點", R.string.first_no_nodes, vm.state.rebuildReason)
+        assertEquals(FailureFix.AddSubscription, vm.state.rebuildFix)
+        vm.onAction(PerAppAction.AddSubscription)
         assertFalse(vm.state.rebuildFailed)
     }
 
