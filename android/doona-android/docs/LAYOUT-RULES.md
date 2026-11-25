@@ -115,7 +115,8 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 | R13 | Line boxes | one height per role in a golden, within 1 dp | owner, latinrow | gate R13 |
 | R14 | Lines | title ≤ 2, subtitle ≤ 3 | `07-set-interface`, `07-privacy` | gate R14 |
 | R16 | Trailing x | the part ends at the content's end (16 inside the card) | §13.4 (x 998 of 1039 px) | gate R16 |
-| R17 | Text to trailing | ≥ 12 on one line | `RvSpace.trailingGap`; no Revolut measure | gate R17 |
+| R21 | An end's glyph button (`RvEndMark`, 節點's info mark) | laid out at its 22 dp glyph, 12 after the value it follows; its 48 dp target is placed round the glyph past the layout, so the text loses only the ink and the gap | s1125c: the 48 dp layout box took 26 dp more from the text (`Hong Kong 02 IPLC` wrapped) | `RvEndMarkTest` |
+| R17 | Text to trailing | ≥ 12 on one line, to what the part shows: a switch's track, not its node (owner, q-s1125c-switchgap, 2026-11-25 18:55: was 20 to the track, the node's 8 dp room included) | `RvSpace.trailingGap`; no Revolut measure | gate R17 (the switch's node starts at its track); `RvSwitchGapTest` measures the drawn track |
 | R18 | Padding | text keeps ≥ 16 above and below, equal when the minimum height governs | §7 | gate R18 |
 | R19 | Spacing scale | only S0–S5 | this file | `check-scale.sh`, `check-tokens.sh` |
 | R2 | Cards and sections | card on the 16 gutter, 20 radius, 16 apart; section 24 above, 12 below | §2, §13.4 | `RvLayoutTest` |

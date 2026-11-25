@@ -544,20 +544,21 @@ internal fun DrawScope.rvValuePill(text: TextLayoutResult, topLeft: Offset, ink:
 }
 
 /**
- * Revolut's switch (§13.4, Addendum A): a 50 × 27 dp node holding a thin 34 dp track and a 19 dp thumb taller than it.
- * On, the thumb is the accent over a tint of it, outlined in the accent where the tint alone would not show on the card;
- * off, a light thumb over the [RvColors.control] track. The row around it owns the toggling.
+ * Revolut's switch (§13.4, Addendum A): a 34 dp track, a 19 dp thumb, in its 50 × 27 dp node less the room left of the
+ * track, so the text stands 12 dp from the track that shows (owner, q-s1125c-switchgap; that room made it 20). On, the
+ * accent thumb over its tint (outlined where needed); off, a light thumb on [RvColors.control]. The row owns the toggle.
  */
 @Composable
 internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val size = RvControlSize
-    val off = (size.switchWidth - size.switchTrackWidth) / 2 - (size.switchThumb - size.switchTrackHeight) / 2
+    val room = (size.switchWidth - size.switchTrackWidth) / 2
+    val off = -(size.switchThumb - size.switchTrackHeight) / 2
     val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, Rv.motion.tween(RvMotion.SWITCH_MS), label = "thumb")
-    Box(modifier.size(size.switchWidth, size.switchHeight).clearAndSetSemantics { testTag = RvRowPart.SWITCH }) {
+    Box(modifier.size(size.switchWidth - room, size.switchHeight).clearAndSetSemantics { testTag = RvRowPart.SWITCH }) {
         Box(
             Modifier
-                .align(Alignment.Center)
+                .align(Alignment.CenterStart)
                 .size(size.switchTrackWidth, size.switchTrackHeight)
                 .clip(CircleShape)
                 .background(if (checked) colors.switchOnTrack else colors.control)
