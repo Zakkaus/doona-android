@@ -275,7 +275,10 @@ private fun rvSegmentStyle(options: List<String>, glyph: Boolean, width: Int): T
 
 /**
  * The control's height for labels in [style]: [RvChartSize.segment], or the labels' line and the pill's inset above and
- * below it where that is more, as at font scale 2.0, so a label is never cut at the top or the bottom.
+ * below it where that is more, as at font scale 2.0, so a label is never cut at the top or the bottom. [RvSegmented] and
+ * its skeleton pass the full [Rv.type.segment], not the fitted size, which the skeleton cannot know without the labels:
+ * Android scales fonts non-linearly, so at 2.0 the full line is 36.5 dp and the control 40.5 dp, against 40.0 where the
+ * fitted labels were a step smaller (fs200 of 依 App, 策略's flow and the rule editor); at 1.0 and 1.15 it is 40.0.
  */
 @Composable
 internal fun rvSegmentHeight(style: TextStyle): Dp {
