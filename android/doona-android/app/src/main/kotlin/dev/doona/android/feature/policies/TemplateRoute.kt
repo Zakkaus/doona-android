@@ -36,13 +36,14 @@ internal fun TemplateRoute(engine: Engine, onBack: () -> Unit, onReview: (String
 
 /**
  * The review before [templateId] replaces the rules, and its 套用: on success [onApplied] (back to 策略); a failure shows
- * as the page's banner with 重試, which applies again.
+ * as the page's banner with 重試, which applies again. Until the catalog is read (a back stack restored after the process
+ * died) the page waits as its skeleton.
  */
 @Composable
 internal fun TemplateImpactRoute(engine: Engine, templateId: String, onBack: () -> Unit, onApplied: () -> Unit) {
     val viewModel: TemplateImpactViewModel = viewModel(factory = TemplateImpactViewModel.factory(engine, templateId))
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
-    val impact = ui.impact ?: return
+    val impact = ui.impact
     val apply = { viewModel.apply(onApplied) }
     val banner = ui.failure?.let {
         RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_template_apply_failed), stringResource(it.messageRes()), stringResource(R.string.rv_retry), apply)

@@ -22,6 +22,9 @@ import dev.doona.android.designsystem.rv.RvRadio
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
+import dev.doona.android.designsystem.rv.RvSkeletonCard
+import dev.doona.android.designsystem.rv.RvSkeletonCards
+import dev.doona.android.designsystem.rv.RvSkeletonStatRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.SEPARATOR
@@ -87,27 +90,33 @@ internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boole
  * as key stats (the source and the template, rules added, changed and removed, the user's own rules kept in place; a
  * count the core does not tell is left out); the groups it adds and keeps and the rules it adds or changes, each drawn as
  * the rules card draws a rule, where the core tells them; a line saying only new connections follow it; and 套用
- * floating at the bottom. A failed 套用 shows as [banner] above the stats.
+ * floating at the bottom. A failed 套用 shows as [banner] above the stats. Before the rules are read ([impact] null: a
+ * back stack restored after the process died) a skeleton of the stats stands in, 套用 is off, and the stats fade in over it.
  */
 @Composable
-internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply: () -> Unit, banner: RvNotice? = null) {
+internal fun RvTemplateImpactPage(impact: RvImpact?, onBack: () -> Unit, onApply: () -> Unit, banner: RvNotice? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_template_review)
+    val template = stringResource(R.string.rv_policy_template)
     RvScrollPage(
         title,
         insets,
         onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply) },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = impact != null) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter(banner = banner) { SummaryCard(impact) }
-        if (impact.groups.isNotEmpty()) {
-            RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
-            RvGutter { RvCard { impact.groups.forEach { ImpactGroupRow(it) } } }
+        RvGutter(banner = banner) {
+            RvSkeletonCards(impact == null, { RvSkeletonCard(description = template) { RvSkeletonStatRow(template) } }) { impact?.let { SummaryCard(it) } }
         }
-        if (impact.rules.isNotEmpty()) {
+        val groups = impact?.groups.orEmpty()
+        if (groups.isNotEmpty()) {
+            RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
+            RvGutter { RvCard { groups.forEach { ImpactGroupRow(it) } } }
+        }
+        val rules = impact?.rules.orEmpty()
+        if (rules.isNotEmpty()) {
             RvSectionTitle(stringResource(R.string.rv_policy_rules), Modifier.padding(horizontal = RvSpace.gutter))
-            RvGutter { RvCard { impact.rules.forEach { ImpactRuleRow(it) } } }
+            RvGutter { RvCard { rules.forEach { ImpactRuleRow(it) } } }
         }
         RvFootnote(stringResource(R.string.rv_template_new_flows))
     }

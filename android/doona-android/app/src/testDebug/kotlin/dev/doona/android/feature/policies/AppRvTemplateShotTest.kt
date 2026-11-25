@@ -30,6 +30,7 @@ import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -82,6 +83,10 @@ class AppRvTemplateShotTest {
 
     @Test
     fun impactLight() = shot("template-impact", dark = false) { TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {}) }
+
+    /** Before the catalog is read (a back stack restored after the process died, DS 1126i 1): the review's skeleton. */
+    @Test
+    fun impactLoadingLight() = shot("template-impact-loading", dark = false) { TemplateImpactRoute(Late(), "cn-direct", onBack = {}, onApplied = {}) }
 
     @Test
     fun impactDark() = shot("template-impact", dark = true) { TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {}) }
@@ -145,6 +150,24 @@ class AppRvTemplateShotTest {
         assertEquals(1, left)
     }
 
+    /** Before the catalog is read 套用 does nothing; once it is, the review shows and 套用 sets the template. */
+    @Test
+    fun theReviewWaitsForTheCatalog() {
+        val engine = Late()
+        var left = 0
+        compose.rvContent(dark = false) { TemplateImpactRoute(engine, "cn-direct", onBack = {}, onApplied = { left++ }) }
+        val apply = compose.onNode(hasText(text(R.string.rv_policy_apply)), useUnmergedTree = true)
+        apply.performClick()
+        compose.waitForIdle()
+        assertEquals(emptyList<String>(), engine.applied)
+        engine.read.value = engine.loaded
+        compose.waitForIdle()
+        apply.performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("cn-direct"), engine.applied)
+        assertEquals(1, left)
+    }
+
     @Composable
     private fun Effective(make: () -> Engine = ::rvSampleEngine) {
         val engine = remember { make() }
@@ -200,6 +223,15 @@ class AppRvTemplateShotTest {
     }
 
     private fun handWritten() = HandWritten()
+
+    /** [HandWritten] whose catalog is unread until the test sets [read] to [loaded]. */
+    private class Late(private val base: HandWritten = HandWritten()) : Engine by base {
+        val applied get() = base.applied
+        val loaded: Catalog? = base.catalog.value
+        val read = MutableStateFlow<Catalog?>(null)
+
+        override val catalog: StateFlow<Catalog?> = read
+    }
 
     /** The sample engine, its template list unreadable. */
     private class Unlisted(private val base: Engine = rvSampleEngine()) : Engine by base {

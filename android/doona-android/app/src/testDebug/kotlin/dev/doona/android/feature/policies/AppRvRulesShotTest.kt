@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
@@ -92,6 +94,24 @@ class AppRvRulesShotTest {
     @Test
     fun loadingLight() = shot("rules-loading", dark = false) { Page(::notReady) }
 
+    /** A reread that failed (DS 1126i 2): the banner with 重試 over the rules last read, every row of them still drawn. */
+    @Test
+    @Config(qualifiers = WHOLE_REREAD)
+    fun rereadFailedLight() {
+        val engine = RereadingRules()
+        val vm = RulesViewModel(engine, reads = Dispatchers.Unconfined)
+        var rows = 0
+        val reread = {
+            rows = compose.onAllNodes(hasTestTag(RvPart.ROW), useUnmergedTree = true).fetchSemanticsNodes().size
+            engine.fail = true
+            vm.retry()
+        }
+        shot("rules-reread-failed", dark = false, whole = true, then = reread) { RulesRoute(vm, onBack = {}, onTemplate = {}) }
+        assertEquals(1, shown(text(R.string.rv_rules_read_failed)))
+        assertEquals(rows, compose.onAllNodes(hasTestTag(RvPart.ROW), useUnmergedTree = true).fetchSemanticsNodes().size)
+        assertEquals(1, shown(text(R.string.rv_effective_open)))
+    }
+
     /** A source that did not parse: the banner's 範本 opens the templates. */
     @Test
     fun theParseBannerOpensTheTemplates() {
@@ -123,8 +143,10 @@ class AppRvRulesShotTest {
 
     private fun text(id: Int) = ApplicationProvider.getApplicationContext<Context>().getString(id)
 
-    private fun shot(screen: String, dark: Boolean, fontScale: Float = 1f, whole: Boolean = false, content: @Composable () -> Unit) {
+    private fun shot(screen: String, dark: Boolean, fontScale: Float = 1f, whole: Boolean = false, then: () -> Unit = {}, content: @Composable () -> Unit) {
         compose.rvContent(dark, fontScale, content = content)
+        then()
+        compose.waitForIdle()
         if (whole) compose.assertWhole()
         compose.drawFully()
         val variant = when {
@@ -163,6 +185,14 @@ class AppRvRulesShotTest {
         override suspend fun rules(offset: Int, limit: Int): Result<RulePage> = Result.failure(EngineException(ErrorCode.Busy))
     }
 
+    /** The sample engine whose rules read until [fail] is set, then fail with Busy. */
+    private class RereadingRules(private val base: Engine = rvSampleEngine()) : Engine by base {
+        var fail = false
+
+        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> =
+            if (fail) Result.failure(EngineException(ErrorCode.Busy)) else base.rules(offset, limit)
+    }
+
     /** The sample engine before its catalog has loaded: the page waits as a skeleton. */
     private fun notReady(): Engine = object : Engine by rvSampleEngine() {
         override val catalog: StateFlow<Catalog?> = MutableStateFlow(null)
@@ -183,5 +213,6 @@ class AppRvRulesShotTest {
         const val WHOLE_FS200 = "+h2400dp"
         const val WHOLE_EN = "en-w412dp-h1752dp-notnight-xhdpi"
         const val WHOLE_LONG = "+h1881dp"
+        const val WHOLE_REREAD = "+h1900dp"
     }
 }

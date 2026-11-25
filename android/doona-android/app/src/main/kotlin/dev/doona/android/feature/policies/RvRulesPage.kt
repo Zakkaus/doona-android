@@ -62,9 +62,9 @@ internal class RvRulesRoutes(
  * them; and the way to the effective config, which shows what the core compiled. The bar's pencil turns on [editing],
  * for reordering (first match wins, so order matters): a long press lifts a rule to drag it, and 完成 ends it. A rule
  * opens its page; a long press its menu. 刪除 asks in the library's confirm sheet. A [banner] (the source did not parse,
- * or the rules could not be read) stands in place of the cards, in [RvGutter]'s slot; the title, the bar and the bottom
- * action stay. While [loading] (the first read) a skeleton of the rules card stands in for the cards, and they fade in
- * over it.
+ * or the rules could not be read) stands in [RvGutter]'s slot over the rules a failed reread kept, or in place of the
+ * cards when none were kept; the title, the bar and the bottom action stay. While [loading] (the first read) a skeleton
+ * of the rules card stands in for the cards, and they fade in over it.
  */
 @Composable
 internal fun RvRulesPage(
@@ -89,7 +89,7 @@ internal fun RvRulesPage(
         val order: (@Composable ColumnScope.() -> Unit)? = if (!editing && banner == null) ({ RvCaption(stringResource(R.string.rv_policy_rules_order)) }) else null
         RvPageHeader(title, titleBlock, insets, caption = order)
         RvGutter(banner = banner) {
-            if (banner != null) return@RvGutter
+            if (banner != null && rules.isEmpty()) return@RvGutter
             RvSkeletonCards(loading, { RulesSkeleton() }) {
                 if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
                 RulesCard(rules, editing, routes)
