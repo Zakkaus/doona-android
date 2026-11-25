@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.policy
 
 import android.content.res.Configuration
+import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -122,39 +123,66 @@ internal fun RvRuleEditPage(
     onMove: (Int) -> Unit = {},
     onOpenSource: (RvDiffAt) -> Unit = {},
 ) {
+    val form = RvRuleForm(stringResource(R.string.rv_rule_edit_title), draft, onChange, native, must = native != null)
+    RvRuleFormPage(form, onBack, onApply, onDelete, onMove, onOpenSource) { toggles ->
+        RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
+        RvGutter {
+            RvTargetCard(targets, draft.targetId, block = native != null) { onChange(draft.copy(targetId = it)) }
+            toggles()
+        }
+    }
+}
+
+/**
+ * What a rule's page shows around its action: the [title], the [draft]'s match, and with [must] the 所有模式都生效 row
+ * under 啟用; [privateLine] says what a private range covers in this list.
+ */
+@Immutable
+internal class RvRuleForm(
+    val title: String,
+    val draft: RvRuleDraft,
+    val onChange: (RvRuleDraft) -> Unit,
+    val native: RvNativeRuleAt?,
+    val must: Boolean,
+    @param:StringRes val privateLine: Int = R.string.rv_rule_edit_private_line,
+)
+
+/**
+ * A rule's page: the large title, 依據 (the match fields, or the statement's source lines), then [action], which places
+ * the card of 啟用 and 刪除規則 it is handed (`toggles`); 位置 for a native statement; 套用 floating at the bottom, off
+ * while the value is wrong; and the sheet 刪除規則 asks with.
+ */
+@Composable
+internal fun RvRuleFormPage(
+    form: RvRuleForm,
+    onBack: () -> Unit,
+    onApply: () -> Unit,
+    onDelete: () -> Unit,
+    onMove: (Int) -> Unit,
+    onOpenSource: (RvDiffAt) -> Unit,
+    action: @Composable (toggles: @Composable () -> Unit) -> Unit,
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var confirming by rememberSaveable { mutableStateOf(false) }
-    val title = stringResource(R.string.rv_rule_edit_title)
+    val draft = form.draft
+    val statement = form.native?.statement
     RvScrollPage(
-        title,
+        form.title,
         insets,
         onBack = onBack,
         // A statement the form shows as source keeps its match, so only the form's own value can hold 套用 back.
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = native?.statement != null || draft.problem == null) },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = statement != null || draft.problem == null) },
     ) { titleBlock ->
-        RvLargeTitle(title, titleBlock, insets)
+        RvLargeTitle(form.title, titleBlock, insets)
         RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter), first = true)
-        val statement = native?.statement
         if (statement == null) {
-            MatchFields(draft, onChange)
+            MatchFields(draft, form.onChange, form.privateLine)
         } else {
             RvGutter { RvSourceExcerpt(statement.source, statement.hunks.first(), onOpenSource) }
             RvFootnote(stringResource(R.string.rv_rule_edit_match_in_source))
         }
-        RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter {
-            RvTargetCard(targets, draft.targetId, block = native != null) { onChange(draft.copy(targetId = it)) }
-            RvCard {
-                val toggle = Modifier.rvRowToggle(draft.enabled) { onChange(draft.copy(enabled = it)) }
-                RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_rule_edit_enabled), null, toggle) { RvSwitch(draft.enabled) }
-                if (native != null) {
-                    val must = Modifier.rvRowToggle(draft.must) { onChange(draft.copy(must = it)) }
-                    RvRow({ RvIconDisc(R.drawable.rv_sym_vpn_lock) }, stringResource(R.string.rv_rule_edit_must), null, must) { RvSwitch(draft.must) }
-                }
-                RvRow({ RvIconDisc(R.drawable.rv_sym_delete) }, stringResource(R.string.rv_rule_edit_delete), null, onClick = { confirming = true })
-            }
-        }
-        if (native != null) Position(native, onMove)
+        action { Toggles(form) { confirming = true } }
+        form.native?.let { Position(it, onMove) }
     }
     RvConfirmSheet(
         visible = confirming,
@@ -171,9 +199,26 @@ internal fun RvRuleEditPage(
     )
 }
 
-/** 位置: 上移 and 下移 where the statement can go, and its place under the card. */
+/** The card of 啟用 (which pauses and resumes a native statement), 所有模式都生效 when the form has it, and 刪除規則. */
+@Composable
+private fun Toggles(form: RvRuleForm, onDelete: () -> Unit) {
+    val draft = form.draft
+    RvCard {
+        val toggle = Modifier.rvRowToggle(draft.enabled) { form.onChange(draft.copy(enabled = it)) }
+        RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_rule_edit_enabled), null, toggle) { RvSwitch(draft.enabled) }
+        if (form.must) {
+            val must = Modifier.rvRowToggle(draft.must) { form.onChange(draft.copy(must = it)) }
+            RvRow({ RvIconDisc(R.drawable.rv_sym_vpn_lock) }, stringResource(R.string.rv_rule_edit_must), null, must) { RvSwitch(draft.must) }
+        }
+        RvRow({ RvIconDisc(R.drawable.rv_sym_delete) }, stringResource(R.string.rv_rule_edit_delete), null, onClick = onDelete)
+    }
+}
+
+/** 位置: 上移 and 下移 where the statement can go, and its place under the card; none for the only statement. */
 @Composable
 private fun Position(at: RvNativeRuleAt, onMove: (Int) -> Unit) {
+    // The only statement of its list has nowhere to go.
+    if (at.count < 2) return
     RvSectionTitle(stringResource(R.string.rv_rule_edit_position), Modifier.padding(horizontal = RvSpace.gutter))
     RvGutter {
         RvCard {
@@ -189,7 +234,7 @@ private fun Position(at: RvNativeRuleAt, onMove: (Int) -> Unit) {
  * them; the slider sits [RvSpace.controlStack] over the field, two controls stacked in one.
  */
 @Composable
-private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
+private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit, @StringRes privateLine: Int) {
     val kinds = if (draft.kind in DOMAIN_KINDS) DOMAIN_KINDS else ADDRESS_KINDS
     Column(Modifier.padding(horizontal = RvSpace.gutter)) {
         RvSegmented(kinds.map { stringResource(it.label) }, kinds.indexOf(draft.kind), { onChange(draft.copy(kind = kinds[it])) })
@@ -209,11 +254,11 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
                     },
                 ),
                 placeholder = stringResource(if (draft.kind == RvMatchKind.Cidr) R.string.rv_rule_edit_cidr_hint else R.string.rv_rule_edit_domain_hint),
-                supporting = if (problem == null) draft.covers() else null,
+                supporting = if (problem == null) draft.covers(privateLine) else null,
                 error = problem,
             )
         } else {
-            val line = draft.covers()
+            val line = draft.covers(privateLine)
             RvChoiceLine(line, Modifier.rvInkStart(line, Rv.type.rowSub))
         }
     }
@@ -221,13 +266,13 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit) {
 
 /** What the rule covers, as the quick rule says it under its choice. */
 @Composable
-private fun RvRuleDraft.covers(): String = when (kind) {
+private fun RvRuleDraft.covers(@StringRes privateLine: Int): String = when (kind) {
     RvMatchKind.Full -> stringResource(R.string.rv_policy_match_full_line, value)
     RvMatchKind.Suffix -> stringResource(R.string.rv_policy_match_suffix_line, value)
     RvMatchKind.Keyword -> stringResource(R.string.rv_policy_match_keyword_line, value)
     RvMatchKind.Cidr -> stringResource(R.string.rv_rule_edit_cidr_line, value)
     RvMatchKind.GeoIpCn -> stringResource(R.string.rv_rule_edit_geoip_line)
-    RvMatchKind.Private -> stringResource(R.string.rv_rule_edit_private_line)
+    RvMatchKind.Private -> stringResource(privateLine)
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

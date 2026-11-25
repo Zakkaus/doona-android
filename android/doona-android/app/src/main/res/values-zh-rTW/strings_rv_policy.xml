@@ -179,4 +179,18 @@
     <string name="rv_policy_target_missing">找不到群組</string>
     <string name="rv_policy_read_failed">無法讀取策略</string>
     <string name="rv_group_read_failed">無法讀取群組</string>
+    <string name="rv_dns_query_title">編輯 DNS 查詢規則</string>
+    <string name="rv_dns_response_title">編輯 DNS 回應規則</string>
+    <string name="rv_dns_action">動作</string>
+    <string name="rv_dns_action_original">原伺服器</string>
+    <string name="rv_dns_action_server">指定伺服器</string>
+    <string name="rv_dns_action_accept">接受</string>
+    <string name="rv_dns_action_requery">重新查詢</string>
+    <string name="rv_dns_query_reject_line">回覆空結果，這個網域查不到位址</string>
+    <string name="rv_dns_query_original_line">送往查詢原本指定的 DNS 伺服器</string>
+    <string name="rv_dns_query_server_line">送往下方選定的 DNS 伺服器</string>
+    <string name="rv_dns_response_accept_line">採用這個回應</string>
+    <string name="rv_dns_response_reject_line">捨棄這個回應，改回覆空結果</string>
+    <string name="rv_dns_response_requery_line">改向下方選定的 DNS 伺服器重新查詢</string>
+    <string name="rv_dns_private_line">回應中的私有位址</string>
 </resources>

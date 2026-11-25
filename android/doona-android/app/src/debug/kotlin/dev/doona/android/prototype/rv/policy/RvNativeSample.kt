@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.policy
 
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.model.RvDnsServer
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMatchKind
@@ -15,7 +16,8 @@ import dev.doona.android.prototype.rv.data.RvData
 /**
  * A hand-written honk config as the native pages show it (brief p14, schema 4 §1): no group called Proxy, every policy,
  * nesting three deep (海外 › 日本 › 東京), `direct` as a literal member, Chinese group names. The rules send to those
- * groups, to 直連 and to 拒絕; one is paused; the last routes the rest to 海外.
+ * groups, to 直連 and to 拒絕; one is paused; the last routes the rest to 海外. Its DNS has three servers, four query rules
+ * (the ad block paused) and one response rule.
  */
 internal object RvNativeSample {
     private val nodes = RvData.nodes
@@ -63,6 +65,25 @@ internal object RvNativeSample {
 
     /** The list after the user removed every rule they wrote: only the last rule, which routes everything, is left. */
     val restOnly: List<RvPolicyRule> = rules.takeLast(1)
+
+    /** The config's DNS servers, as dns.dae declares them in `dns.upstream` (the sample engine's `RvSampleConfig`). */
+    val upstreams: List<RvDnsServer> = listOf(
+        RvDnsServer("local", "udp://223.5.5.5:53"),
+        RvDnsServer("remote", "tcp+udp://1.1.1.1:53"),
+        RvDnsServer("backup", "https://dns.example/dns-query"),
+    )
+
+    /** dns.dae's `qname(suffix: corp.example) -> local`, a query rule the form can represent. A DNS draft has no target. */
+    val dnsQuery = RvDnsRuleDraft(RvDnsList.Query, RvRuleDraft(RvMatchKind.Suffix, "corp.example", ""), RvDnsAction.Upstream, "local")
+
+    /** `qname(suffix: lan) -> asis`, the last query rule before the fallback. */
+    val dnsAsIs = RvDnsRuleDraft(RvDnsList.Query, RvRuleDraft(RvMatchKind.Suffix, "lan", ""), RvDnsAction.AsIs)
+
+    /** The ad block, `qname(geosite: category-ads-all) -> reject`, paused (commented out, schema 4 §7 `blockAds: off`). */
+    val dnsAds = RvDnsRuleDraft(RvDnsList.Query, RvRuleDraft(RvMatchKind.Suffix, "", "", enabled = false), RvDnsAction.Reject)
+
+    /** The only response rule, `upstream(remote) && ip(geoip: private) -> backup`: a private answer is asked again. */
+    val dnsPrivate = RvDnsRuleDraft(RvDnsList.Response, RvRuleDraft(RvMatchKind.Private, "", ""), RvDnsAction.Upstream, "backup")
 
     const val OVERSEAS = "海外"
     const val JAPAN = "日本"

@@ -32,6 +32,7 @@ import dev.doona.android.designsystem.rv.rvRemoveTrailing
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.feature.model.RV_BLOCK
 import dev.doona.android.feature.model.RV_DIRECT
+import dev.doona.android.feature.model.RvDnsServer
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
@@ -180,6 +181,28 @@ private fun Block(selected: Boolean, onSelect: () -> Unit) {
         subtitleKeepWords = false,
         endFirstLine = true,
     ) { RvRadio(selected) }
+}
+
+/**
+ * The DNS servers a DNS rule can send to: each of the config's [upstreams] by its name over its address, [selected]
+ * marked; the whole row picks it.
+ */
+@Composable
+internal fun RvDnsServerCard(upstreams: List<RvDnsServer>, selected: String?, onSelect: (String) -> Unit) {
+    RvCard {
+        upstreams.forEach { upstream ->
+            val chosen = upstream.name == selected
+            RvRow(
+                { RvIconDisc(R.drawable.rv_sym_dns) },
+                upstream.name,
+                upstream.address,
+                Modifier.rvRowSelect(chosen, { onSelect(upstream.name) }),
+                titleKeepWords = false,
+                subtitleKeepWords = false,
+                endFirstLine = true,
+            ) { RvRadio(chosen) }
+        }
+    }
 }
 
 /** The groups listed before 其他 N 個策略組: the main node, 自動, 串流 and AI. */

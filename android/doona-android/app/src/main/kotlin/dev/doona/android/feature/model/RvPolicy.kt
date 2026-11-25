@@ -109,3 +109,7 @@ internal const val RV_DIRECT = "direct"
 
 /** A native honk rule's `block` target, as [RV_DIRECT] is its `direct`. */
 internal const val RV_BLOCK = "block"
+
+/** A DNS server the config declares in `dns.upstream`: its [name], which rules send to, and its [address] as written. */
+@Immutable
+internal data class RvDnsServer(val name: String, val address: String)

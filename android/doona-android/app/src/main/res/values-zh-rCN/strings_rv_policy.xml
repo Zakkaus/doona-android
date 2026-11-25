@@ -179,4 +179,18 @@
     <string name="rv_policy_target_missing">找不到策略组</string>
     <string name="rv_policy_read_failed">无法读取策略</string>
     <string name="rv_group_read_failed">无法读取策略组</string>
+    <string name="rv_dns_query_title">编辑 DNS 查询规则</string>
+    <string name="rv_dns_response_title">编辑 DNS 响应规则</string>
+    <string name="rv_dns_action">动作</string>
+    <string name="rv_dns_action_original">原服务器</string>
+    <string name="rv_dns_action_server">指定服务器</string>
+    <string name="rv_dns_action_accept">接受</string>
+    <string name="rv_dns_action_requery">重新查询</string>
+    <string name="rv_dns_query_reject_line">回复空结果，这个域名查不到地址</string>
+    <string name="rv_dns_query_original_line">送往查询原本指定的 DNS 服务器</string>
+    <string name="rv_dns_query_server_line">送往下方选定的 DNS 服务器</string>
+    <string name="rv_dns_response_accept_line">采用这个响应</string>
+    <string name="rv_dns_response_reject_line">舍弃这个响应，改回复空结果</string>
+    <string name="rv_dns_response_requery_line">改向下方选定的 DNS 服务器重新查询</string>
+    <string name="rv_dns_private_line">响应中的私有地址</string>
 </resources>

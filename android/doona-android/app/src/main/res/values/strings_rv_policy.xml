@@ -199,4 +199,18 @@
     <string name="rv_policy_target_missing">Group not found</string>
     <string name="rv_policy_read_failed">Could not read the policies</string>
     <string name="rv_group_read_failed">Could not read the group</string>
+    <string name="rv_dns_query_title">Edit DNS query rule</string>
+    <string name="rv_dns_response_title">Edit DNS response rule</string>
+    <string name="rv_dns_action">Action</string>
+    <string name="rv_dns_action_original">Original</string>
+    <string name="rv_dns_action_server">Server</string>
+    <string name="rv_dns_action_accept">Accept</string>
+    <string name="rv_dns_action_requery">Ask again</string>
+    <string name="rv_dns_query_reject_line">Answered with no address</string>
+    <string name="rv_dns_query_original_line">Sent to the DNS server the query was addressed to</string>
+    <string name="rv_dns_query_server_line">Sent to the DNS server chosen below</string>
+    <string name="rv_dns_response_accept_line">The response is used</string>
+    <string name="rv_dns_response_reject_line">The response is dropped and the query gets no address</string>
+    <string name="rv_dns_response_requery_line">Asked again of the DNS server chosen below</string>
+    <string name="rv_dns_private_line">Private addresses in the response</string>
 </resources>
