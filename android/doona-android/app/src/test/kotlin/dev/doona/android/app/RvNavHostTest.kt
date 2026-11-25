@@ -374,7 +374,7 @@ class RvNavHostTest {
         compose.mainClock.autoAdvance = false
         compose.runOnIdle { stack.selectTab(Tab.Policies) }
         val cut = framesTogether("activity", "policies")
-        assertTrue("a tab switch shows both pages only while the frames catch up: $cut", cut <= PIPELINE_FRAMES)
+        assertTrue("a tab switch shows both pages only while the frames catch up: $cut", cut <= CUT_FRAMES)
 
         compose.runOnIdle { stack.push(GroupKey("g")) }
         val push = framesTogether("policies", "group g")
@@ -490,6 +490,9 @@ private class Probe(val name: String, private val cleared: MutableList<String>) 
  * the 3rd frame, the old one leaves 2 frames later).
  */
 private const val PIPELINE_FRAMES = 3
+
+/** The most frames a cut may show both pages: [PIPELINE_FRAMES] and one more for rounding, as [PUSH_FRAMES] allows one less. */
+private const val CUT_FRAMES = PIPELINE_FRAMES + 1
 
 /** The frames of a push ([RvMotion.PUSH_MS], 130 ms) at 16 ms a frame, less one for rounding. */
 private const val PUSH_FRAMES = (RvMotion.PUSH_MS / 16) - 1
