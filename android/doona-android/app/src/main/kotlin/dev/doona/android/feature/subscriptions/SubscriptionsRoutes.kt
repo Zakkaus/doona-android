@@ -12,10 +12,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import kotlinx.coroutines.flow.Flow
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.model.RvSubscription
+import kotlinx.coroutines.flow.Flow
 
 /**
  * 訂閱: the subscriptions, which open their page ([onOpen], also the menu's 編輯) and lead to 新增訂閱 ([onAdd]).
