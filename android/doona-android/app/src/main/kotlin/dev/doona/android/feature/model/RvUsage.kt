@@ -26,7 +26,7 @@ internal data class RvDay private constructor(val down: List<Long>, val up: List
 
 /**
  * The connection running now: when it started, its bytes each way in each hour of the day it spans (zero before it
- * started), its fastest second each way, and its last minute ([RvMinute]). The lists are copied on
+ * started), its fastest second each way, and its last minute, one rate per second. The lists are copied on
  * construction, so a caller's mutable list cannot change the session afterwards.
  */
 @ConsistentCopyVisibility

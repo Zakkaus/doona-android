@@ -8,7 +8,10 @@ import kotlin.math.sqrt
 /**
  * One node: what its share link says (protocol, server, port, transport, TLS), the subscription it came from, and the
  * results of its last latency tests, at most [RV_TESTS], oldest first (a node new to the app has none or one); null is a
- * test that timed out. [name] is the one name every
+ * test that timed out. The history is the newest tests in the order they ran: a new test goes at the end and, once the
+ * history is full, the oldest one goes from the front ([withTest]); no test ever leaves from the middle. The detail
+ * page pairs the history with the list of test times from its end, so a history that skipped a test would show every
+ * earlier figure under the wrong time. [name] is the one name every
  * page shows (`Hong Kong 02 IPLC`); [short] is the same node's country code and number for the narrow tiles (`HK 02`).
  */
 @Immutable
@@ -63,6 +66,9 @@ internal data class RvNode(
 
     /** The same node before any test ran. */
     fun untested(): RvNode = copy(history = List(history.size) { null })
+
+    /** This node after one more test, [ms] being null when it timed out: the history keeps the newest [RV_TESTS] tests. */
+    fun withTest(ms: Int?): RvNode = copy(history = (history + ms).takeLast(RV_TESTS))
 }
 
 /** The [count] fastest nodes by their last test, ties in list order; every page's 最快 list is this one. */
