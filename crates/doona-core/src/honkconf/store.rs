@@ -334,13 +334,24 @@ impl HonkStore {
         Ok(staged.rev)
     }
 
-    /// Whether revision `rev` holds exactly the files and links a copy of `tree` would write.
+    /// Whether revision `rev` holds exactly the files and links a copy of `tree` would write:
+    /// the sources honk loads plus their `use_host` companions, as staging collects them.
     fn holds(&self, rev: u64, entry: &Path, tree: &Tree) -> Result<bool, StoreError> {
         let revision = &self.manifest.revisions[&rev];
         if revision.entry != entry {
             return Ok(false);
         }
-        let committed = Tree::read(&self.tree_entry(rev, revision))?;
+        let mut committed = Tree::read(&self.tree_entry(rev, revision))?;
+        let parsed = committed.parse()?;
+        let mut files = committed.read_companions(&parsed.loaded.config, None)?;
+        files.extend(
+            parsed
+                .loaded
+                .sources
+                .into_iter()
+                .map(|s| (s.path, s.content)),
+        );
+        committed.files = files;
         Ok(contents(&committed, &committed.links)? == contents(tree, &tree.kept)?)
     }
 

@@ -59,7 +59,7 @@ impl Preparer for Fake {
         self.0.epoch.load(SeqCst)
     }
 
-    fn prepare(&self, config: &HonkConfig) -> Result<Rules, String> {
+    fn prepare(&self, config: &HonkConfig, _live: Option<&Rules>) -> Result<Rules, String> {
         let hook = self.0.during.lock().unwrap().take();
         if let Some(hook) = hook {
             hook();

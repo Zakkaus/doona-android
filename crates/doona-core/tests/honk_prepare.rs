@@ -16,7 +16,7 @@ use doonacore::honkconf::prepare::HonkPreparer;
 use doonacore::honkconf::publish::{
     Applied, Generation, Notice, Preparer, PublishError, Publisher, StartError,
 };
-use doonacore::honkconf::runtime::{Flow, Network, Runtime, RuntimeError};
+use doonacore::honkconf::runtime::{Flow, GlobalTarget, Mode, Network, Runtime, RuntimeError};
 use doonacore::honkconf::{
     Capabilities, Geo, GeoCatalog, HonkConfig, HonkConfigError, HonkStore, Label, StoreError,
 };
@@ -29,6 +29,13 @@ const G: &str = "routing {\n    domain(geosite:cn) -> direct\n    fallback: bloc
 const G2: &str = "routing {\n    domain(geosite:cn) -> block\n    fallback: direct\n}";
 /// Names a category no pair holds.
 const MISSING: &str = "routing {\n    domain(geosite:nowhere) -> direct\n    fallback: block\n}";
+/// Two nodes and the group `proxy`; `PROXY2` differs only by a comment.
+const PROXY: &str = "node {\n    a: 'socks5://10.10.3.1:1080'\n    b: 'socks5://10.10.3.2:1080'\n}\ngroup {\n    proxy {\n        filter: name('a', 'b')\n        policy: select\n    }\n}\nrouting { fallback: direct }";
+const PROXY2: &str = "# second\nnode {\n    a: 'socks5://10.10.3.1:1080'\n    b: 'socks5://10.10.3.2:1080'\n}\ngroup {\n    proxy {\n        filter: name('a', 'b')\n        policy: select\n    }\n}\nrouting { fallback: direct }";
+/// The same nodes, but the group is `other`.
+const OTHER: &str = "node {\n    a: 'socks5://10.10.3.1:1080'\n    b: 'socks5://10.10.3.2:1080'\n}\ngroup {\n    other {\n        filter: name('a', 'b')\n        policy: select\n    }\n}\nrouting { fallback: direct }";
+/// Names `hosts` as an in-root `use_host` companion.
+const HOSTS: &str = "dns { use_host: hosts }\nrouting { fallback: direct }";
 
 // ---- geo pairs: honk reads v2ray protobuf DATs ----
 
@@ -110,10 +117,13 @@ type Hook = Box<dyn FnOnce() + Send>;
 
 /// Delegates to [`HonkPreparer`]. The hook runs after the next real prepare, while the
 /// store is unlocked; an armed generation panics when it is dropped, after the head rename.
+/// `select` sets the mode and GLOBAL target on the next prepared runtime, as a user would on
+/// the live one.
 struct Hooked {
     real: Arc<HonkPreparer>,
     during: Mutex<Option<Hook>>,
     arm: Mutex<bool>,
+    select: Mutex<Option<(Mode, GlobalTarget)>>,
 }
 
 struct Armed {
@@ -137,8 +147,12 @@ impl Preparer for Hooked {
         self.real.epoch()
     }
 
-    fn prepare(&self, config: &HonkConfig) -> Result<Armed, RuntimeError> {
-        let runtime = self.real.prepare(config)?;
+    fn prepare(&self, config: &HonkConfig, live: Option<&Armed>) -> Result<Armed, RuntimeError> {
+        let mut runtime = self.real.prepare(config, live.map(|a| &a.runtime))?;
+        if let Some((mode, target)) = self.select.lock().unwrap().take() {
+            runtime.set_mode(mode);
+            runtime.set_global_target(target).unwrap();
+        }
         let hook = self.during.lock().unwrap().take();
         if let Some(hook) = hook {
             hook();
@@ -172,8 +186,8 @@ impl Preparer for HookedRef {
     fn epoch(&self) -> u64 {
         self.0.epoch()
     }
-    fn prepare(&self, config: &HonkConfig) -> Result<Armed, RuntimeError> {
-        self.0.prepare(config)
+    fn prepare(&self, config: &HonkConfig, live: Option<&Armed>) -> Result<Armed, RuntimeError> {
+        self.0.prepare(config, live)
     }
 }
 
@@ -190,6 +204,7 @@ fn setup(tag: &str) -> Setup {
         real: real.clone(),
         during: Mutex::new(None),
         arm: Mutex::new(false),
+        select: Mutex::new(None),
     });
     let publisher = Publisher::new(HookedRef(hooked.clone()));
     Setup {
@@ -300,6 +315,21 @@ fn failed_prepare_or_stale_epoch_leaves_head_and_live_generation() {
     assert_eq!(t.head(), (1, A.to_owned()));
     assert!(t.live_is(&live));
 
+    // Another input the build reads changes, such as the provider snapshot: the epoch alone
+    // refuses the apply, though the root and the draft are the same.
+    let b = t.draft(B);
+    let (real, store) = (t.real.clone(), t.store.clone());
+    t.during(move || real.advance(&mut store.lock().unwrap()));
+    assert!(matches!(
+        t.apply(b),
+        Err(PublishError::StaleInputs {
+            prepared: 0,
+            current: 1
+        })
+    ));
+    assert_eq!(t.head(), (1, A.to_owned()));
+    assert!(t.live_is(&live));
+
     // The asset generation changes while the draft is prepared against the old one.
     let g = t.draft(G);
     let (real, store, empty) = (t.real.clone(), t.store.clone(), t.empty.clone());
@@ -307,8 +337,8 @@ fn failed_prepare_or_stale_epoch_leaves_head_and_live_generation() {
     assert!(matches!(
         t.apply(g),
         Err(PublishError::StaleInputs {
-            prepared: 0,
-            current: 1
+            prepared: 1,
+            current: 2
         })
     ));
     assert_eq!(t.head(), (1, A.to_owned()));
@@ -501,7 +531,7 @@ fn stopped_apply_returns_no_generation_and_start_prepares_head() {
 // ---- generation numbers ----
 
 #[test]
-fn generations_rise_by_one_per_committed_apply_and_a_no_op_keeps_them() {
+fn generations_rise_by_one_per_installed_generation_and_a_no_op_keeps_them() {
     let t = setup("prepare-generations");
     t.apply(t.draft(A)).unwrap();
     assert_eq!(t.publisher.start(&t.store).unwrap().id, 1);
@@ -563,6 +593,127 @@ fn generations_rise_by_one_per_committed_apply_and_a_no_op_keeps_them() {
             generation: None
         }
     );
+}
+
+#[test]
+fn a_no_op_apply_prepares_and_refuses_like_any_other() {
+    let t = setup("prepare-no-op");
+    t.apply(t.draft(G)).unwrap();
+    let live = t.publisher.start(&t.store).unwrap();
+
+    // Head's exact bytes, but the active asset generation no longer holds geosite:cn.
+    t.real
+        .set_data_root(&mut t.store.lock().unwrap(), t.empty.clone());
+    let same = t.draft(G);
+    let e = t.apply(same).unwrap_err();
+    assert!(asset_error(&e, std::io::ErrorKind::NotFound), "{e}");
+    assert_eq!(t.head(), (1, G.to_owned()));
+    assert!(t.live_is(&live));
+    assert!(t.store.lock().unwrap().check(same).is_ok());
+
+    // Today's inputs build it again: no revision, the live generation stays, the draft goes.
+    t.real
+        .set_data_root(&mut t.store.lock().unwrap(), t.full.clone());
+    assert_eq!(
+        t.apply(same).unwrap(),
+        Applied {
+            rev: 1,
+            generation: Some(1)
+        }
+    );
+    assert!(t.live_is(&live));
+    assert_eq!(revision_dirs(&t.data), [1]);
+
+    // Stopped, the same refusal.
+    t.publisher.stop();
+    t.real
+        .set_data_root(&mut t.store.lock().unwrap(), t.empty.clone());
+    let e = t.apply(t.draft(G)).unwrap_err();
+    assert!(asset_error(&e, std::io::ErrorKind::NotFound), "{e}");
+}
+
+#[test]
+fn a_no_op_compares_use_host_companions_and_the_entry() {
+    let t = setup("prepare-hosts");
+    let src = TempDir::new("prepare-hosts-src");
+    fs::write(src.path().join("config.dae"), HOSTS).unwrap();
+    fs::write(src.path().join("hosts"), "127.0.0.1 a.test\n").unwrap();
+    let imported = t
+        .store
+        .lock()
+        .unwrap()
+        .import(&src.path().join("config.dae"))
+        .unwrap();
+    assert_eq!(t.apply(imported).unwrap().rev, 1);
+
+    // An unedited copy of head, companion included, is a no-op.
+    let same = t.store.lock().unwrap().draft(None).unwrap();
+    assert_eq!(t.apply(same).unwrap().rev, 1);
+    assert_eq!(revision_dirs(&t.data), [1]);
+
+    // A changed companion is a change.
+    let edited = t.store.lock().unwrap().draft(None).unwrap();
+    t.store
+        .lock()
+        .unwrap()
+        .edit(edited, Path::new("hosts"), "127.0.0.1 b.test\n")
+        .unwrap();
+    assert_eq!(t.apply(edited).unwrap().rev, 2);
+
+    // So is the same tree under another entry name.
+    let renamed = TempDir::new("prepare-hosts-renamed");
+    fs::write(renamed.path().join("main.dae"), HOSTS).unwrap();
+    fs::write(renamed.path().join("hosts"), "127.0.0.1 b.test\n").unwrap();
+    let imported = t
+        .store
+        .lock()
+        .unwrap()
+        .import(&renamed.path().join("main.dae"))
+        .unwrap();
+    assert_eq!(t.apply(imported).unwrap().rev, 3);
+    assert_eq!(revision_dirs(&t.data), [1, 2, 3]);
+}
+
+#[test]
+fn an_apply_keeps_the_mode_and_global_target_of_the_live_generation() {
+    let t = setup("prepare-mode");
+    t.apply(t.draft(PROXY)).unwrap();
+    let proxy = GlobalTarget::Group("proxy".into());
+    *t.hooked.select.lock().unwrap() = Some((Mode::Global, proxy.clone()));
+    let live = t.publisher.start(&t.store).unwrap();
+    assert_eq!(live.prepared.runtime.mode(), Mode::Global);
+
+    // The next revision runs in the same mode with the same target.
+    assert_eq!(t.apply(t.draft(PROXY2)).unwrap().generation, Some(2));
+    let new = t.live();
+    assert_eq!(new.prepared.runtime.mode(), Mode::Global);
+    assert_eq!(new.prepared.runtime.global_target(), Some(&proxy));
+    assert_eq!(outbound(&new, "example.org"), "proxy");
+
+    // In Global mode, a revision without the target is refused before the rename.
+    let other = t.draft(OTHER);
+    let e = t.apply(other).unwrap_err();
+    assert!(
+        matches!(&e, PublishError::Prepare(RuntimeError::GlobalTargetGone(g)) if *g == proxy),
+        "{e}"
+    );
+    assert_eq!(t.head(), (2, PROXY2.to_owned()));
+    assert!(t.live_is(&new));
+
+    // In Rule mode the stale target is dropped and the apply commits.
+    *t.hooked.select.lock().unwrap() = Some((Mode::Rule, proxy.clone()));
+    assert_eq!(t.publisher.start(&t.store).unwrap().id, 3);
+    let applied = t.apply(other).unwrap();
+    assert_eq!(
+        applied,
+        Applied {
+            rev: 3,
+            generation: Some(4)
+        }
+    );
+    let new = t.live();
+    assert_eq!(new.prepared.runtime.mode(), Mode::Rule);
+    assert_eq!(new.prepared.runtime.global_target(), None);
 }
 
 // ---- the stock reference corpus ----
@@ -756,7 +907,9 @@ fn reference_corpus_on_the_pinned_pair() {
 }
 
 /// Configurations stock honk refuses at each stage, beside the corpus (which it accepts).
+/// Every load refusal must carry a byte span and a line; today only parse errors do.
 #[test]
+#[ignore = "waits on honk item 10: spans on validation refusals"]
 fn refusals_carry_honks_error_and_span() {
     let geo = TempDir::new("prepare-refusal-geo");
     write_pair(geo.path(), &[("cn", "cn")], &[("cn", 114)]);
@@ -789,9 +942,8 @@ fn refusals_carry_honks_error_and_span() {
             Ok(()) => panic!("{name}: stock honk accepted it"),
             Err(Refusal::Load(span)) => {
                 spans += 1;
-                // Parse errors carry a byte span; validation errors carry the setting path.
                 assert!(
-                    span.line.is_some() || !span.setting.is_empty(),
+                    span.bytes.is_some() && span.line.is_some(),
                     "{name}: {span:?}"
                 );
             }

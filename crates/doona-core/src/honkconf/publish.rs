@@ -28,10 +28,20 @@ pub trait Preparer {
     /// Changes whenever an input the preparer reads changes. Advance it only while holding the
     /// store lock, so that the recheck before the head rename sees every change.
     fn epoch(&self) -> u64;
-    fn prepare(&self, config: &HonkConfig) -> Result<Self::Generation, Self::Error>;
+    /// `live` is the generation now running, if any. State that belongs to the running process
+    /// rather than to a revision, such as the outbound mode and the GLOBAL target, is carried
+    /// over from it here, before the head rename, or the Apply is refused.
+    fn prepare(
+        &self,
+        config: &HonkConfig,
+        live: Option<&Self::Generation>,
+    ) -> Result<Self::Generation, Self::Error>;
 }
 
-/// The prepared state of one committed revision. `id` counts installs in this process.
+/// The prepared state of one committed revision. `id` counts generations installed in this
+/// process: it rises by one each time [`Publisher::start`] or a running Apply makes a new
+/// generation live, and never otherwise. A stopped Apply commits a revision but installs
+/// nothing, so its [`Applied::generation`] is `None`; a no-op Apply keeps the live id.
 pub struct Generation<G> {
     pub id: u64,
     pub rev: u64,
@@ -127,7 +137,9 @@ impl<P: Preparer> Publisher<P> {
     }
 
     /// Commit `draft` and, while running, make its generation live. A draft that holds head's
-    /// exact files commits no revision and keeps the live generation.
+    /// exact files commits no revision and keeps the live generation, but it is prepared and
+    /// refused like any other Apply: an Apply never reports success for bytes that do not
+    /// build against today's inputs.
     pub fn apply(
         &self,
         store: &Mutex<HonkStore>,
@@ -136,16 +148,11 @@ impl<P: Preparer> Publisher<P> {
     ) -> Result<Applied, PublishError<P::Error>> {
         let _writer = self.writer.lock().unwrap();
         let staged = store.lock().unwrap().stage_revision(draft, caps)?;
-        if staged.unchanged {
-            let rev = store.lock().unwrap().commit(staged)?;
-            let live = self.live.read().unwrap();
-            return Ok(Applied {
-                rev,
-                generation: live.current.as_ref().map(|g| g.id),
-            });
-        }
         let epoch = self.preparer.epoch();
-        let prepared = self.prepare_entry(&staged.entry);
+        // Installs take the writer lock, which this apply holds, so `running` stays the live
+        // generation until the swap below (or the publisher stops).
+        let running = self.current();
+        let prepared = self.prepare_entry(&staged.entry, running.as_deref());
         let mut locked = store.lock().unwrap();
         let checked = prepared.and_then(|prepared| match self.preparer.epoch() {
             current if current == epoch => Ok(prepared),
@@ -161,8 +168,16 @@ impl<P: Preparer> Publisher<P> {
                 return Err(e);
             }
         };
+        let unchanged = staged.unchanged;
         let rev = locked.commit(staged)?;
         drop(locked);
+        if unchanged {
+            drop(prepared);
+            return Ok(Applied {
+                rev,
+                generation: self.current().map(|g| g.id),
+            });
+        }
         let mut live = self.live.write().unwrap();
         let swapped = live
             .current
@@ -195,7 +210,8 @@ impl<P: Preparer> Publisher<P> {
         let _writer = self.writer.lock().unwrap();
         let mut revisions = store.lock().unwrap().revision_entries().into_iter();
         let (head, entry) = revisions.next().ok_or(StartError::NoHead)?;
-        let reason = match self.prepare_entry(&entry) {
+        let running = self.current();
+        let reason = match self.prepare_entry(&entry, running.as_deref()) {
             Ok(prepared) => {
                 let mut locked = store.lock().unwrap();
                 if locked.notice().is_some() {
@@ -208,7 +224,7 @@ impl<P: Preparer> Publisher<P> {
             Err(e) => e.to_string(),
         };
         let restorable = revisions
-            .find(|(_, entry)| self.prepare_entry(entry).is_ok())
+            .find(|(_, entry)| self.prepare_entry(entry, None).is_ok())
             .map(|(rev, _)| rev);
         let notice = Notice {
             rejected: head,
@@ -222,10 +238,14 @@ impl<P: Preparer> Publisher<P> {
         Err(StartError::Refused(notice))
     }
 
-    fn prepare_entry(&self, entry: &Path) -> Result<P::Generation, PublishError<P::Error>> {
+    fn prepare_entry(
+        &self,
+        entry: &Path,
+        live: Option<&Generation<P::Generation>>,
+    ) -> Result<P::Generation, PublishError<P::Error>> {
         let config = super::load(entry).map_err(StoreError::from)?;
         self.preparer
-            .prepare(&config)
+            .prepare(&config, live.map(|g| &g.prepared))
             .map_err(PublishError::Prepare)
     }
 }

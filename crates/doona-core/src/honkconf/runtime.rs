@@ -28,6 +28,8 @@ pub enum RuntimeError {
     Asset(std::io::Error),
     /// honk refused the configuration. The message is honk's.
     Config(anyhow::Error),
+    /// The mode is Global and its target is not a node or group of the new revision.
+    GlobalTargetGone(GlobalTarget),
 }
 
 impl From<anyhow::Error> for RuntimeError {
@@ -48,6 +50,9 @@ impl fmt::Display for RuntimeError {
             Self::Store(e) => write!(f, "committed honk configuration: {e}"),
             Self::Asset(e) => write!(f, "honk geo asset: {e}"),
             Self::Config(e) => write!(f, "honk configuration: {e:#}"),
+            Self::GlobalTargetGone(t) => {
+                write!(f, "GLOBAL target {t:?} is not in this configuration")
+            }
         }
     }
 }
@@ -58,7 +63,7 @@ impl std::error::Error for RuntimeError {
             Self::Store(e) => Some(e),
             Self::Asset(e) => Some(e),
             Self::Config(e) => Some(e.as_ref()),
-            Self::NoRevision => None,
+            Self::NoRevision | Self::GlobalTargetGone(_) => None,
         }
     }
 }
