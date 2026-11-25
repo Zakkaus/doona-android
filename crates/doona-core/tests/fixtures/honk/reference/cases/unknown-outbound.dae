@@ -1,0 +1,7 @@
+node {
+    k1: 'socks5://10.10.11.1:1080'
+}
+routing {
+    domain(suffix: nowhere.test) -> missing
+    fallback: k1
+}

@@ -1,0 +1,687 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "no-proxy-group",
+      "config": "cases/no-proxy-group.dae",
+      "probes": [
+        {
+          "name": "google",
+          "domain": "www.google.com",
+          "dst_ip": "142.250.80.46",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "jp-site",
+          "domain": "shop.example.jp",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "cn-ip",
+          "domain": null,
+          "dst_ip": "114.114.114.114",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "fallthrough",
+          "domain": "other.example.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "no-proxy-group-chosen",
+      "config": "cases/no-proxy-group.dae",
+      "select": [
+        {
+          "group": "hk",
+          "member": "hk-1"
+        },
+        {
+          "group": "jp",
+          "member": "jp-1"
+        }
+      ],
+      "probes": [
+        {
+          "name": "google",
+          "domain": "www.google.com",
+          "dst_ip": "142.250.80.46",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "jp-site",
+          "domain": "shop.example.jp",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "cn-ip",
+          "domain": null,
+          "dst_ip": "114.114.114.114",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "fallthrough",
+          "domain": "other.example.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "five-policies",
+      "config": "cases/five-policies.dae",
+      "health": [
+        {
+          "node": "a",
+          "alive": true,
+          "latency_ms": 120
+        },
+        {
+          "node": "b",
+          "alive": true,
+          "latency_ms": 40
+        },
+        {
+          "node": "c",
+          "alive": true,
+          "latency_ms": 80
+        }
+      ],
+      "probes": [
+        {
+          "name": "select",
+          "domain": "x.select.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "urltest",
+          "domain": "x.urltest.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "balance",
+          "domain": "x.balance.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "fallback",
+          "domain": "x.fallback.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "score",
+          "domain": "x.score.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "five-policies-degraded",
+      "config": "cases/five-policies.dae",
+      "health": [
+        {
+          "node": "a",
+          "alive": false
+        },
+        {
+          "node": "b",
+          "alive": true,
+          "latency_ms": 90
+        },
+        {
+          "node": "c",
+          "alive": true,
+          "latency_ms": 30
+        }
+      ],
+      "probes": [
+        {
+          "name": "select",
+          "domain": "x.select.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "urltest",
+          "domain": "x.urltest.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "balance",
+          "domain": "x.balance.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "fallback",
+          "domain": "x.fallback.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "score",
+          "domain": "x.score.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "five-policies-udp",
+      "config": "cases/five-policies.dae",
+      "health": [
+        {
+          "node": "a",
+          "alive": true,
+          "latency_ms": 120
+        },
+        {
+          "node": "b",
+          "alive": true,
+          "latency_ms": 40
+        },
+        {
+          "node": "c",
+          "alive": true,
+          "latency_ms": 80
+        },
+        {
+          "node": "a",
+          "network": "udp",
+          "alive": false
+        },
+        {
+          "node": "b",
+          "network": "udp",
+          "alive": true,
+          "latency_ms": 90
+        },
+        {
+          "node": "c",
+          "network": "udp",
+          "alive": true,
+          "latency_ms": 60
+        }
+      ],
+      "probes": [
+        {
+          "name": "select-tcp",
+          "domain": "x.select.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "select-udp",
+          "domain": "x.select.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        },
+        {
+          "name": "urltest-tcp",
+          "domain": "x.urltest.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "urltest-udp",
+          "domain": "x.urltest.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        },
+        {
+          "name": "balance-tcp",
+          "domain": "x.balance.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "balance-udp",
+          "domain": "x.balance.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        },
+        {
+          "name": "fallback-tcp",
+          "domain": "x.fallback.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "fallback-udp",
+          "domain": "x.fallback.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        },
+        {
+          "name": "score-tcp",
+          "domain": "x.score.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "score-udp",
+          "domain": "x.score.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        }
+      ]
+    },
+    {
+      "name": "nested",
+      "config": "cases/nested.dae",
+      "health": [
+        {
+          "node": "hk-1",
+          "alive": true,
+          "latency_ms": 90
+        },
+        {
+          "node": "hk-2",
+          "alive": true,
+          "latency_ms": 30
+        },
+        {
+          "node": "jp-1",
+          "alive": true,
+          "latency_ms": 60
+        },
+        {
+          "node": "us-1",
+          "alive": true,
+          "latency_ms": 150
+        }
+      ],
+      "probes": [
+        {
+          "name": "asia",
+          "domain": "x.asia.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "world",
+          "domain": "x.world.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "nested-asia-chosen",
+      "config": "cases/nested.dae",
+      "health": [
+        {
+          "node": "hk-1",
+          "alive": true,
+          "latency_ms": 90
+        },
+        {
+          "node": "hk-2",
+          "alive": true,
+          "latency_ms": 30
+        },
+        {
+          "node": "jp-1",
+          "alive": true,
+          "latency_ms": 60
+        },
+        {
+          "node": "us-1",
+          "alive": true,
+          "latency_ms": 10
+        }
+      ],
+      "select": [
+        {
+          "group": "asia",
+          "member": "jp"
+        }
+      ],
+      "probes": [
+        {
+          "name": "asia",
+          "domain": "x.asia.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "world",
+          "domain": "x.world.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "fallback-final-all-dead",
+      "config": "cases/fallback-final.dae",
+      "health": [
+        {
+          "node": "n1",
+          "alive": false
+        },
+        {
+          "node": "n2",
+          "alive": false
+        }
+      ],
+      "probes": [
+        {
+          "name": "direct",
+          "domain": "x.direct.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "block",
+          "domain": "x.block.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "refused",
+          "domain": "x.refused.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "cn-must",
+          "domain": null,
+          "dst_ip": "114.114.114.114",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "fallback-final-recovered",
+      "config": "cases/fallback-final.dae",
+      "health": [
+        {
+          "node": "n1",
+          "alive": false
+        },
+        {
+          "node": "n2",
+          "alive": true,
+          "latency_ms": 50
+        }
+      ],
+      "probes": [
+        {
+          "name": "direct",
+          "domain": "x.direct.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "block",
+          "domain": "x.block.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "refused",
+          "domain": "x.refused.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "cn-must",
+          "domain": null,
+          "dst_ip": "114.114.114.114",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "zero-groups",
+      "config": "cases/zero-groups.dae",
+      "probes": [
+        {
+          "name": "lone",
+          "domain": "x.lone.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "cn",
+          "domain": "www.baidu.com",
+          "dst_ip": "114.114.114.114",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "node-in-no-group",
+      "config": "cases/node-in-no-group.dae",
+      "probes": [
+        {
+          "name": "grouped",
+          "domain": "x.grouped.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "loose",
+          "domain": "x.loose.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "unknown-policy",
+      "config": "cases/unknown-policy.dae",
+      "probes": [
+        {
+          "name": "any",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "empty-and-dead-groups",
+      "config": "cases/empty-and-dead-groups.dae",
+      "health": [
+        {
+          "node": "n1",
+          "alive": false
+        },
+        {
+          "node": "n2",
+          "alive": false
+        }
+      ],
+      "probes": [
+        {
+          "name": "empty",
+          "domain": "x.empty.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "dead-select",
+          "domain": "x.select.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "dead-auto",
+          "domain": "x.auto.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "unknown-outbound",
+      "config": "cases/unknown-outbound.dae",
+      "probes": [
+        {
+          "name": "missing",
+          "domain": "x.nowhere.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "mark-must",
+      "config": "cases/mark-must.dae",
+      "probes": [
+        {
+          "name": "ssh",
+          "domain": null,
+          "dst_ip": "198.51.100.7",
+          "dst_port": 22,
+          "protocol": "tcp"
+        },
+        {
+          "name": "marked",
+          "domain": "x.marked.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    }
+  ]
+}

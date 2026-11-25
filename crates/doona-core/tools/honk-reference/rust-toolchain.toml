@@ -1,0 +1,5 @@
+# Same compiler as stock honk main (its root rust-toolchain.toml at the linked revision).
+[toolchain]
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
