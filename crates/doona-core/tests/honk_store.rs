@@ -278,13 +278,6 @@ fn edits_and_imports_enforce_the_shared_companion_budget_and_boundary() {
     assert!(matches!(store.apply(edit), Err(StoreError::Incomplete)));
     let bundle = TempDir::new("honk-companions");
     let entry = bundle.path().join("main.dae");
-    let link = bundle.path().join("alias.dae");
-    std::os::unix::fs::symlink(&entry, &link).unwrap();
-    for text in ["include { a*.dae }", "dns { use_host: alias.dae }"] {
-        fs::write(&entry, text).unwrap();
-        assert!(matches!(store.import(&entry), Err(StoreError::ImportSymlink(p)) if p == link));
-    }
-    fs::remove_file(link).unwrap();
     let mut config = String::from("dns {\n");
     for i in 0..limit.max_sources {
         config.push_str(&format!("use_host: '{i}.txt'\n"));
@@ -298,4 +291,59 @@ fn edits_and_imports_enforce_the_shared_companion_budget_and_boundary() {
     ));
     assert_eq!(store.current_draft().unwrap().id, edit);
     assert_eq!(store.head(), Some(head));
+}
+
+fn assert_escape(store: &HonkStore, draft: u64, code: &str, declaration: &str) {
+    let config = store.check(draft).unwrap();
+    let record = &config.unsupported()[0];
+    assert_eq!(record.reasons[0].code, code);
+    let at = &record.locations[0];
+    assert_eq!(
+        &config.sources()[at.source].content[at.bytes.clone()],
+        declaration
+    );
+}
+
+// Symlinks are located escapes in an editable draft, never a refused import or a read.
+#[test]
+fn symlinked_dependencies_are_located_escapes_in_editable_drafts() {
+    let data = TempDir::new("honk-link-store");
+    let bundle = TempDir::new("honk-link-bundle");
+    let outside = TempDir::new("honk-link-sentinel");
+    let sentinel = outside.path().join("sentinel.dae");
+    fs::write(&sentinel, [0xff]).unwrap();
+    std::os::unix::fs::symlink(&sentinel, bundle.path().join("alias.dae")).unwrap();
+    let entry = bundle.path().join("main.dae");
+    let mut store = HonkStore::open(data.path()).unwrap();
+    fs::write(&entry, "include { a*.dae }").unwrap();
+    let draft = store.import(&entry).unwrap();
+    assert_escape(&store, draft, "include_escape", "a*.dae");
+    assert!(matches!(store.apply(draft), Err(StoreError::Incomplete)));
+    store.edit(draft, Path::new("main.dae"), DIRECT).unwrap();
+    let rev = store.apply(draft).unwrap();
+    let tree = data.path().join(format!("config/revisions/{rev}"));
+    assert!(!tree.join("alias.dae").exists());
+    fs::write(&entry, "dns { use_host: alias.dae }").unwrap();
+    let draft = store.import(&entry).unwrap();
+    assert_escape(&store, draft, "use_host_escape", "use_host: alias.dae");
+    let rev = store.apply(draft).unwrap();
+    let tree = data.path().join(format!("config/revisions/{rev}"));
+    assert_eq!(fs::read_link(tree.join("alias.dae")).unwrap(), sentinel);
+    let restored = store.draft(Some(rev)).unwrap();
+    assert_escape(&store, restored, "use_host_escape", "use_host: alias.dae");
+    assert_eq!(fs::read(&sentinel).unwrap(), [0xff]);
+}
+
+#[test]
+fn a_draft_edited_into_another_format_stays_editable() {
+    let data = TempDir::new("honk-format-edit");
+    let mut store = HonkStore::open(data.path()).unwrap();
+    let draft = store.draft(None).unwrap();
+    let yaml = "global:\n  log_level: debug";
+    store.edit(draft, Path::new("config.dae"), yaml).unwrap();
+    assert_eq!(&*store.text(draft, Path::new("config.dae")).unwrap(), yaml);
+    assert!(matches!(
+        store.check(draft),
+        Err(StoreError::Config(HonkConfigError::NonNativeSource))
+    ));
 }

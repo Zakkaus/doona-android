@@ -7,6 +7,8 @@
 //! `global.data_dir`. No full honk GeoIP/GEOSITE snapshot is linked into this runtime.
 
 pub mod assets;
+#[cfg(test)]
+mod budget_tests;
 pub mod bundle;
 mod declarations;
 mod draft;
@@ -33,7 +35,7 @@ use honk_config::parser::{LoadedConfig, SourceSnapshot};
 pub enum HonkConfigError {
     /// The staged tree exceeds honk's source count or byte budget.
     SourceLimit,
-    /// The entry extension or document format is not native `.dae`.
+    /// The entry lacks the `.dae` extension or its contents are not honk configuration.
     NonNativeSource,
     /// Source I/O, parsing, indexing or validation failed.
     ParseFailed {
@@ -48,7 +50,7 @@ impl std::fmt::Display for HonkConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::SourceLimit => f.write_str("configuration exceeds the source limit"),
-            Self::NonNativeSource => f.write_str("expected native .dae configuration"),
+            Self::NonNativeSource => f.write_str("expected honk configuration in a .dae file"),
             Self::ParseFailed { cause, .. } => cause.fmt(f),
         }
     }
