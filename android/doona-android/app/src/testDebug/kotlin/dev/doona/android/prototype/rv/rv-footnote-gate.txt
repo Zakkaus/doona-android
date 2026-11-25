@@ -8,10 +8,10 @@ prototype/rv/nodes/RvLatencyDots.kt	RvText(empty, Rv.type.rowSub, color = colors
 prototype/rv/policy/RvPolicyParts.kt	RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a rule row's bytes at the row's end, inside the card
 prototype/rv/policy/RvPolicyScreen.kt	RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding)	the rules card's line under its header, inside the card
 prototype/rv/policy/RvPolicyScreen.kt	RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary)	a policy row's value, inside the card
-prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_median, values.size), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
-prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_no_quota), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
-prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_quota_total, total.toString(), count), Rv.type.rowSub, color = Rv.colors.textSec	a stat card's own line, inside the card
-prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(if (split != null) R.string.rv_stats_via_proxy else R.string.rv_stats_no_data), Rv.type.rowSub, co	a stat card's own line, inside the card
+feature/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_median, values.size), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
+feature/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_no_quota), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
+feature/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_quota_total, total.toString(), count), Rv.type.rowSub, color = Rv.colors.textSec	a stat card's own line, inside the card
+feature/stats/RvStatsCards.kt	RvText(stringResource(if (split != null) R.string.rv_stats_via_proxy else R.string.rv_stats_no_data), Rv.type.rowSub, co	a stat card's own line, inside the card
 prototype/rv/subs/RvSubsPage.kt	RvText(ends, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a subscription card's usage and end date, inside the card
 prototype/rv/config/RvConfigHistoryPage.kt	RvCaption(state.name)	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/config/RvConfigOverviewPage.kt	RvCaption(stringResource(R.string.rv_config_applied, state.rev, applied))	a page header's caption (RvCaption under the large title), not under a card
@@ -36,5 +36,5 @@ prototype/rv/policy/RvPolicyGroupPage.kt	RvCaption(group.caption(), group.kind.g
 prototype/rv/samples/RvGroupFullPage.kt	RvCaption(stringResource(R.string.policy_kind_score) + SEPARATOR + count, R.drawable.rv_sym_bolt)	a sample page header's caption (RvCaption under the large title), not under a card
 prototype/rv/samples/RvGroupFullPage.kt	RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)	a sample page header's caption (RvCaption under the large title), not under a card
 prototype/rv/samples/RvGroupSamplePage.kt	RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)	a sample page header's caption (RvCaption under the large title), not under a card
-prototype/rv/stats/RvStatsScoreCard.kt	RvText(stringResource(R.string.rv_stats_connections), Rv.type.rowSub, color = Rv.colors.textSecondary)	the Score card's label under its figure, inside the card
+feature/stats/RvStatsScoreCard.kt	RvText(stringResource(R.string.rv_stats_connections), Rv.type.rowSub, color = Rv.colors.textSecondary)	the Score card's label under its figure, inside the card
 prototype/rv/subs/RvSubsPage.kt	RvText(stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Mod	a subscription card's usage and end date, inside the card

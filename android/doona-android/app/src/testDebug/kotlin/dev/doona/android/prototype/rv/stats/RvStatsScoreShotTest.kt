@@ -81,10 +81,10 @@ class RvStatsScoreShotTest {
     private companion object {
         const val NAME = "stats-score"
 
-        /** Windows as tall as the page whole, rounded up to a whole dp (measured: 2332.5, 2353.5, 2753). */
+        /** Windows as tall as the page whole, rounded up to a whole dp (measured: 2332.5, 2353.5, 2770). */
         const val WINDOW = "+h2351dp"
         const val WINDOW_FS115 = "+h2369dp"
-        const val WINDOW_FS200 = "+h2760dp"
+        const val WINDOW_FS200 = "+h2770dp"
 
         const val WORD_JOINER = "⁠"
     }

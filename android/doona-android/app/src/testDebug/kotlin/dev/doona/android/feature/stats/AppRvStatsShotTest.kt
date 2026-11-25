@@ -380,11 +380,11 @@ class AppRvStatsShotTest {
         /** The sample day's curve is thousands of pixels; a stray anti-aliased edge is a handful. */
         const val MIN_CURVE = 500
 
-        /** Windows as tall as each page whole, rounded up to a whole dp (measured: 2350.5, 2760, 2382.5, 1948.5, 2101). */
+        /** Windows as tall as each page whole, rounded up to a whole dp (measured: 2350.5, 2770, 2386.5, 1948.5, 2107). */
         const val WINDOW = "+h2351dp"
-        const val WINDOW_FS200 = "+h2760dp"
-        const val WINDOW_EN = "en-w412dp-h2383dp-notnight-xhdpi"
+        const val WINDOW_FS200 = "+h2770dp"
+        const val WINDOW_EN = "en-w412dp-h2387dp-notnight-xhdpi"
         const val WINDOW_EMPTY = "+h1949dp"
-        const val WINDOW_EMPTY_FS200 = "+h2101dp"
+        const val WINDOW_EMPTY_FS200 = "+h2107dp"
     }
 }

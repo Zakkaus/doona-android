@@ -66,5 +66,5 @@ class RvStatsSpentEmptyShotTest {
     }
 }
 
-/** At 2x text the page outgrows the class window: as tall as the page whole (measured 2100.5 dp with the page dots). */
-private const val FS200_WINDOW = "+h2101dp"
+/** At 2x text the page outgrows the class window: as tall as the page whole (measured 2107 dp with the page dots). */
+private const val FS200_WINDOW = "+h2107dp"
