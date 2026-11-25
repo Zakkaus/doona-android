@@ -17,7 +17,8 @@ doona connects to these places:
 - **GeoIP and GeoSite data.** To update the data its rules use, doona asks GitHub's API for the latest release of
   [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat) and for its `release` branch, then downloads
   the files from `raw.githubusercontent.com`, `cdn.jsdelivr.net` or `testingcf.jsdelivr.net`, all through your main
-  proxy. This happens when you tap Update, and by itself once a week while doona is connected.
+  proxy. This happens when you tap Update, and by itself while doona is connected, on the schedule set under
+  Auto-update: Off, Daily or Weekly (the default).
 - **Check for updates.** Only when you tap it, doona asks GitHub's API for this repository's latest release
   (`GET https://api.github.com/repos/Zakkaus/doona-android/releases/latest`). A newer release is shown in Settings;
   tapping it opens the releases page in your browser. doona downloads nothing itself.
@@ -57,7 +58,7 @@ doona 會連到下列位置：
 - **GeoIP 與 GeoSite 資料。** 更新規則所用的資料時，doona 向 GitHub API 查詢
   [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat) 的最新版本與 `release` 分支，再從
   `raw.githubusercontent.com`、`cdn.jsdelivr.net` 或 `testingcf.jsdelivr.net` 下載檔案，全程經由主節點。你點「更新」時會這樣做，
-  連線期間也會每週自動更新一次。
+  連線期間也會依「自動更新」所設的頻率自動執行：關閉、每天或每週（預設）。
 - **檢查更新。** 只有你點「檢查更新」時，doona 才向 GitHub API 查詢本專案的最新版本
   （`GET https://api.github.com/repos/Zakkaus/doona-android/releases/latest`）。有新版時會顯示在設定頁，點擊後才用瀏覽器開啟版本頁。
   doona 本身不下載任何檔案。
@@ -94,7 +95,7 @@ doona 会连接下列位置：
 - **GeoIP 与 GeoSite 数据。** 更新规则所用的数据时，doona 向 GitHub API 查询
   [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat) 的最新版本与 `release` 分支，再从
   `raw.githubusercontent.com`、`cdn.jsdelivr.net` 或 `testingcf.jsdelivr.net` 下载文件，全程经由主节点。你点「更新」时会这样做，
-  连接期间也会每周自动更新一次。
+  连接期间也会按「自动更新」所设的频率自动执行：关闭、每天或每周（默认）。
 - **检查更新。** 只有你点「检查更新」时，doona 才向 GitHub API 查询本项目的最新版本
   （`GET https://api.github.com/repos/Zakkaus/doona-android/releases/latest`）。有新版时会显示在设置页，点击后才用浏览器打开版本页。
   doona 本身不下载任何文件。
