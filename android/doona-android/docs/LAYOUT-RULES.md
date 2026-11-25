@@ -95,6 +95,8 @@ Font sizes are sp and scale with the font size; the line box of a row's text is 
 | Button | 22 sp, semibold | 28 | 1 | – |
 | Page title | 32 sp, bold | 38 | 2 | – |
 
+Page-header caption (2026-11-25 16:24 Melbourne, owner decision q-a11y-caption, `plans/v1/DECISIONS.md:10`): the caption under a page title or tab bar (`RvCaption`) is set in the row subtitle role and wraps onto as many lines as it needs, with no line limit and no ellipsis. The row "Caption, action label" above is the action label's role and keeps its one line; it is not the page-header caption. Checked by `RvCaptionTest` (a caption longer than its width wraps and shows all its text, at font scales 1.0 and 2.0; a planted one-line caption must fail the same reading).
+
 Line breaks: CJK text breaks only between words, never inside one (`rvKeepWords`, owner cjkbreak); names and identifiers (node names, app labels, packages) opt out. Revolut's own boxes are larger (title 26, subtitle 24, §7): we keep ours (latinrow) and the row height is governed by the 58 / 82 minimum.
 
 ## Row rules
