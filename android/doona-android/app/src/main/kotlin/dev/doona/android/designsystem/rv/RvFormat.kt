@@ -41,6 +41,9 @@ internal class RvFormat(val locale: Locale) {
 
     fun bytes(bytes: Long): RvAmount = scaled(BigDecimal.valueOf(bytes), "")
 
+    /** A size the core states in binary units, such as its download bound: `8 MiB`. */
+    fun mebibytes(bytes: Long): RvAmount = RvAmount(BigDecimal.valueOf(bytes).divide(MEBIBYTE).stripTrailingZeros().toPlainString(), MIB)
+
     /** A rate; one that is not a number or infinite (no time has passed) is written as none. */
     fun rate(bytesPerSecond: Double): RvAmount = scaled(BigDecimal.valueOf(if (bytesPerSecond.isFinite()) bytesPerSecond else 0.0), PER_SECOND)
 
@@ -111,6 +114,8 @@ internal class RvFormat(val locale: Locale) {
         val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
         val CLOCK: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
         val THOUSAND: BigDecimal = BigDecimal.valueOf(1_000)
+        val MEBIBYTE: BigDecimal = BigDecimal.valueOf(1L shl 20)
+        const val MIB = " MiB"
         val HUNDRED: BigDecimal = BigDecimal.valueOf(100)
         val TEN: BigDecimal = BigDecimal.TEN
         const val PER_SECOND = "/s"

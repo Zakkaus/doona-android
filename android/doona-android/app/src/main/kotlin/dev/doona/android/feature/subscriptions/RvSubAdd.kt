@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import dev.doona.android.BuildConfig
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_LINK_PLACEHOLDER
@@ -185,10 +186,7 @@ private fun failure(failure: RvAddFailure, onRetry: () -> Unit): RvNotice {
     val reason = when (failure) {
         RvAddFailure.Unreachable -> stringResource(R.string.rv_add_unreachable)
         RvAddFailure.NotSubscription -> stringResource(R.string.rv_add_not_subscription_reason)
-        RvAddFailure.TooLarge -> stringResource(R.string.rv_add_too_large, RV_MAX_BODY)
+        RvAddFailure.TooLarge -> stringResource(R.string.rv_add_too_large, rememberRvFormat().mebibytes(BuildConfig.SUBSCRIPTION_MAX_BODY_BYTES).unbroken())
     }
     return RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_add_failed), reason, stringResource(R.string.rv_retry), onRetry)
 }
-
-/** The core's download bound (`fetch.rs` `MAX_BODY`, 8 << 20). */
-internal const val RV_MAX_BODY = "8 MiB"
