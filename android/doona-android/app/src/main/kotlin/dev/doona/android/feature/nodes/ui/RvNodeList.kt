@@ -118,8 +118,8 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
         node.changeMs?.let { change -> { RvDelta(change) } }
     }
     RvRow(
-        { RvFlag(node.place.flag, RvNodesSize.rowFlag, current = current) },
-        node.name,
+        { RvNodeDisc(node, RvNodesSize.rowFlag, current = current) },
+        rvNodeTitle(node),
         node.protocol + SEPARATOR + stringResource(node.place.label),
         if (current) pick.semantics { stateDescription = inUse } else pick,
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },

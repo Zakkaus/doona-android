@@ -37,7 +37,6 @@ import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
-import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvFoldRow
 import dev.doona.android.designsystem.rv.RvGlyph
 import dev.doona.android.designsystem.rv.RvLatencyChange
@@ -165,7 +164,7 @@ internal fun RvNodePickRow(
     order: Int,
     onPick: (String) -> Unit,
     onDetail: (String) -> Unit,
-    title: String = node.name,
+    title: String = rvNodeTitle(node),
     lead: String? = null,
     mark: (@Composable (current: Boolean) -> Unit)? = null,
 ) {
@@ -174,7 +173,7 @@ internal fun RvNodePickRow(
     // Each row is a layer of its own: a row composed after the others records itself, not the whole card again.
     RvMenuAnchor(rvNodeMenu(node, current, onPick, onDetail), Modifier.graphicsLayer {}) { menu, actions ->
         RvRow(
-            { if (mark != null) mark(current) else RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
+            { if (mark != null) mark(current) else RvNodeDisc(node, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
             title,
             listOfNotNull(lead, node.protocol, label).joinToString(SEPARATOR),
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),

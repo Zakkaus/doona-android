@@ -33,7 +33,6 @@ import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvEmptyState
 import dev.doona.android.designsystem.rv.RvFilterChipRow
-import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvMenuAnchor
@@ -57,7 +56,9 @@ import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSharedFlag
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
+import dev.doona.android.feature.nodes.ui.RvNodeDisc
 import dev.doona.android.feature.nodes.ui.rvNodeMenu
+import dev.doona.android.feature.nodes.ui.rvNodeTitle
 
 /**
  * The 節點 page, pushed from 活動, in the language of Revolut's Analytics and Crypto pages: the back disc and the large
@@ -146,7 +147,7 @@ private fun TopNode(node: RvNode, current: Boolean, onOpen: (String) -> Unit, mo
             .padding(vertical = RvSpace.tight),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        RvFlag(node.place.flag, RvNodesSize.topFlag, current = current)
+        RvNodeDisc(node, RvNodesSize.topFlag, current = current)
         Spacer(Modifier.height(RvNodesSize.topLabelGap))
         // A node's code keeps its own figures: Inter's tabular figures widen the hyphen of `hk-01`.
         RvText(node.short, Rv.type.pill.copy(fontFeatureSettings = null), align = TextAlign.Center)
@@ -200,8 +201,8 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
     // A long press opens the row's menu; the box round the row moves when a test re-sorts the card.
     RvMenuAnchor(rvNodeMenu(node, current, LocalRvRowActions.current.useNode, onOpen), Modifier.rvMoves()) { menu, actions ->
         RvRow(
-            { RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
-            node.name,
+            { RvNodeDisc(node, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
+            rvNodeTitle(node),
             listOfNotNull(mark, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
             onClick = { onOpen(node.id) },
