@@ -19,12 +19,12 @@ val SAMPLE_PINNED_GROUPS: List<Group> = SAMPLE_TESTING_GROUPS.map {
     if (it.id == "g-Auto") it.withSharedSelection(selectedId = "n-85d011c7e5f60718", pinned = true) else it
 }
 
-fun samplePoliciesState(groups: List<Group> = FakeEngine.SAMPLE_GROUPS, error: ErrorCode? = null): PoliciesUiState =
-    policiesUiState(true, groups, GroupFilter.All, error)
+fun samplePoliciesState(groups: List<Group> = FakeEngine.SAMPLE_GROUPS, error: ErrorCode? = null): OldPoliciesUiState =
+    oldPoliciesUiState(true, groups, GroupFilter.All, error)
 
 /** The page of [groupId] among [groups], as previews and screenshot tests show it. */
 fun sampleGroupDetail(groupId: String, groups: List<Group> = FakeEngine.SAMPLE_GROUPS): GroupDetail =
-    requireNotNull(groupUiState(true, groups, groupId, null).detail) { "no group $groupId in the sample" }
+    requireNotNull(oldGroupUiState(true, groups, groupId, null).detail) { "no group $groupId in the sample" }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)

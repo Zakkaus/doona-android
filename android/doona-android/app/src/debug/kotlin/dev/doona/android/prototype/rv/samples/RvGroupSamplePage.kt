@@ -42,6 +42,8 @@ import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.text
+import dev.doona.android.feature.policies.RvApplyChoice
+import dev.doona.android.feature.policies.RvApplyTo
 import dev.doona.android.prototype.rv.nodes.RvNodesSize
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
 import dev.doona.android.prototype.rv.nodes.SEPARATOR

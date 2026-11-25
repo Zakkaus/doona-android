@@ -33,6 +33,8 @@ import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.text
+import dev.doona.android.feature.policies.RvApplyChoice
+import dev.doona.android.feature.policies.RvApplyTo
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePickRow
 import dev.doona.android.prototype.rv.nodes.RvNodeSection

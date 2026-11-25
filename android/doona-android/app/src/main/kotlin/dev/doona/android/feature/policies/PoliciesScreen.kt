@@ -49,7 +49,7 @@ import dev.doona.android.icons.R as IconsR
 /** The 策略 entry: builds the ViewModel and collects its state while the screen is started. */
 @Composable
 fun PoliciesRoute(engine: Engine, onOpenGroup: (String) -> Unit, onOpenSubscriptions: () -> Unit) {
-    val viewModel: PoliciesViewModel = viewModel(factory = PoliciesViewModel.factory(engine))
+    val viewModel: OldPoliciesViewModel = viewModel(factory = OldPoliciesViewModel.factory(engine))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     PoliciesScreen(state, viewModel::onAction, onOpenGroup, onOpenSubscriptions)
 }
@@ -59,11 +59,11 @@ fun PoliciesRoute(engine: Engine, onOpenGroup: (String) -> Unit, onOpenSubscript
  * group and opens the subscriptions. With no group yet, which means no subscription, it offers adding one.
  */
 @Composable
-fun PoliciesScreen(state: PoliciesUiState, onAction: (PoliciesAction) -> Unit, onOpenGroup: (String) -> Unit, onOpenSubscriptions: () -> Unit) {
+fun PoliciesScreen(state: OldPoliciesUiState, onAction: (OldPoliciesAction) -> Unit, onOpenGroup: (String) -> Unit, onOpenSubscriptions: () -> Unit) {
     val space = DoonaTheme.spacing
     DoonaPage(
         actions = listOf(
-            DoonaBarAction(IconsR.drawable.sym_schedule, stringResource(R.string.policy_test_all)) { onAction(PoliciesAction.TestAll) },
+            DoonaBarAction(IconsR.drawable.sym_schedule, stringResource(R.string.policy_test_all)) { onAction(OldPoliciesAction.TestAll) },
             DoonaBarAction(IconsR.drawable.sym_link, stringResource(R.string.sub_title), onOpenSubscriptions),
         ),
     ) {
@@ -98,14 +98,14 @@ fun PoliciesScreen(state: PoliciesUiState, onAction: (PoliciesAction) -> Unit, o
 }
 
 @Composable
-private fun ErrorBanner(state: PoliciesUiState, onAction: (PoliciesAction) -> Unit) {
+private fun ErrorBanner(state: OldPoliciesUiState, onAction: (OldPoliciesAction) -> Unit) {
     state.error?.let { code ->
-        DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(PoliciesAction.DismissError) })
+        DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(OldPoliciesAction.DismissError) })
     }
 }
 
 @Composable
-private fun FilterBar(state: PoliciesUiState, onAction: (PoliciesAction) -> Unit) {
+private fun FilterBar(state: OldPoliciesUiState, onAction: (OldPoliciesAction) -> Unit) {
     DoonaSegmented(
         listOf(
             stringResource(R.string.ui_all_count, state.items.size),
@@ -113,7 +113,7 @@ private fun FilterBar(state: PoliciesUiState, onAction: (PoliciesAction) -> Unit
             stringResource(R.string.policy_kind_auto, state.items.size - state.manual),
         ),
         selected = state.filter.ordinal,
-        onSelect = { onAction(PoliciesAction.SetFilter(GroupFilter.entries[it])) },
+        onSelect = { onAction(OldPoliciesAction.SetFilter(GroupFilter.entries[it])) },
     )
 }
 

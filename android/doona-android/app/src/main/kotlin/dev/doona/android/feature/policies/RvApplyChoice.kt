@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.samples
+package dev.doona.android.feature.policies
 
 import androidx.compose.runtime.Immutable
 

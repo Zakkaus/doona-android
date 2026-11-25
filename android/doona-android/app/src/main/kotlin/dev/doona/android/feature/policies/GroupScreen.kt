@@ -38,7 +38,7 @@ import dev.doona.android.icons.R as IconsR
  */
 @Composable
 fun GroupRoute(engine: Engine, groupId: String, onBack: () -> Unit, onOpenGroup: (String) -> Unit) {
-    val viewModel: GroupViewModel = viewModel(factory = GroupViewModel.factory(engine, groupId))
+    val viewModel: OldGroupViewModel = viewModel(factory = OldGroupViewModel.factory(engine, groupId))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val detail = state.detail
     when {
@@ -63,7 +63,7 @@ private fun GroupLoading(onBack: () -> Unit) {
  * open their own page, and every member. Tapping a member pins it.
  */
 @Composable
-fun GroupScreen(detail: GroupDetail, error: ErrorCode?, onAction: (GroupAction) -> Unit, onOpenGroup: (String) -> Unit, onBack: () -> Unit) {
+fun GroupScreen(detail: GroupDetail, error: ErrorCode?, onAction: (OldGroupAction) -> Unit, onOpenGroup: (String) -> Unit, onBack: () -> Unit) {
     val space = DoonaTheme.spacing
     DoonaPage(onBack = onBack) {
         DoonaPageTitle(detail.group.name)
@@ -72,7 +72,7 @@ fun GroupScreen(detail: GroupDetail, error: ErrorCode?, onAction: (GroupAction) 
         DoonaGap(space.section)
         Column(verticalArrangement = Arrangement.spacedBy(space.block)) {
             error?.let { code ->
-                DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(GroupAction.DismissError) })
+                DoonaErrorBanner(stringResource(code.messageRes()), stringResource(R.string.ui_dismiss), { onAction(OldGroupAction.DismissError) })
             }
             CurrentRow(detail)
             Actions(detail, onAction)
@@ -101,17 +101,17 @@ private fun CurrentRow(detail: GroupDetail) {
 }
 
 @Composable
-private fun Actions(detail: GroupDetail, onAction: (GroupAction) -> Unit) {
+private fun Actions(detail: GroupDetail, onAction: (OldGroupAction) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item), verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.block)) {
         DoonaButton(
             stringResource(R.string.policy_test_group),
-            { onAction(GroupAction.Test) },
+            { onAction(OldGroupAction.Test) },
             style = DoonaButtonStyle.Secondary,
             icon = IconsR.drawable.sym_schedule,
             busy = detail.group.testing,
         )
         if (detail.canReturnToAutomatic) {
-            DoonaButton(stringResource(R.string.policy_unpin), { onAction(GroupAction.ReturnToAutomatic) }, style = DoonaButtonStyle.Text)
+            DoonaButton(stringResource(R.string.policy_unpin), { onAction(OldGroupAction.ReturnToAutomatic) }, style = DoonaButtonStyle.Text)
         }
     }
 }
@@ -128,7 +128,7 @@ private fun SubGroups(detail: GroupDetail, onOpenGroup: (String) -> Unit) {
 }
 
 @Composable
-private fun Members(detail: GroupDetail, onAction: (GroupAction) -> Unit) {
+private fun Members(detail: GroupDetail, onAction: (OldGroupAction) -> Unit) {
     val groupLabel = stringResource(R.string.ui_group)
     val failed = stringResource(R.string.policy_failed)
     Column(verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.item)) {
@@ -140,7 +140,7 @@ private fun Members(detail: GroupDetail, onAction: (GroupAction) -> Unit) {
                 latencyMs = node?.latencyMs?.takeUnless { node.failed },
                 current = member.id == detail.group.selectedId,
                 groupLabel = groupLabel.takeIf { member.isGroup },
-                onClick = { onAction(GroupAction.Select(member.id)) },
+                onClick = { onAction(OldGroupAction.Select(member.id)) },
                 source = failed.takeIf { node?.failed == true },
             )
         }

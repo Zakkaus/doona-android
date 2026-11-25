@@ -5,44 +5,173 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.Network
+import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.feature.errorCode
+import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.RvSubscription
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class GroupViewModel(private val engine: Engine, private val groupId: String) : ViewModel() {
-    private val error = MutableStateFlow<ErrorCode?>(null)
+/**
+ * A group's page: the group [groupId] with its nodes, the node each network uses, and the taps that choose them, as the
+ * approved 套用到 sample has them ([RvApplyChoice]). Each new catalog is read on [reads] with the members' details and,
+ * for a Score group, Score's evidence; a read that fails keeps what is shown. [clock] is now, for the subscriptions' end
+ * dates; [places] places the nodes by name until 節點's mapper is wired. The 分開選擇 switch and 套用到 live here:
+ * the engine only knows each network's node.
+ */
+internal class GroupViewModel(
+    private val engine: Engine,
+    private val groupId: String,
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val places: RvNodePlaces = RV_UNKNOWN_PLACES,
+    private val reads: CoroutineDispatcher = Dispatchers.Default,
+) : ViewModel() {
+    private val local = MutableStateFlow(Local(apart = false, apply = RvApplyTo.Tcp))
+    private val failure = MutableStateFlow<GroupFailure?>(null)
+    private val read = MutableStateFlow<Read?>(null)
 
-    val uiState: StateFlow<GroupUiState> = combine(engine.ready, engine.groups, error) { ready, groups, error ->
-        groupUiState(ready, groups, groupId, error)
+    /** Whether the networks differed in the last catalog read; null before the first. Only the reader touches it. */
+    private var differed: Boolean? = null
+
+    val uiState: StateFlow<GroupUiState> = channelFlow {
+        launch(reads) {
+            engine.catalog.filterNotNull().distinctUntilChanged().collectLatest { catalog -> read(catalog)?.let { read.value = it } }
+        }
+        combine(engine.ready, engine.catalog, read, local, failure, ::groupUiState).collect { send(it) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
 
-    fun onAction(action: GroupAction) {
-        when (action) {
-            is GroupAction.Select -> perform { engine.select(groupId, action.memberId) }
-            GroupAction.ReturnToAutomatic -> perform { engine.select(groupId, null) }
-            GroupAction.Test -> perform { engine.testLatency(groupId) }
-            GroupAction.DismissError -> error.value = null
+    /**
+     * A tap on [nodeId] chooses it for the network 套用到 names while the switch is on, else for both. A Score group picks
+     * each network's node itself, so a tap there chooses nothing.
+     */
+    fun onTap(nodeId: String) {
+        val catalog = engine.catalog.value ?: return
+        val groups = catalog.groups.associateBy { it.id }
+        val group = groups[groupId]?.takeIf { it.kind != GroupKind.Score } ?: return
+        val shown = local.value
+        val network = when {
+            !shown.apart -> null
+            shown.apply == RvApplyTo.Tcp -> Network.Tcp
+            shown.apply == RvApplyTo.Udp -> Network.Udp
+            else -> null
+        }
+        val member = memberFor(group, nodeId, groups)
+        perform(GroupAction.Select) { engine.select(groupId, member, network) }
+    }
+
+    /**
+     * The 分開選擇 switch set to [on]. Turned off, UDP goes back to TCP's node (nboff): the networks then use one node, as
+     * the switch says. A Score group keeps its own choice per network.
+     */
+    fun onApart(on: Boolean) {
+        local.update { it.copy(apart = on) }
+        if (on) return
+        val group = engine.catalog.value?.groups?.firstOrNull { it.id == groupId } ?: return
+        if (group.kind == GroupKind.Score || !group.networksDiffer) return
+        perform(GroupAction.Apart) { engine.select(groupId, group.tcp.selectedId, Network.Udp) }
+    }
+
+    fun onApply(to: RvApplyTo) = local.update { it.copy(apply = to) }
+
+    /** Probes this group's members. */
+    fun onTest() = perform(GroupAction.Test) { engine.testLatency(groupId) }
+
+    /**
+     * Hands an engine call over at once, in tap order, and shows its failure when it ends, or clears the banner when it
+     * succeeds. The engine keeps the order of what it is handed and does not drop it when this screen is left.
+     */
+    private fun perform(action: GroupAction, call: suspend () -> Result<Unit>) {
+        viewModelScope.launch {
+            failure.value = call().exceptionOrNull()?.let { GroupFailure(action, it.errorCode()) }
         }
     }
 
     /**
-     * Hands an engine action over at once, in tap order, and shows its failure when it ends, or clears the last one when it
-     * succeeds. The engine keeps the order of what it is handed and does not drop it when this screen is left.
+     * The page's data from [catalog], or null when a read failed. The switch starts as the networks are and is the user's
+     * from then on; it turns on again only when the networks start to differ, as when another device chose apart.
      */
-    private fun perform(action: suspend () -> Result<Unit>) {
-        viewModelScope.launch {
-            error.value = action().exceptionOrNull()?.errorCode()
+    private suspend fun read(catalog: Catalog): Read? {
+        val groups = catalog.groups.associateBy { it.id }
+        val group = groups[groupId] ?: return Read.NONE
+        seedApart(group)
+        val leaves = leafNodes(group, groups)
+        val infos = engine.nodes(leaves.map { it.id }).getOrElse { return null }.associateBy { it.id }
+        val names = catalog.subscriptions.associate { it.id to it.name }
+        val nodes = leaves.associate { it.id to rvNode(it, infos[it.id], it.subscriptionId?.let(names::get).orEmpty(), places) }
+        val mapped = rvPolicyGroup(group, groups, nodes) ?: return Read.NONE
+        val held = leaves.mapNotNullTo(mutableSetOf()) { it.subscriptionId }
+        val score = if (group.kind == GroupKind.Score) {
+            engine.scoreState().map { state -> state.groups.firstOrNull { it.id == groupId } }.getOrElse { read.value?.score }
+        } else {
+            null
         }
+        val tcp = selectedLeaf(group, group.tcp.selectedId, groups)?.id ?: mapped.selectedId
+        val udp = selectedLeaf(group, group.udp.selectedId, groups)?.id ?: tcp
+        return Read(
+            group = mapped,
+            subscriptions = catalog.subscriptions.filter { it.id in held }.map(::rvSubscription),
+            tcpId = tcp,
+            udpId = udp,
+            isScore = group.kind == GroupKind.Score,
+            score = score,
+            nowEpochMs = clock(),
+        )
+    }
+
+    private fun seedApart(group: Group) {
+        val differs = group.networksDiffer
+        if (differed == null || (differs && differed == false)) local.update { it.copy(apart = differs) }
+        differed = differs
     }
 
     /** The engine's flows are StateFlows, so the first frame already shows real values. */
-    private fun current() = groupUiState(engine.ready.value, engine.groups.value, groupId, error.value)
+    private fun current() = groupUiState(engine.ready.value, engine.catalog.value, read.value, local.value, failure.value)
+
+    /** The 分開選擇 switch and the network 套用到 names: the page's own. */
+    private data class Local(val apart: Boolean, val apply: RvApplyTo)
+
+    /** One catalog read: [group] is null when the catalog has no such group or it leads to no node. */
+    private class Read(
+        val group: RvPolicyGroup?,
+        val subscriptions: List<RvSubscription>,
+        val tcpId: String,
+        val udpId: String,
+        val isScore: Boolean,
+        val score: ScoreGroup?,
+        val nowEpochMs: Long,
+    ) {
+        companion object {
+            val NONE = Read(null, emptyList(), "", "", isScore = false, score = null, nowEpochMs = 0L)
+        }
+    }
+
+    private fun groupUiState(ready: Boolean, catalog: Catalog?, read: Read?, local: Local, failure: GroupFailure?) = GroupUiState(
+        loading = !ready || catalog == null || read == null,
+        group = read?.group,
+        subscriptions = read?.subscriptions.orEmpty(),
+        choice = read?.takeIf { it.group != null }?.let { RvApplyChoice(it.tcpId, it.udpId, local.apart) },
+        apply = local.apply,
+        score = read?.score,
+        isScore = read?.isScore ?: false,
+        nowEpochMs = read?.nowEpochMs ?: 0L,
+        failure = failure,
+    )
 
     companion object {
         fun factory(engine: Engine, groupId: String): ViewModelProvider.Factory = viewModelFactory {
