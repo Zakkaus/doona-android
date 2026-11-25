@@ -48,7 +48,7 @@ internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (
     val score = remember(ui.score) { ui.score.takeIf { it.isNotEmpty() }?.let(::RvScoreMarks) }
     CompositionLocalProvider(LocalRvTesting provides ui.testing) {
         // The chips' menus are the group page's (decision 2026-11-25 19:25), not on this base yet: see p3c-STATE.
-        RvNodesPage(page, onBack, onFilter = {}, onOpen = onOpen, onAllNodes = onAllNodes, onAdd = onAdd, score = score)
+        RvNodesPage(page, onBack, onFilter = {}, onOpen = onOpen, onAllNodes = onAllNodes, onAdd = onAdd, score = score, caption = mainCaption(ui))
     }
 }
 
@@ -69,6 +69,7 @@ internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> 
             onTest = viewModel::test,
             banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
             score = score,
+            canUse = ui.state.mainGroupId != null,
         )
     }
 }
@@ -91,6 +92,7 @@ internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onD
             onClose = onClose,
             searchPage = true,
             banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
+            caption = mainCaption(ui),
         )
     }
 }
@@ -116,6 +118,7 @@ internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSear
             onSearch = onSearch,
             nowEpochMs = ui.nowEpochMs,
             onAdd = onAdd,
+            caption = mainCaption(ui),
         )
     }
 }
@@ -150,10 +153,16 @@ internal fun NodesPull(
                 section = motion.section,
                 stretch = motion.stretch,
                 banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
+                caption = mainCaption(ui),
             )
         }
     }
 }
+
+/** The line under the title: what a pick does, or, when the profile has no main group, that there is no main node. */
+@Composable
+private fun mainCaption(ui: NodesUi): String =
+    stringResource(if (ui.loaded && ui.state.mainGroupId == null) R.string.rv_no_main_group else R.string.rv_main_node_hint)
 
 /** 節點 before the catalog is read, as after process death: the title and rows of nodes. */
 @Composable

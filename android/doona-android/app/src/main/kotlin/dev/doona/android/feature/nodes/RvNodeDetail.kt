@@ -53,7 +53,8 @@ import dev.doona.android.feature.model.RvNode
  * A node's page in the language of Revolut's stock page: the flag over its name as the large title, which collapses into
  * the bar beside the back disc on scroll, its protocol and country under it, and the status chips that apply; 延遲紀錄 as the EPS dot chart of its last tests, the picked one's figure over
  * it; its share link's details as a Key stats card; and 設為目前節點 floating at the bottom as 'Get started', with a
- * round 測試延遲 beside it. A [banner] (a test that failed) sits over 延遲紀錄 in [RvGutter]'s slot.
+ * round 測試延遲 beside it. A [banner] (a test that failed) sits over 延遲紀錄 in [RvGutter]'s slot. Without [canUse] (a
+ * profile with no main group) the main action is disabled.
  */
 @Composable
 internal fun RvNodeDetail(
@@ -65,6 +66,7 @@ internal fun RvNodeDetail(
     onTest: () -> Unit,
     banner: RvNotice? = null,
     score: RvScoreMarks? = null,
+    canUse: Boolean = true,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val format = rememberRvFormat()
@@ -79,7 +81,7 @@ internal fun RvNodeDetail(
         node.name,
         insets,
         onBack = onBack,
-        overlay = { Actions(current, onUse, onTest, insets, Modifier.align(Alignment.BottomCenter)) },
+        overlay = { Actions(current, canUse, onUse, onTest, insets, Modifier.align(Alignment.BottomCenter)) },
         // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
         end = RvPageEnd.Inset(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter),
     ) { titleBlock ->
@@ -171,7 +173,7 @@ private fun StatsCard(node: RvNode, lastTest: String) {
 
 /** The floating actions, with no scrim: the page reserves their room, so the cards scroll under them (S7-17, N05). */
 @Composable
-private fun Actions(current: Boolean, onUse: () -> Unit, onTest: () -> Unit, insets: WindowInsets, modifier: Modifier) {
+private fun Actions(current: Boolean, canUse: Boolean, onUse: () -> Unit, onTest: () -> Unit, insets: WindowInsets, modifier: Modifier) {
     Column(modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
         RvFloatingActions(
             stringResource(if (current) R.string.rv_nodes_in_use else R.string.rv_nodes_use),
@@ -179,6 +181,7 @@ private fun Actions(current: Boolean, onUse: () -> Unit, onTest: () -> Unit, ins
             R.drawable.rv_sym_speed,
             stringResource(R.string.rv_test_latency),
             onTest,
+            enabled = canUse,
         )
         Spacer(Modifier.height(RvSpace.gutter))
         Spacer(Modifier.windowInsetsBottomHeight(insets))

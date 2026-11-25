@@ -1,8 +1,12 @@
 package dev.doona.android.feature.nodes
 
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -119,7 +123,28 @@ class NodesRouteTest {
         assertFalse(back)
     }
 
+    @Test
+    fun `with no main group the pages say so and the node's page cannot make one main`() {
+        val sub = Subscription("s-1", "Harbor", "https://sub.example.net/token", nodes = 1, updatedAtEpochMs = 1L)
+        // A hand-edited profile: one group of the user's own, no Proxy, so the catalog's main group is missing.
+        val mine = Group("g-Mine", "Mine", GroupKind.Selector, listOf(Member("n-jp", "Tokyo 01", subscriptionId = "s-1")), Group.Selection("n-jp", pinned = true))
+        val vm = viewModel(FakeEngine(groups = listOf(mine), subscriptions = listOf(sub)))
+        var node by mutableStateOf(false)
+        compose.setContent {
+            RvTheme(rvSystemScheme(false), false) {
+                if (node) NodeRoute(vm, "n-jp", onBack = {}) else NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {})
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText(NO_MAIN).assertExists()
+        compose.onAllNodesWithText("Tokyo 01").onFirst().assertExists()
+        node = true
+        compose.waitForIdle()
+        compose.onNodeWithText("Set as main node").assertIsNotEnabled()
+    }
+
     private companion object {
+        const val NO_MAIN = "The profile has no main group, so there is no main node"
         const val MAIN = FakeRuleMode.MAIN_GROUP_ID
         const val NOW = 1_764_000_000_000L
     }

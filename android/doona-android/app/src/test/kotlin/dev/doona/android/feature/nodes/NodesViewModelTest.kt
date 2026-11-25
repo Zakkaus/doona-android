@@ -1,6 +1,7 @@
 package dev.doona.android.feature.nodes
 
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -16,6 +17,8 @@ import dev.doona.android.engine.fake.FakeRuleMode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -40,14 +43,17 @@ class NodesViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     /** An engine over [base] whose details, select and test answer as set, recording what they were asked. */
-    private class Probe(val base: FakeEngine, var infos: Map<String, NodeInfo>? = null) : Engine by base {
+    private class Probe(val base: FakeEngine, var infos: Map<String, NodeInfo>? = null, mainGroupId: String? = null) : Engine by base {
+        override val catalog: StateFlow<Catalog?> =
+            mainGroupId?.let { id -> MutableStateFlow(base.catalog.value?.copy(mainGroupId = id)) } ?: base.catalog
+
         var result: Result<Unit> = Result.success(Unit)
         val selected = mutableListOf<Triple<String, String?, Network?>>()
         val tested = mutableListOf<String?>()
         var gate: CompletableDeferred<Unit>? = null
 
         override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
-            infos?.let { all -> Result.success(ids.orEmpty().mapNotNull(all::get)) } ?: base.nodes(ids)
+            infos?.let { all -> Result.success(ids?.mapNotNull(all::get) ?: all.values.toList()) } ?: base.nodes(ids)
 
         override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
             selected += Triple(groupId, memberId, network)
@@ -100,6 +106,43 @@ class NodesViewModelTest {
         assertEquals(MAIN, ui.state.mainGroupId)
         assertEquals(listOf("Harbor"), ui.state.subscriptions.map { it.name })
         assertEquals("sub.example.net", ui.state.subscriptions.single().host)
+    }
+
+    /** A hand-edited profile (owner, 2026-11-26): a main group of the user's own name over a nested group, no Proxy group, a node in no group. */
+    @Test
+    fun aHandEditedProfileListsEveryNodeAndFollowsItsMainGroupThroughANestedOne() = runTest {
+        val asia = Group("g-Asia", "Asia", GroupKind.UrlTest, listOf(Member("n-jp", "Tokyo 01", subscriptionId = "s-1"), Member("n-sg", "Singapore 01", subscriptionId = "s-1")), Group.Selection("n-sg", pinned = false))
+        val mine = Group("g-Mine", "Mine", GroupKind.Selector, listOf(Member("n-us", "Dallas 01", subscriptionId = "s-1"), Member("g-Asia", "Asia", isGroup = true)), Group.Selection("g-Asia", pinned = true))
+        val infos = listOf("n-jp", "n-lone", "n-sg", "n-us").associateWith { NodeInfo(it, "trojan", "$it.example.net", 443, "tcp", true, emptyList()) }
+        val probe = Probe(FakeEngine(groups = listOf(mine, asia), subscriptions = listOf(sub)), infos, mainGroupId = "g-Mine")
+        val vm = collected(probe)
+        val state = vm.ui.value.state
+        // Every group's nodes in the catalog's order, then the node no group lists, named by its server.
+        assertEquals(listOf("n-us", "n-jp", "n-sg", "n-lone"), state.nodes.map { it.id })
+        assertEquals("n-lone.example.net", state.node("n-lone")!!.name)
+        assertEquals("", state.node("n-lone")!!.subscription)
+        assertEquals("g-Mine", state.mainGroupId)
+        assertEquals("n-sg", state.currentId)
+        vm.pick("n-jp")
+        assertEquals(listOf(Triple("g-Mine", "n-jp", null)), probe.selected)
+    }
+
+    @Test
+    fun withNoMainGroupTheNodesStillListAndTestButNoneIsCurrentAndAPickDoesNothing() = runTest {
+        val mine = Group("g-Mine", "Mine", GroupKind.Selector, listOf(Member("n-a", "A 01", subscriptionId = "s-1"), Member("n-b", "B 02", subscriptionId = "s-1")), Group.Selection("n-a", pinned = true))
+        // The catalog names g-Proxy as its main group, which this profile does not have.
+        val probe = Probe(FakeEngine(groups = listOf(mine), subscriptions = listOf(sub)))
+        val vm = collected(probe)
+        val ui = vm.ui.value
+        assertEquals(listOf("n-a", "n-b"), ui.state.nodes.map { it.id })
+        assertNull(ui.state.mainGroupId)
+        assertEquals("", ui.state.currentId)
+        assertFalse(ui.state.split)
+        vm.pick("n-b")
+        assertTrue(probe.selected.isEmpty())
+        assertNull(vm.ui.value.failure)
+        vm.test()
+        assertEquals(listOf<String?>(null), probe.tested)
     }
 
     @Test

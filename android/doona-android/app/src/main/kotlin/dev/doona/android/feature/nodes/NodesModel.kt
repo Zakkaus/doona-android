@@ -56,16 +56,20 @@ internal data class NodesFailure(val action: NodesAction, val code: ErrorCode)
 
 internal enum class NodesAction { Select, Test }
 
-/** The leaf node ids of [catalog], each once, in the catalog's order: what `nodes(ids)` reads. */
-internal fun leafIds(catalog: Catalog): List<String> = leafMembers(catalog).map { it.id }
-
 private fun leafMembers(catalog: Catalog): List<Member> = catalog.groups.asSequence().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }.toList()
 
-/** [catalog] as the pages show it, with each node's details from [infos] and its place from [places]. */
+/**
+ * [catalog] as the pages show it, with each node's details from [infos] and its place from [places]. The nodes are every
+ * group's nodes in the catalog's order, then the nodes of [infos] (the core's every node) that no group lists: a profile
+ * edited by hand may leave a node out of every group. The core names a node only as a group's member, so such a node is
+ * named by its server. With no main group (a hand-edited profile may have none) no node is the current one.
+ */
 internal fun nodesState(catalog: Catalog?, infos: Map<String, NodeInfo>, places: NodePlaces): NodesState {
     catalog ?: return NodesState.Empty
     val names = catalog.subscriptions.associate { it.id to it.name }
-    val members = leafMembers(catalog)
+    val grouped = leafMembers(catalog)
+    val listed = grouped.mapTo(HashSet()) { it.id }
+    val members = grouped + infos.values.filter { it.id !in listed }.map { Member(it.id, it.server) }
     val groups = catalog.groups.associateBy { it.id }
     val main = groups[catalog.mainGroupId]
     return NodesState(

@@ -66,7 +66,8 @@ import dev.doona.android.feature.nodes.ui.rvNodeTitle
  * as 'Your trips' (the world map with every country that has a node filled); then 全部節點 as 'All crypto' rows, one
  * card per part of the world, each node's latency over its change since the test before, five rows and then 查看全部. The
  * node in use carries the check badge on its flag wherever it is listed; a tap on a node opens its page and never
- * switches to it (Addendum A). The line under the title says that the node chosen here is the main node (item 24). With no
+ * switches to it (Addendum A). The line under the title, [caption], says that the node chosen here is the main node (item
+ * 24), or that the profile has none. With no
  * node (no subscription) the chips and the cards give way to the empty state, whose 新增訂閱 runs [onAdd].
  */
 @Composable
@@ -78,6 +79,7 @@ internal fun RvNodesPage(
     onAllNodes: () -> Unit,
     onAdd: () -> Unit = {},
     score: RvScoreMarks? = null,
+    caption: String = stringResource(R.string.rv_main_node_hint),
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }
@@ -86,7 +88,7 @@ internal fun RvNodesPage(
         // The pull-down from 活動 picks the main node; groups with their own choice open from 活動's rule rows (item 24).
         val empty = state.nodes.isEmpty()
         val chips: (@Composable () -> Unit)? = if (empty) null else ({ Chips(onFilter) })
-        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) }, control = chips)
+        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(caption) }, control = chips)
         if (empty) {
             RvGutter {
                 RvEmptyState(

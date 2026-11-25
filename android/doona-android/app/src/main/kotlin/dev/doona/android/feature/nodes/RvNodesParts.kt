@@ -26,10 +26,10 @@ import dev.doona.android.designsystem.rv.rvPress
  * and a 56 dp container disc with no shadow, both on one centre line (N06).
  */
 @Composable
-internal fun RvFloatingActions(label: String, onClick: () -> Unit, @DrawableRes icon: Int, iconLabel: String, onIcon: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RvFloatingActions(label: String, onClick: () -> Unit, @DrawableRes icon: Int, iconLabel: String, onIcon: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val colors = Rv.colors
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(RvNodesSize.ctaGap), verticalAlignment = Alignment.CenterVertically) {
-        RvPrimaryButton(label, onClick, Modifier.weight(1f))
+        RvPrimaryButton(label, onClick, Modifier.weight(1f), enabled = enabled)
         Box(
             Modifier
                 .size(RvNodesSize.ctaCompanion)

@@ -41,6 +41,7 @@ internal fun RvNodePickerPage(
     onSearch: () -> Unit,
     nowEpochMs: Long,
     onAdd: () -> Unit = {},
+    caption: String = stringResource(R.string.rv_main_node_hint),
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_main_node)
@@ -48,7 +49,7 @@ internal fun RvNodePickerPage(
     val groups = remember(nodes, subscriptions, sort) { rvNodeGroups(nodes, subscriptions, sort) }
     RvScrollPage(title, insets, onBack = onBack, actions = { glass -> RvGlassButton(glass, R.drawable.rv_sym_speed, test, onTest) }) { titleBlock ->
         val controls: (@Composable () -> Unit)? = if (nodes.isEmpty()) null else ({ RvNodeListControls(sort, onSort, onSearch) })
-        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) }, control = controls)
+        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(caption) }, control = controls)
         if (nodes.isEmpty()) {
             RvGutter {
                 RvEmptyState(

@@ -50,14 +50,16 @@ class NodesViewModel internal constructor(
     /** The last pick, which [retry] makes again after it failed. */
     private var lastPick: Pair<String, Network?>? = null
 
-    /** Each catalog mapped once; when a details read fails the nodes keep the last details read, by id. */
+    /**
+     * Each catalog mapped once, with every node's details read again (`nodes()`, the core's every node, grouped or not);
+     * when the read fails the nodes keep the last details read.
+     */
     private val mapped: Flow<NodesState?> = flow {
         var info = emptyMap<String, NodeInfo>()
         emitAll(
             engine.catalog.mapLatest { catalog ->
                 catalog ?: return@mapLatest null
-                val ids = leafIds(catalog)
-                if (ids.isNotEmpty()) engine.nodes(ids).getOrNull()?.let { read -> info = info + read.associateBy { it.id } }
+                engine.nodes(null).getOrNull()?.let { read -> info = read.associateBy { it.id } }
                 nodesState(catalog, info, places)
             },
         )
@@ -77,10 +79,11 @@ class NodesViewModel internal constructor(
 
     /**
      * Makes [nodeId] the main group's node: on both networks, or only on [network] where the caller's 套用到 row chose one.
-     * Does nothing before the catalog is read.
+     * Does nothing before the catalog is read, or when the catalog has no main group (the pages say so).
      */
     fun pick(nodeId: String, network: Network? = null) {
-        val main = engine.catalog.value?.mainGroupId ?: return
+        val catalog = engine.catalog.value ?: return
+        val main = catalog.mainGroupId.takeIf { id -> catalog.groups.any { it.id == id } } ?: return
         lastPick = nodeId to network
         viewModelScope.launch { engine.select(main, nodeId, network).report(NodesAction.Select) }
     }
