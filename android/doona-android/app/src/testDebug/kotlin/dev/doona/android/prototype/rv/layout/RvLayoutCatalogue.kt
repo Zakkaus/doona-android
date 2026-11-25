@@ -88,7 +88,8 @@ internal fun RvLayoutCatalogue(w: RvCatalogueWords) {
             RvSettingsRow(w.title, icon = R.drawable.rv_sym_rule, subtitle = w.sub, action = { RvSecondaryButton(w.button, {}) })
             RvSettingsRow(w.one, icon = R.drawable.rv_sym_rule, action = { RvSecondaryButton(w.button, {}) })
         }
-        RvFootnote(w.note)
+        // The catalogue's cards run edge to edge (no gutter), so the footnote's cards' edge is its parent's.
+        RvFootnote(w.note, inset = RvSpace.none)
         RvSectionTitle("N1 notice")
         RvBanner(RvNotice(RvNoticeKind.Warning, w.title, w.longSub, w.button, {}), Modifier.padding(horizontal = RvSpace.gutter))
         RvSectionTitle("M1 menu")

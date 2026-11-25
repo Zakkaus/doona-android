@@ -23,7 +23,8 @@ internal class RvFootnoteRead(val text: String, val start: Float, val end: Float
 internal fun rvFootnotes(nodes: List<RvNode>): List<RvFootnoteRead> {
     val root = nodes.first().box
     val cards = nodes.filter { it.tag == RvPart.CARD }
-    return nodes.filter { it.tag == RvPart.FOOTER }.map { f ->
+    // A footnote scrolled out of the window has no box to measure.
+    return nodes.filter { it.tag == RvPart.FOOTER && it.box.width > 0f && it.box.height > 0f }.map { f ->
         val card = cards.filter { it.box.bottom <= f.box.top + 1f && it.box.left < f.box.right && it.box.right > f.box.left }.maxByOrNull { it.box.bottom }
         val left = card?.box?.left ?: (root.left + RvSpace.gutter.value)
         val right = card?.box?.right ?: (root.right - RvSpace.gutter.value)
