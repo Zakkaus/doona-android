@@ -193,12 +193,36 @@ class PermissionAsksTest {
         runBlocking { asks.onStatus(true, racing) { records++ } }
         assertEquals("the VPN's explanation shows first", Permission.Vpn, asks.showing.value)
         assertEquals(PermissionStep.AskConsent, asks.confirm())
-        assertEquals("the notification's waits behind it", Permission.Notify, asks.showing.value)
-        assertEquals(Permission.Notify, afterProcessDeath().showing.value)
+        assertNull("not over the system's consent dialog", asks.showing.value)
+        assertNull("nor in a new process", afterProcessDeath().showing.value)
+        assertEquals(PermissionStep.Connect, asks.consentAnswered(given = true))
+        status(running = false)
+        assertNull("not before the connection is up", asks.showing.value)
+        status(running = true)
+        assertEquals("the notification's follows the connection", Permission.Notify, asks.showing.value)
         asks.dismiss()
         status(running = true)
         assertEquals(1, records)
         assertNull(asks.showing.value)
+    }
+
+    @Test
+    fun aConsentThatIsRefusedLeavesTheOnceEverNotificationAskUnspent() {
+        val racing = NotifyState {
+            asks.connect(consentNeeded = true)
+            true
+        }
+        runBlocking { asks.onStatus(true, racing) { records++ } }
+        asks.confirm()
+        assertEquals(PermissionStep.Wait, asks.consentAnswered(given = false))
+        assertNull("no notification explanation beside the refusal", asks.showing.value)
+        status(running = false)
+        assertNull(asks.showing.value)
+        assertEquals("nothing was asked, so nothing is stored", 0, records)
+        assertEquals(Permission.Vpn, asks.refused.value)
+        assertEquals(PermissionStep.Connect, asks.connect(consentNeeded = false))
+        status(running = true)
+        assertEquals("asked after the next connection that comes up", Permission.Notify, asks.showing.value)
     }
 
     @Test

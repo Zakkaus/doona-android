@@ -26,7 +26,8 @@ fun interface NotifyState {
  * stored it, so neither an activity that dies before the explanation shows nor one that dies before the store loses it.
  *
  * [showing] is the explanation on screen; one asked for while another shows waits behind it and shows when it closes,
- * so a 連線 from the tile does not take the notification's explanation away. [refused] is the last refusal, the
+ * so a 連線 from the tile does not take the notification's explanation away. A notification explanation that waits behind
+ * the VPN's stays queued until a connection is up. [refused] is the last refusal, the
  * explanation's 取消 or 暫時不要 or a no in the system's dialog, which 活動 tells (`RvActivityNotice.ConsentDenied`,
  * `NotifyDenied`) until the next connection starts or [clearRefusal]; back or a tap above the explanation ([close])
  * refuses nothing. A pending request ([connect] to the consent's answer) is joined by a repeated tap or a redelivered
@@ -118,12 +119,16 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     /**
      * Each status the activity sees while shown, and each new answer. An answer not yet stored is recorded as asked by
      * [record] first; if that throws, it stays [unrecorded] and the next call tries again. Once a connection is
-     * [running], the notification is explained if it [NotifyState.needsAsking] and is not already on its way.
+     * [running], the notification is explained if it [NotifyState.needsAsking] and is not already on its way; one that
+     * waited behind the VPN's explanation is asked again here, once its consent is answered, never before the connection.
      */
     suspend fun onStatus(running: Boolean, notify: NotifyState, record: suspend () -> Unit) {
         if (unrecorded.value) {
             record()
             saved[KEY_UNRECORDED] = false
+        }
+        if (running && !connecting && showing.value == null && saved.get<Permission>(KEY_QUEUED) == Permission.Notify) {
+            saved[KEY_QUEUED] = null
         }
         if (!running || !free() || !notify.needsAsking()) return
         // A 連線 may have landed while the flag was read (the tile, on the main thread); [show] queues behind its
@@ -139,10 +144,15 @@ class PermissionAsks(private val saved: SavedStateHandle) {
         if (showing.value == null) saved[KEY_SHOWING] = permission else saved[KEY_QUEUED] = permission
     }
 
-    /** The explanation on screen closes; the one waiting, if any, takes its place. */
+    /**
+     * The explanation on screen closes; a waiting VPN explanation takes its place. A waiting notification explanation
+     * does not: it is for [onStatus] to show once the connection is up, so it never meets the consent's dialog and a
+     * refused consent leaves the once-ever ask unspent.
+     */
     private fun next() {
-        saved[KEY_SHOWING] = saved.get<Permission>(KEY_QUEUED)
-        saved[KEY_QUEUED] = null
+        val queued = saved.get<Permission>(KEY_QUEUED)
+        saved[KEY_SHOWING] = queued.takeIf { it == Permission.Vpn }
+        if (queued == Permission.Vpn) saved[KEY_QUEUED] = null
     }
 
     fun clearRefusal() {
