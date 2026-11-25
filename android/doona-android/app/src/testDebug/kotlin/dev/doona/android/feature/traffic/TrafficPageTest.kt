@@ -3,6 +3,7 @@ package dev.doona.android.feature.traffic
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -48,6 +49,8 @@ class TrafficPageTest {
     private val session = RvTrafficSession(9_100_000.0, 870_000.0, 2_000.0, 200.0, 7_200_000, 720_000, 3_660)
     private val state = RvTrafficState(downRate = 4_000, upRate = 300, chart = chart, session = session)
 
+    private fun hears(spoken: String) = compose.onAllNodes(hasContentDescription(spoken), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+
     private fun shows(text: String) = compose.onAllNodesWithText(text, substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
     @Test
@@ -74,6 +77,16 @@ class TrafficPageTest {
         assertTrue("upload's peak", shows(format.rate(870_000.0).toString()))
         assertTrue("upload's average", shows(format.rate(200.0).toString()))
         assertTrue("upload's rate now", shows(format.rate(300.0).number))
+    }
+
+    @Test
+    fun aScreenReaderHearsEachFiguresDirection() {
+        compose.rvContent(dark = false) { RvTrafficScreen(state, onRange = {}, onBack = {}) }
+        val now = format.rate(4_000.0)
+        assertTrue("the hero", hears("下載 ${now.number} ${now.unit}"))
+        assertTrue("the peak", hears("下載 ${format.rate(9_100_000.0)}"))
+        compose.onNodeWithText(rvText(R.string.ui_upload)).performClick()
+        assertTrue("upload's average", hears("上傳 ${format.rate(200.0)}"))
     }
 
     @Test

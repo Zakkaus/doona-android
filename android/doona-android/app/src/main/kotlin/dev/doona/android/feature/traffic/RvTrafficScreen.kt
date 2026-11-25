@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
@@ -77,7 +79,7 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
                 val shown = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
                 // A scrubbed point shows its rate and when it ended; lifting the finger brings back the live rate.
                 val at = if (chart != null && shown != null) format.clock(chart.endEpochMs - (values.lastIndex - shown) * chart.stepMs) else null
-                Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), at)
+                Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), at, upload)
             }
             Spacer(Modifier.height(RvSpace.chartGap))
             RvDetailChart(
@@ -101,13 +103,16 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
 
 /**
  * The rate as a chart card's figure (Revolut's Analytics figure, measured §10.2), then when it was: now, or the scrubbed
- * point's time [at].
+ * point's time [at]. A screen reader hears which direction the rate is for (q-a11y-wording), as on 活動.
  */
 @Composable
-private fun Hero(rate: RvAmount, at: String?) {
+private fun Hero(rate: RvAmount, at: String?, upload: Boolean) {
     // Each second's live rate cross-fades in; a scrubbed second follows the finger at once.
     val fade = if (at == null) Rv.motion.tween<Float>(RvMotion.FADE_MS) else snap()
-    Crossfade(rate.number to rate.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvFigureText(RvFigure(number, unit), Rv.type.cardValue, Rv.type.cardUnit) }
+    Crossfade(rate.number to rate.unit, animationSpec = fade, label = "rate") { (number, unit) ->
+        val spoken = stringResource(direction(upload), "$number $unit")
+        RvFigureText(RvFigure(number, unit), Rv.type.cardValue, Rv.type.cardUnit, Modifier.semantics { contentDescription = spoken })
+    }
     Spacer(Modifier.height(RvSpace.subGap))
     RvText(at ?: stringResource(R.string.rv_now), Rv.type.sub, color = Rv.colors.textSecondary)
 }
@@ -125,14 +130,20 @@ private fun Ranges(selected: Int, onSelect: (Int) -> Unit) {
 @Composable
 private fun ConnectionCard(session: RvTrafficSession?, upload: Boolean, format: RvFormat) {
     RvCard {
-        RvStatRow(stringResource(R.string.rv_stat_peak), session?.let { format.rate(if (upload) it.peakUp else it.peakDown).toString() } ?: RV_NO_VALUE)
-        RvStatRow(stringResource(R.string.rv_stat_average), session?.let { format.rate(if (upload) it.averageUp else it.averageDown).toString() } ?: RV_NO_VALUE)
+        val peak = session?.let { format.rate(if (upload) it.peakUp else it.peakDown).toString() }
+        val average = session?.let { format.rate(if (upload) it.averageUp else it.averageDown).toString() }
+        // The shown direction is picked in the header; a screen reader hears it with each of its figures (q-a11y-wording).
+        RvStatRow(stringResource(R.string.rv_stat_peak), peak ?: RV_NO_VALUE, spokenValue = peak?.let { stringResource(direction(upload), it) })
+        RvStatRow(stringResource(R.string.rv_stat_average), average ?: RV_NO_VALUE, spokenValue = average?.let { stringResource(direction(upload), it) })
         RvStatRow(stringResource(R.string.rv_downloaded), session?.let { format.bytes(it.downTotal).toString() } ?: RV_NO_VALUE)
         RvStatRow(stringResource(R.string.rv_uploaded), session?.let { format.bytes(it.upTotal).toString() } ?: RV_NO_VALUE)
         val duration = session?.let { format.duration(it.seconds) }
         RvStatRow(stringResource(R.string.rv_connected_for), duration?.let { stringResource(R.string.rv_duration, it.hours, it.minutes) } ?: RV_NO_VALUE)
     }
 }
+
+/** How a screen reader names a figure's direction: 下載 512 KB/s or 上傳 512 KB/s. */
+private fun direction(upload: Boolean): Int = if (upload) R.string.rv_a11y_upload else R.string.rv_a11y_download
 
 /** The ranges under the chart, in the order of [RV_TRAFFIC_RANGE_SECONDS]. */
 private val RANGES: List<Int> = listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h)
