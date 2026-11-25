@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rv_name_apple">Apple</string>
-    <string name="rv_name_youtube">YouTube</string>
     <string name="rv_name_node_select">節點選擇</string>
 </resources>

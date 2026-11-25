@@ -17,7 +17,7 @@ internal sealed interface RvNameMark {
 internal data class RvShownName(val mark: RvNameMark?, val text: String)
 
 /**
- * The emoji of a node's or group's name that are ours (emoji1): flag emoji become [RvNameMark.Flag] and the few that
+ * The emoji of a node's or group's name that the library draws itself: flag emoji become [RvNameMark.Flag] and the few that
  * name a brand or a group become [RvNameMark.Icon]; recognised emoji leave the displayed name, an unrecognised one
  * stays in it. Only what is drawn changes: the raw name is what search, copying, the node's detail and the profile keep.
  */
