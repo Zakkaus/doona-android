@@ -1,8 +1,6 @@
 package dev.doona.android.prototype.rv.settings
 
 import android.content.res.Configuration
-import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,17 +25,8 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
-
-/** A level the core logs at (diagnostics `setLogLevel`): its name, and its glyph. */
-internal enum class RvLogLevel(@StringRes val label: Int, @DrawableRes val icon: Int) {
-    Error(R.string.rv_log_error, R.drawable.rv_sym_error),
-    Warn(R.string.rv_log_warn, R.drawable.rv_nodes_ic_warning),
-    Info(R.string.rv_log_info, R.drawable.rv_sym_info),
-    Debug(R.string.rv_log_debug, R.drawable.rv_settings_ic_description),
-}
-
-/** How long 除錯 stays before the core logs at 資訊 again; the owner sets the time (brief: say 1 hour). */
-internal const val RV_DEBUG_HOURS = 1
+import dev.doona.android.feature.settings.RV_DEBUG_HOURS
+import dev.doona.android.feature.settings.RvLogLevel
 
 /**
  * 日誌等級, a page of 設定, in DNS's language: the large title, then one card of the four levels as radio rows, 資訊

@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.settings.RV_DEBUG_HOURS
 import dev.doona.android.prototype.rv.REPORT
 import dev.doona.android.prototype.rv.RvMotionOptions
 import dev.doona.android.prototype.rv.RvPreviewApp

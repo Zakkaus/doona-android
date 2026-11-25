@@ -18,6 +18,7 @@ import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.report.RvRedaction
 import dev.doona.android.feature.report.RvReportBuild
+import dev.doona.android.feature.settings.RvLogLevel
 import dev.doona.android.prototype.rv.config.RvConfigHistoryData
 import dev.doona.android.prototype.rv.config.RvConfigImportPage
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
@@ -52,7 +53,6 @@ import dev.doona.android.prototype.rv.settings.RvDnsScreen
 import dev.doona.android.prototype.rv.settings.RvDnsUpstream
 import dev.doona.android.prototype.rv.settings.RvIntervalScreen
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
-import dev.doona.android.prototype.rv.settings.RvLogLevel
 import dev.doona.android.prototype.rv.settings.RvLogLevelScreen
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen

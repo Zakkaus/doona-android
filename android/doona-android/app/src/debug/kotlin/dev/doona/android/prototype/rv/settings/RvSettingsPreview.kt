@@ -10,6 +10,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.doona.android.feature.report.RvRedaction
 import dev.doona.android.feature.report.RvReportBuild
+import dev.doona.android.feature.settings.RV_DEBUG_HOURS
+import dev.doona.android.feature.settings.RvLogLevel
 import dev.doona.android.prototype.rv.LICENSES
 import dev.doona.android.prototype.rv.REPORT
 import dev.doona.android.prototype.rv.data.RvData
