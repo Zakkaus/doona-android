@@ -82,7 +82,7 @@ class ActivityModelTest {
 
     @Test
     fun `the main node comes from the main group, not the first one, through nested groups`() {
-        val mapped = activityCatalog(data())
+        val mapped = mapCatalog(data())
         assertEquals(RvMainNode("n-2", "Tokyo 02", 50, false), mapped.node)
         assertEquals("n-2", mapped.cards.mainNodeId)
         assertEquals(RvRouteMode.Rule, mapped.mode)
@@ -93,10 +93,10 @@ class ActivityModelTest {
         // A config the user wrote: no group called Proxy, the main group last, the groups in reverse.
         val renamed = main.copy(id = "g-Out", name = "Out")
         val reordered = Catalog(Mode.Rule, listOf(ai, streaming, auto, first, renamed).reversed(), listOf(sub), "g-Out", FakeRuleMode.SOURCE)
-        assertEquals("n-2", activityCatalog(data(reordered)).node?.id)
-        assertEquals("n-2", activityCatalog(data(reordered.copy(groups = reordered.groups.reversed()))).node?.id)
+        assertEquals("n-2", mapCatalog(data(reordered)).node?.id)
+        assertEquals("n-2", mapCatalog(data(reordered.copy(groups = reordered.groups.reversed()))).node?.id)
         // A main group id that names no group: no node is claimed (the page draws its no-node row), and the rest maps.
-        val missing = activityCatalog(data(reordered.copy(mainGroupId = "g-Gone")))
+        val missing = mapCatalog(data(reordered.copy(mainGroupId = "g-Gone")))
         assertNull(missing.node)
         assertEquals("", missing.cards.mainNodeId)
         assertEquals(listOf(null, "Streaming", "AI"), missing.rules.map { it.label })
@@ -104,7 +104,7 @@ class ActivityModelTest {
 
     @Test
     fun `direct uses no node, while the cards still know the main group's choice`() {
-        val mapped = activityCatalog(data(catalog(Mode.Direct)))
+        val mapped = mapCatalog(data(catalog(Mode.Direct)))
         assertNull(mapped.node)
         assertEquals(RvRouteMode.Direct, mapped.mode)
         assertEquals("n-2", mapped.cards.mainNodeId)
@@ -112,7 +112,7 @@ class ActivityModelTest {
 
     @Test
     fun `before the catalog is read the mode comes from the settings and nothing claims there is no subscription`() {
-        val mapped = activityCatalog(data(catalog = null))
+        val mapped = mapCatalog(data(catalog = null))
         assertEquals(RvRouteMode.Global, mapped.mode)
         assertNull(mapped.node)
         assertTrue(mapped.hasSubscriptions)
@@ -121,7 +121,7 @@ class ActivityModelTest {
 
     @Test
     fun `rule rows join today's bytes with the rule rows by target, the most first`() {
-        val rules = activityCatalog(data()).rules
+        val rules = mapCatalog(data()).rules
         assertEquals(
             listOf(
                 RvActivityRule(null, null, null, 100, null),
@@ -135,13 +135,13 @@ class ActivityModelTest {
     @Test
     fun `a group whose UDP ends on its TCP node names no second node`() {
         val same = streaming.withSharedSelection("n-1", true)
-        val rules = activityCatalog(data(catalog(groups = listOf(first, auto, main, same, ai)))).rules
+        val rules = mapCatalog(data(catalog(groups = listOf(first, auto, main, same, ai)))).rules
         assertNull(rules.first { it.groupId == "g-Stream" }.udpNodeId)
     }
 
     @Test
     fun `a rule row never repeats its title as its subtitle`() {
-        val direct = activityCatalog(data()).rules.single { it.label == null }
+        val direct = mapCatalog(data()).rules.single { it.label == null }
         // A rule that sends to 直連 ends on no node: its line would be 直連 again, so it has none.
         assertEquals(RuleRowText("直連", null), ruleRowText(direct.label, "直連", "直連"))
         assertEquals(RuleRowText("Streaming", "Taipei 01"), ruleRowText("Streaming", "Taipei 01", "直連"))
@@ -181,7 +181,7 @@ class ActivityModelTest {
 
     @Test
     fun `the cards read the day, the clock, the rule count and the groups' kinds`() {
-        val cards = activityCatalog(data()).cards
+        val cards = mapCatalog(data()).cards
         // 13.5 falls in hour 13: hours 0 to 13 are drawn, the 10 still to come are not.
         assertEquals(14, cards.today.down.size)
         assertEquals(14L * 3, cards.today.total)
@@ -205,7 +205,7 @@ class ActivityModelTest {
 
     @Test
     fun `nodes are every leaf member once, subscriptions keep only the link's host`() {
-        val mapped = activityCatalog(data())
+        val mapped = mapCatalog(data())
         assertEquals(listOf("n-1", "n-2", "n-3"), mapped.nodes.map { it.id })
         assertEquals("Harbor", mapped.nodes[1].subscription)
         assertEquals(listOf(null), mapped.nodes[2].history)
@@ -280,20 +280,20 @@ class ActivityModelTest {
     @Test
     fun `every node failed is the no-node notice`() {
         val failedOnly = Group("g-Main", "Main", GroupKind.Selector, listOf(n3), "n-3")
-        val mapped = activityCatalog(data(catalog(groups = listOf(failedOnly))))
+        val mapped = mapCatalog(data(catalog(groups = listOf(failedOnly))))
         assertTrue(mapped.allFailed)
         assertEquals(RvActivityNotice.NoNode, activityModel(mapped, Status.Stopped, Traffic(), false, true, null).notice)
-        assertFalse(activityCatalog(data()).allFailed)
+        assertFalse(mapCatalog(data()).allFailed)
     }
 
     @Test
     fun `the page model carries the live traffic and waits while loading`() {
         val traffic = Traffic(upRate = 3, downRate = 4, upHistory = listOf(1, 2), downHistory = listOf(5))
-        val ui = activityModel(activityCatalog(data()), Status.Running(0), traffic, crashOffered = false, ready = true, failure = null)
+        val ui = activityModel(mapCatalog(data()), Status.Running(0), traffic, crashOffered = false, ready = true, failure = null)
         assertEquals(4L, ui.state.downRate)
         assertEquals(listOf(1f, 2f), ui.state.upHistory)
         assertFalse(ui.loading)
-        val loading = activityModel(activityCatalog(data()), Status.Failed(FailureReason.CoreStopped), traffic, false, ready = false, failure = null)
+        val loading = activityModel(mapCatalog(data()), Status.Failed(FailureReason.CoreStopped), traffic, false, ready = false, failure = null)
         assertTrue(loading.loading)
         assertNull(loading.notice)
     }
@@ -312,3 +312,6 @@ class ActivityModelTest {
         assertEquals(13.5f, hourOf(13L * 3_600_000 + 1_800_000, java.time.ZoneOffset.UTC))
     }
 }
+
+/** [data] mapped over its catalog's nodes, before any node info is read. */
+private fun mapCatalog(data: ActivityData) = activityCatalog(data, activityNodes(data.catalog, emptyMap()))

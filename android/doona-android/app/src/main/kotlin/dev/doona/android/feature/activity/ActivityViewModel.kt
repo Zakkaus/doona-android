@@ -124,7 +124,7 @@ class ActivityViewModel internal constructor(
     private fun initial(crashOffered: Boolean): RvActivityUi {
         val now = clock()
         val data = ActivityData(null, engine.settings.value, null, emptyMap(), engine.today.value.yesterdayByNow ?: 0L, now, hourOf(now, zone()))
-        val empty = activityCatalog(data).let {
+        val empty = activityCatalog(data, activityNodes(null, emptyMap())).let {
             ActivityCatalog(it.mode, null, emptyList(), emptyList(), emptyList(), it.cards, allFailed = false, hasSubscriptions = true, mapped = false)
         }
         return activityModel(empty, engine.status.value, engine.traffic.value, crashOffered, engine.ready.value, null)

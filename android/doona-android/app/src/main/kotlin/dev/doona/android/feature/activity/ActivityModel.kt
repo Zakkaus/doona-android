@@ -81,7 +81,7 @@ internal fun activityNodes(catalog: Catalog?, nodeInfo: Map<String, NodeInfo>): 
  * Maps [data] to 活動's lists over [catalogNodes], the same catalog's nodes. The main node is what the main group's TCP
  * selection ends on (`catalog.mainGroupId`, not the first group), none in Direct.
  */
-internal fun activityCatalog(data: ActivityData, catalogNodes: ActivityNodes = activityNodes(data.catalog, emptyMap())): ActivityCatalog {
+internal fun activityCatalog(data: ActivityData, catalogNodes: ActivityNodes): ActivityCatalog {
     val catalog = data.catalog
     val mode = (catalog?.mode ?: data.settings.mode).routeMode()
     val groups = catalog?.groups.orEmpty().associateBy { it.id }
