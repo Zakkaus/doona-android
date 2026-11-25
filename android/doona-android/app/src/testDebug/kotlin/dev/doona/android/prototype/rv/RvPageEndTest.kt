@@ -23,7 +23,6 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
-import dev.doona.android.feature.perapp.RvPerAppActions
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
@@ -46,6 +45,7 @@ import dev.doona.android.prototype.rv.settings.RvReportBuild
 import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
+import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppLookSample
 import dev.doona.android.prototype.rv.settings.rvSampleReport
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -139,7 +139,7 @@ class RvPageEndTest {
             Page("節點詳情") { RvNodeDetail(RvData.nodes.first(), current = false, rvTestTimes(), onBack = {}, onUse = {}, onTest = {}) },
             Page("訂閱") { RvSubsPage(rvSubsStateSample(), RvSubsActions()) },
             Page("訂閱詳情") { RvSubDetailSample(RvData.subscriptions.first(), RvSubDetailState(), {}, onBack = {}, onUpdate = {}) },
-            Page("依 App") { RvPerAppScreen(rvPerAppLookSample(""), RvPerAppActions(), onBack = {}) },
+            Page("依 App") { RvPerAppScreen(rvPerAppLookSample(""), rvPerAppActions(), onBack = {}) },
             Page("回報問題") { RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), {}, onBack = {}) },
             Page("規則") { RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}) },
             Page("策略群組") { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) },

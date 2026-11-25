@@ -25,6 +25,7 @@ import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.prototype.rv.settings.RvPerAppData
+import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.testing.drawFully
 import kotlinx.coroutines.awaitCancellation
@@ -236,7 +237,7 @@ class PerAppAppEnShotTest {
     /** The sample page in English, as the panels' approved column: the page code is the approved code, moved. */
     private fun sample(state: String, name: String = "perapp-$state") {
         rvAnimatorScale(if (state in BUSY) 0f else 1f)
-        compose.rvContent(dark = false) { RvPerAppScreen(rvPerAppSample(state), RvPerAppActions(), onBack = {}) }
+        compose.rvContent(dark = false) { RvPerAppScreen(rvPerAppSample(state), rvPerAppActions(), onBack = {}) }
         compose.drawFully()
         compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("build/panels/proto-rv-$name-en.png")
     }

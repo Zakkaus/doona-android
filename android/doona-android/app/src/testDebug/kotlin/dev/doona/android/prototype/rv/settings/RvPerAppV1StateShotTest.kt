@@ -1,9 +1,6 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import dev.doona.android.feature.perapp.RvPerAppActions
-import dev.doona.android.feature.perapp.RvPerAppLook
-import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvShot
 import org.junit.After
@@ -57,6 +54,6 @@ class RvPerAppV1StateShotTest {
 
     private fun shot(state: String, dark: Boolean) {
         if (state == "loading") rvAnimatorScale(0f)
-        compose.rvShot("perapp-v1-$state", dark) { RvPerAppScreen(rvPerAppLookSample(state), RvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks) }
+        compose.rvShot("perapp-v1-$state", dark) { RvPerAppLookScreen(rvPerAppLookSample(state), rvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks) }
     }
 }

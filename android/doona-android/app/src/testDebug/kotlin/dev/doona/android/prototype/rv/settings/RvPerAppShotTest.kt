@@ -18,7 +18,6 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
-import dev.doona.android.feature.perapp.RvPerAppActions
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.perapp.RvSave
 import dev.doona.android.prototype.rv.RV_FS115
@@ -166,7 +165,7 @@ class RvPerAppShotTest {
     @Test
     fun aPolicyRowPicksThePolicy() {
         var picked: RvAppPolicy? = null
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample(""), RvPerAppActions(policy = { picked = it }), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample(""), rvPerAppActions(policy = { picked = it }), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.perapp_policy_except)).performClick()
         assertEquals(RvAppPolicy.Except, picked)
     }
@@ -174,7 +173,7 @@ class RvPerAppShotTest {
     @Test
     fun anAppRowTogglesItsApp() {
         var toggled: Pair<String, Boolean>? = null
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample(""), RvPerAppActions(toggle = { pkg, on -> toggled = pkg to on }), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample(""), rvPerAppActions(toggle = { pkg, on -> toggled = pkg to on }), onBack = {}) } }
         // Chat is checked in 設定's sample, so a tap unchecks it.
         compose.onNodeWithText("Chat").performClick()
         assertEquals("com.example.chat" to false, toggled)
@@ -187,27 +186,27 @@ class RvPerAppShotTest {
             val state = rvPerAppSample(name)
             assertEquals("$name can be saved", enabled, state.canSave)
         }
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("except"), RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("except"), rvPerAppActions(), onBack = {}) } }
         compose.onNodeWithText(save).assertIsEnabled()
     }
 
     @Test
     fun nothingCheckedUnderOnlyCannotBeSaved() {
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("none-selected"), RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("none-selected"), rvPerAppActions(), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_perapp_needs_app)).assertExists()
         compose.onNodeWithText(rvText(R.string.perapp_save)).assertIsNotEnabled()
     }
 
     @Test
     fun theListAndItsSearchShowOnlyUnderAListPolicy() {
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("all"), RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("all"), rvPerAppActions(), onBack = {}) } }
         compose.onAllNodes(hasContentDescription(rvText(R.string.perapp_search))).assertCountEquals(0)
         compose.onAllNodesWithText("Browser").assertCountEquals(0)
     }
 
     @Test
     fun theSearchStandsOnThePageBetweenThePoliciesAndTheApps() {
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("only"), RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("only"), rvPerAppActions(), onBack = {}) } }
         val search = compose.onNode(hasContentDescription(rvText(R.string.perapp_search))).getUnclippedBoundsInRoot()
         val policies = compose.onNodeWithText(rvText(R.string.perapp_policy_except)).getUnclippedBoundsInRoot()
         val apps = compose.onNodeWithText("Browser").getUnclippedBoundsInRoot()
@@ -219,7 +218,7 @@ class RvPerAppShotTest {
     fun theSearchKeepsTheAppsItMatches() {
         val state = rvPerAppSample("search")
         assertEquals(listOf("Mail", "Maps"), state.shown.map { it.label })
-        compose.setContent { Themed { RvPerAppScreen(state, RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(state, rvPerAppActions(), onBack = {}) } }
         compose.onAllNodes(hasContentDescription(rvText(R.string.perapp_search))).assertCountEquals(1)
         compose.onAllNodes(hasText("Browser")).assertCountEquals(0)
     }
@@ -238,7 +237,7 @@ class RvPerAppShotTest {
     fun theNoticesRetry() {
         var saves = 0
         var reconnects = 0
-        val actions = RvPerAppActions(save = { saves++ }, reconnect = { reconnects++ })
+        val actions = rvPerAppActions(save = { saves++ }, reconnect = { reconnects++ })
         compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("save-failed"), actions, onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_perapp_save_failed)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
@@ -249,7 +248,7 @@ class RvPerAppShotTest {
     @Test
     fun aRebuildFailureReconnects() {
         var reconnects = 0
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("rebuild-failed"), RvPerAppActions(reconnect = { reconnects++ }), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("rebuild-failed"), rvPerAppActions(reconnect = { reconnects++ }), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
         assertEquals(1, reconnects)
     }
@@ -257,7 +256,7 @@ class RvPerAppShotTest {
     @Test
     fun onlyCheckedWithNothingCheckedAsksForAnAppOnlyWhenThePhoneListsSome() {
         var state by mutableStateOf(rvPerAppSample("none-selected"))
-        compose.setContent { Themed { RvPerAppScreen(state, RvPerAppActions(), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(state, rvPerAppActions(), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_perapp_needs_app)).assertExists()
 
         state = rvPerAppSample("no-apps")
@@ -271,7 +270,7 @@ class RvPerAppShotTest {
     fun aRebuildThatFoundNoListedAppAsksForTheListNotARetry() {
         var reconnects = 0
         var edits = 0
-        val actions = RvPerAppActions(reconnect = { reconnects++ }, editList = { edits++ })
+        val actions = rvPerAppActions(reconnect = { reconnects++ }, editList = { edits++ })
         compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("rebuild-no-apps"), actions, onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.vpn_failure_no_allowed_apps)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
@@ -292,7 +291,7 @@ class RvPerAppShotTest {
     /** The rebuild notice for [fix]: [reason] over [fix]'s action, no 重試, and its action runs alone. */
     private fun rebuildFix(fix: FailureFix, reason: Int) {
         val ran = mutableListOf<String>()
-        val actions = RvPerAppActions(
+        val actions = rvPerAppActions(
             reconnect = { ran += "reconnect" },
             addSubscription = { ran += "addSubscription" },
             editList = { ran += "editList" },
@@ -310,7 +309,7 @@ class RvPerAppShotTest {
     @Test
     fun appsThePhoneWouldNotListAreReadAgainAndNotCalledNone() {
         var reloads = 0
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("read-failed"), RvPerAppActions(reload = { reloads++ }), onBack = {}) } }
+        compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("read-failed"), rvPerAppActions(reload = { reloads++ }), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.perapp_no_apps)).assertDoesNotExist()
         compose.onNodeWithText(rvText(R.string.perapp_read_failed)).assertExists()
         compose.onAllNodes(hasContentDescription(rvText(R.string.perapp_search))).assertCountEquals(0)
@@ -320,7 +319,7 @@ class RvPerAppShotTest {
 
     private fun shot(state: String, name: String = "perapp-$state", dark: Boolean = false, fontScale: Float = 1f) {
         if (state == "saving" || state == "loading") rvAnimatorScale(0f)
-        compose.rvShot(name, dark, fontScale = fontScale) { RvPerAppScreen(rvPerAppSample(state), RvPerAppActions(), onBack = {}) }
+        compose.rvShot(name, dark, fontScale = fontScale) { RvPerAppScreen(rvPerAppSample(state), rvPerAppActions(), onBack = {}) }
     }
 
     @Composable

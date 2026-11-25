@@ -47,7 +47,6 @@ import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
-import dev.doona.android.feature.perapp.RvPerAppActions
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.perapp.RvSave
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
@@ -77,6 +76,7 @@ import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.previewDark
 import dev.doona.android.prototype.rv.settings.rvLicenseEntries
+import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -316,7 +316,7 @@ private fun PerAppPage(route: String, settings: RvSettingsState, onSettings: (Rv
         onSettings(settings.copy(perApp = state.edited))
         state = state.copy(saved = state.edited, draft = null, save = RvSave.Idle)
     }
-    val actions = RvPerAppActions(
+    val actions = rvPerAppActions(
         policy = { state = state.withPolicy(it) },
         toggle = { pkg, on -> state = state.withApp(pkg, on) },
         query = { state = state.copy(query = it) },

@@ -17,7 +17,6 @@ import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
-import dev.doona.android.feature.perapp.RvPerAppActions
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.prototype.rv.config.RvConfigHistoryData
 import dev.doona.android.prototype.rv.config.RvConfigImportPage
@@ -61,6 +60,7 @@ import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.RvUpdate
+import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvSampleAppearance
 import dev.doona.android.prototype.rv.settings.rvSampleReport
@@ -197,13 +197,13 @@ class RvLayoutTest {
     fun connection() = measure("connection", Top.Header) { RvConnectionDetail(RvPolicyData.connections[YOUTUBE], onBack = {}, onClose = {}, onNewRule = {}) }
 
     @Test
-    fun perApp() = measure("perapp-only", Top.Title) { RvPerAppScreen(rvPerAppSample(""), RvPerAppActions(), onBack = {}) }
+    fun perApp() = measure("perapp-only", Top.Title) { RvPerAppScreen(rvPerAppSample(""), rvPerAppActions(), onBack = {}) }
 
     @Test
-    fun perAppNoneSelected() = measure("perapp-none-selected", Top.Title) { RvPerAppScreen(rvPerAppSample("none-selected"), RvPerAppActions(), onBack = {}) }
+    fun perAppNoneSelected() = measure("perapp-none-selected", Top.Title) { RvPerAppScreen(rvPerAppSample("none-selected"), rvPerAppActions(), onBack = {}) }
 
     @Test
-    fun perAppSaveFailed() = measure("perapp-save-failed", Top.Title) { RvPerAppScreen(rvPerAppSample("save-failed"), RvPerAppActions(), onBack = {}) }
+    fun perAppSaveFailed() = measure("perapp-save-failed", Top.Title) { RvPerAppScreen(rvPerAppSample("save-failed"), rvPerAppActions(), onBack = {}) }
 
     @Test
     fun licenses() = measure("licenses", Top.Title) { RvLicensesScreen(onOpen = {}, onBack = {}) }

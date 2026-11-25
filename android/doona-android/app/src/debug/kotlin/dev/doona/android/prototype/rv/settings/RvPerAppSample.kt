@@ -15,7 +15,6 @@ import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvPerApp
 import dev.doona.android.feature.perapp.RvApp
-import dev.doona.android.feature.perapp.RvPerAppActions
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.perapp.RvPerAppState
 import dev.doona.android.feature.perapp.RvSave
@@ -112,6 +111,6 @@ internal fun rvPerAppStateSample(
 private fun RvPerAppScreenPreview() {
     val dark = isSystemInDarkTheme()
     var state by remember { mutableStateOf(rvPerAppSample("")) }
-    val actions = RvPerAppActions(policy = { state = state.withPolicy(it) }, toggle = { pkg, on -> state = state.withApp(pkg, on) }, query = { state = state.copy(query = it) })
+    val actions = rvPerAppActions(policy = { state = state.withPolicy(it) }, toggle = { pkg, on -> state = state.withApp(pkg, on) }, query = { state = state.copy(query = it) })
     RvTheme(rvSystemScheme(dark), dark) { RvPerAppScreen(state, actions, onBack = {}) }
 }

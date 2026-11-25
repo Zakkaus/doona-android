@@ -12,9 +12,6 @@ import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvAppPolicy
-import dev.doona.android.feature.perapp.RvPerAppActions
-import dev.doona.android.feature.perapp.RvPerAppLook
-import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.assertWhole
@@ -69,8 +66,8 @@ class RvPerAppLookShotTest {
     @Test
     fun aSegmentPicksItsPolicy() {
         var picked: RvAppPolicy? = null
-        val actions = RvPerAppActions(policy = { picked = it })
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppLookSample(""), actions, onBack = {}, look = RvPerAppLook.Segmented) } }
+        val actions = rvPerAppActions(policy = { picked = it })
+        compose.setContent { Themed { RvPerAppLookScreen(rvPerAppLookSample(""), actions, onBack = {}, look = RvPerAppLook.Segmented) } }
         compose.onNodeWithText(rvText(R.string.perapp_policy_except)).performClick()
         assertEquals(RvAppPolicy.Except, picked)
     }
@@ -78,8 +75,8 @@ class RvPerAppLookShotTest {
     @Test
     fun anAppRowIsACheckboxThatTogglesItsApp() {
         var toggled: Pair<String, Boolean>? = null
-        val actions = RvPerAppActions(toggle = { pkg, on -> toggled = pkg to on })
-        compose.setContent { Themed { RvPerAppScreen(rvPerAppLookSample(""), actions, onBack = {}, look = RvPerAppLook.Checks) } }
+        val actions = rvPerAppActions(toggle = { pkg, on -> toggled = pkg to on })
+        compose.setContent { Themed { RvPerAppLookScreen(rvPerAppLookSample(""), actions, onBack = {}, look = RvPerAppLook.Checks) } }
         val checkbox = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox)
         compose.onNode(hasText("Chat") and checkbox and SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.On)).assertExists()
         compose.onNode(hasText("Calendar") and checkbox and SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off)).assertExists()
@@ -90,7 +87,7 @@ class RvPerAppLookShotTest {
 
     private fun shot(look: RvPerAppLook, name: String, dark: Boolean = false, fontScale: Float = 1f) {
         compose.rvShot("perapp-$name", dark, before = { assertWhole() }, fontScale = fontScale) {
-            RvPerAppScreen(rvPerAppLookSample(""), RvPerAppActions(), onBack = {}, look = look)
+            RvPerAppLookScreen(rvPerAppLookSample(""), rvPerAppActions(), onBack = {}, look = look)
         }
     }
 

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -52,31 +51,17 @@ import dev.doona.android.feature.model.RvAppPolicy
  * open the VPN settings.
  */
 internal class RvPerAppActions(
-    val policy: (RvAppPolicy) -> Unit = {},
-    val toggle: (String, Boolean) -> Unit = { _, _ -> },
-    val query: (String) -> Unit = {},
-    val save: () -> Unit = {},
-    val reconnect: () -> Unit = {},
-    val addSubscription: () -> Unit = {},
-    val editList: () -> Unit = {},
-    val reload: () -> Unit = {},
-    val checkUpdate: () -> Unit = {},
-    val vpnSettings: () -> Unit = {},
+    val policy: (RvAppPolicy) -> Unit,
+    val toggle: (String, Boolean) -> Unit,
+    val query: (String) -> Unit,
+    val save: () -> Unit,
+    val reconnect: () -> Unit,
+    val addSubscription: () -> Unit,
+    val editList: () -> Unit,
+    val reload: () -> Unit,
+    val checkUpdate: () -> Unit,
+    val vpnSettings: () -> Unit,
 )
-
-/**
- * How the page draws its [policies] and each [app] (checked or not, and what toggles it). The app ships [Today], PV-a's:
- * the policies' card and a switch per app. The samples' other looks are in debug.
- */
-@Immutable
-internal class RvPerAppLook(
-    val policies: @Composable (RvPerAppState, RvPerAppActions) -> Unit,
-    val app: @Composable (RvApp, Boolean, (Boolean) -> Unit) -> Unit,
-) {
-    companion object {
-        val Today = RvPerAppLook({ state, actions -> RvPerAppPolicyCard(state, actions) }, { app, checked, onToggle -> SwitchRow(app, checked, onToggle) })
-    }
-}
 
 /**
  * 依 App, a page of 設定, in DNS's language: the large title under the back bar, then one card of the three policies as
@@ -89,7 +74,21 @@ internal class RvPerAppLook(
  * apps fade in over it in place. Apps the phone would not list leave the search and the list out: the notice says so.
  */
 @Composable
-internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBack: () -> Unit, look: RvPerAppLook = RvPerAppLook.Today) {
+internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBack: () -> Unit) =
+    RvPerAppScreen(state, actions, onBack, { s, a -> RvPerAppPolicyCard(s, a) }, { app, checked, onToggle -> SwitchRow(app, checked, onToggle) })
+
+/**
+ * The page with its [policies] and each [app] row (checked or not, and what toggles it) drawn by the caller: the app
+ * passes the policies' card and a switch per app; the samples the owner did not pick draw others (debug).
+ */
+@Composable
+internal fun RvPerAppScreen(
+    state: RvPerAppState,
+    actions: RvPerAppActions,
+    onBack: () -> Unit,
+    policies: @Composable (RvPerAppState, RvPerAppActions) -> Unit,
+    app: @Composable (RvApp, Boolean, (Boolean) -> Unit) -> Unit,
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_per_app)
     val listed = state.edited.policy != RvAppPolicy.All
@@ -109,12 +108,12 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
             }
             // The policies and the error under them are one block of the column, as a field and its message are.
             Column(Modifier.testTag(RvPart.BLOCK)) {
-                look.policies(state, actions)
+                policies(state, actions)
                 if (state.asksForApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
             }
             if (listed && !state.unread) {
                 RvSearchSlot { RvSearchField(null, state.query, actions.query, it, hint = hint) }
-                Apps(state, actions, look)
+                Apps(state, actions, app)
             }
         }
     }
@@ -164,7 +163,7 @@ private fun RvPerAppActions.fix(fix: FailureFix): () -> Unit = when (fix) {
  * ([LocalRvContentFloor]).
  */
 @Composable
-private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppLook) {
+private fun Apps(state: RvPerAppState, actions: RvPerAppActions, app: @Composable (RvApp, Boolean, (Boolean) -> Unit) -> Unit) {
     val loading = stringResource(R.string.rv_perapp_loading)
     val rows = rvSkeletonRowsToFill()
     RvSkeletonFade(state.installed == null, { RvSkeletonCard(description = loading) { repeat(rows) { RvSkeletonRow(it) } } }) {
@@ -172,7 +171,7 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppL
         when {
             state.installed.isNullOrEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_apps), stringResource(R.string.perapp_no_apps_line))
             shown.isEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
-            else -> RvCard { shown.forEach { key(it.packageName) { look.app(it, it.packageName in state.edited.packages) { on -> actions.toggle(it.packageName, on) } } } }
+            else -> RvCard { shown.forEach { key(it.packageName) { app(it, it.packageName in state.edited.packages) { on -> actions.toggle(it.packageName, on) } } } }
         }
     }
 }
