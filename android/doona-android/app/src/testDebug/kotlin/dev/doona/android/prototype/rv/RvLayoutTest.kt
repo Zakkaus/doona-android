@@ -13,6 +13,7 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
@@ -50,7 +51,6 @@ import dev.doona.android.prototype.rv.policy.RvTemplatePage
 import dev.doona.android.prototype.rv.policy.RvTemplatePageSample
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
-import dev.doona.android.prototype.rv.settings.RvDnsUpstream
 import dev.doona.android.prototype.rv.settings.RvIntervalScreen
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvLogLevelScreen
