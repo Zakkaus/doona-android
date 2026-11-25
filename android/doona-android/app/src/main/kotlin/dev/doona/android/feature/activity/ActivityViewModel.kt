@@ -8,7 +8,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Usage
@@ -23,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -37,7 +37,7 @@ import java.time.ZoneId
  * [work]; the second's traffic over them. `usage()` is read every [USAGE_MS] while someone collects [ui], and not
  * otherwise. It disconnects, switches the mode and tests latency; it never connects: that needs the activity for the VPN
  * consent, so the page's connect goes to the route. A failed mode switch or test stays as [RvActivityUi.failure] until
- * it is retried, dismissed or the next attempt succeeds.
+ * it is retried or the next attempt succeeds.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActivityViewModel internal constructor(
@@ -60,23 +60,33 @@ class ActivityViewModel internal constructor(
         }
     }
 
-    /** Every leaf node's endpoint and tests, read again on each catalog. */
-    private val nodeInfo: Flow<Map<String, NodeInfo>> = engine.catalog.mapLatest { catalog ->
-        val ids = catalog?.let(::leafIds).orEmpty()
-        if (ids.isEmpty()) emptyMap() else engine.nodes(ids).getOrNull().orEmpty().associateBy { it.id }
+    /**
+     * Each catalog with its nodes, mapped once per catalog revision (plan 2.2), not on each usage read: every leaf node's
+     * endpoint and tests are read first; when that read fails the nodes keep the last ones read, by id.
+     */
+    private val catalogNodes: Flow<CatalogNodes> = flow {
+        var info = emptyMap<String, NodeInfo>()
+        emitAll(
+            engine.catalog.mapLatest { catalog ->
+                val ids = catalog?.let(::leafIds).orEmpty()
+                if (ids.isNotEmpty()) engine.nodes(ids).getOrNull()?.let { read -> info = read.associateBy { it.id } }
+                CatalogNodes(catalog, activityNodes(catalog, info, placeOf))
+            },
+        )
     }
 
     private val rules = ActivityRuleReader(engine)
 
     private val lists: Flow<ActivityCatalog> =
         // Only yesterday's bytes by now: today's totals move with every second's traffic, and would map 活動 again each time.
-        combine(engine.catalog, engine.settings, engine.today.map { it.yesterdayByNow }.distinctUntilChanged(), usage, nodeInfo) { catalog, settings, yesterday, usage, info ->
-            ActivityInputs(catalog, settings, yesterday, usage, info)
+        combine(catalogNodes, engine.settings, engine.today.map { it.yesterdayByNow }.distinctUntilChanged(), usage) { mapped, settings, yesterday, usage ->
+            ActivityInputs(mapped, settings, yesterday, usage)
         }.mapLatest { inputs ->
+            val catalog = inputs.mapped.catalog
             // Without a catalog no rule row is shown, so none is read, and the rows already read stay for the next one.
-            val resolved = inputs.catalog?.let { rules.resolve(it.ruleSource?.rulesRevision, ruleIds(inputs.usage)) }.orEmpty()
+            val resolved = catalog?.let { rules.resolve(it.ruleSource?.rulesRevision, ruleIds(inputs.usage)) }.orEmpty()
             val now = clock()
-            activityCatalog(ActivityData(inputs.catalog, inputs.settings, inputs.usage, resolved, inputs.info, inputs.yesterdayByNow ?: 0L, now, hourOf(now, zone())), placeOf)
+            activityCatalog(ActivityData(catalog, inputs.settings, inputs.usage, resolved, inputs.yesterdayByNow ?: 0L, now, hourOf(now, zone())), inputs.mapped.nodes)
         }.flowOn(work)
 
     private val flags = combine(engine.ready, crashOffered, failure) { ready, crash, failed -> Flags(ready, crash, failed) }
@@ -92,11 +102,10 @@ class ActivityViewModel internal constructor(
             is ActivityAction.SetMode -> attempt(RvActivityAttempt.SwitchMode, action) { engine.setMode(action.mode) }
             ActivityAction.TestLatency -> attempt(RvActivityAttempt.TestLatency, action) { engine.testLatency(null) }
             ActivityAction.Retry -> failure.value?.let { onAction(it.retry) }
-            ActivityAction.DismissError -> failure.value = null
         }
     }
 
-    /** Runs [call]; its failure is shown until the next attempt or a dismissal, its success clears what was shown. */
+    /** Runs [call]; its failure is shown until the next attempt, its success clears what was shown. */
     private fun attempt(kind: RvActivityAttempt, action: ActivityAction, call: suspend () -> Result<Unit>) {
         viewModelScope.launch {
             val code = call().exceptionOrNull()?.errorCode()
@@ -107,14 +116,16 @@ class ActivityViewModel internal constructor(
     /** Before the first mapping: the live status and mode over empty lists, shown as loading. */
     private fun initial(crashOffered: Boolean): RvActivityUi {
         val now = clock()
-        val data = ActivityData(null, engine.settings.value, null, emptyMap(), emptyMap(), engine.today.value.yesterdayByNow ?: 0L, now, hourOf(now, zone()))
-        val empty = activityCatalog(data, placeOf).let {
+        val data = ActivityData(null, engine.settings.value, null, emptyMap(), engine.today.value.yesterdayByNow ?: 0L, now, hourOf(now, zone()))
+        val empty = activityCatalog(data).let {
             ActivityCatalog(it.mode, null, emptyList(), emptyList(), emptyList(), it.cards, allFailed = false, hasSubscriptions = true, mapped = false)
         }
         return activityModel(empty, engine.status.value, engine.traffic.value, crashOffered, engine.ready.value, null)
     }
 
-    private class ActivityInputs(val catalog: Catalog?, val settings: Settings, val yesterdayByNow: Long?, val usage: Usage?, val info: Map<String, NodeInfo>)
+    private class CatalogNodes(val catalog: Catalog?, val nodes: ActivityNodes)
+
+    private class ActivityInputs(val mapped: CatalogNodes, val settings: Settings, val yesterdayByNow: Long?, val usage: Usage?)
 
     private class Flags(val ready: Boolean, val crash: Boolean, val failure: RvActivityFailure?)
 

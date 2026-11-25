@@ -30,14 +30,13 @@ import java.net.URI
 /**
  * What 活動's lists are mapped from, read far less often than the second's traffic: the core's [catalog] (null until
  * read; [settings] stand in for its mode until then), today's [usage] (null until the first read), the rule rows its
- * `byRule` ids resolve to ([rules], by id), each node's endpoint and tests ([nodeInfo], by id), yesterday's bytes by now, and now.
+ * `byRule` ids resolve to ([rules], by id), yesterday's bytes by now, and now.
  */
 internal class ActivityData(
     val catalog: Catalog?,
     val settings: Settings,
     val usage: Usage?,
     val rules: Map<String, RuleRow>,
-    val nodeInfo: Map<String, NodeInfo>,
     val yesterdayByNow: Long,
     val nowEpochMs: Long,
     val nowHour: Float,
@@ -61,20 +60,34 @@ internal class ActivityCatalog(
 )
 
 /**
- * Maps [data] to 活動's lists. The main node is what the main group's TCP selection ends on (`catalog.mainGroupId`,
- * not the first group), none in Direct. Each node is a leaf member of any group, once, with its tests from
- * [ActivityData.nodeInfo] or, before they are read, its member's last result; [placeOf] gives a node's place by its name.
+ * One catalog's nodes, mapped once per catalog revision and node read rather than on each usage read: every leaf
+ * member of any group, once ([nodes], and [byId]), and whether each failed its test ([allFailed]).
  */
-internal fun activityCatalog(data: ActivityData, placeOf: (String) -> RvPlace = { RvPlace.Other }): ActivityCatalog {
+internal class ActivityNodes(val nodes: List<RvNode>, val allFailed: Boolean) {
+    val byId: Map<String, RvNode> = nodes.associateBy { it.id }
+}
+
+/**
+ * [catalog]'s nodes, each with its endpoint and tests from [nodeInfo] or, before they are read, its member's last
+ * result; [placeOf] gives a node's place by its name.
+ */
+internal fun activityNodes(catalog: Catalog?, nodeInfo: Map<String, NodeInfo>, placeOf: (String) -> RvPlace = { RvPlace.Other }): ActivityNodes {
+    val subscriptionNames = catalog?.subscriptions.orEmpty().associate { it.id to it.name }
+    val members = catalog?.groups.orEmpty().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }
+    return ActivityNodes(members.map { rvNode(it, nodeInfo[it.id], subscriptionNames, placeOf) }, allFailed = members.isNotEmpty() && members.all { it.failed })
+}
+
+/**
+ * Maps [data] to 活動's lists over [catalogNodes], the same catalog's nodes. The main node is what the main group's TCP
+ * selection ends on (`catalog.mainGroupId`, not the first group), none in Direct.
+ */
+internal fun activityCatalog(data: ActivityData, catalogNodes: ActivityNodes = activityNodes(data.catalog, emptyMap())): ActivityCatalog {
     val catalog = data.catalog
     val mode = (catalog?.mode ?: data.settings.mode).routeMode()
     val groups = catalog?.groups.orEmpty().associateBy { it.id }
     val main = catalog?.let { groups[it.mainGroupId] }
     val mainLeaf = main?.let { selectedLeaf(it, it.tcp.selectedId, groups) }
-    val subscriptionNames = catalog?.subscriptions.orEmpty().associate { it.id to it.name }
-    val members = catalog?.groups.orEmpty().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }
-    val nodes = members.map { rvNode(it, data.nodeInfo[it.id], subscriptionNames, placeOf) }
-    val byId = nodes.associateBy { it.id }
+    val byId = catalogNodes.byId
     val cards = RvActivityCards(
         today = rvDay(data.usage, data.nowHour),
         nowHour = data.nowHour,
@@ -88,11 +101,11 @@ internal fun activityCatalog(data: ActivityData, placeOf: (String) -> RvPlace = 
     return ActivityCatalog(
         mode = mode,
         node = mainLeaf?.takeIf { mode != RvRouteMode.Direct }?.let { RvMainNode(it.id, it.name, it.latencyMs, it.failed) },
-        nodes = nodes,
+        nodes = catalogNodes.nodes,
         subscriptions = catalog?.subscriptions.orEmpty().map(::rvSubscription),
         rules = catalog?.let { ruleRows(it, data.usage?.today?.byRule.orEmpty(), data.rules, groups) }.orEmpty(),
         cards = cards,
-        allFailed = members.isNotEmpty() && members.all { it.failed },
+        allFailed = catalogNodes.allFailed,
         // Until the catalog is read nothing says there is none: the page waits rather than showing the empty state.
         hasSubscriptions = catalog?.subscriptions?.isNotEmpty() ?: true,
     )

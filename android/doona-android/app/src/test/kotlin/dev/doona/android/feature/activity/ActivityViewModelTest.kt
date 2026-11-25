@@ -71,15 +71,17 @@ class ActivityViewModelTest {
     }
 
     @Test
-    fun `a failed mode switch shows its failure until dismissed`() = runTest {
+    fun `a failed mode switch shows its failure until the next attempt succeeds`() = runTest {
+        var fail = true
         val engine = object : Engine by FakeEngine() {
-            override suspend fun setMode(mode: Mode): Result<Unit> = Result.failure(EngineException(ErrorCode.Busy))
+            override suspend fun setMode(mode: Mode): Result<Unit> = if (fail) Result.failure(EngineException(ErrorCode.Busy)) else Result.success(Unit)
         }
         val vm = collected(engine)
         vm.onAction(ActivityAction.SetMode(Mode.Direct))
         assertEquals(ErrorCode.Busy, vm.ui.value.failure?.code)
         assertEquals(RvRouteMode.Global, vm.ui.value.state.mode)
-        vm.onAction(ActivityAction.DismissError)
+        fail = false
+        vm.onAction(ActivityAction.SetMode(Mode.Direct))
         assertNull(vm.ui.value.failure)
     }
 

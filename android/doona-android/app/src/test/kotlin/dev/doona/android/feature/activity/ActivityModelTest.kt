@@ -77,7 +77,7 @@ class ActivityModelTest {
     )
 
     private fun data(catalog: Catalog? = catalog(), usage: Usage? = this.usage) =
-        ActivityData(catalog, Settings(mode = Mode.Global), usage, rows, emptyMap(), yesterdayByNow = 42, nowEpochMs = 1_000, nowHour = 13.5f)
+        ActivityData(catalog, Settings(mode = Mode.Global), usage, rows, yesterdayByNow = 42, nowEpochMs = 1_000, nowHour = 13.5f)
 
     @Test
     fun `the main node comes from the main group, not the first one, through nested groups`() {
@@ -196,6 +196,9 @@ class ActivityModelTest {
         assertEquals(RvActivityNotice.Crash, activityNotice(true, Status.Stopped, crashOffered = true, allFailed = true))
         assertEquals(RvActivityNotice.NoNode, activityNotice(true, Status.Stopped, crashOffered = false, allFailed = true))
         assertNull(activityNotice(true, Status.Stopped, crashOffered = false, allFailed = false))
+        listOf(Status.Running(0), Status.Starting, Status.Stopping).forEach { status ->
+            assertNull(status.toString(), activityNotice(true, status, crashOffered = false, allFailed = false))
+        }
     }
 
     @Test

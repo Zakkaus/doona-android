@@ -108,7 +108,7 @@ class ActivityRvViewModelTest {
         val engine = Recording(FakeEngine())
         val vm = model(engine)
         collected(vm)
-        listOf(ActivityAction.SetMode(Mode.Direct), ActivityAction.TestLatency, ActivityAction.Retry, ActivityAction.DismissError, ActivityAction.Disconnect).forEach(vm::onAction)
+        listOf(ActivityAction.SetMode(Mode.Direct), ActivityAction.TestLatency, ActivityAction.Retry, ActivityAction.Disconnect).forEach(vm::onAction)
         engine.failMode = ErrorCode.Busy
         vm.onAction(ActivityAction.SetMode(Mode.Global))
         vm.onAction(ActivityAction.Retry)
@@ -128,6 +128,22 @@ class ActivityRvViewModelTest {
         val stopped = engine.usageReads
         advanceTimeBy(ActivityViewModel.USAGE_MS * 10)
         assertEquals(stopped, engine.usageReads)
+    }
+
+    @Test
+    fun `nodes are mapped once per catalog, not on each usage read`() = runTest {
+        val engine = Recording(rvSampleEngine())
+        var placed = 0
+        val vm = ActivityViewModel(engine, MutableStateFlow(false), UnconfinedTestDispatcher(testScheduler), { NOW }, { ZoneOffset.UTC }, {
+            placed++
+            RvPlace.Other
+        })
+        collected(vm)
+        // One mapping places each node once.
+        assertEquals(vm.ui.value.nodes.size, placed)
+        advanceTimeBy(ActivityViewModel.USAGE_MS * 3 + 1)
+        assertEquals(4, engine.usageReads)
+        assertEquals(vm.ui.value.nodes.size, placed)
     }
 
     @Test
@@ -155,14 +171,15 @@ class ActivityRvViewModelTest {
     }
 
     @Test
-    fun `a failed latency test shows its banner until dismissed`() = runTest {
+    fun `a failed latency test shows its banner until the next test succeeds`() = runTest {
         val engine = Recording(FakeEngine())
         val vm = model(engine)
         collected(vm)
         engine.failTest = ErrorCode.Busy
         vm.onAction(ActivityAction.TestLatency)
         assertEquals(RvActivityAttempt.TestLatency, vm.ui.value.failure?.attempt)
-        vm.onAction(ActivityAction.DismissError)
+        engine.failTest = null
+        vm.onAction(ActivityAction.TestLatency)
         assertNull(vm.ui.value.failure)
     }
 

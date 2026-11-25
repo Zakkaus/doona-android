@@ -13,6 +13,4 @@ sealed interface ActivityAction {
 
     /** Tries the failed action of [RvActivityFailure] again. */
     data object Retry : ActivityAction
-
-    data object DismissError : ActivityAction
 }
