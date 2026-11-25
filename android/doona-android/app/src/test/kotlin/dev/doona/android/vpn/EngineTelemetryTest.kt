@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.LatencyTest
@@ -137,6 +138,54 @@ class EngineTelemetryTest {
         assertEquals(today, engine.today.value)
         engine.disconnect()
         runCurrent()
+        assertEquals(today, engine.today.value)
+    }
+
+    @Test
+    fun anUnreadableSeriesOrNodesReplyFailsAsInternal() = runTest {
+        val engine = engine()
+        val series = ContractFixtures.read("call-ok-traffic-series.json")
+        val nodes = ContractFixtures.read("call-ok-nodes.json")
+        val replies = listOf<Pair<String, suspend () -> Result<*>>>(
+            series.replace("\"upPeak\": 141203,", "") to { engine.trafficSeries(300) },
+            series.replace("3120", "\"3 KB/s\"") to { engine.trafficSeries(300) },
+            // Without `ms` a test would otherwise read as a failed probe.
+            nodes.replace("\"ms\": 33", "\"later\": 33") to { engine.nodes() },
+            nodes.replace("\"port\": 443,", "") to { engine.nodes() },
+        )
+        for ((reply, read) in replies) {
+            core.reply = reply
+            assertEquals(reply, ErrorCode.Internal, (read().exceptionOrNull() as EngineException).code)
+        }
+    }
+
+    /** Peaks and today's totals may be absent, from an older core; a field of another type makes the snapshot unreadable. */
+    @Test
+    fun anUnreadableSnapshotKeepsTheLastTrafficAndDayAndFailsTheHealthCheck() = runTest {
+        val engine = engine()
+        backgroundScope.launch { engine.traffic.collect {} }
+        start(engine)
+        val traffic = engine.traffic.value
+        val today = engine.today.value
+        assertEquals(12, traffic.activeFlows)
+        val running = ContractFixtures.read("snapshot-running.json")
+        val broken = listOf(
+            running.replace("\"activeFlows\": 12,", ""),
+            running.replace("\"upPeak\": 262144", "\"upPeak\": \"256 KiB\""),
+            running.replace("\"yesterdayByNow\": 1610612736", "\"yesterdayByNow\": \"1.5 GiB\""),
+        )
+        assertFalse(running in broken)
+        var next = 0
+        core.snapshotReply = { broken[next++ % broken.size] }
+
+        advanceTimeBy(4_000)
+        runCurrent()
+        assertTrue(next >= broken.size)
+        assertEquals(traffic, engine.traffic.value)
+        assertEquals(today, engine.today.value)
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
         assertEquals(today, engine.today.value)
     }
 

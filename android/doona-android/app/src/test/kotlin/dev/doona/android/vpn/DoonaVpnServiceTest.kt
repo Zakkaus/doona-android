@@ -97,6 +97,16 @@ class DoonaVpnServiceTest {
         assertEquals(1, shadowOf(service).stopSelfId)
     }
 
+    /** A stop the user asked for ends as [Status.Stopped] (above); Android taking the VPN away is a failure the UI explains. */
+    @Test
+    fun androidRevokingTheVpnEndsTheSessionAsRevoked() = withService { service, _, engine ->
+        service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE).setPackage(service.packageName), 0, 1)
+        engine.awaitSession { it.status is Status.Running }
+
+        service.onRevoke()
+        assertEquals(Status.Failed(FailureReason.Revoked), engine.awaitSession { it.status is Status.Failed }.status)
+    }
+
     @Test
     fun aSystemStartWithNoAppExtrasUsesTheSavedPerAppPolicy() = withService { service, app, engine ->
         runBlocking { engine.setPerApp(PerApp(AppPolicy.OnlyListed, setOf("test.not.installed"))).getOrThrow() }
