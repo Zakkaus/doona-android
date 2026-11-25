@@ -39,7 +39,6 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -138,8 +137,8 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, labelStyl
             .clip(CircleShape)
             .then(pill)
             .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick)
-            // The tab's one name, whether or not its label is composed: a collapsed bar draws icons only, and the
-            // drawn label is cleared below so a screen reader does not read the name twice.
+            // The tab's one name, whether or not its label is composed: a collapsed bar draws icons only. A content
+            // description is read in place of the text it merges with, so the name is not read twice.
             .semantics { contentDescription = label },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -151,7 +150,7 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, labelStyl
             Spacer(Modifier.height(RvChrome.navLabelGap * (1 - shrink)))
             // The label keeps its line while the capsule folds, so only its width can make it smaller: a word too long
             // for the tab (Connections at 92 of 93 dp) shrinks to fit, whole, inside the pill's round ends.
-            val box = Modifier.clearAndSetSemantics {}.height(line * (1 - shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)).padding(horizontal = RvNavSize.labelInset)
+            val box = Modifier.height(line * (1 - shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)).padding(horizontal = RvNavSize.labelInset)
             Box(box, contentAlignment = Alignment.TopCenter) {
                 RvText(
                     label,

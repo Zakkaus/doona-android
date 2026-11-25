@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -67,6 +68,7 @@ import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
@@ -436,8 +438,18 @@ internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) = RvProg
  * ([RvBusy]) measures the fill alone, in a track of a fixed size, and composes nothing.
  */
 @Composable
-internal fun RvProgress(fraction: () -> Float, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().height(RvSize.progress).testTag(RvPart.FRAME).clip(CircleShape).background(Rv.colors.track)) {
+internal fun RvProgress(fraction: () -> Float, modifier: Modifier = Modifier) =
+    RvProgressBar(fraction, modifier, { ProgressBarRangeInfo(fraction().coerceIn(0f, 1f), 0f..1f) })
+
+/** The bar of [RvProgress], telling a screen reader [info] (and [description], when it has one): what the bar stands for. */
+@Composable
+internal fun RvProgressBar(fraction: () -> Float, modifier: Modifier, info: () -> ProgressBarRangeInfo, description: String? = null) {
+    Box(
+        modifier.fillMaxWidth().height(RvSize.progress).testTag(RvPart.FRAME).semantics {
+            progressBarRangeInfo = info()
+            description?.let { contentDescription = it }
+        }.clip(CircleShape).background(Rv.colors.track),
+    ) {
         Box(Modifier.rvFillWidth(fraction).fillMaxHeight().clip(CircleShape).background(Rv.colors.positive))
     }
 }
@@ -468,7 +480,7 @@ internal fun RvStatRow(label: String, value: String, valueKeepWords: Boolean = t
             RvText(label, Rv.type.statLabel, color = Rv.colors.textSecondary, maxLines = RV_ROW_TITLE_LINES)
             RvText(value, Rv.type.stat, align = if (stacked) TextAlign.Start else TextAlign.End, maxLines = Int.MAX_VALUE, keepWords = valueKeepWords)
         },
-        Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
+        Modifier.semantics(mergeDescendants = true) {}.fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
     ) { (labelPart, valuePart), constraints ->
         val width = constraints.maxWidth
         val oneLine = labelPart.maxIntrinsicWidth(Constraints.Infinity) + RvSpace.trailingGap.roundToPx() + valuePart.maxIntrinsicWidth(Constraints.Infinity) <= width
@@ -556,10 +568,12 @@ internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClic
 
 /** A small glyph before a label in the same colour: the header's sub line. */
 @Composable
-internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
+internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier, description: String? = null) {
+    // The glyph is decorative, so it says nothing; [description] names what the line counts when the text alone does not.
+    val spoken = if (description == null) Modifier else Modifier.semantics { contentDescription = description }
     Row(modifier.testTag(RvPart.TEXT_LINE), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.tight)) {
         RvGlyph(icon, RvSize.inlineGlyph, color)
-        RvText(text, style, color = color)
+        RvText(text, style, spoken, color = color)
     }
 }
 

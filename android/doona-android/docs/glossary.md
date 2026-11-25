@@ -49,3 +49,9 @@ One concept, one word per locale. "Web key" is the doona web locale key that set
 | Quick Settings panel | Quick Settings | 快速設定 | 快捷设置 | - (Android system names) |
 | Not now (dialog) | Not now | 暫不 | 暂不 | - |
 | Fetch / obtain | get | 取得 | 获取 | - |
+| Screen-reader: latency got lower (read only, not drawn) | Faster by 12 ms | 變快 12 毫秒 | 变快 12 毫秒 | - (owner, 2026-11-25) |
+| Screen-reader: latency got higher | Slower by 12 ms | 變慢 12 毫秒 | 变慢 12 毫秒 | - |
+| Screen-reader: usage vs yesterday | Up 18% on yesterday at this time | 較昨天同時段增加 18% / 減少 | 较昨天同时段增加 18% / 减少 | - |
+| Screen-reader: transfer rate lines | Download 1.2 MB/s / Upload 512 KB/s | 下載 1.2 MB/s / 上傳 512 KB/s | 下载 / 上传 | - |
+| Screen-reader: latency never measured / no change | Not tested / No change | 未測試 / 無變化 | 未测试 / 无变化 | - |
+| Screen-reader: something under way | In progress | 進行中 | 进行中 | - |

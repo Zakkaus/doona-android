@@ -47,6 +47,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
@@ -299,10 +301,15 @@ private fun HeroLines(ticking: State<ActivityUiState>, mode: RvRouteMode) {
         RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = format.rate(state.downRate.toDouble())
-        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvHero(RvAmount(number, unit)) }
+        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) ->
+            val spoken = stringResource(R.string.rv_a11y_download, "$number $unit")
+            RvHero(RvAmount(number, unit), Modifier.semantics { contentDescription = spoken })
+        }
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") { RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub) }
+        Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") {
+            RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub, description = stringResource(R.string.rv_a11y_upload, it))
+        }
     }
 }
 

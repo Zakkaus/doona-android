@@ -121,4 +121,13 @@
     <string name="local_network_denied_title">未允許存取區域網路</string>
     <string name="local_network_denied_body">無法存取區域網路上的訂閱與節點。請在 App 設定中允許 doona 存取區域網路。</string>
     <string name="local_network_open_settings">開啟設定</string>
+    <!-- What a screen reader says where the screen shows only a triangle, an arrow or a bar. -->
+    <string name="rv_a11y_faster">變快 %1$s</string>
+    <string name="rv_a11y_slower">變慢 %1$s</string>
+    <string name="rv_a11y_stat_up">較昨天同時段增加 %1$s</string>
+    <string name="rv_a11y_stat_down">較昨天同時段減少 %1$s</string>
+    <string name="rv_a11y_no_change">無變化</string>
+    <string name="rv_a11y_download">下載 %1$s</string>
+    <string name="rv_a11y_upload">上傳 %1$s</string>
+    <string name="rv_a11y_busy">進行中</string>
 </resources>
