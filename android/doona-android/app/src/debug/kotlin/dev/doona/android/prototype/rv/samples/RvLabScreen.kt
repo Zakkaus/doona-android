@@ -43,9 +43,9 @@ internal fun RvLabScreen(performance: Boolean, onBack: () -> Unit = {}) {
                     on,
                     { on = it },
                     sampleText(
-                        "較耗電，換取速度；重開 App 生效",
-                        "较耗电，换取速度；重启应用生效",
-                        "Uses more battery for speed. Reopen the app to apply.",
+                        "較耗電，速度較快",
+                        "较耗电，速度较快",
+                        "Uses more battery for more speed",
                     ),
                 )
             }
