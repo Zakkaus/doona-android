@@ -17,7 +17,8 @@ doona connects to these places:
 - **GeoIP and GeoSite data.** To update the data its rules use, doona asks GitHub's API for the latest release of
   [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat) and for its `release` branch, then downloads
   the files from `raw.githubusercontent.com`, `cdn.jsdelivr.net` or `testingcf.jsdelivr.net`, all through your main
-  proxy. This happens when you tap Update, and by itself once a week while doona is connected.
+  proxy. This happens when you tap Update, and by itself only while doona is connected: once a week by default, once a
+  day when set to Daily, and never when set to Off.
 - **Check for updates.** Only when you tap it, doona asks GitHub's API for this repository's latest release
   (`GET https://api.github.com/repos/Zakkaus/doona-android/releases/latest`). A newer release is shown in Settings;
   tapping it opens the releases page in your browser. doona downloads nothing itself.
@@ -52,30 +53,30 @@ doona 會連到下列位置：
 
 - **你的訂閱。** doona 直接從訂閱網址下載你新增的每個訂閱，不經由代理。開啟自動更新時（預設開啟），訂閱超過更新間隔（預設 12 小時）就會重新下載，不論 doona 是否連線。
 - **你的代理。** 連線時，App 的流量依你的規則經由訂閱裡的代理或直接連線送出。DNS 查詢送到「設定 › DNS」所設的伺服器（預設
-  1.1.1.1 和 8.8.8.8）。代理、延遲測試和訂閱的主機名稱，doona 直接用手機網路的 DNS 伺服器查詢。
+  1.1.1.1 與 8.8.8.8）。代理、延遲測試與訂閱的主機名稱，doona 直接用手機網路的 DNS 伺服器查詢。
 - **延遲測試。** 延遲測試會經由每個受測節點讀取 `https://www.gstatic.com/generate_204`。
 - **GeoIP 與 GeoSite 資料。** 更新規則所用的資料時，doona 向 GitHub API 查詢
   [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat) 的最新版本與 `release` 分支，再從
-  `raw.githubusercontent.com`、`cdn.jsdelivr.net` 或 `testingcf.jsdelivr.net` 下載檔案，全程經由主節點。你點「更新」時會這樣做，
-  連線期間也會每週自動更新一次。
+  `raw.githubusercontent.com`、`cdn.jsdelivr.net` 或 `testingcf.jsdelivr.net` 下載檔案，全程經由主節點。你點「更新」時會這樣做；
+  自動更新只在連線期間執行：預設每週一次，設為「每天」時每天一次，設為「關閉」時不自動更新。
 - **檢查更新。** 只有你點「檢查更新」時，doona 才向 GitHub API 查詢本專案的最新版本
   （`GET https://api.github.com/repos/Zakkaus/doona-android/releases/latest`）。有新版時會顯示在設定頁，點擊後才用瀏覽器開啟版本頁。
   doona 本身不下載任何檔案。
 
-訂閱和 GeoIP、GeoSite 資料的請求帶有 User-Agent `doona/<版本> (clash.meta; mihomo)`，或你為該訂閱設定的 User-Agent。檢查更新送出
+訂閱與 GeoIP、GeoSite 資料的請求帶有 User-Agent `doona/<版本> (clash.meta; mihomo)`，或你為該訂閱設定的 User-Agent。檢查更新送出
 `doona-android`。
 
 ## 回報問題
 
 「回報問題」只在手機上產生檔案。只有你分享時它才會離開手機，而且只送到你選擇的 App。回報一律包含 doona 版本、Android 版本、手機廠牌與型號。
-預設也包含 App 名稱，不包含代理位址、手機本身的 IP 位址和你造訪的網域；分享前可以更改這些選項。回報一律不含訂閱網址和 Token。
+預設也包含 App 名稱，不包含代理位址、手機本身的 IP 位址與你造訪的網域；分享前可以更改這些選項。回報一律不含訂閱網址與 Token。
 
 「回報問題」也可以建立 GitHub issue。它會用瀏覽器開啟頁面，並預先填入 doona 版本、Android 版本、手機廠牌與型號；發生錯誤後還會列出最近的事件，
 遮蔽選項與回報相同。
 
 ## 手機上的設定與資料
 
-訂閱、設定和日誌都存在 doona 的私有儲存空間，解除安裝 doona 就會刪除。
+訂閱、設定與日誌都存在 doona 的私有儲存空間，解除安裝 doona 就會刪除。
 
 ---
 
@@ -93,8 +94,8 @@ doona 会连接下列位置：
 - **延迟测试。** 延迟测试会经由每个受测节点读取 `https://www.gstatic.com/generate_204`。
 - **GeoIP 与 GeoSite 数据。** 更新规则所用的数据时，doona 向 GitHub API 查询
   [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat) 的最新版本与 `release` 分支，再从
-  `raw.githubusercontent.com`、`cdn.jsdelivr.net` 或 `testingcf.jsdelivr.net` 下载文件，全程经由主节点。你点「更新」时会这样做，
-  连接期间也会每周自动更新一次。
+  `raw.githubusercontent.com`、`cdn.jsdelivr.net` 或 `testingcf.jsdelivr.net` 下载文件，全程经由主节点。你点「更新」时会这样做；
+  自动更新只在连接期间执行：默认每周一次，设为「每天」时每天一次，设为「关闭」时不自动更新。
 - **检查更新。** 只有你点「检查更新」时，doona 才向 GitHub API 查询本项目的最新版本
   （`GET https://api.github.com/repos/Zakkaus/doona-android/releases/latest`）。有新版时会显示在设置页，点击后才用浏览器打开版本页。
   doona 本身不下载任何文件。
