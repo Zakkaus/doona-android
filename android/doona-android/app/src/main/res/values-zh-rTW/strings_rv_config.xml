@@ -64,7 +64,6 @@
     <string name="rv_template_by_service_line">Telegram、Apple 與國外媒體各用一個策略群組</string>
     <string name="rv_template_more">更多範本</string>
     <string name="rv_template_options">選項</string>
-    <string name="rv_template_nm_direct">NetworkManager 直連</string>
     <string name="rv_template_group_proxy">代理</string>
     <string name="rv_template_group_auto">自動選擇</string>
     <string name="rv_template_group_media">國外媒體</string>

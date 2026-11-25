@@ -114,8 +114,6 @@ class RvConfigTemplateShotTest {
         compose.setContent { Themed { Chooser(null, RvConfigTemplateData.regions) } }
         compose.onNodeWithText("封鎖廣告").performScrollTo().assertIsOff()
         compose.onNodeWithText("封鎖 QUIC").performScrollTo().assertIsOn()
-        // A semantics click: scrolled into view, the row's foot sits under the floating 建立設定檔.
-        compose.onNodeWithText("NetworkManager 直連").performScrollTo().assertIsOn().performSemanticsAction(SemanticsActions.OnClick).assertIsOff()
     }
 
     @Test

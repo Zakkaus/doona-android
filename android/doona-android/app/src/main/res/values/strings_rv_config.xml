@@ -70,7 +70,6 @@
     <string name="rv_template_by_service_line">Telegram, Apple and overseas media each get a group</string>
     <string name="rv_template_more">More templates</string>
     <string name="rv_template_options">Options</string>
-    <string name="rv_template_nm_direct">Keep NetworkManager direct</string>
     <string name="rv_template_group_proxy">Proxy</string>
     <string name="rv_template_group_auto">Automatic</string>
     <string name="rv_template_group_media">Overseas media</string>

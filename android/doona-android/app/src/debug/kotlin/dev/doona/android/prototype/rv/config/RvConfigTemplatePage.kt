@@ -124,18 +124,12 @@ private fun TemplatesCard(templates: List<RvConfigTemplate>, current: RvConfigTe
 @Composable
 private fun Section(@StringRes title: Int) = RvSectionTitle(stringResource(title), Modifier.padding(horizontal = RvSpace.gutter))
 
-/** doona's options, in 策略's switch rows: 封鎖廣告 and 封鎖 QUIC as 策略 names them, and NetworkManager 直連, a rule only Linux can match. */
+/** doona's options, in 策略's switch rows: 封鎖廣告 and 封鎖 QUIC as 策略 names them. */
 @Composable
 private fun OptionsCard(options: RvTemplateOptions, onChange: (RvTemplateOptions) -> Unit) {
     RvCard {
         RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), options.blockAds) { onChange(options.copy(blockAds = it)) }
         RvSwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), options.blockQuic) { onChange(options.copy(blockQuic = it)) }
-        RvSwitchRow(
-            R.drawable.rv_sym_arrow_right_alt,
-            stringResource(R.string.rv_template_nm_direct),
-            options.networkManagerDirect,
-            stringResource(R.string.rv_config_reason_linux),
-        ) { onChange(options.copy(networkManagerDirect = it)) }
     }
 }
 

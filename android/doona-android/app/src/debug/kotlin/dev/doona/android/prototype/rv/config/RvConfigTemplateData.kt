@@ -32,9 +32,9 @@ internal class RvConfigTemplate(val row: RvTemplate, val groups: List<RvTemplate
     val written: List<RvTemplateGroup> get() = groups.ifEmpty { listOf(RvConfigTemplateData.defaultProxy) }
 }
 
-/** doona's three options, each written into every template's routing, with doona's defaults. */
+/** doona's two options, each written into every template's routing, with doona's defaults. */
 @Immutable
-internal data class RvTemplateOptions(val blockAds: Boolean = false, val blockQuic: Boolean = true, val networkManagerDirect: Boolean = true)
+internal data class RvTemplateOptions(val blockAds: Boolean = false, val blockQuic: Boolean = true)
 
 /** A group in the review before a template is applied: one the template adds, or one a file already declares (沿用). */
 @Immutable
