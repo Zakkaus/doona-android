@@ -30,6 +30,7 @@
     <string name="policy_kind_urltest">平均最快</string>
     <string name="policy_kind_fallback">依序備援</string>
     <string name="policy_kind_score">綜合評分</string>
+    <string name="policy_kind_loadbalance">負載平衡</string>
     <string name="group_policy_score_hint">依節點的可靠度與近期連線品質自動選擇</string>
     <string name="policy_healthy">%1$d 個可用</string>
     <string name="policy_untested">%1$d 個未測試</string>

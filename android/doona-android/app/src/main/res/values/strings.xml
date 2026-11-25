@@ -31,6 +31,7 @@
     <string name="policy_kind_urltest">Fastest</string>
     <string name="policy_kind_fallback">First available</string>
     <string name="policy_kind_score">Score</string>
+    <string name="policy_kind_loadbalance">Load balance</string>
     <string name="group_policy_score_hint">Picks a node by its observed reliability and recent connection quality</string>
     <string name="policy_healthy">%1$d available</string>
     <string name="policy_untested">%1$d untested</string>

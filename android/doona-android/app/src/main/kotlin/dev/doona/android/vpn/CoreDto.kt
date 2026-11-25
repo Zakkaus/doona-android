@@ -65,8 +65,8 @@ internal data class SnapshotDto(
     /** An error code for a problem that leaves the data path up: `local_network`. */
     val warning: String? = null,
     val traffic: TrafficDto,
-    /** The local day's bytes so far; an older core sends none. */
-    val today: TodayDto = TodayDto(),
+    /** The local day's bytes so far. */
+    val today: TodayDto,
     val catalog: CatalogDto? = null,
 ) {
     val alive: Boolean get() = running && error == null
@@ -78,13 +78,13 @@ internal data class TrafficDto(
     val upTotal: Long,
     val downTotal: Long,
     val activeFlows: Int,
-    val upPeak: Long = 0,
-    val downPeak: Long = 0,
+    val upPeak: Long,
+    val downPeak: Long,
 )
 
 /** Today's bytes each way in local time, and yesterday's both ways together by the same time (null: none kept). */
 @Serializable
-internal data class TodayDto(val upTotal: Long = 0, val downTotal: Long = 0, val yesterdayByNow: Long? = null) {
+internal data class TodayDto(val upTotal: Long, val downTotal: Long, val yesterdayByNow: Long?) {
     fun toTodayTraffic() = TodayTraffic(upTotal, downTotal, yesterdayByNow)
 }
 
@@ -574,7 +574,7 @@ internal data class LastSnapshotDto(
 
 /** The running generation's traffic (zero while stopped) and the local day's bytes, as `snapshot` reports them. */
 @Serializable
-internal data class StatsSummaryDto(val traffic: TrafficDto, val today: TodayDto = TodayDto())
+internal data class StatsSummaryDto(val traffic: TrafficDto, val today: TodayDto)
 
 /** A file in the core's `crash/` directory. */
 @Serializable

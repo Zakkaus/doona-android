@@ -6,12 +6,15 @@ import org.gradle.api.GradleException
 import java.io.File
 import java.net.URI
 import java.net.URISyntaxException
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
 internal val sha256Pattern = Regex("[0-9a-f]{64}")
 
 internal data class GeoPin(val name: String, val source: URI, val size: Long, val sha256: String)
 
-internal class GeoPins(val bytes: ByteArray, val files: List<GeoPin>) {
+/** [releaseDate] is the manifest's `release_date`, a yyyy-MM-dd day. */
+internal class GeoPins(val bytes: ByteArray, val files: List<GeoPin>, val releaseDate: LocalDate) {
     companion object {
         fun read(file: File): GeoPins {
             val bytes = file.readBytes()
@@ -23,6 +26,12 @@ internal class GeoPins(val bytes: ByteArray, val files: List<GeoPin>) {
                 throw GradleException("Invalid Geo pins in $file: malformed JSON", e)
             } ?: invalid("expected a JSON object")
             if (manifest["version"] != 1) invalid("expected schema version 1")
+            val released = manifest["release_date"] as? String ?: invalid("release_date must be a yyyy-MM-dd date")
+            val releaseDate = try {
+                LocalDate.parse(released)
+            } catch (_: DateTimeParseException) {
+                invalid("release_date must be a yyyy-MM-dd date")
+            }
             val files = manifest["files"] as? Map<*, *> ?: invalid("files must be an object")
             if (files.keys != setOf("geoip.dat", "geosite.dat")) invalid("files must pin geoip.dat and geosite.dat")
             return GeoPins(bytes, files.map { (name, value) ->
@@ -46,7 +55,7 @@ internal class GeoPins(val bytes: ByteArray, val files: List<GeoPin>) {
                     invalid("$name.source must be an HTTP(S) URL")
                 }
                 GeoPin(name, source, size, sha)
-            })
+            }, releaseDate)
         }
     }
 }

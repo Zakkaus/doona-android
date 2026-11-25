@@ -122,6 +122,7 @@ private fun kindLabel(kind: GroupKind): String = stringResource(
     when (kind) {
         GroupKind.Selector -> R.string.policy_kind_selector
         GroupKind.UrlTest -> R.string.policy_kind_urltest
+        GroupKind.LoadBalance -> R.string.policy_kind_loadbalance
         GroupKind.Score -> R.string.policy_kind_score
         GroupKind.Fallback -> R.string.policy_kind_fallback
     },

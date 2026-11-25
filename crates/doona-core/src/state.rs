@@ -76,11 +76,10 @@ fn dns_upstreams<'de, D: serde::Deserializer<'de>>(
     d: D,
 ) -> Result<Option<Vec<std::net::SocketAddr>>, D::Error> {
     let value = serde_json::Value::deserialize(d)?;
-    // An empty list cannot be valid. Keep it distinct from a missing field until Store::load reports the reset.
-    let servers = serde_json::from_value::<Vec<String>>(value)
+    // A list this core cannot use reads as the built-in defaults, and the rest of the file stays usable.
+    Ok(serde_json::from_value::<Vec<String>>(value)
         .ok()
-        .and_then(|servers| crate::dns::parse_upstreams(&servers));
-    Ok(Some(servers.unwrap_or_default()))
+        .and_then(|servers| crate::dns::parse_upstreams(&servers)))
 }
 
 /// A stored quota. Cores before this one stored them as unsigned numbers, so a value past
@@ -164,7 +163,6 @@ pub struct StoredSubscription {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Loaded {
     Read,
-    DnsReset,
     Missing,
     /// Unparsable, or written by a newer layout: set aside and replaced by defaults.
     SetAside,
@@ -209,14 +207,7 @@ impl Store {
             Err(e) => return Err(e),
         };
         match serde_json::from_slice::<State>(&text) {
-            Ok(mut s) if s.state_version == STATE_VERSION => {
-                let loaded = if s.dns_upstreams.take_if(|v| v.is_empty()).is_some() {
-                    Loaded::DnsReset
-                } else {
-                    Loaded::Read
-                };
-                Ok((s, loaded))
-            }
+            Ok(s) if s.state_version == STATE_VERSION => Ok((s, Loaded::Read)),
             _ => {
                 fs::rename(&path, self.dir.join(SET_ASIDE))?;
                 Ok((State::default(), Loaded::SetAside))

@@ -230,10 +230,6 @@ fn invalid_stored_dns_defaults_without_discarding_the_catalog() {
         std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
         let core = Core::new(path(&dir)).unwrap();
         assert_eq!(catalog(&core).subscriptions[0].name, "keep");
-        let report = call(&core, "diagnostics", json!({"level":"warn"})).unwrap();
-        assert!(report["events"].as_array().unwrap().iter().any(|e| {
-            e["name"] == "init" && e["level"] == "warn" && e["detail"] == "dnsUpstreamsReset"
-        }));
         assert_eq!(
             call(&core, "effectiveConfig", json!({})).unwrap()["dnsUpstreams"],
             json!(["1.1.1.1:53", "8.8.8.8:53"])
