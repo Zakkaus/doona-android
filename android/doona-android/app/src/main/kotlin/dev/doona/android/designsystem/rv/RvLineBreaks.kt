@@ -1,6 +1,4 @@
-package dev.doona.android.prototype.rv
-
-import dev.doona.android.designsystem.rv.rvCjkLetter
+package dev.doona.android.designsystem.rv
 
 /**
  * Line-break control for the text of a row or a banner that wraps in a column of a few characters (a large font size),
@@ -78,3 +76,6 @@ private fun joinsAcrossSpace(before: Int, next: Int): Boolean {
     val ordinal = before == ORDINAL && Character.isDigit(next)
     return unit || ordinal
 }
+
+/** The dot between the parts of a row's second line (protocol · place). */
+internal const val SEPARATOR = " · "

@@ -6,20 +6,15 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -39,7 +34,6 @@ import dev.doona.android.app.rvSearchMove
 import dev.doona.android.app.rvTabSwitch
 import dev.doona.android.app.rvZoomMove
 import dev.doona.android.designsystem.rv.LocalRvShared
-import dev.doona.android.designsystem.rv.LocalRvShown
 import dev.doona.android.designsystem.rv.LocalRvTabEntry
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvFrames
@@ -155,46 +149,6 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
             }
         }
     }
-}
-
-/**
- * Makes a node row's flag and its page's header flag one element (rule 4): pushing the node's page, the flag moves and
- * grows from the row into the header with the push, and goes back with the pop. Only one flag per node may carry it on
- * a page, so 節點's top tiles and 活動's rows do not. Outside the host it does nothing.
- */
-@Composable
-internal fun Modifier.rvSharedFlag(node: String): Modifier {
-    val shared = LocalRvShared.current ?: return this
-    val motion = Rv.motion
-    val shown = LocalRvShown.current
-    // A flag in the picker composed ahead and hidden takes no part: a node page pushed from 活動 would fly it in from
-    // a row nobody sees.
-    val config = remember(shown) { RvShownConfig(shown) }
-    return with(shared.layout) {
-        this@rvSharedFlag.sharedBounds(
-            rememberSharedContentState(FLAG + node, config),
-            shared.page,
-            enter = fadeIn(motion.tween(shared.pushMs)),
-            exit = fadeOut(motion.tween(shared.pushMs)),
-            boundsTransform = { _, _ -> motion.tween(shared.pushMs) },
-            clipInOverlayDuringTransition = OverlayClip(CircleShape),
-        )
-    }
-}
-
-private const val FLAG = "flag:"
-
-/** A shared element that takes part only while [shown]. */
-private class RvShownConfig(private val shown: () -> Boolean) : SharedTransitionScope.SharedContentConfig {
-    override val SharedTransitionScope.SharedContentState.isEnabled: Boolean
-        get() = shown()
-}
-
-/** Whether the page this is in has finished coming in (at once outside the host). */
-@Composable
-internal fun rvPageArrived(): () -> Boolean {
-    val page = LocalRvShared.current?.page ?: return { true }
-    return { page.transition.currentState == EnterExitState.Visible && page.transition.targetState == EnterExitState.Visible }
 }
 
 private fun AnimatedContentTransitionScope<List<String>>.move(options: RvMotionOptions, motion: RvMotionScale, shift: Int): ContentTransform {

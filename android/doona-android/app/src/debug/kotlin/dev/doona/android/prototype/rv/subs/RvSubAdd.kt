@@ -33,11 +33,11 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.gallery.RV_LINK_PLACEHOLDER
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /** Why an import failed, as the core tells them apart: no answer, not a subscription, over the 8 MiB bound. */
 internal enum class RvAddFailure { Unreachable, NotSubscription, TooLarge }
