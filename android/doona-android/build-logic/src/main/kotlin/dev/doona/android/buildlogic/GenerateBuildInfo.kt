@@ -10,10 +10,13 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
-import java.io.File
 
-private val honkDependency = Regex("""^honk-[a-z-]+\s*=\s*\{.*git\s*=\s*"https://github\.com/daeuniverse/honk".*$""")
-private val revision = Regex("""\brev\s*=\s*"([0-9a-f]{40})"""")
+private const val HONK_GIT = "https://github.com/daeuniverse/honk"
+private val tableHeader = Regex("""^\[\[?\s*([^\]]+?)\s*]]?$""")
+private val inlineDependency = Regex("""^(honk-[a-z0-9-]+)\s*=\s*\{(.*)}$""")
+private val gitKey = Regex("""\bgit\s*=\s*"([^"]*)"""")
+private val revKey = Regex("""\brev\s*=\s*"([^"]*)"""")
+private val fullRevision = Regex("[0-9a-f]{40}")
 
 /**
  * Generates `dev.doona.android.engine.BuildInfo` from what the build pins, so the app never carries a hand-copied
@@ -34,7 +37,8 @@ abstract class GenerateBuildInfo : DefaultTask() {
 
     @TaskAction
     fun generate() {
-        val honk = honkRevision(cargoToml.get().asFile)
+        val toml = cargoToml.get().asFile
+        val honk = honkRevision(toml.readText(), toml.path)
         val geo = GeoPins.read(pinsFile.get().asFile).releaseDate
         val output = outputDir.get().asFile
         output.deleteRecursively()
@@ -59,12 +63,42 @@ abstract class GenerateBuildInfo : DefaultTask() {
     }
 }
 
-/** The one revision every daeuniverse/honk dependency of [cargoToml] pins; none, or two that differ, fail the build. */
-internal fun honkRevision(cargoToml: File): String {
-    val revisions = cargoToml.readLines()
-        .filter { honkDependency.matches(it.trim()) }
-        .map { revision.find(it)?.groupValues?.get(1) ?: throw GradleException("$cargoToml: a honk dependency without a full rev: $it") }
-        .toSet()
-    return revisions.singleOrNull()
-        ?: throw GradleException("$cargoToml: expected one daeuniverse/honk rev, found ${revisions.ifEmpty { "none" }}")
+/**
+ * The one revision every daeuniverse/honk dependency of the Cargo.toml [text] (named [source] in errors) pins, whether
+ * written inline (`honk-config = { git = "…", rev = "…" }`) or as a `[dependencies.honk-config]` table. No such
+ * dependency, one without a full 40-hex `rev`, or two different revisions fail the build.
+ */
+internal fun honkRevision(text: String, source: String): String {
+    fun fail(reason: String): Nothing = throw GradleException("$source: $reason")
+    val dependencies = mutableListOf<Pair<String, String>>()
+    var table: String? = null
+    val body = StringBuilder()
+    fun closeTable() {
+        table?.let { dependencies += it to body.toString() }
+        table = null
+        body.clear()
+    }
+    for (line in text.lines().map(String::trim).filterNot { it.startsWith("#") }) {
+        val header = tableHeader.matchEntire(line)
+        val inline = inlineDependency.matchEntire(line)
+        when {
+            header != null -> {
+                closeTable()
+                val path = header.groupValues[1]
+                val name = path.substringAfterLast('.')
+                if (".dependencies." in ".$path" && name.startsWith("honk-")) table = name
+            }
+            table != null -> body.append(line).append('\n')
+            inline != null -> dependencies += inline.groupValues[1] to inline.groupValues[2]
+        }
+    }
+    closeTable()
+    val honk = dependencies.filter { (_, fields) -> gitKey.find(fields)?.groupValues?.get(1)?.removeSuffix(".git")?.trimEnd('/') == HONK_GIT }
+    if (honk.isEmpty()) {
+        fail("no honk-* dependency on $HONK_GIT, written as honk-x = { git, rev } or a [dependencies.honk-x] table")
+    }
+    val revisions = honk.map { (name, fields) ->
+        revKey.find(fields)?.groupValues?.get(1)?.takeIf(fullRevision::matches) ?: fail("$name pins no full 40-hex rev")
+    }.toSet()
+    return revisions.singleOrNull() ?: fail("the $HONK_GIT dependencies pin different revs: ${revisions.sorted()}")
 }

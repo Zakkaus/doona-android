@@ -12,15 +12,17 @@ class BuildInfoTest {
 
     @Test
     fun honkRevisionIsTheCoresPin() {
-        val pinned = Regex("""honk-config = \{ git = "https://github.com/daeuniverse/honk", rev = "([0-9a-f]{40})"""")
-            .find(core.resolve("Cargo.toml").readText())!!.groupValues[1]
-        assertEquals(pinned, BuildInfo.HONK_REVISION)
+        val pin = Regex("""honk-config = \{ git = "https://github.com/daeuniverse/honk", rev = "([0-9a-f]{40})"""")
+            .find(core.resolve("Cargo.toml").readText())
+            ?: throw AssertionError("crates/doona-core/Cargo.toml has no inline honk-config pin with a full rev")
+        assertEquals(pin.groupValues[1], BuildInfo.HONK_REVISION)
     }
 
     @Test
     fun geoShippedDateIsThePinsReleaseDate() {
         val released = Regex(""""release_date"\s*:\s*"([0-9-]+)"""")
-            .find(core.resolve("tools/geo-pins.json").readText())!!.groupValues[1]
-        assertEquals(released, BuildInfo.GEO_SHIPPED_DATE)
+            .find(core.resolve("tools/geo-pins.json").readText())
+            ?: throw AssertionError("crates/doona-core/tools/geo-pins.json has no release_date")
+        assertEquals(released.groupValues[1], BuildInfo.GEO_SHIPPED_DATE)
     }
 }
