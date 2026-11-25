@@ -70,7 +70,9 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
  * button, 40 dp as the disc, taller than a line) takes the trailing place instead and stands as the disc does: its top on
  * the title's top with a subtitle, on the row's centre without, so the two 40 dp ends share one rule and the button stays
  * inside the row's text inset; its end is the row's inset, where a chevron's box ends.
- * [titleKeepWords] and [subtitleKeepWords] are [RvRow]'s: false for a name or an identifier.
+ * [titleKeepWords] and [subtitleKeepWords] are [RvRow]'s: false for a name or an identifier. [titleLines],
+ * [subtitleLines], [titleWhole] and [subtitleWhole] are [RvRow]'s too: a title or subtitle of [Int.MAX_VALUE] lines is
+ * shown whole only with an owner's exception, and an exception given to a text with a line limit is an error.
  */
 @Composable
 internal fun RvSettingsRow(
@@ -84,8 +86,13 @@ internal fun RvSettingsRow(
     action: (@Composable () -> Unit)? = null,
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
+    subtitleLines: Int = RV_ROW_SUBTITLE_LINES,
+    titleWhole: RvWhole? = null,
+    subtitleWhole: RvWhole? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    rvRequireWhole(titleWhole, titleLines)
+    rvRequireWhole(subtitleWhole, subtitleLines)
     Box(
         modifier
             .fillMaxWidth()
@@ -94,13 +101,13 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
-        val text = rowText(SettingsRowWords(title, subtitle, titleKeepWords, subtitleKeepWords), code, titleLines, error, SettingsRowEnds(icon, action, trailing))
+        val text = rowText(SettingsRowWords(title, subtitle, titleKeepWords, subtitleKeepWords, subtitleLines, titleWhole, subtitleWhole), code, titleLines, error, SettingsRowEnds(icon, action, trailing))
         Row(Modifier.fillMaxWidth().testTag(RvRowPart.SETTINGS_ROW).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
     }
 }
 
-/** A settings row's title and subtitle, and whether each holds its words ([RvSettingsRow]'s keepWords). */
-private class SettingsRowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean)
+/** A settings row's title and subtitle, whether each holds its words ([RvSettingsRow]'s keepWords), and its exception to R14. */
+private class SettingsRowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean, val subtitleLines: Int, val titleWhole: RvWhole?, val subtitleWhole: RvWhole?)
 
 /** A settings row's leading disc, and its trailing [action] or [trailing] control ([RvSettingsRow]). */
 private class SettingsRowEnds(@DrawableRes val icon: Int?, val action: (@Composable () -> Unit)?, val trailing: (@Composable () -> Unit)?)
@@ -125,10 +132,14 @@ private fun rowText(words: SettingsRowWords, code: Boolean, titleLines: Int, err
             if (code) {
                 RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines)
             } else {
-                RvText(title, Rv.type.rowTitle, maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
+                RvText(title, Rv.type.rowTitle, rvWhole(words.titleWhole), maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
             }
             val hue = if (error) Rv.colors.error else Rv.colors.textSecondary
-            words.subtitle?.let { RvText(it, Rv.type.rowSub, color = hue, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true, keepWords = words.subtitleKeepWords) }
+            words.subtitle?.let {
+                // R12 (owner, q-s1125c-titlegap): the subtitle stands its gap under the title, as in every row.
+                Spacer(Modifier.height(RvSpace.titleToSubtitle))
+                RvText(it, Rv.type.rowSub, rvWhole(words.subtitleWhole), color = hue, maxLines = words.subtitleLines, lineBox = true, keepWords = words.subtitleKeepWords)
+            }
         }
         ends.action?.let {
             Spacer(Modifier.width(RvSettingsSpace.trailingGap))

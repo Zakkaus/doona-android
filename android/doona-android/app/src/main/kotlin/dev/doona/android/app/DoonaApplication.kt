@@ -27,6 +27,7 @@ open class DoonaApplication : Application(), Configuration.Provider {
         container.startFlowCapture()
         container.startSubscriptionRefresh()
         container.startGeoRefresh()
+        container.startQuickTile()
     }
 
     /** The service-backed engine; JVM tests run the app with a fake one instead. */

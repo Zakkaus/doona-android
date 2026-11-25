@@ -9,10 +9,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import dev.doona.android.app.DoonaApplication
 import dev.doona.android.feature.model.RvSettingsState
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 
-/** Whether 設定 still offers the quick settings tile, and what its 加到快速設定 row does. */
-internal class RvQuickTileOffer(val added: Boolean, val add: () -> Unit)
+/** Whether 設定 still offers the quick settings tile, and what its 加到快速設定 row does; [added] is null until the store has answered. */
+internal class RvQuickTileOffer(val added: Boolean?, val add: () -> Unit)
 
 /**
  * 設定 with the app's real quick settings tile ([DoonaApplication]'s `QuickTile`): the row shows until the tile is
@@ -24,11 +24,12 @@ internal class RvQuickTileOffer(val added: Boolean, val add: () -> Unit)
 internal fun rvQuickTile(settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit): RvQuickTileOffer {
     val context = LocalContext.current
     val tile = remember(context) { (context.applicationContext as? DoonaApplication)?.container?.quickTile }
-    // Null until the store answers, so the row does not show for a moment where the tile is already added.
-    val stored by remember(tile) { tile?.added ?: emptyFlow() }.collectAsState(initial = null)
+    // The container started this state with the app: its current value is the answer unless the app has only just started.
+    val flow = remember(tile) { tile?.state ?: MutableStateFlow<Boolean?>(null) }
+    val stored by flow.collectAsState()
     val latest by rememberUpdatedState(settings)
     val change by rememberUpdatedState(onSettings)
-    return RvQuickTileOffer(stored ?: settings.tileAdded) {
+    return RvQuickTileOffer(if (tile == null) settings.tileAdded else stored) {
         if (tile != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             tile.request(context) { change(latest.afterTileRequest(it)) }
         } else {

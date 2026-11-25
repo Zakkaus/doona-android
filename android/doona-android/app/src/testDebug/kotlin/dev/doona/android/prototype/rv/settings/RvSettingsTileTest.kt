@@ -88,6 +88,17 @@ class RvSettingsTileTest {
         compose.onNodeWithText(rvText(R.string.rv_settings_quick_tile)).assertDoesNotExist()
     }
 
+    /** The store answers later than the first frame: 連線 is not drawn before, so no row is inserted into a card that shows. */
+    @Test
+    fun theConnectionCardWaitsForTheStoreInsteadOfGainingARow() {
+        var state by mutableStateOf(rvSampleSettings().copy(tileAdded = true, tileKnown = false))
+        compose.rvContent(dark = false) { RvSettingsScreenSample(state, onChange = {}, onOpenTheme = {}) }
+        compose.onNodeWithText(rvText(R.string.rv_settings_always_on)).assertDoesNotExist()
+        state = state.copy(tileAdded = false, tileKnown = true)
+        compose.onNodeWithText(rvText(R.string.rv_settings_always_on)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_settings_quick_tile)).assertExists()
+    }
+
     /** What `-tile` records, before and after the user dismissed the system's dialog. */
     @Test
     @Config(qualifiers = TILE_PAGE)
@@ -165,9 +176,9 @@ class RvSettingsTileTest {
          * 設定's whole page with the row, at each font size, as tall as the page, a whole dp rounded up, so the last card
          * ends 28 dp above the nav (28.5 where the page ends on a half dp).
          */
-        const val LONG_PAGE = "+h1764dp"
-        const val TILE_PAGE = "+h1846dp"
-        const val TILE_PAGE_FS115 = "+h1901dp"
-        const val TILE_PAGE_FS200 = "+h2442dp"
+        const val LONG_PAGE = "+h1768dp"
+        const val TILE_PAGE = "+h1850dp"
+        const val TILE_PAGE_FS115 = "+h1905dp"
+        const val TILE_PAGE_FS200 = "+h2451dp"
     }
 }

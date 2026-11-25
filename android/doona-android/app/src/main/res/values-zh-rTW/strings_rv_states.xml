@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rv_welcome_title">歡迎使用 doona</string>
-    <string name="rv_welcome_line">doona 經由訂閱提供的節點轉送流量，並依規則決定哪些流量直連。</string>
-    <string name="rv_welcome_subs_sub">Clash、sing-box 與分享連結清單</string>
-    <string name="rv_welcome_rules">規則</string>
-    <string name="rv_welcome_rules_sub">每個連線依規則經由節點或直連</string>
-    <string name="rv_welcome_vpn">VPN</string>
-    <string name="rv_welcome_vpn_sub">App 的流量經由 doona 的 VPN</string>
+    <string name="rv_welcome_line">doona 是 honk 的 Android 用戶端，可直接匯入 Clash、sing-box 訂閱與分享連結。</string>
+    <string name="rv_welcome_core">自研 honk 核心</string>
+    <string name="rv_welcome_core_sub">用 Rust 寫成，與 Linux 版 honk 同一套核心和設定</string>
+    <string name="rv_welcome_split">TCP 與 UDP 可分開選節點</string>
+    <string name="rv_welcome_split_sub">預設一起選，需要時讓 UDP 走另一個節點</string>
+    <string name="rv_welcome_score">綜合評分</string>
+    <string name="rv_welcome_score_sub">依實際連線的結果持續評分，自動挑最好的節點</string>
+    <string name="rv_welcome_fast">高效能</string>
+    <string name="rv_welcome_fast_sub">核心單一連線實測超過 20 Gbps（桌機測試）</string>
     <string name="rv_no_node">沒有可用的節點</string>
     <string name="rv_no_node_reason">所有節點的延遲測試都失敗。請確認網路連線，或更新訂閱。</string>
     <string name="rv_retest">重新測試</string>

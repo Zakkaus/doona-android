@@ -21,7 +21,7 @@ internal class RvNode(val parent: Int, val box: Rect, val tag: String?, val text
 }
 
 /** A text's first line, from the text's top, in dp, and how many lines it takes. */
-internal class RvFirstLine(val top: Float, val bottom: Float, val lines: Int)
+internal class RvFirstLine(val top: Float, val bottom: Float, val lines: Int, val cut: Boolean = false)
 
 /** The kinds of row the rules know (LAYOUT-RULES.md, "Row kinds"). */
 internal enum class RvRowKind { List, Settings, Notice, Menu }
@@ -49,6 +49,10 @@ internal class RvRowRead(
     val room: Rect? = null,
     /** The boxes of the row's line ends alone, not a busy bar's. */
     val endLines: List<Rect> = emptyList(),
+    /** The texts of the row shown whole ([RvRowPart.WHOLE]) by an exception LAYOUT-RULES.md lists ([RV_LAYOUT_EXCEPTIONS]). */
+    val whole: Set<RvNode> = emptySet(),
+    /** The ids of whole texts whose exception LAYOUT-RULES.md does not list (a bare `rv-whole` has none): R14 breaks. */
+    val unlisted: List<String> = emptyList(),
 ) {
     /** What the trailing part occupies: its room, else what it draws. */
     val shape get() = room ?: end
@@ -92,7 +96,8 @@ private fun SemanticsNode.firstLine(density: Float): RvFirstLine? {
     val layouts = mutableListOf<TextLayoutResult>()
     val get = config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action ?: return null
     val layout = layouts.takeIf { get(it) }?.firstOrNull()?.takeIf { it.lineCount > 0 } ?: return null
-    return RvFirstLine(layout.getLineTop(0) / density, layout.getLineBottom(0) / density, layout.lineCount)
+    val cut = layout.hasVisualOverflow || layout.isLineEllipsized(layout.lineCount - 1)
+    return RvFirstLine(layout.getLineTop(0) / density, layout.getLineBottom(0) / density, layout.lineCount, cut)
 }
 
 /** Every row of the tree: the library's rows ([RvPart.ROW]) and the row-like parts it tags (a notice, a menu item). */
@@ -144,7 +149,9 @@ private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     // A row cut by its window (a scrolled page, a sheet's edge) is not a whole row: its disc is a sliver.
     if (lead != null && this[lead].box.let { minOf(it.width, it.height) < DISC - HALF && maxOf(it.width, it.height) > DISC - HALF }) return null
     val from = lead?.let { this[it].box.right - HALF } ?: this[i].box.left
-    val after = texts.filter { this[it].box.left >= from }.map { this[it] }
+    // A line's end that went under its text, as wide as the line, starts at the column's x: it is the line's end, not a subtitle.
+    val ofLines = inRow.filter { this[it].tag == RvRowPart.LINE_END }.flatMap { subtree(it) }.toSet()
+    val after = texts.filter { this[it].box.left >= from && it !in ofLines }.map { this[it] }
     if (after.isEmpty()) return null
     val left = after.minOf { it.box.left }
     val column = after.filter { abs(it.box.left - left) <= TOLERANCE }.sortedBy { it.box.top }
@@ -156,10 +163,16 @@ private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     val tags = end?.let { r -> inRow.filter { this[it].tag != null && this[it].box.left >= r.left - HALF && this[it].box.right <= r.right + HALF }.mapNotNull { this[it].tag }.toSet() }.orEmpty()
     val edge = this[i].box.let { it.top <= this[0].box.top + HALF || it.bottom >= this[0].box.bottom - HALF }
     val lineEnds = inRow.filter { this[it].tag in LINE_ENDS && this[it].shown() }.map { this[it].box }
-    val code = generateSequence(this.indexOf(title)) { this[it].parent.takeIf { p -> p > i } }.take(CODE_DEPTH).any { this[it].tag == RvRowPart.CODE }
+    fun tagged(text: RvNode, tag: String) = generateSequence(this.indexOf(text)) { this[it].parent.takeIf { p -> p > i } }.take(CODE_DEPTH).any { this[it].tag == tag }
+    val code = tagged(title, RvRowPart.CODE)
+    fun wholeId(text: RvNode) = generateSequence(this.indexOf(text)) { this[it].parent.takeIf { p -> p > i } }.take(CODE_DEPTH)
+        .mapNotNull { this[it].tag }.firstOrNull { it == RvRowPart.WHOLE || it.startsWith(RvRowPart.WHOLE + ":") }?.substringAfter(':', "")
+    val ids = (listOf(title) + subtitles).mapNotNull { t -> wholeId(t)?.let { t to it } }
+    val whole = ids.filter { it.second in RV_LAYOUT_EXCEPTIONS }.map { it.first }.toSet()
+    val unlisted = ids.filter { it.second !in RV_LAYOUT_EXCEPTIONS }.map { it.second.ifEmpty { "(no id)" } }
     val room = inRow.firstOrNull { this[it].tag == RvRowPart.END && this[it].shown() }?.let { this[it].box }
     val endLines = inRow.filter { this[it].tag == RvRowPart.LINE_END && this[it].shown() }.map { this[it].box }
-    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut || edge, edge, room ?: ends?.second, lineEnds, code, room, endLines)
+    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut || edge, edge, room ?: ends?.second, lineEnds, code, room, endLines, whole, unlisted)
 }
 
 /** The bounds of the card [i] stands in, if it stands in one. */
@@ -306,12 +319,19 @@ private fun RvRowRead.textToEnd(): RvRowBreak? {
     return if (end.left - right < GAP_TRAILING - TOLERANCE) broken("R17", signed(end.left - right - GAP_TRAILING)) else null
 }
 
-/** R14: a title takes up to two lines, a subtitle up to three. */
+/**
+ * R14: a title takes up to two lines, a subtitle up to three; a text the row shows whole by an exception of
+ * LAYOUT-RULES.md (q-s1125c-vname) takes every line it needs and is never cut, and a whole text whose exception the
+ * file does not list breaks R14 (no text is an exception by its line count alone).
+ */
 private fun RvRowRead.lines(): RvRowBreak? {
     val t = title.line?.lines ?: 1
-    val s = subtitles.maxOfOrNull { it.line?.lines ?: 1 } ?: 1
+    val s = subtitles.filter { it !in whole }.maxOfOrNull { it.line?.lines ?: 1 } ?: 1
+    val cut = whole.firstOrNull { it.line?.cut == true }
     return when {
-        t > TITLE_LINES -> broken("R14", "title $t lines")
+        unlisted.isNotEmpty() -> broken("R14", "whole text with no LAYOUT-RULES exception: ${unlisted.first()}")
+        cut != null -> broken("R14", "whole text cut: ${cut.line?.lines} lines")
+        title !in whole && t > TITLE_LINES -> broken("R14", "title $t lines")
         s > SUBTITLE_LINES -> broken("R14", "subtitle $s lines")
         else -> null
     }
@@ -346,11 +366,11 @@ private fun RvRowRead.height(): RvRowBreak? {
 
 private fun RvNode.firstLineHeight() = line?.let { minOf(it.bottom - it.top, box.height) } ?: box.height
 
-/** R12: the subtitle starts where the title ends. */
+/** R12: the subtitle starts [TITLE_TO_SUBTITLE] under the title's end (owner, q-s1125c-titlegap; it was 0). */
 private fun RvRowRead.subtitleGap(): RvRowBreak? = subtitles.firstOrNull()?.let {
     // The title's own end went under it, on a line of its own between the two (RvRow, [RowLine]): the line is the gap.
     val between = lineEnds.any { e -> e.top >= title.box.bottom - TOLERANCE && e.bottom <= it.box.top + TOLERANCE }
-    if (between) null else off("R12", it.box.top - title.box.bottom)
+    if (between) null else off("R12", it.box.top - title.box.bottom - TITLE_TO_SUBTITLE)
 }
 
 /** R7: in one card (list or settings rows stacked edge to edge), rows with the same leading visual start their text at one x. */
@@ -449,6 +469,7 @@ private const val FIRST_LINE = 26f
 private const val TALL_END = 36f
 private const val LABEL = 24
 private const val GAP_TRAILING = 12f
+private const val TITLE_TO_SUBTITLE = 2f
 private const val TITLE_LINES = 2
 private const val SUBTITLE_LINES = 3
 private const val ONE_LINE = 58f
@@ -456,3 +477,21 @@ private const val TWO_LINE = 82f
 
 /** The trailing parts that act: they sit on the title's first line in every row with a subtitle (LAYOUT-RULES.md, R11). */
 private val CONTROLS = setOf(RvRowPart.SWITCH, RvRowPart.RADIO, RvRowPart.CHECK)
+
+/** LAYOUT-RULES.md, read from the app module's directory (the tests' working directory). */
+internal const val RV_LAYOUT_RULES = "../docs/LAYOUT-RULES.md"
+
+/** The ids of LAYOUT-RULES.md's Exceptions table: each row's first word (`q-s1125c-vname`). */
+internal val RV_LAYOUT_EXCEPTIONS: Set<String> by lazy { rvExceptionIds(File(RV_LAYOUT_RULES).readLines()) }
+
+/**
+ * The ids of the Exceptions table in [lines]: the first word of each row's first cell, however the row is spaced
+ * (`| q-x |`, `|q-x|`, an indented row), the header (`Id`) and the separator (`|---|`, `| :-- |`) left out.
+ */
+internal fun rvExceptionIds(lines: List<String>): Set<String> =
+    lines.dropWhile { it.trim() != "## Exceptions" }.drop(1).takeWhile { !it.trimStart().startsWith("## ") }
+        .map { it.trim() }.filter { it.startsWith("|") }
+        .map { it.removePrefix("|").substringBefore('|').trim().substringBefore(' ') }
+        .filter { it.isNotEmpty() && it != "Id" && !TABLE_RULE.matches(it) }.toSet()
+
+private val TABLE_RULE = Regex(":?-+:?")

@@ -75,6 +75,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -216,8 +217,11 @@ internal fun Modifier.rvRaised(shape: Shape): Modifier {
  * Revolut's segmented control (measured §8) in the owner's look E (rv-fix-4e), the one slider of every page: a 40 dp
  * pill track, visible on any surface, [options] in equal parts, each after its glyph when [glyphs] gives one drawable
  * per option, the [selected] one on a raised pill 2 dp inside it (a soft shadow in light, a rim in dark). The labels
- * take one size ([rvSegmentStyle]) and the control grows with the line of the full size at a large font size
- * ([rvSegmentHeight]), so no label is cut; the labels' own fitted size, which a skeleton cannot know, never changes its height. The track is the control's layout box, so what is above and below it measures from its visible edge
+ * take one size, bold as the chosen one is ([rvSegmentParts]), and the control grows with the line of the full size at a
+ * large font size ([rvSegmentHeight]), so no label is cut; the labels' own fitted size, which a skeleton cannot know,
+ * never changes its height. Where a label does not fit its equal part at the full size, the parts take the labels'
+ * widths first (`TCP/UDP｜TCP｜UDP` at 200%, s1125c: they shrank), and only labels that do not fit even so shrink
+ * together. The track is the control's layout box, so what is above and below it measures from its visible edge
  * (spacing audit row 4); each part's target reaches 48 dp through Compose's touch target expansion, which does not move
  * the layout. The press lights only its pill.
  */
@@ -228,7 +232,7 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
     // Each segment's pill as the row lays it out; one raised pill rests there and slides to the next selection.
     val slots = remember(options.size) { mutableStateListOf<IntRect?>().apply { repeat(options.size) { add(null) } } }
     var width by remember { mutableIntStateOf(0) }
-    val style = rvSegmentStyle(options, glyphs.isNotEmpty(), width)
+    val (style, weights) = rvSegmentParts(options, glyphs.isNotEmpty(), width)
     Box(modifier.fillMaxWidth().height(rvSegmentHeight(Rv.type.segment)).onSizeChanged { width = it.width }.testTag(RvPart.SEGMENTED)) {
         Box(Modifier.matchParentSize().clip(CircleShape).background(colors.segmentTrack))
         slots.getOrNull(selected)?.let { slot ->
@@ -241,7 +245,7 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
                 val ink by animateColorAsState(if (i == selected) colors.text else colors.textSecondary, motion.tween(RvMotion.SLIDE_MS), label = "ink")
                 Box(
                     Modifier
-                        .weight(1f)
+                        .weight(weights[i])
                         .fillMaxHeight()
                         .selectable(i == selected, interactionSource = source, indication = null, role = Role.Tab) { onSelect(i) }
                         .padding(RvChartSize.segmentInset)
@@ -256,20 +260,23 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
 }
 
 /**
- * The segments' labels in one size for all [options] (one label size per row): the largest at which each fits on one
- * line in its part of the control [width] px wide, a range chip's padding ([RvChartSize.rangePad]) clear of its pill's
- * round ends, after its [glyph] when the control has glyphs ([rvRowFit]). Before the control is measured ([width] 0)
- * it is the full size.
+ * Labels' size, bold as the chosen one is set, and parts' weights: full size in equal parts, else in parts as wide as the
+ * labels, else [rvRowFit]'s.
  */
 @Composable
-private fun rvSegmentStyle(options: List<String>, glyph: Boolean, width: Int): TextStyle {
-    val style = Rv.type.segment
-    if (width == 0 || options.isEmpty()) return style
-    val pad = RvChartSize.segmentInset + RvChartSize.rangePad
-    val column = with(LocalDensity.current) { (width / options.size).toDp() } - pad * 2
-    // Fitted bold and after a check, as the chosen one is set, so a choice never cuts or wraps its label.
-    val room = column - rvCheckReserve
-    return rvRowFit(options, style.rvChosen(), if (glyph) room - RvChartSize.segmentGlyph - RvChartSize.segmentGlyphGap else room)
+private fun rvSegmentParts(options: List<String>, glyph: Boolean, width: Int): Pair<TextStyle, List<Float>> {
+    val style = Rv.type.segment.rvChosen()
+    val density = LocalDensity.current
+    // Each part keeps a check's room, as the chosen one is set, so a choice never cuts or wraps its label.
+    val pad = with(density) { (RvChartSize.segmentInset + RvChartSize.rangePad) * 2 + rvCheckReserve + if (glyph) RvChartSize.segmentGlyph + RvChartSize.segmentGlyphGap else 0.dp } // literal: no glyph
+    val fit = rvRowFit(options, style, maxOf(RvSpace.none, with(density) { (width / maxOf(1, options.size)).toDp() } - pad))
+    val measurer = rememberTextMeasurer()
+    val need = remember(options, style, measurer, pad, density) { options.map { measurer.measure(scripted(it), style, maxLines = 1).size.width + with(density) { pad.toPx() } } }
+    return when {
+        width == 0 || options.isEmpty() || fit == style -> style to options.map { 1f }
+        need.sum() <= width -> style to need.map { it + (width - need.sum()) / options.size }
+        else -> fit to options.map { 1f }
+    }
 }
 
 /**
@@ -518,20 +525,21 @@ internal fun DrawScope.rvValuePill(text: TextLayoutResult, topLeft: Offset, ink:
 }
 
 /**
- * Revolut's switch (§13.4, Addendum A): a 50 × 27 dp node holding a thin 34 dp track and a 19 dp thumb taller than it.
- * On, the thumb is the accent over a tint of it, outlined in the accent where the tint alone would not show on the card;
- * off, a light thumb over the [RvColors.control] track. The row around it owns the toggling.
+ * Revolut's switch (§13.4, Addendum A): a 34 dp track, a 19 dp thumb, in its 50 × 27 dp node less the room left of the
+ * track, so the text stands 12 dp from the track that shows (owner, q-s1125c-switchgap; that room made it 20). On, the
+ * accent thumb over its tint (outlined where needed); off, a light thumb on [RvColors.control]. The row owns the toggle.
  */
 @Composable
 internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val size = RvControlSize
-    val off = (size.switchWidth - size.switchTrackWidth) / 2 - (size.switchThumb - size.switchTrackHeight) / 2
+    val room = (size.switchWidth - size.switchTrackWidth) / 2
+    val off = -(size.switchThumb - size.switchTrackHeight) / 2
     val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, Rv.motion.tween(RvMotion.SWITCH_MS), label = "thumb")
-    Box(modifier.size(size.switchWidth, size.switchHeight).clearAndSetSemantics { testTag = RvRowPart.SWITCH }) {
+    Box(modifier.size(size.switchWidth - room, size.switchHeight).clearAndSetSemantics { testTag = RvRowPart.SWITCH }) {
         Box(
             Modifier
-                .align(Alignment.Center)
+                .align(Alignment.CenterStart)
                 .size(size.switchTrackWidth, size.switchTrackHeight)
                 .clip(CircleShape)
                 .background(if (checked) colors.switchOnTrack else colors.control)

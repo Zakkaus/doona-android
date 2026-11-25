@@ -300,7 +300,7 @@ class RvSkeletonBoundsTest {
         val WRAPS = mapOf(
             (RvSkeletonPages.POLICY_GLOBAL to RV_FS200) to setOf(0, 3, 4),
             (RvSkeletonPages.SUBS to RV_FS200) to setOf(0, 1),
-            (RvSkeletonPages.PER_APP to RV_FS200) to setOf(3, 4, 5, 6),
+            (RvSkeletonPages.PER_APP to RV_FS200) to setOf(3, 4, 5),
             (RvSkeletonPages.PER_APP_V1 to RV_FS200) to setOf(3, 4, 5),
         )
         const val TOLERANCE = 0.5f

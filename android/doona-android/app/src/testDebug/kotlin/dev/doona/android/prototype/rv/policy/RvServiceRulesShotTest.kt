@@ -106,6 +106,6 @@ class RvServiceRulesShotTest {
         // Each window is as tall as its page, so the capture holds every row.
         const val WHOLE = "+h2644dp"
         const val WHOLE_FS115 = "+h2655dp"
-        const val WHOLE_FS200 = "+h3209dp"
+        const val WHOLE_FS200 = "+h3213dp"
     }
 }

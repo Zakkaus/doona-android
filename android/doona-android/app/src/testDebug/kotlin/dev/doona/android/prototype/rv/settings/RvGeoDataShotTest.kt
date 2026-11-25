@@ -288,11 +288,11 @@ class RvGeoDataShotTest {
          * 設定's whole page at each font size ([RvSettingsShotTest]'s frames, the row is on it by default), a whole dp,
          * rounded up. At fs200 the title wraps beside 更新, and the second line too where a state follows the date.
          */
-        const val WHOLE = "+h1764dp"
-        const val WHOLE_FS115 = "+h1789dp"
-        const val FS200_IDLE = "+h2288dp"
-        const val FS200_UPDATING = "+h2285dp"
-        const val FS200_WRAPPED = "+h2329dp"
+        const val WHOLE = "+h1768dp"
+        const val WHOLE_FS115 = "+h1793dp"
+        const val FS200_IDLE = "+h2303dp"
+        const val FS200_UPDATING = "+h2300dp"
+        const val FS200_WRAPPED = "+h2344dp"
 
         const val HALF_DP = 0.5f
 

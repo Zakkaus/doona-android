@@ -22,6 +22,7 @@ import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.preferredFrameRate
+import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.designsystem.rv.LocalRvTesting
 import dev.doona.android.designsystem.rv.LocalRvTestingNodes
 import dev.doona.android.designsystem.rv.LocalRvUpdating
@@ -62,6 +63,7 @@ import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
+import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.prototype.rv.settings.RvLanguageScreen
 import dev.doona.android.prototype.rv.settings.RvLicenseText
 import dev.doona.android.prototype.rv.settings.RvLicensesScreen
@@ -144,7 +146,9 @@ internal data class RvSampleStart(
  */
 @Composable
 internal fun RvPreviewApp(options: RvMotionOptions = RvMotionOptions(), start: RvSampleStart = RvSampleStart()) {
-    var settings by remember { mutableStateOf(rvSampleSettings()) }
+    // 設定's 語言 row names the app's language as the phone has it (none chosen: the system's), not the sample's.
+    val context = LocalContext.current
+    var settings by remember { mutableStateOf(rvSampleSettings().copy(language = RvLanguage.of(LanguageSettings.languageTags(context)))) }
     val systemDark = isSystemInDarkTheme()
     // Every layer that moves votes for the display's high rate while it moves: with no vote, an adaptive-rate panel
     // (API 35 and later) runs the app at its normal rate, 60 Hz. Ambient loops vote normal where they run (RvBusy, the
@@ -290,7 +294,7 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         checkUpdate = update.check,
         language = { pages.push(RvSettingsPreviewRoutes.LANGUAGE) },
     )
-    RvSettingsScreenSample(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
+    RvSettingsScreenSample(settings.copy(tileAdded = tile.added ?: false, tileKnown = tile.added != null), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
 }
 
 /** 設定's 依 App, and 授權條款 with each licence's text (`license:<n>`). */

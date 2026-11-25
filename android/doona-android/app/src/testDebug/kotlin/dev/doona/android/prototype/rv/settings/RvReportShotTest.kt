@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.width
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -158,22 +159,26 @@ class RvReportShotTest {
         assertTrue("the footnote stands under the switches", footer.top > apps.bottom)
     }
 
-    /** The footnote spans the cards' column and is laid out that wide, so its first line runs to their right edge (owner-fix3 item 29). */
+    /**
+     * The footnote spans the cards' text column and is laid out that wide, so its first line runs to the column's end
+     * (owner-fix3 item 29, then q-s1125c-footgap 19:05: 「右邊也內縮到 32 dp」, the end in by the card's text inset as
+     * the start; it ran to the card's edge before).
+     */
     @Test
     @Config(qualifiers = READY)
-    fun theFootnoteRunsToTheCardsRightEdge() = footnoteSpansTheCards(1f)
+    fun theFootnoteRunsToTheCardsTextColumnEnd() = footnoteSpansTheCards(1f)
 
     @Test
     @Config(qualifiers = READY_FS200)
-    fun theFootnoteRunsToTheCardsRightEdgeAtFs200() = footnoteSpansTheCards(RV_FS200)
+    fun theFootnoteRunsToTheCardsTextColumnEndAtFs200() = footnoteSpansTheCards(RV_FS200)
 
     private fun footnoteSpansTheCards(fontScale: Float) {
         compose.rvContent(dark = false, fontScale = fontScale) { Page(READY_BUILD) }
         val card = compose.onAllNodesWithTag(RvPart.CARD).fetchSemanticsNodes().last().boundsInRoot
         val node = compose.onNodeWithTag(RvPart.FOOTER).fetchSemanticsNode()
         val box = node.boundsInRoot
-        assertEquals("starts on the cards' left edge", card.left, box.left, EDGE_PX)
-        assertEquals("ends on the cards' right edge", card.right, box.right, EDGE_PX)
+        assertEquals("starts at the cards' text inset", card.left + RvSpace.rowPadding.value * compose.density.density, box.left, EDGE_PX)
+        assertEquals("ends at the cards' text inset from their right edge", card.right - RvSpace.rowPadding.value * compose.density.density, box.right, EDGE_PX)
         val layouts = mutableListOf<TextLayoutResult>().also { node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }
         val layout = layouts.single()
         assertEquals("laid out as wide as its box", box.width, layout.layoutInput.constraints.maxWidth.toFloat(), EDGE_PX)
@@ -260,13 +265,13 @@ class RvReportShotTest {
 
         /** As tall as the page in each state and font size (to the next whole dp), so its end sits above the actions as on the phone. */
         const val READY = "+h1177dp"
-        const val READY_FS115 = "+h1209dp"
+        const val READY_FS115 = "+h1213dp"
         const val READY_FS200 = "+h1820dp"
         const val BUILDING = "+h1259dp"
-        const val BUILDING_FS115 = "+h1291dp"
+        const val BUILDING_FS115 = "+h1295dp"
         const val BUILDING_FS200 = "+h1959dp"
         const val FAILED = "+h1335dp"
-        const val FAILED_FS115 = "+h1371dp"
+        const val FAILED_FS115 = "+h1376dp"
         const val FAILED_FS200 = "+h2053dp"
     }
 }
