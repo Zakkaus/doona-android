@@ -66,8 +66,9 @@ A snapshot that [`notices.py`](android/doona-android/tools/notices.py) has not r
 and leaves `main` unchanged. The schedule requires the workflow on the default branch.
 The build bundles the pinned DATs into the doona APK. The repository does not track them.
 
-CI fails a `v*` tag when a pinned DAT differs from the newest MetaCubeX release. To check before
-tagging, run `uv run crates/doona-core/tools/update_geo.py --current`. To update the pins, run
+CI fails a `v*` tag, and skips its release APK, when a pinned DAT differs from the newest MetaCubeX
+release. To check before tagging, run
+`uv run crates/doona-core/tools/update_geo.py --current`. To update the pins, run
 `gh workflow run geo-bundle.yml`, then tag a commit that has them.
 
 MetaCubeX replaces its `latest` assets and force-pushes its `release` branch. The pins use

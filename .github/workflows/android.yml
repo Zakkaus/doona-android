@@ -208,6 +208,10 @@ jobs:
 
   doona-release:
     name: doona-android release APK
+    # Stale Geo pins on a tag stop the release build. geo-current is skipped on every other ref,
+    # and `needs` alone would then skip this job too.
+    needs: geo-current
+    if: ${{ !cancelled() && (needs.geo-current.result == 'success' || needs.geo-current.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

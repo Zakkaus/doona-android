@@ -50,7 +50,7 @@ uv run crates/doona-core/tools/update_geo.py --check "$bundle"
 
 [每週排程](.github/workflows/geo-bundle.yml) 驗證最新版本後，將新的 `geo-pins.json` 提交到 `main`，再以 dispatch 觸發 Android 工作流程，因為用 [`GITHUB_TOKEN` 建立的 commit 不會啟動 push 工作流程](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)。若 [`notices.py`](android/doona-android/tools/notices.py) 尚未審查新版資料，排程會失敗，`main` 維持不變。排程必須放在預設分支。DAT 檔不納入版本控制；doona 的 APK 內含鎖定版本的兩個 DAT 檔。
 
-推送 `v*` 標籤時，只要有一個鎖定的 DAT 檔與 MetaCubeX 最新版本不同，CI 就會失敗。加標籤前可執行 `uv run crates/doona-core/tools/update_geo.py --current` 檢查。需要更新時，先執行 `gh workflow run geo-bundle.yml`，再為包含新版本鎖定檔的 commit 加標籤。
+推送 `v*` 標籤時，只要有一個鎖定的 DAT 檔與 MetaCubeX 最新版本不同，CI 就會失敗，也不建置發版 APK。加標籤前可執行 `uv run crates/doona-core/tools/update_geo.py --current` 檢查。需要更新時，先執行 `gh workflow run geo-bundle.yml`，再為包含新版本鎖定檔的 commit 加標籤。
 
 MetaCubeX 會替換 `latest` 的附件，並強制推送 `release` 分支。版本鎖定檔使用含 commit SHA 的快照 URL，大小與 SHA-256 取自 release API。URL 不會指向新版內容，但 GitHub 可能回收舊的 `release` commit；是否設置第一方鏡像仍由維護者決定。
 
