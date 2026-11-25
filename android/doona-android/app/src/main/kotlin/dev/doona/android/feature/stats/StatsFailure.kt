@@ -32,6 +32,7 @@ internal fun rvStatsFailureBanner(failure: StatsFailure, onRetry: () -> Unit): R
         stringResource(failure.code.messageRes()),
         stringResource(R.string.rv_retry),
         onRetry,
+        // 無法更新 <name>: a subscription's name keeps the platform's breaks; ICU's word breaks would split it.
         titleKeepWords = failure.tool != StatsTool.UpdateAll,
     )
 }

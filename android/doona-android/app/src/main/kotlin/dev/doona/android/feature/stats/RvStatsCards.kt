@@ -291,5 +291,3 @@ internal fun gridEvery(slots: Int): Int = when (slots) {
     DAYS_PER_WEEK -> 1
     else -> DAYS_PER_WEEK
 }
-
-private const val DAYS_PER_WEEK = 7

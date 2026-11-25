@@ -160,6 +160,34 @@ class StatsMappingTest {
     }
 
     @Test
+    fun `a catalog with no groups has no nodes, no main node, and Score groups named by their ids`() {
+        val catalog = sampleInput().catalog!!.copy(groups = emptyList())
+        val state = rvStatsState(StatsInput(null, TodayTraffic(), emptyList(), catalog, scoreOf("g-Auto"), SAMPLE_NOW, ZoneOffset.UTC))
+        assertTrue(state.nodes.isEmpty())
+        assertNull(state.selectedId)
+        assertEquals(listOf("g-Auto"), state.score!!.groups.map { it.name })
+        assertTrue(state.score!!.groups.single().members.isEmpty())
+    }
+
+    @Test
+    fun `a profile with no main group lists its nodes and selects none`() {
+        val node = Member("n1", "Tokyo 01")
+        val group = Group("g-JP", "JP", GroupKind.Selector, listOf(node), "n1")
+        val catalog = sampleInput().catalog!!.copy(groups = listOf(group), mainGroupId = "g-Proxy")
+        val state = rvStatsState(StatsInput(null, TodayTraffic(), emptyList(), catalog, null, SAMPLE_NOW, ZoneOffset.UTC))
+        assertEquals(listOf("n1"), state.nodes.map { it.id })
+        assertNull(state.selectedId)
+    }
+
+    @Test
+    fun `no catalog yet means no nodes and no main node, and Score groups named by their ids`() {
+        val state = rvStatsState(StatsInput(null, TodayTraffic(), emptyList(), null, scoreOf("g-Auto"), SAMPLE_NOW, ZoneOffset.UTC))
+        assertTrue(state.nodes.isEmpty())
+        assertNull(state.selectedId)
+        assertEquals(listOf("g-Auto"), state.score!!.groups.map { it.name })
+    }
+
+    @Test
     fun `places come from a city, a flag or a country code, else other`() {
         assertEquals(RvPlace.JP, rvStatsPlace("Tokyo 02"))
         assertEquals(RvPlace.HK, rvStatsPlace("🇭🇰 香港 01"))
@@ -259,6 +287,12 @@ class StatsMappingTest {
         val state = rvStatsState(sampleInput().with(subscriptionId = "gone"))
         assertNull(state.subscriptionId)
         assertEquals(state.subscriptions, state.shownSubscriptions)
+    }
+
+    /** The sample's first Score group, renamed [id] and listing one node no catalog has. */
+    private fun scoreOf(id: String): ScoreState {
+        val sample = runBlocking { engine.scoreState().getOrThrow() }
+        return sample.copy(groups = listOf(sample.groups.first().copy(id = id, nodeIds = listOf("gone"))))
     }
 
     private fun StatsInput.with(

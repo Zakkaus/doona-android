@@ -9,6 +9,7 @@ import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Usage
+import dev.doona.android.feature.leafOf
 import dev.doona.android.feature.model.RvCity
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
@@ -159,15 +160,14 @@ private fun rvNode(member: Member, placeOf: (String) -> RvPlace) = RvNode(
     },
 )
 
-/** The node the main group sends through, followed through any subgroup it selected. */
+/**
+ * The node the main group sends through, followed through any subgroup it selected ([leafOf]); null with no main group
+ * (a hand-edited profile may have none) or a selection that ends in nothing.
+ */
 private fun Catalog.mainNodeId(): String? {
     val byId = groups.associateBy { it.id }
-    var id = byId[mainGroupId]?.selectedId
-    repeat(byId.size) {
-        val group = byId[id] ?: return id
-        id = group.selectedId
-    }
-    return id
+    val main = byId[mainGroupId] ?: return null
+    return main.members.firstOrNull { it.id == main.selectedId }?.let { leafOf(it, byId) }?.id
 }
 
 /** The Score card's groups: each with the catalog's name and its nodes; null when no group uses Score. */
@@ -202,7 +202,7 @@ private fun flagCode(name: String): String? {
 }
 
 private const val DIRECT = "direct"
-private const val DAYS_PER_WEEK = 7
+internal const val DAYS_PER_WEEK = 7
 private const val SECONDS_PER_DAY = 86_400
 private const val SECONDS_PER_HOUR = 3_600
 private const val REGIONAL_A = 0x1F1E6

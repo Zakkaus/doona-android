@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasContentDescription
@@ -18,8 +20,9 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.toSize
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
@@ -154,13 +157,31 @@ class AppRvStatsShotTest {
     @Config(qualifiers = WINDOW_EN)
     fun subscriptionEnLight() = shot("stats-sub-en", dark = false) { Page(::historyEngine, subscription = PICKED) }
 
-    /** 本週 with the tiles paged on: 連線次數 in view with its 今天 tag (past days keep no flows). */
+    /**
+     * 本週 with the tiles paged on: 連線次數 in view with its 今天 tag (past days keep no flows). The drag runs across the
+     * whole window at the tiles' height (a caption is too narrow to move the pager), and the test fails unless 連線次數's
+     * tile then sits wholly in the window and 下載's has left it.
+     */
     @Test
     @Config(qualifiers = WINDOW)
     fun weekTilesPagedLight() = shot("stats-week-tiles", dark = false, before = {
-        compose.onNode(hasText(text(R.string.ui_upload)), useUnmergedTree = true).performTouchInput { swipeLeft() }
+        val y = bounds(R.string.ui_download).center.y
+        compose.onRoot().performTouchInput { swipe(Offset(width * SWIPE_FROM, y), Offset(width * SWIPE_TO, y), SWIPE_MS) }
         compose.waitForIdle()
+        val window = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val connections = bounds(R.string.rv_stats_connections)
+        assertTrue("連線次數 in view: $connections", connections.left >= 0f && connections.right <= window.right)
+        assertTrue("下載 paged out: ${bounds(R.string.ui_download)}", bounds(R.string.ui_download).right <= 0f)
+        val tags = laidOut(R.string.rv_stats_today)
+        val tag = tags.any { it.left >= connections.right && it.right <= window.right && it.top < connections.bottom && it.bottom > connections.top }
+        assertTrue("連線次數's 今天 tag in view beside it: $tags", tag)
     }) { Page(::historyEngine, RvStatsRange.Week) }
+
+    /** Where each text [id] is laid out, unclipped: boundsInRoot stops at the window, so a caption half out of view would read as in it. */
+    private fun laidOut(id: Int) = compose.onAllNodes(hasText(text(id)), useUnmergedTree = true).fetchSemanticsNodes().map { Rect(it.positionInRoot, it.size.toSize()) }
+
+    /** The top-most text [id]: the tiles' caption, above any card further down with the same word. */
+    private fun bounds(id: Int) = laidOut(id).minBy { it.top }
 
     /** 本週 and 本月 say what 連線次數 and 分流比例 count (今天), and a picked subscription tags the traffic cards 全部訂閱. */
     @Test
@@ -349,6 +370,10 @@ class AppRvStatsShotTest {
         const val WEEKEND_DOWN = 1_300_000_000L
         const val STEP_DOWN = 210_000_000L
         const val UP_SHARE = 9
+
+        const val SWIPE_FROM = 0.9f
+        const val SWIPE_TO = 0.1f
+        const val SWIPE_MS = 300L
 
         /** A grey's channels differ by a few levels at most; a hue's by far more. */
         const val GREY_SPREAD = 24
