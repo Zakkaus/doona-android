@@ -36,15 +36,6 @@ data class ActivityUiState(
     val hasSubscriptions: Boolean = true,
 )
 
-/** What [ActivityViewModel] handles; connecting and navigation are separate callbacks of the screen. */
-sealed interface ActivityAction {
-    data object Disconnect : ActivityAction
-
-    data class SetMode(val mode: Mode) : ActivityAction
-
-    data object DismissError : ActivityAction
-}
-
 fun activityUiState(
     status: Status,
     traffic: Traffic,

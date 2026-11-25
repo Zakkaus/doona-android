@@ -1,0 +1,257 @@
+package dev.doona.android.feature.activity
+
+import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.engine.Catalog
+import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.FailureReason
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.Member
+import dev.doona.android.engine.NodeInfo
+import dev.doona.android.engine.RuleBytes
+import dev.doona.android.engine.RuleRow
+import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.Settings
+import dev.doona.android.engine.Status
+import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFormat
+import dev.doona.android.engine.Traffic
+import dev.doona.android.engine.Usage
+import dev.doona.android.feature.leafOf
+import dev.doona.android.feature.model.RV_TESTS
+import dev.doona.android.feature.model.RvDay
+import dev.doona.android.feature.model.RvGroupKind
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvSubFormat
+import dev.doona.android.feature.model.RvSubscription
+import java.net.URI
+
+/**
+ * What 活動's lists are mapped from, read far less often than the second's traffic: the core's [catalog] (null until
+ * read; [settings] stand in for its mode until then), today's [usage] (null until the first read), the rule rows its
+ * `byRule` ids resolve to ([rules], by id), each node's endpoint and tests ([nodeInfo], by id), yesterday's bytes by now, and now.
+ */
+internal class ActivityData(
+    val catalog: Catalog?,
+    val settings: Settings,
+    val usage: Usage?,
+    val rules: Map<String, RuleRow>,
+    val nodeInfo: Map<String, NodeInfo>,
+    val yesterdayByNow: Long,
+    val nowEpochMs: Long,
+    val nowHour: Float,
+)
+
+/**
+ * The part of 活動 one catalog, usage read or clock step decides: the mode, the main node, the lists and the cards,
+ * whether every node failed its test ([allFailed]) and whether a subscription exists. [mapped] is false only for the
+ * stand-in before the first mapping, which the page shows as loading.
+ */
+internal class ActivityCatalog(
+    val mode: RvRouteMode,
+    val node: RvMainNode?,
+    val nodes: List<RvNode>,
+    val subscriptions: List<RvSubscription>,
+    val rules: List<RvActivityRule>,
+    val cards: RvActivityCards,
+    val allFailed: Boolean,
+    val hasSubscriptions: Boolean,
+    val mapped: Boolean = true,
+)
+
+/**
+ * Maps [data] to 活動's lists. The main node is what the main group's TCP selection ends on (`catalog.mainGroupId`,
+ * not the first group), none in Direct. Each node is a leaf member of any group, once, with its tests from
+ * [ActivityData.nodeInfo] or, before they are read, its member's last result; [placeOf] gives a node's place by its name.
+ */
+internal fun activityCatalog(data: ActivityData, placeOf: (String) -> RvPlace = { RvPlace.Other }): ActivityCatalog {
+    val catalog = data.catalog
+    val mode = (catalog?.mode ?: data.settings.mode).routeMode()
+    val groups = catalog?.groups.orEmpty().associateBy { it.id }
+    val main = catalog?.let { groups[it.mainGroupId] }
+    val mainLeaf = main?.let { selectedLeaf(it, it.tcp.selectedId, groups) }
+    val subscriptionNames = catalog?.subscriptions.orEmpty().associate { it.id to it.name }
+    val members = catalog?.groups.orEmpty().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }
+    val nodes = members.map { rvNode(it, data.nodeInfo[it.id], subscriptionNames, placeOf) }
+    val byId = nodes.associateBy { it.id }
+    val cards = RvActivityCards(
+        today = rvDay(data.usage),
+        nowHour = data.nowHour,
+        yesterdayByNow = data.yesterdayByNow,
+        nowEpochMs = data.nowEpochMs,
+        ruleCount = catalog?.ruleSource?.rules ?: 0,
+        mainNodeId = mainLeaf?.id.orEmpty(),
+        node = byId::get,
+        groupKind = { id -> groups[id]?.kind?.rvKind() },
+    )
+    return ActivityCatalog(
+        mode = mode,
+        node = mainLeaf?.takeIf { mode != RvRouteMode.Direct }?.let { RvMainNode(it.id, it.name, it.latencyMs, it.failed) },
+        nodes = nodes,
+        subscriptions = catalog?.subscriptions.orEmpty().map(::rvSubscription),
+        rules = catalog?.let { ruleRows(it, data.usage?.today?.byRule.orEmpty(), data.rules, groups) }.orEmpty(),
+        cards = cards,
+        allFailed = members.isNotEmpty() && members.all { it.failed },
+        // Until the catalog is read nothing says there is none: the page waits rather than showing the empty state.
+        hasSubscriptions = catalog?.subscriptions?.isNotEmpty() ?: true,
+    )
+}
+
+/**
+ * 活動 as the page draws it: [catalog]'s lists under the live [status] and [traffic], with the one notice that applies
+ * ([activityNotice]), a failed action's [failure], and whether the tunnel reported a failed local network connection.
+ */
+internal fun activityModel(
+    catalog: ActivityCatalog,
+    status: Status,
+    traffic: Traffic,
+    warning: ErrorCode?,
+    crashOffered: Boolean,
+    ready: Boolean,
+    failure: RvActivityFailure?,
+): RvActivityUi {
+    val loading = !ready || !catalog.mapped
+    val state = RvActivityState(
+        status = status,
+        mode = catalog.mode,
+        node = catalog.node,
+        downRate = traffic.downRate,
+        upRate = traffic.upRate,
+        downHistory = traffic.downHistory.map(Long::toFloat),
+        upHistory = traffic.upHistory.map(Long::toFloat),
+    )
+    return RvActivityUi(
+        state = state,
+        nodes = catalog.nodes,
+        subscriptions = catalog.subscriptions,
+        rules = catalog.rules,
+        cards = catalog.cards,
+        notice = if (loading) null else activityNotice(catalog.hasSubscriptions, status, crashOffered, catalog.allFailed),
+        failure = failure,
+        localNetwork = warning == ErrorCode.LocalNetwork,
+        loading = loading,
+        hasSubscriptions = catalog.hasSubscriptions,
+    )
+}
+
+/**
+ * The one notice 活動 shows, the first that applies: no subscription (the page's empty state); a failed start or a
+ * stopped tunnel by its reason; a crash log to export; every node failed its test. A start the system refused for
+ * another app's lockdown has no notice of its own and reads as a failed start.
+ */
+internal fun activityNotice(hasSubscriptions: Boolean, status: Status, crashOffered: Boolean, allFailed: Boolean): RvActivityNotice? = when {
+    !hasSubscriptions -> RvActivityNotice.NoSubscription
+    status is Status.Failed -> failureNotice(status)
+    crashOffered -> RvActivityNotice.Crash
+    allFailed -> RvActivityNotice.NoNode
+    else -> null
+}
+
+private fun failureNotice(status: Status.Failed): RvActivityNotice = when (status.reason) {
+    FailureReason.NoAllowedApps -> RvActivityNotice.StartNoApps
+    FailureReason.IncompatibleCore -> RvActivityNotice.StartIncompatible
+    FailureReason.StartFailed -> if (status.code == ErrorCode.NoNodes) RvActivityNotice.StartNoNodes else RvActivityNotice.StartFailed
+    FailureReason.VpnNotEstablished, FailureReason.LockdownEnabled -> RvActivityNotice.StartFailed
+    FailureReason.CoreStopped -> RvActivityNotice.CoreStopped
+    FailureReason.Revoked -> RvActivityNotice.VpnTaken
+}
+
+/**
+ * Today's rule bytes by target: each `byRule` id joined with its rule row, the bytes both ways summed per target, the
+ * most first. Left out: `unmatched` and the rules that send to the main group (the main node's row stands for them),
+ * `other` (ids past the day's 64, with no row), ids whose row is gone, rejected flows (they reach no outbound) and
+ * groups the catalog no longer has.
+ */
+private fun ruleRows(catalog: Catalog, byRule: List<RuleBytes>, rows: Map<String, RuleRow>, groups: Map<String, Group>): List<RvActivityRule> {
+    val bytes = LinkedHashMap<RuleTarget, Long>()
+    byRule.forEach { entry ->
+        if (entry.id == UNMATCHED || entry.id == OTHER) return@forEach
+        val target = rows[entry.id]?.target ?: return@forEach
+        if (target == RuleTarget.Reject || target == RuleTarget.Group(catalog.mainGroupId)) return@forEach
+        bytes[target] = (bytes[target] ?: 0L) + entry.up + entry.down
+    }
+    return bytes.mapNotNull { (target, sum) ->
+        when (target) {
+            RuleTarget.Direct -> RvActivityRule(null, null, null, sum, null)
+            is RuleTarget.Group -> groups[target.id]?.let { groupRule(it, sum, groups) }
+            RuleTarget.Reject -> null
+        }
+    }.sortedByDescending { it.bytes }
+}
+
+/** A group's row: its TCP node, and its UDP node when that is another one. */
+private fun groupRule(group: Group, bytes: Long, groups: Map<String, Group>): RvActivityRule {
+    val tcp = selectedLeaf(group, group.tcp.selectedId, groups)
+    val udp = selectedLeaf(group, group.udp.selectedId, groups)
+    return RvActivityRule(group.name, group.id, tcp?.id, bytes, udp?.id?.takeIf { it != tcp?.id })
+}
+
+/** The node [group]'s [selected] member ends on, through any nested groups. */
+private fun selectedLeaf(group: Group, selected: String?, groups: Map<String, Group>): Member? =
+    group.members.firstOrNull { it.id == selected }?.let { leafOf(it, groups) }
+
+private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, String>, placeOf: (String) -> RvPlace): RvNode {
+    val history = info?.tests?.map { it.ms }?.takeLast(RV_TESTS)?.takeIf { it.isNotEmpty() } ?: memberHistory(member)
+    return RvNode(
+        id = member.id,
+        name = member.name,
+        // P3c's place mapper gives the country code and number; until then the narrow tiles show the name.
+        short = member.name,
+        place = placeOf(member.name),
+        city = null,
+        protocol = info?.protocol.orEmpty(),
+        host = info?.server.orEmpty(),
+        port = info?.port ?: 0,
+        transport = info?.transport.orEmpty(),
+        tls = info?.tls ?: false,
+        subscription = member.subscriptionId?.let(subscriptions::get).orEmpty(),
+        history = history,
+    )
+}
+
+/** A member's last result as a one-test history: its latency, a timeout when it failed, nothing when never tested. */
+private fun memberHistory(member: Member): List<Int?> = when {
+    member.latencyMs != null -> listOf(member.latencyMs)
+    member.failed -> listOf(null)
+    else -> emptyList()
+}
+
+private fun rvSubscription(sub: Subscription) = RvSubscription(
+    id = sub.id,
+    name = sub.name,
+    nodes = sub.nodes,
+    updatedAtEpochMs = sub.updatedAtEpochMs ?: 0L,
+    usedBytes = sub.usedBytes ?: 0L,
+    totalBytes = sub.totalBytes ?: 0L,
+    expiresAtEpochMs = sub.expiresAtEpochMs,
+    // Only the host: the rest of a link carries its token.
+    host = runCatching { URI(sub.url).host }.getOrNull().orEmpty(),
+    format = when (sub.format) {
+        SubscriptionFormat.Clash -> RvSubFormat.Clash
+        SubscriptionFormat.SingBox -> RvSubFormat.SingBox
+        SubscriptionFormat.Sip008 -> RvSubFormat.Sip008
+        SubscriptionFormat.ShareLinks, SubscriptionFormat.Base64, null -> RvSubFormat.Links
+    },
+    userAgent = sub.userAgent,
+)
+
+/** Today by the hour; before the first read, a day with no bytes. */
+private fun rvDay(usage: Usage?): RvDay {
+    val day = usage?.today ?: return RvDay(List(HOURS) { 0L }, List(HOURS) { 0L }, null)
+    return RvDay(day.down, day.up, day.flows.map(Long::toInt))
+}
+
+/** A fallback group picks for itself, as a url-test does. */
+private fun GroupKind.rvKind(): RvGroupKind = when (this) {
+    GroupKind.Selector -> RvGroupKind.Select
+    GroupKind.UrlTest, GroupKind.Fallback -> RvGroupKind.Auto
+    GroupKind.Score -> RvGroupKind.Score
+}
+
+/** The ids of every leaf member of the catalog's groups, once each: what `Engine.nodes` is asked for. */
+internal fun leafIds(catalog: Catalog): List<String> = catalog.groups.flatMap { it.members }.filterNot { it.isGroup }.map { it.id }.distinct()
+
+private const val UNMATCHED = "unmatched"
+private const val OTHER = "other"
+private const val HOURS = 24
