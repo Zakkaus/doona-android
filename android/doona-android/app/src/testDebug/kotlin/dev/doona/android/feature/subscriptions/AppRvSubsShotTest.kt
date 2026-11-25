@@ -219,8 +219,8 @@ class AppRvSubsShotTest {
 
     @Composable
     private fun Detail() {
-        val engine = remember { harborEngine() }
-        SubDetailRoute(engine, TWELVE_HOURS, engine.subscriptions.value.first().id, onBack = {})
+        val (engine, id) = remember { harborEngine().let { it to it.subscriptions.value.first().id } }
+        SubDetailRoute(engine, TWELVE_HOURS, id, onBack = {})
     }
 
     @Composable

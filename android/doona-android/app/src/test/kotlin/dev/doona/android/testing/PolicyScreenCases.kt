@@ -19,14 +19,13 @@ import dev.doona.android.feature.policies.samplePoliciesState
 
 /**
  * The screens of the 策略 lane: the list, a group's page as a selector, as an automatic group and as one the user
- * pinned, and 活動 while the engine loads. The pages whose state the engine fixture cannot set are drawn in the app's
+ * pinned. The pages whose state the engine fixture cannot set are drawn in the app's
  * frame without a back stack. 訂閱 and the first run are RV pages now (`app-rv-sub*`, `app-rv-welcome*`).
  */
 internal fun policyScreenCases(): List<ScreenCase> {
     val engine = sampleEngine()
     val apps = FakeInstalledApps()
     val groups = FakeEngine.SAMPLE_GROUPS
-    val loading = FakeEngine(groups).apply { ready.value = false }
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
     val list = bars + setOf(LayoutRole.Card, LayoutRole.Segmented, LayoutRole.Mark)
@@ -50,6 +49,5 @@ internal fun policyScreenCases(): List<ScreenCase> {
         ScreenCase("group-pinned", PageLayout(flatGroup, groupRhythm)) {
             DoonaAppShell(Tab.Policies, onSelect = {}) { GroupScreen(sampleGroupDetail("g-Auto", SAMPLE_PINNED_GROUPS), ErrorCode.Busy, {}, {}, {}) }
         },
-        ScreenCase("activity-loading", PageLayout(bars, listOf(space.section))) { OldShellApp(loading, apps, listOf(ActivityKey)) },
     )
 }
