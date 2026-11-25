@@ -75,7 +75,7 @@ internal fun RvScrollPage(
     scroll: ScrollState = rememberScrollState(),
     actions: (@Composable (RvGlass) -> Unit)? = null,
     bottomAction: (@Composable () -> Unit)? = null,
-    actionScrim: Boolean = false,
+    actionScrim: Boolean = true,
     overlay: @Composable BoxScope.(RvGlass) -> Unit = {},
     field: (@Composable (RvGlass, Modifier) -> Unit)? = null,
     end: RvPageEnd = RvPageEnd.Inset(),
