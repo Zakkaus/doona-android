@@ -6,6 +6,7 @@ import android.net.LinkProperties
 import android.net.NetworkCapabilities
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.app.FakeEngineApplication
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.AppPolicy
@@ -42,12 +43,15 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowNetwork
 import org.robolectric.shadows.ShadowNetworkCapabilities
 import java.io.IOException
 import java.net.InetAddress
 
 @OptIn(ExperimentalCoroutinesApi::class)
+// The real application would start an engine whose own default-network callback shows up in the callback assertions.
+@Config(application = FakeEngineApplication::class)
 @RunWith(AndroidJUnit4::class)
 class EngineTelemetryTest {
     @get:Rule

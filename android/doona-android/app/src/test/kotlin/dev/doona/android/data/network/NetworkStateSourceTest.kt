@@ -11,6 +11,7 @@ import android.os.Looper
 import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.app.FakeEngineApplication
 import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.NetworkTransport
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,6 +37,8 @@ import org.robolectric.shadows.ShadowNetworkCapabilities
 import java.net.InetAddress
 
 @OptIn(ExperimentalCoroutinesApi::class)
+// The real application would start an engine whose own default-network callback shows up in these assertions.
+@Config(application = FakeEngineApplication::class)
 @RunWith(AndroidJUnit4::class)
 class NetworkStateSourceTest {
     private val app = ApplicationProvider.getApplicationContext<Application>()
