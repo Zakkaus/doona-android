@@ -1,6 +1,8 @@
 package dev.doona.android.app
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.fake.FakeEngine
@@ -25,13 +27,14 @@ class SettingsVersionTest {
     fun `the settings show the version the shell passes`() {
         // The package manager of this test app says 0.1; the shell's value is the one shown.
         settings("9.9.9")
-        compose.onNodeWithText("9.9.9").assertExists()
+        // 檢查更新 and 關於 both name it (the approved page).
+        compose.onAllNodesWithText("9.9.9").assertCountEquals(2)
         compose.onNodeWithText("0.1").assertDoesNotExist()
     }
 
     @Test
     fun `a shell that knows no version shows a dash`() {
         settings("")
-        compose.onNodeWithText("—").assertExists()
+        compose.onAllNodesWithText("—").assertCountEquals(2)
     }
 }

@@ -75,13 +75,13 @@ class HubNavigationTest {
 
     @Test
     fun aWindowOneDpUnderTheCompactHeightHasARail() {
-        compose.setVariantContent(Light.tall(479)) { screenCases().first { it.name == "settings" }.content() }
+        compose.setVariantContent(Light.tall(479)) { screenCases().first { it.name == "activity" }.content() }
         assertTrue("a window 479 dp high has a rail", navigation(compose.layoutTree()).single().vertical)
     }
 
     @Test
     fun aWindowAtTheCompactHeightHasABar() {
-        compose.setVariantContent(Light.tall(480)) { screenCases().first { it.name == "settings" }.content() }
+        compose.setVariantContent(Light.tall(480)) { screenCases().first { it.name == "activity" }.content() }
         assertTrue("a window 480 dp high has a bar", !navigation(compose.layoutTree()).single().vertical)
     }
 

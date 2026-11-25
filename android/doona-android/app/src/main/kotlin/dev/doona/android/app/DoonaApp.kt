@@ -1,5 +1,6 @@
 package dev.doona.android.app
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -8,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
+import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.designsystem.components.DoonaHubShell
 import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.designsystem.rv.RvFloatingNav
@@ -31,6 +35,9 @@ import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
+import dev.doona.android.feature.report.AppReportFacts
+import dev.doona.android.feature.report.ReportRoute
+import dev.doona.android.feature.settings.SettingsNav
 import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
@@ -87,9 +94,31 @@ fun DoonaApp(
             }
             entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
             entry<SettingsKey> {
-                OldTabFrame(Tab.Settings, onTab, onReselect) {
-                    SettingsRoute(engine, version, onOpenPerApp = { backStack.push(PerAppKey) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
+                val context = LocalContext.current
+                val container = (context.applicationContext as DoonaApplication).container
+                val store = remember(container) { AppSettingsStore(container.application, AppSettings.get(container.application), container.quickTile) }
+                val system = remember(context, container) { ActivitySettingsSystem(context as Activity, container.quickTile) }
+                // The sub-pages' keys (關於, 語言, 更新間隔, 實驗室, 主題, DNS, 生效設定) are the orchestrator's to add.
+                val nav = remember(backStack) {
+                    SettingsNav(
+                        perApp = { backStack.push(PerAppKey) },
+                        dns = {},
+                        effectiveConfig = {},
+                        report = { backStack.push(ReportKey) },
+                        about = {},
+                        theme = {},
+                        language = {},
+                        interval = {},
+                        lab = {},
+                    )
                 }
+                SettingsRoute(engine, store, system, nav, version, onTab)
+            }
+            entry<ReportKey> { key ->
+                val context = LocalContext.current
+                val container = (context.applicationContext as DoonaApplication).container
+                val facts = remember(context) { AppReportFacts(context) }
+                ReportRoute(engine, container.reportExporter, facts, onBack = { backStack.pop(key) })
             }
             entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
         }

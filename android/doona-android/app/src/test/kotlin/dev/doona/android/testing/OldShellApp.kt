@@ -26,7 +26,6 @@ import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
-import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
 
@@ -56,10 +55,9 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
                     GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.add(GroupKey(it)) })
                 }
                 entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
-                entry<SettingsKey> {
-                    SettingsRoute(engine, "", onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
-                }
                 entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
+                // Under the old 依 App page only, which covers it: 設定 is an RV page now (RvSettingsScreen).
+                entry<SettingsKey> {}
             },
         )
     }

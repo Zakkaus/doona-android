@@ -57,18 +57,19 @@ import dev.doona.android.feature.model.RvSettingsState
  * The 設定 tab in Revolut's settings language (§13, with the Security page's hero), the owner's S1 (rv-fix-4e): the
  * doona mark beside the centred title on a faint dot map, two round actions under it, then a card for each group of
  * settings with a section title over it and, where it helps, a footer under it, all scrolling under the floating nav.
- * There is no search capsule; the title collapses into the bar as the page scrolls. The state is the caller's, so the
- * switches turn; the rows that open something are not wired, 主題 opens [onOpenTheme] and the nav's tabs [onTab].
+ * There is no search capsule; the title collapses into the bar as the page scrolls. [version] is the app's version name. The state is the caller's, so the
+ * switches turn; the rows open [routes], 主題 opens [onOpenTheme] and the nav's tabs [onTab].
  * [configRev] is a preview flag (PV-f): set, 進階 gains 設定檔 with the applied revision, which opens the configuration's
  * overview ([RvSettingsRoutes.config]). Just before 關於, the last group, 更新 holds 檢查更新 and the GeoIP/GeoSite row
  * ([RvUpdateGroup]; [geoData], whose 更新 runs [RvSettingsRoutes.geoUpdate]). Where the [update] check stands shows on
  * the hero's 檢查更新 action, on its row and, for a newer release, in the banner under the hero ([rvUpdateNotice]); a
- * failed check only on its row. Over the page, the sheet that tells how to add the quick settings tile by
- * hand while the state holds it open.
+ * failed check only on its row. Until the per-app policy has been read ([perAppLoaded]), 依 App's row has no second
+ * line. Over the page, the sheet that tells how to add the quick settings tile by hand while the state holds it open.
  */
 @Composable
 internal fun RvSettingsScreen(
     state: RvSettingsState,
+    version: String,
     onChange: (RvSettingsState) -> Unit,
     onOpenTheme: () -> Unit,
     onTab: (Int) -> Unit = {},
@@ -76,6 +77,7 @@ internal fun RvSettingsScreen(
     configRev: Int? = null,
     geoData: RvGeoData,
     update: RvUpdate = RvUpdate.Idle,
+    perAppLoaded: Boolean = true,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -87,13 +89,12 @@ internal fun RvSettingsScreen(
         end = RvPageEnd.Nav,
     ) { titleBlock ->
         Hero(titleBlock, insets, routes, update)
-        val version = stringResource(R.string.rv_settings_version_value)
         // The banner stands where the first section title would, which then keeps its own gap above it (as 回報問題's).
         rvUpdateNotice(update, version, routes.release)?.let {
             RvBanner(it, Modifier.padding(start = RvSpace.gutter, top = RvSpace.sectionAbove, end = RvSpace.gutter))
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            ConnectionGroup(state, onChange, routes)
+            ConnectionGroup(state, onChange, routes, perAppLoaded)
             SubscriptionGroup(state, onChange, routes.interval)
             AppearanceGroup(state, onOpenTheme, routes.language)
             AdvancedGroup(state, routes, configRev)
@@ -174,7 +175,7 @@ internal class RvSettingsRoutes(
  * there is no switch for it.
  */
 @Composable
-private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, routes: RvSettingsRoutes) {
+private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, routes: RvSettingsRoutes, perAppLoaded: Boolean) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_connection))
     RvSettingsCard {
         RvSettingsNavRow(
@@ -192,7 +193,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
             )
         }
         RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
-        RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, routes.perApp, perAppValue(state.perApp))
+        RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, routes.perApp, perAppValue(state.perApp).takeIf { perAppLoaded })
     }
     RvFootnote(stringResource(R.string.rv_settings_connection_footer), inset = RvSpace.gutter - RvSettingsSpace.margin)
 }

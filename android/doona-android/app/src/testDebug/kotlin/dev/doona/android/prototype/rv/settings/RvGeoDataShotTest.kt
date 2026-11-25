@@ -280,7 +280,7 @@ class RvGeoDataShotTest {
 
     @Composable
     private fun Page(data: RvGeoData, onUpdate: () -> Unit = {}) =
-        RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(geoUpdate = onUpdate), geoData = data)
+        RvSettingsScreen(rvSampleSettings(), rvSampleVersions.app, onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(geoUpdate = onUpdate), geoData = data)
 
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)

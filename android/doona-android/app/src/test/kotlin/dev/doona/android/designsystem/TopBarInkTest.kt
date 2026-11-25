@@ -47,6 +47,6 @@ class TopBarInkTest(private val name: String, private val hasActions: Boolean) {
     companion object {
         @JvmStatic
         @Parameters(name = "{0}")
-        fun parameters(): List<Array<Any>> = listOf(arrayOf("activity", true), arrayOf("policies", true), arrayOf("group", false), arrayOf("subscriptions", true), arrayOf("settings", false))
+        fun parameters(): List<Array<Any>> = listOf(arrayOf("activity", true), arrayOf("policies", true), arrayOf("group", false), arrayOf("subscriptions", true))
     }
 }
