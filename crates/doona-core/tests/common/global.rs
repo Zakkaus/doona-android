@@ -40,7 +40,7 @@ impl Global {
         let feed = servers::feed(links.join("\n"));
         let reply = core.call(
             "addSubscription",
-            &format!(r#"{{"url":"http://{feed}/sub","name":null}}"#),
+            &format!(r#"{{"url":"http://{feed}/sub","name":null,"userAgent":null}}"#),
         );
         let reply: serde_json::Value = serde_json::from_str(&reply).unwrap();
         let subscription = reply["ok"]["id"].as_str().expect("added").to_owned();

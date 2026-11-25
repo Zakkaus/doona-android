@@ -57,7 +57,7 @@ internal class SubscriptionRefresh(
                 // Disabling auto-update during a fetch must stop the rest of the batch.
                 val (enabled, interval) = settings.subscriptionUpdate.first()
                 if (!enabled) break
-                val lastUpdate = sub.updatedAtEpochMs
+                val lastUpdate = sub.lastFetch?.atEpochMs
                 if (lastUpdate == null || lastUpdate <= clock() - interval.duration.inWholeMilliseconds) {
                     currentCoroutineContext().ensureActive()
                     // A native command outlives its caller; keep the batch locked until it returns.

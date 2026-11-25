@@ -9,28 +9,27 @@ import java.net.URI
 
 /**
  * The engine's subscription as the RV pages show it. A provider that sends no quota leaves used and total at 0, which
- * the pages read as no quota ([RvSubscription.hasQuota]); a subscription never fetched has 0 as its update time. The
- * link is reduced to its host, since the rest of a link carries its token. A format the core does not report reads as
- * share links, the plainest form.
+ * the pages read as no quota ([RvSubscription.hasQuota]); a subscription never fetched has no update time and no
+ * format. The link is reduced to its host, since the rest of a link carries its token.
  */
 internal fun rvSubscription(sub: Subscription): RvSubscription = RvSubscription(
     id = sub.id,
     name = sub.name,
     nodes = sub.nodes,
-    updatedAtEpochMs = sub.updatedAtEpochMs ?: 0L,
+    updatedAtEpochMs = sub.lastFetch?.atEpochMs,
     usedBytes = sub.usedBytes ?: 0L,
     totalBytes = sub.totalBytes ?: 0L,
     expiresAtEpochMs = sub.expiresAtEpochMs,
     host = hostOf(sub.url),
-    format = rvSubFormat(sub.format),
+    format = sub.lastFetch?.let { rvSubFormat(it.format) },
     userAgent = sub.userAgent,
 )
 
-internal fun rvSubFormat(format: SubscriptionFormat?): RvSubFormat = when (format) {
+internal fun rvSubFormat(format: SubscriptionFormat): RvSubFormat = when (format) {
     SubscriptionFormat.Clash -> RvSubFormat.Clash
     SubscriptionFormat.SingBox -> RvSubFormat.SingBox
     SubscriptionFormat.Sip008 -> RvSubFormat.Sip008
-    SubscriptionFormat.ShareLinks, SubscriptionFormat.Base64, null -> RvSubFormat.Links
+    SubscriptionFormat.ShareLinks, SubscriptionFormat.Base64 -> RvSubFormat.Links
 }
 
 /**

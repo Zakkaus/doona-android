@@ -6,6 +6,8 @@ import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFetch
+import dev.doona.android.engine.SubscriptionFormat
 
 /** Endpoints and probe rounds from the RV prototype; zero in a probe row means it timed out. */
 internal object RvSampleNodes {
@@ -61,8 +63,8 @@ internal object RvSampleNodes {
     )
     val details = samples.mapIndexed { index, sample -> sample.info.copy(subscriptionId = subscriptionOf(index)) }
     val subscriptions = listOf(
-        Subscription("s1", "Harbor Cloud", "https://sub.harbor-cloud.example/sub", 32, UPDATED, usedBytes = 61_700_000_000, totalBytes = 200_000_000_000, expiresAtEpochMs = 1_805_112_000_000),
-        Subscription("s2", "Lantern Net", "https://lantern-net.example/sub", 16, UPDATED, usedBytes = 36_400_000_000, totalBytes = 100_000_000_000, expiresAtEpochMs = 1_798_718_400_000),
+        Subscription("s1", "Harbor Cloud", "https://sub.harbor-cloud.example/sub", 32, SubscriptionFetch(UPDATED, SubscriptionFormat.Clash), usedBytes = 61_700_000_000, totalBytes = 200_000_000_000, expiresAtEpochMs = 1_805_112_000_000),
+        Subscription("s2", "Lantern Net", "https://lantern-net.example/sub", 16, SubscriptionFetch(UPDATED, SubscriptionFormat.ShareLinks), usedBytes = 36_400_000_000, totalBytes = 100_000_000_000, expiresAtEpochMs = 1_798_718_400_000),
     )
     val groups = buildGroups()
 

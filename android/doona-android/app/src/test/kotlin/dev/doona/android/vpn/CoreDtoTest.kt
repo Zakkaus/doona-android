@@ -322,11 +322,9 @@ class CoreDtoTest {
     /** As in the core: `addSubscription` may leave the agent out, `setSubscriptionUserAgent` may not. */
     @Test
     fun anAddWithoutTheAgentDecodesAndTheSetterNeedsItsKey() {
-        val keyless = """{"url":"https://example.invalid/sub","name":null}"""
-        val add = Json.decodeFromString(AddSubscriptionArgs.serializer(), keyless)
-        assertEquals(AddSubscriptionArgs("https://example.invalid/sub", name = null, userAgent = null), add)
-        // A null agent is left out, which the core reads as its default.
-        assertEquals(keyless, CoreJson.encode(AddSubscriptionArgs.serializer(), add))
+        // The core requires every key: a null agent is sent, and the core reads it as its default.
+        val add = AddSubscriptionArgs("https://example.invalid/sub", name = null, userAgent = null)
+        assertEquals("""{"url":"https://example.invalid/sub","name":null,"userAgent":null}""", CoreJson.encode(AddSubscriptionArgs.serializer(), add))
         assertThrows(SerializationException::class.java) {
             Json.decodeFromString(SubscriptionUserAgentArgs.serializer(), """{"id":"s1"}""")
         }
@@ -339,7 +337,7 @@ class CoreDtoTest {
         assertEquals(2, subscription.nodes)
         val mapped = subscription.toSubscription()
         assertEquals("clash-verge/v2.2.3", mapped.userAgent)
-        assertEquals(SubscriptionFormat.Clash, mapped.format)
+        assertEquals(SubscriptionFormat.Clash, mapped.lastFetch?.format)
         try {
             CoreJson.result(fixture("call-error.json"), Unit.serializer())
             fail("an error reply must throw")

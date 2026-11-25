@@ -203,8 +203,9 @@ private fun KeyStats(sub: RvSubscription) {
         RvStatRow(stringResource(R.string.rv_sub_node_count), sub.nodes.toString())
         RvStatRow(stringResource(R.string.rv_sub_used), used)
         RvStatRow(stringResource(R.string.rv_sub_expires), sub.expiresAtEpochMs?.let { format.date(it) } ?: stringResource(R.string.rv_subs_no_expiry))
-        RvStatRow(stringResource(R.string.rv_sub_updated), format.time(sub.updatedAtEpochMs))
-        RvStatRow(stringResource(R.string.rv_sub_format), stringResource(sub.format.label))
+        // A subscription never fetched has neither yet.
+        RvStatRow(stringResource(R.string.rv_sub_updated), sub.updatedAtEpochMs?.let(format::time) ?: RV_NO_VALUE)
+        RvStatRow(stringResource(R.string.rv_sub_format), sub.format?.let { stringResource(it.label) } ?: RV_NO_VALUE)
     }
 }
 

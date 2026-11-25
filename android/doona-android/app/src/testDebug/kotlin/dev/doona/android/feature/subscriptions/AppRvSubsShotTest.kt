@@ -26,7 +26,6 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Subscription
-import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
@@ -347,7 +346,7 @@ class AppRvSubsShotTest {
 
     @Composable
     private fun Detail(hours: Flow<Int?> = TWELVE_HOURS) {
-        val (engine, id) = remember { harborEngine().let { it to it.subscriptions.value.first().id } }
+        val (engine, id) = remember { rvSampleEngine().let { it to it.subscriptions.value.first().id } }
         SubDetailRoute(engine, hours, id, onBack = {}, onAutoUpdate = {})
     }
 
@@ -359,7 +358,7 @@ class AppRvSubsShotTest {
     }
 
     /** The sample with Harbor Cloud's last update failed. */
-    private fun failedEngine(): FakeEngine = harborEngine().apply {
+    private fun failedEngine(): FakeEngine = rvSampleEngine().apply {
         subscriptions.value = subscriptions.value.mapIndexed { i, sub -> if (i == 0) sub.copy(error = "fetch failed") else sub }
     }
 
@@ -378,14 +377,6 @@ class AppRvSubsShotTest {
         return remember(engine) { SubscriptionImports(engine, scope) }
     }
 
-    /**
-     * The sample with its first subscription, Harbor Cloud, as the core reports it: the core finds the format of what it
-     * fetched (Clash YAML on the approved pages), which the sample's subscriptions do not carry.
-     */
-    private fun harborEngine(): FakeEngine = rvSampleEngine().apply {
-        subscriptions.value = subscriptions.value.mapIndexed { i, sub -> if (i == 0) harbor(sub) else sub }
-    }
-
     /** How the engine answers an import. */
     private sealed interface Answer {
         data object None : Answer
@@ -401,7 +392,7 @@ class AppRvSubsShotTest {
 
     private class Answering(private val answer: Answer, private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
         override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> = when (answer) {
-            Answer.None, Answer.Harbor -> Result.success(harbor(sample.subscriptions.value.first()))
+            Answer.None, Answer.Harbor -> Result.success(sample.subscriptions.value.first())
             Answer.Never -> awaitCancellation()
             is Answer.Fails -> Result.failure(EngineException(answer.code))
         }
@@ -423,12 +414,6 @@ class AppRvSubsShotTest {
         /** Where the prototype's finger held Harbor Cloud's card (RvSubsShotTest): a third of the way in, on its row. */
         val MENU_X = 136.dp
         val MENU_Y = 210.dp
-
-        /**
-         * Fixture data: [sub] with the format the core would find behind the sample's link (Clash YAML on the approved
-         * pages); RvSampleEngine's subscriptions carry none (a P2a request in p5-STATE).
-         */
-        fun harbor(sub: Subscription): Subscription = sub.copy(format = SubscriptionFormat.Clash)
 
         /** A subscription's page is taller than the phone, as in the prototype's golden. */
         const val WHOLE_DETAIL = "+h1087dp"

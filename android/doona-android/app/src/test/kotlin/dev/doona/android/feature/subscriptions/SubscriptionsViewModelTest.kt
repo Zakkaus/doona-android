@@ -4,6 +4,7 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFetch
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvSubFormat
@@ -206,18 +207,25 @@ class SubscriptionsViewModelTest {
 
     @Test
     fun `the engine's subscription maps to the page's`() {
-        val sub = Subscription("s1", "Harbor", " https://sub.harbor.example/api?token=x ", 32, null, format = SubscriptionFormat.Base64)
+        val sub = Subscription("s1", "Harbor", " https://sub.harbor.example/api?token=x ", 32, SubscriptionFetch(3, SubscriptionFormat.Base64))
         val mapped = rvSubscription(sub)
         assertEquals("sub.harbor.example", mapped.host)
-        assertEquals(0L, mapped.updatedAtEpochMs)
+        assertEquals(3L, mapped.updatedAtEpochMs)
         assertEquals(false, mapped.hasQuota)
         assertEquals(RvSubFormat.Links, mapped.format)
         assertEquals(
-            listOf(RvSubFormat.Links, RvSubFormat.Links, RvSubFormat.Sip008, RvSubFormat.Clash, RvSubFormat.SingBox, RvSubFormat.Links),
-            (SubscriptionFormat.entries + listOf(null)).map(::rvSubFormat),
+            listOf(RvSubFormat.Links, RvSubFormat.Links, RvSubFormat.Sip008, RvSubFormat.Clash, RvSubFormat.SingBox),
+            SubscriptionFormat.entries.map(::rvSubFormat),
         )
-        val quota = rvSubscription(sub.copy(usedBytes = 5, totalBytes = 10, expiresAtEpochMs = 7, updatedAtEpochMs = 3))
-        assertEquals(listOf(5L, 10L, 7L, 3L), listOf(quota.usedBytes, quota.totalBytes, quota.expiresAtEpochMs, quota.updatedAtEpochMs))
+        val quota = rvSubscription(sub.copy(usedBytes = 5, totalBytes = 10, expiresAtEpochMs = 7))
+        assertEquals(listOf(5L, 10L, 7L), listOf(quota.usedBytes, quota.totalBytes, quota.expiresAtEpochMs))
+    }
+
+    @Test
+    fun `a subscription the core never fetched has no update time and no format`() {
+        val declared = rvSubscription(Subscription("s1", "office", "https://example.invalid/sub", 0, lastFetch = null))
+        assertNull(declared.updatedAtEpochMs)
+        assertNull(declared.format)
     }
 
     private companion object {

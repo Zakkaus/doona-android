@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rv_subs_nodes_updated">%1$s · %2$s 更新</string>
+    <string name="rv_subs_nodes_not_updated">%1$s · 尚未更新</string>
     <string name="rv_subs_no_expiry">无到期日</string>
     <string name="rv_sub_update_now">立即更新</string>
     <string name="rv_sub_node_count">节点数</string>

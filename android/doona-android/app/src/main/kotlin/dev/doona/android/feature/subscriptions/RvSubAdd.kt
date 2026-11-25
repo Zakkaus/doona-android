@@ -173,7 +173,7 @@ private fun Imported(sub: RvSubscription, protocols: List<RvProtocolCount>) {
         RvRow(
             { RvIconDisc(R.drawable.rv_nodes_ic_check_circle, Rv.colors.good) },
             stringResource(R.string.rv_add_done, sub.name),
-            pluralStringResource(R.plurals.rv_nodes_nodes, sub.nodes, sub.nodes) + SEPARATOR + stringResource(sub.format.label),
+            pluralStringResource(R.plurals.rv_nodes_nodes, sub.nodes, sub.nodes) + sub.format?.let { SEPARATOR + stringResource(it.label) }.orEmpty(),
             titleKeepWords = false,
         )
         protocols.forEach { (protocol, count) -> RvStatRow(protocol, pluralStringResource(R.plurals.rv_nodes_nodes, count, count)) }

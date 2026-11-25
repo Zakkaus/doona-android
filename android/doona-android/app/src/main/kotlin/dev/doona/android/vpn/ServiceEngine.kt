@@ -211,14 +211,14 @@ class ServiceEngine internal constructor(
 
     override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> =
         command("addSubscription", AddSubscriptionArgs.serializer(), AddSubscriptionArgs(url, name, userAgent), SubscriptionDto.serializer())
-            .map(SubscriptionDto::toSubscription)
+            .mapCatching(SubscriptionDto::toSubscription)
 
     override suspend fun updateSubscription(id: String): Result<Subscription> =
-        command("updateSubscription", IdArgs.serializer(), IdArgs(id), SubscriptionDto.serializer()).map(SubscriptionDto::toSubscription)
+        command("updateSubscription", IdArgs.serializer(), IdArgs(id), SubscriptionDto.serializer()).mapCatching(SubscriptionDto::toSubscription)
 
     override suspend fun renameSubscription(id: String, name: String): Result<Subscription> =
         command("renameSubscription", RenameSubscriptionArgs.serializer(), RenameSubscriptionArgs(id, name), SubscriptionDto.serializer())
-            .map(SubscriptionDto::toSubscription)
+            .mapCatching(SubscriptionDto::toSubscription)
 
     override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> =
         read("nodeShareLink", IdArgs.serializer(), IdArgs(nodeId), String.serializer()).map(::ShareLink)
@@ -232,7 +232,7 @@ class ServiceEngine internal constructor(
             SubscriptionUserAgentArgs.serializer(),
             SubscriptionUserAgentArgs(id, userAgent),
             SubscriptionDto.serializer(),
-        ).map(SubscriptionDto::toSubscription)
+        ).mapCatching(SubscriptionDto::toSubscription)
 
     override suspend fun previewStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> =
         read("previewStaticNodes", StaticNodeBatchArgs.serializer(), StaticNodeBatchArgs(rows.map(StaticNodeDraftDto::of)), StaticNodeRowsDto.serializer())

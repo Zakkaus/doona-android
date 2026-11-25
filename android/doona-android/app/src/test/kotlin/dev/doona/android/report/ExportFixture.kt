@@ -13,6 +13,8 @@ import dev.doona.android.engine.Member
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFetch
+import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -63,7 +65,7 @@ abstract class ExportFixture {
             name = "harbor-home",
             url = "https://sub.provider-example.net/api/v1/client/subscribe?token=$token",
             nodes = 3,
-            updatedAtEpochMs = 1_795_300_000_000,
+            lastFetch = SubscriptionFetch(1_795_300_000_000, SubscriptionFormat.Clash),
             error = "GET https://sub.provider-example.net/api/v1/client/subscribe?token=$token: 403",
             totalBytes = 1L shl 40,
         )

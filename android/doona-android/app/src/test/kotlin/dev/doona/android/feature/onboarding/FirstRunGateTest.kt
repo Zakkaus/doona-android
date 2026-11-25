@@ -50,7 +50,7 @@ class FirstRunGateTest {
         val vm = FirstRunViewModel(engine)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.welcome.collect {} }
         assertEquals(true, vm.welcome.value)
-        engine.addSubscription("https://sub.example/s")
+        engine.addSubscription("https://sub.example/s", null, null)
         assertEquals(false, vm.welcome.value)
     }
 

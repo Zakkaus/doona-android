@@ -216,10 +216,13 @@ private fun Usage(sub: RvSubscription, nowEpochMs: Long) {
     }
 }
 
-/** `32 個節點 · 06:00 更新`. */
+/** `32 個節點 · 06:00 更新`, or `0 個節點 · 尚未更新` for a subscription never fetched. */
 @Composable
-internal fun rvNodesUpdated(sub: RvSubscription): String =
-    stringResource(R.string.rv_subs_nodes_updated, pluralStringResource(R.plurals.rv_nodes_nodes, sub.nodes, sub.nodes), rememberRvFormat().time(sub.updatedAtEpochMs))
+internal fun rvNodesUpdated(sub: RvSubscription): String {
+    val nodes = pluralStringResource(R.plurals.rv_nodes_nodes, sub.nodes, sub.nodes)
+    val at = sub.updatedAtEpochMs ?: return stringResource(R.string.rv_subs_nodes_not_updated, nodes)
+    return stringResource(R.string.rv_subs_nodes_updated, nodes, rememberRvFormat().time(at))
+}
 
 /** A subscription's menu: 更新, 編輯, then 刪除 set apart, its glyph in the error hue. */
 @Composable

@@ -36,7 +36,7 @@ fn new_core(dir: &TempDir, port: u16, fallback: Vec<SocketAddr>) -> Core {
 fn subscribe(core: &Core, url: &str) -> Result<(), ErrorCode> {
     let reply = core.call(
         "addSubscription",
-        &format!(r#"{{"url":"{url}","name":null}}"#),
+        &format!(r#"{{"url":"{url}","name":null,"userAgent":null}}"#),
     );
     let reply: serde_json::Value = serde_json::from_str(&reply).unwrap();
     match reply["error"]["code"].as_str() {

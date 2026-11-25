@@ -2,6 +2,7 @@
 <!-- The Revolut-style sample's subscription pages (prototype/rv/subs), debug builds only. -->
 <resources>
     <string name="rv_subs_nodes_updated">%1$s · updated %2$s</string>
+    <string name="rv_subs_nodes_not_updated">%1$s · not updated yet</string>
     <string name="rv_subs_used" translatable="false">%1$s/%2$s</string>
     <string name="rv_subs_no_expiry">No expiry date</string>
     <string name="rv_sub_update_now">Update now</string>

@@ -56,16 +56,16 @@ interface Engine {
     /**
      * Fetches [url], decodes its nodes and adds them to the group template. Its fetches send [userAgent] as the
      * User-Agent, or the core's default when null; a value must be 1 to 256 bytes of printable ASCII and not blank, else
-     * [ErrorCode.InvalidArgument] before anything is fetched. The name defaults to the URL host and follows [renameSubscription].
+     * [ErrorCode.InvalidArgument] before anything is fetched. A null [name] takes the URL host; a name follows [renameSubscription].
      */
-    suspend fun addSubscription(url: String, name: String? = null, userAgent: String? = null): Result<Subscription>
+    suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription>
 
     suspend fun updateSubscription(id: String): Result<Subscription>
 
     /** Saves a trimmed name of 1 to 64 Unicode code points. Controls and line separators are invalid. Names may repeat. */
     suspend fun renameSubscription(id: String, name: String): Result<Subscription>
 
-    /** Returns the original URI only for a share_links node. A legacy subscription with null format returns [ErrorCode.NotFound] until refreshed. */
+    /** Returns the original URI only for a share_links node. */
     suspend fun nodeShareLink(nodeId: String): Result<ShareLink>
 
     suspend fun removeSubscription(id: String): Result<Unit>
@@ -301,23 +301,25 @@ value class ShareLink(val uri: String) {
 enum class SubscriptionFormat { ShareLinks, Base64, Sip008, Clash, SingBox }
 
 /**
- * Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. [userAgent] is
- * the User-Agent its fetches send, null for the core's default; keep it out of logs and exports, as the URL.
+ * Quota fields come from the provider's `subscription-userinfo` header and stay null when it sends none. [lastFetch] is
+ * null while the core has never fetched it, as for a subscription a hand-written `.dae` declares. [userAgent] is the
+ * User-Agent its fetches send, null for the core's default; keep it out of logs and exports, as the URL.
  */
 data class Subscription(
     val id: String,
     val name: String,
     val url: String,
     val nodes: Int,
-    val updatedAtEpochMs: Long?,
+    val lastFetch: SubscriptionFetch?,
     val error: String? = null,
     val usedBytes: Long? = null,
     val totalBytes: Long? = null,
     val expiresAtEpochMs: Long? = null,
     val userAgent: String? = null,
-    /** Format of the last successful fetch, when known. */
-    val format: SubscriptionFormat? = null,
 )
+
+/** A subscription's last successful fetch: when it ended, and how the body was written. */
+data class SubscriptionFetch(val atEpochMs: Long, val format: SubscriptionFormat)
 
 /** Which apps use the tunnel. doona itself never does: its own sockets go out directly. */
 data class PerApp(val policy: AppPolicy = AppPolicy.All, val packages: Set<String> = emptySet())

@@ -29,6 +29,8 @@ import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.StaticNodeUpdateResult
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFetch
+import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
 import dev.doona.android.engine.TrafficSeries
@@ -127,7 +129,7 @@ class FakeEngine internal constructor(
         val agent = userAgentOf(userAgent).getOrElse { return Result.failure(it) }
         val label = (if (name == null) runCatching { java.net.URI(url).host?.take(NAME_CAP) }.getOrNull() else displayName(name))
             ?: return Result.failure(EngineException(ErrorCode.InvalidArgument))
-        val added = Subscription(id = takeSubscriptionId(), name = label, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = agent)
+        val added = Subscription(id = takeSubscriptionId(), name = label, url = url, nodes = 0, lastFetch = FETCHED, userAgent = agent)
         subscriptions.update { it + added }
         return Result.success(added)
     }
@@ -342,8 +344,11 @@ class FakeEngine internal constructor(
             Traffic(upRate = 330_000, downRate = 3_900_000, upTotal = up.sum(), downTotal = down.sum(), upHistory = up, downHistory = down)
         }
 
+        /** What a fetch in this engine finds: share links, at the epoch. */
+        val FETCHED = SubscriptionFetch(0, SubscriptionFormat.ShareLinks)
+
         val SAMPLE_SUBSCRIPTIONS = listOf(
-            Subscription(id = "s1", name = "harbor", url = "https://example.invalid/sub", nodes = 4, updatedAtEpochMs = 0),
+            Subscription(id = "s1", name = "harbor", url = "https://example.invalid/sub", nodes = 4, lastFetch = FETCHED),
         )
     }
 }

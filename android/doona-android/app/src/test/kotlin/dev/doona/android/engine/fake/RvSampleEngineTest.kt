@@ -93,7 +93,7 @@ class RvSampleEngineTest {
         engine.setPerApp(perApp).getOrThrow()
         assertEquals(perApp, engine.settings.value.perApp)
 
-        val added = engine.addSubscription("https://example.invalid/sub", "Sample").getOrThrow()
+        val added = engine.addSubscription("https://example.invalid/sub", "Sample", null).getOrThrow()
         assertEquals(added, engine.updateSubscription(added.id).getOrThrow())
         val changed = engine.setSubscriptionUserAgent(added.id, "Sample/1").getOrThrow()
         assertEquals("Sample/1", changed.userAgent)

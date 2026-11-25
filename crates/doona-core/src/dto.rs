@@ -368,8 +368,9 @@ pub struct Subscription {
     pub name: String,
     pub url: String,
     pub nodes: u32,
-    /// Format of the last successful fetch; null for subscriptions saved before it was recorded.
+    /// Format of the last successful fetch; null, as `updated_at_epoch_ms`, until the first one.
     pub format: Option<SubscriptionFormat>,
+    /// When the last successful fetch ended; null, as `format`, until the first one.
     pub updated_at_epoch_ms: Option<i64>,
     pub error: Option<ErrorCode>,
     pub used_bytes: Option<i64>,
@@ -410,8 +411,7 @@ pub struct AddSubscriptionArgs {
     pub url: String,
     #[serde(deserialize_with = "Option::deserialize")]
     pub name: Option<String>,
-    /// Optional, unlike the other nullable keys: a caller from before it sends the default.
-    #[serde(default, rename = "userAgent")]
+    #[serde(deserialize_with = "Option::deserialize", rename = "userAgent")]
     pub user_agent: Option<String>,
 }
 

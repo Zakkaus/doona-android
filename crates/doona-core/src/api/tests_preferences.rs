@@ -40,7 +40,7 @@ fn rename_is_durable_without_changing_node_identity_or_selection() {
             call(
                 &core,
                 "addSubscription",
-                json!({"url":feeds.url("/sub"),"name":bad})
+                json!({"url":feeds.url("/sub"),"name":bad, "userAgent": null})
             ),
             Err(ErrorCode::InvalidArgument)
         );

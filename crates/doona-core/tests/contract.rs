@@ -292,10 +292,8 @@ fn missing_required_fields_fail_and_unknown_ones_are_ignored() {
     .unwrap();
     assert_eq!(config.mtu, 1500);
     assert!(serde_json::from_str::<SelectArgs>(r#"{"memberId":null}"#).is_err());
-    // `userAgent` is optional in `addSubscription` only: a caller from before it sends the default.
-    let add: AddSubscriptionArgs =
-        serde_json::from_str(r#"{"url":"https://example.invalid/","name":null}"#).unwrap();
-    assert_eq!(add.user_agent, None);
+    let no_agent = r#"{"url":"https://example.invalid/","name":null}"#;
+    assert!(serde_json::from_str::<AddSubscriptionArgs>(no_agent).is_err());
     assert!(serde_json::from_str::<SubscriptionUserAgentArgs>(r#"{"id":"s1"}"#).is_err());
 }
 

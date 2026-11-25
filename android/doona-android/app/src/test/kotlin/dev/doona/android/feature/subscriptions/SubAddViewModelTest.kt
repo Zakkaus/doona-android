@@ -245,7 +245,7 @@ class SubAddViewModelTest {
     @Test
     fun `the done card counts the catalog's nodes of the subscription once the catalog holds them`() = runTest {
         val fake = FakeEngine(subscriptions = emptyList())
-        val added = Subscription("s9", "Harbor", LINK, 3, 0L)
+        val added = Subscription("s9", "Harbor", LINK, 3, FakeEngine.FETCHED)
         val engine = object : Engine by fake {
             override suspend fun addSubscription(url: String, name: String?, userAgent: String?) = Result.success(added)
 
