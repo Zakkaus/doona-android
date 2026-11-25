@@ -130,7 +130,7 @@ class ActivityRvShotTest {
         // The busy bar rests half full at animator scale 0, as in the prototype's starting and stopping goldens.
         if (engine.status.value == Status.Starting || engine.status.value == Status.Stopping) rvAnimatorScale(0f)
         val model = ActivityViewModel(engine, MutableStateFlow(crash), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
-        compose.rvContent(dark, fontScale) { ActivityPage(model, crashOffer = null, onConnect = {}, routes = activityTestRoutes()) }
+        compose.rvContent(dark, fontScale) { ActivityPage(model, crash = null, onConnect = {}, routes = activityTestRoutes()) }
         compose.drawFully()
         if (whole) compose.assertWhole()
         val variant = when {

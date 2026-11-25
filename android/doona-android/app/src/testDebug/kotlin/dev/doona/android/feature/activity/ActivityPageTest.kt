@@ -25,6 +25,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.ZoneOffset
+import java.util.concurrent.atomic.AtomicInteger
 
 /** [ActivityPage]'s banners: a notice's action leads where its cause is mended, a failed action's 重試 runs it again. */
 @RunWith(RobolectricTestRunner::class)
@@ -39,7 +40,7 @@ class ActivityPageTest {
 
     private fun show(engine: FakeEngine) {
         val model = ActivityViewModel(engine, MutableStateFlow(false), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
-        compose.rvContent(dark = false) { ActivityPage(model, crashOffer = null, onConnect = { connects++ }, routes = activityTestRoutes(opened)) }
+        compose.rvContent(dark = false) { ActivityPage(model, crash = null, onConnect = { connects++ }, routes = activityTestRoutes(opened)) }
     }
 
     @Test
@@ -76,12 +77,51 @@ class ActivityPageTest {
             }
         }
         val model = ActivityViewModel(counted, MutableStateFlow(false), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
-        compose.rvContent(dark = false) { ActivityPage(model, crashOffer = null, onConnect = {}, routes = activityTestRoutes(opened)) }
+        compose.rvContent(dark = false) { ActivityPage(model, crash = null, onConnect = {}, routes = activityTestRoutes(opened)) }
         model.onAction(ActivityAction.TestLatency)
         compose.waitForIdle()
         compose.onNodeWithText(rvText(R.string.rv_failed_test_latency)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
         assertEquals(2, tests)
+    }
+
+    @Test
+    fun theCrashOfferIsMarkedShownOnlyOnceItsNoticeIsOnScreenAndExportTakesItDown() {
+        var failing = true
+        val engine = object : Engine by rvSampleEngine() {
+            override suspend fun testLatency(groupId: String?): Result<Unit> = if (failing) Result.failure(EngineException(ErrorCode.Busy)) else Result.success(Unit)
+        }
+        val model = ActivityViewModel(engine, MutableStateFlow(true), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
+        val shown = AtomicInteger()
+        val dismissed = AtomicInteger()
+        // The failure stands before the page's first frame, so its banner holds the notice's place from the start.
+        model.onAction(ActivityAction.TestLatency)
+        compose.rvContent(dark = false) {
+            ActivityPage(model, ActivityCrashOffer({ shown.incrementAndGet() }, { dismissed.incrementAndGet() }), onConnect = {}, routes = activityTestRoutes(opened))
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText(rvText(R.string.rv_failed_test_latency)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_crash_export)).assertDoesNotExist()
+        assertEquals("shown while a failure banner stands", 0, shown.get())
+
+        failing = false
+        compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_crash_export)).assertExists()
+        compose.waitUntil(TIMEOUT_MS) { shown.get() > 0 }
+        // Further frames (the sample's traffic) do not mark it again.
+        compose.mainClock.advanceTimeBy(TIMEOUT_MS)
+        compose.waitForIdle()
+        assertEquals(1, shown.get())
+        assertEquals(0, dismissed.get())
+
+        compose.onNodeWithText(rvText(R.string.rv_crash_export)).performClick()
+        assertEquals(1, dismissed.get())
+        assertEquals(listOf("exportReport"), opened)
+        assertEquals(1, shown.get())
+    }
+
+    private companion object {
+        const val TIMEOUT_MS = 3_000L
     }
 }
 
