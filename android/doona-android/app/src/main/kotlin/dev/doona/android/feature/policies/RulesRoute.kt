@@ -1,0 +1,71 @@
+package dev.doona.android.feature.policies
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvNoticeKind
+import dev.doona.android.engine.Engine
+import dev.doona.android.feature.messageRes
+
+/**
+ * 全部規則 (查看全部 on 策略): builds the ViewModel and draws the page from its state while the screen is started. The
+ * engine has no call yet that edits a rule (rules-p1's form commands are not on the core's API), so [routes] carries the
+ * taps that open, edit, turn off, delete, add, apply and drop rules as the caller wires them; the reorder mode is the
+ * page's own. A source that did not compile shows its banner with 範本 ([onTemplate]); a failed read, with 重試.
+ */
+@Composable
+internal fun RulesRoute(engine: Engine, onBack: () -> Unit, onTemplate: () -> Unit, routes: RvRulesRoutes = RvRulesRoutes()) {
+    val viewModel: RulesViewModel = viewModel(factory = RulesViewModel.factory(engine))
+    RulesRoute(viewModel, onBack, onTemplate, routes)
+}
+
+/** 全部規則 on a given [viewModel], for a caller (a test) that makes its own. */
+@Composable
+internal fun RulesRoute(viewModel: RulesViewModel, onBack: () -> Unit, onTemplate: () -> Unit, routes: RvRulesRoutes = RvRulesRoutes()) {
+    val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    var editing by rememberSaveable { mutableStateOf(false) }
+    RvRulesPage(
+        ui.rules,
+        pending = emptyList(),
+        editing = editing,
+        onBack = onBack,
+        routes = RvRulesRoutes(
+            open = routes.open,
+            toggle = routes.toggle,
+            delete = routes.delete,
+            edit = { editing = it },
+            newRule = routes.newRule,
+            apply = routes.apply,
+            discard = routes.discard,
+            effective = routes.effective,
+        ),
+        banner = ui.failure?.let { rulesBanner(it, onTemplate, viewModel::retry) },
+    )
+}
+
+/** The banner of [failure], as the approved error samples have it: a source that did not parse opens 範本; a read retries. */
+@Composable
+private fun rulesBanner(failure: RulesFailure, onTemplate: () -> Unit, onRetry: () -> Unit): RvNotice = when (failure) {
+    RulesFailure.Parse -> RvNotice(
+        RvNoticeKind.Error,
+        stringResource(R.string.rv_rules_parse_failed),
+        stringResource(R.string.rv_rules_parse_failed_reason),
+        stringResource(R.string.rv_policy_template),
+        onTemplate,
+    )
+
+    is RulesFailure.Read -> RvNotice(
+        RvNoticeKind.Error,
+        stringResource(R.string.rv_rules_read_failed),
+        stringResource(failure.code.messageRes()),
+        stringResource(R.string.rv_retry),
+        onRetry,
+    )
+}
