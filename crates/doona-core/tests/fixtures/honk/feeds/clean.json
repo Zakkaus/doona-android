@@ -1,0 +1,6 @@
+{
+  "outbounds": [
+    {"type": "shadowsocks", "tag": "ss-01", "server": "192.0.2.11", "server_port": 8388, "method": "aes-256-gcm", "password": "pass"},
+    {"type": "trojan", "tag": "trojan-01", "server": "trojan.example.net", "server_port": 443, "password": "pass", "tls": {"enabled": true, "server_name": "trojan.example.net"}}
+  ]
+}

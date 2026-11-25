@@ -1,0 +1,16 @@
+assets {
+    subscription {
+        ua: 'doona-test/1'
+        interval: 6h
+    }
+}
+subscription {
+    inherits: 'https://feeds.example.net/inherits'
+    own: 'https://feeds.example.net/own' {
+        interval: 1h
+    }
+    agent: 'https://feeds.example.net/agent' {
+        ua: 'custom/2'
+    }
+}
+routing { fallback: direct }

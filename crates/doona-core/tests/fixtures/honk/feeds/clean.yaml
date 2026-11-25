@@ -1,0 +1,13 @@
+proxies:
+  - name: ss-01
+    type: ss
+    server: 192.0.2.11
+    port: 8388
+    cipher: aes-256-gcm
+    password: pass
+  - name: trojan-01
+    type: trojan
+    server: trojan.example.net
+    port: 443
+    password: pass
+    sni: trojan.example.net

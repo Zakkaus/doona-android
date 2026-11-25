@@ -1,0 +1,17 @@
+subscription {
+    bare: 'https://feeds.example.net/bare'
+    day: 'https://feeds.example.net/day' {
+        interval: 24h
+    }
+    'my feed': 'https://feeds.example.net/quoted' {
+        interval: 1h
+    }
+    manual: 'https://feeds.example.net/manual' {
+        interval: 0s
+    }
+    old: {
+        url: 'https://feeds.example.net/old'
+        interval: 6h
+    }
+}
+routing { fallback: direct }
