@@ -164,12 +164,22 @@ The Maven list covers runtime archives before shrinking, not build plugins, test
 Gradle resolves parent POMs when a library inherits its licences. Each Geo DAT appears in the inventory
 only if the APK contains it; bundled bytes must match the reviewed pin.
 
-`assets/licenses/index.json` has `schema: 1` and a `components` array. Each entry gives `kind`, `name`,
-`version`, `license`, `source`, `notice` and `texts`. Display the component's `notice` as well as its texts.
-For a text key in `ranges`, read `[byteOffset, byteLength]` from `licenses/notices.txt`, then decode that
-slice as UTF-8. Other keys name UTF-8 files under `licenses/`. Public-domain entries can have no texts.
-The `project` entry records the app's licence using the `doona-core` manifest and the repository's
-`LICENSE` file.
+`assets/licenses/index.json` (schema `2`) has two fields besides `schema`:
+
+- `components`: each entry gives `kind`, `name`, `version`, `source` and the SPDX expression in
+  `license`. Group entries by the identifiers in `bodies`, but display the expression so readers can
+  distinguish `OR`, `AND` and `WITH`. `LicenseRef-` terms have no SPDX body; see `notice` and `extras`.
+  Display the component's `attribution` lines and `notice` alongside its licence. Each `extras` entry
+  gives the upstream `file`, its `text` key and a `comment` explaining why the full text is retained.
+- `ranges`: maps each body identifier or extra text key to `[byteOffset, byteLength]` in
+  `licenses/notices.txt`. Read that byte range before decoding UTF-8. Components can share a range,
+  including when two archives contain identical NOTICE files.
+
+The `project` component uses the `doona-core` manifest and repository `LICENSE`. The standard bodies in
+`tools/spdx/` come from the [SPDX licence list, v3.27.0](https://github.com/spdx/license-list-data/tree/v3.27.0/text).
+The generator compares the complete upstream file, ignoring layout, recognised licence titles and
+attribution fields. If it cannot match the body, it keeps the original file, including extra terms.
+It always retains component NOTICE files, even when their contents match a standard licence.
 
 When adding artwork, classify the release resources in `tools/notices.py`; record each logo's upstream
 revision, copyright status and trademark restrictions. Do not list artwork from an unmerged branch.

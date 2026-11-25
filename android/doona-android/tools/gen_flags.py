@@ -16,8 +16,8 @@ with a plain fill. The mask becomes a clip-path of the same circle, path data is
 separated), and the other shapes become paths. Anything else, or a changed upstream shape, stops the script.
 
 Writes, relative to the doona-android directory: flags/src/main/res/drawable/flag_*.xml, flags/src/main/kotlin/.../
-FlagTable.kt (the generated when from code to drawable), flags/LICENSE, flags/NOTICE and
-app/src/main/assets/licenses/circle-flags-MIT.txt. Run it again with a new COMMIT to take newer flags.
+FlagTable.kt (the generated when from code to drawable), flags/LICENSE and flags/NOTICE.
+Run it again with a new COMMIT to take newer flags, then regenerate the release notices.
 """
 
 import argparse
@@ -298,7 +298,6 @@ def main():
     licence = (src / "LICENSE.md").read_text()
     (MODULE / "flags/LICENSE").write_text(licence)
     (MODULE / "flags/NOTICE").write_text(NOTICE.format(commit=COMMIT))
-    (MODULE / "app/src/main/assets/licenses/circle-flags-MIT.txt").write_text(licence)
     print("wrote %d drawables and %d codes from %s" % (len(files), len(table), COMMIT))
 
 
