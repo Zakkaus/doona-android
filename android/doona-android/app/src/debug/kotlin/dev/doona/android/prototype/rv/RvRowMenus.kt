@@ -10,8 +10,8 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMenuItem
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvSubscription
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.shareLink
 import kotlinx.coroutines.launch
 

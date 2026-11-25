@@ -37,6 +37,8 @@ import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvRuleState
 
 /**
  * What the list of all rules can do: open a rule, turn one off or on and delete one (its long-press menu), reorder, add,

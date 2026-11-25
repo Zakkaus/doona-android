@@ -156,7 +156,7 @@ class RvActivityDisconnectTest {
                     state = state.copy(status = Status.Stopping)
                 }
             }
-            RvActivityScreen(state, onAction, onConnect = {})
+            RvActivityScreenSample(state, onAction, onConnect = {})
         }
         compose.waitForIdle()
     }

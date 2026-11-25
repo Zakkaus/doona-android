@@ -29,9 +29,6 @@ import dev.doona.android.feature.NOT_WIRED
 @Immutable
 internal data class RvAboutVersions(val app: String, val honk: String)
 
-/** The sample's versions: the app at the build files' 0.1.0, honk at the core's pinned daeuniverse/honk revision. */
-internal val rvSampleVersions = RvAboutVersions(app = "0.1.0", honk = "8919784")
-
 /** Where 關於 leads: the repository in the browser, 回報問題, the licences and the privacy page. */
 internal class RvAboutRoutes(
     val github: () -> Unit = NOT_WIRED,

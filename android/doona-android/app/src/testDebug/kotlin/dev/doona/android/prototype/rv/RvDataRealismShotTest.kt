@@ -2,14 +2,16 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import dev.doona.android.feature.model.RvSubFormat
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvSubFormat
-import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.rvTestTimes
 import dev.doona.android.prototype.rv.nodes.RV_NODES_DETAIL
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.subs.RvSubAdd
+import dev.doona.android.prototype.rv.subs.RvSubAddSample
 import dev.doona.android.prototype.rv.subs.RvSubDetail
+import dev.doona.android.prototype.rv.subs.RvSubDetailSample
 import dev.doona.android.prototype.rv.subs.RvSubDetailState
 import dev.doona.android.prototype.rv.subs.rvAddSample
 import org.junit.After
@@ -101,7 +103,7 @@ class RvDataRealismShotTest {
     }
 
     @Composable
-    private fun Adding() = RvSubAdd(rvAddSample("importing-unknown"), {}, onPaste = {}, onImport = {}, onBack = {})
+    private fun Adding() = RvSubAddSample(rvAddSample("importing-unknown"), {}, onPaste = {}, onImport = {}, onBack = {})
 
     /** The detail page's node, as the engine has it after [probes] probes: the first of its sample tests, or none. */
     @Composable
@@ -118,7 +120,7 @@ class RvDataRealismShotTest {
     }
 
     @Composable
-    private fun Detail(sub: RvSubscription) = RvSubDetail(sub, RvSubDetailState(), {}, onBack = {}, onUpdate = {})
+    private fun Detail(sub: RvSubscription) = RvSubDetailSample(sub, RvSubDetailState(), {}, onBack = {}, onUpdate = {})
 
     private companion object {
         /** The detail pages are taller than the phone: the windows of `proto-rv-sub-detail-*` and `-node-detail-*`. */

@@ -67,9 +67,6 @@ internal data class RvReportPreview(
     val crashes: Int,
 )
 
-/** The sample's report: the app of [rvSampleVersions], the sample data's counts, the last 200 events, 2 crashes. */
-internal val rvSampleReport = RvReportPreview("0.1.0", "Pixel 8 · Android 15", nodes = 12, subscriptions = 2, rules = 14, events = 200, crashes = 2)
-
 /** What the report page's actions do: open the prefilled issue, hand the file to the share sheet, write it again. */
 internal class RvReportActions(
     val github: () -> Unit = NOT_WIRED,

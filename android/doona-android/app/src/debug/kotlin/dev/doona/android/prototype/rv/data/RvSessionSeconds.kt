@@ -1,5 +1,7 @@
 package dev.doona.android.prototype.rv.data
 
+import dev.doona.android.feature.model.RvSession
+import dev.doona.android.feature.model.fastest
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.random.Random

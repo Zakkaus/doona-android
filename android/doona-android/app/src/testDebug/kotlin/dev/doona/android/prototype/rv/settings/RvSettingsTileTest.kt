@@ -81,7 +81,7 @@ class RvSettingsTileTest {
     @Test
     fun theRowShowsOnlyUntilTheTileIsAdded() {
         var state by mutableStateOf(rvSampleSettings().copy(tileAdded = false))
-        compose.rvContent(dark = false) { RvSettingsScreen(state, onChange = {}, onOpenTheme = {}) }
+        compose.rvContent(dark = false) { RvSettingsScreenSample(state, onChange = {}, onOpenTheme = {}) }
         compose.onNodeWithText(rvText(R.string.rv_settings_quick_tile)).assertExists()
         state = state.copy(tileAdded = true)
         compose.onNodeWithText(rvText(R.string.rv_settings_quick_tile)).assertDoesNotExist()
@@ -124,7 +124,7 @@ class RvSettingsTileTest {
         val host = HostState(start)
         compose.rvContent(dark = false) {
             val routes = RvSettingsRoutes(addTile = { host.state = host.state.afterTileRequest(quickTileResult(code)) })
-            RvSettingsScreen(host.state, onChange = { host.state = it }, onOpenTheme = {}, routes = routes)
+            RvSettingsScreenSample(host.state, onChange = { host.state = it }, onOpenTheme = {}, routes = routes)
         }
         return host
     }
@@ -145,7 +145,7 @@ class RvSettingsTileTest {
     }
 
     @Composable
-    private fun Settings() = RvSettingsScreen(rvSampleSettings().copy(tileAdded = false), onChange = {}, onOpenTheme = {})
+    private fun Settings() = RvSettingsScreenSample(rvSampleSettings().copy(tileAdded = false), onChange = {}, onOpenTheme = {})
 
     /** The sheet as [RvSettingsScreen] opens it, drawn over the page at rest (a dialog's window is not in the capture). */
     @Composable

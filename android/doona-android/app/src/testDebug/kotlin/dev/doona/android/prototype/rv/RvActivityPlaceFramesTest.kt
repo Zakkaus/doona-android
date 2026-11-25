@@ -155,7 +155,7 @@ class RvActivityPlaceFramesTest {
     private fun show(dark: Boolean, onConnect: () -> Unit) {
         compose.rvContent(dark) {
             val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) state = state.copy(status = Status.Stopping) }
-            RvActivityScreen(state, onAction, onConnect = onConnect)
+            RvActivityScreenSample(state, onAction, onConnect = onConnect)
         }
         compose.waitForIdle()
     }

@@ -2,11 +2,11 @@ package dev.doona.android.prototype.rv.nodes
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.rvUnknownPlaceNodes
 import dev.doona.android.prototype.rv.rvShot
 import org.junit.Rule
@@ -42,5 +42,5 @@ class RvUnknownPlaceShotTest {
     private fun shot(dark: Boolean = false, fontScale: Float = 1f) = compose.rvShot("policy-picker-unknown", dark, fontScale = fontScale) { Picker() }
 
     @Composable
-    private fun Picker() = RvNodePickerPage(rvUnknownPlaceNodes(), RvData.subscriptions, "tw-01", RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
+    private fun Picker() = RvNodePickerPageSample(rvUnknownPlaceNodes(), RvData.subscriptions, "tw-01", RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
 }

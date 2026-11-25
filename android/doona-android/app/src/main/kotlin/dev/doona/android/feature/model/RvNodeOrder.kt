@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.data
+package dev.doona.android.feature.model
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable

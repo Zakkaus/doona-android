@@ -3,7 +3,6 @@ package dev.doona.android.prototype.rv.settings
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
-import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.vpn.QuickTileResult
 
 /** Which theme the app wears: the system's, or one of the two. */
@@ -59,15 +58,3 @@ internal fun RvSettingsState.afterTileRequest(result: QuickTileResult): RvSettin
     QuickTileResult.Kept -> this
     QuickTileResult.Failed -> copy(tileSheet = true)
 }
-
-internal fun rvSampleAppearance() = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0)
-
-/** The settings page as [RvData] has it. */
-internal fun rvSampleSettings() = RvSettingsState(
-    notifyOnDrop = true,
-    perApp = RvPerAppData.saved,
-    autoUpdate = true,
-    updateHours = RvData.UPDATE_HOURS,
-    appearance = rvSampleAppearance(),
-    dns = RvDnsUpstream.Cloudflare,
-)

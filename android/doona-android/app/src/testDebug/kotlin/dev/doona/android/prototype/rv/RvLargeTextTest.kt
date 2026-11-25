@@ -36,17 +36,20 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvReadsWell
 import dev.doona.android.engine.Mode
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNodeSort
-import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
+import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.settings.RvSettingsRow
 import org.junit.After
@@ -91,28 +94,28 @@ class RvLargeTextTest {
     /** 活動's main node (X3): its whole name beside its latency. */
     @Test
     fun activityNodeIsWhole() {
-        large { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+        large { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
         assertWhole(RvData.current.name)
     }
 
     /** 策略's main node card (X3): its whole name beside its latency. */
     @Test
     fun policyMainNodeIsWhole() {
-        large { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+        large { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
         assertWhole(RvPolicyData.main.selected.name)
     }
 
     /** The pull-down picker (X3): each node it shows has its whole name beside its latency and info mark. */
     @Test
     fun pickerNodesAreWhole() {
-        large { RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
+        large { RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
         assertShownNodesWhole()
     }
 
     /** The main node's picker (X3): the same, its rows the pull-down picker's. */
     @Test
     fun policyPickerNodesAreWhole() {
-        large { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) }
+        large { RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) }
         assertShownNodesWhole()
     }
 
@@ -124,25 +127,25 @@ class RvLargeTextTest {
 
     /** While a test runs, 活動's node row keeps the room of its latency (B1): the name keeps its width and lines. */
     @Test
-    fun activityTestKeepsTheRow() = assertTestKeepsRows(listOf(RvData.current.name)) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+    fun activityTestKeepsTheRow() = assertTestKeepsRows(listOf(RvData.current.name)) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
     /** The same on the main node's picker (B1), whose rows had their latency line by line at rest and a bar while testing. */
     @Test
     fun pickerTestKeepsTheRows() = assertTestKeepsRows(RvData.nodes.map { it.name }.distinct()) {
-        RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
+        RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
     }
 
     /** 策略's line under its mode (X2): the whole of what Rule does, its main-node clause included. */
     @Test
     fun modeLineIsWhole() {
-        large { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+        large { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
         assertWhole(rvText(R.string.rv_policy_mode_rule))
     }
 
     /** 活動's line under Direct (X2): the whole note, its qualifier on the proxy included. */
     @Test
     fun directLineIsWhole() {
-        large { RvActivityScreen(rvSampleActivity().copy(mode = Mode.Direct), onAction = {}, onConnect = {}) }
+        large { RvActivityScreenSample(rvSampleActivity().copy(mode = Mode.Direct), onAction = {}, onConnect = {}) }
         assertWhole(rvText(R.string.rv_direct_note))
     }
 
@@ -164,7 +167,7 @@ class RvLargeTextTest {
     /** The node list's order chips (B3, X7): the same. */
     @Test
     fun orderChipsFitTheirRow() {
-        large { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) }
+        large { RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) }
         assertOneWholeSize(RvNodeSort.entries.map { rvText(it.label) })
     }
 
@@ -175,7 +178,7 @@ class RvLargeTextTest {
     @Test
     fun trafficTilesAreWhole() {
         val state = rvSampleActivity()
-        large { RvActivityScreen(state, onAction = {}, onConnect = {}) }
+        large { RvActivityScreenSample(state, onAction = {}, onConnect = {}) }
         val format = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0])
         val figures = listOf(state.downRate, state.upRate).map { format.rate(it.toDouble()).toString() }
         val tiles = listOf(R.string.ui_download, R.string.ui_upload).map { caption ->
@@ -202,7 +205,7 @@ class RvLargeTextTest {
     /** 活動's 今日用量 at 2.0 (r12): the card grows under its text, and both legend entries are whole. */
     @Test
     fun usageLegendIsWhole() {
-        large { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+        large { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
         val format = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0])
         val day = RvData.today
         listOf(R.string.ui_download to day.downTotal, R.string.ui_upload to day.upTotal).forEach { (label, bytes) -> assertWhole(rvText(label) + SEPARATOR + format.bytes(bytes)) }
@@ -297,7 +300,7 @@ class RvLargeTextTest {
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
                 CompositionLocalProvider(LocalRvTesting provides true) {
-                    RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {})
+                    RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {})
                 }
             }
         }
@@ -409,13 +412,13 @@ class RvLargeTextTest {
     private fun largePages(testing: () -> Boolean = { false }, check: (Int) -> Unit) {
         val connection = RvPolicyData.connection
         val pages: List<@Composable () -> Unit> = listOf(
-            { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) },
-            { RvActivityScreen(rvSampleActivity().copy(mode = Mode.Direct), onAction = {}, onConnect = {}) },
-            { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) },
+            { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) },
+            { RvActivityScreenSample(rvSampleActivity().copy(mode = Mode.Direct), onAction = {}, onConnect = {}) },
+            { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) },
             { RvPolicyRulePage(connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) },
             { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) },
-            { RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) },
-            { RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) },
+            { RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) },
+            { RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) },
         )
         var page by mutableStateOf(0)
         large { CompositionLocalProvider(LocalRvTesting provides testing(), pages[page]) }

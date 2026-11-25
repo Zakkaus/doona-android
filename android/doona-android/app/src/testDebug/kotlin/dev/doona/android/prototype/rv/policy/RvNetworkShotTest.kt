@@ -27,8 +27,10 @@ import dev.doona.android.designsystem.rv.RvMenuSize
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreen
+import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvSampleActivity
@@ -246,7 +248,7 @@ class RvNetworkShotTest {
     @Config(qualifiers = ACTIVITY)
     fun activityOneRegionNamesBoth() {
         val udp = RvNetworkSample.rulesOneRegion.first { it.group == RvNetworkSample.group.name }.udpNodeId
-        compose.rvContent(dark = false) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, rules = RvNetworkSample.rulesOneRegion) }
+        compose.rvContent(dark = false) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}, rules = RvNetworkSample.rulesOneRegion) }
         val name = RvNetworkSample.group.members.first { it.id == udp }.name
         assertTrue(lines().toString(), "TCP Taipei 04\nUDP $name" in lines())
     }
@@ -307,10 +309,10 @@ class RvNetworkShotTest {
     )
 
     @Composable
-    private fun Picker() = RvNetworkPicker(RvNetworkSample.group, RvNetworkSample.apart, RvNetwork.Udp)
+    private fun Picker() = RvNetworkPicker(RvNetworkSample.group, RvNetworkSample.apart, RvNetwork.Udp, RvData.subscriptions, RvData.nowEpochMs)
 
     @Composable
-    private fun Activity() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, rules = RvNetworkSample.rules)
+    private fun Activity() = RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}, rules = RvNetworkSample.rules)
 
     private companion object {
         const val GROUP_NAME = "netsel-group"

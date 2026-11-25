@@ -2,7 +2,7 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import dev.doona.android.prototype.rv.data.RvRouteMode
+import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.states.RvActivityNotice
 import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
@@ -66,7 +66,7 @@ class RvStartFailedShotTest {
 
     /** `no_nodes` is the core's answer in Global, so that page says 全域; the others show the sample's 規則. */
     @Composable
-    private fun Activity(notice: RvActivityNotice) = RvActivityScreen(
+    private fun Activity(notice: RvActivityNotice) = RvActivityScreenSample(
         rvNoticeActivity(notice),
         onAction = {},
         onConnect = {},

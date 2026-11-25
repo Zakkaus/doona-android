@@ -13,6 +13,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreen
+import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -20,6 +21,7 @@ import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
 import dev.doona.android.prototype.rv.subs.RvLanPrompt
 import dev.doona.android.prototype.rv.subs.RvSubAdd
+import dev.doona.android.prototype.rv.subs.RvSubAddSample
 import dev.doona.android.prototype.rv.subs.rvAddSample
 import dev.doona.android.prototype.rv.subs.text
 import dev.doona.android.prototype.rv.welcome.RvWelcome
@@ -153,7 +155,7 @@ class RvStatesShotTest {
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
 
     @Composable
-    private fun Notice(notice: RvActivityNotice, navFade: Boolean = false, onAction: () -> Unit) = RvActivityScreen(
+    private fun Notice(notice: RvActivityNotice, navFade: Boolean = false, onAction: () -> Unit) = RvActivityScreenSample(
         rvNoticeActivity(notice),
         onAction = {},
         onConnect = {},
@@ -166,7 +168,7 @@ class RvStatesShotTest {
     @Composable
     private fun Lan(sample: String, prompt: RvLanPrompt) {
         Box(Modifier.fillMaxSize()) {
-            RvSubAdd(rvAddSample(sample).copy(lan = null), {}, onPaste = {}, onImport = {}, onBack = {})
+            RvSubAddSample(rvAddSample(sample).copy(lan = null), {}, onPaste = {}, onImport = {}, onBack = {})
             val text = prompt.text()
             RvSheetLayout({ 1f }, {}, text.title) {
                 RvConfirmContent(text.title, text.body, text.confirm, text.dismiss, onConfirm = {}, onDismiss = {})

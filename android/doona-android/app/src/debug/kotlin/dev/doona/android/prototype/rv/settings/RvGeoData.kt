@@ -11,23 +11,9 @@ import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.feature.model.RvGeoData
+import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.prototype.rv.config.rvConfigLine
-
-/**
- * Where an update of the GeoIP and GeoSite data stands: not asked for, under way, done with newer data, done with
- * nothing newer, or failed. The APK ships one copy; an update runs only while the VPN is up.
- */
-internal enum class RvGeoUpdate { Idle, Updating, Updated, Latest, Failed }
-
-/** The data the rules read places and sites from: its [dateEpochMs], where its [update] stands, and whether the VPN is [connected]. */
-@Immutable
-internal data class RvGeoData(val dateEpochMs: Long, val update: RvGeoUpdate = RvGeoUpdate.Idle, val connected: Boolean = true)
-
-/** The sample's data: the copy the APK ships, 2026-11-20 (UTC). */
-internal const val RV_SAMPLE_GEO_SHIPPED_MS = 1_795_132_800_000L
-
-/** The sample's newer data, 2026-11-24 (UTC), as an update leaves it. */
-internal const val RV_SAMPLE_GEO_NEWER_MS = 1_795_478_400_000L
 
 /**
  * 設定's GeoIP/GeoSite row in 進階: the data's date as its second line, with where an update stands after it, and 更新

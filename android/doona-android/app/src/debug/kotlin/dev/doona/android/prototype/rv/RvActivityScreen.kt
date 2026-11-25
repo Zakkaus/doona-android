@@ -26,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -117,14 +118,13 @@ import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
-import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvRouteMode
-import dev.doona.android.prototype.rv.data.RvRuleOutbound
-import dev.doona.android.prototype.rv.data.RvSubscription
-import dev.doona.android.prototype.rv.data.fastest
-import dev.doona.android.prototype.rv.policy.RvGroupKind
-import dev.doona.android.prototype.rv.policy.RvPolicyData
+import dev.doona.android.feature.model.RvDay
+import dev.doona.android.feature.model.RvGroupKind
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleOutbound
+import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.fastest
 import dev.doona.android.prototype.rv.stats.RvStatsDots
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.collectLatest
@@ -136,7 +136,7 @@ import kotlinx.coroutines.flow.collectLatest
  * download and upload as two of Revolut's square home tiles (either opens the traffic page), and three more cards as
  * Revolut's home goes on: 今日用量, 訂閱 and 最快節點. Over the content sit the glass top bar (measured §4) and the
  * floating glass bottom bar (§9), which shrinks while the content scrolls up. It renders [ActivityUiState]; the engine
- * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [RvData]. A [banner] heads the cards
+ * has no rule mode yet, so [mode] comes from the sample, and the lower cards read [cards]. A [banner] heads the cards
  * ([RvGutter]'s slot); with no subscription, [noSubscription] puts the empty state with 新增訂閱 (which runs it) in their
  * place, as on 策略. While [loading] (before the engine is ready)
  * the hero's three lines and the cards are skeletons of themselves ([RvSkeletonHero], [ActivitySkeleton]), and the
@@ -150,15 +150,16 @@ internal fun RvActivityScreen(
     onConnect: () -> Unit,
     routes: RvActivityRoutes = RvActivityRoutes(),
     mode: RvRouteMode = if (state.mode == Mode.Direct) RvRouteMode.Direct else RvRouteMode.Rule,
-    nodes: List<RvNode> = RvData.nodes,
-    subscriptions: List<RvSubscription> = RvData.subscriptions,
+    nodes: List<RvNode>,
+    subscriptions: List<RvSubscription>,
     pull: RvPullLook = RvPullLook.None,
     hero: RvHeroSwipe = RvHeroSwipe.Off,
     banner: RvNotice? = null,
     noSubscription: (() -> Unit)? = null,
     loading: Boolean = false,
     navFade: Boolean = false,
-    rules: List<RvRuleOutbound> = RvData.ruleOutbounds,
+    rules: List<RvRuleOutbound>,
+    cards: RvActivityCards,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -181,7 +182,7 @@ internal fun RvActivityScreen(
         Box(Modifier.fillMaxSize()) {
             // The pull blurs and fades the page; the bars stay sharp, so the search pill, the picker's anchor, can grow.
             Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
-                Header(steady, ticking, mode, motion, insets, look) { HeroActions(steady, onAction, onConnect, routes.test) }
+                Header(steady, ticking, mode, motion, insets, look, cards.node) { HeroActions(steady, onAction, onConnect, routes.test) }
                 RvGutter(pushed ?: Modifier, banner) {
                     if (noSubscription != null) {
                         RvEmptyState(
@@ -192,11 +193,11 @@ internal fun RvActivityScreen(
                         )
                     } else {
                         RvSkeletonCards(loading, { ActivitySkeleton(mode, steady.node?.name ?: RV_NO_VALUE) }) {
-                            OutboundCard(steady, mode, routes, nodes, rules)
+                            OutboundCard(steady, mode, routes, nodes, rules, cards)
                             TrafficTiles(state, routes.traffic)
-                            RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
-                            RvSubscriptionsCard(subscriptions, routes.subscriptions)
-                            RvFastestCard(fastest, steady.node?.id ?: RvData.CURRENT_ID, routes.nodes)
+                            RvUsageCard(cards.today, cards.nowHour, cards.yesterdayByNow)
+                            RvSubscriptionsCard(subscriptions, cards.nowEpochMs, routes.subscriptions)
+                            RvFastestCard(fastest, steady.node?.id ?: cards.mainNodeId, routes.nodes)
                         }
                     }
                 }
@@ -232,6 +233,25 @@ internal class RvActivityRoutes(
 )
 
 /**
+ * What 活動's cards read besides [ActivityUiState] and its lists: today's bytes by the hour, where now falls in the day
+ * and yesterday's bytes by now (今日用量); now, for the subscriptions' end dates; how many rules the profile has (the
+ * see-all line); the main group's choice, which 最快節點 checks while no node is in use; a node by its id, for the map's
+ * spot and the rule rows; and how a rule group picks, by its name, for the glyph of a group whose networks use nodes in
+ * two regions.
+ */
+@Immutable
+internal class RvActivityCards(
+    val today: RvDay,
+    val nowHour: Float,
+    val yesterdayByNow: Long,
+    val nowEpochMs: Long,
+    val ruleCount: Int,
+    val mainNodeId: String,
+    val node: (String) -> RvNode?,
+    val groupKind: (Int) -> RvGroupKind?,
+)
+
+/**
  * The pull: [stretch] lengthens the map, [pushed] moves the header's text and everything under it down as far, and the
  * map's pulse rests while [resting].
  */
@@ -242,10 +262,10 @@ private class HeroLook(val swipe: RvHeroSwipe, val nodes: List<RvNode>, val load
 
 /** [state] without the second's rates, which only the hero's figures read, from [ticking]. */
 @Composable
-private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, motion: HeaderMotion, insets: WindowInsets, hero: HeroLook, actions: @Composable () -> Unit) {
+private fun Header(state: ActivityUiState, ticking: State<ActivityUiState>, mode: RvRouteMode, motion: HeaderMotion, insets: WindowInsets, hero: HeroLook, node: (String) -> RvNode?, actions: @Composable () -> Unit) {
     val running = state.status is Status.Running || state.status is Status.Starting
     // Direct traffic uses no node, so the map marks no place; a node marks its city, or its country's centroid.
-    val spot = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { RvData.node(it.id)?.spot }
+    val spot = state.node?.takeIf { mode != RvRouteMode.Direct }?.let { node(it.id)?.spot }
     val statusBar = with(LocalDensity.current) { insets.getTop(this).toDp() }
     var heroBounds by remember { mutableStateOf<Rect?>(null) }
     val pan = rvMapPan(spot)
@@ -427,7 +447,7 @@ internal fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
  * node; in 直連 a line that no node is in use.
  */
 @Composable
-private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvActivityRoutes, nodes: List<RvNode>, rules: List<RvRuleOutbound>) {
+private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvActivityRoutes, nodes: List<RvNode>, rules: List<RvRuleOutbound>, cards: RvActivityCards) {
     RvCard {
         RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = routes.mode) { RvChevron() }
         if (mode == RvRouteMode.Direct) {
@@ -448,13 +468,13 @@ private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvAc
             ) { RvLatencyChange(node?.latencyMs?.takeUnless { node.failed }, listed?.changeMs?.takeUnless { node.failed }) }
         }
         if (mode != RvRouteMode.Rule) return@RvCard
-        rules.take(RULE_ROWS).forEach { RuleRow(it, routes.rule) }
-        RvSeeAll(pluralStringResource(R.plurals.rv_see_all_rules, RvData.RULES, RvData.RULES), routes.rules)
+        rules.take(RULE_ROWS).forEach { RuleRow(it, cards, routes.rule) }
+        RvSeeAll(pluralStringResource(R.plurals.rv_see_all_rules, cards.ruleCount, cards.ruleCount), routes.rules)
     }
 }
 
-/** The glyph of how the group named [group] picks, as 策略 draws it; a selector's for a group 策略 does not list. */
-private fun groupGlyph(@StringRes group: Int): Int = (RvPolicyData.groups.firstOrNull { it.name == group }?.kind ?: RvGroupKind.Select).glyph
+/** The glyph of how a group picks ([kind]), as 策略 draws it; a selector's for a group 策略 does not list. */
+private fun groupGlyph(kind: RvGroupKind?): Int = (kind ?: RvGroupKind.Select).glyph
 
 /**
  * A rule group that sent traffic today: the node's flag, or for 直連 its own straight arrow (the diamond is the mode's), the
@@ -463,10 +483,10 @@ private fun groupGlyph(@StringRes group: Int): Int = (RvPolicyData.groups.firstO
  * the group's glyph (how it picks, as 策略 draws the group) leads the row.
  */
 @Composable
-private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
+private fun RuleRow(rule: RvRuleOutbound, cards: RvActivityCards, onOpen: (Int) -> Unit) {
     val format = rememberRvFormat()
-    val node = rule.nodeId?.let { RvData.node(it) }
-    val udp = rule.udpNodeId?.takeIf { it != rule.nodeId }?.let { RvData.node(it) }
+    val node = rule.nodeId?.let(cards.node)
+    val udp = rule.udpNodeId?.takeIf { it != rule.nodeId }?.let(cards.node)
     val line = when {
         node == null -> stringResource(R.string.mode_direct)
 
@@ -479,7 +499,7 @@ private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
         {
             when {
                 node == null -> RvIconDisc(R.drawable.rv_sym_arrow_right_alt)
-                udp != null && udp.place != node.place -> RvIconDisc(groupGlyph(rule.group))
+                udp != null && udp.place != node.place -> RvIconDisc(groupGlyph(cards.groupKind(rule.group)))
                 else -> RvFlag(node.place.flag, RvSize.rowDisc)
             }
         },
@@ -586,5 +606,5 @@ private val RvRouteMode.label: Int
 @Composable
 private fun RvActivityScreenPreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
 }

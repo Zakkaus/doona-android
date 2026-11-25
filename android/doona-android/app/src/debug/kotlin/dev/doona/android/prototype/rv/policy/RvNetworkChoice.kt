@@ -12,9 +12,9 @@ import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSwitchRow
-import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvRuleOutbound
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
@@ -103,15 +103,24 @@ internal fun rvNetworkMenu(onPick: (RvNetwork?) -> Unit): List<RvMenuItem> =
 
 /**
  * The group's node picker as it is ([RvNodePicker]), opened from a row of [RvNetworkCard]: titled with the group's name,
- * its caption how the group picks, begun with the row's [network] when there is one, and that network's node checked.
+ * its caption how the group picks, begun with the row's [network] when there is one, and that network's node checked;
+ * [subscriptions] head its cards, their end dates as of [nowEpochMs].
  */
 @Composable
-internal fun RvNetworkPicker(group: RvPolicyGroup, choice: RvNetworkChoice, network: RvNetwork?, onPick: (String) -> Unit = {}) {
+internal fun RvNetworkPicker(
+    group: RvPolicyGroup,
+    choice: RvNetworkChoice,
+    network: RvNetwork?,
+    subscriptions: List<RvSubscription>,
+    nowEpochMs: Long,
+    onPick: (String) -> Unit = {},
+) {
     val caption = group.caption()
     RvNodePicker(
         group.members,
-        RvData.subscriptions,
+        subscriptions,
         choice.nodeFor(network),
+        nowEpochMs,
         onPick = onPick,
         onDetail = {},
         onClose = {},
@@ -119,30 +128,3 @@ internal fun RvNetworkPicker(group: RvPolicyGroup, choice: RvNetworkChoice, netw
         caption = network?.let { stringResource(it.label) + SEPARATOR + caption } ?: caption,
     )
 }
-
-/**
- * 串流 (a selector) for the samples of choosing TCP and UDP apart: [shared] with the switch off, Taipei 04 on both
- * networks; [apart] with the switch on, Taipei 04 on TCP and Hong Kong 01 on UDP; [asked], the node whose network the
- * samples ask for; [rules], 活動's rule groups with 串流 apart; [rulesOneRegion], the same with UDP on another node in
- * TCP's region.
- */
-internal object RvNetworkSample {
-    val group: RvPolicyGroup = RvPolicyData.streaming
-    val shared = RvNetworkChoice(group.selectedId, group.selectedId, apart = false)
-    val apart = RvNetworkChoice(group.selectedId, UDP_NODE, apart = true)
-
-    /** The switch on with both networks on one node, as after a tap that picked it for both. */
-    val apartSame = RvNetworkChoice(group.selectedId, group.selectedId, apart = true)
-
-    /** The fastest node neither network chose: the first such row on 節點's card. */
-    val asked: RvNode = group.byLatency.first { !apart.chosen(it.id) }
-
-    val rules: List<RvRuleOutbound> = rulesWithUdp(UDP_NODE)
-    val rulesOneRegion: List<RvRuleOutbound> = rulesWithUdp(group.members.first { it.place == group.selected.place && it.id != group.selectedId }.id)
-
-    private fun rulesWithUdp(udp: String) = RvData.ruleOutbounds.map {
-        if (it.group == group.name) RvRuleOutbound(it.group, it.nodeId, it.bytes, udp) else it
-    }
-}
-
-private const val UDP_NODE = "hk-01"

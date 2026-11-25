@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.doona.android.R
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvText
@@ -48,7 +49,7 @@ class RvEffectiveConfigActionsTest {
         var copied = 0
         var exported = 0
         compose.rvContent(dark = false) {
-            RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}, onCopy = { copied++ }, onExport = { exported++ })
+            RvEffectiveConfigPageSample(RvPolicyState(), rvSampleSettings(), onBack = {}, onCopy = { copied++ }, onExport = { exported++ })
         }
         tap(R.string.rv_effective_copy)
         assertEquals(1 to 0, copied to exported)

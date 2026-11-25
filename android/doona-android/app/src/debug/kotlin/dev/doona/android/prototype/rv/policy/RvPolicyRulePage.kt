@@ -46,6 +46,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /**
@@ -76,7 +77,7 @@ internal fun RvPolicyRulePage(
         MatchBy(connection.host, rule.matchBy) { onChange(rule.copy(matchBy = it)) }
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
-            RvTargetCard(rule.targetId) { onChange(rule.copy(targetId = it)) }
+            RvTargetCard(rvSampleTargets, rule.targetId) { onChange(rule.copy(targetId = it)) }
             PositionCard(connection.rule)
         }
     }

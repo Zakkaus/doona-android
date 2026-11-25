@@ -14,12 +14,14 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
-import dev.doona.android.prototype.rv.data.RvNodeSort
-import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.rvScrollBy
 import dev.doona.android.prototype.rv.rvShot
 import org.junit.Assert.assertEquals
@@ -74,7 +76,7 @@ class RvPolicyShotTest {
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
                 var state by remember { mutableStateOf(RvPolicyState(mode = RvRouteMode.Global)) }
-                RvPolicyScreen(state, onChange = { state = it })
+                RvPolicyScreenSample(state, onChange = { state = it })
             }
         }
         compose.onNodeWithText(MAIN_NODE).assertIsSelected()
@@ -86,7 +88,7 @@ class RvPolicyShotTest {
     /** The tab bar's pill is 全域's only search: the node list under the mode has none of its own (rule 9). */
     @Test
     fun globalHasOneSearch() {
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Global), onChange = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Global), onChange = {}) } }
         assertEquals(1, compose.onAllNodesWithText(SEARCH, useUnmergedTree = true).fetchSemanticsNodes().size)
     }
 
@@ -96,7 +98,7 @@ class RvPolicyShotTest {
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
                 var shown by remember { mutableStateOf(state) }
-                RvPolicyScreen(shown, onChange = {
+                RvPolicyScreenSample(shown, onChange = {
                     shown = it
                     state = it
                 })
@@ -150,7 +152,7 @@ class RvPolicyShotTest {
     fun flowDark() = compose.rvShot("policy-flow", dark = true, before = { assertWhole() }) { Flow() }
 
     @Composable
-    private fun Policy(mode: RvRouteMode) = RvPolicyScreen(RvPolicyState(mode = mode), onChange = {})
+    private fun Policy(mode: RvRouteMode) = RvPolicyScreenSample(RvPolicyState(mode = mode), onChange = {})
 
     @Composable
     private fun Group(group: RvPolicyGroup) = RvPolicyGroupPage(group, onBack = {}, onSelect = {}, onTest = {})

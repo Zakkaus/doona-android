@@ -8,9 +8,10 @@ import androidx.compose.ui.unit.dp
 import dev.doona.android.designsystem.rv.LocalRvCardRadius
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvSize
-import dev.doona.android.prototype.rv.data.RvRouteMode
+import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -72,11 +73,11 @@ class RvCardRadiusShotTest {
     }
 
     private fun activity(radius: Dp, dark: Boolean) =
-        compose.rvShot("radius${radius.value.toInt()}-activity", dark) { At(radius) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) } }
+        compose.rvShot("radius${radius.value.toInt()}-activity", dark) { At(radius) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) } }
 
     private fun policy(radius: Dp, dark: Boolean) =
         compose.rvShot("radius${radius.value.toInt()}-policy", dark, before = { assertWhole() }) {
-            At(radius) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+            At(radius) { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
         }
 
     @Composable

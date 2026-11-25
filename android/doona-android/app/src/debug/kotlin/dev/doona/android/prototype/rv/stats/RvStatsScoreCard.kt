@@ -16,9 +16,9 @@ import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.engine.ScoreNetwork
 import dev.doona.android.engine.ScoreState
-import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
-import dev.doona.android.prototype.rv.policy.RvPolicyGroup
 import dev.doona.android.prototype.rv.policy.RvScoreChoiceRow
 import dev.doona.android.prototype.rv.policy.stateText
 import java.text.NumberFormat

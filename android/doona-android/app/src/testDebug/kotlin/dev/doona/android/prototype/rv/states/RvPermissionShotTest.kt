@@ -11,6 +11,7 @@ import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreen
+import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.rvIdleActivity
 import dev.doona.android.prototype.rv.rvSampleActivity
@@ -77,7 +78,7 @@ class RvPermissionShotTest {
     private fun Over(permission: RvPermission) {
         Box(Modifier.fillMaxSize()) {
             val activity = if (permission == RvPermission.Vpn) rvIdleActivity() else rvSampleActivity()
-            RvActivityScreen(activity, onAction = {}, onConnect = {})
+            RvActivityScreenSample(activity, onAction = {}, onConnect = {})
             val text = permission.text()
             RvSheetLayout({ 1f }, {}, text.title) {
                 RvConfirmContent(text.title, text.body, text.confirm, text.dismiss, onConfirm = {}, onDismiss = {})

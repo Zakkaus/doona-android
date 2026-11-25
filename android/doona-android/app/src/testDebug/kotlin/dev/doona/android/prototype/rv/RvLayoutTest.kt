@@ -13,25 +13,29 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.config.RvConfigHistoryData
 import dev.doona.android.prototype.rv.config.RvConfigImportPage
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNodeSort
-import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RV_NODES_DETAIL
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
+import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvEffectiveConfigPage
+import dev.doona.android.prototype.rv.policy.RvEffectiveConfigPageSample
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.policy.RvRuleDraft
 import dev.doona.android.prototype.rv.policy.RvRuleEditPage
@@ -40,6 +44,7 @@ import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.policy.RvTemplateImpactPage
 import dev.doona.android.prototype.rv.policy.RvTemplatePage
+import dev.doona.android.prototype.rv.policy.RvTemplatePageSample
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
 import dev.doona.android.prototype.rv.settings.RvDnsUpstream
@@ -53,6 +58,7 @@ import dev.doona.android.prototype.rv.settings.RvRedaction
 import dev.doona.android.prototype.rv.settings.RvReportBuild
 import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
+import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.RvUpdate
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
@@ -93,19 +99,19 @@ class RvLayoutTest {
     val utc = Utc()
 
     @Test
-    fun activity() = measure("activity", Top.Hero) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+    fun activity() = measure("activity", Top.Hero) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
     @Test
     fun traffic() = measure("traffic", Top.Title) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
 
     @Test
-    fun policyRule() = measure("policy", Top.Tab) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+    fun policyRule() = measure("policy", Top.Tab) { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
 
     @Test
-    fun policyGlobal() = measure("policy-global", Top.Tab) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Global), onChange = {}) }
+    fun policyGlobal() = measure("policy-global", Top.Tab) { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Global), onChange = {}) }
 
     @Test
-    fun policyDirect() = measure("policy-direct", Top.Tab) { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}) }
+    fun policyDirect() = measure("policy-direct", Top.Tab) { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}) }
 
     @Test
     fun groupSelect() = measure("policy-group-select", Top.Title) { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) }
@@ -115,7 +121,7 @@ class RvLayoutTest {
 
     @Test
     fun picker() = measure("policy-picker", Top.Title) {
-        RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
+        RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
     }
 
     @Test
@@ -125,13 +131,13 @@ class RvLayoutTest {
     fun ruleEdit() = measure("rule-edit", Top.Title) { RvRuleEditPage(RvRuleDraft.of(RvPolicyData.allRules[GITHUB]), onChange = {}, onBack = {}, onApply = {}, onDelete = {}) }
 
     @Test
-    fun template() = measure("template", Top.Title) { RvTemplatePage(RvTemplateData.cnDirect, RvTemplateData.services, onSelect = {}, onBack = {}, onReview = {}) }
+    fun template() = measure("template", Top.Title) { RvTemplatePageSample(RvTemplateData.cnDirect, RvTemplateData.services, onSelect = {}, onBack = {}, onReview = {}) }
 
     @Test
     fun templateImpact() = measure("template-impact", Top.Title) { RvTemplateImpactPage(RvTemplateData.impact, onBack = {}, onApply = {}) }
 
     @Test
-    fun effectiveConfig() = measure("effective-config", Top.Title) { RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}) }
+    fun effectiveConfig() = measure("effective-config", Top.Title) { RvEffectiveConfigPageSample(RvPolicyState(), rvSampleSettings(), onBack = {}) }
 
     @Test
     fun rules() = measure("rules", Top.Title) { RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}) }
@@ -145,7 +151,7 @@ class RvLayoutTest {
     /** 策略's value rows (範本, 設定檔) end their value a trailing gap before the chevron, as the node picker's row does. */
     @Test
     fun policyValueEndsATrailingGapBeforeTheChevron() {
-        show { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+        show { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
         // Not boundsInRoot: the card is below the window, where those bounds are clipped to nothing.
         val value = compose.onNodeWithText(rvText(R.string.rv_policy_template_value), useUnmergedTree = true).fetchSemanticsNode()
         val end = (value.positionInRoot.x + value.size.width) / value.layoutInfo.density.density
@@ -158,7 +164,7 @@ class RvLayoutTest {
 
     /** The pull-down node picker (S3): its caption in the header's slot, 4 dp under the title and 24 dp over the first card. */
     @Test
-    fun nodePicker() = measure("node-picker", Top.Title) { RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
+    fun nodePicker() = measure("node-picker", Top.Title) { RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
 
     @Test
     fun nodesPage() = measure("nodes-page", Top.Title) { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) }
@@ -174,7 +180,7 @@ class RvLayoutTest {
     fun stats() = measure("stats", Top.Title) { RvStatsScreen(rvStatsSample(), onBack = {}) }
 
     @Test
-    fun settings() = measure("settings", Top.Hero) { RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}) }
+    fun settings() = measure("settings", Top.Hero) { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}) }
 
     @Test
     fun theme() = measure("settings-theme", Top.Title) {
@@ -210,7 +216,7 @@ class RvLayoutTest {
     /** 設定 with a failed update check: the banner under the hero, a section's gap above and below it (owner-fix2 item 18). */
     @Test
     fun settingsUpdateFailed() = measure("settings-update-failed", Top.Hero) {
-        RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, update = RvUpdate.Failed)
+        RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, update = RvUpdate.Failed)
     }
 
     @Test

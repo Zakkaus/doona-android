@@ -54,7 +54,7 @@ class RvActivityLanShotTest {
     @Composable
     private fun Over(prompt: RvLanPrompt) {
         Box(Modifier.fillMaxSize()) {
-            RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {})
+            RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {})
             val text = prompt.text()
             RvSheetLayout({ 1f }, {}, text.title) {
                 RvConfirmContent(text.title, text.body, text.confirm, text.dismiss, onConfirm = {}, onDismiss = {})

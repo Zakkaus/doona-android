@@ -101,10 +101,10 @@ import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvShade
 import dev.doona.android.designsystem.rv.rvSharedSearch
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.LocalRvRowActions
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.rvNodeMenu
 import dev.doona.android.prototype.rv.rvPageArrived
 import dev.doona.android.prototype.rv.rvSharedFlag
@@ -125,13 +125,14 @@ internal const val RV_PICKER = "rv-picker"
  * the [searchPage] (brief rv-gestures G7) its field is the search pill's, and the keyboard comes up once the page has
  * arrived. The large title is [title], 節點 unless the caller opened the picker from a card that names it (規則's 主節點).
  * A [banner] (a failed action: a node switch) stands under the title and its caption, in [RvBannerSlot], and drops with
- * them. A group's picker passes its own [caption].
+ * them. A group's picker passes its own [caption]. A subscription's end date reads as of [nowEpochMs].
  */
 @Composable
 internal fun RvNodePicker(
     nodes: List<RvNode>,
     subscriptions: List<RvSubscription>,
     currentId: String,
+    nowEpochMs: Long,
     onPick: (String) -> Unit,
     onDetail: (String) -> Unit,
     onClose: () -> Unit,
@@ -176,7 +177,7 @@ internal fun RvNodePicker(
                 subscriptions.forEachIndexed { i, sub ->
                     val members = nodes.filter { it.subscription == sub.name }
                     val rows = RvRowsComposed(first, composed)
-                    Group(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, rows, section(2 + i))
+                    Group(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, rows, nowEpochMs, section(2 + i))
                     first += 1 + members.size
                 }
                 Spacer(Modifier.windowInsetsBottomHeight(bottom))
@@ -208,6 +209,7 @@ private fun Group(
     onPick: (String) -> Unit,
     onDetail: (String) -> Unit,
     rows: RvRowsComposed,
+    nowEpochMs: Long,
     modifier: Modifier,
 ) {
     // Read here, so that as more rows are composed this group composes again, not the picker.
@@ -220,7 +222,7 @@ private fun Group(
     AnimatedVisibility(members.any { it.id in matching }, modifier, enter = fadeIn(fold) + expandVertically(size), exit = fadeOut(fold) + shrinkVertically(size)) {
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             RvCard {
-                SubscriptionRow(sub, open || searching, enabled = !searching) { open = !open }
+                SubscriptionRow(sub, open || searching, enabled = !searching, nowEpochMs) { open = !open }
                 AnimatedVisibility(open || searching, enter = expandVertically(size), exit = shrinkVertically(size)) {
                     Column {
                         members.forEachIndexed { order, node ->
@@ -246,7 +248,7 @@ private fun Group(
  * where what is left would be.
  */
 @Composable
-private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean, nowEpochMs: Long, onToggle: () -> Unit) {
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
     val turn by animateFloatAsState(if (open) QUARTER_TURN else 0f, Rv.motion.tween(RvMotion.MOVE_MS), label = "chevron")
@@ -270,7 +272,7 @@ private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_rss_feed) },
             sub.name,
-            stringResource(R.string.rv_subscription_usage, format.usedOf(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
+            stringResource(R.string.rv_subscription_usage, format.usedOf(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, nowEpochMs) } ?: RV_NO_VALUE),
             toggle.then(actions),
             onClick = onToggle.takeIf { enabled },
             onLongClick = menu,
@@ -385,5 +387,5 @@ private const val TRACE_FOCUS = "RvSearchFocus"
 @Composable
 private fun RvNodePickerPreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
 }

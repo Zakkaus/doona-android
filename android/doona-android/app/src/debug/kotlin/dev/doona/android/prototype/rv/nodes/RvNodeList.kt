@@ -50,13 +50,13 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvNodeGroup
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.rvNodeGroups
 import dev.doona.android.prototype.rv.RvSubscriptionRow
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvNodeGroup
-import dev.doona.android.prototype.rv.data.RvNodeSort
-import dev.doona.android.prototype.rv.data.RvSubscription
-import dev.doona.android.prototype.rv.data.rvNodeGroups
 
 /**
  * The node list's control row: the search pill, which opens the search page ([onSearch]), unless that is null, [RvSpace.searchGap]
@@ -91,20 +91,20 @@ internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, 
  * keeps its width and lines.
  */
 @Composable
-internal fun RvNodeGroups(groups: List<RvNodeGroup>, currentId: String, sort: RvNodeSort, onPick: (String) -> Unit) {
+internal fun RvNodeGroups(groups: List<RvNodeGroup>, currentId: String, sort: RvNodeSort, nowEpochMs: Long, onPick: (String) -> Unit) {
     RvGutter {
-        groups.forEach { key(it.key) { GroupCard(it, currentId, sort, onPick) } }
+        groups.forEach { key(it.key) { GroupCard(it, currentId, sort, nowEpochMs, onPick) } }
     }
 }
 
 @Composable
-private fun GroupCard(group: RvNodeGroup, currentId: String, sort: RvNodeSort, onPick: (String) -> Unit) {
+private fun GroupCard(group: RvNodeGroup, currentId: String, sort: RvNodeSort, nowEpochMs: Long, onPick: (String) -> Unit) {
     var all by rememberSaveable(group.key) { mutableStateOf(false) }
     val shown = if (all) group.nodes else group.nodes.take(ROWS) + group.nodes.drop(ROWS).filter { it.id == currentId }
     val count = group.nodes.size
     RvCard {
         when (group) {
-            is RvNodeGroup.Subscription -> RvSubscriptionRow(group.subscription)
+            is RvNodeGroup.Subscription -> RvSubscriptionRow(group.subscription, nowEpochMs)
             is RvNodeGroup.Place -> PlaceRow(group.place, count)
         }
         shown.forEach { key(it.id) { NodeRow(it, it.id == currentId, sort, onPick) } }
@@ -154,7 +154,7 @@ private const val ROWS = 8
  * check moving to it. The order is the caller's ([sort], [onSort]), so the page keeps its last choice across visits;
  * the search pill opens the search page ([onSearch]).
  * With no node (no subscription) the order has nothing to order and the list gives way to the empty state, whose 新增訂閱
- * runs [onAdd].
+ * runs [onAdd]. A subscription's end date reads as of [nowEpochMs].
  */
 @Composable
 internal fun RvNodePickerPage(
@@ -167,6 +167,7 @@ internal fun RvNodePickerPage(
     onBack: () -> Unit,
     onTest: () -> Unit,
     onSearch: () -> Unit,
+    nowEpochMs: Long,
     onAdd: () -> Unit = {},
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -186,7 +187,7 @@ internal fun RvNodePickerPage(
                 )
             }
         } else {
-            RvNodeGroups(groups, currentId, sort, onPick)
+            RvNodeGroups(groups, currentId, sort, nowEpochMs, onPick)
         }
     }
 }
@@ -199,6 +200,6 @@ private fun RvNodePickerPagePreview() {
     var current by remember { mutableStateOf(RvData.CURRENT_ID) }
     var sort by remember { mutableStateOf(RvNodeSort.Latency) }
     RvTheme(rvSystemScheme(dark), dark) {
-        RvNodePickerPage(RvData.nodes, RvData.subscriptions, current, sort, { sort = it }, { current = it }, onBack = {}, onTest = {}, onSearch = {})
+        RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, current, sort, { sort = it }, { current = it }, onBack = {}, onTest = {}, onSearch = {})
     }
 }

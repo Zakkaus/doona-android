@@ -2,10 +2,10 @@ package dev.doona.android.prototype.rv.stats
 
 import androidx.annotation.StringRes
 import dev.doona.android.R
-import dev.doona.android.prototype.rv.data.RvDay
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvSplit
-import dev.doona.android.prototype.rv.data.RvSubscription
+import dev.doona.android.feature.model.RvDay
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvSplit
+import dev.doona.android.feature.model.RvSubscription
 
 /**
  * What the 統計 page shows, and where v0.1 gets it:

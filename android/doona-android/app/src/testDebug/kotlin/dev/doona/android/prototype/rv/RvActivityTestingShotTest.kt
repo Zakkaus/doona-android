@@ -50,7 +50,7 @@ class RvActivityTestingShotTest {
     private fun shot(name: String, dark: Boolean = false, fontScale: Float = 1f, before: ComposeContentTestRule.() -> Unit = {}) {
         rvAnimatorScale(0f)
         compose.rvShot(name, dark, before, fontScale) {
-            CompositionLocalProvider(LocalRvTesting provides true) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+            CompositionLocalProvider(LocalRvTesting provides true) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
         }
     }
 

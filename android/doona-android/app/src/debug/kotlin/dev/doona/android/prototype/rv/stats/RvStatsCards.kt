@@ -38,12 +38,12 @@ import dev.doona.android.designsystem.rv.RvUsageSize
 import dev.doona.android.designsystem.rv.RvWorldMap
 import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.feature.model.RvSplit
+import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.rvMedian
 import dev.doona.android.prototype.rv.RvLegendItem
 import dev.doona.android.prototype.rv.RvUsageChart
 import dev.doona.android.prototype.rv.RvUsageLegend
-import dev.doona.android.prototype.rv.data.RvSplit
-import dev.doona.android.prototype.rv.data.RvSubscription
-import dev.doona.android.prototype.rv.data.rvMedian
 import kotlin.math.abs
 
 /**

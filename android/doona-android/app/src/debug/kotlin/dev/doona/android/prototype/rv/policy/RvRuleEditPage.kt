@@ -39,6 +39,10 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.designsystem.rv.rvRowToggle
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.RvRuleState
 
 /** A rule being edited: how it matches, the value it matches (none for GEOIP CN and private ranges), where, if on. */
 @Immutable
@@ -105,7 +109,7 @@ internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit,
         MatchFields(draft, onChange)
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
-            RvTargetCard(draft.targetId) { onChange(draft.copy(targetId = it)) }
+            RvTargetCard(rvSampleTargets, draft.targetId) { onChange(draft.copy(targetId = it)) }
             RvCard {
                 val toggle = Modifier.rvRowToggle(draft.enabled) { onChange(draft.copy(enabled = it)) }
                 RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_rule_edit_enabled), null, toggle) { RvSwitch(draft.enabled) }

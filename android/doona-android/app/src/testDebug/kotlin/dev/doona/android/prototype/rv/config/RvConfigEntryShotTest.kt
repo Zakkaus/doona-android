@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -13,11 +14,12 @@ import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.policy.RvPolicyRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
 import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
+import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -76,7 +78,7 @@ class RvConfigEntryShotTest {
     @Test
     fun policysRowOpensTheOverview() {
         var opened = false
-        compose.setContent { Themed { RvPolicyScreen(RvPolicyState(), onChange = {}, routes = RvPolicyRoutes(config = { opened = true }), configRev = RvConfigData.REV) } }
+        compose.setContent { Themed { RvPolicyScreenSample(RvPolicyState(), onChange = {}, routes = RvPolicyRoutes(config = { opened = true }), configRev = RvConfigData.REV) } }
         compose.onNodeWithText(CONFIG).performScrollTo().performClick()
         assertTrue(opened)
     }
@@ -85,7 +87,7 @@ class RvConfigEntryShotTest {
     fun settingsLinkOpensTheOverview() {
         var opened = false
         compose.setContent {
-            Themed { RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(config = { opened = true }), configRev = RvConfigData.REV) }
+            Themed { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(config = { opened = true }), configRev = RvConfigData.REV) }
         }
         compose.onNodeWithText(CONFIG).performScrollTo().performClick()
         assertTrue(opened)
@@ -95,10 +97,10 @@ class RvConfigEntryShotTest {
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
 
     @Composable
-    private fun Policy() = RvPolicyScreen(RvPolicyState(), onChange = {}, configRev = RvConfigData.REV)
+    private fun Policy() = RvPolicyScreenSample(RvPolicyState(), onChange = {}, configRev = RvConfigData.REV)
 
     @Composable
-    private fun Settings() = RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, configRev = RvConfigData.REV)
+    private fun Settings() = RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, configRev = RvConfigData.REV)
 
     private companion object {
         const val WHOLE_POLICY = "+h1990dp"

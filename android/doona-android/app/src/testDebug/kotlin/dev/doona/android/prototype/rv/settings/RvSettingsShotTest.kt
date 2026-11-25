@@ -93,7 +93,7 @@ class RvSettingsShotTest {
         var opened = 0
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(report = { opened++ }))
+                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(report = { opened++ }))
             }
         }
         compose.onNodeWithText(rvText(R.string.rv_report_title)).performClick()
@@ -107,7 +107,7 @@ class RvSettingsShotTest {
         var about = 0
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(perApp = { perApp++ }, about = { about++ }))
+                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(perApp = { perApp++ }, about = { about++ }))
             }
         }
         compose.onNodeWithText(rvText(R.string.rv_settings_per_app)).performClick()
@@ -132,7 +132,7 @@ class RvSettingsShotTest {
     private fun Dns() = RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {})
 
     @Composable
-    private fun Settings() = RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {})
+    private fun Settings() = RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {})
 
     @Composable
     private fun Theme() =

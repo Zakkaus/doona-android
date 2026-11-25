@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.data
 
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.model.RvNode
 
 /** The node [from] the sample, as a subscription lists it with a name that gives no country. */
 private fun unknown(from: String, id: String, name: String) =

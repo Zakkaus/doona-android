@@ -30,8 +30,10 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
+import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.subs.RvAddState
 import dev.doona.android.prototype.rv.subs.RvSubAdd
+import dev.doona.android.prototype.rv.subs.RvSubAddSample
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -120,10 +122,10 @@ class RvKeyboardShotTest {
     }
 
     @Composable
-    private fun Add() = RvSubAdd(RvAddState(link = RV_SAMPLE_LINK), {}, onPaste = {}, onImport = {}, onBack = {})
+    private fun Add() = RvSubAddSample(RvAddState(link = RV_SAMPLE_LINK), {}, onPaste = {}, onImport = {}, onBack = {})
 
     @Composable
-    private fun Picker() = RvNodePicker(
+    private fun Picker() = RvNodePickerSample(
         RvData.nodes,
         RvData.subscriptions,
         RvData.CURRENT_ID,

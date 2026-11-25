@@ -6,12 +6,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.doona.android.designsystem.rv.RV_NAV_POLICY
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.prototype.rv.NODE
 import dev.doona.android.prototype.rv.SEARCH
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
+import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.settings.RvSettingsState
 
 /** The preview's 策略 state across its pages: the tab's own state, the quick rule, the template picked, held rules. */
@@ -95,7 +100,7 @@ internal fun RvPolicyPreview(
 
         r.PICKER -> {
             val main = state.policy.group(RvPolicyData.main)
-            RvNodePickerPage(
+            RvNodePickerPageSample(
                 RvData.nodes,
                 RvData.subscriptions,
                 main.selectedId,
@@ -110,7 +115,7 @@ internal fun RvPolicyPreview(
 
         r.PICKER_SEARCH -> {
             val main = state.policy.group(RvPolicyData.main)
-            RvNodePicker(
+            RvNodePickerSample(
                 RvData.nodes,
                 RvData.subscriptions,
                 main.selectedId,
@@ -158,7 +163,7 @@ internal fun RvPolicyPreview(
             })
         }
 
-        r.TEMPLATE -> RvTemplatePage(RvTemplateData.cnDirect, state.template, { state.template = it }, onBack = pop, onReview = { push(r.IMPACT) })
+        r.TEMPLATE -> RvTemplatePageSample(RvTemplateData.cnDirect, state.template, { state.template = it }, onBack = pop, onReview = { push(r.IMPACT) })
 
         r.EFFECTIVE -> RvEffectiveConfigSample(state.policy, settings, onBack = pop, onRules = { push(r.RULES) })
 
@@ -176,7 +181,7 @@ internal fun RvPolicyPreview(
                 tab = onTab,
                 search = { push(SEARCH) },
             )
-            RvPolicyScreen(state.policy, { state.policy = it }, routes)
+            RvPolicyScreenSample(state.policy, { state.policy = it }, routes)
         }
     }
 }

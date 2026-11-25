@@ -6,6 +6,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.share.rememberEffectiveConfigActions
 
@@ -17,5 +18,5 @@ import dev.doona.android.share.rememberEffectiveConfigActions
 internal fun RvEffectiveConfigSample(policy: RvPolicyState, settings: RvSettingsState, onBack: () -> Unit, onRules: () -> Unit) {
     val text by produceState<String?>(null) { value = rvSampleEngine().effectiveConfig().getOrNull()?.text }
     val actions = rememberEffectiveConfigActions(stringResource(R.string.rv_effective_title), text)
-    RvEffectiveConfigPage(policy, settings, onBack = onBack, onRules = onRules, onCopy = actions.copy, onExport = actions.export)
+    RvEffectiveConfigPageSample(policy, settings, onBack = onBack, onRules = onRules, onCopy = actions.copy, onExport = actions.export)
 }

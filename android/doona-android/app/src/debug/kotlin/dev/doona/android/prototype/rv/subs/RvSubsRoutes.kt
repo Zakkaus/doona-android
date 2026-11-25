@@ -32,7 +32,7 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
     val arg = route.substringAfter(':', "")
     when (route.substringBefore(':')) {
         RvSubsRoutes.LIST -> {
-            var state by remember { mutableStateOf(RvSubsState(failedId = if (arg == FAILED) RvData.subscriptions.first().id else null)) }
+            var state by remember { mutableStateOf(rvSubsStateSample(failedId = if (arg == FAILED) RvData.subscriptions.first().id else null)) }
             val actions = RvSubsActions(
                 back = pop,
                 open = { push("${RvSubsRoutes.DETAIL}:$it") },
@@ -48,7 +48,7 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
         RvSubsRoutes.DETAIL -> {
             var sub by remember { mutableStateOf(RvData.subscriptions.firstOrNull { it.id == arg } ?: RvData.subscriptions.first()) }
             var state by remember { mutableStateOf(RvSubDetailState()) }
-            RvSubDetail(sub, state, { state = it }, onBack = pop, onUpdate = {}, onUserAgent = { sub = sub.copy(userAgent = it) })
+            RvSubDetailSample(sub, state, { state = it }, onBack = pop, onUpdate = {}, onUserAgent = { sub = sub.copy(userAgent = it) })
         }
 
         else -> {
@@ -59,7 +59,7 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
                     state = state.copy(phase = RvAddPhase.Done(RvData.subscriptions.first().copy(userAgent = rvAgentOf(state.userAgent))))
                 }
             }
-            RvSubAdd(
+            RvSubAddSample(
                 state,
                 { state = it },
                 onPaste = { state = state.copy(link = RV_SAMPLE_LINK) },

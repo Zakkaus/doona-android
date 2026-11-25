@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,10 +67,14 @@ import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNodeSort
-import dev.doona.android.prototype.rv.data.RvRouteMode
-import dev.doona.android.prototype.rv.data.rvNodeGroups
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.rvNodeGroups
 import dev.doona.android.prototype.rv.nodes.RvNodeGroups
 import dev.doona.android.prototype.rv.nodes.RvNodeListControls
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
@@ -105,7 +110,7 @@ internal class RvPolicyRoutes(
  * joins the card under 範本 with the applied revision and opens the configuration's overview ([RvPolicyRoutes.config]).
  * While [loading] (before the engine is ready) the page is a skeleton of what its mode lays out ([PolicySkeleton]), and
  * the content fades in over it in place. A [banner] (a failed action: a mode switch) heads the cards in [RvBannerSlot],
- * outside the fade.
+ * outside the fade. What the profile holds (the main node, the groups, the rules, the nodes and subscriptions) is [profile].
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -116,6 +121,7 @@ internal fun RvPolicyScreen(
     configRev: Int? = null,
     loading: Boolean = false,
     banner: RvNotice? = null,
+    profile: RvPolicyProfile,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -148,8 +154,38 @@ internal fun RvPolicyScreen(
             }
         } else {
             RvBannerSlot(banner)
-            RvSkeletonFade(loading, { Column { PolicySkeleton(state) } }) { Column { PolicyContent(state, onChange, routes, configRev) } }
+            RvSkeletonFade(loading, { Column { PolicySkeleton(state, profile) } }) { Column { PolicyContent(state, onChange, routes, configRev, profile) } }
         }
+    }
+}
+
+/**
+ * What 策略 shows of the profile: the main node's group, every other group, the rules the card lists and how many the
+ * profile has, the nodes and subscriptions 全域 lists, and now, for the subscriptions' end dates. The lists are copied
+ * on construction, so a caller's mutable list cannot change the profile afterwards, and two profiles that list the same
+ * nodes and subscriptions are equal in those.
+ */
+@ConsistentCopyVisibility
+@Immutable
+internal data class RvPolicyProfile private constructor(
+    val main: RvPolicyGroup,
+    val groups: List<RvPolicyGroup>,
+    val rules: List<RvPolicyRule>,
+    val ruleCount: Int,
+    val nodes: List<RvNode>,
+    val subscriptions: List<RvSubscription>,
+    val nowEpochMs: Long,
+) {
+    companion object {
+        operator fun invoke(
+            main: RvPolicyGroup,
+            groups: List<RvPolicyGroup>,
+            rules: List<RvPolicyRule>,
+            ruleCount: Int,
+            nodes: List<RvNode>,
+            subscriptions: List<RvSubscription>,
+            nowEpochMs: Long,
+        ) = RvPolicyProfile(main, groups.toList(), rules.toList(), ruleCount, nodes.toList(), subscriptions.toList(), nowEpochMs)
     }
 }
 
@@ -169,17 +205,17 @@ private fun ModeCard(mode: RvRouteMode, onMode: (RvRouteMode) -> Unit) {
  * applies, so the node picker follows the mode card. 直連 uses no node: the mode card alone.
  */
 @Composable
-private fun PolicyContent(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Int?) {
+private fun PolicyContent(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Int?, profile: RvPolicyProfile) {
     RvGutter {
         ModeCard(state.mode) { onChange(state.copy(mode = it)) }
         if (state.mode == RvRouteMode.Rule) {
-            MainCard(state.group(RvPolicyData.main), routes.mainNode)
-            GroupsCard(state, routes.group)
-            RulesCard(routes.rules)
+            MainCard(state.group(profile.main), routes.mainNode)
+            GroupsCard(state, profile.groups, routes.group)
+            RulesCard(profile, routes.rules)
             OptionsCard(state, onChange, routes, configRev)
         }
     }
-    if (state.mode == RvRouteMode.Global) GlobalPicker(state, onChange)
+    if (state.mode == RvRouteMode.Global) GlobalPicker(state, profile, onChange)
 }
 
 /**
@@ -194,13 +230,13 @@ private fun PolicyContent(state: RvPolicyState, onChange: (RvPolicyState) -> Uni
  * ([rvSkeletonRowsToFill]), as their lists do, so the content keeps the edges in view where they stood.
  */
 @Composable
-private fun PolicySkeleton(state: RvPolicyState) {
+private fun PolicySkeleton(state: RvPolicyState, profile: RvPolicyProfile) {
     val rows = rvSkeletonRowsToFill()
     val mode = state.mode
     RvGutter {
         RvSkeletonControlCard(stringResource(mode.line))
         if (mode == RvRouteMode.Rule) {
-            val main = state.group(RvPolicyData.main)
+            val main = state.group(profile.main)
             RvSkeletonCard {
                 RvSkeletonHeader(stringResource(R.string.rv_main_node))
                 RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency, title = main.selected.name, subtitleText = mainLine(main), titleKeepWords = false)
@@ -208,7 +244,7 @@ private fun PolicySkeleton(state: RvPolicyState) {
             RvSkeletonCard {
                 RvSkeletonHeader(stringResource(R.string.rv_policy_groups))
                 repeat(rows) {
-                    val group = RvPolicyData.groups.getOrNull(it)?.let(state::group)
+                    val group = profile.groups.getOrNull(it)?.let(state::group)
                     RvSkeletonRow(
                         it + 1,
                         RvSkeletonText.Mixed,
@@ -228,7 +264,7 @@ private fun PolicySkeleton(state: RvPolicyState) {
         RvGutter {
             RvSkeletonCard {
                 // The first card is the first subscription's, but under 地區 the country of the fastest node's.
-                val sub = RvData.subscriptions.firstOrNull()?.name?.takeIf { state.nodeSort != RvNodeSort.Region }
+                val sub = profile.subscriptions.firstOrNull()?.name?.takeIf { state.nodeSort != RvNodeSort.Region }
                 RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value, title = sub, titleKeepWords = false)
                 repeat(rows) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.LatencyLines) }
             }
@@ -262,19 +298,19 @@ private fun mainLine(main: RvPolicyGroup): String =
  * country's, under 地區); a tap makes the node the main node.
  */
 @Composable
-private fun GlobalPicker(state: RvPolicyState, onChange: (RvPolicyState) -> Unit) {
-    val main = state.group(RvPolicyData.main)
-    val groups = remember(state.nodeSort) { rvNodeGroups(RvData.nodes, RvData.subscriptions, state.nodeSort) }
+private fun GlobalPicker(state: RvPolicyState, profile: RvPolicyProfile, onChange: (RvPolicyState) -> Unit) {
+    val main = state.group(profile.main)
+    val groups = remember(state.nodeSort, profile.nodes, profile.subscriptions) { rvNodeGroups(profile.nodes, profile.subscriptions, state.nodeSort) }
     RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, onSearch = null) })
-    RvNodeGroups(groups, main.selectedId, state.nodeSort) { onChange(state.choose(main.id, it)) }
+    RvNodeGroups(groups, main.selectedId, state.nodeSort, profile.nowEpochMs) { onChange(state.choose(main.id, it)) }
 }
 
 /** Every other group: its kind's glyph, its name over how it picks and how many nodes it has, and the node it uses. */
 @Composable
-private fun GroupsCard(state: RvPolicyState, onOpen: (String) -> Unit) {
+private fun GroupsCard(state: RvPolicyState, groups: List<RvPolicyGroup>, onOpen: (String) -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_policy_groups))
-        RvPolicyData.groups.forEach { GroupRow(state.group(it), onOpen) }
+        groups.forEach { GroupRow(state.group(it), onOpen) }
     }
 }
 
@@ -303,12 +339,12 @@ private fun groupLine(group: RvPolicyGroup): String =
  * (the group's node, or 直連's arrow) and the group over today's bytes; then the rest of the list.
  */
 @Composable
-private fun RulesCard(onAll: () -> Unit) {
+private fun RulesCard(profile: RvPolicyProfile, onAll: () -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_policy_rules))
         RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = Rv.colors.textSecondary)
-        RvPolicyData.rules.forEach { RvRuleRow(it) }
-        RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_rules, RvPolicyData.RULES, RvPolicyData.RULES), onAll)
+        profile.rules.forEach { RvRuleRow(it) }
+        RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_rules, profile.ruleCount, profile.ruleCount), onAll)
     }
 }
 
@@ -374,5 +410,5 @@ private val RvRouteMode.line: Int
 private fun RvPolicyScreenPreview() {
     val dark = isSystemInDarkTheme()
     var state by remember { mutableStateOf(RvPolicyState()) }
-    RvTheme(rvSystemScheme(dark), dark) { RvPolicyScreen(state, { state = it }) }
+    RvTheme(rvSystemScheme(dark), dark) { RvPolicyScreenSample(state, { state = it }) }
 }

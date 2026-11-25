@@ -49,6 +49,7 @@ import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.prototype.rv.rvHeroArt
 
 /**
@@ -72,7 +73,7 @@ internal fun RvSettingsScreen(
     onTab: (Int) -> Unit = {},
     routes: RvSettingsRoutes = RvSettingsRoutes(),
     configRev: Int? = null,
-    geoData: RvGeoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS),
+    geoData: RvGeoData,
     update: RvUpdate = RvUpdate.Idle,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -246,5 +247,5 @@ private fun perAppValue(perApp: RvPerApp): String = when (perApp.policy) {
 private fun RvSettingsScreenPreview() {
     val dark = isSystemInDarkTheme()
     var state by remember { mutableStateOf(rvSampleSettings()) }
-    RvTheme(rvSystemScheme(dark), dark) { RvSettingsScreen(state, onChange = { state = it }, onOpenTheme = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvSettingsScreenSample(state, onChange = { state = it }, onOpenTheme = {}) }
 }

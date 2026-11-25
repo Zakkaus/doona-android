@@ -2,17 +2,20 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNodeSort
-import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPageState
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.subs.RvSubsActions
 import dev.doona.android.prototype.rv.subs.RvSubsPage
 import dev.doona.android.prototype.rv.subs.RvSubsState
+import dev.doona.android.prototype.rv.subs.rvSubsStateSample
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -68,15 +71,15 @@ class RvNoSubscriptionShotTest {
         compose.rvShot(name, dark, fontScale = fontScale, content = content)
 
     @Composable
-    private fun Policy() = RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}, noSubscription = {})
+    private fun Policy() = RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}, noSubscription = {})
 
     @Composable
     private fun Picker() =
-        RvNodePickerPage(emptyList(), emptyList(), RvData.CURRENT_ID, RvNodeSort.Latency, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
+        RvNodePickerPageSample(emptyList(), emptyList(), RvData.CURRENT_ID, RvNodeSort.Latency, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
 
     @Composable
     private fun Nodes() = RvNodesPage(RvNodesPageState(emptyList(), RvData.CURRENT_ID, emptyList()), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {})
 
     @Composable
-    private fun Subs() = RvSubsPage(RvSubsState(subscriptions = emptyList()), RvSubsActions())
+    private fun Subs() = RvSubsPage(rvSubsStateSample(subscriptions = emptyList()), RvSubsActions())
 }

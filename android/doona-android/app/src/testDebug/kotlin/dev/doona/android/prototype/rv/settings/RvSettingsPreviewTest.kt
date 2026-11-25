@@ -78,7 +78,7 @@ class RvSettingsPreviewTest {
         compose.setContent {
             val sample = rvUpdateSample("new")
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(checkUpdate = sample.check), update = sample.update)
+                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(checkUpdate = sample.check), update = sample.update)
             }
         }
         compose.mainClock.autoAdvance = false

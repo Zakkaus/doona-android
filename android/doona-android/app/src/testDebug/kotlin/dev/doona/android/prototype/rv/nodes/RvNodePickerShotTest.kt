@@ -64,7 +64,7 @@ class RvNodePickerShotTest {
         rvAnimatorScale(0f)
         compose.rvShot(name, dark, fontScale = fontScale) {
             CompositionLocalProvider(LocalRvTesting provides testing, LocalRvTestingNodes provides only) {
-                RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {})
+                RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {})
             }
         }
     }

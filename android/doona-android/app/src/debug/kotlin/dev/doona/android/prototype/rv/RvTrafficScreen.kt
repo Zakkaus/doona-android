@@ -48,10 +48,10 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.model.RvSession
 import dev.doona.android.prototype.rv.data.RV_RANGE_POINTS
 import dev.doona.android.prototype.rv.data.RV_RANGE_SECONDS
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvSession
 import dev.doona.android.prototype.rv.data.RvSessionSeconds
 
 /**

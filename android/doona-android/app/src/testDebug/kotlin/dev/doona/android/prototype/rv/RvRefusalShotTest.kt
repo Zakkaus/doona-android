@@ -63,9 +63,9 @@ class RvRefusalShotTest {
         compose.rvShot("activity-${notice.route}-v1", dark, fontScale = fontScale) { Banner(notice) }
 
     private fun v2(route: String, dark: Boolean = false, fontScale: Float = 1f) =
-        compose.rvShot("activity-$route-v2", dark, fontScale = fontScale) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}) }
+        compose.rvShot("activity-$route-v2", dark, fontScale = fontScale) { RvActivityScreenSample(rvIdleActivity(), onAction = {}, onConnect = {}) }
 
     @Composable
     private fun Banner(notice: RvActivityNotice) =
-        RvActivityScreen(rvNoticeActivity(notice), onAction = {}, onConnect = {}, banner = rvActivityBanner(notice) {})
+        RvActivityScreenSample(rvNoticeActivity(notice), onAction = {}, onConnect = {}, banner = rvActivityBanner(notice) {})
 }

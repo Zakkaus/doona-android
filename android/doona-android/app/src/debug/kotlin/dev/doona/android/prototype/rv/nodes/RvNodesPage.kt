@@ -54,8 +54,8 @@ import dev.doona.android.designsystem.rv.RvWorldMap
 import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.prototype.rv.LocalRvRowActions
-import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.rvNodeMenu
 import dev.doona.android.prototype.rv.rvSharedFlag
 

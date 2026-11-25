@@ -8,7 +8,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSpot
 import dev.doona.android.designsystem.rv.rvDotRows
 import dev.doona.android.designsystem.rv.rvMarkerAt
-import dev.doona.android.prototype.rv.data.RvCity
+import dev.doona.android.feature.model.RvCity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

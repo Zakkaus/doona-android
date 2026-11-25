@@ -12,18 +12,21 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSheetLayout
+import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.rvSampleVersions
 import dev.doona.android.prototype.rv.subs.RvSubAdd
+import dev.doona.android.prototype.rv.subs.RvSubAddSample
 import dev.doona.android.prototype.rv.subs.RvSubDetail
+import dev.doona.android.prototype.rv.subs.RvSubDetailSample
 import dev.doona.android.prototype.rv.subs.RvSubDetailState
 import dev.doona.android.prototype.rv.subs.RvUserAgentField
 import dev.doona.android.prototype.rv.subs.rvAddSample
@@ -104,7 +107,7 @@ class RvBoardTest {
 
     @Test
     fun aTabHomeIsToldByItsFirstBlock() {
-        val dir = capture("policy") { RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
+        val dir = capture("policy") { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
         assertEquals("Tab", json(dir, "policy-light-1").getString("top"))
     }
 
@@ -136,7 +139,7 @@ class RvBoardTest {
     /** 新增訂閱's fields, label and message with each, are blocks of its column: the gaps run to them, none is split at a label. */
     @Test
     fun aFieldIsABlockOfThePage() {
-        val add = json(capture("sub-add") { RvSubAdd(rvAddSample("importing"), {}, onPaste = {}, onImport = {}, onBack = {}) }, "sub-add-light-1")
+        val add = json(capture("sub-add") { RvSubAddSample(rvAddSample("importing"), {}, onPaste = {}, onImport = {}, onBack = {}) }, "sub-add-light-1")
         val blocks = (0 until add.getJSONArray("blocks").length()).map { add.getJSONArray("blocks").getJSONObject(it).getString("tag") }
         assertTrue("新增訂閱's fields are blocks: $blocks", blocks.count { it == RvPart.FIELD } >= 2)
         val gaps = rules(add, "Gap").map { it.getString("what") }
@@ -150,7 +153,7 @@ class RvBoardTest {
         val sheet = json(
             capture("sheet") {
                 Box(Modifier.fillMaxSize()) {
-                    RvSubDetail(RvData.subscriptions.first(), RvSubDetailState(), {}, onBack = {}, onUpdate = {})
+                    RvSubDetailSample(RvData.subscriptions.first(), RvSubDetailState(), {}, onBack = {}, onUpdate = {})
                     RvSheetLayout({ 1f }, {}, "User-Agent") { RvUserAgentField("", {}) }
                 }
             },

@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
+import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -81,10 +82,10 @@ class RvRulesErrorShotTest {
     private fun Rules(banner: RvNotice) = RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}, banner = banner)
 
     @Composable
-    private fun Truncated() = RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}, truncated = true)
+    private fun Truncated() = RvEffectiveConfigPageSample(RvPolicyState(), rvSampleSettings(), onBack = {}, truncated = true)
 
     @Composable
-    private fun Failed() = RvEffectiveConfigPage(
+    private fun Failed() = RvEffectiveConfigPageSample(
         RvPolicyState(),
         rvSampleSettings(),
         onBack = {},

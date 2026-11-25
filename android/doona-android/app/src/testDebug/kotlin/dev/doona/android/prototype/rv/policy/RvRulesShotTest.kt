@@ -13,6 +13,9 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
@@ -139,14 +142,14 @@ class RvRulesShotTest {
     private fun Edit(draft: RvRuleDraft) = RvRuleEditPage(draft, onChange = {}, onBack = {}, onApply = {}, onDelete = {})
 
     @Composable
-    private fun Effective() = RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {})
+    private fun Effective() = RvEffectiveConfigPageSample(RvPolicyState(), rvSampleSettings(), onBack = {})
 
     @Composable
     private fun Rules(pending: List<RvPolicyRule> = emptyList(), editing: Boolean = false) =
         RvRulesPage(RvPolicyData.allRules, pending, editing, onBack = {})
 
     @Composable
-    private fun Template() = RvTemplatePage(RvTemplateData.cnDirect, RvTemplateData.services, onSelect = {}, onBack = {}, onReview = {})
+    private fun Template() = RvTemplatePageSample(RvTemplateData.cnDirect, RvTemplateData.services, onSelect = {}, onBack = {}, onReview = {})
 
     @Composable
     private fun Impact() = RvTemplateImpactPage(RvTemplateData.impact, onBack = {}, onApply = {})
