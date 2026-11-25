@@ -106,7 +106,8 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 | R9 | Leading, row with subtitle | top = title top (the disc then centres 1.5 dp above the row) | Revolut Appearance, Privacy: icon top = title top | gate R9 |
 | R10 | Trailing, one-line and wrapped row | centred | Revolut | gate R10 |
 | R11 | Trailing, row with subtitle | switch, radio, check, and every trailing part of a settings row: centred on the title's first line; an in-card button as the disc, top = title top | §13.4 switch row, `07-privacy`, `07-set-accessibility-b` | gate R11 |
-| R11l | Trailing, list row with subtitle: value, chip, chevron | centred on the row | Revolut money and list rows centre the value and chevron (rowalign-1125 "What Revolut does") | gate R11l |
+| R11l | Trailing, list row with subtitle: value, chip, chevron | centred on the row, or, where the value stands on the title's line (a line-wise row), its top on the title's top | Revolut money and list rows centre the value and chevron (rowalign-1125 "What Revolut does") | gate R11l |
+| R11u | Trailing part under the text (a font size at which the title would not read beside it) | its top at the title's bottom (beside the subtitle) or at the text's bottom, its right edge at the content's end | `RvRow` under-end layout (`LocalRvEndSide`) | gate R11u |
 | R12 | Title to subtitle | 0 | §7 line boxes | gate R12 |
 | R13 | Line boxes | one height per role in a golden, within 1 dp | owner, latinrow | gate R13 |
 | R14 | Lines | title ≤ 2, subtitle ≤ 3 | `07-set-interface`, `07-privacy` | gate R14 |

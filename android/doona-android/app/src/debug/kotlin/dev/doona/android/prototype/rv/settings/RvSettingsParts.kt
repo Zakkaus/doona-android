@@ -22,11 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.designsystem.rv.RV_ROW_SUBTITLE_LINES
 import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
@@ -170,14 +172,17 @@ private fun FirstLine(line: Dp, content: @Composable () -> Unit) {
 }
 
 /**
- * A 40 dp end (the disc, an in-card button), taller than a line box of a small font, so it is not held to the box's
- * height and never makes the row taller: its top on the title's [top] (a row with a subtitle), else centred on the
- * first [line].
+ * An end of the row's left or right side: one as tall as a line box or taller (the 40 dp disc, an in-card button) is not
+ * held to the box's height and never makes the row taller, its top on the title's [top] (a row with a subtitle), else
+ * centred on the first [line]; a shorter one (the busy bar standing in for a button) is centred on the first line.
  */
 @Composable
 private fun Tall(line: Dp, top: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val align = if (top) Alignment.Top else Alignment.CenterVertically
-    Box(Modifier.height(line)) { Box(Modifier.wrapContentHeight(align, unbounded = true).then(modifier)) { content() } }
+    Layout({ Box(modifier) { content() } }, Modifier.height(line)) { (part), _ ->
+        val placed = part.measure(Constraints())
+        val height = line.roundToPx()
+        layout(placed.width, height) { placed.place(0, if (top && placed.height >= height) 0 else (height - placed.height) / 2) }
+    }
 }
 
 /**

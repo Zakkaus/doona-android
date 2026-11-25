@@ -183,7 +183,7 @@ private fun RowTextColumn(minHeight: Dp, modifier: Modifier, content: @Composabl
 }
 
 /** [end] on a row's line: its text in its role's Latin line box ([LocalRvRowLine]). */
-private fun onLine(end: @Composable () -> Unit): @Composable () -> Unit = { CompositionLocalProvider(LocalRvRowLine provides true, end) }
+private fun onLine(end: @Composable () -> Unit): @Composable () -> Unit = { CompositionLocalProvider(LocalRvRowLine provides true) { Box(Modifier.testTag(RvRowPart.LINE_END)) { end() } } }
 
 /** [end] keeping its room, neither drawn nor read out. */
 private fun hidden(end: @Composable () -> Unit): @Composable () -> Unit = { Box(Modifier.alpha(0f).clearAndSetSemantics {}) { end() } }

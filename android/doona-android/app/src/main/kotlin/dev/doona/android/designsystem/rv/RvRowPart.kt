@@ -18,6 +18,9 @@ internal object RvRowPart {
     /** A bare glyph ([RvGlyph]). */
     const val GLYPH = "rv-glyph"
 
+    /** A line's own end of a line-wise [RvRow] (a figure beside the title, a change beside the subtitle): part of that line for the gate. */
+    const val LINE_END = "rv-line-end"
+
     /** A touch target that reaches past what it draws (the node picker's info mark): the gate reads its ink, not its box. */
     const val TARGET = "rv-target"
 
