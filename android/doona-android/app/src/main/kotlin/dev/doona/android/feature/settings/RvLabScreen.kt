@@ -41,7 +41,7 @@ internal fun RvLabScreen(performance: Boolean, onPerformance: (Boolean) -> Unit,
                     stringResource(R.string.rv_lab_performance_sub),
                 )
             }
-            RvFootnote(stringResource(R.string.rv_lab_footnote), inset = RvSpace.gutter - RvSettingsSpace.margin)
+            RvFootnote(stringResource(R.string.rv_lab_footnote), inset = RvSpace.none)
         }
     }
 }

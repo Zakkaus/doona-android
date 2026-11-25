@@ -1,27 +1,38 @@
 package dev.doona.android.feature.report
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.engine.CoreDiagnostics
+import dev.doona.android.engine.CrashFile
+import dev.doona.android.engine.LogLevel
+import dev.doona.android.engine.RulePage
 import dev.doona.android.report.ExportFixture
 import dev.doona.android.report.FakeReports
 import dev.doona.android.report.RedactionOptions
+import dev.doona.android.report.ReportExport
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
@@ -36,7 +47,7 @@ class ReportViewModelTest : ExportFixture() {
     @After
     fun resetDispatchers() = Dispatchers.resetMain()
 
-    private suspend fun TestScope.page(fail: Boolean = false): Pair<ReportViewModel, FakeReports> {
+    private suspend fun TestScope.page(fail: Boolean = false, facts: ReportFacts = this@ReportViewModelTest.facts): Pair<ReportViewModel, FakeReports> {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val engine = fixtureEngine()
         val reports = FakeReports(export(engine, scope = backgroundScope)).also { it.fail = fail }
@@ -44,6 +55,8 @@ class ReportViewModelTest : ExportFixture() {
         backgroundScope.launch { vm.uiState.collect {} }
         return vm to reports
     }
+
+    private fun zips(): List<File> = outDir.listFiles().orEmpty().filter { it.name.endsWith(".zip") }
 
     @Test
     fun `the first report hides node addresses, own IPs and domains, and shows app names`() = runTest {
@@ -112,5 +125,79 @@ class ReportViewModelTest : ExportFixture() {
         assertEquals(3, preview.nodes)
         assertEquals(1, preview.subscriptions)
         assertEquals(7, preview.events)
+    }
+
+    @Test
+    fun `a share sheet that returned keeps its zip for the grace, and a new report is written`() = runTest {
+        val (vm, reports) = page()
+        advanceUntilIdle()
+        val share = checkNotNull(vm.uiState.value.share)
+        val first = zips().single()
+
+        vm.shareReturned(share)
+        runCurrent()
+        assertTrue("kept while the picked app reads it", first.exists())
+        assertEquals(2, reports.options.size)
+        assertNotSame(share, vm.uiState.value.share)
+        advanceTimeBy(ReportExport.SHARE_GRACE_MS + 1)
+        runCurrent()
+        assertFalse(first.exists())
+        assertEquals(RvReportBuild.Ready(RvRedaction()), vm.uiState.value.build)
+    }
+
+    @Test
+    fun `a share sheet that could not open fails the page and drops its zip`() = runTest {
+        val (vm, reports) = page()
+        advanceUntilIdle()
+        val share = checkNotNull(vm.uiState.value.share)
+        val zip = zips().single()
+
+        vm.shareFailed(share)
+        runCurrent()
+        assertEquals(RvReportBuild.Failed, vm.uiState.value.build)
+        assertNull(vm.uiState.value.share)
+        assertFalse(zip.exists())
+        assertEquals("nothing is written again until 重試", 1, reports.options.size)
+    }
+
+    @Test
+    fun `the page going away drops the report nobody shared`() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val engine = fixtureEngine()
+        val reports = FakeReports(export(engine, scope = backgroundScope))
+        val store = ViewModelStore()
+        val vm = ViewModelProvider(store, ReportViewModel.factory(engine, reports, facts))[ReportViewModel::class.java]
+        advanceUntilIdle()
+        assertNotNull(vm.uiState.value.share)
+        val zip = zips().single()
+
+        store.clear()
+        runCurrent()
+        assertFalse(zip.exists())
+    }
+
+    @Test
+    fun `a log that cannot be read counts 0 events, and the page still opens`() = runTest {
+        val broken = object : ReportFacts {
+            override val app = "0.1"
+            override val device = "Pixel 9 · Android 16"
+
+            override suspend fun events(): Int = error("log unreadable")
+        }
+        val (vm, _) = page(facts = broken)
+        advanceUntilIdle()
+        assertEquals(0, vm.uiState.value.preview.events)
+        assertEquals(3, vm.uiState.value.preview.nodes)
+        assertEquals(RvReportBuild.Ready(RvRedaction()), vm.uiState.value.build)
+    }
+
+    @Test
+    fun `the preview counts what was read, and 0 for each part that was not`() = runTest {
+        val catalog = checkNotNull(fixtureEngine().catalog.value)
+        val diagnostics = CoreDiagnostics(LogLevel.Info, listOf(CrashFile("1.txt", 1), CrashFile("2.txt", 1)), crashMark = 0, json = "{}")
+        val read = rvReportPreview("0.1", "phone", catalog, emptyList(), RulePage(1, total = 14, rows = emptyList()), events = 5, diagnostics = diagnostics)
+        assertEquals(RvReportPreview("0.1", "phone", nodes = 3, subscriptions = 0, rules = 14, events = 5, crashes = 2), read)
+        val none = rvReportPreview("0.1", "phone", catalog = null, subscriptions = emptyList(), rules = null, events = null, diagnostics = null)
+        assertEquals(RvReportPreview("0.1", "phone", nodes = 0, subscriptions = 0, rules = 0, events = 0, crashes = 0), none)
     }
 }

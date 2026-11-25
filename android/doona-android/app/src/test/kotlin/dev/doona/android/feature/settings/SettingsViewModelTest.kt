@@ -2,6 +2,7 @@ package dev.doona.android.feature.settings
 
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.ConfigAssets
+import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -9,9 +10,11 @@ import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvAppPolicy
+import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPerApp
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -25,10 +28,12 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.Instant
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -52,13 +57,64 @@ class SettingsViewModelTest {
         assertEquals(6, shown.updateHours)
         assertFalse(shown.tileAdded)
 
-        vm.onChange(shown.copy(notifyOnDrop = false))
+        vm.onChange(shown, shown.copy(notifyOnDrop = false))
         assertFalse(store.notifyOnDrop.value)
-        vm.onChange(vm.uiState.value.settings.copy(autoUpdate = false))
+        val next = vm.uiState.value.settings
+        vm.onChange(next, next.copy(autoUpdate = false))
         assertFalse(store.autoUpdate.value)
         assertFalse(vm.uiState.value.settings.notifyOnDrop)
         assertFalse(vm.uiState.value.settings.autoUpdate)
         assertEquals("the interval was left as it was", 6, store.updateHours.value)
+    }
+
+    @Test
+    fun `two quick turns write only the switch each turned`() = runTest {
+        val store = FakeSettingsStore()
+        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        val drawn = vm.uiState.value.settings
+        vm.onChange(drawn, drawn.copy(notifyOnDrop = false))
+        assertFalse(vm.uiState.value.settings.notifyOnDrop)
+        // The second turn comes from the same drawing, before the page showed the first one.
+        vm.onChange(drawn, drawn.copy(autoUpdate = false))
+        assertFalse("the first turn stands", store.notifyOnDrop.value)
+        assertFalse(store.autoUpdate.value)
+    }
+
+    @Test
+    fun `the DNS row reads the servers the core reports, and again when the page shows again`() = runTest {
+        val engine = FakeEngine()
+        val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
+        assertTrue(vm.uiState.value.dnsLoaded)
+        assertEquals("the core's default, 1.1.1.1:53 then 8.8.8.8:53", RvDnsUpstream.Cloudflare, vm.uiState.value.settings.dns)
+
+        engine.setDnsUpstreams(listOf("9.9.9.9:53"))
+        assertEquals(RvDnsUpstream.Cloudflare, vm.uiState.value.settings.dns)
+        vm.onResume()
+        assertEquals(RvDnsUpstream.Quad9, vm.uiState.value.settings.dns)
+
+        engine.setDnsUpstreams(listOf("10.0.0.1:53"))
+        vm.onResume()
+        assertNull("servers no preset names are 自訂", vm.uiState.value.settings.dns)
+        assertTrue(vm.uiState.value.dnsLoaded)
+    }
+
+    @Test
+    fun `the DNS row has no value until the core's servers are read`() = runTest {
+        val engine = object : Engine by FakeEngine() {
+            override suspend fun effectiveConfig(): Result<EffectiveConfig> = Result.failure(EngineException(ErrorCode.Internal))
+        }
+        val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
+        assertFalse(vm.uiState.value.dnsLoaded)
+    }
+
+    @Test
+    fun `the DNS row's preset is the first server's, on port 53`() {
+        assertEquals(RvDnsUpstream.Cloudflare, rvDnsUpstream(listOf("1.1.1.1:53", "8.8.8.8:53")))
+        assertEquals(RvDnsUpstream.Google, rvDnsUpstream(listOf("8.8.8.8:53", "1.1.1.1:53")))
+        assertEquals(RvDnsUpstream.AliDns, rvDnsUpstream(listOf("223.5.5.5")))
+        assertNull(rvDnsUpstream(listOf("1.1.1.1:5353")))
+        assertNull(rvDnsUpstream(listOf("[2606:4700:4700::1111]:53")))
+        assertNull(rvDnsUpstream(emptyList()))
     }
 
     @Test
@@ -164,6 +220,37 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `the row stays Updating until the core's first read, whatever it held before`() = runTest {
+        val engine = GeoEngine(started = Result.failure(EngineException(ErrorCode.Busy)), reads = listOf(assets("up_to_date")))
+        val vm = collected(SettingsViewModel(engine, FakeSettingsStore(), poll = 1.seconds))
+        assertEquals(RvGeoUpdate.Latest, vm.uiState.value.geoData.update)
+        engine.gate = CompletableDeferred()
+        engine.reads = listOf(assets("downloading"))
+        vm.updateGeo()
+        assertEquals("not the Latest read before the update", RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
+        engine.gate!!.complete(Unit)
+        runCurrent()
+        assertEquals(RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
+    }
+
+    @Test
+    fun `an update the core never ends stops being followed and shows the failure`() = runTest {
+        val engine = GeoEngine(started = Result.success(assets("checking")), reads = listOf(assets("idle"), assets("downloading")))
+        val vm = collected(SettingsViewModel(engine, FakeSettingsStore(), poll = 1.seconds, followFor = 1.minutes))
+        vm.updateGeo()
+        advanceTimeBy(59.seconds)
+        runCurrent()
+        assertEquals(RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
+        advanceTimeBy(2.seconds)
+        runCurrent()
+        assertEquals(RvGeoUpdate.Failed, vm.uiState.value.geoData.update)
+        val reads = engine.read
+        advanceTimeBy(10.seconds)
+        runCurrent()
+        assertEquals("no read after it gave up", reads, engine.read)
+    }
+
+    @Test
     fun `the row is not connected while the VPN is off`() = runTest {
         val vm = collected(SettingsViewModel(FakeEngine(status = Status.Stopped), FakeSettingsStore()))
         assertFalse(vm.uiState.value.geoData.connected)
@@ -176,7 +263,8 @@ class SettingsViewModelTest {
         assertFalse(vm.uiState.value.settings.tileSheet)
         vm.tileAnswer(TileAnswer.Failed)
         assertTrue(vm.uiState.value.settings.tileSheet)
-        vm.onChange(vm.uiState.value.settings.copy(tileSheet = false))
+        val drawn = vm.uiState.value.settings
+        vm.onChange(drawn, drawn.copy(tileSheet = false))
         assertFalse(vm.uiState.value.settings.tileSheet)
     }
 
@@ -197,6 +285,7 @@ class SettingsViewModelTest {
         val vm = IntervalViewModel(store)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         assertEquals(24, vm.uiState.value)
+        assertEquals(listOf(1, 6, 12, 24), vm.choices)
         vm.select(1)
         assertEquals(1, store.updateHours.value)
         assertEquals(1, vm.uiState.value)
@@ -209,7 +298,13 @@ class SettingsViewModelTest {
         Engine by fake {
         var read = 0
 
-        override suspend fun configAssets(): Result<ConfigAssets> = Result.success(reads[minOf(read++, reads.lastIndex)])
+        /** Set, each read waits for it. */
+        var gate: CompletableDeferred<Unit>? = null
+
+        override suspend fun configAssets(): Result<ConfigAssets> {
+            gate?.await()
+            return Result.success(reads[minOf(read++, reads.lastIndex)])
+        }
 
         override suspend fun updateConfigAssets(): Result<ConfigAssets> = started
     }

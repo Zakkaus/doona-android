@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.data
 
 import dev.doona.android.R
+import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRuleOutbound
@@ -69,6 +70,9 @@ internal object RvData {
 
     /** Settings: how often subscriptions refresh (the last refresh was at 06:00); 依 App's apps are RvPerAppData's. */
     const val UPDATE_HOURS = 12
+
+    /** 更新間隔's choices, as the app's store keeps them. */
+    val UPDATE_INTERVALS = UpdateInterval.entries.map { it.hours }
 
     const val CURRENT_ID = "hk-02"
 }

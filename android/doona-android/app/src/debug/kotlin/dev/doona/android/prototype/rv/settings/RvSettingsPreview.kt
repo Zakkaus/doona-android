@@ -47,7 +47,7 @@ internal fun RvSettingsPreview(route: String, push: (String) -> Unit, pop: () ->
 
         RvSettingsPreviewRoutes.INTERVAL -> {
             var hours by rememberSaveable { mutableIntStateOf(RvData.UPDATE_HOURS) }
-            RvIntervalScreen(hours, { hours = it }, onBack = pop, onCustom = NOT_WIRED)
+            RvIntervalScreen(hours, RvData.UPDATE_INTERVALS, { hours = it }, onBack = pop, onCustom = NOT_WIRED)
         }
 
         else -> LogLevelSample(pop)

@@ -48,16 +48,19 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
             lab = nav.lab,
         )
     }
+    // The page's switches send the state they were drawn from, so the ViewModel writes only the field turned.
+    val drawn = state.settings
     RvSettingsScreen(
-        state.settings,
+        drawn,
         // A shell that could not read its version shows a dash, as every row with no value does.
         version.ifBlank { RV_NO_VALUE },
-        viewModel::onChange,
+        { viewModel.onChange(drawn, it) },
         nav.theme,
         onTab,
         routes,
         geoData = state.geoData,
         perAppLoaded = state.perAppLoaded,
+        dnsLoaded = state.dnsLoaded,
     )
 }
 
@@ -66,7 +69,7 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
 internal fun IntervalRoute(store: SettingsStore, onCustom: () -> Unit, onBack: () -> Unit) {
     val viewModel: IntervalViewModel = viewModel(factory = IntervalViewModel.factory(store))
     val hours by viewModel.uiState.collectAsStateWithLifecycle()
-    RvIntervalScreen(hours, viewModel::select, onBack, onCustom)
+    RvIntervalScreen(hours, viewModel.choices, viewModel::select, onBack, onCustom)
 }
 
 /**
@@ -86,8 +89,8 @@ internal fun LanguageRoute(store: SettingsStore, onBack: () -> Unit) {
 @Composable
 internal fun LogLevelRoute(levels: LogLevels, onBack: () -> Unit) {
     val viewModel: LogLevelViewModel = viewModel(factory = LogLevelViewModel.factory(levels))
-    val level by viewModel.uiState.collectAsStateWithLifecycle()
-    RvLogLevelScreen(level, viewModel::select, onBack)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    RvLogLevelScreen(state.level, viewModel::select, onBack, retry = if (state.refused != null) viewModel::retry else null)
 }
 
 /**

@@ -1,5 +1,6 @@
 package dev.doona.android.feature.settings
 
+import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +18,7 @@ internal class FakeSettingsStore(
     override val notifyOnDrop = MutableStateFlow(notifyOnDrop)
     override val autoUpdate = MutableStateFlow(autoUpdate)
     override val updateHours = MutableStateFlow(updateHours)
+    override val updateIntervals = UpdateInterval.entries.map { it.hours }
     override val appearance = MutableStateFlow(appearance)
     override val tileAdded = MutableStateFlow(tileAdded)
 
@@ -35,6 +37,7 @@ internal class FakeSettingsStore(
     }
 
     override suspend fun setUpdateHours(hours: Int) {
+        require(hours in updateIntervals) { "no update interval of $hours h" }
         updateHours.value = hours
     }
 }

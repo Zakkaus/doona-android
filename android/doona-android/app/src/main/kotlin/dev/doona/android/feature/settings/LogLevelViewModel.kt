@@ -6,9 +6,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.LogLevel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -23,16 +24,27 @@ internal interface LogLevels {
     suspend fun set(level: LogLevel): Result<Unit>
 }
 
+/** What 日誌等級 shows: the core's level, and the choice it [refused] last, until a later choice goes through. */
+internal data class LogLevelUiState(val level: RvLogLevel, val refused: RvLogLevel? = null)
+
 /**
  * 日誌等級: the level the core logs at, as the page's [RvLogLevel]. A choice goes to the core; the page shows what the
- * core took, so a set that fails leaves the level as it was, and 除錯's return to 資訊 shows as it happens.
+ * core took, so a set that fails leaves the level as it was and says so ([LogLevelUiState.refused], which [retry] asks
+ * again), and 除錯's return to 資訊 shows as it happens.
  */
 internal class LogLevelViewModel(private val levels: LogLevels) : ViewModel() {
-    val uiState: StateFlow<RvLogLevel> = levels.level.map(::rvLogLevel)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), rvLogLevel(levels.level.value))
+    private val refused = MutableStateFlow<RvLogLevel?>(null)
+
+    val uiState: StateFlow<LogLevelUiState> = combine(levels.level, refused) { level, refused -> LogLevelUiState(rvLogLevel(level), refused) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LogLevelUiState(rvLogLevel(levels.level.value)))
 
     fun select(level: RvLogLevel) {
-        viewModelScope.launch { levels.set(level.engineLevel()) }
+        viewModelScope.launch { refused.value = if (levels.set(level.engineLevel()).isFailure) level else null }
+    }
+
+    /** Asks the core again for the level it refused. */
+    fun retry() {
+        refused.value?.let(::select)
     }
 
     companion object {

@@ -6,13 +6,17 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.doona.android.app.AppSettingsStore
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.fake.rvSampleEngine
@@ -161,6 +165,13 @@ class SettingsAppShotTest {
 
     @Test fun logLevelFs200() = compose.app("settings-log-level", fontScale = RV_FS200) { LogLevel() }
 
+    /** The core refuses 除錯: the banner says so, with 重試. */
+    @Test fun logLevelRefusedLight() = compose.app("settings-log-level-refused", dark = false, before = { pickDebug() }) { RefusedLogLevel() }
+
+    @Test fun logLevelRefusedDark() = compose.app("settings-log-level-refused", dark = true, before = { pickDebug() }) { RefusedLogLevel() }
+
+    @Test fun logLevelRefusedFs200() = compose.app("settings-log-level-refused", fontScale = RV_FS200, before = { pickDebug() }) { RefusedLogLevel() }
+
     @Test fun languageLight() = compose.app("settings-language", dark = false) { Language() }
 
     @Test fun languageDark() = compose.app("settings-language", dark = true) { Language() }
@@ -184,6 +195,11 @@ class SettingsAppShotTest {
 
     @Composable
     private fun LogLevel() = LogLevelRoute(InfoLevels, onBack = {})
+
+    @Composable
+    private fun RefusedLogLevel() = LogLevelRoute(RefusingLevels(), onBack = {})
+
+    private fun ComposeContentTestRule.pickDebug() = onNodeWithText("除錯").performClick()
 
     @Composable
     private fun Language() = LanguageRoute(sampleStore(), onBack = {})
@@ -218,7 +234,7 @@ class SettingsAppEnShotTest {
 
     @Test fun interval() = compose.app("settings-interval-en", dark = false) { IntervalRoute(sampleStore(), onCustom = {}, onBack = {}) }
 
-    @Test fun intervalSample() = compose.sample("settings-interval-en") { RvIntervalScreen(RvData.UPDATE_HOURS, onSelect = {}, onBack = {}, onCustom = {}) }
+    @Test fun intervalSample() = compose.sample("settings-interval-en") { RvIntervalScreen(RvData.UPDATE_HOURS, RvData.UPDATE_INTERVALS, onSelect = {}, onBack = {}, onCustom = {}) }
 
     @Test fun logLevel() = compose.app("settings-log-level-en", dark = false) { LogLevelRoute(InfoLevels, onBack = {}) }
 
@@ -282,8 +298,8 @@ private fun reportPage(built: Built, tmp: TemporaryFolder): @Composable () -> Un
     return { ReportPage(vm, onBack = {}) }
 }
 
-/** The sample's settings: 繁體中文, the sample's interval, and the GeoIP/GeoSite copy the sample ships (2026-11-20). */
-private fun sampleStore() = FakeSettingsStore(updateHours = RvData.UPDATE_HOURS, shippedGeoDate = "2026-11-20", languages = "zh-TW")
+/** The sample's settings: 繁體中文, the sample's interval, and the GeoIP/GeoSite copy the app ships. */
+private fun sampleStore() = FakeSettingsStore(updateHours = RvData.UPDATE_HOURS, shippedGeoDate = AppSettingsStore.SHIPPED_GEO_DATE, languages = "zh-TW")
 
 /** The RV sample engine, connected, with the sample's saved per-app policy. */
 private fun settingsEngine(): Engine {
@@ -356,6 +372,13 @@ private object InfoLevels : LogLevels {
     override val level = MutableStateFlow(LogLevel.Info)
 
     override suspend fun set(level: LogLevel): Result<Unit> = Result.success(Unit)
+}
+
+/** A core at 資訊 that refuses every other level. */
+private class RefusingLevels : LogLevels {
+    override val level = MutableStateFlow(LogLevel.Info)
+
+    override suspend fun set(level: LogLevel): Result<Unit> = Result.failure(EngineException(ErrorCode.Internal))
 }
 
 /** Android, which a golden never reaches. */

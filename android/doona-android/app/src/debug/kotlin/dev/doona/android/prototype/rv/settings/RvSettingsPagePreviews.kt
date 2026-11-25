@@ -67,7 +67,7 @@ private fun RvLanguageScreenPreview() {
 private fun RvIntervalScreenPreview() {
     val dark = isSystemInDarkTheme()
     var hours by remember { mutableIntStateOf(RvData.UPDATE_HOURS) }
-    RvTheme(rvSystemScheme(dark), dark) { RvIntervalScreen(hours, { hours = it }, onBack = {}, onCustom = NOT_WIRED) }
+    RvTheme(rvSystemScheme(dark), dark) { RvIntervalScreen(hours, RvData.UPDATE_INTERVALS, { hours = it }, onBack = {}, onCustom = NOT_WIRED) }
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

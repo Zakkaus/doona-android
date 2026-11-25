@@ -24,6 +24,8 @@
     <plurals name="rv_log_debug_footer">
         <item quantity="other">除錯會在 %1$d 小時後改回資訊。</item>
     </plurals>
+    <string name="rv_log_failed">無法變更日誌等級</string>
+    <string name="rv_log_failed_reason">doona 的核心沒有接受新的等級。</string>
 
     <string name="rv_report_shared">分享的內容</string>
     <string name="rv_report_device">裝置</string>

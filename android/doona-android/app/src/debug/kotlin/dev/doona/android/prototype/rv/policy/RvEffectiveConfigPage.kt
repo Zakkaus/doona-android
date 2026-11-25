@@ -80,7 +80,7 @@ internal fun RvEffectiveConfigPage(
             Section(R.string.rv_policy_rules) { RulesCard(config.rules, onRules) }
             Section(R.string.rv_settings_dns) {
                 RvCard {
-                    RvStatRow(stringResource(R.string.rv_settings_dns_server), stringResource(settings.dns.label) + SEPARATOR + settings.dns.address, valueKeepWords = false)
+                    RvStatRow(stringResource(R.string.rv_settings_dns_server), settings.dns?.let { stringResource(it.label) + SEPARATOR + it.address } ?: stringResource(R.string.rv_settings_dns_custom), valueKeepWords = false)
                     RvStatRow(stringResource(R.string.rv_effective_dns_via), stringResource(R.string.rv_main_node))
                     RvStatRow(stringResource(R.string.rv_policy_lan), stringResource(R.string.rv_effective_lan_value))
                 }

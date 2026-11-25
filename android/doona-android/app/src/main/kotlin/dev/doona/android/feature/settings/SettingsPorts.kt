@@ -14,8 +14,11 @@ internal interface SettingsStore {
     /** Whether the subscriptions update by themselves. */
     val autoUpdate: Flow<Boolean>
 
-    /** How often they do, in hours: one of [RV_INTERVAL_HOURS]. */
+    /** How often they do, in hours: one of [updateIntervals]. */
     val updateHours: Flow<Int>
+
+    /** The intervals the store keeps, in hours, shortest first: what 更新間隔 offers. */
+    val updateIntervals: List<Int>
 
     /** The theme page's choices; 設定 shows the mode on 主題's row. */
     val appearance: Flow<RvAppearance>
@@ -36,6 +39,7 @@ internal interface SettingsStore {
 
     suspend fun setAutoUpdate(enabled: Boolean)
 
+    /** Stores [hours], which must be one of [updateIntervals]. */
     suspend fun setUpdateHours(hours: Int)
 }
 

@@ -222,7 +222,7 @@ class RvLayoutTest {
     }
 
     @Test
-    fun interval() = measure("settings-interval", Top.Title) { RvIntervalScreen(RvData.UPDATE_HOURS, onSelect = {}, onBack = {}, onCustom = NOT_WIRED) }
+    fun interval() = measure("settings-interval", Top.Title) { RvIntervalScreen(RvData.UPDATE_HOURS, RvData.UPDATE_INTERVALS, onSelect = {}, onBack = {}, onCustom = NOT_WIRED) }
 
     @Test
     fun logLevel() = measure("settings-log-level", Top.Title) { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) }

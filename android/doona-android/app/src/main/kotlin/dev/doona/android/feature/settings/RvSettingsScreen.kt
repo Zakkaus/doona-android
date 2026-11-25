@@ -49,6 +49,7 @@ import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
 import dev.doona.android.designsystem.rv.rvHeroArt
 import dev.doona.android.feature.model.RvAppPolicy
+import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvPerApp
 import dev.doona.android.feature.model.RvSettingsState
@@ -64,7 +65,7 @@ import dev.doona.android.feature.model.RvSettingsState
  * ([RvUpdateGroup]; [geoData], whose 更新 runs [RvSettingsRoutes.geoUpdate]). Where the [update] check stands shows on
  * the hero's 檢查更新 action, on its row and, for a newer release, in the banner under the hero ([rvUpdateNotice]); a
  * failed check only on its row. Until the per-app policy has been read ([perAppLoaded]), 依 App's row has no second
- * line. Over the page, the sheet that tells how to add the quick settings tile by hand while the state holds it open.
+ * line, nor the DNS row until the core's servers have ([dnsLoaded]). Over the page, the sheet that tells how to add the quick settings tile by hand while the state holds it open.
  */
 @Composable
 internal fun RvSettingsScreen(
@@ -78,6 +79,7 @@ internal fun RvSettingsScreen(
     geoData: RvGeoData,
     update: RvUpdate = RvUpdate.Idle,
     perAppLoaded: Boolean = true,
+    dnsLoaded: Boolean = true,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -97,7 +99,7 @@ internal fun RvSettingsScreen(
             ConnectionGroup(state, onChange, routes, perAppLoaded)
             SubscriptionGroup(state, onChange, routes.interval)
             AppearanceGroup(state, onOpenTheme, routes.language)
-            AdvancedGroup(state, routes, configRev)
+            AdvancedGroup(state, routes, configRev, dnsLoaded)
             RvUpdateGroup(version, update, routes.checkUpdate, geoData, routes.geoUpdate, routes.lab)
             RvAboutEntry(version, routes.about)
         }
@@ -195,7 +197,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
         RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
         RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, routes.perApp, perAppValue(state.perApp).takeIf { perAppLoaded })
     }
-    RvFootnote(stringResource(R.string.rv_settings_connection_footer), inset = RvSpace.gutter - RvSettingsSpace.margin)
+    RvFootnote(stringResource(R.string.rv_settings_connection_footer), inset = RvSpace.none)
 }
 
 @Composable
@@ -226,10 +228,10 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit, onO
  * glyph; the effective config, read-only.
  */
 @Composable
-private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?) {
+private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?, dnsLoaded: Boolean) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_advanced))
     RvSettingsCard {
-        RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, stringResource(state.dns.label))
+        RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, dnsValue(state.dns).takeIf { dnsLoaded })
         RvSettingsNavRow(stringResource(R.string.rv_report_title), R.drawable.rv_sym_ios_share, routes.report)
         if (configRev != null) {
             RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, stringResource(R.string.rv_config_revision, configRev))
@@ -237,6 +239,10 @@ private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, conf
         RvSettingsNavRow(stringResource(R.string.rv_effective_open), R.drawable.rv_sym_rule, routes.effectiveConfig)
     }
 }
+
+/** The DNS row's second line: the preset's name, or 自訂 for servers no preset names. */
+@Composable
+private fun dnsValue(dns: RvDnsUpstream?): String = stringResource(dns?.label ?: R.string.rv_settings_dns_custom)
 
 /** 依 App's policy as its row's second line: every app, or how many apps it takes or keeps out. */
 @Composable

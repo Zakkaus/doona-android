@@ -9,14 +9,11 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.report.RedactionOptions
 import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.ReportShare
-import dev.doona.android.report.nodeMembers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -46,7 +43,6 @@ internal class ReportViewModel(
     private var building: Job? = null
 
     val uiState: StateFlow<ReportUiState> = state.asStateFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), state.value)
 
     init {
         viewModelScope.launch { state.update { it.copy(preview = reportPreview(engine, facts)) } }
@@ -124,16 +120,24 @@ internal fun RvRedaction.options() = RedactionOptions(
 private fun emptyPreview(facts: ReportFacts) = RvReportPreview(facts.app, facts.device, nodes = 0, subscriptions = 0, rules = 0, events = 0, crashes = 0)
 
 /**
- * The preview of what a report holds, from the engine as it stands: the catalog's nodes, the subscriptions, the rule
- * rows, the crash files the core lists; and the app's events. A read that fails counts 0: the export reads them again
- * and says what it could not read.
+ * The preview of what a report holds, from the engine and the app's log as they stand ([rvReportPreview]). A read that
+ * fails counts 0: the export reads them again and says what it could not read.
  */
-internal suspend fun reportPreview(engine: Engine, facts: ReportFacts): RvReportPreview = RvReportPreview(
+internal suspend fun reportPreview(engine: Engine, facts: ReportFacts): RvReportPreview = rvReportPreview(
     app = facts.app,
     device = facts.device,
-    nodes = engine.catalog.value?.nodeMembers()?.size ?: 0,
-    subscriptions = engine.subscriptions.value.size,
-    rules = engine.rules(0, 1).getOrNull()?.total ?: 0,
-    events = facts.events(),
-    crashes = engine.diagnostics().getOrNull()?.crashes?.size ?: 0,
+    catalog = engine.catalog.value,
+    subscriptions = engine.subscriptions.value,
+    rules = engine.rules(0, 1).getOrNull(),
+    events = readEvents(facts),
+    diagnostics = engine.diagnostics().getOrNull(),
 )
+
+/** The app's events, or null when the log could not be read. */
+private suspend fun readEvents(facts: ReportFacts): Int? = try {
+    facts.events()
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
+    null
+}

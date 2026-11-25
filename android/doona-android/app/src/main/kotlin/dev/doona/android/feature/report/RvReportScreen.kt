@@ -80,7 +80,7 @@ internal fun RvReportScreen(
             Redaction(redaction, onRedaction)
             // One paragraph, so it runs to the cards' right edge as 設定's connection footer does (owner-fix3 item 29); what a
             // report never holds is never cut, however many lines it takes.
-            RvFootnote(stringResource(R.string.rv_redact_footer), inset = RvSpace.gutter - RvSettingsSpace.margin, whole = true)
+            RvFootnote(stringResource(R.string.rv_redact_footer), inset = RvSpace.none, whole = true)
         }
         Spacer(Modifier.height(RvSettingsSpace.bottom))
     }

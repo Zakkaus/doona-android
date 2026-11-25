@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -40,7 +41,7 @@ class LogLevelViewModelTest {
     @Test
     fun `opens on the core's level, 資訊 on a fresh core`() = runTest {
         val vm = LogLevelViewModel(FakeLevels())
-        assertEquals(RvLogLevel.Info, vm.uiState.value)
+        assertEquals(RvLogLevel.Info, vm.uiState.value.level)
     }
 
     @Test
@@ -50,18 +51,24 @@ class LogLevelViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         for (level in RvLogLevel.entries) {
             vm.select(level)
-            assertEquals(level, vm.uiState.value)
+            assertEquals(level, vm.uiState.value.level)
         }
         assertEquals(listOf(LogLevel.Error, LogLevel.Warn, LogLevel.Info, LogLevel.Debug), levels.sets)
     }
 
     @Test
-    fun `a set the core refuses leaves the level as it was`() = runTest {
+    fun `a set the core refuses leaves the level as it was and says so, and retry asks again`() = runTest {
         val levels = FakeLevels(fails = true)
         val vm = LogLevelViewModel(levels)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        assertNull(vm.uiState.value.refused)
         vm.select(RvLogLevel.Debug)
-        assertEquals(RvLogLevel.Info, vm.uiState.value)
+        assertEquals(LogLevelUiState(RvLogLevel.Info, refused = RvLogLevel.Debug), vm.uiState.value)
+
+        levels.fails = false
+        vm.retry()
+        assertEquals(LogLevelUiState(RvLogLevel.Debug), vm.uiState.value)
+        assertEquals(listOf(LogLevel.Debug, LogLevel.Debug), levels.sets)
     }
 
     @Test
@@ -71,7 +78,7 @@ class LogLevelViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         vm.select(RvLogLevel.Debug)
         levels.level.value = LogLevel.Info
-        assertEquals(RvLogLevel.Info, vm.uiState.value)
+        assertEquals(RvLogLevel.Info, vm.uiState.value.level)
     }
 
     @Test

@@ -39,8 +39,24 @@ interface SubscriptionUpdateSettings {
 
 data class SubscriptionUpdate(val enabled: Boolean, val interval: UpdateInterval)
 
-/** The subscription update intervals the 更新間隔 page offers (owner, 2026-11-25: storage follows the approved page). */
-enum class UpdateInterval(val duration: Duration) { One(1.hours), Six(6.hours), Twelve(12.hours), TwentyFour(24.hours) }
+/**
+ * The subscription update intervals the 更新間隔 page offers (owner, 2026-11-25: storage follows the approved page), the
+ * one list of them: the page reads [hours] of each through 設定's store.
+ */
+enum class UpdateInterval(val duration: Duration) {
+    One(1.hours),
+    Six(6.hours),
+    Twelve(12.hours),
+    TwentyFour(24.hours),
+    ;
+
+    val hours: Int get() = duration.inWholeHours.toInt()
+
+    companion object {
+        /** The interval of [hours]; any other count is a caller's error, not a choice to drop. */
+        fun ofHours(hours: Int): UpdateInterval = requireNotNull(entries.firstOrNull { it.hours == hours }) { "no update interval of $hours h" }
+    }
+}
 
 enum class GeoUpdateInterval(val duration: Duration?) { Off(null), Daily(1.days), Weekly(7.days) }
 
@@ -57,7 +73,7 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
     override val notifyOnDrop = preference { it[NOTIFY_ON_DROP] ?: true }
     override val subscriptionUpdate = preference { prefs ->
         // 48 hours, which earlier builds offered, reads as the longest interval offered now (owner, 2026-11-25).
-        val duration = prefs[UPDATE_HOURS]?.let { if (it == RETIRED_HOURS) UpdateInterval.TwentyFour.duration.inWholeHours.toInt() else it }?.hours
+        val duration = prefs[UPDATE_HOURS]?.let { if (it == RETIRED_HOURS) UpdateInterval.TwentyFour.hours else it }?.hours
         val interval = UpdateInterval.entries.firstOrNull { it.duration == duration } ?: UpdateInterval.Twelve
         SubscriptionUpdate(prefs[AUTO_UPDATE] ?: true, interval)
     }
@@ -84,7 +100,7 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
 
     override suspend fun setAutoUpdate(enabled: Boolean) = set(AUTO_UPDATE, enabled)
 
-    override suspend fun setUpdateInterval(interval: UpdateInterval) = set(UPDATE_HOURS, interval.duration.inWholeHours.toInt())
+    override suspend fun setUpdateInterval(interval: UpdateInterval) = set(UPDATE_HOURS, interval.hours)
 
     suspend fun setGeoUpdateInterval(interval: GeoUpdateInterval) = set(GEO_UPDATE_INTERVAL, interval.name)
 

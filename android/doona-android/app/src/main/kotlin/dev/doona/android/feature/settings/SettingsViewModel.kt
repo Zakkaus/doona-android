@@ -11,7 +11,6 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.RvAppearance
-import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
@@ -26,24 +25,29 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * What 設定 shows: the page's state, whether the per-app policy has been read ([perAppLoaded]; until then its row has no
- * second line rather than a policy the user may not have), and the GeoIP/GeoSite row.
+ * What 設定 shows: the page's state, whether the per-app policy and the DNS servers have been read ([perAppLoaded],
+ * [dnsLoaded]; until then each row has no second line rather than a value the user may not have), and the
+ * GeoIP/GeoSite row.
  */
-internal data class SettingsUiState(val settings: RvSettingsState, val perAppLoaded: Boolean, val geoData: RvGeoData)
+internal data class SettingsUiState(val settings: RvSettingsState, val perAppLoaded: Boolean, val dnsLoaded: Boolean, val geoData: RvGeoData)
 
 /**
- * 設定 over the app's [store] and the [engine]: the switches set the store, 依 App's row reads the engine's policy, and
- * the GeoIP/GeoSite row reads the core's data and runs its update, asking the core where it stands every [poll] until
- * it ends. The DNS row shows Cloudflare: the core keeps the chosen servers but tells nobody which they are.
+ * 設定 over the app's [store] and the [engine]: the switches set the store, 依 App's row reads the engine's policy, the
+ * DNS row the servers the core reports in its effective config, and the GeoIP/GeoSite row reads the core's data and
+ * runs its update, asking the core where it stands every [poll] until it ends or [followFor] has passed, which the row
+ * then shows as a failure (重試 follows it again).
  */
 internal class SettingsViewModel(
     private val engine: Engine,
     private val store: SettingsStore,
     private val poll: Duration = 1.seconds,
+    private val followFor: Duration = 10.minutes,
 ) : ViewModel() {
     private val local = MutableStateFlow(Local(language = RvLanguage.of(store.languageTags())))
     private var geoJob: Job? = null
@@ -59,26 +63,31 @@ internal class SettingsViewModel(
                     autoUpdate = prefs.autoUpdate,
                     updateHours = prefs.updateHours,
                     appearance = prefs.appearance,
-                    dns = RvDnsUpstream.Cloudflare,
+                    dns = local.dnsServers?.let(::rvDnsUpstream),
                     language = local.language,
                     tileAdded = prefs.tileAdded,
                     tileSheet = local.tileSheet,
                 ),
                 perAppLoaded = loaded,
+                dnsLoaded = local.dnsServers != null,
                 geoData = geoData(local, status is Status.Running),
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialState())
 
     init {
         viewModelScope.launch { readGeo() }
+        viewModelScope.launch { readDns() }
     }
 
-    /** The page's switches and the manual tile sheet: whatever [changed] from the state shown goes where it is kept. */
-    fun onChange(changed: RvSettingsState) {
-        val shown = uiState.value.settings
-        if (changed.notifyOnDrop != shown.notifyOnDrop) viewModelScope.launch { store.setNotifyOnDrop(changed.notifyOnDrop) }
-        if (changed.autoUpdate != shown.autoUpdate) viewModelScope.launch { store.setAutoUpdate(changed.autoUpdate) }
-        if (changed.tileSheet != shown.tileSheet) local.update { it.copy(tileSheet = changed.tileSheet) }
+    /**
+     * The page's switches and the manual tile sheet: the field the user turned on the page [drawn] ([changed] differs
+     * from it there) goes where it is kept. It is compared with what the page drew, not with the latest state, so a
+     * second turn the page sends before it shows the first one does not write the first field back.
+     */
+    fun onChange(drawn: RvSettingsState, changed: RvSettingsState) {
+        if (changed.notifyOnDrop != drawn.notifyOnDrop) viewModelScope.launch { store.setNotifyOnDrop(changed.notifyOnDrop) }
+        if (changed.autoUpdate != drawn.autoUpdate) viewModelScope.launch { store.setAutoUpdate(changed.autoUpdate) }
+        if (changed.tileSheet != drawn.tileSheet) local.update { it.copy(tileSheet = changed.tileSheet) }
     }
 
     /** The system's answer to 加到快速設定: an added tile hides the row (the store records it), a failed request opens the sheet. */
@@ -86,9 +95,10 @@ internal class SettingsViewModel(
         if (answer == TileAnswer.Failed) local.update { it.copy(tileSheet = true) }
     }
 
-    /** The page shows again: the language may have changed in Android's settings meanwhile. */
+    /** The page shows again: the language may have changed in Android's settings meanwhile, and the DNS servers on DNS's page. */
     fun onResume() {
         local.update { it.copy(language = RvLanguage.of(store.languageTags())) }
+        viewModelScope.launch { readDns() }
     }
 
     /** 更新 (or 重試) on the GeoIP/GeoSite row: the core fetches through the VPN, and the row follows it to the end. */
@@ -100,8 +110,13 @@ internal class SettingsViewModel(
             val failure = started.exceptionOrNull()
             // A busy core already holds newer data for its next start: the row shows that, not a failure.
             val busy = (failure as? EngineException)?.code == ErrorCode.Busy
-            local.update { it.copy(geoAsked = if (failure != null && !busy) RvGeoUpdate.Failed else null, geo = started.getOrNull() ?: it.geo) }
-            if (failure == null || busy) followGeo()
+            if (failure != null && !busy) {
+                local.update { it.copy(geoAsked = RvGeoUpdate.Failed) }
+                return@launch
+            }
+            // The row stays Updating until the core's first read says where the update stands.
+            started.getOrNull()?.let { assets -> local.update { it.copy(geo = assets) } }
+            followGeo()
         }
     }
 
@@ -114,16 +129,24 @@ internal class SettingsViewModel(
         }
     }
 
+    /** Follows the core's update to its end; a failed read, or [followFor] gone by with the core still at it, is a failure. */
     private suspend fun followGeo() {
+        if (withTimeoutOrNull(followFor) { readGeoUntilEnded() } != true) local.update { it.copy(geoAsked = RvGeoUpdate.Failed) }
+    }
+
+    /** Reads the core's geo data every [poll] while it updates: true once the update ended, false when a read fails. */
+    private suspend fun readGeoUntilEnded(): Boolean {
         while (true) {
-            val assets = engine.configAssets().getOrElse {
-                local.update { it.copy(geoAsked = RvGeoUpdate.Failed) }
-                return
-            }
-            local.update { it.copy(geo = assets) }
-            if (rvGeoUpdate(assets.lastResult) != RvGeoUpdate.Updating) return
+            val assets = engine.configAssets().getOrNull() ?: return false
+            local.update { it.copy(geo = assets, geoAsked = null) }
+            if (rvGeoUpdate(assets.lastResult) != RvGeoUpdate.Updating) return true
             delay(poll)
         }
+    }
+
+    /** The DNS servers the core uses, from its effective config; a failed read leaves the row as it was. */
+    private suspend fun readDns() {
+        engine.effectiveConfig().onSuccess { config -> local.update { it.copy(dnsServers = config.dnsUpstreams) } }
     }
 
     private fun geoData(local: Local, connected: Boolean): RvGeoData {
@@ -138,10 +161,11 @@ internal class SettingsViewModel(
             autoUpdate = true,
             updateHours = IntervalViewModel.DEFAULT_HOURS,
             appearance = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0),
-            dns = RvDnsUpstream.Cloudflare,
+            dns = null,
             language = local.value.language,
         ),
         perAppLoaded = engine.perAppLoaded.value,
+        dnsLoaded = false,
         geoData = geoData(local.value, engine.status.value is Status.Running),
     )
 
@@ -149,12 +173,14 @@ internal class SettingsViewModel(
     private data class Prefs(val notifyOnDrop: Boolean, val autoUpdate: Boolean, val updateHours: Int, val appearance: RvAppearance, val tileAdded: Boolean)
 
     /**
-     * What the ViewModel itself holds: the language as last read, the tile sheet, the core's geo data as last read, and
-     * the update's own outcome while the core has not reported it ([geoAsked]: under way, or a request that failed).
+     * What the ViewModel itself holds: the language as last read, the tile sheet, the core's DNS servers ([dnsServers],
+     * null until read), the core's geo data as last read, and the update's own outcome while the core has not reported
+     * it ([geoAsked]: under way, or a request that failed).
      */
     private data class Local(
         val language: RvLanguage,
         val tileSheet: Boolean = false,
+        val dnsServers: List<String>? = null,
         val geo: ConfigAssets? = null,
         val geoAsked: RvGeoUpdate? = null,
     )

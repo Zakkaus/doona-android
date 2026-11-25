@@ -1,7 +1,6 @@
 package dev.doona.android.app
 
 import android.app.Activity
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -24,7 +23,6 @@ import dev.doona.android.vpn.QuickTileResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
-import kotlin.time.Duration.Companion.hours
 
 /**
  * 設定's store in the app: [settings] for the switches, the interval and the theme, [tile] for the quick settings
@@ -39,7 +37,8 @@ internal class AppSettingsStore(
 ) : SettingsStore {
     override val notifyOnDrop: Flow<Boolean> = settings.notifyOnDrop
     override val autoUpdate: Flow<Boolean> = settings.subscriptionUpdate.map { it.enabled }
-    override val updateHours: Flow<Int> = settings.subscriptionUpdate.map { it.interval.duration.inWholeHours.toInt() }
+    override val updateHours: Flow<Int> = settings.subscriptionUpdate.map { it.interval.hours }
+    override val updateIntervals: List<Int> = UpdateInterval.entries.map { it.hours }
     override val appearance: Flow<RvAppearance> = settings.appearance.map {
         RvAppearance(rvThemeMode(it.mode), it.followWallpaper, it.accent.ordinal)
     }
@@ -55,9 +54,7 @@ internal class AppSettingsStore(
 
     override suspend fun setAutoUpdate(enabled: Boolean) = settings.setAutoUpdate(enabled)
 
-    override suspend fun setUpdateHours(hours: Int) {
-        UpdateInterval.entries.firstOrNull { it.duration == hours.hours }?.let { settings.setUpdateInterval(it) }
-    }
+    override suspend fun setUpdateHours(hours: Int) = settings.setUpdateInterval(UpdateInterval.ofHours(hours))
 
     private fun rvThemeMode(mode: ThemeMode) = when (mode) {
         ThemeMode.System -> RvThemeMode.System
@@ -65,7 +62,8 @@ internal class AppSettingsStore(
         ThemeMode.Dark -> RvThemeMode.Dark
     }
 
-    private companion object {
+    companion object {
+        /** `release_date` of `crates/doona-core/tools/geo-pins.json`: the GeoIP/GeoSite release the APK ships. */
         const val SHIPPED_GEO_DATE = "2026-11-23"
     }
 }
@@ -73,11 +71,7 @@ internal class AppSettingsStore(
 /** What 設定 hands to Android from [activity]: its VPN settings, the releases page, and the quick settings [tile]'s request. */
 internal class ActivitySettingsSystem(private val activity: Activity, private val tile: QuickTile) : SettingsSystem {
     override fun openVpnSettings() {
-        try {
-            activity.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
-        } catch (_: ActivityNotFoundException) {
-            // A phone without the page: always-on cannot be set from here.
-        }
+        activity.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
     }
 
     override fun openReleases() {

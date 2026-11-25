@@ -38,10 +38,11 @@ import dev.doona.android.feature.model.RvDnsUpstream
 /**
  * The page 進階 → DNS opens (features-gap item 11, v0.2), in 主題's language: the large title, then one titled card of
  * servers, each its name over its address with a radio, and 自訂 last, which opens an address field (rv-pages-a's text
- * field, not wired here); a footer says the query goes out through the main node (rule-mode decision 10).
+ * field, not wired here); a footer says the query goes out through the main node (rule-mode decision 10). A [selected]
+ * null (servers no preset names) leaves every radio empty.
  */
 @Composable
-internal fun RvDnsScreen(selected: RvDnsUpstream, onSelect: (RvDnsUpstream) -> Unit, onBack: () -> Unit, onCustom: () -> Unit = NOT_WIRED) {
+internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> Unit, onBack: () -> Unit, onCustom: () -> Unit = NOT_WIRED) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_dns)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
@@ -56,7 +57,7 @@ internal fun RvDnsScreen(selected: RvDnsUpstream, onSelect: (RvDnsUpstream) -> U
                     RvChevron()
                 }
             }
-            RvFootnote(stringResource(R.string.rv_settings_dns_footer), inset = RvSpace.gutter - RvSettingsSpace.margin)
+            RvFootnote(stringResource(R.string.rv_settings_dns_footer), inset = RvSpace.none)
         }
     }
 }

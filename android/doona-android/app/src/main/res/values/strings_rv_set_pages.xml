@@ -32,6 +32,8 @@
         <item quantity="one">Debug returns to Info after %1$d hour.</item>
         <item quantity="other">Debug returns to Info after %1$d hours.</item>
     </plurals>
+    <string name="rv_log_failed">Could not change the log level</string>
+    <string name="rv_log_failed_reason">doona\'s core did not take the new level.</string>
 
     <string name="rv_report_shared">What is shared</string>
     <string name="rv_report_device">Device</string>

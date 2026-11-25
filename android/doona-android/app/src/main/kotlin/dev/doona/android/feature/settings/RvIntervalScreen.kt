@@ -23,25 +23,21 @@ import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.rvRowPress
 
 /**
- * The intervals doona web offers for a subscription (`features/nodes/subscription.ts`: 1, 6, 12 and 24 hours), in
- * hours. Its 僅手動 is 設定's 自動更新 switch turned off, so the page leaves it out.
- */
-internal val RV_INTERVAL_HOURS = listOf(1, 6, 12, 24)
-
-/**
  * 更新間隔, the page 訂閱's 更新間隔 row opens, in DNS's language: the large title, then one card of radio rows, each
- * preset, and 自訂 last, which opens a field for a count of minutes or hours, as doona web's typed interval ([onCustom],
- * not wired). A [selected] value that is no preset leaves every radio empty.
+ * preset of [choices] (in hours: the store's, as doona web's `features/nodes/subscription.ts` offers them; its 僅手動 is
+ * 設定's 自動更新 switch turned off, so the page leaves it out), and 自訂 last, which opens a field for a count of
+ * minutes or hours, as doona web's typed interval ([onCustom], not wired). A [selected] value that is no preset leaves
+ * every radio empty.
  */
 @Composable
-internal fun RvIntervalScreen(selected: Int, onSelect: (Int) -> Unit, onBack: () -> Unit, onCustom: () -> Unit) {
+internal fun RvIntervalScreen(selected: Int, choices: List<Int>, onSelect: (Int) -> Unit, onBack: () -> Unit, onCustom: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_update_interval)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             RvSettingsRadioCard {
-                RV_INTERVAL_HOURS.forEach { hours ->
+                choices.forEach { hours ->
                     RvSettingsRadioRow(pluralStringResource(R.plurals.rv_interval_hours, hours, hours), hours == selected, { onSelect(hours) })
                 }
                 // As DNS's 自訂: no radio, a chevron, since it opens a field rather than choosing.

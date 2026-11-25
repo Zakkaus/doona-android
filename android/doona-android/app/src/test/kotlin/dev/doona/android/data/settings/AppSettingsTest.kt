@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -67,5 +68,12 @@ class AppSettingsTest {
     @Test
     fun theIntervalsAreThoseOfTheIntervalPage() {
         assertEquals(listOf(1L, 6L, 12L, 24L), UpdateInterval.entries.map { it.duration.inWholeHours })
+    }
+
+    @Test
+    fun `an interval is found by its hours, and hours of no interval are refused`() {
+        assertEquals(listOf(1, 6, 12, 24), UpdateInterval.entries.map { it.hours })
+        for (interval in UpdateInterval.entries) assertEquals(interval, UpdateInterval.ofHours(interval.hours))
+        assertThrows(IllegalArgumentException::class.java) { UpdateInterval.ofHours(48) }
     }
 }
