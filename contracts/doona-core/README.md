@@ -2,7 +2,7 @@
 
 Example payloads for `plans/v1/core-api.md` (schema 3). `static-nodes.json` is an ordered editor session: execute the commands against a fresh core and compare each reply. Credentials in the examples are invented.
 
-`init-options.json` is `init`'s second argument. `performanceMode` raises the worker threads of each of the core's runtimes from 2 to one per CPU core the process may use (at least 2), for more throughput over several flows at the cost of CPU and power. A missing field is `false`; options that do not parse are the defaults, and so is a stored setting the app cannot read. Both runtimes are built once per process, so a change takes effect when the app process starts next.
+`init-options.json` is `init`'s second argument. `performanceMode` raises the worker threads of each of the core's runtimes from 2 to 4, for more throughput over several flows at the cost of CPU and power. A missing field is `false`; options that do not parse are the defaults, and so is a stored setting the app cannot read. Both runtimes are built once per process, so a change takes effect when the app process starts next.
 
 `call-ok-config-assets.json` is the `configAssets` status before any DAT is installed. `call-config-assets-update-args.json` starts a check through the connected proxy. A verified download stays pending until the next tunnel start; it does not change the running policy.
 
