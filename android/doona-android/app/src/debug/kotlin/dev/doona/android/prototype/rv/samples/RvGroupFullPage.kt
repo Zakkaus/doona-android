@@ -22,6 +22,7 @@ import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvEmptyCaption
 import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvNodesSize
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -36,7 +37,6 @@ import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePickRow
 import dev.doona.android.prototype.rv.nodes.RvNodeSection
-import dev.doona.android.prototype.rv.nodes.RvNodesSize
 import dev.doona.android.prototype.rv.nodes.RvRowsComposed
 import dev.doona.android.prototype.rv.nodes.matches
 

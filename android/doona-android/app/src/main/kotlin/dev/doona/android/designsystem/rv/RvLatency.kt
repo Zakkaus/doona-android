@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.Layout
@@ -27,6 +29,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.latencyTone
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.max
@@ -159,3 +162,12 @@ internal fun RvLatencyText(latencyMs: Int?, timedOut: Boolean) {
 
 /** An equilateral triangle is this share of its width high. */
 private const val TRIANGLE_HEIGHT = 0.866f
+
+/** A latency's colour: the fixed good, fair and slow hues. */
+@Composable
+@ReadOnlyComposable
+internal fun latencyColor(ms: Int?): Color = Rv.colors.quality(latencyTone(ms))
+
+/** [ms] as the app writes a latency, or a dash for a test that timed out. */
+@Composable
+internal fun latencyText(ms: Int?): String = ms?.let { stringResource(R.string.latency_ms, it) } ?: RV_NO_VALUE

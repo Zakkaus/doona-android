@@ -28,6 +28,7 @@ import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvLatencyText
+import dev.doona.android.designsystem.rv.RvNodesSize
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
@@ -36,15 +37,14 @@ import dev.doona.android.designsystem.rv.RvSeeAll
 import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvStatusChip
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.SEPARATOR
+import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
-import dev.doona.android.prototype.rv.nodes.RvNodesSize
-import dev.doona.android.prototype.rv.nodes.RvStatusChip
-import dev.doona.android.prototype.rv.nodes.latencyText
 
 /**
  * A selector group's page for the samples of nbtap and nbmany, built only from the library's parts and the policy page's

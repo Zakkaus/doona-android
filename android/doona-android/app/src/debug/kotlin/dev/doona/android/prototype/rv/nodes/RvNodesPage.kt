@@ -41,6 +41,7 @@ import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvMenuAnchor
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.RvNodesSize
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvRegion
 import dev.doona.android.designsystem.rv.RvRow
@@ -53,13 +54,15 @@ import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvWorldMap
 import dev.doona.android.designsystem.rv.SEPARATOR
+import dev.doona.android.designsystem.rv.latencyColor
+import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.designsystem.rv.rvPress
+import dev.doona.android.designsystem.rv.rvSharedFlag
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.prototype.rv.LocalRvRowActions
 import dev.doona.android.prototype.rv.rvNodeMenu
-import dev.doona.android.prototype.rv.rvSharedFlag
 
 /**
  * The 節點 page, pushed from 活動, in the language of Revolut's Analytics and Crypto pages: the back disc and the large
