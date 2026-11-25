@@ -292,10 +292,12 @@ internal fun RvLargeTitle(text: String, titleBlock: Modifier, insets: WindowInse
  * A caption in secondary text at the row subtitle's step: by default one line of a page header's caption, after an
  * optional 16 dp [icon] in the same colour. With [lines] other than one it is a hero's line under its centred large
  * title (歡迎's): centred in the cards' text column and taking up to [lines] lines; at [Int.MAX_VALUE] it wraps to every
- * line it needs, as a page header's caption does (q-a11y-caption), so no font size cuts it with an ellipsis.
+ * line it needs, as a page header's caption does (q-a11y-caption), so no font size cuts it with an ellipsis. A hero's
+ * line has no icon: one given both is an error.
  */
 @Composable
 internal fun RvCaption(text: String, @DrawableRes icon: Int? = null, lines: Int = 1) {
+    require(lines == 1 || icon == null) { "a caption of $lines lines is a hero's line, which takes no icon" }
     val color = Rv.colors.textSecondary
     when {
         lines != 1 -> RvText(text, Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.gutter + RvSpace.rowPadding), color = color, align = TextAlign.Center, maxLines = lines)

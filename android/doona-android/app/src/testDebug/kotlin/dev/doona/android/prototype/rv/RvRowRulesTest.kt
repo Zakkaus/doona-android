@@ -10,6 +10,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvTheme
@@ -165,6 +166,18 @@ class RvRowRulesTest {
         rvRequireWhole(RvWhole.RevisionName, Int.MAX_VALUE)
         rvRequireWhole(null, 2)
         assertThrows(IllegalArgumentException::class.java) { rvRequireWhole(RvWhole.RevisionName, 2) }
+    }
+
+    /** A caption of more than one line is a hero's line, which takes no icon: one given both is an error, not a lost glyph. */
+    @Test
+    fun aHeroCaptionGivenAnIconIsAnError() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            compose.setContent {
+                RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvCaption(LONG, R.drawable.rv_sym_rule, lines = Int.MAX_VALUE) }
+            }
+            compose.waitForIdle()
+        }
+        assertEquals("a caption of ${Int.MAX_VALUE} lines is a hero's line, which takes no icon", error.message)
     }
 
     @Test
