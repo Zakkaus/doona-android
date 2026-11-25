@@ -11,6 +11,7 @@ import dev.doona.android.designsystem.rv.RvBanner
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvRowPart
+import dev.doona.android.designsystem.rv.RvSpace
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -20,7 +21,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * A notice with a reason sets it under the title, the disc's top on the title's top (LAYOUT-RULES R9); a notice without
+ * A notice with a reason sets it the title gap under the title (R12), the disc's top on the title's top (R9); a notice without
  * one is its title alone, with no empty line under it, centred on the disc as a row without a subtitle (R8, D1), at
  * 100% and 200%.
  */
@@ -46,7 +47,7 @@ class RvBannerReasonTest {
     private fun withReason(fontScale: Float) {
         compose.rvContent(dark = false, fontScale = fontScale) { RvBanner(RvNotice(RvNoticeKind.Error, TITLE, REASON, ACTION, {})) }
         val title = bounds(TITLE)
-        assertEquals("the reason starts where the title ends", title.bottom.value, bounds(REASON).top.value, TOLERANCE)
+        assertEquals("the reason starts the title gap under the title", (title.bottom + RvSpace.titleToSubtitle).value, bounds(REASON).top.value, TOLERANCE)
         assertEquals("the disc's top on the title's top", title.top.value, disc().top.value, TOLERANCE)
     }
 
