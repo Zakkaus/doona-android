@@ -3,8 +3,11 @@ package dev.doona.android.feature.settings
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import dev.doona.android.app.rvAppearance
 import dev.doona.android.app.themeAppearance
@@ -25,9 +28,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** 主題 stores each choice as it is made, in the form the app's theme reads; DNS saves a preset and 自訂's servers. */
+/** 檢查更新's newer release opens the releases page. 主題 stores each choice as it is made, in the form the app's theme reads; DNS saves a preset and 自訂's servers. */
 @RunWith(RobolectricTestRunner::class)
-/** Tall enough that 模式 and 自訂 are on screen without a scroll. */
+// Tall enough that 模式 and 自訂 are on screen without a scroll.
 @Config(qualifiers = "zh-rTW-w412dp-h1300dp")
 class ThemeDnsRouteTest {
     @get:Rule
@@ -78,6 +81,30 @@ class ThemeDnsRouteTest {
         assertEquals(listOf("223.5.5.5:53", "1.1.1.1:53"), servers(engine))
     }
 
+    /** Decision 148 (2026-11-23 21:35): the app downloads nothing; a newer release's banner opens the releases page. */
+    @Test
+    fun aNewerReleaseOpensTheReleasesPage() {
+        var opened = 0
+        val system = object : SettingsSystem {
+            override fun openVpnSettings() = Unit
+
+            override fun openReleases() {
+                opened++
+            }
+
+            override fun openRepository() = Unit
+
+            override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
+        }
+        val vm = SettingsViewModel(FakeEngine(), FakeSettingsStore(), releases = { Result.success("v9.0.0") })
+        compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}), "0.1.0", onTab = {}) }
+        // 檢查更新 is both the hero's action and the row; either checks.
+        compose.onAllNodesWithText(CHECK).onFirst().performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(VIEW).performScrollTo().performClick()
+        assertEquals(1, opened)
+    }
+
     private fun servers(engine: FakeEngine) = runBlocking { engine.effectiveConfig().getOrThrow().dnsUpstreams }
 
     private companion object {
@@ -85,5 +112,7 @@ class ThemeDnsRouteTest {
         const val QUAD9 = "Quad9"
         const val CUSTOM = "自訂"
         const val SAVE = "儲存"
+        const val CHECK = "檢查更新"
+        const val VIEW = "在 GitHub 檢視"
     }
 }
