@@ -41,9 +41,9 @@ import dev.doona.android.feature.stats.StatsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
+import dev.doona.android.feature.traffic.TrafficRoute
 import dev.doona.android.report.CrashOffer
 import kotlinx.coroutines.flow.Flow
-import dev.doona.android.feature.traffic.TrafficRoute
 
 /**
  * The old hub bar's frame (see [DoonaHubShell]), which the old pages' screenshot cases still draw them in until the page
@@ -131,10 +131,10 @@ enum class SystemSettings { Vpn, Network, Notifications }
 /**
  * Where 活動 leads: the pages with an entry here, the 策略 tab for the mode, 設定 for 更多 and 檢查更新 (q-actmore), the
  * subscriptions page for 新增訂閱, and the system's settings for the notices that need them. The pages without an
- * entry yet (流量, the node search and list, the main node choice, the rules and the report) are not wired.
+ * entry yet (the node search and list, the main node choice, the rules and the report) are not wired.
  */
 private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (SystemSettings) -> Unit) = ActivityRoutes(
-    traffic = NOT_WIRED,
+    traffic = { backStack.push(TrafficKey) },
     stats = { backStack.push(StatsKey) },
     search = NOT_WIRED,
     nodes = NOT_WIRED,

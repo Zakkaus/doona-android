@@ -1,11 +1,15 @@
 package dev.doona.android.app
 
 import android.content.Context
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.navigation3.runtime.NavKey
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -80,6 +84,14 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText(res.getString(R.string.rv_stats_title)).assertDoesNotExist()
         compose.onNodeWithContentDescription(res.getString(R.string.rv_stats)).assertExists()
+    }
+
+    @Test
+    fun `a traffic tile on 活動 opens 流量詳情`() {
+        val download = ApplicationProvider.getApplicationContext<Context>().getString(R.string.ui_download)
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}) } }
+        compose.onNode(hasClickAction() and hasText(download, substring = true)).performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText("This connection").assertExists()
     }
 
     @Test
