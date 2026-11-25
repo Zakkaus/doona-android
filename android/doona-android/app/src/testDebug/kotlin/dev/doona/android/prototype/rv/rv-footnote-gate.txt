@@ -13,4 +13,3 @@ prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_media
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(if (split != null) R.string.rv_stats_via_proxy else R.string.rv_stats_no_data), Rv.type.rowSub, co	a stat card's own line, inside the card
 prototype/rv/subs/RvSubsPage.kt	RvText(stringResource(R.string.rv_subs_used, format.bytesIn(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Mo	a subscription card's usage and end date, inside the card
 prototype/rv/subs/RvSubsPage.kt	RvText(ends, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a subscription card's usage and end date, inside the card
-prototype/rv/welcome/RvWelcome.kt	RvText( stringResource(R.string.rv_welcome_line), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.gutter + RvSpace	the welcome hero's line under the large title, not under a card (item 6 moves it into the library)

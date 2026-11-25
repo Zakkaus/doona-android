@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
@@ -19,7 +18,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
@@ -27,6 +25,7 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvDots
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvHeader
+import dev.doona.android.designsystem.rv.RvHeroLine
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
@@ -59,14 +58,7 @@ internal fun RvWelcome(onAdd: () -> Unit) {
                 RvText(stringResource(R.string.rv_welcome_title), Rv.type.largeTitle, Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(RvSpace.subGap))
-            RvText(
-                stringResource(R.string.rv_welcome_line),
-                Rv.type.rowSub,
-                Modifier.padding(horizontal = RvSpace.gutter + RvSpace.rowPadding),
-                color = Rv.colors.textSecondary,
-                align = TextAlign.Center,
-                maxLines = LINE_LINES,
-            )
+            RvHeroLine(stringResource(R.string.rv_welcome_line))
             Spacer(Modifier.height(RvSpace.actionsToCard))
         }
         RvGutter {
@@ -88,6 +80,3 @@ internal fun RvWelcome(onAdd: () -> Unit) {
 private fun Point(@DrawableRes glyph: Int, @StringRes title: Int, @StringRes subtitle: Int) {
     RvRow({ RvIconDisc(glyph) }, stringResource(title), stringResource(subtitle))
 }
-
-/** The line under the title wraps to three lines at most. */
-private const val LINE_LINES = 3

@@ -60,7 +60,7 @@ class RvStatesShotTest {
     fun welcomeFs115() = shot("welcome", false, whole = true, fontScale = RV_FS115) { RvWelcome(onAdd = {}) }
 
     @Test
-    @Config(qualifiers = "+h1274dp")
+    @Config(qualifiers = "+h1315dp")
     fun welcomeFs200() = shot("welcome", false, whole = true, fontScale = RV_FS200) { RvWelcome(onAdd = {}) }
 
     @Test
