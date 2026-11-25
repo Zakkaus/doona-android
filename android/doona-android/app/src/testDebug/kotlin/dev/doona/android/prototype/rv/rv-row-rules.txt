@@ -417,8 +417,8 @@ proto-rv-radius24-policy-dark	R11l	美國	+5.0
 proto-rv-radius24-policy-dark	R11l	香港	+5.0
 proto-rv-radius24-policy-light	R11l	美國	+5.0
 proto-rv-radius24-policy-light	R11l	香港	+5.0
-proto-rv-rule-edit-error-fs200	R13	AI	subtitle 10.0 vs 35.0
-proto-rv-rule-edit-fs200	R13	AI	subtitle 10.0 vs 35.0
+proto-rv-rule-edit-error-fs200	R13	AI	subtitle 9.5 vs 35.0
+proto-rv-rule-edit-fs200	R13	AI	subtitle 9.5 vs 35.0
 proto-rv-settings-geodata-updating-dark	R11	GeoIP/GeoSite	-10.5
 proto-rv-settings-geodata-updating-fs115	R11	GeoIP/GeoSite	-10.5
 proto-rv-settings-geodata-updating-fs200	R11	GeoIP/GeoSite	-16.8

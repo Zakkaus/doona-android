@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The check of Material Symbols Rounded "check_circle", weight 500, filled (Apache License 2.0; see NOTICE), enlarged to fill the box. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+  <group
+      android:pivotX="480"
+      android:pivotY="495"
+      android:scaleX="1.9"
+      android:scaleY="1.9"
+      android:translateY="-15">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M423.28,543.63L343.5,463.85Q331.07,451.41 312.15,451.41Q293.24,451.41 280.8,463.85Q268.37,476.28 268.49,495.2Q268.61,514.11 281.04,526.54L391.22,636.72Q404.98,650.39 423.33,650.39Q441.67,650.39 455.35,636.72L677.76,414.3Q690.2,401.87 690.2,383.08Q690.2,364.28 677.76,351.85Q665.33,339.41 646.41,339.41Q627.5,339.41 615.07,351.85L423.28,543.63Z"/>
+  </group>
+</vector>

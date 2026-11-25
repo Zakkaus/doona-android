@@ -305,11 +305,14 @@ internal object RvChartSize {
     /**
      * The segmented control in the owner's look E (rv-fix-4e; slider study §3, after Revolut's 3-icon track and FlClash):
      * a 40 dp pill track, the selected segment raised 2 dp inside it, a 20 dp glyph 6 dp before a label that has one.
+     * The selected choice also takes a bold label and an 18 dp check 6 dp before it (a segment or a range chip; owner,
+     * 2026-11-25, q-a11y-selected), so the choice does not rest on the raised pill's colour alone.
      */
     val segment = 40.dp
     val segmentInset = 2.dp
     val segmentGlyph = 20.dp
     val segmentGlyphGap = 6.dp
+    val segmentCheck = 18.dp
 
     /** The tile's curve keeps 10 % of its height free above the peak; the detail chart's axis runs to peak × 1.15. */
     const val SPARK_HEADROOM = 1.1f
