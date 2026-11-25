@@ -146,9 +146,9 @@ class RvSettingsShotTest {
          * As tall as the whole 設定 page, at each font size, so its end shows as the phone shows it: the last card 28 dp
          * above the bottom navigation.
          */
-        const val LONG_PAGE = "+h1764dp"
-        const val LONG_PAGE_FS115 = "+h1789dp"
-        const val LONG_PAGE_FS200 = "+h2288dp"
+        const val LONG_PAGE = "+h1822dp"
+        const val LONG_PAGE_FS115 = "+h1847dp"
+        const val LONG_PAGE_FS200 = "+h2358dp"
 
         const val NEAR = 0.5f
 

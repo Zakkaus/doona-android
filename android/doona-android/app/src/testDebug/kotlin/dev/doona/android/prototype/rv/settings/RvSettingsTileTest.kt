@@ -167,8 +167,8 @@ class RvSettingsTileTest {
          * ends 28 dp above the nav (28.5 where the page ends on a half dp).
          */
         const val LONG_PAGE = "+h1764dp"
-        const val TILE_PAGE = "+h1846dp"
-        const val TILE_PAGE_FS115 = "+h1901dp"
-        const val TILE_PAGE_FS200 = "+h2442dp"
+        const val TILE_PAGE = "+h1904dp"
+        const val TILE_PAGE_FS115 = "+h1959dp"
+        const val TILE_PAGE_FS200 = "+h2512dp"
     }
 }

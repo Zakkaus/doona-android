@@ -23,7 +23,8 @@ internal fun rvSettingsRoutes(
     release: () -> Unit = NOT_WIRED,
     language: () -> Unit = NOT_WIRED,
     interval: () -> Unit = NOT_WIRED,
-) = RvSettingsRoutes(alwaysOn, addTile, perApp, dns, effectiveConfig, report, about, config, geoUpdate, checkUpdate, release, language, interval)
+    lab: () -> Unit = NOT_WIRED,
+) = RvSettingsRoutes(alwaysOn, addTile, perApp, dns, effectiveConfig, report, about, config, geoUpdate, checkUpdate, release, language, interval, lab)
 
 /** 關於's routes in the sandbox, [NOT_WIRED] unless named. */
 internal fun rvAboutRoutes(

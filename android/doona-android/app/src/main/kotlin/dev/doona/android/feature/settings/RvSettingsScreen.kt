@@ -97,7 +97,7 @@ internal fun RvSettingsScreen(
             SubscriptionGroup(state, onChange, routes.interval)
             AppearanceGroup(state, onOpenTheme, routes.language)
             AdvancedGroup(state, routes, configRev)
-            RvUpdateGroup(version, update, routes.checkUpdate, geoData, routes.geoUpdate)
+            RvUpdateGroup(version, update, routes.checkUpdate, geoData, routes.geoUpdate, routes.lab)
             RvAboutEntry(version, routes.about)
         }
     }
@@ -146,7 +146,8 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsR
  * and the hero's 匯出診斷, 關於 doona (which holds the licences), and the configuration's overview (with the preview flag); and 加到快速設定
  * ([addTile]), the system's dialog or the sheet that tells how; the GeoIP/GeoSite update ([geoUpdate], with its sample flag); and
  * the update check ([checkUpdate], the hero's action and 關於's row) and a newer release's GitHub page ([release]); and the
- * language page ([language]). The app downloads nothing: the release opens in the browser.
+ * language page ([language]), the update interval page ([interval]) and 實驗室 ([lab]). The app downloads nothing: the
+ * release opens in the browser.
  */
 internal class RvSettingsRoutes(
     val alwaysOn: () -> Unit,
@@ -162,6 +163,7 @@ internal class RvSettingsRoutes(
     val release: () -> Unit,
     val language: () -> Unit,
     val interval: () -> Unit,
+    val lab: () -> Unit,
 )
 
 /**

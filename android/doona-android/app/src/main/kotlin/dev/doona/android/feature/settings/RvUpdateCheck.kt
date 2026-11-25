@@ -14,6 +14,7 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSize
@@ -70,14 +71,16 @@ internal fun rvUpdateNotice(update: RvUpdate, current: String, onRelease: () -> 
 
 /**
  * 設定's 更新 group, just before 關於 (owner-fix3 item 27): 檢查更新 for the app ([RvUpdateRow]), then the GeoIP and
- * GeoSite data the rules read ([RvGeoDataRow]), the two things 設定 updates.
+ * GeoSite data the rules read ([RvGeoDataRow]), the two things 設定 updates; last, 實驗室 ([onOpenLab]), the page of
+ * experimental options (owner, 2026-11-25 15:45; its row approved in sample s1125-lab-settings, 16:27).
  */
 @Composable
-internal fun RvUpdateGroup(version: String, update: RvUpdate, onCheck: () -> Unit, geoData: RvGeoData, onGeoUpdate: () -> Unit) {
+internal fun RvUpdateGroup(version: String, update: RvUpdate, onCheck: () -> Unit, geoData: RvGeoData, onGeoUpdate: () -> Unit, onOpenLab: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_updates))
     RvSettingsCard {
         RvUpdateRow(update, version, onCheck)
         RvGeoDataRow(geoData, onGeoUpdate)
+        RvSettingsNavRow(stringResource(R.string.rv_settings_lab), R.drawable.rv_sym_memory, onOpenLab)
     }
 }
 

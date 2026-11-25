@@ -18,8 +18,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The sample of 實驗室, whole pages: 設定 as it is (`proto-rv-samples-lab-settings-approved-<v>`) and with the new row
- * (`-sample-<v>`), and the new page (`proto-rv-samples-lab-page-<v>`), for v light, dark, fs200 and en-light.
+ * The sample of 實驗室, whole pages: 設定 as the page draws it (`proto-rv-samples-lab-settings-approved-<v>`), which
+ * since the page took the approved row is the same image as the sample with the new row (`-sample-<v>`), and the new
+ * page (`proto-rv-samples-lab-page-<v>`), for v light, dark, fs200 and en-light.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -32,7 +33,7 @@ class RvLabShotTest {
     val utc = Utc()
 
     @Test
-    @Config(qualifiers = "+h1764dp")
+    @Config(qualifiers = "+h1822dp")
     fun settingsApprovedLight() = compose.rvShot("samples-lab-settings-approved", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test
@@ -43,7 +44,7 @@ class RvLabShotTest {
     fun pageLight() = compose.rvShot("samples-lab-page", dark = false, before = { assertWhole() }) { RvLabScreen(performance = false) }
 
     @Test
-    @Config(qualifiers = "+h1764dp")
+    @Config(qualifiers = "+h1822dp")
     fun settingsApprovedDark() = compose.rvShot("samples-lab-settings-approved", dark = true, before = { assertWhole() }) { Settings() }
 
     @Test
@@ -54,7 +55,7 @@ class RvLabShotTest {
     fun pageDark() = compose.rvShot("samples-lab-page", dark = true, before = { assertWhole() }) { RvLabScreen(performance = true) }
 
     @Test
-    @Config(qualifiers = "+h2281dp")
+    @Config(qualifiers = "+h2351dp")
     fun settingsApprovedFs200() = compose.rvShot("samples-lab-settings-approved", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Settings() }
 
     @Test
@@ -65,7 +66,7 @@ class RvLabShotTest {
     fun pageFs200() = compose.rvShot("samples-lab-page", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvLabScreen(performance = false) }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1814dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h1872dp-notnight-xhdpi")
     fun settingsApprovedEn() = compose.rvShot("samples-lab-settings-approved-en", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test
