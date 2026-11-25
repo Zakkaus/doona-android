@@ -5,6 +5,8 @@ import android.content.ClipboardManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -17,6 +19,7 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.onboarding.FirstRunGate
@@ -39,7 +42,8 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The wired subscription pages and the welcome page (`app-rv-<screen>-*`, plan §2.4): RvSampleEngine through each
  * page's route, view model and mapper, in zh light, dark, fs200 and en light, each set against its `proto-rv` golden.
- * 新增訂閱 is driven as the user drives it: the link and name typed, 新增 tapped. The engine answers each import at once,
+ * 新增訂閱 is driven as the user drives it: the name typed and the keyboard put away, the link taken from the clipboard's
+ * row, 新增 tapped. The engine answers each import at once,
  * with the fake standing for the core's fetch (Harbor Cloud as it is in the sample, or the failure under test), or
  * never, for the import in flight.
  */
@@ -182,7 +186,10 @@ class AppRvSubsShotTest {
         content = content,
     )
 
-    /** 新增訂閱 over an engine that answers [answer]; with [typed] the sample's link and name are typed and 新增 tapped. */
+    /**
+     * 新增訂閱 over an engine that answers [answer]; with [typed] the sample's name is typed, the keyboard put away, the
+     * link taken from the clipboard's row and 新增 tapped, so no field keeps the focus or a scrolled link.
+     */
     private fun add(name: String, answer: Answer, typed: Boolean = true, dark: Boolean = false, fontScale: Float = 1f, english: Boolean = false) {
         // The clipboard holds a link, as on the approved page; its content is read only if its row is tapped.
         clipboard().setPrimaryClip(ClipData.newPlainText(null, RV_SAMPLE_LINK))
@@ -195,8 +202,9 @@ class AppRvSubsShotTest {
             whole = fontScale == 1f,
             before = {
                 if (typed) {
-                    onAllNodes(hasSetTextAction())[0].performTextReplacement(RV_SAMPLE_LINK)
                     onAllNodes(hasSetTextAction())[1].performTextReplacement(RvData.subscriptions.first().name)
+                    runOnIdle { focus.clearFocus() }
+                    onNodeWithText(string(R.string.rv_add_clipboard)).performClick()
                     onNodeWithText(string(R.string.rv_add_import)).performClick()
                 }
             },
@@ -211,12 +219,18 @@ class AppRvSubsShotTest {
 
     @Composable
     private fun Detail() {
-        val engine = remember { rvSampleEngine() }
+        val engine = remember { harborEngine() }
         SubDetailRoute(engine, TWELVE_HOURS, engine.subscriptions.value.first().id, onBack = {})
     }
 
     @Composable
-    private fun Add(engine: Engine) = SubAddRoute(engine, rememberImports(engine), onBack = {})
+    private fun Add(engine: Engine) {
+        focus = LocalFocusManager.current
+        SubAddRoute(engine, rememberImports(engine), onBack = {})
+    }
+
+    /** The page's focus, to put the keyboard away after typing. */
+    private lateinit var focus: FocusManager
 
     @Composable
     private fun Welcome() {
@@ -228,6 +242,14 @@ class AppRvSubsShotTest {
     private fun rememberImports(engine: Engine): SubscriptionImports {
         val scope = rememberCoroutineScope()
         return remember(engine) { SubscriptionImports(engine, scope) }
+    }
+
+    /**
+     * The sample with its first subscription, Harbor Cloud, as the core reports it: the core finds the format of what it
+     * fetched (Clash YAML on the approved pages), which the sample's subscriptions do not carry.
+     */
+    private fun harborEngine(): FakeEngine = rvSampleEngine().apply {
+        subscriptions.value = subscriptions.value.mapIndexed { i, sub -> if (i == 0) harbor(sub) else sub }
     }
 
     /** How the engine answers an import. */
@@ -245,7 +267,7 @@ class AppRvSubsShotTest {
 
     private class Answering(private val answer: Answer, private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
         override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> = when (answer) {
-            Answer.None, Answer.Harbor -> Result.success(sample.subscriptions.value.first())
+            Answer.None, Answer.Harbor -> Result.success(harbor(sample.subscriptions.value.first()))
             Answer.Never -> awaitCancellation()
             is Answer.Fails -> Result.failure(EngineException(answer.code))
         }
@@ -253,6 +275,9 @@ class AppRvSubsShotTest {
 
     private companion object {
         const val APP = "app-rv"
+
+        /** [sub] with the format the core finds behind the sample's link. */
+        fun harbor(sub: Subscription): Subscription = sub.copy(format = SubscriptionFormat.Clash)
 
         /** A subscription's page is taller than the phone, as in the prototype's golden. */
         const val WHOLE_DETAIL = "+h1087dp"
