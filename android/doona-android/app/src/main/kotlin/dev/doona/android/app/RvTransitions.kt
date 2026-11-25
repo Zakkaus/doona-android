@@ -80,8 +80,8 @@ internal fun rvKeyOf(entry: NavEntry<*>): NavKey? = entry.metadata[RV_NAV_KEY] a
 /** The key on top of this scene. */
 internal fun Scene<*>.rvTop(): NavKey? = entries.lastOrNull()?.let(::rvKeyOf)
 
-/** The tab this scene belongs to: the tab root nearest its top, counting the entries under it. */
-internal fun Scene<*>.rvTab(): Tab? = (previousEntries + entries).asReversed().firstNotNullOfOrNull { e -> rvKeyOf(e)?.let(::tabOf) }
+/** The tab this scene belongs to, from the whole stack it shows: [currentTab] of the entries under it and its own. */
+internal fun Scene<*>.rvTab(): Tab = currentTab((previousEntries + entries).mapNotNull(::rvKeyOf))
 
 /**
  * The app's move from one scene to the next ([forward] for a push, else a pop, predictive or not): a cut when the tab

@@ -92,8 +92,11 @@ enum class Tab(val key: NavKey, internal val navId: Int, @StringRes val label: I
 /** The floating nav's tabs in the app: RV's bar in its own order, without the tabs the app does not ship. */
 internal val APP_NAV: List<RvNavItem> = RV_NAV.filter { item -> Tab.entries.any { it.navId == item.id } }
 
-/** The tab whose root is nearest the top of [backStack]; a page pushed from a tab keeps that tab current. */
-fun currentTab(backStack: List<NavKey>): Tab = Tab.entries.lastOrNull { it.key in backStack } ?: Tab.Activity
+/**
+ * The tab [backStack] is on, by position: the tab root directly above 活動, or 活動 itself. A page pushed from a tab
+ * keeps that tab current, even one whose key is another tab's root (a page on 策略 opening 設定's key).
+ */
+fun currentTab(backStack: List<NavKey>): Tab = backStack.getOrNull(1)?.let(::tabOf) ?: Tab.Activity
 
 /** The tab [key] is the root of, or null for a page pushed onto a tab. */
 fun tabOf(key: NavKey): Tab? = Tab.entries.firstOrNull { it.key == key }

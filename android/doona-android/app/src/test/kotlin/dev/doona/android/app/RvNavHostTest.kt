@@ -317,6 +317,20 @@ class RvNavHostTest {
     }
 
     @Test
+    fun aPageOpeningAnotherTabsRootKeyStaysOnItsTab() {
+        start(ActivityKey)
+        onUi { stack.selectTab(Tab.Policies) }
+        onUi { stack.push(GroupKey("g")) }
+        tabEntries.clear()
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { stack.push(SettingsKey) }
+        assertEquals("the tab is the root above 活動, not the last root key", Tab.Policies, currentTab(stack))
+        val push = framesTogether("group g", "settings")
+        assertTrue("played as a push, not a tab switch: $push", push >= PUSH_FRAMES)
+        assertEquals(listOf("settings" to false), tabEntries)
+    }
+
+    @Test
     fun onlyATabSwitchFadesTheNewTabsHeroIn() {
         start(ActivityKey)
         onUi { stack.selectTab(Tab.Policies) }
