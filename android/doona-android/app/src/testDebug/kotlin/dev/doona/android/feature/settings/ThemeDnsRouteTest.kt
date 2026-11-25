@@ -1,5 +1,8 @@
 package dev.doona.android.feature.settings
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasSetTextAction
@@ -17,6 +20,7 @@ import dev.doona.android.app.themeAppearance
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvAppearance
+import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.rvContent
@@ -133,6 +137,33 @@ class ThemeDnsRouteTest {
         compose.onNodeWithText(V6_INVALID, useUnmergedTree = true).assertFits()
     }
 
+    /**
+     * 自動更新 under GeoIP/GeoSite (q-p6a-geointerval, 2026-11-26 07:13) names the stored interval and opens its page,
+     * where a choice is stored at once.
+     */
+    @Test
+    fun theGeoIntervalRowNamesTheChoiceAndItsPageStoresOne() {
+        var opened = 0
+        val store = FakeSettingsStore(geoInterval = RvGeoInterval.Daily)
+        val vm = SettingsViewModel(FakeEngine(), store)
+        val nav = SettingsNav({}, {}, {}, {}, {}, geoInterval = { opened++ }, {}, {}, {}, {}, {})
+        var page by mutableStateOf(false)
+        compose.rvContent(dark = false) {
+            if (page) GeoIntervalRoute(store, onBack = {}) else SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {})
+        }
+        compose.onNodeWithText(DAILY).performScrollTo().performClick()
+        assertEquals(1, opened)
+
+        page = true
+        compose.waitForIdle()
+        compose.onNodeWithText(OFF).performClick()
+        compose.waitForIdle()
+        assertEquals(RvGeoInterval.Off, store.geoInterval.value)
+        compose.onNodeWithText(WEEKLY).performClick()
+        compose.waitForIdle()
+        assertEquals(RvGeoInterval.Weekly, store.geoInterval.value)
+    }
+
     /** 日誌等級's row under 回報問題 (q-p6a-logrow, 2026-11-26 07:13) names the core's level and opens its page. */
     @Test
     fun theLogLevelRowNamesTheLevelAndOpensItsPage() {
@@ -143,7 +174,7 @@ class ThemeDnsRouteTest {
             override suspend fun set(level: LogLevel): Result<Unit> = Result.success(Unit)
         }
         val vm = SettingsViewModel(FakeEngine(), FakeSettingsStore(), levels = levels)
-        val nav = SettingsNav({}, {}, {}, {}, logLevel = { opened++ }, {}, {}, {}, {}, {})
+        val nav = SettingsNav({}, {}, {}, {}, logLevel = { opened++ }, {}, {}, {}, {}, {}, {})
         compose.rvContent(dark = false) { SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {}) }
         compose.onNodeWithText(DEBUG).performScrollTo().assertExists()
         compose.onNodeWithText(LOG_LEVEL).performScrollTo().performClick()
@@ -168,7 +199,7 @@ class ThemeDnsRouteTest {
             override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
         }
         val vm = SettingsViewModel(FakeEngine(), FakeSettingsStore(), releases = { Result.success("v9.0.0") })
-        compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}), "0.1.0", onTab = {}) }
+        compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}), "0.1.0", onTab = {}) }
         // 檢查更新 is both the hero's action and the row; either checks.
         compose.onAllNodesWithText(CHECK).onFirst().performScrollTo().performClick()
         compose.waitForIdle()
@@ -193,6 +224,9 @@ class ThemeDnsRouteTest {
         const val CHECK = "檢查更新"
         const val VIEW = "在 GitHub 檢視"
         const val LOG_LEVEL = "日誌等級"
+        const val OFF = "關閉"
+        const val DAILY = "每天"
+        const val WEEKLY = "每週"
         const val DEBUG = "除錯"
         const val V6_HINT = "最多 4 個 IPv4 或 IPv6 位址，以逗號分隔，例如 1.1.1.1、2606:4700:4700::1111"
         const val V6_INVALID = "請輸入 1 到 4 個 IP 位址，例如 1.1.1.1 或 [2606:4700:4700::1111]:53"

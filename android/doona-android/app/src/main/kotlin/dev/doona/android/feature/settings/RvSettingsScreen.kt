@@ -103,7 +103,7 @@ internal fun RvSettingsScreen(
             SubscriptionGroup(state, onChange, routes.interval)
             AppearanceGroup(state, onOpenTheme, routes.language)
             AdvancedGroup(state, routes, configRev, dnsLoaded, logLevel)
-            RvUpdateGroup(version, update, routes.checkUpdate, geoData, routes.geoUpdate, routes.lab)
+            RvUpdateGroup(version, update, routes.checkUpdate, geoData, routes.geoUpdate, routes.lab, state.geoInterval, routes.geoInterval)
             RvAboutEntry(version, routes.about)
         }
     }
@@ -151,7 +151,8 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsR
  * Where 設定 leads beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row
  * and the hero's 匯出診斷, 日誌等級 ([logLevel]), 關於 doona (which holds the licences), and the configuration's overview (with the preview flag); and 加到快速設定
  * ([addTile]), the system's dialog or the sheet that tells how; the GeoIP/GeoSite update ([geoUpdate], with its sample flag); and
- * the update check ([checkUpdate], the hero's action and 關於's row) and a newer release's GitHub page ([release]); and the
+ * how often that data updates by itself ([geoInterval], 自動更新's page); the update check ([checkUpdate], the hero's action
+ * and 關於's row) and a newer release's GitHub page ([release]); and the
  * language page ([language]), the update interval page ([interval]) and 實驗室 ([lab]). The app downloads nothing: the
  * release opens in the browser.
  */
@@ -163,6 +164,7 @@ internal class RvSettingsRoutes(
     val effectiveConfig: () -> Unit,
     val report: () -> Unit,
     val logLevel: () -> Unit,
+    val geoInterval: () -> Unit,
     val about: () -> Unit,
     val config: () -> Unit,
     val geoUpdate: () -> Unit,

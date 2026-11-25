@@ -1,6 +1,7 @@
 package dev.doona.android.feature.settings
 
 import dev.doona.android.feature.model.RvAppearance
+import dev.doona.android.feature.model.RvGeoInterval
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -58,6 +59,11 @@ internal interface SettingsStore {
     suspend fun performanceAtStart(): Boolean
 
     fun setPerformanceMode(enabled: Boolean)
+
+    /** How often the GeoIP/GeoSite data updates by itself: 更新's 自動更新. */
+    val geoInterval: Flow<RvGeoInterval>
+
+    fun setGeoInterval(interval: RvGeoInterval)
 }
 
 /** How the system answered 加到快速設定: the tile was added, the dialog was dismissed, or the request failed. */
@@ -91,7 +97,7 @@ internal fun interface ReleaseCheck {
 
 /**
  * The pages 設定 opens, which the app's navigation owns: 依 App, the DNS server, the effective config, 回報問題, 日誌等級,
- * 關於, 主題, 語言, 更新間隔 and 實驗室.
+ * GeoIP/GeoSite's 自動更新, 關於, 主題, 語言, 更新間隔 and 實驗室.
  */
 internal class SettingsNav(
     val perApp: () -> Unit,
@@ -99,6 +105,7 @@ internal class SettingsNav(
     val effectiveConfig: () -> Unit,
     val report: () -> Unit,
     val logLevel: () -> Unit,
+    val geoInterval: () -> Unit,
     val about: () -> Unit,
     val theme: () -> Unit,
     val language: () -> Unit,

@@ -62,4 +62,8 @@
     <string name="rv_report_github">Report on GitHub</string>
     <string name="rv_report_share">Share file</string>
     <string name="rv_report_building">Preparing the report…</string>
+    <string name="rv_geo_interval_daily">Daily</string>
+    <string name="rv_geo_interval_weekly">Weekly</string>
+    <string name="rv_geo_interval_default">Default</string>
+    <string name="rv_geo_interval_footer">Updates only while connected, through the main node.</string>
 </resources>

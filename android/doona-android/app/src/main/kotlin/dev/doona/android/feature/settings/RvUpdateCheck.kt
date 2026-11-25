@@ -21,6 +21,7 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.rvConfigLine
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.feature.model.RvGeoData
+import dev.doona.android.feature.model.RvGeoInterval
 
 /**
  * Where 檢查更新 stands: not run yet, asking GitHub for the latest release, nothing newer than the app, a newer
@@ -71,15 +72,27 @@ internal fun rvUpdateNotice(update: RvUpdate, current: String, onRelease: () -> 
 
 /**
  * 設定's 更新 group, just before 關於 (owner-fix3 item 27): 檢查更新 for the app ([RvUpdateRow]), then the GeoIP and
- * GeoSite data the rules read ([RvGeoDataRow]), the two things 設定 updates; last, 實驗室 ([onOpenLab]), the page of
- * experimental options (owner, 2026-11-25 15:45; its row approved in sample s1125-lab-settings, 16:27).
+ * GeoSite data the rules read ([RvGeoDataRow]), the two things 設定 updates, and under that data 自動更新, how often it
+ * updates by itself ([geoInterval]; [onOpenGeoInterval] opens the choice; owner, 2026-11-26 07:13); last, 實驗室
+ * ([onOpenLab]), the page of experimental options (owner, 2026-11-25 15:45; its row approved in sample
+ * s1125-lab-settings, 16:27).
  */
 @Composable
-internal fun RvUpdateGroup(version: String, update: RvUpdate, onCheck: () -> Unit, geoData: RvGeoData, onGeoUpdate: () -> Unit, onOpenLab: () -> Unit) {
+internal fun RvUpdateGroup(
+    version: String,
+    update: RvUpdate,
+    onCheck: () -> Unit,
+    geoData: RvGeoData,
+    onGeoUpdate: () -> Unit,
+    onOpenLab: () -> Unit,
+    geoInterval: RvGeoInterval,
+    onOpenGeoInterval: () -> Unit,
+) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_updates))
     RvSettingsCard {
         RvUpdateRow(update, version, onCheck)
         RvGeoDataRow(geoData, onGeoUpdate)
+        RvSettingsNavRow(stringResource(R.string.rv_settings_auto_update), R.drawable.rv_sym_schedule, onOpenGeoInterval, stringResource(geoInterval.label))
         RvSettingsNavRow(stringResource(R.string.rv_settings_lab), R.drawable.rv_sym_memory, onOpenLab)
     }
 }

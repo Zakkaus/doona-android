@@ -13,6 +13,7 @@ import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvDnsUpstream
+import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPerApp
@@ -409,6 +410,19 @@ class SettingsViewModelTest {
     fun `the row is not connected while the VPN is off`() = runTest {
         val vm = collected(SettingsViewModel(FakeEngine(status = Status.Stopped), FakeSettingsStore()))
         assertFalse(vm.uiState.value.geoData.connected)
+    }
+
+    @Test
+    fun `自動更新's row names the stored GeoIP_GeoSite interval, 每週 at first`() = runTest {
+        val store = FakeSettingsStore()
+        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        assertEquals(RvGeoInterval.Weekly, vm.settings.geoInterval)
+        store.setGeoInterval(RvGeoInterval.Off)
+        assertEquals(RvGeoInterval.Off, vm.settings.geoInterval)
+        // A switch turned on the page after it does not write the interval back.
+        val drawn = vm.settings
+        vm.onChange(drawn, drawn.copy(notifyOnDrop = !drawn.notifyOnDrop))
+        assertEquals(RvGeoInterval.Off, store.geoInterval.value)
     }
 
     @Test

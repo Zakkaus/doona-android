@@ -55,10 +55,20 @@ internal enum class RvDnsUpstream(@StringRes val label: Int, val address: String
 }
 
 /**
+ * How often the GeoIP/GeoSite data updates by itself while the VPN is up (GeoRefresh): never, each day, or each week,
+ * the default (owner, 2026-11-26 07:13, q-p6a-geointerval).
+ */
+internal enum class RvGeoInterval(@StringRes val label: Int) {
+    Off(R.string.ui_off),
+    Daily(R.string.rv_geo_interval_daily),
+    Weekly(R.string.rv_geo_interval_weekly),
+}
+
+/**
  * What the settings page shows. The appearance is the theme page's state, so the 主題 row reads what the page sets;
  * [perApp] is what 依 App saved; [dns] the preset the core's DNS servers are, null for servers no preset names
  * (自訂). Until the quick settings tile is [tileAdded], 連線 offers 加到快速設定; [tileSheet] is
- * the sheet that tells how to add it by hand.
+ * the sheet that tells how to add it by hand. [geoInterval] is how often the GeoIP/GeoSite data updates by itself.
  */
 @Immutable
 internal data class RvSettingsState(
@@ -71,6 +81,7 @@ internal data class RvSettingsState(
     val language: RvLanguage = RvLanguage.TraditionalChinese,
     val tileAdded: Boolean = true,
     val tileSheet: Boolean = false,
+    val geoInterval: RvGeoInterval = RvGeoInterval.Weekly,
 ) {
     /** How many apps 依 App checked. */
     val proxiedApps: Int get() = perApp.packages.size

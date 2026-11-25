@@ -191,6 +191,15 @@ class SettingsAppShotTest {
 
     @Test fun logLevelFs200() = compose.app("settings-log-level", fontScale = RV_FS200) { LogLevel() }
 
+    /** GeoIP/GeoSite's 自動更新 (sample, q-p6a-geointerval): the stored 每週. */
+    @Test fun geoIntervalLight() = compose.app("settings-geo-interval", dark = false) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
+
+    @Test fun geoIntervalDark() = compose.app("settings-geo-interval", dark = true) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
+
+    @Test fun geoIntervalFs115() = compose.app("settings-geo-interval", fontScale = RV_FS115) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
+
+    @Test fun geoIntervalFs200() = compose.app("settings-geo-interval", fontScale = RV_FS200) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
+
     /** The core refuses 除錯: the banner says so, with 重試. */
     @Test fun logLevelRefusedLight() = compose.app("settings-log-level-refused", dark = false, before = { pickDebug() }) { RefusedLogLevel() }
 
@@ -319,7 +328,7 @@ class SettingsAppEnShotTest {
     val tmp = TemporaryFolder()
 
     @Test
-    @Config(qualifiers = "+h1958dp")
+    @Config(qualifiers = "+h2040dp")
     fun settings() = compose.app("settings-en", dark = false, whole = true, content = settingsPage())
 
     @Test fun lab() = compose.app("settings-lab-en", dark = false, whole = true) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
@@ -343,6 +352,8 @@ class SettingsAppEnShotTest {
     @Test fun intervalSample() = compose.sample("settings-interval-en") { RvIntervalScreen(RvData.UPDATE_HOURS, RvData.UPDATE_INTERVALS, onSelect = {}, onBack = {}, onCustom = {}) }
 
     @Test fun logLevel() = compose.app("settings-log-level-en", dark = false) { LogLevelRoute(InfoLevels, onBack = {}) }
+
+    @Test fun geoInterval() = compose.app("settings-geo-interval-en", dark = false) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
 
     @Test fun logLevelSample() = compose.sample("settings-log-level-en") { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) }
 
@@ -521,10 +532,10 @@ private object NoSystem : SettingsSystem {
     override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
 }
 
-private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
 
 /** As tall as each page at each font size, as its approved golden (RvLabShotTest's approved 設定, RvReportShotTest). */
-private const val LONG_PAGE = "+h1908dp"
+private const val LONG_PAGE = "+h1990dp"
 
 /** 主題 whole: the window the page fills at 1× and 2×. */
 private const val THEME_PAGE = "+h975dp"
@@ -533,8 +544,8 @@ private const val THEME_PAGE_FS200 = "+h1062dp"
 /** The core's servers in [FakeEngine], and 自訂 as it opens on them. */
 private val SERVERS = listOf("1.1.1.1:53", "8.8.8.8:53")
 private const val TYPED = "1.1.1.1, 8.8.8.8"
-private const val LONG_PAGE_FS115 = "+h1933dp"
-private const val LONG_PAGE_FS200 = "+h2481dp"
+private const val LONG_PAGE_FS115 = "+h2015dp"
+private const val LONG_PAGE_FS200 = "+h2589dp"
 
 /** The English report is longer: its window holds the whole page. */
 private const val READY_EN = "+h1300dp"

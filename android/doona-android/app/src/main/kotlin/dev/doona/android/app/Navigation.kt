@@ -99,6 +99,9 @@ data object DnsKey : AppKey
 data object LogLevelKey : AppKey
 
 @Serializable
+data object GeoIntervalKey : AppKey
+
+@Serializable
 data object LicensesKey : AppKey
 
 /** One licence's text, by its place in 授權's list. */

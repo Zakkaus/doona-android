@@ -2,6 +2,7 @@ package dev.doona.android.feature.settings
 
 import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.feature.model.RvAppearance
+import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -13,6 +14,7 @@ internal class FakeSettingsStore(
     appearance: RvAppearance = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0),
     tileAdded: Boolean = true,
     performanceMode: Boolean = false,
+    geoInterval: RvGeoInterval = RvGeoInterval.Weekly,
     override val shippedGeoDate: String = "2026-11-23",
     var languages: String = "",
 ) : SettingsStore {
@@ -24,6 +26,7 @@ internal class FakeSettingsStore(
     override val appearance = MutableStateFlow(appearance)
     override val tileAdded = MutableStateFlow(tileAdded)
     override val performanceMode = MutableStateFlow(performanceMode)
+    override val geoInterval = MutableStateFlow(geoInterval)
     private val started = performanceMode
 
     override fun setAppearance(appearance: RvAppearance) {
@@ -53,5 +56,9 @@ internal class FakeSettingsStore(
 
     override fun setPerformanceMode(enabled: Boolean) {
         performanceMode.value = enabled
+    }
+
+    override fun setGeoInterval(interval: RvGeoInterval) {
+        geoInterval.value = interval
     }
 }
