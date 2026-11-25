@@ -1,12 +1,15 @@
 package dev.doona.android.app
 
+import android.content.Context
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation3.runtime.NavKey
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.R
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.testing.SeedTheme
@@ -65,6 +68,18 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("Version").assertExists()
         compose.onNodeWithText("Save").assertDoesNotExist()
+    }
+
+    @Test
+    fun `統計 on 活動 opens the statistics page and back returns to 活動`() {
+        val res = ApplicationProvider.getApplicationContext<Context>().resources
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}) } }
+        compose.onNodeWithContentDescription(res.getString(R.string.rv_stats)).performClick()
+        compose.onNodeWithText(res.getString(R.string.rv_stats_title)).assertExists()
+
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithText(res.getString(R.string.rv_stats_title)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(res.getString(R.string.rv_stats)).assertExists()
     }
 
     @Test

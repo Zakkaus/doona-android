@@ -37,6 +37,7 @@ import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
 import dev.doona.android.feature.settings.SettingsRoute
+import dev.doona.android.feature.stats.StatsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
@@ -106,6 +107,8 @@ fun DoonaApp(
                     SettingsRoute(engine, version, onOpenPerApp = { backStack.push(PerAppKey) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
                 }
             }
+            // 回報問題 (p6a) has no entry yet, so the export is not wired.
+            entry<StatsKey> { key -> StatsRoute(engine, onBack = { backStack.pop(key) }, onOpenReport = NOT_WIRED) }
             entry<PerAppKey> { key ->
                 PerAppRoute(
                     engine,
@@ -126,11 +129,11 @@ enum class SystemSettings { Vpn, Network, Notifications }
 /**
  * Where 活動 leads: the pages with an entry here, the 策略 tab for the mode, 設定 for 更多 and 檢查更新 (q-actmore), the
  * subscriptions page for 新增訂閱, and the system's settings for the notices that need them. The pages without an
- * entry yet (流量, 統計, the node search and list, the main node choice, the rules and the report) are not wired.
+ * entry yet (流量, the node search and list, the main node choice, the rules and the report) are not wired.
  */
 private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (SystemSettings) -> Unit) = ActivityRoutes(
     traffic = NOT_WIRED,
-    stats = NOT_WIRED,
+    stats = { backStack.push(StatsKey) },
     search = NOT_WIRED,
     nodes = NOT_WIRED,
     node = NOT_WIRED,
