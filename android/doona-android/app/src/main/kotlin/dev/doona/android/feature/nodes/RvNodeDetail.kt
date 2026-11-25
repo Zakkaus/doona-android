@@ -18,8 +18,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
@@ -27,6 +25,8 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
+import dev.doona.android.designsystem.rv.RvFigure
+import dev.doona.android.designsystem.rv.RvFigureText
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvNodesSize
@@ -37,7 +37,6 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvSpanText
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvStatusChip
 import dev.doona.android.designsystem.rv.RvText
@@ -46,8 +45,8 @@ import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSharedFlag
-import dev.doona.android.designsystem.rv.scripted
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.nodes.ui.rvNodeLine
 
 /**
  * A node's page in the language of Revolut's stock page: the flag over its name as the large title, which collapses into
@@ -119,7 +118,7 @@ private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets:
         insets,
         // The flag of the row this page was opened from grows into this one (rule 4).
         mark = { RvFlag(node.place.flag, RvSize.headerDisc, Modifier.rvSharedFlag(node.id)) },
-        caption = { RvCaption(node.protocol + SEPARATOR + stringResource(node.place.label)) },
+        caption = { RvCaption(rvNodeLine(node.protocol, stringResource(node.place.label))) },
         control = chips,
     )
 }
@@ -145,23 +144,18 @@ private fun HistoryCard(node: RvNode, times: List<String>, picked: Int, onPick: 
     }
 }
 
-/** A latency as a card's figure: the number large, the unit after it small, on one baseline. */
+/** A latency as a card's figure: the number large, the unit after it small, on one baseline, shrunk to fit, never cut. */
 @Composable
 private fun Figure(text: String) {
-    val type = Rv.type
     val cut = text.indexOf(' ').takeIf { it > 0 } ?: text.length
-    val styled = buildAnnotatedString {
-        append(text.substring(0, cut))
-        withStyle(type.cardUnit.toSpanStyle()) { append(scripted(text.substring(cut))) }
-    }
-    RvSpanText(styled, type.cardValue.copy(color = Rv.colors.text), maxLines = 1)
+    RvFigureText(RvFigure(text.substring(0, cut), text.substring(cut)), Rv.type.cardValue, Rv.type.cardUnit)
 }
 
 /** Key stats: what the share link says, the subscription it came from and when it was last tested. */
 @Composable
 private fun StatsCard(node: RvNode, lastTest: String) {
     RvCard {
-        RvStatRow(stringResource(R.string.rv_nodes_protocol), node.protocol, valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_nodes_protocol), node.protocol.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_nodes_server), node.host, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_nodes_port), node.port.toString())
         RvStatRow(stringResource(R.string.rv_nodes_transport), node.transport, valueKeepWords = false)

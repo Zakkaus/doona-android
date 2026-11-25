@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.Dp
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvNameDisc
 import dev.doona.android.designsystem.rv.RvNameMark
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvMarkName
 import dev.doona.android.designsystem.rv.rvShownName
 import dev.doona.android.feature.model.RvNode
@@ -34,3 +35,9 @@ internal fun RvNodeDisc(node: RvNode, size: Dp, modifier: Modifier = Modifier, c
         is RvNameMark.Icon -> RvNameDisc(mark, null, current, size)
     }
 }
+
+/**
+ * A node row's second line: its [parts] (a mark, the protocol, the place) joined by the separator, the empty ones left
+ * out, so a node whose details the core has not sent (no protocol yet) reads 其他, not 「 · 其他」.
+ */
+internal fun rvNodeLine(vararg parts: String?): String = parts.filterNot { it.isNullOrEmpty() }.joinToString(SEPARATOR)

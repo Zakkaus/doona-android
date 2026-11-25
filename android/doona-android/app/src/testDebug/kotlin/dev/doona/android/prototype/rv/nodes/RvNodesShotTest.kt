@@ -47,7 +47,7 @@ class RvNodesShotTest {
     fun detailDark() = compose.rvShot("node-detail", dark = true, before = { assertWhole() }) { Detail() }
 
     @Composable
-    private fun Page() = RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {})
+    private fun Page() = RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {})
 
     @Composable
     private fun Detail() {

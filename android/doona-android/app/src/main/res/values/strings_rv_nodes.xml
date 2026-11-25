@@ -104,5 +104,11 @@
          naming its networks (TCP, UDP, or TCP/UDP on the node's page). -->
     <string name="rv_score_mark" translatable="false">Score</string>
     <string name="rv_score_pick" translatable="false">Score %1$s</string>
-    <string name="rv_no_main_group">The profile has no main group, so there is no main node</string>
+    <!-- The 排序 chip's labels and 套用到, as the group page's sample s1125d and nbtap have them; 組態內 names the nodes of no
+         subscription (decision 2026-11-25 23:52, the text of the add-node sample). -->
+    <string name="rv_nodes_by_stability">By stability</string>
+    <string name="rv_nodes_by_name">By name</string>
+    <string name="rv_nodes_by_region">By region</string>
+    <string name="rv_nodes_apply_to">Apply to</string>
+    <string name="rv_nodes_inline">In configuration</string>
 </resources>

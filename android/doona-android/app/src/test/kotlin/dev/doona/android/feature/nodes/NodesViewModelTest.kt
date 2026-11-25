@@ -246,6 +246,17 @@ class NodesViewModelTest {
     }
 
     @Test
+    fun withTheNetworksApartEachNetworksNodeIsCurrentThroughANestedGroup() = runTest {
+        val members = listOf(Member("n-a", "A 01", subscriptionId = "s-1"), Member("n-b", "B 01", subscriptionId = "s-1"))
+        val inner = Group("g-Inner", "Inner", GroupKind.Selector, members, Group.Selection("n-a", pinned = true), Group.Selection("n-b", pinned = true))
+        val main = Group(MAIN, "Proxy", GroupKind.Selector, listOf(Member("g-Inner", "Inner", isGroup = true)), Group.Selection("g-Inner", pinned = true))
+        val state = collected(FakeEngine(groups = listOf(main, inner), subscriptions = listOf(sub))).ui.value.state
+        assertEquals("n-a", state.currentId)
+        assertEquals("n-b", state.udpId)
+        assertEquals(setOf("n-a", "n-b"), state.current)
+    }
+
+    @Test
     fun theMainGroupsNodeIsFollowedThroughANestedGroup() = runTest {
         val inner = Group("g-Auto", "Auto", GroupKind.UrlTest, listOf(Member("n-x", "X 01")), Group.Selection("n-x", pinned = false))
         val main = Group(MAIN, "Proxy", GroupKind.Selector, listOf(Member("g-Auto", "Auto", isGroup = true), Member("n-y", "Y 01")), Group.Selection("g-Auto", pinned = true))

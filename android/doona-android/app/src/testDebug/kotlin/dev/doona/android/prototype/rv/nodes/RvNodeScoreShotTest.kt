@@ -181,7 +181,7 @@ class RvNodeScoreShotTest {
         compose.rvShot(name, dark, before = { assertWhole() }, fontScale = fontScale, content = content)
 
     @Composable
-    private fun Page(score: RvScoreMarks) = RvNodesPage(page, onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}, score = score)
+    private fun Page(score: RvScoreMarks) = RvNodesPage(page, onBack = {}, onOpen = {}, onAllNodes = {}, score = score)
 
     @Composable
     private fun Detail(node: RvNode, score: RvScoreMarks) =

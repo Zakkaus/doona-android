@@ -98,5 +98,5 @@ private fun RvNodePickerPagePreview() {
 @Composable
 private fun RvNodesPagePreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) }
 }

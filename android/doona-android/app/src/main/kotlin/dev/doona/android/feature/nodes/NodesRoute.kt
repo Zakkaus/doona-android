@@ -32,6 +32,7 @@ import dev.doona.android.designsystem.rv.RvSkeletonRow
 import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.nodes.ui.RvApplyTo
 
 /*
  * The 節點 pages on the one [NodesViewModel] that 活動's entry holds (plan 2.2): the routing builds it there with
@@ -44,11 +45,10 @@ import dev.doona.android.feature.model.RvNodeSort
 internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (String) -> Unit, onAllNodes: () -> Unit, onAdd: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     if (!ui.loaded) return NodesSkeleton(onBack)
-    val page = remember(ui.state) { RvNodesPageState(ui.state.nodes, ui.state.currentId, emptyList()) }
+    val page = remember(ui.state) { RvNodesPageState(ui.state.nodes, ui.state.currentId, emptyList(), ui.state.subscriptions) }
     val score = remember(ui.score) { ui.score.takeIf { it.isNotEmpty() }?.let(::RvScoreMarks) }
     CompositionLocalProvider(LocalRvTesting provides ui.testing) {
-        // The chips' menus are the group page's (decision 2026-11-25 19:25), not on this base yet: see p3c-STATE.
-        RvNodesPage(page, onBack, onFilter = {}, onOpen = onOpen, onAllNodes = onAllNodes, onAdd = onAdd, score = score, caption = mainCaption(ui))
+        RvNodesPage(page, onBack, onOpen = onOpen, onAllNodes = onAllNodes, onAdd = onAdd, score = score, caption = mainCaption(ui))
     }
 }
 
@@ -62,7 +62,7 @@ internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> 
     CompositionLocalProvider(LocalRvTesting provides ui.testing) {
         RvNodeDetail(
             node,
-            current = node.id == ui.state.currentId,
+            current = node.id in ui.state.current,
             testedAtEpochMs = ui.state.testedAt[node.id].orEmpty(),
             onBack = onBack,
             onUse = { viewModel.pick(node.id) },
@@ -74,37 +74,44 @@ internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> 
     }
 }
 
-/** The search page (brief rv-gestures G7): the picker with its field focused; a pick makes the node the main one and closes. */
+/**
+ * The search page (brief rv-gestures G7): the picker with its field focused; a pick makes the node the main one and,
+ * once the core has switched, closes. A failed pick leaves the page open under its banner.
+ */
 @Composable
 internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onDetail: (String) -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    var applyTo by rememberSaveable { mutableStateOf(RvApplyTo.Both) }
+    val apply = applyTo.takeIf { ui.state.split }
     CompositionLocalProvider(LocalRvTesting provides ui.testing) {
         RvNodePicker(
             ui.state.nodes,
             ui.state.subscriptions,
             ui.state.currentId,
             ui.nowEpochMs,
-            onPick = {
-                viewModel.pick(it)
-                onClose()
-            },
+            onPick = { viewModel.pick(it, apply?.network, onClose) },
             onDetail = onDetail,
             onClose = onClose,
             searchPage = true,
             banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
             caption = mainCaption(ui),
+            alsoCurrent = ui.state.current,
+            apply = apply,
+            onApply = { applyTo = it },
         )
     }
 }
 
 /**
- * The main node's picker, pushed from 規則's 主節點 card: a tap picks the node and the page stays. The order is kept for
- * the page's life on the back stack.
+ * The main node's picker, pushed from 規則's 主節點 card: a tap picks the node and the page stays. The order and 套用到
+ * are kept for the page's life on the back stack; a failed pick or test shows its banner.
  */
 @Composable
 internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSearch: () -> Unit, onAdd: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var sort by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
+    var applyTo by rememberSaveable { mutableStateOf(RvApplyTo.Both) }
+    val apply = applyTo.takeIf { ui.state.split }
     CompositionLocalProvider(LocalRvTesting provides ui.testing) {
         RvNodePickerPage(
             ui.state.nodes,
@@ -112,20 +119,25 @@ internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSear
             ui.state.currentId,
             sort,
             { sort = it },
-            onPick = { viewModel.pick(it) },
+            onPick = { viewModel.pick(it, apply?.network) },
             onBack = onBack,
             onTest = viewModel::test,
             onSearch = onSearch,
             nowEpochMs = ui.nowEpochMs,
             onAdd = onAdd,
             caption = mainCaption(ui),
+            banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
+            alsoCurrent = ui.state.current,
+            apply = apply,
+            onApply = { applyTo = it },
         )
     }
 }
 
 /**
  * 活動 with the node picker it pulls down (ARCH D30), hosted inside 活動's entry and not on the back stack, so 活動 keeps
- * its state while the picker covers it. A pick switches the main node and closes the picker; a long press or the row's
+ * its state while the picker covers it. A pick switches the main node and, once the core has switched, closes the picker;
+ * a failed pick leaves it open under its banner. A long press or the row's
  * info mark opens the node's page ([onDetail]). [activity] is 活動's route, given the pull's look.
  */
 @Composable
@@ -138,31 +150,36 @@ internal fun NodesPull(
 ) {
     RvPullDown(variant, state, activity) { motion ->
         val ui by viewModel.ui.collectAsStateWithLifecycle()
+        var applyTo by rememberSaveable { mutableStateOf(RvApplyTo.Both) }
+        val apply = applyTo.takeIf { ui.state.split }
         CompositionLocalProvider(LocalRvTesting provides ui.testing) {
             RvNodePicker(
                 ui.state.nodes,
                 ui.state.subscriptions,
                 ui.state.currentId,
                 ui.nowEpochMs,
-                onPick = {
-                    viewModel.pick(it)
-                    motion.close()
-                },
+                onPick = { viewModel.pick(it, apply?.network, motion.close) },
                 onDetail = onDetail,
                 onClose = motion.close,
                 section = motion.section,
                 stretch = motion.stretch,
                 banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
                 caption = mainCaption(ui),
+                alsoCurrent = ui.state.current,
+                apply = apply,
+                onApply = { applyTo = it },
             )
         }
     }
 }
 
-/** The line under the title: what a pick does, or, when the profile has no main group, that there is no main node. */
+/**
+ * The line under the title: what a pick does. With no main group (a hand-edited profile may have none) a pick makes no
+ * node the main one, so there is no line, as 活動 shows its main node as a dash (q-p3a-nomain).
+ */
 @Composable
-private fun mainCaption(ui: NodesUi): String =
-    stringResource(if (ui.loaded && ui.state.mainGroupId == null) R.string.rv_no_main_group else R.string.rv_main_node_hint)
+private fun mainCaption(ui: NodesUi): String? =
+    if (ui.loaded && ui.state.mainGroupId == null) null else stringResource(R.string.rv_main_node_hint)
 
 /** 節點 before the catalog is read, as after process death: the title and rows of nodes. */
 @Composable

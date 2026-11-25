@@ -10,6 +10,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.Member
 import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.engine.fake.RvSampleNodes
 import dev.doona.android.engine.fake.rvSampleEngine
@@ -97,6 +99,14 @@ class AppRvNodesShotTest {
 
     @Test fun pickerNoMainLight() = shot("node-picker-nomain", dark = false, engine = ::noMainEngine) { Picker(it) }
 
+    /** The main group's networks apart: 套用到 over the list, and each network's node checked. */
+    @Test fun pickerSplitLight() = shot("node-picker-split", dark = false, engine = ::splitEngine) { Picker(it) }
+
+    /** A node the profile lists itself, in no subscription: the list ends with its 組態內 section. */
+    @Test
+    @Config(qualifiers = WHOLE_PICKER)
+    fun pickerInlineLight() = shot("node-picker-inline", dark = false, whole = true, engine = ::inlineEngine) { Picker(it) }
+
     @Test fun pickerLight() = shot("node-picker", dark = false) { Picker(it) }
 
     @Test fun pickerDark() = shot("node-picker", dark = true) { Picker(it) }
@@ -138,6 +148,18 @@ class AppRvNodesShotTest {
     private fun Picker(vm: NodesViewModel) =
         NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}) {}
 
+    /** The sample with Proxy's UDP on another node than its TCP. */
+    private fun splitEngine(): Engine = rvSampleEngine(
+        RvSampleNodes.groups.map { g ->
+            if (g.id != FakeRuleMode.MAIN_GROUP_ID) g else g.copy(udp = Group.Selection(g.members.first { it.id != g.tcp.selectedId }.id, pinned = true))
+        },
+    )
+
+    /** The sample with a node of no subscription added to Proxy, as a profile lists one inline. */
+    private fun inlineEngine(): Engine = rvSampleEngine(
+        RvSampleNodes.groups.map { g -> if (g.id != FakeRuleMode.MAIN_GROUP_ID) g else g.copy(members = g.members + Member("inline-home-01", "Home 01")) },
+    )
+
     /** A hand-edited profile without Proxy: the sample's other groups, so the catalog's main group is missing. */
     private fun noMainEngine(): Engine = rvSampleEngine(RvSampleNodes.groups.filterNot { it.id == FakeRuleMode.MAIN_GROUP_ID })
 
@@ -153,6 +175,7 @@ class AppRvNodesShotTest {
         const val WHOLE_PAGE_FS200 = "+h4925dp"
         const val WHOLE_PAGE_EN = "en-w412dp-h2950dp-notnight-xhdpi"
         const val WHOLE_DETAIL = "+h1220dp"
+        const val WHOLE_PICKER = "+h4850dp"
         const val WHOLE_DETAIL_FS200 = "+h1900dp"
         const val WHOLE_DETAIL_EN = "en-w412dp-h1220dp-notnight-xhdpi"
     }

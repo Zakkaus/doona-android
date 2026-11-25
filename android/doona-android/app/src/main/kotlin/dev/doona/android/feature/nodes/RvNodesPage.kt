@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -30,7 +31,6 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
-import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvEmptyState
 import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvGutter
@@ -55,8 +55,11 @@ import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSharedFlag
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvNodeDisc
+import dev.doona.android.feature.nodes.ui.rvNodeChips
+import dev.doona.android.feature.nodes.ui.rvNodeLine
 import dev.doona.android.feature.nodes.ui.rvNodeMenu
 import dev.doona.android.feature.nodes.ui.rvNodeTitle
 
@@ -67,28 +70,39 @@ import dev.doona.android.feature.nodes.ui.rvNodeTitle
  * card per part of the world, each node's latency over its change since the test before, five rows and then 查看全部. The
  * node in use carries the check badge on its flag wherever it is listed; a tap on a node opens its page and never
  * switches to it (Addendum A). The line under the title, [caption], says that the node chosen here is the main node (item
- * 24), or that the profile has none. With no
- * node (no subscription) the chips and the cards give way to the empty state, whose 新增訂閱 runs [onAdd].
+ * 24); with no main group there is none (q-p3a-nomain), and no node carries the check. The chips (decision 2026-11-25 19:25, shared with the pickers and a group's page)
+ * are the page's own: 訂閱 shows one subscription's nodes, or 組態內's, across the page; 排序 orders the rows of each
+ * part of the world. With no node (no subscription) the chips and the cards give way to the empty state, whose 新增訂閱
+ * runs [onAdd].
  */
 @Composable
 internal fun RvNodesPage(
     state: RvNodesPageState,
     onBack: () -> Unit,
-    onFilter: () -> Unit,
     onOpen: (String) -> Unit,
     onAllNodes: () -> Unit,
     onAdd: () -> Unit = {},
     score: RvScoreMarks? = null,
-    caption: String = stringResource(R.string.rv_main_node_hint),
+    caption: String? = stringResource(R.string.rv_main_node_hint),
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }
+    var picked by rememberSaveable { mutableStateOf<String?>(null) }
+    var order by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
     val title = stringResource(R.string.rv_nodes_title)
+    val shown = remember(state, picked) { state.scoped(picked) }
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         // The pull-down from 活動 picks the main node; groups with their own choice open from 活動's rule rows (item 24).
         val empty = state.nodes.isEmpty()
-        val chips: (@Composable () -> Unit)? = if (empty) null else ({ Chips(onFilter) })
-        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(caption) }, control = chips)
+        val chips: (@Composable () -> Unit)? = if (empty) {
+            null
+        } else {
+            {
+                val (subChip, orderChip) = rvNodeChips(state.subscriptions, state.nodes.any { it.inline }, picked, order, { picked = it }, { order = it })
+                RvFilterChipRow(subChip, orderChip)
+            }
+        }
+        RvPageHeader(title, titleBlock, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = chips)
         if (empty) {
             RvGutter {
                 RvEmptyState(
@@ -100,21 +114,15 @@ internal fun RvNodesPage(
             }
         } else {
             RvGutter {
-                TopCard(state.top(steadiest), state.currentId, steadiest, { steadiest = it }, onOpen, onAllNodes)
-                MapCard(state)
+                TopCard(shown.top(steadiest), shown.currentId, steadiest, { steadiest = it }, onOpen, onAllNodes)
+                MapCard(shown)
             }
             RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
             RvGutter {
-                for ((region, nodes) in state.byRegion()) RegionCard(region, nodes, state.currentId, onOpen, score)
+                for ((region, nodes) in shown.byRegion(order)) RegionCard(region, nodes, shown.currentId, onOpen, score)
             }
         }
     }
-}
-
-/** Under the large title, Analytics' two chips: the subscription at the start, the order at the end. */
-@Composable
-private fun Chips(onFilter: () -> Unit) {
-    RvFilterChipRow(RvChipPick(stringResource(R.string.rv_nodes_all_subscriptions), onFilter), RvChipPick(stringResource(R.string.rv_nodes_by_latency), onFilter))
 }
 
 /** 'Top movers': the card's header (it opens the list, as on 活動), 最快 | 最穩, then the eight nodes in two rows of four. */
@@ -205,7 +213,7 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
         RvRow(
             { RvNodeDisc(node, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
             rvNodeTitle(node),
-            listOfNotNull(mark, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
+            rvNodeLine(mark, node.protocol, stringResource(node.place.label)),
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
             onClick = { onOpen(node.id) },
             onLongClick = menu,

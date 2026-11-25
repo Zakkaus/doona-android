@@ -25,6 +25,7 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvDelta
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvLatencyText
 import dev.doona.android.designsystem.rv.RvNodesSize
@@ -35,7 +36,6 @@ import dev.doona.android.designsystem.rv.RvSearchPill
 import dev.doona.android.designsystem.rv.RvSeeAll
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.feature.model.RvNode
@@ -67,33 +67,49 @@ internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, 
  * The node list (the picker under 全域 and the main node's page, rv-final's pull-down picker): one card per group, its
  * head row over its nodes in 節點's rows, the [currentId] node's flag checked. By default a group is a subscription,
  * headed by its 訂閱 row (use against quota, end date, what is left); under 地區 it is a country, headed by the same row
- * with the country's flag, its name and how many nodes it has. Each card shows its first [ROWS] and the current node
- * wherever it falls, then 查看全部 opens the rest in place. A tap on a node picks it ([onPick]), and the check moves.
+ * with the country's flag, its name and how many nodes it has; the nodes of no subscription close the list in one 組態內
+ * card. Each card shows its first [ROWS] and the current nodes ([currentId], and [alsoCurrent] for UDP's while apart)
+ * wherever they fall, then 查看全部 opens the rest in place. A tap on a node picks it ([onPick]), and the check moves.
  * Under 穩定 a row's second trailing line is how many of its kept tests answered, where its change is otherwise. While a
  * latency test of every node, or of one node, runs ([LocalRvTesting], [LocalRvTestingNodes]) a busy bar stands at the
  * row's end in the room of the latency and what is under it, as in the pull-down picker ([RvLatencyChange]): the name
  * keeps its width and lines.
  */
 @Composable
-internal fun RvNodeGroups(groups: List<RvNodeGroup>, currentId: String, sort: RvNodeSort, nowEpochMs: Long, onPick: (String) -> Unit) {
+internal fun RvNodeGroups(
+    groups: List<RvNodeGroup>,
+    currentId: String,
+    sort: RvNodeSort,
+    nowEpochMs: Long,
+    alsoCurrent: Set<String> = emptySet(),
+    onPick: (String) -> Unit,
+) {
+    val current = setOf(currentId) + alsoCurrent
     RvGutter {
-        groups.forEach { key(it.key) { GroupCard(it, currentId, sort, nowEpochMs, onPick) } }
+        groups.forEach { key(it.key) { GroupCard(it, current, sort, nowEpochMs, onPick) } }
     }
 }
 
 @Composable
-private fun GroupCard(group: RvNodeGroup, currentId: String, sort: RvNodeSort, nowEpochMs: Long, onPick: (String) -> Unit) {
+private fun GroupCard(group: RvNodeGroup, current: Set<String>, sort: RvNodeSort, nowEpochMs: Long, onPick: (String) -> Unit) {
     var all by rememberSaveable(group.key) { mutableStateOf(false) }
-    val shown = if (all) group.nodes else group.nodes.take(ROWS) + group.nodes.drop(ROWS).filter { it.id == currentId }
+    val shown = if (all) group.nodes else group.nodes.take(ROWS) + group.nodes.drop(ROWS).filter { it.id in current }
     val count = group.nodes.size
     RvCard {
         when (group) {
             is RvNodeGroup.Subscription -> RvSubscriptionRow(group.subscription, nowEpochMs)
             is RvNodeGroup.Place -> PlaceRow(group.place, count)
+            is RvNodeGroup.Inline -> InlineRow(count)
         }
-        shown.forEach { key(it.id) { NodeRow(it, it.id == currentId, sort, onPick) } }
+        shown.forEach { key(it.id) { NodeRow(it, it.id in current, sort, onPick) } }
         if (shown.size < count) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, count, count)) { all = true }
     }
+}
+
+/** 組態內's head row, laid out as a country's: the link disc, 組態內, and how many nodes it has. */
+@Composable
+private fun InlineRow(count: Int) {
+    RvRow({ RvIconDisc(R.drawable.rv_sym_link) }, stringResource(R.string.rv_nodes_inline), pluralStringResource(R.plurals.rv_nodes_nodes, count, count))
 }
 
 /** A country's head row, laid out as a subscription's: its flag, its name, and how many nodes it has. */
@@ -120,7 +136,7 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
     RvRow(
         { RvNodeDisc(node, RvNodesSize.rowFlag, current = current) },
         rvNodeTitle(node),
-        node.protocol + SEPARATOR + stringResource(node.place.label),
+        rvNodeLine(node.protocol, stringResource(node.place.label)),
         if (current) pick.semantics { stateDescription = inUse } else pick,
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         subtitleEnd = second,

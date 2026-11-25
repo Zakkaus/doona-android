@@ -92,7 +92,7 @@ private fun Challenger(challenger: ScoreChallenger, members: List<RvNode>) {
     RvRow(
         { if (node != null) RvFlag(node.place.flag, RvSize.rowDisc) else RvIconDisc(R.drawable.rv_sym_account_tree) },
         challenger.name,
-        node?.let { it.protocol + SEPARATOR + stringResource(it.place.label) },
+        node?.let { rvNodeLine(it.protocol, stringResource(it.place.label)) },
         titleEnd = relation?.let { { RvText(stringResource(it), Rv.type.rowValue, align = TextAlign.End) } },
     )
 }

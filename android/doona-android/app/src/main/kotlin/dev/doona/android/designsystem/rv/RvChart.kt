@@ -157,7 +157,7 @@ private fun Modifier.rvSquareAtLeast() = layout { measurable, constraints ->
 }
 
 /**
- * A figure in [style], its unit in [unitStyle] on the same baseline; Latin only, as figures and units are. It keeps one
+ * A figure in [style], its unit in [unitStyle] on the same baseline; the unit may be CJK (毫秒). It keeps one
  * line: where it, or one of the [widest] figures the place may show, does not fit the width, number and unit shrink
  * together to the largest size at which all of them fit ([rvFigureFit]), never cut.
  */
@@ -175,10 +175,10 @@ internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextSty
     BasicText(figure.text(unit), modifier, style = style.copy(color = Rv.colors.text), maxLines = 1, autoSize = rvFigureFit(style, all))
 }
 
-/** The figure as one text, its unit in [unit]. */
+/** The figure as one text, its unit in [unit]; a CJK unit (毫秒) in the CJK face, as every RV text sets one ([scripted]). */
 private fun RvFigure.text(unit: SpanStyle) = buildAnnotatedString {
     append(whole)
-    withStyle(unit) { append(this@text.unit) }
+    withStyle(unit) { append(scripted(this@text.unit)) }
 }
 
 /**

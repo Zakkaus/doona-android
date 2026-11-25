@@ -29,6 +29,9 @@ internal data class RvNode(
     val subscription: String,
     val history: List<Int?>,
 ) {
+    /** A node the profile lists itself, of no subscription (組態內): its [subscription] is empty. */
+    val inline: Boolean get() = subscription.isEmpty()
+
     /** Where the maps mark the node: its city when its name gives one, else its country's centroid; none for 其他. */
     val spot: RvSpot? get() = if (place.mapped) city?.spot ?: place.spot else null
 
