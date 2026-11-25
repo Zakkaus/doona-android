@@ -77,11 +77,12 @@ fn is_ad(rule: &DnsRequestRule) -> bool {
 }
 
 /// The paused runs of `source`, a source honk has loaded, that hold the statement, read back
-/// by honk without markers.
-fn paused(source: &SourceSnapshot) -> Vec<Range<usize>> {
-    let runs = markers::runs(source).unwrap();
+/// by honk without markers, or none when the marker runs cannot be placed in its blocks.
+fn paused(source: &SourceSnapshot) -> Option<Vec<Range<usize>>> {
+    let runs = markers::runs(source)?;
     let text = &source.content;
-    runs.into_iter()
+    let runs = runs
+        .into_iter()
         .filter(|run| run.list == Some(List::DnsRequest))
         .filter(|run| {
             let marker = markers::marker(&run.id);
@@ -94,7 +95,8 @@ fn paused(source: &SourceSnapshot) -> Vec<Range<usize>> {
                 .is_ok_and(|c| matches!(c.dns.routing.request.rules.as_slice(), [r] if is_ad(r)))
         })
         .map(|run| run.bytes)
-        .collect()
+        .collect();
+    Some(runs)
 }
 
 /// The tree as honk loads it; a draft that does not parse opens the raw editor.
@@ -120,8 +122,14 @@ fn scan(tree: &Tree, raw: &impl Fn() -> EditError) -> Result<Scan, EditError> {
             paused: false,
         })
         .collect();
+    let root = tree.entry.parent().unwrap();
     for (source, snapshot) in loaded.sources.iter().enumerate() {
-        copies.extend(paused(snapshot).into_iter().map(|bytes| Copy {
+        // honk loads a file with no block; the cursor that places marker runs does not.
+        let runs = paused(snapshot).ok_or_else(|| EditError::OpenSource {
+            path: snapshot.path.strip_prefix(root).unwrap().into(),
+            bytes: None,
+        })?;
+        copies.extend(runs.into_iter().map(|bytes| Copy {
             source,
             bytes,
             paused: true,
@@ -207,11 +215,12 @@ fn deepest<'d, 'a>(doc: &'d Document<'a>) -> Option<(usize, Segment<'d, 'a>)> {
 }
 
 impl File {
-    /// The entry with the statement as the only rule of a new or empty request block.
-    fn ad_block_nested(&self) -> (String, Carry) {
+    /// The entry with the statement as the only rule of a new or empty request block, or none
+    /// when the cursor cannot read the entry.
+    fn ad_block_nested(&self) -> Option<(String, Carry)> {
         let text = &self.source.content;
         let nl = if text.contains("\r\n") { "\r\n" } else { "\n" };
-        let doc = self.document().unwrap();
+        let doc = self.document()?;
         let (bytes, insertion) = match deepest(&doc) {
             None => {
                 let lead = if text.is_empty() || text.ends_with('\n') {
@@ -242,7 +251,7 @@ impl File {
         };
         let mut out = text.to_string();
         out.replace_range(bytes.clone(), &insertion);
-        (out, Carry::splice(text.len(), bytes, insertion.len()))
+        Some((out, Carry::splice(text.len(), bytes, insertion.len())))
     }
 }
 
@@ -283,7 +292,6 @@ impl HonkStore {
             path: entry.clone(),
             bytes: None,
         };
-        let file = File::parse(&tree, &tree.entry, &raw)?;
         let edit = match (state, on) {
             (AdBlock::Elsewhere { path, bytes }, _) => {
                 let bytes = Some(bytes);
@@ -291,12 +299,15 @@ impl HonkStore {
             }
             (AdBlock::On, false) => Edit::Pause,
             (AdBlock::Off, true) => Edit::Resume,
-            (AdBlock::Absent, true) => return Ok(self.insert_ad_block(draft, tree, &scan, file)?),
+            (AdBlock::Absent, true) => {
+                let file = File::parse(&tree, &tree.entry, &raw)?;
+                return Ok(self.insert_ad_block(draft, tree, &scan, file)?);
+            }
             _ => return Ok(()),
         };
-        let bytes = &copy.unwrap().bytes;
-        let row = file.rows.iter().find(|r| &r.bytes == bytes).unwrap();
-        Ok(self.form_edit(draft, &entry, edit(&row.id))?)
+        let file = File::parse(&tree, &tree.entry, &raw)?;
+        let row = copy.and_then(|c| file.rows.iter().find(|r| r.bytes == c.bytes));
+        Ok(self.form_edit(draft, &entry, edit(&row.ok_or_else(raw)?.id))?)
     }
 
     /// Before the entry's first request row, or as the only rule of a new request block.
@@ -323,7 +334,7 @@ impl HonkStore {
             path: file.source.path.clone(),
             bytes: None,
         };
-        let (text, carry) = file.ad_block_nested();
+        let (text, carry) = file.ad_block_nested().ok_or_else(raw)?;
         let absolute = tree.entry.clone();
         tree.files.insert(absolute.clone(), text.into());
         let candidate = File::parse(&tree, &absolute, &raw)?;

@@ -316,3 +316,51 @@ fn a_missing_label_refuses_turning_it_on_but_not_off() {
     ));
     assert_eq!(draft.state(), AdBlock::Off);
 }
+
+#[test]
+fn the_entry_statement_goes_before_the_request_rules_of_an_include() {
+    // honk merges a file's own sections before those of its includes.
+    let entry = "include { 'b.dae' }\ngroup { P { policy: select } }\nrouting { fallback: P }\n";
+    let b = "dns { routing { request {\n  qname(geosite:cn) -> asis\n  fallback: reject\n} } }\n";
+    let mut draft = Draft::new(&[(ENTRY, entry), ("b.dae", b)]);
+    assert_eq!(draft.state(), AdBlock::Absent);
+    draft.set(true, &PRESENT).unwrap();
+    assert_eq!(draft.state(), AdBlock::On);
+    assert_eq!(
+        draft.request(),
+        (
+            vec![
+                (true, DnsRequestAction::Reject),
+                (false, DnsRequestAction::AsIs)
+            ],
+            DnsRequestAction::Reject
+        )
+    );
+    assert_eq!(draft.text("b.dae"), b);
+}
+
+#[test]
+fn turning_it_off_while_absent_writes_nothing() {
+    let text = "group { P { policy: select } }\nrouting { fallback: P }\n";
+    let mut draft = Draft::new(&[(ENTRY, text)]);
+    draft.set(false, &Geo(Label::MissingCategory)).unwrap();
+    assert_eq!(draft.state(), AdBlock::Absent);
+    assert_eq!(draft.text(ENTRY), text);
+}
+
+#[test]
+fn a_marker_line_in_a_file_without_blocks_opens_that_file() {
+    // honk loads a file that holds only comments; the cursor that places marker runs needs a block.
+    let entry = "include { 'b.dae' }\ngroup { P { policy: select } }\nrouting { fallback: P }\n";
+    let b = format!("# paused r-0123456789abcdef: {STATEMENT}\n");
+    let mut draft = Draft::new(&[(ENTRY, entry), ("b.dae", &b)]);
+    let expected = ("b.dae".to_string(), None);
+    match draft.store.ad_block(draft.id) {
+        Err(EditError::OpenSource { path, bytes }) => {
+            assert_eq!((path.to_string_lossy().into_owned(), bytes), expected);
+        }
+        other => panic!("expected OpenSource, got {other:?}"),
+    }
+    assert_eq!(open_source(draft.set(true, &PRESENT)), expected);
+    assert_eq!(draft.text(ENTRY), entry);
+}
