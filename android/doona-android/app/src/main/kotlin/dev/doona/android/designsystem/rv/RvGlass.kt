@@ -67,7 +67,11 @@ internal class RvGlassTint(val over: Color, val solid: Color)
  * through at full strength (item 23).
  */
 @Composable
-internal fun Modifier.rvGlass(glass: RvGlass, shape: Shape, tint: RvGlassTint): Modifier {
+internal fun Modifier.rvGlass(glass: RvGlass, shape: Shape, tint: RvGlassTint): Modifier = rvGlass(glass, shape, { tint.over }, tint.solid)
+
+/** [rvGlass] whose `over` tint is read as the surface draws, so a tint that moves every frame composes nothing. */
+@Composable
+internal fun Modifier.rvGlass(glass: RvGlass, shape: Shape, over: () -> Color, solid: Color): Modifier {
     val blur = rememberGraphicsLayer()
     val spot = remember { RvGlassSpot() }
     return onGloballyPositioned { spot.origin = it.positionInRoot() }
@@ -75,9 +79,9 @@ internal fun Modifier.rvGlass(glass: RvGlass, shape: Shape, tint: RvGlassTint): 
         .drawBehind {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 drawBackdrop(glass, blur, spot.origin - glass.origin)
-                drawRect(tint.over)
+                drawRect(over())
             } else {
-                drawRect(tint.solid)
+                drawRect(solid)
             }
         }
 }

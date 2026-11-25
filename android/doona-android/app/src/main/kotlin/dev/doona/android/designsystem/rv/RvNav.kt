@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -33,9 +32,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -81,7 +82,7 @@ internal val LocalRvNav = staticCompositionLocalOf { RV_NAV }
 internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlass, scroll: ScrollState, insets: WindowInsets, modifier: Modifier = Modifier) {
     val motion = Rv.motion
     val scope = rememberCoroutineScope()
-    val shrink by animateFloatAsState(if (rvCollapsedOnScroll(scroll)) 1f else 0f, motion.tween(RvMotion.NAV_MS), label = "nav")
+    val shrink = animateFloatAsState(if (rvCollapsedOnScroll(scroll)) 1f else 0f, motion.tween(RvMotion.NAV_MS), label = "nav")
     val pick: (Int) -> Unit = { i ->
         if (i != selected) {
             onSelect(i)
@@ -102,21 +103,28 @@ internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlas
         // The labels' one size, from the open capsule's tabs ([rvRowFit]); a label folding away may shrink alone.
         val tab = (maxWidth - RvChrome.navInset * 2 - RvChrome.navPillInset * 2) / items.size
         val labelStyle = rvRowFit(items.map { stringResource(it.label) }, Rv.type.navLabel, tab - RvNavSize.labelInset * 2)
-        val width = lerp(maxWidth - RvChrome.navInset * 2, RvChrome.navCollapsedWidth, shrink)
-        val height = lerp(RvChrome.navHeight + grow, RvChrome.navCollapsedHeight, shrink)
+        val open = maxWidth - RvChrome.navInset * 2
+        val tall = RvChrome.navHeight + grow
         val colors = Rv.colors
         val tint = colors.navGlass
         val rim = colors.navRim?.let { Modifier.border(RvChrome.navRim, it, CircleShape) } ?: Modifier
+        // The capsule folds as it is measured and drawn: shrink is read there, so a frame of the fold composes nothing.
         Row(
             Modifier
-                .size(width, height)
+                .layout { measurable, constraints ->
+                    val s = shrink.value
+                    val w = lerp(open, RvChrome.navCollapsedWidth, s).roundToPx().coerceIn(constraints.minWidth, constraints.maxWidth)
+                    val h = lerp(tall, RvChrome.navCollapsedHeight, s).roundToPx().coerceIn(constraints.minHeight, constraints.maxHeight)
+                    val placeable = measurable.measure(Constraints.fixed(w, h))
+                    layout(w, h) { placeable.placeRelative(0, 0) }
+                }
                 .rvSoftShadow(CircleShape, RvChrome.navShadow, RvChrome.navShadowDrop, RvChrome.NAV_SHADOW_ALPHA)
-                .rvGlass(glass, CircleShape, RvGlassTint(lerp(tint.over, tint.solid, shrink), tint.solid))
+                .rvGlass(glass, CircleShape, { lerp(tint.over, tint.solid, shrink.value) }, tint.solid)
                 .then(rim)
                 .padding(RvChrome.navPillInset)
                 .selectableGroup(),
         ) {
-            LocalRvNav.current.forEach { item -> NavItem(item, item.id == selected, shrink, labelStyle, Modifier.weight(1f)) { pick(item.id) } }
+            LocalRvNav.current.forEach { item -> NavItem(item, item.id == selected, { shrink.value }, labelStyle, Modifier.weight(1f)) { pick(item.id) } }
         }
     }
 }
@@ -126,7 +134,7 @@ internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlas
  * the label out and the glyph down.
  */
 @Composable
-private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, labelStyle: TextStyle, modifier: Modifier, onClick: () -> Unit) {
+private fun NavItem(item: RvNavItem, selected: Boolean, shrink: () -> Float, labelStyle: TextStyle, modifier: Modifier, onClick: () -> Unit) {
     val colors = Rv.colors
     val ink = if (selected) colors.text else colors.textSecondary
     val pill = if (selected) Modifier.background(colors.navPill) else Modifier
@@ -143,26 +151,32 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, labelStyl
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        RvGlyph(item.icon, lerp(RvChrome.navGlyph, RvChrome.navCollapsedGlyph, shrink), ink)
+        RvGlyph(item.icon, { lerp(RvChrome.navGlyph, RvChrome.navCollapsedGlyph, shrink()) }, ink)
         val line = rvNavLabelLine()
         val fit = rvShrinkToFit(labelStyle)
-        if (shrink < 1f) {
-            Spacer(Modifier.height(RvChrome.navLabelGap * (1 - shrink)))
-            // The label keeps its line while the capsule folds, so only its width can make it smaller: a word too long
-            // for the tab (Connections at 92 of 93 dp) shrinks to fit, whole, inside the pill's round ends.
-            val box = Modifier.height(line * (1 - shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)).padding(horizontal = RvNavSize.labelInset)
-            Box(box, contentAlignment = Alignment.TopCenter) {
-                RvText(
-                    label,
-                    labelStyle,
-                    Modifier.wrapContentHeight(Alignment.Top, unbounded = true).height(line),
-                    color = ink,
-                    align = TextAlign.Center,
-                    autoSize = fit,
-                )
-            }
+        // Folded, the gap and the label's box are 0 high and the label is clear: they stay composed and take no room.
+        Spacer(Modifier.foldingHeight(RvChrome.navLabelGap, shrink))
+        // The label keeps its line while the capsule folds, so only its width can make it smaller: a word too long
+        // for the tab (Connections at 92 of 93 dp) shrinks to fit, whole, inside the pill's round ends.
+        val box = Modifier.foldingHeight(line, shrink).graphicsLayer { alpha = (1 - 2 * shrink()).coerceAtLeast(0f) }.padding(horizontal = RvNavSize.labelInset)
+        Box(box, contentAlignment = Alignment.TopCenter) {
+            RvText(
+                label,
+                labelStyle,
+                Modifier.wrapContentHeight(Alignment.Top, unbounded = true).height(line),
+                color = ink,
+                align = TextAlign.Center,
+                autoSize = fit,
+            )
         }
     }
+}
+
+/** [full] high, less the share [shrink] has folded away, read as it is measured. */
+private fun Modifier.foldingHeight(full: Dp, shrink: () -> Float): Modifier = layout { measurable, constraints ->
+    val h = (full * (1 - shrink())).roundToPx().coerceIn(constraints.minHeight, constraints.maxHeight)
+    val placeable = measurable.measure(constraints.copy(minHeight = h, maxHeight = h))
+    layout(placeable.width, h) { placeable.placeRelative(0, 0) }
 }
 
 /** How far the capsule's bottom sits above the screen's edge: 40 dp, or more above a taller system bar. */

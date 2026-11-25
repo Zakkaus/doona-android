@@ -155,6 +155,19 @@ internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: M
     Image(painterResource(icon), contentDescription = null, modifier.size(size).testTag(RvRowPart.GLYPH), colorFilter = ColorFilter.tint(color))
 }
 
+/** [RvGlyph] whose [size] is read as the glyph is measured, so a size that moves every frame composes nothing. */
+@Composable
+internal fun RvGlyph(@DrawableRes icon: Int, size: () -> Dp, color: Color, modifier: Modifier = Modifier) {
+    val fit = Modifier.layout { measurable, constraints ->
+        val edge = size().roundToPx()
+        val w = edge.coerceIn(constraints.minWidth, constraints.maxWidth)
+        val h = edge.coerceIn(constraints.minHeight, constraints.maxHeight)
+        val placeable = measurable.measure(Constraints.fixed(w, h))
+        layout(w, h) { placeable.placeRelative(0, 0) }
+    }
+    Image(painterResource(icon), contentDescription = null, modifier.then(fit).testTag(RvRowPart.GLYPH), colorFilter = ColorFilter.tint(color))
+}
+
 /**
  * The screen's one tinted area: the dot map of the world in [dots] on the neutral page behind the header content,
  * centred on [focus] at [focusTop] from the header's top, none above [statusBar], and faint behind the hero's text at
