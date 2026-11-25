@@ -9,7 +9,7 @@
     <string name="rv_settings_notify_drop">Notify when disconnected</string>
     <string name="rv_settings_per_app">Per-app</string>
     <string name="rv_settings_per_app_value">%1$d apps only</string>
-    <string name="rv_settings_connection_footer">Only the checked apps go through the proxy. Other apps and local-network addresses connect directly.</string>
+    <string name="rv_settings_connection_footer">Only the checked apps use the proxy. Others and local-network addresses connect directly.</string>
 
     <string name="rv_settings_group_subscription">Subscriptions</string>
     <string name="rv_settings_auto_update">Auto-update</string>

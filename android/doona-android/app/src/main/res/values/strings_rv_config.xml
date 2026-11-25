@@ -38,8 +38,8 @@
     <string name="rv_config_history">History</string>
     <string name="rv_config_import">Import configuration</string>
     <string name="rv_config_reason_linux">Linux only</string>
-    <string name="rv_config_reason_process">No process names</string>
-    <string name="rv_config_reason_mac">No MAC addresses</string>
+    <string name="rv_config_reason_process">Cannot match process names</string>
+    <string name="rv_config_reason_mac">Cannot match MAC addresses</string>
     <string name="rv_config_line">Line %1$d</string>
     <string name="rv_config_source">Source</string>
     <string name="rv_config_search">Search the file</string>
@@ -74,7 +74,7 @@
     <string name="rv_template_group_auto">Automatic</string>
     <string name="rv_template_group_media">Overseas media</string>
     <string name="rv_template_group_bahamut">Bahamut</string>
-    <string name="rv_template_group_cn">Mainland China</string>
+    <string name="rv_template_group_cn">Mainland China nodes</string>
     <string name="rv_config_create">Create configuration</string>
     <string name="rv_config_kind_note">%1$s: %2$s</string>
     <string name="rv_template_group_apple" translatable="false">Apple</string>

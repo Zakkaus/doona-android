@@ -76,7 +76,7 @@
         <item quantity="other">Apply %1$d rules</item>
     </plurals>
     <string name="rv_rules_pending">Not applied yet</string>
-    <string name="rv_rules_held">Held</string>
+    <string name="rv_rules_held">On hold</string>
     <string name="rv_rules_discard">Discard held rules</string>
     <string name="rv_rules_in_use">In effect</string>
     <string name="rv_rules_off">Off</string>
@@ -93,7 +93,7 @@
     <string name="rv_template_homebound_line">When abroad, mainland China sites go through the proxy</string>
     <string name="rv_template_gfw">GFW list only</string>
     <string name="rv_template_gfw_line">Only GFW-listed sites go through the proxy</string>
-    <string name="rv_template_needs_geosite">Needs geosite</string>
+    <string name="rv_template_needs_geosite">Needs GeoSite</string>
     <string name="rv_template_in_use">In use</string>
     <string name="rv_template_review">Review changes</string>
     <string name="rv_template_from_to">%1$s → %2$s</string>

@@ -17,7 +17,7 @@
     <string name="rv_stats_no_quota">No subscription reports its quota</string>
     <string name="rv_stats_no_expiry">No expiry date</string>
     <string name="rv_stats_nodes">Node locations</string>
-    <string name="rv_stats_latency">Latency</string>
+    <string name="rv_stats_latency">Latency spread</string>
     <string name="rv_stats_ms">ms</string>
     <string name="rv_stats_median">Median · %1$d tested</string>
     <string name="rv_stats_split">Routing split</string>

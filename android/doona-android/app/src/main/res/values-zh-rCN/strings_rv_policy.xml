@@ -83,7 +83,7 @@
     <string name="rv_template_homebound_line">在海外时，中国大陆网站经由代理</string>
     <string name="rv_template_gfw">只代理 GFW 名单</string>
     <string name="rv_template_gfw_line">只有 GFW 名单中的网站经由代理</string>
-    <string name="rv_template_needs_geosite">需 geosite</string>
+    <string name="rv_template_needs_geosite">需要 GeoSite</string>
     <string name="rv_template_in_use">使用中</string>
     <string name="rv_template_review">查看更改</string>
     <string name="rv_template_from_to">%1$s → %2$s</string>

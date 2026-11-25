@@ -2,8 +2,6 @@
 <!-- 取自 doona src/i18n/locales/zh-TW.json。 -->
 <resources>
     <string name="hub_activity">活動</string>
-    <string name="hub_traffic">觀測</string>
-    <string name="hub_routing">路由</string>
     <string name="hub_settings">設定</string>
     <string name="nav_overview">系統狀態</string>
     <string name="nav_policies">策略</string>
@@ -15,8 +13,6 @@
     <string name="group_new_group">新增群組</string>
     <string name="policy_edit">編輯群組</string>
     <string name="backend_connected">已連線</string>
-    <string name="login_submit">連線</string>
-    <string name="settings_profile">連線設定檔</string>
     <string name="act_mode">出站模式</string>
     <string name="mode_rule">規則</string>
     <string name="mode_direct">直連</string>
@@ -24,21 +20,16 @@
     <string name="act_global">全域出站</string>
     <string name="ui_download">下載</string>
     <string name="ui_upload">上傳</string>
-    <string name="act_active">活動連線</string>
     <string name="act_latency">延遲</string>
     <string name="latency_ms">%1$d 毫秒</string>
     <string name="latency_good">快速</string>
     <string name="latency_fair">普通</string>
     <string name="latency_slow">緩慢</string>
     <string name="latency_untested">未測試</string>
-    <string name="act_cpu">CPU 使用率</string>
     <string name="policy_kind_selector">手動選擇</string>
     <string name="policy_kind_urltest">平均最快</string>
     <string name="policy_kind_fallback">依序備援</string>
-    <string name="policy_kind_fixed">固定</string>
     <string name="policy_kind_score">綜合評分</string>
-    <string name="policy_kind_loadbalance">負載平衡</string>
-    <string name="policy_kind_random">隨機</string>
     <string name="group_policy_score_hint">依節點的可靠度與近期連線品質自動選擇</string>
     <string name="policy_healthy">%1$d 個可用</string>
     <string name="policy_untested">%1$d 個未測試</string>
@@ -48,7 +39,6 @@
     <string name="policy_kind_manual">手動選擇 %1$d</string>
     <string name="policy_kind_auto">自動選擇 %1$d</string>
     <string name="policy_all_regions">全部地區</string>
-    <string name="policy_sort">排序</string>
     <string name="policy_by_latency">依延遲</string>
     <string name="policy_alive_only">只顯示可用節點</string>
     <plurals name="policy_members">
@@ -56,8 +46,6 @@
     </plurals>
     <string name="ui_group">群組</string>
     <string name="group_every_node">包含所有節點</string>
-    <string name="policy_includes">選入條件</string>
-    <string name="policy_filter">篩選節點</string>
     <string name="policy_test_all">測試全部</string>
     <string name="policy_test_group">測試此群組</string>
     <string name="policy_unpin">恢復自動選擇</string>
@@ -110,7 +98,7 @@
     <string name="error_too_large">訂閱內容太大</string>
     <string name="error_parse_failed">無法解析訂閱</string>
     <string name="error_no_nodes">訂閱中沒有節點</string>
-    <string name="error_busy">另一項變更正在進行，請稍後再試</string>
+    <string name="error_busy">另一項變更正在進行，請稍後再試。</string>
     <string name="error_internal">發生內部錯誤</string>
     <string name="error_local_network">無法連線至區域網路上的位址</string>
     <string name="error_dns_failed">DNS 查詢失敗</string>

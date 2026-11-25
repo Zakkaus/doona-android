@@ -22,10 +22,10 @@
     <string name="rv_duration">%1$d h %2$d min</string>
     <string name="rv_chart_type">Chart type</string>
     <string name="rv_full_screen">Full screen</string>
-    <string name="rv_range_1m">1m</string>
-    <string name="rv_range_5m">5m</string>
-    <string name="rv_range_15m">15m</string>
-    <string name="rv_range_1h">1h</string>
+    <string name="rv_range_1m">1 min</string>
+    <string name="rv_range_5m">5 min</string>
+    <string name="rv_range_15m">15 min</string>
+    <string name="rv_range_1h">1 h</string>
     <string name="rv_search_nodes">Search nodes</string>
     <string name="rv_stats">Open statistics</string>
     <string name="rv_subscriptions">Subscriptions</string>
@@ -39,7 +39,7 @@
     <string name="rv_preview_label" translatable="false">doona RV sample</string>
     <string name="rv_mode_rule">Rules</string>
     <string name="rv_main_node">Main node</string>
-    <string name="rv_main_node_hint">The node you pick becomes the main node</string>
+    <string name="rv_main_node_hint">Your pick becomes the main node</string>
     <string name="rv_hero_all_traffic">All traffic</string>
     <string name="rv_hero_show">Show %1$s</string>
     <string name="rv_direct_note">All traffic connects directly, without a proxy</string>
