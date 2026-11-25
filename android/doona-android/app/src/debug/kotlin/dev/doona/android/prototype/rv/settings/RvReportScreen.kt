@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,36 +35,9 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
-
-/** Where the report stands: being written, written with the [RvRedaction] it hides and ready to share, or not written. */
-@Immutable
-internal sealed interface RvReportBuild {
-    data object Building : RvReportBuild
-
-    data class Ready(val redaction: RvRedaction) : RvReportBuild
-
-    data object Failed : RvReportBuild
-}
-
-/**
- * What the report hides on top of what it always removes (subscription links, tokens): node addresses and ports, the
- * phone's own IPs, the domains it visited, and which app opened each connection. The first three start hidden, the app
- * names shown (the owner, owner-fix2 item 11).
- */
-@Immutable
-internal data class RvRedaction(val nodes: Boolean = true, val ip: Boolean = true, val domains: Boolean = true, val apps: Boolean = false)
-
-/** What the report holds, as its preview lists it: the app's version, the phone, the settings in counts, and the log. */
-@Immutable
-internal data class RvReportPreview(
-    val app: String,
-    val device: String,
-    val nodes: Int,
-    val subscriptions: Int,
-    val rules: Int,
-    val events: Int,
-    val crashes: Int,
-)
+import dev.doona.android.feature.report.RvRedaction
+import dev.doona.android.feature.report.RvReportBuild
+import dev.doona.android.feature.report.RvReportPreview
 
 /** What the report page's actions do: open the prefilled issue, hand the file to the share sheet, write it again. */
 internal class RvReportActions(
