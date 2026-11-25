@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.nodes
+package dev.doona.android.feature.nodes
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background

@@ -1,8 +1,6 @@
-package dev.doona.android.prototype.rv.nodes
+package dev.doona.android.feature.nodes
 
-import android.content.res.Configuration
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,7 +24,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
@@ -51,7 +48,6 @@ import dev.doona.android.designsystem.rv.RvSeeAll
 import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvWorldMap
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.latencyColor
@@ -59,7 +55,6 @@ import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSharedFlag
-import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.rvNodeMenu
@@ -218,11 +213,3 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
 
 private const val TOP_COLUMNS = 4
 private const val REGION_ROWS = 5
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvNodesPagePreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) }
-}

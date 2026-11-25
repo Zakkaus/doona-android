@@ -5,7 +5,7 @@ import dev.doona.android.designsystem.rv.RvRegion
 import dev.doona.android.designsystem.rv.RvSpot
 import dev.doona.android.designsystem.rv.rvFlagArt
 import dev.doona.android.feature.model.RvCity
-import dev.doona.android.prototype.rv.nodes.RvNodesPageState
+import dev.doona.android.feature.nodes.RvNodesPageState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull

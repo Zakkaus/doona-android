@@ -47,8 +47,8 @@ import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.RvPullState
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvPullState
+import dev.doona.android.feature.nodes.RV_PICKER
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.nodes.RV_PICKER
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

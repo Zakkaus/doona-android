@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.nodes
+package dev.doona.android.feature.nodes
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -26,16 +26,15 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvLatencyDotsSize
 import dev.doona.android.designsystem.rv.RvPillInk
 import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.rvChartMarker
 import dev.doona.android.designsystem.rv.rvLatencyAxisMiddle
 import dev.doona.android.designsystem.rv.rvLatencyAxisTop
@@ -78,13 +77,13 @@ internal fun RvLatencyDots(
     val pillText = pillMs?.let { stringResource(R.string.latency_ms, it) }
     val look = DotsLook(
         label = Rv.type.pill.copy(color = colors.textSecondary),
-        picked = Rv.type.pill.copy(color = colors.positive, fontWeight = FontWeight.SemiBold),
+        picked = Rv.type.pill.copy(color = colors.positive),
         grid = colors.grid,
         reference = colors.reference,
         chip = colors.down.area,
         pill = RvPillInk(colors.pill, colors.raisedShadow),
         missed = colors.textSecondary,
-        dots = history.map { colors.quality(latencyTone(it)) },
+        dots = history.map { latencyColor(it) },
     )
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current

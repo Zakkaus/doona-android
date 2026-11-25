@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.nodes
+package dev.doona.android.feature.nodes
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable

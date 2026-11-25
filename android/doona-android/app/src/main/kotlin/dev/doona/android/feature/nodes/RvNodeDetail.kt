@@ -1,7 +1,5 @@
-package dev.doona.android.prototype.rv.nodes
+package dev.doona.android.feature.nodes
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -22,10 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.Tone
-import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
@@ -46,13 +41,11 @@ import dev.doona.android.designsystem.rv.RvSpanText
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvStatusChip
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSharedFlag
-import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.rv.scripted
 import dev.doona.android.feature.model.RvNode
 
@@ -105,7 +98,7 @@ internal fun RvNodeDetail(
  */
 @Composable
 private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets: WindowInsets, scoreMark: String?) {
-    val high = latencyTone(node.latencyMs).let { it == Tone.Warn || it == Tone.Err }
+    val high = latencyColor(node.latencyMs).let { it == Rv.colors.fair || it == Rv.colors.slow }
     val chips: (@Composable () -> Unit)? = if (current || high || scoreMark != null) {
         {
             // Chips that do not fit one line (two at fs200) wrap, the same gap between lines as between chips.
@@ -196,14 +189,3 @@ private const val TLS = "TLS"
 
 /** No test picked by the user: the chart marks the latest. */
 private const val NONE_PICKED = -1
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvNodeDetailPreview() {
-    val dark = isSystemInDarkTheme()
-    val page = sampleNodesPage()
-    RvTheme(rvSystemScheme(dark), dark) {
-        RvNodeDetail(page.nodes.first { it.id == RV_NODES_DETAIL }, current = false, page.testedAtEpochMs, onBack = {}, onUse = {}, onTest = {})
-    }
-}

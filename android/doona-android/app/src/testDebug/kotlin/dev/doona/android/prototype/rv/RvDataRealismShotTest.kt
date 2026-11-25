@@ -4,10 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.rvTestTimes
 import dev.doona.android.prototype.rv.nodes.RV_NODES_DETAIL
-import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.subs.RvSubAdd
 import dev.doona.android.prototype.rv.subs.RvSubAddSample
 import dev.doona.android.prototype.rv.subs.RvSubDetail

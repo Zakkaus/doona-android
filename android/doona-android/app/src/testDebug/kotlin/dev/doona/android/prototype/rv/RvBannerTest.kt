@@ -13,8 +13,8 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample

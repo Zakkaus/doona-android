@@ -1,16 +1,7 @@
-package dev.doona.android.prototype.rv.nodes
+package dev.doona.android.feature.nodes
 
-import android.content.res.Configuration
 import android.os.Trace
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -28,12 +18,10 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,70 +32,38 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.collapse
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.expand
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.IntSize
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvShown
-import dev.doona.android.designsystem.rv.LocalRvUpdating
-import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBackDisc
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBar
-import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCaption
-import dev.doona.android.designsystem.rv.RvCard
-import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvChrome
-import dev.doona.android.designsystem.rv.RvConfirmSheet
-import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvFrames
-import dev.doona.android.designsystem.rv.RvGlyph
-import dev.doona.android.designsystem.rv.RvIconDisc
-import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvLongPressTiming
-import dev.doona.android.designsystem.rv.RvMenuAnchor
-import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
-import dev.doona.android.designsystem.rv.RvRow
-import dev.doona.android.designsystem.rv.RvRowEnd
-import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rememberRvGlass
 import dev.doona.android.designsystem.rv.rvGlassSource
 import dev.doona.android.designsystem.rv.rvPageArrived
-import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvShade
 import dev.doona.android.designsystem.rv.rvSharedSearch
-import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.nodes.ui.RvNodeSection
 import dev.doona.android.feature.nodes.ui.RvRowsComposed
 import dev.doona.android.feature.nodes.ui.matches
-import dev.doona.android.prototype.rv.data.RvData
 import kotlinx.coroutines.flow.first
 
 /** The picker's root, for tests. */
@@ -224,11 +180,3 @@ private fun rememberRowsComposed(total: Int): () -> Int {
 private const val ROWS_PER_FRAME = 1
 private const val SEARCH_GESTURE = "search"
 private const val TRACE_FOCUS = "RvSearchFocus"
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvNodePickerPreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
-}

@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMotion
-import dev.doona.android.prototype.rv.nodes.RV_PICKER
+import dev.doona.android.feature.nodes.RV_PICKER
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
