@@ -18,11 +18,11 @@ import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
+import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvConfigLine
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.prototype.rv.settings.RvSettingsNavRow
 
 /**
  * 已略過 (config plan, "follow a skip to its reason"; `effectiveConfig`'s support records), from 設定檔's 相容性: the

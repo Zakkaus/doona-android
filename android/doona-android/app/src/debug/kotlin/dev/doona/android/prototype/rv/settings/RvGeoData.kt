@@ -9,6 +9,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvSecondaryButton
+import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvConfigLine

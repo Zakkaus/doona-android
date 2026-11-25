@@ -32,6 +32,7 @@ import dev.doona.android.designsystem.rv.LocalRvTesting
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.SEPARATOR
@@ -51,7 +52,6 @@ import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvQuickRule
-import dev.doona.android.prototype.rv.settings.RvSettingsRow
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

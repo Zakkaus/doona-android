@@ -27,7 +27,11 @@ import androidx.compose.ui.semantics.contentDescription
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvAccentColors
 import dev.doona.android.designsystem.rv.RvChrome
+import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsSize
+import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
