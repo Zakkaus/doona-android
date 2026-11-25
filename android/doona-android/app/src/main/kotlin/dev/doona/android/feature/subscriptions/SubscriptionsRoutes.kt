@@ -15,7 +15,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.model.RvSubscription
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * 訂閱: the subscriptions, which open their page ([onOpen], also the menu's 編輯) and lead to 新增訂閱 ([onAdd]).
@@ -63,13 +63,10 @@ fun SubAddRoute(engine: Engine, imports: SubscriptionImports, onBack: () -> Unit
  * row runs [onAutoUpdate].
  */
 @Composable
-fun SubDetailRoute(engine: Engine, updateHours: Flow<Int?>, id: String, onBack: () -> Unit, onAutoUpdate: () -> Unit = {}) {
+fun SubDetailRoute(engine: Engine, updateHours: StateFlow<Int?>, id: String, onBack: () -> Unit, onAutoUpdate: () -> Unit = {}) {
     val viewModel: SubDetailViewModel = viewModel(factory = viewModelFactory { initializer { SubDetailViewModel(engine, updateHours, id) } })
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    // The last subscription seen stays drawn while the page leaves after a delete.
-    val shown = remember { arrayOfNulls<RvSubscription>(1) }
-    state.sub?.let { shown[0] = it }
-    if (state.sub == null) LaunchedEffect(Unit) { onBack() }
-    val sub = shown[0] ?: return
+    if (state.gone) LaunchedEffect(Unit) { onBack() }
+    val sub = state.sub ?: return
     RvSubDetail(sub, state.sheet, viewModel::change, onBack, viewModel::update, viewModel::setUserAgent, state.updateHours, onAutoUpdate, viewModel::rename, viewModel::delete)
 }

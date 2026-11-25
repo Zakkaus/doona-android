@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvUpdating
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCard
@@ -174,7 +175,10 @@ private fun SubsSkeleton(subscriptions: List<RvSubscription>) {
 /** The subscription cards the skeleton shows: two, as Revolut's list skeleton shows two rows (revolut-UX §11). */
 private const val SKELETON_CARDS = 2
 
-/** Used of total at the start and the end date as of [nowEpochMs] at the end, over the quota's bar (Revolut's goal card, #13). */
+/**
+ * Used of total at the start and the end date as of [nowEpochMs] at the end, over the quota's bar (Revolut's goal card,
+ * #13). With no quota the start reads — and there is no bar, as on the subscription's page.
+ */
 @Composable
 private fun Usage(sub: RvSubscription, nowEpochMs: Long) {
     val format = rememberRvFormat()
@@ -182,12 +186,15 @@ private fun Usage(sub: RvSubscription, nowEpochMs: Long) {
     val ends = sub.expiresAtEpochMs?.let { stringResource(R.string.rv_expires, format.expiry(it, nowEpochMs)) } ?: stringResource(R.string.rv_subs_no_expiry)
     Column(Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding)) {
         Row {
-            RvText(stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Modifier.weight(1f), color = Rv.colors.textSecondary)
+            val used = if (sub.hasQuota) stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.toString()) else RV_NO_VALUE
+            RvText(used, Rv.type.rowSub, Modifier.weight(1f), color = Rv.colors.textSecondary)
             Spacer(Modifier.width(RvSpace.trailingGap))
             RvText(ends, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)
         }
-        Spacer(Modifier.height(RvSpace.barGap))
-        RvProgress(if (sub.totalBytes > 0) sub.usedBytes.toFloat() / sub.totalBytes else 0f)
+        if (sub.hasQuota) {
+            Spacer(Modifier.height(RvSpace.barGap))
+            RvProgress(sub.usedBytes.toFloat() / sub.totalBytes)
+        }
     }
 }
 

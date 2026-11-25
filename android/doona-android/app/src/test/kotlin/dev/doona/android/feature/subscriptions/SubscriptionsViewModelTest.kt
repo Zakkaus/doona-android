@@ -9,8 +9,8 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvSubFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -47,7 +47,7 @@ class SubscriptionsViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
 
-    private fun TestScope.detail(engine: Engine, id: String, hours: Flow<Int?> = MutableStateFlow(6)) = SubDetailViewModel(engine, hours, id).also { vm ->
+    private fun TestScope.detail(engine: Engine, id: String, hours: StateFlow<Int?> = MutableStateFlow(6)) = SubDetailViewModel(engine, hours, id).also { vm ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
 
@@ -119,7 +119,20 @@ class SubscriptionsViewModelTest {
         vm.setUserAgent(null)
         assertNull(vm.uiState.value.sub?.userAgent)
         vm.delete()
-        assertNull("the page leaves once its subscription is gone", vm.uiState.value.sub)
+        assertTrue("the page leaves once its subscription is gone", vm.uiState.value.gone)
+        assertEquals("and is drawn as it was while it leaves", "Harbor 2", vm.uiState.value.sub?.name)
+    }
+
+    @Test
+    fun `a rename the core refuses opens the sheet again with the failure, and typing clears it`() = runTest {
+        val engine = FakeEngine()
+        val sub = engine.subscriptions.value.first()
+        val vm = detail(engine, sub.id)
+        vm.rename("Harbor\nCloud")
+        assertEquals(RvSubDetailState(RvSubSheet.Rename, "Harbor\nCloud", renameFailed = true), vm.uiState.value.sheet)
+        assertEquals(sub.name, vm.uiState.value.sub?.name)
+        vm.rename("Harbor 2")
+        assertEquals("Harbor 2", vm.uiState.value.sub?.name)
     }
 
     @Test

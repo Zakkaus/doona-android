@@ -95,7 +95,7 @@ internal fun RvSubAdd(
             if (phase is RvAddPhase.Done) {
                 RvPrimaryButton(stringResource(R.string.rv_done), onBack)
             } else {
-                val ready = state.link.startsWith(HTTP) && rvAgentValid(state.userAgent)
+                val ready = urlProblem(state.link) == null && rvNameValid(state.name) && rvAgentValid(state.userAgent)
                 RvPrimaryButton(stringResource(R.string.rv_add_import), onImport, enabled = phase !is RvAddPhase.Importing && ready)
             }
         },
@@ -123,7 +123,13 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
             enabled = editable,
             keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri),
         )
-        RvTextField(state.name, { onChange(state.copy(name = it)) }, stringResource(R.string.rv_add_name), enabled = editable)
+        RvTextField(
+            state.name,
+            { onChange(state.copy(name = rvNameTyped(it))) },
+            stringResource(R.string.rv_add_name),
+            error = if (rvNameValid(state.name)) null else stringResource(R.string.rv_sub_name_invalid),
+            enabled = editable,
+        )
         RvUserAgentField(state.userAgent, { onChange(state.copy(userAgent = it)) }, stringResource(R.string.rv_add_user_agent), editable)
     }
     if (phase is RvAddPhase.Importing) Progress(phase)
@@ -181,8 +187,6 @@ private fun failure(failure: RvAddFailure, onRetry: () -> Unit): RvNotice {
     }
     return RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_add_failed), reason, stringResource(R.string.rv_retry), onRetry)
 }
-
-private const val HTTP = "http"
 
 /** The core's download bound (`fetch.rs` `MAX_BODY`, 8 << 20). */
 internal const val RV_MAX_BODY = "8 MiB"

@@ -6,21 +6,27 @@ import androidx.lifecycle.viewModelScope
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.Subscription
 import dev.doona.android.feature.model.RvSubscription
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.runningReduce
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * A subscription's page as it is drawn: the subscription (null once it is gone, removed here or elsewhere, and the page
- * leaves), the sheet open on it, and the auto-update interval in hours, null while auto-update is off.
+ * A subscription's page as it is drawn: the subscription, the sheet open on it, and the auto-update interval in hours,
+ * null while auto-update is off. Once the subscription is gone (removed here or elsewhere) [gone] is set and the page
+ * leaves; [sub] then stays the last one seen, so the page is still drawn while it leaves.
  */
 @Immutable
-internal data class SubDetailUiState(val sub: RvSubscription?, val sheet: RvSubDetailState = RvSubDetailState(), val updateHours: Int?)
+internal data class SubDetailUiState(
+    val sub: RvSubscription?,
+    val sheet: RvSubDetailState = RvSubDetailState(),
+    val updateHours: Int?,
+    val gone: Boolean = sub == null,
+)
 
 internal fun subDetailUiState(id: String, subscriptions: List<Subscription>, sheet: RvSubDetailState, updateHours: Int?) =
     SubDetailUiState(subscriptions.firstOrNull { it.id == id }?.let(::rvSubscription), sheet, updateHours)
@@ -32,7 +38,7 @@ internal fun subDetailUiState(id: String, subscriptions: List<Subscription>, she
  */
 internal class SubDetailViewModel(
     private val engine: Engine,
-    updateHours: Flow<Int?>,
+    updateHours: StateFlow<Int?>,
     private val id: String,
 ) : ViewModel() {
     private val sheet = MutableStateFlow(RvSubDetailState())
@@ -40,13 +46,19 @@ internal class SubDetailViewModel(
     val uiState: StateFlow<SubDetailUiState> =
         combine(engine.subscriptions, sheet, updateHours) { subscriptions, sheet, hours ->
             subDetailUiState(id, subscriptions, sheet, hours)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subDetailUiState(id, engine.subscriptions.value, sheet.value, DEFAULT_UPDATE_HOURS))
+        }.runningReduce { last, next -> if (next.gone) next.copy(sub = last.sub) else next }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subDetailUiState(id, engine.subscriptions.value, sheet.value, updateHours.value))
 
     fun change(state: RvSubDetailState) = sheet.update { state }
 
     fun update() = call { engine.updateSubscription(id) }
 
-    fun rename(name: String) = call { engine.renameSubscription(id, name) }
+    /** Renames through the core; a refusal opens the sheet again on [name] with the failure under it. */
+    fun rename(name: String) {
+        viewModelScope.launch {
+            engine.renameSubscription(id, name).onFailure { sheet.update { RvSubDetailState(RvSubSheet.Rename, name, renameFailed = true) } }
+        }
+    }
 
     fun setUserAgent(userAgent: String?) = call { engine.setSubscriptionUserAgent(id, userAgent) }
 
@@ -56,6 +68,3 @@ internal class SubDetailViewModel(
         viewModelScope.launch { action() }
     }
 }
-
-/** The interval until the settings are read: the settings' default (`AppSettings`, 12 hours). */
-private const val DEFAULT_UPDATE_HOURS = 12

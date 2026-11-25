@@ -3,6 +3,7 @@ package dev.doona.android.feature.subscriptions
 import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.focus.FocusManager
@@ -31,8 +32,8 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.rvShot
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -122,15 +123,15 @@ class AppRvSubsShotTest {
     @Config(qualifiers = RV_EN)
     fun addEn() = add("sub-add", Answer.None, typed = false, english = true)
 
-    @Test fun importingLight() = add("sub-adding-unknown", Answer.Never)
+    @Test fun importingLight() = add("sub-adding-unknown", Answer.Never, busyFrames = BUSY_FRAMES)
 
-    @Test fun importingDark() = add("sub-adding-unknown", Answer.Never, dark = true)
+    @Test fun importingDark() = add("sub-adding-unknown", Answer.Never, dark = true, busyFrames = BUSY_FRAMES)
 
-    @Test fun importingFs200() = add("sub-adding-unknown", Answer.Never, fontScale = RV_FS200)
+    @Test fun importingFs200() = add("sub-adding-unknown", Answer.Never, fontScale = RV_FS200, busyFrames = BUSY_FRAMES)
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun importingEn() = add("sub-adding-unknown", Answer.Never, english = true)
+    fun importingEn() = add("sub-adding-unknown", Answer.Never, english = true, busyFrames = BUSY_FRAMES)
 
     @Test fun doneLight() = add("sub-add-done", Answer.Harbor)
 
@@ -206,9 +207,18 @@ class AppRvSubsShotTest {
 
     /**
      * 新增訂閱 over an engine that answers [answer]; with [typed] the sample's name is typed, the keyboard put away, the
-     * link taken from the clipboard's row and 新增 tapped, so no field keeps the focus or a scrolled link.
+     * link taken from the clipboard's row and 新增 tapped, so no field keeps the focus or a scrolled link. With
+     * [busyFrames] the clock stops at the tap and runs that many frames, so a busy bar is drawn at a fixed point.
      */
-    private fun add(name: String, answer: Answer, typed: Boolean = true, dark: Boolean = false, fontScale: Float = 1f, english: Boolean = false) {
+    private fun add(
+        name: String,
+        answer: Answer,
+        typed: Boolean = true,
+        dark: Boolean = false,
+        fontScale: Float = 1f,
+        english: Boolean = false,
+        busyFrames: Int = 0,
+    ) {
         // The clipboard holds a link, as on the approved page; its content is read only if its row is tapped.
         clipboard().setPrimaryClip(ClipData.newPlainText(null, RV_SAMPLE_LINK))
         val engine = Answering(answer)
@@ -223,7 +233,9 @@ class AppRvSubsShotTest {
                     onAllNodes(hasSetTextAction())[1].performTextReplacement(RvData.subscriptions.first().name)
                     runOnIdle { focus.clearFocus() }
                     onNodeWithText(string(R.string.rv_add_clipboard)).performClick()
+                    if (busyFrames > 0) mainClock.autoAdvance = false
                     onNodeWithText(string(R.string.rv_add_import)).performClick()
+                    repeat(busyFrames) { mainClock.advanceTimeByFrame() }
                 }
             },
         ) { Add(engine) }
@@ -236,18 +248,19 @@ class AppRvSubsShotTest {
     }
 
     @Composable
-    private fun Detail(hours: Flow<Int?> = TWELVE_HOURS) {
+    private fun Detail(hours: StateFlow<Int?> = TWELVE_HOURS) {
         val (engine, id) = remember { harborEngine().let { it to it.subscriptions.value.first().id } }
         SubDetailRoute(engine, hours, id, onBack = {})
     }
 
     @Composable
     private fun Add(engine: Engine) {
-        focus = LocalFocusManager.current
+        val manager = LocalFocusManager.current
+        SideEffect { focus = manager }
         SubAddRoute(engine, rememberImports(engine), onBack = {})
     }
 
-    /** The page's focus, to put the keyboard away after typing. */
+    /** The page's focus, to put the keyboard away after typing; taken once the page has composed. */
     private lateinit var focus: FocusManager
 
     @Composable
@@ -294,7 +307,17 @@ class AppRvSubsShotTest {
     private companion object {
         const val APP = "app-rv"
 
-        /** [sub] with the format the core finds behind the sample's link. */
+        /**
+         * The approved 匯入中 frame of the busy bar: 24 frames (384 ms) into its loop, the time the prototype's page
+         * takes to settle after its first composition. Measured 2026-11-26: frame by frame from the tap, the 24th
+         * matches `proto-rv-sub-adding-unknown-light` with no pixel apart; the bar starts at the tap here.
+         */
+        const val BUSY_FRAMES = 24
+
+        /**
+         * Fixture data: [sub] with the format the core would find behind the sample's link (Clash YAML on the approved
+         * pages); RvSampleEngine's subscriptions carry none (a P2a request in p5-STATE).
+         */
         fun harbor(sub: Subscription): Subscription = sub.copy(format = SubscriptionFormat.Clash)
 
         /** A subscription's page is taller than the phone, as in the prototype's golden. */

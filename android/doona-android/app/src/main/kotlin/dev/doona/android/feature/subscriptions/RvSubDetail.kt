@@ -30,9 +30,17 @@ import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
 
-/** A subscription's page: which sheet is open, if any, and the name or User-Agent being typed into it. */
+/**
+ * A subscription's page: which sheet is open, if any, the name or User-Agent being typed into it, and whether the core
+ * refused the last rename ([renameFailed], shown under the field until the name changes).
+ */
 @Immutable
-internal data class RvSubDetailState(val sheet: RvSubSheet? = null, val name: String = "", val userAgent: String = "")
+internal data class RvSubDetailState(
+    val sheet: RvSubSheet? = null,
+    val name: String = "",
+    val userAgent: String = "",
+    val renameFailed: Boolean = false,
+)
 
 internal enum class RvSubSheet { Rename, UserAgent, Delete }
 
@@ -93,8 +101,8 @@ internal fun RvSubDetail(
             close()
         },
         onDismiss = close,
-        confirmEnabled = state.name.isNotBlank(),
-    ) { RvRenameField(state.name) { onChange(state.copy(name = it)) } }
+        confirmEnabled = state.name.isNotBlank() && rvNameValid(state.name),
+    ) { RvRenameField(state.name, state.renameFailed) { onChange(state.copy(name = rvNameTyped(it), renameFailed = false)) } }
     RvConfirmSheet(
         visible = state.sheet == RvSubSheet.UserAgent,
         title = stringResource(R.string.rv_sub_user_agent),
@@ -123,11 +131,32 @@ internal fun RvSubDetail(
     )
 }
 
-/** The rename sheet's field: the sheet's title names it, so it has no label of its own (Addendum 3). */
+/**
+ * The rename sheet's field: the sheet's title names it, so it has no label of its own (Addendum 3). A name the core
+ * would refuse shows the inline error, as does a rename the core refused ([failed]).
+ */
 @Composable
-internal fun RvRenameField(name: String, onName: (String) -> Unit) {
-    RvTextField(name, onName, label = null, name = stringResource(R.string.rv_sub_rename))
+internal fun RvRenameField(name: String, failed: Boolean = false, onName: (String) -> Unit) {
+    val error = when {
+        !rvNameValid(name) -> stringResource(R.string.rv_sub_name_invalid)
+        failed -> stringResource(R.string.rv_sub_rename_failed)
+        else -> null
+    }
+    RvTextField(name, onName, label = null, name = stringResource(R.string.rv_sub_rename), error = error)
 }
+
+/** [typed] cut to the core's longest name, [MAX_NAME] code points, so the field takes no more. */
+internal fun rvNameTyped(typed: String): String =
+    if (typed.codePointCount(0, typed.length) <= MAX_NAME) typed else typed.substring(0, typed.offsetByCodePoints(0, MAX_NAME))
+
+/** Whether the core takes [name] (`Engine.renameSubscription`): at most [MAX_NAME] code points, none a control or line break. */
+internal fun rvNameValid(name: String): Boolean =
+    name.codePointCount(0, name.length) <= MAX_NAME &&
+        name.none { Character.isISOControl(it) || it == LINE_SEPARATOR || it == PARAGRAPH_SEPARATOR }
+
+private const val MAX_NAME = 64
+private const val LINE_SEPARATOR = '\u2028'
+private const val PARAGRAPH_SEPARATOR = '\u2029'
 
 /**
  * A subscription's User-Agent field, in the User-Agent sheet (named by its title) and on 新增訂閱 (named by [label]).
