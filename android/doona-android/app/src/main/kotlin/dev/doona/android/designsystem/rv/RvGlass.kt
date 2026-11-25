@@ -78,7 +78,7 @@ internal fun Modifier.rvGlass(glass: RvGlass, shape: Shape, over: () -> Color, s
         .clip(shape)
         .drawBehind {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                drawBackdrop(glass, blur, spot.origin - glass.origin)
+                drawBackdrop(glass, blur, spot, spot.origin - glass.origin)
                 drawRect(over())
             } else {
                 drawRect(solid)
@@ -88,8 +88,17 @@ internal fun Modifier.rvGlass(glass: RvGlass, shape: Shape, over: () -> Color, s
 
 /** Where a glass surface sits in the window; state, so a surface that moves draws its backdrop again. */
 @Stable
-private class RvGlassSpot {
+internal class RvGlassSpot {
     var origin by mutableStateOf(Offset.Zero)
+
+    private var radius = Float.NaN
+    private var effect: BlurEffect? = null
+
+    /** The blur for [radius] px, made once and kept while the radius stays: a draw allocates none. */
+    fun blur(radius: Float): BlurEffect = effect.takeIf { radius == this.radius } ?: BlurEffect(radius, radius, TileMode.Clamp).also {
+        this.radius = radius
+        effect = it
+    }
 }
 
 /**
@@ -99,7 +108,7 @@ private class RvGlassSpot {
  * fill as a dark or pale streak (item 23). The recording's own edges are the screen's, where clamping is right.
  */
 @RequiresApi(Build.VERSION_CODES.S)
-private fun DrawScope.drawBackdrop(glass: RvGlass, blur: GraphicsLayer, offset: Offset) {
+private fun DrawScope.drawBackdrop(glass: RvGlass, blur: GraphicsLayer, spot: RvGlassSpot, offset: Offset) {
     val radius = RvChrome.blur.toPx()
     val reach = RvChrome.blurReach.toPx()
     val left = (offset.x - reach).coerceAtLeast(0f)
@@ -107,7 +116,7 @@ private fun DrawScope.drawBackdrop(glass: RvGlass, blur: GraphicsLayer, offset: 
     val right = (offset.x + size.width + reach).coerceAtMost(glass.size.width.toFloat())
     val bottom = (offset.y + size.height + reach).coerceAtMost(glass.size.height.toFloat())
     if (right <= left || bottom <= top) return
-    blur.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
+    blur.renderEffect = spot.blur(radius)
     blur.record(IntSize(ceil(right - left).toInt(), ceil(bottom - top).toInt())) { translate(-left, -top) { drawLayer(glass.layer) } }
     translate(left - offset.x, top - offset.y) { drawLayer(blur) }
 }
