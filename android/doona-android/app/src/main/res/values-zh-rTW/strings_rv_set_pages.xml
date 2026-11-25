@@ -8,7 +8,7 @@
     <string name="rv_update_latest">已是最新</string>
     <string name="rv_update_new">有新版本 %1$s</string>
     <string name="rv_update_new_reason">目前版本 %1$s。</string>
-    <string name="rv_update_view">檢視 GitHub 發布頁</string>
+    <string name="rv_update_view">在 GitHub 檢視</string>
     <string name="rv_update_failed">無法檢查更新</string>
 
     <string name="rv_settings_geodata">GeoIP/GeoSite</string>
