@@ -41,6 +41,7 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.onboarding.FirstRunGate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -194,7 +195,7 @@ class SubscriptionFlowsTest {
                     onAdd = { backStack.push(SubAddKey) },
                 )
             }
-            entry<SubAddKey> { key -> SubAddRoute(engine, imports, onBack = { backStack.pop(key) }) }
+            entry<SubAddKey> { key -> SubAddRoute(engine, imports, flowOf(false), onBack = { backStack.pop(key) }) }
             entry<SubDetailKey> { key -> SubDetailRoute(engine, MutableStateFlow(12), key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = {}) }
         }
     }

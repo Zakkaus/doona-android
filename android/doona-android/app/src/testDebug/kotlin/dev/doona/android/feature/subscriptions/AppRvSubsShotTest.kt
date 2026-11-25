@@ -13,9 +13,12 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
@@ -44,6 +47,8 @@ import dev.doona.android.prototype.rv.subs.RV_LAN_LINK
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -189,6 +194,38 @@ class AppRvSubsShotTest {
 
     @Test fun failedDark() = shot("subs-failed", dark = true) { Subs(::failedEngine) }
 
+    /**
+     * Harbor Cloud deleted from its menu and the core refused: the delete-failure banner, the update failure's
+     * (orchestrator ruling 12, 2026-11-26). No approved golden yet; the owner sees these first.
+     */
+    @Test fun deleteFailedLight() = shot("subs-delete-failed", before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
+
+    @Test fun deleteFailedDark() = shot("subs-delete-failed", dark = true, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
+
+    @Test fun deleteFailedFs200() = shot("subs-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
+
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun deleteFailedEn() = shot("subs-delete-failed", english = true, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
+
+    /** The same from Harbor Cloud's page: its 刪除訂閱 row, then the sheet's 刪除. */
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL_BANNER)
+    fun detailDeleteFailedLight() = shot("sub-detail-delete-failed", before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails() }) }
+
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL_BANNER)
+    fun detailDeleteFailedDark() = shot("sub-detail-delete-failed", dark = true, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails() }) }
+
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL)
+    fun detailDeleteFailedFs200() =
+        shot("sub-detail-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails() }) }
+
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun detailDeleteFailedEn() = shot("sub-detail-delete-failed", english = true, whole = false, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails() }) }
+
     /** Harbor Cloud's card held where the prototype's finger held it; the menu opens at the finger. */
     @Test fun menuLight() = shot("subs-menu", whole = false, windows = true, before = { holdHarbor() }) { Subs() }
 
@@ -267,6 +304,22 @@ class AppRvSubsShotTest {
         tap(R.string.rv_menu_delete)
     }
 
+    /** The question's 刪除, the last of that label once the sheet is up. */
+    private fun ComposeContentTestRule.confirmSheetDelete() {
+        waitForIdle()
+        onAllNodesWithText(string(R.string.rv_menu_delete)).onLast().performClick()
+    }
+
+    private fun ComposeContentTestRule.confirmDeleteFromMenu() {
+        pickDelete()
+        confirmSheetDelete()
+    }
+
+    private fun ComposeContentTestRule.confirmDeleteFromPage() {
+        onNodeWithText(string(R.string.rv_sub_delete)).performScrollTo().performClick()
+        confirmSheetDelete()
+    }
+
     /**
      * 新增訂閱 with [RV_LAN_LINK] typed and 新增 tapped, over an engine that refuses it until the local network is allowed,
      * as the core does; the prompt asks, and with [refused] the system's question is refused. The import waits on the
@@ -296,7 +349,7 @@ class AppRvSubsShotTest {
         ) {
             val scope = rememberCoroutineScope()
             val engine = remember { LocalNetworkEngine(Answering(Answer.Fails(ErrorCode.LocalNetwork)), access, scope) }
-            Add(engine)
+            Add(engine, remember { access.prompt.map { it != null } })
             // The old dialog reads the old pages' theme, as under MainActivity, until P1b's sheet replaces it.
             DoonaTheme { LocalNetworkPrompts(remember { LocalNetworkHost(access, request = {}, openSettings = {}) }) }
         }
@@ -341,20 +394,20 @@ class AppRvSubsShotTest {
     @Composable
     private fun Subs(build: () -> Engine = ::rvSampleEngine) {
         val engine = remember { build() }
-        SubscriptionsRoute(engine, onBack = {}, clock = { RvData.nowEpochMs })
+        SubscriptionsRoute(engine, onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs })
     }
 
     @Composable
-    private fun Detail(hours: Flow<Int?> = TWELVE_HOURS) {
-        val (engine, id) = remember { rvSampleEngine().let { it to it.subscriptions.value.first().id } }
+    private fun Detail(hours: Flow<Int?> = TWELVE_HOURS, build: () -> Engine = ::rvSampleEngine) {
+        val (engine, id) = remember { build().let { it to it.subscriptions.value.first().id } }
         SubDetailRoute(engine, hours, id, onBack = {}, onAutoUpdate = {})
     }
 
     @Composable
-    private fun Add(engine: Engine) {
+    private fun Add(engine: Engine, lanAsking: Flow<Boolean> = flowOf(false)) {
         val manager = LocalFocusManager.current
         SideEffect { focus = manager }
-        SubAddRoute(engine, rememberImports(engine), onBack = {})
+        SubAddRoute(engine, rememberImports(engine), lanAsking, onBack = {})
     }
 
     /** The sample with Harbor Cloud's last update failed. */
@@ -368,7 +421,7 @@ class AppRvSubsShotTest {
     @Composable
     private fun Welcome() {
         val engine = remember { FakeEngine(subscriptions = emptyList()) }
-        FirstRunGate(engine) {}
+        FirstRunGate(engine, onAdd = {}) {}
     }
 
     @Composable
@@ -388,6 +441,11 @@ class AppRvSubsShotTest {
         data object Harbor : Answer
 
         data class Fails(val code: ErrorCode) : Answer
+    }
+
+    /** The sample, with every delete refused as the core refuses one it cannot write. */
+    private class DeleteFails(private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
+        override suspend fun removeSubscription(id: String): Result<Unit> = Result.failure(EngineException(ErrorCode.Internal))
     }
 
     private class Answering(private val answer: Answer, private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
@@ -417,6 +475,9 @@ class AppRvSubsShotTest {
 
         /** A subscription's page is taller than the phone, as in the prototype's golden. */
         const val WHOLE_DETAIL = "+h1087dp"
+
+        /** The same page with the delete-failure banner over its stats, 147.5 dp taller. */
+        const val WHOLE_DETAIL_BANNER = "+h1235dp"
 
         /** The settings' default interval. */
         val TWELVE_HOURS = MutableStateFlow(12)

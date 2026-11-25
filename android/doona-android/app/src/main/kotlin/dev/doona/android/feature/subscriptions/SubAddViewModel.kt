@@ -3,6 +3,7 @@ package dev.doona.android.feature.subscriptions
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.doona.android.engine.Engine
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,39 +25,43 @@ internal data class SubAddLocal(
 
 /**
  * Where the page's own import stands: none yet, running (the core reports neither a byte count nor a length, so the
- * page shows the unknown progress), failed with its reason, or done with the subscription it added.
+ * page shows the unknown progress), failed with its reason, or done with the subscription it added. While the local
+ * network prompt is up ([lanAsking]) the import waits on the user, not the network, so the page under the prompt keeps
+ * its form; the progress shows once the import runs again.
  */
-internal fun rvAddPhase(own: Long?, import: ImportState): RvAddPhase {
+internal fun rvAddPhase(own: Long?, import: ImportState, lanAsking: Boolean): RvAddPhase {
     if (own == null || import.lastId != own) return RvAddPhase.Editing
-    if (import.busy) return RvAddPhase.Importing(downloadedBytes = null, fraction = null)
+    if (import.busy) return if (lanAsking) RvAddPhase.Editing else RvAddPhase.Importing(downloadedBytes = null, fraction = null)
     import.error?.let { return RvAddPhase.Failed(rvAddFailure(it)) }
     return import.added?.let { RvAddPhase.Done(rvSubscription(it)) } ?: RvAddPhase.Editing
 }
 
-internal fun subAddState(local: SubAddLocal, import: ImportState) = RvAddState(
+internal fun subAddState(local: SubAddLocal, import: ImportState, lanAsking: Boolean) = RvAddState(
     link = local.link,
     name = local.name,
     userAgent = local.userAgent,
     clipboardHasLink = local.clipboardHasLink,
-    phase = rvAddPhase(local.own, import),
+    phase = rvAddPhase(local.own, import, lanAsking),
 )
 
 /**
  * 新增訂閱's state holder (plan §2.2). The import is [imports]', which outlives the page: a page opened while one runs,
  * or after one failed while the page was away, follows it and shows what it fetches. The clipboard's content is read
  * only when the user taps its row ([paste]); [refreshClipboard] reads only whether it may hold a link. [protocols]
- * counts what the page's import brought in, by protocol, once it is done.
+ * counts what the page's import brought in, by protocol, once it is done. [lanAsking] is whether the local network
+ * prompt is up, which an import of a link on the local network waits on.
  */
 internal class SubAddViewModel(
     private val engine: Engine,
     private val imports: SubscriptionImports,
     private val clipboard: ClipboardLinks,
+    lanAsking: Flow<Boolean>,
 ) : ViewModel() {
     private val local = MutableStateFlow(followed())
     private val counted = MutableStateFlow<List<RvProtocolCount>>(emptyList())
 
-    val uiState: StateFlow<RvAddState> = combine(local, imports.state, ::subAddState)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subAddState(local.value, imports.state.value))
+    val uiState: StateFlow<RvAddState> = combine(local, imports.state, lanAsking, ::subAddState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subAddState(local.value, imports.state.value, lanAsking = false))
 
     val protocols: StateFlow<List<RvProtocolCount>> = counted
 

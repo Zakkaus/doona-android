@@ -14,6 +14,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -47,7 +50,12 @@ class SubAddViewModelTest {
     }
 
     /** A page over [imports], collected as the page collects it. */
-    private fun TestScope.page(engine: Engine, imports: SubscriptionImports, clip: ClipboardLinks = Clip()) = SubAddViewModel(engine, imports, clip).also { vm ->
+    private fun TestScope.page(
+        engine: Engine,
+        imports: SubscriptionImports,
+        clip: ClipboardLinks = Clip(),
+        lanAsking: Flow<Boolean> = flowOf(false),
+    ) = SubAddViewModel(engine, imports, clip, lanAsking).also { vm ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
 
@@ -181,18 +189,22 @@ class SubAddViewModelTest {
     }
 
     @Test
-    fun `a link on the local network asks, and once allowed the import runs again`() = runTest {
+    fun `a link on the local network asks over the form as it was, and once allowed the import runs again`() = runTest {
         val engine = Slow(answers = mutableListOf(ErrorCode.LocalNetwork))
         val access = LocalNetworkAccess(granted = { false })
         val lan = LocalNetworkEngine(engine, access, CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler)))
-        val vm = page(lan, imports(lan)).apply {
+        val vm = page(lan, imports(lan), lanAsking = access.prompt.map { it != null }).apply {
             type(LAN)
             import()
         }
         assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
-        assertEquals(RvAddPhase.Importing(null, null), vm.uiState.value.phase)
+        assertEquals("the form stays as it was under the prompt", RvAddPhase.Editing, vm.uiState.value.phase)
+        assertEquals(LAN, vm.uiState.value.link)
+        engine.gate = CompletableDeferred()
         assertTrue(access.requesting())
         access.answered(allowed = true)
+        assertEquals("the import runs again", RvAddPhase.Importing(null, null), vm.uiState.value.phase)
+        engine.gate.complete(Unit)
         assertTrue(vm.uiState.value.phase is RvAddPhase.Done)
         assertEquals(2, engine.calls)
     }
@@ -202,7 +214,7 @@ class SubAddViewModelTest {
         val engine = Slow(answers = mutableListOf(ErrorCode.LocalNetwork))
         val access = LocalNetworkAccess(granted = { false })
         val lan = LocalNetworkEngine(engine, access, CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler)))
-        val vm = page(lan, imports(lan)).apply {
+        val vm = page(lan, imports(lan), lanAsking = access.prompt.map { it != null }).apply {
             type(LAN)
             import()
         }
@@ -217,14 +229,14 @@ class SubAddViewModelTest {
         val engine = Slow(answers = mutableListOf(ErrorCode.LocalNetwork))
         val access = LocalNetworkAccess(granted = { false })
         val lan = LocalNetworkEngine(engine, access, CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler)))
-        val vm = page(lan, imports(lan)).apply {
+        val vm = page(lan, imports(lan), lanAsking = access.prompt.map { it != null }).apply {
             type(LAN)
             import()
         }
         assertTrue(access.requesting())
         access.answered(allowed = false)
         assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
-        assertEquals("it waits on the refusal", RvAddPhase.Importing(null, null), vm.uiState.value.phase)
+        assertEquals("it waits on the refusal, with the form as it was", RvAddPhase.Editing, vm.uiState.value.phase)
         access.dismissed()
         assertEquals(RvAddPhase.Failed(RvAddFailure.Unreachable), vm.uiState.value.phase)
         assertEquals(1, engine.calls)

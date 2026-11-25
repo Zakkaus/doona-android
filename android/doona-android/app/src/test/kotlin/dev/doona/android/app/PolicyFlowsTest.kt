@@ -50,6 +50,32 @@ class PolicyFlowsTest {
     /** Whether the welcome page is drawn; its title is both the large title and the bar's. */
     private fun welcomeShown() = compose.onAllNodesWithText(welcome).fetchSemanticsNodes().isNotEmpty()
 
+    private val url = "https://example.invalid/x"
+
+    private fun string(id: Int, vararg args: Any): String = ApplicationProvider.getApplicationContext<Context>().getString(id, *args)
+
+    /** Types [url] into 新增訂閱's link field, the first field that takes text. */
+    private fun typeUrl() {
+        compose.onAllNodes(hasSetTextAction() and isEnabled())[0].performTextInput(url)
+    }
+
+    @Test
+    fun `the first run's welcome page leads to 新增訂閱, and the first import hands over to 活動`() {
+        val engine = FakeEngine(subscriptions = emptyList())
+        show(engine)
+        assertTrue("the welcome page", welcomeShown())
+        compose.onAllNodes(isToggleable()).assertCountEquals(0)
+        compose.onNodeWithText("Connected").assertDoesNotExist()
+
+        compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
+        typeUrl()
+        compose.onNodeWithText(string(R.string.rv_add_import)).performClick()
+        compose.onNodeWithText(string(R.string.rv_done)).performClick()
+
+        assertFalse("no welcome page", welcomeShown())
+        assertTrue("the activity screen's switch", compose.onAllNodes(isToggleable()).fetchSemanticsNodes().isNotEmpty())
+    }
+
     @Test
     fun `a chip for a group inside opens that group's page, and back returns to the parent`() {
         show(FakeEngine(), ActivityKey, PoliciesKey, GroupKey("g-Proxy"))

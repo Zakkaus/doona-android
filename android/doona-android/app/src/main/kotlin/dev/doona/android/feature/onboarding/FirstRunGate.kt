@@ -51,7 +51,7 @@ internal class FirstRunViewModel(engine: Engine) : ViewModel() {
 @Composable
 fun FirstRunGate(
     engine: Engine,
-    onAdd: () -> Unit = {},
+    onAdd: () -> Unit,
     content: @Composable () -> Unit,
 ) {
     val viewModel: FirstRunViewModel = viewModel(factory = viewModelFactory { initializer { FirstRunViewModel(engine) } })

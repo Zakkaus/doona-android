@@ -24,8 +24,8 @@ import kotlinx.coroutines.flow.Flow
 fun SubscriptionsRoute(
     engine: Engine,
     onBack: () -> Unit,
-    onOpen: (String) -> Unit = {},
-    onAdd: () -> Unit = {},
+    onOpen: (String) -> Unit,
+    onAdd: () -> Unit,
     clock: () -> Long = System::currentTimeMillis,
 ) {
     val viewModel: SubscriptionsViewModel = viewModel(factory = viewModelFactory { initializer { SubscriptionsViewModel(engine, clock) } })
@@ -38,13 +38,14 @@ fun SubscriptionsRoute(
 
 /**
  * 新增訂閱 over [imports], the app's import in flight; 完成 and back run [onBack]. The clipboard is asked whether it may
- * hold a link each time the page comes to the front.
+ * hold a link each time the page comes to the front. [lanAsking] is whether the local network prompt is up: an import
+ * waiting on it leaves the form as it is under the prompt.
  */
 @Composable
-fun SubAddRoute(engine: Engine, imports: SubscriptionImports, onBack: () -> Unit) {
+fun SubAddRoute(engine: Engine, imports: SubscriptionImports, lanAsking: Flow<Boolean>, onBack: () -> Unit) {
     val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
     val viewModel: SubAddViewModel = viewModel(
-        factory = viewModelFactory { initializer { SubAddViewModel(engine, imports, AndroidClipboardLinks(clipboard)) } },
+        factory = viewModelFactory { initializer { SubAddViewModel(engine, imports, AndroidClipboardLinks(clipboard), lanAsking) } },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val protocols by viewModel.protocols.collectAsStateWithLifecycle()

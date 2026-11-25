@@ -45,7 +45,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider = entryProvider {
                 entry<ActivityKey> {
-                    FirstRunGate(engine) { ActivityRoute(engine, onConnect = {}, onOpenGroup = { backStack.add(GroupKey(it)) }) }
+                    FirstRunGate(engine, onAdd = {}) { ActivityRoute(engine, onConnect = {}, onOpenGroup = { backStack.add(GroupKey(it)) }) }
                 }
                 entry<PoliciesKey> {
                     PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
@@ -53,7 +53,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
                 entry<GroupKey> { key ->
                     GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.add(GroupKey(it)) })
                 }
-                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, onBack = { backStack.pop(key) }) }
+                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, onBack = { backStack.pop(key) }, onOpen = {}, onAdd = {}) }
                 entry<SettingsKey> {
                     SettingsRoute(engine, "", onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
                 }
