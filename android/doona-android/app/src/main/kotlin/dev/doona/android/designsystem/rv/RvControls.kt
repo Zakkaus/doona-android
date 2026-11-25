@@ -67,6 +67,7 @@ import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -553,7 +554,7 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val size = RvControlSize
     val off = (size.switchWidth - size.switchTrackWidth) / 2 - (size.switchThumb - size.switchTrackHeight) / 2
     val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, Rv.motion.tween(RvMotion.SWITCH_MS), label = "thumb")
-    Box(modifier.size(size.switchWidth, size.switchHeight).clearAndSetSemantics {}) {
+    Box(modifier.size(size.switchWidth, size.switchHeight).clearAndSetSemantics { testTag = RvRowPart.SWITCH }) {
         Box(
             Modifier
                 .align(Alignment.Center)
@@ -586,7 +587,7 @@ internal fun RvSwitchRow(@DrawableRes icon: Int, title: String, checked: Boolean
 @Composable
 internal fun RvRadio(selected: Boolean, modifier: Modifier = Modifier) {
     val ring = if (selected) Rv.colors.positive else Rv.colors.control
-    Canvas(modifier.size(RvControlSize.radio).clearAndSetSemantics {}) {
+    Canvas(modifier.size(RvControlSize.radio).clearAndSetSemantics { testTag = RvRowPart.RADIO }) {
         val stroke = RvControlSize.radioStroke.toPx()
         drawCircle(ring, radius = (size.minDimension - stroke) / 2, style = Stroke(stroke))
         if (selected) drawCircle(ring, radius = RvControlSize.radioDot.toPx() / 2)

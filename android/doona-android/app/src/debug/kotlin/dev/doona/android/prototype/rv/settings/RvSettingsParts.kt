@@ -36,6 +36,7 @@ import dev.doona.android.designsystem.rv.RvCodeText
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
@@ -115,7 +116,7 @@ internal fun RvSettingsRow(
         contentAlignment = Alignment.CenterStart,
     ) {
         val text = rowText(RowWords(title, subtitle, titleKeepWords, subtitleKeepWords), code, titleLines, error, RowEnds(icon, action, trailing))
-        Row(Modifier.fillMaxWidth().padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
+        Row(Modifier.fillMaxWidth().testTag(RvRowPart.SETTINGS_ROW).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
     }
 }
 

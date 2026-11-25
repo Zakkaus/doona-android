@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
@@ -38,7 +39,7 @@ import dev.doona.android.flags.flagResource
 internal fun RvFlag(code: String?, size: Dp, modifier: Modifier = Modifier, current: Boolean = false, ring: Color = Rv.colors.card) {
     val colors = Rv.colors
     val art = code?.let(::rvFlagArt)
-    Box(modifier.size(size)) {
+    Box(modifier.size(size).testTag(RvRowPart.FLAG)) {
         val disc = Modifier.matchParentSize().clip(CircleShape)
         if (art != null) {
             Image(painterResource(art), contentDescription = null, disc.border(RvChrome.ring, colors.flagRing, CircleShape), contentScale = ContentScale.Crop)

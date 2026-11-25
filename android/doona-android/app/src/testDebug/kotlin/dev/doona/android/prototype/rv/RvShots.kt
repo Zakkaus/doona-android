@@ -53,6 +53,8 @@ internal fun ComposeContentTestRule.rvShot(
     }
     // The board's run draws the board, not the goldens: its windows are held to the phone's height.
     if (rvBoarding) return rvBoard(screen, variant)
+    // Every golden's rows keep to the layout rules (docs/LAYOUT-RULES.md), or to the allowlist of today's breaks.
+    rvRowRules("proto-rv-$screen-$variant")
     onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/proto-rv-$screen-$variant.png")
 }
 

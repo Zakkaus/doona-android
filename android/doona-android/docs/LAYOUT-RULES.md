@@ -143,10 +143,15 @@ Each earlier change that contradicts a rule. A change goes back to the rule, nev
 
 | Commit | Pages | What it did | Rule |
 |---|---|---|---|
-| `87980a14` (rowfirstline, rejected) | settings, report, about and their states | centred the disc on the first line, 7 dp above the title top | R9 (fixed in `2f97f227`) |
-| library start (`RvRow`) | every list page: 活動, 策略, 節點, 依 App, 連線, 組態, sheets, check rows | centres the disc and the trailing switch on the row with a subtitle | R9, R11 |
+| `87980a14` (rowfirstline, rejected by the owner) | 設定, 回報問題, 關於 and their states | centred the disc on the first line: 7 dp above the title top, 13 dp above Revolut's | R9 (set back in `2f97f227`) |
+| library start, `RvRow` | every list page: 活動, 策略, 節點, 依 App, 連線, 組態, sheets, check rows | centres the disc on a row with a subtitle: 1.5 dp low at 1.0, more at larger fonts (1,855 breaks in the before list) | R9 |
+| library start, `RvSwitchRow`, `RvCheckRow` | 依 App, 連線, permission and sheet rows | centre the switch or check on a row with a subtitle (528 breaks) | R11 |
+| library start, `RvSettingsRow` | 設定, 關於, 回報問題 and their states | a one-line row's title sits at the top of its 26 dp first-line box: 1.5 dp above the centre, while the disc is centred (415 breaks, "above 16 below 19") | R18 |
+| library start, `RvBanner` | 活動 notices, 當機, 匯入錯誤, per-app errors | 2 dp between title and reason (`tight / 2`), the one title-to-subtitle gap that is not 0 (113 breaks) | R12 |
+| `cdbc415f` (latinrow) | all rows | gives mixed rows the Latin line box; rows differ by 0.5 dp (1 px) from CJK-only rows | R13 holds within 1 dp; kept |
+| node picker (`node-picker-action-failed-*`) | 節點 picker with a failed action | trailing part ends 13 dp short of the row's end | R16 (cause to be read in the code) |
 
-(The list is completed from the gate's before list; see `rv-row-rules.txt`.)
+The gate's before list, per golden and rule, is in `rv-row-rules.txt`; it only shrinks.
 
 ## Exceptions
 
