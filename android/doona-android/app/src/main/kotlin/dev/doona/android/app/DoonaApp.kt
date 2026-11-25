@@ -117,6 +117,9 @@ fun DoonaApp(
                     onBack = { backStack.pop(key) },
                     onOpen = { backStack.push(SubDetailKey(it)) },
                     onAdd = { backStack.push(SubAddKey) },
+                    // The node's page (p3c) has no entry yet, so a 組態內 node's row is not wired.
+                    onOpenNode = {},
+                    onViewGroups = { backStack.selectTab(Tab.Policies) },
                 )
             }
             entry<SubAddKey> { key ->

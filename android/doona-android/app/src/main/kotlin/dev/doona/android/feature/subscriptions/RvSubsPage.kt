@@ -81,15 +81,24 @@ internal class RvSubsActions(
  * the confirm sheet. 新增訂閱 floats at the bottom. With no subscription there is nothing to update or to float over: the
  * bar's 更新所有訂閱 and the floating 新增訂閱 give way to the empty state, which carries the one 新增訂閱. While [loading]
  * (before the engine is ready) the cards are skeletons of subscription cards ([SubsSkeleton]), and the cards fade in
- * over them in place; the title and the bar's actions are there from the start.
+ * over them in place; the title and the bar's actions are there from the start. [extra] (the 組態內 card) follows the
+ * subscription cards once they are loaded; [extraKeepsPage] keeps the page for it when there is no subscription (nodes
+ * added by hand), with nothing to update. [banner] (what the last add or node delete did) takes the banner's place first.
  */
 @Composable
-internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boolean = false) {
+internal fun RvSubsPage(
+    state: RvSubsState,
+    actions: RvSubsActions,
+    loading: Boolean = false,
+    extra: (@Composable () -> Unit)? = null,
+    extraKeepsPage: Boolean = false,
+    banner: RvNotice? = null,
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_subscriptions)
-    val empty = !loading && state.subscriptions.isEmpty()
+    val empty = !loading && state.subscriptions.isEmpty() && !extraKeepsPage
     val updateAll: (@Composable (RvGlass) -> Unit)? =
-        if (empty) null else ({ RvGlassButton(it, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) })
+        if (empty || state.subscriptions.isEmpty()) null else ({ RvGlassButton(it, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) })
     val add: (@Composable () -> Unit)? = if (empty) null else ({ RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) })
     // A failed update's banner waits for the cards: while they load it is not known yet.
     val failed = if (loading) {
@@ -100,7 +109,7 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
     }
     RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter(banner = failed) {
+        RvGutter(banner = banner.takeUnless { loading } ?: failed) {
             if (empty) {
                 RvEmptyState(
                     stringResource(R.string.rv_empty_subscription),
@@ -112,6 +121,7 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
                 RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {
                     state.subscriptions.forEach { SubscriptionCard(it, actions, state.nowEpochMs) }
                 }
+                if (!loading) extra?.invoke()
             }
         }
     }

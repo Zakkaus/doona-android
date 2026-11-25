@@ -39,4 +39,37 @@
     <string name="rv_import_title">新增 %1$s</string>
     <string name="rv_import_body">這個連結來自 %1$s。</string>
     <string name="rv_import_add">新增</string>
+    <!-- 新增節點 on 訂閱 (p5d; approved s1125f-addnode-*, except the lines marked new) -->
+    <string name="rv_addnode">新增節點</string>
+    <string name="rv_addnode_line">貼上節點的分享連結</string>
+    <string name="rv_addnode_help">貼上節點的分享連結。節點名稱取自連結的 #⁠片段，沒有則取主機名稱。</string>
+    <string name="rv_addnode_link">節點連結</string>
+    <string name="rv_addnode_as">將新增為「%1$s」</string>
+    <string name="rv_addnode_invalid">節點連結須為 協定://… 格式，例如 ss://、vmess://、vless://、trojan://、hysteria2://</string>
+    <string name="rv_inline_source">組態內</string>
+    <!-- new (copy batch 4) -->
+    <plurals name="rv_addnode_count">
+        <item quantity="other">將新增 %1$d 個節點。</item>
+    </plurals>
+    <plurals name="rv_addnode_skip_link">
+        <item quantity="other">第 %2$s 行不是分享連結，不會新增。</item>
+    </plurals>
+    <plurals name="rv_addnode_skip_duplicate">
+        <item quantity="other">第 %2$s 行的節點已在組態內，不會新增。</item>
+    </plurals>
+    <plurals name="rv_addnode_skip_other">
+        <item quantity="other">第 %2$s 行無法讀取，不會新增。</item>
+    </plurals>
+    <plurals name="rv_addnode_added">
+        <item quantity="other">已新增 %1$d 個節點</item>
+    </plurals>
+    <plurals name="rv_addnode_added_partial">
+        <item quantity="other">已新增 %1$d 個節點，%2$d 個沒有新增</item>
+    </plurals>
+    <string name="rv_list_sep">、</string>
+    <string name="rv_list_last">%1$s 與 %2$s</string>
+    <string name="rv_addnode_joined">已加入%1$s群組。</string>
+    <string name="rv_addnode_view_groups">查看策略群組</string>
+    <string name="rv_node_delete">刪除節點</string>
+    <string name="rv_node_delete_body">節點會從組態內與它所在的群組移除。</string>
 </resources>
