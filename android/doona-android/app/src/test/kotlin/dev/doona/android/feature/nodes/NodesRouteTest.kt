@@ -437,6 +437,26 @@ class NodesRouteTest {
         assertTrue(added)
     }
 
+    /** 規則's 主節點 page carries every node picker's 訂閱 and 排序 chips (ruling q-p3c-mainchips), not the range row. */
+    @Test
+    fun `the main node's page filters by subscription with the pickers' chips`() {
+        val harbor = Subscription("s-1", "Harbor", "https://sub.example.net/a", nodes = 1, updatedAtEpochMs = 1L)
+        val bay = Subscription("s-2", "Bay", "https://sub.example.net/b", nodes = 1, updatedAtEpochMs = 1L)
+        val members = listOf(Member("n-jp", "Tokyo 01", 20, subscriptionId = "s-1"), Member("n-sg", "Singapore 01", 10, subscriptionId = "s-2"))
+        val main = Group(MAIN, "Proxy", GroupKind.Selector, members, Group.Selection("n-jp", pinned = true))
+        val vm = viewModel(FakeEngine(groups = listOf(main), subscriptions = listOf(harbor, bay)))
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}) } }
+        compose.waitForIdle()
+        compose.onNodeWithText("Stability").assertDoesNotExist()
+        compose.onNodeWithText("Tokyo 01").assertExists()
+        compose.onNodeWithText("All subscriptions").performClick()
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Bay").onLast().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Singapore 01").assertExists()
+        compose.onNodeWithText("Tokyo 01").assertDoesNotExist()
+    }
+
     private companion object {
         const val HINT = "Your pick becomes the main node"
         const val MAIN = FakeRuleMode.MAIN_GROUP_ID

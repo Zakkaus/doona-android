@@ -22,7 +22,9 @@ import dev.doona.android.designsystem.rv.LocalRvTesting
 import dev.doona.android.designsystem.rv.LocalRvTestingNodes
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvDelta
+import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
@@ -60,6 +62,20 @@ internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, 
         // The control row's gap below measures from the selected chip's shadow, the edge the eye sees.
         val sorts = RvNodeSort.entries
         RvRangeRow(sorts.map { stringResource(it.label) }, sorts.indexOf(sort), { onSort(sorts[it]) }, Modifier.padding(bottom = rvRaisedReach))
+    }
+}
+
+/**
+ * The main node's page's control row (ruling q-p3c-mainchips, decision 2026-11-25 19:25: one node picker, one look): the
+ * search pill, which opens the search page ([onSearch]), then [RvSpace.searchGap] over the 訂閱 and 排序 chips of every
+ * node picker ([rvNodeChips]: [subscription], [order]).
+ */
+@Composable
+internal fun RvNodePickerControls(subscription: RvChipPick, order: RvChipPick, onSearch: () -> Unit) {
+    Column {
+        RvSearchPill(onSearch, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(RvSpace.searchGap))
+        RvFilterChipRow(subscription, order)
     }
 }
 

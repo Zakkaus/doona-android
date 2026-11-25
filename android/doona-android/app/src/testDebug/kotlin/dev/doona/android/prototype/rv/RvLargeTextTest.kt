@@ -164,11 +164,11 @@ class RvLargeTextTest {
         assertOneWholeSize(listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h).map(::rvText))
     }
 
-    /** The node list's order chips (B3, X7): the same. */
+    /** The main node's page's 訂閱 and 排序 chips (B3, X7; ruling q-p3c-mainchips): the same. */
     @Test
     fun orderChipsFitTheirRow() {
         large { RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) }
-        assertOneWholeSize(RvNodeSort.entries.map { rvText(it.label) })
+        listOf(rvText(R.string.rv_nodes_all_subscriptions), rvText(R.string.rv_nodes_by_region)).forEach(::assertWhole)
     }
 
     /**

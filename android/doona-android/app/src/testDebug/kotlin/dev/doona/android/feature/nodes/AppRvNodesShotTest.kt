@@ -140,6 +140,11 @@ class AppRvNodesShotTest {
     /** No node at all: the pull-down's picker shows the empty state with 新增訂閱, not chips over nothing. */
     @Test fun pickerEmptyLight() = shot("node-picker-empty", dark = false, engine = ::emptyEngine) { Picker(it) }
 
+    /** 規則's 主節點 page, whole: the search pill over every node picker's 訂閱 and 排序 chips (ruling q-p3c-mainchips). */
+    @Test
+    @Config(qualifiers = WHOLE_PAGE)
+    fun mainNodeLight() = shot("main-node", dark = false, whole = true) { MainNodeRoute(it, onBack = {}, onSearch = {}, onAdd = {}) }
+
     @Test fun pickerLight() = shot("node-picker", dark = false) { Picker(it) }
 
     @Test fun pickerDark() = shot("node-picker", dark = true) { Picker(it) }
