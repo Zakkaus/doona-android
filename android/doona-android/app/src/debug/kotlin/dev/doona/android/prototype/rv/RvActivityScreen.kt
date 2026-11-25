@@ -120,6 +120,8 @@ import dev.doona.android.prototype.rv.data.RvRouteMode
 import dev.doona.android.prototype.rv.data.RvRuleOutbound
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.fastest
+import dev.doona.android.prototype.rv.policy.RvGroupKind
+import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.stats.RvStatsDots
 
 /**
@@ -151,6 +153,7 @@ internal fun RvActivityScreen(
     noSubscription: (() -> Unit)? = null,
     loading: Boolean = false,
     navFade: Boolean = false,
+    rules: List<RvRuleOutbound> = RvData.ruleOutbounds,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -184,7 +187,7 @@ internal fun RvActivityScreen(
                         )
                     } else {
                         RvSkeletonCards(loading, { ActivitySkeleton(mode) }) {
-                            OutboundCard(steady, mode, routes, nodes)
+                            OutboundCard(steady, mode, routes, nodes, rules)
                             TrafficTiles(state, routes.traffic)
                             RvUsageCard(RvData.today, RvData.nowHour, RvData.YESTERDAY_BY_NOW)
                             RvSubscriptionsCard(subscriptions, routes.subscriptions)
@@ -394,7 +397,7 @@ private fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
  * node; in 直連 a line that no node is in use.
  */
 @Composable
-private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvActivityRoutes, nodes: List<RvNode>) {
+private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvActivityRoutes, nodes: List<RvNode>, rules: List<RvRuleOutbound>) {
     RvCard {
         RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = routes.mode) { RvChevron() }
         if (mode == RvRouteMode.Direct) {
@@ -414,23 +417,43 @@ private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvAc
             ) { RvLatencyChange(node?.latencyMs?.takeUnless { node.failed }, listed?.changeMs?.takeUnless { node.failed }) }
         }
         if (mode != RvRouteMode.Rule) return@RvCard
-        RvData.ruleOutbounds.take(RULE_ROWS).forEach { RuleRow(it, routes.rule) }
+        rules.take(RULE_ROWS).forEach { RuleRow(it, routes.rule) }
         RvSeeAll(pluralStringResource(R.plurals.rv_see_all_rules, RvData.RULES, RvData.RULES), routes.rules)
     }
 }
 
+/** The glyph of how the group named [group] picks, as 策略 draws it; a selector's for a group 策略 does not list. */
+private fun groupGlyph(@StringRes group: Int): Int = (RvPolicyData.groups.firstOrNull { it.name == group }?.kind ?: RvGroupKind.Select).glyph
+
 /**
  * A rule group that sent traffic today: the node's flag, or for 直連 its own straight arrow (the diamond is the mode's), the
- * group, its node, its bytes.
+ * group, its node, its bytes. A group whose UDP uses another node (a sample) names both, a line each, each after its
+ * network (`TCP Taipei 04`, `UDP Hong Kong 01`); when the two are in different regions no one flag stands for them, and
+ * the group's glyph (how it picks, as 策略 draws the group) leads the row.
  */
 @Composable
 private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
     val format = rememberRvFormat()
     val node = rule.nodeId?.let { RvData.node(it) }
+    val udp = rule.udpNodeId?.takeIf { it != rule.nodeId }?.let { RvData.node(it) }
+    val line = when {
+        node == null -> stringResource(R.string.mode_direct)
+
+        udp == null -> node.name
+
+        else -> stringResource(R.string.rv_network_node, stringResource(R.string.ui_tcp), node.name) + "\n" +
+            stringResource(R.string.rv_network_node, stringResource(R.string.ui_udp), udp.name)
+    }
     RvRow(
-        { if (node != null) RvFlag(node.place.flag, RvSize.rowDisc) else RvIconDisc(R.drawable.rv_sym_arrow_right_alt) },
+        {
+            when {
+                node == null -> RvIconDisc(R.drawable.rv_sym_arrow_right_alt)
+                udp != null && udp.place != node.place -> RvIconDisc(groupGlyph(rule.group))
+                else -> RvFlag(node.place.flag, RvSize.rowDisc)
+            }
+        },
         stringResource(rule.group),
-        node?.name ?: stringResource(R.string.mode_direct),
+        line,
         onClick = { onOpen(rule.group) },
     ) { RvText(format.bytes(rule.bytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
 }
