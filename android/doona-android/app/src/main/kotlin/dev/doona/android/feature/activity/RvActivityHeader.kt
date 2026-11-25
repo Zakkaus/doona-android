@@ -253,8 +253,8 @@ private const val HERO_VIEWS = 2
 
 /**
  * The header's status: a short word, never a reason sentence (owner decision q-actcaption, 2026-11-26), which the
- * notice below gives. A VPN another app or the system turned off reads 未連線, as the approved vpn-taken sample does; a
- * VPN Android did not establish is a failed start; another app's lockdown is VPN 已鎖定.
+ * notice below gives. Every failed start reads 連線失敗, the VPN notification's word; a VPN another app or the system
+ * turned off reads 未連線, as the approved vpn-taken sample does; another app's lockdown is VPN 已鎖定.
  */
 private val Status.label: Int
     get() = when (this) {
@@ -267,12 +267,9 @@ private val Status.label: Int
         Status.Stopped -> R.string.status_stopped
 
         is Status.Failed -> when (reason) {
-            FailureReason.NoAllowedApps -> R.string.status_failed_no_allowed_apps
-            FailureReason.StartFailed -> R.string.status_failed_start
+            FailureReason.NoAllowedApps, FailureReason.StartFailed, FailureReason.IncompatibleCore, FailureReason.VpnNotEstablished -> R.string.vpn_status_failed
             FailureReason.CoreStopped -> R.string.status_failed_core_stopped
-            FailureReason.IncompatibleCore -> R.string.status_failed_incompatible_core
             FailureReason.Revoked -> R.string.status_stopped
             FailureReason.LockdownEnabled -> R.string.status_vpn_locked
-            FailureReason.VpnNotEstablished -> R.string.status_failed_start
         }
     }
