@@ -105,10 +105,10 @@ class PolicyFlowsTest {
         compose.onNodeWithText("example.invalid").assertExists()
         compose.runOnIdle { assertEquals(listOf(url), engine.subscriptions.value.map { it.url }) }
 
-        compose.onNodeWithText("Remove").performClick()
-        compose.onNodeWithText("Remove subscription?").assertExists()
+        compose.onNodeWithText("Delete").performClick()
+        compose.onNodeWithText("Delete subscription?").assertExists()
         compose.runOnIdle { assertEquals(1, engine.subscriptions.value.size) }
-        compose.onAllNodesWithText("Remove")[1].performClick()
+        compose.onAllNodesWithText("Delete")[1].performClick()
         compose.onNodeWithText("No subscriptions").assertExists()
         compose.runOnIdle { assertTrue(engine.subscriptions.value.isEmpty()) }
     }
@@ -132,14 +132,14 @@ class PolicyFlowsTest {
     fun `the hint to add a subscription shows only when the core had no node to start with`() {
         val engine = FakeEngine(subscriptions = emptyList(), status = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes))
         show(engine)
-        compose.onNodeWithText("Could not connect: there are no nodes. Add a subscription first.").assertExists()
+        compose.onNodeWithText("Could not connect: no nodes. Add a subscription first.").assertExists()
 
         compose.runOnIdle { engine.status.value = Status.Failed(FailureReason.StartFailed) }
-        compose.onNodeWithText("Could not connect: there are no nodes. Add a subscription first.").assertDoesNotExist()
+        compose.onNodeWithText("Could not connect: no nodes. Add a subscription first.").assertDoesNotExist()
         compose.onNodeWithText("The VPN did not start").assertExists()
 
         compose.runOnIdle { engine.status.value = Status.Failed(FailureReason.StartFailed, ErrorCode.Internal) }
-        compose.onNodeWithText("Could not connect: there are no nodes. Add a subscription first.").assertDoesNotExist()
+        compose.onNodeWithText("Could not connect: no nodes. Add a subscription first.").assertDoesNotExist()
         compose.onNodeWithText("The VPN did not start").assertExists()
     }
 
