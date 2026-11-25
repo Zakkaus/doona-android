@@ -162,7 +162,6 @@ class StatsViewModelTest {
     }
 
     private companion object {
-        const val SAMPLE_NOW = 1_795_343_040_000L
         const val POLL_MS = 5_000L
     }
 }

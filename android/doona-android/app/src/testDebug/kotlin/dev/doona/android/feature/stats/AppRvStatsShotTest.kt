@@ -361,7 +361,6 @@ class AppRvStatsShotTest {
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
         const val PERCENT = 100
         const val HOURS = 24
-        const val SAMPLE_NOW = 1_795_343_040_000L
         const val SAMPLE_DATE = "2026-11-22"
         const val CARD_AND_TILES = 4
         const val PICKED = "s2"

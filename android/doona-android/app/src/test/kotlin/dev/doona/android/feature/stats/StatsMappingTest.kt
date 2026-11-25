@@ -245,6 +245,19 @@ class StatsMappingTest {
     }
 
     @Test
+    fun `before the first read a week and a month are empty days, with nothing counted before them`() {
+        val week = rvStatsState(sampleInput().with(usage = null, range = RvStatsRange.Week)).period!!
+        assertEquals(List(7) { 0L }, week.days.down)
+        assertEquals(List(7) { 0L }, week.days.up)
+        assertEquals(0L, week.before)
+        // 2026-11-22: the 1st to the 21st, then today, of November's 30.
+        val month = rvStatsState(sampleInput().with(usage = null, range = RvStatsRange.Month)).period!!
+        assertEquals(List(22) { 0L }, month.days.down)
+        assertEquals(30, month.slots)
+        assertNull(month.before)
+    }
+
+    @Test
     fun `today has no period`() {
         assertNull(rvStatsState(sampleInput()).period)
     }
@@ -303,8 +316,6 @@ class StatsMappingTest {
     ) = StatsInput(usage, today, subscriptions, catalog, score, nowEpochMs, zone, range, subscriptionId, firstDay)
 
     private companion object {
-        /** RvSampleTraffic's snapshot: 2026-11-22 10:24 UTC. */
-        const val SAMPLE_NOW = 1_795_343_040_000L
         const val DAY_MS = 86_400_000L
 
         /** The share of the sample's day gone at 10:24. */
