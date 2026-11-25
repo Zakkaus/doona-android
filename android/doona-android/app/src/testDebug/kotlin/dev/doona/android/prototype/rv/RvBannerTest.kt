@@ -13,6 +13,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.activity.RvActivityNotice
+import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
@@ -25,7 +26,6 @@ import dev.doona.android.prototype.rv.settings.RvSave
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.states.RvActionFailed
 import dev.doona.android.prototype.rv.states.rvActionFailedBanner
-import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.subs.RvAddFailure
 import dev.doona.android.prototype.rv.subs.RvAddPhase
 import dev.doona.android.prototype.rv.subs.RvAddState

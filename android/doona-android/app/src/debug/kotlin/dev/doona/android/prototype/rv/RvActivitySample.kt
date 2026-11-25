@@ -1,17 +1,25 @@
 package dev.doona.android.prototype.rv
 
+import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.designsystem.rv.RvHeroSwipe
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPullLook
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
+import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.feature.activity.RvActivityCards
+import dev.doona.android.feature.activity.RvActivityRoutes
 import dev.doona.android.feature.activity.RvActivityRule
+import dev.doona.android.feature.activity.RvActivityScreen
 import dev.doona.android.feature.activity.RvActivityState
 import dev.doona.android.feature.activity.RvMainNode
 import dev.doona.android.feature.model.RvNode
@@ -93,7 +101,7 @@ internal fun RvActivityScreenSample(
     state: ActivityUiState,
     onAction: (ActivityAction) -> Unit,
     onConnect: () -> Unit,
-    routes: RvActivityRoutes = RvActivityRoutes(),
+    routes: RvActivityRoutes = rvSampleActivityRoutes(),
     mode: RvRouteMode = if (state.mode == Mode.Direct) RvRouteMode.Direct else RvRouteMode.Rule,
     nodes: List<RvNode> = RvData.nodes,
     subscriptions: List<RvSubscription> = RvData.subscriptions,
@@ -107,4 +115,28 @@ internal fun RvActivityScreenSample(
 ) {
     val rows = rules.map { RvActivityRule(stringResource(it.group), rvSampleRuleGroupId(it.group), it.nodeId, it.bytes, it.udpNodeId) }
     RvActivityScreen(pageState(state, mode), onAction, onConnect, routes, nodes, subscriptions, pull, hero, banner, noSubscription, loading, navFade, rows, rvSampleActivityCards)
+}
+
+/** The sample's routes: none leads anywhere, and the latency test and 更多 are not wired. */
+internal fun rvSampleActivityRoutes() = RvActivityRoutes(
+    traffic = {},
+    stats = {},
+    search = {},
+    nodes = {},
+    node = {},
+    tab = {},
+    mode = {},
+    rule = {},
+    rules = {},
+    test = NOT_WIRED,
+    subscriptions = {},
+    more = NOT_WIRED,
+)
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun RvActivityScreenPreview() {
+    val dark = isSystemInDarkTheme()
+    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
 }

@@ -29,7 +29,6 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.prototype.rv.RvActivityScreen
 import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.rvSampleActivity
 

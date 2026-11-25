@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.feature.activity
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.gestures.Orientation

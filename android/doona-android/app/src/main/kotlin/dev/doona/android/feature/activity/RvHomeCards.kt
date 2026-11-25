@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.feature.activity
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,7 +32,6 @@ import dev.doona.android.designsystem.rv.RvUsageSize
 import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvMoves
-import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
@@ -103,7 +102,7 @@ internal fun RvUsageCard(day: RvDay, nowHour: Float, yesterdayByNow: Long) {
  * as of [nowEpochMs] and what is left. Its header opens 訂閱 ([onOpen]).
  */
 @Composable
-internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>, nowEpochMs: Long, onOpen: () -> Unit = NOT_WIRED) {
+internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>, nowEpochMs: Long, onOpen: () -> Unit) {
     val format = rememberRvFormat()
     RvCard {
         RvCardHeader(stringResource(R.string.rv_subscriptions), onOpen)

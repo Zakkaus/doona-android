@@ -40,9 +40,12 @@ import dev.doona.android.designsystem.rv.rvEverySample
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
+import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.feature.activity.RvActivityNotice
+import dev.doona.android.feature.activity.RvActivityRoutes
+import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
@@ -87,7 +90,6 @@ import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.states.RvPermission
 import dev.doona.android.prototype.rv.states.RvPermissionAsks
 import dev.doona.android.prototype.rv.states.RvPermissionSheet
-import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
 import dev.doona.android.prototype.rv.stats.rvStatsSample
@@ -356,6 +358,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         rules = toPolicy,
         test = run::test,
         subscriptions = { pages.push(RvSubsRoutes.LIST) },
+        more = NOT_WIRED,
     )
     val name = route.substringBefore(':')
     val notice = RvActivityNotice.entries.firstOrNull { name == STATE && it.route == route.substringAfter(':') }
