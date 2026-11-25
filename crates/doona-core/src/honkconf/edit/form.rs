@@ -297,7 +297,7 @@ fn splice(
     raw: &impl Fn() -> EditError,
 ) -> Result<(usize, Spliced), EditError> {
     if let Some(old) = replaced {
-        // A resumed statement starts where its paused run did.
+        // The marker precedes the indent, so a resumed statement starts at or after its run.
         let row = base.rows.iter().find(|r| {
             r.list == List::Traffic && !r.paused && !r.fallback && r.bytes.start >= old.bytes.start
         });
@@ -341,6 +341,22 @@ fn admit(file: &File, form: RuleForm<'_>) -> Result<(Literal, String), EditError
 }
 
 impl HonkStore {
+    /// Writes nothing when the steps end on `file`'s own bytes, as a replacement with the same
+    /// statement does, so its row keeps its meter.
+    fn write_form(
+        &mut self,
+        draft: u64,
+        absolute: &Path,
+        root: &Path,
+        file: &File,
+        steps: &[(File, Carry)],
+    ) -> Result<(), EditError> {
+        if steps.last().unwrap().0.source.content == file.source.content {
+            return Ok(());
+        }
+        Ok(self.write_steps(draft, absolute, root, file, steps)?)
+    }
+
     /// With `paused: true`, `Earlier` describes the rule's active form.
     pub fn rule_form(&mut self, draft: u64, edit: FormEdit<'_>) -> Result<Formed, EditError> {
         let mut tree =
@@ -374,7 +390,7 @@ impl HonkStore {
             .chain([(candidate, carry)])
             .chain(paused)
             .collect();
-        self.write_steps(draft, &absolute, &root, &file, &steps)?;
+        self.write_form(draft, &absolute, &root, &file, &steps)?;
         Ok(Formed { path, id, earlier })
     }
 }

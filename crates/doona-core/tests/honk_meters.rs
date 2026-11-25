@@ -10,6 +10,8 @@ use doonacore::honkconf::edit::{Edit, FormEdit, Match, RuleForm, RuleRow};
 const ENTRY: &str = "config.dae";
 const RULE: &str = "  domain(suffix: example.org) -> direct\n";
 const OTHER: &str = "  domain(suffix: example.net) -> block\n";
+/// The statement `rule` writes.
+const FORMED: &str = "  domain(full: a.org, suffix: .a.org) -> block\n";
 
 fn routing(rules: &str) -> String {
     format!("routing {{\n{rules}  fallback: direct\n}}\n")
@@ -56,6 +58,24 @@ impl Store {
 
     fn form(&mut self, draft: u64, edit: FormEdit<'_>) -> String {
         self.store.rule_form(draft, edit).unwrap().id
+    }
+
+    /// The head's rows after pausing the second one, if `paused`.
+    fn paused(&mut self, paused: bool) -> Vec<(RuleRow, String)> {
+        let draft = self.store.draft(None).unwrap();
+        if paused {
+            let id = self.rows(draft)[1].id.clone();
+            self.edit(draft, Edit::Pause(&id));
+        }
+        let rows = self.apply(draft);
+        assert_eq!(rows[1].0.paused, paused);
+        rows
+    }
+
+    fn replace(&mut self, draft: u64, id: &str, paused: bool) -> String {
+        let form = rule(paused);
+        let path = Path::new(ENTRY);
+        self.form(draft, FormEdit::Replace { path, id, form })
     }
 
     fn head(&mut self) -> Vec<(RuleRow, String)> {
@@ -189,28 +209,45 @@ fn a_form_added_rule_starts_fresh_and_its_neighbours_keep_theirs() {
 
 #[test]
 fn a_form_replaced_rule_starts_fresh_active_or_paused() {
-    for paused in [false, true] {
+    for (was, paused) in [(false, false), (true, true), (true, false)] {
         let mut s = Store::with(&format!("{RULE}{OTHER}"));
+        let before = s.paused(was);
         let draft = s.store.draft(None).unwrap();
-        if paused {
-            let id = s.rows(draft)[1].id.clone();
-            s.edit(draft, Edit::Pause(&id));
-        }
-        let before = s.apply(draft);
-        assert_eq!(before[1].0.paused, paused);
-        let draft = s.store.draft(None).unwrap();
-        let id = s.form(
-            draft,
-            FormEdit::Replace {
-                path: Path::new(ENTRY),
-                id: &before[1].0.id,
-                form: rule(paused),
-            },
-        );
+        let id = s.replace(draft, &before[1].0.id, paused);
         let after = s.apply(draft);
         assert_eq!(after.len(), before.len());
         assert_eq!(after[1].0.paused, paused);
         assert_ne!(after[1].0.id, before[1].0.id);
         only_fresh(&before, &after, &id);
+    }
+}
+
+#[test]
+fn replacing_a_rule_with_its_own_statement_writes_nothing() {
+    for paused in [false, true] {
+        let mut s = Store::with(&format!("{RULE}{FORMED}"));
+        let before = s.paused(paused);
+        let draft = s.store.draft(None).unwrap();
+        let text = s.store.text(draft, Path::new(ENTRY)).unwrap();
+        let id = s.replace(draft, &before[1].0.id, paused);
+        assert_eq!(id, before[1].0.id);
+        assert_eq!(s.store.text(draft, Path::new(ENTRY)).unwrap(), text);
+        assert_eq!(s.apply(draft), before);
+    }
+}
+
+// A twin's ID moves to the survivor when its sibling changes; the meter follows the bytes.
+#[test]
+fn replacing_one_twin_leaves_the_other_its_meter() {
+    for (replaced, twin) in [(0, 1), (1, 0)] {
+        let mut s = Store::with(&RULE.repeat(2));
+        let before = s.head();
+        let draft = s.store.draft(None).unwrap();
+        let id = s.replace(draft, &before[replaced].0.id, false);
+        let after = s.apply(draft);
+        assert_eq!(after[replaced].0.id, id);
+        assert_eq!(after[twin].1, before[twin].1);
+        assert_eq!(after[2].1, before[2].1);
+        assert!(!meters(&before).contains(&after[replaced].1.as_str()));
     }
 }
