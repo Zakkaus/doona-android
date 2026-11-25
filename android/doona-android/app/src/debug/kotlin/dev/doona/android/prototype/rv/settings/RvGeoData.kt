@@ -23,12 +23,6 @@ internal enum class RvGeoUpdate { Idle, Updating, Updated, Latest, Failed }
 @Immutable
 internal data class RvGeoData(val dateEpochMs: Long, val update: RvGeoUpdate = RvGeoUpdate.Idle, val connected: Boolean = true)
 
-/** The sample's data: the copy the APK ships, 2026-11-20 (UTC). */
-internal const val RV_SAMPLE_GEO_SHIPPED_MS = 1_795_132_800_000L
-
-/** The sample's newer data, 2026-11-24 (UTC), as an update leaves it. */
-internal const val RV_SAMPLE_GEO_NEWER_MS = 1_795_478_400_000L
-
 /**
  * 設定's GeoIP/GeoSite row in 進階: the data's date as its second line, with where an update stands after it, and 更新
  * at its end, the library's in-card action sized to its label and centred on the row (as every in-row action,

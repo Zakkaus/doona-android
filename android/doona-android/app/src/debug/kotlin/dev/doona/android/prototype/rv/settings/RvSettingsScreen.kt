@@ -72,7 +72,7 @@ internal fun RvSettingsScreen(
     onTab: (Int) -> Unit = {},
     routes: RvSettingsRoutes = RvSettingsRoutes(),
     configRev: Int? = null,
-    geoData: RvGeoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS),
+    geoData: RvGeoData,
     update: RvUpdate = RvUpdate.Idle,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
