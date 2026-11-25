@@ -16,9 +16,13 @@ data class TrafficSeries(
     val downPeak: Long,
 )
 
-/** Endpoint details and the last eight latency tests, oldest first. Keep server addresses out of logs. */
+/**
+ * Endpoint details and the last eight latency tests, oldest first; [subscriptionId] is the subscription the node came
+ * from, null for a static node. Keep server addresses out of logs.
+ */
 data class NodeInfo(
     val id: String,
+    val subscriptionId: String?,
     val protocol: String,
     val server: String,
     val port: Int,

@@ -78,7 +78,7 @@ class LocalNetworkEngineTest {
     @Test
     fun aYesRunsTheActionOnceMore() = runTest(UnconfinedTestDispatcher()) {
         val scripted = Scripted().apply { failures += ErrorCode.LocalNetwork }
-        val added = async { engine(scripted).addSubscription("http://192.168.8.161/sub") }
+        val added = async { engine(scripted).addSubscription("http://192.168.8.161/sub", null, null) }
         answer(allowed = true)
         assertTrue(added.await().isSuccess)
         assertEquals(2, scripted.adds)
@@ -102,7 +102,7 @@ class LocalNetworkEngineTest {
     fun aNoKeepsTheFailureAndShowsTheWayToTheSettings() = runTest(UnconfinedTestDispatcher()) {
         val scripted = Scripted().apply { failures += listOf(ErrorCode.LocalNetwork, ErrorCode.LocalNetwork) }
         val engine = engine(scripted)
-        val added = async { engine.addSubscription("http://192.168.8.161/sub") }
+        val added = async { engine.addSubscription("http://192.168.8.161/sub", null, null) }
         answer(allowed = false)
         assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
         assertTrue("the action waits on the refusal", added.isActive)
@@ -110,7 +110,7 @@ class LocalNetworkEngineTest {
         assertEquals(ErrorCode.LocalNetwork, added.await().code())
         assertEquals(1, scripted.adds)
         // Never asked again in this process: the refusal shows at once and nothing runs twice.
-        val again = async { engine.addSubscription("http://192.168.8.161/sub") }
+        val again = async { engine.addSubscription("http://192.168.8.161/sub", null, null) }
         assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
         access.dismissed()
         assertEquals(ErrorCode.LocalNetwork, again.await().code())
@@ -137,11 +137,11 @@ class LocalNetworkEngineTest {
     fun otherFailuresAndAnAllowedAccessAskNothing() = runTest(UnconfinedTestDispatcher()) {
         val scripted = Scripted().apply { failures += ErrorCode.FetchFailed }
         val engine = engine(scripted)
-        assertEquals(ErrorCode.FetchFailed, engine.addSubscription("https://example.invalid/sub").code())
+        assertEquals(ErrorCode.FetchFailed, engine.addSubscription("https://example.invalid/sub", null, null).code())
         assertNull(access.prompt.value)
         granted = true
         scripted.failures += ErrorCode.LocalNetwork
-        assertEquals(ErrorCode.LocalNetwork, engine.addSubscription("http://192.168.8.161/sub").code())
+        assertEquals(ErrorCode.LocalNetwork, engine.addSubscription("http://192.168.8.161/sub", null, null).code())
         assertNull(access.prompt.value)
         assertEquals(2, scripted.adds)
     }

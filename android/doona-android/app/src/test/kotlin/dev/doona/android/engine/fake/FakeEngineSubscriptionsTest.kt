@@ -18,7 +18,7 @@ class FakeEngineSubscriptionsTest {
     fun unnamedSubscriptionTruncatesOnlyTheHostLabel() = runTest {
         val prefix = "a".repeat(61)
         val url = "https://$prefix.bc.example/sub"
-        val added = FakeEngine().addSubscription(url).getOrThrow()
+        val added = FakeEngine().addSubscription(url, null, null).getOrThrow()
         assertEquals("$prefix.bc", added.name)
         assertEquals(url, added.url)
     }
@@ -28,7 +28,7 @@ class FakeEngineSubscriptionsTest {
         val engine = FakeEngine()
         val before = engine.subscriptions.value
         for (agent in refused) {
-            assertEquals(agent, ErrorCode.InvalidArgument, engine.addSubscription("https://example.invalid/new", userAgent = agent).code())
+            assertEquals(agent, ErrorCode.InvalidArgument, engine.addSubscription("https://example.invalid/new", null, agent).code())
             assertEquals(agent, ErrorCode.InvalidArgument, engine.setSubscriptionUserAgent("s1", agent).code())
         }
         assertEquals(before, engine.subscriptions.value)
@@ -37,7 +37,7 @@ class FakeEngineSubscriptionsTest {
     @Test
     fun anAgentIsKeptTrimmedAndNullReturnsToTheDefault() = runTest {
         val engine = FakeEngine()
-        val added = engine.addSubscription("https://example.invalid/new", userAgent = "  clash-verge/v2.2.3 ").getOrThrow()
+        val added = engine.addSubscription("https://example.invalid/new", null, "  clash-verge/v2.2.3 ").getOrThrow()
         assertEquals("clash-verge/v2.2.3", added.userAgent)
         assertEquals("x".repeat(256), engine.setSubscriptionUserAgent(added.id, "x".repeat(256)).getOrThrow().userAgent)
         assertNull(engine.setSubscriptionUserAgent(added.id, null).getOrThrow().userAgent)
@@ -59,13 +59,13 @@ class FakeEngineSubscriptionsTest {
     @Test
     fun idsAreNeverGivenTwiceAndSettingOneLeavesTheOthers() = runTest {
         val engine = FakeEngine()
-        val second = engine.addSubscription("https://example.invalid/second").getOrThrow()
+        val second = engine.addSubscription("https://example.invalid/second", null, null).getOrThrow()
         engine.removeSubscription("s1").getOrThrow()
-        val third = engine.addSubscription("https://example.invalid/third").getOrThrow()
+        val third = engine.addSubscription("https://example.invalid/third", null, null).getOrThrow()
         assertEquals(listOf("s2", "s3"), listOf(second.id, third.id))
         // A list a test sets directly is avoided too.
         engine.subscriptions.value = engine.subscriptions.value + second.copy(id = "s7")
-        assertEquals("s8", engine.addSubscription("https://example.invalid/eighth").getOrThrow().id)
+        assertEquals("s8", engine.addSubscription("https://example.invalid/eighth", null, null).getOrThrow().id)
 
         // With an id given twice, both would change.
         val untouched = engine.subscriptions.value.filter { it.id != "s2" }

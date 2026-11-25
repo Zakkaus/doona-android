@@ -13,10 +13,13 @@
     <string name="rv_menu_delete">刪除</string>
     <string name="rv_cancel">取消</string>
     <string name="rv_sub_delete_title">刪除 %1$s？</string>
+    <string name="rv_sub_delete_failed_title">無法刪除 %1$s</string>
+    <string name="rv_sub_delete_failed_reason">訂閱與節點都沒有變動。</string>
     <plurals name="rv_sub_delete_body">
         <item quantity="other">訂閱中的 %1$d 個節點會一併移除。</item>
     </plurals>
     <string name="rv_add_link">訂閱網址</string>
+    <string name="rv_add_link_invalid">請輸入完整的 http:// 或 https:// 網址</string>
     <string name="rv_add_name">名稱（選填）</string>
     <string name="rv_add_user_agent">User-Agent（選填）</string>
     <string name="rv_add_not_subscription">這個連結回傳的內容不是訂閱。</string>

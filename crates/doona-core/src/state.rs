@@ -3,8 +3,6 @@
 //! Writes replace it atomically: a temp file is written and synced, then renamed over the old one.
 
 use crate::dto::{ErrorCode, Mode, RuleSourceSpec, SubscriptionFormat};
-use crate::rules::template;
-use crate::subscription::fetch;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -30,8 +28,8 @@ pub struct State {
         skip_serializing_if = "Option::is_none"
     )]
     pub dns_upstreams: Option<Vec<std::net::SocketAddr>>,
-    /// Where Rule mode's rules come from; the template when absent or unreadable.
-    #[serde(default, deserialize_with = "rule_source")]
+    /// Where Rule mode's rules come from; the template when absent.
+    #[serde(default)]
     pub rule_source: RuleSourceSpec,
     #[serde(default)]
     pub subscriptions: Vec<StoredSubscription>,
@@ -72,37 +70,15 @@ impl State {
     }
 }
 
+/// The stored DNS upstreams, valid as `setDnsUpstreams` takes them; any other list makes the file
+/// unreadable.
 fn dns_upstreams<'de, D: serde::Deserializer<'de>>(
     d: D,
 ) -> Result<Option<Vec<std::net::SocketAddr>>, D::Error> {
-    let value = serde_json::Value::deserialize(d)?;
-    // A list this core cannot use reads as the built-in defaults, and the rest of the file stays usable.
-    Ok(serde_json::from_value::<Vec<String>>(value)
-        .ok()
-        .and_then(|servers| crate::dns::parse_upstreams(&servers)))
-}
-
-/// A stored quota. Cores before this one stored them as unsigned numbers, so a value past
-/// `i64::MAX` may be in the file: it reads as no quota, and the rest of the file stays usable.
-fn quota<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<i64>, D::Error> {
-    Ok(Option::<serde_json::Number>::deserialize(d)?.and_then(|n| n.as_i64()))
-}
-
-/// A stored User-Agent. One the commands would refuse, which only a hand-edited file holds, reads
-/// as none, and the rest of the file stays usable.
-fn user_agent<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<String>, D::Error> {
-    let value = serde_json::Value::deserialize(d)?;
-    Ok(value.as_str().and_then(|a| fetch::user_agent(a).ok()))
-}
-
-/// A stored rule source. One this core cannot use, such as a later core's kind or template, reads
-/// as the default, and the rest of the file stays usable.
-fn rule_source<'de, D: serde::Deserializer<'de>>(d: D) -> Result<RuleSourceSpec, D::Error> {
-    let value = serde_json::Value::deserialize(d)?;
-    let spec = serde_json::from_value(value).ok();
-    Ok(spec
-        .filter(|RuleSourceSpec::Template { template, .. }| template == template::ID)
-        .unwrap_or_default())
+    let servers = Vec::<String>::deserialize(d)?;
+    crate::dns::parse_upstreams(&servers)
+        .map(Some)
+        .ok_or_else(|| serde::de::Error::custom("dnsUpstreams is not a valid list"))
 }
 
 impl Default for State {
@@ -122,40 +98,31 @@ impl Default for State {
     }
 }
 
-/// A subscription as stored. Its nodes are parsed at load from `document` when it has one, else
-/// from `links`.
+/// A subscription as stored. It is stored only after a successful fetch, so it always has a format
+/// and a fetch time. Its nodes are parsed at load from `document` when it has one, else from
+/// `links`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredSubscription {
     pub id: String,
     pub name: String,
     pub url: String,
-    pub format: Option<SubscriptionFormat>,
-    pub updated_at_epoch_ms: Option<i64>,
-    #[serde(default, deserialize_with = "quota")]
+    /// The format of the last successful fetch.
+    pub format: SubscriptionFormat,
+    /// When the last successful fetch ended.
+    pub updated_at_epoch_ms: i64,
     pub used_bytes: Option<i64>,
-    #[serde(default, deserialize_with = "quota")]
     pub total_bytes: Option<i64>,
     pub expires_at_epoch_ms: Option<i64>,
     /// The code of the last failed update; a successful one clears it.
-    #[serde(default)]
     pub error: Option<ErrorCode>,
     /// The share links of its nodes as last fetched, one per node, in feed order.
-    #[serde(default)]
     pub links: Vec<String>,
     /// For a structured body (Clash, sing-box or SIP008), the entries of its nodes as last
-    /// fetched: a YAML document of the entries alone, under the body's own key. Cores before this
-    /// one ignore it and show the subscription without nodes.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// fetched: a YAML document of the entries alone, under the body's own key.
     pub document: Option<String>,
     /// The User-Agent its fetches send instead of the default, valid as `fetch::user_agent` takes
-    /// it. Absent when none, so the file of a subscription without one is unchanged; cores before
-    /// this one ignore it and send the default.
-    #[serde(
-        default,
-        deserialize_with = "user_agent",
-        skip_serializing_if = "Option::is_none"
-    )]
+    /// it.
     pub user_agent: Option<String>,
 }
 
@@ -262,6 +229,7 @@ pub(crate) fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rules::template;
     use crate::testutil::TempDir;
 
     #[test]
@@ -293,34 +261,17 @@ mod tests {
     }
 
     #[test]
-    fn unknown_fields_are_ignored_and_missing_lists_default() {
-        let dir = TempDir::new("state-lenient");
-        fs::write(
-            dir.path().join(FILE),
-            br#"{"stateVersion":1,"mode":"Direct","later":true}"#,
-        )
-        .unwrap();
-        let (state, how) = Store::new(dir.path()).load().unwrap();
-        assert_eq!(how, Loaded::Read);
-        assert_eq!(state.mode, Mode::Direct);
-        assert!(state.subscriptions.is_empty() && state.selections.is_empty());
-    }
-
-    #[test]
     fn subscription_ids_are_never_given_twice() {
         let mut state = State::default();
         let first = state.take_subscription_id();
         assert_eq!(first, "s1");
         assert_eq!(state.take_subscription_id(), "s2");
-        // A file written without the counter still avoids the ids it holds.
-        let mut old: State = serde_json::from_str(
-            r#"{"stateVersion":1,"mode":"Global","subscriptions":[{"id":"s7","name":"a","url":"https://a.invalid/","updatedAtEpochMs":null,"usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null}]}"#,
+        // A counter behind the ids in the file, as a hand-edited one may be, still avoids them.
+        let mut edited: State = serde_json::from_str(
+            r#"{"stateVersion":1,"mode":"Global","nextSubscription":1,"subscriptions":[{"id":"s7","name":"a","url":"https://a.invalid/","format":"clash","updatedAtEpochMs":5,"usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null,"error":null,"links":[],"document":null,"userAgent":null}]}"#,
         )
         .unwrap();
-        let s7 = &old.subscriptions[0];
-        assert!(s7.links.is_empty() && s7.document.is_none() && s7.error.is_none());
-        assert!(s7.user_agent.is_none());
-        assert_eq!(old.take_subscription_id(), "s8");
+        assert_eq!(edited.take_subscription_id(), "s8");
     }
 
     #[test]
@@ -337,23 +288,24 @@ mod tests {
     }
 
     #[test]
-    fn a_rule_source_this_core_cannot_use_reads_as_the_template_and_keeps_the_rest() {
-        let sub = r#"{"id":"s1","name":"a","url":"https://a.invalid/","updatedAtEpochMs":null,
-            "usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null}"#;
+    fn a_rule_source_this_core_does_not_write_makes_the_file_unreadable() {
+        let sub = r#"{"id":"s1","name":"a","url":"https://a.invalid/","format":"clash",
+            "updatedAtEpochMs":5,"usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null,
+            "error":null,"links":[],"document":null,"userAgent":null}"#;
         for source in [
-            "",
             r#""ruleSource":{"kind":"subscription","subscriptionId":"s1","options":{}},"#,
-            r#""ruleSource":{"kind":"template","template":"later","options":{"blockQuic":true}},"#,
             r#""ruleSource":7,"#,
         ] {
             let dir = TempDir::new("state-rule-source");
             let text =
                 format!(r#"{{"stateVersion":1,"mode":"Rule",{source}"subscriptions":[{sub}]}}"#);
-            fs::write(dir.path().join(FILE), text).unwrap();
+            fs::write(dir.path().join(FILE), &text).unwrap();
             let (state, how) = Store::new(dir.path()).load().unwrap();
-            assert_eq!(how, Loaded::Read, "{source}");
-            assert_eq!(state.rule_source, RuleSourceSpec::default(), "{source}");
-            assert_eq!((state.mode, state.subscriptions.len()), (Mode::Rule, 1));
+            assert_eq!(
+                (how, state),
+                (Loaded::SetAside, State::default()),
+                "{source}"
+            );
         }
     }
 
@@ -373,15 +325,15 @@ mod tests {
     }
 
     #[test]
-    fn a_user_agent_round_trips_and_is_absent_without_one() {
+    fn a_user_agent_round_trips_and_is_null_without_one() {
         let dir = TempDir::new("state-user-agent");
         let store = Store::new(dir.path());
         let sub = |id: &str, user_agent: Option<&str>| StoredSubscription {
             id: id.to_owned(),
             name: id.to_owned(),
             url: format!("https://{id}.invalid/"),
-            format: None,
-            updated_at_epoch_ms: None,
+            format: SubscriptionFormat::Clash,
+            updated_at_epoch_ms: 5,
             used_bytes: None,
             total_bytes: None,
             expires_at_epoch_ms: None,
@@ -400,68 +352,21 @@ mod tests {
             serde_json::from_slice(&fs::read(dir.path().join(FILE)).unwrap()).unwrap();
         assert_eq!(file["stateVersion"], STATE_VERSION);
         assert_eq!(file["subscriptions"][0]["userAgent"], "mihomo/1.19.16");
-        assert!(file["subscriptions"][1].get("userAgent").is_none());
+        assert_eq!(
+            file["subscriptions"][1]["userAgent"],
+            serde_json::Value::Null
+        );
     }
 
     #[test]
-    fn a_user_agent_the_commands_would_refuse_reads_as_none_and_keeps_the_rest() {
-        let long = format!(r#""{}""#, "x".repeat(257));
-        for agent in [
-            r#""a\r\nX-Injected: 1""#,
-            r#""""#,
-            r#""   ""#,
-            r#""caf\u00e9""#,
-            long.as_str(),
-            "7",
-            "null",
-        ] {
-            let dir = TempDir::new("state-user-agent-unusable");
-            let text = format!(
-                r#"{{"stateVersion":1,"mode":"Direct","subscriptions":[{{"id":"s1","name":"a",
-                    "url":"https://a.invalid/","updatedAtEpochMs":5,"usedBytes":null,
-                    "totalBytes":null,"expiresAtEpochMs":null,"userAgent":{agent}}}]}}"#
-            );
-            fs::write(dir.path().join(FILE), text).unwrap();
-            let (state, how) = Store::new(dir.path()).load().unwrap();
-            assert_eq!(how, Loaded::Read, "{agent}");
-            assert_eq!(state.mode, Mode::Direct);
-            let s1 = &state.subscriptions[0];
-            assert_eq!(
-                (s1.user_agent.as_deref(), s1.updated_at_epoch_ms),
-                (None, Some(5))
-            );
-        }
-    }
-
-    #[test]
-    fn a_quota_stored_as_an_unsigned_number_keeps_the_rest_of_the_file() {
-        // Written before quotas became signed: u64::MAX and 2^63 have no i64.
-        let dir = TempDir::new("state-old-quota");
-        fs::write(
-            dir.path().join(FILE),
-            br#"{"stateVersion":1,"mode":"Direct","nextSubscription":3,
-                "subscriptions":[
-                  {"id":"s1","name":"a","url":"https://a.invalid/","updatedAtEpochMs":5,
-                   "usedBytes":18446744073709551615,"totalBytes":9223372036854775808,
-                   "expiresAtEpochMs":7},
-                  {"id":"s2","name":"b","url":"https://b.invalid/","updatedAtEpochMs":null,
-                   "usedBytes":9223372036854775807,"totalBytes":0,"expiresAtEpochMs":null}],
-                "selections":{"g-Proxy":"g-Auto"}}"#,
-        )
-        .unwrap();
+    fn a_subscription_without_a_fetch_is_not_a_stored_one_and_the_file_is_set_aside() {
+        let dir = TempDir::new("state-unfetched");
+        let text = br#"{"stateVersion":1,"mode":"Direct","subscriptions":[{"id":"s1","name":"a",
+            "url":"https://a.invalid/","format":null,"updatedAtEpochMs":null,"usedBytes":null,
+            "totalBytes":null,"expiresAtEpochMs":null,"error":null,"links":[],"document":null,
+            "userAgent":null}]}"#;
+        fs::write(dir.path().join(FILE), text).unwrap();
         let (state, how) = Store::new(dir.path()).load().unwrap();
-        assert_eq!(how, Loaded::Read);
-        assert_eq!(state.mode, Mode::Direct);
-        let (a, b) = (&state.subscriptions[0], &state.subscriptions[1]);
-        assert_eq!(a.format, None);
-        assert_eq!((a.used_bytes, a.total_bytes), (None, None));
-        assert_eq!(a.expires_at_epoch_ms, Some(7));
-        assert_eq!((b.used_bytes, b.total_bytes), (Some(i64::MAX), Some(0)));
-        for network in [crate::dto::Network::Tcp, crate::dto::Network::Udp] {
-            assert_eq!(
-                state.pin("g-Proxy", network).map(String::as_str),
-                Some("g-Auto")
-            );
-        }
+        assert_eq!((how, state), (Loaded::SetAside, State::default()));
     }
 }

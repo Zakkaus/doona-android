@@ -5,6 +5,9 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.subscriptions.RvSubsActions
+import dev.doona.android.feature.subscriptions.RvSubsPage
+import dev.doona.android.feature.subscriptions.RvSubsState
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
@@ -12,9 +15,6 @@ import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPageState
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
-import dev.doona.android.prototype.rv.subs.RvSubsActions
-import dev.doona.android.prototype.rv.subs.RvSubsPage
-import dev.doona.android.prototype.rv.subs.RvSubsState
 import dev.doona.android.prototype.rv.subs.rvSubsStateSample
 import org.junit.Rule
 import org.junit.Test

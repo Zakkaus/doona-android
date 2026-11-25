@@ -103,6 +103,7 @@ class EngineTelemetryTest {
             listOf(
                 NodeInfo(
                     ids[0],
+                    "s1",
                     "trojan",
                     "hk2.example.net",
                     443,
@@ -110,7 +111,7 @@ class EngineTelemetryTest {
                     true,
                     listOf(LatencyTest(1_795_338_000_000, 33), LatencyTest(1_795_339_800_000, null), LatencyTest(1_795_341_600_000, 31)),
                 ),
-                NodeInfo(ids[1], "hysteria2", "192.168.8.20", 443, "quic", true, emptyList()),
+                NodeInfo(ids[1], null, "hysteria2", "192.168.8.20", 443, "quic", true, emptyList()),
             ),
             nodes,
         )

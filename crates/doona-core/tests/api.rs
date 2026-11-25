@@ -73,6 +73,10 @@ fn bad_arguments_and_unknown_commands_are_invalid() {
         ("testLatency", "{}"),
         ("addSubscription", r#"{"url":"https://example.org/s"}"#),
         ("addSubscription", r#"{"name":null}"#),
+        (
+            "addSubscription",
+            r#"{"url":"https://example.org/s","name":null}"#,
+        ),
         ("removeSubscription", "{}"),
         ("reboot", "{}"),
     ] {
@@ -99,7 +103,7 @@ fn commands_on_an_empty_catalog_find_nothing() {
         // Nothing listens on port 1.
         (
             "addSubscription",
-            r#"{"url":"http://127.0.0.1:1/s","name":null}"#,
+            r#"{"url":"http://127.0.0.1:1/s","name":null,"userAgent":null}"#,
             ErrorCode::FetchFailed,
         ),
         ("updateSubscription", r#"{"id":"s1"}"#, ErrorCode::NotFound),

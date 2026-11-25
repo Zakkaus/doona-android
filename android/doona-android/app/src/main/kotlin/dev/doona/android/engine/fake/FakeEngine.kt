@@ -31,6 +31,8 @@ import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.StaticNodeUpdateResult
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFetch
+import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
 import dev.doona.android.engine.TrafficSeries
@@ -132,7 +134,7 @@ class FakeEngine internal constructor(
         val agent = userAgentOf(userAgent).getOrElse { return Result.failure(it) }
         val label = (if (name == null) runCatching { java.net.URI(url).host?.take(NAME_CAP) }.getOrNull() else displayName(name))
             ?: return Result.failure(EngineException(ErrorCode.InvalidArgument))
-        val added = Subscription(id = takeSubscriptionId(), name = label, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = agent)
+        val added = Subscription(id = takeSubscriptionId(), name = label, url = url, nodes = 0, lastFetch = FETCHED, userAgent = agent)
         subscriptions.update { it + added }
         return Result.success(added)
     }
@@ -225,8 +227,12 @@ class FakeEngine internal constructor(
 
     private val nodesById = data.nodes.associateBy { it.id }
 
-    override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
-        Result.success(if (ids == null) data.nodes else ids.mapNotNull(nodesById::get))
+    /** As the core's: a subscription's nodes leave with it; nodes of no subscription (written into the configuration) stay. */
+    override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> {
+        val subscribed = subscriptions.value.mapTo(HashSet()) { it.id }
+        val asked = if (ids == null) data.nodes else ids.mapNotNull(nodesById::get)
+        return Result.success(asked.filter { it.subscriptionId == null || it.subscriptionId in subscribed })
+    }
 
     override suspend fun scoreState(): Result<ScoreState> = Result.success(data.scoreState)
 
@@ -308,7 +314,7 @@ class FakeEngine internal constructor(
             .distinctBy { it.id }
             .mapIndexed { index, member ->
                 val tests = if (member.failed || member.latencyMs != null) listOf(LatencyTest(0, member.latencyMs)) else emptyList()
-                NodeInfo(member.id, "trojan", "node-${index + 1}.example.net", 443, "tcp", true, tests)
+                NodeInfo(member.id, member.subscriptionId, "trojan", "node-${index + 1}.example.net", 443, "tcp", true, tests)
             }.toList()
 
         /** The group template before rule mode: Proxy, Auto and one region. The goldens were drawn with it. */
@@ -343,8 +349,11 @@ class FakeEngine internal constructor(
             Traffic(upRate = 330_000, downRate = 3_900_000, upTotal = up.sum(), downTotal = down.sum(), upHistory = up, downHistory = down)
         }
 
+        /** What a fetch in this engine finds: share links, at the epoch. */
+        val FETCHED = SubscriptionFetch(0, SubscriptionFormat.ShareLinks)
+
         val SAMPLE_SUBSCRIPTIONS = listOf(
-            Subscription(id = "s1", name = "harbor", url = "https://example.invalid/sub", nodes = 4, updatedAtEpochMs = 0),
+            Subscription(id = "s1", name = "harbor", url = "https://example.invalid/sub", nodes = 4, lastFetch = FETCHED),
         )
     }
 }

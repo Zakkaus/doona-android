@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rv_subs_nodes_updated">%1$s · %2$s 更新</string>
+    <string name="rv_subs_nodes_not_updated">%1$s · 尚未更新</string>
     <string name="rv_subs_no_expiry">无到期日</string>
     <string name="rv_sub_update_now">立即更新</string>
     <string name="rv_sub_node_count">节点数</string>
@@ -17,6 +18,8 @@
     <string name="rv_sub_user_agent">User-Agent</string>
     <string name="rv_sub_user_agent_default">默认</string>
     <string name="rv_sub_user_agent_invalid">最多 256 个可打印的 ASCII 字符</string>
+    <string name="rv_sub_name_invalid">最多 64 个字符，只能一行</string>
+    <string name="rv_sub_rename_failed">无法重命名，请再试一次</string>
     <string name="rv_sub_section">订阅</string>
     <string name="rv_sub_name">名称</string>
     <string name="rv_sub_link">链接</string>

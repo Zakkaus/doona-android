@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import dev.doona.android.designsystem.rv.RvMaterialPlumbing
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
@@ -33,7 +34,10 @@ private val SHOTS = System.getProperty("doona.shots") ?: "src/test/screenshots"
  * phone's font size setting scales it (the frame's status bar does not), and the golden is
  * `proto-rv-<screen>-fs<percent>`, as the app's `fs115` and `fs200`. A frame with [gesture] false draws no gesture handle
  * (the content draws its own bar, as three-button navigation does). With `doona.board` set the page is captured for the
- * design board ([rvBoard]) instead of the golden.
+ * design board ([rvBoard]) instead of the golden. A wired page's golden takes [prefix] `app-rv` (plan §2.4): the same
+ * page drawn from the engine through its view model, set against the `proto-rv` golden of the same screen. A golden of
+ * the phone in English ([RV_EN]) is `<prefix>-<screen>-en`. With [windows] every window is captured, so a sheet's
+ * dialog or a menu's popup open over the page is in the golden; the page's own window alone is captured otherwise.
  */
 internal fun ComposeContentTestRule.rvShot(
     screen: String,
@@ -41,23 +45,33 @@ internal fun ComposeContentTestRule.rvShot(
     before: ComposeContentTestRule.() -> Unit = {},
     fontScale: Float = 1f,
     gesture: Boolean = true,
+    prefix: String = PROTO,
+    english: Boolean = false,
+    windows: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     rvContent(dark, fontScale, gesture, content)
     before()
-    drawFully()
+    // An open sheet or menu is a second root: the helpers below read one root, so they wait for the windows instead.
+    if (windows) waitForIdle() else drawFully()
     val variant = when {
         fontScale != 1f -> "fs${(fontScale * PERCENT).roundToInt()}"
+        english -> "en"
         dark -> "dark"
         else -> "light"
     }
     // The board's run draws the board, not the goldens: its windows are held to the phone's height.
     if (rvBoarding) return rvBoard(screen, variant)
     // Every golden's rows keep to the layout rules (docs/LAYOUT-RULES.md), or to the allowlist of today's breaks.
-    rvRowRules("proto-rv-$screen-$variant")
-    // Every footnote stands where RvSpace.footnoteStart and footnoteEnd put it (LAYOUT-RULES.md R20).
-    rvFootnoteRules("proto-rv-$screen-$variant")
-    onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/proto-rv-$screen-$variant.png")
+    // The row and footnote rules read the page's own window; with [windows] that page is the one its golden without the
+    // sheet checks.
+    if (!windows) {
+        rvRowRules("$prefix-$screen-$variant")
+        // Every footnote stands where RvSpace.footnoteStart and footnoteEnd put it (LAYOUT-RULES.md R20).
+        rvFootnoteRules("$prefix-$screen-$variant")
+    }
+    val path = "$SHOTS/$prefix-$screen-$variant.png"
+    if (windows) captureScreenRoboImage(path) else onRoot().captureToImage().asAndroidBitmap().captureRoboImage(path)
 }
 
 /**
@@ -81,6 +95,9 @@ internal fun ComposeContentTestRule.rvContent(dark: Boolean, fontScale: Float = 
 }
 
 private const val PERCENT = 100
+
+/** The prototype's goldens. */
+private const val PROTO = "proto-rv"
 
 /** Android's two font sizes beyond the default that the goldens cover. */
 internal const val RV_FS115 = 1.15f

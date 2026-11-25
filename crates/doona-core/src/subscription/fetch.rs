@@ -27,8 +27,9 @@ use tokio::io::{
 use tokio::net::TcpStream;
 use url::{Host, Url};
 
-/// What a hostile or broken origin can make the core buffer (honk's bound).
-const MAX_BODY: usize = 8 << 20;
+/// What a hostile or broken origin can make the core buffer (honk's bound, 8 MiB). The app reads the same file
+/// to state the bound when a body is over it.
+const MAX_BODY: usize = include!("max-body-bytes");
 const MAX_HEAD: usize = 64 << 10;
 const MAX_LINE: usize = 1 << 10;
 const MAX_REDIRECTS: usize = 5;

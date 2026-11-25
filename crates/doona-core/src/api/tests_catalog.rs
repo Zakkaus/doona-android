@@ -102,7 +102,7 @@ pub(super) fn add(core: &Core, feeds: &Feeds, path: &str) -> Result<Value, Error
     call(
         core,
         "addSubscription",
-        json!({"url": feeds.url(path), "name": null}),
+        json!({"url": feeds.url(path), "name": null, "userAgent": null}),
     )
 }
 
@@ -405,7 +405,7 @@ fn failures_have_their_codes_and_a_failed_update_keeps_the_nodes() {
     assert_eq!(add(&core, &feeds, "/missing"), Err(ErrorCode::FetchFailed));
     assert_eq!(add(&core, &feeds, "/broken"), Err(ErrorCode::ParseFailed));
     assert_eq!(add(&core, &feeds, "/unusable"), Err(ErrorCode::NoNodes));
-    let bad = json!({"url": "ftp://example.org/s", "name": null});
+    let bad = json!({"url": "ftp://example.org/s", "name": null, "userAgent": null});
     assert_eq!(
         call(&core, "addSubscription", bad),
         Err(ErrorCode::InvalidArgument)
@@ -418,7 +418,7 @@ fn failures_have_their_codes_and_a_failed_update_keeps_the_nodes() {
     }
     assert!(catalog(&core).subscriptions.is_empty());
     feeds.set("/sub", &fixture("links.txt"));
-    let named = json!({"url": feeds.url("/sub"), "name": " harbor "});
+    let named = json!({"url": feeds.url("/sub"), "name": " harbor ", "userAgent": null});
     assert_eq!(
         call(&core, "addSubscription", named).unwrap()["name"],
         "harbor"

@@ -6,6 +6,8 @@ import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFetch
+import dev.doona.android.engine.SubscriptionFormat
 
 /** Endpoints and probe rounds from the RV prototype; zero in a probe row means it timed out. */
 internal object RvSampleNodes {
@@ -59,10 +61,10 @@ internal object RvSampleNodes {
         node("au2", "Melbourne 02", Proto.Vless, 144, 191, 137, 139, 131, 143, 143, 135),
         node("au3", "Sydney 03", Proto.Ss, 143, 125, 127, 128, 110, 136, 169, 120),
     )
-    val details = samples.map(Sample::info)
+    val details = samples.mapIndexed { index, sample -> sample.info.copy(subscriptionId = subscriptionOf(index)) }
     val subscriptions = listOf(
-        Subscription("s1", "Harbor Cloud", "https://sub.harbor-cloud.example/sub", 32, UPDATED, usedBytes = 61_700_000_000, totalBytes = 200_000_000_000, expiresAtEpochMs = 1_805_112_000_000),
-        Subscription("s2", "Lantern Net", "https://lantern-net.example/sub", 16, UPDATED, usedBytes = 36_400_000_000, totalBytes = 100_000_000_000, expiresAtEpochMs = 1_798_718_400_000),
+        Subscription("s1", "Harbor Cloud", "https://sub.harbor-cloud.example/sub", 32, SubscriptionFetch(UPDATED, SubscriptionFormat.Clash), usedBytes = 61_700_000_000, totalBytes = 200_000_000_000, expiresAtEpochMs = 1_805_112_000_000),
+        Subscription("s2", "Lantern Net", "https://lantern-net.example/sub", 16, SubscriptionFetch(UPDATED, SubscriptionFormat.ShareLinks), usedBytes = 36_400_000_000, totalBytes = 100_000_000_000, expiresAtEpochMs = 1_798_718_400_000),
     )
     val groups = buildGroups()
 
@@ -74,7 +76,7 @@ internal object RvSampleNodes {
                 sample.name,
                 latency,
                 failed = latency == null,
-                subscriptionId = if (index % 3 == 2) "s2" else "s1",
+                subscriptionId = subscriptionOf(index),
                 // As the core reads it from the name: each sample host starts with its ISO code.
                 region = sample.host.take(2).uppercase(),
             )
@@ -89,12 +91,15 @@ internal object RvSampleNodes {
         ) + listOf("HK", "TW", "JP", "US").map { automatic(it, byRegion.getValue(it)) }
     }
 
+    /** Every third sample comes from Lantern Net (s2), the rest from Harbor Cloud (s1). */
+    private fun subscriptionOf(index: Int) = if (index % 3 == 2) "s2" else "s1"
+
     private fun automatic(name: String, members: List<Member>) =
         Group("g-$name", name, GroupKind.UrlTest, members, members.minBy { it.latencyMs ?: Int.MAX_VALUE }.id)
 
     private fun node(host: String, name: String, proto: Proto, vararg history: Int): Sample {
         val tests = history.mapIndexed { i, ms -> LatencyTest(LAST_TEST - (history.lastIndex - i) * HALF_HOUR, ms.takeUnless { it == 0 }) }
-        return Sample(host, name, NodeInfo(id(host), proto.protocol, "$host.example.net", proto.port, proto.transport, proto.tls, tests))
+        return Sample(host, name, NodeInfo(id(host), null, proto.protocol, "$host.example.net", proto.port, proto.transport, proto.tls, tests))
     }
 
     private fun id(host: String) = "n-${host.hashCode().toString(16).padStart(8, '0')}00000000"

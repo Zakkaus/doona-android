@@ -26,6 +26,7 @@ import dev.doona.android.engine.StaticNodeReason
 import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.StaticNodeUpdateResult
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFetch
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.TrafficSeries
@@ -152,6 +153,7 @@ internal data class NodesDto(val nodes: List<NodeInfoDto>) {
 @Serializable
 internal data class NodeInfoDto(
     val id: String,
+    val subscriptionId: String?,
     val protocol: String,
     val server: String,
     val port: Int,
@@ -159,7 +161,7 @@ internal data class NodeInfoDto(
     val tls: Boolean,
     val tests: List<LatencyTestDto>,
 ) {
-    fun toNodeInfo() = NodeInfo(id, protocol, server, port, transport, tls, tests.map { LatencyTest(it.atEpochMs, it.ms) })
+    fun toNodeInfo() = NodeInfo(id, subscriptionId, protocol, server, port, transport, tls, tests.map { LatencyTest(it.atEpochMs, it.ms) })
 }
 
 /**
@@ -371,28 +373,37 @@ internal data class SubscriptionDto(
     val name: String,
     val url: String,
     val nodes: Int,
-    val updatedAtEpochMs: Long? = null,
+    val updatedAtEpochMs: Long?,
     val error: String? = null,
     val usedBytes: Long? = null,
     val totalBytes: Long? = null,
     val expiresAtEpochMs: Long? = null,
     val userAgent: String? = null,
-    val format: String? = null,
+    val format: String?,
 ) {
-    /** The error becomes an [ErrorCode] name, the same vocabulary as [EngineException]. */
+    /**
+     * The error becomes an [ErrorCode] name, the same vocabulary as [EngineException]. The core sets the format and the
+     * time of a fetch together, so one without the other, or a format this build does not know, is a broken reply.
+     */
     fun toSubscription() = Subscription(
         id = id,
         name = name,
         url = url,
         nodes = nodes,
-        updatedAtEpochMs = updatedAtEpochMs,
+        lastFetch = lastFetch(),
         error = error?.let { errorCodeOf(it).name },
         usedBytes = usedBytes,
         totalBytes = totalBytes,
         expiresAtEpochMs = expiresAtEpochMs,
         userAgent = userAgent,
-        format = SUBSCRIPTION_FORMATS[format],
     )
+
+    private fun lastFetch(): SubscriptionFetch? {
+        if (updatedAtEpochMs == null && format == null) return null
+        val at = checkNotNull(updatedAtEpochMs) { "a subscription with a format but no fetch time" }
+        val known = checkNotNull(SUBSCRIPTION_FORMATS[format]) { "subscription format $format" }
+        return SubscriptionFetch(at, known)
+    }
 }
 
 private val SUBSCRIPTION_FORMATS = mapOf(

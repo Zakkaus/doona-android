@@ -273,17 +273,19 @@ private fun rvSubscription(sub: Subscription) = RvSubscription(
     id = sub.id,
     name = sub.name,
     nodes = sub.nodes,
-    updatedAtEpochMs = sub.updatedAtEpochMs ?: 0L,
+    updatedAtEpochMs = sub.lastFetch?.atEpochMs,
     usedBytes = sub.usedBytes ?: 0L,
     totalBytes = sub.totalBytes ?: 0L,
     expiresAtEpochMs = sub.expiresAtEpochMs,
     // Only the host: the rest of a link carries its token.
     host = runCatching { URI(sub.url).host }.getOrNull().orEmpty(),
-    format = when (sub.format) {
+    // Never fetched: no format yet.
+    format = when (sub.lastFetch?.format) {
         SubscriptionFormat.Clash -> RvSubFormat.Clash
         SubscriptionFormat.SingBox -> RvSubFormat.SingBox
         SubscriptionFormat.Sip008 -> RvSubFormat.Sip008
-        SubscriptionFormat.ShareLinks, SubscriptionFormat.Base64, null -> RvSubFormat.Links
+        SubscriptionFormat.ShareLinks, SubscriptionFormat.Base64 -> RvSubFormat.Links
+        null -> null
     },
     userAgent = sub.userAgent,
 )

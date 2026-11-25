@@ -7,9 +7,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data class GroupArgs(val group: String?)
 
-/** `addSubscription`: [userAgent] may be absent, as from a caller before it; absent or null is the default. */
+/** `addSubscription`: a null [userAgent] is the core's default. */
 @Serializable
-internal data class AddSubscriptionArgs(val url: String, val name: String?, val userAgent: String? = null)
+internal data class AddSubscriptionArgs(val url: String, val name: String?, val userAgent: String?)
 
 @Serializable
 internal data class RenameSubscriptionArgs(val id: String, val name: String)

@@ -14,6 +14,8 @@ import dev.doona.android.feature.activity.RvActivityNotice
 import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
 import dev.doona.android.feature.localnetwork.text
+import dev.doona.android.feature.onboarding.RvWelcome
+import dev.doona.android.feature.subscriptions.RvSubAdd
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreenSample
@@ -22,10 +24,8 @@ import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
-import dev.doona.android.prototype.rv.subs.RvSubAdd
 import dev.doona.android.prototype.rv.subs.RvSubAddSample
 import dev.doona.android.prototype.rv.subs.rvAddSample
-import dev.doona.android.prototype.rv.welcome.RvWelcome
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -186,7 +186,7 @@ class RvStatesShotTest {
     @Composable
     private fun Lan(sample: String, prompt: LocalNetworkPrompt) {
         Box(Modifier.fillMaxSize()) {
-            RvSubAddSample(rvAddSample(sample).copy(lan = null), {}, onPaste = {}, onImport = {}, onBack = {})
+            RvSubAddSample(rvAddSample(sample), {}, onPaste = {}, onImport = {}, onBack = {})
             val text = prompt.text()
             RvSheetLayout({ 1f }, {}, text.title) {
                 RvConfirmContent(text.title, text.body, text.confirm, text.dismiss, onConfirm = {}, onDismiss = {})

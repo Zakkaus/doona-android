@@ -113,8 +113,7 @@ fn setting_an_agent_fetches_nothing_and_the_next_update_sends_it() {
     let dir = TempDir::new("api-user-agent-set");
     let feed = Feed::new();
     let core = Core::new(path(&dir)).unwrap();
-    // A caller from before the key sends none, which is the default.
-    let args = json!({"url": feed.url(), "name": null});
+    let args = json!({"url": feed.url(), "name": null, "userAgent": null});
     let added = call(&core, "addSubscription", args).unwrap();
     assert!(added["userAgent"].is_null());
     let before = revision(&core);

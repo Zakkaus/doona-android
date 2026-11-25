@@ -212,7 +212,9 @@ class ActivityModelTest {
         val subscription = mapped.subscriptions.single()
         assertEquals("sub.harbor.example", subscription.host)
         assertEquals(0L, subscription.totalBytes)
-        assertEquals(0L, subscription.updatedAtEpochMs)
+        // Never fetched: no update time and no format.
+        assertNull(subscription.updatedAtEpochMs)
+        assertNull(subscription.format)
     }
 
     @Test

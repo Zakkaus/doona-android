@@ -544,8 +544,8 @@ class ServiceEngineTest {
     @Test
     fun aSubscriptionReplyMapsToTheEngineType() = runBlocking {
         core.reply = ContractFixtures.read("call-ok-subscription.json")
-        assertEquals(1073741824L, engine.addSubscription("https://example.invalid/sub").getOrThrow().usedBytes)
-        assertEquals("addSubscription" to """{"url":"https://example.invalid/sub","name":null}""", core.calls.single())
+        assertEquals(1073741824L, engine.addSubscription("https://example.invalid/sub", null, null).getOrThrow().usedBytes)
+        assertEquals("addSubscription" to """{"url":"https://example.invalid/sub","name":null,"userAgent":null}""", core.calls.single())
     }
 
     @Test

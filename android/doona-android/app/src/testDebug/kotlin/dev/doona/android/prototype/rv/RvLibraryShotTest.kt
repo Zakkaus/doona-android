@@ -37,14 +37,13 @@ import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.feature.nodes.ui.rvSubscriptionMenu
+import dev.doona.android.feature.subscriptions.rvSubscriptionMenu
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.gallery.RvGalleryBanners
 import dev.doona.android.prototype.rv.gallery.RvGalleryEmpty
 import dev.doona.android.prototype.rv.gallery.RvGalleryFields
 import dev.doona.android.prototype.rv.gallery.RvGalleryMenuCard
-import dev.doona.android.prototype.rv.subs.rvSubscriptionMenu
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

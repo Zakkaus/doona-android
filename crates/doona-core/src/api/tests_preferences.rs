@@ -40,7 +40,7 @@ fn rename_is_durable_without_changing_node_identity_or_selection() {
             call(
                 &core,
                 "addSubscription",
-                json!({"url":feeds.url("/sub"),"name":bad})
+                json!({"url":feeds.url("/sub"),"name":bad, "userAgent": null})
             ),
             Err(ErrorCode::InvalidArgument)
         );
@@ -163,7 +163,7 @@ fn resolver_edits_validate_the_whole_list_and_survive_restart() {
 fn reload_skips_unadmitted_links_without_shifting_credentials() {
     let dir = TempDir::new("reload-skipped");
     let link = "socks5://192.0.2.1:1080#kept";
-    let state = json!({"stateVersion":1,"mode":"Direct","subscriptions":[{"id":"s1","name":"feed","url":"https://example.invalid/","format":"share_links","links":["not a share link",link]}]});
+    let state = json!({"stateVersion":1,"mode":"Direct","subscriptions":[{"id":"s1","name":"feed","url":"https://example.invalid/","format":"share_links","updatedAtEpochMs":1,"usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null,"error":null,"document":null,"userAgent":null,"links":["not a share link",link]}]});
     std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
     let core = Core::new(path(&dir)).unwrap();
     let nodes = call(&core, "nodes", json!({"ids":null})).unwrap();
@@ -174,20 +174,6 @@ fn reload_skips_unadmitted_links_without_shifting_credentials() {
             json!({"id":nodes["nodes"][0]["id"]})
         ),
         Ok(json!(link))
-    );
-}
-
-#[test]
-fn legacy_subscription_with_stored_links_cannot_share_until_refreshed() {
-    let dir = TempDir::new("share-legacy");
-    let state = json!({"stateVersion":1,"mode":"Direct","subscriptions":[{"id":"s1","name":"legacy","url":"https://example.invalid/","format":null,"links":["socks5://192.0.2.1:1080#kept"]}]});
-    std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
-    let core = Core::new(path(&dir)).unwrap();
-    let nodes = call(&core, "nodes", json!({"ids":null})).unwrap();
-    let id = nodes["nodes"][0]["id"].as_str().unwrap();
-    assert_eq!(
-        call(&core, "nodeShareLink", json!({"id":id})),
-        Err(ErrorCode::NotFound)
     );
 }
 
@@ -219,22 +205,26 @@ fn static_editor_link_is_not_a_subscription_share_link() {
 }
 
 #[test]
-fn invalid_stored_dns_defaults_without_discarding_the_catalog() {
-    let dir = TempDir::new("dns-store");
+fn invalid_stored_dns_sets_the_file_aside() {
     for invalid in [
         json!(["https://future.invalid/dns-query"]),
         json!([]),
         json!(["9.9.9.9:53", "9.9.9.9"]),
     ] {
-        let state = json!({"stateVersion":1,"mode":"Direct","dnsUpstreams":invalid,"subscriptions":[{"id":"s1","name":"keep","url":"https://example.invalid/"}]});
+        let dir = TempDir::new("dns-store");
+        let state =
+            json!({"stateVersion":1,"mode":"Direct","dnsUpstreams":invalid,"subscriptions":[]});
         std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
         let core = Core::new(path(&dir)).unwrap();
-        assert_eq!(catalog(&core).subscriptions[0].name, "keep");
+        let report = call(&core, "diagnostics", json!({"level":"warn"})).unwrap();
+        assert!(report["events"].as_array().unwrap().iter().any(|e| {
+            e["name"] == "init" && e["level"] == "warn" && e["detail"] == "stateSetAside"
+        }));
         assert_eq!(
             call(&core, "effectiveConfig", json!({})).unwrap()["dnsUpstreams"],
             json!(["1.1.1.1:53", "8.8.8.8:53"])
         );
-        assert!(!dir.path().join("state.json.unreadable").exists());
+        assert!(dir.path().join("state.json.unreadable").exists());
     }
 }
 

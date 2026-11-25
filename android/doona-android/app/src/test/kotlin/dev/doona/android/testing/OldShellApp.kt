@@ -27,7 +27,6 @@ import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
 import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
-import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
 
 /**
  * The old pages in the old hub frame, as the app drew them before RV's navigation (wire-p1a): the old screen cases,
@@ -36,7 +35,6 @@ import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
  */
 @Composable
 internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: List<NavKey>) {
-    val imports = rememberSubscriptionImports(engine)
     val backStack = rememberNavBackStack(*start.toTypedArray())
     DoonaAppShell(current = currentTab(backStack), onSelect = { backStack.selectTab(it) }) {
         NavDisplay(
@@ -47,7 +45,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
             entryProvider = entryProvider {
                 entry<ActivityKey> {
                     // 活動 is the RV page now, with goldens of its own: the old shell shows only its first-run gate.
-                    FirstRunGate(engine, imports, frame = { it() }) {}
+                    FirstRunGate(engine, onAdd = {}, frame = { it() }) {}
                 }
                 entry<PoliciesKey> {
                     PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
@@ -55,7 +53,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
                 entry<GroupKey> { key ->
                     GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.add(GroupKey(it)) })
                 }
-                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
+                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, onBack = { backStack.pop(key) }, onOpen = {}, onAdd = {}) }
                 entry<SettingsKey> {
                     SettingsRoute(engine, "", onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
                 }

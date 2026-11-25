@@ -39,6 +39,8 @@ fn catalog_member_locations() {
     let state = serde_json::json!({
         "stateVersion": 1, "mode": "Global",
         "subscriptions": [{"id":"s1", "name":"sample", "url":"https://example.invalid",
+            "format":"share_links", "updatedAtEpochMs":1, "usedBytes":null, "totalBytes":null,
+            "expiresAtEpochMs":null, "error":null, "document":null, "userAgent":null,
             "links":["socks5://192.0.2.1:1080#JP-NRT", "socks5://192.0.2.2:1080#anonymous",
                      "socks5://192.0.2.3:1080#DE"]}],
         "staticNodes": [{"id":"n-static", "name":"Dallas", "link":"socks5://192.0.2.4:1080"}]
@@ -294,10 +296,8 @@ fn missing_required_fields_fail_and_unknown_ones_are_ignored() {
     .unwrap();
     assert_eq!(config.mtu, 1500);
     assert!(serde_json::from_str::<SelectArgs>(r#"{"memberId":null}"#).is_err());
-    // `userAgent` is optional in `addSubscription` only: a caller from before it sends the default.
-    let add: AddSubscriptionArgs =
-        serde_json::from_str(r#"{"url":"https://example.invalid/","name":null}"#).unwrap();
-    assert_eq!(add.user_agent, None);
+    let no_agent = r#"{"url":"https://example.invalid/","name":null}"#;
+    assert!(serde_json::from_str::<AddSubscriptionArgs>(no_agent).is_err());
     assert!(serde_json::from_str::<SubscriptionUserAgentArgs>(r#"{"id":"s1"}"#).is_err());
 }
 

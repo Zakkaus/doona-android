@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
@@ -163,7 +164,8 @@ private fun SourceCard(config: RvEffectiveConfig) {
         RvStatRow(stringResource(R.string.rv_policy_template), stringResource(config.template))
         config.subscriptions.forEach {
             val nodes = pluralStringResource(R.plurals.rv_policy_node_count, it.nodes, it.nodes)
-            RvStatRow(it.name, nodes + SEPARATOR + stringResource(R.string.rv_updated, format.time(it.updatedAtEpochMs)))
+            val updated = it.updatedAtEpochMs?.let { at -> stringResource(R.string.rv_updated, format.time(at)) } ?: RV_NO_VALUE
+            RvStatRow(it.name, nodes + SEPARATOR + updated)
         }
     }
 }

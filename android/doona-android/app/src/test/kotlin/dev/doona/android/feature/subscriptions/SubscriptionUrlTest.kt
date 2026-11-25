@@ -32,4 +32,14 @@ class SubscriptionUrlTest {
         listOf("ftp://example.invalid/sub", "example.invalid/sub", "vmess://abc", "https://", "https:///path", "not a url", "https://exa mple.invalid")
             .forEach { assertEquals(it, UrlProblem.Invalid, urlProblem(it)) }
     }
+
+    @Test
+    fun `the host is shown for an internationalized name too, without user info or port`() {
+        assertEquals("bücher.example", subscriptionHost("https://bücher.example/sub"))
+        assertEquals("例え.jp", subscriptionHost("https://user:token@例え.jp:8443/a?t=1"))
+        assertEquals("xn--bcher-kva.example", subscriptionHost("http://xn--bcher-kva.example/"))
+        assertEquals("example.invalid", subscriptionHost(" HTTPS://example.invalid:443/a\n"))
+        assertEquals("[2001:db8::1]", subscriptionHost("https://[2001:db8::1]:8443/x"))
+        assertEquals("", subscriptionHost("not a url"))
+    }
 }

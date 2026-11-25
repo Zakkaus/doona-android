@@ -12,9 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
+import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.data.settings.SubscriptionUpdate
 import dev.doona.android.data.settings.UpdateCheck
 import dev.doona.android.designsystem.components.DoonaHubShell
 import dev.doona.android.designsystem.components.DoonaHubTab
@@ -38,12 +41,16 @@ import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
 import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.stats.StatsRoute
+import dev.doona.android.feature.subscriptions.SubAddRoute
+import dev.doona.android.feature.subscriptions.SubDetailRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
 import dev.doona.android.feature.traffic.TrafficRoute
 import dev.doona.android.report.CrashOffer
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 /**
  * The old hub bar's frame (see [DoonaHubShell]), which the old pages' screenshot cases still draw them in until the page
@@ -66,8 +73,9 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
  * as long as the composition. [version] is the app's version name for the settings, read by the activity. The sheets
  * over every page are the activity's ([AppSheets]). [crashOffer] puts the crash notice on 活動; [network] (the
  * engine's by default) and [refusals] (`AppContainer.connectRefusals`) put its offline and refusal notices there;
- * [onSystemSettings] opens one of the system's settings pages, which the activity starts. A host without them
- * refuses nothing and opens no settings.
+ * [onSystemSettings] opens one of the system's settings pages, which the activity starts; [lanAsking] is whether the
+ * local network prompt is up (one of [AppSheets]), so 新增訂閱 waits for it. A host without them refuses nothing, opens
+ * no settings and never asks.
  */
 @Composable
 fun DoonaApp(
@@ -81,6 +89,7 @@ fun DoonaApp(
     network: Flow<NetworkState> = engine.network,
     refusals: ConnectRefusals = remember { ConnectRefusals() },
     onSystemSettings: (SystemSettings) -> Unit = {},
+    lanAsking: Flow<Boolean> = flowOf(false),
 ) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
     val onTab: (Int) -> Unit = { backStack.selectTab(it) }
@@ -88,9 +97,9 @@ fun DoonaApp(
     RvOverDoona {
         RvNavHost(backStack, Modifier.fillMaxSize()) {
             entry<ActivityKey> {
-                // The RV page draws its own floating nav; the gate's loading and first-run pages take the old tab frame.
+                // The RV page draws its own floating nav; the gate's welcome page takes the old tab frame.
                 val routes = remember(backStack, onSystemSettings) { activityRoutes(backStack, onSystemSettings) }
-                FirstRunGate(engine, imports, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
+                FirstRunGate(engine, onAdd = { backStack.push(SubAddKey) }, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
                     ActivityRoute(engine, crashOffer, network, refusals, onConnect, routes)
                 }
             }
@@ -102,7 +111,23 @@ fun DoonaApp(
             entry<GroupKey> { key ->
                 GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.push(GroupKey(it)) })
             }
-            entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
+            entry<SubscriptionsKey> { key ->
+                SubscriptionsRoute(
+                    engine,
+                    onBack = { backStack.pop(key) },
+                    onOpen = { backStack.push(SubDetailKey(it)) },
+                    onAdd = { backStack.push(SubAddKey) },
+                )
+            }
+            entry<SubAddKey> { key ->
+                SubAddRoute(engine, imports, lanAsking, onBack = { backStack.pop(key) })
+            }
+            entry<SubDetailKey> { key ->
+                val context = LocalContext.current
+                val updateHours = remember { AppSettings.get(context).subscriptionUpdate.map(::updateHoursOf) }
+                // 更新間隔 (p6a) has no entry yet, so the auto-update row is not wired.
+                SubDetailRoute(engine, updateHours, key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = NOT_WIRED)
+            }
             entry<SettingsKey> {
                 OldTabFrame(Tab.Settings, onTab, onReselect) {
                     SettingsRoute(engine, version, onOpenPerApp = { backStack.push(PerAppKey) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
@@ -194,3 +219,6 @@ private fun rememberOpenReleases(): () -> Unit {
     val activity = LocalActivity.current
     return remember<() -> Unit>(activity) { { activity?.let(UpdateCheck::openReleases) } }
 }
+
+/** A subscription page's auto-update interval in hours, or null while auto-update is off. */
+internal fun updateHoursOf(update: SubscriptionUpdate): Int? = if (update.enabled) update.interval.duration.inWholeHours.toInt() else null

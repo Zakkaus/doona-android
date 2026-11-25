@@ -189,6 +189,9 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1"
+        // The core's subscription download bound, from the file its fetch reads, for 新增訂閱's 太大 notice.
+        val maxBody = providers.fileContents(rootProject.layout.projectDirectory.file("../../crates/doona-core/src/subscription/max-body-bytes"))
+        buildConfigField("long", "SUBSCRIPTION_MAX_BODY_BYTES", maxBody.asText.get().trim() + "L")
         ndk {
             abiFilters += "arm64-v8a"
         }
@@ -222,6 +225,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 

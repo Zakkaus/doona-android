@@ -53,10 +53,10 @@ fn session(core: &Core, feeds: &Feeds, sub: &str) {
     let added = call(
         core,
         "addSubscription",
-        json!({"url": feeds.url(sub), "name": null}),
+        json!({"url": feeds.url(sub), "name": null, "userAgent": null}),
     );
     assert_eq!(added.unwrap()["nodes"], 9);
-    let gone = json!({"url": feeds.url(&format!("/gone?token={TOKEN}")), "name": "harbor"});
+    let gone = json!({"url": feeds.url(&format!("/gone?token={TOKEN}")), "name": "harbor", "userAgent": null});
     assert_eq!(
         call(core, "addSubscription", gone),
         Err(ErrorCode::FetchFailed)

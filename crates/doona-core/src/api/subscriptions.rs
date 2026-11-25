@@ -83,8 +83,8 @@ impl Core {
             id: id.clone(),
             name,
             url: args.url.trim().to_owned(),
-            format: None,
-            updated_at_epoch_ms: None,
+            format: parsed.format,
+            updated_at_epoch_ms: now_ms(),
             used_bytes: None,
             total_bytes: None,
             expires_at_epoch_ms: None,
@@ -177,7 +177,7 @@ impl Core {
             .iter()
             .find(|s| Some(&s.id) == node.subscription.as_ref());
         let link = sub
-            .filter(|s| s.format == Some(dto::SubscriptionFormat::ShareLinks))
+            .filter(|s| s.format == dto::SubscriptionFormat::ShareLinks)
             .and_then(|s| s.links.get(node.feed_index))
             .ok_or(ErrorCode::NotFound)?;
         Ok(super::ok(link))
@@ -316,8 +316,8 @@ fn refreshed(
     parsed: Parsed,
     info: Userinfo,
 ) -> Vec<Arc<NodeEntry>> {
-    stored.format = Some(parsed.format);
-    stored.updated_at_epoch_ms = Some(now_ms());
+    stored.format = parsed.format;
+    stored.updated_at_epoch_ms = now_ms();
     stored.used_bytes = info.used_bytes;
     stored.total_bytes = info.total_bytes;
     stored.expires_at_epoch_ms = info.expires_at_epoch_ms;

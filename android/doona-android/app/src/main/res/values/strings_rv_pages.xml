@@ -14,11 +14,14 @@
     <string name="rv_menu_delete">Delete</string>
     <string name="rv_cancel">Cancel</string>
     <string name="rv_sub_delete_title">Delete %1$s?</string>
+    <string name="rv_sub_delete_failed_title">Could not delete %1$s</string>
+    <string name="rv_sub_delete_failed_reason">The subscription and its nodes are unchanged.</string>
     <plurals name="rv_sub_delete_body">
         <item quantity="one">Its node is removed too.</item>
         <item quantity="other">Its %1$d nodes are removed too.</item>
     </plurals>
     <string name="rv_add_link">Subscription URL</string>
+    <string name="rv_add_link_invalid">Enter a full http:// or https:// URL</string>
     <string name="rv_add_name">Name (optional)</string>
     <string name="rv_add_user_agent">User-Agent (optional)</string>
     <string name="rv_add_not_subscription">This link did not return a subscription.</string>

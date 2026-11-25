@@ -30,6 +30,7 @@ import dev.doona.android.feature.permissions.PermissionViewModel
 import dev.doona.android.vpn.VpnLog
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.IOException
 
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
         // Read here, once, so the settings page never asks the package manager while it composes.
         val version = versionName()
         val localNetwork = LocalNetworkHost(container.localNetwork, ::requestLocalNetwork, ::openAppSettings)
+        val lanAsking = container.localNetwork.prompt.map { it != null }
         setContent {
             AppTheme {
                 DoonaApp(
@@ -77,6 +79,7 @@ class MainActivity : ComponentActivity() {
                     crashOffer = container.crashOffer,
                     refusals = container.connectRefusals,
                     onSystemSettings = ::openSystemSettings,
+                    lanAsking = lanAsking,
                 )
                 AppSheets(asks, ::onPermissionStep, localNetwork)
             }

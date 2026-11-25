@@ -12,6 +12,8 @@ pub mod recent;
 pub mod score;
 mod selection;
 pub use selection::{Network, SelectArgs};
+mod nodes;
+pub use nodes::{LatencyTest, NodeInfo, Nodes, NodesArgs};
 mod start;
 pub use start::{DnsUpstreamsArgs, InitOptions, StartConfig};
 
@@ -366,8 +368,9 @@ pub struct Subscription {
     pub name: String,
     pub url: String,
     pub nodes: u32,
-    /// Format of the last successful fetch; null for subscriptions saved before it was recorded.
+    /// Format of the last successful fetch; null, as `updated_at_epoch_ms`, until the first one.
     pub format: Option<SubscriptionFormat>,
+    /// When the last successful fetch ended; null, as `format`, until the first one.
     pub updated_at_epoch_ms: Option<i64>,
     pub error: Option<ErrorCode>,
     pub used_bytes: Option<i64>,
@@ -408,8 +411,7 @@ pub struct AddSubscriptionArgs {
     pub url: String,
     #[serde(deserialize_with = "Option::deserialize")]
     pub name: Option<String>,
-    /// Optional, unlike the other nullable keys: a caller from before it sends the default.
-    #[serde(default, rename = "userAgent")]
+    #[serde(deserialize_with = "Option::deserialize", rename = "userAgent")]
     pub user_agent: Option<String>,
 }
 
@@ -436,41 +438,6 @@ pub struct IdArgs {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModeArgs {
     pub mode: Mode,
-}
-
-/// `nodes`' choice: every node in catalog order, or these ids (unknown ones are left out).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NodesArgs {
-    #[serde(deserialize_with = "Option::deserialize")]
-    pub ids: Option<Vec<String>>,
-}
-
-/// `nodes`' reply.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Nodes {
-    pub nodes: Vec<NodeInfo>,
-}
-
-/// What a node's share link says, and its last latency tests (at most 8, oldest first). The
-/// protocol is honk's name (`trojan`, `vless`, `ss`, `hysteria2`, …); the transport is `quic` for
-/// the QUIC protocols, else the stream transport (`tcp`, `ws`, `grpc`, …).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NodeInfo {
-    pub id: String,
-    pub protocol: String,
-    pub server: String,
-    pub port: u16,
-    pub transport: String,
-    pub tls: bool,
-    pub tests: Vec<LatencyTest>,
-}
-
-/// One latency test: when its round began, and the time it measured; none when the probe failed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LatencyTest {
-    pub at_epoch_ms: i64,
-    pub ms: Option<u32>,
 }
 
 /// `trafficSeries`' window: 1 to 3600 seconds.

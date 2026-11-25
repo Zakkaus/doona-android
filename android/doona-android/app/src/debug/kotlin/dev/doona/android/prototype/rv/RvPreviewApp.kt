@@ -52,6 +52,7 @@ import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
+import dev.doona.android.feature.onboarding.RvWelcome
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.perapp.RvSave
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
@@ -99,7 +100,6 @@ import dev.doona.android.prototype.rv.stats.rvStatsSample
 import dev.doona.android.prototype.rv.subs.RvImportSheet
 import dev.doona.android.prototype.rv.subs.RvSubsRoute
 import dev.doona.android.prototype.rv.subs.RvSubsRoutes
-import dev.doona.android.prototype.rv.welcome.RvWelcome
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

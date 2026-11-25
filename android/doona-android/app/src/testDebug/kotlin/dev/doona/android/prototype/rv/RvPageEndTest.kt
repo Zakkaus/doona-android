@@ -26,6 +26,11 @@ import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.subscriptions.RvSubDetail
+import dev.doona.android.feature.subscriptions.RvSubDetailState
+import dev.doona.android.feature.subscriptions.RvSubsActions
+import dev.doona.android.feature.subscriptions.RvSubsPage
+import dev.doona.android.feature.subscriptions.RvSubsState
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.rvTestTimes
@@ -55,12 +60,7 @@ import dev.doona.android.prototype.rv.settings.rvSampleVersions
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import dev.doona.android.prototype.rv.stats.RvStatsScreenSample
 import dev.doona.android.prototype.rv.stats.rvStatsSample
-import dev.doona.android.prototype.rv.subs.RvSubDetail
 import dev.doona.android.prototype.rv.subs.RvSubDetailSample
-import dev.doona.android.prototype.rv.subs.RvSubDetailState
-import dev.doona.android.prototype.rv.subs.RvSubsActions
-import dev.doona.android.prototype.rv.subs.RvSubsPage
-import dev.doona.android.prototype.rv.subs.RvSubsState
 import dev.doona.android.prototype.rv.subs.rvSubsStateSample
 import dev.doona.android.testing.GestureBar
 import dev.doona.android.testing.StatusBar

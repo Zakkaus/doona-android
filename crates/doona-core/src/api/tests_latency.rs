@@ -438,6 +438,7 @@ fn a_node_says_what_its_share_link_says() {
     let at = |server: &str| (all.iter().find(|(_, n)| n["server"] == server)).unwrap();
     let (name, hk) = at("192.0.2.1");
     assert_eq!(name, "hk-01");
+    assert_eq!(hk["subscriptionId"], json!("s1"));
     assert_eq!(
         (&hk["protocol"], &hk["server"], &hk["port"]),
         (&json!("trojan"), &json!("192.0.2.1"), &json!(443))

@@ -62,31 +62,6 @@
     <string name="policy_empty_line">Add a subscription to create groups.</string>
     <string name="sub_title">Subscriptions</string>
     <string name="sub_add">Add subscription</string>
-    <string name="sub_add_submit">Add</string>
-    <string name="ui_cancel">Cancel</string>
-    <string name="sub_url">Subscription URL</string>
-    <string name="sub_name">Name (optional)</string>
-    <string name="sub_url_empty">Enter the subscription URL</string>
-    <string name="sub_url_invalid">The URL must start with http:// or https://</string>
-    <plurals name="sub_nodes">
-        <item quantity="one">%1$d node</item>
-        <item quantity="other">%1$d nodes</item>
-    </plurals>
-    <string name="sub_updated">Updated %1$s</string>
-    <string name="sub_never_updated">Not updated yet</string>
-    <string name="sub_expires">Expires %1$s</string>
-    <string name="sub_expired">Expired</string>
-    <!-- Used over total as doona web writes it: 70/268 MB, the unit once when both share it. -->
-    <string name="sub_traffic" translatable="false">%1$s/%2$s</string>
-    <string name="sub_update">Update</string>
-    <string name="sub_remove">Delete</string>
-    <string name="sub_remove_title">Delete subscription?</string>
-    <string name="sub_remove_body">%1$s and its nodes will be deleted.</string>
-    <string name="sub_empty_title">No subscriptions</string>
-    <string name="sub_empty_line">Add a subscription link to import nodes.</string>
-    <string name="first_heading">Add your first subscription</string>
-    <string name="first_line_what">A subscription is a link that provides your nodes.</string>
-    <string name="first_line_next">Once it is added, the groups are created and you can connect.</string>
     <string name="first_no_nodes">No node available.</string>
     <string name="ui_dismiss">Dismiss</string>
     <string name="ui_clear">Clear</string>

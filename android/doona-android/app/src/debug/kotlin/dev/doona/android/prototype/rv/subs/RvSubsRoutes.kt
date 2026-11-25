@@ -7,6 +7,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
+import dev.doona.android.feature.subscriptions.RvAddFailure
+import dev.doona.android.feature.subscriptions.RvAddPhase
+import dev.doona.android.feature.subscriptions.RvAddState
+import dev.doona.android.feature.subscriptions.RvSubDetailState
+import dev.doona.android.feature.subscriptions.RvSubsActions
+import dev.doona.android.feature.subscriptions.RvSubsPage
+import dev.doona.android.feature.subscriptions.rvAgentOf
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import kotlinx.coroutines.delay
@@ -54,6 +61,7 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
 
         else -> {
             var state by remember { mutableStateOf(rvAddSample(arg)) }
+            var lan by remember { mutableStateOf(rvAddSampleLan(arg)) }
             LaunchedEffect(state.phase) {
                 if (state.phase is RvAddPhase.Importing) {
                     delay(IMPORT_MS)
@@ -66,10 +74,13 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
                 onPaste = { state = state.copy(link = RV_SAMPLE_LINK) },
                 onImport = { state = state.copy(phase = RvAddPhase.Importing(IMPORTED_BYTES, IMPORTED_SHARE)) },
                 onBack = pop,
+                lan = lan,
                 // 繼續 stands for Android's dialog answered yes, and the import runs; 開啟設定 leaves the page as it was.
                 onLanConfirm = {
-                    state = if (state.lan == LocalNetworkPrompt.Ask) state.copy(lan = null, phase = RvAddPhase.Importing(IMPORTED_BYTES, IMPORTED_SHARE)) else state.copy(lan = null)
+                    if (lan == LocalNetworkPrompt.Ask) state = state.copy(phase = RvAddPhase.Importing(IMPORTED_BYTES, IMPORTED_SHARE))
+                    lan = null
                 },
+                onLanDismiss = { lan = null },
             )
         }
     }
@@ -85,12 +96,18 @@ internal fun rvAddSample(phase: String): RvAddState {
         "unreachable" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.Unreachable))
         "not-subscription" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.NotSubscription))
         "too-large" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.TooLarge))
-        "lan-ask" -> typed.copy(link = RV_LAN_LINK, name = "", lan = LocalNetworkPrompt.Ask)
-        "lan-denied" -> typed.copy(link = RV_LAN_LINK, name = "", lan = LocalNetworkPrompt.Denied)
+        "lan-ask", "lan-denied" -> typed.copy(link = RV_LAN_LINK, name = "")
         "user-agent" -> typed.copy(userAgent = RV_SAMPLE_AGENT)
         "user-agent-invalid" -> typed.copy(userAgent = RV_SAMPLE_AGENT + RV_SAMPLE_AGENT_BAD)
         else -> RvAddState()
     }
+}
+
+/** The local network prompt over the add page in [phase]: the ask or the refusal for a link on the local network. */
+internal fun rvAddSampleLan(phase: String): LocalNetworkPrompt? = when (phase) {
+    "lan-ask" -> LocalNetworkPrompt.Ask
+    "lan-denied" -> LocalNetworkPrompt.Denied
+    else -> null
 }
 
 private const val FAILED = "failed"

@@ -155,7 +155,7 @@ private fun tools(state: RvStatsState, onTestAll: () -> Unit, onUpdateAll: () ->
     val format = rememberRvFormat()
     val nodes = pluralStringResource(R.plurals.rv_stats_node_count, state.nodes.size, state.nodes.size)
     val subscriptions = pluralStringResource(R.plurals.rv_stats_subscriptions, state.subscriptions.size, state.subscriptions.size)
-    val refreshed = state.subscriptions.map { it.updatedAtEpochMs }.filter { it > 0L }.maxOrNull()?.let {
+    val refreshed = state.subscriptions.mapNotNull { it.updatedAtEpochMs }.maxOrNull()?.let {
         stringResource(R.string.rv_updated, format.time(it))
     }
     return listOf(

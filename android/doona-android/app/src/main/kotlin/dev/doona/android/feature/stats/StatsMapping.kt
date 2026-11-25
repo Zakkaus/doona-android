@@ -121,13 +121,13 @@ private fun rvSplit(day: DayUsage): RvSplit? {
 
 /**
  * A subscription as the quota card and the tools row read it. A provider that sent no quota is a total of 0, which the
- * card leaves out; a subscription never fetched has no update time, 0 here, which the tools row skips.
+ * card leaves out; a subscription never fetched has no update time, which the tools row skips.
  */
 private fun rvSubscription(sub: Subscription) = RvSubscription(
     id = sub.id,
     name = sub.name,
     nodes = sub.nodes,
-    updatedAtEpochMs = sub.updatedAtEpochMs ?: 0L,
+    updatedAtEpochMs = sub.lastFetch?.atEpochMs,
     usedBytes = sub.usedBytes ?: 0L,
     totalBytes = sub.totalBytes ?: 0L,
     expiresAtEpochMs = sub.expiresAtEpochMs,

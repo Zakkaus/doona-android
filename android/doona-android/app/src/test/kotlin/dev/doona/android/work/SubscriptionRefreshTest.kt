@@ -9,6 +9,8 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFetch
+import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.report.AppEventLevel
 import dev.doona.android.report.AppEvents
@@ -154,6 +156,6 @@ class SubscriptionRefreshTest {
     private companion object {
         val NOW = 72.hours.inWholeMilliseconds
 
-        fun sub(id: String, updated: Long?) = Subscription(id, id, "https://example.invalid/sub", 1, updated)
+        fun sub(id: String, updated: Long?) = Subscription(id, id, "https://example.invalid/sub", 1, updated?.let { SubscriptionFetch(it, SubscriptionFormat.ShareLinks) })
     }
 }
