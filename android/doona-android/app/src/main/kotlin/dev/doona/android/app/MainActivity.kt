@@ -114,16 +114,23 @@ class MainActivity : ComponentActivity() {
     internal fun onPermissionStep(step: PermissionStep) {
         when (step) {
             PermissionStep.Wait -> Unit
-
             PermissionStep.Connect -> engine.connect()
-
             PermissionStep.AskConsent -> requestVpnConsent()
-
-            PermissionStep.AskNotify -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                asks.notifyLaunched()
-            }
+            PermissionStep.AskNotify -> launchNotificationDialog()
         }
+    }
+
+    // The flag is set only after launch() returned: a launch that throws (no activity for the request, a launcher that is
+    // no longer registered) leaves it clear, so the activity survives and the next status explains again.
+    private fun launchNotificationDialog() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return asks.notifyLaunchFailed()
+        try {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } catch (e: RuntimeException) {
+            VpnLog.warn("permissions: notification dialog not opened (${e.javaClass.simpleName})")
+            return asks.notifyLaunchFailed()
+        }
+        asks.notifyLaunched()
     }
 
     // The consent may have been given meanwhile (another app's prompt, the tile), so the dialog is looked up again.

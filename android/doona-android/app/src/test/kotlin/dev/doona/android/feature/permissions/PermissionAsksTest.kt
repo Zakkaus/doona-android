@@ -204,11 +204,11 @@ class PermissionAsksTest {
         }
         runBlocking { asks.onStatus(true, racing) { records++ } }
         assertEquals("the VPN's explanation shows first", Permission.Vpn, asks.showing.value)
+        status(running = false)
         assertEquals(PermissionStep.AskConsent, asks.confirm())
         assertNull("not over the system's consent dialog", asks.showing.value)
         assertNull("nor in a new process", afterProcessDeath().showing.value)
         assertEquals(PermissionStep.Connect, asks.consentAnswered(given = true))
-        status(running = false)
         assertNull("not before the connection is up", asks.showing.value)
         status(running = true)
         assertEquals("the notification's follows the connection", Permission.Notify, asks.showing.value)
@@ -225,6 +225,7 @@ class PermissionAsksTest {
             true
         }
         runBlocking { asks.onStatus(true, racing) { records++ } }
+        status(running = false)
         asks.confirm()
         assertEquals(PermissionStep.Wait, asks.consentAnswered(given = false))
         assertNull("no notification explanation beside the refusal", asks.showing.value)
@@ -238,10 +239,74 @@ class PermissionAsksTest {
     }
 
     @Test
-    fun theNotificationsContinueStillLeadsToTheWaitingVpnExplanation() {
+    fun theNotificationWaitsForTheConnectionWhileTheConsentIsPending() {
+        asks.connect(consentNeeded = true)
+        status(running = true)
+        assertEquals("the VPN's explanation stays", Permission.Vpn, asks.showing.value)
+        asks.confirm()
+        status(running = true)
+        assertNull("not over the consent's dialog", asks.showing.value)
+        assertEquals(PermissionStep.Connect, asks.consentAnswered(given = true))
+        assertEquals("the connection is up and the consent answered", Permission.Notify, asks.showing.value)
+    }
+
+    @Test
+    fun aBackOnTheVpnExplanationLetsTheWaitingNotificationShowOnceAConnectionIsUp() {
+        asks.connect(consentNeeded = true)
+        status(running = true)
+        asks.close()
+        assertEquals(Permission.Notify, asks.showing.value)
+    }
+
+    @Test
+    fun theNotificationsDialogOpeningKeepsTheWaitingVpnExplanationBehindIt() {
+        status(running = true)
+        assertEquals("a 連線 from the tile", PermissionStep.Wait, asks.connect(consentNeeded = true))
+        assertEquals(PermissionStep.AskNotify, asks.confirm())
+        assertNull("not over the system's dialog that is about to open", asks.showing.value)
+        asks.notifyLaunched()
+        assertNull(asks.showing.value)
+        status(running = true)
+        assertNull("nor on a status", asks.showing.value)
+        assertEquals(PermissionStep.Wait, asks.connect(consentNeeded = true))
+        asks.notifyAnswered(granted = true)
+        assertEquals("shown once the dialog is answered", Permission.Vpn, asks.showing.value)
+    }
+
+    @Test
+    fun aConnectWhileTheNotificationsDialogIsOpenWaitsForItsAnswer() {
+        status(running = true)
+        asks.confirm()
+        asks.notifyLaunched()
+        assertEquals(PermissionStep.Wait, asks.connect(consentNeeded = true))
+        assertNull(asks.showing.value)
+        assertNull("nor in a new process", afterProcessDeath().showing.value)
+        val restored = afterProcessDeath()
+        restored.notifyAnswered(granted = false)
+        assertEquals(Permission.Vpn, restored.showing.value)
+    }
+
+    @Test
+    fun aNotificationDialogThatCouldNotOpenShowsTheWaitingVpnAndIsExplainedAgain() {
         status(running = true)
         asks.connect(consentNeeded = true)
         assertEquals(PermissionStep.AskNotify, asks.confirm())
+        asks.notifyLaunchFailed()
+        assertEquals(Permission.Vpn, asks.showing.value)
+        asks.close()
+        status(running = true)
+        assertEquals("nothing was asked, so it is asked again", Permission.Notify, asks.showing.value)
+        assertEquals(0, records)
+    }
+
+    @Test
+    fun theNotificationsContinueStillLeadsToTheWaitingVpnExplanationAfterItsAnswer() {
+        status(running = true)
+        asks.connect(consentNeeded = true)
+        assertEquals(PermissionStep.AskNotify, asks.confirm())
+        assertNull("not under the system's dialog", asks.showing.value)
+        asks.notifyLaunched()
+        asks.notifyAnswered(granted = true)
         assertEquals(Permission.Vpn, asks.showing.value)
         asks.dismiss()
         assertNull(asks.showing.value)

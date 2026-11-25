@@ -224,6 +224,23 @@ class MainActivityTest {
     }
 
     @Test
+    fun `a notification dialog that cannot be launched leaves the app running and is explained again`() {
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        ShadowVpnService.setPrepareResult(null)
+        val controller = Robolectric.buildActivity(MainActivity::class.java, connect).setup()
+        val activity = controller.get()
+        val asks = activity.asks()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(Permission.Notify, asks.showing.value)
+        val step = asks.confirm()
+        // A destroyed activity's launcher is unregistered, so launch() throws, as it does with no activity for the request.
+        controller.pause().stop().destroy()
+        activity.onPermissionStep(step)
+        runBlocking { asks.onStatus(running = true, notify = { true }) {} }
+        assertEquals("the flag was not set, so the next status explains again", Permission.Notify, asks.showing.value)
+    }
+
+    @Test
     fun `a connect from the tile waits behind the notification's explanation`() {
         shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
         ShadowVpnService.setPrepareResult(null)
