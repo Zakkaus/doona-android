@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.policy
+package dev.doona.android.feature.nodes.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
