@@ -97,7 +97,8 @@ fn shipped_examples() {
 
 #[test]
 fn class_fixtures() {
-    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/honk");
+    // A load reads every source under the entry's folder, so the class fixtures keep a folder of their own.
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/honk/classes");
     for (file, section, name, expected) in [
         ("ingress.dae", "global", "tproxy_port", "linux_ingress"),
         (
