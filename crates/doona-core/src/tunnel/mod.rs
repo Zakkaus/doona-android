@@ -60,7 +60,7 @@ pub struct Settings {
     /// The virtual resolver the tun advertises.
     pub dns: Ipv4Addr,
     /// Where DNS the core answers is forwarded, in order.
-    pub dns_upstreams: Vec<SocketAddr>,
+    pub dns_upstreams: tokio::sync::watch::Receiver<Arc<[SocketAddr]>>,
     /// A UDP association with no datagram either way for this long ends.
     pub udp_idle: Duration,
     /// How long a TCP flow may move no byte after either side's FIN, and a TCP/53 connection to the

@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// The commands, by the names the log may hold; never caller text.
-const COMMANDS: [&str; 25] = [
+const COMMANDS: [&str; 28] = [
     "previewStaticNodes",
     "addStaticNodes",
     "readStaticNode",
@@ -27,6 +27,9 @@ const COMMANDS: [&str; 25] = [
     "testLatency",
     "addSubscription",
     "updateSubscription",
+    "renameSubscription",
+    "nodeShareLink",
+    "setDnsUpstreams",
     "removeSubscription",
     "setSubscriptionUserAgent",
     "setMode",
@@ -45,10 +48,11 @@ const COMMANDS: [&str; 25] = [
     "configAssets",
 ];
 /// The reads among them that screens repeat.
-const READS: [&str; 9] = [
+const READS: [&str; 10] = [
     "trafficSeries",
     "usage",
     "nodes",
+    "nodeShareLink",
     "scoreState",
     "recentFlows",
     "rules",
@@ -190,6 +194,7 @@ impl Core {
 pub(super) fn loaded(diag: &Diag, state: &State, model: &Model, loaded: Loaded) {
     let event = match loaded {
         Loaded::SetAside => Event::warn("init").detail("stateSetAside"),
+        Loaded::DnsReset => Event::warn("init").detail("dnsUpstreamsReset"),
         _ => Event::info("init"),
     };
     let event = event.count(Count::Subscriptions, state.subscriptions.len());

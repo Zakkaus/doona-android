@@ -395,6 +395,9 @@ internal data class GroupArgs(val group: String?)
 @Serializable
 internal data class AddSubscriptionArgs(val url: String, val name: String?, val userAgent: String? = null)
 
+@Serializable
+internal data class RenameSubscriptionArgs(val id: String, val name: String)
+
 /** `setSubscriptionUserAgent`: the key is required, and null returns the subscription to the default. */
 @Serializable
 internal data class SubscriptionUserAgentArgs(val id: String, val userAgent: String?)
@@ -411,6 +414,9 @@ internal data class BootstrapDnsArgs(val servers: List<String>) {
         const val COMMAND = "setBootstrapDns"
     }
 }
+
+@Serializable
+internal data class DnsUpstreamsArgs(val servers: List<String>)
 
 /** `rules`' page: [limit] is 1 to 500. */
 @Serializable

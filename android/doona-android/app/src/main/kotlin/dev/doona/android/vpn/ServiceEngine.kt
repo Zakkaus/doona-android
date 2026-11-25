@@ -27,6 +27,7 @@ import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
+import dev.doona.android.engine.ShareLink
 import dev.doona.android.engine.StaticNode
 import dev.doona.android.engine.StaticNodeDraft
 import dev.doona.android.engine.StaticNodeResult
@@ -215,6 +216,13 @@ class ServiceEngine internal constructor(
     override suspend fun updateSubscription(id: String): Result<Subscription> =
         command("updateSubscription", IdArgs.serializer(), IdArgs(id), SubscriptionDto.serializer()).map(SubscriptionDto::toSubscription)
 
+    override suspend fun renameSubscription(id: String, name: String): Result<Subscription> =
+        command("renameSubscription", RenameSubscriptionArgs.serializer(), RenameSubscriptionArgs(id, name), SubscriptionDto.serializer())
+            .map(SubscriptionDto::toSubscription)
+
+    override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> =
+        read("nodeShareLink", IdArgs.serializer(), IdArgs(nodeId), String.serializer()).map(::ShareLink)
+
     override suspend fun removeSubscription(id: String): Result<Unit> =
         command("removeSubscription", IdArgs.serializer(), IdArgs(id), Unit.serializer())
 
@@ -267,6 +275,9 @@ class ServiceEngine internal constructor(
 
     override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> =
         command("setRuleSource", RuleSourceArgs.serializer(), RuleSourceArgs.template(template, options), Unit.serializer())
+
+    override suspend fun setDnsUpstreams(servers: List<String>): Result<Unit> =
+        command("setDnsUpstreams", DnsUpstreamsArgs.serializer(), DnsUpstreamsArgs(servers), Unit.serializer(), ordered = true)
 
     override suspend fun effectiveConfig(): Result<EffectiveConfig> =
         read("effectiveConfig", Unit.serializer(), Unit, EffectiveConfigDto.serializer()).map(EffectiveConfigDto::toEffectiveConfig)

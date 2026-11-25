@@ -12,6 +12,18 @@ can try one other eligible member before the app sends any data; the retry share
 A network outage does not permanently exclude failed nodes or start background probes. A subscription
 refresh keeps probe latency for unchanged nodes.
 
+`Engine.renameSubscription` changes only the display name. Names may repeat because subscriptions,
+node memberships and selections use IDs. Add and rename accept 1 to 64 Unicode code points after
+trimming and reject controls and line separators. `Engine.nodeShareLink` returns a `ShareLink` only
+for a `share_links` feed; read its `uri` explicitly when sharing. Other formats, local nodes and
+unknown IDs return `NotFound`. Refresh a legacy subscription with no recorded format before sharing.
+
+`Engine.setDnsUpstreams` persists one to four distinct unicast IPv4 or IPv6 endpoints in preference order. The default
+is `1.1.1.1:53`, then `8.8.8.8:53`. A bare IP uses port 53; use `IP:port` or `[IPv6]:port` to
+override it. `effectiveConfig().dnsUpstreams` reports the active endpoints. New UDP DNS queries and
+new TCP DNS connections use the list immediately; existing TCP DNS connections keep theirs.
+This setting does not change Android's bootstrap resolvers for node hostnames.
+
 ```sh
 . ~/.cache/android-dev/env.sh
 ./gradlew spotlessCheck :app:lintDebug :app:testDebugUnitTest verifyRoborazziDebug

@@ -6,7 +6,7 @@ use crate::testutil::fixture;
 
 /// The catalog `state` gives, its failures recorded nowhere.
 fn load(state: &State) -> Model {
-    super::load(state, &Diag::default())
+    super::load(&mut state.clone(), &Diag::default())
 }
 
 fn urltest(mut model: Model) -> Model {
@@ -44,7 +44,7 @@ fn state(subs: &[(&str, &str)]) -> State {
 }
 
 fn fresh(s: &StoredSubscription) -> Vec<Arc<NodeEntry>> {
-    entries(&s.id, stored_nodes(s).unwrap())
+    entries(&s.id, stored_nodes(s).unwrap().nodes)
 }
 
 fn ids(model: &Model) -> Vec<(String, String)> {

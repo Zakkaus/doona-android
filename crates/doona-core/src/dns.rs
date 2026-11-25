@@ -30,6 +30,40 @@ pub const UPSTREAMS: [SocketAddr; 2] = [
     SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53),
 ];
 
+/// Shared by the command and state loader. Never resolve a hostname or accept a scope.
+pub(crate) fn parse_upstreams(servers: &[String]) -> Option<Vec<SocketAddr>> {
+    if !(1..=4).contains(&servers.len()) {
+        return None;
+    }
+    let mut parsed = Vec::with_capacity(servers.len());
+    for text in servers {
+        if text.contains('%') {
+            return None;
+        }
+        let addr = text
+            .parse()
+            .map(|ip| SocketAddr::new(ip, 53))
+            .or_else(|_| text.parse::<SocketAddr>())
+            .ok()?;
+        let ip = addr.ip().to_canonical();
+        let usable = match ip {
+            std::net::IpAddr::V4(ip) => !ip.is_broadcast() && !ip.is_link_local(),
+            std::net::IpAddr::V6(ip) => !ip.is_unicast_link_local(),
+        };
+        let endpoint = SocketAddr::new(ip, addr.port());
+        if !usable
+            || ip.is_multicast()
+            || ip.is_unspecified()
+            || addr.port() == 0
+            || parsed.contains(&endpoint)
+        {
+            return None;
+        }
+        parsed.push(endpoint);
+    }
+    Some(parsed)
+}
+
 /// One upstream's share of a query, from dial to answer.
 const EXCHANGE: Duration = Duration::from_secs(5);
 const HEADER: usize = 12;

@@ -66,7 +66,7 @@ fn catalog_member_locations() {
     );
 }
 
-const COVERED: [&str; 36] = [
+const COVERED: [&str; 40] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-config-assets-update-args.json",
@@ -75,11 +75,13 @@ const COVERED: [&str; 36] = [
     "call-error-state-write.json",
     "call-error-static-row-count.json",
     "call-error.json",
+    "call-node-share-link-args.json",
     "call-nodes-args.json",
     "call-ok-config-assets.json",
     "call-ok-diagnostics.json",
     "call-ok-effective-config.json",
     "call-ok-empty.json",
+    "call-ok-node-share-link.json",
     "call-ok-nodes.json",
     "call-ok-recent-flows.json",
     "call-ok-rules.json",
@@ -89,10 +91,12 @@ const COVERED: [&str; 36] = [
     "call-ok-traffic-series.json",
     "call-ok-usage.json",
     "call-recent-flows-args.json",
+    "call-rename-subscription-args.json",
     "call-rules-args.json",
     "call-score-state-args.json",
     "call-select-args.json",
     "call-set-bootstrap-dns-args.json",
+    "call-set-dns-upstreams-args.json",
     "call-set-log-level-args.json",
     "call-set-mode-args.json",
     "call-set-rule-source-args.json",
@@ -214,6 +218,10 @@ fn call_replies_and_args() {
     );
     let add = round_trip::<AddSubscriptionArgs>("call-add-subscription-args.json");
     assert_eq!((add.name, add.user_agent.as_deref()), (None, agent));
+    round_trip::<doonacore::dto::RenameSubscriptionArgs>("call-rename-subscription-args.json");
+    round_trip::<doonacore::dto::IdArgs>("call-node-share-link-args.json");
+    round_trip::<Reply<String>>("call-ok-node-share-link.json");
+    round_trip::<doonacore::dto::DnsUpstreamsArgs>("call-set-dns-upstreams-args.json");
     // Null returns the subscription to the default agent, as the stopped catalog shows.
     let set = round_trip::<SubscriptionUserAgentArgs>("call-set-subscription-user-agent-args.json");
     assert_eq!((set.id.as_str(), set.user_agent), ("s1", None));

@@ -25,7 +25,7 @@ fn driver(dir: &TempDir) -> (Driver, Arc<Tun>, OwnedFd, mpsc::UnboundedReceiver<
     let settings = Settings {
         mtu: 1500,
         dns: Ipv4Addr::new(172, 19, 0, 2),
-        dns_upstreams: Vec::new(),
+        dns_upstreams: tokio::sync::watch::channel(Arc::from([])).1,
         udp_idle: udp::IDLE,
         tcp_drain: Duration::from_secs(30),
         mode: Arc::new(ModeCell::new(Mode::Direct)),

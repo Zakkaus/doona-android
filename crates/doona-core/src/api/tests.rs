@@ -480,25 +480,6 @@ fn failed_within_10s(core: &Core) -> Snapshot {
     }
 }
 
-/// The first generation never becomes ready; later ones are ready at once, then idle.
-fn unready_then_ready(
-    tun: TunHandle,
-    _: Settings,
-    gen_: Gen,
-    ready: StartSignal,
-) -> BoxFuture<'static, ()> {
-    Box::pin(async move {
-        let _held = tun;
-        let _unsent = if gen_.session.generation == 1 {
-            Some(ready)
-        } else {
-            ready.send();
-            None
-        };
-        std::future::pending::<()>().await;
-    })
-}
-
 /// A loopback server that echoes each connection.
 pub(super) fn echo() -> std::net::SocketAddr {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -535,13 +516,17 @@ fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
     let echo = echo();
     let feeds = Feeds::new();
     feeds.set("/sub", format!("socks5://{proxy}#s5\n").as_bytes());
-    let core = Core::with_launch(path(&dir), unready_then_ready, Duration::from_secs(10));
-    let core = Arc::new(core);
+    let core = Core::with_launch(
+        path(&dir),
+        super::tests_carriers::idle,
+        Duration::from_secs(10),
+    );
     add(&core, &feeds, "/sub").unwrap();
-    let opened: Arc<Mutex<Option<Upstream>>> = Arc::default();
-    let kept = Arc::clone(&opened);
+    let (opened, stream) = mpsc::channel();
     let (second, _second_probe) = tun();
     core.hooks.on_before_finish(move |core| {
+        // The first tunnel exists, but its start has not committed or cleaned up yet.
+        core.stop();
         core.start(second, CONFIG).unwrap();
         let route = Route::of(
             Inbound::Tun,
@@ -552,19 +537,11 @@ fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
         );
         let mut s = core.runtime.block_on(route.connect(echo)).unwrap();
         assert_eq!(ping(core, &mut s, b"before").unwrap(), b"before");
-        *lock(&kept) = Some(s);
+        opened.send(s).unwrap();
     });
     let (first, _first_probe) = tun();
-    let starter = {
-        let core = Arc::clone(&core);
-        std::thread::spawn(move || core.start(first, CONFIG))
-    };
-    while !matches!(*lock(&core.life), Life::Starting { .. }) {
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    core.stop();
-    assert_eq!(starter.join().unwrap(), Err(ErrorCode::Busy));
-    let mut s = lock(&opened).take().expect("a stream on the carriers");
+    assert_eq!(core.start(first, CONFIG), Err(ErrorCode::Busy));
+    let mut s = stream.try_recv().expect("a stream on the carriers");
     assert_eq!(ping(&core, &mut s, b"after").unwrap(), b"after");
     assert!(matches!(*lock(&core.life), Life::Running(_)));
 }

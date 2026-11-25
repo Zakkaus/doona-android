@@ -87,6 +87,7 @@ pub struct Core {
     writer: Mutex<()>,
     /// The committed mode, shared with the running generation.
     mode: Arc<ModeCell>,
+    dns_upstreams: tokio::sync::watch::Sender<Arc<[SocketAddr]>>,
     /// Which generation runs, or that one is starting. Held only to read or swap it, never
     /// across a wait, so `stop` and `snapshot` never wait for a `start`. Taken before the catalog
     /// lock when both are held.
@@ -149,7 +150,7 @@ impl Core {
         launch: (Launch, Duration),
         prober: Prober,
     ) -> Result<Core, ErrorCode> {
-        let (state, loaded) = store.load().map_err(|e| {
+        let (mut state, loaded) = store.load().map_err(|e| {
             log::error!("init: state unreadable ({:?})", e.kind());
             ErrorCode::Internal
         })?;
@@ -169,11 +170,16 @@ impl Core {
             .map_err(|_| ErrorCode::Internal)?;
         bootstrap::install();
         bootstrap::use_servers(options.bootstrap_fallback.clone());
-        let model = catalog::load(&state, &diag);
+        let model = catalog::load(&mut state, &diag);
         diagnostics::loaded(&diag, &state, &model, loaded);
         let outbounds = Arc::new(Outbounds::new(Arc::clone(&panics))?);
         let built = outbounds.build(&model.nodes);
         let mode = Arc::new(ModeCell::new(state.mode));
+        let upstreams = state
+            .dns_upstreams
+            .as_deref()
+            .unwrap_or(&options.dns_upstreams);
+        let dns_upstreams = tokio::sync::watch::Sender::new(Arc::from(upstreams));
         let catalog = CatalogState::new(state, model);
         let stats = Stats::with_diag(store.dir(), runtime.handle().clone(), &diag);
         let stats = Arc::new(stats);
@@ -193,6 +199,7 @@ impl Core {
             store,
             shared,
             mode,
+            dns_upstreams,
             writer: Mutex::new(()),
             life: Mutex::new(Life::Stopped),
             bootstrap_revision: AtomicU64::new(0),
@@ -360,7 +367,7 @@ impl Core {
         let settings = Settings {
             mtu: config.mtu,
             dns: config.dns,
-            dns_upstreams: self.options.dns_upstreams.clone(),
+            dns_upstreams: self.dns_upstreams.subscribe(),
             udp_idle: self.options.udp_idle,
             tcp_drain: self.options.tcp_drain,
             mode: Arc::clone(&self.mode),
@@ -416,6 +423,7 @@ impl Core {
     pub fn call(&self, command: &str, args: &str) -> String {
         self.traced(command, |event| match command {
             "setBootstrapDns" => parse(args).and_then(|a| self.set_bootstrap_dns(a).map(empty)),
+            "setDnsUpstreams" => parse(args).and_then(|a| self.set_dns_upstreams(a).map(empty)),
             "setMode" => parse(args).and_then(|a: ModeArgs| {
                 *event = event.detail(diagnostics::mode_name(a.mode));
                 self.set_mode(a.mode).map(empty)
@@ -430,6 +438,9 @@ impl Core {
             "updateSubscription" => parse(args)
                 .and_then(|a: IdArgs| self.update_subscription(&a.id))
                 .map(|s| diagnostics::refreshed(event, s)),
+            "renameSubscription" => parse(args)
+                .and_then(|a| self.rename_subscription(a))
+                .map(ok),
             "removeSubscription" => {
                 parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
@@ -566,6 +577,8 @@ mod tests_diagnostics;
 mod tests_latency;
 #[cfg(test)]
 mod tests_localnet;
+#[cfg(test)]
+mod tests_preferences;
 #[cfg(test)]
 mod tests_rule_source;
 #[cfg(test)]
