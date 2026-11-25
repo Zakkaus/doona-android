@@ -4,9 +4,9 @@ import android.content.res.Configuration
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -124,6 +126,7 @@ import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.policy.RvGroupKind
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.stats.RvStatsDots
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.collectLatest
 
 /**
@@ -396,19 +399,26 @@ private fun ConnectionTicks(status: Status) {
 @Composable
 internal fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
     if (!on || Rv.motion.instant) return { 0f }
-    val phase = remember { Animatable(0f) }
-    // The loop runs only while the ring is not resting: a resting pulse runs no animation, so it wakes no frame (it used
-    // to keep an infinite transition going and only stop reading it). It starts again from the ring's first frame.
+    var phase by remember { mutableFloatStateOf(0f) }
+    // The loop runs only while the ring is not resting: a resting pulse asks for no frame (it used to keep an infinite
+    // transition going and only stop reading it). It starts again from the ring's first frame. Each frame is an infinite
+    // animation's frame, so a test that waits for idle stops the loop, as it stops an infinite transition.
     LaunchedEffect(resting) {
         snapshotFlow { resting() }.collectLatest { paused ->
-            phase.snapTo(0f)
-            while (!paused) {
-                phase.snapTo(0f)
-                phase.animateTo(1f, tween(RvMotion.PULSE_MS, easing = RvMotion.Decelerate))
+            phase = 0f
+            if (paused) return@collectLatest
+            val scale = currentCoroutineContext()[MotionDurationScale]?.scaleFactor ?: 1f
+            val period = RvMotion.PULSE_MS * 1_000_000L * scale
+            var start = -1L
+            while (true) {
+                withInfiniteAnimationFrameNanos { now ->
+                    if (start < 0) start = now
+                    phase = RvMotion.Decelerate.transform(((now - start) % period.toLong().coerceAtLeast(1L)) / period)
+                }
             }
         }
     }
-    return { if (resting()) 0f else phase.value }
+    return { if (resting()) 0f else phase }
 }
 
 /**
