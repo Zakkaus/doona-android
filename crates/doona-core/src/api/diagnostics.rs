@@ -194,7 +194,6 @@ impl Core {
 pub(super) fn loaded(diag: &Diag, state: &State, model: &Model, loaded: Loaded) {
     let event = match loaded {
         Loaded::SetAside => Event::warn("init").detail("stateSetAside"),
-        Loaded::DnsReset => Event::warn("init").detail("dnsUpstreamsReset"),
         _ => Event::info("init"),
     };
     let event = event.count(Count::Subscriptions, state.subscriptions.len());

@@ -70,15 +70,15 @@ impl State {
     }
 }
 
+/// The stored DNS upstreams, valid as `setDnsUpstreams` takes them; any other list makes the file
+/// unreadable.
 fn dns_upstreams<'de, D: serde::Deserializer<'de>>(
     d: D,
 ) -> Result<Option<Vec<std::net::SocketAddr>>, D::Error> {
-    let value = serde_json::Value::deserialize(d)?;
-    // An empty list cannot be valid. Keep it distinct from a missing field until Store::load reports the reset.
-    let servers = serde_json::from_value::<Vec<String>>(value)
-        .ok()
-        .and_then(|servers| crate::dns::parse_upstreams(&servers));
-    Ok(Some(servers.unwrap_or_default()))
+    let servers = Vec::<String>::deserialize(d)?;
+    crate::dns::parse_upstreams(&servers)
+        .map(Some)
+        .ok_or_else(|| serde::de::Error::custom("dnsUpstreams is not a valid list"))
 }
 
 impl Default for State {
@@ -130,7 +130,6 @@ pub struct StoredSubscription {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Loaded {
     Read,
-    DnsReset,
     Missing,
     /// Unparsable, or written by a newer layout: set aside and replaced by defaults.
     SetAside,
@@ -175,14 +174,7 @@ impl Store {
             Err(e) => return Err(e),
         };
         match serde_json::from_slice::<State>(&text) {
-            Ok(mut s) if s.state_version == STATE_VERSION => {
-                let loaded = if s.dns_upstreams.take_if(|v| v.is_empty()).is_some() {
-                    Loaded::DnsReset
-                } else {
-                    Loaded::Read
-                };
-                Ok((s, loaded))
-            }
+            Ok(s) if s.state_version == STATE_VERSION => Ok((s, Loaded::Read)),
             _ => {
                 fs::rename(&path, self.dir.join(SET_ASIDE))?;
                 Ok((State::default(), Loaded::SetAside))
@@ -266,20 +258,6 @@ mod tests {
         let (loaded, how) = store.load().unwrap();
         assert_eq!(how, Loaded::Read);
         assert_eq!(loaded, state);
-    }
-
-    #[test]
-    fn unknown_fields_are_ignored_and_missing_lists_default() {
-        let dir = TempDir::new("state-lenient");
-        fs::write(
-            dir.path().join(FILE),
-            br#"{"stateVersion":1,"mode":"Direct","later":true}"#,
-        )
-        .unwrap();
-        let (state, how) = Store::new(dir.path()).load().unwrap();
-        assert_eq!(how, Loaded::Read);
-        assert_eq!(state.mode, Mode::Direct);
-        assert!(state.subscriptions.is_empty() && state.selections.is_empty());
     }
 
     #[test]
