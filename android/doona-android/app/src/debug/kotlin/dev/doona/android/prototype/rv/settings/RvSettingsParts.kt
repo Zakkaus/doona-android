@@ -46,6 +46,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSpanText
 import dev.doona.android.designsystem.rv.RvSwitch
 import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.RvWhole
 import dev.doona.android.designsystem.rv.rvOneLine
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvRowSelect
@@ -109,6 +110,7 @@ internal fun RvSettingsRow(
     action: (@Composable () -> Unit)? = null,
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
+    whole: RvWhole? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Box(
@@ -119,13 +121,13 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
-        val text = rowText(RowWords(title, subtitle, titleKeepWords, subtitleKeepWords), code, titleLines, error, RowEnds(icon, action, trailing))
+        val text = rowText(RowWords(title, subtitle, titleKeepWords, subtitleKeepWords, whole), code, titleLines, error, RowEnds(icon, action, trailing))
         Row(Modifier.fillMaxWidth().testTag(RvRowPart.SETTINGS_ROW).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
     }
 }
 
-/** A settings row's title and subtitle, and whether each holds its words ([RvSettingsRow]'s keepWords). */
-private class RowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean)
+/** A settings row's title and subtitle, whether each holds its words ([RvSettingsRow]'s keepWords), and its exception to R14. */
+private class RowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean, val whole: RvWhole?)
 
 /** A settings row's leading disc, and its trailing [action] or [trailing] control ([RvSettingsRow]). */
 private class RowEnds(@DrawableRes val icon: Int?, val action: (@Composable () -> Unit)?, val trailing: (@Composable () -> Unit)?)
@@ -150,7 +152,7 @@ private fun rowText(words: RowWords, code: Boolean, titleLines: Int, error: Bool
             if (code) {
                 RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines)
             } else {
-                RvText(title, Rv.type.rowTitle, rvWhole(titleLines), maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
+                RvText(title, Rv.type.rowTitle, rvWhole(titleLines, words.whole), maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
             }
             val hue = if (error) Rv.colors.error else Rv.colors.textSecondary
             words.subtitle?.let {

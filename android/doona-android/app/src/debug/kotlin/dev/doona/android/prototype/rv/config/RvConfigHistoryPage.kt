@@ -27,6 +27,7 @@ import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.RvWhole
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
 import dev.doona.android.prototype.rv.rvKeepRuns
@@ -87,6 +88,7 @@ private fun RevisionRow(revision: RvRevision, head: Boolean, onRevision: (Int) -
             subtitle = rvConfigLine(if (name == null) listOf(time, origin) else listOf(time, origin, number)),
             titleLines = if (name == null) RV_ROW_TITLE_LINES else Int.MAX_VALUE,
             titleKeepWords = false,
+            whole = RvWhole.RevisionName,
         ) { RvNavEnd(inUse) }
     }
 }

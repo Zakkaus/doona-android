@@ -22,6 +22,7 @@ import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.RvWhole
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvDiffFile
@@ -70,6 +71,7 @@ internal fun RvConfigRevisionPage(
                     subtitleKeepWords = false,
                     // The user's own name is shown whole (owner, q-s1125c-vname).
                     subtitleLines = Int.MAX_VALUE,
+                    whole = RvWhole.RevisionName,
                 ) { RvChevron() }
             }
         }

@@ -34,8 +34,9 @@ internal object RvRowPart {
     const val CODE = "rv-code"
 
     /**
-     * A row's text shown whole, with no line limit and no ellipsis, by the owner's exception to R14 (q-s1125c-vname: a
-     * configuration revision's own name); the gate holds it uncut instead of to the role's lines.
+     * A row's text shown whole, with no line limit and no ellipsis, by an owner's exception to R14 ([RvWhole]); the tag
+     * is `rv-whole:<id>`, the exception's id in LAYOUT-RULES.md, and the gate holds the text uncut instead of to the
+     * role's lines only when that id is in the file's Exceptions table.
      */
     const val WHOLE = "rv-whole"
 
@@ -52,4 +53,14 @@ internal object RvRowPart {
 
     /** A settings row's line of parts, inside its [RvPart.ROW] (`RvSettingsRow`). */
     const val SETTINGS_ROW = "rv-settings-row"
+}
+
+/**
+ * The owner's exceptions to R14 that show a row's text whole (no line limit, no ellipsis), each a row of LAYOUT-RULES.md's
+ * Exceptions by its id. A row's text is tagged [RvRowPart.WHOLE] only through one of these, never by its line count
+ * alone: a text of [Int.MAX_VALUE] lines with none is held to R14, and the gate fails on an id the file does not list.
+ */
+internal enum class RvWhole(val id: String) {
+    /** A configuration revision's own name, the user's text (owner, 2026-11-25 18:55). */
+    RevisionName("q-s1125c-vname"),
 }

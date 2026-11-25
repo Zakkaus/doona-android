@@ -13,6 +13,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.RvWhole
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -97,6 +98,59 @@ class RvRowRulesTest {
         assertEquals(listOf(RvRowBreak("R12", KEPT, "-2.0")), rvRowBreaks(listOf(row)).filter { it.rule == "R12" })
     }
 
+    /**
+     * A text with no line limit is not an exception by that alone: the library tags it whole only through an exception
+     * of LAYOUT-RULES.md (RvWhole), so a title of [Int.MAX_VALUE] lines and no exception is held to R14's two lines.
+     */
+    @Test
+    fun aTitleWithNoLineLimitAndNoExceptionBreaksR14() {
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                Column {
+                    Spacer(Modifier.height(EDGE.dp))
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, LONG, null, titleLines = Int.MAX_VALUE)
+                    Spacer(Modifier.height(EDGE.dp))
+                }
+            }
+        }
+        compose.waitForIdle()
+        val rows = rvRowsOf(compose.rvRowNodes())
+        assertTrue("the title takes more than two lines", (rows.single().title.line?.lines ?: 0) > 2)
+        assertEquals(listOf("R14"), rvRowBreaks(rows).filter { it.rule == "R14" }.map { it.rule })
+    }
+
+    /** The same title shown whole by a listed exception keeps every line and breaks nothing. */
+    @Test
+    fun aTitleShownWholeByAListedExceptionKeepsToR14() {
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                Column {
+                    Spacer(Modifier.height(EDGE.dp))
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, LONG, null, titleLines = Int.MAX_VALUE, whole = RvWhole.RevisionName)
+                    Spacer(Modifier.height(EDGE.dp))
+                }
+            }
+        }
+        compose.waitForIdle()
+        val rows = rvRowsOf(compose.rvRowNodes())
+        assertTrue("the title takes more than two lines", (rows.single().title.line?.lines ?: 0) > 2)
+        assertEquals(emptyList<String>(), rvRowBreaks(rows).filter { it.rule == "R14" }.map { it.rule })
+    }
+
+    /** A whole text whose exception LAYOUT-RULES.md does not list breaks R14. */
+    @Test
+    fun aWholeTextWithAnUnlistedExceptionBreaksR14() {
+        val title = RvNode(-1, Rect(32f, 116f, 380f, 185f), null, KEPT, RvFirstLine(0f, 23f, 3))
+        val row = RvRowRead(RvRowKind.List, Rect(16f, 100f, 396f, 201f), null, title, emptyList(), null, emptySet(), null, whole = emptySet(), unlisted = listOf("q-none"))
+        assertEquals(listOf("R14"), rvRowBreaks(listOf(row)).filter { it.rule == "R14" }.map { it.rule })
+    }
+
+    @Test
+    fun everyWholeExceptionIsARowOfLayoutRules() {
+        assertTrue("LAYOUT-RULES.md's Exceptions read", RV_LAYOUT_EXCEPTIONS.isNotEmpty())
+        RvWhole.entries.forEach { assertTrue("${it.id} is a row of LAYOUT-RULES.md's Exceptions", it.id in RV_LAYOUT_EXCEPTIONS) }
+    }
+
     @Test
     fun theAllowlistNamesGoldensThatExistOnceAndInOrder() {
         val lines = File(RV_ROW_RULES_ALLOWLIST).readLines().filter { it.isNotBlank() && !it.startsWith("#") }
@@ -110,6 +164,7 @@ class RvRowRulesTest {
 
     private companion object {
         const val KEPT = "Kept"
+        const val LONG = "這一列的標題非常長，長到在一般字級下也要換成三行以上，才放得下它全部的文字內容與後面補充的說明"
         const val SUBTITLE = "Subtitle"
         const val HALF = 0.5f
         const val MOVED = "Moved"

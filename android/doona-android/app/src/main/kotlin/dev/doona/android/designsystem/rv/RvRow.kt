@@ -60,8 +60,8 @@ import kotlin.math.roundToInt
  * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], [RvSpace.titleToSubtitle] between the lines, each
  * line its role's Latin line box whatever its script: [RvLineBox]);
  * [titleLines] and [titleOverflow] can keep a title to one line cut in the middle, which keeps both ends of a host:port
- * in view; [titleLines] or [subtitleLines] at [Int.MAX_VALUE] show the text whole ([RvRowPart.WHOLE]: a revision's own
- * name, q-s1125c-vname). [titleKeepWords] and [subtitleKeepWords] false keep a name's or an identifier's breaks the platform's
+ * in view; [titleLines] or [subtitleLines] at [Int.MAX_VALUE] with an owner's exception [whole] show the text whole
+ * ([RvRowPart.WHOLE]: a revision's own name, [RvWhole.RevisionName]); without one, the text is still held to R14. [titleKeepWords] and [subtitleKeepWords] false keep a name's or an identifier's breaks the platform's
  * ([RvText]'s `keepWords`: a node's name, an app's label and package). Otherwise no end cuts the text it sits beside, nor is cut itself, nor makes it read badly: an end sits beside
  * its text where the text reads well there ([rvReadsWell]); else the text takes the whole line and the end goes under
  * it, on the line's end (a node's name beside its latency at a large font size; [TextBesideEnd], [RowLine]), never
@@ -87,6 +87,7 @@ internal fun RvRow(
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
     subtitleLines: Int = RV_ROW_SUBTITLE_LINES,
+    whole: RvWhole? = null,
     endBusy: Boolean = false,
     endFirstLine: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
@@ -96,8 +97,8 @@ internal fun RvRow(
     val lineWise = titleEnd != null || subtitleEnd != null
     val beside = trailing != null && !lineWise && titleOverflow == TextOverflow.Ellipsis
     val minHeight = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine
-    val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords)
-    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, subtitleLines, subtitleKeepWords) }
+    val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords, whole)
+    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, subtitleLines, subtitleKeepWords, whole) }
     // LAYOUT-RULES.md R9: with a subtitle the disc's top is the title's top, so the text publishes where its title starts.
     val top = subtitle != null
     val firstLine = if (endFirstLine && top) maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = true)) else null
@@ -435,23 +436,25 @@ private fun RowLine(end: (@Composable () -> Unit)?, text: RowText?, figure: Bool
 }
 
 /**
- * A row's text as it is laid out: its words, its role, how many lines it may take and whether its words are held
- * ([RvText]'s `keepWords`); [words] is the text as its [RvText] takes it ([rvWords]), taken once for the text.
+ * A row's text as it is laid out: its words, its role, how many lines it may take, whether its words are held
+ * ([RvText]'s `keepWords`) and the exception that shows it whole; [words] is the text as its [RvText] takes it
+ * ([rvWords]), taken once for the text.
  */
-private class RowText(val text: String, val style: TextStyle, val lines: Int, val keepWords: Boolean) {
+private class RowText(val text: String, val style: TextStyle, val lines: Int, val keepWords: Boolean, val whole: RvWhole?) {
     val words = rvWords(text, lines, keepWords)
 
     /** The text in its role's Latin line box, as the row shows it. */
     @Composable
     fun Shown(color: Color = Rv.colors.text, overflow: TextOverflow = TextOverflow.Ellipsis) =
-        RvText(text, style, rvWhole(lines), color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
+        RvText(text, style, rvWhole(lines, whole), color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
 }
 
-/** A row text of [lines] lines tagged [RvRowPart.WHOLE] where it has no limit. */
-internal fun rvWhole(lines: Int): Modifier = if (lines == Int.MAX_VALUE) Modifier.testTag(RvRowPart.WHOLE) else Modifier
+/** A row text of [lines] lines tagged [RvRowPart.WHOLE] with [whole]'s id where it has no limit by that exception. */
+internal fun rvWhole(lines: Int, whole: RvWhole?): Modifier = if (lines == Int.MAX_VALUE && whole != null) Modifier.testTag("${RvRowPart.WHOLE}:${whole.id}") else Modifier
 
 @Composable
-private fun rememberRowText(text: String, style: TextStyle, lines: Int, keepWords: Boolean) = remember(text, style, lines, keepWords) { RowText(text, style, lines, keepWords) }
+private fun rememberRowText(text: String, style: TextStyle, lines: Int, keepWords: Boolean, whole: RvWhole?) =
+    remember(text, style, lines, keepWords, whole) { RowText(text, style, lines, keepWords, whole) }
 
 /** [text] laid out [width] px wide as its [RvText] lays it out. */
 private fun TextMeasurer.layout(text: RowText, width: Int) = rvLayout(text.words, text.style, text.lines, width)

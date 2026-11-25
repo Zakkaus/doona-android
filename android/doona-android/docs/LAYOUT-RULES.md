@@ -115,7 +115,7 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 | R11u | Trailing part under the text (a font size at which the title would not read beside it) | its top at the title's bottom (beside the subtitle) or at the text's bottom, its right edge at the content's end | `RvRow` under-end layout (`LocalRvEndSide`) | gate R11u |
 | R12 | Title to subtitle | 2 (was 0, line boxes touching, §7) | owner, q-s1125c-titlegap (2026-11-25 18:55); every row with a subtitle: list, settings, notice, skeleton | gate R12; `RvRowRulesTest.aSubtitleTouchingItsTitleBreaksR12` (the old 0 breaks) |
 | R13 | Line boxes | one height per role in a golden, within 1 dp | owner, latinrow | gate R13 |
-| R14 | Lines | title ≤ 2, subtitle ≤ 3; a text shown whole (Exceptions, q-s1125c-vname) takes every line and is never cut | `07-set-interface`, `07-privacy` | gate R14 (a whole text, `RvRowPart.WHOLE`, breaks it when cut) |
+| R14 | Lines | title ≤ 2, subtitle ≤ 3; a text shown whole by an exception listed below (Exceptions, q-s1125c-vname) takes every line and is never cut; a text is never an exception by its line count alone | `07-set-interface`, `07-privacy` | gate R14: a whole text (`rv-whole:<id>`, set only through `RvWhole`) breaks it when cut or when its id is not a row of Exceptions; a text of `Int.MAX_VALUE` lines with no `RvWhole` is held to 2 and 3 (`RvRowRulesTest.aTitleWithNoLineLimitAndNoExceptionBreaksR14`) |
 | R16 | Trailing x | the part ends at the content's end (16 inside the card) | §13.4 (x 998 of 1039 px) | gate R16 |
 | R21 | An end's glyph button (`RvEndMark`, 節點's info mark) | laid out at its 22 dp glyph, 12 after the value it follows; its 48 dp target is placed round the glyph past the layout, so the text loses only the ink and the gap | s1125c: the 48 dp layout box took 26 dp more from the text (`Hong Kong 02 IPLC` wrapped) | `RvEndMarkTest` |
 | R17 | Text to trailing | ≥ 12 on one line, to what the part shows: a switch's track, not its node (owner, q-s1125c-switchgap, 2026-11-25 18:55: was 20 to the track, the node's 8 dp room included) | `RvSpace.trailingGap`; no Revolut measure | gate R17 (the switch's node starts at its track); `RvSwitchGapTest` measures 12.0 dp from the text to the drawn track, switch on, and records the off switch: its 19 dp thumb overhangs the 14 dp track by 2.5 dp, 9.5 dp from the text (the rule is to the track; owner question q-l4-thumb) |
@@ -173,14 +173,15 @@ Each earlier change that contradicts a rule. A change goes back to the rule, nev
 | node picker, info mark (to `RvEndMark`) | 節點 picker | a 48 dp layout box offset 13 dp for a 22 dp glyph: 26 dp of the row's text width went to empty room | R21 |
 | `RvSegmented` (`rvSegmentStyle`) | every segmented control at 200% | shrank every label to the size at which the longest fit an equal part, where the labels fit side by side at full size | Text roles, segment label |
 | `25dc5430` (footnote tokens, `footnoteEnd` 0) | every page with a footnote | box 32..396: in by the card's padding at the start, at the card's edge at the end (owner 19:05 「我感覺向右歪了」) | R20 (end set to 16) |
+| `ad9444a2` (`rvWhole`) | 版本紀錄, the revision page, any row text of `Int.MAX_VALUE` lines | tagged every unlimited row text whole, so R14 excepted it with no row in Exceptions | R14 (`RvWhole`) |
 | node picker (`node-picker-action-failed-*`) | 節點 picker with a failed action | trailing part ends 13 dp short of the row's end | R16 (cause to be read in the code) |
 
 The gate's before list, per golden and rule, is in `rv-row-rules.txt`; it only shrinks.
 
 ## Exceptions
 
-An exception is added here with its date and review-page id when the owner decides one.
+An exception is added here with its date and review-page id when the owner decides one. A row's text is shown whole only through an `RvWhole` entry whose id is the first word of a row here; the gate reads this table (`RV_LAYOUT_EXCEPTIONS`) and fails on any other.
 
 | Id | Exception | Where | Check |
 |---|---|---|---|
-| q-s1125c-vname (owner, 2026-11-25 18:55: 「設定版本的自訂名稱整段顯示不截斷」) | A configuration revision's own name, the user's text, is shown whole: no line limit, no ellipsis, against R14's 2 title and 3 subtitle lines. At 200% a name takes 3 lines or more. | 版本紀錄's row title (`RvSettingsRow` `titleLines = Int.MAX_VALUE`) and the revision page's 名稱 row subtitle (`RvRow` `subtitleLines = Int.MAX_VALUE`); the library tags such a text `RvRowPart.WHOLE` | gate R14 (a whole text breaks it when cut); goldens `proto-rv-config-history-longname-{light,fs200}`, `proto-rv-config-revision-longname-{light,fs200}` |
+| q-s1125c-vname (owner, 2026-11-25 18:55: 「設定版本的自訂名稱整段顯示不截斷」) | A configuration revision's own name, the user's text, is shown whole: no line limit, no ellipsis, against R14's 2 title and 3 subtitle lines. At 200% a name takes 3 lines or more. | 版本紀錄's row title (`RvSettingsRow` `titleLines = Int.MAX_VALUE, whole = RvWhole.RevisionName`) and the revision page's 名稱 row subtitle (`RvRow` `subtitleLines = Int.MAX_VALUE, whole = RvWhole.RevisionName`); the library tags such a text `rv-whole:q-s1125c-vname` | gate R14 (a whole text breaks it when cut); goldens `proto-rv-config-history-longname-{light,fs200}`, `proto-rv-config-revision-longname-{light,fs200}` |

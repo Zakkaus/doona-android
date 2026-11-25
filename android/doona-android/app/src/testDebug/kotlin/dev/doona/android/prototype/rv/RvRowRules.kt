@@ -49,8 +49,10 @@ internal class RvRowRead(
     val room: Rect? = null,
     /** The boxes of the row's line ends alone, not a busy bar's. */
     val endLines: List<Rect> = emptyList(),
-    /** The texts of the row shown whole ([RvRowPart.WHOLE], the owner's exception to R14, q-s1125c-vname). */
+    /** The texts of the row shown whole ([RvRowPart.WHOLE]) by an exception LAYOUT-RULES.md lists ([RV_LAYOUT_EXCEPTIONS]). */
     val whole: Set<RvNode> = emptySet(),
+    /** The ids of whole texts whose exception LAYOUT-RULES.md does not list (a bare `rv-whole` has none): R14 breaks. */
+    val unlisted: List<String> = emptyList(),
 ) {
     /** What the trailing part occupies: its room, else what it draws. */
     val shape get() = room ?: end
@@ -163,10 +165,14 @@ private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     val lineEnds = inRow.filter { this[it].tag in LINE_ENDS && this[it].shown() }.map { this[it].box }
     fun tagged(text: RvNode, tag: String) = generateSequence(this.indexOf(text)) { this[it].parent.takeIf { p -> p > i } }.take(CODE_DEPTH).any { this[it].tag == tag }
     val code = tagged(title, RvRowPart.CODE)
-    val whole = (listOf(title) + subtitles).filter { tagged(it, RvRowPart.WHOLE) }.toSet()
+    fun wholeId(text: RvNode) = generateSequence(this.indexOf(text)) { this[it].parent.takeIf { p -> p > i } }.take(CODE_DEPTH)
+        .mapNotNull { this[it].tag }.firstOrNull { it == RvRowPart.WHOLE || it.startsWith(RvRowPart.WHOLE + ":") }?.substringAfter(':', "")
+    val ids = (listOf(title) + subtitles).mapNotNull { t -> wholeId(t)?.let { t to it } }
+    val whole = ids.filter { it.second in RV_LAYOUT_EXCEPTIONS }.map { it.first }.toSet()
+    val unlisted = ids.filter { it.second !in RV_LAYOUT_EXCEPTIONS }.map { it.second.ifEmpty { "(no id)" } }
     val room = inRow.firstOrNull { this[it].tag == RvRowPart.END && this[it].shown() }?.let { this[it].box }
     val endLines = inRow.filter { this[it].tag == RvRowPart.LINE_END && this[it].shown() }.map { this[it].box }
-    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut || edge, edge, room ?: ends?.second, lineEnds, code, room, endLines, whole)
+    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut || edge, edge, room ?: ends?.second, lineEnds, code, room, endLines, whole, unlisted)
 }
 
 /** The bounds of the card [i] stands in, if it stands in one. */
@@ -307,14 +313,16 @@ private fun RvRowRead.textToEnd(): RvRowBreak? {
 }
 
 /**
- * R14: a title takes up to two lines, a subtitle up to three; a text the row shows whole (q-s1125c-vname) takes every
- * line it needs and is never cut.
+ * R14: a title takes up to two lines, a subtitle up to three; a text the row shows whole by an exception of
+ * LAYOUT-RULES.md (q-s1125c-vname) takes every line it needs and is never cut, and a whole text whose exception the
+ * file does not list breaks R14 (no text is an exception by its line count alone).
  */
 private fun RvRowRead.lines(): RvRowBreak? {
     val t = title.line?.lines ?: 1
     val s = subtitles.filter { it !in whole }.maxOfOrNull { it.line?.lines ?: 1 } ?: 1
     val cut = whole.firstOrNull { it.line?.cut == true }
     return when {
+        unlisted.isNotEmpty() -> broken("R14", "whole text with no LAYOUT-RULES exception: ${unlisted.first()}")
         cut != null -> broken("R14", "whole text cut: ${cut.line?.lines} lines")
         title !in whole && t > TITLE_LINES -> broken("R14", "title $t lines")
         s > SUBTITLE_LINES -> broken("R14", "subtitle $s lines")
@@ -462,3 +470,13 @@ private const val TWO_LINE = 82f
 
 /** The trailing parts that act: they sit on the title's first line in every row with a subtitle (LAYOUT-RULES.md, R11). */
 private val CONTROLS = setOf(RvRowPart.SWITCH, RvRowPart.RADIO, RvRowPart.CHECK)
+
+/** LAYOUT-RULES.md, read from the app module's directory (the tests' working directory). */
+internal const val RV_LAYOUT_RULES = "../docs/LAYOUT-RULES.md"
+
+/** The ids of LAYOUT-RULES.md's Exceptions table: each row's first word (`q-s1125c-vname`). */
+internal val RV_LAYOUT_EXCEPTIONS: Set<String> by lazy {
+    File(RV_LAYOUT_RULES).readLines().dropWhile { it.trim() != "## Exceptions" }.drop(1).takeWhile { !it.startsWith("## ") }
+        .filter { it.startsWith("| ") && !it.startsWith("| Id ") && !it.startsWith("|---") }
+        .map { it.removePrefix("| ").substringBefore(' ') }.toSet()
+}
