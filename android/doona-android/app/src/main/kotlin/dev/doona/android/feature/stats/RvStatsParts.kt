@@ -25,6 +25,7 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSpanText
+import dev.doona.android.designsystem.rv.RvStatsSize
 import dev.doona.android.designsystem.rv.scripted
 
 /** A card's figure: the number in [style], its unit in [unitStyle] on the same baseline. */

@@ -1,4 +1,4 @@
-package dev.doona.android.feature.stats
+package dev.doona.android.designsystem.rv
 
 import androidx.compose.ui.unit.dp
 

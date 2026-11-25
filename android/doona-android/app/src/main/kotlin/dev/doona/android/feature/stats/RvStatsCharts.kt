@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.Constraints
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvPillInk
+import dev.doona.android.designsystem.rv.RvStatsAlpha
+import dev.doona.android.designsystem.rv.RvStatsSize
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvUsageSize
 import dev.doona.android.designsystem.rv.latencyColor

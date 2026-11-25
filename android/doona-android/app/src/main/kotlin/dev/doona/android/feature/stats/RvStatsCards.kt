@@ -34,6 +34,9 @@ import dev.doona.android.designsystem.rv.RvLegendItem
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvStatsAlpha
+import dev.doona.android.designsystem.rv.RvStatsSize
+import dev.doona.android.designsystem.rv.RvStatsSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvUsageChart
 import dev.doona.android.designsystem.rv.RvUsageLegend
