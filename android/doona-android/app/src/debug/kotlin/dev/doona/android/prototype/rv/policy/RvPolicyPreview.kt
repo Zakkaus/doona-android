@@ -160,7 +160,7 @@ internal fun RvPolicyPreview(
 
         r.TEMPLATE -> RvTemplatePage(RvTemplateData.cnDirect, state.template, { state.template = it }, onBack = pop, onReview = { push(r.IMPACT) })
 
-        r.EFFECTIVE -> RvEffectiveConfigPage(state.policy, settings, onBack = pop, onRules = { push(r.RULES) })
+        r.EFFECTIVE -> RvEffectiveConfigSample(state.policy, settings, onBack = pop, onRules = { push(r.RULES) })
 
         r.IMPACT -> RvTemplateImpactPage(RvTemplateData.impact, onBack = pop, onApply = { onTab(RV_NAV_POLICY) })
 
