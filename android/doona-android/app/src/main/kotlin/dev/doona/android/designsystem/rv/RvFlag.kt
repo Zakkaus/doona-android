@@ -60,14 +60,14 @@ internal fun RvFlag(code: String?, size: Dp, modifier: Modifier = Modifier, curr
             } else {
                 Modifier
             }
-            CurrentBadge(ring, Modifier.align(Alignment.BottomEnd).offset(RvSize.badgeOverhang, RvSize.badgeOverhang).then(grow))
+            RvCurrentBadge(ring, Modifier.align(Alignment.BottomEnd).offset(RvSize.badgeOverhang, RvSize.badgeOverhang).then(grow))
         }
     }
 }
 
 /** The current node's badge (measured §7 `avatar_badgeBottom`): a 16 dp accent disc with a check, ringed in [ring]. */
 @Composable
-private fun CurrentBadge(ring: Color, modifier: Modifier) {
+internal fun RvCurrentBadge(ring: Color, modifier: Modifier) {
     val colors = Rv.colors
     Canvas(modifier.size(RvSize.badge)) {
         val r = size.minDimension / 2

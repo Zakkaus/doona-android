@@ -24,6 +24,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvHeroSwipe
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RV_PICKER

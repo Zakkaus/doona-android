@@ -20,10 +20,11 @@ names=$(
             grep -E 'Sample$|^rvSample|^RV_SAMPLE|^sample[A-Z]'
     } | sort -u
 )
-# A name that main declares itself is main's own.
+# A name that main declares itself is main's own. Every declaration on a line counts, not only the last: in
+# `private data class Sample(val row: RuleRow)` the class is main's own as much as its property.
 own=$(
-    grep -rhE '(fun|val|var|object|class|interface|typealias)[[:space:]]+(<[^>]*>[[:space:]]+)?([A-Za-z0-9_<>?]+\.)?[A-Za-z0-9_]+' --include='*.kt' "$main" |
-        sed -E 's/.*(fun|val|var|object|class|interface|typealias)[[:space:]]+(<[^>]*>[[:space:]]+)?([A-Za-z0-9_<>?]+\.)?([A-Za-z0-9_]+).*/\4/' | sort -u
+    grep -rhoE '(fun|val|var|object|class|interface|typealias)[[:space:]]+(<[^>]*>[[:space:]]+)?([A-Za-z0-9_<>?]+\.)?[A-Za-z0-9_]+' --include='*.kt' "$main" |
+        sed -E 's/.*[^A-Za-z0-9_]([A-Za-z0-9_]+)$/\1/' | sort -u
 )
 fail=0
 for name in $names; do

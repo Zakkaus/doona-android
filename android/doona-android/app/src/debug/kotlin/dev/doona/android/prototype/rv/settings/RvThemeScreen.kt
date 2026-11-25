@@ -48,11 +48,20 @@ import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRadio
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSettingsAlpha
+import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsSection
+import dev.doona.android.designsystem.rv.RvSettingsSize
+import dev.doona.android.designsystem.rv.RvSettingsSpace
+import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
+import dev.doona.android.designsystem.rv.RvSettingsText
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvPressSelect
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvAppearance
+import dev.doona.android.feature.model.RvThemeMode
 
 /**
  * The page 主題 opens, after Revolut's Appearance page (Addendum A): a large title that collapses into the bar, then three

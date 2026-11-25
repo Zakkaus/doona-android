@@ -9,13 +9,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvBusy
+import dev.doona.android.designsystem.rv.RvNavEnd
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvSecondaryButton
+import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsRow
+import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.rvConfigLine
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.feature.model.RvGeoData
-import dev.doona.android.prototype.rv.config.rvConfigLine
 
 /**
  * Where 檢查更新 stands: not run yet, asking GitHub for the latest release, nothing newer than the app, a newer

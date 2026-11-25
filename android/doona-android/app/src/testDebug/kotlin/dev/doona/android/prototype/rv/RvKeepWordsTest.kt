@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import dev.doona.android.designsystem.rv.rvKeepTail
 import dev.doona.android.designsystem.rv.rvKeepWords
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
