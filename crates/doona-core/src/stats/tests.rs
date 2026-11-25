@@ -239,7 +239,8 @@ fn keeping_the_same_nodes_defers_latency_writes_to_round_end() {
     assert!(!dir.path().join(file::LATENCY).exists());
 
     stats.end_round();
-    drop(rt);
+    // Dropping the runtime cancels a blocking write that has not started; wait for it.
+    rt.block_on(rt.spawn_blocking(|| {})).unwrap();
     let saved = StatsFile::new(dir.path(), file::LATENCY, Arc::default()).load::<LatencyFile>();
     assert_eq!(saved.latency["n-a"][0], latency::Test(1_000, Some(38)));
 }
