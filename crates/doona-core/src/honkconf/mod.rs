@@ -23,6 +23,7 @@ pub mod schedule;
 mod staged;
 mod store;
 pub mod support;
+pub mod templates;
 
 pub use draft::Draft;
 pub use store::{HonkStore, StoreError};
