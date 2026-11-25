@@ -29,7 +29,8 @@ import dev.doona.android.feature.messageRes
 /**
  * A group's page, pushed over 策略: builds the ViewModel and draws [RvGroupPage] from its state while the screen is
  * started. A group removed while its page is open, such as by a subscription update, leaves the page; before the engine
- * has loaded, as after process death, the group is only not read yet and the page is a skeleton under its name.
+ * has loaded, as after process death, the group is only not read yet and the page is a skeleton under its name; a
+ * first read that fails shows its banner with 重試 under the name instead.
  * [onNodeDetail] opens a node's detail (a wiring point: the 節點 lane's page). [onOpenGroup] is what DoonaApp still
  * passes until p4-handoff-doonaapp.patch drops it: a member group is a row a tap chooses, and its own page opens from
  * 策略's groups card, so this page opens none.
@@ -52,14 +53,17 @@ internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val group = ui.group
     val choice = ui.choice
+    val failure = ui.failure
     when {
         group != null && choice != null -> CompositionLocalProvider(LocalRvTesting provides ui.testing) {
             RvGroupPage(
                 RvGroupContent(group, ui.subscriptions, choice, ui.apply, ui.isScore, ui.nowEpochMs),
                 RvGroupActions(onBack, viewModel::onTap, onNodeDetail, viewModel::onApart, viewModel::onApply, viewModel::onTest),
-                banner = ui.failure?.let { groupBanner(it, viewModel::retry) },
+                banner = failure?.let { groupBanner(it, viewModel::retry) },
             )
         }
+
+        failure?.action == GroupAction.Read -> GroupUnread(groupId.removePrefix(GROUP_ID_PREFIX), onBack, groupBanner(failure, viewModel::retry))
 
         ui.loading -> GroupSkeleton(groupId.removePrefix(GROUP_ID_PREFIX), onBack)
 
@@ -83,6 +87,16 @@ private fun GroupSkeleton(title: String, onBack: () -> Unit) {
     }
 }
 
+/** The page when its first read failed: the name and [banner], which reads again. */
+@Composable
+private fun GroupUnread(title: String, onBack: () -> Unit, banner: RvNotice) {
+    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+        RvPageHeader(title, titleBlock, insets)
+        RvGutter(banner = banner) {}
+    }
+}
+
 /** The banner of a failed [failure]: what failed over the engine's reason, and 重試 ([onRetry]). */
 @Composable
 private fun groupBanner(failure: GroupFailure, onRetry: () -> Unit) = RvNotice(
@@ -99,6 +113,7 @@ private val GroupAction.title: Int
     get() = when (this) {
         GroupAction.Select, GroupAction.Apart -> R.string.rv_failed_switch_node
         GroupAction.Test -> R.string.rv_failed_test_latency
+        GroupAction.Read -> R.string.rv_group_read_failed
     }
 
 private const val GROUP_ID_PREFIX = "g-"

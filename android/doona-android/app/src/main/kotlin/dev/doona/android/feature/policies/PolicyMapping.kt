@@ -23,6 +23,7 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.RvSubFormat
@@ -49,7 +50,7 @@ internal const val RV_POLICY_CARD_RULES = 5
 /**
  * A node as the pages show it. The history is the core's last tests, oldest first; a node the core has no details for
  * shows the catalog's last probe alone, so a probed node never reads as untested. [subscription] is the subscription's
- * name, which the pages group nodes by, and empty for a static node.
+ * name, empty for a node added by hand; the member's subscription id, null for such a node, is what the pages group by.
  */
 internal fun rvNode(member: Member, info: NodeInfo?, subscription: String, places: RvNodePlaces): RvNode {
     val placed = places.of(member.name)
@@ -70,6 +71,7 @@ internal fun rvNode(member: Member, info: NodeInfo?, subscription: String, place
         transport = info?.transport.orEmpty(),
         tls = info?.tls ?: false,
         subscription = subscription,
+        subscriptionId = member.subscriptionId,
         history = history,
     )
 }
@@ -170,18 +172,20 @@ internal fun rvRuleMatch(row: RuleRow): RvRuleMatch {
 }
 
 /**
- * A rule as 策略 lists it, with [bytes] routed today. Null for a row that refuses its flows: [RvPolicyRule] has no place
- * for 拒絕, and its null group means 直連, so showing the row would say the opposite of what it does. A group missing
- * from [groups] also shows as null. All of a row's lines skipped is Skipped; part of them still routes.
+ * A rule as 策略 lists it, with [bytes] routed today. A row that refuses its flows is 拒絕, and one whose group is not in
+ * [groups] names its group as missing: neither is 直連. All of a row's lines skipped is Skipped; part of them still routes.
  */
-internal fun rvPolicyRule(row: RuleRow, groups: Map<String, RvPolicyGroup>, bytes: Long): RvPolicyRule? {
-    val group = when (val target = row.target) {
-        RuleTarget.Reject -> return null
-        RuleTarget.Direct -> null
-        is RuleTarget.Group -> groups[target.id]
-    }
+internal fun rvPolicyRule(row: RuleRow, groups: Map<String, RvPolicyGroup>, bytes: Long): RvPolicyRule {
     val state = if (row.skipped != null && row.skippedLines == row.count) RvRuleState.Skipped else RvRuleState.On
-    return RvPolicyRule(rvRuleMatch(row), group, bytes, state)
+    val match = rvRuleMatch(row)
+    return when (val target = row.target) {
+        RuleTarget.Direct -> RvPolicyRule(match, null, bytes, state)
+
+        RuleTarget.Reject -> RvPolicyRule(match, null, bytes, state, RvRuleEnd.Reject)
+
+        is RuleTarget.Group -> groups[target.id]?.let { RvPolicyRule(match, it, bytes, state) }
+            ?: RvPolicyRule(match, null, bytes, state, RvRuleEnd.Missing)
+    }
 }
 
 /**
@@ -197,8 +201,8 @@ internal fun rvNodes(catalog: Catalog, infos: Map<String, NodeInfo>, places: RvN
 /**
  * 策略's profile from the catalog, the nodes' details [infos], the card's [rules] (the source has [ruleTotal]) and today's
  * bytes per rule id [byRule]. The main group is null when no group has the catalog's main id: honk needs no such group.
- * The card lists the first [RV_POLICY_CARD_RULES] rows that do not refuse their flows; the other groups keep the
- * catalog's order.
+ * The card lists the first [RV_POLICY_CARD_RULES] rows, 拒絕 among them, and [ruleTotal] counts every row; the other
+ * groups keep the catalog's order.
  */
 internal fun rvPolicyProfile(
     catalog: Catalog,
@@ -213,11 +217,10 @@ internal fun rvPolicyProfile(
     val byId = catalog.groups.associateBy { it.id }
     val mapped = catalog.groups.map { rvPolicyGroup(it, byId, nodes) }.associateBy { it.id }
     val main = mapped[catalog.mainGroupId]
-    val routed = rules.filterNot { it.target == RuleTarget.Reject }
     return RvPolicyProfile(
         main = main,
         groups = mapped.values.filter { it.id != main?.id },
-        rules = routed.take(RV_POLICY_CARD_RULES).mapNotNull { rvPolicyRule(it, mapped, byRule[it.id] ?: 0L) },
+        rules = rules.take(RV_POLICY_CARD_RULES).map { rvPolicyRule(it, mapped, byRule[it.id] ?: 0L) },
         ruleCount = ruleTotal,
         nodes = nodes.values.toList(),
         subscriptions = catalog.subscriptions.map(::rvSubscription),

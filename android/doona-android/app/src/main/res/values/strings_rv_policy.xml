@@ -185,4 +185,8 @@
     <string name="rv_group_by_region">By region</string>
     <string name="rv_group_no_match">No matching nodes</string>
     <string name="rv_group_apart">Choose TCP/UDP apart</string>
+    <string name="rv_policy_reject">Reject</string>
+    <string name="rv_policy_target_missing">Group not found</string>
+    <string name="rv_policy_read_failed">Could not read the policies</string>
+    <string name="rv_group_read_failed">Could not read the group</string>
 </resources>

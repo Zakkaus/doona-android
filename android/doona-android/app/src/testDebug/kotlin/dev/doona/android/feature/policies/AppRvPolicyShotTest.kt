@@ -16,7 +16,12 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.RuleKind
+import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.RuleRow
+import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.engine.fake.RvSampleRules
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -65,9 +70,16 @@ class AppRvPolicyShotTest {
     @Config(qualifiers = WHOLE_RULE_EN)
     fun ruleEnLight() = shot("policy-en", dark = false, whole = true) { Page(::rvSampleEngine) }
 
-    /** Groups as a user writes them in honk by hand ([honkGroupsEngine]): no main group, nested groups, a fallback, an empty group. */
+    /**
+     * Groups as a user writes them in honk by hand ([honkGroupsEngine]): no main group, nested groups, a fallback, an empty
+     * group. Its rules lead with a REJECT (拒絕), and the sample's rules name groups this profile lacks (找不到群組).
+     */
     @Test
-    fun honkGroupsLight() = shot("policy-honk", dark = false) { Page(::honkGroupsEngine) }
+    fun honkGroupsLight() = shot("policy-honk", dark = false) { Page(::honkRules) }
+
+    /** The first read failed: the banner with 重試 in place of the cards, no skeleton left standing. */
+    @Test
+    fun readFailedLight() = shot("policy-read-failed", dark = false) { Page(::unreadable) }
 
     @Test
     fun loadingLight() = shot("policy-loading", dark = false) { Page(::notReady) }
@@ -141,6 +153,18 @@ class AppRvPolicyShotTest {
     /** The sample engine before it is ready: the page waits as a skeleton. */
     private fun notReady(): FakeEngine = rvSampleEngine().apply { ready.value = false }
 
+    /** [honkGroupsEngine] whose rules start with one that refuses its flows. */
+    private fun honkRules(): Engine = object : Engine by honkGroupsEngine() {
+        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> = Result.success(
+            RulePage(1L, RvSampleRules.rows.size + 1, listOf(REJECT_ADS) + RvSampleRules.rows.take(limit - 1)),
+        )
+    }
+
+    /** The sample engine whose rules cannot be read. */
+    private fun unreadable(): Engine = object : Engine by rvSampleEngine() {
+        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> = Result.failure(EngineException(ErrorCode.Busy))
+    }
+
     /** The sample engine's groups with no subscription: nothing to route. */
     private fun noSubscription(): FakeEngine = rvSampleEngine().apply { subscriptions.value = emptyList() }
 
@@ -148,6 +172,7 @@ class AppRvPolicyShotTest {
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
         const val PERCENT = 100
         const val SAMPLE_NOW = 1_795_343_040_000L
+        val REJECT_ADS = RuleRow("r-ads", 0, RuleKind.DomainSuffix, "DomainSuffix", "ads.example", 1, RuleTarget.Reject)
 
         /** `proto-rv-policy-{light,dark}`'s window, as tall as the page whole. */
         const val WHOLE_RULE = "+h1990dp"

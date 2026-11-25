@@ -20,6 +20,7 @@ import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvMemberGroup
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.RvSubFormat
@@ -177,40 +178,58 @@ class PolicyMappingTest {
     }
 
     @Test
-    fun `a rule goes direct, through its group, or is left out when it refuses`() {
+    fun `a rule goes direct, through its group, is refused, or names its group as missing`() {
         val all = nodes(node("n1"))
-        val group = rvPolicyGroup(Group("g-A", "A", GroupKind.Selector, listOf(node("n1")), selectedId = "n1"), emptyMap(), all)!!
+        val group = rvPolicyGroup(Group("g-A", "A", GroupKind.Selector, listOf(node("n1")), selectedId = "n1"), emptyMap(), all)
         val groups = mapOf(group.id to group)
-        assertNull(rvPolicyRule(row(RuleKind.Domain, "a.example"), groups, 0)!!.group)
-        assertEquals("g-A", rvPolicyRule(row(RuleKind.Domain, "a.example", target = RuleTarget.Group("g-A")), groups, 0)!!.group?.id)
-        assertNull(rvPolicyRule(row(RuleKind.Domain, "a.example", target = RuleTarget.Reject), groups, 0))
+        val direct = rvPolicyRule(row(RuleKind.Domain, "a.example"), groups, 0)
+        assertEquals(null to RvRuleEnd.Direct, direct.group to direct.end)
+        assertEquals("g-A", rvPolicyRule(row(RuleKind.Domain, "a.example", target = RuleTarget.Group("g-A")), groups, 0).group?.id)
+        val refused = rvPolicyRule(row(RuleKind.Domain, "a.example", target = RuleTarget.Reject), groups, 0)
+        assertEquals(null to RvRuleEnd.Reject, refused.group to refused.end)
+        val missing = rvPolicyRule(row(RuleKind.Domain, "a.example", target = RuleTarget.Group("g-Gone")), groups, 0)
+        assertEquals("a missing group is not 直連", null to RvRuleEnd.Missing, missing.group to missing.end)
     }
 
     @Test
     fun `a row is skipped only when all its lines are`() {
         val skipped = row(null, "google", kindName = "GEOSITE").copy(skipped = RuleSkip.GeodataMissing, skippedLines = 1)
-        assertEquals(RvRuleState.Skipped, rvPolicyRule(skipped, emptyMap(), 0)!!.state)
+        assertEquals(RvRuleState.Skipped, rvPolicyRule(skipped, emptyMap(), 0).state)
         val partly = row(RuleKind.DomainSuffix, "a.example", 3).copy(skipped = RuleSkip.UnsupportedKind, skippedLines = 1)
-        assertEquals(RvRuleState.On, rvPolicyRule(partly, emptyMap(), 0)!!.state)
+        assertEquals(RvRuleState.On, rvPolicyRule(partly, emptyMap(), 0).state)
     }
 
     @Test
-    fun `the profile joins bytes by rule id and leaves refusing rows out`() {
+    fun `the profile joins bytes by rule id and lists refusing rows as the others`() {
         val catalog = rvSampleEngine().catalog.value!!
         val reject = RuleRow("r-ads", 0, RuleKind.DomainSuffix, "DomainSuffix", "ads.example", 1, RuleTarget.Reject)
         val rows = listOf(reject) + RvSampleRules.rows
-        val profile = rvPolicyProfile(catalog, emptyMap(), rows, 15, mapOf("r-streaming" to 7L, "r-cn" to 3L), 99L, RV_UNKNOWN_PLACES)!!
+        val profile = rvPolicyProfile(catalog, emptyMap(), rows, 15, mapOf("r-streaming" to 7L, "r-cn" to 3L), 99L, RV_UNKNOWN_PLACES)
         assertEquals("g-Proxy", profile.main?.id)
         assertEquals(catalog.groups.map { it.id }.drop(1), profile.groups.map { it.id })
         assertEquals(RV_POLICY_CARD_RULES, profile.rules.size)
-        assertEquals(listOf(7L, 0L, 3L, 0L, 0L), profile.rules.map { it.bytes })
+        assertEquals(listOf(0L, 7L, 0L, 3L, 0L), profile.rules.map { it.bytes })
         assertEquals(15, profile.ruleCount)
-        assertEquals("g-Streaming", profile.rules.first().group?.id)
-        assertEquals(RvRuleMatch.Lan, profile.rules[3].match)
+        assertEquals(RvRuleEnd.Reject, profile.rules.first().end)
+        assertEquals("g-Streaming", profile.rules[1].group?.id)
+        assertEquals(RvRuleMatch.Lan, profile.rules[4].match)
         assertEquals(catalog.groups.flatMap { it.members }.filterNot { it.isGroup }.map { it.id }.distinct(), profile.nodes.map { it.id })
         assertEquals(listOf("Harbor Cloud", "Lantern Net"), profile.nodes.map { it.subscription }.distinct())
         assertEquals(listOf("sub.harbor-cloud.example", "lantern-net.example"), profile.subscriptions.map { it.host })
         assertEquals(99L, profile.nowEpochMs)
+    }
+
+    @Test
+    fun `a node added by hand has no subscription and is listed with the others`() {
+        val catalog = rvSampleEngine().catalog.value!!
+        val static = Member("static-1", "Home", subscriptionId = null)
+        val main = catalog.groups.first { it.id == catalog.mainGroupId }
+        val withStatic = catalog.copy(groups = catalog.groups.map { if (it === main) it.copy(members = it.members + static) else it })
+        val profile = rvPolicyProfile(withStatic, emptyMap(), emptyList(), 0, emptyMap(), 0L, RV_UNKNOWN_PLACES)
+        val node = profile.nodes.single { it.id == "static-1" }
+        assertTrue(node.inline)
+        assertEquals("", node.subscription)
+        assertTrue(profile.main!!.members.any { it.id == "static-1" })
     }
 
     @Test

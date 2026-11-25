@@ -29,8 +29,14 @@ import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSkeletonCard
+import dev.doona.android.designsystem.rv.RvSkeletonCards
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
+import dev.doona.android.designsystem.rv.RvSkeletonRow
+import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.rvRowPress
+import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleState
 
@@ -57,7 +63,8 @@ internal class RvRulesRoutes(
  * for reordering (first match wins, so order matters): a long press lifts a rule to drag it, and 完成 ends it. A rule
  * opens its page; a long press its menu. 刪除 asks in the library's confirm sheet. A [banner] (the source did not parse,
  * or the rules could not be read) stands in place of the cards, in [RvGutter]'s slot; the title, the bar and the bottom
- * action stay.
+ * action stay. While [loading] (the first read) a skeleton of the rules card stands in for the cards, and they fade in
+ * over it.
  */
 @Composable
 internal fun RvRulesPage(
@@ -67,6 +74,7 @@ internal fun RvRulesPage(
     onBack: () -> Unit,
     routes: RvRulesRoutes = RvRulesRoutes(),
     banner: RvNotice? = null,
+    loading: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_policy_rules)
@@ -82,13 +90,24 @@ internal fun RvRulesPage(
         RvPageHeader(title, titleBlock, insets, caption = order)
         RvGutter(banner = banner) {
             if (banner != null) return@RvGutter
-            if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
-            RulesCard(rules, editing, routes)
-            if (!editing) {
-                CountsCard(rules)
-                RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_effective_open), null, onClick = routes.effective) { RvChevron() } }
+            RvSkeletonCards(loading, { RulesSkeleton() }) {
+                if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
+                RulesCard(rules, editing, routes)
+                if (!editing) {
+                    CountsCard(rules)
+                    RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_effective_open), null, onClick = routes.effective) { RvChevron() } }
+                }
             }
         }
+    }
+}
+
+/** The rules card before the first read: a screenful of rule rows, each with its target over its bytes. */
+@Composable
+private fun RulesSkeleton() {
+    val rows = rvSkeletonRowsToFill()
+    RvSkeletonCard(description = stringResource(R.string.rv_policy_rules)) {
+        repeat(rows) { RvSkeletonRow(it, RvSkeletonText.Words, RvSkeletonEnd.Node) }
     }
 }
 

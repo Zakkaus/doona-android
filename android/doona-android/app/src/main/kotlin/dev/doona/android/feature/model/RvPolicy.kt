@@ -68,9 +68,24 @@ internal enum class RvMatchKind(@StringRes val label: Int) {
 /** Whether a rule routes: in use, turned off by the user, or skipped because the core cannot match it yet (D34). */
 internal enum class RvRuleState { On, Off, Skipped }
 
-/** A rule as the 策略 page lists it: what it matches, the group it sends to (null is 直連), and its bytes today. */
+/**
+ * Where a rule's flows end when it names no group of the profile: sent out directly (直連), refused (拒絕, honk's REJECT),
+ * or sent to a group the profile does not have, which the page names as missing rather than as 直連.
+ */
+internal enum class RvRuleEnd { Direct, Reject, Missing }
+
+/**
+ * A rule as the 策略 page lists it: what it matches, the group it sends to, and its bytes today. With no [group], [end]
+ * says where its flows end.
+ */
 @Immutable
-internal class RvPolicyRule(val match: RvRuleMatch, val group: RvPolicyGroup?, val bytes: Long, val state: RvRuleState = RvRuleState.On)
+internal class RvPolicyRule(
+    val match: RvRuleMatch,
+    val group: RvPolicyGroup?,
+    val bytes: Long,
+    val state: RvRuleState = RvRuleState.On,
+    val end: RvRuleEnd = RvRuleEnd.Direct,
+)
 
 /**
  * The page's own state: the mode, the two switches, each selector's choice where the user changed it, and the order of

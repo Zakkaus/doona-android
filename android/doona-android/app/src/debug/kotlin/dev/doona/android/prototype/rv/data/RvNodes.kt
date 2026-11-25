@@ -32,6 +32,7 @@ internal fun rvNodes(): List<RvNode> {
             transport = spec.protocol.transport,
             tls = spec.protocol.tls,
             subscription = if (i % 3 == 2) RV_LANTERN else RV_HARBOR,
+            subscriptionId = if (i % 3 == 2) RV_LANTERN_ID else RV_HARBOR_ID,
             history = SLOWING.takeIf { code == "SG" && n == 3 } ?: history(i, spec),
         )
     }

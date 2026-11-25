@@ -105,7 +105,8 @@ internal class RvPolicyRoutes(
  * While [loading] (before the engine is ready) the page is a skeleton of what its mode lays out ([PolicySkeleton]), and
  * the content fades in over it in place. A [banner] (a failed action: a mode switch) heads the cards in [RvBannerSlot],
  * outside the fade. What the profile holds (the main node, the groups, the rules, the nodes and subscriptions) is [profile];
- * before the first read there is none, and the skeleton stands with bars in place of the profile's words.
+ * before the first read there is none, and the skeleton stands with bars in place of the profile's words. Not loading
+ * with no profile (the first read failed) shows the banner alone.
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -149,7 +150,7 @@ internal fun RvPolicyScreen(
             }
         } else {
             RvBannerSlot(banner)
-            RvSkeletonFade(loading || profile == null, { Column { PolicySkeleton(state, profile) } }) {
+            RvSkeletonFade(loading, { Column { PolicySkeleton(state, profile) } }) {
                 Column { profile?.let { PolicyContent(state, onChange, routes, configRev, it) } }
             }
         }

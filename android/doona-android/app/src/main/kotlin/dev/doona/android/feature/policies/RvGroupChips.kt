@@ -6,31 +6,41 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.designsystem.rv.RvPlace
-import dev.doona.android.designsystem.rv.rvShownName
+import dev.doona.android.feature.model.RV_INLINE_KEY
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvByLatency
+import dev.doona.android.feature.model.rvByName
 import dev.doona.android.feature.model.rvSteadiness
 
 /**
- * The group page's two chips, as the 節點 page has them: the subscription at the start, the order at the end. Each opens a
- * menu of its choices; [subscription] is the picked subscription's name, null for all of them. The menus' glyphs are the
- * library's nearest (it has no sort glyphs, s1125d: 排序選單圖示暫代): the subscription's feed mark, and one per order.
+ * The group page's two chips, as the 節點 page has them: the source at the start, the order at the end. Each opens a menu
+ * of its choices; [source] is the picked subscription's id, [RV_INLINE_KEY] for the nodes added by hand (offered when
+ * [inline]), null for all of them. The menus' glyphs are the library's nearest (it has no sort glyphs, s1125d:
+ * 排序選單圖示暫代): the subscription's feed mark, 組態內's link, and one per order.
  */
 @Composable
 internal fun rvGroupChips(
     subscriptions: List<RvSubscription>,
-    subscription: String?,
+    inline: Boolean,
+    source: String?,
     order: RvNodeSort,
-    onSubscription: (String?) -> Unit,
+    onSource: (String?) -> Unit,
     onOrder: (RvNodeSort) -> Unit,
 ): Pair<RvChipPick, RvChipPick> {
     val all = stringResource(R.string.rv_nodes_all_subscriptions)
-    val subs = listOf(RvMenuItem(all, R.drawable.rv_sym_rss_feed) { onSubscription(null) }) +
-        subscriptions.map { sub -> RvMenuItem(sub.name, R.drawable.rv_sym_rss_feed) { onSubscription(sub.name) } }
+    val byHand = stringResource(R.string.rv_nodes_inline)
+    val subs = listOf(RvMenuItem(all, R.drawable.rv_sym_rss_feed) { onSource(null) }) +
+        subscriptions.map { sub -> RvMenuItem(sub.name, R.drawable.rv_sym_rss_feed) { onSource(sub.id) } } +
+        listOfNotNull(RvMenuItem(byHand, R.drawable.rv_sym_link) { onSource(RV_INLINE_KEY) }.takeIf { inline })
+    val label = when (source) {
+        null -> all
+        RV_INLINE_KEY -> byHand
+        else -> subscriptions.firstOrNull { it.id == source }?.name ?: all
+    }
     val orders = RvNodeSort.entries.map { sort -> RvMenuItem(stringResource(sort.label), sort.glyph()) { onOrder(sort) } }
-    return RvChipPick(subscription ?: all, items = subs) to RvChipPick(stringResource(order.chipLabel()), items = orders)
+    return RvChipPick(label, items = subs) to RvChipPick(stringResource(order.chipLabel()), items = orders)
 }
 
 /** The order chip's label: 依延遲 and its kin. */
@@ -56,6 +66,6 @@ private fun RvNodeSort.glyph(): Int = when (this) {
 internal fun rvSectionOrder(nodes: List<RvNode>, order: RvNodeSort): List<RvNode> = when (order) {
     RvNodeSort.Latency -> nodes.sortedWith(rvByLatency)
     RvNodeSort.Stability -> nodes.sortedWith(rvSteadiness)
-    RvNodeSort.Name -> nodes.sortedWith(compareBy<RvNode> { it.latencyMs == null }.thenBy(String.CASE_INSENSITIVE_ORDER) { rvShownName(it.name).text.ifEmpty { it.name } })
+    RvNodeSort.Name -> nodes.sortedWith(rvByName)
     RvNodeSort.Region -> nodes.sortedWith(rvByLatency).groupBy { it.place }.entries.sortedBy { it.key == RvPlace.Other }.flatMap { it.value }
 }

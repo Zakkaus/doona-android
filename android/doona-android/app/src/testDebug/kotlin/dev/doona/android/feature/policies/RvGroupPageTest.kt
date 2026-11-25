@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performClick
 import dev.doona.android.designsystem.rv.rvShownName
+import dev.doona.android.feature.model.RV_INLINE_KEY
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMemberGroup
@@ -26,7 +27,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The group page's approved features (s1125d) one by one, on the sample's data: the chips under the search field, the
  * subscription chip's filter, the sections folded above two subscriptions, the 分開選擇 row, the 套用到 row and the
- * emoji display rule, and the order 依名稱.
+ * emoji display rule, the order 依名稱, and the 組態內 section of the nodes added by hand.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -49,7 +50,7 @@ class RvGroupPageTest {
     @Test
     fun `a subscription picked in its chip shows that section alone`() {
         val sample = RvGroupFullSample.five
-        page(sample, apart = true, filter = RvGroupFilter(subscription = sample.subscriptions[MERIDIAN].name))
+        page(sample, apart = true, filter = RvGroupFilter(source = sample.subscriptions[MERIDIAN].id))
         assertEquals(1, shown(node(sample, MERIDIAN_NODE)))
         assertEquals("Orchard Link holds TCP's node but is not picked", 0, shown(node(sample, ORCHARD_NODE)))
         assertEquals("its 訂閱 row and the chip", 2, shown(sample.subscriptions[MERIDIAN].name))
@@ -120,7 +121,7 @@ class RvGroupPageTest {
         val sample = RvGroupFullSample.five
         val unknown = sample.group.members[UNKNOWN].name
         assertTrue(unknown.startsWith("🦄 "))
-        page(sample, apart = true, filter = RvGroupFilter(subscription = sample.group.members[UNKNOWN].subscription))
+        page(sample, apart = true, filter = RvGroupFilter(source = sample.group.members[UNKNOWN].subscriptionId))
         assertEquals(1, shown(unknown))
     }
 
@@ -156,6 +157,28 @@ class RvGroupPageTest {
         val hongKong = base[1].copy(id = "h", name = "🇭🇰 Hong Kong", history = listOf(50))
         val beta = base[2].copy(id = "b", name = "beta", history = listOf(30))
         assertEquals(listOf("b", "h", "a"), rvSectionOrder(listOf(untested, hongKong, beta), RvNodeSort.Name).map { it.id })
+    }
+
+    @Test
+    fun `nodes added by hand list under 組態內`() {
+        val base = RvGroupFullSample.two
+        val byHand = base.group.members.last().copy(id = "static-1", name = "Home Relay", subscription = "", subscriptionId = null)
+        val group = RvPolicyGroup(base.group.id, base.group.name, base.group.kind, base.group.members + byHand, base.group.selectedId)
+        page(RvGroupFullSample.Sample(group, base.subscriptions, base.tcpId, base.udpId), apart = false, filter = RvGroupFilter(source = RV_INLINE_KEY))
+        assertEquals("its section's row and the chip", 2, shown("組態內"))
+        assertEquals(1, shown("Home Relay"))
+        assertEquals(0, shown(node(base, PLAIN_TWO)))
+    }
+
+    @Test
+    fun `two subscriptions of one name keep their own nodes`() {
+        val base = RvGroupFullSample.two
+        val twin = base.subscriptions[1].copy(name = base.subscriptions[0].name)
+        page(RvGroupFullSample.Sample(base.group, listOf(base.subscriptions[0], twin), base.tcpId, base.udpId), apart = false, filter = RvGroupFilter(source = twin.id))
+        val own = base.group.members.first { it.subscriptionId == twin.id && rvShownName(it.name).mark == null }
+        val other = base.group.members.first { it.subscriptionId == base.subscriptions[0].id && rvShownName(it.name).mark == null }
+        assertEquals(1, shown(own.name))
+        assertEquals("the other subscription of that name is not picked", 0, shown(other.name))
     }
 
     private fun page(

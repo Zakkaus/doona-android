@@ -167,4 +167,8 @@
     <string name="rv_group_by_region">按地区</string>
     <string name="rv_group_no_match">找不到符合的节点</string>
     <string name="rv_group_apart">分开选择 TCP/UDP</string>
+    <string name="rv_policy_reject">拒绝</string>
+    <string name="rv_policy_target_missing">找不到策略组</string>
+    <string name="rv_policy_read_failed">无法读取策略</string>
+    <string name="rv_group_read_failed">无法读取策略组</string>
 </resources>

@@ -18,6 +18,7 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Network
+import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.RV_FS200
@@ -80,6 +81,10 @@ class AppRvGroupShotTest {
     /** A selector over groups and nodes as a user writes it in honk by hand ([honkGroupsEngine]): its groups stand as rows. */
     @Test
     fun honkGroupsLight() = shot("group-honk", dark = false) { Page(::honkGroupsEngine, HONK_EXIT) }
+
+    /** The first read failed: the group's name and the banner with 重試, no skeleton left standing. */
+    @Test
+    fun readFailedLight() = shot("group-read-failed", dark = false) { Page(::unreadable) }
 
     @Test
     fun loadingLight() = shot("group-loading", dark = false) { Page(::notReady) }
@@ -160,6 +165,11 @@ class AppRvGroupShotTest {
     private fun apart(): FakeEngine = rvSampleEngine().apply {
         val members = groups.value.single { it.id == STREAMING }.members
         runBlocking { select(STREAMING, members.last().id, Network.Udp) }
+    }
+
+    /** The sample engine whose nodes' details cannot be read. */
+    private fun unreadable(): Engine = object : Engine by rvSampleEngine() {
+        override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> = Result.failure(EngineException(ErrorCode.Busy))
     }
 
     /** The sample engine before it is ready: the page waits as a skeleton. */

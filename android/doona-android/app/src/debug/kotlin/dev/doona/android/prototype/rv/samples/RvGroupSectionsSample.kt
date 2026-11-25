@@ -23,7 +23,7 @@ internal object RvGroupSectionsSample {
 
     val two: Sample = sample(RvData.nodes.take(NODES_TWO), subscriptions = 2, chosen = CHOSEN_TWO)
 
-    val five: Sample = sample(RvData.nodes.take(NODES_FIVE).mapIndexed { i, node -> node.copy(subscription = names[i / PER_SUBSCRIPTION]) }, subscriptions = 5, chosen = CHOSEN_FIVE)
+    val five: Sample = sample(RvData.nodes.take(NODES_FIVE).mapIndexed { i, node -> node.copy(subscription = names[i / PER_SUBSCRIPTION], subscriptionId = "s${i / PER_SUBSCRIPTION + 1}") }, subscriptions = 5, chosen = CHOSEN_FIVE)
 
     private fun sample(nodes: List<RvNode>, subscriptions: Int, chosen: Int): Sample {
         val group = RvPolicyGroup("sections", RvLabel.Res(R.string.rv_rule_streaming), RvGroupKind.Select, nodes, nodes[chosen].id)

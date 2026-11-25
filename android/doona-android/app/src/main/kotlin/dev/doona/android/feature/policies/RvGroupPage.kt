@@ -40,6 +40,7 @@ import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvMarkName
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvShownName
+import dev.doona.android.feature.model.RV_INLINE_KEY
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
@@ -71,15 +72,18 @@ internal class RvGroupContent(
     val nowEpochMs: Long,
 )
 
-/** What the group page's search field and two chips hold when it opens. */
-internal class RvGroupFilter(val query: String = "", val subscription: String? = null, val order: RvNodeSort = RvNodeSort.Latency)
+/**
+ * What the group page's search field and two chips hold when it opens: [source] is the picked subscription's id, or
+ * [RV_INLINE_KEY] for 組態內, null for every source.
+ */
+internal class RvGroupFilter(val query: String = "", val source: String? = null, val order: RvNodeSort = RvNodeSort.Latency)
 
 /**
  * A selector group's page, the approved s1125d sample: the title and caption; 使用中 with the switch 分開選擇 TCP/UDP and
  * the node of each network; while the switch is on, the 套用到 control (TCP/UDP｜TCP｜UDP) that says which network the
- * next tap on a node is for; the search field; then the nodes in a card per subscription, as the node picker has them, a
- * subscription's section folded from [RV_SECTIONS_OPEN_UP_TO] + 1 subscriptions on, except the sections that hold a
- * chosen node. Names carry emoji drawn as our icons (emoji1). A row chosen on a network begins its line with it.
+ * next tap on a node is for; the search field; then the nodes in a card per subscription, as the node picker has them,
+ * and the nodes added by hand under 組態內 last, a section folded from [RV_SECTIONS_OPEN_UP_TO] + 1 sections on, except
+ * the sections that hold a chosen node. Names carry emoji drawn as our icons (emoji1). A row chosen on a network begins its line with it.
  *
  * In a Score group ([RvGroupContent.score]) Score picks each network's node itself, so a tap chooses nothing and the
  * 套用到 control is not there; the chosen rows begin with Score's mark (Score for both networks, Score TCP, Score UDP).
@@ -102,13 +106,15 @@ internal fun RvGroupPage(
     val choice = content.choice
     val name = group.name.text()
     var typed by rememberSaveable { mutableStateOf(filter.query) }
-    var picked by rememberSaveable { mutableStateOf(filter.subscription) }
+    var picked by rememberSaveable { mutableStateOf(filter.source) }
     var sorted by rememberSaveable { mutableStateOf(filter.order) }
     val labels = group.members.associate { it.id to stringResource(it.place.label) }
-    val scoped = group.members.filter { picked == null || it.subscription == picked }
+    val scoped = group.members.filter { picked == null || it.source == picked }
     val matching = scoped.filter { it.matches(typed.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
-    val holders = group.members.filter { choice.chosen(it.id) }.map { it.subscription }.toSet()
-    val open = content.subscriptions.size <= RV_SECTIONS_OPEN_UP_TO
+    val holders = group.members.filter { choice.chosen(it.id) }.map { it.source }.toSet()
+    val inline = group.members.any { it.inline }
+    val sources = content.subscriptions.map { it.id } + listOfNotNull(RV_INLINE_KEY.takeIf { inline })
+    val open = sources.size <= RV_SECTIONS_OPEN_UP_TO
     RvScrollPage(name, insets, modifier, onBack = actions.back, bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), actions.test) }) { titleBlock ->
         RvPageHeader(name, titleBlock, insets, caption = { Caption(group, content.score) })
         RvGutter(banner = banner) {
@@ -118,16 +124,17 @@ internal fun RvGroupPage(
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
             RvSearchSlot { RvSearchField(null, typed, { typed = it }, it) }
-            val (subChip, orderChip) = rvGroupChips(content.subscriptions, picked, sorted, { picked = it }, { sorted = it })
+            val (subChip, orderChip) = rvGroupChips(content.subscriptions, inline, picked, sorted, { picked = it }, { sorted = it })
             RvFilterChipRow(subChip, orderChip)
             Spacer(Modifier.height(RvSpace.controlGap))
         }
-        content.subscriptions.filter { picked == null || it.name == picked }.forEach { sub ->
+        val subs = content.subscriptions.associateBy { it.id }
+        sources.filter { picked == null || it == picked }.forEach { source ->
             // A new pick starts its section afresh: open, as a section alone on the page is.
-            key(picked, sub.name) {
+            key(picked, source) {
                 RvNodeSection(
-                    sub,
-                    rvSectionOrder(scoped.filter { it.subscription == sub.name }, sorted),
+                    subs[source],
+                    rvSectionOrder(scoped.filter { it.source == source }, sorted),
                     matching,
                     labels,
                     choice.tcpId,
@@ -137,7 +144,7 @@ internal fun RvGroupPage(
                     rows = RvRowsComposed(0) { Int.MAX_VALUE },
                     nowEpochMs = content.nowEpochMs,
                     modifier = Modifier,
-                    initiallyOpen = open || picked != null || sub.name in holders,
+                    initiallyOpen = open || picked != null || source in holders,
                     row = { node, label, _, order ->
                         SectionRow(node, label, order, choice, lead(choice, node.id, content.score), actions)
                     },
@@ -269,6 +276,9 @@ internal fun ApplyCard(selected: RvApplyTo, onSelect: (RvApplyTo) -> Unit) {
  * (nbmany)
  */
 internal const val RV_SECTIONS_OPEN_UP_TO = 2
+
+/** The section a node is listed under: its subscription's id, or [RV_INLINE_KEY] for a node added by hand. */
+private val RvNode.source: String get() = subscriptionId ?: RV_INLINE_KEY
 
 /** Score's mark, a name the templates use in every language. */
 private const val SCORE = "Score"

@@ -60,6 +60,7 @@ class PoliciesViewModelTest {
         val revision = MutableStateFlow<Long?>(null)
         val pageRevisions = ArrayDeque<Long>()
         var ruleReads = 0
+        var failRules = false
 
         override val catalog: StateFlow<Catalog?> = combine(base.catalog, revision) { catalog, revision ->
             if (catalog == null || revision == null) catalog else catalog.copy(ruleSource = catalog.ruleSource.copy(rulesRevision = revision))
@@ -77,6 +78,7 @@ class PoliciesViewModelTest {
 
         override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
             ruleReads++
+            if (failRules) return Result.failure(IllegalStateException("rules"))
             val page = base.rules(offset, limit).getOrThrow()
             return Result.success(page.copy(rulesRevision = pageRevisions.removeFirstOrNull() ?: catalog.value!!.ruleSource.rulesRevision))
         }
@@ -120,10 +122,10 @@ class PoliciesViewModelTest {
         val engine = Recording()
         val vm = collected(engine)
         val state = vm.uiState.value.state
-        assertFalse(state.blockAds)
-        vm.onChange(state.copy(blockAds = true, nodeSort = RvNodeSort.Name))
+        assertTrue("the approved page shows 封鎖廣告 on", state.blockAds)
+        vm.onChange(state.copy(blockAds = false, nodeSort = RvNodeSort.Name))
         assertEquals(emptyList<String>(), engine.calls)
-        assertTrue(vm.uiState.value.state.blockAds)
+        assertFalse(vm.uiState.value.state.blockAds)
         assertEquals(RvNodeSort.Name, vm.uiState.value.state.nodeSort)
     }
 
@@ -191,6 +193,32 @@ class PoliciesViewModelTest {
         engine.base.ready.value = true
         assertFalse(vm.uiState.value.loading)
         assertNotNull(vm.uiState.value.profile)
+    }
+
+    @Test
+    fun `a failed first read shows its failure, and 重試 reads again`() = runTest {
+        val engine = Recording()
+        engine.failRules = true
+        val vm = collected(engine)
+        val failed = vm.uiState.value
+        assertFalse("no endless skeleton", failed.loading)
+        assertNull(failed.profile)
+        assertEquals(PolicyFailure(PolicyAction.Read, ErrorCode.Internal), failed.failure)
+        engine.failRules = false
+        vm.retry()
+        assertNotNull(vm.uiState.value.profile)
+        assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
+    fun `a failed read keeps the profile shown and says nothing`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        val shown = vm.uiState.value.profile
+        engine.failRules = true
+        engine.revision.value = 2L
+        assertEquals(shown, vm.uiState.value.profile)
+        assertNull(vm.uiState.value.failure)
     }
 
     @Test

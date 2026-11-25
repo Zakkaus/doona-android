@@ -31,6 +31,7 @@ import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.text
@@ -86,7 +87,7 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
     }
     val bytes = if (rule.state == RvRuleState.On) format.bytes(rule.bytes).toString() else RV_NO_VALUE
     RvRow(
-        { RvPolicyTarget(rule.group) },
+        { RvRuleEndMark(rule) },
         rule.match.title(),
         subtitle,
         modifier,
@@ -96,9 +97,25 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
     )
 }
 
-/** Where a rule sends: its group's name, or 直連. */
+/** Where a rule's flows end: its group's mark ([RvPolicyTarget]), 拒絕's block mark, or an error mark for a missing group. */
 @Composable
-internal fun RvPolicyRule.targetName(): String = group?.name?.text() ?: stringResource(R.string.mode_direct)
+private fun RvRuleEndMark(rule: RvPolicyRule) {
+    when {
+        rule.group != null || rule.end == RvRuleEnd.Direct -> RvPolicyTarget(rule.group)
+        rule.end == RvRuleEnd.Reject -> RvIconDisc(R.drawable.rv_sym_block)
+        else -> RvIconDisc(R.drawable.rv_sym_error)
+    }
+}
+
+/** Where a rule sends: its group's name, 直連, 拒絕, or that its group is missing. */
+@Composable
+internal fun RvPolicyRule.targetName(): String = group?.name?.text() ?: stringResource(
+    when (end) {
+        RvRuleEnd.Direct -> R.string.mode_direct
+        RvRuleEnd.Reject -> R.string.rv_policy_reject
+        RvRuleEnd.Missing -> R.string.rv_policy_target_missing
+    },
+)
 
 /**
  * The 送往 list of the quick rule and the rule page: the [groups] a rule can send to, then 直連: the first [TARGETS]

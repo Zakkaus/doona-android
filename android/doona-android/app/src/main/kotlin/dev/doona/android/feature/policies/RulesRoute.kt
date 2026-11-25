@@ -47,6 +47,7 @@ internal fun RulesRoute(viewModel: RulesViewModel, onBack: () -> Unit, onTemplat
             effective = routes.effective,
         ),
         banner = ui.failure?.let { rulesBanner(it, onTemplate, viewModel::retry) },
+        loading = ui.loading,
     )
 }
 

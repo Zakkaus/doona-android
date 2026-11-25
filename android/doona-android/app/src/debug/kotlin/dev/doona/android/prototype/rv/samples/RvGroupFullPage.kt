@@ -17,8 +17,8 @@ import dev.doona.android.prototype.rv.data.RvData
 
 /**
  * The s1125d sample of the selector group's page: [RvGroupPage] on [sample] with the page's taps kept here, as the owner
- * approved it. [apart] is how the 分開選擇 switch starts; with [score] the group is a Score group. [query], [subscription]
- * and [order] are what the search field and the two chips hold to begin with.
+ * approved it. [apart] is how the 分開選擇 switch starts; with [score] the group is a Score group. [query], [source] (a
+ * subscription's id) and [order] are what the search field and the two chips hold to begin with.
  */
 @Composable
 internal fun RvGroupFullPage(
@@ -27,7 +27,7 @@ internal fun RvGroupFullPage(
     modifier: Modifier = Modifier,
     score: Boolean = false,
     query: String = "",
-    subscription: String? = null,
+    source: String? = null,
     order: RvNodeSort = RvNodeSort.Latency,
 ) {
     var choice by remember { mutableStateOf(RvApplyChoice(sample.tcpId, if (apart) sample.udpId else sample.tcpId, apart)) }
@@ -40,6 +40,6 @@ internal fun RvGroupFullPage(
             apply = { apply = it },
         ),
         modifier,
-        filter = RvGroupFilter(query, subscription, order),
+        filter = RvGroupFilter(query, source, order),
     )
 }

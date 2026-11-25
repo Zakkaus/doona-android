@@ -64,6 +64,7 @@ private fun policyBanner(failure: PolicyFailure, onRetry: () -> Unit) = RvNotice
 @get:StringRes
 private val PolicyAction.title: Int
     get() = when (this) {
+        PolicyAction.Read -> R.string.rv_policy_read_failed
         PolicyAction.Mode -> R.string.rv_failed_switch_mode
         PolicyAction.MainNode -> R.string.rv_failed_switch_node
         PolicyAction.TestAll -> R.string.rv_failed_test_latency

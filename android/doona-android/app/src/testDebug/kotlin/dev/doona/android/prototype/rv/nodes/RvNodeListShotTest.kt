@@ -135,7 +135,7 @@ class RvNodeListShotTest {
                 UNTESTED -> node.untested()
                 RvData.CURRENT_ID -> node.copy(name = LONG_NAME)
                 else -> node
-            }.copy(subscription = sub.name)
+            }.copy(subscription = sub.name, subscriptionId = sub.id)
         }
         RvNodePickerPageSample(nodes, listOf(sub), RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
     }

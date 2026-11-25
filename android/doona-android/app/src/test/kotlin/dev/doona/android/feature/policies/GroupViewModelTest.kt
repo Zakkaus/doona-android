@@ -7,6 +7,7 @@ import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Network
+import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.fake.FakeEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,6 +20,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -42,6 +44,10 @@ class GroupViewModelTest {
     private class Recording(udpId: String = "n1", private val base: FakeEngine = FakeEngine(groups(udpId))) : Engine by base {
         var result: Result<Unit> = Result.success(Unit)
         val calls = mutableListOf<String>()
+        var failNodes = false
+
+        override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
+            if (failNodes) Result.failure(IllegalStateException("nodes")) else base.nodes(ids)
 
         override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
             calls += "select $groupId $memberId $network"
@@ -111,6 +117,28 @@ class GroupViewModelTest {
         vm.onTap("n3")
         vm.onApart(false)
         assertEquals(emptyList<String>(), engine.calls)
+    }
+
+    @Test
+    fun `a failed first read shows its failure, and 重試 reads again`() = runTest {
+        val engine = Recording().apply { failNodes = true }
+        val vm = collected(engine)
+        assertFalse("no endless skeleton", vm.uiState.value.loading)
+        assertEquals(GroupFailure(GroupAction.Read, ErrorCode.Internal), vm.uiState.value.failure)
+        engine.failNodes = false
+        vm.retry()
+        assertNotNull(vm.uiState.value.group)
+        assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
+    fun `a Score group whose networks use two nodes keeps the switch on`() = runTest {
+        val vm = collected(Recording(), SCORE)
+        assertTrue(vm.uiState.value.choice!!.apart)
+        vm.onApart(false)
+        val choice = vm.uiState.value.choice!!
+        assertTrue("one row would say n1 serves UDP too", choice.apart)
+        assertEquals("n1" to "n2", choice.tcpId to choice.udpId)
     }
 
     @Test

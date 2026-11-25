@@ -7,10 +7,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.RulePage
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.RvPolicyState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,9 +29,10 @@ import kotlinx.coroutines.launch
 
 /**
  * 策略: the engine's catalog as the page's profile, and the page's changes as engine calls. Each new catalog is read into
- * a profile on [reads], off the main thread, with the nodes' details, the card's rules and today's bytes per rule; a read
- * that fails keeps the profile shown, since no tap caused it. [places] places the nodes by name until 節點's mapper is
- * wired; [clock] is now, for the subscriptions' end dates.
+ * a profile on [reads], off the main thread, with the nodes' details, the card's rules and today's bytes per rule. A read
+ * that fails keeps the profile shown, since no tap caused it; with no profile yet it shows its failure with 重試, which
+ * reads again. [places] places the nodes by name until 節點's mapper is wired; [clock] is now, for the subscriptions' end
+ * dates.
  */
 internal class PoliciesViewModel(
     private val engine: Engine,
@@ -37,8 +40,11 @@ internal class PoliciesViewModel(
     private val places: RvNodePlaces = RV_UNKNOWN_PLACES,
     private val reads: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
-    /** The ad switch and the node order: the engine has neither, so they live here; nothing blocks ads yet, so it starts off. */
-    private val local = MutableStateFlow(RvPolicyState(blockAds = false))
+    /**
+     * The ad switch and the node order: the engine has neither, so they live here, the switch on as the approved page has
+     * it until the user turns it off.
+     */
+    private val local = MutableStateFlow(RvPolicyState())
     private val failure = MutableStateFlow<PolicyFailure?>(null)
 
     /** The call that failed last, for the banner's 重試; null once an attempt succeeds. */
@@ -50,9 +56,14 @@ internal class PoliciesViewModel(
     /** The card's rules at their revision; only the reader touches it, one catalog at a time. */
     private var rulePage: RulePage? = null
 
+    /** Bumped by 重試 after a failed first read, to read the same catalog again. */
+    private val again = MutableStateFlow(0)
+
     val uiState: StateFlow<PoliciesUiState> = channelFlow {
         launch(reads) {
-            engine.catalog.filterNotNull().distinctUntilChanged().collectLatest { catalog -> read(catalog)?.let { profile.value = it } }
+            combine(engine.catalog.filterNotNull().distinctUntilChanged(), again) { catalog, _ -> catalog }.collectLatest { catalog ->
+                read(catalog).onSuccess(::shown).onFailure(::unread)
+            }
         }
         combine(engine.ready, engine.catalog, profile, local, failure, ::policiesUiState).collect { send(it) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
@@ -119,26 +130,44 @@ internal class PoliciesViewModel(
         retry?.invoke()
     }
 
-    /** The profile of [catalog], or null when a read failed. */
-    private suspend fun read(catalog: Catalog): RvPolicyProfile? {
+    /** A profile read: it shows, and a failed read's banner goes. */
+    private fun shown(read: RvPolicyProfile) {
+        profile.value = read
+        failure.update { it?.takeIf { failed -> failed.action != PolicyAction.Read } }
+    }
+
+    /** A read failed: with a profile shown, nothing changes; with none, the failure shows with 重試. */
+    private fun unread(error: Throwable) {
+        if (profile.value != null) return
+        retry = { again.update { it + 1 } }
+        failure.value = PolicyFailure(PolicyAction.Read, error.errorCode())
+    }
+
+    /** The profile of [catalog]; a newer catalog cancels the read, which is no failure. */
+    private suspend fun read(catalog: Catalog): Result<RvPolicyProfile> = try {
         val ids = catalog.groups.flatMap { it.members }.filterNot { it.isGroup }.map { it.id }.distinct()
-        val infos = engine.nodes(ids).getOrElse { return null }.associateBy { it.id }
-        val page = rules(catalog.ruleSource.rulesRevision) ?: return null
-        val byRule = engine.usage().getOrElse { return null }.today.byRule.associate { it.id to it.up + it.down }
-        return rvPolicyProfile(catalog, infos, page.rows, page.total, byRule, clock(), places)
+        val infos = engine.nodes(ids).getOrThrow().associateBy { it.id }
+        val page = rules(catalog.ruleSource.rulesRevision)
+        val byRule = engine.usage().getOrThrow().today.byRule.associate { it.id to it.up + it.down }
+        Result.success(rvPolicyProfile(catalog, infos, page.rows, page.total, byRule, clock(), places))
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Result.failure(error)
     }
 
     /**
      * The card's rows at [revision]: the last page while the revision holds, else a new read. A page read at another
-     * revision is stale (the source changed between the catalog and the read), so it is read again, a few times at most.
+     * revision is stale (the source changed between the catalog and the read), so it is read again, a few times at most;
+     * then the read fails as busy, and a newer catalog reads again anyway.
      */
-    private suspend fun rules(revision: Long): RulePage? {
+    private suspend fun rules(revision: Long): RulePage {
         rulePage?.takeIf { it.rulesRevision == revision }?.let { return it }
         repeat(RULE_READS) {
-            val page = engine.rules(0, RV_POLICY_CARD_RULES).getOrElse { return null }
+            val page = engine.rules(0, RV_POLICY_CARD_RULES).getOrThrow()
             if (page.rulesRevision == revision) return page.also { rulePage = it }
         }
-        return null
+        throw EngineException(ErrorCode.Busy)
     }
 
     /** The engine's flows are StateFlows, so the first frame already shows real values. */
@@ -169,7 +198,7 @@ private fun policiesUiState(
         nodeSort = local.nodeSort,
     )
     return PoliciesUiState(
-        loading = !ready || catalog == null || profile == null,
+        loading = !ready || catalog == null || (profile == null && failure?.action != PolicyAction.Read),
         noSubscription = ready && catalog?.subscriptions?.isEmpty() == true,
         state = state,
         profile = profile,

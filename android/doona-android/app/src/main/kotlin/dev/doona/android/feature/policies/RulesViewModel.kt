@@ -76,7 +76,7 @@ internal class RulesViewModel(
         val nodes = rvNodes(catalog, emptyMap(), places)
         val byId = catalog.groups.associateBy { it.id }
         val groups = catalog.groups.map { rvPolicyGroup(it, byId, nodes) }.associateBy { it.id }
-        return RulesUiState(loading = false, rules = rows.mapNotNull { rvPolicyRule(it, groups, byRule[it.id] ?: 0L) })
+        return RulesUiState(loading = false, rules = rows.map { rvPolicyRule(it, groups, byRule[it.id] ?: 0L) })
     }
 
     private fun failed(error: Throwable) = RulesUiState(loading = false, rules = read.value?.rules.orEmpty(), failure = RulesFailure.Read(error.errorCode()))
