@@ -157,6 +157,7 @@ androidComponents {
     // profile recorded on the phone with the Macrobenchmark generator, which this build does not have yet.
     onVariants(selector().withBuildType("profile")) { variant ->
         variant.sources.kotlin?.addStaticSourceDirectory("src/debug/kotlin")
+        variant.sources.kotlin?.addStaticSourceDirectory("src/fake/kotlin") // the samples' fake engine
         variant.sources.assets?.addStaticSourceDirectory("src/debug/assets")
         variant.sources.manifests.addStaticManifestFile("src/debug/AndroidManifest.xml")
         variant.sources.baselineProfiles?.addStaticSourceDirectory("src/debug/baselineProfiles")
@@ -195,6 +196,11 @@ android {
         ndk {
             abiFilters += "arm64-v8a"
         }
+    }
+    // The fake engine and its sample data (src/fake) serve the previews, the debug samples and the unit tests (debug
+    // only), so no release build compiles them. The profile build gets them with the debug sources (androidComponents).
+    sourceSets {
+        getByName("debug").kotlin.directories += "src/fake/kotlin"
     }
 
     buildTypes {

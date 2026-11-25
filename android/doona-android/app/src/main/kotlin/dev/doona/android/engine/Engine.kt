@@ -3,8 +3,9 @@ package dev.doona.android.engine
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * The UI's only view of the VPN engine. The service-backed implementation lives in `vpn/`; `engine/fake/FakeEngine`
- * serves previews and screenshot tests. Every flow holds a complete snapshot: a change replaces the whole value.
+ * The UI's only view of the VPN engine. The service-backed implementation lives in `vpn/`; FakeEngine (app/src/fake,
+ * built into debug and the unit tests only) serves previews and screenshot tests. Every flow holds a complete snapshot:
+ * a change replaces the whole value.
  * Actions fail with [EngineException]; the UI turns its code into localized text.
  */
 interface Engine {
