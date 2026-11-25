@@ -12,6 +12,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvRowRead
 import dev.doona.android.prototype.rv.Seed
+import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvRowNodes
 import dev.doona.android.prototype.rv.rvRowsOf
 import dev.doona.android.prototype.rv.rvShot
@@ -32,7 +33,8 @@ import org.robolectric.annotation.GraphicsMode
  * (measured to the card's edges). Its padding is the row rule's
  * (LAYOUT-RULES.md R18): a subtitle of two lines makes the row its text plus 16 dp above and below, as any settings
  * switch row with a two-line subtitle (the reference card under the page); a one-line subtitle stands in the 82 dp
- * minimum, 19.25 dp from either edge. Goldens `proto-rv-lab-{light,dark,fs200}` show the page for the panels.
+ * minimum, 19.25 dp from either edge. Goldens `proto-rv-lab-{light,dark,fs200}` show the whole page for the panels
+ * (`assertWhole`, as the samples' `RvLabShotTest` at 110bcc47).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -42,13 +44,13 @@ class RvLabCardTest {
     val compose = createComposeRule()
 
     @Test
-    fun labLight() = compose.rvShot("lab", dark = false) { RvLabScreen(performance = false) }
+    fun labLight() = compose.rvShot("lab", dark = false, before = { assertWhole() }) { RvLabScreen(performance = false) }
 
     @Test
-    fun labDark() = compose.rvShot("lab", dark = true) { RvLabScreen(performance = true) }
+    fun labDark() = compose.rvShot("lab", dark = true, before = { assertWhole() }) { RvLabScreen(performance = true) }
 
     @Test
-    fun labFs200() = compose.rvShot("lab", dark = false, fontScale = RV_FS200) { RvLabScreen(performance = false) }
+    fun labFs200() = compose.rvShot("lab", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvLabScreen(performance = false) }
 
     @Test
     fun theLabRowKeepsTheSwitchRowsPaddingOfItsSubtitlesLines() {
