@@ -32,6 +32,8 @@ import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvRuleMatch
 
 /** doona web's sections of the service list (`serviceSections` in `src/dae/templates.ts`), in its order. */
 internal enum class RvServiceSection(@StringRes val title: Int) {

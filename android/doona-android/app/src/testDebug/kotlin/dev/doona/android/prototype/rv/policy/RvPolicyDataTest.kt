@@ -1,6 +1,9 @@
 package dev.doona.android.prototype.rv.policy
 
 import dev.doona.android.R
+import dev.doona.android.feature.model.RvGroupKind
+import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.prototype.rv.data.RvData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

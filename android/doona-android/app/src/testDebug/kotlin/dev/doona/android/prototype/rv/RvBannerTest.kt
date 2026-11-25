@@ -12,10 +12,10 @@ import androidx.compose.ui.unit.toSize
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvSave

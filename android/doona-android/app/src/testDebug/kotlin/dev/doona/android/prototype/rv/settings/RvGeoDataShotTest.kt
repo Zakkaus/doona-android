@@ -26,6 +26,8 @@ import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.model.RvGeoData
+import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed

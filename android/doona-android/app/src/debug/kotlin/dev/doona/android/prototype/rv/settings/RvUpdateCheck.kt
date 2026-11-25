@@ -14,6 +14,7 @@ import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.rvRowPress
+import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.prototype.rv.config.rvConfigLine
 
 /**

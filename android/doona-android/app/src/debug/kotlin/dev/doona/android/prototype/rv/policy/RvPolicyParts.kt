@@ -24,6 +24,10 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvRowSelect
+import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /**

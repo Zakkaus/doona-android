@@ -1,74 +1,21 @@
 package dev.doona.android.prototype.rv.policy
 
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.model.RvGroupKind
+import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.data.RvData
-
-/** How a group picks its node: the user picks it (a selector), or the fastest by the last test does (url-test). */
-internal enum class RvGroupKind(@StringRes val label: Int, @DrawableRes val glyph: Int) {
-    Select(R.string.rv_policy_kind_select, R.drawable.rv_sym_touch_app),
-    Auto(R.string.rv_policy_kind_auto, R.drawable.rv_sym_bolt),
-
-    /** honk's Score, doona's `policy: score`: named and drawn as the templates name and draw it. */
-    Score(R.string.policy_kind_score, R.drawable.rv_sym_bolt),
-}
-
-/** A policy group: its id, its name as the profile gives it, how it picks, its nodes and the one it uses now. */
-@Immutable
-internal class RvPolicyGroup(val id: String, @StringRes val name: Int, val kind: RvGroupKind, val members: List<RvNode>, val selectedId: String) {
-    val selected: RvNode = members.first { it.id == selectedId }
-
-    /** The members fastest first by their last test; a node whose last test timed out comes last. */
-    val byLatency: List<RvNode> = members.sortedWith(compareBy(nullsLast()) { it.latencyMs })
-
-    fun choosing(nodeId: String) = RvPolicyGroup(id, name, kind, members, nodeId)
-}
-
-/** What a rule matches. */
-internal sealed interface RvRuleMatch {
-    /** A set of domains, by the first of them and how many there are; the set is one rule. */
-    class Domains(val first: String, val count: Int) : RvRuleMatch
-
-    /** The addresses a GeoIP database places in the country [code]. */
-    class GeoIp(val code: String) : RvRuleMatch
-
-    /** The private address ranges. */
-    data object Lan : RvRuleMatch
-
-    /** The last rule: whatever no rule above matched. */
-    data object Rest : RvRuleMatch
-
-    /** One value of a kind a rule can be written in: a full domain, a suffix, a keyword or an IP range. */
-    class Value(val kind: RvMatchKind, val value: String) : RvRuleMatch
-
-    /** A GeoSite category: the core has no GeoSite data yet, so such a rule is skipped and counted (D34). */
-    class GeoSite(val category: String) : RvRuleMatch
-}
-
-/** The ways a rule can match, as the rule page offers them. */
-internal enum class RvMatchKind(@StringRes val label: Int) {
-    Full(R.string.rv_policy_match_full),
-    Suffix(R.string.rv_policy_match_suffix),
-    Keyword(R.string.rv_policy_match_keyword),
-    Cidr(R.string.rv_policy_match_cidr),
-    GeoIpCn(R.string.rv_policy_match_geoip_cn),
-    Private(R.string.rv_policy_lan_kind),
-}
-
-/** Whether a rule routes: in use, turned off by the user, or skipped because the core cannot match it yet (D34). */
-internal enum class RvRuleState { On, Off, Skipped }
-
-/** A rule as the 策略 page lists it: what it matches, the group it sends to (null is 直連), and its bytes today. */
-@Immutable
-internal class RvPolicyRule(val match: RvRuleMatch, val group: RvPolicyGroup?, val bytes: Long, val state: RvRuleState = RvRuleState.On)
 
 /**
  * A connection: where it went, from which app, the rule it matched (whose group it used), and, for the 連線 list, the
@@ -175,23 +122,6 @@ internal object RvPolicyData {
     private fun fastest(id: String, @StringRes name: Int, members: List<RvNode>) = RvPolicyGroup(id, name, RvGroupKind.Auto, members, members.fastest(1).first().id)
 
     private fun List<RvNode>.inPlaces(places: Set<RvPlace>) = filter { it.place in places }
-}
-
-/**
- * The page's own state: the mode, the two switches, each selector's choice where the user changed it, and the order of
- * 全域's node list, kept here so the tab shows its last choice when the user comes back.
- */
-@Immutable
-internal data class RvPolicyState(
-    val mode: RvRouteMode = RvRouteMode.Rule,
-    val blockAds: Boolean = true,
-    val blockQuic: Boolean = false,
-    val choices: Map<String, String> = emptyMap(),
-    val nodeSort: RvNodeSort = RvNodeSort.Latency,
-) {
-    fun group(group: RvPolicyGroup): RvPolicyGroup = choices[group.id]?.let(group::choosing) ?: group
-
-    fun choose(groupId: String, nodeId: String) = copy(choices = choices + (groupId to nodeId))
 }
 
 /** What the quick rule matches on, and the part of the host each choice keeps. */

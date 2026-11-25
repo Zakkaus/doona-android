@@ -49,6 +49,7 @@ import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.prototype.rv.rvHeroArt
 
 /**

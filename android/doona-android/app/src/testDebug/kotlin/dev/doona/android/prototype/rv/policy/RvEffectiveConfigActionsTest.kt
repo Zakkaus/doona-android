@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.doona.android.R
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvText

@@ -14,6 +14,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.config.RvConfigHistoryData
 import dev.doona.android.prototype.rv.config.RvConfigImportPage
@@ -31,7 +32,6 @@ import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
-import dev.doona.android.prototype.rv.policy.RvPolicyState
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.policy.RvRuleDraft
 import dev.doona.android.prototype.rv.policy.RvRuleEditPage

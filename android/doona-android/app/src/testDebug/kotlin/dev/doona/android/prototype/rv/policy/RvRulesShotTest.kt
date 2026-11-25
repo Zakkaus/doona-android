@@ -13,6 +13,9 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc

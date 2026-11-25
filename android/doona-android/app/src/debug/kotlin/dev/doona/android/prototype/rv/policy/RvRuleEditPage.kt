@@ -39,6 +39,10 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.designsystem.rv.rvRowToggle
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.RvRuleState
 
 /** A rule being edited: how it matches, the value it matches (none for GEOIP CN and private ranges), where, if on. */
 @Immutable
