@@ -6,6 +6,7 @@
 use std::collections::HashSet;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use honk_config::Config;
 use honk_config::diagnostic::DiagnosticSources;
@@ -16,7 +17,7 @@ use honk_config::parser::lexer::Source;
 use honk_config::parser::source_edit::{append_node_source, source_indices};
 use uuid::Uuid;
 
-use super::ads::loaded;
+use super::ads::{loaded, relative, root};
 use super::carry::Carry;
 use super::{EditError, File, blanks, line_start};
 use crate::honkconf::staged::Tree;
@@ -116,12 +117,23 @@ fn read_back(before: &Config, after: &Config, group: &str, name: &str) -> bool {
     member_names(after, new) == expected && new.groups == old.groups
 }
 
-/// Every group whose winning declaration holds node `id`, in declaration order.
+/// Whether group `name` selects node `id` through its winning declaration's own members or its
+/// subgroups, as honk's group graph walks them. A subgroup reached twice is walked once.
+fn reaches<'c>(config: &'c Config, name: &'c str, id: Uuid, seen: &mut Vec<&'c str>) -> bool {
+    if seen.contains(&name) {
+        return false;
+    }
+    seen.push(name);
+    winning(config, name).is_some_and(|w| {
+        w.nodes.contains(&id) || w.groups.iter().any(|g| reaches(config, g, id, seen))
+    })
+}
+
+/// Every group that selects node `id`, in declaration order.
 fn holding(config: &Config, id: Uuid) -> Vec<String> {
     let mut groups: Vec<String> = Vec::new();
     for group in &config.groups {
-        let won = winning(config, &group.name).is_some_and(|w| w.nodes.contains(&id));
-        if won && !groups.contains(&group.name) {
+        if !groups.contains(&group.name) && reaches(config, &group.name, id, &mut Vec::new()) {
             groups.push(group.name.clone());
         }
     }
@@ -131,7 +143,6 @@ fn holding(config: &Config, id: Uuid) -> Vec<String> {
 /// The new text of each file an edit touched, by absolute path, in edit order.
 struct Edited<'t> {
     tree: &'t Tree,
-    root: PathBuf,
     texts: Vec<(PathBuf, String)>,
     /// The chosen groups that gain a filter, with the file and declaration to open instead.
     groups: Vec<(String, PathBuf, Range<usize>)>,
@@ -176,7 +187,7 @@ impl Edited<'_> {
         if self.groups.iter().any(|(g, ..)| g == group) {
             return Ok(());
         }
-        let relative: PathBuf = path.strip_prefix(&self.root).unwrap().into();
+        let relative = relative(self.tree, path);
         let original = document(&self.tree.files[path], path);
         let bytes = original
             .as_ref()
@@ -206,8 +217,7 @@ impl HonkStore {
     ) -> Result<Vec<String>, AddNodeError> {
         let mut tree =
             Tree::read(&self.draft_entry(self.find(draft)?)).map_err(StoreError::from)?;
-        let root = tree.entry.parent().unwrap().to_owned();
-        let entry: PathBuf = tree.entry.strip_prefix(&root).unwrap().into();
+        let entry = relative(&tree, &tree.entry);
         let raw = || EditError::OpenSource {
             path: entry.clone(),
             bytes: None,
@@ -217,7 +227,6 @@ impl HonkStore {
         let appended = appended_entry(&before, name, link)?;
         let mut edited = Edited {
             tree: &tree,
-            root: root.clone(),
             texts: vec![(tree.entry.clone(), appended)],
             groups: Vec::new(),
         };
@@ -236,24 +245,24 @@ impl HonkStore {
         }
         let node = after.config.nodes.iter().find(|n| n.name == name);
         let id = node.ok_or_else(raw)?.id;
-        self.write_files(draft, &root, &tree, &texts)?;
+        self.write_files(draft, &tree, &texts)?;
         Ok(holding(&after.config, id))
     }
 
     fn write_files(
         &mut self,
         draft: u64,
-        root: &Path,
         edited: &Tree,
         texts: &[(PathBuf, String)],
     ) -> Result<(), EditError> {
+        let root = root(edited);
         let original =
             Tree::read(&self.draft_entry(self.find(draft)?)).map_err(StoreError::from)?;
         // Every file parses before the first one is written, so a refusal writes nothing.
         let mut steps = Vec::new();
         for (path, text) in texts {
             let raw = || EditError::OpenSource {
-                path: path.strip_prefix(root).unwrap().into(),
+                path: relative(edited, path),
                 bytes: None,
             };
             let file = File::parse(&original, path, &raw)?;
@@ -261,8 +270,17 @@ impl HonkStore {
             let carry = Carry::diff(&file.source.content, text);
             steps.push((path, file, candidate, carry));
         }
+        // Each write replaces one file by rename. When one fails, the files already written
+        // get their original bytes back, so the draft keeps no half of the edit.
+        let mut written: Vec<(&Path, Arc<str>)> = Vec::new();
         for (path, file, candidate, carry) in steps {
-            self.write_steps(draft, path, root, &file, &[(candidate, carry)])?;
+            if let Err(error) = self.write_steps(draft, path, root, &file, &[(candidate, carry)]) {
+                for (path, original) in written.iter().rev() {
+                    self.write_edit(draft, path, root, original, None)?;
+                }
+                return Err(error.into());
+            }
+            written.push((path, file.source.content));
         }
         Ok(())
     }

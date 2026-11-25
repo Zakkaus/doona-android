@@ -1,6 +1,7 @@
 mod common;
 
 use std::collections::BTreeSet;
+use std::fs;
 use std::path::Path;
 
 use common::TempDir;
@@ -16,7 +17,7 @@ const LINK: &str = "socks5://192.0.2.9:1080";
 struct Draft {
     store: HonkStore,
     id: u64,
-    _dir: TempDir,
+    dir: TempDir,
 }
 
 impl Draft {
@@ -27,11 +28,7 @@ impl Draft {
         for (path, text) in files {
             store.edit(id, Path::new(path), text).unwrap();
         }
-        Self {
-            store,
-            id,
-            _dir: dir,
-        }
+        Self { store, id, dir }
     }
 
     fn text(&self, path: &str) -> String {
@@ -61,6 +58,16 @@ fn members(config: &Config, group: &str) -> BTreeSet<String> {
     let group = config.groups.iter().rfind(|g| g.name == group).unwrap();
     let nodes = config.nodes.iter().filter(|n| group.nodes.contains(&n.id));
     nodes.map(|n| n.name.clone()).collect()
+}
+
+/// Node names `group` selects through its own members and its subgroups, as honk's graph does.
+fn selected(config: &Config, group: &str) -> BTreeSet<String> {
+    let mut names = members(config, group);
+    let won = config.groups.iter().rfind(|g| g.name == group).unwrap();
+    for sub in &won.groups {
+        names.extend(selected(config, sub));
+    }
+    names
 }
 
 fn set(names: &[&str]) -> BTreeSet<String> {
@@ -122,6 +129,7 @@ fn filtered_and_subgroup_only_groups_gain_the_node_and_keep_their_members() {
     assert_eq!(members(&config, "Outer"), set(&["tw1"]));
     let outer = config.groups.iter().find(|g| g.name == "Outer").unwrap();
     assert_eq!(outer.groups, ["Hk", "Pick"]);
+    assert_eq!(selected(&config, "Outer"), set(&["hk1", "jp1", "tw1"]));
 }
 
 #[test]
@@ -227,4 +235,58 @@ fn a_node_can_join_no_group_with_or_without_groups_in_the_config() {
         assert!(config.nodes.iter().any(|n| n.name == "tw1"), "{groups}");
         assert_eq!(config.groups.len(), usize::from(!groups.is_empty()));
     }
+}
+
+#[test]
+fn groups_that_reach_the_node_through_subgroups_are_listed() {
+    // Other reaches Jp twice (directly and through Mid) and never the node; honk keeps the
+    // Ping and Pong cycle in its graph.
+    let text = format!(
+        "{NODES}group {{\n  Hk {{ filter: name(hk1) }}\n  Jp {{ filter: name(jp1) }}\n  Mid {{ filter: group(Jp) }}\n  Outer {{ filter: group(Hk, Mid) }}\n  Other {{ filter: group(Jp, Mid) }}\n  Ping {{ filter: group(Pong) }}\n  Pong {{ filter: group(Ping) }}\n}}\n"
+    );
+    let mut draft = Draft::new(&[(ENTRY, &text)]);
+    assert_eq!(draft.add("tw1", &["Hk"]).unwrap(), ["Hk", "Outer"]);
+    let config = draft.assembled();
+    assert!(selected(&config, "Outer").contains("tw1"));
+    assert!(!selected(&config, "Other").contains("tw1"));
+}
+
+#[test]
+fn a_failed_write_of_a_later_file_restores_the_files_already_written() {
+    use std::os::unix::fs::PermissionsExt;
+    // The entry gains the node first; the filter goes to sub/b.dae, whose directory refuses it.
+    let entry = format!("include {{ 'sub/b.dae' }}\n{NODES}");
+    let b = "group { Hk { filter: name(hk1) } }\n";
+    let mut draft = Draft::new(&[(ENTRY, &entry), ("sub/b.dae", b)]);
+    let subs = dirs_named(draft.dir.path(), "sub");
+    assert!(!subs.is_empty());
+    let mode = |dir: &Path, mode| fs::set_permissions(dir, fs::Permissions::from_mode(mode));
+    for dir in &subs {
+        mode(dir, 0o555).unwrap();
+    }
+    let result = draft.add("tw1", &["Hk"]);
+    for dir in &subs {
+        mode(dir, 0o755).unwrap();
+    }
+    assert!(
+        matches!(result, Err(AddNodeError::Edit(EditError::Store(_)))),
+        "{result:?}"
+    );
+    assert_eq!(draft.text(ENTRY), entry);
+    assert_eq!(draft.text("sub/b.dae"), b);
+    assert_eq!(draft.add("tw1", &["Hk"]).unwrap(), ["Hk"]);
+}
+
+fn dirs_named(root: &Path, name: &str) -> Vec<std::path::PathBuf> {
+    let mut found = Vec::new();
+    for item in fs::read_dir(root).unwrap() {
+        let path = item.unwrap().path();
+        if path.is_dir() {
+            if path.file_name().is_some_and(|n| n == name) {
+                found.push(path.clone());
+            }
+            found.extend(dirs_named(&path, name));
+        }
+    }
+    found
 }
