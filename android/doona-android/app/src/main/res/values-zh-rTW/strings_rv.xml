@@ -19,8 +19,6 @@
     <string name="rv_uploaded">已上傳</string>
     <string name="rv_connected_for">連線時長</string>
     <string name="rv_duration">%1$d 小時 %2$d 分</string>
-    <string name="rv_chart_type">圖表類型</string>
-    <string name="rv_full_screen">全螢幕</string>
     <string name="rv_range_1m">1 分</string>
     <string name="rv_range_5m">5 分</string>
     <string name="rv_range_15m">15 分</string>

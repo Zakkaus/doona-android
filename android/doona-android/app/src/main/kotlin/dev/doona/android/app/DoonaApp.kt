@@ -35,6 +35,7 @@ import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
+import dev.doona.android.feature.traffic.TrafficRoute
 
 /**
  * The old hub bar's frame (see [DoonaHubShell]), which the old pages' screenshot cases still draw them in until the page
@@ -92,6 +93,7 @@ fun DoonaApp(
                 }
             }
             entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
+            entry<TrafficKey> { key -> TrafficRoute(engine, onBack = { backStack.pop(key) }) }
         }
     }
     localNetwork?.let { LocalNetworkPrompts(it) }
