@@ -244,10 +244,10 @@ internal fun rememberRvMotion(): RvMotionScale {
 
 /**
  * The one press feedback: the content colour's state layer over the visible shape, up in [RvMotion.PRESS_MS]. [shape] is
- * the visible shape the focus outline follows (a rounded rectangle of [Rv.highlightRadius] where the caller has none).
+ * the visible shape the focus outline follows.
  */
 @Composable
-internal fun rvPressIndication(shape: Shape? = null): IndicationNodeFactory =
+internal fun rvPressIndication(shape: Shape): IndicationNodeFactory =
     RvPressIndication(Rv.colors.stateLayer, Rv.colors.positive, Rv.motion.instant, inset = null, radius = Rv.highlightRadius, shape = shape, layer = true)
 
 /**
@@ -256,7 +256,7 @@ internal fun rvPressIndication(shape: Shape? = null): IndicationNodeFactory =
  */
 @Composable
 internal fun rvRowIndication(): IndicationNodeFactory =
-    RvPressIndication(Rv.colors.stateLayer, Rv.colors.positive, Rv.motion.instant, inset = RvSpace.tight, radius = Rv.highlightRadius, shape = null, layer = true)
+    RvPressIndication(Rv.colors.stateLayer, Rv.colors.positive, Rv.motion.instant, inset = RvSpace.tight, radius = Rv.highlightRadius, shape = RoundedCornerShape(Rv.highlightRadius), layer = true)
 
 /**
  * Only the focus outline of [rvPressIndication], for a control that draws its own press (the primary button, a disc):
@@ -272,7 +272,7 @@ private data class RvPressIndication(
     val instant: Boolean,
     val inset: Dp?,
     val radius: Dp,
-    val shape: Shape?,
+    val shape: Shape,
     val layer: Boolean,
 ) : IndicationNodeFactory {
     override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, this)
@@ -333,8 +333,7 @@ private class PressNode(private val source: InteractionSource, private val spec:
     private fun DrawScope.drawFocusRing() {
         val i = spec.inset?.toPx() ?: 0f
         val box = Size((size.width - 2 * i).coerceAtLeast(0f), (size.height - 2 * i).coerceAtLeast(0f))
-        val shape = spec.shape ?: RoundedCornerShape(spec.radius)
-        val outline = shape.createOutline(box, layoutDirection, this)
+        val outline = spec.shape.createOutline(box, layoutDirection, this)
         translate(i, i) {
             clipPath(outline.rvPath()) { drawOutline(outline, spec.focus, style = Stroke(RvChrome.focusRing.toPx() * 2)) }
         }
