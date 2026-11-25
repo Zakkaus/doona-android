@@ -17,7 +17,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -91,8 +90,7 @@ private fun DrawScope.axisLine(plot: Plot, y: Float, text: TextLayoutResult?, gr
 
 /** The dotted median across the plot, its value in the value pill at the strip's end, as node detail draws it. */
 private fun DrawScope.medianLine(plot: Plot, y: Float, text: TextLayoutResult, color: Color, ink: RvPillInk) {
-    val dots = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH, RvChartSize.dottedPitch.toPx()))
-    drawLine(color, Offset(0f, y), Offset(plot.right, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots)
+    drawLine(color, Offset(0f, y), Offset(plot.right, y), RvChartSize.dotted.toPx(), StrokeCap.Round, rvDots())
     val pill = rvPillSize(text)
     rvValuePill(text, Offset(size.width - pill.width, (y - pill.height / 2).coerceIn(0f, plot.bottom - pill.height)), ink)
 }
@@ -107,5 +105,3 @@ internal object RvLatencySpreadSize {
     val dotSelected = 5.5.dp
     val labelGap = 8.dp
 }
-
-private const val DOT_LENGTH = 0.01f

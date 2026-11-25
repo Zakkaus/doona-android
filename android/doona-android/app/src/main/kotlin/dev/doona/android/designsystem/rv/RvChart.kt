@@ -512,11 +512,11 @@ private fun areaUnder(values: List<Float>, scale: Scale, right: Float, bottom: F
 
 private fun lineStroke(width: Float) = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round)
 
-/** Round dots, as Revolut draws its reference lines. */
-private fun DrawScope.dots() = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH, RvChartSize.dottedPitch.toPx()))
+/** Round dots, as Revolut draws its reference lines: the dotted lines of the library's charts. */
+internal fun DrawScope.rvDots() = PathEffect.dashPathEffect(floatArrayOf(DOT_LENGTH, RvChartSize.dottedPitch.toPx()))
 
 private fun DrawScope.dottedAcross(color: Color, y: Float, alpha: Float = 1f) =
-    drawLine(color, Offset(0f, y), Offset(size.width, y), RvChartSize.dotted.toPx(), StrokeCap.Round, dots(), alpha)
+    drawLine(color, Offset(0f, y), Offset(size.width, y), RvChartSize.dotted.toPx(), StrokeCap.Round, rvDots(), alpha)
 
 /** Ghost bar heights as shares of the chart's height: download's, and upload's of its own shape (S5-09). */
 internal val RV_GHOST_DOWN = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
