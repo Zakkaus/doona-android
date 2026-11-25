@@ -17,6 +17,16 @@ pub struct StartConfig {
     pub geo_asset_dir: Option<std::path::PathBuf>,
 }
 
+/// `init`'s options, read once per process; a missing field is its default.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InitOptions {
+    /// More worker threads per runtime, for more throughput over several flows at the cost of
+    /// CPU and power.
+    #[serde(default)]
+    pub performance_mode: bool,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct DnsUpstreamsArgs {
     pub servers: Vec<String>,

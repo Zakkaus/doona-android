@@ -6,8 +6,8 @@ mod common;
 use doonacore::dto::score::ScoreState;
 use doonacore::dto::{
     AddSubscriptionArgs, ClearCrashesArgs, Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty,
-    ErrorCode, Init, Level, LevelArgs, Mode, ModeArgs, Nodes, NodesArgs, Reply, RuleSourceSpec,
-    Rules, RulesArgs, SelectArgs, Snapshot, SourceKind, StartConfig, Subscription,
+    ErrorCode, Init, InitOptions, Level, LevelArgs, Mode, ModeArgs, Nodes, NodesArgs, Reply,
+    RuleSourceSpec, Rules, RulesArgs, SelectArgs, Snapshot, SourceKind, StartConfig, Subscription,
     SubscriptionUserAgentArgs, TargetKind, TrafficSeries, Usage,
 };
 use serde::Serialize;
@@ -66,7 +66,7 @@ fn catalog_member_locations() {
     );
 }
 
-const COVERED: [&str; 40] = [
+const COVERED: [&str; 41] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
     "call-config-assets-update-args.json",
@@ -101,6 +101,7 @@ const COVERED: [&str; 40] = [
     "call-set-mode-args.json",
     "call-set-rule-source-args.json",
     "call-set-subscription-user-agent-args.json",
+    "init-options.json",
     "init.json",
     "snapshot-died.json",
     "snapshot-running.json",
@@ -126,6 +127,7 @@ fn init_and_start_config() {
         round_trip::<Init>("init.json").schema,
         doonacore::dto::SCHEMA
     );
+    assert!(round_trip::<InitOptions>("init-options.json").performance_mode);
     let config = round_trip::<StartConfig>("start-config.json");
     assert_eq!(config.mtu, 65535);
     assert_eq!(config.dns.to_string(), "172.19.0.2");
