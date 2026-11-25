@@ -40,17 +40,17 @@ class SubscriptionRefreshScheduleTest {
             val initial = manager.activeJob()
             assertEquals(6.hours.inWholeMilliseconds, initial.periodicityInfo?.repeatIntervalMillis)
 
-            scheduleSubscriptionRefresh(manager, SubscriptionUpdate(true, UpdateInterval.FortyEight))
+            scheduleSubscriptionRefresh(manager, SubscriptionUpdate(true, UpdateInterval.TwentyFour))
             val updated = manager.activeJob()
             assertEquals(initial.id, updated.id)
-            assertEquals(48.hours.inWholeMilliseconds, updated.periodicityInfo?.repeatIntervalMillis)
+            assertEquals(24.hours.inWholeMilliseconds, updated.periodicityInfo?.repeatIntervalMillis)
             assertEquals(1.hours.inWholeMilliseconds, updated.periodicityInfo?.flexIntervalMillis)
             assertEquals(NetworkType.CONNECTED, updated.constraints.requiredNetworkType)
             assertTrue(updated.constraints.requiresBatteryNotLow())
             assertEquals(1, jobs.allPendingJobs.count { it.service.className.endsWith(".SystemJobService") })
             assertNull(alarms.nextScheduledAlarm)
 
-            scheduleSubscriptionRefresh(manager, SubscriptionUpdate(false, UpdateInterval.FortyEight))
+            scheduleSubscriptionRefresh(manager, SubscriptionUpdate(false, UpdateInterval.TwentyFour))
             assertEquals(WorkInfo.State.CANCELLED, manager.getWorkInfoById(initial.id).get(5, TimeUnit.SECONDS)?.state)
             assertTrue(jobs.allPendingJobs.none { it.service.className.endsWith(".SystemJobService") })
         }

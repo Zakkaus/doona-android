@@ -39,7 +39,8 @@ interface SubscriptionUpdateSettings {
 
 data class SubscriptionUpdate(val enabled: Boolean, val interval: UpdateInterval)
 
-enum class UpdateInterval(val duration: Duration) { Six(6.hours), Twelve(12.hours), TwentyFour(24.hours), FortyEight(48.hours) }
+/** The subscription update intervals the 更新間隔 page offers (owner, 2026-11-25: storage follows the approved page). */
+enum class UpdateInterval(val duration: Duration) { One(1.hours), Six(6.hours), Twelve(12.hours), TwentyFour(24.hours) }
 
 enum class GeoUpdateInterval(val duration: Duration?) { Off(null), Daily(1.days), Weekly(7.days) }
 
@@ -55,7 +56,8 @@ data class ThemeAppearance(val mode: ThemeMode, val followWallpaper: Boolean, va
 class AppSettings internal constructor(private val store: DataStore<Preferences>) : DropNoticeSettings, SubscriptionUpdateSettings {
     override val notifyOnDrop = preference { it[NOTIFY_ON_DROP] ?: true }
     override val subscriptionUpdate = preference { prefs ->
-        val duration = prefs[UPDATE_HOURS]?.hours
+        // 48 hours, which earlier builds offered, reads as the longest interval offered now (owner, 2026-11-25).
+        val duration = prefs[UPDATE_HOURS]?.let { if (it == RETIRED_HOURS) UpdateInterval.TwentyFour.duration.inWholeHours.toInt() else it }?.hours
         val interval = UpdateInterval.entries.firstOrNull { it.duration == duration } ?: UpdateInterval.Twelve
         SubscriptionUpdate(prefs[AUTO_UPDATE] ?: true, interval)
     }
@@ -98,6 +100,7 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         private val NOTIFY_ON_DROP = booleanPreferencesKey("notify_on_drop")
         private val AUTO_UPDATE = booleanPreferencesKey("auto_update")
         private val UPDATE_HOURS = intPreferencesKey("update_hours")
+        private const val RETIRED_HOURS = 48
         private val GEO_UPDATE_INTERVAL = stringPreferencesKey("geo_update_interval")
         private val GEO_LAST_SUCCESS = longPreferencesKey("geo_last_success_epoch_ms")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
