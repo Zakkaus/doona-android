@@ -259,7 +259,14 @@ private fun RvRowRead.endY(): RvRowBreak? {
     val end = shape ?: ink
     val control = endTags.any { it in CONTROLS }
     return when {
-        oneLine -> if (cut) null else off("R10", end.center.y - row.center.y)
+        // A one-line title whose end went under it (a large font: the title keeps the line) stands as any end under the text.
+        oneLine -> if (cut) {
+            null
+        } else if (under) {
+            off("R11u", end.top - title.box.bottom)
+        } else {
+            off("R10", end.center.y - row.center.y)
+        }
 
         subtitles.isEmpty() -> null
 

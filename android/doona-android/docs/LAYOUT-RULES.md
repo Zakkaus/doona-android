@@ -135,6 +135,7 @@ The gate measures the unmerged semantics tree, so it measures what a part draws 
 | A **line end** (a figure on the title's or subtitle's line) and a **busy bar** are part of the text block; the title's end under the title, on a line of its own, is the whole gap between title and subtitle | R1, R12, R18 | RvRow puts an end that does not read well beside its text on a line of its own; R12's 0 is for the text, not for that line |
 | A busy bar stands where its end stands: centred on the line of a line end, else on the room | R11l, R11u | `BusyAtEnd`, `InRoomOf` |
 | A control (switch, radio, check) that went **under** the text stands as any end under it: R11u | R11 | the catalogue's long-subtitle rows |
+| A **one-line** row whose end went under its title (the title keeps the line at a large font) is read by R11u, not R10 (2026-11-25, integration) | R10 | 「分開選擇 TCP/UDP」 at 200%: the switch stands under the title, its top on the title's bottom |
 | A **honk code** title ([RvRowPart.CODE]) keeps the code view's line boxes: no R11 against a role's first line, no R13 | R11, R13 | code is not set in a role |
 
 ## Icons (R4 in detail)
