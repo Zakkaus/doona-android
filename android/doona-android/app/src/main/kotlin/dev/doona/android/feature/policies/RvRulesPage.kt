@@ -1,21 +1,17 @@
-package dev.doona.android.prototype.rv.policy
+package dev.doona.android.feature.policies
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvCaption
@@ -34,9 +30,7 @@ import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvStatRow
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowPress
-import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleState
 
@@ -179,15 +173,4 @@ private fun CountsCard(rules: List<RvPolicyRule>) {
 private fun count(rules: List<RvPolicyRule>, state: RvRuleState): String {
     val n = rules.count { it.state == state }
     return pluralStringResource(R.plurals.rv_rules_count, n, n)
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvRulesPagePreview() {
-    val dark = isSystemInDarkTheme()
-    var editing by remember { mutableStateOf(false) }
-    RvTheme(rvSystemScheme(dark), dark) {
-        RvRulesPage(RvPolicyData.allRules, emptyList(), editing, onBack = {}, routes = RvRulesRoutes(edit = { editing = it }))
-    }
 }

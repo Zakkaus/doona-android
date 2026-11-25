@@ -4,10 +4,10 @@ import dev.doona.android.R
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSession
+import dev.doona.android.feature.policies.RvEffectiveConfig
+import dev.doona.android.feature.policies.RvPolicyProfile
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.policy.RvEffectiveConfig
 import dev.doona.android.prototype.rv.policy.RvPolicyData
-import dev.doona.android.prototype.rv.policy.RvPolicyProfile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test

@@ -42,7 +42,7 @@ internal fun interface RvNodePlaces {
 /** Every node under 其他, its full name standing for the short one: what the pages show before the real mapper is wired. */
 internal val RV_UNKNOWN_PLACES = RvNodePlaces { RvNodePlace(RvPlace.Other, null, it) }
 
-/** How many rules 策略's card lists: as many as the approved sample's card (`RvPolicyData.rules` in the debug samples). */
+/** How many rules 策略's card lists: as many as the approved sample's card lists. */
 internal const val RV_POLICY_CARD_RULES = 5
 
 /**

@@ -37,9 +37,9 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvConfigLine
 import dev.doona.android.designsystem.rv.rvConfigPhrase
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.policies.RvTemplateRow
 import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvSourceDiff
-import dev.doona.android.prototype.rv.policy.RvTemplateRow
 
 /**
  * 範本 on the configuration side (doona's routing templates; `configDraft from: template`): doona's three templates that

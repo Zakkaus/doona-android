@@ -43,11 +43,11 @@ import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.text
+import dev.doona.android.feature.policies.kind
+import dev.doona.android.feature.policies.title
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.policy.RvConnection
 import dev.doona.android.prototype.rv.policy.RvPolicyData
-import dev.doona.android.prototype.rv.policy.kind
-import dev.doona.android.prototype.rv.policy.title
 
 /**
  * A connection's page, after Revolut's transaction detail (revolut-ux3 §1, "For doona"): the back bar of every pushed

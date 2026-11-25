@@ -7,6 +7,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.policies.RvRulesPage
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
