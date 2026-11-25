@@ -17,6 +17,12 @@ private fun Project.configureGeoAssets() {
     val skipGeo = providers.gradleProperty("doona.skipGeo").orNull.toBoolean()
     val pins = rootProject.layout.projectDirectory.file("../../crates/doona-core/tools/geo-pins.json")
     val cache = gradle.gradleUserHomeDir.resolve("caches/doona-geo")
+    val buildInfo = tasks.register<GenerateBuildInfo>("generateBuildInfo") {
+        description = "Generates BuildInfo from the pinned honk revision and the Geo release date."
+        cargoToml.set(rootProject.layout.projectDirectory.file("../../crates/doona-core/Cargo.toml"))
+        pinsFile.set(pins)
+        outputDir.set(layout.buildDirectory.dir("generated/build-info"))
+    }
     val generated = if (skipGeo) null else tasks.register<GenerateGeoAssets>("generateGeoAssets") {
         description = "Verifies the pinned GeoIP and GeoSite DATs and generates APK assets."
         pinsFile.set(pins)
@@ -24,6 +30,7 @@ private fun Project.configureGeoAssets() {
         outputDir.set(layout.buildDirectory.dir("generated/geo-assets"))
     }
     extensions.getByType<ApplicationAndroidComponentsExtension>().onVariants { variant ->
+        variant.sources.kotlin?.addGeneratedSourceDirectory(buildInfo, GenerateBuildInfo::outputDir)
         val release = variant.buildType == "release"
         if (!release && generated == null) return@onVariants
         val packageAssets = tasks.register<StageAssets>(variant.computeTaskName("stage", "GeoAssets")) {
