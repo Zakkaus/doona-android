@@ -19,7 +19,7 @@ import android.os.ParcelFileDescriptor
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.R
-import dev.doona.android.app.DoonaApplication
+import dev.doona.android.app.DoonaTestApplication
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.AppPolicy
@@ -351,7 +351,7 @@ class DoonaVpnServiceTest {
         }
     }
 
-    class LifecycleApplication : DoonaApplication() {
+    class LifecycleApplication : DoonaTestApplication() {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         internal val core = FakeCore()
         val lane = Dispatchers.IO.limitedParallelism(1)
